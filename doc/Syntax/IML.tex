@@ -1,0 +1,253 @@
+%=====================================================================================
+%=====================================================================================
+\documentclass{paper}
+
+%=====================================================================================
+%=====================================================================================
+\usepackage{float}
+\usepackage{amssymb}
+\usepackage{color}
+
+%=====================================================================================
+%=====================================================================================
+\restylefloat{figure}
+\advance\textwidth by 2.4cm
+\advance\oddsidemargin by -1.2cm
+\advance\evensidemargin by -1.2cm
+\definecolor{grey}{rgb}{0.5,0.5,0.5}
+%=====================================================================================
+%=====================================================================================
+\title{SEMPER IML}
+
+%=====================================================================================
+%=====================================================================================
+\begin{document}
+
+	\section{Intermediate Language}
+	
+%	\subsection{General}
+	
+%	Heap is two functions: \\
+%		\indent Ref $\times$ RefFieldId  $\rightarrow$ Ref \\
+%		\indent Ref $\times$ DataFieldId $\rightarrow$ Any $\setminus$ Ref \\
+%		Where fieldIds are fully qualified and unique (e.g. C.f$_r$ for reference field f of class C )	
+	
+	\subsection{Legend}
+	
+	\begin{tabbing}
+ 			u,v : program variable, V All program variables \\
+ 			fid : field (Divided for Ref and Any $\setminus$ Ref \\
+ 			m : method \\
+ 			
+ 			f : domain function (from a specification datatype) including constants \\
+ 			
+ 			l : logical variable, L All logical variables \\
+			r : reference valued variable \\
+			 			
+ 			T : data\_type \\
+
+			p : predicate \\
+			
+	\end{tabbing}
+
+	\subsection{Abstract Syntax - Language}
+
+	\begin{tabbing}
+ 			program ::= \\
+ 			\indent module$\ast$     \\
+ 			\indent data\_type\_definition$\ast$   \\
+ 			\indent predicate\_definition$\ast$   \\
+ 			\indent method\_specification$\ast$  \\
+ 			\indent method\_implementation$\ast$  \\
+	\end{tabbing}
+
+	\begin{tabbing}
+ 			module ::= \\
+ 			\indent domain$\ast$\\
+	\end{tabbing}
+
+	\begin{tabbing}
+ 			data\_type\_definition ::=; \\
+ 			\indent name : identifier \\
+ 			\indent type : data\_type \\
+	\end{tabbing}
+
+	\begin{tabbing}
+ 			predicate\_definition ::= \\
+ 			\indent name           : identifier \\
+% 			\indent arguments      : variable$\ast$ \\
+ 			\indent expression     : pexpression \\
+	\end{tabbing}
+
+	\begin{tabbing}
+ 			data\_type ::=; \\
+ 			\indent $|$ \textbf{any}\\
+ 			\indent $|$ \textbf{ref}\\
+ 			\indent $|$ domain\_type\\
+	\end{tabbing}
+ 			
+	\begin{tabbing}
+ 			method\_specification ::= \\
+ 			\indent method\_signature \\
+	\end{tabbing}
+		
+	\begin{tabbing}
+ 			method\_signature ::= \\
+ 			\indent name           : identifier \\
+ 			\indent arguments      : variable$\ast$ \\
+ 			\indent returns        : variable$\ast$ \\
+ 			\indent preconditions  : pexpression$\ast$ \\
+ 			\indent postconditions : pexpression$\ast$ \\
+	\end{tabbing}
+
+	\begin{tabbing}
+ 			method\_implementation ::= \\
+ 			\indent method\_signature \\
+ 			\indent locals         : variable$\ast$ \\
+ 			\indent body           : statement \\
+	\end{tabbing}
+
+
+	\begin{tabbing}
+ 			variable ::= \\
+ 			\indent name : identifier \\
+ 			\indent type : data\_type  \\
+	\end{tabbing}
+
+	\begin{tabbing}
+ 			statement ::= \\
+ 			\indent $|$ v := expression \\
+ 			\indent $|$ v := \textbf{new} T\\ 
+ 			\indent $|$ v.fid := u \\
+ 			\\
+ 			\indent $|$ \textbf{inhale} pexpression \\
+ 			\indent $|$ \textbf{exhale} pexpression \\
+ 			\\
+ 			\indent $|$ \textbf{call} $\overline{\mathrm{v}}$ := m($\overline{\mathrm{u}}$) \\
+ 			\\
+% 			\indent $|$ \textbf{if} (v) \textbf{then} statement$_1$ \textbf{else} statement$_2$ \\
+% 			\indent $|$ \textbf{while} (v) \textbf{invariant} pexpression \textbf{do} statement \\
+% 			\indent\indent $|$ \textbf{break} \\
+% 			\indent $|$ statement$_1$; statement$_2$ \\
+
+ 			\indent $|$ \textbf{if} (v) \textbf{then} \textbf{goto} label$_1$ \textbf{else} \textbf{goto} label$_2$ \\
+ 			\indent $|$ \textbf{goto} label \\
+ 			\indent $|$ \textbf{block} \\
+	\end{tabbing}
+	
+	\begin{tabbing}
+ 			expression ::= \\
+% 			\indent $|$ v \\
+ 			\indent $|$ v[$_old$] \\
+ 			\indent $|$ f($\overline{\mathrm{expression}}$) \\
+ 			\indent $|$ expression.fid \\
+ 			\indent $|$ expression.$_{old}fid$ \\
+ 			\indent $|$ expression \textbf{as} T  \textit{\color{grey}\/\/Defined but unspecified if not of type}\\
+ 			\indent $|$ expression$_1$ $=$ expression$_2$ \\
+	\end{tabbing}
+
+	\subsection{Abstract Syntax - Specification}
+
+	\begin{tabbing}
+ 			pexpression ::= \textit{\color{grey} permission expression }\\
+ 			\indent $|$ lexpression \\
+ 			\indent $|$ predicate \\ %($\overline{\mathrm{expression}}$) \\
+ 			\indent $|$ perm\_term \\
+ 			\indent $|$ pexpression $\land$ pexpression \\%%\textit{\color{grey}syntactic (short circuit) or semantic for self framing}\\
+ 			\indent $|$ lexpression $\rightarrow$ pexpression \\
+	\end{tabbing}
+
+	\begin{tabbing}
+ 			lterm ::= \textit{\color{grey} logical(assertion) term }\\
+ 			\indent $|$ V \\
+ 			\indent $|$ L \\
+ 			\indent $|$ f($\overline{\mathrm{lterm}}$) \\
+ 			\indent $|$ lterm.fid \\
+ 			\indent $|$ lterm \textbf{isOfType} T \\
+ 			\indent $|$ \textbf{perm}(expression) \\
+	\end{tabbing}
+
+	\begin{tabbing}
+ 			lexpression ::= \textit{\color{grey} logical(assertion) expression }\\ 
+ 			\indent $|$ lterm    \textit{\color{grey}Boolean typed}\\
+ 			\indent $|$ lterm.p\\
+ 			\\
+ 			\indent $|$ lterm$_1$ $=$ lterm$_2$ \\
+ 			\indent $|$ $\lnot$ lexpression \\
+ 			\indent $|$ lexpression$_1$ ( $\lor$ $|$ $\land$ $|$ $\rightarrow$ $|$ $\leftrightarrow$ ) lexpression$_2$ \\
+ 			\indent $|$ ( $\forall$ $|$ $\exists$ ) l $\in$ domain : $\{$ triggers:lexpression$\ast$ $\}$ lexpression \textit{\color{grey}Some rule for references?} \\
+ 			\indent $|$ \textbf{if} lexpression$_1$ \textbf{then} lexpression$_2$ \textbf{else} lexpression$_3$\\
+	\end{tabbing}
+
+	\begin{tabbing}
+ 			perm\_term ::= \\
+ 			\indent $|$ \textbf{acc}(expression$_1$,expression$_2$) \\
+	\end{tabbing}
+	
+	\subsection{Abstract Syntax - Domains}
+		
+	\begin{tabbing}
+ 			domain\_template ::= \\
+ 			\indent type\_parameter$\ast$ \\
+ 			\indent function$\ast$ \\
+ 			\indent axiom$\ast$ \\
+	\end{tabbing}
+	
+	\begin{tabbing}
+ 			domain ::= \\
+ 			\indent domain\_template \\
+ 			\indent type\_arguments : domain$\ast$ \\
+ 	\end{tabbing}			
+
+	\begin{tabbing}
+ 			function ::= \\
+ 			\indent name   : identifier \\
+ 			\indent function\_argument$\ast$ \\
+ 			\indent result : domain \\
+	\end{tabbing}
+	
+	\begin{tabbing}
+ 			function\_argument ::= \\
+ 			\indent logical\_variable \\
+ 			\indent type : domain \\
+	\end{tabbing}
+
+	\begin{tabbing}
+ 			sexpression ::= \\
+ 			\indent $|$ sterm \\
+ 			\indent $|$ sterm$_1$ $=$ sterm$_2$ \\
+ 			\indent $|$ $\lnot$ sexpression \\
+ 			\indent $|$ sexpression$_1$ ( $\lor$ $|$ $\land$ $|$ $\rightarrow$ $|$ $\leftrightarrow$ ) sexpression$_2$ \\
+ 			\indent $|$ ( $\forall$ $|$ $\exists$ ) l $\in$ domain : $\{$ triggers:sexpression$\ast$ $\}$ sexpression  \\
+ 			\indent $|$ \textbf{if} sexpression$_1$ \textbf{then} sexpression$_2$ \textbf{else} sexpression$_3$\\
+	\end{tabbing}
+
+	\begin{tabbing}
+ 			sterm ::= \\
+ 			\indent $|$ l \\
+ 			\indent $|$ f($\overline{\mathrm{sterm}}$) \\
+	\end{tabbing}
+
+	\subsection{Predefined types and functions}
+		Any \\
+		\indent $=$ \\
+		Reference \\
+		\indent $\textbf{null}$ \\
+		Boolean \\
+		\indent $\lnot$ $\land$ $\lor$ $\rightarrow$ $\leftrightarrow$ $( ? : )$ \\
+		Integer \\
+		\indent	$+$ $-$ $*$ $/$ $<$ ,... \\
+		Sequence$<$T$>$ \\
+		\indent	\dots \\
+		Set$<$T$>$ \\
+		\indent	\dots \\
+		\dots \\
+
+	\section{Semantics}
+	
+	\subsection{Axiomatic Semantics}
+
+	
+	\subsection{Full language semantics}
+
+\end{document}
