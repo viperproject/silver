@@ -1,4 +1,5 @@
-package silAST
+package silAST.expressions.terms
+import source.SourceLocation
 
 class BooleanLiteral(val value:Boolean,val sl : SourceLocation) extends Literal(sl) {
 

@@ -1,6 +1,7 @@
-package silAST
+package silAST.expressions.terms
 
 import scala.collection.Seq
+import source.SourceLocation
 
 class EqualityExpressionNode(
     sl : SourceLocation, 

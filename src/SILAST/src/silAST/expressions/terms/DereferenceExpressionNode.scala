@@ -1,7 +1,8 @@
-package silAST
+package silAST.expressions.terms
 
 import scala.collection.Seq
 import symbols.FieldId
+import source.SourceLocation
 
 class DereferenceExpressionNode(
     sl : SourceLocation, 

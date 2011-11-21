@@ -1,4 +1,5 @@
-package silAST
+package silAST.expressions.terms
+import source.SourceLocation
 
 class IntegerLiteral(val value:BigInt,val sl : SourceLocation) extends Literal(sl) {
 

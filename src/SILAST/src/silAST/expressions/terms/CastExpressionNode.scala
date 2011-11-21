@@ -1,7 +1,8 @@
-package silAST
+package silAST.expressions.terms
 
 import scala.collection.Seq
 import symbols.DataType
+import source.SourceLocation
 
 class CastExpressionNode(
     sl:SourceLocation, 

@@ -1,4 +1,5 @@
 package silAST
+import source.SourceLocation
 
 abstract class ASTNode(
     val sourceLocation : SourceLocation //The location in source code

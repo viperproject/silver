@@ -1,4 +1,4 @@
-package silAST
+package source
 
 class SourceLocation {
 

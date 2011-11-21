@@ -1,5 +1,7 @@
-package silAST
+package silAST.expressions.terms
 import symbols.ProgramVariable
+import silAST.AtomicNode
+import source.SourceLocation
 
 class ProgramVariableNode(sl : SourceLocation, val variable : ProgramVariable ) 
 	extends ExpressionNode(sl) 
