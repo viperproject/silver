@@ -4,7 +4,7 @@ import scala.collection.Seq
 
 abstract class Program(
 		val sl : SourceLocation
-	) extends ASTNode(SourceLocation) {
+	) extends ASTNode(sl) {
 
   def toString(): String
 
