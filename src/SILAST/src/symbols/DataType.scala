@@ -1,0 +1,5 @@
+package symbols
+
+class DataType {
+
+}
