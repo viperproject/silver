@@ -2,7 +2,7 @@ package silAST.expressions.terms
 import silAST.AtomicNode
 import silAST.symbols.ProgramVariable
 import silAST.source.SourceLocation
-import silAST.expressions.ProgramTermNode
+import silAST.expressions.program.ProgramTermNode
 
 class ProgramVariableNode(
 		sl : SourceLocation, 

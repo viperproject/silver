@@ -1,6 +1,6 @@
 package silAST.expressions.program
-import silAST.expressions.TermNode
 import silAST.source.SourceLocation
+import silAST.expressions.terms.TermNode
 
 class AndExpressionNode[+T <: TermNode[T]](
 		sl : SourceLocation,

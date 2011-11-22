@@ -1,13 +1,15 @@
-package silAST.symbols
+package silAST.symbols.logical
 import silAST.source.SourceLocation
 import silAST.ASTNode
+import silAST.symbols.DataType
 import silAST.AtomicNode
 
-class ProgramVariable( 
+class BoundVariable( 
 		sl : SourceLocation,
 		val name : String, 
 		val dataType : DataType
-    ) extends ASTNode(sl) with AtomicNode[ProgramVariable]
+	) extends ASTNode(sl) with AtomicNode[BoundVariable]
 {
 	override def toString() : String = { return name }
+
 }

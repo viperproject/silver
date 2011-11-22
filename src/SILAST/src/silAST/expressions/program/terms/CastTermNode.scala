@@ -2,7 +2,6 @@ package silAST.expressions.terms
 
 import scala.collection.Seq
 import silAST.source.SourceLocation
-import silAST.expressions.TermNode
 import silAST.symbols.DataType
 
 class CastTermNode[+T <: TermNode[T]](

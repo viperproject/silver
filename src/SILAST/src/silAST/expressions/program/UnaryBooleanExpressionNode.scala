@@ -1,8 +1,8 @@
 package silAST.expressions.program
 
 import scala.collection.Seq
-import silAST.expressions.TermNode
 import silAST.source.SourceLocation
+import silAST.expressions.terms.TermNode
 
 abstract class UnaryBooleanExpressionNode[+T <: TermNode[T]](
 		sl : SourceLocation,
