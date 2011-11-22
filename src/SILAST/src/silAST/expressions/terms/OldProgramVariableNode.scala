@@ -4,14 +4,13 @@ import silAST.symbols.ProgramVariable
 import silAST.source.SourceLocation
 import silAST.expressions.ProgramTermNode
 
-class ProgramVariableNode(
+class OldProgramVariableNode(
 		sl : SourceLocation, 
-		val variable : ProgramVariable 
+		variable : ProgramVariable 
 	) 
-	extends ProgramTermNode(sl) 
-	with AtomicNode[ProgramVariableNode]
+	extends ProgramVariableNode(sl, variable) 
 {
 	assert(variable!=null);
 	
-	override def toString(): String = { return variable.name; }
+	override def toString(): String = { return "old(" + variable.name + ")"; }
 }

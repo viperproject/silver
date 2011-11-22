@@ -1,5 +1,0 @@
-package symbols
-
-class DataType {
-
-}

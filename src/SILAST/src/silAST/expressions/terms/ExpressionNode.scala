@@ -1,8 +1,9 @@
 package silAST.expressions.terms
 
 import scala.collection.Seq
-import source.SourceLocation
 import silAST.ASTNode
+import silAST.expressions.TermNode
+import silAST.source.SourceLocation
 
-abstract class ExpressionNode(val sl : SourceLocation) extends ASTNode(sl) {
+abstract class ExpressionNode[+T <: TermNode[T]](val sl : SourceLocation) extends ASTNode(sl) {
 }

@@ -1,7 +1,7 @@
 package silAST.expressions.terms
-import source.SourceLocation
+import silAST.source.SourceLocation
 
-class BooleanLiteral(val value:Boolean,val sl : SourceLocation) extends Literal(sl) {
+class BooleanLiteralNode(sl : SourceLocation, val value:Boolean) extends LiteralNode(sl) {
 
   override def toString(): String = { return value.toString(); }
 

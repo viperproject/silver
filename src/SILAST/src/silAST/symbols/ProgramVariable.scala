@@ -1,4 +1,4 @@
-package symbols
+package silAST.symbols
 
 class ProgramVariable( val name : String, val dataType : DataType) {
 
