@@ -2,8 +2,8 @@ package silAST.expressions.assertion
 import silAST.source.SourceLocation
 import silAST.expressions.program.ProgramExpressionNode
 import silAST.expressions.logical.LogicalTermNode
-import silAST.expressions.permission.PermissionTerm
 import silAST.ASTNode
+import silAST.expressions.assertion.permission.PermissionTerm
 
 class PermissionTermNode( 
 		sl : SourceLocation,

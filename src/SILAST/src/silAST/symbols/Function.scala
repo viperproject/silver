@@ -1,6 +1,8 @@
 package silAST.symbols
+import silAST.ASTNode
+import silAST.source.SourceLocation
 
-abstract class Function(val name : String) 
+abstract class Function(sl : SourceLocation, val name : String) extends ASTNode(sl)
 {
 
 }

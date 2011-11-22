@@ -1,10 +1,14 @@
 package silAST.symbols
 import silAST.expressions.terms.ExpressionNode
+import silAST.ASTNode
+import silAST.source.SourceLocation
 import silAST.expressions.terms.TermNode
 
-class ArgumentSequence[+T <: TermNode[T]]( private val args : Seq[T]) {
+abstract class ArgumentSequence[+T <: TermNode[T]]( sl : SourceLocation, private val args : Seq[T]) extends ASTNode(sl){
 	def asSeq() : Seq[T] = 
 	{
 		return args
 	}
+	
+	override def subNodes() : Seq[T] = { return args}
 }
