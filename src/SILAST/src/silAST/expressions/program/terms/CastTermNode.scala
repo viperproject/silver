@@ -5,11 +5,11 @@ import silAST.source.SourceLocation
 import silAST.symbols.DataType
 import silAST.ASTNode
 
-class CastTermNode[+T <: TermNode[T]](
+class CastTermNode[+T <: GTermNode[T]](
     sl:SourceLocation, 
     val expression: T, 
     val newType : DataType)
-    extends TermNode[T](sl) 
+    extends GTermNode[T](sl) 
 {
   assert(expression!=null);
   assert(newType   !=null);

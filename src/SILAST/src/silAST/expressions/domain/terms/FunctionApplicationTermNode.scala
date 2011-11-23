@@ -5,14 +5,14 @@ import silAST.ASTNode
 import silAST.symbols.ArgumentSequence
 import silAST.symbols.Function
 import silAST.source.SourceLocation
-import silAST.expressions.terms.TermNode
+import silAST.expressions.terms.GTermNode
 
-class FunctionApplicationTermNode[+T <: TermNode[T]](
+class FunctionApplicationTermNode[+T <: GTermNode[T]](
 	    sl:SourceLocation,
 	    val function : Function, 
 	    val arguments : ArgumentSequence[T] 
 	) 
-	extends TermNode[T](sl) 
+	extends GTermNode[T](sl) 
 {
 
   override def toString(): String = { 

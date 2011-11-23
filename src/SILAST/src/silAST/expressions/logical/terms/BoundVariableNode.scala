@@ -1,16 +1,15 @@
 package silAST.expressions.logical.terms
-import silAST.AtomicNode
-import silAST.symbols.ProgramVariable
+
+import silAST.expressions.terms.AtomicTermNode
 import silAST.source.SourceLocation
 import silAST.symbols.logical.BoundVariable
 import silAST.ASTNode
-import silAST.expressions.terms.AtomicTermNode
 
 class BoundVariableNode(
 		sl : SourceLocation, 
 		val variable : BoundVariable 
 	) 
-	extends LogicalTermNode(sl) 
+	extends GLogicalTermNode[BoundVariableNode](sl) 
 	with AtomicTermNode[BoundVariableNode]
 {
 	assert(variable!=null);

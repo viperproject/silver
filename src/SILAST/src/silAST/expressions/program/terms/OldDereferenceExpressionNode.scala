@@ -3,14 +3,15 @@ package silAST.expressions.terms
 import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.Field
-import silAST.expressions.ExpressionNode
-import silAST.expressions.program.terms.ProgramTermNode
+import silAST.expressions.GExpressionNode
+import silAST.expressions.program.terms.GProgramTermNode
+import silAST.expressions.logical.terms.GLogicalTermNode
 
-class OldDereferenceTermNode[+T <: TermNode[T]](
+class OldDereferenceTermNode[+T <: GLogicalTermNode[T]](
     sl : SourceLocation, 
     val location : T, 
     val field : Field) 
-  extends ProgramTermNode[T](sl) 
+  extends GProgramTermNode[T](sl) 
 {
 
   override def toString(): String = { return location.toString() + "._(old)" + field.name }

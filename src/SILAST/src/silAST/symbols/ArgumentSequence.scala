@@ -1,9 +1,9 @@
 package silAST.symbols
 import silAST.ASTNode
 import silAST.source.SourceLocation
-import silAST.expressions.terms.TermNode
+import silAST.expressions.terms.GTermNode
 
-abstract class ArgumentSequence[+T <: TermNode[T]]( sl : SourceLocation, private val args : Seq[T]) extends ASTNode(sl){
+abstract class ArgumentSequence[+T <: GTermNode[T]]( sl : SourceLocation, private val args : Seq[T]) extends ASTNode(sl){
 	def asSeq() : Seq[T] = 
 	{
 		return args
