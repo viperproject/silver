@@ -10,7 +10,5 @@ abstract class ProgramExpressionNode[+T <: TermNode[T]](
 		) 
 		extends LogicalExpressionNode(sl) 
 {
-
-  override def subNodes(): Seq[ProgramExpressionNode[T]]
-
+  def subExpressions(): Seq[ProgramExpressionNode[T]]
 }

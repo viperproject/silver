@@ -1,4 +1,4 @@
-package silAST.expressions.terms
+package silAST.expressions
 
 import scala.collection.Seq
 import silAST.ASTNode
