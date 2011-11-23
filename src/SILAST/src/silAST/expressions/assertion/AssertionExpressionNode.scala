@@ -6,6 +6,6 @@ import silAST.source.SourceLocation
 import silAST.expressions.GExpressionNode
 import silAST.expressions.logical.terms.LogicalTermNode
 
-abstract class AssertionExpressionNode(sl : SourceLocation) extends GExpressionNode[LogicalTermNode](sl) {
+abstract class AssertionExpressionNode(sl : SourceLocation) extends GAssertionExpressionNode[LogicalTermNode](sl) {
   def subExpressions : Seq[AssertionExpressionNode] 
 }

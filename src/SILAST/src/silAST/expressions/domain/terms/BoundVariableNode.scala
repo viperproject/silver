@@ -1,4 +1,4 @@
-package silAST.expressions.logical.terms
+package silAST.expressions.domain.terms
 
 import silAST.expressions.terms.AtomicTermNode
 import silAST.source.SourceLocation
@@ -9,7 +9,7 @@ class BoundVariableNode(
 		sl : SourceLocation, 
 		val variable : BoundVariable 
 	) 
-	extends GLogicalTermNode[BoundVariableNode](sl) 
+	extends GDomainTermNode[BoundVariableNode](sl) 
 	with AtomicTermNode[BoundVariableNode]
 {
 	assert(variable!=null);
