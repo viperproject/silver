@@ -1,5 +1,5 @@
 package silAST.expressions.domain
-import silAST.expressions.logical.LogicalTermNode
+import silAST.expressions.logical.terms.LogicalTermNode
 import silAST.source.SourceLocation
 
 

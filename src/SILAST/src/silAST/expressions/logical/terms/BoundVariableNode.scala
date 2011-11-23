@@ -1,10 +1,10 @@
-package silAST.expressions.terms
+package silAST.expressions.logical.terms
 import silAST.AtomicNode
 import silAST.symbols.ProgramVariable
 import silAST.source.SourceLocation
-import silAST.expressions.logical.LogicalTermNode
 import silAST.symbols.logical.BoundVariable
 import silAST.ASTNode
+import silAST.expressions.terms.AtomicTermNode
 
 class BoundVariableNode(
 		sl : SourceLocation, 

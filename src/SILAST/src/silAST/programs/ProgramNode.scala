@@ -1,7 +1,8 @@
-package silAST
+package silAST.programs
 
 import scala.collection.Seq
-import source.SourceLocation
+import silAST.source.SourceLocation
+import silAST.ASTNode
 
 abstract class Program(
 		val sl : SourceLocation

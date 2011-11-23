@@ -1,10 +1,11 @@
-package silAST.expressions.terms
+package silAST.expressions.domain.terms
 
 import scala.collection.Seq
 import silAST.ASTNode
 import silAST.symbols.ArgumentSequence
 import silAST.symbols.Function
 import silAST.source.SourceLocation
+import silAST.expressions.terms.TermNode
 
 class FunctionApplicationTermNode[+T <: TermNode[T]](
 	    sl:SourceLocation,

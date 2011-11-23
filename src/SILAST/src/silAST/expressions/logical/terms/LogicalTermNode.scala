@@ -1,7 +1,7 @@
-package silAST.expressions.logical
+package silAST.expressions.logical.terms
 import silAST.source.SourceLocation
 import silAST.expressions.terms.TermNode
 
-abstract class LogicalTermNode(sl : SourceLocation) extends TermNode[LogicalTermNode](sl) {
+abstract class LogicalTermNode[+T <: LogicalTermNode[T]](sl : SourceLocation) extends TermNode[T](sl) {
 
 }
