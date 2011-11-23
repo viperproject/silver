@@ -1,16 +1,19 @@
-package silAST.expressions.terms
+package silAST.expressions.programs.terms
 import silAST.AtomicNode
 import silAST.symbols.ProgramVariable
 import silAST.source.SourceLocation
-import silAST.expressions.program.terms.GProgramTermNode
+import silAST.expressions.program.terms.GProgramTerm
 import silAST.ASTNode
+import silAST.expressions.logical.terms.GLogicalTerm
+import silAST.expressions.terms.AtomicTerm
 
-class ProgramVariableTermNode(
+class ProgramVariableTerm(
 		sl : SourceLocation, 
 		val variable : ProgramVariable 
 	) 
-	extends GProgramTermNode[ProgramVariableTermNode](sl) 
-	with AtomicTermNode[ProgramVariableTermNode]
+	extends GLogicalTerm[ProgramVariableTerm](sl) 
+	with GProgramTerm[ProgramVariableTerm]
+	with AtomicTerm[ProgramVariableTerm]
 {
 	assert(variable!=null);
 	

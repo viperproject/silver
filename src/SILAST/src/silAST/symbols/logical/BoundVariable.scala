@@ -8,7 +8,7 @@ class BoundVariable(
 		sl : SourceLocation,
 		val name : String, 
 		val dataType : DataType
-	) extends ASTNode(sl) with AtomicNode[BoundVariable]
+	) extends ASTNode(sl) with AtomicNode
 {
 	override def toString() : String = { return name }
 

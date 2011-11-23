@@ -1,5 +1,5 @@
 package silAST
 
-trait AtomicNode[+T <: ASTNode] extends ASTNode {
-	override def subNodes(): Seq[T] = { return Nil } 
+trait AtomicNode extends ASTNode {
+	override def subNodes(): Seq[ASTNode] = { return Nil } 
 }

@@ -1,13 +1,13 @@
-package silAST.expressions.terms
+package silAST.expressions.programs.terms
 import silAST.AtomicNode
 import silAST.symbols.ProgramVariable
 import silAST.source.SourceLocation
 
-class OldProgramVariableNode(
+class OldProgramVariable(
 		sl : SourceLocation, 
 		variable : ProgramVariable 
 	) 
-	extends ProgramVariableTermNode(sl, variable) 
+	extends ProgramVariableTerm(sl, variable) 
 {
 	assert(variable!=null);
 	

@@ -1,18 +1,21 @@
-package silAST.expressions.domain.terms
+package silAST.expressions.terms
 
 import scala.collection.Seq
 import silAST.ASTNode
 import silAST.symbols.ArgumentSequence
 import silAST.symbols.Function
 import silAST.source.SourceLocation
-import silAST.expressions.terms.GTermNode
+import silAST.expressions.domain.terms.DomainTerm
+import silAST.expressions.program.terms.GProgramTerm
+import silAST.expressions.domain.terms.GDomainTerm
+import silAST.expressions.logical.terms.GLogicalTerm
 
-class FunctionApplicationTermNode[+T <: GTermNode[T]](
+class FunctionApplicationTerm[+T <: GLogicalTerm[T]](
 	    sl:SourceLocation,
 	    val function : Function, 
 	    val arguments : ArgumentSequence[T] 
 	) 
-	extends GTermNode[T](sl) 
+	extends GLogicalTerm[T](sl) with GDomainTerm[T] with GProgramTerm[T]
 {
 
   override def toString(): String = { 

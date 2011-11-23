@@ -3,13 +3,14 @@ package silAST.expressions.program.terms
 import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.Field
-import silAST.expressions.GExpressionNode
+import silAST.expressions.GExpression
+import silAST.expressions.logical.terms.GLogicalTerm
 
-class DereferenceTermNode[+T <: GProgramTermNode[T]](
+class FieldReadTerm[+T <: GProgramTerm[T]](
     sl : SourceLocation, 
     val location : T, 
     val field : Field) 
-  extends GProgramTermNode[T](sl) 
+  extends GLogicalTerm[T](sl) with GProgramTerm[T] 
 {
 
   override def toString(): String = { return location.toString() + "." + field.name }

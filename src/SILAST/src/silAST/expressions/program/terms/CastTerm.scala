@@ -4,12 +4,14 @@ import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.DataType
 import silAST.ASTNode
+import silAST.expressions.logical.terms.GLogicalTerm
+import silAST.expressions.program.terms.GProgramTerm
 
-class CastTermNode[+T <: GTermNode[T]](
+class CastTerm[+T <: GLogicalTerm[T]](
     sl:SourceLocation, 
     val expression: T, 
     val newType : DataType)
-    extends GTermNode[T](sl) 
+    extends GLogicalTerm[T](sl) with GProgramTerm[T] 
 {
   assert(expression!=null);
   assert(newType   !=null);

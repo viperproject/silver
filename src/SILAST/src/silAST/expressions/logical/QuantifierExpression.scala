@@ -5,16 +5,16 @@ import silAST.source.SourceLocation
 import silAST.symbols.logical.BoundVariable
 import silAST.symbols.logical.Quantifier
 import silAST.ASTNode
-import silAST.expressions.logical.terms.GLogicalTermNode
-import silAST.expressions.logical.GLogicalExpressionNode
+import silAST.expressions.logical.terms.GLogicalTerm
+import silAST.expressions.logical.GLogicalExpression
 
-class QuantifierExpressionNode[+T <:GLogicalTermNode[T]](
+class QuantifierExpression[+T <:GLogicalTerm[T]](
 		sl : SourceLocation,
 		val quantifier : Quantifier,
 		val variable   : BoundVariable,
-		val expression : GLogicalExpressionNode[T]
+		val expression : GLogicalExpression[T]
     )
-	extends GLogicalExpressionNode[T](sl) 
+	extends GLogicalExpression[T](sl) 
 {
   override def toString() : String = 
   { 
@@ -22,5 +22,5 @@ class QuantifierExpressionNode[+T <:GLogicalTermNode[T]](
   }
   
   override def subNodes : Seq[ASTNode] = { return quantifier :: variable :: expression :: Nil }
-  override def subExpressions: Seq[GLogicalExpressionNode[T]] = { return expression :: Nil }
+  override def subExpressions: Seq[GLogicalExpression[T]] = { return expression :: Nil }
 }
