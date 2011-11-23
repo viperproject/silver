@@ -1,11 +1,10 @@
-package silAST.expressions.domain
+package silAST.expressions.logical
 
 import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.expressions.GExpressionNode
 import silAST.expressions.terms.GTermNode
 import silAST.expressions.logical.terms.GLogicalTermNode
-import silAST.expressions.logical.GLogicalExpressionNode
 
 class EqualityExpressionNode[+T <: GLogicalTermNode[T]](
     sl : SourceLocation, 

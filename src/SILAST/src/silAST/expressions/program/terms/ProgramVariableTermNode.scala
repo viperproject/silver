@@ -5,12 +5,12 @@ import silAST.source.SourceLocation
 import silAST.expressions.program.terms.GProgramTermNode
 import silAST.ASTNode
 
-class ProgramVariableNode(
+class ProgramVariableTermNode(
 		sl : SourceLocation, 
 		val variable : ProgramVariable 
 	) 
-	extends GProgramTermNode[ProgramVariableNode](sl) 
-	with AtomicTermNode[ProgramVariableNode]
+	extends GProgramTermNode[ProgramVariableTermNode](sl) 
+	with AtomicTermNode[ProgramVariableTermNode]
 {
 	assert(variable!=null);
 	

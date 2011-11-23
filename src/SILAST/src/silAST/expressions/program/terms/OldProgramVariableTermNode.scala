@@ -7,7 +7,7 @@ class OldProgramVariableNode(
 		sl : SourceLocation, 
 		variable : ProgramVariable 
 	) 
-	extends ProgramVariableNode(sl, variable) 
+	extends ProgramVariableTermNode(sl, variable) 
 {
 	assert(variable!=null);
 	

@@ -11,5 +11,5 @@ abstract class GProgramExpressionNode[+T <: GTermNode[T]](
 	) 
 	extends GLogicalExpressionNode[T](sl) 
 {
-  def subExpressions(): Seq[GProgramExpressionNode[T]]
+  def subExpressions(): Seq[GLogicalExpressionNode[T]]
 }

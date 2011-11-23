@@ -12,3 +12,6 @@ abstract class ProgramExpressionNode( sl : SourceLocation )
 {
   def subExpressions(): Seq[ProgramExpressionNode]
 }
+
+
+//type  ProgramExpressionNode = GProgramExpressionNode[ProgramTermNode];

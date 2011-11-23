@@ -7,7 +7,8 @@ class ProgramVariable(
 		sl : SourceLocation,
 		val name : String, 
 		val dataType : DataType
-    ) extends ASTNode(sl) with AtomicNode[ProgramVariable]
+    ) extends ASTNode(sl)
 {
-	override def toString() : String = { return name }
+	override def toString : String = { return name }
+	override def subNodes : Seq[ASTNode] = { return dataType :: Nil }
 }

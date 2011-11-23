@@ -21,6 +21,6 @@ class QuantifierExpressionNode[+T <:GLogicalTermNode[T]](
 		  return quantifier.toString() + " " + variable.name + " : " + variable.dataType.toString() + " :: (" + expression.toString() + ")"
   }
   
-  override def subNodes() : Seq[ASTNode] = { return quantifier :: variable :: expression :: Nil }
-  override def subExpressions(): Seq[GLogicalExpressionNode[T]] = { return expression :: Nil }
+  override def subNodes : Seq[ASTNode] = { return quantifier :: variable :: expression :: Nil }
+  override def subExpressions: Seq[GLogicalExpressionNode[T]] = { return expression :: Nil }
 }
