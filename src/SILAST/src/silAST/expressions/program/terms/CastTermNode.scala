@@ -3,6 +3,7 @@ package silAST.expressions.terms
 import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.DataType
+import silAST.ASTNode
 
 class CastTermNode[+T <: TermNode[T]](
     sl:SourceLocation, 
@@ -15,6 +16,8 @@ class CastTermNode[+T <: TermNode[T]](
 
   override def toString(): String = { return "(" + expression + ") : " + newType.toString() }
 
-  override def subNodes(): Seq[T] = { return expression :: Nil }
+  override def subNodes(): Seq[ASTNode] = { return expression :: newType :: Nil }
+
+  override def subTerms(): Seq[T] = { return expression :: Nil }
 
 }

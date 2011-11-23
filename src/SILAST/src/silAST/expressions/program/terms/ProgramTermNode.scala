@@ -1,4 +1,4 @@
-package silAST.expressions.program
+package silAST.expressions.program.terms
 import silAST.source.SourceLocation
 import silAST.expressions.logical.LogicalTermNode
 

@@ -7,6 +7,6 @@ import silAST.expressions.assertion.AssertionExpressionNode
 
 abstract class LogicalExpressionNode( sl : SourceLocation) extends AssertionExpressionNode(sl) {
 
-  override def subNodes(): Seq[LogicalExpressionNode];
+  def subExpressions(): Seq[LogicalExpressionNode]
 
 }

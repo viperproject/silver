@@ -6,7 +6,11 @@ import silAST.symbols.ArgumentSequence
 import silAST.symbols.Function
 import silAST.source.SourceLocation
 
-class FunctionApplicationTermNode[+T <: TermNode[T]](sl:SourceLocation,val function : Function, val arguments : ArgumentSequence[T] ) 
+class FunctionApplicationTermNode[+T <: TermNode[T]](
+	    sl:SourceLocation,
+	    val function : Function, 
+	    val arguments : ArgumentSequence[T] 
+	) 
 	extends TermNode[T](sl) 
 {
 
@@ -14,6 +18,7 @@ class FunctionApplicationTermNode[+T <: TermNode[T]](sl:SourceLocation,val funct
     return function.name + arguments.toString();
   }
 
-  override def subNodes(): Seq[T] = { return arguments.asSeq }
+  override def subNodes(): Seq[ASTNode] = { return (function :: Nil) ++ arguments.asSeq()  } 
+  override def subTerms(): Seq[T] = { return arguments.asSeq() }
 
 }
