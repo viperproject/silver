@@ -3,6 +3,7 @@ package silAST.expressions.terms
 import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.Field
+import silAST.expressions.ExpressionNode
 
 class OldDereferenceTermNode[+T <: TermNode[T]](
     sl : SourceLocation, 

@@ -2,6 +2,7 @@ package silAST.expressions.terms
 
 import scala.collection.Seq
 import silAST.source.SourceLocation
+import silAST.expressions.ExpressionNode
 
 class EqualityExpressionNode[+T <: TermNode[T]](
     sl : SourceLocation, 

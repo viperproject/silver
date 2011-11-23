@@ -1,5 +1,4 @@
 package silAST.symbols
-import silAST.expressions.terms.ExpressionNode
 import silAST.ASTNode
 import silAST.source.SourceLocation
 import silAST.expressions.terms.TermNode
