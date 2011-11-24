@@ -4,13 +4,13 @@ import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.Field
 import silAST.expressions.program.terms.GProgramTerm
-import silAST.expressions.logical.terms.GLogicalTerm
+import silAST.expressions.assertion.terms.GTerm
 
-class OldFieldReadTerm[+T <: GLogicalTerm[T]](
+class OldFieldReadTerm[+T <: GTerm[T]](
     sl : SourceLocation, 
     val location : T, 
     val field : Field) 
-  extends GLogicalTerm[T](sl) with GProgramTerm[T] 
+  extends GTerm[T](sl) with GProgramTerm[T] 
 {
 
   override def toString(): String = { return location.toString() + "._(old)" + field.name }

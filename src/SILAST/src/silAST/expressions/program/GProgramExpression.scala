@@ -4,7 +4,7 @@ import scala.collection.Seq
 import silAST.expressions.logical.LogicalExpression
 import silAST.source.SourceLocation
 import silAST.expressions.logical.GLogicalExpression
-import silAST.expressions.logical.terms.GLogicalTerm
+import silAST.expressions.program.terms.GProgramTerm
 
 trait GProgramExpression[+T <: GProgramTerm[T]] extends GLogicalExpression[T] 
 {

@@ -1,7 +1,7 @@
 package silAST.expressions.program.terms
 import silAST.source.SourceLocation
-import silAST.expressions.logical.terms.GLogicalTerm
+import silAST.expressions.assertion.terms.GTerm
 
-abstract trait GProgramTerm[+T <: GLogicalTerm[T]] extends GLogicalTerm[T] {
+abstract trait GProgramTerm[+T <: GTerm[T]] extends GTerm[T] {
 
 }

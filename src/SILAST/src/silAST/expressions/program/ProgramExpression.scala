@@ -6,8 +6,8 @@ import silAST.source.SourceLocation
 import silAST.expressions.program.terms.GProgramTerm
 import silAST.expressions.program.terms.ProgramTerm
 
-abstract class ProgramExpression( sl : SourceLocation ) 
-		extends GProgramExpression[ProgramTerm](sl) 
+abstract trait ProgramExpression 
+		extends GProgramExpression[ProgramTerm] 
 {
   def subExpressions(): Seq[ProgramExpression]
 }

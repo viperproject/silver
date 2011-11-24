@@ -4,22 +4,22 @@ import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.DataType
 import silAST.ASTNode
-import silAST.expressions.logical.terms.GLogicalTerm
+import silAST.expressions.assertion.terms.GTerm
 import silAST.expressions.program.terms.GProgramTerm
 
-class CastTerm[+T <: GLogicalTerm[T]](
+class CastTerm[+T <: GTerm[T]](
     sl:SourceLocation, 
     val expression: T, 
     val newType : DataType)
-    extends GLogicalTerm[T](sl) with GProgramTerm[T] 
+    extends GTerm[T](sl) with GProgramTerm[T] 
 {
   assert(expression!=null);
   assert(newType   !=null);
 
-  override def toString(): String = { return "(" + expression + ") : " + newType.toString() }
+  override def toString : String = "(" + expression + ") : " + newType.toString
 
-  override def subNodes(): Seq[ASTNode] = { return expression :: newType :: Nil }
+  override def subNodes : Seq[ASTNode] = expression :: newType :: Nil
 
-  override def subTerms(): Seq[T] = { return expression :: Nil }
+  override def subTerms  : Seq[T] = expression :: Nil
 
 }
