@@ -2,13 +2,13 @@ package silAST.expressions.program
 
 import scala.collection.Seq
 import silAST.source.SourceLocation
-import silAST.symbols.logical.UnaryBooleanOperatorNode
+import silAST.symbols.logical.UnaryBooleanOperator
 import silAST.ASTNode
 import silAST.expressions.terms.GTerm
 
-class UnaryBooleanExpressionNode[+T <: GTerm[T]](
+class UnaryBooleanExpression[+T <: GTerm[T]](
 		sl : SourceLocation,
-		val operator : UnaryBooleanOperatorNode,
+		val operator : UnaryBooleanOperator,
 		val expression : GProgramExpression[T]
     )
     extends GProgramExpression[T](sl) {

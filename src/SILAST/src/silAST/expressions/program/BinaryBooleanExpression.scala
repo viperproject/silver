@@ -3,12 +3,12 @@ package silAST.expressions.program
 import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.expressions.terms.GTerm
-import silAST.symbols.logical.BinaryBooleanOperatorNode
+import silAST.symbols.logical.BinaryBooleanOperator
 import silAST.ASTNode
 
 class BinaryBooleanExpression[+T <: GTerm[T]](
 		sl : SourceLocation,
-		val operator : BinaryBooleanOperatorNode,
+		val operator : BinaryBooleanOperator,
 		val expression1 : GProgramExpression[T],
 		val expression2 : GProgramExpression[T]
     )

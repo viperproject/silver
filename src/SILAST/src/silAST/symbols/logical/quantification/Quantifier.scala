@@ -1,4 +1,4 @@
-package silAST.symbols.logical
+package silAST.symbols.logical.quantification
 import silAST.source.SourceLocation
 import silAST.ASTNode
 

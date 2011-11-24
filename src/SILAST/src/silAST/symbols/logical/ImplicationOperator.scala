@@ -1,7 +1,7 @@
 package silAST.symbols.logical
 import silAST.source.SourceLocation
 
-class ImplicationOperatorNode(sl:SourceLocation) extends BinaryBooleanOperatorNode(sl) {
+class ImplicationOperator(sl:SourceLocation) extends BinaryBooleanOperator(sl) {
 
   def name : String = { return "==>" }
 

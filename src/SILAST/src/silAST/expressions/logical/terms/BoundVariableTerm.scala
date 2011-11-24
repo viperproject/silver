@@ -2,7 +2,7 @@ package silAST.expressions.domain.terms
 
 import silAST.expressions.terms.AtomicTerm
 import silAST.source.SourceLocation
-import silAST.symbols.logical.BoundVariable
+import silAST.symbols.logical.quantification.BoundVariable
 import silAST.ASTNode
 import silAST.expressions.logical.terms.GLogicalTerm
 

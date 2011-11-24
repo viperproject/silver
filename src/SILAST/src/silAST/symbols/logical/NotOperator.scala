@@ -1,7 +1,7 @@
 package silAST.symbols.logical
 import silAST.source.SourceLocation
 
-class NotOperatorNode(sl:SourceLocation) extends UnaryBooleanOperatorNode(sl) {
+class NotOperator(sl:SourceLocation) extends UnaryBooleanOperator(sl) {
 
   def name : String = { return "!" }
 

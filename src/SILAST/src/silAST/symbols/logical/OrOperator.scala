@@ -1,7 +1,7 @@
 package silAST.symbols.logical
 import silAST.source.SourceLocation
 
-class OrOperatorNode(sl:SourceLocation) extends BinaryBooleanOperatorNode(sl) {
+class OrOperator(sl:SourceLocation) extends BinaryBooleanOperator(sl) {
 
   def name : String = { return "||" }
 
