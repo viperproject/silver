@@ -4,9 +4,9 @@ import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.logical.UnaryBooleanOperator
 import silAST.ASTNode
-import silAST.expressions.terms.GTerm
+import silAST.expressions.logical.terms.GLogicalTerm
 
-class UnaryBooleanExpression[+T <: GTerm[T]](
+class UnaryBooleanExpression[+T <: GLogicalTerm[T]](
 		sl : SourceLocation,
 		val operator : UnaryBooleanOperator,
 		val expression : GProgramExpression[T]

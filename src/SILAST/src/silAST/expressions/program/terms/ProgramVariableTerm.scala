@@ -5,7 +5,7 @@ import silAST.source.SourceLocation
 import silAST.expressions.program.terms.GProgramTerm
 import silAST.ASTNode
 import silAST.expressions.logical.terms.GLogicalTerm
-import silAST.expressions.terms.AtomicTerm
+import silAST.expressions.logical.terms.AtomicTerm
 
 class ProgramVariableTerm(
 		sl : SourceLocation, 

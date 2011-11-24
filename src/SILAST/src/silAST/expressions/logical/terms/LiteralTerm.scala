@@ -6,7 +6,6 @@ import silAST.AtomicNode
 import silAST.source.SourceLocation
 import silAST.expressions.program.terms.GProgramTerm
 import silAST.expressions.program.terms.ProgramTerm
-import silAST.expressions.terms.AtomicTerm
 import silAST.expressions.domain.terms.GDomainTerm
 
 abstract class LiteralTerm(sl:SourceLocation) 

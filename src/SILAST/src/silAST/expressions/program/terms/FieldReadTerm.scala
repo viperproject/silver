@@ -3,7 +3,6 @@ package silAST.expressions.program.terms
 import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.Field
-import silAST.expressions.GExpression
 import silAST.expressions.logical.terms.GLogicalTerm
 
 class FieldReadTerm[+T <: GProgramTerm[T]](

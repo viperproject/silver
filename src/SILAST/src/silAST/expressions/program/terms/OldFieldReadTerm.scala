@@ -3,7 +3,6 @@ package silAST.expressions.terms
 import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.Field
-import silAST.expressions.GExpression
 import silAST.expressions.program.terms.GProgramTerm
 import silAST.expressions.logical.terms.GLogicalTerm
 

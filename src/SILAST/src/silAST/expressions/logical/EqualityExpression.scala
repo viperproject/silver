@@ -2,7 +2,6 @@ package silAST.expressions.logical
 
 import scala.collection.Seq
 import silAST.source.SourceLocation
-import silAST.expressions.GExpression
 import silAST.expressions.logical.terms.GLogicalTerm
 
 class EqualityExpression[+T <: GLogicalTerm[T]](

@@ -2,11 +2,11 @@ package silAST.expressions.program
 
 import scala.collection.Seq
 import silAST.source.SourceLocation
-import silAST.expressions.terms.GTerm
 import silAST.symbols.logical.BinaryBooleanOperator
 import silAST.ASTNode
+import silAST.expressions.logical.terms.GLogicalTerm
 
-class BinaryBooleanExpression[+T <: GTerm[T]](
+class BinaryBooleanExpression[+T <: GLogicalTerm[T]](
 		sl : SourceLocation,
 		val operator : BinaryBooleanOperator,
 		val expression1 : GProgramExpression[T],

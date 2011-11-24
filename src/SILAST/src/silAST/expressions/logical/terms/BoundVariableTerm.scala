@@ -1,6 +1,6 @@
 package silAST.expressions.domain.terms
 
-import silAST.expressions.terms.AtomicTerm
+import silAST.expressions.logical.terms.AtomicTerm
 import silAST.source.SourceLocation
 import silAST.symbols.logical.quantification.BoundVariable
 import silAST.ASTNode
