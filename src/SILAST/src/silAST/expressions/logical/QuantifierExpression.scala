@@ -15,6 +15,7 @@ class QuantifierExpression[+T <:GLogicalTerm[T]](
 		val expression : GLogicalExpression[T]
     )
 	extends GLogicalExpression[T](sl) 
+	with GDomainExpression[T]
 {
   override def toString() : String = 
   { 

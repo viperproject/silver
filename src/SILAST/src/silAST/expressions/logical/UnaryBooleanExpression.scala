@@ -1,4 +1,4 @@
-package silAST.expressions.program
+package silAST.expressions.logical
 
 import scala.collection.Seq
 import silAST.source.SourceLocation

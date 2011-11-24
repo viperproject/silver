@@ -6,7 +6,7 @@ import silAST.expressions.logical.terms.GLogicalTerm
 import silAST.source.SourceLocation
 import silAST.expressions.program.GProgramExpression
 
-abstract class GDomainExpression[+T <: GLogicalTerm[T]](sl : SourceLocation) extends GLogicalExpression[T](sl) {
+trait GDomainExpression[+T <: GLogicalTerm[T]] extends GLogicalExpression[T] {
 
   def subExpressions(): Seq[GLogicalExpression[T]]
 

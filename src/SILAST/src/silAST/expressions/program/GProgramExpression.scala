@@ -6,10 +6,7 @@ import silAST.source.SourceLocation
 import silAST.expressions.logical.GLogicalExpression
 import silAST.expressions.logical.terms.GLogicalTerm
 
-abstract class GProgramExpression[+T <: GLogicalTerm[T]]( 
-		sl : SourceLocation 
-	) 
-	extends GLogicalExpression[T](sl) 
+trait GProgramExpression[+T <: GProgramTerm[T]] extends GLogicalExpression[T] 
 {
-  def subExpressions(): Seq[GLogicalExpression[T]]
+//  def subExpressions(): Seq[GLogicalExpression[T]]
 }
