@@ -5,6 +5,6 @@ import silAST.expressions.assertion.terms.GTerm
 
 trait GAtomicExpression[+T <: GTerm[T]] extends AtomicExpression {
 
-  def subTerms(): Seq[GTerm[T]] = { null }
+  def subTerms(): Seq[GTerm[T]] = Nil
 
 }

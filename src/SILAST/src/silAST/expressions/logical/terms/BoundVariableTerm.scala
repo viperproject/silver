@@ -1,21 +1,21 @@
 package silAST.expressions.domain.terms
 
-import silAST.expressions.logical.terms.AtomicTerm
 import silAST.source.SourceLocation
 import silAST.symbols.logical.quantification.BoundVariable
 import silAST.ASTNode
-import silAST.expressions.logical.terms.GLogicalTerm
+import silAST.expressions.assertion.terms.GTerm
+import silAST.expressions.assertion.terms.GAtomicTerm
 
 class BoundVariableTerm(
 		sl : SourceLocation, 
 		val variable : BoundVariable 
 	) 
-	extends GLogicalTerm[BoundVariableTerm](sl)
+	extends GTerm[BoundVariableTerm](sl)
 	with GDomainTerm[BoundVariableTerm] 
-	with AtomicTerm[BoundVariableTerm]
+	with GAtomicTerm[BoundVariableTerm]
 {
 	assert(variable!=null);
 	
-	override def toString(): String = { return variable.name; }
-	override def subNodes : Seq[ASTNode] = { return variable :: Nil }
+	override def toString : String = variable.name
+	override def subNodes : Seq[ASTNode] = variable :: Nil
 }

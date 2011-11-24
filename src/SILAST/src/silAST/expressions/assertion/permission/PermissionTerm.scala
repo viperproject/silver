@@ -4,5 +4,9 @@ import silAST.ASTNode
 import scala.collection.Seq
 import silAST.source.SourceLocation
 
-abstract class PermissionTerm( sl : SourceLocation ) extends ASTNode(sl) {
+sealed abstract class PermissionTerm( sl : SourceLocation ) extends ASTNode(sl) {
+}
+
+case class FullPermissionTerm(sl : SourceLocation) extends PermissionTerm(sl)
+{
 }
