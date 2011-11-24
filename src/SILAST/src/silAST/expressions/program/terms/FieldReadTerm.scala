@@ -3,7 +3,7 @@ package silAST.expressions.program.terms
 import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.Field
-import silAST.expressions.assertion.terms.GTerm
+import silAST.expressions.terms.GTerm
 
 class FieldReadTerm[+T <: GProgramTerm[T]](
     sl : SourceLocation, 

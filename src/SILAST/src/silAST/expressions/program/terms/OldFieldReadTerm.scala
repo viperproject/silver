@@ -1,10 +1,10 @@
-package silAST.expressions.terms
+package silAST.expressions.program.terms
 
 import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.Field
-import silAST.expressions.program.terms.GProgramTerm
-import silAST.expressions.assertion.terms.GTerm
+import silAST.expressions.terms.GTerm
+
 
 class OldFieldReadTerm[+T <: GTerm[T]](
     sl : SourceLocation, 

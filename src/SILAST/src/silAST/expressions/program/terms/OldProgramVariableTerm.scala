@@ -1,4 +1,4 @@
-package silAST.expressions.programs.terms
+package silAST.expressions.program.terms
 import silAST.AtomicNode
 import silAST.symbols.ProgramVariable
 import silAST.source.SourceLocation

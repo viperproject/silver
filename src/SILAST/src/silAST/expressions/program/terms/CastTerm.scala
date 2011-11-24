@@ -1,11 +1,10 @@
-package silAST.expressions.terms
+package silAST.expressions.program.terms
 
 import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.symbols.DataType
 import silAST.ASTNode
-import silAST.expressions.assertion.terms.GTerm
-import silAST.expressions.program.terms.GProgramTerm
+import silAST.expressions.terms.GTerm
 
 class CastTerm[+T <: GTerm[T]](
     sl:SourceLocation, 

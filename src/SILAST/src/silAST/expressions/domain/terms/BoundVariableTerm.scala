@@ -1,18 +1,18 @@
-package silAST.expressions.program.terms
-import silAST.AtomicNode
-import silAST.symbols.ProgramVariable
+package silAST.expressions.domain.terms
+
 import silAST.source.SourceLocation
+import silAST.symbols.logical.quantification.BoundVariable
 import silAST.ASTNode
 import silAST.expressions.terms.GTerm
 import silAST.expressions.terms.GAtomicTerm
 
-class ProgramVariableTerm(
+class BoundVariableTerm(
 		sl : SourceLocation, 
-		val variable : ProgramVariable 
+		val variable : BoundVariable 
 	) 
-	extends GTerm[ProgramVariableTerm](sl) 
-	with GProgramTerm[ProgramVariableTerm]
-	with GAtomicTerm[ProgramVariableTerm]
+	extends GTerm[BoundVariableTerm](sl)
+	with GDomainTerm[BoundVariableTerm] 
+	with GAtomicTerm[BoundVariableTerm]
 {
 	assert(variable!=null);
 	
