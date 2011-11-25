@@ -1,7 +1,6 @@
 package silAST.expressions.terms
 
 import silAST.expressions.util.{PArgumentSequence, DArgumentSequence, ArgumentSequence}
-import silAST.source.SourceLocation
 import silAST.symbols.logical.quantification.BoundVariable
 import silAST.symbols.{ProgramVariable, Field, Function}
 import silAST.types.DataType
@@ -28,8 +27,8 @@ trait AtomicTerm extends Term {
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract case class DomainFunctionApplicationTerm(
-	    val function : DomainFunction, 
-	    val arguments : ArgumentSequence
+                                                   function : DomainFunction,
+      arguments : ArgumentSequence
 	) 
 	extends Term
 {
@@ -46,9 +45,9 @@ abstract case class DomainFunctionApplicationTerm(
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract case class FunctionApplicationTerm(
-	    val receiver : Term,
-	    val function : Function, 
-	    val arguments : ArgumentSequence
+                                             receiver : Term,
+      function : Function,
+      arguments : ArgumentSequence
 	) 
 	extends Term
 {
@@ -87,7 +86,7 @@ abstract class IntegerLiteral(val value:BigInt)
 ///////////////////////////////////////////////////////////////////////////
 //Quantification terms
 abstract case class BoundVariableTerm(
-		val variable : BoundVariable 
+                                       variable : BoundVariable
 	) 
 	extends Term
 {
@@ -107,8 +106,8 @@ abstract case class BoundVariableTerm(
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract case class CastTerm(
-		val operand1: Term, 
-		val newType : DataType
+                              operand1: Term,
+    newType : DataType
     )
     extends Term 
 {
@@ -126,15 +125,15 @@ abstract case class CastTerm(
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract case class FieldReadTerm(
-		val location : Term, 
-		val field : Field
+                                   location : Term,
+    field : Field
     ) 
     extends Term 
 {
 	assert(location != null)
 	assert(field    != null)
 
-	override def toString : String = location.toString() + "." + field.name
+	override def toString : String = location.toString + "." + field.name
 
 	override def subNodes : Seq[ASTNode] = location :: field :: Nil
 	override def subTerms : Seq[Term]    = location :: Nil
@@ -143,11 +142,11 @@ abstract case class FieldReadTerm(
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract case class OldFieldReadTerm(
-    val location : Term, 
-    val field : Field) 
+                                      location : Term,
+    field : Field)
   extends Term 
 {
-	override def toString : String = location.toString() + "._(old)" + field.name
+	override def toString : String = location.toString + "._(old)" + field.name
 
 	override def subNodes : Seq[ASTNode] = location :: field :: Nil
 	override def subTerms : Seq[Term]    = location :: Nil
@@ -156,7 +155,7 @@ abstract case class OldFieldReadTerm(
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract case class ProgramVariableTerm(
-		val variable : ProgramVariable 
+                                         variable : ProgramVariable
 	) 
 	extends Term
 	with AtomicTerm

@@ -1,6 +1,5 @@
 package silAST.programs
 
-import silAST.source.SourceLocation
 import silAST.symbols.Field
 import silAST.symbols.Implementation
 import silAST.symbols.Method

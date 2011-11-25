@@ -7,7 +7,7 @@ abstract sealed class DataType extends ASTNode{
 
 }
 
-abstract case class ReferenceDataType( val sl : SourceLocation ) extends DataType with AtomicNode
+abstract case class ReferenceDataType(sl : SourceLocation ) extends DataType with AtomicNode
 {
 }
 
@@ -17,6 +17,6 @@ abstract case class ReferenceDataType( val sl : SourceLocation ) extends DataTyp
 }
 */
 
-abstract case class NonReferenceDataType( val sl : SourceLocation ) extends DataType 
+abstract case class NonReferenceDataType(sl : SourceLocation ) extends DataType
 {
 }

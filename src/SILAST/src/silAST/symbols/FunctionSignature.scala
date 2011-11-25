@@ -1,8 +1,6 @@
 package silAST.symbols
 
 import silAST.ASTNode
-import scala.collection.Seq
-import silAST.source.SourceLocation
 import silAST.expressions.Expression
 import silAST.expressions.terms.Term
 import silAST.types.DataType

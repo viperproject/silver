@@ -1,7 +1,6 @@
 package silAST.statements
 
 import silAST.ASTNode
-import silAST.source.SourceLocation
 import silAST.expressions.ProgramExpression
 import silAST.expressions.util.PArgumentSequence
 import silAST.symbols.{ProgramVariableSequence,Method,Field,ProgramVariable}
@@ -21,9 +20,9 @@ sealed abstract class Statement extends ASTNode
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-abstract case class Assignment( 
-		val target : ProgramVariable,
-		val source : ProgramExpression
+abstract case class Assignment(
+                                target : ProgramVariable,
+    source : ProgramExpression
     ) 
     extends Statement 
 {
@@ -35,10 +34,10 @@ abstract case class Assignment(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-abstract case class FieldAssignment( 
-		val target : ProgramVariable,
-		val field  : Field,
-		val source : ProgramExpression
+abstract case class FieldAssignment(
+                                     target : ProgramVariable,
+    field  : Field,
+    source : ProgramExpression
     ) 
     extends Statement 
 {
@@ -50,9 +49,9 @@ abstract case class FieldAssignment(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-abstract case class NewStatement( 
-		val target : ProgramVariable,
-		val dataType : DataType
+abstract case class NewStatement(
+                                  target : ProgramVariable,
+    dataType : DataType
     ) 
     extends Statement 
 {
@@ -64,11 +63,11 @@ abstract case class NewStatement(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-abstract case class CallStatement( 
-		val targets : ProgramVariableSequence,
-		val receiver : ProgramExpression,
-		val method : Method,
-		val arguments : PArgumentSequence
+abstract case class CallStatement(
+                                   targets : ProgramVariableSequence,
+    receiver : ProgramExpression,
+    method : Method,
+    arguments : PArgumentSequence
     ) 
     extends Statement 
 {
@@ -80,8 +79,8 @@ abstract case class CallStatement(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-abstract case class inhale( 
-		val expression : Expression
+abstract case class inhale(
+                            expression : Expression
     ) 
     extends Statement 
 {
@@ -93,8 +92,8 @@ abstract case class inhale(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-abstract case class exhale( 
-		val expression : Expression
+abstract case class exhale(
+                            expression : Expression
     ) 
     extends Statement 
 {
@@ -107,8 +106,8 @@ abstract case class exhale(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //TODO:fold/unfold arrays?
-abstract case class fold( 
-		val predicate : PredicateExpression
+abstract case class fold(
+                          predicate : PredicateExpression
     ) 
     extends Statement 
 {
@@ -120,8 +119,8 @@ abstract case class fold(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-abstract case class unfold( 
-		val predicate : PredicateExpression
+abstract case class unfold(
+                            predicate : PredicateExpression
     ) 
     extends Statement 
 {
