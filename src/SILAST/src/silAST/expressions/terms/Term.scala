@@ -1,20 +1,14 @@
 package silAST.expressions.terms
+
+import silAST.expressions.util.{PArgumentSequence, DArgumentSequence, ArgumentSequence}
 import silAST.source.SourceLocation
-import silAST.ASTNode
-import silAST.symbols.Function
-import silAST.symbols.ArgumentSequence
-import silAST.symbols.DataType
-import silAST.symbols.Field
-import silAST.symbols.ProgramVariable
 import silAST.symbols.logical.quantification.BoundVariable
-import silAST.AtomicNode
-import silAST.symbols.PArgumentSequence
-import silAST.symbols.DArgumentSequence
+import silAST.symbols.{ProgramVariable, Field, DomainFunction, Function, DataType}
+import silAST.{AtomicNode, ASTNode}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed abstract class Term(sl : SourceLocation) extends ASTNode(sl) {
-	assert(sl!=null)
 	
 	def subTerms: Seq[Term]
 }
@@ -28,6 +22,25 @@ trait AtomicTerm extends Term {
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 //General terms
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+case class DomainFunctionApplicationTerm(
+	    sl:SourceLocation,
+	    val function : DomainFunction, 
+	    val arguments : ArgumentSequence
+	) 
+	extends Term(sl)
+{
+	assert(function!=null)
+	assert(arguments!=null)
+
+	override def toString : String = function.name + arguments.toString
+
+	override def subNodes: Seq[ASTNode] = List(function) ++ arguments.asSeq 
+	override def subTerms : Seq[Term] = arguments.asSeq
+
+}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -206,6 +219,20 @@ class PFunctionApplicationTerm(
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
+class PDomainFunctionApplicationTerm(
+	    sl:SourceLocation,
+	    function : DomainFunction, 
+	    arguments : PArgumentSequence
+	) 
+	extends DomainFunctionApplicationTerm(sl,function,arguments)
+	with ProgramTerm
+{
+	override def subTerms : Seq[ProgramTerm] = arguments.asSeq
+
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 class PCastTerm(
 		sl:SourceLocation, 
 		override val operand1: ProgramTerm, 
@@ -288,12 +315,12 @@ abstract class DLiteralTerm(sl:SourceLocation)
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-class DFunctionApplicationTerm(
+class DDomainFunctionApplicationTerm(
 	    sl:SourceLocation,
-	    function : Function, 
+	    function : DomainFunction, 
 	    arguments : DArgumentSequence
 	) 
-	extends FunctionApplicationTerm(sl,function,arguments)
+	extends DomainFunctionApplicationTerm(sl,function,arguments)
 	with DomainTerm
 {
 	override def subTerms : Seq[DomainTerm] = arguments.asSeq

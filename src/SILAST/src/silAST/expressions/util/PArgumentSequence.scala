@@ -1,4 +1,4 @@
-package silAST.symbols
+package silAST.expressions.util
 import silAST.expressions.terms.ProgramTerm
 import silAST.source.SourceLocation
 
