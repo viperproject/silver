@@ -46,6 +46,7 @@ case class DomainFunctionApplicationTerm(
 ///////////////////////////////////////////////////////////////////////////
 case class FunctionApplicationTerm(
 	    sl:SourceLocation,
+	    val receiver : Term,
 	    val function : Function, 
 	    val arguments : ArgumentSequence
 	) 
@@ -53,11 +54,12 @@ case class FunctionApplicationTerm(
 {
 	assert(function!=null)
 	assert(arguments!=null)
+	assert(receiver!=null)
 
-	override def toString : String = function.name + arguments.toString
+	override def toString : String = receiver.toString + "." + function.name + arguments.toString
 
-	override def subNodes: Seq[ASTNode] = List(function) ++ arguments.asSeq 
-	override def subTerms : Seq[Term] = arguments.asSeq
+	override def subNodes: Seq[ASTNode] = List(receiver,function) ++ arguments.asSeq 
+	override def subTerms : Seq[Term] = List(receiver) ++ arguments.asSeq
 
 }
 
@@ -207,10 +209,11 @@ abstract class PLiteralTerm(sl:SourceLocation)
 ///////////////////////////////////////////////////////////////////////////
 class PFunctionApplicationTerm(
 	    sl:SourceLocation,
+	    receiver : Term,
 	    function : Function, 
 	    arguments : PArgumentSequence
 	) 
-	extends FunctionApplicationTerm(sl,function,arguments)
+	extends FunctionApplicationTerm(sl,receiver,function,arguments)
 	with ProgramTerm
 {
 	override def subTerms : Seq[ProgramTerm] = arguments.asSeq
