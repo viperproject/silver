@@ -1,4 +1,4 @@
-package silAST.expressions.permission
+package silAST.expressions.terms.permission
 
 import silAST.ASTNode
 import scala.collection.Seq
