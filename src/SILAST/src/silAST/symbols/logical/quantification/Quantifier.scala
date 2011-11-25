@@ -1,17 +1,16 @@
 package silAST.symbols.logical.quantification
 import silAST.source.SourceLocation
 import silAST.ASTNode
+import silAST.AtomicNode
 
-sealed abstract class Quantifier( sl : SourceLocation) extends ASTNode(sl) {
-	override def subNodes : Seq[ASTNode] = { return Nil }
+sealed abstract class Quantifier extends ASTNode with AtomicNode 
+{
 }
 
-case class Forall( sl : SourceLocation ) extends Quantifier(sl) {
-	override def toString() : String = { return "forall"}
+abstract case class Forall() extends Quantifier {
+	override def toString() : String = "forall"
 }
 
-case class Exists(
-    sl : SourceLocation
-   ) extends Quantifier(sl) {
-	override def toString() : String = { return "exists"}
+abstract case class Exists() extends Quantifier {
+	override def toString() : String = "exists"
 }

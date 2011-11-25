@@ -5,12 +5,10 @@ import scala.collection.Seq
 import silAST.source.SourceLocation
 import silAST.expressions.Expression
 
-abstract class MethodSignature(
-		sl : SourceLocation,
-		val arguments : Seq[ProgramVariable],
-		val result : ProgramVariable,
-		val precondition  : Seq[Expression],
-		val postcondition : Seq[Expression]
-	) extends ASTNode(sl) 
+abstract class MethodSignature extends ASTNode
 {
+	val arguments : Seq[ProgramVariable]
+	val result : ProgramVariable
+	val precondition  : Seq[Expression]
+	val postcondition : Seq[Expression]
 }

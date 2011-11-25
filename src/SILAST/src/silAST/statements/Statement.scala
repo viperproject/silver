@@ -11,7 +11,7 @@ import silAST.expressions.PredicateExpression
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-sealed abstract class Statement( sl : SourceLocation ) extends ASTNode(sl) 
+sealed abstract class Statement extends ASTNode 
 {
 	override def toString : String
 }
@@ -21,12 +21,11 @@ sealed abstract class Statement( sl : SourceLocation ) extends ASTNode(sl)
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class Assignment( 
-		sl : SourceLocation,
+abstract case class Assignment( 
 		val target : ProgramVariable,
 		val source : ProgramExpression
     ) 
-    extends Statement(sl) 
+    extends Statement 
 {
 	override def toString : String = target.name + ":=" + source.toString
 	override def subNodes : Seq[ASTNode] = List(target,source)
@@ -36,13 +35,12 @@ case class Assignment(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class FieldAssignment( 
-		sl : SourceLocation,
+abstract case class FieldAssignment( 
 		val target : ProgramVariable,
 		val field  : Field,
 		val source : ProgramExpression
     ) 
-    extends Statement(sl) 
+    extends Statement 
 {
 	override def toString : String = target.name + "." + field.name + " := " + source.toString
 	override def subNodes : Seq[ASTNode] = List(target,field,source)
@@ -52,12 +50,11 @@ case class FieldAssignment(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class NewStatement( 
-		sl : SourceLocation,
+abstract case class NewStatement( 
 		val target : ProgramVariable,
 		val dataType : DataType
     ) 
-    extends Statement(sl) 
+    extends Statement 
 {
 	override def toString : String = target.name + ":= new " + dataType.toString
 	override def subNodes : Seq[ASTNode] = List(target,dataType)
@@ -67,14 +64,13 @@ case class NewStatement(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class CallStatement( 
-		sl : SourceLocation,
+abstract case class CallStatement( 
 		val targets : ProgramVariableSequence,
 		val receiver : ProgramExpression,
 		val method : Method,
 		val arguments : PArgumentSequence
     ) 
-    extends Statement(sl) 
+    extends Statement 
 {
 	override def toString : String = targets.toString + " := " + receiver.toString + "." + method.name + arguments.toString
 	override def subNodes : Seq[ASTNode] = List(targets,receiver,method,arguments)
@@ -84,11 +80,10 @@ case class CallStatement(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class inhale( 
-		sl : SourceLocation,
+abstract case class inhale( 
 		val expression : Expression
     ) 
-    extends Statement(sl) 
+    extends Statement 
 {
 	override def toString : String = "inhale " + expression.toString
 	override def subNodes : Seq[ASTNode] = List(expression)
@@ -98,11 +93,10 @@ case class inhale(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class exhale( 
-		sl : SourceLocation,
+abstract case class exhale( 
 		val expression : Expression
     ) 
-    extends Statement(sl) 
+    extends Statement 
 {
 	override def toString : String = "exhale " + expression.toString
 	override def subNodes : Seq[ASTNode] = List(expression)
@@ -113,11 +107,10 @@ case class exhale(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //TODO:fold/unfold arrays?
-case class fold( 
-		sl : SourceLocation,
+abstract case class fold( 
 		val predicate : PredicateExpression
     ) 
-    extends Statement(sl) 
+    extends Statement 
 {
 	override def toString : String = "fold " + predicate.toString
 	override def subNodes : Seq[ASTNode] = List(predicate)
@@ -127,11 +120,10 @@ case class fold(
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class unfold( 
-		sl : SourceLocation,
+abstract case class unfold( 
 		val predicate : PredicateExpression
     ) 
-    extends Statement(sl) 
+    extends Statement 
 {
 	override def toString : String = "unfold " + predicate.toString
 	override def subNodes : Seq[ASTNode] = List(predicate)

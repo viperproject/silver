@@ -3,20 +3,20 @@ import silAST.source.SourceLocation
 import silAST.ASTNode
 import silAST.AtomicNode
 
-abstract sealed class DataType( sl : SourceLocation ) extends ASTNode(sl) {
+abstract sealed class DataType extends ASTNode{
 
 }
 
-case class ReferenceDataType( sl : SourceLocation ) extends DataType(sl) with AtomicNode
+abstract case class ReferenceDataType( val sl : SourceLocation ) extends DataType with AtomicNode
 {
 }
 
-object theReferenceDataType 
+/*object theReferenceDataType 
 {
 	val referenceType : ReferenceDataType = new ReferenceDataType(new SourceLocation) 
 }
+*/
 
-
-abstract case class NonReferenceDataType( sl : SourceLocation ) extends DataType(sl) 
+abstract case class NonReferenceDataType( val sl : SourceLocation ) extends DataType 
 {
 }

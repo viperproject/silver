@@ -4,12 +4,10 @@ import silAST.ASTNode
 import silAST.AtomicNode
 import silAST.types.DataType
 
-class ProgramVariable( 
-		sl : SourceLocation,
-		val name : String, 
-		val dataType : DataType
-    ) extends ASTNode(sl)
+abstract class ProgramVariable extends ASTNode
 {
-	override def toString : String = { return name }
-	override def subNodes : Seq[ASTNode] = { return dataType :: Nil }
+	val name : String
+	val dataType : DataType
+	override def toString : String = name
+	override def subNodes : Seq[ASTNode] = dataType :: Nil
 }

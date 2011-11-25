@@ -4,12 +4,10 @@ import silAST.ASTNode
 import silAST.types.DataType
 import silAST.AtomicNode
 
-class BoundVariable( 
-		sl : SourceLocation,
-		val name : String, 
-		val dataType : DataType
-	) extends ASTNode(sl) with AtomicNode
+abstract class BoundVariable extends ASTNode with AtomicNode
 {
-	override def toString() : String = { return name }
+	val name : String
+	val dataType : DataType
+	override def toString() : String = name
 
 }
