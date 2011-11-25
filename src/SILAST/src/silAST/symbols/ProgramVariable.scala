@@ -2,6 +2,7 @@ package silAST.symbols
 import silAST.source.SourceLocation
 import silAST.ASTNode
 import silAST.AtomicNode
+import silAST.types.DataType
 
 class ProgramVariable( 
 		sl : SourceLocation,

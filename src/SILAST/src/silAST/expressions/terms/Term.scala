@@ -3,7 +3,8 @@ package silAST.expressions.terms
 import silAST.expressions.util.{PArgumentSequence, DArgumentSequence, ArgumentSequence}
 import silAST.source.SourceLocation
 import silAST.symbols.logical.quantification.BoundVariable
-import silAST.symbols.{ProgramVariable, Field, DomainFunction, Function, DataType}
+import silAST.symbols.{ProgramVariable, Field, DomainFunction, Function}
+import silAST.types.DataType
 import silAST.{AtomicNode, ASTNode}
 
 ///////////////////////////////////////////////////////////////////////////

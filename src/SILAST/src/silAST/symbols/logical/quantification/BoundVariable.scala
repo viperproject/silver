@@ -1,7 +1,7 @@
 package silAST.symbols.logical.quantification
 import silAST.source.SourceLocation
 import silAST.ASTNode
-import silAST.symbols.DataType
+import silAST.types.DataType
 import silAST.AtomicNode
 
 class BoundVariable( 

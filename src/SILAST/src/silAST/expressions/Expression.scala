@@ -33,11 +33,26 @@ case class AccessPermissionExpression(
 		val reference : Term,
 		val permission : PermissionTerm
 	) 
-	extends Expression(sl) with AtomicExpression
+	extends Expression(sl) 
+	with AtomicExpression
 {
-  override def toString : String = "acc(" + reference.toString() + "," + permission.toString() + ")"
-  override def subNodes : Seq[ASTNode] = return reference :: (permission :: List.empty[ASTNode])
+  override def toString : String = "acc(" + reference.toString + "," + permission.toString + ")"
+  override def subNodes : Seq[ASTNode] = reference :: (permission :: List.empty[ASTNode])
   override def subTerms : Seq[Term] = reference :: Nil
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+case class UnfoldingExpression( 
+		sl : SourceLocation,
+		val predicate : Term,
+		val expression : Expression
+	) 
+	extends Expression(sl) 
+{
+  override def toString : String = "unfolding " + predicate.toString + " in " + expression.toString
+  override def subNodes : Seq[ASTNode] = List(predicate,expression)
+  override def subExpressions : Seq[Expression] = List(expression)
 }
 
 ///////////////////////////////////////////////////////////////////////////
