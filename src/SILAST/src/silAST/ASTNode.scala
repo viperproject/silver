@@ -7,7 +7,5 @@ abstract class ASTNode
     
     override def toString : String  //String representation
 	
-	def subNodes : Seq[ASTNode]     //Ordered subnodes
-	
-	  
+    def subNodes : Seq[ASTNode]     //Ordered subnodes
 }
