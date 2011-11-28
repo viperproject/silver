@@ -79,7 +79,7 @@ abstract class IntegerLiteral(val value:BigInt)
 {
 	assert(value!=null)
   
-	override def toString : String = value.toString()
+	override def toString : String = value.toString
 }
 
 ///////////////////////////////////////////////////////////////////////////
