@@ -77,9 +77,9 @@ abstract class IntegerLiteral(val value:BigInt)
 	extends LiteralTerm 
 	with AtomicNode
 {
-	assert(value!=null)
+	require(value!=null)
   
-	override def toString : String = value.toString
+	override def toString : String = value.toString()
 }
 
 ///////////////////////////////////////////////////////////////////////////
