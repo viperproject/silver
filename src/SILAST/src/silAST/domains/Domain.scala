@@ -1,10 +1,14 @@
 package silAST.domains
 
 import silAST.ASTNode
+import silAST.source.SourceLocation
 
-abstract class Domain extends ASTNode {
-  val name: String
-  val functions: Set[DomainFunction]
-  val predicates: Set[DomainPredicate]
+class Domain private[silAST](
+  sl : SourceLocation,
+  val name: String,
+  val functions: Set[DomainFunction],
+  val predicates: Set[DomainPredicate],
   val axioms: Set[DomainAxiom]
+) extends ASTNode(sl)
+{
 }

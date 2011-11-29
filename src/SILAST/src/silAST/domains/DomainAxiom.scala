@@ -2,8 +2,13 @@ package silAST.domains
 
 import silAST.ASTNode
 import silAST.expressions.DomainExpression
+import silAST.source.SourceLocation
 
-abstract class DomainAxiom extends ASTNode {
-  val name: String
+class DomainAxiom private[silAST](
+  sl : SourceLocation,
+  val name: String,
   val expression: DomainExpression
+) extends ASTNode(sl)
+{
+  override def subNodes = expression :: Nil
 }

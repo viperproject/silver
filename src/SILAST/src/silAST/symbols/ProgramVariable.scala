@@ -2,12 +2,15 @@ package silAST.symbols
 
 import silAST.ASTNode
 import silAST.types.DataType
+import silAST.source.SourceLocation
 
-abstract class ProgramVariable extends ASTNode {
-  val name: String
+class ProgramVariable(
+  sl : SourceLocation,
+  val name: String,
   val dataType: DataType
+)extends ASTNode(sl) {
 
   override def toString: String = name
 
-  override def subNodes: Seq[ASTNode] = dataType :: Nil
+  override def subNodes = dataType :: Nil
 }

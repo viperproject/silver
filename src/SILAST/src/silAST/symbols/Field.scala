@@ -14,17 +14,17 @@ sealed abstract class Field private[silAST](
   override def toString: String = name
 }
 
-case class ReferenceField(
+final case class ReferenceField private[silAST](
            sl: SourceLocation,
-           name: String
+           override val name: String
     ) extends Field(sl,name,ReferenceDataType)
 {
 }
 
-case class NonReferenceField(
+final case class NonReferenceField private[silAST](
           sl: SourceLocation,
-          name: String,
-          dataType: NonReferenceDataType
+          val name: String,
+          val dataType: NonReferenceDataType
       ) extends Field(sl,name,dataType)
 {
 }

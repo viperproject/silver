@@ -3,10 +3,15 @@ package silAST.symbols
 import silAST.ASTNode
 import scala.collection.Seq
 import silAST.expressions.Expression
+import silAST.source.SourceLocation
 
-abstract class MethodSignature extends ASTNode {
-  val arguments: Seq[ProgramVariable]
-  val result: ProgramVariable
-  val precondition: Seq[Expression]
-  val postcondition: Seq[Expression]
+class MethodSignature private[silAST](
+    sl : SourceLocation,
+    val arguments: List[ProgramVariable],
+    val result: ProgramVariable,
+    val precondition: List[Expression],
+    val postcondition: List[Expression]
+) extends ASTNode(sl)
+{
+   override def subNodes = arguments ++ (result :: (precondition ++ postcondition))
 }

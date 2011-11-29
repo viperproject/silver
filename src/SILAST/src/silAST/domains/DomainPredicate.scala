@@ -1,7 +1,11 @@
 package silAST.domains
 
-import silAST.ASTNode
+import silAST.source.SourceLocation
+import silAST.{AtomicNode, ASTNode}
 
-abstract class DomainPredicate extends ASTNode {
+class DomainPredicate private[silAST](
+  sl : SourceLocation,
   val name: String
+) extends ASTNode(sl) with AtomicNode
+{
 }

@@ -7,11 +7,11 @@ object Main {
   def main(args: Array[String]) {
     println("Hiho")
   }
-
+/*
   def f(e : Expression)
   {
     e match {
-      case AccessPermissionExpression(_,_) => 0
+      case AccessPermissionExpression(_,_,_) => 0
       case UnfoldingExpression(_,_) => 1
       case EqualityExpression(_,_) => 2
       case UnaryBooleanExpression(_,_) => 3
@@ -21,7 +21,7 @@ object Main {
       case QuantifierExpression(_,_,_) => 7
     }
   }
-         /*
+  */       /*
   def g(e : ProgramExpression)
   {
     e match {
