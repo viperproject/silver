@@ -11,5 +11,7 @@ class ArgumentSequence private[silAST](
 
   def asSeq: Seq[Term] = args
 
+  override def toString = "(" + args.mkString(",") + ")"
   override def subNodes = args
 }
+//TODO: parameter sequence

@@ -162,7 +162,7 @@ extends Term(sl)
 ///////////////////////////////////////////////////////////////////////////
 class OldProgramVariableTerm protected[silAST](
   sl : SourceLocation,
-  val variable: ProgramVariable
+  override val variable: ProgramVariable
 )
   extends ProgramVariableTerm(sl,variable) {
   override def toString: String = "old(" + variable.name + ")"
@@ -192,9 +192,9 @@ abstract class PLiteralTerm(sl : SourceLocation)
 ///////////////////////////////////////////////////////////////////////////
 final class PFunctionApplicationTerm private[silAST](
                                          sl : SourceLocation,
-                                         val receiver: Term,
-                                         val function: Function,
-                                         val arguments: PArgumentSequence
+                                         override val receiver: Term,
+                                         override val function: Function,
+                                         override val arguments: PArgumentSequence
                                          )
   extends FunctionApplicationTerm(sl, receiver, function, arguments)
   with ProgramTerm {
@@ -206,8 +206,8 @@ final class PFunctionApplicationTerm private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 final class PDomainFunctionApplicationTerm private[silAST](
                                                sl : SourceLocation,
-                                               val function: DomainFunction,
-                                               val arguments: PArgumentSequence
+                                               override val function: DomainFunction,
+                                               override val arguments: PArgumentSequence
                                                )
   extends DomainFunctionApplicationTerm(sl, function, arguments)
   with ProgramTerm
@@ -220,7 +220,7 @@ final class PDomainFunctionApplicationTerm private[silAST](
 final class PCastTerm private[silAST](
                           sl : SourceLocation,
                           override val operand1: ProgramTerm,
-                          val newType: DataType
+                          override val newType: DataType
                           )
   extends CastTerm(sl,operand1, newType)
   with ProgramTerm
@@ -232,8 +232,8 @@ final class PCastTerm private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 final class PFieldReadTerm private[silAST](
                                sl : SourceLocation,
-                               val location: ProgramTerm,
-                               val field: Field
+                               override val location: ProgramTerm,
+                               override val field: Field
                                )
   extends FieldReadTerm(sl, location, field)
   with ProgramTerm {
@@ -245,7 +245,7 @@ final class PFieldReadTerm private[silAST](
 final class POldFieldReadTerm private[silAST](
                                   sl : SourceLocation,
                                   override val location: ProgramTerm,
-                                  val field: Field
+                                  override val field: Field
                                   )
   extends OldFieldReadTerm(sl,location, field)
   with ProgramTerm {
@@ -255,7 +255,7 @@ final class POldFieldReadTerm private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 final class PProgramVariableTerm private[silAST](
                                      sl :  SourceLocation,
-                                     val variable: ProgramVariable
+                                     override val variable: ProgramVariable
                                      ) extends ProgramVariableTerm(sl,variable)
 with ProgramTerm {
   override def subTerms: Seq[ProgramTerm] = Nil
@@ -264,7 +264,7 @@ with ProgramTerm {
 ///////////////////////////////////////////////////////////////////////////
 final class POldProgramVariableTerm private[silAST](
                                         sl : SourceLocation,
-                                        val variable: ProgramVariable
+                                        override val variable: ProgramVariable
                                         ) extends OldProgramVariableTerm(sl, variable)
 with ProgramTerm {
   override def subTerms: Seq[ProgramTerm] = Nil
@@ -294,8 +294,8 @@ final class DLiteralTerm private[silAST](sl : SourceLocation)
 ///////////////////////////////////////////////////////////////////////////
 final class DDomainFunctionApplicationTerm private[silAST](
   sl : SourceLocation,
-  val function: DomainFunction,
-  val arguments: DArgumentSequence
+  override val function: DomainFunction,
+  override val arguments: DArgumentSequence
 )
   extends DomainFunctionApplicationTerm(sl,function, arguments)
   with DomainTerm
@@ -307,7 +307,7 @@ final class DDomainFunctionApplicationTerm private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 final class DBoundVariableTerm private[silAST](
   sl : SourceLocation,
-  val variable: BoundVariable
+  override val variable: BoundVariable
 )
   extends BoundVariableTerm(sl,variable)
   with DomainTerm

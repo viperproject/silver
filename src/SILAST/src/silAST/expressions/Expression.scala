@@ -67,8 +67,6 @@ case class EqualityExpression private[silAST](
   override def toString: String = term1.toString + "=" + term2.toString
 
   override def subNodes: Seq[ASTNode] = term1 :: term2 :: Nil
-
-  override def subTerms: Seq[Term] = term1 :: term2 :: Nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
