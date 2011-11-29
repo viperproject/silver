@@ -1,5 +1,5 @@
 package silAST.source
 
-class SourceLocation {
+class SourceLocation
 
-}
+object noLocation extends SourceLocation

@@ -1,11 +1,13 @@
 package silAST.expressions.util
+
 import silAST.ASTNode
 import silAST.expressions.terms.Term
 
-abstract class ArgumentSequence extends ASTNode{
+abstract class ArgumentSequence extends ASTNode {
 
-	def asSeq : Seq[Term] = args 
-	val args : Seq[Term]
+  def asSeq: Seq[Term] = args
 
-	override def subNodes : Seq[ASTNode] = args
+  val args: Seq[Term]
+
+  override def subNodes: Seq[ASTNode] = args
 }

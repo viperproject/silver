@@ -17,26 +17,22 @@ sealed abstract class Expression extends ASTNode {
   def subExpressions: Seq[Expression]
 }
 
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-trait AtomicExpression extends Expression {
-  override def subExpressions = Nil
-
-  def subTerms: Seq[Term]
-}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract case class AccessPermissionExpression(
                                                 reference: Term,
                                                 permission: PermissionTerm
-                                                ) extends Expression with AtomicExpression {
+                                                )
+  extends Expression
+//  with AtomicExpression
+{
 
   override def toString: String = "acc(" + reference.toString + "," + permission.toString + ")"
 
   override def subNodes: Seq[ASTNode] = reference :: (permission :: List.empty[ASTNode])
 
-  override def subTerms: Seq[Term] = reference :: Nil
+//  override def subTerms: Seq[Term] = reference :: Nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -57,13 +53,16 @@ abstract case class UnfoldingExpression(
 abstract case class EqualityExpression(
                                         term1: Term,
                                         term2: Term
-                                        ) extends Expression with AtomicExpression {
+                                        )
+  extends Expression
+//  with AtomicExpression
+{
 
   override def toString: String = term1.toString + "=" + term2.toString
 
   override def subNodes: Seq[ASTNode] = term1 :: term2 :: Nil
 
-  override def subTerms: Seq[Term] = term1 :: term2 :: Nil
+//  override def subTerms: Seq[Term] = term1 :: term2 :: Nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -100,12 +99,13 @@ abstract case class DomainPredicateExpression(
                                                arguments: ArgumentSequence
                                                )
   extends Expression
-  with AtomicExpression {
+//  with AtomicExpression
+{
   override def toString: String = predicate.name + arguments.toString
 
   override def subNodes: Seq[ASTNode] = predicate :: arguments.asSeq.asInstanceOf[List[ASTNode]]
 
-  override def subTerms: Seq[Term] = arguments.asSeq
+//  override def subTerms: Seq[Term] = arguments.asSeq
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -115,13 +115,14 @@ abstract case class PredicateExpression(
                                          predicate: Predicate
                                          )
   extends Expression
-  with AtomicExpression {
+//  with AtomicExpression
+{
 
   override def toString: String = receiver + "." + predicate.name
 
   override def subNodes: Seq[ASTNode] = List(receiver, predicate)
 
-  override def subTerms: Seq[Term] = List(receiver)
+//  override def subTerms: Seq[Term] = List(receiver)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -138,6 +139,15 @@ abstract case class QuantifierExpression(
 
   override def subExpressions: Seq[Expression] = expression :: Nil
 }
+sealed trait AtomicExpression extends Expression {
+  override def subExpressions = Nil
+
+  def subTerms: Seq[Term]
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -160,14 +170,15 @@ abstract class PEqualityExpression(
                                     override val term2: ProgramTerm
                                     )
   extends EqualityExpression(term1, term2)
-  with ProgramExpression {
-  override def subTerms: Seq[ProgramTerm] = term1 :: term2 :: Nil
+  with ProgramExpression
+{
+//  override def subTerms: Seq[ProgramTerm] = term1 :: term2 :: Nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract class PUnaryBooleanExpression(
-                                        operator: UnaryBooleanOperator,
+                                        override val operator: UnaryBooleanOperator,
                                         override val operand1: ProgramExpression
                                         )
   extends UnaryBooleanExpression(operator, operand1)
@@ -178,7 +189,7 @@ abstract class PUnaryBooleanExpression(
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract class PBinaryBooleanExpression(
-                                         operator: BinaryBooleanOperator,
+                                         override val operator: BinaryBooleanOperator,
                                          override val operand1: ProgramExpression,
                                          override val operand2: ProgramExpression
                                          )
@@ -191,22 +202,24 @@ abstract class PBinaryBooleanExpression(
 ///////////////////////////////////////////////////////////////////////////
 abstract class PPredicateExpression(
                                      override val receiver: ProgramTerm,
-                                     predicate: Predicate
+                                     override val predicate: Predicate
                                      )
   extends PredicateExpression(receiver, predicate)
-  with ProgramExpression {
-  override def subTerms: Seq[ProgramTerm] = List(receiver)
+  with ProgramExpression
+{
+//  override def subTerms: Seq[ProgramTerm] = List(receiver)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract class PDomainPredicateExpression(
-                                           predicate: DomainPredicate,
+                                           override val predicate: DomainPredicate,
                                            override val arguments: PArgumentSequence
                                            )
   extends DomainPredicateExpression(predicate, arguments)
-  with ProgramExpression {
-  override def subTerms: Seq[ProgramTerm] = arguments.asSeq
+  with ProgramExpression
+{
+  //  override def subTerms: Seq[ProgramTerm] = arguments.asSeq
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -226,14 +239,15 @@ abstract class DEqualityExpression(
                                     override val term2: DomainTerm
                                     )
   extends EqualityExpression(term1, term2)
-  with DomainExpression {
-  override def subTerms: Seq[DomainTerm] = term1 :: term2 :: Nil
+  with DomainExpression
+{
+//  override def subTerms: Seq[DomainTerm] = term1 :: term2 :: Nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract class DUnaryBooleanExpression(
-                                        operator: UnaryBooleanOperator,
+                                        override val operator: UnaryBooleanOperator,
                                         override val operand1: DomainExpression
                                         )
   extends UnaryBooleanExpression(operator, operand1)
@@ -244,7 +258,7 @@ abstract class DUnaryBooleanExpression(
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract class DBinaryBooleanExpression(
-                                         operator: BinaryBooleanOperator,
+                                         override val operator: BinaryBooleanOperator,
                                          override val operand1: DomainExpression,
                                          override val operand2: DomainExpression
                                          )
@@ -256,8 +270,8 @@ abstract class DBinaryBooleanExpression(
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract class DQuantifierExpression(
-                                      quantifier: Quantifier,
-                                      variable: BoundVariable,
+                                      override val quantifier: Quantifier,
+                                      override val variable: BoundVariable,
                                       override val expression: DomainExpression
                                       )
   extends QuantifierExpression(quantifier, variable, expression)
@@ -268,11 +282,11 @@ abstract class DQuantifierExpression(
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract class DDomainPredicateExpression(
-                                           predicate: DomainPredicate,
+                                           override val predicate: DomainPredicate,
                                            override val arguments: DArgumentSequence
                                            )
   extends DomainPredicateExpression(predicate, arguments)
-  with DomainExpression {
-
-  override def subTerms: Seq[DomainTerm] = arguments.asSeq
+  with DomainExpression
+{
+//  override def subTerms: Seq[DomainTerm] = arguments.asSeq
 }

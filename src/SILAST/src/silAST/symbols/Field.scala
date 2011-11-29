@@ -1,21 +1,30 @@
 package silAST.symbols
+
 import silAST.ASTNode
 import silAST.AtomicNode
-import silAST.types.DataType
-import silAST.types.NonReferenceDataType
+import silAST.source.SourceLocation
+import silAST.types.{ReferenceDataType, DataType, NonReferenceDataType}
 
-sealed abstract class Field extends ASTNode with AtomicNode
+sealed abstract class Field private[silAST](
+    sl: SourceLocation,
+    val name: String,
+    val dataType: DataType
+  ) extends ASTNode(sl) with AtomicNode
 {
-	val name : String
-	val dataType : DataType
-	override def toString: String = name
+  override def toString: String = name
 }
 
-abstract case class ReferenceField() extends Field 
+case class ReferenceField(
+           sl: SourceLocation,
+           name: String
+    ) extends Field(sl,name,ReferenceDataType)
 {
 }
 
-abstract case class NonReferenceField() extends Field 
+case class NonReferenceField(
+          sl: SourceLocation,
+          name: String,
+          dataType: NonReferenceDataType
+      ) extends Field(sl,name,dataType)
 {
-    	override val dataType : NonReferenceDataType
 }

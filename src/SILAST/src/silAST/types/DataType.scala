@@ -1,13 +1,14 @@
 package silAST.types
-import silAST.source.SourceLocation
+
 import silAST.ASTNode
 import silAST.AtomicNode
+import silAST.source.{noLocation, SourceLocation}
 
-abstract sealed class DataType extends ASTNode{
+sealed class DataType( sl : SourceLocation ) extends ASTNode(sl) {
 
 }
 
-abstract case class ReferenceDataType(sl : SourceLocation ) extends DataType with AtomicNode
+case object ReferenceDataType extends DataType(noLocation)
 {
 }
 
@@ -17,6 +18,5 @@ abstract case class ReferenceDataType(sl : SourceLocation ) extends DataType wit
 }
 */
 
-abstract case class NonReferenceDataType(sl : SourceLocation ) extends DataType
-{
+case class NonReferenceDataType(sl: SourceLocation) extends DataType(sl) {
 }

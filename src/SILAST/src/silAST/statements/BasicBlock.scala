@@ -2,10 +2,13 @@ package silAST.statements
 
 import scala.collection.Seq
 import silAST.ASTNode
+import silAST.source.SourceLocation
 
-abstract class BasicBlock extends ASTNode
+class BasicBlock private [statements](
+    sl : SourceLocation,
+    val statements: Seq[Statement],
+    val predecessors: Set[CFGEdge],
+    val successors: Set[CFGEdge]
+  ) extends ASTNode(sl)
 {
-	val statements : Seq[Statement]
-	val predecessors : Set[CFGEdge]
-	val successors : Set[CFGEdge]
 }

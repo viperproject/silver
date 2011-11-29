@@ -1,12 +1,17 @@
 package silAST.symbols.logical.quantification
+
 import silAST.ASTNode
 import silAST.types.DataType
 import silAST.AtomicNode
+import silAST.source.SourceLocation
 
-abstract class BoundVariable extends ASTNode with AtomicNode
+class BoundVariable private[symbols](
+    sl : SourceLocation,
+    val name: String,
+    val dataType: DataType
+  ) extends ASTNode(sl) with AtomicNode
 {
-	val name : String
-	val dataType : DataType
-	override def toString: String = name
+
+  override def toString: String = name
 
 }
