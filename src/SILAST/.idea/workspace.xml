@@ -59,73 +59,28 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="DomainFunctionSignature.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/silAST/domains/DomainFunctionSignature.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="15" column="91" selection-start="472" selection-end="472" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="DomainFunction.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/silAST/domains/DomainFunction.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="5" column="6" selection-start="89" selection-end="89" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="Term.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/silAST/expressions/terms/Term.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="313" column="35" selection-start="11636" selection-end="11636" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="ProgramFactory.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/silAST/programs/ProgramFactory.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="11" column="56" selection-start="242" selection-end="242" vertical-scroll-proportion="0.0">
+            <state line="13" column="44" selection-start="361" selection-end="361" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="DomainFactory.scala" pinned="false" current="true" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/src/silAST/domains/DomainFactory.scala">
+      <file leaf-file-name="main.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/src/main/main.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="4" column="34" selection-start="97" selection-end="97" vertical-scroll-proportion="0.19762845">
+            <state line="25" column="4" selection-start="570" selection-end="570" vertical-scroll-proportion="0.33271027">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="CFGEdge.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/silAST/statements/CFGEdge.scala">
+      <file leaf-file-name="Expression.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/src/silAST/expressions/Expression.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="14" column="89" selection-start="403" selection-end="403" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="BasicBlock.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/silAST/statements/BasicBlock.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="17" column="56" selection-start="470" selection-end="470" vertical-scroll-proportion="0.0">
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="PArgumentSequence.scala" pinned="false" current="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/src/silAST/expressions/util/PArgumentSequence.scala">
-          <provider selected="true" editor-type-id="text-editor">
-            <state line="8" column="22" selection-start="248" selection-end="248" vertical-scroll-proportion="0.0">
+            <state line="238" column="13" selection-start="8514" selection-end="8514" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -145,13 +100,11 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/src/silAST/symbols/MethodSignature.scala" />
         <option value="$PROJECT_DIR$/src/silAST/symbols/Predicate.scala" />
         <option value="$PROJECT_DIR$/src/silAST/domains/DomainAxiom.scala" />
         <option value="$PROJECT_DIR$/src/silAST/symbols/Method.scala" />
         <option value="$PROJECT_DIR$/src/silAST/domains/DomainPredicate.scala" />
         <option value="$PROJECT_DIR$/src/silAST/symbols/Field.scala" />
-        <option value="$PROJECT_DIR$/src/silAST/expressions/Expression.scala" />
         <option value="$PROJECT_DIR$/src/silAST/types/DataType.scala" />
         <option value="$PROJECT_DIR$/src/silAST/domains/DomainFunctionSignature.scala" />
         <option value="$PROJECT_DIR$/src/silAST/domains/DomainFunction.scala" />
@@ -161,6 +114,8 @@
         <option value="$PROJECT_DIR$/src/silAST/expressions/terms/Term.scala" />
         <option value="$PROJECT_DIR$/src/silAST/programs/ProgramFactory.scala" />
         <option value="$PROJECT_DIR$/src/silAST/domains/DomainFactory.scala" />
+        <option value="$PROJECT_DIR$/src/silAST/expressions/Expression.scala" />
+        <option value="$PROJECT_DIR$/src/main/main.scala" />
       </list>
     </option>
   </component>
@@ -416,26 +371,26 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="-9" y="-9" width="1938" height="1050" extended-state="6" />
-    <editor active="true" />
+    <editor active="false" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.3290398" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="true" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.3290398" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.23653395" order="1" side_tool="true" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.110691145" sideWeight="0.6709602" order="0" side_tool="false" content_ui="tabs" x="728" y="89" width="463" height="854" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.21058315" sideWeight="0.6709602" order="0" side_tool="false" content_ui="tabs" x="728" y="89" width="463" height="854" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3290398" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.6709602" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Module Dependencies" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32991362" sideWeight="0.6709602" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.39929742" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
@@ -486,13 +441,6 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/src/silAST/domains/DomainAxiom.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="12" column="71" selection-start="340" selection-end="340" vertical-scroll-proportion="0.5607477">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/silAST/symbols/Method.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="5" column="6" selection-start="89" selection-end="89" vertical-scroll-proportion="0.23364486">
@@ -542,13 +490,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/silAST/expressions/Expression.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="69" column="0" selection-start="2337" selection-end="2337" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/src/silAST/expressions/util/ArgumentSequence.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="6" column="0" selection-start="129" selection-end="129" vertical-scroll-proportion="0.28037384">
@@ -584,16 +525,30 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/silAST/programs/ProgramFactory.scala">
+    <entry file="file://$PROJECT_DIR$/src/silAST/domains/DomainFactory.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="11" column="56" selection-start="242" selection-end="242" vertical-scroll-proportion="0.0">
+        <state line="4" column="34" selection-start="97" selection-end="97" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/silAST/domains/DomainFactory.scala">
+    <entry file="file://$PROJECT_DIR$/src/silAST/programs/ProgramFactory.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="4" column="34" selection-start="97" selection-end="97" vertical-scroll-proportion="0.19762845">
+        <state line="13" column="44" selection-start="361" selection-end="361" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/silAST/expressions/Expression.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="238" column="13" selection-start="8514" selection-end="8514" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/main/main.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="25" column="4" selection-start="570" selection-end="570" vertical-scroll-proportion="0.33271027">
           <folding />
         </state>
       </provider>

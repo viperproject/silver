@@ -11,7 +11,7 @@ class ProgramFactory(
   {
     private val domainFactories = new HashMap[String,DomainFactory]
     def getDomainFactory(name : String) : DomainFactory = null
-      //domainFactories.getOrElseUpdate(name, new DomainFactory(this,name))
+      domainFactories.getOrElseUpdate(name, new DomainFactory(this,name))
 
     private val methodFactories = new HashMap[String,MethodFactory]
     def getMethodFactory(name : String) : MethodFactory =

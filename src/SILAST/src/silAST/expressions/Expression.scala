@@ -163,7 +163,7 @@ sealed trait AtomicExpression extends Expression {
 //Program
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed abstract trait ProgramExpression
+sealed trait ProgramExpression
   extends Expression {
   override def subExpressions: Seq[ProgramExpression]
 }
