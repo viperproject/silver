@@ -3,6 +3,8 @@
     <words>
       <w>forall</w>
       <w>postcondition</w>
+      <w>subnodes</w>
+      <w>unary</w>
     </words>
   </dictionary>
 </component>

@@ -3,13 +3,12 @@ package silAST.symbols
 import silAST.ASTNode
 import scala.collection.Seq
 import silAST.types.DataType
-import silAST.source.SourceLocation
+import silAST.source.{noLocation, SourceLocation}
 
 final class DataTypeSequence private[silAST](
-  sl : SourceLocation,
-  val dataTypes: Seq[DataType]
-) extends ASTNode(sl)
+  val dataTypes: List[DataType]
+) extends ASTNode(noLocation)
 {
-  override def toString = dataTypes.toString
+  override def toString = dataTypes.mkString ("(",",",")")
   override def subNodes = dataTypes
 }

@@ -4,7 +4,7 @@ import silAST.ASTNode
 import scala.collection.Seq
 import silAST.source.noLocation
 
-sealed abstract class UnaryBooleanOperator extends ASTNode(noLocation) {
+sealed abstract class UnaryBooleanOperator private[silAST]() extends ASTNode(noLocation) {
   override def toString: String = name
 
   override def subNodes: Seq[ASTNode] = Nil
@@ -12,7 +12,7 @@ sealed abstract class UnaryBooleanOperator extends ASTNode(noLocation) {
   def name: String
 }
 
-abstract case class NotOperator() extends UnaryBooleanOperator {
+final case class NotOperator private[silAST]() extends UnaryBooleanOperator {
 
   def name: String = "!"
 
