@@ -2,21 +2,23 @@ package silAST.symbols
 
 import silAST.ASTNode
 import scala.collection.Seq
-import silAST.expressions.Expression
+import silAST.expressions.util.ExpressionSequence
 import silAST.source.SourceLocation
+import silAST.programs.ProgramFactory
 
 final class MethodSignature private[silAST](
     sl : SourceLocation,
-    val parameters: List[ProgramVariable],
+    private [silAST] val programFactory : ProgramFactory,
+    val parameters: ProgramVariableSequence,
     val result: ProgramVariable,
-    val precondition: List[Expression],
-    val postcondition: List[Expression]
-) extends ASTNode(sl)
+    val precondition: ExpressionSequence,
+    val postcondition: ExpressionSequence
+) extends ASTNode(sl,programFactory)
 {
   override def toString =
     "(" + parameters.toString + ") : " + result.toString +
-      " requires " + precondition.toString +
-      " ensures " + postcondition.toString
+      (for (p <- precondition.asSeq ) yield "requires " + p.toString).mkString("\n") +
+      (for (p <- postcondition.asSeq) yield "ensures " + p.toString).mkString("\n")
 
-  override def subNodes = parameters ++ (result :: (precondition ++ postcondition))
+  override def subNodes = parameters.variables.toList ++ (result :: (precondition.asSeq ++ postcondition.asSeq))
 }

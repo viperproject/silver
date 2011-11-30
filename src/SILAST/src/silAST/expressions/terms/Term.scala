@@ -1,6 +1,6 @@
 package silAST.expressions.terms
 
-import silAST.expressions.util.{PArgumentSequence, DArgumentSequence, ArgumentSequence}
+import silAST.expressions.util.{PExpressionSequence, DExpressionSequence, ExpressionSequence}
 import silAST.symbols.logical.quantification.BoundVariable
 import silAST.symbols.{ProgramVariable, Field, Function}
 import silAST.types.DataType
@@ -18,7 +18,7 @@ sealed abstract class Term protected[silAST](sl : SourceLocation) extends ASTNod
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 trait AtomicTerm extends Term {
-  def subTerms: Seq[Term] = Nil
+  override def subTerms: Seq[Term] = Nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -27,10 +27,10 @@ trait AtomicTerm extends Term {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-case class DomainFunctionApplicationTerm(
+case class DomainFunctionApplicationTerm private[silAST](
    sl : SourceLocation,
-   val function: DomainFunction,
-   val arguments: ArgumentSequence
+   function: DomainFunction,
+   arguments: ExpressionSequence
 ) extends Term(sl)
 {
   override def toString: String = function.name + arguments.toString
@@ -42,11 +42,11 @@ case class DomainFunctionApplicationTerm(
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-case class FunctionApplicationTerm(
+case class FunctionApplicationTerm protected[silAST](
     sl : SourceLocation,
-    val receiver: Term,
-    val function: Function,
-    val arguments: ArgumentSequence
+    receiver: Term,
+    function: Function,
+    arguments: ExpressionSequence
 ) extends Term(sl)
 {
   override def toString: String = receiver.toString + "." + function.name + arguments.toString
@@ -98,8 +98,8 @@ case class BoundVariableTerm protected[silAST](
 ///////////////////////////////////////////////////////////////////////////
 case class CastTerm protected[silAST](
   sl : SourceLocation,
-  val operand1: Term,
-  val newType: DataType
+  operand1: Term,
+  newType: DataType
 )
   extends Term(sl)
 {
@@ -115,8 +115,8 @@ case class CastTerm protected[silAST](
 ///////////////////////////////////////////////////////////////////////////
 case class FieldReadTerm protected[silAST](
   sl : SourceLocation,
-  val location: Term,
-  val field: Field
+  location: Term,
+  field: Field
 )
   extends Term(sl)
 {
@@ -132,8 +132,8 @@ case class FieldReadTerm protected[silAST](
 ///////////////////////////////////////////////////////////////////////////
 case class OldFieldReadTerm protected[silAST](
   sl : SourceLocation,
-  val location: Term,
-  val field: Field
+  location: Term,
+  field: Field
 )
   extends Term(sl)
 {
@@ -146,9 +146,9 @@ case class OldFieldReadTerm protected[silAST](
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-abstract case class ProgramVariableTerm(
+abstract case class ProgramVariableTerm protected[silAST](
   sl : SourceLocation,
-  val variable: ProgramVariable
+  variable: ProgramVariable
 )
 extends Term(sl)
   with AtomicTerm
@@ -182,7 +182,7 @@ sealed trait ProgramTerm extends Term {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-abstract class PLiteralTerm(sl : SourceLocation)
+final class PLiteralTerm private[silAST](sl : SourceLocation)
   extends LiteralTerm(sl)
   with ProgramTerm {
   override def subTerms: Seq[ProgramTerm] = Nil
@@ -194,7 +194,7 @@ final class PFunctionApplicationTerm private[silAST](
                                          sl : SourceLocation,
                                          override val receiver: Term,
                                          override val function: Function,
-                                         override val arguments: PArgumentSequence
+                                         override val arguments: PExpressionSequence
                                          )
   extends FunctionApplicationTerm(sl, receiver, function, arguments)
   with ProgramTerm {
@@ -207,7 +207,7 @@ final class PFunctionApplicationTerm private[silAST](
 final class PDomainFunctionApplicationTerm private[silAST](
                                                sl : SourceLocation,
                                                override val function: DomainFunction,
-                                               override val arguments: PArgumentSequence
+                                               override val arguments: PExpressionSequence
                                                )
   extends DomainFunctionApplicationTerm(sl, function, arguments)
   with ProgramTerm
@@ -295,7 +295,7 @@ final class DLiteralTerm private[silAST](sl : SourceLocation)
 final class DDomainFunctionApplicationTerm private[silAST](
   sl : SourceLocation,
   override val function: DomainFunction,
-  override val arguments: DArgumentSequence
+  override val arguments: DExpressionSequence
 )
   extends DomainFunctionApplicationTerm(sl,function, arguments)
   with DomainTerm

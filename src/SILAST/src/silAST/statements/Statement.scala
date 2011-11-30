@@ -2,7 +2,7 @@ package silAST.statements
 
 import silAST.ASTNode
 import silAST.expressions.ProgramExpression
-import silAST.expressions.util.PArgumentSequence
+import silAST.expressions.util.PExpressionSequence
 import silAST.symbols.{ProgramVariableSequence, Method, Field, ProgramVariable}
 import silAST.types.DataType
 import silAST.expressions.Expression
@@ -11,7 +11,7 @@ import silAST.source.SourceLocation
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-sealed abstract class Statement(sl : SourceLocation) extends ASTNode(sl) {
+sealed abstract class Statement private[silAST](sl : SourceLocation) extends ASTNode(sl) {
   override def toString: String
 }
 
@@ -20,10 +20,10 @@ sealed abstract class Statement(sl : SourceLocation) extends ASTNode(sl) {
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class Assignment private [silAST](
+final case class Assignment private [silAST](
                                 sl : SourceLocation,
-                                val target: ProgramVariable,
-                                val source: ProgramExpression
+                                target: ProgramVariable,
+                                source: ProgramExpression
                                 )
   extends Statement(sl) {
   override def toString: String = target.name + ":=" + source.toString
@@ -37,9 +37,9 @@ case class Assignment private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 case class FieldAssignment private [silAST](
                                      sl : SourceLocation,
-                                     val target: ProgramVariable,
-                                     val field: Field,
-                                     val source: ProgramExpression
+                                     target: ProgramVariable,
+                                     field: Field,
+                                     source: ProgramExpression
                                      )
   extends Statement(sl) {
   override def toString: String = target.name + "." + field.name + " := " + source.toString
@@ -53,8 +53,8 @@ case class FieldAssignment private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 case class NewStatement private [silAST](
                                   sl : SourceLocation,
-                                  val target: ProgramVariable,
-                                  val dataType: DataType
+                                  target: ProgramVariable,
+                                  dataType: DataType
                                   )
   extends Statement(sl)
 {
@@ -67,13 +67,13 @@ case class NewStatement private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class CallStatement private [silAST]
+final case class CallStatement private [silAST]
     (
             sl : SourceLocation,
-            val targets: ProgramVariableSequence,
-            val receiver: ProgramExpression,
-            val method: Method,
-            val arguments: PArgumentSequence
+            targets: ProgramVariableSequence,
+            receiver: ProgramExpression,
+            method: Method,
+            arguments: PExpressionSequence
     )
   extends Statement(sl) {
   override def toString: String = targets.toString + " := " + receiver.toString + "." + method.name + arguments.toString
@@ -85,9 +85,9 @@ case class CallStatement private [silAST]
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class inhale private [silAST](
+final case class Inhale private [silAST](
                   sl : SourceLocation,
-                  val expression: Expression
+                  expression: Expression
             )
   extends Statement(sl)
 {
@@ -100,9 +100,9 @@ case class inhale private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class exhale private [silAST](
+final case class Exhale private [silAST](
                             sl : SourceLocation,
-                            val expression: Expression
+                            expression: Expression
                             )
   extends Statement(sl)
 {
@@ -116,9 +116,9 @@ case class exhale private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //TODO:fold/unfold arrays?
-case class fold private [silAST](
+final case class fold private [silAST](
                           sl : SourceLocation,
-                          val predicate: PredicateExpression
+                          predicate: PredicateExpression
                           )
   extends Statement(sl) {
   override def toString: String = "fold " + predicate.toString
@@ -130,9 +130,9 @@ case class fold private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class unfold private [silAST](
+final case class unfold private [silAST](
                             sl : SourceLocation,
-                            val predicate: PredicateExpression
+                            predicate: PredicateExpression
                             )
   extends Statement(sl) {
   override def toString: String = "unfold " + predicate.toString

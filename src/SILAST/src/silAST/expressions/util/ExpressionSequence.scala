@@ -4,7 +4,7 @@ import silAST.ASTNode
 import silAST.expressions.terms.Term
 import silAST.source.SourceLocation
 
-class ArgumentSequence private[silAST](
+class ExpressionSequence protected[silAST](
   sl : SourceLocation,
   val args: List[Term]
 ) extends ASTNode(sl) {

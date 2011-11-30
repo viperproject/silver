@@ -1,7 +1,7 @@
 package silAST.symbols
 
 import silAST.ASTNode
-import silAST.expressions.Expression
+import silAST.expressions.util.ExpressionSequence
 import silAST.expressions.terms.Term
 import silAST.types.DataType
 import silAST.source.SourceLocation
@@ -11,15 +11,15 @@ final class FunctionSignature private [silAST](
       val receiverType: DataType,
       val argumentTypes: DataTypeSequence,
       val resultType: DataType,
-      val precondition: List[Expression],
-      val postcondition: List[Expression],
+      val precondition: ExpressionSequence,
+      val postcondition: ExpressionSequence,
       val terminationMeasure : Term
  ) extends ASTNode(sl)
 {
   override def toString =
     argumentTypes.toString + " : " + resultType.toString +
-    "requires " + precondition.toString +
-    "ensures "  + postcondition.toString +
+    (for (p <- precondition.asSeq ) yield "requires " + p.toString).mkString("\n") +
+    (for (p <- postcondition.asSeq) yield "ensures " + p.toString).mkString("\n") +
     "measure "  + terminationMeasure.toString
 
   override def subNodes = receiverType :: argumentTypes :: resultType ::  (precondition ++ postcondition ++ (terminationMeasure :: Nil))

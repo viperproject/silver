@@ -5,7 +5,7 @@ import scala.collection.Seq
 import silAST.domains.DomainPredicate
 import silAST.expressions.terms.permission.PermissionTerm
 import silAST.expressions.terms.{Term, ProgramTerm, DomainTerm}
-import silAST.expressions.util.{PArgumentSequence, DArgumentSequence, ArgumentSequence}
+import silAST.expressions.util.{PExpressionSequence, DExpressionSequence, ExpressionSequence}
 import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
 import silAST.symbols.logical.{UnaryBooleanOperator, BinaryBooleanOperator}
 import silAST.symbols.Predicate
@@ -24,10 +24,10 @@ sealed abstract class Expression protected[silAST](
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-case class AccessPermissionExpression private[silAST](
+final case class AccessPermissionExpression private[silAST](
   sl : SourceLocation,
-  val reference: Term,
-  val permission: PermissionTerm
+  reference: Term,
+  permission: PermissionTerm
 )
   extends Expression(sl)
   with AtomicExpression
@@ -42,8 +42,8 @@ case class AccessPermissionExpression private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 case class UnfoldingExpression private[silAST](
   sl : SourceLocation,
-  val predicate: Term,
-  val expression: Expression
+  predicate: Term,
+  expression: Expression
 ) extends Expression(sl)
 {
   override def toString: String = "unfolding " + predicate.toString + " in " + expression.toString
@@ -57,8 +57,8 @@ case class UnfoldingExpression private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 case class EqualityExpression private[silAST](
     sl : SourceLocation,
-    val term1: Term,
-    val term2: Term
+    term1: Term,
+    term2: Term
 )
   extends Expression(sl)
   with AtomicExpression
@@ -73,8 +73,8 @@ case class EqualityExpression private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 case class UnaryBooleanExpression private[silAST](
     sl : SourceLocation,
-    val operator: UnaryBooleanOperator,
-    val operand1: Expression
+    operator: UnaryBooleanOperator,
+    operand1: Expression
 ) extends Expression(sl)
 {
   override def toString: String = operator.toString + operand1.toString
@@ -86,11 +86,11 @@ case class UnaryBooleanExpression private[silAST](
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-case class BinaryBooleanExpression protected[silAST](
+case class BinaryBooleanExpression private[silAST](
   sl : SourceLocation,
-  val operator: BinaryBooleanOperator,
-  val operand1: Expression,
-  val operand2: Expression
+  operator: BinaryBooleanOperator,
+  operand1: Expression,
+  operand2: Expression
 ) extends Expression(sl)
 {
   override def toString: String = operand1.toString + " " + operator.toString + " " + operand2.toString
@@ -102,10 +102,10 @@ case class BinaryBooleanExpression protected[silAST](
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-case class DomainPredicateExpression protected[silAST](
+case class DomainPredicateExpression private[silAST](
   sl : SourceLocation,
-  val predicate: DomainPredicate,
-  val arguments: ArgumentSequence
+  predicate: DomainPredicate,
+  arguments: ExpressionSequence
 ) extends Expression(sl)
   with AtomicExpression
 {
@@ -116,10 +116,10 @@ case class DomainPredicateExpression protected[silAST](
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-case class PredicateExpression protected[silAST](
+case class PredicateExpression private[silAST](
   sl : SourceLocation,
- val receiver: Term,
- val predicate: Predicate
+  receiver: Term,
+ predicate: Predicate
 ) extends Expression(sl)
   with AtomicExpression
 {
@@ -131,11 +131,11 @@ case class PredicateExpression protected[silAST](
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-case class QuantifierExpression protected[silAST](
+case class QuantifierExpression private[silAST](
     sl : SourceLocation,
-    val quantifier: Quantifier,
-    val variable: BoundVariable,
-    val expression: Expression
+    quantifier: Quantifier,
+    variable: BoundVariable,
+    expression: Expression
 )
   extends Expression(sl)
 {
@@ -224,7 +224,7 @@ final class PPredicateExpression private[silAST](
 final class PDomainPredicateExpression private[silAST](
   sl : SourceLocation,
   override val predicate: DomainPredicate,
-  override val arguments: PArgumentSequence
+  override val arguments: PExpressionSequence
 )
   extends DomainPredicateExpression(sl, predicate, arguments)
   with ProgramExpression
@@ -298,7 +298,7 @@ final class DQuantifierExpression private[silAST](
 final class DDomainPredicateExpression  private[silAST](
   sl : SourceLocation,
   override val predicate: DomainPredicate,
-  override val arguments: DArgumentSequence
+  override val arguments: DExpressionSequence
 )
   extends DomainPredicateExpression(sl,predicate, arguments)
   with DomainExpression
