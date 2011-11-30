@@ -8,17 +8,16 @@ import silAST.programs.ProgramFactory
 
 final class MethodSignature private[silAST](
     sl : SourceLocation,
-    private [silAST] val programFactory : ProgramFactory,
     val parameters: ProgramVariableSequence,
     val result: ProgramVariable,
     val precondition: ExpressionSequence,
     val postcondition: ExpressionSequence
-) extends ASTNode(sl,programFactory)
+) extends ASTNode(sl)
 {
   override def toString =
     "(" + parameters.toString + ") : " + result.toString +
       (for (p <- precondition.asSeq ) yield "requires " + p.toString).mkString("\n") +
       (for (p <- postcondition.asSeq) yield "ensures " + p.toString).mkString("\n")
 
-  override def subNodes = parameters.variables.toList ++ (result :: (precondition.asSeq ++ postcondition.asSeq))
+  override def subNodes = parameters.variables.toList ++ (result :: (precondition.asSeq.toList ++ postcondition.asSeq.toList))
 }

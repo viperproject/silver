@@ -7,10 +7,10 @@ import silAST.source.noLocation
 sealed abstract class Quantifier extends ASTNode(noLocation) with AtomicNode {
 }
 
-abstract case class Forall() extends Quantifier {
+case object Forall extends Quantifier {
   override def toString: String = "forall"
 }
 
-abstract case class Exists() extends Quantifier {
+case object Exists extends Quantifier {
   override def toString: String = "exists"
 }

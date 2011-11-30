@@ -2,10 +2,10 @@ package silAST.programs
 {
 
 import silAST.domains.DomainFactory
-import collection.mutable.HashMap
 import silAST.source.SourceLocation
 import silAST.symbols.{NonReferenceField, ReferenceField, MethodFactory, Field}
 import silAST.types.{NonReferenceDataType, DataType}
+import collection.mutable.{HashSet, HashMap}
 
 final class ProgramFactory(
     val name : String
@@ -18,7 +18,7 @@ final class ProgramFactory(
       methodFactories.getOrElseUpdate(name,new MethodFactory(this,name))
 
     def defineDomainField(sl : SourceLocation, name : String, dataType : NonReferenceDataType) : Field = {
-      require(dataType.programFactory == this)
+      require(dataTypes.contains(dataType))
       defineField(new NonReferenceField(sl,name,dataType))
     }
 
@@ -26,19 +26,19 @@ final class ProgramFactory(
       defineField(new ReferenceField(sl,name))
     }
 
-    def defineField(field : Field) : Field = {
+    private def defineField(field : Field) : Field = {
       require(!fields.contains(field.name))
 
       fields += (field.name -> field)
 
       field
-
     }
 
     private val domainFactories = new HashMap[String,DomainFactory]
     private val methodFactories = new HashMap[String,MethodFactory]
 
     private val fields = new HashMap[String,Field]
+    private val dataTypes = new HashSet[DataType]
   }
 }
 

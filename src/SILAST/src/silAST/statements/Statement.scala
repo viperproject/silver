@@ -8,10 +8,14 @@ import silAST.types.DataType
 import silAST.expressions.Expression
 import silAST.expressions.PredicateExpression
 import silAST.source.SourceLocation
+import silAST.programs.ProgramFactory
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-sealed abstract class Statement private[silAST](sl : SourceLocation) extends ASTNode(sl) {
+sealed abstract class Statement private[silAST](
+  sl : SourceLocation
+) extends ASTNode(sl)
+{
   override def toString: String
 }
 

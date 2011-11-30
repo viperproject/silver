@@ -22,5 +22,5 @@ final class FunctionSignature private [silAST](
     (for (p <- postcondition.asSeq) yield "ensures " + p.toString).mkString("\n") +
     "measure "  + terminationMeasure.toString
 
-  override def subNodes = receiverType :: argumentTypes :: resultType ::  (precondition ++ postcondition ++ (terminationMeasure :: Nil))
+  override def subNodes = receiverType :: argumentTypes :: resultType ::  (precondition.asSeq.toList ++ postcondition.asSeq.toList ++ (terminationMeasure :: Nil))
 }
