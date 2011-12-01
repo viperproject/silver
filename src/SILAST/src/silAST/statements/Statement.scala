@@ -2,7 +2,7 @@ package silAST.statements
 
 import silAST.ASTNode
 import silAST.expressions.ProgramExpression
-import silAST.expressions.util.PExpressionSequence
+import silAST.expressions.util.PTermSequence
 import silAST.symbols.{ProgramVariableSequence, Method, Field, ProgramVariable}
 import silAST.types.DataType
 import silAST.expressions.Expression
@@ -77,7 +77,7 @@ final case class CallStatement private [silAST]
             targets: ProgramVariableSequence,
             receiver: ProgramExpression,
             method: Method,
-            arguments: PExpressionSequence
+            arguments: PTermSequence
     )
   extends Statement(sl) {
   override def toString: String = targets.toString + " := " + receiver.toString + "." + method.name + arguments.toString

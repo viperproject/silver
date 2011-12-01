@@ -11,13 +11,13 @@ private[silAST] trait ProgramExpressionFactory
 
   def makeEqualityExpression(
     sl : SourceLocation,
-    term1 : ProgramTerm,
-    term2 : ProgramTerm
+    t1 : ProgramTerm,
+    t2 : ProgramTerm
   ) : PEqualityExpression  = {
-    require (terms.contains(term1))
-    require (terms.contains(term2))
+    require (terms.contains(t1))
+    require (terms.contains(t2))
 
-    val result = programFactory.makePEqualityExpression(sl,term1,term2)
+    val result = programFactory.makePEqualityExpression(sl,t1,t2)
     expressions.getOrElseUpdate(result.toString,result)
 
     result

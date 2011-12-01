@@ -1,18 +1,128 @@
 package silAST.programs
 {
 
-import silAST.domains.DomainFactory
 import silAST.source.SourceLocation
 import silAST.types.{NonReferenceDataType, DataType}
 import collection.mutable.{HashSet, HashMap}
 import silAST.symbols._
 import silAST.expressions._
 import terms.{DomainTerm, Term, ProgramTerm}
+import silAST.domains.{DomainPredicate, DomainFactory}
+import util.{DTermSequence, PTermSequence, TermSequence}
+import sun.org.mozilla.javascript.internal.ast.AstNode
 
 final class ProgramFactory(
     val name : String
   )
   {
+    //////////////////////////////////////////////////////////////////////////
+    def makeEqualityExpression(
+       sl : SourceLocation, 
+       t1 : Term,
+       t2 : Term
+    ) : EqualityExpression = 
+    {
+      require(terms.contains(t1))
+      require(terms.contains(t2))
+      (t1,t2) match{
+        case (t1 : ProgramTerm,t2 : ProgramTerm) =>
+          addSpecializedExpression[ProgramExpression,PEqualityExpression,EqualityExpression](pEqualityExpressions,equalityExpressions, eKey (sl,t1,t2),new PEqualityExpression(sl,t1,t2))
+        case (t1 : DomainTerm, t2 : DomainTerm)  =>
+          addSpecializedExpression[DomainExpression,DEqualityExpression,EqualityExpression](dEqualityExpressions,equalityExpressions,eKey (sl,t1,t2),new DEqualityExpression(sl,t1,t2))
+        case _ => addExpression(equalityExpressions,eKey(sl,t1,t2),new EqualityExpression(sl,t1, t2))
+      }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    private def eKey(nodes : Any*) : String
+      = nodes.mkString("|")
+/*
+    //////////////////////////////////////////////////////////////////////////
+    private[silAST] def makePEqualityExpression(
+       sl : SourceLocation, 
+       pTerm1 : ProgramTerm, 
+       pTerm2 : ProgramTerm
+    ) : PEqualityExpression = 
+    {
+      require(programTerms.contains(pTerm1))
+      require(programTerms.contains(pTerm2))
+      addProgramExpression(
+        pEqualityExpressions,
+        equalityExpressions, 
+        List(sl, pTerm1, pTerm2).mkString("|"),
+        new PEqualityExpression(sl,pTerm1,pTerm2)
+      )
+    }
+    
+    //////////////////////////////////////////////////////////////////////////
+    private[silAST] def makeDEqualityExpression(
+       sl : SourceLocation, 
+       dTerm1 : DomainTerm, 
+       dTerm2 : DomainTerm
+    ) : DEqualityExpression = 
+    {
+      require(domainTerms.contains(dTerm1))
+      require(domainTerms.contains(dTerm2))
+      addDomainExpression[DEqualityExpression,EqualityExpression](
+        dEqualityExpressions,
+        equalityExpressions, 
+        List(sl, dTerm1, dTerm2).mkString("|"),
+        new DEqualityExpression(sl,dTerm1,dTerm2)
+      )
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    private def dpeKey( sl : SourceLocation, p : DomainPredicate, a : TermSequence) =
+      List(sl,p,a).mkString("|")
+  */
+    //////////////////////////////////////////////////////////////////////////
+
+    private def makePDomainPredicateExpression(sl: SourceLocation, p: DomainPredicate, a: PTermSequence): PDomainPredicateExpression = {
+      require(domainPredicates.get(p.name) equals  p)
+      require(a.asSeq.forall(programTerms.contains(_)))
+
+      val result = pDomainPredicateExpressions.getOrElseUpdate(eKey(sl,p,a),new PDomainPredicateExpression(sl,p,a))
+      domainPredicateExpressions += (eKey(sl,p,a) -> result)
+      result
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+
+    private def makeDDomainPredicateExpression(sl: SourceLocation, p: DomainPredicate, a: DTermSequence): DDomainPredicateExpression = {
+      require(domainPredicates.get(p.name) equals  p)
+      require(a.asSeq.forall(domainTerms.contains(_)))
+
+      val result = dDomainPredicateExpressions.getOrElseUpdate(eKey(sl,p,a),new DDomainPredicateExpression(sl,p,a))
+      domainPredicateExpressions += (eKey(sl,p,a) -> result)
+      result
+    }
+
+//
+    //////////////////////////////////////////////////////////////////////////
+    def makeDomainPredicateExpression(
+       sl : SourceLocation,
+       predicate: DomainPredicate,
+       arguments: TermSequence
+    ) : DomainPredicateExpression = 
+    {
+      require(domainPredicates.get(predicate.name) equals predicate)
+      require(arguments.asSeq.forall(terms.contains(_)))
+      arguments match{
+        case x : PTermSequence => makePDomainPredicateExpression(sl,predicate,x) 
+        case x : DTermSequence => makeDDomainPredicateExpression(sl,predicate,x) 
+        case _ => {
+          val result = domainPredicateExpressions.getOrElseUpdate(
+              eKey(sl,predicate,arguments),
+              new DomainPredicateExpression(sl,predicate,arguments)
+          )
+          expressions += (eKey(sl,predicate,arguments) -> result)
+          result
+        }
+      }
+    }
+
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
     private def addExpression[E <: Expression](
       map : HashMap[String,E],
@@ -51,52 +161,23 @@ final class ProgramFactory(
     ) : DE = addSpecializedExpression[DomainExpression,DE,E](dMap,map,stringRep,make)
 
     //////////////////////////////////////////////////////////////////////////
-    def makePEqualityExpression(
-       sl : SourceLocation, 
-       pTerm1 : ProgramTerm, 
-       pTerm2 : ProgramTerm
-    ) : PEqualityExpression = 
-    {
-      require(programTerms.contains(pTerm1))
-      require(programTerms.contains(pTerm2))
-      addProgramExpression(
-        pEqualityExpressions,
-        equalityExpressions, 
-        List(sl, pTerm1, pTerm2).toString(),
-        new PEqualityExpression(sl,pTerm1,pTerm2)
-      )
-    }
-    
     //////////////////////////////////////////////////////////////////////////
-    def makeDEqualityExpression(
-       sl : SourceLocation, 
-       dTerm1 : DomainTerm, 
-       dTerm2 : DomainTerm
-    ) : DEqualityExpression = 
-    {
-      require(domainTerms.contains(dTerm1))
-      require(domainTerms.contains(dTerm2))
-      addDomainExpression[DEqualityExpression,EqualityExpression](
-        dEqualityExpressions,
-        equalityExpressions, 
-        List(sl, dTerm1, dTerm2).mkString("|"),
-        new DEqualityExpression(sl,dTerm1,dTerm2)
-      )
-    }
-
+    private val domainPredicates = new HashMap[String,DomainPredicate]
+    
     //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
     private val programTerms = new HashSet[ProgramTerm]
     private val  domainTerms = new HashSet[DomainTerm]
+    private val        terms = new HashSet[Term]
     
-
+    //////////////////////////////////////////////////////////////////////////
     private val dEqualityExpressions = new HashMap[String,DEqualityExpression]
     private val pEqualityExpressions = new HashMap[String,PEqualityExpression]
     private val  equalityExpressions = new HashMap[String,EqualityExpression]
     
     private val dDomainPredicateExpressions = new HashMap[String,DDomainPredicateExpression]
     private val pDomainPredicateExpressions = new HashMap[String,PDomainPredicateExpression]
-    private val  domainpredicateExpressions = new HashMap[String,DomainPredicateExpression]
+    private val  domainPredicateExpressions = new HashMap[String,DomainPredicateExpression]
 
     private val dUnaryBooleanExpressions = new HashMap[String,DUnaryBooleanExpression]
     private val pUnaryBooleanExpressions = new HashMap[String,PUnaryBooleanExpression]
@@ -116,20 +197,8 @@ final class ProgramFactory(
     private val quantifierExpressions = new HashMap[String,QuantifierExpression]
 
     private val expressions          = new HashMap[String,Expression]
-/*    
-    //////////////////////////////////////////////////////////////////////////
-    def makeEqualityExpression(
-      sl : SourceLocation,
-      term1: Term,
-      term2: Term
-    ): EqualityExpression =
-    {
-      require(terms.contains(term1))
-      require(terms.contains(term2))
 
-      expressions.
-    }
-  */
+    //////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////
     def getDomainFactory(name : String) : DomainFactory =
       domainFactories.getOrElseUpdate(name, new DomainFactory(this,name))

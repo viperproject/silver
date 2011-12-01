@@ -5,7 +5,7 @@ import scala.collection.Seq
 import silAST.domains.DomainPredicate
 import silAST.expressions.terms.permission.PermissionTerm
 import silAST.expressions.terms.{Term, ProgramTerm, DomainTerm}
-import silAST.expressions.util.{PExpressionSequence, DExpressionSequence, ExpressionSequence}
+import silAST.expressions.util.{PTermSequence, DTermSequence, TermSequence}
 import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
 import silAST.symbols.logical.{UnaryBooleanOperator, BinaryBooleanOperator}
 import silAST.symbols.Predicate
@@ -105,7 +105,7 @@ case class BinaryBooleanExpression private[silAST](
 case class DomainPredicateExpression private[silAST](
   sl : SourceLocation,
   predicate: DomainPredicate,
-  arguments: ExpressionSequence
+  arguments: TermSequence
 ) extends Expression(sl)
   with AtomicExpression
 {
@@ -224,7 +224,7 @@ final class PPredicateExpression private[silAST](
 final class PDomainPredicateExpression private[silAST](
   sl : SourceLocation,
   override val predicate: DomainPredicate,
-  override val arguments: PExpressionSequence
+  override val arguments: PTermSequence
 )
   extends DomainPredicateExpression(sl, predicate, arguments)
   with ProgramExpression
@@ -298,7 +298,7 @@ final class DQuantifierExpression private[silAST](
 final class DDomainPredicateExpression  private[silAST](
   sl : SourceLocation,
   override val predicate: DomainPredicate,
-  override val arguments: DExpressionSequence
+  override val arguments: DTermSequence
 )
   extends DomainPredicateExpression(sl,predicate, arguments)
   with DomainExpression

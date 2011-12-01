@@ -5,7 +5,7 @@ import scala.collection.Seq
 import silAST.types.DataType
 import silAST.source.{noLocation, SourceLocation}
 
-final class DataTypeSequence private[silAST](
+sealed class DataTypeSequence private[silAST](
   val dataTypes: List[DataType]
 ) extends ASTNode(noLocation)
 {
