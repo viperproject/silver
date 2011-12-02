@@ -12,13 +12,13 @@ import silAST.expressions.util.{DTermSequence, PTermSequence, TermSequence}
 ///////////////////////////////////////////////////////////////////////////
 sealed trait Term extends ASTNode
 {
-  def subTerms: Seq[Term]
+  val subTerms: Seq[Term]
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait AtomicTerm extends Term {
-  final override def subTerms = Nil
+  final override val subTerms = Nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -33,46 +33,27 @@ sealed case class DomainFunctionApplicationTerm private[silAST](
    arguments: TermSequence
 ) extends ASTNode(sl) with Term
 {
-  override val toString = function.name + arguments.toString
+  override val toString : String = function.name + arguments.toString
 
-  override val subNodes = List(function) ++ arguments
+  override val subNodes : Seq[ASTNode]= List(function) ++ arguments
 
-  override val subTerms  = arguments
+  override val subTerms  : Seq[Term] = arguments
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed case class FunctionApplicationTerm protected[silAST](
+sealed case class FunctionApplicationTerm private[silAST](
     sl : SourceLocation,
     receiver: Term,
     function: Function,
     arguments: TermSequence
 ) extends ASTNode(sl) with Term
 {
-  override def toString: String = receiver.toString + "." + function.name + arguments.toString
+  override val toString: String = receiver.toString + "." + function.name + arguments.toString
 
-  override def subNodes: Seq[ASTNode] = List(receiver, function) ++ arguments
+  override val subNodes: Seq[ASTNode] = List(receiver, function) ++ arguments
 
-  override def subTerms: Seq[Term] = List(receiver) ++ arguments.toList
-}
-
-
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-//Quantification terms
-sealed case class BoundVariableTerm protected[silAST](
-    sl : SourceLocation,
-    variable: BoundVariable
-  )
-  extends ASTNode(sl)
-  with DomainTerm
-{
-  override val toString  = variable.name
-
-  override val subNodes = List(variable)
-
-  override val dSubTerms = Nil
-
+  override val subTerms: Seq[Term] = List(receiver) ++ arguments.toList
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -88,11 +69,11 @@ sealed case class CastTerm protected[silAST](
 )
   extends ASTNode(sl) with Term
 {
-  override def toString: String = "(" + operand1 + ") : " + newType.toString
+  override val toString: String = "(" + operand1 + ") : " + newType.toString
 
-  override def subNodes: Seq[ASTNode] = operand1 :: newType :: Nil
+  override val subNodes: Seq[ASTNode] = operand1 :: newType :: Nil
 
-  override def subTerms: Seq[Term] = operand1 :: Nil
+  override val subTerms: Seq[Term] = operand1 :: Nil
 
 }
 
@@ -106,11 +87,11 @@ sealed case class FieldReadTerm protected[silAST](
   extends ASTNode(sl) with Term
 {
 
-  override def toString: String = location.toString + "." + field.name
+  override val toString: String = location.toString + "." + field.name
 
-  override def subNodes: Seq[ASTNode] = location :: field :: Nil
+  override val subNodes: Seq[ASTNode] = location :: field :: Nil
 
-  override def subTerms: Seq[Term] = location :: Nil
+  override val subTerms: Seq[Term] = location :: Nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -122,11 +103,25 @@ sealed case class OldFieldReadTerm protected[silAST](
 )
   extends ASTNode(sl) with Term
 {
-  override def toString: String = location.toString + "._(old)" + field.name
+  override val toString: String = location.toString + "._(old)" + field.name
 
-  override def subNodes: Seq[ASTNode] = location :: field :: Nil
+  override val subNodes: Seq[ASTNode] = location :: field :: Nil
 
-  override def subTerms: Seq[Term] = location :: Nil
+  override val subTerms: Seq[Term] = location :: Nil
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+//Classification
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+//Program terms
+///////////////////////////////////////////////////////////////////////////
+sealed trait ProgramTerm extends Term {
+  override val subTerms: Seq[ProgramTerm] = pSubTerms
+  protected val pSubTerms : Seq[ProgramTerm]
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -139,9 +134,9 @@ sealed case class ProgramVariableTerm protected[silAST](
   with ProgramTerm
   with AtomicTerm
 {
-  override def toString: String = variable.name
+  override val toString: String = variable.name
 
-  override def subNodes: Seq[ASTNode] = List(variable)
+  override val subNodes: Seq[ASTNode] = List(variable)
 
   override val pSubTerms = Nil
 }
@@ -153,20 +148,7 @@ final class OldProgramVariableTerm protected[silAST](
   override val variable: ProgramVariable
 )
   extends ProgramVariableTerm(sl,variable) {
-  override def toString = "old(" + variable.name + ")"
-}
-
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-//Classification
-
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-//Program terms
-///////////////////////////////////////////////////////////////////////////
-sealed trait ProgramTerm extends Term {
-  override def subTerms: Seq[ProgramTerm] = pSubTerms
-  protected val pSubTerms : Seq[ProgramTerm]
+  override val toString = "old(" + variable.name + ")"
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -189,14 +171,13 @@ object PFunctionApplicationTerm {
 
 final private[silAST] class PFunctionApplicationTermC (
        sl : SourceLocation,
-       override val receiver: ProgramTerm,
-       override val function: Function,
-       override val arguments: PTermSequence
+       receiver: ProgramTerm,
+       function: Function,
+       arguments: PTermSequence
   )
   extends FunctionApplicationTerm(sl, receiver, function, arguments)
   with PFunctionApplicationTerm
 {
-//  override def subTerms: Seq[ProgramTerm] = arguments
   override val pSubTerms : Seq[ProgramTerm] = List(receiver) ++ arguments
   override val pArguments =arguments
   override val pReceiver = receiver
@@ -308,38 +289,6 @@ private[silAST] final class POldFieldReadTermC (
   override val pSubTerms: Seq[ProgramTerm] = List(location)
   override val pLocation = location
 }
-/*
-///////////////////////////////////////////////////////////////////////////
-sealed trait PProgramVariableTerm
-  extends OldFieldReadTerm
-  with ProgramTerm
-{
-  override val location: ProgramTerm = pLocation
-  protected val pLocation : ProgramTerm
-}
-
-object POldFieldReadTerm {
-  def unapply(t : POldFieldReadTerm) : Option[(SourceLocation,ProgramTerm,Field)] =
-    Some((t.sl,t.location,t.field))
-}
-
-private[silAST] final class PProgramVariableTermC(
-         sl :  SourceLocation,
-         variable: ProgramVariable
-     ) extends ProgramVariableTerm(sl,variable)
-with ProgramTerm {
-  override def pSubTerms: Seq[ProgramTerm] = Nil
-}
-
-///////////////////////////////////////////////////////////////////////////
-private[silAST] final class POldProgramVariableTerm(
-                                        sl : SourceLocation,
-                                        override val variable: ProgramVariable
-                                        ) extends OldProgramVariableTerm(sl, variable)
-with ProgramTerm {
-  override def subTerms: Seq[ProgramTerm] = Nil
-}
-*/
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -348,19 +297,28 @@ with ProgramTerm {
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait DomainTerm extends Term {
-  override def subTerms : Seq[DomainTerm] = dSubTerms
-  val dSubTerms : Seq[DomainTerm]
+  override val subTerms : Seq[DomainTerm] = dSubTerms
+  protected val dSubTerms : Seq[DomainTerm]
 }
-/*
+
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-final class DLiteralTerm private[silAST](sl : SourceLocation)
-  extends LiteralTerm(sl)
+//Quantification terms
+sealed case class BoundVariableTerm protected[silAST](
+    sl : SourceLocation,
+    variable: BoundVariable
+  )
+  extends ASTNode(sl)
   with DomainTerm
 {
-  override def subTerms: Seq[DomainTerm] = Nil
+  override val toString  = variable.name
+
+  override val subNodes = List(variable)
+
+  override val dSubTerms = Nil
+
 }
-*/
+
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait DDomainFunctionApplicationTerm
@@ -388,42 +346,18 @@ private[silAST] final class DDomainFunctionApplicationTermC(
 {
   override val dSubTerms = arguments
 }
-/*
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-final class DBoundVariableTerm private[silAST](
-  sl : SourceLocation,
-  override val variable: BoundVariable
-)
-  extends BoundVariableTerm(sl,variable)
-  with DomainTerm
-{
-  override val dSubTerms = Nil
-}
-*/
+
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 //Domains + Programs = General
 
-///////////////////////////////////////////////////////////////////////////
-/*object GeneralTerm{
-  type GeneralTerm = Term with DomainTerm with ProgramTerm
-}
-*/
 sealed trait GeneralTerm extends Term with DomainTerm with ProgramTerm{
-  val subTerms : Seq[GeneralTerm] = gSubTerms
+  override val subTerms : Seq[GeneralTerm] = gSubTerms
 
-  private override val dSubTerms = gSubTerms
-  private override val pSubTerms = gSubTerms
+  protected override val dSubTerms = gSubTerms
+  protected override val pSubTerms = gSubTerms
   protected val gSubTerms : Seq[GeneralTerm]
 }
-
-/*final private[silAST] class GIntegerLiteralTerm(sl : SourceLocation, v : BigInt)
-  extends IntegerLiteralTerm(sl,v)
-  with ProgramTerm {
-  override def subTerms: Seq[ProgramTerm] = Nil
-}
-  */
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -442,7 +376,7 @@ final class IntegerLiteralTerm private[silAST](sl : SourceLocation, val value: B
   with GeneralTerm
   with AtomicNode
 {
-  override def toString: String = value.toString()
-  override def subTerms = Nil //Seq[ProgramTerm] = Nil
+  override val toString: String = value.toString()
+  override val gSubTerms = Nil
 }
 

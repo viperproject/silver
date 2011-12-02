@@ -1,6 +1,7 @@
 package main
 
 import silAST.expressions._
+import terms._
 
 object Main {
 
@@ -32,6 +33,35 @@ object Main {
       case DomainPredicateExpression(_,_,_) => 5
       case PredicateExpression(_,_,_) => 6
 //      case QuantifierExpression(_,_,_,_) => 7
+    }
+  }
+
+  def g(t : Term)
+  {
+    t match {
+      case LiteralTerm(_) => 1
+
+      case BoundVariableTerm(_,_) => 1
+      case FunctionApplicationTerm(_,_,_,_) => 3
+      case DomainFunctionApplicationTerm(_,_,_) => 3
+
+      case ProgramVariableTerm(_,_) => 2
+      case CastTerm(_,_,_) => 2
+      case FieldReadTerm(_,_,_) => 6
+      case OldFieldReadTerm(_,_,_) => 6
+    }
+
+    t match {
+      case LiteralTerm(_) => 1
+
+      case BoundVariableTerm(_,_) => 1
+      case FunctionApplicationTerm(_,_,_,_) => 3
+//      case DomainFunctionApplicationTerm(_,_,_) => 3
+
+      case ProgramVariableTerm(_,_) => 2
+      case CastTerm(_,_,_) => 2
+      case FieldReadTerm(_,_,_) => 6
+      case OldFieldReadTerm(_,_,_) => 6
     }
   }
 
