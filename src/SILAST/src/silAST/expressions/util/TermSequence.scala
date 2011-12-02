@@ -14,7 +14,7 @@ sealed class TermSequence protected[silAST](
   override def apply(idx : Int) = args(idx)
   override def iterator = args.iterator
   override def length = args.length
-  override def toString = "(" + args.mkString(",") + ")"
+  override def toString() = "(" + args.mkString(",") + ")"
   override def subNodes = args
 }
 
