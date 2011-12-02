@@ -1,4 +1,6 @@
+/*
 package silAST.expressions.util
+
 
 import silAST.expressions.terms.ProgramTerm
 import silAST.source.SourceLocation
@@ -10,3 +12,4 @@ final class PTermSequence private[silAST](
 {
   override def asSeq: Seq[ProgramTerm] = args
 }
+*/

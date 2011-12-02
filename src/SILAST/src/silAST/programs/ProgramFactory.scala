@@ -6,10 +6,9 @@ import silAST.types.{NonReferenceDataType, DataType}
 import collection.mutable.{HashSet, HashMap}
 import silAST.symbols._
 import silAST.expressions._
-import terms.{DomainTerm, Term, ProgramTerm}
 import silAST.domains.{DomainPredicate, DomainFactory}
-import util.{DTermSequence, PTermSequence, TermSequence}
-import sun.org.mozilla.javascript.internal.ast.AstNode
+import terms.{DomainTerm, Term, ProgramTerm}
+import util.{TermSequence,PTermSequence,DTermSequence}
 
 final class ProgramFactory(
     val name : String
@@ -79,7 +78,7 @@ final class ProgramFactory(
 
     private def makePDomainPredicateExpression(sl: SourceLocation, p: DomainPredicate, a: PTermSequence): PDomainPredicateExpression = {
       require(domainPredicates.get(p.name) equals  p)
-      require(a.asSeq.forall(programTerms.contains(_)))
+      require(a.forall(programTerms.contains(_)))
 
       val result = pDomainPredicateExpressions.getOrElseUpdate(eKey(sl,p,a),new PDomainPredicateExpression(sl,p,a))
       domainPredicateExpressions += (eKey(sl,p,a) -> result)
@@ -90,7 +89,7 @@ final class ProgramFactory(
 
     private def makeDDomainPredicateExpression(sl: SourceLocation, p: DomainPredicate, a: DTermSequence): DDomainPredicateExpression = {
       require(domainPredicates.get(p.name) equals  p)
-      require(a.asSeq.forall(domainTerms.contains(_)))
+      require(a.forall(domainTerms.contains(_)))
 
       val result = dDomainPredicateExpressions.getOrElseUpdate(eKey(sl,p,a),new DDomainPredicateExpression(sl,p,a))
       domainPredicateExpressions += (eKey(sl,p,a) -> result)
@@ -106,7 +105,7 @@ final class ProgramFactory(
     ) : DomainPredicateExpression = 
     {
       require(domainPredicates.get(predicate.name) equals predicate)
-      require(arguments.asSeq.forall(terms.contains(_)))
+      require(arguments.forall(terms.contains(_)))
       arguments match{
         case x : PTermSequence => makePDomainPredicateExpression(sl,predicate,x) 
         case x : DTermSequence => makeDDomainPredicateExpression(sl,predicate,x) 

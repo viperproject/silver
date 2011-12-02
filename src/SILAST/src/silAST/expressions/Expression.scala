@@ -4,8 +4,8 @@ import scala.collection.Seq
 
 import silAST.domains.DomainPredicate
 import silAST.expressions.terms.permission.PermissionTerm
-import silAST.expressions.terms.{Term, ProgramTerm, DomainTerm}
-import silAST.expressions.util.{PTermSequence, DTermSequence, TermSequence}
+import terms.{Term, ProgramTerm, DomainTerm}
+import silAST.expressions.util.{TermSequence,PTermSequence, DTermSequence}
 import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
 import silAST.symbols.logical.{UnaryBooleanOperator, BinaryBooleanOperator}
 import silAST.symbols.Predicate
@@ -111,7 +111,7 @@ case class DomainPredicateExpression private[silAST](
 {
   override def toString: String = predicate.name + arguments.toString
 
-  override def subNodes: Seq[ASTNode] = predicate :: arguments.asSeq.asInstanceOf[List[ASTNode]]
+  override def subNodes: Seq[ASTNode] = predicate :: arguments.asInstanceOf[List[ASTNode]]
 }
 
 ///////////////////////////////////////////////////////////////////////////
