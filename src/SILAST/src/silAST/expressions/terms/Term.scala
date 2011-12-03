@@ -6,7 +6,7 @@ import silAST.types.DataType
 import silAST.{AtomicNode, ASTNode}
 import silAST.domains.DomainFunction
 import silAST.source.SourceLocation
-import silAST.expressions.util.{DTermSequence, PTermSequence, TermSequence}
+import silAST.expressions.util.GenericTermSequence.{GTermSequence, DTermSequence, PTermSequence, TermSequence}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -380,3 +380,21 @@ final class IntegerLiteralTerm private[silAST](sl : SourceLocation, val value: B
   override val gSubTerms = Nil
 }
 
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final class GDomainFunctionApplicationTerm(
+  sl : SourceLocation,
+  function: DomainFunction,
+  override val arguments: GTermSequence
+)
+  extends DomainFunctionApplicationTerm(sl,function,arguments)
+  with DDomainFunctionApplicationTerm
+  with PDomainFunctionApplicationTerm
+  with GeneralTerm
+{
+//  override val arguments : GTermSequence = gArguments
+  override val dArguments = gArguments
+  override val pArguments = gArguments
+  protected val gArguments : GTermSequence = arguments
+  protected val gSubTerms : Seq[GeneralTerm] = arguments
+}

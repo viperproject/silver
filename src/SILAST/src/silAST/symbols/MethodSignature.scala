@@ -1,17 +1,15 @@
 package silAST.symbols
 
 import silAST.ASTNode
-import scala.collection.Seq
-import silAST.expressions.util.TermSequence
+import silAST.expressions.util.GenericExpressionSequence.ExpressionSequence
 import silAST.source.SourceLocation
-import silAST.programs.ProgramFactory
 
 final class MethodSignature private[silAST](
     sl : SourceLocation,
     val parameters: ProgramVariableSequence,
     val result: ProgramVariable,
-    val precondition: TermSequence,
-    val postcondition: TermSequence
+    val precondition: ExpressionSequence,
+    val postcondition: ExpressionSequence
 ) extends ASTNode(sl)
 {
   override def toString =

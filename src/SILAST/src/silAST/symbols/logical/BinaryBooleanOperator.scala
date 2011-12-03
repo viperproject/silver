@@ -2,7 +2,7 @@ package silAST.symbols.logical
 
 import silAST.ASTNode
 import scala.collection.Seq
-import silAST.source.{noLocation, SourceLocation}
+import silAST.source.noLocation
 
 sealed abstract class BinaryBooleanOperator extends ASTNode(noLocation) {
 

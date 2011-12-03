@@ -1,7 +1,7 @@
 package silAST.symbols
 
 import silAST.ASTNode
-import silAST.expressions.util.TermSequence
+import silAST.expressions.util.GenericTermSequence.TermSequence
 import silAST.expressions.terms.Term
 import silAST.types.DataType
 import silAST.source.SourceLocation

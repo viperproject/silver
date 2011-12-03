@@ -5,7 +5,7 @@ import scala.collection.Seq
 import silAST.domains.DomainPredicate
 import silAST.expressions.terms.permission.PermissionTerm
 import terms.{Term, ProgramTerm, DomainTerm}
-import silAST.expressions.util.{TermSequence,PTermSequence, DTermSequence}
+import silAST.expressions.util.GenericTermSequence.{TermSequence,PTermSequence, DTermSequence}
 import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
 import silAST.symbols.logical.{UnaryBooleanOperator, BinaryBooleanOperator}
 import silAST.symbols.Predicate
@@ -303,4 +303,17 @@ final class DDomainPredicateExpression  private[silAST](
   extends DomainPredicateExpression(sl,predicate, arguments)
   with DomainExpression
 {
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+//General/ground
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+sealed trait GeneralExpression
+  extends Expression with DomainExpression with ProgramExpression
+{
+  override val subExpressions : Seq[GeneralExpression] = gSubExpressions
+  val gSubExpressions : Seq[GeneralExpression]
 }

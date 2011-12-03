@@ -1,7 +1,6 @@
 package silAST.programs
 
 import silAST.symbols.Field
-import silAST.symbols.Implementation
 import silAST.symbols.Method
 import silAST.ASTNode
 import silAST.domains.Domain
