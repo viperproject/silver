@@ -14,12 +14,32 @@ final class ProgramFactory(
                             val name: String
                             ) {
 
+
   //////////////////////////////////////////////////////////////////////////
-  def makeEqualityExpression(
-                              sl: SourceLocation,
-                              t1: Term,
-                              t2: Term
-                              ): EqualityExpression = {
+  //////////////////////////////////////////////////////////////////////////
+  def getDomainFactory(name: String): DomainFactory =
+    domainFactories.getOrElseUpdate(name, new DomainFactory(this, name))
+
+  //////////////////////////////////////////////////////////////////////////
+  def getMethodFactory(name: String): MethodFactory =
+    methodFactories.getOrElseUpdate(name, new MethodFactory(this, name))
+
+  //////////////////////////////////////////////////////////////////////////
+  def defineDomainField(sl: SourceLocation, name: String, dataType: NonReferenceDataType): Field = {
+    require(dataTypes.contains(dataType))
+    defineField(new NonReferenceField(sl, name, dataType))
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  def defineReferenceField(sl: SourceLocation, name: String): Field = {
+    defineField(new ReferenceField(sl, name))
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////
+  //Expression factory bit
+  //////////////////////////////////////////////////////////////////////////
+  def makeEqualityExpression(sl: SourceLocation,t1: Term,t2: Term): EqualityExpression = {
     require(terms.contains(t1))
     require(terms.contains(t2))
 
@@ -70,13 +90,9 @@ final class ProgramFactory(
   //////////////////////////////////////////////////////////////////////////
   private def addExpression[E <: Expression](e: E)  : E = {
     expressions + e
-    nodeMap += e.sourceLocation -> e
+    nodeMap += e.sourceLocation -> e    //Overrides sub expressions - always largest in the map
     e
   }
-
-  //////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////
-  private val domainPredicates = new HashMap[String, DomainPredicate]
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
@@ -84,26 +100,6 @@ final class ProgramFactory(
   private val expressions = new HashSet[Expression]
 
   private val nodeMap = new HashMap[SourceLocation,ASTNode]
-
-  //////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////
-  def getDomainFactory(name: String): DomainFactory =
-    domainFactories.getOrElseUpdate(name, new DomainFactory(this, name))
-
-  //////////////////////////////////////////////////////////////////////////
-  def getMethodFactory(name: String): MethodFactory =
-    methodFactories.getOrElseUpdate(name, new MethodFactory(this, name))
-
-  //////////////////////////////////////////////////////////////////////////
-  def defineDomainField(sl: SourceLocation, name: String, dataType: NonReferenceDataType): Field = {
-    require(dataTypes.contains(dataType))
-    defineField(new NonReferenceField(sl, name, dataType))
-  }
-
-  //////////////////////////////////////////////////////////////////////////
-  def defineReferenceField(sl: SourceLocation, name: String): Field = {
-    defineField(new ReferenceField(sl, name))
-  }
 
   //////////////////////////////////////////////////////////////////////////
   //@Symbol construction
