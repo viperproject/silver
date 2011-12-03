@@ -1,9 +1,8 @@
 package silAST.expressions
 
 import collection.mutable.HashMap
-import silAST.symbols.{Predicate,Function}
+import silAST.symbols.Predicate
 import silAST.source.SourceLocation
-import silAST.expressions._
 import silAST.domains.DomainPredicate
 import terms.{PTermFactory, PTerm, GTerm}
 import util.{GTermSequence, PTermSequence}

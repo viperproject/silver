@@ -1,13 +1,12 @@
 package silAST.expressions
 
-import silAST.domains.{DomainFunction, DomainPredicate, DomainFactory}
+import silAST.domains.DomainPredicate
 import silAST.source.SourceLocation
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
-import silAST.expressions._
 import terms.{DTermFactory, GTerm, DTerm}
 import util.{GTermSequence, DTermSequence}
 import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
-import collection.mutable.{HashSet, HashMap}
+import collection.mutable.HashMap
 import silAST.programs.NodeFactory
 
 

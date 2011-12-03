@@ -6,7 +6,7 @@ import silAST.domains.DomainFunction
 import silAST.programs.NodeFactory
 import silAST.types.DataType
 import silAST.symbols.{DataTypeSequence, Field, ProgramVariable, Function}
-import silAST.expressions.util.{PTermSequence, GTermSequence, TermSequence}
+import silAST.expressions.util.{PTermSequence, GTermSequence}
 
 protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory
 {

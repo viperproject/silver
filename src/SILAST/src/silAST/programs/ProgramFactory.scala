@@ -2,7 +2,7 @@ package silAST.programs {
 
 import silAST.source.SourceLocation
 import silAST.types.{NonReferenceDataType, DataType}
-import collection.mutable.{HashSet, HashMap}
+import collection.mutable.HashMap
 import silAST.symbols._
 import silAST.domains.DomainFactory
 import silAST.expressions.ExpressionFactory

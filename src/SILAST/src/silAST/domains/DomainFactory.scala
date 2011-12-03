@@ -1,10 +1,12 @@
 package silAST.domains
 
-import silAST.programs.ProgramFactory
+import silAST.expressions.DExpressionFactory
+import silAST.programs.{NodeFactory, ProgramFactory}
 
-class DomainFactory private[silAST](
+final class DomainFactory private[silAST](
                                      val programFactory: ProgramFactory,
                                      val name: String
-                                     ) {
+                                     ) extends NodeFactory with DExpressionFactory
+{
 
 }

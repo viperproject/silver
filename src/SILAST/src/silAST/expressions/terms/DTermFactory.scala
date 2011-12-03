@@ -2,11 +2,10 @@ package silAST.expressions.terms
 
 import silAST.programs.NodeFactory
 import silAST.source.SourceLocation
-import silAST.symbols.ProgramVariable
 import silAST.symbols.logical.quantification.BoundVariable
 import collection.mutable.HashSet
 import silAST.domains.DomainFunction
-import silAST.expressions.util.{DTermSequence, GTermSequence, PTermSequence}
+import silAST.expressions.util.{DTermSequence, GTermSequence}
 
 
 trait DTermFactory extends NodeFactory with GTermFactory{

@@ -1,7 +1,6 @@
 package silAST.expressions
 
 import silAST.source.SourceLocation
-import silAST.expressions._
 import collection.mutable.HashSet
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.domains.DomainPredicate

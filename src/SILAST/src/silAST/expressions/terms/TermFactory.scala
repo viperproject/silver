@@ -1,11 +1,10 @@
 package silAST.expressions.terms
 
 import silAST.source.SourceLocation
-import collection.mutable.{HashMap, HashSet}
 import silAST.domains.DomainFunction
 import silAST.programs.NodeFactory
 import silAST.types.DataType
-import silAST.symbols.{DataTypeSequence, Field, ProgramVariable, Function}
+import silAST.symbols.{Field, Function}
 import silAST.expressions.util.{DTermSequence, TermSequence, PTermSequence, GTermSequence}
 
 protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory
