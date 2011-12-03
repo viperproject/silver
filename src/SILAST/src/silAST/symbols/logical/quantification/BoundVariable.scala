@@ -5,7 +5,7 @@ import silAST.types.DataType
 import silAST.AtomicNode
 import silAST.source.SourceLocation
 
-sealed class BoundVariable private[symbols](
+sealed class BoundVariable private[silAST](
                                       sl: SourceLocation,
                                       val name: String,
                                       val dataType: DataType
