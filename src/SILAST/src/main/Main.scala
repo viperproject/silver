@@ -12,11 +12,11 @@ object Main {
   def f(e : Expression)
   {
     e match {
-      case AccessPermissionExpression(_,_,_) => 0
+      case PermissionExpression(_,_,_) => 0
       case UnfoldingExpression(_,_,_) => 1
       case EqualityExpression(_,_,_) => 2
-      case UnaryBooleanExpression(_,_,_) => 3
-      case BinaryBooleanExpression(_,_,_,_) => 4
+      case UnaryExpression(_,_,_) => 3
+      case BinaryExpression(_,_,_,_) => 4
       case DomainPredicateExpression(_,_,_) => 5
       case PredicateExpression(_,_,_) => 6
       case QuantifierExpression(_,_,_,_) => 7
@@ -25,11 +25,11 @@ object Main {
   def f2(e : Expression)
   {
     e match {
-      case AccessPermissionExpression(_,_,_) => 0
+      case PermissionExpression(_,_,_) => 0
       case UnfoldingExpression(_,_,_) => 1
       case EqualityExpression(_,_,_) => 2
-      case UnaryBooleanExpression(_,_,_) => 3
-      case BinaryBooleanExpression(_,_,_,_) => 4
+      case UnaryExpression(_,_,_) => 3
+      case BinaryExpression(_,_,_,_) => 4
       case DomainPredicateExpression(_,_,_) => 5
       case PredicateExpression(_,_,_) => 6
 //      case QuantifierExpression(_,_,_,_) => 7
@@ -66,34 +66,34 @@ object Main {
   }
 
 /*
-  def g2(e : ProgramExpression)
+  def g2(e : PExpression)
   {
     e match {
       case PEqualityExpression(_,_,_) => 2
-      case PUnaryBooleanExpression(_,_,_) => 3
-      case PBinaryBooleanExpression(_,_,_,_) => 4
+      case PUnaryExpression(_,_,_) => 3
+      case PBinaryExpression(_,_,_,_) => 4
       case PDomainPredicateExpression(_,_,_) => 5
       case PPredicateExpression(_,_,_) => 6
     }
   }
 
-  def g2(e : ProgramExpression)
+  def g2(e : PExpression)
   {
     e match {
       case PEqualityExpression(_,_,_) => 2
-      case PUnaryBooleanExpression(_,_,_) => 3
-      case PBinaryBooleanExpression(_,_,_,_) => 4
+      case PUnaryExpression(_,_,_) => 3
+      case PBinaryExpression(_,_,_,_) => 4
       case PDomainPredicateExpression(_,_,_) => 5
 //      case PPredicateExpression(_,_,_) => 6
     }
   }
 
-  def g(e : DomainExpression)
+  def g(e : DExpression)
   {
     e match {
       case DEqualityExpression(_,_) => 2
-      case DUnaryBooleanExpression(_,_) => 3
-      case DBinaryBooleanExpression(_,_,_) => 4
+      case DUnaryExpression(_,_) => 3
+      case DBinaryExpression(_,_,_) => 4
       case DDomainPredicateExpression(_,_) => 5
 //      case DQuantifierExpression(_,_,_) => 5
     }

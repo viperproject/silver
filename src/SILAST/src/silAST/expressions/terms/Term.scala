@@ -113,9 +113,9 @@ sealed case class OldFieldReadTerm protected[silAST](
 ///////////////////////////////////////////////////////////////////////////
 //Program terms
 ///////////////////////////////////////////////////////////////////////////
-sealed trait ProgramTerm extends Term {
-  override val subTerms: Seq[ProgramTerm] = pSubTerms
-  protected val pSubTerms: Seq[ProgramTerm]
+sealed trait PTerm extends Term {
+  override val subTerms: Seq[PTerm] = pSubTerms
+  protected val pSubTerms: Seq[PTerm]
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -125,7 +125,7 @@ sealed case class ProgramVariableTerm protected[silAST](
                                                          variable: ProgramVariable
                                                          )
   extends ASTNode(sl)
-  with ProgramTerm
+  with PTerm
   with AtomicTerm {
   override val toString: String = variable.name
 
@@ -148,28 +148,28 @@ final class OldProgramVariableTerm protected[silAST](
 ///////////////////////////////////////////////////////////////////////////
 sealed trait PFunctionApplicationTerm
   extends FunctionApplicationTerm
-  with ProgramTerm {
-  override val receiver: ProgramTerm = pReceiver
+  with PTerm {
+  override val receiver: PTerm = pReceiver
   override val arguments: PTermSequence = pArguments
 
-  protected val pReceiver: ProgramTerm
+  protected val pReceiver: PTerm
   protected val pArguments: PTermSequence
 }
 
 object PFunctionApplicationTerm {
-  def unapply(t: PFunctionApplicationTerm): Option[(SourceLocation, ProgramTerm, Function, PTermSequence)] =
+  def unapply(t: PFunctionApplicationTerm): Option[(SourceLocation, PTerm, Function, PTermSequence)] =
     Some((t.sl, t.receiver, t.function, t.arguments))
 }
 
 final private[silAST] class PFunctionApplicationTermC(
                                                        sl: SourceLocation,
-                                                       receiver: ProgramTerm,
+                                                       receiver: PTerm,
                                                        function: Function,
                                                        arguments: PTermSequence
                                                        )
   extends FunctionApplicationTerm(sl, receiver, function, arguments)
   with PFunctionApplicationTerm {
-  override val pSubTerms: Seq[ProgramTerm] = List(receiver) ++ arguments
+  override val pSubTerms: Seq[PTerm] = List(receiver) ++ arguments
   override val pArguments = arguments
   override val pReceiver = receiver
 }
@@ -178,7 +178,7 @@ final private[silAST] class PFunctionApplicationTermC(
 ///////////////////////////////////////////////////////////////////////////
 sealed trait PDomainFunctionApplicationTerm
   extends DomainFunctionApplicationTerm
-  with ProgramTerm {
+  with PTerm {
   override val arguments: PTermSequence = pArguments
 
   protected val pArguments: PTermSequence
@@ -195,7 +195,7 @@ private[silAST] final class PDomainFunctionApplicationTermC(
                                                              override val arguments: PTermSequence
                                                              )
   extends DomainFunctionApplicationTerm(sl, function, arguments)
-  with ProgramTerm {
+  with PTerm {
   override val pSubTerms = arguments
 }
 
@@ -203,48 +203,48 @@ private[silAST] final class PDomainFunctionApplicationTermC(
 ///////////////////////////////////////////////////////////////////////////
 sealed trait PCastTerm
   extends CastTerm
-  with ProgramTerm {
-  override val operand1: ProgramTerm = pOperand1
-  protected val pOperand1: ProgramTerm
+  with PTerm {
+  override val operand1: PTerm = pOperand1
+  protected val pOperand1: PTerm
 }
 
 object PCastTerm {
-  def unapply(t: PCastTerm): Option[(SourceLocation, ProgramTerm, DataType)] =
+  def unapply(t: PCastTerm): Option[(SourceLocation, PTerm, DataType)] =
     Some((t.sl, t.operand1, t.newType))
 }
 
 private[silAST] final class PCastTermC(
                                         sl: SourceLocation,
-                                        override val operand1: ProgramTerm,
+                                        override val operand1: PTerm,
                                         override val newType: DataType
                                         )
   extends CastTerm(sl, operand1, newType)
-  with ProgramTerm {
-  override val pSubTerms: Seq[ProgramTerm] = List(operand1)
+  with PTerm {
+  override val pSubTerms: Seq[PTerm] = List(operand1)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait PFieldReadTerm
   extends FieldReadTerm
-  with ProgramTerm {
-  override val location: ProgramTerm = pLocation
-  protected val pLocation: ProgramTerm
+  with PTerm {
+  override val location: PTerm = pLocation
+  protected val pLocation: PTerm
 }
 
 object PFieldReadTerm {
-  def unapply(t: PFieldReadTerm): Option[(SourceLocation, ProgramTerm, Field)] =
+  def unapply(t: PFieldReadTerm): Option[(SourceLocation, PTerm, Field)] =
     Some((t.sl, t.location, t.field))
 }
 
 private[silAST] final class PFieldReadTermC(
                                              sl: SourceLocation,
-                                             location: ProgramTerm,
+                                             location: PTerm,
                                              field: Field
                                              )
   extends FieldReadTerm(sl, location, field)
   with PFieldReadTerm {
-  override val pSubTerms: Seq[ProgramTerm] = List(location)
+  override val pSubTerms: Seq[PTerm] = List(location)
   override val pLocation = location
 }
 
@@ -252,24 +252,24 @@ private[silAST] final class PFieldReadTermC(
 ///////////////////////////////////////////////////////////////////////////
 sealed trait POldFieldReadTerm
   extends OldFieldReadTerm
-  with ProgramTerm {
-  override val location: ProgramTerm = pLocation
-  protected val pLocation: ProgramTerm
+  with PTerm {
+  override val location: PTerm = pLocation
+  protected val pLocation: PTerm
 }
 
 object POldFieldReadTerm {
-  def unapply(t: POldFieldReadTerm): Option[(SourceLocation, ProgramTerm, Field)] =
+  def unapply(t: POldFieldReadTerm): Option[(SourceLocation, PTerm, Field)] =
     Some((t.sl, t.location, t.field))
 }
 
 private[silAST] final class POldFieldReadTermC(
                                                 sl: SourceLocation,
-                                                location: ProgramTerm,
+                                                location: PTerm,
                                                 field: Field
                                                 )
   extends OldFieldReadTerm(sl, location, field)
   with POldFieldReadTerm {
-  override val pSubTerms: Seq[ProgramTerm] = List(location)
+  override val pSubTerms: Seq[PTerm] = List(location)
   override val pLocation = location
 }
 
@@ -279,9 +279,9 @@ private[silAST] final class POldFieldReadTermC(
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed trait DomainTerm extends Term {
-  override val subTerms: Seq[DomainTerm] = dSubTerms
-  protected val dSubTerms: Seq[DomainTerm]
+sealed trait DTerm extends Term {
+  override val subTerms: Seq[DTerm] = dSubTerms
+  protected val dSubTerms: Seq[DTerm]
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -292,7 +292,7 @@ sealed case class BoundVariableTerm protected[silAST](
                                                        variable: BoundVariable
                                                        )
   extends ASTNode(sl)
-  with DomainTerm {
+  with DTerm {
   override val toString = variable.name
 
   override val subNodes = List(variable)
@@ -305,7 +305,7 @@ sealed case class BoundVariableTerm protected[silAST](
 ///////////////////////////////////////////////////////////////////////////
 sealed trait DDomainFunctionApplicationTerm
   extends DomainFunctionApplicationTerm
-  with DomainTerm {
+  with DTerm {
   override val arguments: DTermSequence = dArguments
   protected val dArguments: DTermSequence
 }
@@ -322,7 +322,7 @@ private[silAST] final class DDomainFunctionApplicationTermC(
                                                              arguments: DTermSequence
                                                              )
   extends DomainFunctionApplicationTerm(sl, function, arguments)
-  with DomainTerm {
+  with DTerm {
   override val dSubTerms = arguments
 }
 
@@ -330,7 +330,7 @@ private[silAST] final class DDomainFunctionApplicationTermC(
 ///////////////////////////////////////////////////////////////////////////
 //Domains + Programs = General
 
-sealed trait GeneralTerm extends Term with DomainTerm with ProgramTerm {
+sealed trait GeneralTerm extends Term with DTerm with PTerm {
   override val subTerms: Seq[GeneralTerm] = gSubTerms
 
   protected override val dSubTerms = gSubTerms

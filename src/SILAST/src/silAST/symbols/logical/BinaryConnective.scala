@@ -4,7 +4,7 @@ import silAST.ASTNode
 import scala.collection.Seq
 import silAST.source.noLocation
 
-sealed abstract class BinaryBooleanOperator extends ASTNode(noLocation) {
+sealed abstract class BinaryConnective extends ASTNode(noLocation) {
 
   override def toString: String = {
     name
@@ -18,25 +18,25 @@ sealed abstract class BinaryBooleanOperator extends ASTNode(noLocation) {
 
 }
 
-abstract case class EquivalenceOperatorNode() extends BinaryBooleanOperator {
+abstract case class EquivalenceOperatorNode() extends BinaryConnective {
   def name: String = {
     "<==>"
   }
 }
 
-abstract case class ImplicationOperator() extends BinaryBooleanOperator {
+abstract case class ImplicationOperator() extends BinaryConnective {
   def name: String = {
     "==>"
   }
 }
 
-abstract case class OrOperator() extends BinaryBooleanOperator {
+abstract case class OrOperator() extends BinaryConnective {
   def name: String = {
     "||"
   }
 }
 
-abstract case class AndOperator() extends BinaryBooleanOperator {
+abstract case class AndOperator() extends BinaryConnective {
   def name: String = {
     "&&"
   }

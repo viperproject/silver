@@ -2,7 +2,7 @@ package silAST.expressions.util
 
 import silAST.ASTNode
 import silAST.source.SourceLocation
-import silAST.expressions.terms.{GeneralTerm, ProgramTerm, DomainTerm, Term}
+import silAST.expressions.terms.{GeneralTerm, PTerm, DTerm, Term}
 
 sealed class TermSequence private[silAST](
                                            val sl: SourceLocation,
@@ -18,9 +18,9 @@ sealed class TermSequence private[silAST](
 }
 
 ///////////////////////////////////////////////////////////////
-sealed trait PTermSequence extends TermSequence with Seq[ProgramTerm] {
-  override val args: Seq[ProgramTerm] = pArgs
-  protected val pArgs: Seq[ProgramTerm]
+sealed trait PTermSequence extends TermSequence with Seq[PTerm] {
+  override val args: Seq[PTerm] = pArgs
+  protected val pArgs: Seq[PTerm]
 
   override def apply(idx: Int) = args(idx)
 
@@ -29,15 +29,15 @@ sealed trait PTermSequence extends TermSequence with Seq[ProgramTerm] {
 
 private[silAST] final class PTermSequenceC(
                                             sl: SourceLocation,
-                                            args: Seq[ProgramTerm]
+                                            args: Seq[PTerm]
                                             ) extends TermSequence(sl, args) with PTermSequence {
   override val pArgs = args
 }
 
 ///////////////////////////////////////////////////////////////
-sealed trait DTermSequence extends TermSequence with Seq[DomainTerm] {
-  override val args: Seq[DomainTerm] = dArgs
-  protected val dArgs: Seq[DomainTerm]
+sealed trait DTermSequence extends TermSequence with Seq[DTerm] {
+  override val args: Seq[DTerm] = dArgs
+  protected val dArgs: Seq[DTerm]
 
   override def apply(idx: Int) = args(idx)
 
@@ -46,7 +46,7 @@ sealed trait DTermSequence extends TermSequence with Seq[DomainTerm] {
 
 private[silAST] final class DTermSequenceC(
                                             sl: SourceLocation,
-                                            args: Seq[DomainTerm]
+                                            args: Seq[DTerm]
                                             ) extends TermSequence(sl, args) with DTermSequence {
   override val dArgs = args
 }

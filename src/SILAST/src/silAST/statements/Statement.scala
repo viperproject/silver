@@ -1,7 +1,7 @@
 package silAST.statements
 
 import silAST.ASTNode
-import silAST.expressions.ProgramExpression
+import silAST.expressions.PExpression
 import silAST.symbols.{ProgramVariableSequence, Method, Field, ProgramVariable}
 import silAST.types.DataType
 import silAST.expressions.Expression
@@ -25,7 +25,7 @@ sealed abstract class Statement private[silAST](
 final case class Assignment private[silAST](
                                              sl: SourceLocation,
                                              target: ProgramVariable,
-                                             source: ProgramExpression
+                                             source: PExpression
                                              )
   extends Statement(sl) {
   override def toString: String = target.name + ":=" + source.toString
@@ -41,7 +41,7 @@ case class FieldAssignment private[silAST](
                                             sl: SourceLocation,
                                             target: ProgramVariable,
                                             field: Field,
-                                            source: ProgramExpression
+                                            source: PExpression
                                             )
   extends Statement(sl) {
   override def toString: String = target.name + "." + field.name + " := " + source.toString
@@ -72,7 +72,7 @@ final case class CallStatement private[silAST]
 (
   sl: SourceLocation,
   targets: ProgramVariableSequence,
-  receiver: ProgramExpression,
+  receiver: PExpression,
   method: Method,
   arguments: PTermSequence
   )

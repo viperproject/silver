@@ -4,17 +4,12 @@ import silAST.source.SourceLocation
 import silAST.types.{NonReferenceDataType, DataType}
 import collection.mutable.{HashSet, HashMap}
 import silAST.symbols._
-import silAST.expressions._
-import silAST.domains.{DomainPredicate, DomainFactory}
-import silAST.expressions.util.{DTermSequence, PTermSequence, TermSequence}
-import terms.{GeneralTerm, DomainTerm, Term, ProgramTerm}
-import silAST.ASTNode
+import silAST.domains.DomainFactory
 
 final class ProgramFactory(
                             val name: String
-                            ) extends NodeFactory with ExpressionFactory{
-
-
+                            ) extends NodeFactory with ExpressionFactory
+{
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   def getDomainFactory(name: String): DomainFactory =

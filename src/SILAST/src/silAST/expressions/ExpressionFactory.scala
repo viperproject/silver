@@ -8,8 +8,8 @@ val programFactory : ProgramFactory
 
 def makeEqualityExpression(
 sl : SourceLocation,
-t1 : ProgramTerm,
-t2 : ProgramTerm
+t1 : PTerm,
+t2 : PTerm
 ) : PEqualityExpression  = {
 require (terms.contains(t1))
 require (terms.contains(t2))
@@ -20,7 +20,7 @@ expressions.getOrElseUpdate(result.toString,result)
 result
 }
 
-val terms = new HashSet[ProgramTerm]
-val expressions = new HashSet[ProgramExpression]
+val terms = new HashSet[PTerm]
+val expressions = new HashSet[PExpression]
 }
 */
