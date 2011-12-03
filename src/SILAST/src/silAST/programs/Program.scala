@@ -1,12 +1,9 @@
 package silAST.programs
 
-import silAST.symbols.Field
-import silAST.symbols.Method
 import silAST.ASTNode
 import silAST.domains.Domain
-import silAST.symbols.Predicate
-import silAST.symbols.Function
 import silAST.source.SourceLocation
+import symbols.{Method, Field,Predicate,Function}
 
 
 final class Program private[silAST](

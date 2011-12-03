@@ -6,6 +6,7 @@ import collection.mutable.HashMap
 import silAST.symbols._
 import silAST.domains.DomainFactory
 import silAST.expressions.ExpressionFactory
+import symbols.{ReferenceField, Field, NonReferenceField, MethodFactory}
 
 final class ProgramFactory(
                             val name: String

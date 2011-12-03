@@ -1,4 +1,4 @@
-package silAST.symbols
+package silAST.programs.symbols
 
 import silAST.ASTNode
 import silAST.source.SourceLocation
@@ -10,5 +10,5 @@ final class Function private[silAST](
                                       ) extends ASTNode(sl) {
   override def toString = signature.receiverType.toString + "." + name + signature.toString
 
-  override def subNodes = signature :: Nil
+  override def subNodes = List(signature)
 }

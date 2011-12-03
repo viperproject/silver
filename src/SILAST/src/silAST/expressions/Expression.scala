@@ -6,11 +6,11 @@ import silAST.domains.DomainPredicate
 import silAST.expressions.terms.permission.PermissionTerm
 import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
-import silAST.symbols.Predicate
 import silAST.ASTNode
 import silAST.source.SourceLocation
 import terms.{GTerm, Term, PTerm, DTerm}
 import util.{GTermSequence, TermSequence, PTermSequence, DTermSequence}
+import silAST.programs.symbols.Predicate
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////

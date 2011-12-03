@@ -4,7 +4,7 @@ import silAST.source.SourceLocation
 import silAST.domains.DomainFunction
 import silAST.programs.NodeFactory
 import silAST.types.DataType
-import silAST.symbols.{Field, Function}
+import silAST.programs.symbols.{Field,Function}
 import silAST.expressions.util.{DTermSequence, TermSequence, PTermSequence, GTermSequence}
 
 protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory

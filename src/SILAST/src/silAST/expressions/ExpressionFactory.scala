@@ -7,9 +7,9 @@ import silAST.domains.DomainPredicate
 import terms._
 import terms.permission.PermissionTerm
 import util._
-import silAST.symbols.Predicate
 import silAST.symbols.logical.quantification.{BoundVariable, Quantifier}
 import silAST.programs.NodeFactory
+import silAST.programs.symbols.Predicate
 
 
 trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpressionFactory with TermFactory{

@@ -1,12 +1,12 @@
 package silAST.expressions.terms
 
 import silAST.symbols.logical.quantification.BoundVariable
-import silAST.symbols.{ProgramVariable, Field, Function}
 import silAST.types.DataType
 import silAST.{AtomicNode, ASTNode}
 import silAST.domains.DomainFunction
 import silAST.source.SourceLocation
 import silAST.expressions.util.{GTermSequence, DTermSequence, PTermSequence, TermSequence}
+import silAST.programs.symbols.{ProgramVariable, Field,Function}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////

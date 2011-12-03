@@ -2,12 +2,12 @@ package silAST.statements
 
 import silAST.ASTNode
 import silAST.expressions.PExpression
-import silAST.symbols.{ProgramVariableSequence, Method, Field, ProgramVariable}
 import silAST.types.DataType
 import silAST.expressions.Expression
 import silAST.expressions.PredicateExpression
 import silAST.source.SourceLocation
 import silAST.expressions.util.PTermSequence
+import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable,Method}
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////

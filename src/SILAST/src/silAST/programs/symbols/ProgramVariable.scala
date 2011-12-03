@@ -1,4 +1,4 @@
-package silAST.symbols
+package silAST.programs.symbols
 
 import silAST.ASTNode
 import silAST.types.DataType

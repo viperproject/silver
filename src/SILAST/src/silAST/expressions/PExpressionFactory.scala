@@ -1,13 +1,13 @@
 package silAST.expressions
 
 import collection.mutable.HashMap
-import silAST.symbols.Predicate
 import silAST.source.SourceLocation
 import silAST.domains.DomainPredicate
 import terms.{PTermFactory, PTerm, GTerm}
 import util.{GTermSequence, PTermSequence}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.programs.NodeFactory
+import silAST.programs.symbols.Predicate
 
 
 trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermFactory

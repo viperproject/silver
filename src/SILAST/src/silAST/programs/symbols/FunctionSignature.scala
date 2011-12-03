@@ -1,10 +1,11 @@
-package silAST.symbols
+package silAST.programs.symbols
 
 import silAST.ASTNode
 import silAST.expressions.terms.Term
 import silAST.types.DataType
 import silAST.source.SourceLocation
 import silAST.expressions.util.ExpressionSequence
+import silAST.symbols.DataTypeSequence
 
 final class FunctionSignature private[silAST](
                                                sl: SourceLocation,
