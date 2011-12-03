@@ -2,7 +2,7 @@ package silAST.expressions.util
 
 import silAST.ASTNode
 import silAST.source.SourceLocation
-import silAST.expressions.terms.{GeneralTerm, PTerm, DTerm, Term}
+import silAST.expressions.terms.{GTerm, PTerm, DTerm, Term}
 
 sealed class TermSequence private[silAST](
                                            val sl: SourceLocation,
@@ -55,8 +55,8 @@ private[silAST] final class DTermSequenceC(
 ///////////////////////////////////////////////////////////////
 final class GTermSequence private[silAST](
                                            sl: SourceLocation,
-                                           override val args: Seq[GeneralTerm]
-                                           ) extends TermSequence(sl, args) with DTermSequence with PTermSequence with Seq[GeneralTerm] {
+                                           override val args: Seq[GTerm]
+                                           ) extends TermSequence(sl, args) with DTermSequence with PTermSequence with Seq[GTerm] {
   override def apply(idx: Int) = args(idx)
 
   override def iterator = args.iterator

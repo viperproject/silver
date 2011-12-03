@@ -1,11 +1,12 @@
 package silAST.programs
 
 import silAST.source.SourceLocation
-import silAST.expressions.terms.{DTerm, PTerm, GeneralTerm, Term}
+import silAST.expressions.terms.{DTerm, PTerm, GTerm, Term}
 import silAST.expressions._
 import collection.mutable.HashSet
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.domains.DomainPredicate
+import terms.permission.PermissionTerm
 import util._
 import silAST.symbols.Predicate
 import silAST.symbols.logical.quantification.{BoundVariable, Quantifier}
@@ -72,7 +73,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
     require(terms.contains(t2))
 
     (t1, t2) match {
-      case (t1: GeneralTerm, t2: GeneralTerm) => makeGEqualityExpression(sl,t1,t2)
+      case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sl,t1,t2)
       case (t1: PTerm, t2: PTerm) => makePEqualityExpression(sl,t1,t2)
       case (t1: DTerm, t2: DTerm)   => makeDEqualityExpression(sl,t1,t2)
       case _ =>  addExpression ( new EqualityExpression(sl, t1, t2) )
@@ -97,4 +98,24 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
     }
   }
 
+  //////////////////////////////////////////////////////////////////////////
+  def makePermissionExpression(sl: SourceLocation,r: Term,p: PermissionTerm) : PermissionExpression =
+  {
+    require(terms.contains(r))
+    require(permissionTerms.contains(p))
+
+    addExpression(new PermissionExpression(sl,r,p))
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  def makeUnfoldingExpression(sl: SourceLocation, p : Term, e : Expression) : UnfoldingExpression =
+  {
+    require(terms.contains(p))
+    require(expressions.contains(e))
+
+    addExpression(new UnfoldingExpression(sl,p,e))
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  protected[silAST] val permissionTerms = new HashSet[PermissionTerm]
 }

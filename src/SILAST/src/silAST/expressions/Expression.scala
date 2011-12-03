@@ -9,7 +9,7 @@ import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.symbols.Predicate
 import silAST.ASTNode
 import silAST.source.SourceLocation
-import terms.{GeneralTerm, Term, PTerm, DTerm}
+import terms.{GTerm, Term, PTerm, DTerm}
 import util.{GTermSequence, TermSequence, PTermSequence, DTermSequence}
 
 ///////////////////////////////////////////////////////////////////////////
@@ -432,8 +432,8 @@ sealed trait GExpression
 ///////////////////////////////////////////////////////////////////////////
 final class GEqualityExpression private[silAST] (
                                                  sl: SourceLocation,
-                                                 override val term1: GeneralTerm,
-                                                 override val term2: GeneralTerm
+                                                 override val term1: GTerm,
+                                                 override val term2: GTerm
                                                  )
   extends EqualityExpression(sl, term1, term2)
   with PEqualityExpression with DEqualityExpression with GExpression

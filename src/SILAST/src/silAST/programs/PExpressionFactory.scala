@@ -4,7 +4,7 @@ import collection.mutable.HashMap
 import silAST.symbols.{Predicate,Function}
 import silAST.source.SourceLocation
 import silAST.expressions._
-import terms.{PTerm, GeneralTerm}
+import terms.{PTerm, GTerm}
 import silAST.domains.DomainPredicate
 import util.{GTermSequence, PTermSequence}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
@@ -60,7 +60,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory
     require(terms.contains(t2))
 
     (t1, t2) match {
-      case (t1: GeneralTerm, t2: GeneralTerm) => makeGEqualityExpression(sl,t1,t2)
+      case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sl,t1,t2)
       case _ =>  addExpression ( new PEqualityExpressionC(sl, t1, t2) )
     }
   }

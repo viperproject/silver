@@ -6,7 +6,7 @@ import collection.mutable.{HashSet, HashMap}
 import silAST.expressions.util.{GTermSequence, ExpressionSequence, TermSequence}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.expressions._
-import terms.{GeneralTerm, Term}
+import terms.{GTerm, Term}
 
 
 private[silAST] trait GExpressionFactory extends NodeFactory
@@ -38,8 +38,8 @@ private[silAST] trait GExpressionFactory extends NodeFactory
   //////////////////////////////////////////////////////////////////////////
   def makeGEqualityExpression(
                               sl: SourceLocation,
-                              t1: GeneralTerm,
-                              t2: GeneralTerm
+                              t1: GTerm,
+                              t2: GTerm
                               ): GEqualityExpression =
   {
     require(terms.contains(t1))

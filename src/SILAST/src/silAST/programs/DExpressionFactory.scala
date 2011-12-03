@@ -4,7 +4,7 @@ import silAST.domains.{DomainFunction, DomainPredicate, DomainFactory}
 import silAST.source.SourceLocation
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.expressions._
-import terms.{GeneralTerm, DTerm}
+import terms.{GTerm, DTerm}
 import util.{GTermSequence, DTermSequence}
 import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
 import collection.mutable.{HashSet, HashMap}
@@ -51,7 +51,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory
     require(terms.contains(t2))
 
     (t1, t2) match {
-      case (t1: GeneralTerm, t2: GeneralTerm) => makeGEqualityExpression(sl,t1,t2)
+      case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sl,t1,t2)
       case _ =>  addExpression[DEqualityExpression]( new DEqualityExpressionC(sl, t1, t2) )
     }
   }
