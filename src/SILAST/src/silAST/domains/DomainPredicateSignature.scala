@@ -2,7 +2,7 @@ package silAST.domains
 
 import silAST.ASTNode
 import silAST.source.SourceLocation
-import silAST.symbols.DataTypeSequence
+import silAST.types.DataTypeSequence
 
 final class DomainPredicateSignature private[silAST](
                                                       sl: SourceLocation,

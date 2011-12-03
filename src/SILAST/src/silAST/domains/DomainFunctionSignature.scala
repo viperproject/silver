@@ -2,7 +2,7 @@ package silAST.domains
 
 import silAST.ASTNode
 import silAST.types.DataType
-import silAST.symbols.DataTypeSequence
+import silAST.types.DataTypeSequence
 import silAST.source.SourceLocation
 
 final class DomainFunctionSignature private[silAST](

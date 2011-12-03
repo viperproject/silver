@@ -4,10 +4,9 @@ import silAST.source.SourceLocation
 import collection.mutable.{HashMap, HashSet}
 import silAST.domains.DomainFunction
 import silAST.programs.NodeFactory
-import silAST.types.DataType
 import silAST.expressions.util.{PTermSequence, GTermSequence}
 import silAST.programs.symbols.{Field, ProgramVariable,Function}
-import silAST.symbols.DataTypeSequence
+import silAST.types.{DataTypeSequence, DataType}
 
 protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory
 {
