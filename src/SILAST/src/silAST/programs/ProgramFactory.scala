@@ -20,6 +20,10 @@ final class ProgramFactory(
   def getMethodFactory(name: String): MethodFactory =
     methodFactories.getOrElseUpdate(name, new MethodFactory(this, name))
 
+
+  //////////////////////////////////////////////////////////////////////////
+  //@Symbol construction
+  //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   def defineDomainField(sl: SourceLocation, name: String, dataType: NonReferenceDataType): Field = {
     require(dataTypes.contains(dataType))
@@ -31,11 +35,6 @@ final class ProgramFactory(
     defineField(new ReferenceField(sl, name))
   }
 
-
-  //////////////////////////////////////////////////////////////////////////
-  //@Symbol construction
-  //////////////////////////////////////////////////////////////////////////
-
   def defineField(field: Field): Field = {
     require(!fields.contains(field.name))
 
@@ -46,13 +45,6 @@ final class ProgramFactory(
 
   //////////////////////////////////////////////////////////////////////////
   def defineDataTypeSequence(types: List[DataType]): DataTypeSequence = {
-    require(types.forall(dataTypes.contains(_)))
-
-    dataTypeSequences.getOrElseUpdate(types, new DataTypeSequence(types))
-  }
-
-  //////////////////////////////////////////////////////////////////////////
-  def defineFunctionSignature(types: List[DataType]): DataTypeSequence = {
     require(types.forall(dataTypes.contains(_)))
 
     dataTypeSequences.getOrElseUpdate(types, new DataTypeSequence(types))

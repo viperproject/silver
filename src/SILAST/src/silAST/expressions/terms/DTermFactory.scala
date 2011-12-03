@@ -6,9 +6,18 @@ import silAST.symbols.logical.quantification.BoundVariable
 import collection.mutable.HashSet
 import silAST.domains.DomainFunction
 import silAST.expressions.util.{DTermSequence, GTermSequence}
+import silAST.types.DataType
 
 
 trait DTermFactory extends NodeFactory with GTermFactory{
+
+  /////////////////////////////////////////////////////////////////////////
+  def makeBoundVariable(sl:SourceLocation,name : String,  dataType : DataType) : BoundVariable =
+  {
+    val result = new BoundVariable(sl, name, dataType)
+    boundVariables += result
+    result
+  }
 
   /////////////////////////////////////////////////////////////////////////
   def makeBoundVariableTerm(sl : SourceLocation, v : BoundVariable) : BoundVariableTerm =
