@@ -1,8 +1,9 @@
-package silAST.programs.symbols
+package silAST.methods
 
 import silAST.ASTNode
 import silAST.expressions.util.ExpressionSequence
 import silAST.source.SourceLocation
+import silAST.programs.symbols.{ProgramVariable, ProgramVariableSequence}
 
 final class MethodSignature private[silAST](
                                              sl: SourceLocation,

@@ -3,7 +3,8 @@ package silAST.programs
 import silAST.ASTNode
 import silAST.domains.Domain
 import silAST.source.SourceLocation
-import symbols.{Method, Field,Predicate,Function}
+import symbols.{ Field,Predicate,Function}
+import silAST.methods.Method
 
 
 final class Program private[silAST](

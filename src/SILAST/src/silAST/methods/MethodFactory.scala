@@ -1,4 +1,4 @@
-package silAST.programs.symbols
+package silAST.methods
 
 import silAST.programs.ProgramFactory
 

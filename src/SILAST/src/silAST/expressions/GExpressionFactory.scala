@@ -52,7 +52,7 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  protected def addExpression[E <: Expression](e: E)  : E = {
+  protected[silAST] def addExpression[E <: Expression](e: E)  : E = {
     expressions += e
     nodeMap += e.sourceLocation -> e    //Overrides sub expressions - always largest in the map
     e

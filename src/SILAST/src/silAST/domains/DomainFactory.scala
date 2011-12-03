@@ -2,15 +2,15 @@ package silAST.domains
 
 import silAST.programs.{NodeFactory, ProgramFactory}
 import silAST.expressions.terms.Term
-import silAST.types.{DataTypeSequence, DataType}
 import silAST.source.SourceLocation
 import silAST.expressions.{DExpression, Expression, DExpressionFactory}
 import collection.mutable.{HashMap, HashSet}
+import silAST.types.{DataTypeFactory, DataTypeSequence, DataType}
 
 final class DomainFactory private[silAST](
      val programFactory: ProgramFactory,
      val name: String
-     ) extends NodeFactory with DExpressionFactory
+     ) extends NodeFactory with DExpressionFactory with DataTypeFactory
 {
   /////////////////////////////////////////////////////////////////////////
   def defineDomainFunctionSignature(sl : SourceLocation, p : DataTypeSequence, r : DataType) : DomainFunctionSignature =
@@ -36,7 +36,6 @@ final class DomainFactory private[silAST](
   def defineDomainPredicateSignature(sl : SourceLocation, p : DataTypeSequence) : DomainPredicateSignature =
   {
     require (dataTypeSequences.contains(p))
-    require (dataTypes.contains(r))
     val result = new DomainPredicateSignature(sl,p)
     domainPredicateSignatures += result
     result
@@ -79,5 +78,5 @@ final class DomainFactory private[silAST](
   protected[silAST] val domainFunctionSignatures = new HashSet[DomainFunctionSignature]
   protected[silAST] val domainPredicateSignatures = new HashSet[DomainPredicateSignature]
 
- protected[silAST] val domainAxioms = new HashMap[String, DomainAxiom]
+  protected[silAST] val domainAxioms = new HashMap[String, DomainAxiom]
 }

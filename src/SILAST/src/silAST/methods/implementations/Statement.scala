@@ -1,4 +1,4 @@
-package silAST.statements
+package silAST.methods.implementations
 
 import silAST.ASTNode
 import silAST.expressions.PExpression
@@ -7,7 +7,8 @@ import silAST.expressions.Expression
 import silAST.expressions.PredicateExpression
 import silAST.source.SourceLocation
 import silAST.expressions.util.PTermSequence
-import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable,Method}
+import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
+import silAST.methods.Method
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -16,6 +17,12 @@ sealed abstract class Statement private[silAST](
                                                  ) extends ASTNode(sl) {
   override def toString: String
 }
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+
 
 
 //////////////////////////////////////////////////////////////////////////////

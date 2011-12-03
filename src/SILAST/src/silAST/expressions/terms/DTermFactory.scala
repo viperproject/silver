@@ -14,7 +14,7 @@ trait DTermFactory extends NodeFactory with GTermFactory{
   /////////////////////////////////////////////////////////////////////////
   def makeBoundVariable(sl:SourceLocation,name : String,  dataType : DataType) : BoundVariable =
   {
-    val result = new BoundVariable(sl, name, dataType)
+    val result : BoundVariable = new BoundVariable(sl, name, dataType)
     boundVariables += result
     result
   }

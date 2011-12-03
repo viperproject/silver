@@ -1,4 +1,4 @@
-package silAST.statements
+package silAST.methods.implementations
 
 import scala.collection.Seq
 import silAST.ASTNode

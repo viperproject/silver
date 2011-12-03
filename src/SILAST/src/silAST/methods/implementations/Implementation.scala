@@ -1,8 +1,9 @@
-package silAST.programs.symbols
+package silAST.methods.implementations
 
 import silAST.ASTNode
 import silAST.source.SourceLocation
-import silAST.statements.ControlFlowGraph
+import silAST.methods.Method
+import silAST.programs.symbols.ProgramVariable
 
 final class Implementation private[silAST](
                                             sl: SourceLocation,

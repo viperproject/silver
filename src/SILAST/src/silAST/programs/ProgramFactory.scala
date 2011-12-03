@@ -4,8 +4,9 @@ import silAST.source.SourceLocation
 import collection.mutable.HashMap
 import silAST.domains.DomainFactory
 import silAST.expressions.ExpressionFactory
-import symbols.{ReferenceField, Field, NonReferenceField, MethodFactory}
+import symbols.{ReferenceField, Field, NonReferenceField}
 import silAST.types.{DataTypeSequence, NonReferenceDataType, DataType}
+import silAST.methods.MethodFactory
 
 final class ProgramFactory(
                             val name: String

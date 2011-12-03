@@ -1,4 +1,4 @@
-package silAST.statements
+package silAST.methods.implementations
 
 import silAST.ASTNode
 import silAST.expressions.Expression

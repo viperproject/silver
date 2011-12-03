@@ -1,5 +1,6 @@
-package silAST.programs.symbols
+package silAST.methods
 
+import implementations.Implementation
 import silAST.ASTNode
 import silAST.source.SourceLocation
 
