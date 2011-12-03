@@ -1,16 +1,17 @@
-package silAST.programs
+package silAST.expressions
 
 import collection.mutable.HashMap
 import silAST.symbols.{Predicate,Function}
 import silAST.source.SourceLocation
 import silAST.expressions._
-import terms.{PTerm, GTerm}
 import silAST.domains.DomainPredicate
+import terms.{PTermFactory, PTerm, GTerm}
 import util.{GTermSequence, PTermSequence}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
+import silAST.programs.NodeFactory
 
 
-trait PExpressionFactory extends NodeFactory with GExpressionFactory
+trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermFactory
 {
   //////////////////////////////////////////////////////////////////////////
   def makePDomainPredicateExpression(sl: SourceLocation,p : DomainPredicate, args : PTermSequence): PDomainPredicateExpression =
@@ -68,6 +69,5 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   protected val predicates = new HashMap[String, Predicate]
-  protected val functions  = new HashMap[String, Function]
 
 }

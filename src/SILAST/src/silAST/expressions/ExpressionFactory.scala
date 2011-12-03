@@ -1,18 +1,19 @@
-package silAST.programs
+package silAST.expressions
 
 import silAST.source.SourceLocation
-import silAST.expressions.terms.{DTerm, PTerm, GTerm, Term}
 import silAST.expressions._
 import collection.mutable.HashSet
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.domains.DomainPredicate
+import terms._
 import terms.permission.PermissionTerm
 import util._
 import silAST.symbols.Predicate
 import silAST.symbols.logical.quantification.{BoundVariable, Quantifier}
+import silAST.programs.NodeFactory
 
 
-trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpressionFactory{
+trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpressionFactory with TermFactory{
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   def makeUnaryExpression(sl: SourceLocation,op:UnaryConnective,e1: Expression): UnaryExpression = {

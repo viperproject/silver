@@ -1,15 +1,15 @@
-package silAST.programs
+package silAST.expressions
 
-import silAST.domains.{DomainFunction, DomainPredicate}
+import silAST.domains.DomainPredicate
 import silAST.source.SourceLocation
 import collection.mutable.{HashSet, HashMap}
-import silAST.expressions.util.{GTermSequence, ExpressionSequence, TermSequence}
+import silAST.expressions.util.{GTermSequence, ExpressionSequence}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
-import silAST.expressions._
-import terms.{GTerm, Term}
+import terms.{GTermFactory, GTerm}
+import silAST.programs.NodeFactory
 
 
-private[silAST] trait GExpressionFactory extends NodeFactory
+private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory
 {
   //////////////////////////////////////////////////////////////////////////
   def makeGUnaryExpression(sl: SourceLocation,op:UnaryConnective,e1: GExpression): GUnaryExpression = {
@@ -53,18 +53,16 @@ private[silAST] trait GExpressionFactory extends NodeFactory
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   protected def addExpression[E <: Expression](e: E)  : E = {
-    expressions + e
+    expressions += e
     nodeMap += e.sourceLocation -> e    //Overrides sub expressions - always largest in the map
     e
   }
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  protected val terms = new HashSet[Term]
+
   protected val expressions = new HashSet[Expression]
 
-  protected val termSequences = new HashSet[TermSequence]
   protected val expressionSequences = new HashSet[ExpressionSequence]
   protected val domainPredicates = new HashMap[String, DomainPredicate]
-  protected val domainFunctions  = new HashMap[String, DomainFunction]
 
 }

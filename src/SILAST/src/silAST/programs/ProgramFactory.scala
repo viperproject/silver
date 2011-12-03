@@ -5,6 +5,7 @@ import silAST.types.{NonReferenceDataType, DataType}
 import collection.mutable.{HashSet, HashMap}
 import silAST.symbols._
 import silAST.domains.DomainFactory
+import silAST.expressions.ExpressionFactory
 
 final class ProgramFactory(
                             val name: String
@@ -63,10 +64,6 @@ final class ProgramFactory(
   private val domainFactories = new HashMap[String, DomainFactory]
   private val methodFactories = new HashMap[String, MethodFactory]
 
-  private val fields = new HashMap[String, Field]
-  private val dataTypes = new HashSet[DataType]
-
-  private val dataTypeSequences = new HashMap[List[DataType], DataTypeSequence]
 }
 
 }

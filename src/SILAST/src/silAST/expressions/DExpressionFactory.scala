@@ -1,16 +1,17 @@
-package silAST.programs
+package silAST.expressions
 
 import silAST.domains.{DomainFunction, DomainPredicate, DomainFactory}
 import silAST.source.SourceLocation
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.expressions._
-import terms.{GTerm, DTerm}
+import terms.{DTermFactory, GTerm, DTerm}
 import util.{GTermSequence, DTermSequence}
 import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
 import collection.mutable.{HashSet, HashMap}
+import silAST.programs.NodeFactory
 
 
-trait DExpressionFactory extends NodeFactory with GExpressionFactory
+trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermFactory
 {
   //////////////////////////////////////////////////////////////////////////
   def makeDUnaryExpression(sl: SourceLocation,op:UnaryConnective,e1: DExpression): DUnaryExpression = {
@@ -70,7 +71,6 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] val boundVariables = new HashSet[BoundVariable]
   protected[silAST] val boundVariableMap = new HashMap[BoundVariable,QuantifierExpression]
 
 }
