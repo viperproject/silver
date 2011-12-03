@@ -420,8 +420,12 @@ final class DQuantifierExpression private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait GeneralExpression
-  extends Expression with DomainExpression with ProgramExpression {
+  extends Expression with DomainExpression with ProgramExpression
+{
   override val subExpressions: Seq[GeneralExpression] = gSubExpressions
+  protected[expressions] final override val pSubExpressions = subExpressions
+  protected[expressions] final override val dSubExpressions = subExpressions
+
   protected[expressions] val gSubExpressions: Seq[GeneralExpression]
 }
 
@@ -435,11 +439,53 @@ final class GEqualityExpression private[silAST] (
   with PEqualityExpression with DEqualityExpression with GeneralExpression
 {
   override val subExpressions : Seq[GeneralExpression] = Nil
-  protected[expressions] override val pSubExpressions = subExpressions
-  protected[expressions] override val dSubExpressions = subExpressions
   protected[expressions] override val gSubExpressions = subExpressions
   protected[expressions] override val pTerm1 = term1
   protected[expressions] override val pTerm2 = term2
   protected[expressions] override val dTerm1 = term1
   protected[expressions] override val dTerm2 = term2
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final class GUnaryBooleanExpression private[silAST](
+   sl: SourceLocation,
+   operator: UnaryBooleanOperator,
+   override val operand1: GeneralExpression
+  ) extends UnaryBooleanExpression(sl,operator,operand1)
+  with PUnaryBooleanExpression
+  with DUnaryBooleanExpression
+  with GeneralExpression
+{
+  override val subNodes = List(operator,operand1)
+
+  override val subExpressions = List(operand1)
+  protected[expressions] override val gSubExpressions = subExpressions
+  protected[expressions] override val pOperand1 = operand1
+  protected[expressions] override val dOperand1 = operand1
+
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final class GBinaryBooleanExpression private[silAST](
+    sl: SourceLocation,
+    operator: BinaryBooleanOperator,
+    override val operand1: GeneralExpression,
+    override val operand2: GeneralExpression
+    ) extends BinaryBooleanExpression(sl,operator,operand1,operand2)
+  with PBinaryBooleanExpression
+  with DBinaryBooleanExpression
+  with GeneralExpression
+{
+
+  override val subNodes = List(operand1,operator,operand2)
+
+  override val subExpressions = List(operand1,operand2)
+
+  protected[expressions] override val gSubExpressions = subExpressions
+  protected[expressions] override val pOperand1 = operand1
+  protected[expressions] override val dOperand1 = operand1
+  protected[expressions] override val pOperand2 = operand2
+  protected[expressions] override val dOperand2 = operand2
 }
