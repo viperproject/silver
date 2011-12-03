@@ -8,7 +8,7 @@ import silAST.symbols._
 import silAST.expressions._
 import silAST.domains.{DomainPredicate, DomainFactory}
 import terms.{DomainTerm, Term, ProgramTerm}
-import silAST.expressions.util.GenericTermSequence.{DTermSequence, PTermSequence, TermSequence}
+import silAST.expressions.util.{DTermSequence, PTermSequence, TermSequence}
 
 final class ProgramFactory(
     val name : String

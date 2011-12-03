@@ -7,7 +7,7 @@ import silAST.types.DataType
 import silAST.expressions.Expression
 import silAST.expressions.PredicateExpression
 import silAST.source.SourceLocation
-import silAST.expressions.util.GenericTermSequence.PTermSequence
+import silAST.expressions.util.PTermSequence
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////

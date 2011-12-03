@@ -1,7 +1,7 @@
 package silAST.symbols
 
 import silAST.ASTNode
-import silAST.expressions.util.GenericExpressionSequence.ExpressionSequence
+import silAST.expressions.util.ExpressionSequence
 import silAST.source.SourceLocation
 
 final class MethodSignature private[silAST](

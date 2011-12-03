@@ -6,7 +6,7 @@ import silAST.types.DataType
 import silAST.{AtomicNode, ASTNode}
 import silAST.domains.DomainFunction
 import silAST.source.SourceLocation
-import silAST.expressions.util.GenericTermSequence.{GTermSequence, DTermSequence, PTermSequence, TermSequence}
+import silAST.expressions.util.{GTermSequence, DTermSequence, PTermSequence, TermSequence}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
