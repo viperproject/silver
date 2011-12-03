@@ -5,10 +5,10 @@ import silAST.types.DataType
 import silAST.source.SourceLocation
 
 class ProgramVariable(
-  sl : SourceLocation,
-  val name: String,
-  val dataType: DataType
-)extends ASTNode(sl) {
+                       sl: SourceLocation,
+                       val name: String,
+                       val dataType: DataType
+                       ) extends ASTNode(sl) {
 
   override def toString: String = name
 

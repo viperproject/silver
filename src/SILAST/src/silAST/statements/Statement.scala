@@ -12,9 +12,8 @@ import silAST.expressions.util.PTermSequence
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 sealed abstract class Statement private[silAST](
-  sl : SourceLocation
-) extends ASTNode(sl)
-{
+                                                 sl: SourceLocation
+                                                 ) extends ASTNode(sl) {
   override def toString: String
 }
 
@@ -23,11 +22,11 @@ sealed abstract class Statement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class Assignment private [silAST](
-                                sl : SourceLocation,
-                                target: ProgramVariable,
-                                source: ProgramExpression
-                                )
+final case class Assignment private[silAST](
+                                             sl: SourceLocation,
+                                             target: ProgramVariable,
+                                             source: ProgramExpression
+                                             )
   extends Statement(sl) {
   override def toString: String = target.name + ":=" + source.toString
 
@@ -38,12 +37,12 @@ final case class Assignment private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class FieldAssignment private [silAST](
-                                     sl : SourceLocation,
-                                     target: ProgramVariable,
-                                     field: Field,
-                                     source: ProgramExpression
-                                     )
+case class FieldAssignment private[silAST](
+                                            sl: SourceLocation,
+                                            target: ProgramVariable,
+                                            field: Field,
+                                            source: ProgramExpression
+                                            )
   extends Statement(sl) {
   override def toString: String = target.name + "." + field.name + " := " + source.toString
 
@@ -54,13 +53,12 @@ case class FieldAssignment private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class NewStatement private [silAST](
-                                  sl : SourceLocation,
-                                  target: ProgramVariable,
-                                  dataType: DataType
-                                  )
-  extends Statement(sl)
-{
+case class NewStatement private[silAST](
+                                         sl: SourceLocation,
+                                         target: ProgramVariable,
+                                         dataType: DataType
+                                         )
+  extends Statement(sl) {
   override def toString: String = target.name + ":= new " + dataType.toString
 
   override def subNodes: Seq[ASTNode] = List(target, dataType)
@@ -70,14 +68,14 @@ case class NewStatement private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class CallStatement private [silAST]
-    (
-            sl : SourceLocation,
-            targets: ProgramVariableSequence,
-            receiver: ProgramExpression,
-            method: Method,
-            arguments: PTermSequence
-    )
+final case class CallStatement private[silAST]
+(
+  sl: SourceLocation,
+  targets: ProgramVariableSequence,
+  receiver: ProgramExpression,
+  method: Method,
+  arguments: PTermSequence
+  )
   extends Statement(sl) {
   override def toString: String = targets.toString + " := " + receiver.toString + "." + method.name + arguments.toString
 
@@ -88,12 +86,11 @@ final case class CallStatement private [silAST]
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class Inhale private [silAST](
-                  sl : SourceLocation,
-                  expression: Expression
-            )
-  extends Statement(sl)
-{
+final case class Inhale private[silAST](
+                                         sl: SourceLocation,
+                                         expression: Expression
+                                         )
+  extends Statement(sl) {
   override def toString: String = "inhale " + expression.toString
 
   override def subNodes: Seq[ASTNode] = List(expression)
@@ -103,12 +100,11 @@ final case class Inhale private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class Exhale private [silAST](
-                            sl : SourceLocation,
-                            expression: Expression
-                            )
-  extends Statement(sl)
-{
+final case class Exhale private[silAST](
+                                         sl: SourceLocation,
+                                         expression: Expression
+                                         )
+  extends Statement(sl) {
   override def toString: String = "exhale " + expression.toString
 
   override def subNodes: Seq[ASTNode] = List(expression)
@@ -119,10 +115,10 @@ final case class Exhale private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //TODO:fold/unfold arrays?
-final case class fold private [silAST](
-                          sl : SourceLocation,
-                          predicate: PredicateExpression
-                          )
+final case class fold private[silAST](
+                                       sl: SourceLocation,
+                                       predicate: PredicateExpression
+                                       )
   extends Statement(sl) {
   override def toString: String = "fold " + predicate.toString
 
@@ -133,10 +129,10 @@ final case class fold private [silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class unfold private [silAST](
-                            sl : SourceLocation,
-                            predicate: PredicateExpression
-                            )
+final case class unfold private[silAST](
+                                         sl: SourceLocation,
+                                         predicate: PredicateExpression
+                                         )
   extends Statement(sl) {
   override def toString: String = "unfold " + predicate.toString
 
