@@ -12,7 +12,7 @@ sealed abstract class UnaryConnective private[silAST]() extends ASTNode(noLocati
   def name: String
 }
 
-final case class NotOperator private[silAST]() extends UnaryConnective {
+final case class Not() extends UnaryConnective {
 
   def name: String = "!"
 

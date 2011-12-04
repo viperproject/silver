@@ -5,8 +5,8 @@ import silAST.source.SourceLocation
 import silAST.symbols.logical.quantification.BoundVariable
 import collection.mutable.HashSet
 import silAST.domains.DomainFunction
-import silAST.expressions.util.{DTermSequence, GTermSequence}
 import silAST.types.{DataTypeFactory, DataType}
+import silAST.expressions.util.{DTermSequenceC, DTermSequence, GTermSequence}
 
 
 trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory{
@@ -37,6 +37,15 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory{
       case a : GTermSequence => makeGDomainFunctionApplicationTerm(sl,f,a)
       case _ => addTerm(new DDomainFunctionApplicationTermC(sl,f,a))
     }
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////
+  def makeDTermSequence(sl : SourceLocation, ts : Seq[DTerm]) : DTermSequence = {
+    require( ts.toSet subsetOf terms)
+    val result = new DTermSequenceC(sl,ts)
+    termSequences += result
+    result
   }
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] val boundVariables = new HashSet[BoundVariable]

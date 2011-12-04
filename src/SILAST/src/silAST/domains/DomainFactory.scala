@@ -1,9 +1,8 @@
 package silAST.domains
 
 import silAST.programs.{NodeFactory, ProgramFactory}
-import silAST.expressions.terms.Term
 import silAST.source.SourceLocation
-import silAST.expressions.{DExpression, Expression, DExpressionFactory}
+import silAST.expressions.{DExpression, DExpressionFactory}
 import collection.mutable.{HashMap, HashSet}
 import silAST.types.{DataTypeFactory, DataTypeSequence, DataType}
 
@@ -61,18 +60,6 @@ final class DomainFactory private[silAST](
     domainAxioms += name -> result
     result
   }
-  /////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////
-  protected[silAST] override def addTerm[T <: Term](t: T): T = {
-    programFactory.addTerm(t)
-    super.addTerm(t)
-  }
-
-  /////////////////////////////////////////////////////////////////////////
-  protected[silAST] override def addExpression[E <: Expression](e: E)  : E = {
-    programFactory.addExpression(e)
-    super.addExpression(e)
-  }
 
   /////////////////////////////////////////////////////////////////////////
   def domain = if (compiled) pDomain.get else throw new Exception("domain \""+name+"\" not compiled")
@@ -85,4 +72,7 @@ final class DomainFactory private[silAST](
   protected[silAST] val domainPredicateSignatures = new HashSet[DomainPredicateSignature]
 
   protected[silAST] val domainAxioms = new HashMap[String, DomainAxiom]
+
+  protected[silAST] override val dataTypes = programFactory.dataTypes
+  protected[silAST] override val dataTypeSequences = programFactory.dataTypeSequences
 }

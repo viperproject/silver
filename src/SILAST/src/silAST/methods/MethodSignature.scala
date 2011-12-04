@@ -3,7 +3,7 @@ package silAST.methods
 import silAST.ASTNode
 import silAST.expressions.util.ExpressionSequence
 import silAST.source.SourceLocation
-import silAST.programs.symbols.{ProgramVariable, ProgramVariableSequence}
+import silAST.programs.symbols.ProgramVariableSequence
 
 final class MethodSignature private[silAST](
                                              sl: SourceLocation,

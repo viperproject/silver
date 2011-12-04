@@ -42,4 +42,5 @@ class ImplementationFactory private[silAST](private[silAST] val methodFactory : 
 
   override def functions = methodFactory.functions
   override def programVariables = parameters.toSet union results.toSet union localVariables.toSet
+  override protected[silAST] val predicates = methodFactory.predicates
 }

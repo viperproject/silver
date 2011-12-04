@@ -5,9 +5,9 @@ import silAST.source.SourceLocation
 
 import silAST.domains.DomainFunction
 import silAST.programs.NodeFactory
-import silAST.expressions.util.{PTermSequence, GTermSequence}
 import silAST.programs.symbols.{Field, ProgramVariable,Function}
 import silAST.types.{DataTypeFactory, DataType}
+import silAST.expressions.util.{PTermSequenceC, PTermSequence, GTermSequence}
 
 protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with DataTypeFactory
 {
@@ -77,6 +77,15 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
       case a : GTermSequence => makeGDomainFunctionApplicationTerm(sl,f,a)
       case _ => addTerm(new PDomainFunctionApplicationTermC(sl,f,a))
     }
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  /////////////////////////////////////////////////////////////////////////
+  def makePTermSequence(sl : SourceLocation, ts : Seq[PTerm]) : PTermSequence = {
+    require( ts.toSet subsetOf terms)
+    val result = new PTermSequenceC(sl,ts)
+    termSequences += result
+    result
   }
 
   /////////////////////////////////////////////////////////////////////////

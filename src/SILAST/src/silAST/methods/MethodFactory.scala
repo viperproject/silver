@@ -5,7 +5,7 @@ import silAST.source.SourceLocation
 import silAST.types.DataType
 import silAST.programs.{NodeFactory, ProgramFactory}
 import silAST.expressions.{Expression, ExpressionFactory}
-import collection.mutable.{HashSet, ListBuffer, LinkedList}
+import collection.mutable.{HashSet, ListBuffer}
 import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import silAST.expressions.util.ExpressionSequence
 
@@ -89,4 +89,5 @@ class MethodFactory(
 
   override def programVariables = parametersGenerator.toSet[ProgramVariable] union resultsGenerator.toSet[ProgramVariable]
   override def functions = programFactory.functions.toSet
+  override protected[silAST] val predicates = programFactory.predicates
 }

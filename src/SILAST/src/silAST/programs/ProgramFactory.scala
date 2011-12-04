@@ -2,15 +2,14 @@ package silAST.programs {
 
 import silAST.source.SourceLocation
 import silAST.domains.DomainFactory
-import silAST.expressions.ExpressionFactory
-import silAST.types.{DataTypeSequence, NonReferenceDataType, DataType}
 import silAST.methods.MethodFactory
 import collection.mutable.{HashSet, HashMap,Set}
 import symbols._
+import silAST.types.{ReferenceDataType, DataType, DataTypeFactory, NonReferenceDataType}
 
 final class ProgramFactory(
                             val name: String
-                            ) extends NodeFactory with ExpressionFactory
+                            ) extends NodeFactory with DataTypeFactory//with ExpressionFactory
 {
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
@@ -23,10 +22,18 @@ final class ProgramFactory(
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeMethod(sl : SourceLocation, name: String): MethodFactory = {
+  def getMethodFactory(sl : SourceLocation, name: String): MethodFactory = {
     require (!methodFactories.contains(name))
     val result = new MethodFactory(this,sl,name)
     methodFactories += name -> result
+    result
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  def getPredicateFactory(sl : SourceLocation, name: String): PredicateFactory = {
+    require (!predicateFactories.contains(name))
+    val result = new PredicateFactory(this,sl,name)
+    predicateFactories += name -> result
     result
   }
 
@@ -46,18 +53,10 @@ final class ProgramFactory(
     defineField(new ReferenceField(sl, name))
   }
 
+  //////////////////////////////////////////////////////////////////////////
   private def defineField(f : Field) : Field = {
     fields += f
     f
-  }
-
-  //////////////////////////////////////////////////////////////////////////
-  def defineDataTypeSequence(types: List[DataType]): DataTypeSequence = {
-    require(types.forall(dataTypes.contains(_)))
-
-    val result =new DataTypeSequence(types)
-    dataTypeSequences += result
-    result
   }
 
   //////////////////////////////////////////////////////////////////////////
@@ -65,10 +64,14 @@ final class ProgramFactory(
   //////////////////////////////////////////////////////////////////////////
   protected[silAST] val domainFactoryMap = new HashMap[String, DomainFactory]
   protected[silAST] val methodFactories = new HashMap[String, MethodFactory]
+  protected[silAST] val predicateFactories = new HashMap[String, PredicateFactory]
 
-  protected[silAST] override val programVariables = Set.empty[ProgramVariable]
-  protected[silAST] override val fields : Set[Field] = new HashSet[Field]
-  protected[silAST] override val functions : Set[Function] = new HashSet[Function]
+  protected[silAST] val fields : Set[Field] = new HashSet[Field]
+  protected[silAST] val functions : Set[Function] = new HashSet[Function]
+  protected[silAST] val predicates : Set[Predicate] = new HashSet[Predicate]
+
+  protected[silAST] override val dataTypes = new HashSet[DataType]
+  dataTypes += ReferenceDataType.referenceType
 }
 
 }

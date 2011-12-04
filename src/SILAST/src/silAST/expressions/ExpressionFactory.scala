@@ -58,7 +58,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
   //////////////////////////////////////////////////////////////////////////
   def makePredicateExpression(sl: SourceLocation, r : Term,p : Predicate): PredicateExpression =
   {
-    require(predicates(p.name) == p)
+    require(predicates contains p)
     require(terms.contains(r))
 
     (r) match {

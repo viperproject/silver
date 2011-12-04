@@ -7,7 +7,7 @@ import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import silAST.expressions.util.PTermSequence
 import collection.Set
 import collection.mutable.{HashSet, HashMap, ListBuffer}
-import silAST.methods.{MethodFactory}
+import silAST.methods.MethodFactory
 import silAST.expressions.{PredicateExpression, PExpression, Expression, ExpressionFactory}
 
 
@@ -141,4 +141,6 @@ class BasicBlockFactory private[silAST](
   override def programVariables : Set[ProgramVariable] = localVariables union parameters.toSet
   override def functions = implementationFactory.functions
   val programVariableSequences = new HashSet[ProgramVariableSequence]
+
+  override protected[silAST] val predicates = implementationFactory.predicates
 }

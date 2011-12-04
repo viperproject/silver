@@ -1,6 +1,6 @@
 package silAST.expressions
 
-import collection.mutable.HashMap
+import collection.Set
 import silAST.source.SourceLocation
 import silAST.domains.DomainPredicate
 import terms.{PTermFactory, PTerm, GTerm}
@@ -27,7 +27,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   //////////////////////////////////////////////////////////////////////////
   def makePPredicateExpression(sl: SourceLocation, r : PTerm,p : Predicate): PPredicateExpression =
   {
-    require(predicates(p.name) == p)
+    require(predicates contains p)
     require(terms.contains(r))
 
     addExpression ( new PPredicateExpression(sl,r,p))
@@ -67,6 +67,5 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  protected val predicates = new HashMap[String, Predicate]
-
+  protected[silAST] def predicates : Set[Predicate]
 }

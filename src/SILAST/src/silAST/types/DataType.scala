@@ -3,7 +3,7 @@ package silAST.types
 import silAST.ASTNode
 import silAST.AtomicNode
 import silAST.source.{noLocation, SourceLocation}
-import silAST.domains.{DomainFactory, Domain}
+import silAST.domains.DomainFactory
 
 abstract sealed class DataType(sl: SourceLocation) extends ASTNode(sl) {
 
@@ -22,7 +22,7 @@ case class NonReferenceDataType private[silAST](
     private[silAST] val domainFactory : DomainFactory)
   extends DataType(sl) with AtomicNode
 {
-  override val toString = domain.name
+  override val toString = if (domainFactory.compiled) domain.name else domainFactory.name
 
-  def domain = if (domainFactory.compiled) domainFactory.domain else throw new Exception("domain \""+domainFactory.name+"\" not compiled")
+  def domain = domainFactory.domain //if (domainFactory.compiled) domainFactory.domain else throw new Exception("domain \""+domainFactory.name+"\" not compiled")
 }

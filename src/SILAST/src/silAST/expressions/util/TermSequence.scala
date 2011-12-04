@@ -37,7 +37,7 @@ private[silAST] final class PTermSequenceC(
 ///////////////////////////////////////////////////////////////
 sealed trait DTermSequence extends TermSequence with Seq[DTerm] {
   override val args: Seq[DTerm] = dArgs
-  protected val dArgs: Seq[DTerm]
+  protected def dArgs: Seq[DTerm]
 
   override def apply(idx: Int) = args(idx)
 
@@ -48,7 +48,7 @@ private[silAST] final class DTermSequenceC(
                                             sl: SourceLocation,
                                             args: Seq[DTerm]
                                             ) extends TermSequence(sl, args) with DTermSequence {
-  override val dArgs = args
+  override def dArgs = args
 }
 
 
