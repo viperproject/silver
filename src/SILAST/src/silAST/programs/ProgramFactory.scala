@@ -15,9 +15,10 @@ final class ProgramFactory(
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   def getDomainFactory(name: String): DomainFactory = {
-    require (!domainFactories.contains(name))
+    require (!domainFactoryMap.contains(name))
     val result = new DomainFactory(this,name)
-    domainFactories += name -> result
+    domainFactoryMap += name -> result
+    domainFactories += result
     result
   }
 
@@ -62,8 +63,8 @@ final class ProgramFactory(
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  private[silAST] val domainFactories = new HashMap[String, DomainFactory]
-  private[silAST] val methodFactories = new HashMap[String, MethodFactory]
+  protected[silAST] val domainFactoryMap = new HashMap[String, DomainFactory]
+  protected[silAST] val methodFactories = new HashMap[String, MethodFactory]
 
   protected[silAST] override val programVariables = Set.empty[ProgramVariable]
   protected[silAST] override val fields : Set[Field] = new HashSet[Field]

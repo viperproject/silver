@@ -75,6 +75,12 @@ final class DomainFactory private[silAST](
   }
 
   /////////////////////////////////////////////////////////////////////////
+  def domain = if (compiled) pDomain.get else throw new Exception("domain \""+name+"\" not compiled")
+
+  /////////////////////////////////////////////////////////////////////////
+  var compiled = false
+  var pDomain : Option[Domain] = None
+
   protected[silAST] val domainFunctionSignatures = new HashSet[DomainFunctionSignature]
   protected[silAST] val domainPredicateSignatures = new HashSet[DomainPredicateSignature]
 
