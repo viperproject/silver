@@ -6,14 +6,15 @@ import silAST.symbols.logical.quantification.BoundVariable
 import collection.mutable.HashSet
 import silAST.domains.DomainFunction
 import silAST.expressions.util.{DTermSequence, GTermSequence}
-import silAST.types.DataType
+import silAST.types.{DataTypeFactory, DataType}
 
 
-trait DTermFactory extends NodeFactory with GTermFactory{
+trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory{
 
   /////////////////////////////////////////////////////////////////////////
   def makeBoundVariable(sl:SourceLocation,name : String,  dataType : DataType) : BoundVariable =
   {
+    require(dataTypes.contains(dataType))
     val result : BoundVariable = new BoundVariable(sl, name, dataType)
     boundVariables += result
     result

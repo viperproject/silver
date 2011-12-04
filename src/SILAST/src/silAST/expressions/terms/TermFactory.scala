@@ -40,7 +40,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   def makeFieldReadTerm(sl : SourceLocation, t : Term, f : Field) : FieldReadTerm =
   {
     require(terms.contains(t))
-    require(fields(f.name) == f)
+    require(fields.contains(f))
     //TODO: type check arguments
 
     t match {
@@ -54,7 +54,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   def makeOldFieldReadTerm(sl : SourceLocation, t : Term, f : Field) : OldFieldReadTerm =
   {
     require(terms.contains(t))
-    require(fields(f.name) == f)
+    require(fields.contains(f))
     //TODO: type check
 
     t match {

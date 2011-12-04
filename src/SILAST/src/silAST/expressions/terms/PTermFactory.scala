@@ -1,14 +1,15 @@
 package silAST.expressions.terms
 
+import scala.collection.Set
 import silAST.source.SourceLocation
-import collection.mutable.{HashMap, HashSet}
+
 import silAST.domains.DomainFunction
 import silAST.programs.NodeFactory
 import silAST.expressions.util.{PTermSequence, GTermSequence}
 import silAST.programs.symbols.{Field, ProgramVariable,Function}
-import silAST.types.{DataTypeSequence, DataType}
+import silAST.types.{DataTypeFactory, DataType}
 
-protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory
+protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with DataTypeFactory
 {
   /////////////////////////////////////////////////////////////////////////
   def makeProgramVariableTerm(sl : SourceLocation, v : ProgramVariable) : ProgramVariableTerm =
@@ -50,7 +51,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory
   def makePFieldReadTerm(sl : SourceLocation, t : PTerm, f : Field) : PFieldReadTerm =
   {
     require(terms.contains(t))
-    require(fields(f.name) == f)
+    require(fields.contains(f))
     //TODO: type check arguments
 
     addTerm(new PFieldReadTerm(sl,t,f))
@@ -60,7 +61,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory
   def makePOldFieldReadTerm(sl : SourceLocation, t : PTerm, f : Field) : POldFieldReadTerm =
   {
     require(terms.contains(t))
-    require(fields(f.name) == f)
+    require(fields.contains(f))
     //TODO: type check
 
     addTerm(new POldFieldReadTerm(sl,t,f))
@@ -79,11 +80,8 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory
   }
 
   /////////////////////////////////////////////////////////////////////////
-  protected[silAST] val programVariables = new HashSet[ProgramVariable]
-  protected[silAST] val functions = new HashSet[Function]
+  protected[silAST] def functions : Set[Function]
 
-  protected[silAST] val fields = new HashMap[String, Field]
-
-  protected[silAST] val dataTypes = new HashSet[DataType]
-  protected[silAST] val dataTypeSequences = new HashMap[List[DataType], DataTypeSequence]
-}
+  protected[silAST] def programVariables : Set[ProgramVariable]
+  protected[silAST] def fields : Set[Field]
+  }
