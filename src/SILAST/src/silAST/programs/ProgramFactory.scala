@@ -13,9 +13,9 @@ final class ProgramFactory(
 {
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def getDomainFactory(name: String): DomainFactory = {
+  def getDomainFactory(name: String)(implicit sl : SourceLocation) : DomainFactory = {
     require (!domainFactoryMap.contains(name))
-    val result = new DomainFactory(this,name)
+    val result = new DomainFactory(this,sl,name)
     domainFactoryMap += name -> result
     domainFactories += result
     result

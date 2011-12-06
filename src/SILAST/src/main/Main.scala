@@ -19,9 +19,9 @@ object Main {
 
     val pf = new ProgramFactory("P1")
 
-    val id = pf.getDomainFactory("Integer");
+    val id = pf.getDomainFactory("Integer")(nl);
     val integerType = pf.makeNonReferenceDataType(nl,id)
-    val isd = pf.getDomainFactory("IntegerSeq");
+    val isd = pf.getDomainFactory("IntegerSeq")(nl);
     val integerSeqType = pf.makeNonReferenceDataType(nl,isd);
     {
       val sigTail = isd.defineDomainFunctionSignature(nl,isd.makeDataTypeSequence(List(integerSeqType)),integerSeqType)

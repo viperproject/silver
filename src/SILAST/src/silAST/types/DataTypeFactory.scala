@@ -11,7 +11,7 @@ trait DataTypeFactory extends NodeFactory{
   def makeNonReferenceDataType(sl : SourceLocation, df : DomainFactory) : NonReferenceDataType =
   {
     require (domainFactories contains df)
-    val result = new NonReferenceDataType(sl,df)
+    val result = new NonReferenceDataType(sl,df.domain)
     dataTypes += result
     result
   }

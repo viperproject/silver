@@ -8,6 +8,7 @@ import silAST.types.{DataTypeFactory, DataTypeSequence, DataType}
 
 final class DomainFactory private[silAST](
      val programFactory: ProgramFactory,
+     val sl : SourceLocation,
      val name: String
      ) extends NodeFactory with DExpressionFactory with DataTypeFactory
 {
@@ -28,6 +29,7 @@ final class DomainFactory private[silAST](
     require(domainFunctionSignatures.contains(s))
     val result = new DomainFunction(sl,name,s)
     domainFunctions += name -> result
+    domain.pFunctions += result
     result
   }
 
@@ -47,6 +49,7 @@ final class DomainFactory private[silAST](
     require(domainPredicateSignatures.contains(s))
     val result = new DomainPredicate(sl,name,s)
     domainPredicates += name -> result
+    domain.pPredicates += result
     result
   }
   //TODO: add functions/predicates to parent program
@@ -55,23 +58,18 @@ final class DomainFactory private[silAST](
   /////////////////////////////////////////////////////////////////////////
   def addDomainAxiom(sl : SourceLocation, name : String, e : DExpression) : DomainAxiom =
   {
-    require(!domainAxioms.contains(name))
+    require(domain.axioms.forall(_.name != name))
     val result = new DomainAxiom(sl,name,e)
-    domainAxioms += name -> result
+    domain.pAxioms += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def domain = if (compiled) pDomain.get else throw new Exception("domain \""+name+"\" not compiled")
-
-  /////////////////////////////////////////////////////////////////////////
-  var compiled = false
-  var pDomain : Option[Domain] = None
+//  private[silAST] var compiled = false
+  val domain : Domain = new Domain(sl,name)
 
   protected[silAST] val domainFunctionSignatures = new HashSet[DomainFunctionSignature]
   protected[silAST] val domainPredicateSignatures = new HashSet[DomainPredicateSignature]
-
-  protected[silAST] val domainAxioms = new HashMap[String, DomainAxiom]
 
   protected[silAST] override val dataTypes = programFactory.dataTypes
   protected[silAST] override val dataTypeSequences = programFactory.dataTypeSequences
