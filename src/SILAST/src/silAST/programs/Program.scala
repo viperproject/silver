@@ -1,5 +1,6 @@
 package silAST.programs
 
+import scala.collection.Set
 import silAST.ASTNode
 import silAST.domains.Domain
 import silAST.source.SourceLocation
@@ -19,17 +20,17 @@ final class Program private[silAST](
   override def subNodes = domains.toList ++ fields.toList ++ functions.toList ++ predicates.toList ++ methods.toList
 
   override def toString =
-    "program " + name +
-      domains.mkString("\n") +
-      fields.mkString("\n") +
-      functions.mkString("\n") +
-      predicates.mkString("\n") +
-      methods.mkString("\n") +
+    "program " + name + "\n" +
+      domains.mkString("","\n","\n") +
+      fields.mkString("\t","\n\t","\n") +
+      functions.mkString("\t","\n\t","\n") +
+      predicates.mkString("\t","\n\t","\n") +
+      methods.mkString("\n","\n","\n\n") +
       //    ( for (m <- methods) yield (for (i <- m.implementations) yield i).mkString("\n") )
       (for (m <- methods) yield (for (i <- m.implementations) yield i)).flatten.mkString("\n")
 }
 
 object Program {
 
-  def getFactory(name: String): ProgramFactory = new ProgramFactory(name)
+  def getFactory(sl : SourceLocation, name : String): ProgramFactory = new ProgramFactory(sl,name)
 }

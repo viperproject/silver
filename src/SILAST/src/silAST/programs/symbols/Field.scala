@@ -10,7 +10,7 @@ sealed abstract class Field private[silAST](
                                              val name: String,
                                              val dataType: DataType
                                              ) extends ASTNode(sl) with AtomicNode {
-  override def toString: String = name
+  override def toString: String = "field " + name + " : " + dataType.toString
 }
 
 final case class ReferenceField private[silAST](

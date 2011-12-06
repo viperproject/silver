@@ -13,9 +13,9 @@ final class MethodSignature private[silAST](
                                              val postcondition: ExpressionSequence
                                              ) extends ASTNode(sl) {
   override def toString =
-    parameters.toString + " : " + results.toString + "\n" +
-      (for (p <- precondition) yield "requires " + p.toString).mkString("\n") +
-      (for (p <- postcondition) yield "ensures " + p.toString).mkString("\n")
+    parameters.toStringWithTypes + " : " + results.toStringWithTypes + "\n" +
+      (for (p <- precondition) yield "requires " + p.toString).mkString("\t","\n\t","\n") +
+      (for (p <- postcondition) yield "ensures " + p.toString).mkString("\t","\n\t","\n")
 
   override def subNodes = parameters.variables.toList ++ List(results) ++ precondition.toList ++ postcondition.toList
 }

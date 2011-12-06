@@ -1,13 +1,14 @@
 package silAST.methods
 
 import implementations.ImplementationFactory
-import silAST.source.SourceLocation
-import silAST.types.DataType
 import silAST.programs.{NodeFactory, ProgramFactory}
-import silAST.expressions.{Expression, ExpressionFactory}
 import collection.mutable.{HashSet, ListBuffer}
 import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import silAST.expressions.util.ExpressionSequence
+import silAST.source.{noLocation, SourceLocation}
+import silAST.types.{ReferenceDataType, DataType}
+import silAST.expressions.{FalseExpression, TrueExpression, Expression, ExpressionFactory}
+import silAST.domains.Domain
 
 class MethodFactory(
                      val programFactory: ProgramFactory,
@@ -15,6 +16,15 @@ class MethodFactory(
                      val name: String
                      ) extends NodeFactory with ExpressionFactory
 {
+  def compile() : Method =
+  {
+    if (!signatureDefined)
+      finalizeSignature()
+    for (i <- implementations) i.compile()
+
+    method
+  }
+
   def addParameter(sl : SourceLocation, name : String, dataType : DataType  ) = {
     require(!signatureDefined)
     require (programVariables.forall(_.name != name))
@@ -50,15 +60,15 @@ class MethodFactory(
     pResults = Some(new ProgramVariableSequence(sl,resultsGenerator))
     val preconditions = new ExpressionSequence(sl,this.preconditions) //TODO:more accurate locations
     val postconditions = new ExpressionSequence(sl,this.postconditions) //TODO:more accurate locations
-    val signature = new MethodSignature(sl,parameters,results,preconditions,postconditions)
+    val signature = new MethodSignature(sl,pParameters.get,pResults.get,preconditions,postconditions)
     pMethod = Some(new Method(sl,name,signature))
     signatureDefined = true
 
   }
 
-  def makeImplementation = {
+  def makeImplementation(sl:SourceLocation) = {
     if (!signatureDefined) finalizeSignature()
-    val result = new ImplementationFactory(this)
+    val result = new ImplementationFactory(this,sl)
     implementations += result
     result
   }
@@ -79,13 +89,13 @@ class MethodFactory(
     require (signatureDefined)
     pResults.get
   }
-  val parametersGenerator = new ListBuffer[ProgramVariable]
-  val resultsGenerator = new ListBuffer[ProgramVariable]
-  val preconditions = new ListBuffer[Expression]
-  val postconditions = new ListBuffer[Expression]
-  var signatureDefined = false
-  val implementations = new HashSet[ImplementationFactory]
-  val methodFactories = programFactory.methodFactories.values.toSet
+  private val parametersGenerator = new ListBuffer[ProgramVariable]
+  private val resultsGenerator = new ListBuffer[ProgramVariable]
+  private val preconditions = new ListBuffer[Expression]
+  private val postconditions = new ListBuffer[Expression]
+  private var signatureDefined = false
+  private val implementations = new HashSet[ImplementationFactory]
+  private[silAST] def methodFactories = programFactory.methodFactories.values.toSet
 
   override val nullFunction = programFactory.nullFunction
 
@@ -93,4 +103,12 @@ class MethodFactory(
   override def functions = programFactory.functions.toSet
   override protected[silAST] val predicates = programFactory.predicates
   override protected[silAST] def domainFunctions = programFactory.domainFunctions
+
+  val thisVar = addParameter(noLocation,"this",ReferenceDataType.referenceType)
+
+  override def trueExpression = programFactory.trueExpression
+  override def falseExpression = programFactory.falseExpression
+
+  override def dataTypes = programFactory.dataTypes union pDataTypes
+  override def domainFactories = programFactory.domainFactories
 }

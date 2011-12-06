@@ -2,9 +2,9 @@ package silAST.domains
 
 import silAST.programs.{NodeFactory, ProgramFactory}
 import silAST.source.SourceLocation
-import silAST.expressions.{DExpression, DExpressionFactory}
 import collection.mutable.{HashMap, HashSet}
 import silAST.types.{DataTypeFactory, DataTypeSequence, DataType}
+import silAST.expressions.{FalseExpression, TrueExpression, DExpression, DExpressionFactory}
 
 final class DomainFactory private[silAST](
      val programFactory: ProgramFactory,
@@ -12,10 +12,15 @@ final class DomainFactory private[silAST](
      val name: String
      ) extends NodeFactory with DExpressionFactory with DataTypeFactory
 {
+  def compile() : Domain =
+  {
+    domain
+  }
+
   /////////////////////////////////////////////////////////////////////////
   def defineDomainFunctionSignature(sl : SourceLocation, p : DataTypeSequence, r : DataType) : DomainFunctionSignature =
   {
-    require (dataTypeSequences.contains(p))
+    require (dataTypeSequences contains p)
     require (dataTypes.contains(r))
     val result = new DomainFunctionSignature(sl,p,r)
     domainFunctionSignatures += result
@@ -36,7 +41,7 @@ final class DomainFactory private[silAST](
   /////////////////////////////////////////////////////////////////////////
   def defineDomainPredicateSignature(sl : SourceLocation, p : DataTypeSequence) : DomainPredicateSignature =
   {
-    require (dataTypeSequences.contains(p))
+    require (dataTypeSequences contains p)
     val result = new DomainPredicateSignature(sl,p)
     domainPredicateSignatures += result
     result
@@ -71,9 +76,13 @@ final class DomainFactory private[silAST](
   protected[silAST] val domainFunctionSignatures = new HashSet[DomainFunctionSignature]
   protected[silAST] val domainPredicateSignatures = new HashSet[DomainPredicateSignature]
 
-  protected[silAST] override val dataTypes = programFactory.dataTypes
-  protected[silAST] override val dataTypeSequences = programFactory.dataTypeSequences
+  protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes
+  protected[silAST] override def domainFactories = programFactory.domainFactories
+//  protected[silAST] override def dataTypeSequences //= programFactory.dataTypeSequences
 
   protected[silAST] val myDomainFunctions = new HashMap[String, DomainFunction]
   protected[silAST] override def domainFunctions = programFactory.domainFunctions
+
+  override def trueExpression = programFactory.trueExpression
+  override def falseExpression = programFactory.falseExpression
 }

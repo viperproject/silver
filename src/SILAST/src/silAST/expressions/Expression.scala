@@ -7,10 +7,10 @@ import silAST.expressions.terms.permission.PermissionTerm
 import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.ASTNode
-import silAST.source.SourceLocation
 import terms.{GTerm, Term, PTerm, DTerm}
 import util.{GTermSequence, TermSequence, PTermSequence, DTermSequence}
 import silAST.programs.symbols.Predicate
+import silAST.source.{noLocation, SourceLocation}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -505,3 +505,26 @@ final class GDomainPredicateExpression private[silAST](
   protected[expressions] override val dArguments = arguments
   protected[expressions] override val pArguments = arguments
 }
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final case class TrueExpression private[silAST]() extends Expression(noLocation)
+  with GExpression with AtomicExpression
+{
+  override val subNodes = List.empty
+
+  override val subExpressions = List.empty
+  override val gSubExpressions = List.empty
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final case class FalseExpression private[silAST]() extends Expression(noLocation)
+  with GExpression with AtomicExpression
+{
+  override val subNodes = List.empty
+
+  override val subExpressions = List.empty
+  override val gSubExpressions = List.empty
+}
+

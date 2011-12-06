@@ -1,6 +1,7 @@
 package silAST.types
 
 import silAST.programs.NodeFactory
+import collection.Set
 import collection.mutable.HashSet
 import silAST.source.SourceLocation
 import silAST.domains.DomainFactory
@@ -12,7 +13,7 @@ trait DataTypeFactory extends NodeFactory{
   {
     require (domainFactories contains df)
     val result = new NonReferenceDataType(sl,df.domain)
-    dataTypes += result
+    pDataTypes += result
     result
   }
 
@@ -20,14 +21,16 @@ trait DataTypeFactory extends NodeFactory{
 
   //////////////////////////////////////////////////////////////////////////
   def makeDataTypeSequence(types: List[DataType]): DataTypeSequence = {
-    require(types.forall(dataTypes.contains(_)))
+    require(types.forall(dataTypes contains _))
 
     val result =new DataTypeSequence(types)
     dataTypeSequences += result
     result
   }
 
-  protected[silAST] val domainFactories = new HashSet[DomainFactory]
-  protected[silAST] val dataTypes = new HashSet[DataType]
-  protected[silAST] val dataTypeSequences = new HashSet[DataTypeSequence]
+  protected[silAST] val pDataTypes = new HashSet[DataType]
+
+  protected[silAST] def domainFactories : Set[DomainFactory]//= new HashSet[DomainFactory]
+  protected[silAST] def dataTypes : Set[DataType]//= pDataTypes //new HashSet[DataType]
+  protected[silAST] final val dataTypeSequences = new HashSet[DataTypeSequence]
 }

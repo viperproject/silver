@@ -8,7 +8,7 @@ final class Function private[silAST](
                                       val name: String,
                                       val signature: FunctionSignature
                                       ) extends ASTNode(sl) {
-  override def toString = signature.receiverType.toString + "." + name + signature.toString
+  override def toString = "function" + name + signature.toString
 
   override def subNodes = List(signature)
 }

@@ -1,13 +1,16 @@
 package silAST.programs {
 
 import silAST.methods.MethodFactory
-import collection.mutable.{HashSet, HashMap,Set}
+import collection.{Set}
+import collection.mutable.{HashSet, HashMap}
 import symbols._
 import silAST.source.{noLocation, SourceLocation}
 import silAST.types._
 import silAST.domains.{Domain, DomainFunctionSignature, DomainFunction, DomainFactory}
+import silAST.expressions.{FalseExpression, TrueExpression}
 
 final class ProgramFactory(
+                            val sl : SourceLocation,
                             val name: String
                             ) extends NodeFactory with DataTypeFactory//with ExpressionFactory
 {
@@ -17,7 +20,8 @@ final class ProgramFactory(
     require (!domainFactoryMap.contains(name))
     val result = new DomainFactory(this,sl,name)
     domainFactoryMap += name -> result
-    domainFactories += result
+//    domainFactories += result
+//    dataTypes += result.domain
     result
   }
 
@@ -66,11 +70,11 @@ final class ProgramFactory(
   protected[silAST] val methodFactories = new HashMap[String, MethodFactory]
   protected[silAST] val predicateFactories = new HashMap[String, PredicateFactory]
 
-  protected[silAST] val fields : Set[Field] = new HashSet[Field]
+  protected[silAST] val fields : collection.mutable.Set[Field] = new HashSet[Field]
   protected[silAST] val functions : Set[Function] = new HashSet[Function]
-  protected[silAST] val predicates : Set[Predicate] = new HashSet[Predicate]
+  protected[silAST] def predicates : Set[Predicate] = (for (pf <- predicateFactories.values) yield pf.pPredicate).toSet[Predicate]
 
-  protected[silAST] override val dataTypes = new HashSet[DataType]
+  protected[silAST] override def dataTypes = pDataTypes
 
   val referenceType = ReferenceDataType.referenceType
   val emptyDTSequence = new DataTypeSequence(List.empty[DataType])
@@ -80,11 +84,26 @@ final class ProgramFactory(
 
   def domains : Set[Domain] = for (df <- domainFactories) yield df.domain
   def domainFunctions : Map[String, DomainFunction] =
-    (for (f <- (for (d <- domains) yield d.functions).flatten) yield (f.name,f)).toMap + (nullFunction.name -> nullFunction)
+    (for (f <- (for (d <- domains) yield d.functions).flatten) yield (f.name,f)).toMap +
+    (nullFunction.name -> nullFunction)
     //TODO:check duplicate names/prefix names
 
   dataTypes += referenceType
-//  domainFunctions += nullFunction
+
+  val trueExpression = new TrueExpression
+  val falseExpression = new FalseExpression
+
+  override def domainFactories = domainFactoryMap.values.toSet
+
+  //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////
+  def getProgram : Program = {
+    for (df <- domainFactories) df.compile()
+    for (pf<-predicateFactories.values) pf.compile()
+    for (mf<-methodFactories.values) mf.compile()
+
+    new Program(sl, name,domains,fields,functions,predicates,(for (mf <- methodFactories.values) yield mf.method).toSet)
+  }
 }
 
 }

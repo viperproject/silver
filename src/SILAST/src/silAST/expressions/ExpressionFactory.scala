@@ -9,7 +9,7 @@ import permission.{PermissionFactory, PermissionTerm}
 import util._
 import silAST.symbols.logical.quantification.{BoundVariable, Quantifier}
 import silAST.programs.NodeFactory
-import silAST.programs.symbols.Predicate
+import silAST.programs.symbols.{PredicateFactory, Predicate}
 
 
 trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpressionFactory with TermFactory with PermissionFactory{
@@ -56,14 +56,14 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePredicateExpression(sl: SourceLocation, r : Term,p : Predicate): PredicateExpression =
+  def makePredicateExpression(sl: SourceLocation, r : Term,pf : PredicateFactory): PredicateExpression =
   {
-    require(predicates contains p)
+    require(predicates contains pf.pPredicate)
     require(terms.contains(r))
 
     (r) match {
-      case (r: PTerm) => makePPredicateExpression(sl,r,p)
-      case _ =>  addExpression ( new PredicateExpression(sl,r,p))
+      case (r: PTerm) => makePPredicateExpression(sl,r,pf.pPredicate)
+      case _ =>  addExpression ( new PredicateExpression(sl,r,pf.pPredicate))
     }
   }
 

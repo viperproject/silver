@@ -8,6 +8,9 @@ import silAST.source.noLocation
 import silAST.symbols.logical.{AndOperator, ImplicationOperator, Not}
 import com.sun.istack.internal.Pool.Impl
 import silAST.programs.symbols.PredicateFactory
+import silAST.methods.MethodFactory
+import javax.lang.model.`type`.ReferenceType
+import silAST.types.ReferenceDataType
 
 object Main {
 
@@ -19,10 +22,11 @@ object Main {
   def makeProgram() = {
     val nl = noLocation
 
-    val pf = new ProgramFactory("P1")
+    val pf = new ProgramFactory(nl,"P1")
 
     val id = pf.getDomainFactory("Integer")(nl);
     val integerType = pf.makeNonReferenceDataType(nl,id)
+
     val isd = pf.getDomainFactory("IntegerSeq")(nl);
     val integerSeqType = pf.makeNonReferenceDataType(nl,isd);
 
@@ -59,59 +63,97 @@ object Main {
     val valField = pf.defineDomainField(nl,"Node.val",integerType)
     val seqField = pf.defineDomainField(nl,"Node.seq",integerSeqType)
 
-    val ppf : PredicateFactory = pf.getPredicateFactory(nl,"Node.valid");
+    val validPredicate : PredicateFactory = pf.getPredicateFactory(nl,"Node.valid");
 
     {
       //acc(val,100)
       // && acc(seq,50)
       // && acc(next,100)
-      // && next!=null ==> acc(next.seq,50) && seq==val :: next.seq
+      // && next!=null ==> next.valid && acc(next.seq,50) && seq==val :: next.seq
       // && next==null ==> seq==[val]
-      val thisT = ppf.makeProgramVariableTerm(nl, ppf.thisVar)
-      val this_val = ppf.makeFieldReadTerm(nl,thisT,valField)
-      val this_next = ppf.makeFieldReadTerm(nl,thisT,nextField)
-      val this_seq = ppf.makeFieldReadTerm(nl,thisT,seqField)
-      val this_next_seq = ppf.makeFieldReadTerm(nl,this_next,seqField)
-      val this_val_as = ppf.makeTermSequence(nl,List(this_val))
-      val singleton_this_val = ppf.makeDomainFunctionApplicationTerm(nl,singleton,this_val_as)
-      val emptyParameters = ppf.makeTermSequence(nl, List.empty[Term])
-      val nullTerm = ppf.makeDomainFunctionApplicationTerm(nl,ppf.nullFunction,emptyParameters)
-      val acc_val_100 = ppf.makePermissionExpression(nl,this_val,ppf.makeFullPermissionTerm())
-      val acc_next_100 = ppf.makePermissionExpression(nl,this_next,ppf.makeFullPermissionTerm())
-      val acc_seq_50   = ppf.makePermissionExpression(nl,this_seq,ppf.makePercentagePermissionTerm (nl,50))
-      val acc_next_seq_50 = ppf.makePermissionExpression(nl,this_next_seq,ppf.makePercentagePermissionTerm (nl,50))
-      val next_eq_null = ppf.makeEqualityExpression(nl,this_next,nullTerm)
-      val next_ne_null = ppf.makeUnaryExpression(nl,Not(),next_eq_null)
-      val val_next_seq_as = ppf.makeTermSequence(nl,List(this_val,this_next_seq))
-      val prepend_val_next_seq = ppf.makeDomainFunctionApplicationTerm(nl,prepend,val_next_seq_as)
-      val seq_eq_prep = ppf.makeEqualityExpression(nl,this_seq,prepend_val_next_seq)
-      val seq_eq_singleton = ppf.makeEqualityExpression(nl,this_seq,singleton_this_val)
+      val thisT = validPredicate.makeProgramVariableTerm(nl, validPredicate.thisVar)
+      val this_val = validPredicate.makeFieldReadTerm(nl,thisT,valField)
+      val this_next = validPredicate.makeFieldReadTerm(nl,thisT,nextField)
+      val this_seq = validPredicate.makeFieldReadTerm(nl,thisT,seqField)
+      val this_next_seq = validPredicate.makeFieldReadTerm(nl,this_next,seqField)
+      val this_next_valid = validPredicate.makePredicateExpression(nl,this_next,validPredicate)
+      val this_val_as = validPredicate.makeTermSequence(nl,List(this_val))
+      val singleton_this_val = validPredicate.makeDomainFunctionApplicationTerm(nl,singleton,this_val_as)
+      val emptyParameters = validPredicate.makeTermSequence(nl, List.empty[Term])
+      val nullTerm = validPredicate.makeDomainFunctionApplicationTerm(nl,validPredicate.nullFunction,emptyParameters)
+      val acc_val_100 = validPredicate.makePermissionExpression(nl,this_val,validPredicate.makeFullPermissionTerm())
+      val acc_next_100 = validPredicate.makePermissionExpression(nl,this_next,validPredicate.makeFullPermissionTerm())
+      val acc_seq_50   = validPredicate.makePermissionExpression(nl,this_seq,validPredicate.makePercentagePermissionTerm (nl,50))
+      val acc_next_seq_50 = validPredicate.makePermissionExpression(nl,this_next_seq,validPredicate.makePercentagePermissionTerm (nl,50))
+      val next_eq_null = validPredicate.makeEqualityExpression(nl,this_next,nullTerm)
+      val next_ne_null = validPredicate.makeUnaryExpression(nl,Not(),next_eq_null)
+      val val_next_seq_as = validPredicate.makeTermSequence(nl,List(this_val,this_next_seq))
+      val prepend_val_next_seq = validPredicate.makeDomainFunctionApplicationTerm(nl,prepend,val_next_seq_as)
+      val seq_eq_prep = validPredicate.makeEqualityExpression(nl,this_seq,prepend_val_next_seq)
+      val seq_eq_singleton = validPredicate.makeEqualityExpression(nl,this_seq,singleton_this_val)
       //next==null ==> seq==[val]
-      val e1 = ppf.makeBinaryExpression(nl,ImplicationOperator(),next_eq_null,seq_eq_singleton)
+      val e1 = validPredicate.makeBinaryExpression(nl,ImplicationOperator(),next_eq_null,seq_eq_singleton)
       //acc(next.seq,50) && seq==val :: next.seq
-      val e2a = ppf.makeBinaryExpression(nl,AndOperator(),acc_next_seq_50,seq_eq_prep)
+      val e2a = validPredicate.makeBinaryExpression(nl,AndOperator(),acc_next_seq_50,seq_eq_prep)
+      val e2b = validPredicate.makeBinaryExpression(nl,AndOperator(),this_next_valid,e2a)
       // && next!=null ==> acc(next.seq,50) && seq==val :: next.seq
-      val e2 = ppf.makeBinaryExpression(nl,ImplicationOperator(),next_ne_null,e2a)
-      val e3 = ppf.makeBinaryExpression(nl,AndOperator(),e1,e2)
-      val e4 = ppf.makeBinaryExpression(nl,AndOperator(),acc_seq_50,acc_next_100)
-      val e5 = ppf.makeBinaryExpression(nl,AndOperator(),e3,e4)
-      val e = ppf.makeBinaryExpression(nl,AndOperator(),acc_val_100,e5)
-      ppf.setExpression(e)
+      val e2 = validPredicate.makeBinaryExpression(nl,ImplicationOperator(),next_ne_null,e2b)
+      val e3 = validPredicate.makeBinaryExpression(nl,AndOperator(),e1,e2)
+      val e4 = validPredicate.makeBinaryExpression(nl,AndOperator(),acc_seq_50,acc_next_100)
+      val e5 = validPredicate.makeBinaryExpression(nl,AndOperator(),e3,e4)
+      val e = validPredicate.makeBinaryExpression(nl,AndOperator(),acc_val_100,e5)
+      validPredicate.setExpression(e)
       1
     }
 
-    val mf = pf.getMethodFactory(nl,"insert");
+    //insert(x:int)
+    val mf : MethodFactory = pf.getMethodFactory(nl,"insert");
 
     {
-      mf.
+      val xVar = mf.addParameter(nl,"x",integerType)
+      val r = mf.addResult(nl,"r",integerType) //dummy for checking
+
+      val this_var = mf.makeProgramVariableTerm(nl, mf.thisVar)
+
+      val this_valid = mf.makePredicateExpression(nl,this_var,validPredicate)
+      mf.addPrecondition(nl,this_valid)
+      mf.addPostcondition(nl,this_valid)
+
+      var impl = mf.makeImplementation(nl);
+
+      {
+        impl.addLocalVariable(nl,"n",ReferenceDataType.referenceType)
+
+        val startBlock = impl.addBasicBlock(nl,"start");
+        val endBlock = impl.addBasicBlock(nl,"end");
+
+        startBlock.addSuccessor(nl,endBlock,impl.trueExpression)
+
+        {
+          val this_term = startBlock.makeProgramVariableTerm(nl,mf.thisVar)
+          val this_valid = startBlock.makePredicateExpression(nl,this_term,validPredicate)
+          startBlock.appendUnfold(nl,this_valid)
+          startBlock.appendFold(nl,this_valid)
+        }
+
+
+        1
+      }
+
       1
     }
+
+    val p = pf.getProgram
+
+    println(p.toString)
 
   }
 
   def f(e : Expression)
   {
     e match {
+      case TrueExpression() => 0
+      case FalseExpression() => 0
       case PermissionExpression(_,_,_) => 0
       case UnfoldingExpression(_,_,_) => 1
       case EqualityExpression(_,_,_) => 2
@@ -125,6 +167,8 @@ object Main {
   def f2(e : Expression)
   {
     e match {
+      case TrueExpression() => 0
+      case FalseExpression() => 0
       case PermissionExpression(_,_,_) => 0
       case UnfoldingExpression(_,_,_) => 1
       case EqualityExpression(_,_,_) => 2

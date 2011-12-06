@@ -9,6 +9,7 @@ import collection.Set
 import collection.mutable.{HashSet, HashMap, ListBuffer}
 import silAST.methods.MethodFactory
 import silAST.expressions.{PredicateExpression, PExpression, Expression, ExpressionFactory}
+import com.sun.xml.internal.bind.v2.TODO
 
 
 class BasicBlockFactory private[silAST](
@@ -17,6 +18,13 @@ class BasicBlockFactory private[silAST](
     val name : String
   ) extends NodeFactory with ExpressionFactory
 {
+  //////////////////////////////////////////////////////////////////
+  def compile()
+  {
+    require (basicBlock == None)
+    //TODO: create basicblock and append stuff
+    //basicBlock = new BasicBlock(sl,name,statements,for (s<-successors) yield new CFGEdge(s._1))
+  }
   //////////////////////////////////////////////////////////////////
   def appendAssignment(
       sl: SourceLocation,
@@ -136,14 +144,25 @@ class BasicBlockFactory private[silAST](
   def localVariables = implementationFactory.localVariables
   def results        = implementationFactory.results
   private def parameters      = implementationFactory.parameters
-  private val methodFactories = implementationFactory.methodFactories
+  private def methodFactories = implementationFactory.methodFactories
 
-  override def programVariables : Set[ProgramVariable] = localVariables union parameters.toSet
+  override def programVariables : Set[ProgramVariable] =
+    localVariables.toSet[ProgramVariable] union parameters.toSet[ProgramVariable]
+
   override def functions = implementationFactory.functions
   val programVariableSequences = new HashSet[ProgramVariableSequence]
 
-  override val nullFunction = implementationFactory.nullFunction
 
   override protected[silAST] def predicates = implementationFactory.predicates
   override protected[silAST] def domainFunctions = implementationFactory.domainFunctions
+
+  override val nullFunction = implementationFactory.nullFunction
+
+  override def trueExpression = implementationFactory.trueExpression
+  override def falseExpression = implementationFactory.falseExpression
+
+  protected[silAST] override def dataTypes = implementationFactory.dataTypes union pDataTypes
+  protected[silAST] override def domainFactories = implementationFactory.domainFactories
+
+  private[silAST] var basicBlock : Option[BasicBlock] = None
 }

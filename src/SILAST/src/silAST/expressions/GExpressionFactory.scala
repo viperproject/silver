@@ -2,6 +2,7 @@ package silAST.expressions
 
 import silAST.domains.DomainPredicate
 import silAST.source.SourceLocation
+import collection.Set
 import collection.mutable.{HashSet, HashMap}
 import silAST.expressions.util.{GTermSequence, ExpressionSequence}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
@@ -53,14 +54,18 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   protected[silAST] def addExpression[E <: Expression](e: E)  : E = {
-    expressions += e
+    pExpressions += e
     nodeMap += e.sourceLocation -> e    //Overrides sub expressions - always largest in the map
     e
   }
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
 
-  protected val expressions = new HashSet[Expression]
+  def trueExpression  : TrueExpression
+  def falseExpression : FalseExpression
+
+  protected[expressions] val pExpressions = new HashSet[Expression]
+  protected[silAST] def expressions : Set[Expression] = pExpressions + trueExpression + falseExpression
 
   protected val expressionSequences = new HashSet[ExpressionSequence]
   protected val domainPredicates = new HashMap[String, DomainPredicate]

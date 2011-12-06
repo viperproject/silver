@@ -19,7 +19,11 @@ final class Domain private[silAST](
   val axioms : Set[DomainAxiom] = pAxioms
 
 
-  override def toString = "domain " + name + "{" + functions.toString + " " + predicates.toString + " " + axioms.toString + "}"
+  override def toString = "domain " + name + "{\n" +
+    functions.mkString("\t","\n\t","\n") +
+    predicates.mkString("\t","\n\t","\n") +
+    axioms.mkString("\t","\n\t","\n") +
+    "}"
 
   override def subNodes = functions.toList ++ predicates.toList ++ axioms.toList
 }

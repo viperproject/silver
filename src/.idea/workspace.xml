@@ -64,10 +64,37 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="Main.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="ImplementationFactory.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/ImplementationFactory.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="18" column="37" selection-start="551" selection-end="551" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Main.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/SILAST/src/main/Main.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="105" column="9" selection-start="5290" selection-end="5290" vertical-scroll-proportion="0.9189627">
+            <state line="122" column="41" selection-start="6405" selection-end="6405" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="BasicBlockFactory.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/BasicBlockFactory.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="24" column="46" selection-start="888" selection-end="888" vertical-scroll-proportion="0.9189627">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="BasicBlock.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/BasicBlock.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="10" column="0" selection-start="358" selection-end="358" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -87,22 +114,22 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/Term.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/Expression.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/types/DataType.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/symbols/Field.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/domains/DomainFunction.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/symbols/Function.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/domains/Domain.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/types/DataTypeFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/ExpressionFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/symbols/PredicateFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/PTermFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/ImplementationFactory.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/MethodSignature.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/symbols/ProgramVariableSequence.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/Program.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/Method.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/Implementation.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/MethodFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/GTermFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/domains/DomainFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/BasicBlockFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/ProgramFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/permission/PermissionFactory.scala" />
+        <option value="C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/mutable/LinkedListLike.scala" />
+        <option value="C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/immutable/List.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/main/Main.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/ImplementationFactory.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/BasicBlock.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/BasicBlockFactory.scala" />
       </list>
     </option>
   </component>
@@ -240,11 +267,29 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
-              <option name="myItemId" value="programs" />
+              <option name="myItemId" value="methods" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="SILAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="SILAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewModuleNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="silAST" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
-              <option name="myItemId" value="symbols" />
+              <option name="myItemId" value="methods" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="implementations" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
             </PATH_ELEMENT>
           </PATH>
@@ -280,68 +325,8 @@
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
             </PATH_ELEMENT>
             <PATH_ELEMENT>
-              <option name="myItemId" value="expressions" />
+              <option name="myItemId" value="domains" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="terms" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="SILAST" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="SILAST" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewModuleNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="silAST" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="expressions" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="terms" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="permission" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
-            </PATH_ELEMENT>
-          </PATH>
-          <PATH>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="SILAST" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewProjectNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="SILAST" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewModuleNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="silAST" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="expressions" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="terms" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="permission" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
-            </PATH_ELEMENT>
-            <PATH_ELEMENT>
-              <option name="myItemId" value="PermissionTerm.scala" />
-              <option name="myItemType" value="com.intellij.ide.projectView.impl.ClassesTreeStructureProvider$PsiClassOwnerTreeNode" />
             </PATH_ELEMENT>
           </PATH>
           <PATH>
@@ -671,7 +656,13 @@
       <option name="PASS_PARENT_ENVS" value="true" />
       <module name="SILAST" />
       <envs />
+      <RunnerSettings RunnerId="Debug">
+        <option name="DEBUG_PORT" value="58207" />
+        <option name="TRANSPORT" value="0" />
+        <option name="LOCAL" value="true" />
+      </RunnerSettings>
       <RunnerSettings RunnerId="Run" />
+      <ConfigurationWrapper RunnerId="Debug" />
       <ConfigurationWrapper RunnerId="Run" />
       <method />
     </configuration>
@@ -739,9 +730,9 @@
       <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32896066" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.24973147" sideWeight="0.67103934" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="SBT Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3309788" sideWeight="0.99677765" order="9" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.4" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.39959636" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32996973" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32996973" sideWeight="0.5" order="11" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32996973" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.24419779" sideWeight="0.21796165" order="7" side_tool="false" content_ui="tabs" x="180" y="841" width="455" height="216" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32975295" sideWeight="0.67103934" order="3" side_tool="false" content_ui="tabs" />
@@ -749,8 +740,8 @@
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.20247047" sideWeight="0.6700303" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32928064" sideWeight="0.5" order="12" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.35116044" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
-      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.1734694" sideWeight="0.6700303" order="2" side_tool="false" content_ui="combo" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32996973" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.1734694" sideWeight="0.6700303" order="2" side_tool="false" content_ui="combo" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32996973" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
     </layout>
@@ -802,114 +793,114 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/DTermFactory.scala">
+    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/mutable/LinkedList.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="24" column="23" selection-start="947" selection-end="947" vertical-scroll-proportion="0.0">
+        <state line="40" column="6" selection-start="1641" selection-end="1641" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/PTermFactory.scala">
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/Method.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="93" column="4" selection-start="3365" selection-end="3365" vertical-scroll-proportion="0.0">
+        <state line="8" column="16" selection-start="193" selection-end="193" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/ImplementationFactory.scala">
+    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/package.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="47" column="0" selection-start="1924" selection-end="2005" vertical-scroll-proportion="0.0">
+        <state line="38" column="7" selection-start="1853" selection-end="1853" vertical-scroll-proportion="0.68881685">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/mutable/Seq.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="26" column="7" selection-start="834" selection-end="834" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/MethodFactory.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="91" column="49" selection-start="3340" selection-end="3340" vertical-scroll-proportion="0.0">
+        <state line="70" column="50" selection-start="2492" selection-end="2492" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/GTermFactory.scala">
+    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/mutable/LinkedListLike.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="43" column="23" selection-start="1718" selection-end="1718" vertical-scroll-proportion="0.0">
+        <state line="56" column="6" selection-start="1629" selection-end="1629" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/domains/DomainFactory.scala">
+    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/Seq.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="77" column="81" selection-start="3135" selection-end="3135" vertical-scroll-proportion="0.0">
+        <state line="18" column="6" selection-start="650" selection-end="650" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/BasicBlockFactory.scala">
+    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/SeqLike.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="147" column="72" selection-start="5203" selection-end="5203" vertical-scroll-proportion="0.0">
+        <state line="170" column="6" selection-start="6196" selection-end="6196" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/MapLike.scala">
+    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/immutable/Seq.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="223" column="0" selection-start="7926" selection-end="7926" vertical-scroll-proportion="0.0">
+        <state line="23" column="6" selection-start="803" selection-end="803" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/immutable/Map.scala">
+    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/immutable/LinearSeq.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="142" column="0" selection-start="5618" selection-end="5618" vertical-scroll-proportion="0.0">
+        <state line="20" column="6" selection-start="745" selection-end="745" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/TermFactory.scala">
+    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/immutable/List.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="69" column="0" selection-start="2283" selection-end="2283" vertical-scroll-proportion="0.0">
+        <state line="44" column="22" selection-start="1724" selection-end="1724" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/programs/ProgramFactory.scala">
+    <entry file="jar://C:/Program Files/scala/src/scala-library-src.jar!/scala/collection/mutable/ListBuffer.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="83" column="4" selection-start="3696" selection-end="3696" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/programs/symbols/PredicateFactory.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="9" column="0" selection-start="257" selection-end="257" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/ExpressionFactory.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="104" column="23" selection-start="4220" selection-end="4220" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/permission/PermissionTerm.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="23" column="39" selection-start="572" selection-end="588" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/permission/PermissionFactory.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="57" column="12" selection-start="2636" selection-end="2636" vertical-scroll-proportion="0.0">
+        <state line="224" column="6" selection-start="6571" selection-end="6571" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/SILAST/src/main/Main.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="105" column="9" selection-start="5290" selection-end="5290" vertical-scroll-proportion="0.9189627">
+        <state line="122" column="41" selection-start="6405" selection-end="6405" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/BasicBlock.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="10" column="0" selection-start="358" selection-end="358" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/ImplementationFactory.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="18" column="37" selection-start="551" selection-end="551" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/BasicBlockFactory.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="24" column="46" selection-start="888" selection-end="888" vertical-scroll-proportion="0.9189627">
           <folding />
         </state>
       </provider>

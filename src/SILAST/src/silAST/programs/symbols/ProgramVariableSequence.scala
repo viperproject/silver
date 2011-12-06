@@ -10,6 +10,7 @@ final class ProgramVariableSequence private[silAST](
                                                      ) extends ASTNode(sl) with Seq[ProgramVariable]
 {
   override def toString() = "(" + variables.mkString(",") + ")"
+  def toStringWithTypes() = "(" + (for (v <- variables) yield (v.name + " : " + v.dataType.toString)).mkString(",") + ")"
 
   def subNodes: Seq[ASTNode] = variables
 
