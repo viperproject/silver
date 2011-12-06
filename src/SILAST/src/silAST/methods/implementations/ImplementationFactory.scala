@@ -40,7 +40,9 @@ class ImplementationFactory private[silAST](private[silAST] val methodFactory : 
   val results = methodFactory.results
   val basicBlocks = new HashMap[String,BasicBlockFactory]
 
+  override val nullFunction = methodFactory.nullFunction
   override def functions = methodFactory.functions
   override def programVariables = parameters.toSet union results.toSet union localVariables.toSet
-  override protected[silAST] val predicates = methodFactory.predicates
+  override protected[silAST] def predicates = methodFactory.predicates
+  override protected[silAST] def domainFunctions = methodFactory.domainFunctions
 }

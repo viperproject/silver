@@ -28,7 +28,7 @@ final class DomainFactory private[silAST](
     require(!domainFunctions.contains(name))
     require(domainFunctionSignatures.contains(s))
     val result = new DomainFunction(sl,name,s)
-    domainFunctions += name -> result
+    myDomainFunctions += name -> result
     domain.pFunctions += result
     result
   }
@@ -73,4 +73,7 @@ final class DomainFactory private[silAST](
 
   protected[silAST] override val dataTypes = programFactory.dataTypes
   protected[silAST] override val dataTypeSequences = programFactory.dataTypeSequences
+
+  protected[silAST] val myDomainFunctions = new HashMap[String, DomainFunction]
+  protected[silAST] override def domainFunctions = programFactory.domainFunctions
 }

@@ -22,13 +22,18 @@ class PredicateFactory(
     pf.predicates += p
   }
 
+  val thisVar = new ProgramVariable(noLocation,"this",ReferenceDataType.referenceType)
+
   protected var expression : Option[Expression] = None
 
-  protected[silAST] override val programVariables =
-    Set(new ProgramVariable(noLocation,"this",ReferenceDataType.referenceType))
+  protected[silAST] override val programVariables = Set(thisVar)
   protected[silAST] override val fields    = pf.fields
   protected[silAST] override val functions = pf.functions
   protected[silAST] override val predicates = pf.predicates
+
+  protected[silAST] override def domainFunctions = pf.domainFunctions
+
+  override val nullFunction = pf.nullFunction
 
   private var predicate : Option[Predicate] = None
 }

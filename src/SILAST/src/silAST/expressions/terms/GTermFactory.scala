@@ -2,6 +2,7 @@ package silAST.expressions.terms
 
 import silAST.source.SourceLocation
 import collection.mutable.{HashMap, HashSet}
+import collection.immutable.{Map}
 import silAST.domains.DomainFunction
 import silAST.expressions.util.{GTermSequence, TermSequence}
 import silAST.programs.NodeFactory
@@ -40,5 +41,5 @@ protected[silAST] trait GTermFactory extends NodeFactory
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] val terms = new HashSet[Term]
   protected[silAST] val termSequences = new HashSet[TermSequence]
-  protected[silAST] val domainFunctions  = new HashMap[String, DomainFunction]
+  protected[silAST] def domainFunctions  : Map[String, DomainFunction] // = new HashMap[String, DomainFunction]
 }

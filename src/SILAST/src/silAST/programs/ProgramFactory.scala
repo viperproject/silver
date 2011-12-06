@@ -1,11 +1,11 @@
 package silAST.programs {
 
-import silAST.source.SourceLocation
-import silAST.domains.DomainFactory
 import silAST.methods.MethodFactory
 import collection.mutable.{HashSet, HashMap,Set}
 import symbols._
-import silAST.types.{ReferenceDataType, DataType, DataTypeFactory, NonReferenceDataType}
+import silAST.source.{noLocation, SourceLocation}
+import silAST.types._
+import silAST.domains.{Domain, DomainFunctionSignature, DomainFunction, DomainFactory}
 
 final class ProgramFactory(
                             val name: String
@@ -71,7 +71,20 @@ final class ProgramFactory(
   protected[silAST] val predicates : Set[Predicate] = new HashSet[Predicate]
 
   protected[silAST] override val dataTypes = new HashSet[DataType]
-  dataTypes += ReferenceDataType.referenceType
+
+  val referenceType = ReferenceDataType.referenceType
+  val emptyDTSequence = new DataTypeSequence(List.empty[DataType])
+  private val nullSig = new DomainFunctionSignature(noLocation,emptyDTSequence,referenceType)
+
+  val nullFunction = new DomainFunction(noLocation,"null",nullSig)
+
+  def domains : Set[Domain] = for (df <- domainFactories) yield df.domain
+  def domainFunctions : Map[String, DomainFunction] =
+    (for (f <- (for (d <- domains) yield d.functions).flatten) yield (f.name,f)).toMap + (nullFunction.name -> nullFunction)
+    //TODO:check duplicate names/prefix names
+
+  dataTypes += referenceType
+//  domainFunctions += nullFunction
 }
 
 }

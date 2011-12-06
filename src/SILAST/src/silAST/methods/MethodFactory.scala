@@ -87,7 +87,10 @@ class MethodFactory(
   val implementations = new HashSet[ImplementationFactory]
   val methodFactories = programFactory.methodFactories.values.toSet
 
+  override val nullFunction = programFactory.nullFunction
+
   override def programVariables = parametersGenerator.toSet[ProgramVariable] union resultsGenerator.toSet[ProgramVariable]
   override def functions = programFactory.functions.toSet
   override protected[silAST] val predicates = programFactory.predicates
+  override protected[silAST] def domainFunctions = programFactory.domainFunctions
 }

@@ -90,6 +90,8 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
 
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] def functions : Set[Function]
+  val nullFunction : DomainFunction
+  //domainFunctions += "null" -> nullFunction
 
   protected[silAST] def programVariables : Set[ProgramVariable]
   protected[silAST] def fields : Set[Field]

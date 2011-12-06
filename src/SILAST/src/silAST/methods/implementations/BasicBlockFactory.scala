@@ -142,5 +142,8 @@ class BasicBlockFactory private[silAST](
   override def functions = implementationFactory.functions
   val programVariableSequences = new HashSet[ProgramVariableSequence]
 
-  override protected[silAST] val predicates = implementationFactory.predicates
+  override val nullFunction = implementationFactory.nullFunction
+
+  override protected[silAST] def predicates = implementationFactory.predicates
+  override protected[silAST] def domainFunctions = implementationFactory.domainFunctions
 }

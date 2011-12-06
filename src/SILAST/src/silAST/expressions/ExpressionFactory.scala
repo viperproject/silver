@@ -5,14 +5,14 @@ import collection.mutable.HashSet
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.domains.DomainPredicate
 import terms._
-import terms.permission.PermissionTerm
+import permission.{PermissionFactory, PermissionTerm}
 import util._
 import silAST.symbols.logical.quantification.{BoundVariable, Quantifier}
 import silAST.programs.NodeFactory
 import silAST.programs.symbols.Predicate
 
 
-trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpressionFactory with TermFactory{
+trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpressionFactory with TermFactory with PermissionFactory{
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   def makeUnaryExpression(sl: SourceLocation,op:UnaryConnective,e1: Expression): UnaryExpression = {
@@ -117,5 +117,5 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
   }
 
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] val permissionTerms = new HashSet[PermissionTerm]
+//  protected[silAST] val permissionTerms = new HashSet[PermissionTerm]
 }

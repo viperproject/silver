@@ -13,7 +13,7 @@ trait PermissionFactory extends NodeFactory
   def makeEpsilonPermissionTerm() = EpsilonPermissionTerm.epsilonPermissionTerm
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePercentagePermissionTerm(sl : SourceLocation, percentage : Int) {
+  def makePercentagePermissionTerm(sl : SourceLocation, percentage : Int) : PercentagePermissionTerm = {
     require(percentage>0 && percentage < 100)
     val result = new PercentagePermissionTerm(sl,percentage)
     permissionTerms += result
@@ -68,5 +68,9 @@ trait PermissionFactory extends NodeFactory
 
   /////////////////////////////////////////////////////////////////////////////////////
   protected[silAST] val permissionTerms = new HashSet[PermissionTerm]
+  permissionTerms += FullPermissionTerm.fullPermissionTerm
+  permissionTerms += NoPermissionTerm.noPermissionTerm
+  permissionTerms += EpsilonPermissionTerm.epsilonPermissionTerm
+
   protected[silAST] val permissionVariables = new HashSet[PermissionVariable]
 }
