@@ -20,9 +20,9 @@ final class Domain private[silAST](
 
 
   override def toString = "domain " + name + "{\n" +
-    functions.mkString("\t","\n\t","\n") +
-    predicates.mkString("\t","\n\t","\n") +
-    axioms.mkString("\t","\n\t","\n") +
+    (if (!functions.isEmpty) functions.mkString("\t","\n\t","\n") else "" )+
+    (if (!predicates.isEmpty) predicates.mkString("\t","\n\t","\n") else "" ) +
+    (if (!axioms.isEmpty) axioms.mkString("\t","\n\t","\n") else "" ) +
     "}"
 
   override def subNodes = functions.toList ++ predicates.toList ++ axioms.toList

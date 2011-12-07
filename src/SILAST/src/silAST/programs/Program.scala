@@ -22,9 +22,9 @@ final class Program private[silAST](
   override def toString =
     "program " + name + "\n" +
       domains.mkString("","\n","\n") +
-      fields.mkString("\t","\n\t","\n") +
-      functions.mkString("\t","\n\t","\n") +
-      predicates.mkString("\t","\n\t","\n") +
+      fields.mkString("","\n","\n") +
+      functions.mkString("","\n","\n") +
+      predicates.mkString("","\n","\n") +
       methods.mkString("\n","\n","\n\n") +
       //    ( for (m <- methods) yield (for (i <- m.implementations) yield i).mkString("\n") )
       (for (m <- methods) yield (for (i <- m.implementations) yield i)).flatten.mkString("\n")
