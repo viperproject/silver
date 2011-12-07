@@ -10,6 +10,7 @@ import collection.mutable.{HashSet, HashMap, ListBuffer}
 import silAST.methods.MethodFactory
 import silAST.expressions.{PredicateExpression, PExpression, Expression, ExpressionFactory}
 import com.sun.xml.internal.bind.v2.TODO
+import javax.management.remote.rmi._RMIConnection_Stub
 
 
 class BasicBlockFactory private[silAST](
@@ -19,21 +20,21 @@ class BasicBlockFactory private[silAST](
   ) extends NodeFactory with ExpressionFactory
 {
   //////////////////////////////////////////////////////////////////
-  def compile()
+  def compile() : BasicBlock =
   {
-    require (basicBlock == None)
-    //TODO: create basicblock and append stuff
-    //basicBlock = new BasicBlock(sl,name,statements,for (s<-successors) yield new CFGEdge(s._1))
+    basicBlock
   }
+
   //////////////////////////////////////////////////////////////////
   def appendAssignment(
       sl: SourceLocation,
       target: ProgramVariable,
       source: PExpression
-  ) {
+  ) =
+  {
     require(localVariables.contains(target) || results.contains(target)) //no writing to inputs
     require(expressions.contains(source))
-    statements += new Assignment(sl,target,source)
+    basicBlock.appendStatement(new Assignment(sl,target,source))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -47,7 +48,7 @@ class BasicBlockFactory private[silAST](
     require(fields.contains(field))
     require(expressions.contains(source))
 
-    statements += new FieldAssignment(sl,target,field,source)
+    basicBlock.appendStatement(new FieldAssignment(sl,target,field,source))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -59,7 +60,7 @@ class BasicBlockFactory private[silAST](
     require(localVariables.contains(target))
     require(dataTypes.contains(dataType))
 
-    statements += new NewStatement(sl,target,dataType)
+    basicBlock.appendStatement(new NewStatement(sl,target,dataType))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -83,7 +84,7 @@ class BasicBlockFactory private[silAST](
     require(methodFactories.contains(methodFactory))
     require(termSequences.contains(arguments))
 
-    statements += new CallStatement(sl,targets, receiver,methodFactory.method,arguments)
+    basicBlock.appendStatement(new CallStatement(sl,targets, receiver,methodFactory.method,arguments))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -93,7 +94,7 @@ class BasicBlockFactory private[silAST](
   ) {
     require(expressions.contains(e))
 
-    statements += new Inhale(sl,e)
+    basicBlock.appendStatement(new Inhale(sl,e))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -104,7 +105,7 @@ class BasicBlockFactory private[silAST](
   {
     require(expressions.contains(e))
 
-    statements += new Exhale(sl,e)
+    basicBlock.appendStatement(new Exhale(sl,e))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -115,7 +116,7 @@ class BasicBlockFactory private[silAST](
   {
     require(expressions.contains(e))
 
-    statements += new Fold(sl,e)
+    basicBlock.appendStatement(new Fold(sl,e))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -126,20 +127,17 @@ class BasicBlockFactory private[silAST](
   {
     require(expressions.contains(e))
 
-    statements += new Unfold(sl,e)
+    basicBlock.appendStatement(new Unfold(sl,e))
   }
 
   //////////////////////////////////////////////////////////////////
-  def addSuccessor( sl : SourceLocation, successor : BasicBlockFactory, condition : Expression ) = {
-    require(!successors.contains(successor))
-    successors += successor -> (sl,condition)
+  def addSuccessor( sl : SourceLocation, successor : BasicBlockFactory, condition : Expression, isBackEdge : Boolean ) = {
+    require(basicBlock.successors.forall(_.target != successor.basicBlock))
+    new CFGEdge(sl,basicBlock,successor.basicBlock,condition,isBackEdge)
   }
 
   //////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////
-  val statements = new ListBuffer[Statement]
-  val successors = new HashMap[BasicBlockFactory, (SourceLocation, Expression)]
-
   override def fields : Set[Field] = implementationFactory.fields
   def localVariables = implementationFactory.localVariables
   def results        = implementationFactory.results
@@ -164,5 +162,5 @@ class BasicBlockFactory private[silAST](
   protected[silAST] override def dataTypes = implementationFactory.dataTypes union pDataTypes
   protected[silAST] override def domainFactories = implementationFactory.domainFactories
 
-  private[silAST] var basicBlock : Option[BasicBlock] = None
+  private[silAST] val basicBlock : BasicBlock = new BasicBlock(sl,name,implementationFactory.cfg)
 }

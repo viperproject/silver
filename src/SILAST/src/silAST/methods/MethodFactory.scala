@@ -9,6 +9,7 @@ import silAST.source.{noLocation, SourceLocation}
 import silAST.types.{ReferenceDataType, DataType}
 import silAST.expressions.{FalseExpression, TrueExpression, Expression, ExpressionFactory}
 import silAST.domains.Domain
+import swing.Reactions.Impl
 
 class MethodFactory(
                      val programFactory: ProgramFactory,
@@ -20,7 +21,7 @@ class MethodFactory(
   {
     if (!signatureDefined)
       finalizeSignature()
-    for (i <- implementations) i.compile()
+    for (i <- implementationFactories) i.compile()
 
     method
   }
@@ -66,10 +67,11 @@ class MethodFactory(
 
   }
 
-  def makeImplementation(sl:SourceLocation) = {
+  def addImplementation(sl:SourceLocation) : ImplementationFactory = {
     if (!signatureDefined) finalizeSignature()
     val result = new ImplementationFactory(this,sl)
-    implementations += result
+    implementationFactories += result
+    method.pImplementations += result.implementation
     result
   }
 
@@ -94,7 +96,7 @@ class MethodFactory(
   private val preconditions = new ListBuffer[Expression]
   private val postconditions = new ListBuffer[Expression]
   private var signatureDefined = false
-  private val implementations = new HashSet[ImplementationFactory]
+  private val implementationFactories = new HashSet[ImplementationFactory]
   private[silAST] def methodFactories = programFactory.methodFactories.values.toSet
 
   override val nullFunction = programFactory.nullFunction

@@ -20,7 +20,7 @@ class PredicateFactory(
     predicate
   }
 
-  def setExpression(e : Expression) = {
+  def setExpression(e : Expression) {
     require (expression == None)
     require (expressions contains e)
     expression = Some(e)

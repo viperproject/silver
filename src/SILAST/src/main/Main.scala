@@ -19,7 +19,7 @@ object Main {
     makeProgram()
   }
 
-  def makeProgram() = {
+  def makeProgram() {
     val nl = noLocation
 
     val pf = new ProgramFactory(nl,"P1")
@@ -119,15 +119,16 @@ object Main {
       mf.addPrecondition(nl,this_valid)
       mf.addPostcondition(nl,this_valid)
 
-      var impl = mf.makeImplementation(nl);
+      var impl = mf.addImplementation(nl);
 
       {
         impl.addLocalVariable(nl,"n",ReferenceDataType.referenceType)
 
-        val startBlock = impl.addBasicBlock(nl,"start");
-        val endBlock = impl.addBasicBlock(nl,"end");
+        val startBlock = impl.addFirstBasicBlock(nl,"start");
+        val endBlock = impl.addLastBasicBlock(nl,"end");
 
-        startBlock.addSuccessor(nl,endBlock,impl.trueExpression)
+        startBlock.addSuccessor(nl,startBlock,impl.trueExpression,true)
+        startBlock.addSuccessor(nl,endBlock,impl.trueExpression,false)
 
         {
           val this_term = startBlock.makeProgramVariableTerm(nl,mf.thisVar)

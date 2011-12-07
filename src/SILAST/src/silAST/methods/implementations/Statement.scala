@@ -120,7 +120,7 @@ final case class Fold private[silAST](
                                        predicate: PredicateExpression
                                        )
   extends Statement(sl) {
-  override def toString: String = "Fold " + predicate.toString
+  override def toString: String = "fold " + predicate.toString
 
   override def subNodes: Seq[ASTNode] = List(predicate)
 }
@@ -134,7 +134,7 @@ final case class Unfold private[silAST](
                                          predicate: PredicateExpression
                                          )
   extends Statement(sl) {
-  override def toString: String = "Unfold " + predicate.toString
+  override def toString: String = "unfold " + predicate.toString
 
   override def subNodes: Seq[ASTNode] = List(predicate)
 }
