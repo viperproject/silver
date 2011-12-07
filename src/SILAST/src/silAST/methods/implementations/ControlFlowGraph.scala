@@ -12,47 +12,44 @@ final class ControlFlowGraph private[silAST](
   //TODO: more consistency checks
 
   private val nodes = new ListBuffer[BasicBlock]
-  private val initialNode = new BasicBlock(noLocation,"$dummy",this)
+  private val initialNode = new BasicBlock(noLocation, "$dummy", this)
 
   private var pStartNode = initialNode
   private var pEndNode = initialNode
 
-  private[implementations] def addNode(bb : BasicBlock) =
-  {
-    require (!(nodes contains bb))
-    require (bb.cfg == this)
+  private[implementations] def addNode(bb: BasicBlock) = {
+    require(!(nodes contains bb))
+    require(bb.cfg == this)
     nodes += bb
   }
 
-  private def eliminateInitialNodeIfNecessary() =
-  {
+  private def eliminateInitialNodeIfNecessary() = {
     if (
-      startNode!=initialNode &&
-      endNode != initialNode &&
-      initialNode.statements.isEmpty &&
-      initialNode.successors.isEmpty &&
-      initialNode.predecessors.isEmpty
+      startNode != initialNode &&
+        endNode != initialNode &&
+        initialNode.statements.isEmpty &&
+        initialNode.successors.isEmpty &&
+        initialNode.predecessors.isEmpty
     )
       nodes.remove(0)
 
   }
 
-  private[implementations] def setStartNode(bb : BasicBlock) =
-  {
-    require (nodes contains bb)
+  private[implementations] def setStartNode(bb: BasicBlock) = {
+    require(nodes contains bb)
     pStartNode = bb
     eliminateInitialNodeIfNecessary()
   }
 
-  private[implementations] def setEndNode(bb : BasicBlock) =
-  {
-    require (nodes contains bb)
+  private[implementations] def setEndNode(bb: BasicBlock) = {
+    require(nodes contains bb)
     pEndNode = bb
     eliminateInitialNodeIfNecessary()
   }
 
   def startNode: BasicBlock = pStartNode
-  def endNode: BasicBlock =pEndNode
+
+  def endNode: BasicBlock = pEndNode
 
   override def subNodes = nodes.toSeq
 

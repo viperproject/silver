@@ -6,70 +6,67 @@ import silAST.types.DataType
 import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import silAST.expressions.util.PTermSequence
 import collection.Set
-import collection.mutable.{HashSet, HashMap, ListBuffer}
+import collection.mutable.HashSet
 import silAST.methods.MethodFactory
 import silAST.expressions.{PredicateExpression, PExpression, Expression, ExpressionFactory}
-import com.sun.xml.internal.bind.v2.TODO
-import javax.management.remote.rmi._RMIConnection_Stub
+import silAST.expressions.terms.PTerm
 
 
 class BasicBlockFactory private[silAST](
-    private val implementationFactory : ImplementationFactory,
-    val sl : SourceLocation,
-    val name : String
-  ) extends NodeFactory with ExpressionFactory
-{
+                                         private val implementationFactory: ImplementationFactory,
+                                         val sl: SourceLocation,
+                                         val name: String
+                                         ) extends NodeFactory with ExpressionFactory {
   //////////////////////////////////////////////////////////////////
-  def compile() : BasicBlock =
-  {
+  def compile(): BasicBlock = {
     basicBlock
   }
 
   //////////////////////////////////////////////////////////////////
   def appendAssignment(
-      sl: SourceLocation,
-      target: ProgramVariable,
-      source: PExpression
-  ) =
-  {
+                        sl: SourceLocation,
+                        target: ProgramVariable,
+                        source: PTerm
+                        ) = {
     require(localVariables.contains(target) || results.contains(target)) //no writing to inputs
-    require(expressions.contains(source))
-    basicBlock.appendStatement(new Assignment(sl,target,source))
+    require(terms contains source)
+    basicBlock.appendStatement(new Assignment(sl, target, source))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendFieldAssignment(
-      sl: SourceLocation,
-      target: ProgramVariable,
-      field : Field,
-      source: PExpression
-  ) {
+                             sl: SourceLocation,
+                             target: ProgramVariable,
+                             field: Field,
+                             source: PExpression
+                             ) {
     require(programVariables.contains(target))
     require(fields.contains(field))
     require(expressions.contains(source))
 
-    basicBlock.appendStatement(new FieldAssignment(sl,target,field,source))
+    basicBlock.appendStatement(new FieldAssignment(sl, target, field, source))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendNewStatement(
-      sl: SourceLocation,
-      target: ProgramVariable,
-      dataType : DataType
-  ) {
+                          sl: SourceLocation,
+                          target: ProgramVariable,
+                          dataType: DataType
+                          ) {
     require(localVariables.contains(target))
     require(dataTypes.contains(dataType))
 
-    basicBlock.appendStatement(new NewStatement(sl,target,dataType))
+    basicBlock.appendStatement(new NewStatement(sl, target, dataType))
   }
 
   //////////////////////////////////////////////////////////////////
-  def makeProgramVariableSequence(sl : SourceLocation, vs : Seq[ProgramVariable]) : ProgramVariableSequence = {
+  def makeProgramVariableSequence(sl: SourceLocation, vs: Seq[ProgramVariable]): ProgramVariableSequence = {
     require(vs.forall(programVariables.contains(_)))
-    val result = new ProgramVariableSequence(sl,vs)
+    val result = new ProgramVariableSequence(sl, vs)
     programVariableSequences += result
     result
   }
+
   //////////////////////////////////////////////////////////////////
   def appendCallStatement(
                            sl: SourceLocation,
@@ -77,90 +74,97 @@ class BasicBlockFactory private[silAST](
                            receiver: PExpression,
                            methodFactory: MethodFactory,
                            arguments: PTermSequence
-  ) {
+                           ) {
     require(programVariableSequences.contains(targets))
     require(targets.forall(localVariables.contains(_)))
     require(expressions.contains(receiver))
     require(methodFactories.contains(methodFactory))
     require(termSequences.contains(arguments))
 
-    basicBlock.appendStatement(new CallStatement(sl,targets, receiver,methodFactory.method,arguments))
+    basicBlock.appendStatement(new CallStatement(sl, targets, receiver, methodFactory.method, arguments))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendInhale(
-                           sl: SourceLocation,
-                           e : Expression
-  ) {
+                    sl: SourceLocation,
+                    e: Expression
+                    ) {
     require(expressions.contains(e))
 
-    basicBlock.appendStatement(new Inhale(sl,e))
+    basicBlock.appendStatement(new Inhale(sl, e))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendExhale(
-                           sl: SourceLocation,
-                           e : Expression
-  )
-  {
+                    sl: SourceLocation,
+                    e: Expression
+                    ) {
     require(expressions.contains(e))
 
-    basicBlock.appendStatement(new Exhale(sl,e))
+    basicBlock.appendStatement(new Exhale(sl, e))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendFold(
-                           sl: SourceLocation,
-                           e : PredicateExpression
-  )
-  {
+                  sl: SourceLocation,
+                  e: PredicateExpression
+                  ) {
     require(expressions.contains(e))
 
-    basicBlock.appendStatement(new Fold(sl,e))
+    basicBlock.appendStatement(new Fold(sl, e))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendUnfold(
-                           sl: SourceLocation,
-                           e : PredicateExpression
-  )
-  {
+                    sl: SourceLocation,
+                    e: PredicateExpression
+                    ) {
     require(expressions.contains(e))
 
-    basicBlock.appendStatement(new Unfold(sl,e))
+    basicBlock.appendStatement(new Unfold(sl, e))
   }
 
   //////////////////////////////////////////////////////////////////
-  def addSuccessor( sl : SourceLocation, successor : BasicBlockFactory, condition : Expression, isBackEdge : Boolean ) = {
+  def addSuccessor(sl: SourceLocation, successor: BasicBlockFactory, condition: Expression, isBackEdge: Boolean) = {
     require(basicBlock.successors.forall(_.target != successor.basicBlock))
-    new CFGEdge(sl,basicBlock,successor.basicBlock,condition,isBackEdge)
+    new CFGEdge(sl, basicBlock, successor.basicBlock, condition, isBackEdge)
   }
 
   //////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////
-  override def fields : Set[Field] = implementationFactory.fields
+  override def fields: Set[Field] = implementationFactory.fields
+
   def localVariables = implementationFactory.localVariables
-  def results        = implementationFactory.results
-  private def parameters      = implementationFactory.parameters
+
+  def results = implementationFactory.results
+
+  private def parameters = implementationFactory.parameters
+
   private def methodFactories = implementationFactory.methodFactories
 
-  override def programVariables : Set[ProgramVariable] =
+  override def programVariables: Set[ProgramVariable] =
     localVariables.toSet[ProgramVariable] union parameters.toSet[ProgramVariable]
 
   override def functions = implementationFactory.functions
+
   val programVariableSequences = new HashSet[ProgramVariableSequence]
 
 
   override protected[silAST] def predicates = implementationFactory.predicates
+
   override protected[silAST] def domainFunctions = implementationFactory.domainFunctions
+
+  override protected[silAST] def domainPredicates = implementationFactory.domainPredicates
 
   override val nullFunction = implementationFactory.nullFunction
 
   override def trueExpression = implementationFactory.trueExpression
+
   override def falseExpression = implementationFactory.falseExpression
 
   protected[silAST] override def dataTypes = implementationFactory.dataTypes union pDataTypes
+
   protected[silAST] override def domainFactories = implementationFactory.domainFactories
 
-  private[silAST] val basicBlock : BasicBlock = new BasicBlock(sl,name,implementationFactory.cfg)
+  private[silAST] val basicBlock: BasicBlock = new BasicBlock(sl, name, implementationFactory.cfg)
 }

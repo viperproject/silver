@@ -1,14 +1,25 @@
 package silAST.programs.symbols
 
 import silAST.ASTNode
-import silAST.source.SourceLocation
+import silAST.expressions.terms.Term
+import silAST.types.DataType
+import silAST.source.{noLocation, SourceLocation}
 
-final class Function private[silAST](
-                                      sl: SourceLocation,
-                                      val name: String,
-                                      val signature: FunctionSignature
-                                      ) extends ASTNode(sl) {
-  override def toString = "function" + name + signature.toString
+final class Function private[programs](
+                                        sl: SourceLocation,
+                                        val name: String,
+                                        pParams: Seq[(SourceLocation, String, DataType)],
+                                        val resultType: DataType
+                                        ) extends ASTNode(sl) {
+  private[symbols] var pSignature = new FunctionSignature(noLocation, pParams, resultType)
+
+  def signature: FunctionSignature = if (pBody == None) throw new Exception else pSignature
+
+  override def toString = "function " + name + signature.toString + " = " + body.toString
 
   override def subNodes = List(signature)
+
+  def body: Term = pBody.get
+
+  private[symbols] var pBody: Option[Term] = None
 }

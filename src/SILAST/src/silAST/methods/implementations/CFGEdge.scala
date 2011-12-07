@@ -10,11 +10,11 @@ final class CFGEdge private[silAST](
                                      val target: BasicBlock,
                                      val condition: Expression,
                                      val isBackEdge: Boolean
-                                     ) extends ASTNode(sl)
-{
-  require (source.cfg == target.cfg)
+                                     ) extends ASTNode(sl) {
+  require(source.cfg == target.cfg)
   source.addSuccessor(this)
   target.addPredecessor(this)
+
   override def toString = source.label + " ==> " + target.label.toString //TODO condition
   override def subNodes = condition :: Nil
 }

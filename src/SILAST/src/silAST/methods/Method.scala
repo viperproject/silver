@@ -11,9 +11,13 @@ final class Method private[silAST](
                                     val name: String,
                                     val signature: MethodSignature
                                     ) extends ASTNode(sl) {
-  override def toString = "method " + name + signature.toString
+  override def toString = "method " + name + signature.toString +
+    (for (i <- implementations) yield i).mkString("\n","\n","\n")
+
 
   private[silAST] val pImplementations = new HashSet[Implementation]
+
   def implementations: Set[Implementation] = pImplementations.toSet
+
   override def subNodes = signature :: implementations.toList
 }

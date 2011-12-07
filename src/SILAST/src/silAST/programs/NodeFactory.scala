@@ -6,5 +6,5 @@ import silAST.ASTNode
 
 
 private[silAST] abstract class NodeFactory {
-  protected val nodeMap = new HashMap[SourceLocation,ASTNode]
+  protected val nodeMap = new HashMap[SourceLocation, ASTNode]
 }

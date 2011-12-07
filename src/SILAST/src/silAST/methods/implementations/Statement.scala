@@ -9,6 +9,7 @@ import silAST.source.SourceLocation
 import silAST.expressions.util.PTermSequence
 import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import silAST.methods.Method
+import silAST.expressions.terms.PTerm
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -25,7 +26,7 @@ sealed abstract class Statement private[silAST](
 final case class Assignment private[silAST](
                                              sl: SourceLocation,
                                              target: ProgramVariable,
-                                             source: PExpression
+                                             source: PTerm
                                              )
   extends Statement(sl) {
   override def toString: String = target.name + ":=" + source.toString

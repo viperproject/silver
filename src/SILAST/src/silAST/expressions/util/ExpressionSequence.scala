@@ -21,7 +21,8 @@ sealed class ExpressionSequence private[silAST](
 /////////////////////////////////////////////////////////////////
 sealed trait PExpressionSequence extends ExpressionSequence with Seq[PExpression] {
   override val args: Seq[PExpression] = pArgs
-  protected val pArgs: Seq[PExpression]
+
+  protected def pArgs: Seq[PExpression]
 
   override def apply(idx: Int) = args(idx)
 
@@ -40,7 +41,8 @@ private final class PExpressionSequenceC private[silAST](
 /////////////////////////////////////////////////////////////////
 sealed trait DExpressionSequence extends ExpressionSequence with Seq[DExpression] {
   override val args: Seq[DExpression] = dArgs
-  protected val dArgs: Seq[DExpression]
+
+  protected def dArgs: Seq[DExpression]
 
   override def apply(idx: Int) = args(idx)
 

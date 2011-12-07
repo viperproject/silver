@@ -12,8 +12,8 @@ final class Predicate private[silAST](
 
   override def subNodes = expression :: Nil
 
-  private[silAST] var pExpression : Option[Expression] = None
+  private[silAST] var pExpression: Option[Expression] = None
 
-  def expression : Expression = pExpression.get
+  def expression: Expression = pExpression.get
 
 }

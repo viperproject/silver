@@ -18,7 +18,8 @@ sealed abstract class BinaryConnective extends ASTNode(noLocation) {
 
 }
 
-final case class EquivalenceOperatorNode() extends BinaryConnective { //TODO: singletons
+final case class EquivalenceOperatorNode() extends BinaryConnective {
+  //TODO: singletons
   def name: String = {
     "<==>"
   }

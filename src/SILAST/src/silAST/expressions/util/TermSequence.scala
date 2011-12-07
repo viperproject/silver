@@ -20,11 +20,12 @@ sealed class TermSequence private[silAST](
 ///////////////////////////////////////////////////////////////
 sealed trait PTermSequence extends TermSequence with Seq[PTerm] {
   override val args: Seq[PTerm] = pArgs
-  protected val pArgs: Seq[PTerm]
 
-  override def apply(idx: Int) = args(idx)
+  protected def pArgs(): Seq[PTerm]
 
-  override def iterator = args.iterator
+  override def apply(idx: Int): PTerm = pArgs().apply(idx)
+
+  override def iterator = pArgs().iterator
 }
 
 private[silAST] final class PTermSequenceC(
@@ -37,6 +38,7 @@ private[silAST] final class PTermSequenceC(
 ///////////////////////////////////////////////////////////////
 sealed trait DTermSequence extends TermSequence with Seq[DTerm] {
   override val args: Seq[DTerm] = dArgs
+
   protected def dArgs: Seq[DTerm]
 
   override def apply(idx: Int) = args(idx)

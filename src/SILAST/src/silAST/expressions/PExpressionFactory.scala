@@ -10,62 +10,67 @@ import silAST.programs.NodeFactory
 import silAST.programs.symbols.Predicate
 
 
-trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermFactory
-{
+trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermFactory {
   //////////////////////////////////////////////////////////////////////////
-  def makePDomainPredicateExpression(sl: SourceLocation,p : DomainPredicate, args : PTermSequence): PDomainPredicateExpression =
-  {
-    require(domainPredicates(p.name) == p)
+  def makePDomainPredicateExpression(sl: SourceLocation, p: DomainPredicate, args: PTermSequence): PDomainPredicateExpression = {
+    require(domainPredicates contains p)
     require(termSequences.contains(args))
 
     (args) match {
-      case (a: GTermSequence) => makeGDomainPredicateExpression(sl,p,a)
-      case _ =>  addExpression ( new PDomainPredicateExpressionC(sl,p,args))
+      case (a: GTermSequence) => makeGDomainPredicateExpression(sl, p, a)
+      case _ => addExpression(new PDomainPredicateExpressionC(sl, p, args))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePPredicateExpression(sl: SourceLocation, r : PTerm,p : Predicate): PPredicateExpression =
-  {
+  def makePPredicateExpression(sl: SourceLocation, r: PTerm, p: Predicate): PPredicateExpression = {
     require(predicates contains p)
     require(terms.contains(r))
 
-    addExpression ( new PPredicateExpression(sl,r,p))
+    addExpression(new PPredicateExpression(sl, r, p))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePUnaryExpression(sl: SourceLocation,op:UnaryConnective,e1: PExpression): PUnaryExpression = {
+  def makePUnaryExpression(sl: SourceLocation, op: UnaryConnective, e1: PExpression): PUnaryExpression = {
     require(expressions.contains(e1))
 
     (e1) match {
-      case (e1: GExpression) => makeGUnaryExpression(sl,op,e1)
-      case _ =>  addExpression ( new PUnaryExpressionC(sl, op,e1) )
+      case (e1: GExpression) => makeGUnaryExpression(sl, op, e1)
+      case _ => addExpression(new PUnaryExpressionC(sl, op, e1))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePBinaryExpression(sl: SourceLocation,op:BinaryConnective,e1: PExpression, e2:PExpression): PBinaryExpression = {
+  def makePBinaryExpression(sl: SourceLocation, op: BinaryConnective, e1: PExpression, e2: PExpression): PBinaryExpression = {
     require(expressions.contains(e1))
     require(expressions.contains(e2))
 
     (e1, e2) match {
-      case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(sl,op,e1,e2)
-      case _ =>  addExpression ( new PBinaryExpressionC(sl, op,e1, e2) )
+      case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(sl, op, e1, e2)
+      case _ => addExpression(new PBinaryExpressionC(sl, op, e1, e2))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePEqualityExpression(sl: SourceLocation,t1: PTerm,t2: PTerm) : PEqualityExpression = {
+  def makePEqualityExpression(sl: SourceLocation, t1: PTerm, t2: PTerm): PEqualityExpression = {
     require(terms.contains(t1))
     require(terms.contains(t2))
 
     (t1, t2) match {
-      case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sl,t1,t2)
-      case _ =>  addExpression ( new PEqualityExpressionC(sl, t1, t2) )
+      case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sl, t1, t2)
+      case _ => addExpression(new PEqualityExpressionC(sl, t1, t2))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
+  def makePUnfoldingExpression(sl: SourceLocation, p: PPredicateExpression, e: PExpression): UnfoldingExpression = {
+    require(expressions contains p)
+    require(expressions contains e)
+
+    addExpression(new PUnfoldingExpression(sl, p, e))
+  }
+
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] def predicates : Set[Predicate]
+  //////////////////////////////////////////////////////////////////////////
+  protected[silAST] def predicates: Set[Predicate]
 }
