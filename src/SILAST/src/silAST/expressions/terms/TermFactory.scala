@@ -5,15 +5,16 @@ import silAST.domains.DomainFunction
 import silAST.programs.NodeFactory
 import silAST.types.DataType
 import silAST.expressions.util._
-import silAST.programs.symbols.{PredicateFactory, Predicate, FunctionFactory, Field}
+import silAST.programs.symbols.{PredicateFactory, FunctionFactory, Field}
 
-protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory {
+protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory
+{
   /////////////////////////////////////////////////////////////////////////
   def makeFunctionApplicationTerm(sl: SourceLocation, r: Term, ff: FunctionFactory, a: TermSequence): FunctionApplicationTerm = {
     require(terms.contains(r))
     require(functions.contains(ff.pFunction))
     require(a.forall(terms contains _))
-    //TODO: signature check arguments
+    //TODO: signature check parameters
 
     (r, a) match {
       case (r: PTerm, a: PTermSequence) => makePFunctionApplicationTerm(sl, r, ff, a)
@@ -37,7 +38,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   def makeCastTerm(sl: SourceLocation, t: Term, dt: DataType): CastTerm = {
     require(terms.contains(t))
     require(dataTypes.contains(dt))
-    //TODO: type check arguments
+    //TODO: type check parameters
 
     t match {
       case t: PTerm => makePCastTerm(sl, t, dt)
@@ -49,7 +50,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   def makeFieldReadTerm(sl: SourceLocation, t: Term, f: Field): FieldReadTerm = {
     require(terms.contains(t))
     require(fields.contains(f))
-    //TODO: type check arguments
+    //TODO: type check parameters
 
     t match {
       case t: PTerm => makePFieldReadTerm(sl, t, f)
@@ -59,15 +60,9 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeOldFieldReadTerm(sl: SourceLocation, t: Term, f: Field): OldFieldReadTerm = {
+  def makeOldTerm(sl: SourceLocation, t: Term): OldTerm = {
     require(terms contains t)
-    require(fields contains f)
-    //TODO: type check
-
-    t match {
-      case t: PTerm => makePOldFieldReadTerm(sl, t, f)
-      case _ => addTerm(new OldFieldReadTerm(sl, t, f))
-    }
+    addTerm(new OldTerm(sl,t))
   }
 
   /////////////////////////////////////////////////////////////////////////

@@ -8,6 +8,7 @@ import silAST.expressions.util.ExpressionSequence
 import silAST.source.{noLocation, SourceLocation}
 import silAST.types.{ReferenceDataType, DataType}
 import silAST.expressions.{Expression, ExpressionFactory}
+import silAST.expressions.terms.permission.PermissionVariable
 
 class MethodFactory(
                      val programFactory: ProgramFactory,
@@ -122,4 +123,6 @@ class MethodFactory(
   protected[silAST] override def domainFunctions = programFactory.domainFunctions
 
   protected[silAST] override def domainPredicates = programFactory.domainPredicates
+
+  override val permissionVariables : collection.Set[PermissionVariable] = Set() //TODO:ss
 }

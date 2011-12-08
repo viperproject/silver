@@ -9,7 +9,7 @@ import silAST.programs.symbols.PredicateFactory
 import silAST.methods.MethodFactory
 import silAST.types.ReferenceDataType
 import silAST.source.noLocation
-import util.{PTermSequence, TermSequence, DTermSequence, DTermSequenceC}
+import util.{PTermSequence, TermSequence, DTermSequence}
 
 object Main {
 
@@ -136,12 +136,18 @@ object Main {
       val r = mf.addResult(nl, "r", integerType) //dummy for checking
 
       val this_var = mf.makeProgramVariableTerm(nl, mf.thisVar)
+      val xTerm = mf.makeProgramVariableTerm(nl,xVar)
+      val rTerm = mf.makeProgramVariableTerm(nl,r)
+      val zeroTerm = mf.makeIntegerLiteralTerm(nl,0)
+
 
       val this_valid = mf.makePredicateExpression(nl, this_var, validPredicate)
       mf.addPrecondition(nl, this_valid)
+      mf.addPrecondition(nl, mf.makeDomainPredicateExpression(nl,intLE,TermSequence(zeroTerm,xTerm)))
       mf.addPostcondition(nl, this_valid)
+      mf.addPostcondition(nl, mf.makeDomainPredicateExpression(nl,intLE,TermSequence(rTerm,xTerm)))
 
-      var impl = mf.addImplementation(nl);
+      val impl = mf.addImplementation(nl);
 
       {
         val nVar = impl.addLocalVariable(nl, "n", ReferenceDataType.referenceType)
@@ -182,6 +188,7 @@ object Main {
 
   def f(e: Expression) {
     e match {
+      case OldExpression(_,_) => 0
       case TrueExpression() => 0
       case FalseExpression() => 0
       case PermissionExpression(_, _, _) => 0
@@ -197,6 +204,7 @@ object Main {
 
   def f2(e: Expression) {
     e match {
+      case OldExpression(_,_) => 0
       case TrueExpression() => 0
       case FalseExpression() => 0
       case PermissionExpression(_, _, _) => 0
@@ -212,6 +220,7 @@ object Main {
 
   def g(t: Term) {
     t match {
+      case OldTerm(_,_) => 1
       case LiteralTerm(_) => 1
 
       case BoundVariableTerm(_, _) => 1
@@ -221,7 +230,6 @@ object Main {
       case ProgramVariableTerm(_, _) => 2
       case CastTerm(_, _, _) => 2
       case FieldReadTerm(_, _, _) => 6
-      case OldFieldReadTerm(_, _, _) => 6
 
       case UnfoldingTerm(_, _, _,_) => 6
     }
@@ -236,7 +244,6 @@ object Main {
       case ProgramVariableTerm(_, _) => 2
       case CastTerm(_, _, _) => 2
       case FieldReadTerm(_, _, _) => 6
-      case OldFieldReadTerm(_, _, _) => 6
     }
   }
 

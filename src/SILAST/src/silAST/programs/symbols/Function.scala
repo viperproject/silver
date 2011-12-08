@@ -8,9 +8,10 @@ import silAST.source.{noLocation, SourceLocation}
 final class Function private[programs](
                                         sl: SourceLocation,
                                         val name: String,
-                                        pParams: Seq[(SourceLocation, String, DataType)],
-                                        val resultType: DataType
-                                        ) extends ASTNode(sl) {
+                                        pParams  : Seq[(SourceLocation, String, DataType)],
+                                        resultType : DataType
+                                        ) extends ASTNode(sl)
+{
   private[symbols] var pSignature = new FunctionSignature(noLocation, pParams, resultType)
 
   def signature: FunctionSignature = if (pBody == None) throw new Exception else pSignature

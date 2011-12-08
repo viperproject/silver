@@ -10,6 +10,7 @@ import collection.mutable.HashSet
 import silAST.methods.MethodFactory
 import silAST.expressions.{PredicateExpression, PExpression, Expression, ExpressionFactory}
 import silAST.expressions.terms.PTerm
+import silAST.expressions.terms.permission.PermissionVariable
 
 
 class BasicBlockFactory private[silAST](
@@ -165,6 +166,7 @@ class BasicBlockFactory private[silAST](
   protected[silAST] override def dataTypes = implementationFactory.dataTypes union pDataTypes
 
   protected[silAST] override def domainFactories = implementationFactory.domainFactories
+  protected[silAST] override def permissionVariables  : collection.Set[PermissionVariable] = implementationFactory.permissionVariables
 
   private[silAST] val basicBlock: BasicBlock = new BasicBlock(sl, name, implementationFactory.cfg)
 }

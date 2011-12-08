@@ -2,7 +2,7 @@ package silAST.expressions.util
 
 import silAST.ASTNode
 import silAST.expressions.{GExpression, DExpression, PExpression, Expression}
-import silAST.source.{noLocation, SourceLocation}
+import silAST.source.noLocation
 
 /////////////////////////////////////////////////////////////////
 sealed class ExpressionSequence private[silAST](

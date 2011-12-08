@@ -6,6 +6,7 @@ import collection.mutable.HashSet
 
 
 trait PermissionFactory extends NodeFactory {
+
   /////////////////////////////////////////////////////////////////////////////////////
   def makeFullPermissionTerm() = FullPermissionTerm.fullPermissionTerm
 
@@ -72,5 +73,6 @@ trait PermissionFactory extends NodeFactory {
   permissionTerms += NoPermissionTerm.noPermissionTerm
   permissionTerms += EpsilonPermissionTerm.epsilonPermissionTerm
 
-  protected[silAST] val permissionVariables = new HashSet[PermissionVariable]
+  protected[silAST] def permissionVariables : collection.Set[PermissionVariable]
+
 }

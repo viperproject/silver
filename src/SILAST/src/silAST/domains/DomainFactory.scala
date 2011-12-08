@@ -1,7 +1,6 @@
 package silAST.domains
 
 import silAST.programs.{NodeFactory, ProgramFactory}
-import collection.mutable.HashSet
 import silAST.types.{DataTypeFactory, DataTypeSequence, DataType}
 import silAST.expressions.{DExpression, DExpressionFactory}
 import silAST.source.{noLocation, SourceLocation}

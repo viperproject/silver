@@ -43,6 +43,19 @@ final case class PermissionExpression private[silAST](
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
+final case class OldExpression private[silAST](
+         sl: SourceLocation,
+         expression : Expression
+     )
+  extends Expression(sl)
+  with AtomicExpression {
+  override val toString = "old(" + expression.toString + ")"
+
+  override val subNodes = List(expression)
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 sealed case class UnfoldingExpression private[silAST](
                                                       sl: SourceLocation,
                                                       predicate: PredicateExpression,

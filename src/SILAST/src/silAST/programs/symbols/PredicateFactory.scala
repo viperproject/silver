@@ -26,4 +26,6 @@ class PredicateFactory private[silAST](
     case None => throw new Exception
     case _ => pPredicate
   }
+
+  protected[silAST] override def permissionVariables = Set()
 }

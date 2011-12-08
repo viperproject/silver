@@ -6,7 +6,7 @@ import silAST.symbols.logical.quantification.BoundVariable
 import collection.mutable.HashSet
 import silAST.domains.DomainFunction
 import silAST.types.{DataTypeFactory, DataType}
-import silAST.expressions.util.{DTermSequenceC, DTermSequence, GTermSequence}
+import silAST.expressions.util.{DTermSequence, GTermSequence}
 
 
 trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {

@@ -5,13 +5,14 @@ import silAST.source.SourceLocation
 import silAST.expressions.terms.Term
 import silAST.types.DataType
 import silAST.expressions.Expression
+import silAST.expressions.terms.permission.PermissionVariable
 
 class FunctionFactory private[silAST](
                                        private val programFactory: ProgramFactory,
                                        val sl: SourceLocation,
                                        val name: String,
-                                       pParams: Seq[(SourceLocation, String, DataType)],
-                                       val resultType: DataType
+                                       pParameters: Seq[(SourceLocation, String, DataType)],
+                                       resultType : DataType
                                        ) extends SymbolFactory[Function](programFactory) {
   def compile(): Function = {
     require(pFunction.pBody != None)
@@ -19,16 +20,6 @@ class FunctionFactory private[silAST](
     pFunction
   }
 
-  /*
-  def addParameter(sl : SourceLocation, name : String, dataType : DataType) : ProgramVariable=
-  {
-    require (dataTypes contains dataType)
-    require (pFunction.pSignature.pParameters.forall(_.name != name))
-    val result =new ProgramVariable(sl,name,dataType)
-    pFunction.pSignature.pParameters += result
-    result
-  }
-  */
   def addPrecondition(e: Expression) = {
     require(expressions contains e)
     pFunction.pSignature.pPreconditions += e
@@ -55,6 +46,10 @@ class FunctionFactory private[silAST](
 
   protected[silAST] override def programVariables = Set(thisVar, resultVar) ++ pFunction.pSignature.pParameters
 
-  private[silAST] val pFunction = new Function(sl, name, pParams, resultType)
-  val resultVar = pFunction.pSignature.resultVar
+  private[silAST] val pFunction = new Function(sl, name,pParameters, resultType)
+  val resultVar = pFunction.pSignature.result
+
+  override val permissionVariables : Set[PermissionVariable] = Set() //TODO:fill in/remove
+//  val permissionParameters = for (p <- pPermissionParams) yield new PermissionVariable(p._1,p._2)
+//  val permissionReturnValues =
 }

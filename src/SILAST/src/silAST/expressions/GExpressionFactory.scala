@@ -4,7 +4,7 @@ import silAST.domains.DomainPredicate
 import silAST.source.SourceLocation
 import collection.Set
 import collection.mutable.HashSet
-import silAST.expressions.util.{GTermSequence, ExpressionSequence}
+import silAST.expressions.util.GTermSequence
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import terms.{GTermFactory, GTerm}
 import silAST.programs.NodeFactory

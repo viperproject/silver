@@ -8,6 +8,7 @@ import silAST.programs.symbols.{Field, ProgramVariable}
 import collection.Set
 import collection.mutable._
 import silAST.source.SourceLocation
+import silAST.expressions.terms.permission.PermissionVariable
 
 //TODO: Should implementations have names/ids?
 
@@ -96,6 +97,7 @@ class ImplementationFactory private[silAST](
   protected[silAST] override def dataTypes = methodFactory.dataTypes union pDataTypes
 
   protected[silAST] override def domainFactories = methodFactory.domainFactories
+  protected[silAST] override def permissionVariables  : collection.Set[PermissionVariable] = methodFactory.permissionVariables
 
   var startNode: Option[BasicBlockFactory] = None
   var endNode: Option[BasicBlockFactory] = None

@@ -1,3 +1,4 @@
+
 package silAST.expressions.terms.permission
 
 import silAST.ASTNode
@@ -93,3 +94,4 @@ final case class PermissionIntegerMultiplicationTerm private[silAST](
 
   override val subNodes = List(t1)
 }
+

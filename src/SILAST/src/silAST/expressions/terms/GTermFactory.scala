@@ -4,7 +4,7 @@ import silAST.source.SourceLocation
 import collection.mutable.HashSet
 import collection.Set
 import silAST.domains.DomainFunction
-import silAST.expressions.util.{GTermSequence, TermSequence}
+import silAST.expressions.util.GTermSequence
 import silAST.programs.NodeFactory
 
 protected[silAST] trait GTermFactory extends NodeFactory {

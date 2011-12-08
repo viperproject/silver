@@ -2,10 +2,11 @@ package silAST.expressions.util
 
 import silAST.ASTNode
 import silAST.expressions.terms.{GTerm, PTerm, DTerm, Term}
-import silAST.source.{noLocation, SourceLocation}
+import silAST.source.noLocation
+import silAST.symbols.logical.quantification.BoundVariable
+import silAST.programs.symbols.ProgramVariable
 
 sealed class TermSequence private[silAST](
-//                                           val sl: SourceLocation,
                                            private val prArgs: Seq[Term]
                                            ) extends ASTNode(noLocation) with Seq[Term]
 {
@@ -17,6 +18,10 @@ sealed class TermSequence private[silAST](
   override def length = args.length
   override def toString = "(" + args.mkString(",") + ")"
   override def subNodes = args
+
+  def freeVariables    : collection.immutable.Set[BoundVariable]   = (for (a <- args) yield a.freeVariables).flatten.toSet
+  def programVariables : collection.immutable.Set[ProgramVariable] = (for (a <- args) yield a.programVariables).flatten.toSet
+
 }
 
 object TermSequence{
@@ -38,6 +43,7 @@ sealed trait PTermSequence extends TermSequence with Seq[PTerm] {
   override def apply(idx: Int): PTerm = pArgs(idx)
 
   override def iterator : Iterator[PTerm] = pArgs.iterator
+  final override val freeVariables : Set[BoundVariable] = Set.empty
 }
 
 object PTermSequence{
@@ -65,6 +71,7 @@ sealed trait DTermSequence extends TermSequence with Seq[DTerm] {
   override def apply(idx: Int) = dArgs(idx)
 
   override def iterator : Iterator[DTerm] = dArgs.iterator
+  final override val programVariables = Set[ProgramVariable]()
 }
 
 private [silAST] final class DTermSequenceC(
