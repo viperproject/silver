@@ -55,8 +55,8 @@ class MethodFactory(
 
     pParameters = Some(new ProgramVariableSequence(sl, parametersGenerator))
     pResults = Some(new ProgramVariableSequence(sl, resultsGenerator))
-    val preconditions = new ExpressionSequence(sl, this.preconditions) //TODO:more accurate locations
-    val postconditions = new ExpressionSequence(sl, this.postconditions) //TODO:more accurate locations
+    val preconditions = new ExpressionSequence(this.preconditions) //TODO:more accurate locations
+    val postconditions = new ExpressionSequence(this.postconditions) //TODO:more accurate locations
     val signature = new MethodSignature(sl, pParameters.get, pResults.get, preconditions, postconditions)
     pMethod = Some(new Method(sl, name, signature))
     signatureDefined = true

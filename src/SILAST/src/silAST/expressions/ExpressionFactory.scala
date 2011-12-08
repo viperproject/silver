@@ -15,7 +15,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   def makeUnaryExpression(sl: SourceLocation, op: UnaryConnective, e1: Expression): UnaryExpression = {
-    require(expressions.contains(e1))
+    require(expressions contains e1)
 
     (e1) match {
       case (e1: GExpression) => makeGUnaryExpression(sl, op, e1)
@@ -28,8 +28,8 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   def makeBinaryExpression(sl: SourceLocation, op: BinaryConnective, e1: Expression, e2: Expression): BinaryExpression = {
-    require(expressions.contains(e1))
-    require(expressions.contains(e2))
+    require(expressions contains e1)
+    require(expressions contains e2)
 
     (e1, e2) match {
       case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(sl, op, e1, e2)
@@ -43,7 +43,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
   //////////////////////////////////////////////////////////////////////////
   def makeDomainPredicateExpression(sl: SourceLocation, p: DomainPredicate, args: TermSequence): DomainPredicateExpression = {
     require(domainPredicates contains p)
-    require(termSequences.contains(args))
+    require(args.forall(terms contains _))
 
     (args) match {
       case (a: GTermSequence) => makeGDomainPredicateExpression(sl, p, a)

@@ -25,9 +25,9 @@ final class FunctionSignature private[silAST](
 
   def arguments: ProgramVariableSequence = new ProgramVariableSequence(noLocation, pParameters)
 
-  def precondition: ExpressionSequence = new ExpressionSequence(noLocation, pPreconditions)
+  def precondition: ExpressionSequence = new ExpressionSequence(pPreconditions)
 
-  def postcondition: ExpressionSequence = new ExpressionSequence(noLocation, pPostconditions)
+  def postcondition: ExpressionSequence = new ExpressionSequence(pPostconditions)
 
   def terminationMeasure: Term = pMeasure.get
 

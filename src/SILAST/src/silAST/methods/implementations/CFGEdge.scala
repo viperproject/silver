@@ -15,6 +15,6 @@ final class CFGEdge private[silAST](
   source.addSuccessor(this)
   target.addPredecessor(this)
 
-  override def toString = source.label + " ==> " + target.label.toString //TODO condition
+  override def toString = source.label + " ==> "  + "[" + condition.toString + "]" + target.label.toString
   override def subNodes = condition :: Nil
 }

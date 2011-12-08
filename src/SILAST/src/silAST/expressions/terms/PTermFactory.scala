@@ -26,9 +26,9 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
 
   /////////////////////////////////////////////////////////////////////////
   def makePFunctionApplicationTerm(sl: SourceLocation, r: PTerm, ff: FunctionFactory, a: PTermSequence): PFunctionApplicationTerm = {
-    require(terms.contains(r))
-    require(functions.contains(ff.pFunction))
-    require(termSequences.contains(a))
+    require(terms contains r)
+    require(functions contains ff.pFunction)
+    require(a.forall(terms contains _))
     //TODO: signature check arguments
 
     addTerm(new PFunctionApplicationTerm(sl, r, ff.pFunction, a))
@@ -36,8 +36,8 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
 
   /////////////////////////////////////////////////////////////////////////
   def makePCastTerm(sl: SourceLocation, t: PTerm, dt: DataType): PCastTerm = {
-    require(terms.contains(t))
-    require(dataTypes.contains(dt))
+    require(terms contains t)
+    require(dataTypes contains dt)
     //TODO: type check arguments
 
     addTerm(new PCastTerm(sl, t, dt))
@@ -63,22 +63,13 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
 
   /////////////////////////////////////////////////////////////////////////
   def makePDomainFunctionApplicationTerm(sl: SourceLocation, f: DomainFunction, a: PTermSequence): PDomainFunctionApplicationTerm = {
-    require(termSequences contains a)
+    require(a.forall(terms contains _))
     require(domainFunctions contains f)
 
     a match {
       case a: GTermSequence => makeGDomainFunctionApplicationTerm(sl, f, a)
       case _ => addTerm(new PDomainFunctionApplicationTermC(sl, f, a))
     }
-  }
-
-  /////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////
-  def makePTermSequence(sl: SourceLocation, ts: Seq[PTerm]): PTermSequence = {
-    require(ts.toSet subsetOf terms)
-    val result = new PTermSequenceC(sl, ts)
-    termSequences += result
-    result
   }
 
   //////////////////////////////////////////////////////////////////////////

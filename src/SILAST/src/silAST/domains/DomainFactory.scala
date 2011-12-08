@@ -1,10 +1,10 @@
 package silAST.domains
 
 import silAST.programs.{NodeFactory, ProgramFactory}
-import silAST.source.SourceLocation
 import collection.mutable.HashSet
 import silAST.types.{DataTypeFactory, DataTypeSequence, DataType}
 import silAST.expressions.{DExpression, DExpressionFactory}
+import silAST.source.{noLocation, SourceLocation}
 
 final class DomainFactory private[silAST](
                                            val programFactory: ProgramFactory,
@@ -16,42 +16,23 @@ final class DomainFactory private[silAST](
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def defineDomainFunctionSignature(sl: SourceLocation, p: DataTypeSequence, r: DataType): DomainFunctionSignature = {
+  def defineDomainFunction(sl: SourceLocation, name: String, p: DataTypeSequence, r: DataType) = {
     require(dataTypeSequences contains p)
-    require(dataTypes.contains(r))
-    val result = new DomainFunctionSignature(sl, p, r)
-    domainFunctionSignatures += result
-    result
-  }
-
-  /////////////////////////////////////////////////////////////////////////
-  def defineDomainFunction(sl: SourceLocation, name: String, s: DomainFunctionSignature) = {
+    require(dataTypes contains r)
     require(domainFunctions.forall(_.name != name))
-    require(domainFunctionSignatures contains s)
-    val result = new DomainFunction(sl, name, s)
+    val result = new DomainFunction(sl, name, new DomainFunctionSignature(noLocation,p,r))
     domain.pFunctions += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def defineDomainPredicateSignature(sl: SourceLocation, p: DataTypeSequence): DomainPredicateSignature = {
-    require(dataTypeSequences contains p)
-    val result = new DomainPredicateSignature(sl, p)
-    domainPredicateSignatures += result
-    result
-  }
-
-  /////////////////////////////////////////////////////////////////////////
-  def defineDomainPredicate(sl: SourceLocation, name: String, s: DomainPredicateSignature) = {
+  def defineDomainPredicate(sl: SourceLocation, name: String, p: DataTypeSequence) = {
     require(domainPredicates.forall(_.name != name))
-    require(domainPredicateSignatures.contains(s))
-    val result = new DomainPredicate(sl, name, s)
-    //    myDomainPredicates += name -> result
+    require(dataTypeSequences contains p)
+    val result = new DomainPredicate(sl, name, new DomainPredicateSignature(noLocation,p))
     domain.pPredicates += result
     result
   }
-
-  //TODO: add functions/predicates to parent program
 
   /////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////
@@ -66,8 +47,8 @@ final class DomainFactory private[silAST](
   //  private[silAST] var compiled = false
   val domain: Domain = new Domain(sl, name)
 
-  protected[silAST] val domainFunctionSignatures = new HashSet[DomainFunctionSignature]
-  protected[silAST] val domainPredicateSignatures = new HashSet[DomainPredicateSignature]
+//  protected[silAST] val domainFunctionSignatures = new HashSet[DomainFunctionSignature]
+//  protected[silAST] val domainPredicateSignatures = new HashSet[DomainPredicateSignature]
 
   protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes
 

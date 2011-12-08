@@ -27,22 +27,13 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
 
   /////////////////////////////////////////////////////////////////////////
   def makeDDomainFunctionApplicationTerm(sl: SourceLocation, f: DomainFunction, a: DTermSequence): DDomainFunctionApplicationTerm = {
-    require(termSequences.contains(a))
+    require(a.forall(terms contains _))
     require(domainFunctions contains f)
 
     a match {
       case a: GTermSequence => makeGDomainFunctionApplicationTerm(sl, f, a)
       case _ => addTerm(new DDomainFunctionApplicationTermC(sl, f, a))
     }
-  }
-
-  /////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////
-  def makeDTermSequence(sl: SourceLocation, ts: Seq[DTerm]): DTermSequence = {
-    require(ts.toSet subsetOf terms)
-    val result = new DTermSequenceC(sl, ts)
-    termSequences += result
-    result
   }
 
   /////////////////////////////////////////////////////////////////////////

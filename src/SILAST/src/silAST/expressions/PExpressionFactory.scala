@@ -14,7 +14,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   //////////////////////////////////////////////////////////////////////////
   def makePDomainPredicateExpression(sl: SourceLocation, p: DomainPredicate, args: PTermSequence): PDomainPredicateExpression = {
     require(domainPredicates contains p)
-    require(termSequences.contains(args))
+    require(args.forall(terms contains _))
 
     (args) match {
       case (a: GTermSequence) => makeGDomainPredicateExpression(sl, p, a)

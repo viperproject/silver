@@ -12,7 +12,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   def makeFunctionApplicationTerm(sl: SourceLocation, r: Term, ff: FunctionFactory, a: TermSequence): FunctionApplicationTerm = {
     require(terms.contains(r))
     require(functions.contains(ff.pFunction))
-    require(termSequences.contains(a))
+    require(a.forall(terms contains _))
     //TODO: signature check arguments
 
     (r, a) match {
@@ -72,7 +72,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
   /////////////////////////////////////////////////////////////////////////
   def makeDomainFunctionApplicationTerm(sl: SourceLocation, f: DomainFunction, a: TermSequence): DomainFunctionApplicationTerm = {
-    require(termSequences contains a)
+    require(a.forall(terms contains _))
     require(domainFunctions contains f)
 
     a match {
@@ -82,15 +82,5 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
       case _ => addTerm(new DomainFunctionApplicationTerm(sl, f, a))
     }
   }
-
-  /////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////
-  def makeTermSequence(sl: SourceLocation, ts: Seq[Term]): TermSequence = {
-    require(ts.toSet subsetOf terms)
-    val result = new TermSequence(sl, ts)
-    termSequences += result
-    result
-  }
-
 
 }

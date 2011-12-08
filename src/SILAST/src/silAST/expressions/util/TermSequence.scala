@@ -1,69 +1,100 @@
 package silAST.expressions.util
 
 import silAST.ASTNode
-import silAST.source.SourceLocation
 import silAST.expressions.terms.{GTerm, PTerm, DTerm, Term}
+import silAST.source.{noLocation, SourceLocation}
 
 sealed class TermSequence private[silAST](
-                                           val sl: SourceLocation,
-                                           val args: Seq[Term]
-                                           ) extends ASTNode(sl) with Seq[Term] {
+//                                           val sl: SourceLocation,
+                                           private val prArgs: Seq[Term]
+                                           ) extends ASTNode(noLocation) with Seq[Term]
+{
+  def args : Seq[Term] = prArgs
   override def apply(idx: Int) = args(idx)
 
   override def iterator = args.iterator
 
-  override val length = args.length
-  override val toString = "(" + args.mkString(",") + ")"
-  override val subNodes = args
+  override def length = args.length
+  override def toString = "(" + args.mkString(",") + ")"
+  override def subNodes = args
+}
+
+object TermSequence{
+//  def apply() : TermSequence = apply(List())
+  def apply(ts : Term*) : TermSequence = {
+    if (ts.forall(_.isInstanceOf[GTerm])) GTermSequence(ts.asInstanceOf[Seq[GTerm]] : _*)
+    else if (ts.forall(_.isInstanceOf[DTerm])) DTermSequence(ts.asInstanceOf[Seq[DTerm]] : _*)
+    else if (ts.forall(_.isInstanceOf[PTerm])) PTermSequence(ts.asInstanceOf[Seq[PTerm]] : _*)
+    else new TermSequence(ts)
+  }
 }
 
 ///////////////////////////////////////////////////////////////
 sealed trait PTermSequence extends TermSequence with Seq[PTerm] {
-  override val args: Seq[PTerm] = pArgs
+  override def args : Seq[PTerm] = pArgs
 
-  protected def pArgs(): Seq[PTerm]
+  protected def pArgs: Seq[PTerm]
 
-  override def apply(idx: Int): PTerm = pArgs().apply(idx)
+  override def apply(idx: Int): PTerm = pArgs(idx)
 
-  override def iterator = pArgs().iterator
+  override def iterator : Iterator[PTerm] = pArgs.iterator
 }
 
-private[silAST] final class PTermSequenceC(
-                                            sl: SourceLocation,
-                                            args: Seq[PTerm]
-                                            ) extends TermSequence(sl, args) with PTermSequence {
-  override val pArgs = args
+object PTermSequence{
+//  def apply() : PTermSequence = apply(List())
+  def apply(ts : PTerm*) : PTermSequence = {
+    if (ts.forall(_.isInstanceOf[GTerm])) GTermSequence(ts.asInstanceOf[Seq[GTerm]] : _*)
+    else new PTermSequenceC(ts)
+  }
+}
+
+private [silAST] final class PTermSequenceC(
+                                            override val args: Seq[PTerm]
+                                            ) extends TermSequence(args) with PTermSequence
+{
+  override def pArgs = args
+  override def apply(idx:Int) = args.apply(idx)
 }
 
 ///////////////////////////////////////////////////////////////
 sealed trait DTermSequence extends TermSequence with Seq[DTerm] {
-  override val args: Seq[DTerm] = dArgs
+  override val args : Seq[DTerm] = dArgs
 
   protected def dArgs: Seq[DTerm]
 
-  override def apply(idx: Int) = args(idx)
+  override def apply(idx: Int) = dArgs(idx)
 
-  override def iterator = args.iterator
+  override def iterator : Iterator[DTerm] = dArgs.iterator
 }
 
-private[silAST] final class DTermSequenceC(
-                                            sl: SourceLocation,
-                                            args: Seq[DTerm]
-                                            ) extends TermSequence(sl, args) with DTermSequence {
-  override def dArgs = args
+private [silAST] final class DTermSequenceC(
+                                            override val args: Seq[DTerm]
+                                            ) extends TermSequence(args) with DTermSequence
+{
+  override val dArgs = args
+}
+
+object DTermSequence{
+  def apply(ts : DTerm*) : DTermSequence = {
+    if (ts.forall(_.isInstanceOf[GTerm])) GTermSequence(ts.asInstanceOf[Seq[GTerm]] : _*)
+     else new DTermSequenceC(ts)
+  }
 }
 
 
 ///////////////////////////////////////////////////////////////
 final class GTermSequence private[silAST](
-                                           sl: SourceLocation,
                                            override val args: Seq[GTerm]
-                                           ) extends TermSequence(sl, args) with DTermSequence with PTermSequence with Seq[GTerm] {
+                                           ) extends TermSequence(args) with DTermSequence with PTermSequence with Seq[GTerm] {
   override def apply(idx: Int) = args(idx)
 
-  override def iterator = args.iterator
+  override def iterator : Iterator[GTerm] = args.iterator
 
   override val dArgs = args
   override val pArgs = args
+}
+
+object GTermSequence{
+  def apply(ts : GTerm*) : GTermSequence = new GTermSequence(ts)
 }
 

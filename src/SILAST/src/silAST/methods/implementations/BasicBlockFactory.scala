@@ -75,11 +75,11 @@ class BasicBlockFactory private[silAST](
                            methodFactory: MethodFactory,
                            arguments: PTermSequence
                            ) {
-    require(programVariableSequences.contains(targets))
-    require(targets.forall(localVariables.contains(_)))
-    require(expressions.contains(receiver))
-    require(methodFactories.contains(methodFactory))
-    require(termSequences.contains(arguments))
+    require(programVariableSequences contains targets)
+    require(targets.forall(localVariables contains _))
+    require(expressions contains receiver)
+    require(methodFactories contains methodFactory)
+    require(arguments.forall( terms contains _))
 
     basicBlock.appendStatement(new CallStatement(sl, targets, receiver, methodFactory.method, arguments))
   }

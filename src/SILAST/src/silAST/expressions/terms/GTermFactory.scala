@@ -15,20 +15,11 @@ protected[silAST] trait GTermFactory extends NodeFactory {
 
   /////////////////////////////////////////////////////////////////////////
   def makeGDomainFunctionApplicationTerm(sl: SourceLocation, f: DomainFunction, a: GTermSequence): GDomainFunctionApplicationTerm = {
-    require(termSequences.contains(a))
+    require(a.forall(terms contains  _))
     require(domainFunctions contains f)
     addTerm(new GDomainFunctionApplicationTerm(sl, f, a))
   }
 
-
-  /////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////
-  def makeGTermSequence(sl: SourceLocation, ts: Seq[GTerm]): GTermSequence = {
-    require(ts.toSet subsetOf terms)
-    val result = new GTermSequence(sl, ts)
-    termSequences += result
-    result
-  }
 
   /////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////
@@ -39,7 +30,6 @@ protected[silAST] trait GTermFactory extends NodeFactory {
 
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] val terms = new HashSet[Term]
-  protected[silAST] val termSequences = new HashSet[TermSequence]
 
   protected[silAST] def domainFunctions: Set[DomainFunction]
 }
