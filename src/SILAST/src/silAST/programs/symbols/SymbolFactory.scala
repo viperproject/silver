@@ -3,7 +3,7 @@ package silAST.programs.symbols
 import silAST.programs.{ProgramFactory, NodeFactory}
 import silAST.source.noLocation
 import silAST.expressions.ExpressionFactory
-import silAST.types.ReferenceDataType
+import silAST.types.referenceType
 
 
 abstract class SymbolFactory[T] private[silAST](
@@ -11,7 +11,7 @@ abstract class SymbolFactory[T] private[silAST](
                                                  ) extends NodeFactory with ExpressionFactory {
   def compile(): T
 
-  val thisVar = new ProgramVariable(noLocation, "this", ReferenceDataType.referenceType)
+  val thisVar = new ProgramVariable(noLocation, "this", referenceType)
 
   override def nullFunction = programFactory.nullFunction
 

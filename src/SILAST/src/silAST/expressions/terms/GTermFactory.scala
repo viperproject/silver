@@ -29,7 +29,7 @@ protected[silAST] trait GTermFactory extends NodeFactory {
   }
 
   /////////////////////////////////////////////////////////////////////////
-  protected[silAST] val terms = new HashSet[Term]
+  protected val terms = new HashSet[Term]
 
   protected[silAST] def domainFunctions: Set[DomainFunction]
 }

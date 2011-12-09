@@ -1,5 +1,6 @@
 package silAST.expressions.util
 
+import collection.immutable.Set
 import silAST.ASTNode
 import silAST.expressions.terms.{GTerm, PTerm, DTerm, Term}
 import silAST.source.noLocation
@@ -16,11 +17,11 @@ sealed class TermSequence private[silAST](
   override def iterator = args.iterator
 
   override def length = args.length
-  override def toString = "(" + args.mkString(",") + ")"
+  override def toString() = "(" + args.mkString(",") + ")"
   override def subNodes = args
 
-  def freeVariables    : collection.immutable.Set[BoundVariable]   = (for (a <- args) yield a.freeVariables).flatten.toSet
-  def programVariables : collection.immutable.Set[ProgramVariable] = (for (a <- args) yield a.programVariables).flatten.toSet
+  def freeVariables    : Set[BoundVariable]   = (for (a <- args) yield a.freeVariables).flatten.toSet
+  def programVariables : Set[ProgramVariable] = (for (a <- args) yield a.programVariables).flatten.toSet
 
 }
 

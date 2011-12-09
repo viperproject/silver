@@ -1,13 +1,12 @@
 package silAST.expressions.terms
 
 import silAST.symbols.logical.quantification.BoundVariable
-import silAST.types.DataType
 import silAST.{AtomicNode, ASTNode}
-import silAST.domains.DomainFunction
 import silAST.expressions.util.{GTermSequence, DTermSequence, PTermSequence, TermSequence}
 import silAST.programs.symbols.{Predicate, ProgramVariable, Field, Function}
 import silAST.source.{noLocation, SourceLocation}
-import silAST.expressions.PredicateExpression
+import silAST.types.{DataTypeSequence, NonReferenceDataType, DataType}
+import silAST.domains._
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -52,10 +51,9 @@ sealed case class DomainFunctionApplicationTerm private[silAST](
                                                                  function: DomainFunction,
                                                                  arguments: TermSequence
                                                                  ) extends ASTNode(sl) with Term {
-  override val toString: String = function.name + arguments.toString
+  override val toString: String = function.toString(arguments)
 
   override val subNodes: Seq[ASTNode] = List(function) ++ arguments
-
   override val subTerms: Seq[Term] = arguments
 
   override def dataType         = function.signature.resultType
@@ -74,7 +72,6 @@ sealed case class FunctionApplicationTerm private[silAST](
   override val toString: String = receiver.toString + "." + function.name + arguments.toString
 
   override val subNodes: Seq[ASTNode] = List(receiver, function) ++ arguments
-
   override val subTerms: Seq[Term] = List(receiver) ++ arguments.toList
 
   override def dataType         = function.signature.result.dataType
@@ -142,101 +139,6 @@ sealed case class FieldReadTerm protected[silAST](
   override def freeVariables    = location.freeVariables
   override def programVariables = location.programVariables
 }
-
-/*
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-sealed trait PermissionTerm protected[silAST](sl: SourceLocation)
-  extends ASTNode(sl)
-{
-  override def toString: String
-}
-
-final case class FullPermissionTerm private()
-  extends PermissionTerm(noLocation) with AtomicNode {
-  override def toString: String = "write"
-}
-
-private[silAST] object FullPermissionTerm {
-  val fullPermissionTerm = new FullPermissionTerm()
-}
-
-final case class NoPermissionTerm private()
-  extends PermissionTerm(noLocation) with AtomicNode {
-  override def toString: String = "none"
-}
-
-private[silAST] object NoPermissionTerm {
-  val noPermissionTerm = new NoPermissionTerm()
-}
-
-final case class PercentagePermissionTerm private[silAST](sl: SourceLocation, percentage: Int)
-  extends PermissionTerm(sl) with AtomicNode {
-  require(percentage > 0)
-  require(percentage < 100)
-
-  override def toString: String = percentage.toString + "%"
-}
-
-final case class EpsilonPermissionTerm private()
-  extends PermissionTerm(noLocation) with AtomicNode {
-  override def toString: String = "epsilon"
-}
-
-private[silAST] object EpsilonPermissionTerm {
-  val epsilonPermissionTerm = new EpsilonPermissionTerm()
-}
-
-final case class PermissionVariableTerm private[silAST](
-                                                         sl: SourceLocation,
-                                                         variable: PermissionVariable
-                                                         )
-  extends PermissionTerm(sl) with AtomicNode {
-  override def toString: String = variable.name
-
-}
-
-
-final case class PermissionAdditionTerm private[silAST](
-                                                         sl: SourceLocation,
-                                                         t1: PermissionTerm,
-                                                         t2: PermissionTerm
-                                                         ) extends PermissionTerm(sl) {
-  override def toString: String = t1.toString + "+" + t2.toString
-
-  override val subNodes = List(t1, t2)
-}
-
-final case class PermissionSubtractionTerm private[silAST](
-                                                            sl: SourceLocation,
-                                                            t1: PermissionTerm,
-                                                            t2: PermissionTerm
-                                                            ) extends PermissionTerm(sl) {
-  override def toString: String = t1.toString + "-" + t2.toString
-
-  override val subNodes = List(t1, t2)
-}
-
-final case class PermissionMultiplicationTerm private[silAST](
-                                                               sl: SourceLocation,
-                                                               t1: PermissionTerm,
-                                                               t2: PermissionTerm
-                                                               ) extends PermissionTerm(sl) {
-  override def toString: String = t1.toString + "*" + t2.toString
-
-  override val subNodes = List(t1, t2)
-}
-
-final case class PermissionIntegerMultiplicationTerm private[silAST](
-                                                                      sl: SourceLocation,
-                                                                      t1: PermissionTerm,
-                                                                      t2: Int
-                                                                      ) extends PermissionTerm(sl) {
-  override def toString: String = t1.toString + "+" + t2.toString
-
-  override val subNodes = List(t1)
-}
-*/
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -373,8 +275,8 @@ object PFieldReadTerm {
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait DTerm extends Term {
+  protected def dSubTerms: Seq[DTerm]
   override val subTerms: Seq[DTerm] = dSubTerms
-  protected val dSubTerms: Seq[DTerm]
 
   final override def programVariables = Set()
 }
@@ -403,7 +305,7 @@ sealed trait DDomainFunctionApplicationTerm
   extends DomainFunctionApplicationTerm
   with DTerm
 {
-  protected val dArguments: DTermSequence
+  protected def dArguments: DTermSequence
   override val arguments: DTermSequence = dArguments
 
 }
@@ -432,9 +334,9 @@ private[silAST] final class DDomainFunctionApplicationTermC(
 sealed trait GTerm extends Term with DTerm with PTerm {
   override val subTerms: Seq[GTerm] = gSubTerms
 
+  protected def gSubTerms: Seq[GTerm]
   protected override val dSubTerms = gSubTerms
   protected override val pSubTerms = gSubTerms
-  protected val gSubTerms: Seq[GTerm]
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -443,7 +345,8 @@ sealed abstract case class LiteralTerm protected[silAST](sl: SourceLocation)
   extends ASTNode(sl) with Term
   with GTerm
   with AtomicTerm
-  with AtomicNode {
+  with AtomicNode
+{
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -474,7 +377,298 @@ final class GDomainFunctionApplicationTerm(
   override val dArguments = gArguments
   override val pArguments = gArguments
   protected val gArguments: GTermSequence = arguments
-  protected val gSubTerms: Seq[GTerm] = arguments
+  protected val gSubTerms: Seq[GTerm] = gArguments
 
   override val dataType      = function.signature.resultType
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+//Integer
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////
+object integerDomain extends Domain(noLocation,"Integer")
+{
+  override val functions = Set[DomainFunction](integerAddition,integerSubtraction,integerMultiplication,integerDivision,integerNegation)
+  override val predicates = Set(integerEQ,integerNE,integerLE,integerLT,integerGE,integerGT)
+}
+
+object integerType extends NonReferenceDataType(noLocation,integerDomain)
+
+
+///////////////////////////////////////////////////////////////////////////
+object integerAddition extends DomainFunction(
+  noLocation,
+  "+",
+  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "+" + ts(1).toString
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+object integerSubtraction extends DomainFunction(
+  noLocation,
+  "-",
+  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "-" + ts(1).toString
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+object integerMultiplication extends DomainFunction(
+  noLocation,
+  "*",
+  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "*" + ts(1).toString
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+object integerDivision extends DomainFunction(
+  noLocation,
+  "/",
+  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "/" + ts(1).toString
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+object integerNegation extends DomainFunction(
+  noLocation,
+  "-",
+  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType),integerType)
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==1)
+    "-" + ts(0).toString
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+object integerLE extends DomainPredicate(
+  noLocation,
+  "<=",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "<=" + ts(1).toString
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+object integerLT extends DomainPredicate(
+  noLocation,
+  "<",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "<" + ts(1).toString
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+object integerGE extends DomainPredicate(
+  noLocation,
+  ">=",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + ">=" + ts(1).toString
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+object integerGT extends DomainPredicate(
+  noLocation,
+  ">",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + ">" + ts(1).toString
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+object integerEQ extends DomainPredicate(
+  noLocation,
+  "==",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "==" + ts(1).toString
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+object integerNE extends DomainPredicate(
+  noLocation,
+  "!=",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "!=" + ts(1).toString
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+//Permissions
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+
+object permissionDomain extends Domain(noLocation,"Permission")
+{
+  override val functions = Set(permissionAddition,permissionSubtraction,permissionMultiplication,permissionIntegerMultiplication)
+}
+
+object permissionType extends NonReferenceDataType(noLocation,permissionDomain)
+
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final class FullPermissionTerm private[silAST](sl : SourceLocation) extends LiteralTerm(sl) with AtomicTerm
+{
+  override def toString: String = "write"
+  override val gSubTerms = Seq[GTerm]()
+  override val dataType = permissionType
+}
+
+object FullPermissionTerm{
+  def apply(tf:GTermFactory,sl:SourceLocation) : FullPermissionTerm = tf.addTerm(new FullPermissionTerm(sl))
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final class NoPermissionTerm private[silAST](sl : SourceLocation) extends LiteralTerm(sl) with AtomicTerm
+{
+  override def toString: String = "0"
+  override val gSubTerms = Seq()
+  override val dataType = permissionType
+}
+
+object NoPermissionTerm{
+  def apply(tf:GTermFactory,sl:SourceLocation) : NoPermissionTerm = tf.addTerm(new NoPermissionTerm(sl))
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final class EpsilonPermissionTerm private[silAST](sl : SourceLocation) extends LiteralTerm(sl) with AtomicTerm
+{
+  override def toString: String = "E"
+  override val gSubTerms = Seq()
+  override val dataType = permissionType
+}
+
+object EpsilonPermissionTerm{
+  def apply(tf:GTermFactory,sl:SourceLocation) : EpsilonPermissionTerm = tf.addTerm(new EpsilonPermissionTerm(sl))
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+object permissionAddition extends DomainFunction(
+    noLocation,
+    "+",
+    new DomainFunctionSignature(noLocation,DataTypeSequence(permissionType,permissionType),permissionType)
+  )
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "+" + ts(1).toString
+  }
+}
+
+object percentagePermission extends DomainFunction(
+  noLocation,
+  "%",
+  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType),permissionType)
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==1)
+    ts.head.toString() + "%"
+  }
+}
+
+object permissionSubtraction extends DomainFunction(
+  noLocation,
+  "-",
+  new DomainFunctionSignature(noLocation,DataTypeSequence(permissionType,permissionType),permissionType)
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "-" + ts(1).toString
+  }
+}
+
+object permissionMultiplication extends DomainFunction(
+  noLocation,
+  "*",
+  new DomainFunctionSignature(noLocation,DataTypeSequence(permissionType,permissionType),permissionType)
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "*" + ts(1).toString
+  }
+}
+
+object permissionIntegerMultiplication extends DomainFunction(
+  noLocation,
+  "*",
+  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,permissionType),permissionType)
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "*" + ts(1).toString
+  }
 }

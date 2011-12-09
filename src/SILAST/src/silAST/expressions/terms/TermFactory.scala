@@ -11,8 +11,8 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 {
   /////////////////////////////////////////////////////////////////////////
   def makeFunctionApplicationTerm(sl: SourceLocation, r: Term, ff: FunctionFactory, a: TermSequence): FunctionApplicationTerm = {
-    require(terms.contains(r))
-    require(functions.contains(ff.pFunction))
+    require(terms contains r)
+    require(functions contains ff.pFunction)
     require(a.forall(terms contains _))
     //TODO: signature check parameters
 
@@ -36,8 +36,8 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
   /////////////////////////////////////////////////////////////////////////
   def makeCastTerm(sl: SourceLocation, t: Term, dt: DataType): CastTerm = {
-    require(terms.contains(t))
-    require(dataTypes.contains(dt))
+    require(terms contains t)
+    require(dataTypes contains dt)
     //TODO: type check parameters
 
     t match {
@@ -48,8 +48,8 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
   /////////////////////////////////////////////////////////////////////////
   def makeFieldReadTerm(sl: SourceLocation, t: Term, f: Field): FieldReadTerm = {
-    require(terms.contains(t))
-    require(fields.contains(f))
+    require(terms contains t)
+    require(fields contains f)
     //TODO: type check parameters
 
     t match {
@@ -77,5 +77,28 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
       case _ => addTerm(new DomainFunctionApplicationTerm(sl, f, a))
     }
   }
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  def makePercentagePermission(sl: SourceLocation, percentage: Term): Term = {
+    val result = new DomainFunctionApplicationTerm(sl,percentagePermission,TermSequence(percentage))
+    addTerm(result)
+    result
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  def makePermissionAdditionTerm(sl: SourceLocation, t1: Term, t2: Term)=
+    makeDomainFunctionApplicationTerm(sl,permissionAddition,TermSequence(t1,t2))
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  def makePermissionSubtractionTerm(sl: SourceLocation, t1: Term, t2: Term) =
+    makeDomainFunctionApplicationTerm(sl,permissionSubtraction,TermSequence(t1,t2))
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  def makePermissionMultiplicationTerm(sl: SourceLocation, t1: Term, t2: Term) =
+    makeDomainFunctionApplicationTerm(sl,permissionMultiplication,TermSequence(t1,t2))
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  def makePermissionIntegerMultiplicationTerm(sl: SourceLocation,t1: Term, i: Term) =
+    makeDomainFunctionApplicationTerm(sl,permissionIntegerMultiplication,TermSequence(t1,i))
 
 }

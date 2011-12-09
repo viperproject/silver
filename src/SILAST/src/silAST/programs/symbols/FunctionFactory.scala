@@ -5,7 +5,6 @@ import silAST.source.SourceLocation
 import silAST.expressions.terms.Term
 import silAST.types.DataType
 import silAST.expressions.Expression
-import silAST.expressions.terms.permission.PermissionVariable
 
 class FunctionFactory private[silAST](
                                        private val programFactory: ProgramFactory,
@@ -49,7 +48,4 @@ class FunctionFactory private[silAST](
   private[silAST] val pFunction = new Function(sl, name,pParameters, resultType)
   val resultVar = pFunction.pSignature.result
 
-  override val permissionVariables : Set[PermissionVariable] = Set() //TODO:fill in/remove
-//  val permissionParameters = for (p <- pPermissionParams) yield new PermissionVariable(p._1,p._2)
-//  val permissionReturnValues =
 }

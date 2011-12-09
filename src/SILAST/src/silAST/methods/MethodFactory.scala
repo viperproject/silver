@@ -6,9 +6,8 @@ import collection.mutable.{HashSet, ListBuffer}
 import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import silAST.expressions.util.ExpressionSequence
 import silAST.source.{noLocation, SourceLocation}
-import silAST.types.{ReferenceDataType, DataType}
 import silAST.expressions.{Expression, ExpressionFactory}
-import silAST.expressions.terms.permission.PermissionVariable
+import silAST.types.{referenceType, DataType}
 
 class MethodFactory(
                      val programFactory: ProgramFactory,
@@ -110,7 +109,7 @@ class MethodFactory(
 
   protected[silAST] override def predicates = programFactory.predicates
 
-  val thisVar = addParameter(noLocation, "this", ReferenceDataType.referenceType)
+  val thisVar = addParameter(noLocation, "this", referenceType)
 
   override def trueExpression = programFactory.trueExpression
 
@@ -123,6 +122,4 @@ class MethodFactory(
   protected[silAST] override def domainFunctions = programFactory.domainFunctions
 
   protected[silAST] override def domainPredicates = programFactory.domainPredicates
-
-  override val permissionVariables : collection.Set[PermissionVariable] = Set() //TODO:ss
 }

@@ -3,7 +3,7 @@ package silAST.programs.symbols
 import silAST.ASTNode
 import silAST.AtomicNode
 import silAST.source.SourceLocation
-import silAST.types.{ReferenceDataType, DataType, NonReferenceDataType}
+import silAST.types.{referenceType, DataType, NonReferenceDataType}
 
 sealed abstract class Field private[silAST](
                                              sl: SourceLocation,
@@ -16,7 +16,7 @@ sealed abstract class Field private[silAST](
 final case class ReferenceField private[silAST](
                                                  sl: SourceLocation,
                                                  override val name: String
-                                                 ) extends Field(sl, name, ReferenceDataType.referenceType) {
+                                                 ) extends Field(sl, name, referenceType) {
 }
 
 final case class NonReferenceField private[silAST](

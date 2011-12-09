@@ -9,12 +9,11 @@ abstract sealed class DataType(sl: SourceLocation) extends ASTNode(sl) {
 
 }
 
-final case class ReferenceDataType private[silAST]() extends DataType(noLocation) with AtomicNode {
-  override val toString = "ref"
-}
+//final case class ReferenceDataType private[silAST]() extends DataType(noLocation) with AtomicNode {}
 
-object ReferenceDataType {
-  val referenceType: ReferenceDataType = new ReferenceDataType
+object referenceType extends DataType(noLocation) with AtomicNode{
+  override val toString = "ref"
+//  val referenceType: ReferenceDataType = new ReferenceDataType
 }
 
 case class NonReferenceDataType private[silAST](

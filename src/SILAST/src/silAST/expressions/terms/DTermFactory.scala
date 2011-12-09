@@ -13,7 +13,7 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
 
   /////////////////////////////////////////////////////////////////////////
   def makeBoundVariable(sl: SourceLocation, name: String, dataType: DataType): BoundVariable = {
-    require(dataTypes.contains(dataType))
+    require(dataTypes contains dataType)
     val result: BoundVariable = new BoundVariable(sl, name, dataType)
     boundVariables += result
     result
@@ -21,7 +21,7 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
 
   /////////////////////////////////////////////////////////////////////////
   def makeBoundVariableTerm(sl: SourceLocation, v: BoundVariable): BoundVariableTerm = {
-    require(boundVariables.contains(v))
+    require(boundVariables contains v)
     addTerm(new BoundVariableTerm(sl, v))
   }
 

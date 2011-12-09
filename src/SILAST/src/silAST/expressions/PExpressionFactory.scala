@@ -25,14 +25,14 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   //////////////////////////////////////////////////////////////////////////
   def makePPredicateExpression(sl: SourceLocation, r: PTerm, p: Predicate): PPredicateExpression = {
     require(predicates contains p)
-    require(terms.contains(r))
+    require(terms contains r)
 
     addExpression(new PPredicateExpression(sl, r, p))
   }
 
   //////////////////////////////////////////////////////////////////////////
   def makePUnaryExpression(sl: SourceLocation, op: UnaryConnective, e1: PExpression): PUnaryExpression = {
-    require(expressions.contains(e1))
+    require(expressions contains e1)
 
     (e1) match {
       case (e1: GExpression) => makeGUnaryExpression(sl, op, e1)
@@ -42,8 +42,8 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
   //////////////////////////////////////////////////////////////////////////
   def makePBinaryExpression(sl: SourceLocation, op: BinaryConnective, e1: PExpression, e2: PExpression): PBinaryExpression = {
-    require(expressions.contains(e1))
-    require(expressions.contains(e2))
+    require(expressions contains e1)
+    require(expressions contains e2)
 
     (e1, e2) match {
       case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(sl, op, e1, e2)
@@ -53,8 +53,8 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
   //////////////////////////////////////////////////////////////////////////
   def makePEqualityExpression(sl: SourceLocation, t1: PTerm, t2: PTerm): PEqualityExpression = {
-    require(terms.contains(t1))
-    require(terms.contains(t2))
+    require(terms contains t1)
+    require(terms contains t2)
 
     (t1, t2) match {
       case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sl, t1, t2)

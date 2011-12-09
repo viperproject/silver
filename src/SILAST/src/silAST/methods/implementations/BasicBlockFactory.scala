@@ -10,7 +10,6 @@ import collection.mutable.HashSet
 import silAST.methods.MethodFactory
 import silAST.expressions.{PredicateExpression, PExpression, Expression, ExpressionFactory}
 import silAST.expressions.terms.PTerm
-import silAST.expressions.terms.permission.PermissionVariable
 
 
 class BasicBlockFactory private[silAST](
@@ -29,7 +28,7 @@ class BasicBlockFactory private[silAST](
                         target: ProgramVariable,
                         source: PTerm
                         ) = {
-    require(localVariables.contains(target) || results.contains(target)) //no writing to inputs
+    require((localVariables contains target)  || (results contains target)) //no writing to inputs
     require(terms contains source)
     basicBlock.appendStatement(new Assignment(sl, target, source))
   }
@@ -41,9 +40,9 @@ class BasicBlockFactory private[silAST](
                              field: Field,
                              source: PExpression
                              ) {
-    require(programVariables.contains(target))
-    require(fields.contains(field))
-    require(expressions.contains(source))
+    require(programVariables contains target)
+    require(fields contains field)
+    require(expressions contains source)
 
     basicBlock.appendStatement(new FieldAssignment(sl, target, field, source))
   }
@@ -54,15 +53,15 @@ class BasicBlockFactory private[silAST](
                           target: ProgramVariable,
                           dataType: DataType
                           ) {
-    require(localVariables.contains(target))
-    require(dataTypes.contains(dataType))
+    require(localVariables contains target)
+    require(dataTypes contains dataType)
 
     basicBlock.appendStatement(new NewStatement(sl, target, dataType))
   }
 
   //////////////////////////////////////////////////////////////////
   def makeProgramVariableSequence(sl: SourceLocation, vs: Seq[ProgramVariable]): ProgramVariableSequence = {
-    require(vs.forall(programVariables.contains(_)))
+    require(vs.forall(programVariables contains _))
     val result = new ProgramVariableSequence(sl, vs)
     programVariableSequences += result
     result
@@ -90,7 +89,7 @@ class BasicBlockFactory private[silAST](
                     sl: SourceLocation,
                     e: Expression
                     ) {
-    require(expressions.contains(e))
+    require(expressions contains e)
 
     basicBlock.appendStatement(new Inhale(sl, e))
   }
@@ -100,7 +99,7 @@ class BasicBlockFactory private[silAST](
                     sl: SourceLocation,
                     e: Expression
                     ) {
-    require(expressions.contains(e))
+    require(expressions contains e)
 
     basicBlock.appendStatement(new Exhale(sl, e))
   }
@@ -110,7 +109,7 @@ class BasicBlockFactory private[silAST](
                   sl: SourceLocation,
                   e: PredicateExpression
                   ) {
-    require(expressions.contains(e))
+    require(expressions contains e)
 
     basicBlock.appendStatement(new Fold(sl, e))
   }
@@ -120,7 +119,7 @@ class BasicBlockFactory private[silAST](
                     sl: SourceLocation,
                     e: PredicateExpression
                     ) {
-    require(expressions.contains(e))
+    require(expressions contains e)
 
     basicBlock.appendStatement(new Unfold(sl, e))
   }
@@ -166,7 +165,6 @@ class BasicBlockFactory private[silAST](
   protected[silAST] override def dataTypes = implementationFactory.dataTypes union pDataTypes
 
   protected[silAST] override def domainFactories = implementationFactory.domainFactories
-  protected[silAST] override def permissionVariables  : collection.Set[PermissionVariable] = implementationFactory.permissionVariables
 
   private[silAST] val basicBlock: BasicBlock = new BasicBlock(sl, name, implementationFactory.cfg)
 }

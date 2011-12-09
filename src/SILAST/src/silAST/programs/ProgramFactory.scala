@@ -8,6 +8,7 @@ import silAST.source.{noLocation, SourceLocation}
 import silAST.domains._
 import symbols._
 import silAST.expressions.{FalseExpression, TrueExpression}
+import silAST.expressions.terms.{permissionDomain, integerDomain, permissionType, integerType}
 
 final class ProgramFactory(
                             val sl: SourceLocation,
@@ -66,7 +67,7 @@ final class ProgramFactory(
   //////////////////////////////////////////////////////////////////////////
   def defineDomainField(sl: SourceLocation, name: String, dataType: NonReferenceDataType): Field = {
     require(fields.forall(_.name != name))
-    require(dataTypes.contains(dataType))
+    require(dataTypes contains dataType)
     defineField(new NonReferenceField(sl, name, dataType))
   }
 
@@ -96,15 +97,19 @@ final class ProgramFactory(
 
   protected[silAST] def predicates = (for (pf <- predicateFactories) yield pf.pPredicate)
 
+  pDataTypes += integerType
+  pDataTypes += permissionType
+  pDataTypes += referenceType
+
   protected[silAST] override def dataTypes = pDataTypes
 
-  val referenceType = ReferenceDataType.referenceType
-  val emptyDTSequence = new DataTypeSequence(List.empty[DataType])
+  def emptyDTSequence = new DataTypeSequence(List.empty[DataType])
   private val nullSig = new DomainFunctionSignature(noLocation, emptyDTSequence, referenceType)
 
   val nullFunction = new DomainFunction(noLocation, "null", nullSig)
 
-  protected[silAST] def domains: Set[Domain] = for (df <- domainFactories) yield df.domain
+  private val pDomains : Set[Domain] = Set(integerDomain,permissionDomain)
+  protected[silAST] def domains: Set[Domain] = pDomains ++ ( for (df <- domainFactories) yield df.domain)
 
   protected[silAST] def domainFunctions: Set[DomainFunction] =
     (for (f <- (for (d <- domains) yield d.functions).flatten) yield f) +
@@ -115,8 +120,14 @@ final class ProgramFactory(
   protected[silAST] def domainPredicates: Set[DomainPredicate] =
     (for (p <- (for (d <- domains) yield d.predicates).flatten) yield p)
 
-
+/*
   dataTypes += referenceType
+  dataTypes += integerType
+  dataTypes += permissionType
+  */
+
+//  domains += integerDomain
+//  domains += permissionDomain
 
   val trueExpression = new TrueExpression
   val falseExpression = new FalseExpression

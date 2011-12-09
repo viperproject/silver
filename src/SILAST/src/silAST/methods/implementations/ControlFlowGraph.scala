@@ -7,8 +7,6 @@ import silAST.source.{noLocation, SourceLocation}
 final class ControlFlowGraph private[silAST](
                                               sl: SourceLocation
                                               ) extends ASTNode(sl) {
-  //	assert(nodes.contains(startNode))
-  //	assert(nodes.contains(endNode))
   //TODO: more consistency checks
 
   private val nodes = new ListBuffer[BasicBlock]

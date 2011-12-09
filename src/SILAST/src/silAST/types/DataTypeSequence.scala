@@ -4,9 +4,14 @@ import silAST.ASTNode
 import silAST.source.noLocation
 
 sealed class DataTypeSequence private[silAST](
-                                               val dataTypes: List[DataType]
+                                               val dataTypes: Seq[DataType]
                                                ) extends ASTNode(noLocation) {
   override def toString = dataTypes.mkString("(", ",", ")")
 
   override def subNodes = dataTypes
+}
+
+object DataTypeSequence
+{
+  def apply(dataTypes : DataType*) = new DataTypeSequence(dataTypes)
 }

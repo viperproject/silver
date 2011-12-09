@@ -12,7 +12,7 @@ import silAST.programs.symbols._
 protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
   /////////////////////////////////////////////////////////////////////////
   def makeProgramVariableTerm(sl: SourceLocation, v: ProgramVariable): ProgramVariableTerm = {
-    require(programVariables.contains(v))
+    require(programVariables contains v)
     addTerm(new ProgramVariableTerm(sl, v))
   }
 
@@ -37,8 +37,8 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
 
   /////////////////////////////////////////////////////////////////////////
   def makePFieldReadTerm(sl: SourceLocation, t: PTerm, f: Field): PFieldReadTerm = {
-    require(terms.contains(t))
-    require(fields.contains(f))
+    require(terms contains t)
+    require(fields contains f)
     //TODO: type check parameters
 
     addTerm(new PFieldReadTerm(sl, t, f))

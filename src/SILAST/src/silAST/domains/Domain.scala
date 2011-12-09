@@ -5,7 +5,7 @@ import silAST.source.SourceLocation
 import collection.Set
 import collection.mutable.HashSet
 
-final class Domain private[silAST](
+class Domain private[silAST](
                                     sl: SourceLocation,
                                     val name: String
                                     ) extends ASTNode(sl) {

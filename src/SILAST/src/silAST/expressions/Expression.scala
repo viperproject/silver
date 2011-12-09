@@ -3,11 +3,10 @@ package silAST.expressions
 import scala.collection.Seq
 
 import silAST.domains.DomainPredicate
-import silAST.expressions.terms.permission.PermissionTerm
 import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.ASTNode
-import terms.{GTerm, Term, PTerm, DTerm}
+import terms._
 import util.{GTermSequence, TermSequence, PTermSequence, DTermSequence}
 import silAST.programs.symbols.Predicate
 import silAST.source.{noLocation, SourceLocation}
@@ -16,8 +15,11 @@ import silAST.source.{noLocation, SourceLocation}
 ///////////////////////////////////////////////////////////////////////////
 sealed abstract class Expression protected[silAST](
                                                     sl: SourceLocation
-                                                    ) extends ASTNode(sl) {
-  val subExpressions: Seq[Expression]
+                                                    ) extends ASTNode(sl) 
+{
+  def subExpressions: Seq[Expression]
+
+  def freeVariables    : Set[BoundVariable]
 }
 
 
@@ -32,13 +34,18 @@ sealed trait AtomicExpression extends Expression {
 final case class PermissionExpression private[silAST](
                                                        sl: SourceLocation,
                                                        reference: Term,
-                                                       permission: PermissionTerm
+                                                       permission: Term
                                                        )
   extends Expression(sl)
-  with AtomicExpression {
+  with AtomicExpression
+{
+  require (permission.dataType == permissionType)
+
   override val toString = "acc(" + reference.toString + "," + permission.toString + ")"
 
-  override val subNodes = List(reference, permission)
+  override def subNodes = List(reference, permission)
+
+  override def freeVariables = reference.freeVariables ++ permission.freeVariables
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -52,6 +59,7 @@ final case class OldExpression private[silAST](
   override val toString = "old(" + expression.toString + ")"
 
   override val subNodes = List(expression)
+  override def freeVariables = expression.freeVariables
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -66,6 +74,7 @@ sealed case class UnfoldingExpression private[silAST](
   override val subNodes: Seq[ASTNode] = List(predicate, expression)
 
   override val subExpressions: Seq[Expression] = List(expression)
+  override def freeVariables = predicate.freeVariables ++ expression.freeVariables
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -75,12 +84,14 @@ sealed case class EqualityExpression private[silAST](
                                                       term1: Term,
                                                       term2: Term
                                                       )
-  extends Expression(sl) {
+  extends Expression(sl)
+{
 
   override val toString = term1.toString + "=" + term2.toString
 
   override val subNodes = List(term1, term2)
   override val subExpressions: Seq[Expression] = Nil
+  override def freeVariables = term1.freeVariables ++ term2.freeVariables
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -95,6 +106,8 @@ sealed case class UnaryExpression private[silAST](
   override val subNodes = List(operator, operand1)
 
   override val subExpressions: Seq[Expression] = List(operand1)
+
+  override def freeVariables = operand1.freeVariables
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -110,6 +123,7 @@ sealed case class BinaryExpression private[silAST](
   override val subNodes = List(operand1, operator, operand2)
 
   override val subExpressions: Seq[Expression] = List(operand1, operand2)
+  override def freeVariables = operand1.freeVariables ++ operand2.freeVariables
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -123,6 +137,7 @@ with AtomicExpression {
   override val toString: String = predicate.name + arguments.toString
 
   override val subNodes: Seq[ASTNode] = List(predicate, arguments)
+  override def freeVariables = arguments.freeVariables
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -137,6 +152,7 @@ with AtomicExpression {
   override val toString = receiver + "." + predicate.name
 
   override val subNodes: Seq[ASTNode] = List(receiver, predicate)
+  override def freeVariables = receiver.freeVariables //TODO:Can receiver have free variables?
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -153,6 +169,7 @@ sealed case class QuantifierExpression private[silAST](
   override val subNodes: Seq[ASTNode] = List(quantifier, variable, expression)
 
   override val subExpressions: Seq[Expression] = List(expression)
+  override def freeVariables = expression.freeVariables - variable
 }
 
 
@@ -169,8 +186,10 @@ sealed case class QuantifierExpression private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait PExpression
-  extends Expression {
+  extends Expression
+{
   override val subExpressions: Seq[PExpression] = pSubExpressions
+  final override val freeVariables = Set[BoundVariable]()
 
   protected[expressions] def pSubExpressions: Seq[PExpression]
 }
@@ -276,8 +295,8 @@ private[silAST] final class PBinaryExpressionC private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait PDomainPredicateExpression extends DomainPredicateExpression with PExpression {
-  override val arguments: PTermSequence = pArguments
-  protected[expressions] val pArguments: PTermSequence
+  protected[expressions] def pArguments: PTermSequence
+  override val arguments : PTermSequence = pArguments
 }
 
 private[silAST] final class PDomainPredicateExpressionC(
@@ -311,20 +330,22 @@ final class PPredicateExpression private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 sealed trait DExpression
   extends Expression {
+  protected[expressions] def dSubExpressions: Seq[DExpression]
   override val subExpressions: Seq[DExpression] = dSubExpressions
-  protected[expressions] val dSubExpressions: Seq[DExpression]
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait DEqualityExpression
   extends EqualityExpression
-  with DExpression {
+  with DExpression
+{
+  protected[expressions] def dTerm1: DTerm
+  protected[expressions] def dTerm2: DTerm
+
   override val term1: DTerm = dTerm1
   override val term2: DTerm = dTerm2
 
-  protected[expressions] val dTerm1: DTerm
-  protected[expressions] val dTerm2: DTerm
 
 }
 
@@ -344,8 +365,8 @@ private[silAST] final class DEqualityExpressionC(
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait DUnaryExpression extends UnaryExpression with DExpression {
+  protected[expressions] def dOperand1: DExpression
   override val operand1: DExpression = dOperand1
-  protected[expressions] val dOperand1: DExpression
 }
 
 object DUnaryExpression {
@@ -367,11 +388,11 @@ private[silAST] final class DUnaryExpressionC private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait DBinaryExpression extends BinaryExpression with DExpression {
+  protected[expressions] def dOperand1: DExpression
+  protected[expressions] def dOperand2: DExpression
+
   override val operand1: DExpression = dOperand1
   override val operand2: DExpression = dOperand2
-
-  protected[expressions] val dOperand1: DExpression
-  protected[expressions] val dOperand2: DExpression
 }
 
 object DBinaryExpression {

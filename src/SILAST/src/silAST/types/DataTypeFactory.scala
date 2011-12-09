@@ -5,6 +5,7 @@ import collection.Set
 import collection.mutable.HashSet
 import silAST.source.SourceLocation
 import silAST.domains.DomainFactory
+import silAST.expressions.terms.{integerType, permissionType}
 
 
 trait DataTypeFactory extends NodeFactory {
@@ -16,8 +17,6 @@ trait DataTypeFactory extends NodeFactory {
     result
   }
 
-  def makeReferenceDataType(): ReferenceDataType = ReferenceDataType.referenceType
-
   //////////////////////////////////////////////////////////////////////////
   def makeDataTypeSequence(types: List[DataType]): DataTypeSequence = {
     require(types.forall(dataTypes contains _))
@@ -28,6 +27,8 @@ trait DataTypeFactory extends NodeFactory {
   }
 
   protected[silAST] val pDataTypes = new HashSet[DataType]
+  pDataTypes += integerType
+  pDataTypes += permissionType
 
   protected[silAST] def domainFactories: Set[DomainFactory] //= new HashSet[DomainFactory]
   protected[silAST] def dataTypes: Set[DataType] //= pDataTypes //new HashSet[DataType]

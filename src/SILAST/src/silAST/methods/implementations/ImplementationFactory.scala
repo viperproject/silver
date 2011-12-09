@@ -8,7 +8,6 @@ import silAST.programs.symbols.{Field, ProgramVariable}
 import collection.Set
 import collection.mutable._
 import silAST.source.SourceLocation
-import silAST.expressions.terms.permission.PermissionVariable
 
 //TODO: Should implementations have names/ids?
 
@@ -31,7 +30,8 @@ class ImplementationFactory private[silAST](
   def addLocalVariable(sl: SourceLocation, name: String, dataType: DataType) = {
     require(methodFactory.programVariables.forall(_.name != name))
     require(localVariables.forall(_.name != name))
-    require(dataTypes.contains(dataType))
+    require(dataTypes contains dataType)
+
     val result = new ProgramVariable(sl, name, dataType)
     localVariables.append(result)
     result
@@ -97,7 +97,6 @@ class ImplementationFactory private[silAST](
   protected[silAST] override def dataTypes = methodFactory.dataTypes union pDataTypes
 
   protected[silAST] override def domainFactories = methodFactory.domainFactories
-  protected[silAST] override def permissionVariables  : collection.Set[PermissionVariable] = methodFactory.permissionVariables
 
   var startNode: Option[BasicBlockFactory] = None
   var endNode: Option[BasicBlockFactory] = None
