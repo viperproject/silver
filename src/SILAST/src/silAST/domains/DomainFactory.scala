@@ -1,14 +1,15 @@
 package silAST.domains
 
 import silAST.programs.{NodeFactory, ProgramFactory}
-import silAST.types.{DataTypeFactory, DataTypeSequence, DataType}
 import silAST.expressions.{DExpression, DExpressionFactory}
 import silAST.source.{noLocation, SourceLocation}
+import silAST.types._
 
 final class DomainFactory private[silAST](
                                            val programFactory: ProgramFactory,
                                            val sl: SourceLocation,
-                                           val name: String
+                                           val name: String,
+                                           typeVariableNames :Seq[(SourceLocation,String)]
                                            ) extends NodeFactory with DExpressionFactory with DataTypeFactory {
   def compile(): Domain = {
     domain
@@ -44,16 +45,18 @@ final class DomainFactory private[silAST](
 
   /////////////////////////////////////////////////////////////////////////
   //  private[silAST] var compiled = false
-  val domain: Domain = new Domain(sl, name)
+  val domain: Domain = new Domain(sl, name,typeVariableNames)
 
+  val typeParameters : Seq[TypeVariable] = domain.typeParameters
+  override def typeVariables = domain.typeParameters.toSet
 //  protected[silAST] val domainFunctionSignatures = new HashSet[DomainFunctionSignature]
 //  protected[silAST] val domainPredicateSignatures = new HashSet[DomainPredicateSignature]
 
-  protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes
+  val thisType = new NonReferenceDataType(noLocation,domain,DataTypeSequence((for (tv <- domain.typeParameters) yield new VariableType(noLocation,tv)) : _*))
+
+  protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes union  Set(thisType)
 
   protected[silAST] override def domainFactories = programFactory.domainFactories
-
-  //  protected[silAST] override def dataTypeSequences //= programFactory.dataTypeSequences
 
   protected[silAST] override def domainFunctions = programFactory.domainFunctions
 
@@ -61,6 +64,6 @@ final class DomainFactory private[silAST](
 
   override def falseExpression = programFactory.falseExpression
 
-  //  protected[silAST] def myDomainPredicates = domain.pPredicates
   protected[silAST] override def domainPredicates = programFactory.domainPredicates
+
 }

@@ -167,4 +167,6 @@ class BasicBlockFactory private[silAST](
   protected[silAST] override def domainFactories = implementationFactory.domainFactories
 
   private[silAST] val basicBlock: BasicBlock = new BasicBlock(sl, name, implementationFactory.cfg)
+
+  override def typeVariables = Set()
 }

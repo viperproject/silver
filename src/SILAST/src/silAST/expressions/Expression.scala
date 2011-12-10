@@ -135,7 +135,8 @@ sealed case class DomainPredicateExpression private[silAST](
                                                              arguments: TermSequence
                                                              ) extends Expression(sl)
 with AtomicExpression {
-  override val toString: String = predicate.name + arguments.toString
+  override def toString: String = predicate.toString(arguments)
+//  override val toString: String = predicate.name + arguments.toString
 
   override val subNodes: Seq[ASTNode] = List(predicate, arguments)
   override def freeVariables = arguments.freeVariables

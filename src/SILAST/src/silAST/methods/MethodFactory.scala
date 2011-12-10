@@ -122,4 +122,5 @@ class MethodFactory(
   protected[silAST] override def domainFunctions = programFactory.domainFunctions
 
   protected[silAST] override def domainPredicates = programFactory.domainPredicates
+  override def typeVariables = Set()
 }

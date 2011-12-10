@@ -9,7 +9,7 @@ import silAST.programs.symbols.PredicateFactory
 import silAST.methods.MethodFactory
 import silAST.source.noLocation
 import util.{PTermSequence, TermSequence, DTermSequence}
-import silAST.types.{integerAddition, integerLE, integerType, referenceType}
+import silAST.types._
 
 object Main {
 
@@ -23,28 +23,29 @@ object Main {
 
     val pf = new ProgramFactory(nl, "P1")
 
-    val isd = pf.getDomainFactory("IntegerSeq")(nl);
-    val integerSeqType = pf.makeNonReferenceDataType(nl, isd);
+    val sd = pf.getDomainFactory("Seq",List((nl,"T")))(nl);
+    val integerSeqType = pf.makeNonReferenceDataType(nl,sd, DataTypeSequence(integerType));
 
-    val tail = isd.defineDomainFunction(nl, "tail", isd.makeDataTypeSequence(List(integerSeqType)), integerSeqType)
-    val prepend = isd.defineDomainFunction(nl, "prepend", isd.makeDataTypeSequence(List(integerType, integerSeqType)), integerSeqType ) //sigPrepend)
-    val isEmpty = isd.defineDomainPredicate(nl, "isEmpty", isd.makeDataTypeSequence(List(integerSeqType)))
+    val tVarT = sd.makeVariableType(nl,sd.typeParameters(0))
+    val tail = sd.defineDomainFunction(nl, "tail", sd.makeDataTypeSequence(List(sd.thisType)),sd.thisType)
+    val prepend = sd.defineDomainFunction(nl, "prepend", sd.makeDataTypeSequence(List(tVarT, sd.thisType)), sd.thisType )
+    val isEmpty = sd.defineDomainPredicate(nl, "isEmpty", sd.makeDataTypeSequence(List(sd.thisType)))
 
-    val singleton = isd.defineDomainFunction(nl, "singleton", isd.makeDataTypeSequence(List(integerType)), integerSeqType)
+    val singleton = sd.defineDomainFunction(nl, "singleton", sd.makeDataTypeSequence(List(tVarT)), sd.thisType)
 
     {
-      val varX = isd.makeBoundVariable(nl, "x", integerSeqType)
-      val varE = isd.makeBoundVariable(nl, "y", integerType)
-      val xT = isd.makeBoundVariableTerm(nl, varX)
-      val eT = isd.makeBoundVariableTerm(nl, varE)
+      val varX = sd.makeBoundVariable(nl, "x", sd.thisType)
+      val varE = sd.makeBoundVariable(nl, "y", tVarT)
+      val xT = sd.makeBoundVariableTerm(nl, varX)
+      val eT = sd.makeBoundVariableTerm(nl, varE)
 
       // forall x : Seq[Int], e : Int :: !isEmpty(x) -> tail(prepend(e,x)) == x
-      val e1 = isd.makeDUnaryExpression(nl, Not(), isd.makeDDomainPredicateExpression(nl, isEmpty, DTermSequence(xT)))
-      val e2 = isd.makeDDomainFunctionApplicationTerm(nl, prepend, DTermSequence(eT,xT))
-      val e3 = isd.makeDEqualityExpression(nl, isd.makeDDomainFunctionApplicationTerm(nl, tail, DTermSequence(e2)), xT)
-      val e4 = isd.makeDBinaryExpression(nl, Implication(), e1, e3)
-      val e = isd.makeDQuantifierExpression(nl, Forall, varX, isd.makeDQuantifierExpression(nl, Forall, varE, e4))
-      isd.addDomainAxiom(nl, "tailPrepend1", e)
+      val e1 = sd.makeDUnaryExpression(nl, Not(), sd.makeDDomainPredicateExpression(nl, isEmpty, DTermSequence(xT)))
+      val e2 = sd.makeDDomainFunctionApplicationTerm(nl, prepend, DTermSequence(eT,xT))
+      val e3 = sd.makeDEqualityExpression(nl, sd.makeDDomainFunctionApplicationTerm(nl, tail, DTermSequence(e2)), xT)
+      val e4 = sd.makeDBinaryExpression(nl, Implication(), e1, e3)
+      val e = sd.makeDQuantifierExpression(nl, Forall, varX, sd.makeDQuantifierExpression(nl, Forall, varE, e4))
+      sd.addDomainAxiom(nl, "tailPrepend1", e)
     }
 
     //    println(id.domain)

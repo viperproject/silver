@@ -27,9 +27,9 @@ final class ProgramFactory(
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def getDomainFactory(name: String)(implicit sl: SourceLocation): DomainFactory = {
+  def getDomainFactory(name: String,typeVariableNames :Seq[(SourceLocation,String)])(implicit sl: SourceLocation): DomainFactory = {
     require(domainFactories.forall(_.name != name))
-    val result = new DomainFactory(this, sl, name)
+    val result = new DomainFactory(this, sl, name,typeVariableNames)
     domainFactories += result
     result
   }
@@ -130,7 +130,7 @@ final class ProgramFactory(
 
   val trueExpression = new TrueExpression
   val falseExpression = new FalseExpression
-
+  override def typeVariables = Set()
 }
 
 }

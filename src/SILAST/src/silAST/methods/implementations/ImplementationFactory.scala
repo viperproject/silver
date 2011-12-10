@@ -102,4 +102,5 @@ class ImplementationFactory private[silAST](
   var endNode: Option[BasicBlockFactory] = None
 
   private[silAST] val cfg = implementation.body
+  override def typeVariables = Set()
 }

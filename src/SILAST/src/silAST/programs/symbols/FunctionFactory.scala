@@ -48,4 +48,6 @@ class FunctionFactory private[silAST](
   private[silAST] val pFunction = new Function(sl, name,pParameters, resultType)
   val resultVar = pFunction.pSignature.result
 
+  override def typeVariables = Set()
+
 }
