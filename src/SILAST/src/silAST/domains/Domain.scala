@@ -13,9 +13,9 @@ class Domain private[silAST](
   private[silAST] val pPredicates = new HashSet[DomainPredicate]
   private[silAST] val pAxioms = new HashSet[DomainAxiom]
 
-  val functions: Set[DomainFunction] = pFunctions
-  val predicates: Set[DomainPredicate] = pPredicates
-  val axioms: Set[DomainAxiom] = pAxioms
+  def functions: Set[DomainFunction] = pFunctions
+  def predicates: Set[DomainPredicate] = pPredicates
+  def axioms: Set[DomainAxiom] = pAxioms
 
 
   override def toString = "domain " + name + "{\n" +

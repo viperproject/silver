@@ -10,6 +10,7 @@ import terms._
 import util.{GTermSequence, TermSequence, PTermSequence, DTermSequence}
 import silAST.programs.symbols.Predicate
 import silAST.source.{noLocation, SourceLocation}
+import silAST.types.permissionType
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////

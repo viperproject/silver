@@ -3,9 +3,9 @@ package silAST.expressions.terms
 import silAST.source.SourceLocation
 import silAST.domains.DomainFunction
 import silAST.programs.NodeFactory
-import silAST.types.DataType
 import silAST.expressions.util._
 import silAST.programs.symbols.{PredicateFactory, FunctionFactory, Field}
+import silAST.types._
 
 protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory
 {

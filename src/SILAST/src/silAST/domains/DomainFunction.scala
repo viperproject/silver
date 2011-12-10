@@ -12,7 +12,7 @@ class DomainFunction private[silAST](
 {
   override def toString = "function " + name + signature.toString
 
-  override def subNodes = signature :: Nil
+  override def subNodes = List(signature)
 
   def toString(args : TermSequence) = name + args
 }

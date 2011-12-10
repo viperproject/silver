@@ -5,7 +5,6 @@ import collection.Set
 import collection.mutable.HashSet
 import silAST.source.SourceLocation
 import silAST.domains.DomainFactory
-import silAST.expressions.terms.{integerType, permissionType}
 
 
 trait DataTypeFactory extends NodeFactory {

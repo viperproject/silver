@@ -2,13 +2,12 @@ package silAST.programs {
 
 import collection.Set
 import collection.mutable.HashSet
-import silAST.types._
 import silAST.methods.MethodFactory
 import silAST.source.{noLocation, SourceLocation}
 import silAST.domains._
 import symbols._
 import silAST.expressions.{FalseExpression, TrueExpression}
-import silAST.expressions.terms.{permissionDomain, integerDomain, permissionType, integerType}
+import silAST.types._
 
 final class ProgramFactory(
                             val sl: SourceLocation,

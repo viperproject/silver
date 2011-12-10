@@ -9,7 +9,7 @@ import silAST.programs.symbols.PredicateFactory
 import silAST.methods.MethodFactory
 import silAST.source.noLocation
 import util.{PTermSequence, TermSequence, DTermSequence}
-import silAST.types.referenceType
+import silAST.types.{integerAddition, integerLE, integerType, referenceType}
 
 object Main {
 
