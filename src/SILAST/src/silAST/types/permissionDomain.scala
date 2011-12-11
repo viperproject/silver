@@ -10,13 +10,16 @@ import silAST.source.noLocation
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
-object permissionDomain extends Domain(noLocation,"Permission",List())
+object permissionDomain extends Domain(noLocation)
 {
+  override val name = "Permission"
   override def functions = Set(permissionAddition,permissionSubtraction,permissionMultiplication,permissionIntegerMultiplication)
   override def predicates = Set()
+
+  override def isCompatible(other : Domain) = other == permissionDomain
 }
 
-object permissionType extends NonReferenceDataType(noLocation,permissionDomain,DataTypeSequence())
+object permissionType extends NonReferenceDataType(noLocation,permissionDomain)
 
 
 

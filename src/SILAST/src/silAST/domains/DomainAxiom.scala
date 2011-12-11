@@ -9,6 +9,8 @@ final class DomainAxiom private[silAST](
                                          val name: String,
                                          val expression: DExpression
                                          ) extends ASTNode(sl) {
+  def substitute(substitution: TypeSubstitution)
+
   override def toString = "axiom " + name + " = " + expression.toString
 
   override def subNodes = expression :: Nil

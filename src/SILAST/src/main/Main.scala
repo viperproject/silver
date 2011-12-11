@@ -24,14 +24,13 @@ object Main {
     val pf = new ProgramFactory(nl, "P1")
 
     val sd = pf.getDomainFactory("Seq",List((nl,"T")))(nl);
-    val integerSeqType = pf.makeNonReferenceDataType(nl,sd, DataTypeSequence(integerType));
 
     val tVarT = sd.makeVariableType(nl,sd.typeParameters(0))
-    val tail = sd.defineDomainFunction(nl, "tail", sd.makeDataTypeSequence(List(sd.thisType)),sd.thisType)
-    val prepend = sd.defineDomainFunction(nl, "prepend", sd.makeDataTypeSequence(List(tVarT, sd.thisType)), sd.thisType )
-    val isEmpty = sd.defineDomainPredicate(nl, "isEmpty", sd.makeDataTypeSequence(List(sd.thisType)))
+    val tail = sd.defineDomainFunction(nl, "tail", DataTypeSequence(sd.thisType),sd.thisType)
+    val prepend = sd.defineDomainFunction(nl, "prepend", DataTypeSequence(tVarT, sd.thisType), sd.thisType )
+    val isEmpty = sd.defineDomainPredicate(nl, "isEmpty", DataTypeSequence(sd.thisType))
 
-    val singleton = sd.defineDomainFunction(nl, "singleton", sd.makeDataTypeSequence(List(tVarT)), sd.thisType)
+    val singleton = sd.defineDomainFunction(nl, "singleton", DataTypeSequence(tVarT), sd.thisType)
 
     {
       val varX = sd.makeBoundVariable(nl, "x", sd.thisType)
@@ -47,6 +46,9 @@ object Main {
       val e = sd.makeDQuantifierExpression(nl, Forall, varX, sd.makeDQuantifierExpression(nl, Forall, varE, e4))
       sd.addDomainAxiom(nl, "tailPrepend1", e)
     }
+
+    val isd = sd.getInstance(DataTypeSequence(integerType))
+    val integerSeqType = isd.getType
 
     //    println(id.domain)
     //    println(isd.domain)

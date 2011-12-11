@@ -12,18 +12,10 @@ trait DataTypeFactory extends NodeFactory {
   def makeNonReferenceDataType(sl: SourceLocation, df: DomainFactory,ta : DataTypeSequence): NonReferenceDataType = {
     require(domainFactories contains df)
     require(ta.forall(dataTypes contains _))
-    require(df.domain.typeParameters.length == ta.length)
-    val result = new NonReferenceDataType(sl, df.domain,ta)
+    require(df.domainTemplate.typeParameters.length == ta.length)
+    val domain = df.domainTemplate.getInstance(ta)
+    val result = new NonReferenceDataType(sl, domain)
     pDataTypes += result
-    result
-  }
-
-  //////////////////////////////////////////////////////////////////////////
-  def makeDataTypeSequence(types: List[DataType]): DataTypeSequence = {
-    require(types.forall(dataTypes contains _))
-
-    val result = new DataTypeSequence(types)
-    dataTypeSequences += result
     result
   }
 

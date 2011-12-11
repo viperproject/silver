@@ -11,48 +11,50 @@ final class DomainFactory private[silAST](
                                            val name: String,
                                            typeVariableNames :Seq[(SourceLocation,String)]
                                            ) extends NodeFactory with DExpressionFactory with DataTypeFactory {
-  def compile(): Domain = {
-    domain
+  def getInstance(sequence: DataTypeSequence) : Domain
+
+  def compile(): DomainTemplate = {
+    domainTemplate
   }
 
   /////////////////////////////////////////////////////////////////////////
   def defineDomainFunction(sl: SourceLocation, name: String, p: DataTypeSequence, r: DataType) = {
-    require(dataTypeSequences contains p)
+    require(p.forall(dataTypes contains _))
     require(dataTypes contains r)
     require(domainFunctions.forall(_.name != name))
     val result = new DomainFunction(sl, name, new DomainFunctionSignature(noLocation,p,r))
-    domain.pFunctions += result
+    domainTemplate.pFunctions += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
   def defineDomainPredicate(sl: SourceLocation, name: String, p: DataTypeSequence) = {
     require(domainPredicates.forall(_.name != name))
-    require(dataTypeSequences contains p)
+    require(p.forall(dataTypes contains _))
     val result = new DomainPredicate(sl, name, new DomainPredicateSignature(noLocation,p))
-    domain.pPredicates += result
+    domainTemplate.pPredicates += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////
   def addDomainAxiom(sl: SourceLocation, name: String, e: DExpression): DomainAxiom = {
-    require(domain.axioms.forall(_.name != name))
+    require(domainTemplate.axioms.forall(_.name != name))
     val result = new DomainAxiom(sl, name, e)
-    domain.pAxioms += result
+    domainTemplate.pAxioms += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
   //  private[silAST] var compiled = false
-  val domain: Domain = new Domain(sl, name,typeVariableNames)
+  val domainTemplate: DomainTemplate = new DomainTemplate(sl, name,typeVariableNames)
 
-  val typeParameters : Seq[TypeVariable] = domain.typeParameters
-  override def typeVariables = domain.typeParameters.toSet
+  val typeParameters : Seq[TypeVariable] = domainTemplate.typeParameters
+  override def typeVariables = domainTemplate.typeParameters.toSet
 //  protected[silAST] val domainFunctionSignatures = new HashSet[DomainFunctionSignature]
 //  protected[silAST] val domainPredicateSignatures = new HashSet[DomainPredicateSignature]
 
-  val thisType = new NonReferenceDataType(noLocation,domain,DataTypeSequence((for (tv <- domain.typeParameters) yield new VariableType(noLocation,tv)) : _*))
+  val thisType = new NonReferenceDataType(noLocation,domainTemplate,DataTypeSequence((for (tv <- domainTemplate.typeParameters) yield new VariableType(noLocation,tv)) : _*))
 
   protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes union  Set(thisType)
 

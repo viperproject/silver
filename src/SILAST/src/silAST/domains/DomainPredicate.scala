@@ -1,14 +1,16 @@
 package silAST.domains
 
 import silAST.source.SourceLocation
-import silAST.{AtomicNode, ASTNode}
+import silAST.{ASTNode}
 import silAST.expressions.util.TermSequence
 
 class DomainPredicate private[silAST](
                                              sl: SourceLocation,
                                              val name: String,
                                              val signature: DomainPredicateSignature
-                                             ) extends ASTNode(sl) with AtomicNode {
+                                             ) extends ASTNode(sl) {
+  def substitute(substitution: TypeSubstitution)
+
   override def toString = "predicate " + name + signature.toString
   def toString(ts : TermSequence) = name + ts.toString()
 

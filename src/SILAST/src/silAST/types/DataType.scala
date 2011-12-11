@@ -1,44 +1,71 @@
 package silAST.types
 
 import silAST.ASTNode
-import silAST.AtomicNode
 import silAST.source.{noLocation, SourceLocation}
-import silAST.domains.Domain
+import silAST.domains.{DomainTemplate, DomainTemplateInstance, TypeSubstitution, Domain}
 
-abstract sealed class DataType(sl: SourceLocation) extends ASTNode(sl) {
-  def isCompatible(other : DataType)
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+sealed abstract class DataType(sl:SourceLocation) extends ASTNode(sl)
+{
+  def isCompatible(other : DataType) : Boolean
+
+  def substitute(s : TypeSubstitution) : DataType = this
+  
+  def freeTypeVariables : collection.Set[TypeVariable] = Set()
 }
 
-//final case class ReferenceDataType private[silAST]() extends DataType(noLocation) with AtomicNode {}
-
-object referenceType extends DataType(noLocation) with AtomicNode{
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+object referenceType extends DataType(noLocation)
+{
   override val toString = "ref"
   def isCompatible(other : DataType) = other == referenceType
 }
 
 
-final class TypeVariable private[silAST](sl:SourceLocation,domain : Domain, name : String)
-  extends ASTNode(sl) with AtomicNode
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+final class TypeVariable private[silAST](sl:SourceLocation,template : DomainTemplate, val name : String)
+  extends ASTNode(sl)
 {
   override val toString = name
 }
 
-final case class VariableType(sl:SourceLocation, variable : TypeVariable) extends DataType(sl) with AtomicNode{
-  override val toString = variable.toString
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+final case class VariableType(sl:SourceLocation, variable : TypeVariable) extends DataType(sl)
+{
+  override val toString = variable.name
   
-  def isCompatible(other : DataType) = other match {case VariableType(_,v) => v == variable case _ => false}
+  override def isCompatible(other : DataType) =
+    other match {case VariableType(_,v) => v == variable case _ => false}
+
+  override def substitute(s : TypeSubstitution) = s.mapType(variable,this)
+  override def freeTypeVariables = Set(variable)
 }
 
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
 case class NonReferenceDataType private[silAST](
                                                  sl: SourceLocation,
-                                                 val domain: Domain,
-                                                 val typeArguments : DataTypeSequence)
-  extends DataType(sl) with AtomicNode {
-  override val toString = domain.name + (if (typeArguments.length>0) typeArguments.toString else "")
+                                                 domain: Domain
+                                                 )
+  extends DataType(sl)
+{
+  override def freeTypeVariables = domain.freeTypeVariables
+
+  override val toString = domain.name
 
   def isCompatible(other : DataType) =
     other match{
-      case NonReferenceDataType(_,d:Domain,ta:DataTypeSequence) => domain == d && typeArguments == ta
+      case NonReferenceDataType(_,d:DomainTemplateInstance) => domain.isCompatible(other)
       case _ => false
     }
+
+  def substitute(s:TypeSubstitution) = 
+    if (s.typeVariables.intersect(freeTypeVariables).isEmpty)
+      this
+    else
+      new NonReferenceDataType(s.sourceLocation, domain.getInstance(s))
 }

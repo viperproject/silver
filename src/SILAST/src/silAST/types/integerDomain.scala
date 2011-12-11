@@ -10,10 +10,13 @@ import silAST.source.noLocation
 ///////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////
-object integerDomain extends Domain(noLocation,"Integer",List())
+object integerDomain extends Domain(noLocation)
 {
+  override val name = "Integer"
   override def functions = Set[DomainFunction](integerAddition,integerSubtraction,integerMultiplication,integerDivision,integerNegation)
   override def predicates = Set(integerEQ,integerNE,integerLE,integerLT,integerGE,integerGT)
+
+  override def subNodes = functions ++ predicates
 }
 
 object integerType extends NonReferenceDataType(noLocation,integerDomain,DataTypeSequence())

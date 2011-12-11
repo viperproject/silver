@@ -1,7 +1,7 @@
 package silAST.expressions.terms
 
 import silAST.symbols.logical.quantification.BoundVariable
-import silAST.{AtomicNode, ASTNode}
+import silAST.{ASTNode}
 import silAST.expressions.util.{GTermSequence, DTermSequence, PTermSequence, TermSequence}
 import silAST.programs.symbols.{Predicate, ProgramVariable, Field, Function}
 import silAST.source.SourceLocation

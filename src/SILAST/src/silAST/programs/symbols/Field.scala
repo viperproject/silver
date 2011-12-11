@@ -1,7 +1,6 @@
 package silAST.programs.symbols
 
 import silAST.ASTNode
-import silAST.AtomicNode
 import silAST.source.SourceLocation
 import silAST.types.{referenceType, DataType, NonReferenceDataType}
 
@@ -9,7 +8,7 @@ sealed abstract class Field private[silAST](
                                              sl: SourceLocation,
                                              val name: String,
                                              val dataType: DataType
-                                             ) extends ASTNode(sl) with AtomicNode {
+                                             ) extends ASTNode(sl){
   override def toString: String = "field " + name + " : " + dataType.toString
 }
 
