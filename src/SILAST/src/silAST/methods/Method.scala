@@ -19,5 +19,4 @@ final class Method private[silAST](
 
   def implementations: Set[Implementation] = pImplementations.toSet
 
-  override def subNodes = signature :: implementations.toList
 }

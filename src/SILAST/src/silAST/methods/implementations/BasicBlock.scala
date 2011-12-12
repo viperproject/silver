@@ -26,9 +26,6 @@ final class BasicBlock private[silAST](
       (if (!successors.isEmpty) ("\t\tgoto " + (for (s <- successors) yield s.target.label).mkString(",") + "\n") else "") +
       "\t}\n"
 
-  override def subNodes = statements
-
-
   private val pStatements = new ListBuffer[Statement]
   private val pSuccessors = new ListBuffer[CFGEdge]
   private val pPredecessors = new ListBuffer[CFGEdge]

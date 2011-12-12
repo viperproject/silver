@@ -7,7 +7,7 @@ import collection.immutable.HashMap
 import silAST.symbols.logical.quantification.BoundVariable
 import silAST.expressions.terms.Term
 import silAST.source.{noLocation, SourceLocation}
-import silAST.types.{DataType, DataTypeSequence, TypeVariable}
+import silAST.types.{VariableType, DataType, DataTypeSequence, TypeVariable}
 
 class DomainTemplate private[silAST](
                                     sl: SourceLocation,
@@ -41,6 +41,8 @@ class DomainTemplate private[silAST](
   private[silAST] val pFunctions = new HashSet[DomainFunction]
   private[silAST] val pPredicates = new HashSet[DomainPredicate]
   private[silAST] val pAxioms = new HashSet[DomainAxiom]
+  
+  val domain = new DomainTemplateInstance(this,DataTypeSequence((for (t<-typeParameters) yield new VariableType(t.sourceLocation,t)) : _*))
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -17,5 +17,4 @@ final class MethodSignature private[silAST](
       (for (p <- precondition) yield "requires " + p.toString).mkString("\t", "\n\t", "\n") +
       (for (p <- postcondition) yield "ensures " + p.toString).mkString("\t", "\n\t", "\n")
 
-  override def subNodes = parameters.variables.toList ++ List(results) ++ precondition.toList ++ postcondition.toList
 }

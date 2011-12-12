@@ -49,7 +49,5 @@ final class ControlFlowGraph private[silAST](
 
   def endNode: BasicBlock = pEndNode
 
-  override def subNodes = nodes.toSeq
-
   override def toString = nodes.mkString("\n")
 }

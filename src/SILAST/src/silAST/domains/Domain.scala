@@ -42,11 +42,11 @@ final private[silAST] class DomainTemplateInstance(template : DomainTemplate,typ
   def getType : NonReferenceDataType = new NonReferenceDataType(sourceLocation,this)
 
   def getInstance(s: TypeSubstitution): Domain = template.getInstance(typeArguments.substitute(s))
-
+/*
   def isCompatible(d: Domain): Boolean =
     d match {
       case d : DomainTemplateInstance => template == d.template && typeArguments.isCompatible(d.typeArguments)
     }
-
+  */
 
 }

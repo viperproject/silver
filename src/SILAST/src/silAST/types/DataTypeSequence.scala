@@ -10,7 +10,7 @@ sealed class DataTypeSequence private[silAST](
 {
   def isCompatible(other: DataTypeSequence): Boolean =
     dataTypes.length == other.length &&
-    dataTypes.zip[DataType](other.dataTypes).forall(_._1.isCompatible(_._2))
+    dataTypes.zip(other.dataTypes.toSeq).forall((x) => x._1.isCompatible(x._2))
    //covariance
 
   require(dataTypes.forall(_!=null))

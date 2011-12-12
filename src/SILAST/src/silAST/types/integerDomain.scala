@@ -19,7 +19,7 @@ object integerDomain extends Domain(noLocation)
   override def subNodes = functions ++ predicates
 }
 
-object integerType extends NonReferenceDataType(noLocation,integerDomain,DataTypeSequence())
+object integerType extends NonReferenceDataType(noLocation,integerDomain)
 
 
 ///////////////////////////////////////////////////////////////////////////

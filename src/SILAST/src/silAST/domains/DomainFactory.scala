@@ -54,7 +54,7 @@ final class DomainFactory private[silAST](
 //  protected[silAST] val domainFunctionSignatures = new HashSet[DomainFunctionSignature]
 //  protected[silAST] val domainPredicateSignatures = new HashSet[DomainPredicateSignature]
 
-  val thisType = new NonReferenceDataType(noLocation,domainTemplate,DataTypeSequence((for (tv <- domainTemplate.typeParameters) yield new VariableType(noLocation,tv)) : _*))
+  val thisType = new NonReferenceDataType(noLocation,domainTemplate.domain)
 
   protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes union  Set(thisType)
 

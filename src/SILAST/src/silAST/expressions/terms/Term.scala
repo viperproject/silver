@@ -382,7 +382,6 @@ sealed abstract case class LiteralTerm protected[silAST](sl: SourceLocation)
   extends ASTNode(sl) with Term
   with GTerm
   with AtomicTerm
-  with AtomicNode
 {
 }
 
@@ -391,7 +390,6 @@ sealed abstract case class LiteralTerm protected[silAST](sl: SourceLocation)
 final class IntegerLiteralTerm private[silAST](sl: SourceLocation, val value: BigInt)
   extends LiteralTerm(sl)
   with GTerm
-  with AtomicNode
 {
   override val toString: String = value.toString()
   override val gSubTerms = Nil
