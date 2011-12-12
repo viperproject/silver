@@ -36,7 +36,7 @@ final private[silAST] class DomainTemplateInstance(template : DomainTemplate,typ
 
   override val name : String = template.name + typeArguments.toString
   override val functions = for (ft <- template.functions) yield ft.substitute(substitution)
-  override val predicates = for (pt <- template.predicates) yield pt.substitute(substitution)
+  override val predicates = (for (pt <- template.predicates) yield pt.substitute(substitution)).toSet
   override val axioms : Set[DomainAxiom] = (for (at <- template.axioms) yield at.substitute(substitution)).toSet
 
   def getType : NonReferenceDataType = new NonReferenceDataType(sourceLocation,this)
