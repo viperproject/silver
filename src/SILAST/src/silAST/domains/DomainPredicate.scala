@@ -13,6 +13,4 @@ class DomainPredicate private[silAST](
 
   override def toString = "predicate " + name + signature.toString
   def toString(ts : TermSequence) = name + ts.toString()
-
-  override def subNodes = List(signature)
 }

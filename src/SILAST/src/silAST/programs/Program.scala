@@ -17,8 +17,6 @@ final class Program private[silAST](
                                      val predicates: Set[Predicate],
                                      val methods: Set[Method]
                                      ) extends ASTNode(sl) {
-  override def subNodes = domains.toList ++ fields.toList ++ functions.toList ++ predicates.toList ++ methods.toList
-
   override def toString =
     "program " + name + "\n" +
       domains.mkString("", "\n", "\n") +

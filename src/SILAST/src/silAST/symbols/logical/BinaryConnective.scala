@@ -6,13 +6,7 @@ import silAST.source.noLocation
 
 sealed abstract class BinaryConnective extends ASTNode(noLocation) {
 
-  override def toString: String = {
-    name
-  }
-
-  override def subNodes: Seq[ASTNode] = {
-    Nil
-  }
+  override def toString = name
 
   def name: String
 

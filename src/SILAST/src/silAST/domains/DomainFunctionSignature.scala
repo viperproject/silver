@@ -13,6 +13,4 @@ final class DomainFunctionSignature private[silAST](
   require (parameterTypes!=null)
   require (resultType !=null)
   override def toString = "(" + parameterTypes.toString + ")" + " : " + resultType.toString
-
-  override def subNodes = parameterTypes :: resultType :: Nil
 }

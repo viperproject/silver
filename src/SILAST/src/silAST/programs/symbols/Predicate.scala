@@ -10,8 +10,6 @@ final class Predicate private[silAST](
                                        ) extends ASTNode(sl) {
   override def toString = "predicate " + name + " = " + expression.toString
 
-  override def subNodes = expression :: Nil
-
   private[silAST] var pExpression: Option[Expression] = None
 
   def expression: Expression = pExpression.get

@@ -41,6 +41,4 @@ final class FunctionSignature private[silAST](
       (if (postcondition.isEmpty) "" else (for (p <- postcondition) yield "ensures " + p.toString).mkString("\t", "\t\n", "\n")) +
       (terminationMeasure match {case Some(m) => "\tmeasure " + m.toString + "\n" case _ => "" })
 
-  override def subNodes = List(parameters, result) ++ precondition.toList ++ postcondition.toList ++ 
-    (terminationMeasure match{ case Some(t) => List(t) case _ => List()})
 }

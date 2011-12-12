@@ -11,7 +11,7 @@ final class DomainFactory private[silAST](
                                            val name: String,
                                            typeVariableNames :Seq[(SourceLocation,String)]
                                            ) extends NodeFactory with DExpressionFactory with DataTypeFactory {
-  def getInstance(sequence: DataTypeSequence) : Domain
+  def getInstance(ta: DataTypeSequence) : Domain = domainTemplate.getInstance(ta)
 
   def compile(): DomainTemplate = {
     domainTemplate

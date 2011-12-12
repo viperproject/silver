@@ -19,9 +19,9 @@ abstract class Domain private[silAST](
   def getInstance(substitution: TypeSubstitution): Domain
 
   val name : String
-  val functions: Set[DomainFunction]
-  val predicates: Set[DomainPredicate]
-  val axioms: Set[DomainAxiom]
+  def functions: Set[DomainFunction]
+  def predicates: Set[DomainPredicate]
+  def axioms: Set[DomainAxiom]
   
 
 }
@@ -37,7 +37,7 @@ final private[silAST] class DomainTemplateInstance(template : DomainTemplate,typ
   override val name : String = template.name + typeArguments.toString
   override val functions = for (ft <- template.functions) yield ft.substitute(substitution)
   override val predicates = for (pt <- template.predicates) yield pt.substitute(substitution)
-  override val axioms = for (at <- template.axioms) yield at.substitute(substitution)
+  override val axioms : Set[DomainAxiom] = (for (at <- template.axioms) yield at.substitute(substitution)).toSet
 
   def getType : NonReferenceDataType = new NonReferenceDataType(sourceLocation,this)
 

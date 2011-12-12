@@ -17,7 +17,6 @@ sealed class ExpressionSequence private[silAST](
 
   override val length = args.length
   override val toString = "(" + args.mkString(",") + ")"
-  override val subNodes = args
 }
 
 /////////////////////////////////////////////////////////////////

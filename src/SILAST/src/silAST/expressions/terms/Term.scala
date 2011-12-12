@@ -35,8 +35,6 @@ sealed case class OldTerm private[silAST](
                                                                  ) extends ASTNode(sl) with Term {
   override val toString: String = "old(" + term.toString + ")"
 
-  override val subNodes: Seq[ASTNode] = List(term)
-
   override val subTerms: Seq[Term] = List(term)
 
   override def dataType         = term.dataType
@@ -52,8 +50,6 @@ sealed case class DomainFunctionApplicationTerm private[silAST](
                                                                  arguments: TermSequence
                                                                  ) extends ASTNode(sl) with Term {
   override val toString: String = function.toString(arguments)
-
-  override val subNodes: Seq[ASTNode] = List(function) ++ arguments
   override val subTerms: Seq[Term] = arguments
 
   override def dataType         = function.signature.resultType
@@ -71,7 +67,6 @@ sealed case class FunctionApplicationTerm private[silAST](
                                                            ) extends ASTNode(sl) with Term {
   override val toString: String = receiver.toString + "." + function.name + arguments.toString
 
-  override val subNodes: Seq[ASTNode] = List(receiver, function) ++ arguments
   override val subTerms: Seq[Term] = List(receiver) ++ arguments.toList
 
   override def dataType         = function.signature.result.dataType
@@ -89,8 +84,6 @@ sealed case class UnfoldingTerm private[silAST](
                                                            term : Term
                                                            ) extends ASTNode(sl) with Term {
   override val toString: String = "unfolding " + receiver.toString + "." + predicate.name + " in (" + term.toString + ")"
-
-  override val subNodes: Seq[ASTNode] = List(receiver,predicate,term)
 
   override val subTerms: Seq[Term] = List(receiver,term)
 
@@ -113,8 +106,6 @@ sealed case class CastTerm protected[silAST](
   extends ASTNode(sl) with Term {
   override val toString: String = "(" + operand1 + ") : " + newType.toString
 
-  override val subNodes: Seq[ASTNode] = operand1 :: newType :: Nil
-
   override val subTerms: Seq[Term] = operand1 :: Nil
 
   override def dataType         = newType
@@ -132,7 +123,6 @@ sealed case class FieldReadTerm protected[silAST](
   extends ASTNode(sl) with Term {
 
   override val toString: String = location.toString + "." + field.name
-  override val subNodes: Seq[ASTNode] = List(location,field)
   override val subTerms: Seq[Term] = List(location)
 
   override def dataType         = field.dataType
@@ -205,7 +195,6 @@ sealed case class ProgramVariableTerm protected[silAST](
 {
 
   override val toString: String = variable.name
-  override val subNodes: Seq[ASTNode] = List(variable)
   override val pSubTerms = Nil
 
   override def dataType         = variable.dataType
@@ -221,7 +210,6 @@ final class PUnfoldingTerm private[silAST](
                                                  term : PTerm
                                                  ) extends UnfoldingTerm(sl,receiver,predicate,term) with PTerm
 {
-  override val subNodes: Seq[ASTNode] = List(receiver, predicate,term)
   override val pSubTerms: Seq[PTerm] = List(receiver,term)
 }
 
@@ -329,7 +317,6 @@ sealed case class BoundVariableTerm protected[silAST](
   with DTerm
 {
   override val toString = variable.name
-  override val subNodes = List(variable)
   override val dSubTerms = Nil
 
   override def dataType      = variable.dataType

@@ -18,8 +18,6 @@ sealed class TermSequence private[silAST](
 
   override def length = args.length
   override def toString() = "(" + args.mkString(",") + ")"
-  override def subNodes = args
-
   def freeVariables    : Set[BoundVariable]   = (for (a <- args) yield a.freeVariables).flatten.toSet
   def programVariables : Set[ProgramVariable] = (for (a <- args) yield a.programVariables).flatten.toSet
 

@@ -9,6 +9,4 @@ final class DomainPredicateSignature private[silAST](
                                                       val argumentTypes: DataTypeSequence
                                                       ) extends ASTNode(sl) {
   override def toString = argumentTypes.toString
-
-  override def subNodes = argumentTypes :: Nil
 }

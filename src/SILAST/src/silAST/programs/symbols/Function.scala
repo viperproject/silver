@@ -18,8 +18,6 @@ final class Function private[programs](
 
   override def toString = "function " + name + signature.toString + " = " + body.toString
 
-  override def subNodes = List(signature)
-
   def body: Term = pBody.get
 
   private[symbols] var pBody: Option[Term] = None

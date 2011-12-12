@@ -11,6 +11,4 @@ class ProgramVariable(
                        ) extends ASTNode(sl) {
 
   override def toString: String = name
-
-  override def subNodes = dataType :: Nil
 }

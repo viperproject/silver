@@ -22,6 +22,4 @@ final class Implementation private[silAST](
   def locals: Seq[ProgramVariable] = pLocals
 
   def body: ControlFlowGraph = pBody
-
-  override def subNodes = locals ++ (body :: Nil)
 }

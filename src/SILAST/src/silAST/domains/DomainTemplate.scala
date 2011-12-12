@@ -34,8 +34,6 @@ class DomainTemplate private[silAST](
     (if (!axioms.isEmpty) axioms.mkString("\t", "\n\t", "\n") else "") +
     "}"
 
-  override def subNodes = functions.toList ++ predicates.toList ++ axioms.toList
-
   require(typeVariableNames.forall((s)=>typeVariableNames.count(_._2==s._2)==1))
 
   private[silAST] val pFunctions = new HashSet[DomainFunction]
@@ -47,7 +45,7 @@ class DomainTemplate private[silAST](
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-private [silAST] class TypeSubstitution(private val types : Set[(TypeVariable,DataType)],val sourceLocation : SourceLocation = noLocation)
+class TypeSubstitution private [silAST] (private val types : Set[(TypeVariable,DataType)],val sourceLocation : SourceLocation = noLocation)
 {
   val typeVariables : Set[TypeVariable] = for (t <- types) yield t._1
 
@@ -60,10 +58,10 @@ private [silAST] class TypeSubstitution(private val types : Set[(TypeVariable,Da
 ///////////////////////////////////////////////////////////////////////////
 private [silAST] class Substitution[+T <: Term](
                                     types : Set[(TypeVariable,DataType)],
-                                    val variables : Set[(BoundVariable,T)]
+                                    variables : collection.immutable.Set[(BoundVariable,T)]
                                     ) extends TypeSubstitution(types)
 {
   protected val varMap = variables.toMap
 
-  def mapVariable(v : BoundVariable,t : T       ) : T        = varMap .getOrElse(v,t)
+  def mapVariable(v : BoundVariable) : Option[T] = varMap.get(v)
 }

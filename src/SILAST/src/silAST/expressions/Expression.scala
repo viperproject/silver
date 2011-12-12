@@ -44,8 +44,6 @@ final case class PermissionExpression private[silAST](
 
   override val toString = "acc(" + reference.toString + "," + permission.toString + ")"
 
-  override def subNodes = List(reference, permission)
-
   override def freeVariables = reference.freeVariables ++ permission.freeVariables
 }
 
@@ -59,7 +57,6 @@ final case class OldExpression private[silAST](
   with AtomicExpression {
   override val toString = "old(" + expression.toString + ")"
 
-  override val subNodes = List(expression)
   override def freeVariables = expression.freeVariables
 }
 
@@ -71,8 +68,6 @@ sealed case class UnfoldingExpression private[silAST](
                                                       expression: Expression
                                                       ) extends Expression(sl) {
   override val toString = "unfolding " + predicate.toString + " in " + expression.toString
-
-  override val subNodes: Seq[ASTNode] = List(predicate, expression)
 
   override val subExpressions: Seq[Expression] = List(expression)
   override def freeVariables = predicate.freeVariables ++ expression.freeVariables
@@ -90,7 +85,6 @@ sealed case class EqualityExpression private[silAST](
 
   override val toString = term1.toString + "=" + term2.toString
 
-  override val subNodes = List(term1, term2)
   override val subExpressions: Seq[Expression] = Nil
   override def freeVariables = term1.freeVariables ++ term2.freeVariables
 }
@@ -103,8 +97,6 @@ sealed case class UnaryExpression private[silAST](
                                                    operand1: Expression
                                                    ) extends Expression(sl) {
   override val toString = operator.toString + operand1.toString
-
-  override val subNodes = List(operator, operand1)
 
   override val subExpressions: Seq[Expression] = List(operand1)
 
@@ -121,8 +113,6 @@ sealed case class BinaryExpression private[silAST](
                                                     ) extends Expression(sl) {
   override val toString = operand1.toString + " " + operator.toString + " " + operand2.toString
 
-  override val subNodes = List(operand1, operator, operand2)
-
   override val subExpressions: Seq[Expression] = List(operand1, operand2)
   override def freeVariables = operand1.freeVariables ++ operand2.freeVariables
 }
@@ -138,7 +128,6 @@ with AtomicExpression {
   override def toString: String = predicate.toString(arguments)
 //  override val toString: String = predicate.name + arguments.toString
 
-  override val subNodes: Seq[ASTNode] = List(predicate, arguments)
   override def freeVariables = arguments.freeVariables
 }
 
@@ -153,7 +142,6 @@ with AtomicExpression {
 
   override val toString = receiver + "." + predicate.name
 
-  override val subNodes: Seq[ASTNode] = List(receiver, predicate)
   override def freeVariables = receiver.freeVariables //TODO:Can receiver have free variables?
 }
 
@@ -167,8 +155,6 @@ sealed case class QuantifierExpression private[silAST](
                                                         )
   extends Expression(sl) {
   override val toString = quantifier.toString + " " + variable.name + " : " + variable.dataType.toString + " :: (" + expression.toString + ")"
-
-  override val subNodes: Seq[ASTNode] = List(quantifier, variable, expression)
 
   override val subExpressions: Seq[Expression] = List(expression)
   override def freeVariables = expression.freeVariables - variable
@@ -234,8 +220,6 @@ final class PUnfoldingExpression private[silAST](
                                                        ) extends UnfoldingExpression(sl,predicate,expression) with PExpression
 {
   override val toString = "unfolding " + predicate.toString + " in " + expression.toString
-
-  override val subNodes: Seq[ASTNode] = List(predicate, expression)
 
   override val pSubExpressions: Seq[PExpression] = List(predicate,expression)
 }
@@ -490,8 +474,6 @@ final class GUnaryExpression private[silAST](
 with PUnaryExpression
 with DUnaryExpression
 with GExpression {
-  override val subNodes = List(operator, operand1)
-
   override val subExpressions = List(operand1)
   protected[expressions] override val gSubExpressions = subExpressions
   protected[expressions] override val pOperand1 = operand1
@@ -510,8 +492,6 @@ final class GBinaryExpression private[silAST](
 with PBinaryExpression
 with DBinaryExpression
 with GExpression {
-
-  override val subNodes = List(operand1, operator, operand2)
 
   override val subExpressions = List(operand1, operand2)
 
@@ -541,8 +521,6 @@ with GExpression {
 ///////////////////////////////////////////////////////////////////////////
 final case class TrueExpression private[silAST]() extends Expression(noLocation)
 with GExpression with AtomicExpression {
-  override val subNodes = List.empty
-
   override val subExpressions = List.empty
   override val gSubExpressions = List.empty
 }
@@ -551,8 +529,6 @@ with GExpression with AtomicExpression {
 ///////////////////////////////////////////////////////////////////////////
 final case class FalseExpression private[silAST]() extends Expression(noLocation)
 with GExpression with AtomicExpression {
-  override val subNodes = List.empty
-
   override val subExpressions = List.empty
   override val gSubExpressions = List.empty
 }
