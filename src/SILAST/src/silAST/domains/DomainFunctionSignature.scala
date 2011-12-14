@@ -10,6 +10,8 @@ final class DomainFunctionSignature private[silAST](
                                                      val parameterTypes: DataTypeSequence,
                                                      val resultType: DataType
                                                      ) extends ASTNode(sl) {
+  def substitute(s: TypeSubstitution): DomainFunctionSignature = new DomainFunctionSignature(sl,parameterTypes.substitute(s),resultType.substitute(s))
+
   require (parameterTypes!=null)
   require (resultType !=null)
   override def toString = "(" + parameterTypes.toString + ")" + " : " + resultType.toString

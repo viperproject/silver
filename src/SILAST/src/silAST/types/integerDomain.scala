@@ -18,10 +18,10 @@ object integerDomain extends Domain(noLocation)
   override def functions = Set[DomainFunction](integerAddition,integerSubtraction,integerMultiplication,integerDivision,integerModulo,integerNegation)
   override def predicates = Set(integerEQ,integerNE,integerLE,integerLT,integerGE,integerGT)
   override val axioms = Set.empty[DomainAxiom]
-  override def getInstance(ts:TypeSubstitution) = this
+  override def substitute(ts:TypeSubstitution) = this
   override def getType = integerType
   override def freeTypeVariables = Set()
-  override def isCompatible(other : DataType) = other == this
+  override def isCompatible(other : Domain) = other == this
 }
 
 object integerType extends NonReferenceDataType(noLocation,integerDomain)

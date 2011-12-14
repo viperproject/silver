@@ -2,7 +2,6 @@ package silAST.expressions
 
 import scala.collection.Seq
 
-import silAST.domains.DomainPredicate
 import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.ASTNode
@@ -11,6 +10,7 @@ import util.{GTermSequence, TermSequence, PTermSequence, DTermSequence}
 import silAST.programs.symbols.Predicate
 import silAST.source.{noLocation, SourceLocation}
 import silAST.types.permissionType
+import silAST.domains._
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -18,6 +18,7 @@ sealed abstract class Expression protected[silAST](
                                                     sl: SourceLocation
                                                     ) extends ASTNode(sl) 
 {
+  def substitute(substitution: Substitution): Expression
   def subExpressions: Seq[Expression]
 
   def freeVariables    : Set[BoundVariable]
@@ -176,6 +177,7 @@ sealed case class QuantifierExpression private[silAST](
 sealed trait PExpression
   extends Expression
 {
+  def substitute(substitution: PSubstitution): PExpression
   override val subExpressions: Seq[PExpression] = pSubExpressions
   final override val freeVariables = Set[BoundVariable]()
 
@@ -315,7 +317,10 @@ final class PPredicateExpression private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait DExpression
-  extends Expression {
+  extends Expression
+{
+
+  def substitute(substitution: DSubstitution): DExpression
   protected[expressions] def dSubExpressions: Seq[DExpression]
   override val subExpressions: Seq[DExpression] = dSubExpressions
 }
@@ -440,7 +445,9 @@ final class DQuantifierExpression private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait GExpression
-  extends Expression with DExpression with PExpression {
+  extends Expression with DExpression with PExpression
+{
+  def substitute(substitution: GSubstitution): GExpression
   override val subExpressions: Seq[GExpression] = gSubExpressions
   protected[expressions] final override val pSubExpressions = subExpressions
   protected[expressions] final override val dSubExpressions = subExpressions

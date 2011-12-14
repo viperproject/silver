@@ -1,8 +1,8 @@
 package silAST.types
 
-import silAST.domains.{DomainFunctionSignature, DomainFunction, Domain}
 import silAST.expressions.util.TermSequence
 import silAST.source.noLocation
+import silAST.domains._
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -13,10 +13,15 @@ import silAST.source.noLocation
 object permissionDomain extends Domain(noLocation)
 {
   override val name = "Permission"
+  override val toString = name
   override def functions = Set(permissionAddition,permissionSubtraction,permissionMultiplication,permissionIntegerMultiplication)
   override def predicates = Set()
+  override val freeTypeVariables = Set[TypeVariable]()
+  override val getType = permissionType
+  override val axioms = Set[DomainAxiom]()
 
   override def isCompatible(other : Domain) = other == permissionDomain
+  override def substitute(s:TypeSubstitution) = this
 }
 
 object permissionType extends NonReferenceDataType(noLocation,permissionDomain)

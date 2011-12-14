@@ -8,6 +8,8 @@ sealed class DataTypeSequence private[silAST](
                                                val dataTypes: Seq[DataType]
                                                ) extends ASTNode(noLocation) with Seq[DataType]
 {
+  def freeTypeVariables = (for (t<-dataTypes) yield t.freeTypeVariables).flatten
+
   def isCompatible(other: DataTypeSequence): Boolean =
     dataTypes.length == other.length &&
     dataTypes.zip(other.dataTypes.toSeq).forall((x) => x._1.isCompatible(x._2))

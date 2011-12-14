@@ -2,7 +2,7 @@ package silAST.types
 
 import silAST.ASTNode
 import silAST.source.{noLocation, SourceLocation}
-import silAST.domains.{DomainTemplate, DomainTemplateInstance, TypeSubstitution, Domain}
+import silAST.domains.{TypeSubstitution, Domain}
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -26,7 +26,7 @@ object referenceType extends DataType(noLocation)
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-final class TypeVariable private[silAST](sl:SourceLocation,template : DomainTemplate, val name : String)
+final class TypeVariable private[silAST](sl:SourceLocation, val name : String)
   extends ASTNode(sl)
 {
   override val toString = name
@@ -59,7 +59,7 @@ case class NonReferenceDataType private[silAST](
 
   def isCompatible(other : DataType) =
     other match{
-      case NonReferenceDataType(_,d:DomainTemplateInstance) => domain.isCompatible(other)
+      case NonReferenceDataType(_,d:Domain) => domain.isCompatible(d)
       case _ => false
     }
 
@@ -67,5 +67,5 @@ case class NonReferenceDataType private[silAST](
     if (s.typeVariables.intersect(freeTypeVariables).isEmpty)
       this
     else
-      new NonReferenceDataType(s.sourceLocation, domain.getInstance(s))
+      new NonReferenceDataType(s.sourceLocation, domain.substitute(s))
 }
