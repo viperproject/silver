@@ -49,11 +49,14 @@ sealed case class OldTerm private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 sealed case class DomainFunctionApplicationTerm private[silAST](
                                                                  sl: SourceLocation,
-                                                                 function: DomainFunction,
-                                                                 arguments: TermSequence
+                                                                 private val f: DomainFunction,
+                                                                 private val a: TermSequence
                                                                  ) extends ASTNode(sl) with Term {
   override val toString: String = function.toString(arguments)
   override val subTerms: Seq[Term] = arguments
+
+  def function : DomainFunction = f
+  def arguments : TermSequence = a
 
   override def dataType         = function.signature.resultType
   override def freeVariables    = arguments.freeVariables
@@ -363,7 +366,7 @@ sealed trait DDomainFunctionApplicationTerm
   with DTerm
 {
   protected def dArguments: DTermSequence
-  override val arguments: DTermSequence = dArguments
+  override def arguments: DTermSequence = dArguments
 
   def substitute(s: DSubstitution): DDomainFunctionApplicationTerm =
     new DDomainFunctionApplicationTermC(sl,function.substitute(s),arguments.substitute(s))

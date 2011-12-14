@@ -101,4 +101,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   def makePermissionIntegerMultiplicationTerm(sl: SourceLocation,t1: Term, i: Term) =
     makeDomainFunctionApplicationTerm(sl,permissionIntegerMultiplication,TermSequence(t1,i))
 
+  terms += fullPermissionTerm
+  terms += noPermissionTerm
+  terms += epsilonPermissionTerm
 }

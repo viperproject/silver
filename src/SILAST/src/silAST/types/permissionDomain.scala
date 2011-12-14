@@ -13,11 +13,11 @@ import silAST.domains._
 object permissionDomain extends Domain(noLocation)
 {
   override val name = "Permission"
-  override val toString = name
+  override def fullName : String = name
   override def functions = Set(permissionAddition,permissionSubtraction,permissionMultiplication,permissionIntegerMultiplication)
   override def predicates = Set()
   override val freeTypeVariables = Set[TypeVariable]()
-  override val getType = permissionType
+  override def getType = permissionType
   override val axioms = Set[DomainAxiom]()
 
   override def isCompatible(other : Domain) = other == permissionDomain

@@ -12,7 +12,15 @@ abstract class Domain private[silAST](
                                     sl: SourceLocation
                                     ) extends ASTNode(sl)
 {
-  val name : String
+  override def toString = "domain " + name +
+    "{\n" +
+    (if (!functions.isEmpty) functions.mkString("\t", "\n\t", "\n") else "") +
+    (if (!predicates.isEmpty) predicates.mkString("\t", "\n\t", "\n") else "") +
+    (if (!axioms.isEmpty) axioms.mkString("\t", "\n\t", "\n") else "") +
+    "}"
+
+  def name : String
+  def fullName : String
 
   def functions: Set[DomainFunction]
   def predicates: Set[DomainPredicate]
@@ -29,27 +37,21 @@ abstract class Domain private[silAST](
 ////////////////////////////////////////////////////////////////////////
 private[silAST] class DomainC(
           sl: SourceLocation,
-          override val name: String,
+          val name: String,
           typeVariableNames : Seq[(SourceLocation, String)]
     ) extends Domain(sl)
 {
   //No duplicate type variable name
   require(typeVariableNames.forall((s)=>typeVariableNames.count(_._2==s._2)==1))
 
+  override def fullName : String =
+    name + (if (typeParameters.length==0) "" else typeParameters.mkString("[",",","]"))
   val typeParameters : Seq[TypeVariable] = for (n <- typeVariableNames) yield new TypeVariable(n._1,n._2)
   val freeTypeVariables = typeParameters.toSet
 
   def functions: Set[DomainFunction] = pFunctions
   def predicates: Set[DomainPredicate] = pPredicates
   def axioms: Set[DomainAxiom] = pAxioms
-
-  override def toString = "domain " + name + 
-    (if (typeParameters.length>0) typeParameters.mkString("[",",","]") else "") +
-    "{\n" +
-    (if (!functions.isEmpty) functions.mkString("\t", "\n\t", "\n") else "") +
-    (if (!predicates.isEmpty) predicates.mkString("\t", "\n\t", "\n") else "") +
-    (if (!axioms.isEmpty) axioms.mkString("\t", "\n\t", "\n") else "") +
-    "}"
 
   private[silAST] val pFunctions = new HashSet[DomainFunction]
   private[silAST] val pPredicates = new HashSet[DomainPredicate]
@@ -70,7 +72,7 @@ private[silAST] class DomainC(
   //Maybe relax a bit
   def isCompatible(other:Domain) : Boolean = other==this
 
-  val getType : NonReferenceDataType = new NonReferenceDataType(sl,this)
+  def getType : NonReferenceDataType = new NonReferenceDataType(sl,this)
 }
 
 
@@ -80,14 +82,15 @@ private[silAST] final class DomainInstance(
   val typeArguments:DataTypeSequence  )
   extends Domain(sl)
 {
+  protected[silAST] def typeHeaderString : String = ""
 
+  override def fullName : String = name
   val name : String = original.name + typeArguments.toString
-  override val toString = name
   val substitution = new TypeSubstitution(original.typeParameters.zip(typeArguments).toSet)
 
-  override val functions = for (f <- original.functions) yield f.substitute(substitution)
-  override val predicates = (for (p <- original.predicates) yield p.substitute(substitution)).toSet
-  override val axioms = (for (a <- original.axioms) yield a.substitute(substitution)).toSet
+  override def functions = for (f <- original.functions) yield f.substitute(substitution)
+  override def predicates = (for (p <- original.predicates) yield p.substitute(substitution)).toSet
+  override def axioms = (for (a <- original.axioms) yield a.substitute(substitution)).toSet
 
   override val freeTypeVariables = typeArguments.freeTypeVariables.toSet
   val getType : NonReferenceDataType = new NonReferenceDataType(sourceLocation,this)

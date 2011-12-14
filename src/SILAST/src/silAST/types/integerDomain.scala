@@ -12,11 +12,12 @@ import silAST.source.noLocation
 ///////////////////////////////////////////////////////////////////////////
 object integerDomain extends Domain(noLocation)
 {
-  override def toString = name
-  override val name = "Integer"
+  override def name = "Integer"
+  override def fullName : String = name
+
   override def functions = Set[DomainFunction](integerAddition,integerSubtraction,integerMultiplication,integerDivision,integerModulo,integerNegation)
   override def predicates = Set(integerEQ,integerNE,integerLE,integerLT,integerGE,integerGT)
-  override val axioms = Set.empty[DomainAxiom]
+  override def axioms = Set.empty[DomainAxiom]
   override def substitute(ts:TypeSubstitution) = this
   override def getType = integerType
   override def freeTypeVariables = Set()

@@ -30,9 +30,9 @@ trait DataTypeFactory extends NodeFactory {
     result
   }
 
-  protected[silAST] val pDataTypes = new HashSet[DataType]
-  pDataTypes += integerType
-  pDataTypes += permissionType
+  protected[silAST] val pDataTypes = new HashSet[DataType] //(integerType,permissionType)
+//  pDataTypes += integerType
+//  pDataTypes += permissionType
 
   protected[silAST] def domainFactories: Set[DomainFactory] //= new HashSet[DomainFactory]
   protected[silAST] def dataTypes: Set[DataType] //= pDataTypes //new HashSet[DataType]

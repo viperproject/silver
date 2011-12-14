@@ -55,7 +55,7 @@ case class NonReferenceDataType private[silAST](
 {
   override def freeTypeVariables = domain.freeTypeVariables
 
-  override val toString = domain.name
+  override val toString = domain.fullName
 
   def isCompatible(other : DataType) =
     other match{

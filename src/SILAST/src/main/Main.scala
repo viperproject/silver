@@ -47,7 +47,7 @@ object Main {
       sd.addDomainAxiom(nl, "tailPrepend1", e)
     }
 
-    val isd = sd.getInstance(DataTypeSequence(integerType))
+    val isd = pf.makeDomainInstance(sd,DataTypeSequence(integerType))
     val integerSeqType = isd.getType
 
     //    println(id.domain)

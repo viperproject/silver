@@ -59,6 +59,15 @@ final class ProgramFactory(
     result
   }
 
+  def makeDomainInstance(factory: DomainFactory, ta: DataTypeSequence) : Domain = 
+  {
+    require(ta.forall(dataTypes contains _))
+    var r = factory.getInstance(ta)
+    pDomains += r
+    r
+  }
+
+
   //////////////////////////////////////////////////////////////////////////
   //@Symbol construction
   //////////////////////////////////////////////////////////////////////////
@@ -99,14 +108,14 @@ final class ProgramFactory(
   pDataTypes += permissionType
   pDataTypes += referenceType
 
-  protected[silAST] override def dataTypes = pDataTypes
+  protected[silAST] override def dataTypes = pDataTypes ++ (for (d <- domains) yield d.getType).toSet
 
   def emptyDTSequence = new DataTypeSequence(List.empty[DataType])
   private val nullSig = new DomainFunctionSignature(noLocation, emptyDTSequence, referenceType)
 
   val nullFunction = new DomainFunction(noLocation, "null", nullSig)
 
-  private val pDomains : Set[Domain] = Set(integerDomain,permissionDomain)
+  private[silAST] val pDomains : HashSet[Domain] = HashSet(integerDomain,permissionDomain)
   protected[silAST] def domains: Set[Domain] = pDomains ++ ( for (df <- domainFactories) yield df.domain)
 
   protected[silAST] def domainFunctions: Set[DomainFunction] =

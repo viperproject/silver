@@ -82,14 +82,14 @@ sealed case class UnfoldingExpression private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 sealed case class EqualityExpression private[silAST](
                                                       sl: SourceLocation,
-                                                      term1: Term,
-                                                      term2: Term
+                                                      private val t1: Term,
+                                                      private val t2: Term
                                                       )
   extends Expression(sl)
 {
-
-  override val toString = term1.toString + "=" + term2.toString
-
+  override val toString = t1.toString + "=" + t2.toString
+  def term1 : Term = t1
+  def term2 : Term = t2
   override val subExpressions: Seq[Expression] = Nil
   override def freeVariables = term1.freeVariables ++ term2.freeVariables
   override def substitute(s: Substitution) : EqualityExpression = new EqualityExpression(sl,term1.substitute(s),term2.substitute(s))
@@ -205,8 +205,8 @@ sealed trait PExpression
 sealed trait PEqualityExpression
   extends EqualityExpression
   with PExpression {
-  override val term1: PTerm = pTerm1
-  override val term2: PTerm = pTerm2
+  override def term1: PTerm = pTerm1
+  override def term2: PTerm = pTerm2
 
   protected[expressions] def pTerm1: PTerm
 
@@ -359,8 +359,8 @@ sealed trait DEqualityExpression
   protected[expressions] def dTerm1: DTerm
   protected[expressions] def dTerm2: DTerm
 
-  override val term1: DTerm = dTerm1
-  override val term2: DTerm = dTerm2
+  override def term1: DTerm = dTerm1
+  override def term2: DTerm = dTerm2
   override def substitute(s: DSubstitution) : DEqualityExpression = new DEqualityExpressionC(sl,term1.substitute(s),term2.substitute(s))
 }
 

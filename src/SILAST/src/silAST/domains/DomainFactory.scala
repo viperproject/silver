@@ -14,7 +14,8 @@ final class DomainFactory private[silAST](
 {
   val domain = new DomainC(sl,name,typeVariableNames)
 
-  def getInstance(ta: DataTypeSequence) : Domain = domain.getInstance(ta)
+  private[silAST] def getInstance(ta: DataTypeSequence) : Domain =
+    domain.getInstance(ta)
 
   def compile(): Domain = {
     domain
@@ -56,7 +57,7 @@ final class DomainFactory private[silAST](
 
   val thisType = domain.getType
 
-  protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes union Set(thisType)
+  protected[silAST] override def dataTypes = programFactory.dataTypes ++ pDataTypes  ++ Set(thisType)
 
   protected[silAST] override def domainFactories = programFactory.domainFactories
 
