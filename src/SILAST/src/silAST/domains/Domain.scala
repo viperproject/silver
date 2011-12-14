@@ -3,7 +3,7 @@ package silAST.domains
 import silAST.ASTNode
 import collection.Set
 import collection.mutable.HashSet
-import silAST.source.{noLocation, SourceLocation}
+import silAST.source.SourceLocation
 import collection.immutable.HashMap
 import silAST.types._
 

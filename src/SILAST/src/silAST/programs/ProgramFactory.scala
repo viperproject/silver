@@ -6,7 +6,6 @@ import silAST.methods.MethodFactory
 import silAST.source.{noLocation, SourceLocation}
 import silAST.domains._
 import symbols._
-import silAST.expressions.{FalseExpression, TrueExpression}
 import silAST.types._
 
 final class ProgramFactory(
@@ -128,8 +127,6 @@ final class ProgramFactory(
 //  domains += integerDomain
 //  domains += permissionDomain
 
-  val trueExpression = new TrueExpression
-  val falseExpression = new FalseExpression
   override def typeVariables = Set()
 }
 

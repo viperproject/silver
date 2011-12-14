@@ -15,10 +15,6 @@ abstract class SymbolFactory[T] private[silAST](
 
   override def nullFunction = programFactory.nullFunction
 
-  override def trueExpression = programFactory.trueExpression
-
-  override def falseExpression = programFactory.falseExpression
-
   protected[silAST] override def programVariables = Set(thisVar)
 
   protected[silAST] override def fields = programFactory.fields

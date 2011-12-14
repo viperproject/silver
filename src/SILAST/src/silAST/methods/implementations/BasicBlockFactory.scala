@@ -158,10 +158,6 @@ class BasicBlockFactory private[silAST](
 
   override val nullFunction = implementationFactory.nullFunction
 
-  override def trueExpression = implementationFactory.trueExpression
-
-  override def falseExpression = implementationFactory.falseExpression
-
   protected[silAST] override def dataTypes = implementationFactory.dataTypes union pDataTypes
 
   protected[silAST] override def domainFactories = implementationFactory.domainFactories

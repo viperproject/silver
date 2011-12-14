@@ -111,10 +111,6 @@ class MethodFactory(
 
   val thisVar = addParameter(noLocation, "this", referenceType)
 
-  override def trueExpression = programFactory.trueExpression
-
-  override def falseExpression = programFactory.falseExpression
-
   protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes
 
   protected[silAST] override def domainFactories = programFactory.domainFactories

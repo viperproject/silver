@@ -90,10 +90,6 @@ class ImplementationFactory private[silAST](
 
   override protected[silAST] def domainPredicates = methodFactory.domainPredicates
 
-  override def trueExpression = methodFactory.trueExpression
-
-  override def falseExpression = methodFactory.falseExpression
-
   protected[silAST] override def dataTypes = methodFactory.dataTypes union pDataTypes
 
   protected[silAST] override def domainFactories = methodFactory.domainFactories

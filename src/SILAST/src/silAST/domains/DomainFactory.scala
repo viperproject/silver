@@ -62,10 +62,6 @@ final class DomainFactory private[silAST](
 
   protected[silAST] override def domainFunctions = programFactory.domainFunctions
 
-  override def trueExpression = programFactory.trueExpression
-
-  override def falseExpression = programFactory.falseExpression
-
   protected[silAST] override def domainPredicates = programFactory.domainPredicates
 
 }

@@ -1,15 +1,15 @@
 package main
 
-import silAST.expressions._
-import terms._
 import silAST.programs.ProgramFactory
 import silAST.symbols.logical.quantification.Forall
 import silAST.symbols.logical.{And, Implication, Not}
 import silAST.programs.symbols.PredicateFactory
 import silAST.methods.MethodFactory
 import silAST.source.noLocation
-import util.{PTermSequence, TermSequence, DTermSequence}
 import silAST.types._
+import silAST.expressions.util.{PTermSequence, TermSequence, DTermSequence}
+import silAST.expressions._
+import silAST.expressions.terms._
 
 object Main {
 
@@ -73,8 +73,8 @@ object Main {
       val this_next_valid = vp.makePredicateExpression(nl, this_next, vp)
       val singleton_this_val = vp.makeDomainFunctionApplicationTerm(nl, singleton, TermSequence(this_val))
       val nullTerm = vp.makeDomainFunctionApplicationTerm(nl, vp.nullFunction, TermSequence())
-      val acc_val_100 = vp.makePermissionExpression(nl, this_val, FullPermissionTerm(vp,nl))
-      val acc_next_100 = vp.makePermissionExpression(nl, this_next, FullPermissionTerm(vp,nl))
+      val acc_val_100 = vp.makePermissionExpression(nl, this_val, fullPermissionTerm)
+      val acc_next_100 = vp.makePermissionExpression(nl, this_next, fullPermissionTerm)
       val acc_seq_50 = vp.makePermissionExpression(nl, this_seq, vp.makePercentagePermission(nl, vp.makeIntegerLiteralTerm(nl,50)))
       val acc_next_seq_50 = vp.makePermissionExpression(nl, this_next_seq, vp.makePercentagePermission(nl, vp.makeIntegerLiteralTerm(nl,50)))
       val next_eq_null = vp.makeEqualityExpression(nl, this_next, nullTerm)
@@ -150,8 +150,8 @@ object Main {
         val startBlock = impl.addFirstBasicBlock(nl, "start");
         val endBlock = impl.addLastBasicBlock(nl, "end");
 
-        startBlock.addSuccessor(nl, startBlock, impl.trueExpression, true)
-        startBlock.addSuccessor(nl, endBlock, impl.trueExpression, false)
+        startBlock.addSuccessor(nl, startBlock, TrueExpression(nl), true)
+        startBlock.addSuccessor(nl, endBlock, TrueExpression(nl), false)
 
         {
           val this_term = startBlock.makeProgramVariableTerm(nl, mf.thisVar)
@@ -184,8 +184,8 @@ object Main {
   def f(e: Expression) {
     e match {
       case OldExpression(_,_) => 0
-      case TrueExpression() => 0
-      case FalseExpression() => 0
+      case TrueExpression(_) => 0
+      case FalseExpression(_) => 0
       case PermissionExpression(_, _, _) => 0
       case UnfoldingExpression(_, _, _) => 1
       case EqualityExpression(_, _, _) => 2
@@ -200,8 +200,8 @@ object Main {
   def f2(e: Expression) {
     e match {
       case OldExpression(_,_) => 0
-      case TrueExpression() => 0
-      case FalseExpression() => 0
+      case TrueExpression(_) => 0
+      case FalseExpression(_) => 0
       case PermissionExpression(_, _, _) => 0
       case UnfoldingExpression(_, _, _) => 1
       case EqualityExpression(_, _, _) => 2

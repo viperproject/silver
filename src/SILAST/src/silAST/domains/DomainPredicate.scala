@@ -1,7 +1,7 @@
 package silAST.domains
 
 import silAST.source.SourceLocation
-import silAST.{ASTNode}
+import silAST.ASTNode
 import silAST.expressions.util.TermSequence
 
 class DomainPredicate private[silAST](

@@ -58,13 +58,9 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
 
-  def trueExpression: TrueExpression
-
-  def falseExpression: FalseExpression
-
   protected[expressions] val pExpressions = new HashSet[Expression]
 
-  protected[silAST] def expressions: Set[Expression] = pExpressions + trueExpression + falseExpression
+  protected[silAST] def expressions: Set[Expression] = pExpressions
 
   protected[silAST] def domainPredicates: Set[DomainPredicate]
 

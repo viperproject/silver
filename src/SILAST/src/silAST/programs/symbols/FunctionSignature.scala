@@ -5,7 +5,6 @@ import silAST.expressions.terms.Term
 import silAST.expressions.util.ExpressionSequence
 import silAST.types.DataType
 import collection.mutable.ListBuffer
-import collection.immutable.List
 import silAST.expressions.Expression
 import silAST.source.{noLocation, SourceLocation}
 
