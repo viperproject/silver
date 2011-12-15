@@ -10,5 +10,5 @@ final class DomainPredicateSignature private[silAST](
                                                       ) extends ASTNode(sl) {
   def substitute(s: TypeSubstitution): DomainPredicateSignature = new DomainPredicateSignature(sl,argumentTypes.substitute(s))
 
-  override def toString = argumentTypes.toString
+  override lazy val toString = argumentTypes.toString()
 }

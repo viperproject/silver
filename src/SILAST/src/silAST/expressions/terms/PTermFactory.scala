@@ -56,12 +56,12 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePUnfoldingTerm(sl: SourceLocation, r: PTerm, p : PredicateFactory, t: PTerm): PUnfoldingTerm = {
+  def makePUnfoldingTerm(sl: SourceLocation, r: PTerm, p: PredicateFactory, t: PTerm): PUnfoldingTerm = {
     require(predicates contains p.pPredicate)
     require(terms contains r)
     require(terms contains t)
 
-    addTerm(new PUnfoldingTerm(sl, r,p.pPredicate, t))
+    addTerm(new PUnfoldingTerm(sl, r, p.pPredicate, t))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -72,5 +72,6 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   protected[silAST] def programVariables: Set[ProgramVariable]
 
   protected[silAST] def fields: Set[Field]
+
   protected[silAST] def predicates: Set[Predicate]
 }

@@ -16,7 +16,7 @@ sealed class DataTypeSequence private[silAST](
    //covariance
 
   require(dataTypes.forall(_!=null))
-  override def toString = dataTypes.mkString("[", ",", "]")
+  override def toString() = dataTypes.mkString("[", ",", "]")
 
   override def apply(i : Int) = dataTypes(i)
   override def length = dataTypes.length

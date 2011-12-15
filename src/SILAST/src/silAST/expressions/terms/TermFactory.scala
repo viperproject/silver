@@ -7,8 +7,7 @@ import silAST.expressions.util._
 import silAST.programs.symbols.{PredicateFactory, FunctionFactory, Field}
 import silAST.types._
 
-protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory
-{
+protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory {
   /////////////////////////////////////////////////////////////////////////
   def makeFunctionApplicationTerm(sl: SourceLocation, r: Term, ff: FunctionFactory, a: TermSequence): FunctionApplicationTerm = {
     require(terms contains r)
@@ -23,14 +22,14 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeUnfoldingTerm(sl: SourceLocation, r: Term, p : PredicateFactory, t: Term): UnfoldingTerm = {
+  def makeUnfoldingTerm(sl: SourceLocation, r: Term, p: PredicateFactory, t: Term): UnfoldingTerm = {
     require(predicates contains p.pPredicate)
     require(terms contains r)
     require(terms contains t)
 
     (r, t) match {
-      case (r: PTerm,  t: PTerm ) => makePUnfoldingTerm(sl,r,p,t)
-      case _ => addTerm(new UnfoldingTerm(sl, r,p.pPredicate, t))
+      case (r: PTerm, t: PTerm) => makePUnfoldingTerm(sl, r, p, t)
+      case _ => addTerm(new UnfoldingTerm(sl, r, p.pPredicate, t))
     }
   }
 
@@ -62,7 +61,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   /////////////////////////////////////////////////////////////////////////
   def makeOldTerm(sl: SourceLocation, t: Term): OldTerm = {
     require(terms contains t)
-    addTerm(new OldTerm(sl,t))
+    addTerm(new OldTerm(sl, t))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -80,26 +79,26 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
   /////////////////////////////////////////////////////////////////////////////////////
   def makePercentagePermission(sl: SourceLocation, percentage: Term): Term = {
-    val result = new DomainFunctionApplicationTerm(sl,percentagePermission,TermSequence(percentage))
+    val result = new DomainFunctionApplicationTerm(sl, percentagePermission, TermSequence(percentage))
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionAdditionTerm(sl: SourceLocation, t1: Term, t2: Term)=
-    makeDomainFunctionApplicationTerm(sl,permissionAddition,TermSequence(t1,t2))
+  def makePermissionAdditionTerm(sl: SourceLocation, t1: Term, t2: Term) =
+    makeDomainFunctionApplicationTerm(sl, permissionAddition, TermSequence(t1, t2))
 
   /////////////////////////////////////////////////////////////////////////////////////
   def makePermissionSubtractionTerm(sl: SourceLocation, t1: Term, t2: Term) =
-    makeDomainFunctionApplicationTerm(sl,permissionSubtraction,TermSequence(t1,t2))
+    makeDomainFunctionApplicationTerm(sl, permissionSubtraction, TermSequence(t1, t2))
 
   /////////////////////////////////////////////////////////////////////////////////////
   def makePermissionMultiplicationTerm(sl: SourceLocation, t1: Term, t2: Term) =
-    makeDomainFunctionApplicationTerm(sl,permissionMultiplication,TermSequence(t1,t2))
+    makeDomainFunctionApplicationTerm(sl, permissionMultiplication, TermSequence(t1, t2))
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionIntegerMultiplicationTerm(sl: SourceLocation,t1: Term, i: Term) =
-    makeDomainFunctionApplicationTerm(sl,permissionIntegerMultiplication,TermSequence(t1,i))
+  def makePermissionIntegerMultiplicationTerm(sl: SourceLocation, t1: Term, i: Term) =
+    makeDomainFunctionApplicationTerm(sl, permissionIntegerMultiplication, TermSequence(t1, i))
 
   terms += fullPermissionTerm
   terms += noPermissionTerm

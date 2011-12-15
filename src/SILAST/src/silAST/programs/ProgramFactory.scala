@@ -116,7 +116,11 @@ final class ProgramFactory(
   val nullFunction = new DomainFunction(noLocation, "null", nullSig)
 
   private[silAST] val pDomains : HashSet[Domain] = HashSet(integerDomain,permissionDomain)
-  protected[silAST] def domains: Set[Domain] = pDomains ++ ( for (df <- domainFactories) yield df.domain)
+  protected[silAST] def domains: Set[Domain] =
+    pDomains ++
+      ( for (df <- domainFactories) yield df.domain) ++
+      ( for (df <- domainFactories) yield df.domain.pInstances.values).flatten
+
 
   protected[silAST] def domainFunctions: Set[DomainFunction] =
     (for (f <- (for (d <- domains) yield d.functions).flatten) yield f) +

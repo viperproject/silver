@@ -14,7 +14,7 @@ final class Function private[programs](
 {
   private[symbols] var pSignature = new FunctionSignature(noLocation, pParams, resultType)
 
-  def signature: FunctionSignature = if (pBody == None) throw new Exception else pSignature
+  lazy val signature: FunctionSignature = pSignature
 
   override def toString = "function " + name + signature.toString + " = " + body.toString
 

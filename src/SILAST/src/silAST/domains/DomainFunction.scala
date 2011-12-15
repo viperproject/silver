@@ -10,7 +10,9 @@ class DomainFunction private[silAST](
                                             val signature: DomainFunctionSignature
                                             ) extends ASTNode(sl)
 {
-  def substitute(s: TypeSubstitution) : DomainFunction = new DomainFunction(sl,name,signature.substitute(s))
+  def substitute(s: TypeSubstitution) : DomainFunction ={
+    new DomainFunction(sl,name,signature.substitute(s))
+  }
 
   override def toString = "function " + name + signature.toString
 

@@ -63,9 +63,10 @@ case class NonReferenceDataType private[silAST](
       case _ => false
     }
 
-  override def substitute(s:TypeSubstitution) =
+  override def substitute(s:TypeSubstitution) =   {
     if (s.typeVariables.intersect(freeTypeVariables).isEmpty)
       this
     else
       new NonReferenceDataType(s.sourceLocation, domain.substitute(s))
+  }
 }

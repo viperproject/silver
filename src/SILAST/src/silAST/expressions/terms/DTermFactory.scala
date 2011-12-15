@@ -27,6 +27,8 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
 
   /////////////////////////////////////////////////////////////////////////
   def makeDDomainFunctionApplicationTerm(sl: SourceLocation, f: DomainFunction, a: DTermSequence): DDomainFunctionApplicationTerm = {
+    require(a != null)
+    require(a.forall(_ != null))
     require(a.forall(terms contains _))
     require(domainFunctions contains f)
 

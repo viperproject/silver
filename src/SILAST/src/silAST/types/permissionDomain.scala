@@ -53,7 +53,7 @@ object percentagePermission extends DomainFunction(
   override def toString(ts : TermSequence) =
   {
     require(ts.length==1)
-    ts.head.toString() + "%"
+    ts.head.toString + "%"
   }
 }
 

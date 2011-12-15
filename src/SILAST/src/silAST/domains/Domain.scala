@@ -12,7 +12,7 @@ abstract class Domain private[silAST](
                                     sl: SourceLocation
                                     ) extends ASTNode(sl)
 {
-  override def toString = "domain " + name +
+  override lazy val toString = "domain " + name +
     "{\n" +
     (if (!functions.isEmpty) functions.mkString("\t", "\n\t", "\n") else "") +
     (if (!predicates.isEmpty) predicates.mkString("\t", "\n\t", "\n") else "") +
@@ -61,12 +61,12 @@ private[silAST] class DomainC(
 
   def getInstance(typeArguments: DataTypeSequence): Domain = {
     require (typeArguments.length == typeParameters.length)
-    return pInstances.getOrElse(typeArguments, new DomainInstance(typeArguments.sourceLocation,this,typeArguments))
+    pInstances.getOrElse(typeArguments, new DomainInstance(typeArguments.sourceLocation,this,typeArguments))
   }
 
   def substitute(s:TypeSubstitution): Domain = {
     val typeArguments = new DataTypeSequence((for (t<-typeParameters) yield s.mapType(t,new VariableType(t.sourceLocation,t))))
-    return getInstance(typeArguments)
+    getInstance(typeArguments)
   }
 
   //Maybe relax a bit
@@ -88,12 +88,13 @@ private[silAST] final class DomainInstance(
   val name : String = original.name + typeArguments.toString
   val substitution = new TypeSubstitution(original.typeParameters.zip(typeArguments).toSet)
 
-  override def functions = for (f <- original.functions) yield f.substitute(substitution)
-  override def predicates = (for (p <- original.predicates) yield p.substitute(substitution)).toSet
-  override def axioms = (for (a <- original.axioms) yield a.substitute(substitution)).toSet
+  val getType : NonReferenceDataType = new NonReferenceDataType(sourceLocation,this)
+
+  override lazy val functions = for (f <- original.functions) yield f.substitute(substitution)
+  override lazy val predicates = (for (p <- original.predicates) yield p.substitute(substitution)).toSet
+  override lazy val axioms = (for (a <- original.axioms) yield a.substitute(substitution)).toSet
 
   override val freeTypeVariables = typeArguments.freeTypeVariables.toSet
-  val getType : NonReferenceDataType = new NonReferenceDataType(sourceLocation,this)
 
   def substitute(s: TypeSubstitution): Domain = original.getInstance(typeArguments.substitute(s))
 

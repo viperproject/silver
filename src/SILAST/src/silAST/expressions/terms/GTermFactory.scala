@@ -15,7 +15,7 @@ protected[silAST] trait GTermFactory extends NodeFactory {
 
   /////////////////////////////////////////////////////////////////////////
   def makeGDomainFunctionApplicationTerm(sl: SourceLocation, f: DomainFunction, a: GTermSequence): GDomainFunctionApplicationTerm = {
-    require(a.forall(terms contains  _))
+    require(a.forall(terms contains _))
     require(domainFunctions contains f)
     addTerm(new GDomainFunctionApplicationTerm(sl, f, a))
   }

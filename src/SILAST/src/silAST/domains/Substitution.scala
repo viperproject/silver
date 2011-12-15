@@ -11,6 +11,7 @@ import silAST.expressions.terms._
 ///////////////////////////////////////////////////////////////////////////
 class TypeSubstitution private [silAST] (private[silAST] val types : Set[(TypeVariable,DataType)],val sourceLocation : SourceLocation = noLocation)
 {
+  override def toString = typeMap.mkString("[",",","]")
   val typeVariables : Set[TypeVariable] = for (t <- types) yield t._1
 
   protected val typeMap = types.toMap
@@ -38,6 +39,8 @@ private[silAST] class SubstitutionC[TT<:Term](
                     variables : Set[(BoundVariable,TT)]
                     ) extends Substitution(types)
 {
+  override def toString = super.toString + varMap.mkString("(",",",")")
+
   override type T = TT
   require (variables.forall((x)=>variables.count((y)=>y._1==x._1)==1))
 

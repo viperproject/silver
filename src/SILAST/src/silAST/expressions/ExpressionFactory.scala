@@ -10,8 +10,7 @@ import silAST.programs.NodeFactory
 import silAST.programs.symbols.PredicateFactory
 
 
-trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpressionFactory with TermFactory
-{
+trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpressionFactory with TermFactory {
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   def makeUnaryExpression(sl: SourceLocation, op: UnaryConnective, e1: Expression): UnaryExpression = {
@@ -108,8 +107,8 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
     require(expressions contains p)
     require(expressions contains e)
 
-    (p,e ) match {
-      case (p:PPredicateExpression,e:PExpression) => makePUnfoldingExpression(sl,p,e)
+    (p, e) match {
+      case (p: PPredicateExpression, e: PExpression) => makePUnfoldingExpression(sl, p, e)
       case _ => addExpression(new UnfoldingExpression(sl, p, e))
     }
   }

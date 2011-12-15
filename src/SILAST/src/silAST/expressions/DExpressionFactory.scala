@@ -56,7 +56,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
 
   //////////////////////////////////////////////////////////////////////////
   def makeDQuantifierExpression(sl: SourceLocation, q: Quantifier, v: BoundVariable, e: DExpression): DQuantifierExpression = {
-    require(boundVariables contains v )
+    require(boundVariables contains v)
     require(!(boundVariableMap contains v))
 
     require(expressions contains e)

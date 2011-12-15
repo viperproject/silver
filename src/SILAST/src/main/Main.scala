@@ -49,9 +49,8 @@ object Main {
 
     val isd = pf.makeDomainInstance(sd,DataTypeSequence(integerType))
     val integerSeqType = isd.getType
-
-    //    println(id.domain)
-    //    println(isd.domain)
+    val singletonInt = isd.functions.find(_.name=="singleton").get
+    val prependInt = isd.functions.find(_.name=="prepend").get
 
     val nextField = pf.defineReferenceField(nl, "Node.next")
     val valField = pf.defineDomainField(nl, "Node.val", integerType)
@@ -71,7 +70,7 @@ object Main {
       val this_seq = vp.makeFieldReadTerm(nl, thisT, seqField)
       val this_next_seq = vp.makeFieldReadTerm(nl, this_next, seqField)
       val this_next_valid = vp.makePredicateExpression(nl, this_next, vp)
-      val singleton_this_val = vp.makeDomainFunctionApplicationTerm(nl, singleton, TermSequence(this_val))
+      val singleton_this_val = vp.makeDomainFunctionApplicationTerm(nl, singletonInt, TermSequence(this_val))
       val nullTerm = vp.makeDomainFunctionApplicationTerm(nl, vp.nullFunction, TermSequence())
       val acc_val_100 = vp.makePermissionExpression(nl, this_val, fullPermissionTerm)
       val acc_next_100 = vp.makePermissionExpression(nl, this_next, fullPermissionTerm)
@@ -79,7 +78,7 @@ object Main {
       val acc_next_seq_50 = vp.makePermissionExpression(nl, this_next_seq, vp.makePercentagePermission(nl, vp.makeIntegerLiteralTerm(nl,50)))
       val next_eq_null = vp.makeEqualityExpression(nl, this_next, nullTerm)
       val next_ne_null = vp.makeUnaryExpression(nl, Not(), next_eq_null)
-      val prepend_val_next_seq = vp.makeDomainFunctionApplicationTerm(nl, prepend, TermSequence(this_val, this_next_seq))
+      val prepend_val_next_seq = vp.makeDomainFunctionApplicationTerm(nl, prependInt, TermSequence(this_val, this_next_seq))
       val seq_eq_prep = vp.makeEqualityExpression(nl, this_seq, prepend_val_next_seq)
       val seq_eq_singleton = vp.makeEqualityExpression(nl, this_seq, singleton_this_val)
       //next==null ==> seq==[val]
@@ -145,7 +144,7 @@ object Main {
       val impl = mf.addImplementation(nl);
 
       {
-        val nVar = impl.addLocalVariable(nl, "n", referenceType)
+        val nVar = impl.addLocalVariable(nl, "n", integerType)
 
         val startBlock = impl.addFirstBasicBlock(nl, "start");
         val endBlock = impl.addLastBasicBlock(nl, "end");
