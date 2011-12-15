@@ -11,9 +11,13 @@ import silAST.expressions.util.{DTermSequence, GTermSequence}
 
 trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
 
+  def validBoundVariableName(name:String) : Boolean =
+    name!="this"
+
   /////////////////////////////////////////////////////////////////////////
   def makeBoundVariable(sl: SourceLocation, name: String, dataType: DataType): BoundVariable = {
     require(dataTypes contains dataType)
+    require(validBoundVariableName(name))
     val result: BoundVariable = new BoundVariable(sl, name, dataType)
     boundVariables += result
     result

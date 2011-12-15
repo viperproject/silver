@@ -8,8 +8,8 @@ import silAST.methods.MethodFactory
 import silAST.source.noLocation
 import silAST.types._
 import silAST.expressions.util.{PTermSequence, TermSequence, DTermSequence}
-import silAST.expressions._
 import silAST.expressions.terms._
+import silAST.expressions._
 
 object Main {
 
@@ -72,10 +72,10 @@ object Main {
       val this_next_valid = vp.makePredicateExpression(nl, this_next, vp)
       val singleton_this_val = vp.makeDomainFunctionApplicationTerm(nl, singletonInt, TermSequence(this_val))
       val nullTerm = vp.makeDomainFunctionApplicationTerm(nl, vp.nullFunction, TermSequence())
-      val acc_val_100 = vp.makePermissionExpression(nl, this_val, fullPermissionTerm)
-      val acc_next_100 = vp.makePermissionExpression(nl, this_next, fullPermissionTerm)
-      val acc_seq_50 = vp.makePermissionExpression(nl, this_seq, vp.makePercentagePermission(nl, vp.makeIntegerLiteralTerm(nl,50)))
-      val acc_next_seq_50 = vp.makePermissionExpression(nl, this_next_seq, vp.makePercentagePermission(nl, vp.makeIntegerLiteralTerm(nl,50)))
+      val acc_val_100 = vp.makePermissionExpression(nl, thisT,valField, fullPermissionTerm)
+      val acc_next_100 = vp.makePermissionExpression(nl, thisT,nextField, fullPermissionTerm)
+      val acc_seq_50 = vp.makePermissionExpression(nl, thisT,seqField, vp.makePercentagePermission(nl, vp.makeIntegerLiteralTerm(nl,50)))
+      val acc_next_seq_50 = vp.makePermissionExpression(nl, this_next,seqField, vp.makePercentagePermission(nl, vp.makeIntegerLiteralTerm(nl,50)))
       val next_eq_null = vp.makeEqualityExpression(nl, this_next, nullTerm)
       val next_ne_null = vp.makeUnaryExpression(nl, Not(), next_eq_null)
       val prepend_val_next_seq = vp.makeDomainFunctionApplicationTerm(nl, prependInt, TermSequence(this_val, this_next_seq))
@@ -149,8 +149,8 @@ object Main {
         val startBlock = impl.addFirstBasicBlock(nl, "start");
         val endBlock = impl.addLastBasicBlock(nl, "end");
 
-        startBlock.addSuccessor(nl, startBlock, TrueExpression(nl), true)
-        startBlock.addSuccessor(nl, endBlock, TrueExpression(nl), false)
+        startBlock.addSuccessor(nl, startBlock, TrueExpression(), true)
+        startBlock.addSuccessor(nl, endBlock, TrueExpression(), false)
 
         {
           val this_term = startBlock.makeProgramVariableTerm(nl, mf.thisVar)
@@ -183,9 +183,9 @@ object Main {
   def f(e: Expression) {
     e match {
       case OldExpression(_,_) => 0
-      case TrueExpression(_) => 0
+      case TrueExpression() => 0
       case FalseExpression(_) => 0
-      case PermissionExpression(_, _, _) => 0
+      case PermissionExpression(_,_, _, _) => 0
       case UnfoldingExpression(_, _, _) => 1
       case EqualityExpression(_, _, _) => 2
       case UnaryExpression(_, _, _) => 3
@@ -199,9 +199,9 @@ object Main {
   def f2(e: Expression) {
     e match {
       case OldExpression(_,_) => 0
-      case TrueExpression(_) => 0
+      case TrueExpression() => 0
       case FalseExpression(_) => 0
-      case PermissionExpression(_, _, _) => 0
+      case PermissionExpression(_,_, _, _) => 0
       case UnfoldingExpression(_, _, _) => 1
       case EqualityExpression(_, _, _) => 2
       case UnaryExpression(_, _, _) => 3

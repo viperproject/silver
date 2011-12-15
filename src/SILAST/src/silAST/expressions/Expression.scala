@@ -7,10 +7,10 @@ import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.ASTNode
 import terms._
 import util.{GTermSequence, TermSequence, PTermSequence, DTermSequence}
-import silAST.programs.symbols.Predicate
-import silAST.source.SourceLocation
-import silAST.types.permissionType
 import silAST.domains._
+import silAST.types.{referenceType, permissionType}
+import silAST.programs.symbols.{Field, Predicate}
+import silAST.source.{noLocation, SourceLocation}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -36,17 +36,21 @@ sealed trait AtomicExpression extends Expression {
 final case class PermissionExpression private[silAST](
                                                        sl: SourceLocation,
                                                        reference: Term,
+                                                       field : Field,
                                                        permission: Term
                                                        )
   extends Expression(sl)
-  with AtomicExpression {
+  with AtomicExpression
+{
+  require(reference.dataType == referenceType)
   require(permission.dataType == permissionType)
 
-  override val toString = "acc(" + reference.toString + "," + permission.toString + ")"
+  override val toString = "acc(" + reference.toString + "." + field.name + "," + permission.toString + ")"
 
   override def freeVariables = reference.freeVariables ++ permission.freeVariables
 
-  override def substitute(s: Substitution) = new PermissionExpression(sl, reference.substitute(s), permission.substitute(s))
+  override def substitute(s: Substitution) =
+    new PermissionExpression(sl, reference.substitute(s), field, permission.substitute(s))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -56,7 +60,8 @@ final case class OldExpression private[silAST](
                                                 expression: Expression
                                                 )
   extends Expression(sl)
-  with AtomicExpression {
+  with AtomicExpression
+{
   override val toString = "old(" + expression.toString + ")"
 
   override def freeVariables = expression.freeVariables
@@ -70,7 +75,8 @@ sealed case class UnfoldingExpression private[silAST](
                                                        sl: SourceLocation,
                                                        predicate: PredicateExpression,
                                                        expression: Expression
-                                                       ) extends Expression(sl) {
+                                                       ) extends Expression(sl)
+{
   override val toString = "unfolding " + predicate.toString + " in " + expression.toString
 
   override val subExpressions: Seq[Expression] = List(expression)
@@ -87,7 +93,11 @@ sealed case class EqualityExpression private[silAST](
                                                       private val t1: Term,
                                                       private val t2: Term
                                                       )
-  extends Expression(sl) {
+  extends Expression(sl)
+{
+  require (t1.dataType.isCompatible(t2.dataType))
+  require (t2.dataType.isCompatible(t1.dataType))
+
   override val toString = t1.toString + "=" + t2.toString
 
   def term1: Term = t1
@@ -141,10 +151,10 @@ sealed case class DomainPredicateExpression private[silAST](
                                                              predicate: DomainPredicate,
                                                              arguments: TermSequence
                                                              ) extends Expression(sl)
-with AtomicExpression {
-  override def toString: String = predicate.toString(arguments)
-
-  //  override val toString: String = predicate.name + arguments.toString
+with AtomicExpression
+{
+  require((predicate.signature.argumentTypes.zip(arguments).forall((x)=>x._2.dataType.isCompatible(x._1))))
+  override lazy val toString: String = predicate.toString(arguments)
 
   override def freeVariables = arguments.freeVariables
 
@@ -160,7 +170,7 @@ sealed case class PredicateExpression private[silAST](
                                                        predicate: Predicate
                                                        ) extends Expression(sl)
 with AtomicExpression {
-
+  require (receiver.dataType == referenceType)
   override val toString = receiver + "." + predicate.name
 
   override def freeVariables = receiver.freeVariables //TODO:Can receiver have free variables?
@@ -599,7 +609,8 @@ with GExpression {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-final case class TrueExpression(sl: SourceLocation) extends Expression(sl) with GExpression with AtomicExpression {
+final case class TrueExpression() extends Expression(noLocation) with GExpression with AtomicExpression
+{
   override val toString = "true"
   override val subExpressions = List.empty
   override val gSubExpressions = List.empty
@@ -611,6 +622,7 @@ final case class TrueExpression(sl: SourceLocation) extends Expression(sl) with 
   override def substitute(s: PSubstitution): GExpression = this
 
   override def substitute(s: GSubstitution): GExpression = this
+
 }
 
 ///////////////////////////////////////////////////////////////////////////

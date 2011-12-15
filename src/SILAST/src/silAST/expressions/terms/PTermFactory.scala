@@ -21,7 +21,6 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
     require(terms contains r)
     require(functions contains ff.pFunction)
     require(a.forall(terms contains _))
-    //TODO: signature check parameters
 
     addTerm(new PFunctionApplicationTerm(sl, r, ff.pFunction, a))
   }
@@ -30,7 +29,6 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   def makePCastTerm(sl: SourceLocation, t: PTerm, dt: DataType): PCastTerm = {
     require(terms contains t)
     require(dataTypes contains dt)
-    //TODO: type check parameters
 
     addTerm(new PCastTerm(sl, t, dt))
   }
@@ -39,7 +37,6 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   def makePFieldReadTerm(sl: SourceLocation, t: PTerm, f: Field): PFieldReadTerm = {
     require(terms contains t)
     require(fields contains f)
-    //TODO: type check parameters
 
     addTerm(new PFieldReadTerm(sl, t, f))
   }

@@ -13,7 +13,6 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
     require(terms contains r)
     require(functions contains ff.pFunction)
     require(a.forall(terms contains _))
-    //TODO: signature check parameters
 
     (r, a) match {
       case (r: PTerm, a: PTermSequence) => makePFunctionApplicationTerm(sl, r, ff, a)
@@ -37,7 +36,6 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   def makeCastTerm(sl: SourceLocation, t: Term, dt: DataType): CastTerm = {
     require(terms contains t)
     require(dataTypes contains dt)
-    //TODO: type check parameters
 
     t match {
       case t: PTerm => makePCastTerm(sl, t, dt)
@@ -49,7 +47,6 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   def makeFieldReadTerm(sl: SourceLocation, t: Term, f: Field): FieldReadTerm = {
     require(terms contains t)
     require(fields contains f)
-    //TODO: type check parameters
 
     t match {
       case t: PTerm => makePFieldReadTerm(sl, t, f)

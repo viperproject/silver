@@ -7,7 +7,7 @@ import terms._
 import util._
 import silAST.symbols.logical.quantification.{BoundVariable, Quantifier}
 import silAST.programs.NodeFactory
-import silAST.programs.symbols.PredicateFactory
+import silAST.programs.symbols.{Field, PredicateFactory}
 
 
 trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpressionFactory with TermFactory {
@@ -95,11 +95,12 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePermissionExpression(sl: SourceLocation, r: Term, p: Term): PermissionExpression = {
+  def makePermissionExpression(sl: SourceLocation, r: Term, f : Field, p: Term): PermissionExpression = {
     require(terms contains r)
     require(terms contains p)
+    require(fields contains f)
 
-    addExpression(new PermissionExpression(sl, r, p))
+    addExpression(new PermissionExpression(sl, r, f,p))
   }
 
   //////////////////////////////////////////////////////////////////////////

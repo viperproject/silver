@@ -46,7 +46,7 @@ sealed case class OldTerm private[silAST](
 
   override def freeVariables = term.freeVariables
 
-  override def programVariables = term.programVariables //TODO:old versions
+  override def programVariables = term.programVariables
   def substitute(s: Substitution): OldTerm = new OldTerm(sl, term.substitute(s))
 }
 
