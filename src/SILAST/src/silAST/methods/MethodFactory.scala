@@ -8,12 +8,14 @@ import silAST.expressions.util.ExpressionSequence
 import silAST.source.{noLocation, SourceLocation}
 import silAST.expressions.{Expression, ExpressionFactory}
 import silAST.types.{referenceType, DataType}
+import silAST.programs.ScopeFactory
 
 class MethodFactory(
                      val programFactory: ProgramFactory,
                      val sl: SourceLocation,
                      val name: String
-                     ) extends NodeFactory with ExpressionFactory {
+                     ) extends NodeFactory with ExpressionFactory with ScopeFactory
+{
   def compile(): Method = {
     if (!signatureDefined)
       finalizeSignature()
@@ -77,6 +79,8 @@ class MethodFactory(
 
   def method: Method = if (pMethod.isDefined) pMethod.get else throw new Exception
 
+  protected[silAST] override val parentFactory = Some(programFactory)
+  
   val fields: Set[Field] = programFactory.fields.toSet
 
   var pParameters: Option[ProgramVariableSequence] = None
@@ -99,24 +103,24 @@ class MethodFactory(
   private var signatureDefined = false
   private val implementationFactories = new HashSet[ImplementationFactory]
 
-  private[silAST] def methodFactories = programFactory.methodFactories
+//  private[silAST] def methodFactories = programFactory.methodFactories
 
   override val nullFunction = programFactory.nullFunction
 
   protected[silAST] override def programVariables = parametersGenerator.toSet[ProgramVariable] union resultsGenerator.toSet[ProgramVariable]
 
-  protected[silAST] override def functions = programFactory.functions.toSet
+//  protected[silAST] override def functions = programFactory.functions.toSet
 
-  protected[silAST] override def predicates = programFactory.predicates
+//  protected[silAST] override def predicates = programFactory.predicates
 
   val thisVar = addParameter(noLocation, "this", referenceType)
 
-  protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes
+//  protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes
 
-  protected[silAST] override def domainFactories = programFactory.domainFactories
+//  protected[silAST] override def domainFactories = programFactory.domainFactories
 
-  protected[silAST] override def domainFunctions = programFactory.domainFunctions
+//  protected[silAST] override def domainFunctions = programFactory.domainFunctions
 
-  protected[silAST] override def domainPredicates = programFactory.domainPredicates
+//  protected[silAST] override def domainPredicates = programFactory.domainPredicates
   override def typeVariables = Set()
 }

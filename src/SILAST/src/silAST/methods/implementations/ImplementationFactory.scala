@@ -8,6 +8,8 @@ import silAST.programs.symbols.{Field, ProgramVariable}
 import collection.Set
 import collection.mutable._
 import silAST.source.SourceLocation
+import silAST.programs.symbols.SymbolFactory
+import silAST.programs.ScopeFactory
 
 //TODO: Should implementations have names/ids?
 
@@ -15,7 +17,8 @@ class ImplementationFactory private[silAST](
                                              private[silAST] val methodFactory: MethodFactory,
                                              sl: SourceLocation
                                              )
-  extends NodeFactory with ExpressionFactory {
+  extends NodeFactory with ExpressionFactory with ScopeFactory
+{
   def compile(): Implementation = {
     require(startNode != None)
     require(endNode != None)
@@ -63,6 +66,9 @@ class ImplementationFactory private[silAST](
     result
   }
 
+ 
+  override val parentFactory = Some(methodFactory)
+  
   /////////////////////////////////////////////////////////////////////////////////////
   private[silAST] val implementation = new Implementation(sl, methodFactory.method)
 
@@ -76,7 +82,7 @@ class ImplementationFactory private[silAST](
   val localVariables = new ListBuffer[ProgramVariable]
   val basicBlocks = new HashSet[BasicBlockFactory]
 
-  private[silAST] def methodFactories = methodFactory.methodFactories
+//  private[silAST] def methodFactories = methodFactory.methodFactories
 
   override val nullFunction = methodFactory.nullFunction
 

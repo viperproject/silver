@@ -1,17 +1,16 @@
 package silAST.programs {
 
-import collection.Set
-import collection.mutable.HashSet
 import silAST.methods.MethodFactory
 import silAST.source.{noLocation, SourceLocation}
 import silAST.domains._
 import symbols._
 import silAST.types._
+import scala.collection.mutable.HashSet
 
 final class ProgramFactory(
                             val sl: SourceLocation,
                             val name: String
-                            ) extends NodeFactory with DataTypeFactory
+                            ) extends NodeFactory with ScopeFactory //DataTypeFactory
 {
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
@@ -93,44 +92,49 @@ final class ProgramFactory(
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] val domainFactories = new HashSet[DomainFactory]
-  protected[silAST] val methodFactories = new HashSet[MethodFactory]
+  protected[silAST] override val domainFactories = new HashSet[DomainFactory]
+  protected[silAST] override val methodFactories = new HashSet[MethodFactory]
+  
   protected[silAST] val predicateFactories = new HashSet[PredicateFactory]
   protected[silAST] val functionFactories = new HashSet[FunctionFactory]
 
   protected[silAST] val fields: collection.mutable.Set[Field] = new HashSet[Field]
 
-  protected[silAST] def functions: Set[Function] = (for (ff <- functionFactories) yield ff.pFunction)
+  protected[silAST] override def functions: Set[Function] = (for (ff <- functionFactories) yield ff.pFunction).toSet
 
-  protected[silAST] def predicates = (for (pf <- predicateFactories) yield pf.pPredicate)
+  protected[silAST] override def predicates = (for (pf <- predicateFactories) yield pf.pPredicate).toSet
 
-  pDataTypes += integerType
+/*  pDataTypes += integerType
   pDataTypes += permissionType
   pDataTypes += referenceType
-
-  protected[silAST] override def dataTypes = pDataTypes ++ (for (d <- domains) yield d.getType).toSet
+*/
+  protected[silAST] override def dataTypes : collection.Set[DataType]= 
+    pDataTypes ++ 
+    Set(integerType,permissionType,referenceType) ++ 
+    (for (d <- domains) yield d.getType).toSet
 
   def emptyDTSequence = new DataTypeSequence(List.empty[DataType])
   private val nullSig = new DomainFunctionSignature(noLocation, emptyDTSequence, referenceType)
 
-  val nullFunction = new DomainFunction(noLocation, "null", nullSig)
+  override val nullFunction = new DomainFunction(noLocation, "null", nullSig)
 
   private[silAST] val pDomains : HashSet[Domain] = HashSet(integerDomain,permissionDomain)
-  protected[silAST] def domains: Set[Domain] =
+  protected[silAST] def domains: collection.Set[Domain] =
     pDomains ++
-      ( for (df <- domainFactories) yield df.domain) ++
+      ( for (df <- domainFactories) yield df.domain).toSet ++
       ( for (df <- domainFactories) yield df.domain.pInstances.values).flatten
 
 
-  protected[silAST] def domainFunctions: Set[DomainFunction] =
+  protected[silAST] override def domainFunctions: collection.Set[DomainFunction] =
     (for (f <- (for (d <- domains) yield d.functions).flatten) yield f) +
       (nullFunction)
 
   //TODO:check duplicate names/prefix names
 
-  protected[silAST] def domainPredicates: Set[DomainPredicate] =
+  protected[silAST] override def domainPredicates: collection.Set[DomainPredicate] =
     (for (p <- (for (d <- domains) yield d.predicates).flatten) yield p)
 
+  override def parentFactory = None
 /*
   dataTypes += referenceType
   dataTypes += integerType
@@ -140,7 +144,8 @@ final class ProgramFactory(
 //  domains += integerDomain
 //  domains += permissionDomain
 
-  override def typeVariables = Set()
+  override val typeVariables = collection.Set[TypeVariable]()
+  override val programVariables = collection.Set[ProgramVariable]()
 }
 
 }

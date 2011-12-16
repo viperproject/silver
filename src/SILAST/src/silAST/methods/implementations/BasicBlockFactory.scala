@@ -10,13 +10,14 @@ import collection.mutable.HashSet
 import silAST.methods.MethodFactory
 import silAST.expressions.{PredicateExpression, PExpression, Expression, ExpressionFactory}
 import silAST.expressions.terms.PTerm
+import silAST.programs.ScopeFactory
 
 
 class BasicBlockFactory private[silAST](
                                          private val implementationFactory: ImplementationFactory,
                                          val sl: SourceLocation,
                                          val name: String
-                                         ) extends NodeFactory with ExpressionFactory {
+                                         ) extends NodeFactory with ExpressionFactory with ScopeFactory {
   //////////////////////////////////////////////////////////////////
   def compile(): BasicBlock = {
     basicBlock
@@ -132,6 +133,8 @@ class BasicBlockFactory private[silAST](
 
   //////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////
+  override val parentFactory = Some(implementationFactory)
+  
   override def fields: Set[Field] = implementationFactory.fields
 
   def localVariables = implementationFactory.localVariables
@@ -140,27 +143,14 @@ class BasicBlockFactory private[silAST](
 
   private def parameters = implementationFactory.parameters
 
-  private def methodFactories = implementationFactory.methodFactories
-
   override def programVariables: Set[ProgramVariable] =
     localVariables.toSet[ProgramVariable] union parameters.toSet[ProgramVariable]
 
-  override def functions = implementationFactory.functions
+//  override def functions = implementationFactory.functions
 
   val programVariableSequences = new HashSet[ProgramVariableSequence]
 
-
-  override protected[silAST] def predicates = implementationFactory.predicates
-
-  override protected[silAST] def domainFunctions = implementationFactory.domainFunctions
-
-  override protected[silAST] def domainPredicates = implementationFactory.domainPredicates
-
-  override val nullFunction = implementationFactory.nullFunction
-
   protected[silAST] override def dataTypes = implementationFactory.dataTypes union pDataTypes
-
-  protected[silAST] override def domainFactories = implementationFactory.domainFactories
 
   private[silAST] val basicBlock: BasicBlock = new BasicBlock(sl, name, implementationFactory.cfg)
 
