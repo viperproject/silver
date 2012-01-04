@@ -38,7 +38,7 @@ object Main {
       val xT = sd.makeBoundVariableTerm(nl, varX)
       val eT = sd.makeBoundVariableTerm(nl, varE)
 
-      // forall x : Seq[Int], e : Int :: !isEmpty(x) -> tail(prepend(e,x)) == x
+      // forall x : Seq[T], e : T :: !isEmpty(x) -> tail(prepend(e,x)) == x
       val e1 = sd.makeDUnaryExpression(nl, Not(), sd.makeDDomainPredicateExpression(nl, isEmpty, DTermSequence(xT)))
       val e2 = sd.makeDDomainFunctionApplicationTerm(nl, prepend, DTermSequence(eT,xT))
       val e3 = sd.makeDEqualityExpression(nl, sd.makeDDomainFunctionApplicationTerm(nl, tail, DTermSequence(e2)), xT)
