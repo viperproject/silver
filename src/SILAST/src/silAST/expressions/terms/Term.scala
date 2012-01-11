@@ -194,6 +194,29 @@ sealed case class FieldReadTerm protected[silAST](
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
+sealed case class PermTerm protected[silAST](
+                                                   sl: SourceLocation,
+                                                   location: Term,
+                                                   field: Field
+                                                   )
+  extends ASTNode(sl) with Term {
+  require(location.dataType == referenceType)
+
+  override lazy val toString: String = "perm(" + location.toString + "." + field.name + ")";
+  override lazy val subTerms: Seq[Term] = List(location)
+
+  override lazy val dataType = field.dataType
+
+  override def freeVariables = location.freeVariables
+
+  override def programVariables = location.programVariables
+
+  def substitute(s: Substitution): PermTerm =
+    new PermTerm(sl, location.substitute(s), field)
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 object fullPermissionTerm extends LiteralTerm(noLocation) with AtomicTerm {
   override def toString: String = "write"
 

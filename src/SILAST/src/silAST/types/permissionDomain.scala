@@ -15,7 +15,7 @@ object permissionDomain extends Domain(noLocation)
   override val name = "Permission"
   override def fullName : String = name
   override def functions = Set(permissionAddition,permissionSubtraction,permissionMultiplication,permissionIntegerMultiplication)
-  override def predicates = Set()
+  override def predicates = Set(permissionEQ,permissionNE,permissionLT,permissionLE, permissionGT,permissionGE)
   override val freeTypeVariables = Set[TypeVariable]()
   override def getType = permissionType
   override val axioms = Set[DomainAxiom]()
@@ -94,4 +94,94 @@ object permissionIntegerMultiplication extends DomainFunction(
     require(ts.length==2)
     ts(0).toString + "*" + ts(1).toString
   }
+}
+
+///////////////////////////////////////////////////////////////////////////
+object permissionLE extends DomainPredicate(
+  noLocation,
+  "<=",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(permissionType,permissionType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "<=" + ts(1).toString
+  }
+  override def substitute(ts:TypeSubstitution) = this
+}
+
+///////////////////////////////////////////////////////////////////////////
+object permissionLT extends DomainPredicate(
+  noLocation,
+  "<",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(permissionType,permissionType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "<" + ts(1).toString
+  }
+  override def substitute(ts:TypeSubstitution) = this
+}
+
+///////////////////////////////////////////////////////////////////////////
+object permissionGE extends DomainPredicate(
+  noLocation,
+  ">=",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(permissionType,permissionType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + ">=" + ts(1).toString
+  }
+  override def substitute(ts:TypeSubstitution) = this
+}
+
+///////////////////////////////////////////////////////////////////////////
+object permissionGT extends DomainPredicate(
+  noLocation,
+  ">",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(permissionType,permissionType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + ">" + ts(1).toString
+  }
+  override def substitute(ts:TypeSubstitution) = this
+}
+
+///////////////////////////////////////////////////////////////////////////
+object permissionEQ extends DomainPredicate(
+  noLocation,
+  "==",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(permissionType,permissionType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "==" + ts(1).toString
+  }
+  override def substitute(ts:TypeSubstitution) = this
+}
+
+///////////////////////////////////////////////////////////////////////////
+object permissionNE extends DomainPredicate(
+  noLocation,
+  "!=",
+  new DomainPredicateSignature(noLocation,DataTypeSequence(permissionType,permissionType))
+)
+{
+  override def toString(ts : TermSequence) =
+  {
+    require(ts.length==2)
+    ts(0).toString + "!=" + ts(1).toString
+  }
+  override def substitute(ts:TypeSubstitution) = this
 }

@@ -63,19 +63,28 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="permissionDomain.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="permissionDomain.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/types/permissionDomain.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="25" column="22" selection-start="1000" selection-end="1000" vertical-scroll-proportion="0.0">
+            <state line="65" column="52" selection-start="2119" selection-end="2119" vertical-scroll-proportion="-1.2336448">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Term.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="Term.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/Term.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="223" column="33" selection-start="9610" selection-end="9610" vertical-scroll-proportion="0.49892008">
+            <state line="198" column="33" selection-start="8692" selection-end="8692" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="integerDomain.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/types/integerDomain.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="209" column="0" selection-start="3709" selection-end="6152" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -101,16 +110,16 @@
         <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/util/TermSequence.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/domains/Domain.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/types/DataTypeSequence.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/types/permissionDomain.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/domains/DomainPredicateSignature.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/ExpressionFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/Expression.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/DTermFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/ProgramFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/PTermFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/Term.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/TermFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/main/Main.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/Term.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/types/permissionDomain.scala" />
       </list>
     </option>
   </component>
@@ -881,11 +890,6 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/DTermFactory.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="13" column="6" selection-start="434" selection-end="434" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/symbols/logical/quantification/BoundVariable.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="7" column="62" selection-start="227" selection-end="241" vertical-scroll-proportion="0.0" />
@@ -955,16 +959,23 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/types/permissionDomain.scala">
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/Term.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="25" column="22" selection-start="1000" selection-end="1000" vertical-scroll-proportion="0.0">
+        <state line="198" column="33" selection-start="8692" selection-end="8692" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/Term.scala">
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/types/integerDomain.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="223" column="33" selection-start="9610" selection-end="9610" vertical-scroll-proportion="0.49892008">
+        <state line="209" column="0" selection-start="3709" selection-end="6152" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/types/permissionDomain.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="65" column="52" selection-start="2119" selection-end="2119" vertical-scroll-proportion="-1.2336448">
           <folding />
         </state>
       </provider>
@@ -1037,7 +1048,7 @@
           <splitter-proportions>
             <option name="proportions">
               <list>
-                <option value="0.15501165" />
+                <option value="0.14102565" />
               </list>
             </option>
           </splitter-proportions>
