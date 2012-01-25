@@ -96,6 +96,8 @@ class MethodFactory(
     pResults.get
   }
 
+  def isSignatureFinalized = signatureDefined
+
   private val parametersGenerator = new ListBuffer[ProgramVariable]
   private val resultsGenerator = new ListBuffer[ProgramVariable]
   private val preconditions = new ListBuffer[Expression]

@@ -126,7 +126,7 @@ class BasicBlockFactory private[silAST](
   }
 
   //////////////////////////////////////////////////////////////////
-  def addSuccessor(sl: SourceLocation, successor: BasicBlockFactory, condition: Expression, isBackEdge: Boolean) = {
+  def addSuccessor(sl: SourceLocation, successor: BasicBlockFactory, condition: Expression, isBackEdge: Boolean = false) = {
     require(basicBlock.successors.forall(_.target != successor.basicBlock))
     new CFGEdge(sl, basicBlock, successor.basicBlock, condition, isBackEdge)
   }
