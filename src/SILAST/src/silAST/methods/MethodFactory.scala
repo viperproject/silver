@@ -61,7 +61,7 @@ class MethodFactory(
     val postconditions = new ExpressionSequence(this.postconditions) //TODO:more accurate locations
     val signature = new MethodSignature(sl, pParameters.get, pResults.get, preconditions, postconditions)
     pMethod = Some(new Method(sl, name, signature))
-    signatureDefined = true
+//    signatureDefined = true
 
   }
 
@@ -96,13 +96,11 @@ class MethodFactory(
     pResults.get
   }
 
-  def isSignatureFinalized = signatureDefined
-
   private val parametersGenerator = new ListBuffer[ProgramVariable]
   private val resultsGenerator = new ListBuffer[ProgramVariable]
   private val preconditions = new ListBuffer[Expression]
   private val postconditions = new ListBuffer[Expression]
-  private var signatureDefined = false
+  private def signatureDefined = pMethod!=None;
   private val implementationFactories = new HashSet[ImplementationFactory]
 
 //  private[silAST] def methodFactories = programFactory.methodFactories
