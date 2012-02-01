@@ -41,7 +41,7 @@ case class FieldAssignment private[silAST](
                                             sl: SourceLocation,
                                             target: ProgramVariable,
                                             field: Field,
-                                            source: PExpression
+                                            source: PTerm
                                             )
   extends Statement(sl) {
   override def toString: String = target.name + "." + field.name + " := " + source.toString

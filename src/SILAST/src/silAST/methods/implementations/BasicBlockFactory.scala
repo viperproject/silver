@@ -39,11 +39,11 @@ class BasicBlockFactory private[silAST](
                              sl: SourceLocation,
                              target: ProgramVariable,
                              field: Field,
-                             source: PExpression
+                             source: PTerm
                              ) {
     require(programVariables contains target)
     require(fields contains field)
-    require(expressions contains source)
+    require(terms contains source)
 
     basicBlock.appendStatement(new FieldAssignment(sl, target, field, source))
   }
