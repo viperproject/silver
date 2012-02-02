@@ -145,6 +145,7 @@ object Main {
 
       {
         val nVar = impl.addLocalVariable(nl, "n", integerType)
+        val xxVar = impl.addLocalVariable(nl, "xx", integerSeqType)
 
         val startBlock = impl.addFirstBasicBlock(nl, "start");
         val endBlock = impl.addLastBasicBlock(nl, "end");

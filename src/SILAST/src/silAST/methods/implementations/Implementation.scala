@@ -12,7 +12,7 @@ final class Implementation private[silAST](
                                             ) extends ASTNode(sl) {
   override def toString = "implementation " + method.name + method.signature.toString +
     "{" +
-    locals.mkString("\n\t", "\t", "\n") +
+    (for (l <- locals) yield "var " + l.name + " : " + l.dataType).mkString("\n\t", "\n\t", "\n") +
     body.toString +
     "}"
 

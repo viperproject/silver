@@ -26,7 +26,7 @@ class ImplementationFactory private[silAST](
 
     //    val cfg = new ControlFlowGraph(sl,for (bbf <- basicBlocks) yield bbf.basicBlock,startNode.basicBlock,endNode.basicBlock)
     //    new Implementation(sl,methodFactory.method,localVariables.toSeq,cfg)
-    null
+    implementation
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +79,7 @@ class ImplementationFactory private[silAST](
 
   private[silAST] def results = methodFactory.results
 
-  val localVariables = new ListBuffer[ProgramVariable]
+  def localVariables = implementation.pLocals; // ListBuffer[ProgramVariable]
   val basicBlocks = new HashSet[BasicBlockFactory]
 
 //  private[silAST] def methodFactories = methodFactory.methodFactories
