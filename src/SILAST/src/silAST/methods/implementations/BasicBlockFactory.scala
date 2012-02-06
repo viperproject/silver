@@ -31,7 +31,7 @@ class BasicBlockFactory private[silAST](
                         ) = {
     require((localVariables contains target)  || (results contains target)) //no writing to inputs
     require(terms contains source)
-    basicBlock.appendStatement(new Assignment(sl, target, source))
+    basicBlock.appendStatement(new AssignmentStatement(sl, target, source))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -45,11 +45,11 @@ class BasicBlockFactory private[silAST](
     require(fields contains field)
     require(terms contains source)
 
-    basicBlock.appendStatement(new FieldAssignment(sl, target, field, source))
+    basicBlock.appendStatement(new FieldAssignmentStatement(sl, target, field, source))
   }
 
   //////////////////////////////////////////////////////////////////
-  def appendNewStatement(
+  def appendNew(
                           sl: SourceLocation,
                           target: ProgramVariable,
                           dataType: DataType
@@ -69,16 +69,16 @@ class BasicBlockFactory private[silAST](
   }
 
   //////////////////////////////////////////////////////////////////
-  def appendCallStatement(
+  def appendCall(
                            sl: SourceLocation,
                            targets: ProgramVariableSequence,
-                           receiver: PExpression,
+                           receiver: PTerm,
                            methodFactory: MethodFactory,
                            arguments: PTermSequence
                            ) {
     require(programVariableSequences contains targets)
     require(targets.forall(localVariables contains _))
-    require(expressions contains receiver)
+    require(terms contains receiver)
     require(methodFactories contains methodFactory)
     require(arguments.forall( terms contains _))
 
@@ -92,7 +92,7 @@ class BasicBlockFactory private[silAST](
                     ) {
     require(expressions contains e)
 
-    basicBlock.appendStatement(new Inhale(sl, e))
+    basicBlock.appendStatement(new InhaleStatement(sl, e))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ class BasicBlockFactory private[silAST](
                     ) {
     require(expressions contains e)
 
-    basicBlock.appendStatement(new Exhale(sl, e))
+    basicBlock.appendStatement(new ExhaleStatement(sl, e))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -112,7 +112,7 @@ class BasicBlockFactory private[silAST](
                   ) {
     require(expressions contains e)
 
-    basicBlock.appendStatement(new Fold(sl, e))
+    basicBlock.appendStatement(new FoldStatement(sl, e))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -122,7 +122,7 @@ class BasicBlockFactory private[silAST](
                     ) {
     require(expressions contains e)
 
-    basicBlock.appendStatement(new Unfold(sl, e))
+    basicBlock.appendStatement(new UnfoldStatement(sl, e))
   }
 
   //////////////////////////////////////////////////////////////////

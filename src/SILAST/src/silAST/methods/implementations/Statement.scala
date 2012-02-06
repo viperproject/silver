@@ -23,7 +23,7 @@ sealed abstract class Statement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class Assignment private[silAST](
+final case class AssignmentStatement private[silAST](
                                              sl: SourceLocation,
                                              target: ProgramVariable,
                                              source: PTerm
@@ -37,7 +37,7 @@ final case class Assignment private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class FieldAssignment private[silAST](
+case class FieldAssignmentStatement private[silAST](
                                             sl: SourceLocation,
                                             target: ProgramVariable,
                                             field: Field,
@@ -69,7 +69,7 @@ final case class CallStatement private[silAST]
 (
   sl: SourceLocation,
   targets: ProgramVariableSequence,
-  receiver: PExpression,
+  receiver: PTerm,
   method: Method,
   arguments: PTermSequence
   )
@@ -81,7 +81,7 @@ final case class CallStatement private[silAST]
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class Inhale private[silAST](
+final case class InhaleStatement private[silAST](
                                          sl: SourceLocation,
                                          expression: Expression
                                          )
@@ -93,7 +93,7 @@ final case class Inhale private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class Exhale private[silAST](
+final case class ExhaleStatement private[silAST](
                                          sl: SourceLocation,
                                          expression: Expression
                                          )
@@ -105,8 +105,8 @@ final case class Exhale private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-//TODO:Fold/Unfold arrays?
-final case class Fold private[silAST](
+//TODO:FoldStatement/UnfoldStatement arrays?
+final case class FoldStatement private[silAST](
                                        sl: SourceLocation,
                                        predicate: PredicateExpression
                                        )
@@ -118,7 +118,7 @@ final case class Fold private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class Unfold private[silAST](
+final case class UnfoldStatement private[silAST](
                                          sl: SourceLocation,
                                          predicate: PredicateExpression
                                          )
