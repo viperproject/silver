@@ -34,8 +34,8 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
 
   //////////////////////////////////////////////////////////////////////////
   def makeDDomainPredicateExpression(sl: SourceLocation, p: DomainPredicate, args: DTermSequence): DDomainPredicateExpression = {
-    require(domainPredicates contains p)
-    require(args.forall(terms contains _))
+    require(domainPredicates contains p,"Unknown domain predicate %s.".format(p))
+    require(args.forall(terms contains _),"At least one of the terms in [%s] is not known.".format(args))
 
     (args) match {
       case (a: GTermSequence) => makeGDomainPredicateExpression(sl, p, a)
