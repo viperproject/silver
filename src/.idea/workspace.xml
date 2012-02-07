@@ -72,10 +72,10 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Main.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="Main.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/SILAST/src/main/Main.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="159" column="17" selection-start="7702" selection-end="7702" vertical-scroll-proportion="0.02681388">
+            <state line="159" column="17" selection-start="7702" selection-end="7702" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -85,6 +85,24 @@
         <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/ExpressionFactory.scala">
           <provider selected="true" editor-type-id="text-editor">
             <state line="55" column="79" selection-start="2526" selection-end="2542" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="Term.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/Term.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="200" column="0" selection-start="8659" selection-end="8790" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="TermFactory.scala" pinned="false" current="true" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/TermFactory.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="84" column="49" selection-start="3211" selection-end="3211" vertical-scroll-proportion="1.6628441">
               <folding />
             </state>
           </provider>
@@ -131,13 +149,13 @@
         <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/DTermFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/ProgramFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/PTermFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/TermFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/main/Main.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/Term.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/types/permissionDomain.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/MethodFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/BasicBlockFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/Statement.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/TermFactory.scala" />
       </list>
     </option>
   </component>
@@ -155,7 +173,7 @@
     <option name="x" value="-9" />
     <option name="y" value="-9" />
     <option name="width" value="1938" />
-    <option name="height" value="1170" />
+    <option name="height" value="1050" />
   </component>
   <component name="ProjectInspectionProfilesVisibleTreeState">
     <entry key="Project Default">
@@ -215,6 +233,82 @@
             <PATH_ELEMENT>
               <option name="myItemId" value="SILAST" />
               <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewModuleNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="SILAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="SILAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewModuleNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="silAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="SILAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="SILAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewModuleNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="silAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="expressions" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="SILAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="SILAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewModuleNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="silAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="expressions" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="Expression.scala" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.ClassesTreeStructureProvider$PsiClassOwnerTreeNode" />
+            </PATH_ELEMENT>
+          </PATH>
+          <PATH>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="SILAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewProjectNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="SILAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageViewModuleNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="silAST" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="expressions" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
+            </PATH_ELEMENT>
+            <PATH_ELEMENT>
+              <option name="myItemId" value="terms" />
+              <option name="myItemType" value="com.intellij.ide.projectView.impl.nodes.PackageElementNode" />
             </PATH_ELEMENT>
           </PATH>
         </subPane>
@@ -600,26 +694,26 @@
     </todo-panel>
   </component>
   <component name="ToolWindowManager">
-    <frame x="-9" y="-9" width="1938" height="1170" extended-state="6" />
-    <editor active="false" />
+    <frame x="-9" y="-9" width="1938" height="1050" extended-state="6" />
+    <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Palette" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32748538" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.24973147" sideWeight="0.67103934" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.39692307" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.39649123" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32982457" sideWeight="0.49838537" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32996973" sideWeight="0.49784714" order="11" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32982457" sideWeight="0.49784714" order="11" side_tool="false" content_ui="tabs" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32982457" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Structure" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.24419779" sideWeight="0.21796165" order="7" side_tool="false" content_ui="tabs" x="180" y="841" width="455" height="216" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32975295" sideWeight="0.67103934" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.39957035" sideWeight="0.67103934" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.19078243" sideWeight="0.67204845" order="0" side_tool="false" content_ui="tabs" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.32992464" sideWeight="0.6035088" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32795155" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32820514" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="SBT Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.3309788" sideWeight="0.99677765" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Dependency Viewer" active="false" anchor="bottom" auto_hide="true" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32865497" sideWeight="0.5" order="12" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.1734694" sideWeight="0.6700303" order="2" side_tool="false" content_ui="combo" />
@@ -682,19 +776,9 @@
     <option name="FILTER_TARGETS" value="false" />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/domains/Substitution.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="47" column="54" selection-start="1882" selection-end="1882" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/Expression.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="35" column="17" selection-start="1327" selection-end="1327" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/Term.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="198" column="33" selection-start="8692" selection-end="8692" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/types/integerDomain.scala">
@@ -742,14 +826,9 @@
         <state line="22" column="23" selection-start="868" selection-end="868" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/ExpressionFactory.scala">
+    <entry file="file://$PROJECT_DIR$/SILAST/src/main/Main.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="55" column="79" selection-start="2526" selection-end="2542" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/Statement.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="105" column="59" selection-start="5155" selection-end="5155" vertical-scroll-proportion="0.0" />
+        <state line="159" column="17" selection-start="7702" selection-end="7702" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/BasicBlockFactory.scala">
@@ -757,9 +836,28 @@
         <state line="37" column="20" selection-start="1574" selection-end="1574" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/main/Main.scala">
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/Statement.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="159" column="17" selection-start="7702" selection-end="7702" vertical-scroll-proportion="0.02681388">
+        <state line="105" column="59" selection-start="5155" selection-end="5155" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/ExpressionFactory.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="55" column="79" selection-start="2526" selection-end="2542" vertical-scroll-proportion="0.0" />
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/Term.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="200" column="0" selection-start="8659" selection-end="8790" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/TermFactory.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="84" column="49" selection-start="3211" selection-end="3211" vertical-scroll-proportion="1.6628441">
           <folding />
         </state>
       </provider>

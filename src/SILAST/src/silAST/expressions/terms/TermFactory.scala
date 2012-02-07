@@ -75,6 +75,17 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
+  def makePermTerm(sl: SourceLocation, location: Term,  field: Field): PermTerm = {
+    require (terms contains location)
+    require (fields contains field)
+    require (location.dataType == referenceType)
+
+    val result = new PermTerm(sl, location,field)
+    addTerm(result)
+    result
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////
   def makePercentagePermission(sl: SourceLocation, percentage: Term): Term = {
     val result = new DomainFunctionApplicationTerm(sl, percentagePermission, TermSequence(percentage))
     addTerm(result)
