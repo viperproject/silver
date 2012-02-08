@@ -63,6 +63,8 @@ class ImplementationFactory private[silAST](
     require(basicBlocks.forall(_.name != name))
     val result = new BasicBlockFactory(this, sl, name)
     basicBlocks += result
+    result.basicBlock.cfg = cfg
+    cfg.addNode(result.basicBlock)
     result
   }
 
@@ -70,8 +72,7 @@ class ImplementationFactory private[silAST](
   override val parentFactory = Some(methodFactory)
   
   /////////////////////////////////////////////////////////////////////////////////////
-  private[silAST] val implementation = new Implementation(sl, methodFactory.method)
-
+  private[silAST] val implementation = new Implementation(sl, methodFactory.method,this)
   /////////////////////////////////////////////////////////////////////////////////////
   val fields: Set[Field] = methodFactory.fields
 
@@ -104,5 +105,8 @@ class ImplementationFactory private[silAST](
   var endNode: Option[BasicBlockFactory] = None
 
   private[silAST] val cfg = implementation.body
+
+//  cfg.initialNode.pFactory = cfg.
+
   override def typeVariables = Set()
 }

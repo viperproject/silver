@@ -152,6 +152,8 @@ object Main {
 
         startBlock.addSuccessor(nl, startBlock, TrueExpression(), true)
         startBlock.addSuccessor(nl, endBlock, TrueExpression(), false)
+        startBlock.addProgramVariableToScope(nVar)
+        startBlock.addProgramVariableToScope(xxVar)
 
         {
           val this_term = startBlock.makeProgramVariableTerm(nl, mf.thisVar)

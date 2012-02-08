@@ -5,12 +5,15 @@ import collection.mutable.ListBuffer
 import silAST.source.{noLocation, SourceLocation}
 
 final class ControlFlowGraph private[silAST](
-                                              sl: SourceLocation
+                                              sl: SourceLocation,
+                                              private val implementationFactory : ImplementationFactory
                                               ) extends ASTNode(sl) {
   //TODO: more consistency checks
+  require(implementationFactory!=null)
 
   private val nodes = new ListBuffer[BasicBlock]
-  private val initialNode = new BasicBlock(noLocation, "$dummy", this)
+  private val initialNodeFactory = new BasicBlockFactory(implementationFactory,noLocation,"$dummy")
+  private val initialNode = initialNodeFactory.basicBlock
 
   private var pStartNode = initialNode
   private var pEndNode = initialNode

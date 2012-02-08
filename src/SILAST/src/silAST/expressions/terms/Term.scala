@@ -20,6 +20,7 @@ sealed trait Term extends ASTNode {
   def programVariables: collection.immutable.Set[ProgramVariable]
 
   def substitute(s: Substitution): Term
+//  def substituteAll(s: PSubstitution): PTerm
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -414,6 +415,9 @@ sealed trait DTerm extends Term {
   final override def programVariables = Set()
 
   def substitute(s: DSubstitution): DTerm
+
+//  def substituteAll(s: PSubstitution): PTerm
+//  def substituteAll(s: GSubstitution): GTerm
 }
 
 ///////////////////////////////////////////////////////////////////////////

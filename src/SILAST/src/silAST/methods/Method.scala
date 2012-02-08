@@ -5,11 +5,13 @@ import silAST.ASTNode
 import silAST.source.SourceLocation
 import collection.Set
 import collection.mutable.HashSet
+import silAST.expressions.ExpressionFactory
 
 final class Method private[silAST](
                                     sl: SourceLocation,
                                     val name: String,
-                                    val signature: MethodSignature
+                                    val signature: MethodSignature,
+                                    private[silAST] val factory : MethodFactory
                                     ) extends ASTNode(sl) {
   override def toString = "method " + name + signature.toString +
     (for (i <- implementations) yield i).mkString("\n","\n","\n")
@@ -19,4 +21,5 @@ final class Method private[silAST](
 
   def implementations: Set[Implementation] = pImplementations.toSet
 
+  lazy val expressionFactory : ExpressionFactory = factory
 }

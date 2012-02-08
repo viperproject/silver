@@ -60,7 +60,7 @@ class MethodFactory(
     val preconditions = new ExpressionSequence(this.preconditions) //TODO:more accurate locations
     val postconditions = new ExpressionSequence(this.postconditions) //TODO:more accurate locations
     val signature = new MethodSignature(sl, pParameters.get, pResults.get, preconditions, postconditions)
-    pMethod = Some(new Method(sl, name, signature))
+    pMethod = Some(new Method(sl, name, signature,this))
 //    signatureDefined = true
 
   }

@@ -6,11 +6,11 @@ import silAST.types.DataType
 import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import silAST.expressions.util.PTermSequence
 import collection.Set
-import collection.mutable.HashSet
 import silAST.methods.MethodFactory
 import silAST.expressions.{PredicateExpression, PExpression, Expression, ExpressionFactory}
 import silAST.expressions.terms.PTerm
 import silAST.programs.ScopeFactory
+import collection.mutable.{ListBuffer, HashSet}
 
 
 class BasicBlockFactory private[silAST](
@@ -20,7 +20,16 @@ class BasicBlockFactory private[silAST](
                                          ) extends NodeFactory with ExpressionFactory with ScopeFactory {
   //////////////////////////////////////////////////////////////////
   def compile(): BasicBlock = {
+    basicBlock.cfg = implementationFactory.cfg
     basicBlock
+  }
+
+  //////////////////////////////////////////////////////////////////
+  def addProgramVariableToScope(v : ProgramVariable)
+  {
+    require (!(localVariables contains v))
+    require( implementationFactory.localVariables contains v)
+    basicBlock.pLocalVariables.append(v)
   }
 
   //////////////////////////////////////////////////////////////////
@@ -137,14 +146,16 @@ class BasicBlockFactory private[silAST](
   
   override def fields: Set[Field] = implementationFactory.fields
 
-  def localVariables = implementationFactory.localVariables
+//  private val scopedVariables = new ListBuffer[ProgramVariable];
+
+  def localVariables = basicBlock.localVariables; //scopedVariables;
 
   def results = implementationFactory.results
 
   private def parameters = implementationFactory.parameters
 
   override def programVariables: Set[ProgramVariable] =
-    localVariables.toSet[ProgramVariable] union parameters.toSet[ProgramVariable]
+    localVariables union parameters.toSet[ProgramVariable]
 
 //  override def functions = implementationFactory.functions
 
@@ -152,7 +163,7 @@ class BasicBlockFactory private[silAST](
 
   protected[silAST] override def dataTypes = implementationFactory.dataTypes union pDataTypes
 
-  private[silAST] val basicBlock: BasicBlock = new BasicBlock(sl, name, implementationFactory.cfg)
-
   override def typeVariables = Set()
+
+  private[silAST] lazy val basicBlock: BasicBlock = new BasicBlock(sl, name)
 }

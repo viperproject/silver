@@ -4,11 +4,12 @@ import scala.collection.{Seq, Set}
 import silAST.ASTNode
 import collection.mutable.ListBuffer
 import silAST.source.SourceLocation
+import silAST.programs.symbols.ProgramVariable
+import silAST.expressions.ExpressionFactory
 
 final class BasicBlock private[silAST](
                                         sl: SourceLocation,
-                                        val label: String,
-                                        private[implementations] val cfg: ControlFlowGraph
+                                        val label: String
                                         ) extends ASTNode(sl) {
   private[implementations] def addPredecessor(edge: CFGEdge) {
     require(edge.target == this)
@@ -43,5 +44,15 @@ final class BasicBlock private[silAST](
 
   def predecessors: Set[CFGEdge] = pPredecessors.result().toSet
 
-  cfg.addNode(this)
+  private[silAST] val pLocalVariables = new ListBuffer[ProgramVariable]
+
+  def localVariables : Set[ProgramVariable] = pLocalVariables.toSet
+
+//  cfg.addNode(this)
+
+  var expressionFactory : ExpressionFactory = pFactory
+
+  private[silAST] var pFactory : BasicBlockFactory = null
+  
+  private[implementations] var cfg : ControlFlowGraph = null
 }
