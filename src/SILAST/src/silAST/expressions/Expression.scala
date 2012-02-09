@@ -17,7 +17,7 @@ import silAST.source.{noLocation, SourceLocation}
 sealed abstract class Expression protected[silAST](
                                                     sl: SourceLocation
                                                     ) extends ASTNode(sl) {
-  def substitute(substitution: Substitution): Expression
+  def substitute(substitution: LogicalVariableSubstitution): Expression
 
   def subExpressions: Seq[Expression]
 
@@ -49,7 +49,7 @@ final case class PermissionExpression private[silAST](
 
   override def freeVariables = reference.freeVariables ++ permission.freeVariables
 
-  override def substitute(s: Substitution) =
+  override def substitute(s: LogicalVariableSubstitution) =
     new PermissionExpression(sl, reference.substitute(s), field, permission.substitute(s))
 }
 
@@ -66,7 +66,7 @@ final case class OldExpression private[silAST](
 
   override def freeVariables = expression.freeVariables
 
-  override def substitute(s: Substitution): OldExpression = new OldExpression(sl, expression.substitute(s))
+  override def substitute(s: LogicalVariableSubstitution): OldExpression = new OldExpression(sl, expression.substitute(s))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -83,7 +83,7 @@ sealed case class UnfoldingExpression private[silAST](
 
   override def freeVariables = predicate.freeVariables ++ expression.freeVariables
 
-  override def substitute(s: Substitution): UnfoldingExpression = new UnfoldingExpression(sl, predicate.substitute(s), expression.substitute(s))
+  override def substitute(s: LogicalVariableSubstitution): UnfoldingExpression = new UnfoldingExpression(sl, predicate.substitute(s), expression.substitute(s))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -108,7 +108,7 @@ sealed case class EqualityExpression private[silAST](
 
   override def freeVariables = term1.freeVariables ++ term2.freeVariables
 
-  override def substitute(s: Substitution): EqualityExpression = new EqualityExpression(sl, term1.substitute(s), term2.substitute(s))
+  override def substitute(s: LogicalVariableSubstitution): EqualityExpression = new EqualityExpression(sl, term1.substitute(s), term2.substitute(s))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -124,7 +124,7 @@ sealed case class UnaryExpression private[silAST](
 
   override def freeVariables = operand1.freeVariables
 
-  override def substitute(s: Substitution): UnaryExpression = new UnaryExpression(sl, operator, operand1.substitute(s))
+  override def substitute(s: LogicalVariableSubstitution): UnaryExpression = new UnaryExpression(sl, operator, operand1.substitute(s))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -141,7 +141,7 @@ sealed case class BinaryExpression private[silAST](
 
   override def freeVariables = operand1.freeVariables ++ operand2.freeVariables
 
-  override def substitute(s: Substitution): BinaryExpression = new BinaryExpression(sl, operator, operand1.substitute(s), operand2.substitute(s))
+  override def substitute(s: LogicalVariableSubstitution): BinaryExpression = new BinaryExpression(sl, operator, operand1.substitute(s), operand2.substitute(s))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -158,7 +158,7 @@ with AtomicExpression
 
   override def freeVariables = arguments.freeVariables
 
-  override def substitute(s: Substitution): DomainPredicateExpression =
+  override def substitute(s: LogicalVariableSubstitution): DomainPredicateExpression =
     new DomainPredicateExpression(sl, predicate.substitute(s), arguments.substitute(s))
 }
 
@@ -174,7 +174,7 @@ with AtomicExpression {
   override val toString = receiver + "." + predicate.name
 
   override def freeVariables = receiver.freeVariables //TODO:Can receiver have free variables?
-  override def substitute(s: Substitution): PredicateExpression =
+  override def substitute(s: LogicalVariableSubstitution): PredicateExpression =
     new PredicateExpression(sl, receiver.substitute(s), predicate)
 }
 
@@ -193,9 +193,9 @@ sealed case class QuantifierExpression private[silAST](
 
   override def freeVariables = expression.freeVariables - variable
 
-  override def substitute(s: Substitution): QuantifierExpression = {
+  override def substitute(s: LogicalVariableSubstitution): QuantifierExpression = {
     val newVar = new BoundVariable(variable.sourceLocation, variable.name, variable.dataType.substitute(s))
-    val newS = s + new SubstitutionC[Term](Set(), Set((variable, new BoundVariableTerm(newVar.sourceLocation, newVar))))
+    val newS = s + new LogicalVariableSubstitutionC[Term](Set(), Set((variable, new BoundVariableTerm(newVar.sourceLocation, newVar))))
     new QuantifierExpression(sl, quantifier, newVar, expression.substitute(newS))
   }
 }
@@ -215,7 +215,7 @@ sealed case class QuantifierExpression private[silAST](
 ///////////////////////////////////////////////////////////////////////////
 sealed trait PExpression
   extends Expression {
-  def substitute(substitution: PSubstitution): PExpression
+  def substitute(substitution: PLogicalVariableSubstitution): PExpression
 
   override val subExpressions: Seq[PExpression] = pSubExpressions
   final override val freeVariables = Set[BoundVariable]()
@@ -236,7 +236,7 @@ sealed trait PEqualityExpression
 
   protected[expressions] def pTerm2: PTerm
 
-  override def substitute(s: PSubstitution): PEqualityExpression = new PEqualityExpressionC(sl, term1.substitute(s), term2.substitute(s))
+  override def substitute(s: PLogicalVariableSubstitution): PEqualityExpression = new PEqualityExpressionC(sl, term1.substitute(s), term2.substitute(s))
 }
 
 object PEqualityExpression {
@@ -266,7 +266,7 @@ final class PUnfoldingExpression private[silAST](
 
   override val pSubExpressions: Seq[PExpression] = List(predicate, expression)
 
-  override def substitute(s: PSubstitution): PUnfoldingExpression = new PUnfoldingExpression(sl, predicate.substitute(s), expression.substitute(s))
+  override def substitute(s: PLogicalVariableSubstitution): PUnfoldingExpression = new PUnfoldingExpression(sl, predicate.substitute(s), expression.substitute(s))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -276,7 +276,7 @@ sealed trait PUnaryExpression extends UnaryExpression with PExpression {
 
   protected[expressions] def pOperand1: PExpression
 
-  override def substitute(s: PSubstitution): PUnaryExpression = new PUnaryExpressionC(sl, operator, operand1.substitute(s))
+  override def substitute(s: PLogicalVariableSubstitution): PUnaryExpression = new PUnaryExpressionC(sl, operator, operand1.substitute(s))
 }
 
 object PUnaryExpression {
@@ -305,7 +305,7 @@ sealed trait PBinaryExpression extends BinaryExpression with PExpression {
 
   protected[expressions] def pOperand2: PExpression
 
-  override def substitute(s: PSubstitution): PBinaryExpression = new PBinaryExpressionC(sl, operator, operand1.substitute(s), operand2.substitute(s))
+  override def substitute(s: PLogicalVariableSubstitution): PBinaryExpression = new PBinaryExpressionC(sl, operator, operand1.substitute(s), operand2.substitute(s))
 }
 
 object PBinaryExpression {
@@ -334,7 +334,7 @@ sealed trait PDomainPredicateExpression extends DomainPredicateExpression with P
 
   override val arguments: PTermSequence = pArguments
 
-  override def substitute(s: PSubstitution): PDomainPredicateExpression =
+  override def substitute(s: PLogicalVariableSubstitution): PDomainPredicateExpression =
     new PDomainPredicateExpressionC(sl, predicate.substitute(s), arguments.substitute(s))
 }
 
@@ -361,7 +361,7 @@ final class PPredicateExpression private[silAST](
   with PExpression {
   override val pSubExpressions = Nil
 
-  override def substitute(s: PSubstitution): PPredicateExpression =
+  override def substitute(s: PLogicalVariableSubstitution): PPredicateExpression =
     new PPredicateExpression(sl, receiver.substitute(s), predicate)
 }
 
@@ -373,7 +373,7 @@ final class PPredicateExpression private[silAST](
 sealed trait DExpression
   extends Expression {
 
-  def substitute(substitution: DSubstitution): DExpression
+  def substitute(substitution: DLogicalVariableSubstitution): DExpression
 
   protected[expressions] def dSubExpressions: Seq[DExpression]
 
@@ -393,7 +393,7 @@ sealed trait DEqualityExpression
 
   override def term2: DTerm = dTerm2
 
-  override def substitute(s: DSubstitution): DEqualityExpression = new DEqualityExpressionC(sl, term1.substitute(s), term2.substitute(s))
+  override def substitute(s: DLogicalVariableSubstitution): DEqualityExpression = new DEqualityExpressionC(sl, term1.substitute(s), term2.substitute(s))
 }
 
 private[silAST] final class DEqualityExpressionC(
@@ -416,7 +416,7 @@ sealed trait DUnaryExpression extends UnaryExpression with DExpression {
 
   override val operand1: DExpression = dOperand1
 
-  override def substitute(s: DSubstitution): DUnaryExpression =
+  override def substitute(s: DLogicalVariableSubstitution): DUnaryExpression =
     new DUnaryExpressionC(sl, operator, operand1.substitute(s))
 }
 
@@ -446,7 +446,7 @@ sealed trait DBinaryExpression extends BinaryExpression with DExpression {
   override val operand1: DExpression = dOperand1
   override val operand2: DExpression = dOperand2
 
-  override def substitute(s: DSubstitution): DBinaryExpression =
+  override def substitute(s: DLogicalVariableSubstitution): DBinaryExpression =
     new DBinaryExpressionC(sl, operator, operand1.substitute(s), operand2.substitute(s))
 }
 
@@ -476,7 +476,7 @@ sealed trait DDomainPredicateExpression extends DomainPredicateExpression with D
 
   protected[expressions] def dArguments: DTermSequence
 
-  override def substitute(s: DSubstitution): DDomainPredicateExpression =
+  override def substitute(s: DLogicalVariableSubstitution): DDomainPredicateExpression =
     new DDomainPredicateExpressionC(sl, predicate.substitute(s), arguments.substitute(s))
 }
 
@@ -505,9 +505,9 @@ final class DQuantifierExpression private[silAST](
   override val subExpressions: Seq[DExpression] = List(expression)
   override val dSubExpressions = subExpressions
 
-  override def substitute(s: DSubstitution): DQuantifierExpression = {
+  override def substitute(s: DLogicalVariableSubstitution): DQuantifierExpression = {
     val newVar = new BoundVariable(variable.sourceLocation, variable.name, variable.dataType.substitute(s))
-    val newS = s + new DSubstitutionC(Set(), Set((variable, new BoundVariableTerm(newVar.sourceLocation, newVar))))
+    val newS = s + new DLogicalVariableSubstitutionC(Set(), Set((variable, new BoundVariableTerm(newVar.sourceLocation, newVar))))
     new DQuantifierExpression(sl, quantifier, newVar, expression.substitute(newS))
   }
 
@@ -526,7 +526,7 @@ sealed trait GExpression
 
   protected[expressions] def gSubExpressions: Seq[GExpression]
 
-  def substitute(substitution: GSubstitution): GExpression
+  def substitute(substitution: GLogicalVariableSubstitution): GExpression
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -544,7 +544,7 @@ final class GEqualityExpression private[silAST](
   protected[expressions] override val dTerm1 = term1
   protected[expressions] override val dTerm2 = term2
 
-  override def substitute(s: GSubstitution): GEqualityExpression = new GEqualityExpression(sl, term1.substitute(s), term2.substitute(s))
+  override def substitute(s: GLogicalVariableSubstitution): GEqualityExpression = new GEqualityExpression(sl, term1.substitute(s), term2.substitute(s))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -562,7 +562,7 @@ with GExpression {
   protected[expressions] override val pOperand1 = operand1
   protected[expressions] override val dOperand1 = operand1
 
-  override def substitute(s: GSubstitution): GUnaryExpression =
+  override def substitute(s: GLogicalVariableSubstitution): GUnaryExpression =
     new GUnaryExpression(sl, operator, operand1.substitute(s))
 }
 
@@ -586,7 +586,7 @@ with GExpression {
   protected[expressions] override val pOperand2 = operand2
   protected[expressions] override val dOperand2 = operand2
 
-  override def substitute(s: GSubstitution): GBinaryExpression = new GBinaryExpression(sl, operator, operand1.substitute(s), operand2.substitute(s))
+  override def substitute(s: GLogicalVariableSubstitution): GBinaryExpression = new GBinaryExpression(sl, operator, operand1.substitute(s), operand2.substitute(s))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -603,7 +603,7 @@ with GExpression {
   protected[expressions] override val dArguments = arguments
   protected[expressions] override val pArguments = arguments
 
-  override def substitute(s: GSubstitution): GDomainPredicateExpression =
+  override def substitute(s: GLogicalVariableSubstitution): GDomainPredicateExpression =
     new GDomainPredicateExpression(sl, predicate.substitute(s), arguments.substitute(s))
 }
 
@@ -615,13 +615,13 @@ final case class TrueExpression() extends Expression(noLocation) with GExpressio
   override val subExpressions = List.empty
   override val gSubExpressions = List.empty
 
-  override def substitute(s: Substitution): GExpression = this
+  override def substitute(s: LogicalVariableSubstitution): GExpression = this
 
-  override def substitute(s: DSubstitution): GExpression = this
+  override def substitute(s: DLogicalVariableSubstitution): GExpression = this
 
-  override def substitute(s: PSubstitution): GExpression = this
+  override def substitute(s: PLogicalVariableSubstitution): GExpression = this
 
-  override def substitute(s: GSubstitution): GExpression = this
+  override def substitute(s: GLogicalVariableSubstitution): GExpression = this
 
 }
 
@@ -633,11 +633,11 @@ with GExpression with AtomicExpression {
   override val subExpressions = List.empty
   override val gSubExpressions = List.empty
 
-  override def substitute(s: Substitution): GExpression = this
+  override def substitute(s: LogicalVariableSubstitution): GExpression = this
 
-  override def substitute(s: DSubstitution): GExpression = this
+  override def substitute(s: DLogicalVariableSubstitution): GExpression = this
 
-  override def substitute(s: PSubstitution): GExpression = this
+  override def substitute(s: PLogicalVariableSubstitution): GExpression = this
 
-  override def substitute(s: GSubstitution): GExpression = this
+  override def substitute(s: GLogicalVariableSubstitution): GExpression = this
 }

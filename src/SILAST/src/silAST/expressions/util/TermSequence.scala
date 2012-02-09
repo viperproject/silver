@@ -6,7 +6,7 @@ import silAST.expressions.terms.{GTerm, PTerm, DTerm, Term}
 import silAST.source.noLocation
 import silAST.symbols.logical.quantification.BoundVariable
 import silAST.programs.symbols.ProgramVariable
-import silAST.domains.{GSubstitution, PSubstitution, DSubstitution, Substitution}
+import silAST.domains.{GLogicalVariableSubstitution, PLogicalVariableSubstitution, DLogicalVariableSubstitution, LogicalVariableSubstitution}
 
 sealed class TermSequence private[silAST](
                                            private val prArgs: Seq[Term]
@@ -28,7 +28,7 @@ sealed class TermSequence private[silAST](
 
   def programVariables: Set[ProgramVariable] = (for (a <- args) yield a.programVariables).flatten.toSet
 
-  def substitute(s: Substitution): TermSequence = new TermSequence(for (t <- prArgs) yield t.substitute(s))
+  def substitute(s: LogicalVariableSubstitution): TermSequence = new TermSequence(for (t <- prArgs) yield t.substitute(s))
 }
 
 object TermSequence {
@@ -53,7 +53,7 @@ sealed trait PTermSequence extends TermSequence with Seq[PTerm] {
 
   final override val freeVariables: Set[BoundVariable] = Set.empty
 
-  def substitute(s: PSubstitution): PTermSequence = new PTermSequenceC(for (t <- pArgs) yield t.substitute(s))
+  def substitute(s: PLogicalVariableSubstitution): PTermSequence = new PTermSequenceC(for (t <- pArgs) yield t.substitute(s))
 }
 
 object PTermSequence {
@@ -84,7 +84,7 @@ sealed trait DTermSequence extends TermSequence with Seq[DTerm] {
 
   final override val programVariables = Set[ProgramVariable]()
 
-  def substitute(s: DSubstitution): DTermSequence = new DTermSequenceC(for (t <- dArgs) yield t.substitute(s))
+  def substitute(s: DLogicalVariableSubstitution): DTermSequence = new DTermSequenceC(for (t <- dArgs) yield t.substitute(s))
 }
 
 private[silAST] final class DTermSequenceC(
@@ -112,7 +112,7 @@ final class GTermSequence private[silAST](
   override val dArgs = args
   override val pArgs = args
 
-  def substitute(s: GSubstitution): GTermSequence = new GTermSequence(for (t <- args) yield t.substitute(s))
+  def substitute(s: GLogicalVariableSubstitution): GTermSequence = new GTermSequence(for (t <- args) yield t.substitute(s))
 }
 
 object GTermSequence {

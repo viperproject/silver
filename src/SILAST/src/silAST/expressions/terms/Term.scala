@@ -19,8 +19,8 @@ sealed trait Term extends ASTNode {
 
   def programVariables: collection.immutable.Set[ProgramVariable]
 
-  def substitute(s: Substitution): Term
-//  def substituteAll(s: PSubstitution): PTerm
+  def substitute(s: LogicalVariableSubstitution): Term
+//  def substituteAll(s: PLogicalVariableSubstitution): PTerm
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -48,7 +48,7 @@ sealed case class OldTerm private[silAST](
   override def freeVariables = term.freeVariables
 
   override def programVariables = term.programVariables
-  def substitute(s: Substitution): OldTerm = new OldTerm(sl, term.substitute(s))
+  def substitute(s: LogicalVariableSubstitution): OldTerm = new OldTerm(sl, term.substitute(s))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -83,7 +83,7 @@ sealed case class DomainFunctionApplicationTerm private[silAST](
 
   override def programVariables = arguments.programVariables
 
-  def substitute(s: Substitution): DomainFunctionApplicationTerm =
+  def substitute(s: LogicalVariableSubstitution): DomainFunctionApplicationTerm =
     new DomainFunctionApplicationTerm(sl, function.substitute(s), arguments.substitute(s))
 }
 
@@ -115,7 +115,7 @@ sealed case class FunctionApplicationTerm private[silAST](
 
   override def programVariables = arguments.programVariables ++ receiver.programVariables
 
-  def substitute(s: Substitution): FunctionApplicationTerm =
+  def substitute(s: LogicalVariableSubstitution): FunctionApplicationTerm =
     new FunctionApplicationTerm(sl, receiver.substitute(s), function, arguments.substitute(s))
 }
 
@@ -139,7 +139,7 @@ sealed case class UnfoldingTerm private[silAST](
 
   override def programVariables = receiver.programVariables ++ term.programVariables
 
-  def substitute(s: Substitution): UnfoldingTerm =
+  def substitute(s: LogicalVariableSubstitution): UnfoldingTerm =
     new UnfoldingTerm(sl, receiver.substitute(s), predicate, term.substitute(s))
 }
 
@@ -165,7 +165,7 @@ sealed case class CastTerm protected[silAST](
 
   override def programVariables = operand1.programVariables
 
-  def substitute(s: Substitution): CastTerm =
+  def substitute(s: LogicalVariableSubstitution): CastTerm =
     new CastTerm(sl, operand1.substitute(s), newType.substitute(s))
 }
 
@@ -189,7 +189,7 @@ sealed case class FieldReadTerm protected[silAST](
 
   override def programVariables = location.programVariables
 
-  def substitute(s: Substitution): FieldReadTerm =
+  def substitute(s: LogicalVariableSubstitution): FieldReadTerm =
     new FieldReadTerm(sl, location.substitute(s), field)
 }
 
@@ -212,7 +212,7 @@ sealed case class PermTerm protected[silAST](
 
   override def programVariables = location.programVariables
 
-  def substitute(s: Substitution): PermTerm =
+  def substitute(s: LogicalVariableSubstitution): PermTerm =
     new PermTerm(sl, location.substitute(s), field)
 }
 
@@ -224,13 +224,13 @@ object fullPermissionTerm extends LiteralTerm(noLocation) with AtomicTerm {
   override val gSubTerms = Seq[GTerm]()
   override val dataType = permissionType
 
-  override def substitute(s: Substitution): LiteralTerm = this
+  override def substitute(s: LogicalVariableSubstitution): LiteralTerm = this
 
-  override def substitute(s: DSubstitution): LiteralTerm = this
+  override def substitute(s: DLogicalVariableSubstitution): LiteralTerm = this
 
-  override def substitute(s: PSubstitution): LiteralTerm = this
+  override def substitute(s: PLogicalVariableSubstitution): LiteralTerm = this
 
-  override def substitute(s: GSubstitution): LiteralTerm = this
+  override def substitute(s: GLogicalVariableSubstitution): LiteralTerm = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -266,7 +266,7 @@ sealed trait PTerm extends Term {
 
   final override lazy val freeVariables = Set[BoundVariable]()
 
-  def substitute(s: PSubstitution): PTerm
+  def substitute(s: PLogicalVariableSubstitution): PTerm
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -286,9 +286,9 @@ sealed case class ProgramVariableTerm protected[silAST](
 
   override def programVariables = Set(variable)
 
-  def substitute(s: Substitution): ProgramVariableTerm = this
+  def substitute(s: LogicalVariableSubstitution): ProgramVariableTerm = this
 
-  def substitute(s: PSubstitution): ProgramVariableTerm = this
+  def substitute(s: PLogicalVariableSubstitution): ProgramVariableTerm = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -303,8 +303,8 @@ final class PUnfoldingTerm private[silAST](
   require(receiver.dataType == referenceType)
 
   override val pSubTerms: Seq[PTerm] = List(receiver, term)
-  //  override def substitute(s: Substitution): UnfoldingTerm = new UnfoldingTerm(sl,receiver.substitute(s),predicate,term.substitute(s))
-  def substitute(s: PSubstitution): PUnfoldingTerm = new PUnfoldingTerm(sl, receiver.substitute(s), predicate, term.substitute(s))
+  //  override def substitute(s: LogicalVariableSubstitution): UnfoldingTerm = new UnfoldingTerm(sl,receiver.substitute(s),predicate,term.substitute(s))
+  def substitute(s: PLogicalVariableSubstitution): PUnfoldingTerm = new PUnfoldingTerm(sl, receiver.substitute(s), predicate, term.substitute(s))
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -318,9 +318,9 @@ final class PFunctionApplicationTerm private[silAST](
   extends FunctionApplicationTerm(sl, receiver, function, arguments)
   with PTerm {
   override val pSubTerms: Seq[PTerm] = List(receiver) ++ arguments
-  //  def substitute(s: Substitution): FunctionApplicationTerm =
+  //  def substitute(s: LogicalVariableSubstitution): FunctionApplicationTerm =
   //    new FunctionApplicationTerm(sl,receiver.substitute(s),function,arguments.substitute(s))
-  def substitute(s: PSubstitution): PFunctionApplicationTerm =
+  def substitute(s: PLogicalVariableSubstitution): PFunctionApplicationTerm =
     new PFunctionApplicationTerm(sl, receiver.substitute(s), function, arguments.substitute(s))
 }
 
@@ -338,9 +338,9 @@ sealed trait PDomainFunctionApplicationTerm
 
   protected def pArguments: PTermSequence
 
-  //  def substitute(s: Substitution): DomainFunctionApplicationTerm =
+  //  def substitute(s: LogicalVariableSubstitution): DomainFunctionApplicationTerm =
   //    new DomainFunctionApplicationTerm(sl,function,arguments.substitute(s))
-  def substitute(s: PSubstitution): PDomainFunctionApplicationTerm =
+  def substitute(s: PLogicalVariableSubstitution): PDomainFunctionApplicationTerm =
     new PDomainFunctionApplicationTermC(sl, function, arguments.substitute(s))
 }
 
@@ -371,7 +371,7 @@ final class PCastTerm private[silAST](
   with PTerm {
   override val pSubTerms: Seq[PTerm] = List(operand1)
 
-  def substitute(s: PSubstitution): PCastTerm =
+  def substitute(s: PLogicalVariableSubstitution): PCastTerm =
     new PCastTerm(sl, operand1.substitute(s), newType.substitute(s))
 }
 
@@ -392,7 +392,7 @@ final class PFieldReadTerm private[silAST](
   with PTerm {
   override val pSubTerms: Seq[PTerm] = List(location)
 
-  def substitute(s: PSubstitution): PFieldReadTerm =
+  def substitute(s: PLogicalVariableSubstitution): PFieldReadTerm =
     new PFieldReadTerm(sl, location.substitute(s), field)
 }
 
@@ -414,10 +414,10 @@ sealed trait DTerm extends Term {
 
   final override def programVariables = Set()
 
-  def substitute(s: DSubstitution): DTerm
+  def substitute(s: DLogicalVariableSubstitution): DTerm
 
-//  def substituteAll(s: PSubstitution): PTerm
-//  def substituteAll(s: GSubstitution): GTerm
+//  def substituteAll(s: PLogicalVariableSubstitution): PTerm
+//  def substituteAll(s: GLogicalVariableSubstitution): GTerm
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -436,13 +436,13 @@ sealed case class BoundVariableTerm protected[silAST](
 
   override def freeVariables = Set(variable)
 
-  def substitute(s: Substitution): Term =
+  def substitute(s: LogicalVariableSubstitution): Term =
     s.mapVariable(variable) match {
       case Some(t: DTerm) => t
       case _ => this
     }
 
-  def substitute(s: DSubstitution): DTerm =
+  def substitute(s: DLogicalVariableSubstitution): DTerm =
     s.mapVariable(variable) match {
       case Some(t: DTerm) => t
       case _ => this
@@ -458,7 +458,7 @@ sealed trait DDomainFunctionApplicationTerm
 
   override def arguments: DTermSequence = dArguments
 
-  def substitute(s: DSubstitution): DDomainFunctionApplicationTerm =
+  def substitute(s: DLogicalVariableSubstitution): DDomainFunctionApplicationTerm =
     new DDomainFunctionApplicationTermC(sl, function.substitute(s), arguments.substitute(s))
 }
 
@@ -492,7 +492,7 @@ sealed trait GTerm extends Term with DTerm with PTerm {
   protected override val dSubTerms = gSubTerms
   protected override val pSubTerms = gSubTerms
 
-  def substitute(s: GSubstitution): GTerm
+  def substitute(s: GLogicalVariableSubstitution): GTerm
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -501,13 +501,13 @@ sealed abstract case class LiteralTerm protected[silAST](sl: SourceLocation)
   extends ASTNode(sl) with Term
   with GTerm
   with AtomicTerm {
-  def substitute(s: Substitution): LiteralTerm = this
+  def substitute(s: LogicalVariableSubstitution): LiteralTerm = this
 
-  def substitute(s: DSubstitution): LiteralTerm = this
+  def substitute(s: DLogicalVariableSubstitution): LiteralTerm = this
 
-  def substitute(s: PSubstitution): LiteralTerm = this
+  def substitute(s: PLogicalVariableSubstitution): LiteralTerm = this
 
-  def substitute(s: GSubstitution): LiteralTerm = this
+  def substitute(s: GLogicalVariableSubstitution): LiteralTerm = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -540,6 +540,6 @@ final class GDomainFunctionApplicationTerm(
 
   override val dataType = function.signature.resultType
 
-  def substitute(s: GSubstitution): GDomainFunctionApplicationTerm =
+  def substitute(s: GLogicalVariableSubstitution): GDomainFunctionApplicationTerm =
     new GDomainFunctionApplicationTerm(sl, function.substitute(s), arguments.substitute(s))
 }

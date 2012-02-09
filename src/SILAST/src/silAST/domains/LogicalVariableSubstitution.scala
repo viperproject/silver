@@ -21,12 +21,12 @@ class TypeSubstitution private [silAST] (private[silAST] val types : Set[(TypeVa
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
- abstract class Substitution private [silAST](
+ abstract class LogicalVariableSubstitution private [silAST](
                                     types : Set[(TypeVariable,DataType)]
                                     ) extends TypeSubstitution(types)
 {
    type T <: Term
-   def +(other : Substitution)  : Substitution
+   def +(other : LogicalVariableSubstitution)  : LogicalVariableSubstitution
 
 //   private[silAST] def variables : Set[(BoundVariable,T)]
 
@@ -34,61 +34,61 @@ class TypeSubstitution private [silAST] (private[silAST] val types : Set[(TypeVa
    protected[silAST] val varMap : Map[BoundVariable,T]
 }
 
-private[silAST] class SubstitutionC[TT<:Term](
+private[silAST] class LogicalVariableSubstitutionC[TT<:Term](
                     types : Set[(TypeVariable,DataType)],
                     variables : Set[(BoundVariable,TT)]
-                    ) extends Substitution(types)
+                    ) extends LogicalVariableSubstitution(types)
 {
   override def toString = super.toString + varMap.mkString("(",",",")")
 
   override type T = TT
   require (variables.forall((x)=>variables.count((y)=>y._1==x._1)==1))
 
-  override def +(other : Substitution)  : Substitution =
-    new SubstitutionC[Term](types ++ other.types,(varMap ++ other.varMap).toSet)
+  override def +(other : LogicalVariableSubstitution)  : LogicalVariableSubstitution =
+    new LogicalVariableSubstitutionC[Term](types ++ other.types,(varMap ++ other.varMap).toSet)
 
   protected[silAST] override val varMap : Map[BoundVariable,TT] = variables.toMap
   def mapVariable(v : BoundVariable) : Option[TT] = varMap.get(v)
 }
 
-trait PSubstitution extends Substitution
+trait PLogicalVariableSubstitution extends LogicalVariableSubstitution
 {
   override type T <: PTerm
   def mapVariable(v : BoundVariable) : Option[T]
-  def +(other : PSubstitution)  : PSubstitution =
-    new PSubstitutionC(types ++ other.types,varMap.toSet ++ other.varMap.toSet)
+  def +(other : PLogicalVariableSubstitution)  : PLogicalVariableSubstitution =
+    new PLogicalVariableSubstitutionC(types ++ other.types,varMap.toSet ++ other.varMap.toSet)
 }
 
-private[silAST] class PSubstitutionC(
+private[silAST] class PLogicalVariableSubstitutionC(
     types : Set[(TypeVariable,DataType)],
     variables : Set[(BoundVariable,PTerm)]
-  ) extends SubstitutionC(types,variables) with PSubstitution
+  ) extends LogicalVariableSubstitutionC(types,variables) with PLogicalVariableSubstitution
 {
 
 }
 
-trait DSubstitution extends Substitution
+trait DLogicalVariableSubstitution extends LogicalVariableSubstitution
 {
   override type T <: DTerm
   def mapVariable(v : BoundVariable) : Option[T]
-  def +(other : DSubstitution)  : DSubstitution =
-    new DSubstitutionC(types ++ other.types,varMap.toSet ++ other.varMap.toSet)
+  def +(other : DLogicalVariableSubstitution)  : DLogicalVariableSubstitution =
+    new DLogicalVariableSubstitutionC(types ++ other.types,varMap.toSet ++ other.varMap.toSet)
 }
 
-private[silAST] class DSubstitutionC(
+private[silAST] class DLogicalVariableSubstitutionC(
                                       types : Set[(TypeVariable,DataType)],
                                       variables : Set[(BoundVariable,DTerm)]
-                                      ) extends SubstitutionC(types,variables) with DSubstitution
+                                      ) extends LogicalVariableSubstitutionC(types,variables) with DLogicalVariableSubstitution
 {
 }
 
-class GSubstitution private[silAST](
+class GLogicalVariableSubstitution private[silAST](
                                            types : Set[(TypeVariable,DataType)],
                                            variables : Set[(BoundVariable,GTerm)]
-                                           ) extends SubstitutionC[GTerm](types,variables)
-                                              with PSubstitution with DSubstitution
+                                           ) extends LogicalVariableSubstitutionC[GTerm](types,variables)
+                                              with PLogicalVariableSubstitution with DLogicalVariableSubstitution
 {
   override type T = GTerm
-  def +(other : GSubstitution)  : GSubstitution =
-    new GSubstitution(types ++ other.types,variables ++ other.varMap.toSet)
+  def +(other : GLogicalVariableSubstitution)  : GLogicalVariableSubstitution =
+    new GLogicalVariableSubstitution(types ++ other.types,variables ++ other.varMap.toSet)
 }
