@@ -187,7 +187,7 @@ object Main {
     e match {
       case OldExpression(_,_) => 0
       case TrueExpression() => 0
-      case FalseExpression(_) => 0
+      case FalseExpression() => 0
       case PermissionExpression(_,_, _, _) => 0
       case UnfoldingExpression(_, _, _) => 1
       case EqualityExpression(_, _, _) => 2
@@ -203,7 +203,7 @@ object Main {
     e match {
       case OldExpression(_,_) => 0
       case TrueExpression() => 0
-      case FalseExpression(_) => 0
+      case FalseExpression() => 0
       case PermissionExpression(_,_, _, _) => 0
       case UnfoldingExpression(_, _, _) => 1
       case EqualityExpression(_, _, _) => 2

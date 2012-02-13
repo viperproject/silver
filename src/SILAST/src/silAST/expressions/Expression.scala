@@ -627,7 +627,7 @@ final case class TrueExpression() extends Expression(noLocation) with GExpressio
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-final case class FalseExpression(sl: SourceLocation) extends Expression(sl)
+final case class FalseExpression() extends Expression(noLocation)
 with GExpression with AtomicExpression {
   override val toString = "false"
   override val subExpressions = List.empty
