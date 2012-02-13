@@ -218,7 +218,7 @@ sealed case class PermTerm protected[silAST](
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-object fullPermissionTerm extends LiteralTerm(noLocation) with AtomicTerm {
+case class FullPermissionTerm(override val sl:SourceLocation) extends LiteralTerm(sl) with AtomicTerm {
   override def toString: String = "write"
 
   override val gSubTerms = Seq[GTerm]()
@@ -235,7 +235,7 @@ object fullPermissionTerm extends LiteralTerm(noLocation) with AtomicTerm {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-object noPermissionTerm extends LiteralTerm(noLocation) with AtomicTerm {
+case class NoPermissionTerm(override val sl:SourceLocation) extends LiteralTerm(sl) with AtomicTerm {
   override def toString: String = "0"
 
   override val gSubTerms = Seq()
@@ -244,7 +244,7 @@ object noPermissionTerm extends LiteralTerm(noLocation) with AtomicTerm {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-object epsilonPermissionTerm extends LiteralTerm(noLocation) with AtomicTerm {
+case class EpsilonPermissionTerm(override val sl:SourceLocation) extends LiteralTerm(sl) with AtomicTerm {
   override def toString: String = "E"
 
   override val gSubTerms = Seq()

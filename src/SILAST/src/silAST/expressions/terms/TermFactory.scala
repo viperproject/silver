@@ -93,6 +93,27 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
+  def makeFullPermission(sl: SourceLocation): FullPermissionTerm = {
+    val result = new FullPermissionTerm(sl)
+    addTerm(result)
+    result
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  def makeNoPermission(sl: SourceLocation): NoPermissionTerm = {
+    val result = new NoPermissionTerm(sl)
+    addTerm(result)
+    result
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  def makeEpsilonPermission(sl: SourceLocation): EpsilonPermissionTerm = {
+    val result = new EpsilonPermissionTerm(sl)
+    addTerm(result)
+    result
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////
   def makePermissionAdditionTerm(sl: SourceLocation, t1: Term, t2: Term) =
     makeDomainFunctionApplicationTerm(sl, permissionAddition, TermSequence(t1, t2))
 
@@ -108,7 +129,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   def makePermissionIntegerMultiplicationTerm(sl: SourceLocation, t1: Term, i: Term) =
     makeDomainFunctionApplicationTerm(sl, permissionIntegerMultiplication, TermSequence(t1, i))
 
-  terms += fullPermissionTerm
-  terms += noPermissionTerm
-  terms += epsilonPermissionTerm
+//  terms += FullPermissionTerm
+//  terms += NoPermissionTerm
+//  terms += EpsilonPermissionTerm
 }
