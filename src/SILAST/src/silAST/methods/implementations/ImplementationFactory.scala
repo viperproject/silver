@@ -23,6 +23,7 @@ class ImplementationFactory private[silAST](
     require(startNode != None)
     require(endNode != None)
     for (bbf <- basicBlocks) bbf.compile()
+    cfg.compile()
 
     //    val cfg = new ControlFlowGraph(sl,for (bbf <- basicBlocks) yield bbf.basicBlock,startNode.basicBlock,endNode.basicBlock)
     //    new Implementation(sl,methodFactory.method,localVariables.toSeq,cfg)
@@ -97,7 +98,7 @@ class ImplementationFactory private[silAST](
 
   override protected[silAST] def domainPredicates = methodFactory.domainPredicates
 
-  protected[silAST] override def dataTypes = methodFactory.dataTypes union pDataTypes
+  override def dataTypes = methodFactory.dataTypes union pDataTypes
 
   protected[silAST] override def domainFactories = methodFactory.domainFactories
 

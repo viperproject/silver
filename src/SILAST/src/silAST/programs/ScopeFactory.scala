@@ -17,7 +17,7 @@ trait ScopeFactory extends NodeFactory with DataTypeFactory
 
   protected[silAST]          def functions  : Set[Function]  = parentFactory.get.functions
   protected[silAST]          def predicates : Set[Predicate] = parentFactory.get.predicates
-  protected[silAST] override def dataTypes  : Set[DataType]  = parentFactory.get.dataTypes union pDataTypes //TODO - maybe only when freeTypeVariables\ours=empty
+                    override def dataTypes  : Set[DataType]  = parentFactory.get.dataTypes union pDataTypes
 
   protected[silAST] def domainFunctions  : Set[DomainFunction]  = parentFactory.get.domainFunctions
   protected[silAST] def domainPredicates : Set[DomainPredicate] = parentFactory.get.domainPredicates	

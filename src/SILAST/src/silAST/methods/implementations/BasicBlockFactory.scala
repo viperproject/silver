@@ -161,7 +161,7 @@ class BasicBlockFactory private[silAST](
 
   val programVariableSequences = new HashSet[ProgramVariableSequence]
 
-  protected[silAST] override def dataTypes = implementationFactory.dataTypes union pDataTypes
+  override def dataTypes = implementationFactory.dataTypes union pDataTypes
 
   override def typeVariables = Set()
 

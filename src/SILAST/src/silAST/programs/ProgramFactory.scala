@@ -20,7 +20,7 @@ final class ProgramFactory(
     for (mf <- methodFactories) mf.compile()
     for (ff <- functionFactories) ff.compile()
 
-    new Program(sl, name, domains, fields, functions, predicates, (for (mf <- methodFactories) yield mf.method).toSet)
+    new Program(sl, name, domains, fields, functions, predicates, (for (mf <- methodFactories) yield mf.method).toSet, this)
   }
 
   //////////////////////////////////////////////////////////////////////////
@@ -108,7 +108,7 @@ final class ProgramFactory(
   pDataTypes += permissionType
   pDataTypes += referenceType
 */
-  protected[silAST] override def dataTypes : collection.Set[DataType]= 
+  override def dataTypes : collection.Set[DataType]=
     pDataTypes ++ 
     Set(integerType,permissionType,referenceType) ++ 
     (for (d <- domains) yield d.getType).toSet

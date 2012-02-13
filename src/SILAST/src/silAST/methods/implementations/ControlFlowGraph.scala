@@ -8,15 +8,22 @@ final class ControlFlowGraph private[silAST](
                                               sl: SourceLocation,
                                               private val implementationFactory : ImplementationFactory
                                               ) extends ASTNode(sl) {
+  def compile()
+  {
+    require(pStartNode!=None)
+    require(pEndNode!=None)
+
+  }
+
   //TODO: more consistency checks
   require(implementationFactory!=null)
 
   private val nodes = new ListBuffer[BasicBlock]
-  private val initialNodeFactory = new BasicBlockFactory(implementationFactory,noLocation,"$dummy")
-  private val initialNode = initialNodeFactory.basicBlock
+//  private val initialNodeFactory = new BasicBlockFactory(implementationFactory,noLocation,"$dummy")
+//  private val initialNode = initialNodeFactory.basicBlock
 
-  private var pStartNode = initialNode
-  private var pEndNode = initialNode
+  private var pStartNode :Option[BasicBlock] = None
+  private var pEndNode  :Option[BasicBlock] = None
 
   private[implementations] def addNode(bb: BasicBlock) = {
     require(!(nodes contains bb))
@@ -24,33 +31,19 @@ final class ControlFlowGraph private[silAST](
     nodes += bb
   }
 
-  private def eliminateInitialNodeIfNecessary() = {
-    if (
-      startNode != initialNode &&
-        endNode != initialNode &&
-        initialNode.statements.isEmpty &&
-        initialNode.successors.isEmpty &&
-        initialNode.predecessors.isEmpty
-    )
-      nodes.remove(0)
-
-  }
-
   private[implementations] def setStartNode(bb: BasicBlock) = {
     require(nodes contains bb)
-    pStartNode = bb
-    eliminateInitialNodeIfNecessary()
+    pStartNode = Some(bb)
   }
 
   private[implementations] def setEndNode(bb: BasicBlock) = {
     require(nodes contains bb)
-    pEndNode = bb
-    eliminateInitialNodeIfNecessary()
+    pEndNode = Some(bb)
   }
 
-  def startNode: BasicBlock = pStartNode
+  def startNode: BasicBlock = pStartNode match { case Some(n) => n case None => throw new Exception() }
 
-  def endNode: BasicBlock = pEndNode
+  def endNode: BasicBlock = pEndNode match { case Some(n) => n  case None => throw new Exception() }
 
   override def toString = nodes.mkString("\n")
 }
