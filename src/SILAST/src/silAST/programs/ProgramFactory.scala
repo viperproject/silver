@@ -8,7 +8,7 @@ import silAST.types._
 import scala.collection.mutable.HashSet
 
 final class ProgramFactory(
-                            val sl: SourceLocation,
+                            val sourceLocation : SourceLocation,
                             val name: String
                             ) extends NodeFactory with ScopeFactory //DataTypeFactory
 {
@@ -20,40 +20,40 @@ final class ProgramFactory(
     for (mf <- methodFactories) mf.compile()
     for (ff <- functionFactories) ff.compile()
 
-    new Program(sl, name, domains, fields, functions, predicates, (for (mf <- methodFactories) yield mf.method).toSet, this)
+    new Program(sourceLocation, name, domains, fields, functions, predicates, (for (mf <- methodFactories) yield mf.method).toSet, this)
   }
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def getDomainFactory(name: String,typeVariableNames :Seq[(SourceLocation,String)])(implicit sl: SourceLocation): DomainFactory = {
+  def getDomainFactory(name: String,typeVariableNames :Seq[(SourceLocation,String)])(implicit sourceLocation : SourceLocation): DomainFactory = {
     require(domainFactories.forall(_.name != name))
-    val result = new DomainFactory(this, sl, name,typeVariableNames)
+    val result = new DomainFactory(this, sourceLocation, name,typeVariableNames)
     domainFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getMethodFactory(sl: SourceLocation, name: String): MethodFactory = {
+  def getMethodFactory(sourceLocation : SourceLocation, name: String): MethodFactory = {
     require(methodFactories.forall(_.name != name))
-    val result = new MethodFactory(this, sl, name)
+    val result = new MethodFactory(this, sourceLocation, name)
     methodFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getPredicateFactory(sl: SourceLocation, name: String): PredicateFactory = {
+  def getPredicateFactory(sourceLocation : SourceLocation, name: String): PredicateFactory = {
     require(predicateFactories.forall(_.name != name))
-    val result = new PredicateFactory(this, sl, name)
+    val result = new PredicateFactory(this, sourceLocation, name)
     predicateFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getFunctionFactory(sl: SourceLocation, name: String, params: Seq[(SourceLocation, String, DataType)], resultType: DataType): FunctionFactory = {
+  def getFunctionFactory(sourceLocation : SourceLocation, name: String, params: Seq[(SourceLocation, String, DataType)], resultType: DataType): FunctionFactory = {
     require(functionFactories.forall(_.name != name))
     require(params.forall(dataTypes contains _._3))
     require(params.forall((x) => params.forall((y) => x == y || x._2 != y._2)))
-    val result = new FunctionFactory(this, sl, name, params, resultType)
+    val result = new FunctionFactory(this, sourceLocation, name, params, resultType)
     functionFactories += result
     result
   }
@@ -71,16 +71,17 @@ final class ProgramFactory(
   //@Symbol construction
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def defineDomainField(sl: SourceLocation, name: String, dataType: NonReferenceDataType): Field = {
+  def defineField(sourceLocation : SourceLocation, name: String, dataType: DataType): Field = {
     require(fields.forall(_.name != name))
     require(dataTypes contains dataType)
-    defineField(new NonReferenceField(sl, name, dataType))
-  }
-
-  //////////////////////////////////////////////////////////////////////////
-  def defineReferenceField(sl: SourceLocation, name: String): Field = {
-    require(fields.forall(_.name != name))
-    defineField(new ReferenceField(sl, name))
+    require(dataType.freeTypeVariables.isEmpty)
+    defineField(
+      dataType match{
+        case d : NonReferenceDataType => new NonReferenceField(sourceLocation, name, d)
+        case r : ReferenceDataType    => new ReferenceField(sourceLocation,name)
+        case _ => throw new Exception("Tried to create field of non groud type")
+      }
+    )
   }
 
   //////////////////////////////////////////////////////////////////////////
@@ -116,9 +117,7 @@ final class ProgramFactory(
   def emptyDTSequence = new DataTypeSequence(List.empty[DataType])
   private val nullSig = new DomainFunctionSignature(noLocation, emptyDTSequence, referenceType)
 
-  override val nullFunction = new DomainFunction(noLocation, "null", nullSig)
-
-  private[silAST] val pDomains : HashSet[Domain] = HashSet(integerDomain,permissionDomain)
+  private[silAST] val pDomains : HashSet[Domain] = HashSet(integerDomain,permissionDomain,referenceDomain)
   protected[silAST] def domains: collection.Set[Domain] =
     pDomains ++
       ( for (df <- domainFactories) yield df.domain).toSet ++
@@ -135,14 +134,6 @@ final class ProgramFactory(
     (for (p <- (for (d <- domains) yield d.predicates).flatten) yield p)
 
   override def parentFactory = None
-/*
-  dataTypes += referenceType
-  dataTypes += integerType
-  dataTypes += permissionType
-  */
-
-//  domains += integerDomain
-//  domains += permissionDomain
 
   override val typeVariables = collection.Set[TypeVariable]()
   override val programVariables = collection.Set[ProgramVariable]()

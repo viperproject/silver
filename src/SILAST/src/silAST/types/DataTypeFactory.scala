@@ -9,23 +9,23 @@ import silAST.domains.DomainFactory
 
 trait DataTypeFactory extends NodeFactory {
 
-  def makeNonReferenceDataType(sl: SourceLocation, df: DomainFactory,ta : DataTypeSequence): NonReferenceDataType = {
+  def makeNonReferenceDataType(sourceLocation : SourceLocation, df: DomainFactory,ta : DataTypeSequence): NonReferenceDataType = {
     require(domainFactories contains df)
     require(ta.forall(dataTypes contains _))
     require(df.domain.typeParameters.length == ta.length)
     val domain = df.domain.getInstance(ta)
-    val result = new NonReferenceDataType(sl, domain)
+    val result = new NonReferenceDataType(sourceLocation, domain)
     pDataTypes += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def makeVariableType(sl: SourceLocation, variable : TypeVariable): VariableType =
+  def makeVariableType(sourceLocation : SourceLocation, variable : TypeVariable): VariableType =
   {
     require(typeVariables contains  variable)
 
-    val result = new VariableType(sl,variable)
+    val result = new VariableType(sourceLocation,variable)
     pDataTypes += result
     result
   }

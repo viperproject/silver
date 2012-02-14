@@ -1,14 +1,16 @@
 package silAST.types
 
 import silAST.ASTNode
-import silAST.source.noLocation
 import silAST.domains.TypeSubstitution
+import silAST.source.{SourceLocation, noLocation}
 
 sealed class DataTypeSequence private[silAST](
                                                val dataTypes: Seq[DataType]
-                                               ) extends ASTNode(noLocation) with Seq[DataType]
+                                               ) extends ASTNode with Seq[DataType]
 {
   def freeTypeVariables = (for (t<-dataTypes) yield t.freeTypeVariables).flatten
+
+  override val sourceLocation : SourceLocation = if (dataTypes.isEmpty) noLocation else dataTypes.head.sourceLocation
 
   def isCompatible(other: DataTypeSequence): Boolean =
     dataTypes.length == other.length &&

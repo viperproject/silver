@@ -5,12 +5,12 @@ import silAST.expressions.Expression
 import silAST.source.SourceLocation
 
 final class CFGEdge private[silAST](
-                                     sl: SourceLocation,
+                                     val sourceLocation : SourceLocation,
                                      val source: BasicBlock,
                                      val target: BasicBlock,
                                      val condition: Expression,
                                      val isBackEdge: Boolean
-                                     ) extends ASTNode(sl) {
+                                     ) extends ASTNode {
   require(source.cfg == target.cfg)
   source.addSuccessor(this)
   target.addPredecessor(this)

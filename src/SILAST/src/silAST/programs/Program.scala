@@ -9,7 +9,7 @@ import silAST.methods.Method
 
 
 final class Program private[silAST](
-                                     sl: SourceLocation,
+                                     val sourceLocation : SourceLocation,
                                      val name: String,
                                      val domains: Set[Domain],
                                      val fields: Set[Field],
@@ -17,7 +17,7 @@ final class Program private[silAST](
                                      val predicates: Set[Predicate],
                                      val methods: Set[Method],
                                      val factory : ProgramFactory
-                                     ) extends ASTNode(sl) {
+                                     ) extends ASTNode {
   override def toString =
     "program " + name + "\n" +
       domains.mkString("", "\n", "\n") +
@@ -29,5 +29,5 @@ final class Program private[silAST](
 
 object Program {
 
-  def getFactory(sl: SourceLocation, name: String): ProgramFactory = new ProgramFactory(sl, name)
+  def getFactory(sourceLocation : SourceLocation, name: String): ProgramFactory = new ProgramFactory(sourceLocation, name)
 }

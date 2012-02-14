@@ -7,12 +7,12 @@ import silAST.types._
 
 final class DomainFactory private[silAST](
                                            val programFactory: ProgramFactory,
-                                           val sl: SourceLocation,
+                                           val sourceLocation : SourceLocation,
                                            val name: String,
                                            typeVariableNames :Seq[(SourceLocation,String)]
                                            ) extends NodeFactory with DExpressionFactory with DataTypeFactory 
 {
-  val domain = new DomainC(sl,name,typeVariableNames)
+  val domain = new DomainC(sourceLocation,name,typeVariableNames)
 
   private[silAST] def getInstance(ta: DataTypeSequence) : Domain =
     domain.getInstance(ta)
@@ -22,29 +22,29 @@ final class DomainFactory private[silAST](
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def defineDomainFunction(sl: SourceLocation, name: String, p: DataTypeSequence, r: DataType) = {
+  def defineDomainFunction(sourceLocation : SourceLocation, name: String, p: DataTypeSequence, r: DataType) = {
     require(p.forall(dataTypes contains _))
     require(dataTypes contains r)
     require(domainFunctions.forall(_.name != name))
-    val result = new DomainFunction(sl, name, new DomainFunctionSignature(noLocation,p,r))
+    val result = new DomainFunctionC(sourceLocation, name, new DomainFunctionSignature(noLocation,p,r),domain)
     domain.pFunctions += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def defineDomainPredicate(sl: SourceLocation, name: String, p: DataTypeSequence) = {
+  def defineDomainPredicate(sourceLocation : SourceLocation, name: String, p: DataTypeSequence) = {
     require(domainPredicates.forall(_.name != name))
     require(p.forall(dataTypes contains _))
-    val result = new DomainPredicate(sl, name, new DomainPredicateSignature(noLocation,p))
+    val result = new DomainPredicateC(sourceLocation, name, new DomainPredicateSignature(noLocation,p),domain)
     domain.pPredicates += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////
-  def addDomainAxiom(sl: SourceLocation, name: String, e: DExpression): DomainAxiom = {
+  def addDomainAxiom(sourceLocation : SourceLocation, name: String, e: DExpression): DomainAxiom = {
     require(domain.axioms.forall(_.name != name))
-    val result = new DomainAxiom(sl, name, e)
+    val result = new DomainAxiom(sourceLocation, name, e)
     domain.pAxioms += result
     result
   }

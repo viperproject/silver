@@ -5,9 +5,9 @@ import scala.collection.Seq
 import silAST.source.SourceLocation
 
 final class ProgramVariableSequence private[silAST](
-                                                     sl: SourceLocation,
+                                                     val sourceLocation : SourceLocation,
                                                      val variables: Seq[ProgramVariable]
-                                                     ) extends ASTNode(sl) with Seq[ProgramVariable] {
+                                                     ) extends ASTNode with Seq[ProgramVariable] {
   override def toString() = "(" + variables.mkString(",") + ")"
 
   def toStringWithTypes = "(" + (for (v <- variables) yield (v.name + " : " + v.dataType.toString)).mkString(",") + ")"

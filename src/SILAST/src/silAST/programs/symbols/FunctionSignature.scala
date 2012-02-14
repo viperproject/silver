@@ -9,10 +9,10 @@ import silAST.expressions.Expression
 import silAST.source.{noLocation, SourceLocation}
 
 final class FunctionSignature private[silAST](
-                                               sl: SourceLocation,
+                                               val sourceLocation : SourceLocation,
                                                paParameters : Seq[(SourceLocation, String, DataType)],
                                                resultType : DataType
-                                               ) extends ASTNode(sl) {
+                                               ) extends ASTNode{
 
   //Check no duplicate names
   require (paParameters.forall(_._2 != "result"))

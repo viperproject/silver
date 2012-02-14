@@ -13,8 +13,6 @@ abstract class SymbolFactory[T] private[silAST](
 
   val thisVar = new ProgramVariable(noLocation, "this", referenceType)
 
-  override def nullFunction = programFactory.nullFunction
-
   protected[silAST] override def programVariables = Set(thisVar)
 
   protected[silAST] override def fields = programFactory.fields

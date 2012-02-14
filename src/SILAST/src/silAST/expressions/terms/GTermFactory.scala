@@ -9,15 +9,15 @@ import silAST.programs.NodeFactory
 
 protected[silAST] trait GTermFactory extends NodeFactory {
   /////////////////////////////////////////////////////////////////////////
-  def makeIntegerLiteralTerm(sl: SourceLocation, v: BigInt): IntegerLiteralTerm = {
-    addTerm(new IntegerLiteralTerm(sl, v))
+  def makeIntegerLiteralTerm(sourceLocation : SourceLocation, v: BigInt): IntegerLiteralTerm = {
+    addTerm(new IntegerLiteralTerm(sourceLocation, v))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeGDomainFunctionApplicationTerm(sl: SourceLocation, f: DomainFunction, a: GTermSequence): GDomainFunctionApplicationTerm = {
+  def makeGDomainFunctionApplicationTerm(sourceLocation : SourceLocation, f: DomainFunction, a: GTermSequence): GDomainFunctionApplicationTerm = {
     require(a.forall(terms contains _))
     require(domainFunctions contains f)
-    addTerm(new GDomainFunctionApplicationTerm(sl, f, a))
+    addTerm(new GDomainFunctionApplicationTerm(sourceLocation, f, a))
   }
 
 

@@ -15,30 +15,30 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
     name!="this"
 
   /////////////////////////////////////////////////////////////////////////
-  def makeBoundVariable(sl: SourceLocation, name: String, dataType: DataType): BoundVariable = {
+  def makeBoundVariable(sourceLocation : SourceLocation, name: String, dataType: DataType): BoundVariable = {
     require(dataTypes contains dataType)
     require(validBoundVariableName(name))
-    val result: BoundVariable = new BoundVariable(sl, name, dataType)
+    val result: BoundVariable = new BoundVariable(sourceLocation, name, dataType)
     boundVariables += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeBoundVariableTerm(sl: SourceLocation, v: BoundVariable): BoundVariableTerm = {
+  def makeBoundVariableTerm(sourceLocation : SourceLocation, v: BoundVariable): BoundVariableTerm = {
     require(boundVariables contains v)
-    addTerm(new BoundVariableTerm(sl, v))
+    addTerm(new BoundVariableTerm(sourceLocation, v))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeDDomainFunctionApplicationTerm(sl: SourceLocation, f: DomainFunction, a: DTermSequence): DDomainFunctionApplicationTerm = {
+  def makeDDomainFunctionApplicationTerm(sourceLocation : SourceLocation, f: DomainFunction, a: DTermSequence): DDomainFunctionApplicationTerm = {
     require(a != null)
     require(a.forall(_ != null))
     require(a.forall(terms contains _))
     require(domainFunctions contains f)
 
     a match {
-      case a: GTermSequence => makeGDomainFunctionApplicationTerm(sl, f, a)
-      case _ => addTerm(new DDomainFunctionApplicationTermC(sl, f, a))
+      case a: GTermSequence => makeGDomainFunctionApplicationTerm(sourceLocation, f, a)
+      case _ => addTerm(new DDomainFunctionApplicationTermC(sourceLocation, f, a))
     }
   }
 

@@ -2,13 +2,14 @@ package silAST.expressions.util
 
 import silAST.ASTNode
 import silAST.expressions.{GExpression, DExpression, PExpression, Expression}
-import silAST.source.noLocation
+import silAST.source.{SourceLocation, noLocation}
 
 /////////////////////////////////////////////////////////////////
 sealed class ExpressionSequence private[silAST](
-                                                 //                                                 val sl: SourceLocation,
                                                  val args: Seq[Expression]
-                                                 ) extends ASTNode(if (args.isEmpty) noLocation else args.head.sourceLocation) with Seq[Expression] {
+                                                 ) extends ASTNode with Seq[Expression] {
+
+  override val sourceLocation : SourceLocation = (if (args.isEmpty) noLocation else args.head.sourceLocation)
 
   override def apply(idx: Int) = args(idx)
 
@@ -31,7 +32,7 @@ sealed trait PExpressionSequence extends ExpressionSequence with Seq[PExpression
 
 /////////////////////////////////////////////////////////////////
 private final class PExpressionSequenceC private[silAST](
-                                                          //                                                          sl: SourceLocation,
+                                                          //                                                          sourceLocation : SourceLocation,
                                                           args: Seq[PExpression]
                                                           ) extends ExpressionSequence(args) with PExpressionSequence {
   override val pArgs = args
@@ -51,7 +52,7 @@ sealed trait DExpressionSequence extends ExpressionSequence with Seq[DExpression
 
 /////////////////////////////////////////////////////////////////
 private final class DExpressionSequenceC private[silAST](
-                                                          //                                                          sl: SourceLocation,
+                                                          //                                                          sourceLocation : SourceLocation,
                                                           args: Seq[DExpression]
                                                           ) extends ExpressionSequence(args) with DExpressionSequence {
   override val dArgs = args
@@ -59,7 +60,7 @@ private final class DExpressionSequenceC private[silAST](
 
 /////////////////////////////////////////////////////////////////
 final class GExpressionSequence private[silAST](
-                                                 //                                                 sl: SourceLocation,
+                                                 //                                                 sourceLocation : SourceLocation,
                                                  override val args: Seq[GExpression]
                                                  ) extends ExpressionSequence(args) with PExpressionSequence with DExpressionSequence with Seq[GExpression] {
   override val pArgs = args

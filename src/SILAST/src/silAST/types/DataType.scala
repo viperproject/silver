@@ -6,35 +6,33 @@ import silAST.domains.{TypeSubstitution, Domain}
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-sealed abstract class DataType(sl:SourceLocation) extends ASTNode(sl)
+sealed abstract class DataType extends ASTNode
 {
   def isCompatible(other : DataType) : Boolean
 
   def substitute(s : TypeSubstitution) : DataType = this
   
   def freeTypeVariables : collection.Set[TypeVariable] = Set()
-}
 
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
-object referenceType extends DataType(noLocation)
-{
-  override val toString = "ref"
-  def isCompatible(other : DataType) = other == referenceType
+  def domain : Domain
 }
 
 
+
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-final class TypeVariable private[silAST](sl:SourceLocation, val name : String)
-  extends ASTNode(sl)
+final class TypeVariable private[silAST](val sourceLocation : SourceLocation, val name : String, val domain : Domain)
+  extends ASTNode
 {
   override val toString = name
 }
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-final case class VariableType(sl:SourceLocation, variable : TypeVariable) extends DataType(sl)
+final case class VariableType(
+                               sourceLocation:SourceLocation,
+                               variable : TypeVariable
+                             ) extends DataType
 {
   override val toString = variable.name
   
@@ -43,16 +41,20 @@ final case class VariableType(sl:SourceLocation, variable : TypeVariable) extend
 
   override def substitute(s : TypeSubstitution) = s.mapType(variable,this)
   override def freeTypeVariables = Set(variable)
+
+  override val domain = variable.domain
 }
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 case class NonReferenceDataType private[silAST](
-                                                 sl: SourceLocation,
+                                                 sourceLocation : SourceLocation,
                                                  domain: Domain
                                                  )
-  extends DataType(sl)
+  extends DataType
 {
+  require (domain ne  referenceDomain)
+
   override def freeTypeVariables = domain.freeTypeVariables
 
   override val toString = domain.fullName
@@ -69,4 +71,23 @@ case class NonReferenceDataType private[silAST](
     else
       new NonReferenceDataType(s.sourceLocation, domain.substitute(s))
   }
+}
+
+/////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+case class ReferenceDataType private[silAST] () extends DataType
+{
+  override val sourceLocation = noLocation
+  val domain = referenceDomain
+  override def freeTypeVariables = domain.freeTypeVariables
+
+  override val toString = domain.fullName
+
+  def isCompatible(other : DataType) =
+    other match{
+      case ReferenceDataType() => true
+      case _ => false
+    }
+
+  override def substitute(s:TypeSubstitution) =  this
 }

@@ -5,10 +5,10 @@ import silAST.types.DataType
 import silAST.source.SourceLocation
 
 sealed class BoundVariable private[silAST](
-                                            sl: SourceLocation,
+                                            val sourceLocation : SourceLocation,
                                             val name: String,
                                             val dataType: DataType
-                                            ) extends ASTNode(sl) {
+                                            ) extends ASTNode {
 
   override def toString: String = name
 }

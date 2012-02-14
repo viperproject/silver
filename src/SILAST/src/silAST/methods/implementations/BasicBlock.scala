@@ -8,9 +8,9 @@ import silAST.programs.symbols.ProgramVariable
 import silAST.expressions.ExpressionFactory
 
 final class BasicBlock private[silAST](
-                                        sl: SourceLocation,
+                                        val sourceLocation: SourceLocation,
                                         val label: String
-                                        ) extends ASTNode(sl) {
+                                        ) extends ASTNode {
   private[implementations] def addPredecessor(edge: CFGEdge) {
     require(edge.target == this)
     pPredecessors += edge

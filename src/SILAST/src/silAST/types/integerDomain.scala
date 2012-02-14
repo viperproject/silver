@@ -10,10 +10,11 @@ import silAST.source.noLocation
 ///////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////
-object integerDomain extends Domain(noLocation)
+object integerDomain extends Domain
 {
   override def name = "Integer"
   override def fullName : String = name
+  override val sourceLocation = noLocation
 
   override def functions = Set[DomainFunction](integerAddition,integerSubtraction,integerMultiplication,integerDivision,integerModulo,integerNegation)
   override def predicates = Set(integerEQ,integerNE,integerLE,integerLT,integerGE,integerGT)
@@ -26,14 +27,14 @@ object integerDomain extends Domain(noLocation)
 
 object integerType extends NonReferenceDataType(noLocation,integerDomain)
 
-
 ///////////////////////////////////////////////////////////////////////////
-object integerAddition extends DomainFunction(
-  noLocation,
-  "+",
-  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
-)
+object integerAddition extends DomainFunction
 {
+  override lazy val sourceLocation = noLocation
+  override lazy val name = "+"
+  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==2)
@@ -44,12 +45,13 @@ object integerAddition extends DomainFunction(
 }
 
 ///////////////////////////////////////////////////////////////////////////
-object integerSubtraction extends DomainFunction(
-  noLocation,
-  "-",
-  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
-)
+object integerSubtraction extends DomainFunction
 {
+  override lazy val sourceLocation = noLocation
+  override lazy val name = "-"
+  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==2)
@@ -59,12 +61,13 @@ object integerSubtraction extends DomainFunction(
 }
 
 ///////////////////////////////////////////////////////////////////////////
-object integerMultiplication extends DomainFunction(
-  noLocation,
-  "*",
-  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
-)
+object integerMultiplication extends DomainFunction
 {
+  override lazy val sourceLocation = noLocation
+  override lazy val name = "*"
+  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==2)
@@ -74,12 +77,13 @@ object integerMultiplication extends DomainFunction(
 }
 
 ///////////////////////////////////////////////////////////////////////////
-object integerDivision extends DomainFunction(
-  noLocation,
-  "/",
-  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
-)
+object integerDivision extends DomainFunction
 {
+  override lazy val sourceLocation = noLocation
+  override lazy val name = "/"
+  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==2)
@@ -89,12 +93,13 @@ object integerDivision extends DomainFunction(
 }
 
 ///////////////////////////////////////////////////////////////////////////
-object integerModulo extends DomainFunction(
-  noLocation,
-  "%",
-  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
-)
+object integerModulo extends DomainFunction
 {
+  override lazy val sourceLocation = noLocation
+  override lazy val name = "%"
+  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(integerType,integerType),integerType)
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==2)
@@ -104,12 +109,13 @@ object integerModulo extends DomainFunction(
 }
 
 ///////////////////////////////////////////////////////////////////////////
-object integerNegation extends DomainFunction(
-  noLocation,
-  "-",
-  new DomainFunctionSignature(noLocation,DataTypeSequence(integerType),integerType)
-)
+object integerNegation extends DomainFunction
 {
+  override lazy val sourceLocation = noLocation
+  override lazy val name = "-"
+  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(integerType),integerType)
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==1)
@@ -119,27 +125,30 @@ object integerNegation extends DomainFunction(
 }
 
 ///////////////////////////////////////////////////////////////////////////
-object integerLE extends DomainPredicate(
-  noLocation,
-  "<=",
-  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
-)
+object integerLE extends DomainPredicate
 {
+  override val sourceLocation = noLocation
+  override val name = "<="
+  override val signature = new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==2)
     ts(0).toString + "<=" + ts(1).toString
   }
+
   override def substitute(ts:TypeSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
-object integerLT extends DomainPredicate(
-  noLocation,
-  "<",
-  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
-)
+object integerLT extends DomainPredicate
 {
+  override val sourceLocation = noLocation
+  override val name = "<"
+  override val signature = new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==2)
@@ -149,12 +158,13 @@ object integerLT extends DomainPredicate(
 }
 
 ///////////////////////////////////////////////////////////////////////////
-object integerGE extends DomainPredicate(
-  noLocation,
-  ">=",
-  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
-)
+object integerGE extends DomainPredicate
 {
+  override val sourceLocation = noLocation
+  override val name = ">="
+  override val signature = new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==2)
@@ -164,12 +174,13 @@ object integerGE extends DomainPredicate(
 }
 
 ///////////////////////////////////////////////////////////////////////////
-object integerGT extends DomainPredicate(
-  noLocation,
-  ">",
-  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
-)
+object integerGT extends DomainPredicate
 {
+  override val sourceLocation = noLocation
+  override val name = ">"
+  override val signature = new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==2)
@@ -179,12 +190,13 @@ object integerGT extends DomainPredicate(
 }
 
 ///////////////////////////////////////////////////////////////////////////
-object integerEQ extends DomainPredicate(
-  noLocation,
-  "==",
-  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
-)
+object integerEQ extends DomainPredicate
 {
+  override val sourceLocation = noLocation
+  override val name = "=="
+  override val signature = new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==2)
@@ -194,12 +206,13 @@ object integerEQ extends DomainPredicate(
 }
 
 ///////////////////////////////////////////////////////////////////////////
-object integerNE extends DomainPredicate(
-  noLocation,
-  "!=",
-  new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
-)
+object integerNE extends DomainPredicate
 {
+  override val sourceLocation = noLocation
+  override val name = "!="
+  override val signature = new DomainPredicateSignature(noLocation,DataTypeSequence(integerType,integerType))
+  override lazy val domain = integerDomain
+
   override def toString(ts : TermSequence) =
   {
     require(ts.length==2)

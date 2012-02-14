@@ -3,14 +3,12 @@ package silAST.domains
 import silAST.ASTNode
 import collection.Set
 import collection.mutable.HashSet
-import silAST.source.SourceLocation
 import collection.immutable.HashMap
 import silAST.types._
+import silAST.source.{noLocation, SourceLocation}
 
 
-abstract class Domain private[silAST](
-                                    sl: SourceLocation
-                                    ) extends ASTNode(sl)
+abstract class Domain private[silAST] extends ASTNode
 {
   override lazy val toString = "domain " + name +
     "{\n" +
@@ -26,7 +24,7 @@ abstract class Domain private[silAST](
   def predicates: Set[DomainPredicate]
   def axioms: Set[DomainAxiom]
 
-  def getType : NonReferenceDataType
+  def getType : DataType
 
   def freeTypeVariables: Set[TypeVariable]
   def isCompatible(other : Domain) : Boolean
@@ -36,17 +34,17 @@ abstract class Domain private[silAST](
 
 ////////////////////////////////////////////////////////////////////////
 private[silAST] class DomainC(
-          sl: SourceLocation,
+          val sourceLocation : SourceLocation,
           val name: String,
           typeVariableNames : Seq[(SourceLocation, String)]
-    ) extends Domain(sl)
+    ) extends Domain
 {
   //No duplicate type variable name
   require(typeVariableNames.forall((s)=>typeVariableNames.count(_._2==s._2)==1))
 
   override def fullName : String =
     name + (if (typeParameters.length==0) "" else typeParameters.mkString("[",",","]"))
-  val typeParameters : Seq[TypeVariable] = for (n <- typeVariableNames) yield new TypeVariable(n._1,n._2)
+  val typeParameters : Seq[TypeVariable] = for (n <- typeVariableNames) yield new TypeVariable(n._1,n._2,this)
   val freeTypeVariables = typeParameters.toSet
 
   def functions: Set[DomainFunction] = pFunctions
@@ -72,21 +70,21 @@ private[silAST] class DomainC(
   //Maybe relax a bit
   def isCompatible(other:Domain) : Boolean = other==this
 
-  def getType : NonReferenceDataType = new NonReferenceDataType(sl,this)
+  def getType : NonReferenceDataType = new NonReferenceDataType(sourceLocation,this)
 }
 
 
 private[silAST] final class DomainInstance(
-  sl : SourceLocation,
+  val sourceLocation : SourceLocation,
   val original : DomainC,
   val typeArguments:DataTypeSequence  )
-  extends Domain(sl)
+  extends Domain
 {
   protected[silAST] def typeHeaderString : String = ""
 
   override def fullName : String = name
   val name : String = original.name + typeArguments.toString
-  val substitution = new TypeSubstitution(original.typeParameters.zip(typeArguments).toSet)
+  val substitution = new TypeSubstitutionC(original.typeParameters.zip(typeArguments).toSet, noLocation, this)
 
   val getType : NonReferenceDataType = new NonReferenceDataType(sourceLocation,this)
 

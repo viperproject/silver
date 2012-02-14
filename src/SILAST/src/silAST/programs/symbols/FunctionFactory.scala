@@ -8,7 +8,7 @@ import silAST.expressions.Expression
 
 class FunctionFactory private[silAST](
                                        private val programFactory: ProgramFactory,
-                                       val sl: SourceLocation,
+                                       val sourceLocation : SourceLocation,
                                        val name: String,
                                        pParameters: Seq[(SourceLocation, String, DataType)],
                                        resultType : DataType
@@ -45,7 +45,7 @@ class FunctionFactory private[silAST](
 
   protected[silAST] override def programVariables = Set(thisVar, resultVar) ++ pFunction.pSignature.pParameters
 
-  private[silAST] val pFunction = new Function(sl, name,pParameters, resultType)
+  private[silAST] val pFunction = new Function(sourceLocation, name,pParameters, resultType)
   val resultVar = pFunction.pSignature.result
 
   override def typeVariables = Set()

@@ -4,23 +4,25 @@ import silAST.ASTNode
 import silAST.source.SourceLocation
 import silAST.types.{referenceType, DataType, NonReferenceDataType}
 
-sealed abstract class Field private[silAST](
-                                             sl: SourceLocation,
-                                             val name: String,
-                                             val dataType: DataType
-                                             ) extends ASTNode(sl){
+sealed abstract class Field private[silAST] extends ASTNode{
+  def name: String
+  def dataType: DataType
+
   override def toString: String = "field " + name + " : " + dataType.toString
 }
 
 final case class ReferenceField private[silAST](
-                                                 sl: SourceLocation,
-                                                 override val name: String
-                                                 ) extends Field(sl, name, referenceType) {
+                                                 sourceLocation : SourceLocation,
+                                                 name: String
+                                                 ) extends Field
+{
+  override val dataType = referenceType
 }
 
 final case class NonReferenceField private[silAST](
-                                                    sl: SourceLocation,
-                                                    override val name: String,
-                                                    override val dataType: NonReferenceDataType
-                                                    ) extends Field(sl, name, dataType) {
+                                                    sourceLocation : SourceLocation,
+                                                    name: String,
+                                                    dataType: NonReferenceDataType
+                                                    ) extends Field
+{
 }

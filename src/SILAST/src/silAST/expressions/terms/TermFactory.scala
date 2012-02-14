@@ -9,127 +9,123 @@ import silAST.types._
 
 protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory {
   /////////////////////////////////////////////////////////////////////////
-  def makeFunctionApplicationTerm(sl: SourceLocation, r: Term, ff: FunctionFactory, a: TermSequence): FunctionApplicationTerm = {
+  def makeFunctionApplicationTerm(sourceLocation : SourceLocation, r: Term, ff: FunctionFactory, a: TermSequence): FunctionApplicationTerm = {
     require(terms contains r)
     require(functions contains ff.pFunction)
     require(a.forall(terms contains _))
 
     (r, a) match {
-      case (r: PTerm, a: PTermSequence) => makePFunctionApplicationTerm(sl, r, ff, a)
-      case _ => addTerm(new FunctionApplicationTerm(sl, r, ff.pFunction, a))
+      case (r: PTerm, a: PTermSequence) => makePFunctionApplicationTerm(sourceLocation, r, ff, a)
+      case _ => addTerm(new FunctionApplicationTerm(sourceLocation, r, ff.pFunction, a))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeUnfoldingTerm(sl: SourceLocation, r: Term, p: PredicateFactory, t: Term): UnfoldingTerm = {
+  def makeUnfoldingTerm(sourceLocation : SourceLocation, r: Term, p: PredicateFactory, t: Term): UnfoldingTerm = {
     require(predicates contains p.pPredicate)
     require(terms contains r)
     require(terms contains t)
 
     (r, t) match {
-      case (r: PTerm, t: PTerm) => makePUnfoldingTerm(sl, r, p, t)
-      case _ => addTerm(new UnfoldingTerm(sl, r, p.pPredicate, t))
+      case (r: PTerm, t: PTerm) => makePUnfoldingTerm(sourceLocation, r, p, t)
+      case _ => addTerm(new UnfoldingTerm(sourceLocation, r, p.pPredicate, t))
     }
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeCastTerm(sl: SourceLocation, t: Term, dt: DataType): CastTerm = {
+  def makeCastTerm(sourceLocation : SourceLocation, t: Term, dt: DataType): CastTerm = {
     require(terms contains t)
     require(dataTypes contains dt)
 
     t match {
-      case t: PTerm => makePCastTerm(sl, t, dt)
-      case _ => addTerm(new CastTerm(sl, t, dt))
+      case t: PTerm => makePCastTerm(sourceLocation, t, dt)
+      case _ => addTerm(new CastTerm(sourceLocation, t, dt))
     }
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeFieldReadTerm(sl: SourceLocation, t: Term, f: Field): FieldReadTerm = {
+  def makeFieldReadTerm(sourceLocation : SourceLocation, t: Term, f: Field): FieldReadTerm = {
     require(terms contains t)
     require(fields contains f)
 
     t match {
-      case t: PTerm => makePFieldReadTerm(sl, t, f)
-      case _ => addTerm(new FieldReadTerm(sl, t, f))
+      case t: PTerm => makePFieldReadTerm(sourceLocation, t, f)
+      case _ => addTerm(new FieldReadTerm(sourceLocation, t, f))
     }
 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeOldTerm(sl: SourceLocation, t: Term): OldTerm = {
+  def makeOldTerm(sourceLocation : SourceLocation, t: Term): OldTerm = {
     require(terms contains t)
-    addTerm(new OldTerm(sl, t))
+    addTerm(new OldTerm(sourceLocation, t))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeDomainFunctionApplicationTerm(sl: SourceLocation, f: DomainFunction, a: TermSequence): DomainFunctionApplicationTerm = {
+  def makeDomainFunctionApplicationTerm(sourceLocation : SourceLocation, f: DomainFunction, a: TermSequence): DomainFunctionApplicationTerm = {
     require(a.forall(terms contains _))
     require(domainFunctions contains f)
 
     a match {
-      case a: GTermSequence => makeGDomainFunctionApplicationTerm(sl, f, a)
-      case a: PTermSequence => makePDomainFunctionApplicationTerm(sl, f, a)
-      case a: DTermSequence => makeDDomainFunctionApplicationTerm(sl, f, a)
-      case _ => addTerm(new DomainFunctionApplicationTerm(sl, f, a))
+      case a: GTermSequence => makeGDomainFunctionApplicationTerm(sourceLocation, f, a)
+      case a: PTermSequence => makePDomainFunctionApplicationTerm(sourceLocation, f, a)
+      case a: DTermSequence => makeDDomainFunctionApplicationTerm(sourceLocation, f, a)
+      case _ => addTerm(new DomainFunctionApplicationTerm(sourceLocation, f, a))
     }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermTerm(sl: SourceLocation, location: Term,  field: Field): PermTerm = {
+  def makePermTerm(sourceLocation : SourceLocation, location: Term,  field: Field): PermTerm = {
     require (terms contains location)
     require (fields contains field)
     require (location.dataType == referenceType)
 
-    val result = new PermTerm(sl, location,field)
+    val result = new PermTerm(sourceLocation, location,field)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePercentagePermission(sl: SourceLocation, percentage: Term): Term = {
-    val result = new DomainFunctionApplicationTerm(sl, percentagePermission, TermSequence(percentage))
+  def makePercentagePermission(sourceLocation : SourceLocation, percentage: Term): Term = {
+    val result = new DomainFunctionApplicationTerm(sourceLocation, percentagePermission, TermSequence(percentage))
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makeFullPermission(sl: SourceLocation): FullPermissionTerm = {
-    val result = new FullPermissionTerm(sl)
+  def makeFullPermission(sourceLocation : SourceLocation): FullPermissionTerm = {
+    val result = new FullPermissionTerm(sourceLocation)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makeNoPermission(sl: SourceLocation): NoPermissionTerm = {
-    val result = new NoPermissionTerm(sl)
+  def makeNoPermission(sourceLocation : SourceLocation): NoPermissionTerm = {
+    val result = new NoPermissionTerm(sourceLocation)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makeEpsilonPermission(sl: SourceLocation): EpsilonPermissionTerm = {
-    val result = new EpsilonPermissionTerm(sl)
+  def makeEpsilonPermission(sourceLocation : SourceLocation): EpsilonPermissionTerm = {
+    val result = new EpsilonPermissionTerm(sourceLocation)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionAdditionTerm(sl: SourceLocation, t1: Term, t2: Term) =
-    makeDomainFunctionApplicationTerm(sl, permissionAddition, TermSequence(t1, t2))
+  def makePermissionAdditionTerm(sourceLocation : SourceLocation, t1: Term, t2: Term) =
+    makeDomainFunctionApplicationTerm(sourceLocation, permissionAddition, TermSequence(t1, t2))
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionSubtractionTerm(sl: SourceLocation, t1: Term, t2: Term) =
-    makeDomainFunctionApplicationTerm(sl, permissionSubtraction, TermSequence(t1, t2))
+  def makePermissionSubtractionTerm(sourceLocation : SourceLocation, t1: Term, t2: Term) =
+    makeDomainFunctionApplicationTerm(sourceLocation, permissionSubtraction, TermSequence(t1, t2))
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionMultiplicationTerm(sl: SourceLocation, t1: Term, t2: Term) =
-    makeDomainFunctionApplicationTerm(sl, permissionMultiplication, TermSequence(t1, t2))
+  def makePermissionMultiplicationTerm(sourceLocation : SourceLocation, t1: Term, t2: Term) =
+    makeDomainFunctionApplicationTerm(sourceLocation, permissionMultiplication, TermSequence(t1, t2))
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionIntegerMultiplicationTerm(sl: SourceLocation, t1: Term, i: Term) =
-    makeDomainFunctionApplicationTerm(sl, permissionIntegerMultiplication, TermSequence(t1, i))
-
-//  terms += FullPermissionTerm
-//  terms += NoPermissionTerm
-//  terms += EpsilonPermissionTerm
+  def makePermissionIntegerMultiplicationTerm(sourceLocation : SourceLocation, t1: Term, i: Term) =
+    makeDomainFunctionApplicationTerm(sourceLocation, permissionIntegerMultiplication, TermSequence(t1, i))
 }

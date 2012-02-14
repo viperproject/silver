@@ -5,9 +5,9 @@ import collection.mutable.ListBuffer
 import silAST.source.{noLocation, SourceLocation}
 
 final class ControlFlowGraph private[silAST](
-                                              sl: SourceLocation,
+                                              val sourceLocation : SourceLocation,
                                               private val implementationFactory : ImplementationFactory
-                                              ) extends ASTNode(sl) {
+                                              ) extends ASTNode {
   def compile()
   {
     require(pStartNode!=None)
@@ -31,12 +31,14 @@ final class ControlFlowGraph private[silAST](
     nodes += bb
   }
 
-  private[implementations] def setStartNode(bb: BasicBlock) = {
+  private[implementations] def setStartNode(bb: BasicBlock)
+  {
     require(nodes contains bb)
     pStartNode = Some(bb)
   }
 
-  private[implementations] def setEndNode(bb: BasicBlock) = {
+  private[implementations] def setEndNode(bb: BasicBlock)
+  {
     require(nodes contains bb)
     pEndNode = Some(bb)
   }

@@ -15,7 +15,7 @@ import collection.mutable.{ListBuffer, HashSet}
 
 class BasicBlockFactory private[silAST](
                                          private val implementationFactory: ImplementationFactory,
-                                         val sl: SourceLocation,
+                                         val sourceLocation : SourceLocation,
                                          val name: String
                                          ) extends NodeFactory with ExpressionFactory with ScopeFactory {
   //////////////////////////////////////////////////////////////////
@@ -34,18 +34,18 @@ class BasicBlockFactory private[silAST](
 
   //////////////////////////////////////////////////////////////////
   def appendAssignment(
-                        sl: SourceLocation,
+                        sourceLocation : SourceLocation,
                         target: ProgramVariable,
                         source: PTerm
                         ) = {
     require((localVariables contains target)  || (results contains target)) //no writing to inputs
     require(terms contains source)
-    basicBlock.appendStatement(new AssignmentStatement(sl, target, source))
+    basicBlock.appendStatement(new AssignmentStatement(sourceLocation, target, source))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendFieldAssignment(
-                             sl: SourceLocation,
+                             sourceLocation : SourceLocation,
                              target: ProgramVariable,
                              field: Field,
                              source: PTerm
@@ -54,32 +54,32 @@ class BasicBlockFactory private[silAST](
     require(fields contains field)
     require(terms contains source)
 
-    basicBlock.appendStatement(new FieldAssignmentStatement(sl, target, field, source))
+    basicBlock.appendStatement(new FieldAssignmentStatement(sourceLocation, target, field, source))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendNew(
-                          sl: SourceLocation,
+                          sourceLocation : SourceLocation,
                           target: ProgramVariable,
                           dataType: DataType
                           ) {
     require(localVariables contains target)
     require(dataTypes contains dataType)
 
-    basicBlock.appendStatement(new NewStatement(sl, target, dataType))
+    basicBlock.appendStatement(new NewStatement(sourceLocation, target, dataType))
   }
 
   //////////////////////////////////////////////////////////////////
-  def makeProgramVariableSequence(sl: SourceLocation, vs: Seq[ProgramVariable]): ProgramVariableSequence = {
+  def makeProgramVariableSequence(sourceLocation : SourceLocation, vs: Seq[ProgramVariable]): ProgramVariableSequence = {
     require(vs.forall(programVariables contains _))
-    val result = new ProgramVariableSequence(sl, vs)
+    val result = new ProgramVariableSequence(sourceLocation, vs)
     programVariableSequences += result
     result
   }
 
   //////////////////////////////////////////////////////////////////
   def appendCall(
-                           sl: SourceLocation,
+                           sourceLocation : SourceLocation,
                            targets: ProgramVariableSequence,
                            receiver: PTerm,
                            methodFactory: MethodFactory,
@@ -91,53 +91,53 @@ class BasicBlockFactory private[silAST](
     require(methodFactories contains methodFactory)
     require(arguments.forall( terms contains _))
 
-    basicBlock.appendStatement(new CallStatement(sl, targets, receiver, methodFactory.method, arguments))
+    basicBlock.appendStatement(new CallStatement(sourceLocation, targets, receiver, methodFactory.method, arguments))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendInhale(
-                    sl: SourceLocation,
+                    sourceLocation : SourceLocation,
                     e: Expression
                     ) {
     require(expressions contains e)
 
-    basicBlock.appendStatement(new InhaleStatement(sl, e))
+    basicBlock.appendStatement(new InhaleStatement(sourceLocation, e))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendExhale(
-                    sl: SourceLocation,
+                    sourceLocation : SourceLocation,
                     e: Expression
                     ) {
     require(expressions contains e)
 
-    basicBlock.appendStatement(new ExhaleStatement(sl, e))
+    basicBlock.appendStatement(new ExhaleStatement(sourceLocation, e))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendFold(
-                  sl: SourceLocation,
+                  sourceLocation : SourceLocation,
                   e: PredicateExpression
                   ) {
     require(expressions contains e)
 
-    basicBlock.appendStatement(new FoldStatement(sl, e))
+    basicBlock.appendStatement(new FoldStatement(sourceLocation, e))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendUnfold(
-                    sl: SourceLocation,
+                    sourceLocation : SourceLocation,
                     e: PredicateExpression
                     ) {
     require(expressions contains e)
 
-    basicBlock.appendStatement(new UnfoldStatement(sl, e))
+    basicBlock.appendStatement(new UnfoldStatement(sourceLocation, e))
   }
 
   //////////////////////////////////////////////////////////////////
-  def addSuccessor(sl: SourceLocation, successor: BasicBlockFactory, condition: Expression, isBackEdge: Boolean = false) = {
+  def addSuccessor(sourceLocation : SourceLocation, successor: BasicBlockFactory, condition: Expression, isBackEdge: Boolean = false) = {
     require(basicBlock.successors.forall(_.target != successor.basicBlock))
-    new CFGEdge(sl, basicBlock, successor.basicBlock, condition, isBackEdge)
+    new CFGEdge(sourceLocation, basicBlock, successor.basicBlock, condition, isBackEdge)
   }
 
   //////////////////////////////////////////////////////////////////
@@ -165,5 +165,5 @@ class BasicBlockFactory private[silAST](
 
   override def typeVariables = Set()
 
-  private[silAST] lazy val basicBlock: BasicBlock = new BasicBlock(sl, name)
+  private[silAST] lazy val basicBlock: BasicBlock = new BasicBlock(sourceLocation, name)
 }

@@ -5,11 +5,12 @@ import silAST.expressions.DExpression
 import silAST.source.SourceLocation
 
 final class DomainAxiom private[silAST](
-                                         sl: SourceLocation,
+                                         val sourceLocation : SourceLocation,
                                          val name: String,
                                          val expression: DExpression
-                                         ) extends ASTNode(sl) {
-  def substitute(ts: TypeSubstitution) : DomainAxiom = new DomainAxiom(sl,name,expression.substitute(new DLogicalVariableSubstitutionC(ts.types,Set())))
+                                         ) extends ASTNode {
+  def substitute(ts: TypeSubstitution) : DomainAxiom =
+    new DomainAxiom(sourceLocation,name,expression.substitute(new DLogicalVariableSubstitutionC(ts.types,Set(),ts.newDomain)))
 
   override def toString = "axiom " + name + " = " + expression.toString
 }

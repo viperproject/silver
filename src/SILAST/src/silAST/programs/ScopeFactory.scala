@@ -9,8 +9,6 @@ trait ScopeFactory extends NodeFactory with DataTypeFactory
 {
   protected[silAST] def parentFactory : Option[ScopeFactory]
 
-  def nullFunction : DomainFunction = parentFactory.get.nullFunction
-
   protected[silAST]          def methodFactories  : Set[MethodFactory]   = parentFactory.get.methodFactories
   protected[silAST]          def programVariables : Set[ProgramVariable] = parentFactory.get.programVariables
   protected[silAST] override def domainFactories  : Set[DomainFactory]   = parentFactory.get.domainFactories

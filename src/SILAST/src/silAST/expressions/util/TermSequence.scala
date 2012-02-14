@@ -3,16 +3,19 @@ package silAST.expressions.util
 import collection.immutable.Set
 import silAST.ASTNode
 import silAST.expressions.terms.{GTerm, PTerm, DTerm, Term}
-import silAST.source.noLocation
 import silAST.symbols.logical.quantification.BoundVariable
 import silAST.programs.symbols.ProgramVariable
 import silAST.domains.{GLogicalVariableSubstitution, PLogicalVariableSubstitution, DLogicalVariableSubstitution, LogicalVariableSubstitution}
+import silAST.source.{SourceLocation, noLocation}
 
 sealed class TermSequence private[silAST](
                                            private val prArgs: Seq[Term]
-                                           ) extends ASTNode(noLocation) with Seq[Term] {
+                                           ) extends ASTNode with Seq[Term] {
   require(prArgs != null)
   require(prArgs.forall(_ != null))
+
+
+  override val sourceLocation : SourceLocation = (if (prArgs.isEmpty) noLocation else prArgs.head.sourceLocation)
 
   def args: Seq[Term] = prArgs
 

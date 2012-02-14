@@ -4,17 +4,29 @@ import silAST.ASTNode
 import silAST.source.SourceLocation
 import silAST.expressions.util.TermSequence
 
-class DomainFunction private[silAST](
-                                            sl: SourceLocation,
-                                            val name: String,
-                                            val signature: DomainFunctionSignature
-                                            ) extends ASTNode(sl)
+trait DomainFunction extends ASTNode
 {
-  def substitute(s: TypeSubstitution) : DomainFunction ={
-    new DomainFunction(sl,name,signature.substitute(s))
-  }
+  def sourceLocation : SourceLocation
+  def name: String
+  def signature: DomainFunctionSignature
+  def domain : Domain
 
+  def substitute(s: TypeSubstitution) : DomainFunction
+
+  def fullName = domain.fullName + "." + name
   override def toString = "function " + name + signature.toString
 
-  def toString(args : TermSequence) = name + args
+  def toString(args : TermSequence) = fullName + args
+}
+
+final private[silAST] class DomainFunctionC(
+                                      val sourceLocation : SourceLocation,
+                                      val name: String,
+                                      val signature: DomainFunctionSignature,
+                                      val domain : Domain
+                                      ) extends DomainFunction
+{
+  override def substitute(s: TypeSubstitution) : DomainFunction ={
+    new DomainFunctionC(sourceLocation,name,signature.substitute(s), s.newDomain)
+  }
 }

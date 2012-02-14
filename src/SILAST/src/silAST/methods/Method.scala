@@ -8,11 +8,11 @@ import collection.mutable.HashSet
 import silAST.expressions.ExpressionFactory
 
 final class Method private[silAST](
-                                    sl: SourceLocation,
+                                    val sourceLocation : SourceLocation,
                                     val name: String,
                                     val signature: MethodSignature,
                                     private[silAST] val factory : MethodFactory
-                                    ) extends ASTNode(sl) {
+                                    ) extends ASTNode {
   override def toString = "method " + name + signature.toString +
     (for (i <- implementations) yield i).mkString("\n","\n","\n")
 

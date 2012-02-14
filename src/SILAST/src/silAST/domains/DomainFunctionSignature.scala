@@ -6,13 +6,13 @@ import silAST.types.DataTypeSequence
 import silAST.source.SourceLocation
 
 final class DomainFunctionSignature private[silAST](
-                                                     sl: SourceLocation,
+                                                     val sourceLocation : SourceLocation,
                                                      val parameterTypes: DataTypeSequence,
                                                      val resultType: DataType
-                                                     ) extends ASTNode(sl) {
+                                                     ) extends ASTNode {
   def substitute(s: TypeSubstitution): DomainFunctionSignature =
   {
-    new DomainFunctionSignature(sl,parameterTypes.substitute(s),resultType.substitute(s))
+    new DomainFunctionSignature(sourceLocation,parameterTypes.substitute(s),resultType.substitute(s))
   }
 
   override def toString = "(" + parameterTypes.toString + ")" + " : " + resultType.toString
