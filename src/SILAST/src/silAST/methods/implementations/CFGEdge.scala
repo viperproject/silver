@@ -16,4 +16,12 @@ final class CFGEdge private[silAST](
   target.addPredecessor(this)
 
   override def toString = source.label + " ==> "  + "[" + condition.toString + "]" + target.label.toString
+
+  override def equals(other : Any) : Boolean = {
+    other match{
+      case e : CFGEdge => e eq this
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = source.hashCode() + target.hashCode() + condition.hashCode() + isBackEdge.hashCode()
 }

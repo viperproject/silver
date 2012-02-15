@@ -18,28 +18,27 @@ final class ControlFlowGraph private[silAST](
   //TODO: more consistency checks
   require(implementationFactory!=null)
 
-  private val nodes = new ListBuffer[BasicBlock]
-//  private val initialNodeFactory = new BasicBlockFactory(implementationFactory,noLocation,"$dummy")
-//  private val initialNode = initialNodeFactory.basicBlock
+  private val pNodes = new ListBuffer[BasicBlock]
+  def nodes : Set[BasicBlock] = pNodes.toSet
 
   private var pStartNode :Option[BasicBlock] = None
   private var pEndNode  :Option[BasicBlock] = None
 
   private[implementations] def addNode(bb: BasicBlock) = {
-    require(!(nodes contains bb))
+    require(!(pNodes contains bb))
     require(bb.cfg == this)
-    nodes += bb
+    pNodes += bb
   }
 
   private[implementations] def setStartNode(bb: BasicBlock)
   {
-    require(nodes contains bb)
+    require(pNodes contains bb)
     pStartNode = Some(bb)
   }
 
   private[implementations] def setEndNode(bb: BasicBlock)
   {
-    require(nodes contains bb)
+    require(pNodes contains bb)
     pEndNode = Some(bb)
   }
 
@@ -47,5 +46,13 @@ final class ControlFlowGraph private[silAST](
 
   def endNode: BasicBlock = pEndNode match { case Some(n) => n  case None => throw new Exception() }
 
-  override def toString = nodes.mkString("\n")
+  override def toString = pNodes.mkString("\n")
+
+  override def equals(other : Any) : Boolean = {
+    other match{
+      case c : ControlFlowGraph => c eq this
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = nodes.hashCode()
 }

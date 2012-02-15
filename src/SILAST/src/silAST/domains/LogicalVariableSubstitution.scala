@@ -2,9 +2,9 @@ package silAST.domains
 
 import collection.Set
 import silAST.symbols.logical.quantification.BoundVariable
-import silAST.source.{noLocation, SourceLocation}
 import silAST.types.{DataType, TypeVariable}
 import silAST.expressions.terms._
+import silAST.source._
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -18,6 +18,8 @@ abstract class TypeSubstitution()
 
   def mapType(v : TypeVariable, t : DataType) : DataType
   private[silAST] def types : Set[(TypeVariable,DataType)]
+  
+  def sourceLocation(sl : SourceLocation) : TypeSubstitutedSourceLocation = new TypeSubstitutedSourceLocation(sl,this)
 
 }
 
@@ -47,6 +49,8 @@ trait LogicalVariableSubstitution extends TypeSubstitution
 
    def mapVariable(v : BoundVariable) : Option[T] //= varMap.get(v)
    protected[silAST] def varMap : Map[BoundVariable,T]
+
+   override def sourceLocation(sl : SourceLocation) : LogicalSubstitutedSourceLocation = new LogicalSubstitutedSourceLocation(sl,this)
 }
 
 private[silAST] class LogicalVariableSubstitutionC[TT<:Term](

@@ -3,7 +3,7 @@ package silAST.domains
 import silAST.ASTNode
 import collection.Set
 import collection.mutable.HashSet
-import collection.immutable.HashMap
+import collection.mutable.HashMap
 import silAST.types._
 import silAST.source.{noLocation, SourceLocation}
 
@@ -30,6 +30,14 @@ abstract class Domain private[silAST] extends ASTNode
   def isCompatible(other : Domain) : Boolean
 
   def substitute(ts : TypeSubstitution): Domain
+
+  override def equals(other : Any) : Boolean = {
+    other match{
+      case d : Domain => d eq this
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = fullName.hashCode()
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -59,7 +67,10 @@ private[silAST] class DomainC(
 
   def getInstance(typeArguments: DataTypeSequence): Domain = {
     require (typeArguments.length == typeParameters.length)
-    pInstances.getOrElse(typeArguments, new DomainInstance(typeArguments.sourceLocation,this,typeArguments))
+    if (typeArguments.isEmpty)
+      this
+    else
+      pInstances.getOrElseUpdate(typeArguments, new DomainInstance(typeArguments.sourceLocation,this,typeArguments))
   }
 
   def substitute(s:TypeSubstitution): Domain = {
@@ -101,4 +112,14 @@ private[silAST] final class DomainInstance(
       case d : DomainInstance => d.original==original && typeArguments.isCompatible(d.typeArguments)
       case _ => false
     }
+
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case d : Domain => d eq this
+      case _ => false
+    }
+  }
+
+  override def hashCode() : Int = fullName.hashCode()
 }

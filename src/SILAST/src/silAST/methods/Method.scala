@@ -22,4 +22,12 @@ final class Method private[silAST](
   def implementations: Set[Implementation] = pImplementations.toSet
 
   lazy val expressionFactory : ExpressionFactory = factory
+
+  override def equals(other : Any) : Boolean = {
+    other match{
+      case m : Method => this eq  m
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = name.hashCode()
 }

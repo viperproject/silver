@@ -10,14 +10,14 @@ import silAST.programs.NodeFactory
 protected[silAST] trait GTermFactory extends NodeFactory {
   /////////////////////////////////////////////////////////////////////////
   def makeIntegerLiteralTerm(sourceLocation : SourceLocation, v: BigInt): IntegerLiteralTerm = {
-    addTerm(new IntegerLiteralTerm(sourceLocation, v))
+    addTerm(new IntegerLiteralTerm(v)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
   def makeGDomainFunctionApplicationTerm(sourceLocation : SourceLocation, f: DomainFunction, a: GTermSequence): GDomainFunctionApplicationTerm = {
     require(a.forall(terms contains _))
     require(domainFunctions contains f)
-    addTerm(new GDomainFunctionApplicationTerm(sourceLocation, f, a))
+    addTerm(new GDomainFunctionApplicationTerm(f, a)(sourceLocation))
   }
 
 

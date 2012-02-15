@@ -16,7 +16,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
     (r, a) match {
       case (r: PTerm, a: PTermSequence) => makePFunctionApplicationTerm(sourceLocation, r, ff, a)
-      case _ => addTerm(new FunctionApplicationTerm(sourceLocation, r, ff.pFunction, a))
+      case _ => addTerm(new FunctionApplicationTerm(r, ff.pFunction, a)(sourceLocation))
     }
   }
 
@@ -28,7 +28,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
     (r, t) match {
       case (r: PTerm, t: PTerm) => makePUnfoldingTerm(sourceLocation, r, p, t)
-      case _ => addTerm(new UnfoldingTerm(sourceLocation, r, p.pPredicate, t))
+      case _ => addTerm(new UnfoldingTerm(r, p.pPredicate, t)(sourceLocation))
     }
   }
 
@@ -39,7 +39,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
     t match {
       case t: PTerm => makePCastTerm(sourceLocation, t, dt)
-      case _ => addTerm(new CastTerm(sourceLocation, t, dt))
+      case _ => addTerm(new CastTerm(t, dt)(sourceLocation))
     }
   }
 
@@ -50,7 +50,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
     t match {
       case t: PTerm => makePFieldReadTerm(sourceLocation, t, f)
-      case _ => addTerm(new FieldReadTerm(sourceLocation, t, f))
+      case _ => addTerm(new FieldReadTerm(t, f)(sourceLocation))
     }
 
   }
@@ -58,7 +58,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   /////////////////////////////////////////////////////////////////////////
   def makeOldTerm(sourceLocation : SourceLocation, t: Term): OldTerm = {
     require(terms contains t)
-    addTerm(new OldTerm(sourceLocation, t))
+    addTerm(new OldTerm(t)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -70,7 +70,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
       case a: GTermSequence => makeGDomainFunctionApplicationTerm(sourceLocation, f, a)
       case a: PTermSequence => makePDomainFunctionApplicationTerm(sourceLocation, f, a)
       case a: DTermSequence => makeDDomainFunctionApplicationTerm(sourceLocation, f, a)
-      case _ => addTerm(new DomainFunctionApplicationTerm(sourceLocation, f, a))
+      case _ => addTerm(new DomainFunctionApplicationTerm(f, a)(sourceLocation))
     }
   }
 
@@ -80,35 +80,35 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
     require (fields contains field)
     require (location.dataType == referenceType)
 
-    val result = new PermTerm(sourceLocation, location,field)
+    val result = new PermTerm(location,field)(sourceLocation)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
   def makePercentagePermission(sourceLocation : SourceLocation, percentage: Term): Term = {
-    val result = new DomainFunctionApplicationTerm(sourceLocation, percentagePermission, TermSequence(percentage))
+    val result = new DomainFunctionApplicationTerm(percentagePermission, TermSequence(percentage))(sourceLocation)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
   def makeFullPermission(sourceLocation : SourceLocation): FullPermissionTerm = {
-    val result = new FullPermissionTerm(sourceLocation)
+    val result = new FullPermissionTerm()(sourceLocation)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
   def makeNoPermission(sourceLocation : SourceLocation): NoPermissionTerm = {
-    val result = new NoPermissionTerm(sourceLocation)
+    val result = new NoPermissionTerm()(sourceLocation)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
   def makeEpsilonPermission(sourceLocation : SourceLocation): EpsilonPermissionTerm = {
-    val result = new EpsilonPermissionTerm(sourceLocation)
+    val result = new EpsilonPermissionTerm()(sourceLocation)
     addTerm(result)
     result
   }

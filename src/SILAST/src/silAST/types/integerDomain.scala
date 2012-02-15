@@ -37,6 +37,7 @@ object integerAddition extends DomainFunction
 
   override def toString(ts : TermSequence) =
   {
+    require(ts!=null)
     require(ts.length==2)
     ts(0).toString + "+" + ts(1).toString
   }

@@ -40,4 +40,17 @@ final class FunctionSignature private[silAST](
       (if (postcondition.isEmpty) "" else (for (p <- postcondition) yield "ensures " + p.toString).mkString("\t", "\t\n", "\n")) +
       (terminationMeasure match {case Some(m) => "\tmeasure " + m.toString + "\n" case _ => "" })
 
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case s : FunctionSignature => 
+        parameters == s.parameters &&
+        precondition == s.precondition &&
+        postcondition == s.postcondition &&
+        terminationMeasure == s.terminationMeasure
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = parameters.hashCode() + precondition.hashCode() + postcondition.hashCode() + terminationMeasure.hashCode()
+
 }

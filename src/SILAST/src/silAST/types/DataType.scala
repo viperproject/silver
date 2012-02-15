@@ -15,6 +15,9 @@ sealed abstract class DataType extends ASTNode
   def freeTypeVariables : collection.Set[TypeVariable] = Set()
 
   def domain : Domain
+  
+  override def equals(other : Any) : Boolean
+  override def hashCode() : Int
 }
 
 
@@ -25,6 +28,15 @@ final class TypeVariable private[silAST](val sourceLocation : SourceLocation, va
   extends ASTNode
 {
   override val toString = name
+
+  override def equals(other : Any) : Boolean = 
+  {
+    other match{
+      case v : TypeVariable => this eq  v
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = name.hashCode()
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -43,6 +55,15 @@ final case class VariableType(
   override def freeTypeVariables = Set(variable)
 
   override val domain = variable.domain
+
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case v : VariableType => variable == v.variable
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = variable.hashCode()
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -71,6 +92,15 @@ case class NonReferenceDataType private[silAST](
     else
       new NonReferenceDataType(s.sourceLocation, domain.substitute(s))
   }
+
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case t : NonReferenceDataType => domain == t.domain
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = domain.fullName.hashCode()
 }
 
 /////////////////////////////////////////////////////////////////////
@@ -90,4 +120,13 @@ case class ReferenceDataType private[silAST] () extends DataType
     }
 
   override def substitute(s:TypeSubstitution) =  this
+
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case t : ReferenceDataType => true
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = domain.fullName.hashCode()
 }

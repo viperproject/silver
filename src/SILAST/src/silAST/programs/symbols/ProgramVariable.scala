@@ -11,4 +11,13 @@ class ProgramVariable(
                        ) extends ASTNode {
 
   override def toString: String = name
+
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case v : ProgramVariable => this eq  v
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = name.hashCode()
 }

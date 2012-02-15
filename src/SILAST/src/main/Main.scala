@@ -150,8 +150,8 @@ object Main {
         val startBlock = impl.addFirstBasicBlock(nl, "start");
         val endBlock = impl.addLastBasicBlock(nl, "end");
 
-        startBlock.addSuccessor(nl, startBlock, TrueExpression(), true)
-        startBlock.addSuccessor(nl, endBlock, TrueExpression(), false)
+        startBlock.addSuccessor(nl, startBlock, TrueExpression()(nl), true)
+        startBlock.addSuccessor(nl, endBlock, TrueExpression()(nl), false)
         startBlock.addProgramVariableToScope(nVar)
         startBlock.addProgramVariableToScope(xxVar)
 
@@ -174,7 +174,23 @@ object Main {
         1
       }
 
-      1
+      val bdf = pf.getDomainFactory("Bool",List((nl,"T")))(nl);
+      val bd = bdf.compile
+
+      {
+        val bdI = pf.makeDomainInstance(bdf,DataTypeSequence(integerType))
+        val bdI2 = pf.makeDomainInstance(bdf,DataTypeSequence(integerType))
+        
+        val bdIt = bdI.getType
+        
+        val bdItd = bdIt.domain
+
+        assert (bdI eq bdI2)
+        assert (bdI eq bdItd)
+
+        1
+      }
+     1
     }
 
     val p = pf.getProgram
@@ -187,97 +203,62 @@ object Main {
 
   def f(e: Expression) {
     e match {
-      case OldExpression(_,_) => 0
+      case OldExpression(_) => 0
       case TrueExpression() => 0
       case FalseExpression() => 0
-      case PermissionExpression(_,_, _, _) => 0
-      case UnfoldingExpression(_, _, _) => 1
-      case EqualityExpression(_, _, _) => 2
-      case UnaryExpression(_, _, _) => 3
-      case BinaryExpression(_, _, _, _) => 4
-      case DomainPredicateExpression(_, _, _) => 5
-      case PredicateExpression(_, _, _) => 6
-      case QuantifierExpression(_, _, _, _) => 7
+      case PermissionExpression(_, _, _) => 0
+      case UnfoldingExpression( _, _) => 1
+      case EqualityExpression( _, _) => 2
+      case UnaryExpression( _, _) => 3
+      case BinaryExpression( _, _, _) => 4
+      case DomainPredicateExpression( _, _) => 5
+      case PredicateExpression( _, _) => 6
+      case QuantifierExpression( _, _, _) => 7
     }
   }
 
   def f2(e: Expression) {
     e match {
-      case OldExpression(_,_) => 0
+      case OldExpression(_) => 0
       case TrueExpression() => 0
       case FalseExpression() => 0
-      case PermissionExpression(_,_, _, _) => 0
-      case UnfoldingExpression(_, _, _) => 1
-      case EqualityExpression(_, _, _) => 2
-      case UnaryExpression(_, _, _) => 3
-      case BinaryExpression(_, _, _, _) => 4
-      case DomainPredicateExpression(_, _, _) => 5
-      case PredicateExpression(_, _, _) => 6
-      //      case QuantifierExpression(_,_,_,_) => 7
+      case PermissionExpression(_, _, _) => 0
+      case UnfoldingExpression( _, _) => 1
+      case EqualityExpression( _, _) => 2
+      case UnaryExpression( _, _) => 3
+      case BinaryExpression( _, _, _) => 4
+      case DomainPredicateExpression( _, _) => 5
+      case PredicateExpression( _, _) => 6
+      //      case QuantifierExpression(_,_,_) => 7
     }
   }
 
   def g(t: Term) {
     t match {
-      case OldTerm(_,_) => 1
+      case OldTerm(_) => 1
       case LiteralTerm() => 1
 
-      case BoundVariableTerm(_, _) => 1
-      case FunctionApplicationTerm(_, _, _, _) => 3
-      case DomainFunctionApplicationTerm(_, _, _) => 3
+      case BoundVariableTerm( _) => 1
+      case FunctionApplicationTerm( _, _, _) => 3
+      case DomainFunctionApplicationTerm(_, _) => 3
 
-      case ProgramVariableTerm(_, _) => 2
-      case CastTerm(_, _, _) => 2
-      case FieldReadTerm(_, _, _) => 6
+      case ProgramVariableTerm(_) => 2
+      case CastTerm(_, _) => 2
+      case FieldReadTerm(_, _) => 6
 
-      case UnfoldingTerm(_, _, _,_) => 6
+      case UnfoldingTerm(_, _,_) => 6
     }
 
     t match {
       case LiteralTerm() => 1
 
-      case BoundVariableTerm(_, _) => 1
-      case FunctionApplicationTerm(_, _, _, _) => 3
+      case BoundVariableTerm( _) => 1
+      case FunctionApplicationTerm(_, _, _) => 3
       //      case DomainFunctionApplicationTerm(_,_,_) => 3
 
-      case ProgramVariableTerm(_, _) => 2
-      case CastTerm(_, _, _) => 2
-      case FieldReadTerm(_, _, _) => 6
+      case ProgramVariableTerm(_) => 2
+      case CastTerm(_, _) => 2
+      case FieldReadTerm(_, _) => 6
     }
   }
-
-  /*
-   def g2(e : PExpression)
-   {
-     e match {
-       case PEqualityExpression(_,_,_) => 2
-       case PUnaryExpression(_,_,_) => 3
-       case PBinaryExpression(_,_,_,_) => 4
-       case PDomainPredicateExpression(_,_,_) => 5
-       case PPredicateExpression(_,_,_) => 6
-     }
-   }
-
-   def g2(e : PExpression)
-   {
-     e match {
-       case PEqualityExpression(_,_,_) => 2
-       case PUnaryExpression(_,_,_) => 3
-       case PBinaryExpression(_,_,_,_) => 4
-       case PDomainPredicateExpression(_,_,_) => 5
- //      case PPredicateExpression(_,_,_) => 6
-     }
-   }
-
-   def g(e : DExpression)
-   {
-     e match {
-       case DEqualityExpression(_,_) => 2
-       case DUnaryExpression(_,_) => 3
-       case DBinaryExpression(_,_,_) => 4
-       case DDomainPredicateExpression(_,_) => 5
- //      case DQuantifierExpression(_,_,_) => 5
-     }
-   }
-  */
 }

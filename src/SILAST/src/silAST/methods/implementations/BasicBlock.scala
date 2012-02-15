@@ -55,4 +55,12 @@ final class BasicBlock private[silAST](
   private[silAST] var pFactory : BasicBlockFactory = null
   
   private[implementations] var cfg : ControlFlowGraph = null
+
+  override def equals(other : Any) : Boolean = {
+    other match{
+      case b : BasicBlock => b eq this
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = localVariables.hashCode() + statements.hashCode()
 }

@@ -3,6 +3,7 @@ package silAST.domains
 import silAST.source.SourceLocation
 import silAST.ASTNode
 import silAST.expressions.util.TermSequence
+import silAST.types.TypeVariable
 
 trait DomainPredicate extends ASTNode
 {
@@ -15,6 +16,16 @@ trait DomainPredicate extends ASTNode
   override def toString = "predicate " + name + signature.toString
   def toString(ts : TermSequence) = fullName + ts.toString()
   def substitute(s: TypeSubstitution) : DomainPredicate
+
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case p : DomainPredicate => this eq p
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = name.hashCode()
+
 }
 
 class DomainPredicateC private[silAST](

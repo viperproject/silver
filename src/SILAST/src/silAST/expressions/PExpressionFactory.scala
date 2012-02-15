@@ -18,7 +18,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
     (args) match {
       case (a: GTermSequence) => makeGDomainPredicateExpression(sourceLocation, p, a)
-      case _ => addExpression(new PDomainPredicateExpressionC(sourceLocation, p, args))
+      case _ => addExpression(new PDomainPredicateExpressionC(p, args)(sourceLocation))
     }
   }
 
@@ -27,7 +27,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
     require(predicates contains p)
     require(terms contains r)
 
-    addExpression(new PPredicateExpression(sourceLocation, r, p))
+    addExpression(new PPredicateExpression(r, p)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
@@ -36,7 +36,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
     (e1) match {
       case (e1: GExpression) => makeGUnaryExpression(sourceLocation, op, e1)
-      case _ => addExpression(new PUnaryExpressionC(sourceLocation, op, e1))
+      case _ => addExpression(new PUnaryExpressionC(op, e1)(sourceLocation))
     }
   }
 
@@ -47,7 +47,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
     (e1, e2) match {
       case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(sourceLocation, op, e1, e2)
-      case _ => addExpression(new PBinaryExpressionC(sourceLocation, op, e1, e2))
+      case _ => addExpression(new PBinaryExpressionC(op, e1, e2)(sourceLocation))
     }
   }
 
@@ -58,7 +58,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
     (t1, t2) match {
       case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sourceLocation, t1, t2)
-      case _ => addExpression(new PEqualityExpressionC(sourceLocation, t1, t2))
+      case _ => addExpression(new PEqualityExpressionC(t1, t2)(sourceLocation))
     }
   }
 
@@ -67,7 +67,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
     require(expressions contains p)
     require(expressions contains e)
 
-    addExpression(new PUnfoldingExpression(sourceLocation, p, e))
+    addExpression(new PUnfoldingExpression(p, e)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////

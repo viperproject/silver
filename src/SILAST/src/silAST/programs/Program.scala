@@ -25,6 +25,15 @@ final class Program private[silAST](
       functions.mkString("", "\n", "\n") +
       predicates.mkString("", "\n", "\n") +
       methods.mkString("\n", "\n", "\n\n")
+
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case p : Program => this eq p
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = name.hashCode()
 }
 
 object Program {

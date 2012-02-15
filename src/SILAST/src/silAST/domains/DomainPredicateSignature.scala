@@ -6,10 +6,20 @@ import silAST.types.DataTypeSequence
 
 final class DomainPredicateSignature private[silAST](
                                                       val sourceLocation : SourceLocation,
-                                                      val argumentTypes: DataTypeSequence
+                                                      val parameterTypes: DataTypeSequence
                                                       ) extends ASTNode {
   def substitute(s: TypeSubstitution): DomainPredicateSignature =
-    new DomainPredicateSignature(sourceLocation,argumentTypes.substitute(s))
+    new DomainPredicateSignature(sourceLocation,parameterTypes.substitute(s))
 
-  override lazy val toString = argumentTypes.toString()
+  override lazy val toString = parameterTypes.toString()
+
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case s : DomainPredicateSignature =>
+        parameterTypes == s.parameterTypes
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = parameterTypes.hashCode()
 }

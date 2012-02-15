@@ -25,6 +25,15 @@ sealed class DataTypeSequence private[silAST](
   override def iterator = dataTypes.iterator
 
   def substitute(s : TypeSubstitution) = new DataTypeSequence(dataTypes.map(_.substitute(s)))
+
+  override def equals(other : Any) = {
+    other match{
+      case dts : DataTypeSequence => dataTypes == dts.dataTypes
+      case _ => false
+    }
+  }
+  
+  override def hashCode() : Int = if (dataTypes.isEmpty) 0 else dataTypes.foldLeft(0)((x,y)=>(x+y.hashCode()))
 }
 
 object DataTypeSequence

@@ -17,7 +17,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
 
     (e1) match {
       case (e1: GExpression) => makeGUnaryExpression(sourceLocation, op, e1)
-      case _ => addExpression(new DUnaryExpressionC(sourceLocation, op, e1))
+      case _ => addExpression(new DUnaryExpressionC(op, e1)(sourceLocation))
     }
   }
 
@@ -28,7 +28,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
 
     (e1, e2) match {
       case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(sourceLocation, op, e1, e2)
-      case _ => addExpression(new DBinaryExpressionC(sourceLocation, op, e1, e2))
+      case _ => addExpression(new DBinaryExpressionC(op, e1, e2)(sourceLocation))
     }
   }
 
@@ -50,7 +50,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
 
     (t1, t2) match {
       case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sourceLocation, t1, t2)
-      case _ => addExpression[DEqualityExpression](new DEqualityExpressionC(sourceLocation, t1, t2))
+      case _ => addExpression[DEqualityExpression](new DEqualityExpressionC(t1, t2)(sourceLocation))
     }
   }
 
@@ -61,7 +61,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
 
     require(expressions contains e)
 
-    val result = addExpression(new DQuantifierExpression(sourceLocation, q, v, e))
+    val result = addExpression(new DQuantifierExpression(q, v, e)(sourceLocation))
     boundVariableMap += v -> result
 
     result

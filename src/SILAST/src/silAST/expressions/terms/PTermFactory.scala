@@ -13,7 +13,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   /////////////////////////////////////////////////////////////////////////
   def makeProgramVariableTerm(sourceLocation : SourceLocation, v: ProgramVariable): ProgramVariableTerm = {
     require(programVariables contains v)
-    addTerm(new ProgramVariableTerm(sourceLocation, v))
+    addTerm(new ProgramVariableTerm(v)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -22,7 +22,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
     require(functions contains ff.pFunction)
     require(a.forall(terms contains _))
 
-    addTerm(new PFunctionApplicationTerm(sourceLocation, r, ff.pFunction, a))
+    addTerm(new PFunctionApplicationTerm(r, ff.pFunction, a)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -30,7 +30,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
     require(terms contains t)
     require(dataTypes contains dt)
 
-    addTerm(new PCastTerm(sourceLocation, t, dt))
+    addTerm(new PCastTerm(t, dt)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -38,7 +38,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
     require(terms contains t)
     require(fields contains f)
 
-    addTerm(new PFieldReadTerm(sourceLocation, t, f))
+    addTerm(new PFieldReadTerm(t, f)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -48,7 +48,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
 
     a match {
       case a: GTermSequence => makeGDomainFunctionApplicationTerm(sourceLocation, f, a)
-      case _ => addTerm(new PDomainFunctionApplicationTermC(sourceLocation, f, a))
+      case _ => addTerm(new PDomainFunctionApplicationTermC(f, a)(sourceLocation))
     }
   }
 
@@ -58,7 +58,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
     require(terms contains r)
     require(terms contains t)
 
-    addTerm(new PUnfoldingTerm(sourceLocation, r, p.pPredicate, t))
+    addTerm(new PUnfoldingTerm(r, p.pPredicate, t)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////

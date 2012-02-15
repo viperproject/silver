@@ -21,4 +21,13 @@ final class Function private[programs](
   def body: Term = pBody.get
 
   private[symbols] var pBody: Option[Term] = None
+
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case f : Function => this eq  f
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = name.hashCode()
 }

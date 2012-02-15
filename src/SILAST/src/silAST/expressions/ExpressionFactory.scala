@@ -20,7 +20,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
       case (e1: GExpression) => makeGUnaryExpression(sourceLocation, op, e1)
       case (e1: PExpression) => makePUnaryExpression(sourceLocation, op, e1)
       case (e1: DExpression) => makeDUnaryExpression(sourceLocation, op, e1)
-      case _ => addExpression(new UnaryExpression(sourceLocation, op, e1))
+      case _ => addExpression(new UnaryExpression(op, e1)(sourceLocation))
     }
   }
 
@@ -34,7 +34,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
       case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(sourceLocation, op, e1, e2)
       case (e1: PExpression, e2: PExpression) => makePBinaryExpression(sourceLocation, op, e1, e2)
       case (e1: DExpression, e2: DExpression) => makeDBinaryExpression(sourceLocation, op, e1, e2)
-      case _ => addExpression(new BinaryExpression(sourceLocation, op, e1, e2))
+      case _ => addExpression(new BinaryExpression(op, e1, e2)(sourceLocation))
     }
   }
 
@@ -48,7 +48,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
       case (a: GTermSequence) => makeGDomainPredicateExpression(sourceLocation, p, a)
       case (a: PTermSequence) => makePDomainPredicateExpression(sourceLocation, p, a)
       case (a: DTermSequence) => makeDDomainPredicateExpression(sourceLocation, p, a)
-      case _ => addExpression(new DomainPredicateExpression(sourceLocation, p, args))
+      case _ => addExpression(new DomainPredicateExpression(p, args)(sourceLocation))
     }
   }
 
@@ -59,7 +59,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
 
     (r) match {
       case (r: PTerm) => makePPredicateExpression(sourceLocation, r, pf.pPredicate)
-      case _ => addExpression(new PredicateExpression(sourceLocation, r, pf.pPredicate))
+      case _ => addExpression(new PredicateExpression(r, pf.pPredicate)(sourceLocation))
     }
   }
 
@@ -72,7 +72,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
       case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sourceLocation, t1, t2)
       case (t1: PTerm, t2: PTerm) => makePEqualityExpression(sourceLocation, t1, t2)
       case (t1: DTerm, t2: DTerm) => makeDEqualityExpression(sourceLocation, t1, t2)
-      case _ => addExpression(new EqualityExpression(sourceLocation, t1, t2))
+      case _ => addExpression(new EqualityExpression(t1, t2)(sourceLocation))
     }
   }
 
@@ -86,7 +86,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
     e match {
       case e: DExpression => makeDQuantifierExpression(sourceLocation, q, v, e)
       case _ => {
-        val result = addExpression(new QuantifierExpression(sourceLocation, q, v, e))
+        val result = addExpression(new QuantifierExpression(q, v, e)(sourceLocation))
         boundVariableMap += v -> result
 
         result
@@ -100,7 +100,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
     require(terms contains p)
     require(fields contains f)
 
-    addExpression(new PermissionExpression(sourceLocation, r, f,p))
+    addExpression(new PermissionExpression(r, f,p)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
@@ -110,7 +110,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
 
     (p, e) match {
       case (p: PPredicateExpression, e: PExpression) => makePUnfoldingExpression(sourceLocation, p, e)
-      case _ => addExpression(new UnfoldingExpression(sourceLocation, p, e))
+      case _ => addExpression(new UnfoldingExpression(p, e)(sourceLocation))
     }
   }
 }

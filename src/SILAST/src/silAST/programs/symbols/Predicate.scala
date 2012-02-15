@@ -14,4 +14,13 @@ final class Predicate private[silAST](
 
   def expression: Expression = pExpression.get
 
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case p : Predicate => this eq p
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = name.hashCode()
+
 }

@@ -14,15 +14,14 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
   //////////////////////////////////////////////////////////////////////////
   def makeGUnaryExpression(sourceLocation : SourceLocation, op: UnaryConnective, e1: GExpression): GUnaryExpression = {
     require(expressions contains e1)
-
-    addExpression(new GUnaryExpression(sourceLocation, op, e1))
+    addExpression(new GUnaryExpression(op,e1)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
   def makeGDomainPredicateExpression(sourceLocation : SourceLocation, p: DomainPredicate, args: GTermSequence): GDomainPredicateExpression = {
     require(domainPredicates contains p)
     require(args.forall(terms contains _))
-    addExpression(new GDomainPredicateExpression(sourceLocation, p, args))
+    addExpression(new GDomainPredicateExpression(p, args)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
@@ -30,7 +29,7 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
     require(expressions contains e1)
     require(expressions contains e2)
 
-    addExpression(new GBinaryExpression(sourceLocation, op, e1, e2))
+    addExpression(new GBinaryExpression(op, e1, e2)(sourceLocation))
 
   }
 
@@ -42,7 +41,7 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
                                ): GEqualityExpression = {
     require(terms contains t1)
     require(terms contains t2)
-    addExpression(new GEqualityExpression(sourceLocation, t1, t2))
+    addExpression(new GEqualityExpression(t1, t2)(sourceLocation))
   }
 
 

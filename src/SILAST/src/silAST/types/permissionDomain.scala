@@ -202,4 +202,5 @@ object permissionNE extends DomainPredicate
     ts(0).toString + "!=" + ts(1).toString
   }
   override def substitute(ts:TypeSubstitution) = this
+
 }

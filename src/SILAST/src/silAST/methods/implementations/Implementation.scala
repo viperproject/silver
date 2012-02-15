@@ -27,4 +27,12 @@ final class Implementation private[silAST](
   def body: ControlFlowGraph = pBody
 
   lazy val expressionFactory : ExpressionFactory = factory
+
+  override def equals(other : Any) : Boolean = {
+    other match{
+      case i : Implementation => this eq  i
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = method.name.hashCode()
 }

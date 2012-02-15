@@ -1,9 +1,8 @@
 package silAST.domains
 
 import silAST.ASTNode
-import silAST.types.DataType
-import silAST.types.DataTypeSequence
 import silAST.source.SourceLocation
+import silAST.types.{TypeVariable, DataType, DataTypeSequence}
 
 final class DomainFunctionSignature private[silAST](
                                                      val sourceLocation : SourceLocation,
@@ -16,4 +15,15 @@ final class DomainFunctionSignature private[silAST](
   }
 
   override def toString = "(" + parameterTypes.toString + ")" + " : " + resultType.toString
+
+  override def equals(other : Any) : Boolean =
+  {
+    other match{
+      case s : DomainFunctionSignature => 
+        parameterTypes == s.parameterTypes &&
+        resultType == s.resultType
+      case _ => false
+    }
+  }
+  override def hashCode() : Int = parameterTypes.hashCode() + resultType.hashCode()
 }
