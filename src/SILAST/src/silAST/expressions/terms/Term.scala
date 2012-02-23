@@ -209,7 +209,7 @@ sealed case class PermTerm protected[silAST]
   override lazy val toString: String = "perm(" + location.toString + "." + field.name + ")";
   override lazy val subTerms: Seq[Term] = List(location)
 
-  override lazy val dataType = field.dataType
+  override lazy val dataType = permissionType
 
   override def freeVariables = location.freeVariables
 
