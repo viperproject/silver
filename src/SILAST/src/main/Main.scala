@@ -39,11 +39,11 @@ object Main {
       val eT = sd.makeBoundVariableTerm(nl, varE)
 
       // forall x : Seq[T], e : T :: !isEmpty(x) -> tail(prepend(e,x)) == x
-      val e1 = sd.makeDUnaryExpression(nl, Not(nl), sd.makeDDomainPredicateExpression(nl, isEmpty, DTermSequence(xT)))
+      val e1 = sd.makeDUnaryExpression(nl, Not()(nl), sd.makeDDomainPredicateExpression(nl, isEmpty, DTermSequence(xT)))
       val e2 = sd.makeDDomainFunctionApplicationTerm(nl, prepend, DTermSequence(eT,xT))
       val e3 = sd.makeDEqualityExpression(nl, sd.makeDDomainFunctionApplicationTerm(nl, tail, DTermSequence(e2)), xT)
-      val e4 = sd.makeDBinaryExpression(nl, Implication(nl), e1, e3)
-      val e = sd.makeDQuantifierExpression(nl, Forall(nl), varX, sd.makeDQuantifierExpression(nl, Forall(nl), varE, e4))
+      val e4 = sd.makeDBinaryExpression(nl, Implication()(nl), e1, e3)
+      val e = sd.makeDQuantifierExpression(nl, Forall()(nl), varX, sd.makeDQuantifierExpression(nl, Forall()(nl), varE, e4))
       sd.addDomainAxiom(nl, "tailPrepend1", e)
     }
 
@@ -77,21 +77,21 @@ object Main {
       val acc_seq_50 = vp.makePermissionExpression(nl, thisT,seqField, vp.makePercentagePermission(nl, vp.makeIntegerLiteralTerm(nl,50)))
       val acc_next_seq_50 = vp.makePermissionExpression(nl, this_next,seqField, vp.makePercentagePermission(nl, vp.makeIntegerLiteralTerm(nl,50)))
       val next_eq_null = vp.makeEqualityExpression(nl, this_next, nullTerm)
-      val next_ne_null = vp.makeUnaryExpression(nl, Not(nl), next_eq_null)
+      val next_ne_null = vp.makeUnaryExpression(nl, Not()(nl), next_eq_null)
       val prepend_val_next_seq = vp.makeDomainFunctionApplicationTerm(nl, prependInt, TermSequence(this_val, this_next_seq))
       val seq_eq_prep = vp.makeEqualityExpression(nl, this_seq, prepend_val_next_seq)
       val seq_eq_singleton = vp.makeEqualityExpression(nl, this_seq, singleton_this_val)
       //next==null ==> seq==[val]
-      val e1 = vp.makeBinaryExpression(nl, Implication(nl), next_eq_null, seq_eq_singleton)
+      val e1 = vp.makeBinaryExpression(nl, Implication()(nl), next_eq_null, seq_eq_singleton)
       //acc(next.seq,50) && seq==val :: next.seq
-      val e2a = vp.makeBinaryExpression(nl, And(nl), acc_next_seq_50, seq_eq_prep)
-      val e2b = vp.makeBinaryExpression(nl, And(nl), this_next_valid, e2a)
+      val e2a = vp.makeBinaryExpression(nl, And()(nl), acc_next_seq_50, seq_eq_prep)
+      val e2b = vp.makeBinaryExpression(nl, And()(nl), this_next_valid, e2a)
       // && next!=null ==> acc(next.seq,50) && seq==val :: next.seq
-      val e2 = vp.makeBinaryExpression(nl, Implication(nl), next_ne_null, e2b)
-      val e3 = vp.makeBinaryExpression(nl, And(nl), e1, e2)
-      val e4 = vp.makeBinaryExpression(nl, And(nl), acc_seq_50, acc_next_100)
-      val e5 = vp.makeBinaryExpression(nl, And(nl), e3, e4)
-      val e = vp.makeBinaryExpression(nl, And(nl), acc_val_100, e5)
+      val e2 = vp.makeBinaryExpression(nl, Implication()(nl), next_ne_null, e2b)
+      val e3 = vp.makeBinaryExpression(nl, And()(nl), e1, e2)
+      val e4 = vp.makeBinaryExpression(nl, And()(nl), acc_seq_50, acc_next_100)
+      val e5 = vp.makeBinaryExpression(nl, And()(nl), e3, e4)
+      val e = vp.makeBinaryExpression(nl, And()(nl), acc_val_100, e5)
       vp.setExpression(e)
       1
     }
