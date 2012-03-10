@@ -15,7 +15,7 @@ trait DomainPredicate extends ASTNode
 
   override def toString = "predicate " + name + signature.toString
   def toString(ts : TermSequence) = fullName + ts.toString()
-  def substitute(s: TypeSubstitution) : DomainPredicate
+  def substitute(s: TypeVariableSubstitution) : DomainPredicate
 
   override def equals(other : Any) : Boolean =
   {
@@ -35,6 +35,6 @@ class DomainPredicateC private[silAST](
                                              val domain : Domain
                                              ) extends DomainPredicate
 {
-  def substitute(s: TypeSubstitution) =
+  def substitute(s: TypeVariableSubstitution) =
     new DomainPredicateC(sourceLocation,name,signature.substitute(s),s.newDomain)
 }

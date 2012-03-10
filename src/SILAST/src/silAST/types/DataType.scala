@@ -2,7 +2,7 @@ package silAST.types
 
 import silAST.ASTNode
 import silAST.source.{noLocation, SourceLocation}
-import silAST.domains.{TypeSubstitution, Domain}
+import silAST.domains.{TypeVariableSubstitution, Domain}
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
@@ -10,7 +10,7 @@ sealed abstract class DataType extends ASTNode
 {
   def isCompatible(other : DataType) : Boolean
 
-  def substitute(s : TypeSubstitution) : DataType = this
+  def substitute(s : TypeVariableSubstitution) : DataType = this
   
   def freeTypeVariables : collection.Set[TypeVariable] = Set()
 
@@ -51,7 +51,7 @@ final case class VariableType(
   override def isCompatible(other : DataType) =
     other match {case VariableType(_,v) => v == variable case _ => false}
 
-  override def substitute(s : TypeSubstitution) = s.mapType(variable,this)
+  override def substitute(s : TypeVariableSubstitution) = s.mapType(variable,this)
   override def freeTypeVariables = Set(variable)
 
   override val domain = variable.domain
@@ -86,7 +86,7 @@ case class NonReferenceDataType private[silAST](
       case _ => false
     }
 
-  override def substitute(s:TypeSubstitution) =   {
+  override def substitute(s:TypeVariableSubstitution) =   {
     if (s.typeVariables.intersect(freeTypeVariables).isEmpty)
       this
     else
@@ -119,7 +119,7 @@ case class ReferenceDataType private[silAST] () extends DataType
       case _ => false
     }
 
-  override def substitute(s:TypeSubstitution) =  this
+  override def substitute(s:TypeVariableSubstitution) =  this
 
   override def equals(other : Any) : Boolean =
   {

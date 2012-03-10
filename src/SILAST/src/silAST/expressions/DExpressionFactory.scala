@@ -5,7 +5,7 @@ import silAST.source.SourceLocation
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import terms.{DTermFactory, GTerm, DTerm}
 import util.{GTermSequence, DTermSequence}
-import silAST.symbols.logical.quantification.{Quantifier, BoundVariable}
+import silAST.symbols.logical.quantification.{Quantifier, LogicalVariable}
 import collection.mutable.HashMap
 import silAST.programs.NodeFactory
 
@@ -55,7 +55,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDQuantifierExpression(sourceLocation : SourceLocation, q: Quantifier, v: BoundVariable, e: DExpression): DQuantifierExpression = {
+  def makeDQuantifierExpression(sourceLocation : SourceLocation, q: Quantifier, v: LogicalVariable, e: DExpression): DQuantifierExpression = {
     require(boundVariables contains v)
     require(!(boundVariableMap contains v))
 
@@ -68,6 +68,6 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] val boundVariableMap = new HashMap[BoundVariable, QuantifierExpression]
+  protected[silAST] val boundVariableMap = new HashMap[LogicalVariable, QuantifierExpression]
 
 }

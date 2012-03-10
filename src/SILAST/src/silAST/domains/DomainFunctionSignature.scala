@@ -9,7 +9,7 @@ final class DomainFunctionSignature private[silAST](
                                                      val parameterTypes: DataTypeSequence,
                                                      val resultType: DataType
                                                      ) extends ASTNode {
-  def substitute(s: TypeSubstitution): DomainFunctionSignature =
+  def substitute(s: TypeVariableSubstitution): DomainFunctionSignature =
   {
     new DomainFunctionSignature(sourceLocation,parameterTypes.substitute(s),resultType.substitute(s))
   }

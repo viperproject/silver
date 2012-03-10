@@ -5,7 +5,7 @@ import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.domains.DomainPredicate
 import terms._
 import util._
-import silAST.symbols.logical.quantification.{BoundVariable, Quantifier}
+import silAST.symbols.logical.quantification.{LogicalVariable, Quantifier}
 import silAST.programs.NodeFactory
 import silAST.programs.symbols.{Field, PredicateFactory}
 
@@ -77,7 +77,7 @@ trait ExpressionFactory extends NodeFactory with DExpressionFactory with PExpres
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeQuantifierExpression(sourceLocation : SourceLocation, q: Quantifier, v: BoundVariable, e: Expression): QuantifierExpression = {
+  def makeQuantifierExpression(sourceLocation : SourceLocation, q: Quantifier, v: LogicalVariable, e: Expression): QuantifierExpression = {
     require(boundVariables contains v)
     require(!(boundVariableMap contains v))
 

@@ -1,7 +1,7 @@
 package silAST.domains
 
 import collection.Set
-import silAST.symbols.logical.quantification.BoundVariable
+import silAST.symbols.logical.quantification.LogicalVariable
 import silAST.types.{DataType, TypeVariable}
 import silAST.expressions.terms._
 import silAST.source._
@@ -9,7 +9,7 @@ import silAST.source._
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-abstract class TypeSubstitution()
+abstract class TypeVariableSubstitution
 {
   def sourceLocation : SourceLocation
   def typeVariables : Set[TypeVariable]
@@ -17,47 +17,57 @@ abstract class TypeSubstitution()
   def newDomain : Domain
 
   def mapType(v : TypeVariable, t : DataType) : DataType
-  private[silAST] def types : Set[(TypeVariable,DataType)]
-  
-  def sourceLocation(sl : SourceLocation) : TypeSubstitutedSourceLocation = new TypeSubstitutedSourceLocation(sl,this)
+  def mapVariable(v : LogicalVariable) : Option[LogicalVariable]
 
+  private[silAST] def types : Set[(TypeVariable,DataType)]
+  protected[silAST] val varMap : Map[LogicalVariable,LogicalVariable]
+
+  def sourceLocation(sl : SourceLocation) : TypeSubstitutedSourceLocation =
+    new TypeSubstitutedSourceLocation(sl,this)
+
+  def +(other : TypeVariableSubstitution)  : TypeVariableSubstitution
 }
 
-private [silAST] class TypeSubstitutionC (
-    val types : Set[(TypeVariable,DataType)],
+private [silAST] class TypeSubstitutionC[Term] (
+    val types     : Set[(TypeVariable,DataType)],
+    val variables : Set[(LogicalVariable,LogicalVariable)],
     val sourceLocation : SourceLocation,
     val newDomain : Domain
-  ) extends TypeSubstitution
+  ) extends TypeVariableSubstitution
 {
   override def toString = typeMap.mkString("[",",","]")
   val typeVariables : Set[TypeVariable] = for (t <- types) yield t._1
 
   protected val typeMap = types.toMap
   def mapType    (v : TypeVariable, t : DataType) : DataType = typeMap.getOrElse(v,t)
+  def mapVariable(v : LogicalVariable) : Option[LogicalVariable] = varMap.get(v)
+  protected[silAST] override val varMap : Map[LogicalVariable,LogicalVariable] = variables.toMap
+
+  override def +(other : TypeVariableSubstitution)  : TypeVariableSubstitution =
+    new TypeSubstitutionC(types ++ other.types,(varMap ++ other.varMap).toSet,other.sourceLocation,newDomain)
 
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-trait LogicalVariableSubstitution extends TypeSubstitution
+trait LogicalVariableSubstitution //extends TypeVariableSubstitution
 {
    type T <: Term
    def types : Set[(TypeVariable,DataType)]
    def +(other : LogicalVariableSubstitution)  : LogicalVariableSubstitution
 
-//   private[silAST] def variables : Set[(BoundVariable,T)]
+//   private[silAST] def variables : Set[(LogicalVariable,T)]
 
-   def mapVariable(v : BoundVariable) : Option[T] //= varMap.get(v)
-   protected[silAST] def varMap : Map[BoundVariable,T]
+   def mapVariable(v : LogicalVariable) : Option[T] //= varMap.get(v)
+   protected[silAST] def varMap : Map[LogicalVariable,T]
 
-   override def sourceLocation(sl : SourceLocation) : LogicalSubstitutedSourceLocation = new LogicalSubstitutedSourceLocation(sl,this)
+   def sourceLocation(sl : SourceLocation) : LogicalSubstitutedSourceLocation = new LogicalSubstitutedSourceLocation(sl,this)
 }
 
 private[silAST] class LogicalVariableSubstitutionC[TT<:Term](
-                    types : Set[(TypeVariable,DataType)],
-                    variables : Set[(BoundVariable,TT)],
-                    newDomain : Domain
-                    ) extends TypeSubstitutionC(types,noLocation,newDomain) with LogicalVariableSubstitution
+                    override val types : Set[(TypeVariable,DataType)],
+                    variables : Set[(LogicalVariable,TT)]
+                    ) extends  LogicalVariableSubstitution
 {
   override def toString = super.toString + varMap.mkString("(",",",")")
 
@@ -65,25 +75,24 @@ private[silAST] class LogicalVariableSubstitutionC[TT<:Term](
   require (variables.forall((x)=>variables.count((y)=>y._1==x._1)==1))
 
   override def +(other : LogicalVariableSubstitution)  : LogicalVariableSubstitution =
-    new LogicalVariableSubstitutionC[Term](types ++ other.types,(varMap ++ other.varMap).toSet,newDomain)
+    new LogicalVariableSubstitutionC[Term](types ++ other.types,(varMap ++ other.varMap).toSet/*,newDomain*/)
 
-  protected[silAST] override val varMap : Map[BoundVariable,TT] = variables.toMap
-  def mapVariable(v : BoundVariable) : Option[TT] = varMap.get(v)
+  protected[silAST] override val varMap : Map[LogicalVariable,TT] = variables.toMap
+  def mapVariable(v : LogicalVariable) : Option[TT] = varMap.get(v)
 }
 
 trait PLogicalVariableSubstitution extends LogicalVariableSubstitution
 {
   override type T <: PTerm
-  def mapVariable(v : BoundVariable) : Option[T]
+  def mapVariable(v : LogicalVariable) : Option[T]
   def +(other : PLogicalVariableSubstitution)  : PLogicalVariableSubstitution =
-    new PLogicalVariableSubstitutionC(types ++ other.types,varMap.toSet ++ other.varMap.toSet,newDomain)
+    new PLogicalVariableSubstitutionC(types ++ other.types,varMap.toSet ++ other.varMap.toSet/*,newDomain*/)
 }
 
 private[silAST] class PLogicalVariableSubstitutionC(
-    types : Set[(TypeVariable,DataType)],
-    variables : Set[(BoundVariable,PTerm)],
-    newDomain : Domain
-  ) extends LogicalVariableSubstitutionC(types,variables,newDomain) with PLogicalVariableSubstitution
+    override val types : Set[(TypeVariable,DataType)],
+    variables : Set[(LogicalVariable,PTerm)]
+  ) extends LogicalVariableSubstitutionC(types,variables/*,newDomain*/) with PLogicalVariableSubstitution
 {
 
 }
@@ -91,27 +100,27 @@ private[silAST] class PLogicalVariableSubstitutionC(
 trait DLogicalVariableSubstitution extends LogicalVariableSubstitution
 {
   override type T <: DTerm
-  def mapVariable(v : BoundVariable) : Option[T]
+  def mapVariable(v : LogicalVariable) : Option[T]
   def +(other : DLogicalVariableSubstitution)  : DLogicalVariableSubstitution =
-    new DLogicalVariableSubstitutionC(types ++ other.types,varMap.toSet ++ other.varMap.toSet,newDomain)
+    new DLogicalVariableSubstitutionC(types ++ other.types,varMap.toSet ++ other.varMap.toSet/*,newDomain*/)
 }
 
 private[silAST] class DLogicalVariableSubstitutionC(
                                       types : Set[(TypeVariable,DataType)],
-                                      variables : Set[(BoundVariable,DTerm)],
-                                      newDomain : Domain
-                                      ) extends LogicalVariableSubstitutionC(types,variables, newDomain) with DLogicalVariableSubstitution
+                                      variables : Set[(LogicalVariable,DTerm)]//,
+//                                      newDomain : Domain
+                                      ) extends LogicalVariableSubstitutionC(types,variables/*, newDomain*/) with DLogicalVariableSubstitution
 {
 }
 
 class GLogicalVariableSubstitution private[silAST](
                                            types : Set[(TypeVariable,DataType)],
-                                           variables : Set[(BoundVariable,GTerm)],
-                                           newDomain : Domain
-                                           ) extends LogicalVariableSubstitutionC[GTerm](types,variables,newDomain)
+                                           variables : Set[(LogicalVariable,GTerm)]//,
+//                                           newDomain : Domain
+                                           ) extends LogicalVariableSubstitutionC[GTerm](types,variables/*,newDomain*/)
                                               with PLogicalVariableSubstitution with DLogicalVariableSubstitution
 {
   override type T = GTerm
   def +(other : GLogicalVariableSubstitution)  : GLogicalVariableSubstitution =
-    new GLogicalVariableSubstitution(types ++ other.types,variables ++ other.varMap.toSet,newDomain)
+    new GLogicalVariableSubstitution(types ++ other.types,variables ++ other.varMap.toSet/*,newDomain*/)
 }

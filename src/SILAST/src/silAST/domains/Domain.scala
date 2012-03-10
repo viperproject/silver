@@ -29,7 +29,7 @@ abstract class Domain private[silAST] extends ASTNode
   def freeTypeVariables: Set[TypeVariable]
   def isCompatible(other : Domain) : Boolean
 
-  def substitute(ts : TypeSubstitution): Domain
+  def substitute(ts : TypeVariableSubstitution): Domain
 
   override def equals(other : Any) : Boolean = {
     other match{
@@ -73,7 +73,7 @@ private[silAST] class DomainC(
       pInstances.getOrElseUpdate(typeArguments, new DomainInstance(typeArguments.sourceLocation,this,typeArguments))
   }
 
-  def substitute(s:TypeSubstitution): Domain = {
+  def substitute(s:TypeVariableSubstitution): Domain = {
     val typeArguments = new DataTypeSequence((for (t<-typeParameters) yield s.mapType(t,new VariableType(t.sourceLocation,t))))
     getInstance(typeArguments)
   }
@@ -95,7 +95,7 @@ private[silAST] final class DomainInstance(
 
   override def fullName : String = name
   val name : String = original.name + typeArguments.toString
-  val substitution = new TypeSubstitutionC(original.typeParameters.zip(typeArguments).toSet, noLocation, this)
+  val substitution = new TypeSubstitutionC(original.typeParameters.zip(typeArguments).toSet, Set(), noLocation, this)
 
   val getType : NonReferenceDataType = new NonReferenceDataType(sourceLocation,this)
 
@@ -105,7 +105,7 @@ private[silAST] final class DomainInstance(
 
   override val freeTypeVariables = typeArguments.freeTypeVariables.toSet
 
-  def substitute(s: TypeSubstitution): Domain = original.getInstance(typeArguments.substitute(s))
+  def substitute(s: TypeVariableSubstitution): Domain = original.getInstance(typeArguments.substitute(s))
 
   def isCompatible(other:Domain) : Boolean =
     other match {

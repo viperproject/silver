@@ -4,7 +4,7 @@ import silAST.ASTNode
 import silAST.types.DataType
 import silAST.source.SourceLocation
 
-sealed class BoundVariable private[silAST]
+sealed class LogicalVariable private[silAST]
     (val name: String,val dataType: DataType)
     (val sourceLocation : SourceLocation)
   extends ASTNode
@@ -13,7 +13,7 @@ sealed class BoundVariable private[silAST]
 
   override def equals(other : Any) : Boolean = {
     other match{
-      case v : BoundVariable => v eq this
+      case v : LogicalVariable => v eq this
       case _ => false
     }
   }

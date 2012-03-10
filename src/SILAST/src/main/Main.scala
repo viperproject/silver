@@ -238,7 +238,7 @@ object Main {
       case OldTerm(_) => 1
       case LiteralTerm() => 1
 
-      case BoundVariableTerm( _) => 1
+      case LogicalVariableTerm( _) => 1
       case FunctionApplicationTerm( _, _, _) => 3
       case DomainFunctionApplicationTerm(_, _) => 3
 
@@ -252,7 +252,7 @@ object Main {
     t match {
       case LiteralTerm() => 1
 
-      case BoundVariableTerm( _) => 1
+      case LogicalVariableTerm( _) => 1
       case FunctionApplicationTerm(_, _, _) => 3
       //      case DomainFunctionApplicationTerm(_,_,_) => 3
 

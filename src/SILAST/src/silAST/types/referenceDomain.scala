@@ -12,7 +12,7 @@ object referenceDomain extends Domain {
   override def functions = Set[DomainFunction](nullFunction)
   override def predicates = Set[DomainPredicate]()
   override def axioms = Set.empty[DomainAxiom]
-  override def substitute(ts:TypeSubstitution) = this
+  override def substitute(ts:TypeVariableSubstitution) = this
   override def getType = referenceType
   override def freeTypeVariables = Set()
   override def isCompatible(other : Domain) = other == this
@@ -37,7 +37,7 @@ object nullFunction extends DomainFunction
 
   override def toString(ts : TermSequence) = name
 
-  override def substitute(ts:TypeSubstitution) = this
+  override def substitute(ts:TypeVariableSubstitution) = this
 
 }
 

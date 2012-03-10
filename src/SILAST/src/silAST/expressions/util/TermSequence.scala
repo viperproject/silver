@@ -3,10 +3,11 @@ package silAST.expressions.util
 import collection.immutable.Set
 import silAST.ASTNode
 import silAST.expressions.terms.{GTerm, PTerm, DTerm, Term}
-import silAST.symbols.logical.quantification.BoundVariable
+import silAST.symbols.logical.quantification.LogicalVariable
 import silAST.programs.symbols.ProgramVariable
-import silAST.domains.{GLogicalVariableSubstitution, PLogicalVariableSubstitution, DLogicalVariableSubstitution, LogicalVariableSubstitution}
 import silAST.source.{SourceLocation, noLocation}
+import silAST.expressions.{PProgramVariableSubstitution, ProgramVariableSubstitution}
+import silAST.domains._
 
 sealed class TermSequence private[silAST](
                                            private val prArgs: Seq[Term]
@@ -27,11 +28,13 @@ sealed class TermSequence private[silAST](
 
   override def toString() = "(" + args.mkString(",") + ")"
 
-  def freeVariables: Set[BoundVariable] = (for (a <- args) yield a.freeVariables).flatten.toSet
+  def freeVariables: Set[LogicalVariable] = (for (a <- args) yield a.freeVariables).flatten.toSet
 
   def programVariables: Set[ProgramVariable] = (for (a <- args) yield a.programVariables).flatten.toSet
 
+  def substitute(s: TypeVariableSubstitution): TermSequence = new TermSequence(for (t <- prArgs) yield t.substitute(s))
   def substitute(s: LogicalVariableSubstitution): TermSequence = new TermSequence(for (t <- prArgs) yield t.substitute(s))
+  def substitute(s: ProgramVariableSubstitution): TermSequence = new TermSequence(for (t <- prArgs) yield t.substitute(s))
 }
 
 object TermSequence {
@@ -54,9 +57,11 @@ sealed trait PTermSequence extends TermSequence with Seq[PTerm] {
 
   override def iterator: Iterator[PTerm] = pArgs.iterator
 
-  final override val freeVariables: Set[BoundVariable] = Set.empty
+  final override val freeVariables: Set[LogicalVariable] = Set.empty
 
+  override def substitute(s: TypeVariableSubstitution): PTermSequence = new PTermSequenceC(for (t <- pArgs) yield t.substitute(s))
   def substitute(s: PLogicalVariableSubstitution): PTermSequence = new PTermSequenceC(for (t <- pArgs) yield t.substitute(s))
+  def substitute(s: PProgramVariableSubstitution): PTermSequence = new PTermSequenceC(for (t <- pArgs) yield t.substitute(s))
 }
 
 object PTermSequence {
@@ -87,6 +92,7 @@ sealed trait DTermSequence extends TermSequence with Seq[DTerm] {
 
   final override val programVariables = Set[ProgramVariable]()
 
+  override def substitute(s: TypeVariableSubstitution): DTermSequence = new DTermSequenceC(for (t <- dArgs) yield t.substitute(s))
   def substitute(s: DLogicalVariableSubstitution): DTermSequence = new DTermSequenceC(for (t <- dArgs) yield t.substitute(s))
 }
 
@@ -115,6 +121,7 @@ final class GTermSequence private[silAST](
   override val dArgs = args
   override val pArgs = args
 
+  override def substitute(s: TypeVariableSubstitution): GTermSequence = new GTermSequence(for (t <- args) yield t.substitute(s))
   def substitute(s: GLogicalVariableSubstitution): GTermSequence = new GTermSequence(for (t <- args) yield t.substitute(s))
 }
 

@@ -2,7 +2,7 @@ package silAST.expressions.terms
 
 import silAST.programs.NodeFactory
 import silAST.source.SourceLocation
-import silAST.symbols.logical.quantification.BoundVariable
+import silAST.symbols.logical.quantification.LogicalVariable
 import collection.mutable.HashSet
 import silAST.domains.DomainFunction
 import silAST.types.{DataTypeFactory, DataType}
@@ -15,18 +15,18 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
     name!="this"
 
   /////////////////////////////////////////////////////////////////////////
-  def makeBoundVariable(sourceLocation : SourceLocation, name: String, dataType: DataType): BoundVariable = {
+  def makeBoundVariable(sourceLocation : SourceLocation, name: String, dataType: DataType): LogicalVariable = {
     require(dataTypes contains dataType)
     require(validBoundVariableName(name))
-    val result: BoundVariable = new BoundVariable(name, dataType)(sourceLocation)
+    val result: LogicalVariable = new LogicalVariable(name, dataType)(sourceLocation)
     boundVariables += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeBoundVariableTerm(sourceLocation : SourceLocation, v: BoundVariable): BoundVariableTerm = {
+  def makeBoundVariableTerm(sourceLocation : SourceLocation, v: LogicalVariable): LogicalVariableTerm = {
     require(boundVariables contains v)
-    addTerm(new BoundVariableTerm(v)(sourceLocation))
+    addTerm(new LogicalVariableTerm(v)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -43,5 +43,5 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
   }
 
   /////////////////////////////////////////////////////////////////////////
-  protected[silAST] val boundVariables = new HashSet[BoundVariable]
+  protected[silAST] val boundVariables = new HashSet[LogicalVariable]
 }

@@ -1,7 +1,7 @@
 package silAST.types
 
 import silAST.ASTNode
-import silAST.domains.TypeSubstitution
+import silAST.domains.TypeVariableSubstitution
 import silAST.source.{SourceLocation, noLocation}
 
 sealed class DataTypeSequence private[silAST](
@@ -24,7 +24,7 @@ sealed class DataTypeSequence private[silAST](
   override def length = dataTypes.length
   override def iterator = dataTypes.iterator
 
-  def substitute(s : TypeSubstitution) = new DataTypeSequence(dataTypes.map(_.substitute(s)))
+  def substitute(s : TypeVariableSubstitution) = new DataTypeSequence(dataTypes.map(_.substitute(s)))
 
   override def equals(other : Any) = {
     other match{
