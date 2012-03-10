@@ -5,9 +5,9 @@ import silAST.ASTNode
 import silAST.expressions.util.{GTermSequence, DTermSequence, PTermSequence, TermSequence}
 import silAST.programs.symbols.{Predicate, ProgramVariable, Field, Function}
 import silAST.domains._
-import silAST.types.{integerType, referenceType, permissionType, DataType}
 import silAST.source.{TypeSubstitutedSourceLocation, SourceLocation}
 import silAST.expressions.{PProgramVariableSubstitution, ProgramVariableSubstitution}
+import silAST.types._
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -45,8 +45,18 @@ sealed case class IfThenElseTerm private[silAST]
   require(condition.dataType == booleanType)
   require(pTerm.dataType.isCompatible(nTerm.dataType))
   require(nTerm.dataType.isCompatible(pTerm.dataType))
-  override lazy val programVariables = condition.programVariables ++ pTerm.programVariables ++ nTerm.programVariables
+
+  override val dataType = pTerm.dataType
+  override val freeVariables = condition.freeVariables ++ pTerm.freeVariables ++ nTerm.freeVariables
+  override val programVariables = condition.programVariables ++ pTerm.programVariables ++ nTerm.programVariables
   override lazy val subTerms : Seq[Term] = List(condition,pTerm,nTerm)
+
+  def substitute(s: TypeVariableSubstitution): IfThenElseTerm =
+    new IfThenElseTerm(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+  def substitute(s: LogicalVariableSubstitution): IfThenElseTerm =
+    new IfThenElseTerm(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+  def substitute(s: ProgramVariableSubstitution): IfThenElseTerm =
+    new IfThenElseTerm(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
 }
 
 sealed case class OldTerm private[silAST]
@@ -350,12 +360,54 @@ sealed trait PTerm extends Term {
 
   protected def pSubTerms: Seq[PTerm]
 
-  final override lazy val freeVariables = Set[LogicalVariable]()
+  final override val freeVariables = Set[LogicalVariable]()
 
   def substitute(s: TypeVariableSubstitution): PTerm
 
   def substitute(s: PLogicalVariableSubstitution): PTerm
   def substitute(s: PProgramVariableSubstitution): PTerm
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+sealed trait PIfThenElseTerm
+  extends IfThenElseTerm
+  with PTerm
+{
+  override val condition : PTerm = pCondition
+  override val pTerm : PTerm = ppTerm
+  override val nTerm : PTerm = pnTerm
+
+  protected[silAST] def pCondition : PTerm
+  protected[silAST] def ppTerm : PTerm
+  protected[silAST] def pnTerm : PTerm
+
+  override def substitute(s: TypeVariableSubstitution): PIfThenElseTerm =
+    new PIfThenElseTermC(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+  override def substitute(s: PLogicalVariableSubstitution): PIfThenElseTerm =
+    new PIfThenElseTermC(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+  override def substitute(s: PProgramVariableSubstitution): PIfThenElseTerm =
+    new PIfThenElseTermC(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+}
+
+object PIfThenElseTerm {
+  def unapply(t: PIfThenElseTerm): Option[(PTerm, PTerm, PTerm)] =
+    Some((t.condition,t.ppTerm,t.pnTerm))
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+private[silAST] final class PIfThenElseTermC
+  (override val pCondition:PTerm, override val ppTerm : PTerm, override val pnTerm : PTerm)
+  (override val sourceLocation : SourceLocation)
+  extends IfThenElseTerm(pCondition,ppTerm,pnTerm)(sourceLocation)
+  with PIfThenElseTerm
+{
+  require(condition.dataType == booleanType)
+  require(pTerm.dataType.isCompatible(nTerm.dataType))
+  require(nTerm.dataType.isCompatible(pTerm.dataType))
+
+  override val pSubTerms = List(condition,pTerm,nTerm)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -522,10 +574,51 @@ sealed trait DTerm extends Term {
 
   override lazy val subTerms: Seq[DTerm] = dSubTerms
 
-  final override def programVariables = Set()
+  final override val programVariables = Set[ProgramVariable]()
 
   override def substitute(s: TypeVariableSubstitution): DTerm
   def substitute(s: DLogicalVariableSubstitution): DTerm
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+sealed trait DIfThenElseTerm
+  extends IfThenElseTerm
+  with DTerm
+{
+  override val condition : DTerm = dCondition
+  override val pTerm : DTerm = dpTerm
+  override val nTerm : DTerm = dnTerm
+
+  protected[silAST] def dCondition : DTerm
+  protected[silAST] def dpTerm : DTerm
+  protected[silAST] def dnTerm : DTerm
+
+  override def substitute(s: TypeVariableSubstitution): DIfThenElseTerm =
+    new DIfThenElseTermC(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+  override def substitute(s: DLogicalVariableSubstitution): DIfThenElseTerm =
+    new DIfThenElseTermC(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+}
+
+object DIfThenElseTerm {
+  def unapply(t: DIfThenElseTerm): Option[(DTerm, DTerm, DTerm)] =
+    Some((t.condition,t.pTerm,t.nTerm))
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+private[silAST] final class DIfThenElseTermC
+  (override val dCondition:DTerm, override val dpTerm : DTerm, override val dnTerm : DTerm)
+  (override val sourceLocation : SourceLocation)
+  extends IfThenElseTerm(dCondition,dpTerm,dnTerm)(sourceLocation)
+  with DIfThenElseTerm
+{
+  require(condition.dataType == booleanType)
+  require(pTerm.dataType.isCompatible(nTerm.dataType))
+  require(nTerm.dataType.isCompatible(pTerm.dataType))
+
+  override val dSubTerms = List(condition,pTerm,nTerm)
+
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -618,6 +711,34 @@ sealed trait GTerm extends Term with DTerm with PTerm {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
+/*
+sealed class GIfThenElseTerm private[silAST]
+(override val condition:GTerm, override val pTerm : GTerm, override val nTerm : GTerm)
+(override val sourceLocation : SourceLocation)
+  extends IfThenElseTerm(condition,pTerm,nTerm)
+  with PIfThenElseTerm
+  with DIfThenElseTerm
+  with GTerm
+{
+  require(condition.dataType == booleanType)
+  require(pTerm.dataType.isCompatible(nTerm.dataType))
+  require(nTerm.dataType.isCompatible(pTerm.dataType))
+
+  override val dSubTerms = List(condition,pTerm,nTerm)
+  override val dCondition = condition
+  override val dpTerm = pTerm
+  override val ppTerm = pTerm
+  override val dnTerm = nTerm
+  override val pnTerm = nTerm
+
+  override def substitute(s: TypeVariableSubstitution): DIfThenElseTerm =
+    new DIfThenElseTerm(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+  override def substitute(s: DLogicalVariableSubstitution): DIfThenElseTerm =
+    new DIfThenElseTerm(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+}
+  */
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 sealed abstract case class LiteralTerm protected[silAST]()
   extends ASTNode with Term
   with GTerm
@@ -680,3 +801,40 @@ final class GDomainFunctionApplicationTerm
   def substitute(s: GLogicalVariableSubstitution): GDomainFunctionApplicationTerm =
     new GDomainFunctionApplicationTerm(function, arguments.substitute(s))(s.sourceLocation(sourceLocation))
 }
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final class GIfThenElseTerm private[silAST]
+    (override val condition:GTerm, override val pTerm : GTerm, override val nTerm : GTerm)
+    (override val sourceLocation : SourceLocation)
+  extends IfThenElseTerm(condition,pTerm,nTerm)(sourceLocation)
+  with PIfThenElseTerm
+  with DIfThenElseTerm
+  with GTerm
+{
+  override val pCondition = condition
+  override val dCondition = condition
+  override val ppTerm = pTerm
+  override val dpTerm = pTerm
+  override val pnTerm = pTerm
+  override val dnTerm = pTerm
+
+  require(condition.dataType == booleanType)
+  require(pTerm.dataType.isCompatible(nTerm.dataType))
+  require(nTerm.dataType.isCompatible(pTerm.dataType))
+
+  val gSubTerms = List(condition,pTerm,nTerm)
+
+  override def substitute(s: TypeVariableSubstitution): GIfThenElseTerm =
+    new GIfThenElseTerm(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+  override def substitute(s: GLogicalVariableSubstitution): GIfThenElseTerm =
+    new GIfThenElseTerm(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+//  override def substitute(s: PProgramVariableSubstitution): GIfThenElseTerm =
+//    new GIfThenElseTerm(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+}
+
+object GIfThenElseTerm {
+  def unapply(t: GIfThenElseTerm): Option[(GTerm, GTerm, GTerm)] =
+    Some((t.condition,t.ppTerm,t.pnTerm))
+}
+

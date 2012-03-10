@@ -6,6 +6,7 @@ import collection.Set
 import silAST.domains.DomainFunction
 import silAST.expressions.util.GTermSequence
 import silAST.programs.NodeFactory
+import silAST.types.booleanType
 
 protected[silAST] trait GTermFactory 
   extends NodeFactory 
@@ -32,6 +33,12 @@ protected[silAST] trait GTermFactory
         fa.arguments.foreach(migrate(_))
         addTerm(fa)
       }
+      case itet : GIfThenElseTerm => {
+        require(itet.condition.dataType == booleanType)
+        migrate(itet.condition)
+        migrate(itet.pTerm)
+        migrate(itet.nTerm)
+      }
     }
   }
   /////////////////////////////////////////////////////////////////////////
@@ -46,6 +53,14 @@ protected[silAST] trait GTermFactory
     addTerm(new GDomainFunctionApplicationTerm(f, a)(sourceLocation))
   }
 
+  /////////////////////////////////////////////////////////////////////////
+  def makeGIfThenElseTerm(sourceLocation : SourceLocation, c : GTerm,  p:GTerm,  n : GTerm): GIfThenElseTerm = {
+    migrate(c)
+    migrate(p)
+    migrate(n)
+    require(c.dataType == booleanType)
+    addTerm(new GIfThenElseTerm(c,p,n)(sourceLocation))
+  }
 
   /////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////

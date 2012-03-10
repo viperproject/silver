@@ -69,9 +69,13 @@ object Main {
       val this_next = vp.makeFieldReadTerm(nl, thisT, nextField)
       val this_seq = vp.makeFieldReadTerm(nl, thisT, seqField)
       val this_next_seq = vp.makeFieldReadTerm(nl, this_next, seqField)
-      val this_next_valid = vp.makePredicateExpression(nl, this_next, vp)
-      val singleton_this_val = vp.makeDomainFunctionApplicationTerm(nl, singletonInt, TermSequence(this_val))
+
       val nullTerm = vp.makeDomainFunctionApplicationTerm(nl, nullFunction, TermSequence())
+      val this_next_valid = vp.makePredicateExpression(nl, this_next, vp)
+      val this_next_eq_null = vp.makeDomainFunctionApplicationTerm(nl,referenceEquality,TermSequence(this_next,nullTerm))
+      val this_next_neq_null = vp.makeDomainFunctionApplicationTerm(nl, booleanNegation,TermSequence(this_next_eq_null))
+//      val ite = vp.makeIfThenElseTerm(nl,this_next_neq_null,thisT,this_next)
+      val singleton_this_val = vp.makeDomainFunctionApplicationTerm(nl, singletonInt, TermSequence(this_val))
       val acc_val_100 = vp.makePermissionExpression(nl, thisT,valField, vp.makeFullPermission(nl))
       val acc_next_100 = vp.makePermissionExpression(nl, thisT,nextField, vp.makeFullPermission(nl))
       val acc_seq_50 = vp.makePermissionExpression(nl, thisT,seqField, vp.makePercentagePermission(nl, vp.makeIntegerLiteralTerm(nl,50)))
@@ -174,7 +178,7 @@ object Main {
         1
       }
 
-      val bdf = pf.getDomainFactory("Bool",List((nl,"T")))(nl);
+      val bdf = pf.getDomainFactory("BB",List((nl,"T")))(nl);
       val bd = bdf.compile
 
       {

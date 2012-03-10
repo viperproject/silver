@@ -54,6 +54,13 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
         require (fields contains pt.field)
         addTerm(pt)
       }
+      case itet : IfThenElseTerm => {
+        require(itet.condition.dataType == booleanType)
+        migrate(itet.condition)
+        migrate(itet.pTerm)
+        migrate(itet.nTerm)
+      }
+
     }
   }
 
@@ -177,4 +184,18 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   /////////////////////////////////////////////////////////////////////////////////////
   def makePermissionIntegerMultiplicationTerm(sourceLocation : SourceLocation, t1: Term, i: Term) =
     makeDomainFunctionApplicationTerm(sourceLocation, permissionIntegerMultiplication, TermSequence(t1, i))
+
+  /////////////////////////////////////////////////////////////////////////
+  def makeIfThenElseTerm(sourceLocation : SourceLocation, c : Term,  p:Term,  n : Term): IfThenElseTerm = {
+    migrate(c)
+    migrate(p)
+    migrate(n)
+    require(c.dataType == booleanType)
+    (c, p, n) match {
+      case (gc:GTerm, gp:GTerm,gn:GTerm) => makeGIfThenElseTerm(sourceLocation,gc,gp,gn)
+      case (dc:DTerm, dp:DTerm,dn:DTerm) => makeDIfThenElseTerm(sourceLocation,dc,dp,dn)
+      case (pc:PTerm, pp:PTerm,pn:PTerm) => makePIfThenElseTerm(sourceLocation,pc,pp,pn)
+      case _ => addTerm(new IfThenElseTerm(c,p,n)(sourceLocation))
+    }
+  }
 }

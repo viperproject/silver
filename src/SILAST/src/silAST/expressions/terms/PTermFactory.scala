@@ -5,9 +5,9 @@ import silAST.source.SourceLocation
 
 import silAST.domains.DomainFunction
 import silAST.programs.NodeFactory
-import silAST.types.{DataTypeFactory, DataType}
 import silAST.expressions.util.{PTermSequence, GTermSequence}
 import silAST.programs.symbols._
+import silAST.types.{booleanType, DataTypeFactory, DataType}
 
 protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
 /*  /////////////////////////////////////////////////////////////////////////
@@ -56,6 +56,12 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
         migrate (ut.receiver)
         migrate(ut.term)
         addTerm(ut)
+      }
+      case itet : PIfThenElseTerm => {
+        require(itet.condition.dataType == booleanType)
+        migrate(itet.condition)
+        migrate(itet.pTerm)
+        migrate(itet.nTerm)
       }
     }
   }
@@ -109,6 +115,18 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
     migrate(t)
 
     addTerm(new PUnfoldingTerm(r, p.pPredicate, t)(sourceLocation))
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  def makePIfThenElseTerm(sourceLocation : SourceLocation, c : PTerm,  p:PTerm,  n : PTerm): PIfThenElseTerm = {
+    migrate(c)
+    migrate(p)
+    migrate(n)
+    require(c.dataType == booleanType)
+    (c, p, n) match {
+      case (gc:GTerm, gp:GTerm,gn:GTerm) => makeGIfThenElseTerm(sourceLocation,gc,gp,gn)
+      case _ => addTerm(new PIfThenElseTermC(c,p,n)(sourceLocation))
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////

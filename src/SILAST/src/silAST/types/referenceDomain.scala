@@ -9,7 +9,7 @@ object referenceDomain extends Domain {
   override val fullName : String = name
   override val sourceLocation = noLocation
 
-  override def functions = Set[DomainFunction](nullFunction)
+  override def functions = Set[DomainFunction](nullFunction,referenceEquality)
   override def predicates = Set[DomainPredicate]()
   override def axioms = Set.empty[DomainAxiom]
   override def substitute(ts:TypeVariableSubstitution) = this
@@ -41,4 +41,20 @@ object nullFunction extends DomainFunction
 
 }
 
+///////////////////////////////////////////////////////////////////////////
+object referenceEquality extends DomainFunction
+{
+  override val sourceLocation = noLocation
+  override val name = "==<ref>"
+  override val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(referenceType,referenceType),booleanType)
+  override lazy val domain = referenceDomain
 
+  override def toString(ts : TermSequence) = 
+  {
+    require(ts.size == 2)
+    ts(0) + "==" + ts(1)
+  }
+
+  override def substitute(ts:TypeVariableSubstitution) = this
+
+}

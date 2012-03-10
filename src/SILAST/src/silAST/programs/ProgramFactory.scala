@@ -111,13 +111,12 @@ final class ProgramFactory(
 */
   override def dataTypes : collection.Set[DataType]=
     pDataTypes ++ 
-    Set(integerType,permissionType,referenceType) ++ 
+//    Set(integerType,permissionType,referenceType,booleanType) ++
     (for (d <- domains) yield d.getType).toSet
 
   def emptyDTSequence = new DataTypeSequence(List.empty[DataType])
-  private val nullSig = new DomainFunctionSignature(noLocation, emptyDTSequence, referenceType)
 
-  private[silAST] val pDomains : HashSet[Domain] = HashSet(integerDomain,permissionDomain,referenceDomain)
+  private[silAST] val pDomains : HashSet[Domain] = HashSet(integerDomain,permissionDomain,referenceDomain,booleanDomain)
   protected[silAST] def domains: collection.Set[Domain] =
     pDomains ++
       ( for (df <- domainFactories) yield df.domain).toSet ++

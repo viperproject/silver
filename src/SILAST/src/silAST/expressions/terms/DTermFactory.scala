@@ -5,8 +5,8 @@ import silAST.source.SourceLocation
 import silAST.symbols.logical.quantification.LogicalVariable
 import collection.mutable.HashSet
 import silAST.domains.DomainFunction
-import silAST.types.{DataTypeFactory, DataType}
 import silAST.expressions.util.{DTermSequence, GTermSequence}
+import silAST.types.{booleanType, DataTypeFactory, DataType}
 
 
 trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
@@ -38,6 +38,12 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
         require(domainFunctions contains fa.function)
         fa.arguments.foreach(migrate(_))
         addTerm(fa)
+      }
+      case itet : DIfThenElseTerm => {
+        require(itet.condition.dataType == booleanType)
+        migrate(itet.condition)
+        migrate(itet.pTerm)
+        migrate(itet.nTerm)
       }
     }
   }
@@ -71,6 +77,18 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
     a match {
       case a: GTermSequence => makeGDomainFunctionApplicationTerm(sourceLocation, f, a)
       case _ => addTerm(new DDomainFunctionApplicationTermC(f, a)(sourceLocation))
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  def makeDIfThenElseTerm(sourceLocation : SourceLocation, c : DTerm,  p:DTerm,  n : DTerm): DIfThenElseTerm = {
+    migrate(c)
+    migrate(p)
+    migrate(n)
+    require(c.dataType == booleanType)
+    (c, p, n) match {
+      case (gc:GTerm, gp:GTerm,gn:GTerm) => makeGIfThenElseTerm(sourceLocation,gc,gp,gn)
+      case _ => addTerm(new DIfThenElseTermC(c,p,n)(sourceLocation))
     }
   }
 
