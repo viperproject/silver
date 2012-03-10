@@ -12,9 +12,43 @@ import silAST.programs.symbols.Predicate
 
 trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermFactory {
   //////////////////////////////////////////////////////////////////////////
+  protected[silAST] def migrate(e:PExpression)
+  {
+    if (expressions contains e)
+      return
+
+    e match {
+      case ge : GExpression => super.migrate(ge)
+      case ue : PUnaryExpression => {
+        migrate(ue.operand1)
+      }
+      case be : PBinaryExpression => {
+        migrate(be.operand1)
+        migrate(be.operand2)
+      }
+      case dpe : PDomainPredicateExpression => {
+        require(domainPredicates contains dpe.predicate)
+        dpe.arguments.foreach(migrate(_))
+      }
+      case ee : PEqualityExpression =>
+      {
+        migrate(ee.term1)
+        migrate(ee.term2)
+      }
+      case ppe : PPredicateExpression => {
+        require(predicates contains ppe.predicate)
+      }
+      case pue : PUnfoldingExpression => {
+        migrate(pue.expression)
+        migrate(pue.predicate)
+      }
+    }
+    addExpression(e)
+  }
+  //////////////////////////////////////////////////////////////////////////
   def makePDomainPredicateExpression(sourceLocation : SourceLocation, p: DomainPredicate, args: PTermSequence): PDomainPredicateExpression = {
     require(domainPredicates contains p)
-    require(args.forall(terms contains _))
+    args.foreach(migrate(_))
 
     (args) match {
       case (a: GTermSequence) => makeGDomainPredicateExpression(sourceLocation, p, a)
@@ -25,14 +59,14 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   //////////////////////////////////////////////////////////////////////////
   def makePPredicateExpression(sourceLocation : SourceLocation, r: PTerm, p: Predicate): PPredicateExpression = {
     require(predicates contains p)
-    require(terms contains r)
+    migrate(r)
 
     addExpression(new PPredicateExpression(r, p)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
   def makePUnaryExpression(sourceLocation : SourceLocation, op: UnaryConnective, e1: PExpression): PUnaryExpression = {
-    require(expressions contains e1)
+    migrate(e1)
 
     (e1) match {
       case (e1: GExpression) => makeGUnaryExpression(sourceLocation, op, e1)
@@ -42,8 +76,8 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
   //////////////////////////////////////////////////////////////////////////
   def makePBinaryExpression(sourceLocation : SourceLocation, op: BinaryConnective, e1: PExpression, e2: PExpression): PBinaryExpression = {
-    require(expressions contains e1)
-    require(expressions contains e2)
+    migrate(e1)
+    migrate(e2)
 
     (e1, e2) match {
       case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(sourceLocation, op, e1, e2)
@@ -53,8 +87,8 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
   //////////////////////////////////////////////////////////////////////////
   def makePEqualityExpression(sourceLocation : SourceLocation, t1: PTerm, t2: PTerm): PEqualityExpression = {
-    require(terms contains t1)
-    require(terms contains t2)
+    migrate(t1)
+    migrate(t2)
 
     (t1, t2) match {
       case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sourceLocation, t1, t2)
@@ -64,8 +98,8 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
   //////////////////////////////////////////////////////////////////////////
   def makePUnfoldingExpression(sourceLocation : SourceLocation, p: PPredicateExpression, e: PExpression): UnfoldingExpression = {
-    require(expressions contains p)
-    require(expressions contains e)
+    migrate(p)
+    migrate(e)
 
     addExpression(new PUnfoldingExpression(p, e)(sourceLocation))
   }

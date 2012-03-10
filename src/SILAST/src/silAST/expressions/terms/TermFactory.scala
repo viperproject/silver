@@ -7,12 +7,61 @@ import silAST.expressions.util._
 import silAST.programs.symbols.{PredicateFactory, FunctionFactory, Field}
 import silAST.types._
 
-protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory {
+protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory with GTermFactory{
+  /////////////////////////////////////////////////////////////////////////
+  protected[silAST] def migrate(t : Term)
+  {
+    if (terms contains t)
+      return;
+    t match
+    {
+      case gt : GTerm => super[GTermFactory].migrate(gt)
+      case dt : DTerm => super.migrate(dt)
+      case pt : PTerm => super.migrate(pt)
+      case fa : DomainFunctionApplicationTerm =>
+      {
+        require(domainFunctions contains fa.function)
+        fa.arguments.foreach(migrate(_))
+        addTerm(fa)
+      }
+      case fa : FunctionApplicationTerm => {
+        require(functions contains fa.function)
+        fa.arguments.foreach(migrate(_))
+        addTerm(fa)
+      }
+      case ct : CastTerm => {
+        migrate(ct.operand1)
+        migrate(ct.newType)
+        addTerm(t)
+      }
+      case fr : FieldReadTerm => {
+        require (fields contains fr.field)
+        migrate (fr.location)
+        addTerm(fr)
+      }
+      case ut : UnfoldingTerm => {
+        require (predicates contains ut.predicate)
+        migrate (ut.receiver)
+        migrate(ut.term)
+        addTerm(ut)
+      }
+      case ot : OldTerm => {
+        migrate (ot.term)
+        addTerm(ot)
+      }
+      case pt  : PermTerm => {
+        migrate(pt.location)
+        require (fields contains pt.field)
+        addTerm(pt)
+      }
+    }
+  }
+
   /////////////////////////////////////////////////////////////////////////
   def makeFunctionApplicationTerm(sourceLocation : SourceLocation, r: Term, ff: FunctionFactory, a: TermSequence): FunctionApplicationTerm = {
-    require(terms contains r)
+    migrate(r)
     require(functions contains ff.pFunction)
-    require(a.forall(terms contains _))
+    a.foreach(migrate (_))
 
     (r, a) match {
       case (r: PTerm, a: PTermSequence) => makePFunctionApplicationTerm(sourceLocation, r, ff, a)
@@ -23,8 +72,8 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   //////////////////////////////////////////////////////////////////////////
   def makeUnfoldingTerm(sourceLocation : SourceLocation, r: Term, p: PredicateFactory, t: Term): UnfoldingTerm = {
     require(predicates contains p.pPredicate)
-    require(terms contains r)
-    require(terms contains t)
+    migrate(r)
+    migrate(t)
 
     (r, t) match {
       case (r: PTerm, t: PTerm) => makePUnfoldingTerm(sourceLocation, r, p, t)
@@ -34,8 +83,8 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
   /////////////////////////////////////////////////////////////////////////
   def makeCastTerm(sourceLocation : SourceLocation, t: Term, dt: DataType): CastTerm = {
-    require(terms contains t)
-    require(dataTypes contains dt)
+    migrate(dt)
+    migrate(t)
 
     t match {
       case t: PTerm => makePCastTerm(sourceLocation, t, dt)
@@ -45,8 +94,8 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
   /////////////////////////////////////////////////////////////////////////
   def makeFieldReadTerm(sourceLocation : SourceLocation, t: Term, f: Field): FieldReadTerm = {
-    require(terms contains t)
     require(fields contains f)
+    migrate(t)
 
     t match {
       case t: PTerm => makePFieldReadTerm(sourceLocation, t, f)
@@ -57,14 +106,14 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
   /////////////////////////////////////////////////////////////////////////
   def makeOldTerm(sourceLocation : SourceLocation, t: Term): OldTerm = {
-    require(terms contains t)
+    migrate(t)
     addTerm(new OldTerm(t)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
   def makeDomainFunctionApplicationTerm(sourceLocation : SourceLocation, f: DomainFunction, a: TermSequence): DomainFunctionApplicationTerm = {
-    require(a.forall(terms contains _))
     require(domainFunctions contains f)
+    a.foreach(migrate (_))
 
     a match {
       case a: GTermSequence => makeGDomainFunctionApplicationTerm(sourceLocation, f, a)
@@ -76,7 +125,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
 
   /////////////////////////////////////////////////////////////////////////////////////
   def makePermTerm(sourceLocation : SourceLocation, location: Term,  field: Field): PermTerm = {
-    require (terms contains location)
+    migrate(location)
     require (fields contains field)
     require (location.dataType == referenceType)
 

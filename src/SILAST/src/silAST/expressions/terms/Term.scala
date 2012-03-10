@@ -37,6 +37,18 @@ sealed trait AtomicTerm extends Term {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
+sealed case class IfThenElseTerm private[silAST]
+    (condition:Term, pTerm : Term, nTerm : Term)
+    (override val sourceLocation : SourceLocation)
+  extends Term
+{
+  require(condition.dataType == booleanType)
+  require(pTerm.dataType.isCompatible(nTerm.dataType))
+  require(nTerm.dataType.isCompatible(pTerm.dataType))
+  override lazy val programVariables = condition.programVariables ++ pTerm.programVariables ++ nTerm.programVariables
+  override lazy val subTerms : Seq[Term] = List(condition,pTerm,nTerm)
+}
+
 sealed case class OldTerm private[silAST]
     (term: Term)
     (override val sourceLocation : SourceLocation)
@@ -375,7 +387,7 @@ sealed case class ProgramVariableTerm protected[silAST]
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 final class PUnfoldingTerm private[silAST]
-    (receiver: PTerm,predicate: Predicate,term: PTerm)
+    (override val receiver: PTerm,predicate: Predicate,override val term: PTerm)
     (sourceLocation : SourceLocation)
   extends UnfoldingTerm(receiver, predicate, term)(sourceLocation) with PTerm
 {

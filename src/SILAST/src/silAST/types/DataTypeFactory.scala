@@ -9,9 +9,39 @@ import silAST.domains.DomainFactory
 
 trait DataTypeFactory extends NodeFactory {
 
+  //////////////////////////////////////////////////////////////////////////
+  protected[silAST] def migrate(dts : DataTypeSequence)
+  {
+    dts.foreach(migrate(_))
+  }
+
+  protected[silAST] def migrate(dt : DataType)
+  {
+    if (dataTypes contains dt)
+      return
+
+    dt match{
+      case nr : NonReferenceDataType => {
+        require(domainFactories.exists (_.domain == nr.domain))
+        pDataTypes += nr;
+        return;
+      }
+      case r : ReferenceDataType => {
+        pDataTypes += r;
+        return;
+      }
+      case vt : VariableType => {
+        require(typeVariables contains  vt.variable)
+        pDataTypes += vt;
+        return;
+      }
+    }
+  }
+
   def makeNonReferenceDataType(sourceLocation : SourceLocation, df: DomainFactory,ta : DataTypeSequence): NonReferenceDataType = {
     require(domainFactories contains df)
-    require(ta.forall(dataTypes contains _))
+    migrate(ta)
+//    require(ta.forall(dataTypes contains _))
     require(df.domain.typeParameters.length == ta.length)
     val domain = df.domain.getInstance(ta)
     val result = new NonReferenceDataType(sourceLocation, domain)

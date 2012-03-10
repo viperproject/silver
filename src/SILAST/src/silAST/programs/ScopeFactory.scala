@@ -5,7 +5,9 @@ import silAST.methods.MethodFactory
 import silAST.domains.{DomainFunction,DomainPredicate,DomainFactory}
 import silAST.programs.symbols.{ProgramVariable,Function,Predicate}
 
-trait ScopeFactory extends NodeFactory with DataTypeFactory
+trait ScopeFactory
+  extends NodeFactory
+  with DataTypeFactory
 {
   protected[silAST] def parentFactory : Option[ScopeFactory]
 

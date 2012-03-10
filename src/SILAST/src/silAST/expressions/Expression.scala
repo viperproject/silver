@@ -329,7 +329,7 @@ private[silAST] final class PEqualityExpressionC
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 final class PUnfoldingExpression private[silAST]
-    (predicate: PPredicateExpression,expression: PExpression)
+    (override val predicate: PPredicateExpression,override val expression: PExpression)
     (sourceLocation : SourceLocation)
   extends UnfoldingExpression(predicate, expression)(sourceLocation)
   with PExpression

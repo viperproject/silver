@@ -14,7 +14,10 @@ class MethodFactory(
                      val programFactory: ProgramFactory,
                      val sourceLocation : SourceLocation,
                      val name: String
-                     ) extends NodeFactory with ExpressionFactory with ScopeFactory
+                     )
+  extends NodeFactory
+  with ExpressionFactory
+  with ScopeFactory
 {
   def compile(): Method = {
     if (!signatureDefined)

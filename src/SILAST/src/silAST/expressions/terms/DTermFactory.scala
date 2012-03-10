@@ -10,7 +10,39 @@ import silAST.expressions.util.{DTermSequence, GTermSequence}
 
 
 trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
+/*
+  /////////////////////////////////////////////////////////////////////////
+  override def migrate(t : Term)
+  {
+    t match {
+      case dt : DTerm => migrate(dt)
+      case _ => throw new Exception("Tried to migrate invalid expression " + t.toString)
+    }
+  }
+  */
+  /////////////////////////////////////////////////////////////////////////
+  protected[silAST] def migrate(t : DTerm)
+  {
+    if (terms contains t)
+      return;
+    t match
+    {
+      case gt : GTerm => super.migrate(gt)
+      case lv : LogicalVariableTerm => 
+      {
+        require(boundVariables contains lv.variable)
+        addTerm(lv)
+      }
+      case fa : DDomainFunctionApplicationTerm =>
+      {
+        require(domainFunctions contains fa.function)
+        fa.arguments.foreach(migrate(_))
+        addTerm(fa)
+      }
+    }
+  }
 
+  /////////////////////////////////////////////////////////////////////////
   def validBoundVariableName(name:String) : Boolean =
     name!="this"
 

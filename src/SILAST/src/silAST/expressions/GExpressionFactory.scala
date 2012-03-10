@@ -12,6 +12,35 @@ import silAST.programs.NodeFactory
 
 private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
   //////////////////////////////////////////////////////////////////////////
+  protected[silAST] def migrate(e:GExpression)
+  {
+    if (expressions contains e)
+      return
+
+    e match {
+      case ue : GUnaryExpression => {
+        migrate(ue.operand1)
+      }
+      case be : GBinaryExpression => {
+        migrate(be.operand1)
+        migrate(be.operand2)
+      }
+      case dpe : GDomainPredicateExpression => {
+        require(domainPredicates contains dpe.predicate)
+        dpe.arguments.foreach(migrate(_))
+      }
+      case ee : GEqualityExpression =>
+      {
+        migrate(ee.term1)
+        migrate(ee.term2)
+      }
+      case te : TrueExpression => {}
+      case fe : FalseExpression => {}
+    }
+    addExpression(e)
+  }
+
+  //////////////////////////////////////////////////////////////////////////
   def makeGUnaryExpression(sourceLocation : SourceLocation, op: UnaryConnective, e1: GExpression): GUnaryExpression = {
     require(expressions contains e1)
     addExpression(new GUnaryExpression(op,e1)(sourceLocation))
@@ -20,14 +49,14 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
   //////////////////////////////////////////////////////////////////////////
   def makeGDomainPredicateExpression(sourceLocation : SourceLocation, p: DomainPredicate, args: GTermSequence): GDomainPredicateExpression = {
     require(domainPredicates contains p)
-    require(args.forall(terms contains _))
+    args.foreach(migrate(_))
     addExpression(new GDomainPredicateExpression(p, args)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
   def makeGBinaryExpression(sourceLocation : SourceLocation, op: BinaryConnective, e1: GExpression, e2: GExpression): GBinaryExpression = {
-    require(expressions contains e1)
-    require(expressions contains e2)
+    migrate(e1)
+    migrate(e2)
 
     addExpression(new GBinaryExpression(op, e1, e2)(sourceLocation))
 
@@ -39,8 +68,8 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
                                t1: GTerm,
                                t2: GTerm
                                ): GEqualityExpression = {
-    require(terms contains t1)
-    require(terms contains t2)
+    migrate(t1)
+    migrate(t2)
     addExpression(new GEqualityExpression(t1, t2)(sourceLocation))
   }
 
