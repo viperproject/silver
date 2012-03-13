@@ -4,6 +4,8 @@ import silAST.types.{DataTypeFactory,DataType}
 import silAST.methods.MethodFactory
 import silAST.domains.{DomainFunction,DomainPredicate,DomainFactory}
 import silAST.programs.symbols.{ProgramVariable,Function,Predicate}
+import silAST.expressions.terms.PTerm
+import silAST.expressions.ProgramVariableSubstitution
 
 trait ScopeFactory
   extends NodeFactory
@@ -20,6 +22,6 @@ trait ScopeFactory
                     override def dataTypes  : Set[DataType]  = parentFactory.get.dataTypes union pDataTypes
 
   protected[silAST] def domainFunctions  : Set[DomainFunction]  = parentFactory.get.domainFunctions
-  protected[silAST] def domainPredicates : Set[DomainPredicate] = parentFactory.get.domainPredicates	
-	
+  protected[silAST] def domainPredicates : Set[DomainPredicate] = parentFactory.get.domainPredicates
+  
 }

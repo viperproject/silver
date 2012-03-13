@@ -4,10 +4,18 @@ import silAST.source.SourceLocation
 import silAST.domains.DomainFunction
 import silAST.programs.NodeFactory
 import silAST.expressions.util._
-import silAST.programs.symbols.{PredicateFactory, FunctionFactory, Field}
 import silAST.types._
+import collection.immutable
+import silAST.programs.symbols.{ProgramVariable, PredicateFactory, FunctionFactory, Field}
+import silAST.expressions.{ProgramVariableSubstitutionC, ProgramVariableSubstitution, PProgramVariableSubstitutionC, PProgramVariableSubstitution}
 
 protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory with GTermFactory{
+  /////////////////////////////////////////////////////////////////////////
+  def makeProgramVariableSubstitution(subs:immutable.Set[(ProgramVariable,Term)]) : ProgramVariableSubstitution =
+  {
+    subs.foreach(kv => migrate(kv._2))
+    new ProgramVariableSubstitutionC(this,subs,immutable.Set())
+  }
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] def migrate(t : Term)
   {

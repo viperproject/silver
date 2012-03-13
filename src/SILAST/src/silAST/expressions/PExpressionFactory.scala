@@ -1,13 +1,13 @@
 package silAST.expressions
 
-import collection.Set
 import silAST.source.SourceLocation
 import silAST.domains.DomainPredicate
 import terms.{PTermFactory, PTerm, GTerm}
 import util.{GTermSequence, PTermSequence}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.programs.NodeFactory
-import silAST.programs.symbols.Predicate
+import silAST.programs.symbols.{ProgramVariable, Predicate}
+import collection.{immutable, Set}
 
 
 trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermFactory {
@@ -45,6 +45,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
     }
     addExpression(e)
   }
+
   //////////////////////////////////////////////////////////////////////////
   def makePDomainPredicateExpression(sourceLocation : SourceLocation, p: DomainPredicate, args: PTermSequence): PDomainPredicateExpression = {
     require(domainPredicates contains p)

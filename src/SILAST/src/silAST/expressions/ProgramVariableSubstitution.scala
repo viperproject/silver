@@ -3,17 +3,16 @@ package silAST.expressions
 import silAST.types.{DataType, TypeVariable}
 import silAST.symbols.logical.quantification.LogicalVariable
 import silAST.programs.symbols.ProgramVariable
-import terms.{PTerm, Term}
 import silAST.source.{PVSubstitutedSourceLocation, TypeSubstitutedSourceLocation, SourceLocation}
 import silAST.programs.ScopeFactory
+import terms.{PTermFactory, PTerm, Term}
 
 
 sealed abstract class ProgramVariableSubstitution
 {
   type T <: Term
-//  def +(other : ProgramVariableSubstitution)  : ProgramVariableSubstitution
 
-  val targetFactory: ScopeFactory
+  val targetFactory: PTermFactory
 
   def mapVariable(v : ProgramVariable) : Option[T]
   protected[silAST] val varMap : Map[ProgramVariable,T]
@@ -23,7 +22,7 @@ sealed abstract class ProgramVariableSubstitution
 }
 
 private[silAST] sealed class ProgramVariableSubstitutionC[TT<:Term](
-    override val targetFactory: ScopeFactory,
+    override val targetFactory: PTermFactory,
     variables : Set[(ProgramVariable,TT)],
     logicalVariables : Set[(LogicalVariable,LogicalVariable)]
   )
@@ -54,17 +53,14 @@ private[silAST] sealed class ProgramVariableSubstitutionC[TT<:Term](
 sealed trait PProgramVariableSubstitution extends ProgramVariableSubstitution
 {
   override type T <: PTerm
-//  def +(other : PProgramVariableSubstitution)  : PProgramVariableSubstitution
 }
 
 private[silAST] sealed class PProgramVariableSubstitutionC(
-    override val targetFactory: ScopeFactory,
+    override val targetFactory: PTermFactory,
     variables : Set[(ProgramVariable,PTerm)],
     logicalVariables : Set[(LogicalVariable,LogicalVariable)]
   )
   extends ProgramVariableSubstitutionC[PTerm](targetFactory,variables,logicalVariables)
   with PProgramVariableSubstitution
 {
-//  def +(other : PProgramVariableSubstitution)  : PProgramVariableSubstitution =
-    //new PProgramVariableSubstitutionC((varMap.++[PTerm](other.varMap)).toSet)
 }

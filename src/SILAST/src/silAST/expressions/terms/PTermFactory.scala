@@ -1,6 +1,5 @@
 package silAST.expressions.terms
 
-import scala.collection.Set
 import silAST.source.SourceLocation
 
 import silAST.domains.DomainFunction
@@ -8,17 +7,17 @@ import silAST.programs.NodeFactory
 import silAST.expressions.util.{PTermSequence, GTermSequence}
 import silAST.programs.symbols._
 import silAST.types.{booleanType, DataTypeFactory, DataType}
+import collection.{immutable, Set}
+import silAST.expressions.{PProgramVariableSubstitutionC, PProgramVariableSubstitution}
 
 protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
-/*  /////////////////////////////////////////////////////////////////////////
-  override def migrateP(t : Term)
+  def makePProgramVariableSubstitution(subs:immutable.Set[(ProgramVariable,PTerm)]) : PProgramVariableSubstitution =
   {
-    t match {
-      case pt : PTerm => migrateP(pt)
-      case _ => throw new Exception("Tried to migrateP invalid expression " + t.toString)
-    }
+    subs.foreach(kv => migrateP(kv._2))
+    new PProgramVariableSubstitutionC(this,subs,immutable.Set())
   }
-  */
+
+
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] def migrateP(t : PTerm)
   {
