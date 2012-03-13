@@ -28,12 +28,12 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
       }
       case dpe : DDomainPredicateExpression => {
         require(domainPredicates contains dpe.predicate)
-        dpe.arguments.foreach(migrateD(_))
+        dpe.arguments.foreach(migrate(_))
       }
       case ee : DEqualityExpression =>
       {
-        migrateD(ee.term1)
-        migrateD(ee.term2)
+        migrate(ee.term1)
+        migrate(ee.term2)
       }
       case qe : DQuantifierExpression =>
       {
@@ -69,7 +69,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
   //////////////////////////////////////////////////////////////////////////
   def makeDDomainPredicateExpression(sourceLocation : SourceLocation, p: DomainPredicate, args: DTermSequence): DDomainPredicateExpression = {
     require(domainPredicates contains p,"Unknown domain predicate %s.".format(p))
-    args.foreach(migrateD(_))
+    args.foreach(migrate(_))
 
     (args) match {
       case (a: GTermSequence) => makeGDomainPredicateExpression(sourceLocation, p, a)
@@ -79,8 +79,8 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
 
   //////////////////////////////////////////////////////////////////////////
   def makeDEqualityExpression(sourceLocation : SourceLocation, t1: DTerm, t2: DTerm): DEqualityExpression = {
-    migrateD(t1)
-    migrateD(t2)
+    migrate(t1)
+    migrate(t2)
 
     (t1, t2) match {
       case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sourceLocation, t1, t2)

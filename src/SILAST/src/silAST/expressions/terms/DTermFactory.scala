@@ -21,13 +21,13 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
   }
   */
   /////////////////////////////////////////////////////////////////////////
-  protected[silAST] def migrateD(t : DTerm)
+  protected[silAST] def migrate(t : DTerm)
   {
     if (terms contains t)
       return;
     t match
     {
-      case gt : GTerm => migrateG(gt)
+      case gt : GTerm => super.migrate(gt)
       case lv : LogicalVariableTerm => 
       {
         require(boundVariables contains lv.variable)
@@ -36,14 +36,14 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
       case fa : DDomainFunctionApplicationTerm =>
       {
         require(domainFunctions contains fa.function)
-        fa.arguments.foreach(migrateD(_))
+        fa.arguments.foreach(migrate(_))
         addTerm(fa)
       }
       case itet : DIfThenElseTerm => {
         require(itet.condition.dataType == booleanType)
-        migrateD(itet.condition)
-        migrateD(itet.pTerm)
-        migrateD(itet.nTerm)
+        migrate(itet.condition)
+        migrate(itet.pTerm)
+        migrate(itet.nTerm)
       }
     }
   }
@@ -82,9 +82,9 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
 
   /////////////////////////////////////////////////////////////////////////
   def makeDIfThenElseTerm(sourceLocation : SourceLocation, c : DTerm,  p:DTerm,  n : DTerm): DIfThenElseTerm = {
-    migrateD(c)
-    migrateD(p)
-    migrateD(n)
+    migrate(c)
+    migrate(p)
+    migrate(n)
     require(c.dataType == booleanType)
     (c, p, n) match {
       case (gc:GTerm, gp:GTerm,gn:GTerm) => makeGIfThenElseTerm(sourceLocation,gc,gp,gn)

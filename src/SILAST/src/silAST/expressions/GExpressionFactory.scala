@@ -27,12 +27,12 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
       }
       case dpe : GDomainPredicateExpression => {
         require(domainPredicates contains dpe.predicate)
-        dpe.arguments.foreach(migrateG(_))
+        dpe.arguments.foreach(migrate(_))
       }
       case ee : GEqualityExpression =>
       {
-        migrateG(ee.term1)
-        migrateG(ee.term2)
+        migrate(ee.term1)
+        migrate(ee.term2)
       }
       case te : TrueExpression => {}
       case fe : FalseExpression => {}
@@ -49,7 +49,7 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
   //////////////////////////////////////////////////////////////////////////
   def makeGDomainPredicateExpression(sourceLocation : SourceLocation, p: DomainPredicate, args: GTermSequence): GDomainPredicateExpression = {
     require(domainPredicates contains p)
-    args.foreach(migrateG(_))
+    args.foreach(migrate(_))
     addExpression(new GDomainPredicateExpression(p, args)(sourceLocation))
   }
 
@@ -68,8 +68,8 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
                                t1: GTerm,
                                t2: GTerm
                                ): GEqualityExpression = {
-    migrateG(t1)
-    migrateG(t2)
+    migrate(t1)
+    migrate(t2)
     addExpression(new GEqualityExpression(t1, t2)(sourceLocation))
   }
 

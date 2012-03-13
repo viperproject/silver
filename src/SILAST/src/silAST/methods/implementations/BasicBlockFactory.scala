@@ -8,7 +8,7 @@ import silAST.expressions.util.PTermSequence
 import collection.Set
 import silAST.methods.MethodFactory
 import silAST.expressions.{PredicateExpression, PExpression, Expression, ExpressionFactory}
-import silAST.expressions.terms.PTerm
+import silAST.expressions.terms.{PTerm,PTermFactory}
 import silAST.programs.ScopeFactory
 import collection.mutable.{ListBuffer, HashSet}
 
@@ -40,7 +40,7 @@ class BasicBlockFactory private[silAST](
                         ) = {
     require((localVariables contains target)  || (results contains target)) //no writing to inputs
 
-    migrate(source)
+    this.asInstanceOf[PTermFactory].migrate(source)
     basicBlock.appendStatement(new AssignmentStatement(sourceLocation, target, source))
   }
 
@@ -54,7 +54,7 @@ class BasicBlockFactory private[silAST](
     require(programVariables contains target)
     require(fields contains field)
 
-    migrate(source)
+    this.asInstanceOf[PTermFactory].migrate(source)
     
     basicBlock.appendStatement(new FieldAssignmentStatement(sourceLocation, target, field, source))
   }
@@ -91,8 +91,8 @@ class BasicBlockFactory private[silAST](
     require(targets.forall(localVariables contains _))
     require(methodFactories contains methodFactory)
 
-    migrate(receiver)
-    arguments foreach migrate 
+    this.asInstanceOf[PTermFactory].migrate(receiver)
+    arguments foreach this.asInstanceOf[PTermFactory].migrate
     
     basicBlock.appendStatement(new CallStatement(sourceLocation, targets, receiver, methodFactory.method, arguments))
   }

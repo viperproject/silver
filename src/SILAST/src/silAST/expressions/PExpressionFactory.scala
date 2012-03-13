@@ -28,12 +28,12 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
       }
       case dpe : PDomainPredicateExpression => {
         require(domainPredicates contains dpe.predicate)
-        dpe.arguments.foreach(migrateP(_))
+        dpe.arguments.foreach(migrate(_))
       }
       case ee : PEqualityExpression =>
       {
-        migrateP(ee.term1)
-        migrateP(ee.term2)
+        migrate(ee.term1)
+        migrate(ee.term2)
       }
       case ppe : PPredicateExpression => {
         require(predicates contains ppe.predicate)
@@ -49,7 +49,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   //////////////////////////////////////////////////////////////////////////
   def makePDomainPredicateExpression(sourceLocation : SourceLocation, p: DomainPredicate, args: PTermSequence): PDomainPredicateExpression = {
     require(domainPredicates contains p)
-    args.foreach(migrateP(_))
+    args.foreach(migrate(_))
 
     (args) match {
       case (a: GTermSequence) => makeGDomainPredicateExpression(sourceLocation, p, a)
@@ -60,7 +60,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   //////////////////////////////////////////////////////////////////////////
   def makePPredicateExpression(sourceLocation : SourceLocation, r: PTerm, p: Predicate): PPredicateExpression = {
     require(predicates contains p)
-    migrateP(r)
+    migrate(r)
 
     addExpression(new PPredicateExpression(r, p)(sourceLocation))
   }
@@ -88,8 +88,8 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
   //////////////////////////////////////////////////////////////////////////
   def makePEqualityExpression(sourceLocation : SourceLocation, t1: PTerm, t2: PTerm): PEqualityExpression = {
-    migrateP(t1)
-    migrateP(t2)
+    migrate(t1)
+    migrate(t2)
 
     (t1, t2) match {
       case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sourceLocation, t1, t2)
