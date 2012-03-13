@@ -12,16 +12,16 @@ protected[silAST] trait GTermFactory
   extends NodeFactory 
 {
 /*  /////////////////////////////////////////////////////////////////////////
-  def migrate(t : Term)
+  def migrateG(t : Term)
   {
     t match {
-      case gt : GTerm => migrate(gt)
-      case _ => throw new Exception("Tried to migrate invalid expression " + t.toString)
+      case gt : GTerm => migrateG(gt)
+      case _ => throw new Exception("Tried to migrateG invalid expression " + t.toString)
     }
   }
   */
   /////////////////////////////////////////////////////////////////////////
-  protected[silAST] def migrate(t : GTerm)
+  protected[silAST] def migrateG(t : GTerm)
   {
     if (terms contains t)
       return;
@@ -30,14 +30,14 @@ protected[silAST] trait GTermFactory
       case t : LiteralTerm => addTerm(t)
       case fa : GDomainFunctionApplicationTerm => {
         require(domainFunctions contains  fa.function)
-        fa.arguments.foreach(migrate(_))
+        fa.arguments.foreach(migrateG(_))
         addTerm(fa)
       }
       case itet : GIfThenElseTerm => {
         require(itet.condition.dataType == booleanType)
-        migrate(itet.condition)
-        migrate(itet.pTerm)
-        migrate(itet.nTerm)
+        migrateG(itet.condition)
+        migrateG(itet.pTerm)
+        migrateG(itet.nTerm)
       }
     }
   }
@@ -48,16 +48,16 @@ protected[silAST] trait GTermFactory
 
   /////////////////////////////////////////////////////////////////////////
   def makeGDomainFunctionApplicationTerm(sourceLocation : SourceLocation, f: DomainFunction, a: GTermSequence): GDomainFunctionApplicationTerm = {
-    a.foreach(migrate (_))
+    a.foreach(migrateG (_))
     require(domainFunctions contains f)
     addTerm(new GDomainFunctionApplicationTerm(f, a)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
   def makeGIfThenElseTerm(sourceLocation : SourceLocation, c : GTerm,  p:GTerm,  n : GTerm): GIfThenElseTerm = {
-    migrate(c)
-    migrate(p)
-    migrate(n)
+    migrateG(c)
+    migrateG(p)
+    migrateG(n)
     require(c.dataType == booleanType)
     addTerm(new GIfThenElseTerm(c,p,n)(sourceLocation))
   }

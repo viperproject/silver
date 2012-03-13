@@ -15,9 +15,9 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
       return;
     t match
     {
-      case gt : GTerm => super[GTermFactory].migrate(gt)
-      case dt : DTerm => super.migrate(dt)
-      case pt : PTerm => super.migrate(pt)
+      case gt : GTerm => migrateG(gt)
+      case dt : DTerm => migrateD(dt)
+      case pt : PTerm => migrateP(pt)
       case fa : DomainFunctionApplicationTerm =>
       {
         require(domainFunctions contains fa.function)
