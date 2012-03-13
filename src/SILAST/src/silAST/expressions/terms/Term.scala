@@ -487,7 +487,7 @@ sealed trait PDomainFunctionApplicationTerm
   extends DomainFunctionApplicationTerm
   with PTerm
 {
-  override val arguments: PTermSequence = pArguments
+  override def arguments: PTermSequence = pArguments // needs to be a `def`, otherwise it is initialized to `null`.
 
   protected def pArguments: PTermSequence
 
