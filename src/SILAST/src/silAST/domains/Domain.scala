@@ -10,7 +10,7 @@ import silAST.source.{noLocation, SourceLocation}
 
 abstract class Domain private[silAST] extends ASTNode
 {
-  override lazy val toString = "domain " + name +
+  override lazy val toString = "domain " + fullName +
     "{\n" +
     (if (!functions.isEmpty) functions.mkString("\t", "\n\t", "\n") else "") +
     (if (!predicates.isEmpty) predicates.mkString("\t", "\n\t", "\n") else "") +
