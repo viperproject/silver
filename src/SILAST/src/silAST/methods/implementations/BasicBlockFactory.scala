@@ -39,7 +39,8 @@ class BasicBlockFactory private[silAST](
                         source: PTerm
                         ) = {
     require((localVariables contains target)  || (results contains target)) //no writing to inputs
-    require(terms contains source)
+
+    migrate(source)
     basicBlock.appendStatement(new AssignmentStatement(sourceLocation, target, source))
   }
 
@@ -52,8 +53,9 @@ class BasicBlockFactory private[silAST](
                              ) {
     require(programVariables contains target)
     require(fields contains field)
-    require(terms contains source)
 
+    migrate(source)
+    
     basicBlock.appendStatement(new FieldAssignmentStatement(sourceLocation, target, field, source))
   }
 
@@ -87,10 +89,11 @@ class BasicBlockFactory private[silAST](
                            ) {
     require(programVariableSequences contains targets)
     require(targets.forall(localVariables contains _))
-    require(terms contains receiver)
     require(methodFactories contains methodFactory)
-    require(arguments.forall( terms contains _))
 
+    migrate(receiver)
+    arguments foreach migrate 
+    
     basicBlock.appendStatement(new CallStatement(sourceLocation, targets, receiver, methodFactory.method, arguments))
   }
 
@@ -99,7 +102,7 @@ class BasicBlockFactory private[silAST](
                     sourceLocation : SourceLocation,
                     e: Expression
                     ) {
-    require(expressions contains e)
+    migrate(e)
 
     basicBlock.appendStatement(new InhaleStatement(sourceLocation, e))
   }
@@ -109,7 +112,7 @@ class BasicBlockFactory private[silAST](
                     sourceLocation : SourceLocation,
                     e: Expression
                     ) {
-    require(expressions contains e)
+    migrate(e)
 
     basicBlock.appendStatement(new ExhaleStatement(sourceLocation, e))
   }
@@ -119,7 +122,7 @@ class BasicBlockFactory private[silAST](
                   sourceLocation : SourceLocation,
                   e: PredicateExpression
                   ) {
-    require(expressions contains e)
+    migrate(e)
 
     basicBlock.appendStatement(new FoldStatement(sourceLocation, e))
   }
@@ -129,7 +132,7 @@ class BasicBlockFactory private[silAST](
                     sourceLocation : SourceLocation,
                     e: PredicateExpression
                     ) {
-    require(expressions contains e)
+    migrate(e)
 
     basicBlock.appendStatement(new UnfoldStatement(sourceLocation, e))
   }
