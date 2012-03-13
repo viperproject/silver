@@ -20,7 +20,7 @@ object booleanDomain extends Domain
   override def predicates = Set(booleanEvaluate)
   override def axioms = Set.empty[DomainAxiom]
   override def substitute(ts:TypeVariableSubstitution) = this
-  override def getType = integerType
+  override def getType = booleanType
   override def freeTypeVariables = Set()
   override def isCompatible(other : Domain) = other == this
 }
