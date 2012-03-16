@@ -65,6 +65,9 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
 
   /////////////////////////////////////////////////////////////////////////
   def makeProgramVariableTerm(sourceLocation : SourceLocation, v: ProgramVariable): ProgramVariableTerm = {
+    if (!(programVariables contains  v)){
+      System.out.println("PTF : " + programVariables.mkString(","))
+    }
     require(programVariables contains v)
     addTerm(new ProgramVariableTerm(v)(sourceLocation))
   }

@@ -10,7 +10,7 @@ import util.{GTermSequence, TermSequence, PTermSequence, DTermSequence}
 import silAST.domains._
 import silAST.types.{referenceType, permissionType}
 import silAST.programs.symbols.{Field, Predicate}
-import silAST.source.{noLocation, SourceLocation}
+import silAST.source.SourceLocation
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////

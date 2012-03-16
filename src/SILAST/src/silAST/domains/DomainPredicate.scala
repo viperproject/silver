@@ -3,7 +3,6 @@ package silAST.domains
 import silAST.source.SourceLocation
 import silAST.ASTNode
 import silAST.expressions.util.TermSequence
-import silAST.types.TypeVariable
 
 trait DomainPredicate extends ASTNode
 {

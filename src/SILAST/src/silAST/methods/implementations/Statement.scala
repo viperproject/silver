@@ -1,7 +1,6 @@
 package silAST.methods.implementations
 
 import silAST.ASTNode
-import silAST.expressions.PExpression
 import silAST.types.DataType
 import silAST.expressions.Expression
 import silAST.expressions.PredicateExpression
@@ -22,12 +21,11 @@ sealed abstract class Statement private[silAST] extends ASTNode {
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 final case class AssignmentStatement private[silAST](
-                                             sourceLocation : SourceLocation,
-                                             target: ProgramVariable,
-                                             source: PTerm
-                                             )
-  extends Statement
-{
+                                                      sourceLocation: SourceLocation,
+                                                      target: ProgramVariable,
+                                                      source: PTerm
+                                                      )
+  extends Statement {
   override def toString: String = target.name + ":=" + source.toString
 }
 
@@ -36,11 +34,11 @@ final case class AssignmentStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 case class FieldAssignmentStatement private[silAST](
-                                            sourceLocation : SourceLocation,
-                                            target: ProgramVariable,
-                                            field: Field,
-                                            source: PTerm
-                                            )
+                                                     sourceLocation: SourceLocation,
+                                                     target: ProgramVariable,
+                                                     field: Field,
+                                                     source: PTerm
+                                                     )
   extends Statement {
   override def toString: String = target.name + "." + field.name + " := " + source.toString
 }
@@ -54,8 +52,7 @@ case class NewStatement private[silAST](
                                          target: ProgramVariable,
                                          dataType: DataType
                                          )
-  extends Statement
-{
+  extends Statement {
   override def toString: String = target.name + ":= new " + dataType.toString
 }
 
@@ -66,7 +63,7 @@ case class NewStatement private[silAST](
 //TODO:check signature
 final case class CallStatement private[silAST]
 (
-  sourceLocation : SourceLocation,
+  sourceLocation: SourceLocation,
   targets: ProgramVariableSequence,
   receiver: PTerm,
   method: Method,
@@ -81,9 +78,9 @@ final case class CallStatement private[silAST]
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 final case class InhaleStatement private[silAST](
-                                         sourceLocation : SourceLocation,
-                                         expression: Expression
-                                         )
+                                                  sourceLocation: SourceLocation,
+                                                  expression: Expression
+                                                  )
   extends Statement {
   override def toString: String = "inhale " + expression.toString
 }
@@ -93,9 +90,9 @@ final case class InhaleStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 final case class ExhaleStatement private[silAST](
-                                         sourceLocation : SourceLocation,
-                                         expression: Expression
-                                         )
+                                                  sourceLocation: SourceLocation,
+                                                  expression: Expression
+                                                  )
   extends Statement {
   override def toString: String = "exhale " + expression.toString
 }
@@ -106,9 +103,9 @@ final case class ExhaleStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //TODO:FoldStatement/UnfoldStatement arrays?
 final case class FoldStatement private[silAST](
-                                       sourceLocation : SourceLocation,
-                                       predicate: PredicateExpression
-                                       )
+                                                sourceLocation: SourceLocation,
+                                                predicate: PredicateExpression
+                                                )
   extends Statement {
   override def toString: String = "fold " + predicate.toString
 }
@@ -118,10 +115,9 @@ final case class FoldStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 final case class UnfoldStatement private[silAST](
-                                         sourceLocation : SourceLocation,
-                                         predicate: PredicateExpression
-                                         )
-  extends Statement
-{
+                                                  sourceLocation: SourceLocation,
+                                                  predicate: PredicateExpression
+                                                  )
+  extends Statement {
   override def toString: String = "unfold " + predicate.toString
 }

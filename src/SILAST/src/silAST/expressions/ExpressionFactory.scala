@@ -19,6 +19,11 @@ trait ExpressionFactory
 {
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
+  protected[silAST] def migrateP(e:PExpression)
+  {
+    super[PExpressionFactory].migrate(e)
+  }
+
   protected[silAST] def migrate(e:Expression)
   {
     if (expressions contains e)

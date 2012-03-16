@@ -2,57 +2,65 @@ package silAST.methods.implementations
 
 import silAST.ASTNode
 import collection.mutable.ListBuffer
-import silAST.source.{noLocation, SourceLocation}
+import silAST.source.SourceLocation
+import silAST.methods.Scope
 
-final class ControlFlowGraph private[silAST](
-                                              val sourceLocation : SourceLocation,
-                                              private val implementationFactory : ImplementationFactory
-                                              ) extends ASTNode {
-  def compile()
-  {
-    require(pStartNode!=None)
-    require(pEndNode!=None)
-
+final class ControlFlowGraph private[silAST]
+  (
+    val sourceLocation: SourceLocation,
+    val scope : Scope,
+    val implementation : Implementation
+  )
+  extends ASTNode
+{
+  def compile() {
+    require(pStartNode != None)
+    require(pEndNode != None)
+    require(nodes.forall(_.pControlStatement!=None))
   }
 
   //TODO: more consistency checks
-  require(implementationFactory!=null)
+  require(scope != null)
+  def nodes: Set[Block] = pNodes.toSet
 
-  private val pNodes = new ListBuffer[BasicBlock]
-  def nodes : Set[BasicBlock] = pNodes.toSet
-
-  private var pStartNode :Option[BasicBlock] = None
-  private var pEndNode  :Option[BasicBlock] = None
-
-  private[implementations] def addNode(bb: BasicBlock) = {
-    require(!(pNodes contains bb))
-    require(bb.cfg == this)
-    pNodes += bb
+  private[implementations] def addNode(b: Block) = {
+    require(!(pNodes contains b))
+    require(b.cfg eq this)
+    pNodes += b
+  }
+  private[implementations] def setStartNode(b : BasicBlock) {
+    require(pNodes contains b)
+    pStartNode = Some(b)
   }
 
-  private[implementations] def setStartNode(bb: BasicBlock)
-  {
-    require(pNodes contains bb)
-    pStartNode = Some(bb)
+  private[implementations] def setEndNode(b: BasicBlock) {
+    require(pNodes contains b)
+    pEndNode = Some(b)
   }
 
-  private[implementations] def setEndNode(bb: BasicBlock)
-  {
-    require(pNodes contains bb)
-    pEndNode = Some(bb)
+  def startNode: BasicBlock = pStartNode match {
+    case Some(n) => n
+    case None => throw new Exception()
   }
 
-  def startNode: BasicBlock = pStartNode match { case Some(n) => n case None => throw new Exception() }
+  def endNode: BasicBlock = pEndNode match {
+    case Some(n) => n
+    case None => throw new Exception()
+  }
 
-  def endNode: BasicBlock = pEndNode match { case Some(n) => n  case None => throw new Exception() }
+  private val pNodes = new ListBuffer[Block]
+  private[silAST] var pStartNode: Option[BasicBlock] = None
+  private[silAST] var pEndNode: Option[BasicBlock] = None
 
+  /////////////////////////////////////////////////////////////////
   override def toString = pNodes.mkString("\n")
 
-  override def equals(other : Any) : Boolean = {
-    other match{
-      case c : ControlFlowGraph => c eq this
+  override def equals(other: Any): Boolean = {
+    other match {
+      case c: ControlFlowGraph => c eq this
       case _ => false
     }
   }
-  override def hashCode() : Int = nodes.hashCode()
+
+  override def hashCode(): Int = nodes.hashCode()
 }

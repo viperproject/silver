@@ -1,7 +1,7 @@
 package silAST.symbols.logical
 
 import silAST.ASTNode
-import silAST.source.{SourceLocation, noLocation}
+import silAST.source.SourceLocation
 
 sealed abstract class BinaryConnective extends ASTNode {
 

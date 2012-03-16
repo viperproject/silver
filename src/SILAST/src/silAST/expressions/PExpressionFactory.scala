@@ -6,8 +6,9 @@ import terms.{PTermFactory, PTerm, GTerm}
 import util.{GTermSequence, PTermSequence}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.programs.NodeFactory
-import silAST.programs.symbols.{ProgramVariable, Predicate}
-import collection.{immutable, Set}
+import collection.Set
+import silAST.programs.symbols.{ProgramVariableSequence, ProgramVariable, Predicate}
+import collection.mutable.HashSet
 
 
 trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermFactory {
@@ -44,6 +45,14 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
       }
     }
     addExpression(e)
+  }
+
+  //////////////////////////////////////////////////////////////////
+  def makeProgramVariableSequence(sourceLocation : SourceLocation, vs: Seq[ProgramVariable]): ProgramVariableSequence = {
+    require(vs.forall(programVariables contains _))
+    val result = new ProgramVariableSequence(sourceLocation, vs)
+    programVariableSequences += result
+    result
   }
 
   //////////////////////////////////////////////////////////////////////////
@@ -108,4 +117,5 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   protected[silAST] def predicates: Set[Predicate]
+  protected[silAST] val programVariableSequences = new HashSet[ProgramVariableSequence]
 }

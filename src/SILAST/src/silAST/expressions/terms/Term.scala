@@ -5,7 +5,7 @@ import silAST.ASTNode
 import silAST.expressions.util.{GTermSequence, DTermSequence, PTermSequence, TermSequence}
 import silAST.programs.symbols.{Predicate, ProgramVariable, Field, Function}
 import silAST.domains._
-import silAST.source.{TypeSubstitutedSourceLocation, SourceLocation}
+import silAST.source.SourceLocation
 import silAST.expressions.{PProgramVariableSubstitution, ProgramVariableSubstitution}
 import silAST.types._
 

@@ -1,7 +1,7 @@
 package silAST.symbols.logical.quantification
 
 import silAST.ASTNode
-import silAST.source.{SourceLocation, noLocation}
+import silAST.source.SourceLocation
 
 sealed abstract class Quantifier extends ASTNode
 

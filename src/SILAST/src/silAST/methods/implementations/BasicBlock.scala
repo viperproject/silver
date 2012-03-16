@@ -1,66 +1,48 @@
 package silAST.methods.implementations
 
-import scala.collection.{Seq, Set}
-import silAST.ASTNode
+import scala.collection.Seq
 import collection.mutable.ListBuffer
 import silAST.source.SourceLocation
-import silAST.programs.symbols.ProgramVariable
-import silAST.expressions.ExpressionFactory
+import silAST.methods.Scope
 
-final class BasicBlock private[silAST](
-                                        val sourceLocation: SourceLocation,
-                                        val label: String
-                                        ) extends ASTNode {
-  private[implementations] def addPredecessor(edge: CFGEdge) {
-    require(edge.target == this)
-    pPredecessors += edge
-  }
+final class BasicBlock private[silAST]
+  (
+    val cfg : ControlFlowGraph,
+    val scope: Scope,
+    val label: String,
+    val factory: BasicBlockFactory
+  )
+  (val sourceLocation: SourceLocation)
+  extends Block
+{
 
-  private[implementations] def addSuccessor(edge: CFGEdge) {
-    require(edge.source == this)
-    pSuccessors += edge
-  }
-
-  override def toString =
-    "\t" + label + ":{\n" +
-      (if (!statements.isEmpty) statements.mkString("\t\t", "\n\t\t", "\n") else "") +
-      (if (!successors.isEmpty) ("\t\tgoto " + (for (s <- successors) yield {
-        s.condition.toString + " ⇒ " + s.target.label + (if(s.isBackEdge) " (backedge)" else "")
-      }).mkString(",") + "\n") else "") +
-      "\t}\n"
+  def statements: Seq[Statement] = pStatements.result()
+  override val implementation = cfg.implementation
 
   private val pStatements = new ListBuffer[Statement]
-  private val pSuccessors = new ListBuffer[CFGEdge]
-  private val pPredecessors = new ListBuffer[CFGEdge]
 
   private[silAST] def appendStatement(s: Statement) = {
     require(!(pStatements contains s))
     pStatements += s
   }
 
-  def statements: Seq[Statement] = pStatements.result()
-
-  def successors: Set[CFGEdge] = pSuccessors.result().toSet
-
-  def predecessors: Set[CFGEdge] = pPredecessors.result().toSet
-
-  private[silAST] val pLocalVariables = new ListBuffer[ProgramVariable]
-
-  def localVariables : Set[ProgramVariable] = pLocalVariables.toSet
-
-//  cfg.addNode(this)
-
-  var expressionFactory : ExpressionFactory = pFactory
-
-  private[silAST] var pFactory : BasicBlockFactory = null
-  
-  private[implementations] var cfg : ControlFlowGraph = null
-
-  override def equals(other : Any) : Boolean = {
-    other match{
-      case b : BasicBlock => b eq this
+  /////////////////////////////////////////////////////////////////////////////////////////
+  override def equals(other: Any): Boolean = {
+    other match {
+      case b: BasicBlock => b eq this
       case _ => false
     }
   }
-  override def hashCode() : Int = localVariables.hashCode() + statements.hashCode()
+
+  override def hashCode(): Int = statements.hashCode()
+
+  override def toString =
+    "\t" + label + ":{\n" +
+      (if (!statements.isEmpty) statements.mkString("\t\t", "\n\t\t", "\n") else "") +
+      (if (!successors.isEmpty) ("\t\tgoto " + (for (s <- successors) yield {
+        s.condition.toString + " ⇒ " + s.target.label
+      }).mkString(",") + "\n")
+      else "") +
+      "\t}\n"
+
 }

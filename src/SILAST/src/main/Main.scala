@@ -131,9 +131,10 @@ object Main {
 
     {
       val xVar = mf.addParameter(nl, "x", integerType)
+      val thisVar = mf.addParameter(nl,"this",referenceType)
       val r = mf.addResult(nl, "r", integerType) //dummy for checking
 
-      val this_var = mf.makeProgramVariableTerm(nl, mf.thisVar)
+      val this_var = mf.makeProgramVariableTerm(nl, thisVar)
       val xTerm = mf.makeProgramVariableTerm(nl,xVar)
       val rTerm = mf.makeProgramVariableTerm(nl,r)
       val zeroTerm = mf.makeIntegerLiteralTerm(nl,0)
@@ -148,19 +149,23 @@ object Main {
       val impl = mf.addImplementation(nl);
 
       {
-        val nVar = impl.addLocalVariable(nl, "n", integerType)
-        val xxVar = impl.addLocalVariable(nl, "xx", integerSeqType)
+        val nVar = impl.addProgramVariable(nl, "n", integerType)
+        val xxVar = impl.addProgramVariable(nl, "xx", integerSeqType)
 
-        val startBlock = impl.addFirstBasicBlock(nl, "start");
-        val endBlock = impl.addLastBasicBlock(nl, "end");
 
-        startBlock.addSuccessor(nl, startBlock, TrueExpression()(nl), true)
-        startBlock.addSuccessor(nl, endBlock, TrueExpression()(nl), false)
-        startBlock.addProgramVariableToScope(nVar)
-        startBlock.addProgramVariableToScope(xxVar)
+        val startBlock = impl.cfgFactory.addBasicBlock("start")(nl);
+        val midBlock = impl.cfgFactory.addLoopBlock("mid",TrueExpression()(nl))(nl);
+        val endBlock = impl.cfgFactory.addBasicBlock("end")(nl);
+        impl.cfgFactory.setStartNode(startBlock)
+        impl.cfgFactory.setEndNode(endBlock)
+
+        startBlock.setBranch(TrueExpression()(nl),midBlock,endBlock)(nl)
+        endBlock.setHalt()(nl)
+        midBlock.setGoto(endBlock)(nl)
+        midBlock.setInvariant(TrueExpression()(nl))
 
         {
-          val this_term = startBlock.makeProgramVariableTerm(nl, mf.thisVar)
+          val this_term = startBlock.makeProgramVariableTerm(nl, thisVar)
           val this_valid = startBlock.makePredicateExpression(nl, this_term, vp)
           startBlock.appendInhale(nl, this_valid)
           startBlock.appendUnfold(nl, this_valid)
@@ -172,6 +177,11 @@ object Main {
 
 
           startBlock.appendFold(nl, this_valid)
+          val lb = midBlock.bodyFactory.addBasicBlock("whileBody")(nl)
+          lb.appendAssignment(nl, nVar, numXs_nTerm)
+          midBlock.bodyFactory.setStartNode(lb)
+          midBlock.bodyFactory.setEndNode(lb)
+          lb.setHalt()(nl)
         }
 
 

@@ -7,7 +7,7 @@ import silAST.expressions.util._
 import silAST.types._
 import collection.immutable
 import silAST.programs.symbols.{ProgramVariable, PredicateFactory, FunctionFactory, Field}
-import silAST.expressions.{ProgramVariableSubstitutionC, ProgramVariableSubstitution, PProgramVariableSubstitutionC, PProgramVariableSubstitution}
+import silAST.expressions.{ProgramVariableSubstitutionC, ProgramVariableSubstitution}
 
 protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with DTermFactory with GTermFactory{
   /////////////////////////////////////////////////////////////////////////

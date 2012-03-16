@@ -3,7 +3,6 @@ package silAST.domains
 import silAST.ASTNode
 import silAST.expressions.DExpression
 import silAST.source.SourceLocation
-import silAST.types.TypeVariable
 
 final class DomainAxiom private[silAST](
                                          val sourceLocation : SourceLocation,

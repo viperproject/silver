@@ -8,7 +8,6 @@ import silAST.expressions.util.ExpressionSequence
 import silAST.source.{noLocation, SourceLocation}
 import silAST.expressions.{Expression, ExpressionFactory}
 import silAST.types.{referenceType, DataType}
-import silAST.programs.ScopeFactory
 
 class MethodFactory(
                      val programFactory: ProgramFactory,
@@ -19,6 +18,8 @@ class MethodFactory(
   with ExpressionFactory
   with ScopeFactory
 {
+//  override def scope = method
+
   def compile(): Method = {
     if (!signatureDefined)
       finalizeSignature()
@@ -84,7 +85,7 @@ class MethodFactory(
 
   protected[silAST] override val parentFactory = Some(programFactory)
   
-  val fields: Set[Field] = programFactory.fields.toSet
+//  val fields: Set[Field] = programFactory.fields.toSet
 
   var pParameters: Option[ProgramVariableSequence] = None
   var pResults: Option[ProgramVariableSequence] = None
@@ -108,13 +109,11 @@ class MethodFactory(
 
 //  private[silAST] def methodFactories = programFactory.methodFactories
 
-  protected[silAST] override def programVariables = parametersGenerator.toSet[ProgramVariable] union resultsGenerator.toSet[ProgramVariable]
+  override def programVariables = parametersGenerator.toSet[ProgramVariable] union resultsGenerator.toSet[ProgramVariable]
 
 //  protected[silAST] override def functions = programFactory.functions.toSet
 
 //  protected[silAST] override def predicates = programFactory.predicates
-
-  val thisVar = addParameter(noLocation, "this", referenceType)
 
 //  protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes
 

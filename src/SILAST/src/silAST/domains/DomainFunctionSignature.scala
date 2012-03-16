@@ -2,7 +2,7 @@ package silAST.domains
 
 import silAST.ASTNode
 import silAST.source.SourceLocation
-import silAST.types.{TypeVariable, DataType, DataTypeSequence}
+import silAST.types.{DataType, DataTypeSequence}
 
 final class DomainFunctionSignature private[silAST](
                                                      val sourceLocation : SourceLocation,

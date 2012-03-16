@@ -1,10 +1,8 @@
 package silAST.expressions
 
-import silAST.types.{DataType, TypeVariable}
 import silAST.symbols.logical.quantification.LogicalVariable
 import silAST.programs.symbols.ProgramVariable
-import silAST.source.{PVSubstitutedSourceLocation, TypeSubstitutedSourceLocation, SourceLocation}
-import silAST.programs.ScopeFactory
+import silAST.source.{PVSubstitutedSourceLocation, SourceLocation}
 import terms.{PTermFactory, PTerm, Term}
 
 

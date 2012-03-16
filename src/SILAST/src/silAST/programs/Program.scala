@@ -5,19 +5,22 @@ import silAST.ASTNode
 import silAST.domains.Domain
 import silAST.source.SourceLocation
 import symbols.{Field, Predicate, Function}
-import silAST.methods.Method
+import silAST.methods.{Scope, Method}
 
 
-final class Program private[silAST](
-                                     val sourceLocation : SourceLocation,
-                                     val name: String,
-                                     val domains: Set[Domain],
-                                     val fields: Set[Field],
-                                     val functions: Set[Function],
-                                     val predicates: Set[Predicate],
-                                     val methods: Set[Method],
-                                     val factory : ProgramFactory
-                                     ) extends ASTNode {
+final class Program private[silAST]
+  (
+    val sourceLocation : SourceLocation,
+    val name: String,
+    val domains: Set[Domain],
+    val fields: Set[Field],
+    val functions: Set[Function],
+    val predicates: Set[Predicate],
+    val methods: Set[Method],
+    val factory : ProgramFactory
+  ) extends ASTNode with Scope
+{
+  override val parentScope = None
   override def toString =
     "program " + name + "\n" +
       domains.mkString("", "\n", "\n") +
