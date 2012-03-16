@@ -17,6 +17,12 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
     new ProgramVariableSubstitutionC(this,subs,immutable.Set())
   }
   /////////////////////////////////////////////////////////////////////////
+  protected[silAST] def migrateP(t : PTerm)
+  {
+    super[PTermFactory].migrate(t)
+  }
+
+  /////////////////////////////////////////////////////////////////////////
   protected[silAST] def migrate(t : Term)
   {
     if (terms contains t)

@@ -45,8 +45,8 @@ class BasicBlockFactory private[silAST]
     require(targets.forall(programVariables contains _))
     require(scope.factory.methodFactories contains methodFactory)
 
-    migrate(receiver)
-    arguments foreach migrate
+    migrateP(receiver)
+    arguments foreach migrateP
 
     block.appendStatement(new CallStatement(sourceLocation, targets, receiver, methodFactory.method, arguments))
   }
@@ -103,7 +103,7 @@ class BasicBlockFactory private[silAST]
                         ) = {
     require(writableVariables contains target ) //no writing to inputs
 
-    migrate(source)
+    migrateP(source)
     block.appendStatement(new AssignmentStatement(sourceLocation, target, source))
   }
 
@@ -117,7 +117,7 @@ class BasicBlockFactory private[silAST]
     require(programVariables contains target)
     require(fields contains field)
 
-    migrate(source)
+    migrateP(source)
 
     block.appendStatement(new FieldAssignmentStatement(sourceLocation, target, field, source))
   }
