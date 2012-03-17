@@ -36,13 +36,11 @@ final class BasicBlock private[silAST]
 
   override def hashCode(): Int = statements.hashCode()
 
+
   override def toString =
     "\t" + label + ":{\n" +
       (if (!statements.isEmpty) statements.mkString("\t\t", "\n\t\t", "\n") else "") +
-      (if (!successors.isEmpty) ("\t\tgoto " + (for (s <- successors) yield {
-        s.condition.toString + " ⇒ " + s.target.label
-      }).mkString(",") + "\n")
-      else "") +
+      controlFlowToString +
       "\t}\n"
 
 }

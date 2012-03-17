@@ -28,7 +28,7 @@ final class LoopBlock private[silAST]
   private[silAST] var pInvariant : Option[Expression] = None
 
   /////////////////////////////////////////////////////////////////////////////////////
-  override def toString = "while " + condition + " do {" + body.toString + "}"
+  override def toString = label + ": while " + condition + " do {" + body.toString + "} " + controlFlowToString
   override def hashCode = toString.hashCode()
   override def equals(other:Any) = other match { case lb : LoopBlock => this eq lb case _ => false}
 }
