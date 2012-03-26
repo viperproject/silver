@@ -142,6 +142,12 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
+  def makeOldExpression(sourceLocation : SourceLocation, e : Expression) : OldExpression = {
+    migrate(e)
+    addExpression(OldExpression(e)(sourceLocation))
+  }
+
+  //////////////////////////////////////////////////////////////////////////
   def makeQuantifierExpression(sourceLocation : SourceLocation, q: Quantifier, v: LogicalVariable, e: Expression): QuantifierExpression = {
     require(boundVariables contains v)
     require(!(boundVariableMap contains v))
