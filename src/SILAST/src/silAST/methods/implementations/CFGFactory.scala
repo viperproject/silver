@@ -36,6 +36,7 @@ final class CFGFactory(
   {
     require(blocks contains blockF)
     require(cfg.pEndNode == None)
+    require(blockF.block.pControlStatement!=None && blockF.block.successors.size==0)
     cfg.setEndNode(blockF.block)
   }
 

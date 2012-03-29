@@ -156,11 +156,11 @@ object Main {
         val startBlock = impl.cfgFactory.addBasicBlock("start")(nl);
         val midBlock = impl.cfgFactory.addLoopBlock("mid",TrueExpression()(nl))(nl);
         val endBlock = impl.cfgFactory.addBasicBlock("end")(nl);
+        endBlock.setHalt()(nl)
         impl.cfgFactory.setStartNode(startBlock)
         impl.cfgFactory.setEndNode(endBlock)
 
         startBlock.setBranch(TrueExpression()(nl),midBlock,endBlock)(nl)
-        endBlock.setHalt()(nl)
         midBlock.setGoto(endBlock)(nl)
         midBlock.setInvariant(TrueExpression()(nl))
 
@@ -179,9 +179,9 @@ object Main {
           startBlock.appendFold(nl, this_valid)
           val lb = midBlock.bodyFactory.addBasicBlock("whileBody")(nl)
           lb.appendAssignment(nl, nVar, numXs_nTerm)
+          lb.setHalt()(nl)
           midBlock.bodyFactory.setStartNode(lb)
           midBlock.bodyFactory.setEndNode(lb)
-          lb.setHalt()(nl)
         }
 
 
