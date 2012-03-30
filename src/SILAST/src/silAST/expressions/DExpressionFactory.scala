@@ -12,31 +12,28 @@ import silAST.programs.NodeFactory
 
 trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermFactory {
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] def migrate(e:DExpression)
-  {
+  protected[silAST] def migrate(e: DExpression) {
     if (expressions contains e)
       return
 
     e match {
-      case ge : GExpression => super.migrate(ge)
-      case ue : DUnaryExpression => {
+      case ge: GExpression => super.migrate(ge)
+      case ue: DUnaryExpression => {
         migrate(ue.operand1)
       }
-      case be : DBinaryExpression => {
+      case be: DBinaryExpression => {
         migrate(be.operand1)
         migrate(be.operand2)
       }
-      case dpe : DDomainPredicateExpression => {
+      case dpe: DDomainPredicateExpression => {
         require(domainPredicates contains dpe.predicate)
         dpe.arguments.foreach(migrate(_))
       }
-      case ee : DEqualityExpression =>
-      {
+      case ee: DEqualityExpression => {
         migrate(ee.term1)
         migrate(ee.term2)
       }
-      case qe : DQuantifierExpression =>
-      {
+      case qe: DQuantifierExpression => {
         require(boundVariables contains qe.variable)
         require(!(boundVariableMap contains qe.variable))
         migrate(qe.expression)
@@ -46,7 +43,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDUnaryExpression(op: UnaryConnective, e1: DExpression)(sourceLocation : SourceLocation): DUnaryExpression = {
+  def makeDUnaryExpression(op: UnaryConnective, e1: DExpression)(sourceLocation: SourceLocation): DUnaryExpression = {
     migrate(e1)
 
     (e1) match {
@@ -56,7 +53,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDBinaryExpression(op: BinaryConnective, e1: DExpression, e2: DExpression)(sourceLocation : SourceLocation): DBinaryExpression = {
+  def makeDBinaryExpression(op: BinaryConnective, e1: DExpression, e2: DExpression)(sourceLocation: SourceLocation): DBinaryExpression = {
     migrate(e1)
     migrate(e2)
 
@@ -67,8 +64,8 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDDomainPredicateExpression(p: DomainPredicate, args: DTermSequence)(sourceLocation : SourceLocation): DDomainPredicateExpression = {
-    require(domainPredicates contains p,"Unknown domain predicate %s.".format(p))
+  def makeDDomainPredicateExpression(p: DomainPredicate, args: DTermSequence)(sourceLocation: SourceLocation): DDomainPredicateExpression = {
+    require(domainPredicates contains p, "Unknown domain predicate %s.".format(p))
     args.foreach(migrate(_))
 
     (args) match {
@@ -78,7 +75,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDEqualityExpression(t1: DTerm, t2: DTerm)(sourceLocation : SourceLocation): DEqualityExpression = {
+  def makeDEqualityExpression(t1: DTerm, t2: DTerm)(sourceLocation: SourceLocation): DEqualityExpression = {
     migrate(t1)
     migrate(t2)
 
@@ -89,7 +86,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDQuantifierExpression(q: Quantifier, v: LogicalVariable, e: DExpression)(sourceLocation : SourceLocation): DQuantifierExpression = {
+  def makeDQuantifierExpression(q: Quantifier, v: LogicalVariable, e: DExpression)(sourceLocation: SourceLocation): DQuantifierExpression = {
     require(boundVariables contains v)
     require(!(boundVariableMap contains v))
 

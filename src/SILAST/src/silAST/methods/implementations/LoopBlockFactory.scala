@@ -7,26 +7,26 @@ import silAST.types.{DataType, TypeVariable}
 import silAST.programs.symbols.ProgramVariable
 
 class LoopBlockFactory(
-    cfg : ControlFlowGraph,
-    val parentScope:Scope,
-    implementation : Implementation,
-    name : String,
-    condition : PExpression
-  )
-  (sourceLocation : SourceLocation)
-  extends BlockFactory(parentScope,name)(sourceLocation)
-  with ScopeFactory
-{
+                        cfg: ControlFlowGraph,
+                        val parentScope: Scope,
+                        implementation: Implementation,
+                        name: String,
+                        condition: PExpression
+                        )
+                      (sourceLocation: SourceLocation)
+  extends BlockFactory(parentScope, name)(sourceLocation)
+  with ScopeFactory {
   type B = LoopBlock
 
   override val programFactory = parentScope.factory.programFactory
-  override val parentFactory =  Some(parentScope.factory)
+  override val parentFactory = Some(parentScope.factory)
 
   override def inputProgramVariables = implementation.factory.inputProgramVariables
+
   override def outputProgramVariables = implementation.factory.outputProgramVariables
-  override def compile() : LoopBlock =
-  {
-    require (block.pInvariant!=None)
+
+  override def compile(): LoopBlock = {
+    require(block.pInvariant != None)
     bodyFactory.compile()
     block
   }
@@ -42,16 +42,16 @@ class LoopBlockFactory(
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def setInvariant(e:Expression)
-  {
+  def setInvariant(e: Expression) {
     migrate(e)
-    require(block.pInvariant==None)
+    require(block.pInvariant == None)
     block.pInvariant = Some(e)
   }
+
   /////////////////////////////////////////////////////////////////////////////////////
-  val block = new LoopBlock(this,cfg,implementation,name,scope,condition)(sourceLocation)
+  val block = new LoopBlock(this, cfg, implementation, name, scope, condition)(sourceLocation)
   val bodyFactory = block.bodyFactory
-  val typeVariables : Set[TypeVariable] = Set()
+  val typeVariables: Set[TypeVariable] = Set()
 
   override def programVariables = block.programVariables
 }

@@ -4,13 +4,12 @@ import silAST.source.SourceLocation
 import silAST.methods.{Scope, Method}
 
 final class Implementation private[silAST]
-  (
+(
 
-    val method: Method,
-    override val factory: ImplementationFactory
-  ) (override val sourceLocation: SourceLocation)
-  extends Scope
-{
+  val method: Method,
+  override val factory: ImplementationFactory
+  )(override val sourceLocation: SourceLocation)
+  extends Scope {
   val parentScope: Option[Scope] = Some(method)
 
   def body: ControlFlowGraph = pBody
@@ -18,11 +17,12 @@ final class Implementation private[silAST]
   val implementation = this
 
   System.out.println(
-    "Implementation " + method.name + " pvs" +programVariables.mkString(",") +
+    "Implementation " + method.name + " pvs" + programVariables.mkString(",") +
       " method.pvs: " + method.programVariables.mkString(",") +
       " method.params: " + method.signature.parameters.mkString(",") +
       " method.results: " + method.signature.results.mkString(",")
   )
+
   //////////////////////////////////////////////////////////////////
   override def equals(other: Any): Boolean = {
     other match {
@@ -32,6 +32,7 @@ final class Implementation private[silAST]
   }
 
   override def hashCode(): Int = method.name.hashCode()
+
   override def toString = "implementation " + method.name + method.signature.toString +
     "{" +
     (for (l <- locals) yield "var " + l.name + " : " + l.dataType).mkString("\n\t", "\n\t", "\n") +
@@ -39,5 +40,5 @@ final class Implementation private[silAST]
     "}"
 
   //////////////////////////////////////////////////////////////////
-  protected[silAST] var pBody : ControlFlowGraph = null
+  protected[silAST] var pBody: ControlFlowGraph = null
 }

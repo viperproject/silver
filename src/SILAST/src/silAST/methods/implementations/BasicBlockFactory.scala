@@ -12,20 +12,19 @@ import silAST.programs.NodeFactory
 
 
 class BasicBlockFactory private[silAST]
-  (
-    val cfg : ControlFlowGraph,
+(
+  val cfg: ControlFlowGraph,
 
-    override val name: String
-  ) (override val sourceLocation: SourceLocation)
-  extends BlockFactory(cfg.scope,name)(sourceLocation)
+  override val name: String
+  )(override val sourceLocation: SourceLocation)
+  extends BlockFactory(cfg.scope, name)(sourceLocation)
   with NodeFactory
-  with ExpressionFactory
-{
+  with ExpressionFactory {
   //////////////////////////////////////////////////////////////////
   override type B = BasicBlock
 
   //////////////////////////////////////////////////////////////////
-  override val scope : Scope = cfg.scope
+  override val scope: Scope = cfg.scope
 
   //////////////////////////////////////////////////////////////////
   override def compile(): BasicBlock = {
@@ -38,8 +37,7 @@ class BasicBlockFactory private[silAST]
                   receiver: PTerm,
                   methodFactory: MethodFactory,
                   arguments: PTermSequence
-                  )(sourceLocation: SourceLocation)
-  {
+                  )(sourceLocation: SourceLocation) {
     require(programVariableSequences contains targets)
     require(targets.forall(programVariables contains _))
     require(scope.factory.methodFactories contains methodFactory)
@@ -47,7 +45,7 @@ class BasicBlockFactory private[silAST]
     migrateP(receiver)
     arguments foreach migrateP
 
-    block.appendStatement(new CallStatement(targets, methodFactory.method, PTermSequence(receiver ::arguments.toList :_*))(sourceLocation))
+    block.appendStatement(new CallStatement(targets, methodFactory.method, PTermSequence(receiver :: arguments.toList: _*))(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -100,7 +98,7 @@ class BasicBlockFactory private[silAST]
                         target: ProgramVariable,
                         source: PTerm
                         )(sourceLocation: SourceLocation) = {
-    require(writableVariables contains target ) //no writing to inputs
+    require(writableVariables contains target) //no writing to inputs
 
     migrateP(source)
     block.appendStatement(new AssignmentStatement(target, source)(sourceLocation))
@@ -136,15 +134,22 @@ class BasicBlockFactory private[silAST]
   //////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////
   override def programVariables = scope.programVariables
+
   override def inputProgramVariables = scope.factory.inputProgramVariables
+
   override def outputProgramVariables = scope.factory.outputProgramVariables
+
   override def predicates = scope.factory.predicates
-  override def functions  = scope.factory.functions
-  override def domainFunctions  = scope.factory.domainFunctions
+
+  override def functions = scope.factory.functions
+
+  override def domainFunctions = scope.factory.domainFunctions
+
   override def domainPredicates = scope.factory.domainPredicates
+
   override protected[silAST] def domainFactories = scope.factory.domainFactories
 
- //////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////
   val parentFactory = Some(scope.factory)
 
@@ -154,6 +159,6 @@ class BasicBlockFactory private[silAST]
 
   override def typeVariables = Set()
 
-  override val block : BasicBlock = new BasicBlock(cfg,scope,name,this)(sourceLocation)
+  override val block: BasicBlock = new BasicBlock(cfg, scope, name, this)(sourceLocation)
 
 }

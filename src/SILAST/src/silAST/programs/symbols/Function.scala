@@ -8,10 +8,9 @@ import silAST.source.{noLocation, SourceLocation}
 final class Function private[programs](
 
                                         val name: String,
-                                        pParams  : Seq[(SourceLocation, String, DataType)],
-                                        resultType : DataType
-                                        )(val sourceLocation : SourceLocation) extends ASTNode
-{
+                                        pParams: Seq[(SourceLocation, String, DataType)],
+                                        resultType: DataType
+                                        )(val sourceLocation: SourceLocation) extends ASTNode {
   private[symbols] var pSignature = new FunctionSignature(pParams, resultType)(noLocation)
 
   lazy val signature: FunctionSignature = pSignature
@@ -22,12 +21,12 @@ final class Function private[programs](
 
   private[symbols] var pBody: Option[Term] = None
 
-  override def equals(other : Any) : Boolean =
-  {
-    other match{
-      case f : Function => this eq  f
+  override def equals(other: Any): Boolean = {
+    other match {
+      case f: Function => this eq f
       case _ => false
     }
   }
-  override def hashCode() : Int = name.hashCode()
+
+  override def hashCode(): Int = name.hashCode()
 }

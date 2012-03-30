@@ -5,12 +5,12 @@ import collection.mutable.ListBuffer
 import silAST.programs.symbols.ProgramVariable
 
 trait Scope
-  extends ASTNode
-{
+  extends ASTNode {
   def parentScope: Option[Scope]
 
-  def locals : Set[ProgramVariable] = pLocals.toSet
-  def inheritedVariables : collection.Set[ProgramVariable] =
+  def locals: Set[ProgramVariable] = pLocals.toSet
+
+  def inheritedVariables: collection.Set[ProgramVariable] =
     (parentScope match {
       case Some(s) => s.programVariables
       case _ => Set[ProgramVariable]()

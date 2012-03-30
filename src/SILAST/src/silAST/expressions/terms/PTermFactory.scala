@@ -2,59 +2,64 @@ package silAST.expressions.terms
 
 import silAST.source.SourceLocation
 
-import silAST.domains.DomainFunction
 import silAST.programs.NodeFactory
 import silAST.expressions.util.{PTermSequence, GTermSequence}
 import silAST.programs.symbols._
 import silAST.types.{booleanType, DataTypeFactory, DataType}
 import collection.{immutable, Set}
 import silAST.expressions.{PProgramVariableSubstitutionC, PProgramVariableSubstitution}
+import silAST.symbols.logical.quantification.LogicalVariable
+import silAST.domains._
 
 protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
-  def makePProgramVariableSubstitution(subs:immutable.Set[(ProgramVariable,PTerm)]) : PProgramVariableSubstitution = {
+  def makePProgramVariableSubstitution(subs: immutable.Set[(ProgramVariable, PTerm)]): PProgramVariableSubstitution = {
     subs.foreach(kv => migrate(kv._2))
-    new PProgramVariableSubstitutionC(this,subs,immutable.Set())
+    new PProgramVariableSubstitutionC(subs, immutable.Set[(LogicalVariable, LogicalVariable)]())
   }
 
   /////////////////////////////////////////////////////////////////////////
-  protected[silAST] def migrate(t : PTerm)
-  {
+  def makePLogicalVariableSubstitution(subs: immutable.Set[(LogicalVariable, PTerm)]): PLogicalVariableSubstitution = {
+    subs.foreach(kv => migrate(kv._2))
+    new PLogicalVariableSubstitutionC(Set(), subs)
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  protected[silAST] def migrate(t: PTerm) {
     if (terms contains t)
       return;
-    t match
-    {
-      case gt : GTerm => super.migrate(gt)
-      case pv : ProgramVariableTerm => {
-        require (programVariables contains pv.variable)
+    t match {
+      case gt: GTerm => super.migrate(gt)
+      case pv: ProgramVariableTerm => {
+        require(programVariables contains pv.variable)
         addTerm(pv)
       }
-      case fa : PFunctionApplicationTerm => {
+      case fa: PFunctionApplicationTerm => {
         require(functions contains fa.function)
         fa.arguments.foreach(migrate(_))
         addTerm(fa)
       }
-      case dfa : PDomainFunctionApplicationTerm => {
+      case dfa: PDomainFunctionApplicationTerm => {
         dfa.arguments.foreach(migrate(_))
         require(domainFunctions contains dfa.function)
         addTerm(dfa)
       }
-      case ct : PCastTerm => {
+      case ct: PCastTerm => {
         migrate(ct.operand1)
         migrate(ct.newType)
         addTerm(t)
       }
-      case fr : PFieldReadTerm => {
-        require (fields contains fr.field)
-        migrate (fr.location)
+      case fr: PFieldReadTerm => {
+        require(fields contains fr.field)
+        migrate(fr.location)
         addTerm(fr)
       }
-      case ut : PUnfoldingTerm => {
-        require (predicates contains ut.predicate)
-        migrate (ut.receiver)
+      case ut: PUnfoldingTerm => {
+        require(predicates contains ut.predicate)
+        migrate(ut.receiver)
         migrate(ut.term)
         addTerm(ut)
       }
-      case itet : PIfThenElseTerm => {
+      case itet: PIfThenElseTerm => {
         require(itet.condition.dataType == booleanType)
         migrate(itet.condition)
         migrate(itet.pTerm)
@@ -64,8 +69,8 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeProgramVariableTerm(v: ProgramVariable)(sourceLocation : SourceLocation): ProgramVariableTerm = {
-    if (!(programVariables contains  v)){
+  def makeProgramVariableTerm(v: ProgramVariable)(sourceLocation: SourceLocation): ProgramVariableTerm = {
+    if (!(programVariables contains v)) {
       System.out.println("PTF : " + programVariables.mkString(","))
     }
     require(programVariables contains v)
@@ -73,7 +78,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePFunctionApplicationTerm(r: PTerm, ff: FunctionFactory, a: PTermSequence)(sourceLocation : SourceLocation): PFunctionApplicationTerm = {
+  def makePFunctionApplicationTerm(r: PTerm, ff: FunctionFactory, a: PTermSequence)(sourceLocation: SourceLocation): PFunctionApplicationTerm = {
     migrate(r)
     require(functions contains ff.pFunction)
     a.foreach(migrate(_))
@@ -82,7 +87,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePCastTerm(t: PTerm, dt: DataType)(sourceLocation : SourceLocation): PCastTerm = {
+  def makePCastTerm(t: PTerm, dt: DataType)(sourceLocation: SourceLocation): PCastTerm = {
     migrate(t)
     migrate(dt)
 
@@ -90,7 +95,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePFieldReadTerm(t: PTerm, f: Field)(sourceLocation : SourceLocation): PFieldReadTerm = {
+  def makePFieldReadTerm(t: PTerm, f: Field)(sourceLocation: SourceLocation): PFieldReadTerm = {
     migrate(t)
     require(fields contains f)
 
@@ -98,8 +103,8 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePDomainFunctionApplicationTerm(f: DomainFunction, a: PTermSequence)(sourceLocation : SourceLocation): PDomainFunctionApplicationTerm = {
-    a.foreach(migrate (_))
+  def makePDomainFunctionApplicationTerm(f: DomainFunction, a: PTermSequence)(sourceLocation: SourceLocation): PDomainFunctionApplicationTerm = {
+    a.foreach(migrate(_))
     require(domainFunctions contains f)
 
     a match {
@@ -109,7 +114,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePUnfoldingTerm(r: PTerm, p: PredicateFactory, t: PTerm)(sourceLocation : SourceLocation): PUnfoldingTerm = {
+  def makePUnfoldingTerm(r: PTerm, p: PredicateFactory, t: PTerm)(sourceLocation: SourceLocation): PUnfoldingTerm = {
     require(predicates contains p.pPredicate)
     migrate(r)
     migrate(t)
@@ -118,14 +123,14 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePIfThenElseTerm(c : PTerm,  p:PTerm,  n : PTerm)(sourceLocation : SourceLocation): PIfThenElseTerm = {
+  def makePIfThenElseTerm(c: PTerm, p: PTerm, n: PTerm)(sourceLocation: SourceLocation): PIfThenElseTerm = {
     migrate(c)
     migrate(p)
     migrate(n)
     require(c.dataType == booleanType)
     (c, p, n) match {
-      case (gc:GTerm, gp:GTerm,gn:GTerm) => makeGIfThenElseTerm(gc,gp,gn)(sourceLocation)
-      case _ => addTerm(new PIfThenElseTermC(c,p,n)(sourceLocation))
+      case (gc: GTerm, gp: GTerm, gn: GTerm) => makeGIfThenElseTerm(gc, gp, gn)(sourceLocation)
+      case _ => addTerm(new PIfThenElseTermC(c, p, n)(sourceLocation))
     }
   }
 
@@ -133,7 +138,8 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   protected[silAST] def functions: Set[Function]
 
   protected[silAST] def programVariables: collection.Set[ProgramVariable]
-  protected[silAST] def inputProgramVariables : collection.Set[ProgramVariable] //included in programVariables
+
+  protected[silAST] def inputProgramVariables: collection.Set[ProgramVariable] //included in programVariables
   protected[silAST] def outputProgramVariables: collection.Set[ProgramVariable] //included in programVariables
 
   protected[silAST] def fields: Set[Field]

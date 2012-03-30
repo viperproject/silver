@@ -1,22 +1,18 @@
 package silAST.methods.implementations
 
 import silAST.source.SourceLocation
-import collection.Set
-import collection.mutable.HashSet
 import silAST.methods.Scope
 import silAST.programs.NodeFactory
 import silAST.expressions.{PExpression, ExpressionFactory}
-import silAST.programs.symbols.{ProgramVariable, ProgramVariableSequence, Field}
 
 
 abstract class BlockFactory private[silAST]
-  (
-    val scope: Scope,
-    val name: String
-  ) (val sourceLocation: SourceLocation)
+(
+  val scope: Scope,
+  val name: String
+  )(val sourceLocation: SourceLocation)
   extends NodeFactory
-//  with ExpressionFactory
-{
+  with ExpressionFactory {
   type B <: Block
 
   //////////////////////////////////////////////////////////////////
@@ -25,27 +21,25 @@ abstract class BlockFactory private[silAST]
   }
 
   //////////////////////////////////////////////////////////////////
-  def setBranch(condition : PExpression, trueTarget : BlockFactory, falseTarget : BlockFactory)(sl : SourceLocation)
-  {
-    require (block.pControlStatement == None)
+  def setBranch(condition: PExpression, trueTarget: BlockFactory, falseTarget: BlockFactory)(sl: SourceLocation) {
+    require(block.pControlStatement == None)
     require(trueTarget.block.cfg == block.cfg)
     require(falseTarget.block.cfg == block.cfg)
-    block.setControlStatement(new Branch(block,trueTarget.block,falseTarget.block,condition)(sl))
+    block.setControlStatement(new Branch(block, trueTarget.block, falseTarget.block, condition)(sl))
   }
 
   //////////////////////////////////////////////////////////////////
-  def setGoto(target : BlockFactory)(sl : SourceLocation)
-  {
-    require (block.pControlStatement == None)
+  def setGoto(target: BlockFactory)(sl: SourceLocation) {
+    require(block.pControlStatement == None)
     require(target.block.cfg == block.cfg)
-    block.setControlStatement(new Goto(block,target.block)(sl))
+    block.setControlStatement(new Goto(block, target.block)(sl))
   }
 
   //////////////////////////////////////////////////////////////////
-  def setHalt()(sl : SourceLocation)
-  {
-    require (block.pControlStatement == None)
+  def setHalt()(sl: SourceLocation) {
+    require(block.pControlStatement == None)
     block.setControlStatement(new Halt()(sl))
   }
+
   private[silAST] val block: B
 }

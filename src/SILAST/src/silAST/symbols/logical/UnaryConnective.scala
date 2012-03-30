@@ -9,7 +9,7 @@ sealed abstract class UnaryConnective private[silAST]() extends ASTNode {
   def name: String
 }
 
-final case class Not()(override val sourceLocation : SourceLocation) extends UnaryConnective {
+final case class Not()(override val sourceLocation: SourceLocation) extends UnaryConnective {
 
   def name: String = "!"
 

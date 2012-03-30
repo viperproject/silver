@@ -15,61 +15,54 @@ trait ExpressionFactory
   with DExpressionFactory
   with PExpressionFactory
   with GExpressionFactory
-  with TermFactory
-{
+  with TermFactory {
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] def migrateP(e:PExpression)
-  {
+  protected[silAST] def migrateP(e: PExpression) {
     super[PExpressionFactory].migrate(e)
   }
 
-  protected[silAST] def migrate(e:Expression)
-  {
+  protected[silAST] def migrate(e: Expression) {
     if (expressions contains e)
       return
 
     e match {
-      case ge : GExpression => super[GExpressionFactory].migrate(ge)
-      case de : DExpression => super.migrate(de)
-      case pe : PExpression => super.migrate(pe)
-      case ue : UnaryExpression => {
+      case ge: GExpression => super[GExpressionFactory].migrate(ge)
+      case de: DExpression => super.migrate(de)
+      case pe: PExpression => super.migrate(pe)
+      case ue: UnaryExpression => {
         migrate(ue.operand1)
       }
-      case be : BinaryExpression => {
+      case be: BinaryExpression => {
         migrate(be.operand1)
         migrate(be.operand2)
       }
-      case dpe : DomainPredicateExpression => {
+      case dpe: DomainPredicateExpression => {
         require(domainPredicates contains dpe.predicate)
         dpe.arguments.foreach(migrate(_))
       }
-      case ee : EqualityExpression =>
-      {
+      case ee: EqualityExpression => {
         migrate(ee.term1)
         migrate(ee.term2)
       }
-      case ppe : PredicateExpression => {
+      case ppe: PredicateExpression => {
         require(predicates contains ppe.predicate)
       }
-      case pue : UnfoldingExpression => {
+      case pue: UnfoldingExpression => {
         migrate(pue.expression)
         migrate(pue.predicate)
       }
-      case qe : QuantifierExpression =>
-      {
+      case qe: QuantifierExpression => {
         require(boundVariables contains qe.variable)
         require(!(boundVariableMap contains qe.variable))
         migrate(qe.expression)
       }
-      case pe : PermissionExpression =>
-      {
+      case pe: PermissionExpression => {
         require(fields contains pe.field)
         migrate(pe.reference)
         migrate(pe.permission)
       }
-      case oe : OldExpression =>
-      {
+      case oe: OldExpression => {
         migrate(oe.expression)
       }
     }
@@ -78,7 +71,7 @@ trait ExpressionFactory
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def makeUnaryExpression(op: UnaryConnective, e1: Expression)(sourceLocation : SourceLocation) : UnaryExpression = {
+  def makeUnaryExpression(op: UnaryConnective, e1: Expression)(sourceLocation: SourceLocation): UnaryExpression = {
     migrate(e1)
 
     (e1) match {
@@ -91,7 +84,7 @@ trait ExpressionFactory
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def makeBinaryExpression(op: BinaryConnective, e1: Expression, e2: Expression)(sourceLocation : SourceLocation): BinaryExpression = {
+  def makeBinaryExpression(op: BinaryConnective, e1: Expression, e2: Expression)(sourceLocation: SourceLocation): BinaryExpression = {
     migrate(e1)
     migrate(e2)
 
@@ -105,9 +98,9 @@ trait ExpressionFactory
 
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDomainPredicateExpression(p: DomainPredicate, args: TermSequence)(sourceLocation : SourceLocation): DomainPredicateExpression = {
+  def makeDomainPredicateExpression(p: DomainPredicate, args: TermSequence)(sourceLocation: SourceLocation): DomainPredicateExpression = {
     require(domainPredicates contains p)
-    args.foreach(migrate (_))
+    args.foreach(migrate(_))
 
     (args) match {
       case (a: GTermSequence) => makeGDomainPredicateExpression(p, a)(sourceLocation)
@@ -118,7 +111,7 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePredicateExpression(r: Term, pf: PredicateFactory)(sourceLocation : SourceLocation): PredicateExpression = {
+  def makePredicateExpression(r: Term, pf: PredicateFactory)(sourceLocation: SourceLocation): PredicateExpression = {
     require(predicates contains pf.pPredicate)
     migrate(r)
 
@@ -129,7 +122,7 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeEqualityExpression(t1: Term, t2: Term)(sourceLocation : SourceLocation): EqualityExpression = {
+  def makeEqualityExpression(t1: Term, t2: Term)(sourceLocation: SourceLocation): EqualityExpression = {
     migrate(t1)
     migrate(t2)
 
@@ -142,14 +135,14 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeOldExpression(e : Expression)(sourceLocation : SourceLocation) : OldExpression = {
+  def makeOldExpression(e: Expression)(sourceLocation: SourceLocation): OldExpression = {
     migrate(e)
     require((e.programVariables intersect outputProgramVariables).isEmpty)
     addExpression(OldExpression(e)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeQuantifierExpression(q: Quantifier, v: LogicalVariable, e: Expression)(sourceLocation : SourceLocation): QuantifierExpression = {
+  def makeQuantifierExpression(q: Quantifier, v: LogicalVariable, e: Expression)(sourceLocation: SourceLocation): QuantifierExpression = {
     require(boundVariables contains v)
     require(!(boundVariableMap contains v))
 
@@ -167,16 +160,16 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePermissionExpression(r: Term, f : Field, p: Term)(sourceLocation : SourceLocation): PermissionExpression = {
+  def makePermissionExpression(r: Term, f: Field, p: Term)(sourceLocation: SourceLocation): PermissionExpression = {
     require(fields contains f)
     migrate(r)
     migrate(p)
 
-    addExpression(new PermissionExpression(r, f,p)(sourceLocation))
+    addExpression(new PermissionExpression(r, f, p)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeUnfoldingExpression(p: PredicateExpression, e: Expression)(sourceLocation : SourceLocation): UnfoldingExpression = {
+  def makeUnfoldingExpression(p: PredicateExpression, e: Expression)(sourceLocation: SourceLocation): UnfoldingExpression = {
     migrate(p)
     migrate(e)
 

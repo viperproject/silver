@@ -3,62 +3,73 @@ package silAST.expressions
 import silAST.symbols.logical.quantification.LogicalVariable
 import silAST.programs.symbols.ProgramVariable
 import silAST.source.{PVSubstitutedSourceLocation, SourceLocation}
-import terms.{PTermFactory, PTerm, Term}
+import terms._
 
 
-sealed abstract class ProgramVariableSubstitution
-{
+sealed trait ProgramVariableSubstitution {
   type T <: Term
 
-  val targetFactory: PTermFactory
+  //  def targetFactory: PTermFactory
 
-  def mapVariable(v : ProgramVariable) : Option[T]
-  protected[silAST] val varMap : Map[ProgramVariable,T]
-  protected[silAST] val logicalVarMap : Map[LogicalVariable,LogicalVariable]
-  def sourceLocation(sl : SourceLocation) : PVSubstitutedSourceLocation =
-    new PVSubstitutedSourceLocation(sl,this)
+  def mapVariable(v: ProgramVariable): Option[T]
+
+  protected[silAST] def varMap: Map[ProgramVariable, T]
+
+  def sourceLocation(sl: SourceLocation): PVSubstitutedSourceLocation =
+    new PVSubstitutedSourceLocation(sl, this)
+
+  def logicalVariables: Set[(LogicalVariable, LogicalVariable)]
 }
 
-private[silAST] sealed class ProgramVariableSubstitutionC[TT<:Term](
-    override val targetFactory: PTermFactory,
-    variables : Set[(ProgramVariable,TT)],
-    logicalVariables : Set[(LogicalVariable,LogicalVariable)]
-  )
-  extends ProgramVariableSubstitution
-{
+private[silAST] sealed class ProgramVariableSubstitutionC[TT <: Term](
+                                                                       //    override val targetFactory: TF,
+                                                                       variables: Set[(ProgramVariable, TT)],
+                                                                       override val logicalVariables: Set[(LogicalVariable, LogicalVariable)]
+                                                                       )
+  extends ProgramVariableSubstitution {
   override type T = TT
 
-  protected[silAST] override val varMap : Map[ProgramVariable,T] = variables.toMap
+  protected[silAST] override val varMap: Map[ProgramVariable, T] = variables.toMap
 
-  override def toString = super.toString + varMap.mkString("(",",",")")
+  override def toString = super.toString + varMap.mkString("(", ",", ")")
 
-  def +(other : ProgramVariableSubstitution)  : ProgramVariableSubstitution =
-  {
-    require (other.targetFactory == targetFactory)
+  def +(other: ProgramVariableSubstitution): ProgramVariableSubstitution = {
+    //    require (other.targetFactory == targetFactory)
     new ProgramVariableSubstitutionC[Term](
-      targetFactory,
       (varMap.++[Term](other.varMap)).toSet,
-      (logicalVarMap.++(other.logicalVarMap)).toSet
+      logicalVariables union other.logicalVariables
     )
   }
-  def mapVariable(v : ProgramVariable) : Option[T] = varMap.get(v)
 
-  def mapLogicalVariable(v : LogicalVariable) : Option[LogicalVariable] = logicalVarMap.get(v)
-  protected[silAST] override val logicalVarMap : Map[LogicalVariable,LogicalVariable] = logicalVariables.toMap
+  def mapVariable(v: ProgramVariable): Option[T] = varMap.get(v)
+
+  def mapLogicalVariable(v: LogicalVariable): Option[LogicalVariable] = logicalVarMap.get(v)
+
+  protected[silAST] val logicalVarMap: Map[LogicalVariable, LogicalVariable] = logicalVariables.toMap
 }
 
 
-sealed trait PProgramVariableSubstitution extends ProgramVariableSubstitution
-{
+sealed trait PProgramVariableSubstitution extends ProgramVariableSubstitution {
   override type T <: PTerm
 }
 
 private[silAST] sealed class PProgramVariableSubstitutionC(
-    override val targetFactory: PTermFactory,
-    variables : Set[(ProgramVariable,PTerm)],
-    logicalVariables : Set[(LogicalVariable,LogicalVariable)]
-  )
-  extends ProgramVariableSubstitutionC[PTerm](targetFactory,variables,logicalVariables)
-  with PProgramVariableSubstitution
-{
+                                                            variables: Set[(ProgramVariable, PTerm)],
+                                                            override val logicalVariables: Set[(LogicalVariable, LogicalVariable)]
+                                                            )
+  extends ProgramVariableSubstitutionC[PTerm](variables, logicalVariables)
+  with PProgramVariableSubstitution {
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+sealed trait DProgramVariableSubstitution extends ProgramVariableSubstitution {
+  override type T <: DTerm
+}
+
+private[silAST] sealed class DProgramVariableSubstitutionC(
+                                                            variables: Set[(ProgramVariable, DTerm)],
+                                                            override val logicalVariables: Set[(LogicalVariable, LogicalVariable)]
+                                                            )
+  extends ProgramVariableSubstitutionC[DTerm](variables, logicalVariables)
+  with DProgramVariableSubstitution {
 }

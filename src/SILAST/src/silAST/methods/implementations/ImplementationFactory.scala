@@ -2,7 +2,7 @@ package silAST.methods.implementations
 
 import silAST.programs.NodeFactory
 import silAST.expressions.ExpressionFactory
-import silAST.programs.symbols.{Field, ProgramVariable}
+import silAST.programs.symbols.ProgramVariable
 import collection.Set
 import silAST.source.SourceLocation
 import silAST.methods.{ScopeFactory, MethodFactory}
@@ -11,13 +11,12 @@ import silAST.types.DataType
 //TODO: Should implementations have names/ids?
 
 class ImplementationFactory private[silAST]
-  (
-    private[silAST] val methodFactory: MethodFactory
+(
+  private[silAST] val methodFactory: MethodFactory
   )(sourceLocation: SourceLocation)
   extends NodeFactory
   with ExpressionFactory
-  with ScopeFactory
-{
+  with ScopeFactory {
   def compile(): Implementation = {
     implementation.pBody = cfgFactory.compile()
 
@@ -38,31 +37,39 @@ class ImplementationFactory private[silAST]
   /////////////////////////////////////////////////////////////////////////////////////
   private[silAST] val implementation = new Implementation(methodFactory.method, this)(sourceLocation)
   /////////////////////////////////////////////////////////////////////////////////////
-  val cfgFactory = new CFGFactory(implementation,implementation)(sourceLocation)
+  val cfgFactory = new CFGFactory(implementation, implementation)(sourceLocation)
 
   /////////////////////////////////////////////////////////////////////////////////////
-//  override val scope = implementation
+  //  override val scope = implementation
   override val programFactory = methodFactory.programFactory
 
   /////////////////////////////////////////////////////////////////////////////////////
   override val parentFactory = Some(methodFactory)
 
-  def localVariables : Set[ProgramVariable] = implementation.pLocals.toSet[ProgramVariable];
-//  val fields: Set[Field] = methodFactory.fields
+  def localVariables: Set[ProgramVariable] = implementation.pLocals.toSet[ProgramVariable];
+
+  //  val fields: Set[Field] = methodFactory.fields
 
   private[silAST] def parameters = methodFactory.parameters
+
   private[silAST] def results = methodFactory.results
 
   override def functions = methodFactory.functions
+
   override def programVariables = methodFactory.programVariables union localVariables
+
   override val inputProgramVariables = methodFactory.inputProgramVariables
   override val outputProgramVariables = methodFactory.outputProgramVariables
+
   override def dataTypes = methodFactory.dataTypes union pDataTypes
 
   override def predicates = methodFactory.predicates
+
   override def domainFunctions = methodFactory.domainFunctions
+
   override def domainPredicates = methodFactory.domainPredicates
-           protected[silAST] override def domainFactories = methodFactory.domainFactories
+
+  protected[silAST] override def domainFactories = methodFactory.domainFactories
 
 
   private[silAST] val cfg = implementation.body

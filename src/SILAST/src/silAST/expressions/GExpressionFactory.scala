@@ -12,49 +12,47 @@ import silAST.programs.NodeFactory
 
 private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] def migrate(e:GExpression)
-  {
+  protected[silAST] def migrate(e: GExpression) {
     if (expressions contains e)
       return
 
     e match {
-      case ue : GUnaryExpression => {
+      case ue: GUnaryExpression => {
         migrate(ue.operand1)
       }
-      case be : GBinaryExpression => {
+      case be: GBinaryExpression => {
         migrate(be.operand1)
         migrate(be.operand2)
       }
-      case dpe : GDomainPredicateExpression => {
+      case dpe: GDomainPredicateExpression => {
         require(domainPredicates contains dpe.predicate)
         dpe.arguments.foreach(migrate(_))
       }
-      case ee : GEqualityExpression =>
-      {
+      case ee: GEqualityExpression => {
         migrate(ee.term1)
         migrate(ee.term2)
       }
-      case te : TrueExpression => {}
-      case fe : FalseExpression => {}
+      case te: TrueExpression => {}
+      case fe: FalseExpression => {}
     }
     addExpression(e)
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGUnaryExpression(op: UnaryConnective, e1: GExpression)(sourceLocation : SourceLocation): GUnaryExpression = {
+  def makeGUnaryExpression(op: UnaryConnective, e1: GExpression)(sourceLocation: SourceLocation): GUnaryExpression = {
     require(expressions contains e1)
-    addExpression(new GUnaryExpression(op,e1)(sourceLocation))
+    addExpression(new GUnaryExpression(op, e1)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGDomainPredicateExpression(p: DomainPredicate, args: GTermSequence)(sourceLocation : SourceLocation): GDomainPredicateExpression = {
+  def makeGDomainPredicateExpression(p: DomainPredicate, args: GTermSequence)(sourceLocation: SourceLocation): GDomainPredicateExpression = {
     require(domainPredicates contains p)
     args.foreach(migrate(_))
     addExpression(new GDomainPredicateExpression(p, args)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGBinaryExpression(op: BinaryConnective, e1: GExpression, e2: GExpression)(sourceLocation : SourceLocation): GBinaryExpression = {
+  def makeGBinaryExpression(op: BinaryConnective, e1: GExpression, e2: GExpression)(sourceLocation: SourceLocation): GBinaryExpression = {
     migrate(e1)
     migrate(e2)
 
@@ -67,7 +65,7 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
 
                                t1: GTerm,
                                t2: GTerm
-                               )(sourceLocation : SourceLocation): GEqualityExpression = {
+                               )(sourceLocation: SourceLocation): GEqualityExpression = {
     migrate(t1)
     migrate(t2)
     addExpression(new GEqualityExpression(t1, t2)(sourceLocation))

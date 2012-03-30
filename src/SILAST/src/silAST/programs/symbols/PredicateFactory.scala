@@ -8,7 +8,7 @@ import silAST.source.SourceLocation
 class PredicateFactory private[silAST](
                                         programFactory: ProgramFactory,
                                         val name: String
-                                        )(val sourceLocation : SourceLocation) extends SymbolFactory[Predicate](programFactory) {
+                                        )(val sourceLocation: SourceLocation) extends SymbolFactory[Predicate](programFactory) {
   override def compile(): Predicate = {
     require(pPredicate.pExpression != None)
     predicate
@@ -21,6 +21,7 @@ class PredicateFactory private[silAST](
   }
 
   private[silAST] var pPredicate = new Predicate(name)(sourceLocation)
+
   def predicate: Predicate = pPredicate.pExpression match {
     case None => throw new Exception
     case _ => pPredicate
@@ -29,5 +30,6 @@ class PredicateFactory private[silAST](
   override def typeVariables = Set()
 
   override def inputProgramVariables = Set(thisVar)
+
   override def outputProgramVariables = Set(thisVar)
 }

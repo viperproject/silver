@@ -7,36 +7,32 @@ import silAST.methods.Scope
 import silAST.expressions.PExpression
 
 final class CFGFactory(
-    implementation : Implementation,
-    val scope : Scope
-  )
-  (sourceLocation : SourceLocation)
-  extends NodeFactory
-{
+                        implementation: Implementation,
+                        val scope: Scope
+                        )
+                      (sourceLocation: SourceLocation)
+  extends NodeFactory {
   /////////////////////////////////////////////////////////////////////////////////////
-  def compile() : ControlFlowGraph =
-  {
-    require(cfg.pStartNode!=null)
-    require(cfg.pEndNode!=null)
+  def compile(): ControlFlowGraph = {
+    require(cfg.pStartNode != null)
+    require(cfg.pEndNode != null)
     cfg.compile()
 
     cfg
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def setStartNode(blockF : BasicBlockFactory)
-  {
+  def setStartNode(blockF: BasicBlockFactory) {
     require(blocks contains blockF)
     require(cfg.pStartNode == None)
     cfg.setStartNode(blockF.block)
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def setEndNode(blockF : BasicBlockFactory)
-  {
+  def setEndNode(blockF: BasicBlockFactory) {
     require(blocks contains blockF)
     require(cfg.pEndNode == None)
-    require(blockF.block.pControlStatement!=None && blockF.block.successors.size==0)
+    require(blockF.block.pControlStatement != None && blockF.block.successors.size == 0)
     cfg.setEndNode(blockF.block)
   }
 
@@ -50,10 +46,10 @@ final class CFGFactory(
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def addLoopBlock(name: String, condition : PExpression)(sourceLocation: SourceLocation): LoopBlockFactory = {
+  def addLoopBlock(name: String, condition: PExpression)(sourceLocation: SourceLocation): LoopBlockFactory = {
     require(blocks.forall(_.name != name))
     scope.factory.migrateP(condition)
-    val result = new LoopBlockFactory(cfg,scope,implementation,name,condition)(sourceLocation)
+    val result = new LoopBlockFactory(cfg, scope, implementation, name, condition)(sourceLocation)
     blocks += result
     cfg.addNode(result.block)
     result

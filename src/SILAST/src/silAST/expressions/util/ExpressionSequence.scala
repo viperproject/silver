@@ -9,7 +9,7 @@ sealed class ExpressionSequence private[silAST](
                                                  val args: Seq[Expression]
                                                  ) extends ASTNode with Seq[Expression] {
 
-  override val sourceLocation : SourceLocation = (if (args.isEmpty) noLocation else args.head.sourceLocation)
+  override val sourceLocation: SourceLocation = (if (args.isEmpty) noLocation else args.head.sourceLocation)
 
   override def apply(idx: Int) = args(idx)
 

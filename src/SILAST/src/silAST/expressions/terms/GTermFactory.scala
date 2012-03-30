@@ -8,10 +8,9 @@ import silAST.expressions.util.GTermSequence
 import silAST.programs.NodeFactory
 import silAST.types.booleanType
 
-protected[silAST] trait GTermFactory 
-  extends NodeFactory 
-{
-/*  /////////////////////////////////////////////////////////////////////////
+protected[silAST] trait GTermFactory
+  extends NodeFactory {
+  /*  /////////////////////////////////////////////////////////////////////////
   def migrate(t : Term)
   {
     t match {
@@ -21,19 +20,17 @@ protected[silAST] trait GTermFactory
   }
   */
   /////////////////////////////////////////////////////////////////////////
-  protected[silAST] def migrate(t : GTerm)
-  {
+  protected[silAST] def migrate(t: GTerm) {
     if (terms contains t)
       return;
-    t match
-    {
-      case t : LiteralTerm => addTerm(t)
-      case fa : GDomainFunctionApplicationTerm => {
-        require(domainFunctions contains  fa.function)
+    t match {
+      case t: LiteralTerm => addTerm(t)
+      case fa: GDomainFunctionApplicationTerm => {
+        require(domainFunctions contains fa.function)
         fa.arguments.foreach(migrate(_))
         addTerm(fa)
       }
-      case itet : GIfThenElseTerm => {
+      case itet: GIfThenElseTerm => {
         require(itet.condition.dataType == booleanType)
         migrate(itet.condition)
         migrate(itet.pTerm)
@@ -41,25 +38,26 @@ protected[silAST] trait GTermFactory
       }
     }
   }
+
   /////////////////////////////////////////////////////////////////////////
-  def makeIntegerLiteralTerm(v: BigInt)(sourceLocation : SourceLocation): IntegerLiteralTerm = {
+  def makeIntegerLiteralTerm(v: BigInt)(sourceLocation: SourceLocation): IntegerLiteralTerm = {
     addTerm(new IntegerLiteralTerm(v)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeGDomainFunctionApplicationTerm(f: DomainFunction, a: GTermSequence)(sourceLocation : SourceLocation): GDomainFunctionApplicationTerm = {
-    a.foreach(migrate (_))
+  def makeGDomainFunctionApplicationTerm(f: DomainFunction, a: GTermSequence)(sourceLocation: SourceLocation): GDomainFunctionApplicationTerm = {
+    a.foreach(migrate(_))
     require(domainFunctions contains f)
     addTerm(new GDomainFunctionApplicationTerm(f, a)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeGIfThenElseTerm(c : GTerm,  p:GTerm,  n : GTerm)(sourceLocation : SourceLocation): GIfThenElseTerm = {
+  def makeGIfThenElseTerm(c: GTerm, p: GTerm, n: GTerm)(sourceLocation: SourceLocation): GIfThenElseTerm = {
     migrate(c)
     migrate(p)
     migrate(n)
     require(c.dataType == booleanType)
-    addTerm(new GIfThenElseTerm(c,p,n)(sourceLocation))
+    addTerm(new GIfThenElseTerm(c, p, n)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////

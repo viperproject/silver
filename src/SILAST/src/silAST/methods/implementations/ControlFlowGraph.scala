@@ -6,21 +6,21 @@ import silAST.source.SourceLocation
 import silAST.methods.Scope
 
 final class ControlFlowGraph private[silAST]
-  (
+(
 
-    val scope : Scope,
-    val implementation : Implementation
-  ) (val sourceLocation: SourceLocation)
-  extends ASTNode
-{
+  val scope: Scope,
+  val implementation: Implementation
+  )(val sourceLocation: SourceLocation)
+  extends ASTNode {
   def compile() {
     require(pStartNode != None)
     require(pEndNode != None)
-    require(nodes.forall(_.pControlStatement!=None))
+    require(nodes.forall(_.pControlStatement != None))
   }
 
   //TODO: more consistency checks
   require(scope != null)
+
   def nodes: Set[Block] = pNodes.toSet
 
   private[implementations] def addNode(b: Block) = {
@@ -28,7 +28,8 @@ final class ControlFlowGraph private[silAST]
     require(b.cfg eq this)
     pNodes += b
   }
-  private[implementations] def setStartNode(b : BasicBlock) {
+
+  private[implementations] def setStartNode(b: BasicBlock) {
     require(pNodes contains b)
     pStartNode = Some(b)
   }

@@ -5,7 +5,6 @@ import silAST.source.SourceLocation
 import silAST.ASTNode
 
 
-private[silAST] trait NodeFactory
-{
+private[silAST] trait NodeFactory {
   protected val nodeMap = new HashMap[SourceLocation, ASTNode]
 }

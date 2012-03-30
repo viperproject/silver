@@ -13,33 +13,31 @@ import collection.mutable.HashSet
 
 trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermFactory {
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] def migrate(e:PExpression)
-  {
+  protected[silAST] def migrate(e: PExpression) {
     if (expressions contains e)
       return
 
     e match {
-      case ge : GExpression => super.migrate(ge)
-      case ue : PUnaryExpression => {
+      case ge: GExpression => super.migrate(ge)
+      case ue: PUnaryExpression => {
         migrate(ue.operand1)
       }
-      case be : PBinaryExpression => {
+      case be: PBinaryExpression => {
         migrate(be.operand1)
         migrate(be.operand2)
       }
-      case dpe : PDomainPredicateExpression => {
+      case dpe: PDomainPredicateExpression => {
         require(domainPredicates contains dpe.predicate)
         dpe.arguments.foreach(migrate(_))
       }
-      case ee : PEqualityExpression =>
-      {
+      case ee: PEqualityExpression => {
         migrate(ee.term1)
         migrate(ee.term2)
       }
-      case ppe : PPredicateExpression => {
+      case ppe: PPredicateExpression => {
         require(predicates contains ppe.predicate)
       }
-      case pue : PUnfoldingExpression => {
+      case pue: PUnfoldingExpression => {
         migrate(pue.expression)
         migrate(pue.predicate)
       }
@@ -48,7 +46,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   }
 
   //////////////////////////////////////////////////////////////////
-  def makeProgramVariableSequence(vs: Seq[ProgramVariable])(sourceLocation : SourceLocation): ProgramVariableSequence = {
+  def makeProgramVariableSequence(vs: Seq[ProgramVariable])(sourceLocation: SourceLocation): ProgramVariableSequence = {
     require(vs.forall(programVariables contains _))
     val result = new ProgramVariableSequence(vs)(sourceLocation)
     programVariableSequences += result
@@ -56,7 +54,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePDomainPredicateExpression(p: DomainPredicate, args: PTermSequence)(sourceLocation : SourceLocation): PDomainPredicateExpression = {
+  def makePDomainPredicateExpression(p: DomainPredicate, args: PTermSequence)(sourceLocation: SourceLocation): PDomainPredicateExpression = {
     require(domainPredicates contains p)
     args.foreach(migrate(_))
 
@@ -67,7 +65,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePPredicateExpression(r: PTerm, p: Predicate)(sourceLocation : SourceLocation): PPredicateExpression = {
+  def makePPredicateExpression(r: PTerm, p: Predicate)(sourceLocation: SourceLocation): PPredicateExpression = {
     require(predicates contains p)
     migrate(r)
 
@@ -75,7 +73,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePUnaryExpression(op: UnaryConnective, e1: PExpression)(sourceLocation : SourceLocation): PUnaryExpression = {
+  def makePUnaryExpression(op: UnaryConnective, e1: PExpression)(sourceLocation: SourceLocation): PUnaryExpression = {
     migrate(e1)
 
     (e1) match {
@@ -85,7 +83,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePBinaryExpression(op: BinaryConnective, e1: PExpression, e2: PExpression)(sourceLocation : SourceLocation): PBinaryExpression = {
+  def makePBinaryExpression(op: BinaryConnective, e1: PExpression, e2: PExpression)(sourceLocation: SourceLocation): PBinaryExpression = {
     migrate(e1)
     migrate(e2)
 
@@ -96,7 +94,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePEqualityExpression(t1: PTerm, t2: PTerm)(sourceLocation : SourceLocation): PEqualityExpression = {
+  def makePEqualityExpression(t1: PTerm, t2: PTerm)(sourceLocation: SourceLocation): PEqualityExpression = {
     migrate(t1)
     migrate(t2)
 
@@ -107,7 +105,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePUnfoldingExpression(p: PPredicateExpression, e: PExpression)(sourceLocation : SourceLocation): UnfoldingExpression = {
+  def makePUnfoldingExpression(p: PPredicateExpression, e: PExpression)(sourceLocation: SourceLocation): UnfoldingExpression = {
     migrate(p)
     migrate(e)
 
@@ -117,5 +115,6 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   protected[silAST] def predicates: Set[Predicate]
+
   protected[silAST] val programVariableSequences = new HashSet[ProgramVariableSequence]
 }

@@ -3,21 +3,20 @@ package silAST.methods
 import implementations.ImplementationFactory
 import silAST.programs.{NodeFactory, ProgramFactory}
 import collection.mutable.{HashSet, ListBuffer}
-import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
+import silAST.programs.symbols.{ProgramVariableSequence, ProgramVariable}
 import silAST.expressions.util.ExpressionSequence
-import silAST.source.{noLocation, SourceLocation}
+import silAST.source.SourceLocation
 import silAST.expressions.{Expression, ExpressionFactory}
-import silAST.types.{referenceType, DataType}
+import silAST.types.DataType
 
 class MethodFactory(
                      val programFactory: ProgramFactory,
                      val name: String
-                     )(val sourceLocation : SourceLocation)
+                     )(val sourceLocation: SourceLocation)
   extends NodeFactory
   with ExpressionFactory
-  with ScopeFactory
-{
-//  override def scope = method
+  with ScopeFactory {
+  //  override def scope = method
 
   def compile(): Method = {
     if (!signatureDefined)
@@ -27,7 +26,7 @@ class MethodFactory(
     method
   }
 
-  def addParameter(name: String, dataType: DataType)(sourceLocation : SourceLocation) = {
+  def addParameter(name: String, dataType: DataType)(sourceLocation: SourceLocation) = {
     require(!signatureDefined)
     require(programVariables.forall(_.name != name))
     val result = new ProgramVariable(name, dataType)(sourceLocation)
@@ -36,7 +35,7 @@ class MethodFactory(
     result
   }
 
-  def addResult(name: String, dataType: DataType)(sourceLocation : SourceLocation) = {
+  def addResult(name: String, dataType: DataType)(sourceLocation: SourceLocation) = {
     require(!signatureDefined)
     require(programVariables.forall(_.name != name))
     val result = new ProgramVariable(name, dataType)(sourceLocation)
@@ -45,12 +44,12 @@ class MethodFactory(
     result
   }
 
-  def addPrecondition(e: Expression)(sourceLocation : SourceLocation) = {
+  def addPrecondition(e: Expression)(sourceLocation: SourceLocation) = {
     require(!signatureDefined)
     preconditions += e
   }
 
-  def addPostcondition(e: Expression)(sourceLocation : SourceLocation) = {
+  def addPostcondition(e: Expression)(sourceLocation: SourceLocation) = {
     require(!signatureDefined)
     postconditions += e
   }
@@ -63,12 +62,12 @@ class MethodFactory(
     val preconditions = new ExpressionSequence(this.preconditions) //TODO:more accurate locations
     val postconditions = new ExpressionSequence(this.postconditions) //TODO:more accurate locations
     val signature = new MethodSignature(pParameters.get, pResults.get, preconditions, postconditions)(sourceLocation)
-      pMethod = Some(new Method(name, signature,this)(sourceLocation))
-//    signatureDefined = true
+    pMethod = Some(new Method(name, signature, this)(sourceLocation))
+    //    signatureDefined = true
 
   }
 
-  def addImplementation()(sourceLocation : SourceLocation): ImplementationFactory = {
+  def addImplementation()(sourceLocation: SourceLocation): ImplementationFactory = {
     if (!signatureDefined) finalizeSignature()
     val result = new ImplementationFactory(this)(sourceLocation)
     implementationFactories += result
@@ -83,8 +82,8 @@ class MethodFactory(
   def method: Method = if (pMethod.isDefined) pMethod.get else throw new Exception
 
   protected[silAST] override val parentFactory = Some(programFactory)
-  
-//  val fields: Set[Field] = programFactory.fields.toSet
+
+  //  val fields: Set[Field] = programFactory.fields.toSet
 
   var pParameters: Option[ProgramVariableSequence] = None
   var pResults: Option[ProgramVariableSequence] = None
@@ -103,25 +102,28 @@ class MethodFactory(
   private val resultsGenerator = new ListBuffer[ProgramVariable]
   private val preconditions = new ListBuffer[Expression]
   private val postconditions = new ListBuffer[Expression]
-  private def signatureDefined = pMethod!=None;
+
+  private def signatureDefined = pMethod != None;
   private val implementationFactories = new HashSet[ImplementationFactory]
 
-//  private[silAST] def methodFactories = programFactory.methodFactories
+  //  private[silAST] def methodFactories = programFactory.methodFactories
 
   override def programVariables = inputProgramVariables union outputProgramVariables
+
   override def inputProgramVariables = parametersGenerator.toSet[ProgramVariable]
+
   override def outputProgramVariables = resultsGenerator.toSet[ProgramVariable]
 
   //  protected[silAST] override def functions = programFactory.functions.toSet
 
-//  protected[silAST] override def predicates = programFactory.predicates
+  //  protected[silAST] override def predicates = programFactory.predicates
 
-//  protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes
+  //  protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes
 
-//  protected[silAST] override def domainFactories = programFactory.domainFactories
+  //  protected[silAST] override def domainFactories = programFactory.domainFactories
 
-//  protected[silAST] override def domainFunctions = programFactory.domainFunctions
+  //  protected[silAST] override def domainFunctions = programFactory.domainFunctions
 
-//  protected[silAST] override def domainPredicates = programFactory.domainPredicates
+  //  protected[silAST] override def domainPredicates = programFactory.domainPredicates
   override def typeVariables = Set()
 }
