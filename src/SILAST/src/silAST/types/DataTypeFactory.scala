@@ -4,7 +4,7 @@ import silAST.programs.NodeFactory
 import collection.Set
 import collection.mutable.HashSet
 import silAST.source.SourceLocation
-import silAST.domains.DomainFactory
+import silAST.domains.DomainTemplateFactory
 
 
 trait DataTypeFactory extends NodeFactory {
@@ -22,7 +22,7 @@ trait DataTypeFactory extends NodeFactory {
 
     dt match{
       case nr : NonReferenceDataType => {
-        require(domainFactories.exists (_.domain == nr.domain))
+        require(domainFactories.exists (_.pDomainTemplate == nr.domain))
         pDataTypes += nr;
         return;
       }
@@ -38,12 +38,12 @@ trait DataTypeFactory extends NodeFactory {
     }
   }
 
-  def makeNonReferenceDataType(df: DomainFactory,ta : DataTypeSequence)(sourceLocation : SourceLocation): NonReferenceDataType = {
+  def makeNonReferenceDataType(df: DomainTemplateFactory,ta : DataTypeSequence)(sourceLocation : SourceLocation): NonReferenceDataType = {
     require(domainFactories contains df)
     migrate(ta)
 //    require(ta.forall(dataTypes contains _))
-    require(df.domain.typeParameters.length == ta.length)
-    val domain = df.domain.getInstance(ta)
+    require(df.pDomainTemplate.typeParameters.length == ta.length)
+    val domain = df.pDomainTemplate.getInstance(ta)
     val result = new NonReferenceDataType(domain)(sourceLocation)
     pDataTypes += result
     result
@@ -64,7 +64,7 @@ trait DataTypeFactory extends NodeFactory {
 //  pDataTypes += integerType
 //  pDataTypes += permissionType
 
-  protected[silAST] def domainFactories: Set[DomainFactory] //= new HashSet[DomainFactory]
+  protected[silAST] def domainFactories: Set[DomainTemplateFactory] //= new HashSet[DomainTemplateFactory]
   protected[silAST] def dataTypes: Set[DataType] //= pDataTypes //new HashSet[DataType]
   protected[silAST] final val dataTypeSequences = new HashSet[DataTypeSequence]
 

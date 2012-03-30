@@ -8,9 +8,10 @@ import silAST.types._
 import silAST.source.{noLocation, SourceLocation}
 
 
-abstract class Domain private[silAST] extends ASTNode
+////////////////////////////////////////////////////////////////////////
+trait GDomain extends ASTNode
 {
-  override lazy val toString = "domain " + fullName +
+  override def toString = "domain " + fullName +
     "{\n" +
     (if (!functions.isEmpty) functions.mkString("\t", "\n\t", "\n") else "") +
     (if (!predicates.isEmpty) predicates.mkString("\t", "\n\t", "\n") else "") +
@@ -20,20 +21,19 @@ abstract class Domain private[silAST] extends ASTNode
   def name : String
   def fullName : String
 
+  def freeTypeVariables: Set[TypeVariable]
+  def substitute(ts : TypeVariableSubstitution): Domain
   def functions: Set[DomainFunction]
   def predicates: Set[DomainPredicate]
   def axioms: Set[DomainAxiom]
 
   def getType : DataType
 
-  def freeTypeVariables: Set[TypeVariable]
   def isCompatible(other : Domain) : Boolean
-
-  def substitute(ts : TypeVariableSubstitution): Domain
 
   override def equals(other : Any) : Boolean = {
     other match{
-      case d : Domain => d eq this
+      case d : GDomain => d eq this
       case _ => false
     }
   }
@@ -41,12 +41,26 @@ abstract class Domain private[silAST] extends ASTNode
 }
 
 ////////////////////////////////////////////////////////////////////////
-private[silAST] class DomainC(
+trait Domain extends GDomain
+{
+}
+
+////////////////////////////////////////////////////////////////////////
+trait DomainTemplate extends GDomain
+{
+  def typeParameters : Seq[TypeVariable]
+  def getInstance(typeArguments: DataTypeSequence): DomainInstance
+  def instances : Set[Domain]
+  def domain : Domain
+}
+
+////////////////////////////////////////////////////////////////////////
+private[silAST] class DomainTemplateC(
           val name: String,
           typeVariableNames : Seq[(SourceLocation, String)]
     )
     (val sourceLocation : SourceLocation)
-  extends Domain
+  extends DomainTemplate
 {
   //No duplicate type variable name
   require(typeVariableNames.forall((s)=>typeVariableNames.count(_._2==s._2)==1))
@@ -64,13 +78,19 @@ private[silAST] class DomainC(
   private[silAST] val pPredicates = new HashSet[DomainPredicate]
   private[silAST] val pAxioms = new HashSet[DomainAxiom]
 
-  val pInstances = new HashMap[DataTypeSequence,Domain]
+  override def instances : Set[Domain] = pInstances.values.toSet
+  override lazy val domain : Domain = getInstance(DataTypeSequence((for (t <- typeParameters) yield VariableType(t)(t.sourceLocation)) :_*))
+  private[silAST] lazy val dataType = NonReferenceDataType(domain)(domain.sourceLocation)
+  override def getType() = dataType
 
-  def getInstance(typeArguments: DataTypeSequence): Domain = {
+
+  val pInstances = new HashMap[DataTypeSequence,DomainInstance]
+
+  def getInstance(typeArguments: DataTypeSequence): DomainInstance = {
     require (typeArguments.length == typeParameters.length)
-    if (typeArguments.isEmpty)
-      this
-    else
+//    if (typeArguments.isEmpty)
+//      this
+//    else
       pInstances.getOrElseUpdate(typeArguments, new DomainInstance(this,typeArguments)(typeArguments.sourceLocation))
   }
 
@@ -82,12 +102,12 @@ private[silAST] class DomainC(
   //Maybe relax a bit
   def isCompatible(other:Domain) : Boolean = other==this
 
-  def getType : NonReferenceDataType = new NonReferenceDataType(this)(sourceLocation)
+//  def getType : NonReferenceDataType = new NonReferenceDataType(this)(sourceLocation)
 }
 
-
+////////////////////////////////////////////////////////////////////////
 private[silAST] final class DomainInstance(
-    val original : DomainC,
+    val template : DomainTemplate,
     val typeArguments:DataTypeSequence
   )
   (val sourceLocation : SourceLocation)
@@ -96,22 +116,22 @@ private[silAST] final class DomainInstance(
   protected[silAST] def typeHeaderString : String = ""
 
   override def fullName : String = name
-  val name : String = original.name + typeArguments.toString
-  val substitution = new TypeSubstitutionC(original.typeParameters.zip(typeArguments).toSet, Set(), this)(noLocation)
+  val name : String = template.name + typeArguments.toString
+  val substitution = new TypeSubstitutionC(template.typeParameters.zip(typeArguments).toSet, Set(), this)(noLocation)
 
   val getType : NonReferenceDataType = new NonReferenceDataType(this)(sourceLocation)
 
-  override lazy val functions = for (f <- original.functions) yield f.substitute(substitution)
-  override lazy val predicates = (for (p <- original.predicates) yield p.substitute(substitution)).toSet
-  override lazy val axioms = (for (a <- original.axioms) yield a.substitute(substitution)).toSet
+  override lazy val functions = for (f <- template.functions) yield f.substitute(substitution)
+  override lazy val predicates = (for (p <- template.predicates) yield p.substitute(substitution)).toSet
+  override lazy val axioms = (for (a <- template.axioms) yield a.substitute(substitution)).toSet
+
+  def substitute(s: TypeVariableSubstitution): Domain = template.getInstance(typeArguments.substitute(s))
 
   override val freeTypeVariables = typeArguments.freeTypeVariables.toSet
 
-  def substitute(s: TypeVariableSubstitution): Domain = original.getInstance(typeArguments.substitute(s))
-
   def isCompatible(other:Domain) : Boolean =
     other match {
-      case d : DomainInstance => d.original==original && typeArguments.isCompatible(d.typeArguments)
+      case d : DomainInstance => d.template==template && typeArguments.isCompatible(d.typeArguments)
       case _ => false
     }
 

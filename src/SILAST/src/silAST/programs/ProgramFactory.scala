@@ -37,9 +37,9 @@ final class ProgramFactory
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def getDomainFactory(name: String,typeVariableNames :Seq[(SourceLocation,String)])(implicit sourceLocation : SourceLocation): DomainFactory = {
+  def getDomainFactory(name: String,typeVariableNames :Seq[(SourceLocation,String)])(implicit sourceLocation : SourceLocation): DomainTemplateFactory = {
     require(domainFactories.forall(_.name != name))
-    val result = new DomainFactory(this, name,typeVariableNames)(sourceLocation)
+    val result = new DomainTemplateFactory(this, name,typeVariableNames)(sourceLocation)
     domainFactories += result
     result
   }
@@ -70,7 +70,7 @@ final class ProgramFactory
     result
   }
 
-  def makeDomainInstance(factory: DomainFactory, ta: DataTypeSequence) : Domain = 
+  def makeDomainInstance(factory: DomainTemplateFactory, ta: DataTypeSequence) : Domain =
   {
     require(ta.forall(dataTypes contains _))
     var r = factory.getInstance(ta)
@@ -105,7 +105,7 @@ final class ProgramFactory
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] override val domainFactories = new HashSet[DomainFactory]
+  protected[silAST] override val domainFactories = new HashSet[DomainTemplateFactory]
   protected[silAST] override val methodFactories = new HashSet[MethodFactory]
   
   protected[silAST] val predicateFactories = new HashSet[PredicateFactory]
@@ -129,22 +129,26 @@ final class ProgramFactory
   def emptyDTSequence = new DataTypeSequence(List.empty[DataType])
 
   private[silAST] val pDomains : HashSet[Domain] = HashSet(integerDomain,permissionDomain,referenceDomain,booleanDomain)
-  protected[silAST] def domains: collection.Set[Domain] =
+  def domains: collection.Set[Domain] =
     pDomains ++
-      ( for (df <- domainFactories) yield df.domain).toSet ++
-      ( for (df <- domainFactories) yield df.domain.pInstances.values).flatten
+//      ( for (df <- domainFactories) yield df.domainTemplate).toSet ++
+      ( for (df <- domainFactories) yield df.pDomainTemplate.instances).flatten
 
+  def domainTemplates: collection.Set[DomainTemplate] = ( for (dt <- domainFactories) yield dt.pDomainTemplate)
 
   override def domainFunctions: collection.Set[DomainFunction] =
-    (for (f <- (for (d <- domains) yield d.functions).flatten) yield f) +
-      (nullFunction)
+    (for (f <- (for (d <- domains) yield d.functions).flatten) yield f) union
+    (for (f <- (for (d <- domainFactories) yield d.domainTemplate.functions).flatten) yield f)
+//  (nullFunction)
 
   //TODO:check duplicate names/prefix names
 
   override def domainPredicates: collection.Set[DomainPredicate] =
-    (for (p <- (for (d <- domains) yield d.predicates).flatten) yield p)
+    (for (p <- (for (d <- domains) yield d.predicates).flatten) yield p) union
+    (for (p <- (for (d <- domainFactories) yield d.domainTemplate.predicates).flatten) yield p)
 
-//  override def parentFactory = None
+
+  //  override def parentFactory = None
 
   override val typeVariables = collection.Set[TypeVariable]()
   override val programVariables = collection.Set[ProgramVariable]()

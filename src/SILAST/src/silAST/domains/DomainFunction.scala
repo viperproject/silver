@@ -9,7 +9,7 @@ trait DomainFunction extends ASTNode
   def sourceLocation : SourceLocation
   def name: String
   def signature: DomainFunctionSignature
-  def domain : Domain
+  def domain : GDomain
 
   def substitute(s: TypeVariableSubstitution) : DomainFunction
 
@@ -30,10 +30,9 @@ trait DomainFunction extends ASTNode
 }
 
 final private[silAST] class DomainFunctionC(
-
                                       val name: String,
                                       val signature: DomainFunctionSignature,
-                                      val domain : Domain
+                                      val domain : GDomain
                                       )(val sourceLocation : SourceLocation) extends DomainFunction
 {
   override def substitute(s: TypeVariableSubstitution) : DomainFunction ={

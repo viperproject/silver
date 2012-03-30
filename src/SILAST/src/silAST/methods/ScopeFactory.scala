@@ -3,7 +3,7 @@ package silAST.methods
 import collection.Set
 import implementations.ImplementationFactory
 import silAST.types.{DataTypeFactory, DataType}
-import silAST.domains.{DomainFunction, DomainPredicate, DomainFactory}
+import silAST.domains.{DomainFunction, DomainPredicate, DomainTemplateFactory}
 import silAST.source.SourceLocation
 import silAST.expressions.ExpressionFactory
 import silAST.programs.{ProgramFactory, NodeFactory}
@@ -30,6 +30,6 @@ trait ScopeFactory
   override def dataTypes: Set[DataType] = parentFactory.get.dataTypes union pDataTypes
 
   protected[silAST] def methodFactories: Set[MethodFactory] = parentFactory.get.methodFactories
-  protected[silAST] override def domainFactories: Set[DomainFactory] = parentFactory.get.domainFactories
+  protected[silAST] override def domainFactories: Set[DomainTemplateFactory] = parentFactory.get.domainFactories
 //  private[silAST] val pScope: Scope
 }

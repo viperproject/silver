@@ -8,7 +8,7 @@ trait DomainPredicate extends ASTNode
 {
   def name: String
   def signature: DomainPredicateSignature
-  def domain : Domain
+  def domain : GDomain
 
   lazy val fullName = domain.fullName + "." + name
 
@@ -28,10 +28,9 @@ trait DomainPredicate extends ASTNode
 }
 
 class DomainPredicateC private[silAST](
-
                                              val name: String,
                                              val signature: DomainPredicateSignature,
-                                             val domain : Domain
+                                             val domain : GDomain
                                              )(val sourceLocation : SourceLocation) extends DomainPredicate
 {
   def substitute(s: TypeVariableSubstitution) =
