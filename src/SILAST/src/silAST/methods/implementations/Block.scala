@@ -3,6 +3,7 @@ package silAST.methods.implementations
 import silAST.ASTNode
 import collection.mutable.ListBuffer
 import scala.Predef._
+import silAST.programs.symbols.ProgramVariable
 
 trait Block
   extends ASTNode
@@ -14,6 +15,9 @@ trait Block
   def predecessors: Set[CFGEdge] = pPredecessors.result().toSet
   def factory: BlockFactory
   def cfg : ControlFlowGraph //where am I
+
+  def readVariables : Set[ProgramVariable]
+  def writtenVariables : Set[ProgramVariable]
 
 
   private[implementations] def addPredecessor(edge: CFGEdge) {

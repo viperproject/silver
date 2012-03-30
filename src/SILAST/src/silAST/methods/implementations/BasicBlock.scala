@@ -4,6 +4,9 @@ import scala.collection.Seq
 import collection.mutable.ListBuffer
 import silAST.source.SourceLocation
 import silAST.methods.Scope
+import silAST.programs.symbols.ProgramVariable
+import silAST.expressions.terms.PTerm
+import silAST.expressions.PExpression
 
 final class BasicBlock private[silAST]
   (
@@ -25,6 +28,11 @@ final class BasicBlock private[silAST]
     require(!(pStatements contains s))
     pStatements += s
   }
+
+  override def readVariables : Set[ProgramVariable] =
+    (for (s <- statements) yield s.readVariables ).flatten.toSet[ProgramVariable] union
+    (for (s <- successors) yield s.condition.programVariables).flatten.toSet
+  override def writtenVariables : Set[ProgramVariable] = (for (s <- statements) yield s.writtenVariables ).flatten.toSet
 
   /////////////////////////////////////////////////////////////////////////////////////////
   override def equals(other: Any): Boolean = {
