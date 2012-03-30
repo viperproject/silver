@@ -14,19 +14,12 @@ abstract class SymbolFactory[T] private[silAST](
   val thisVar = new ProgramVariable("this", referenceType)(noLocation)
 
   protected[silAST] override def programVariables = Set(thisVar)
-
   protected[silAST] override def fields = programFactory.fields
-
   protected[silAST] override def functions = programFactory.functions
-
   protected[silAST] override def predicates = programFactory.predicates
-
   protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes
-
   protected[silAST] override def domainFactories = programFactory.domainFactories
-
   protected[silAST] override def domainFunctions = programFactory.domainFunctions
-
   protected[silAST] override def domainPredicates = programFactory.domainPredicates
 
 

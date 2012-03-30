@@ -55,6 +55,8 @@ class ImplementationFactory private[silAST]
 
   override def functions = methodFactory.functions
   override def programVariables = methodFactory.programVariables union localVariables
+  override val inputProgramVariables = methodFactory.inputProgramVariables
+  override val outputProgramVariables = methodFactory.outputProgramVariables
   override def dataTypes = methodFactory.dataTypes union pDataTypes
 
   override def predicates = methodFactory.predicates

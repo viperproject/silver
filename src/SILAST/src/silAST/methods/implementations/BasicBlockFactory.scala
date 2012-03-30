@@ -34,7 +34,6 @@ class BasicBlockFactory private[silAST]
 
   //////////////////////////////////////////////////////////////////
   def appendCall(
-
                   targets: ProgramVariableSequence,
                   receiver: PTerm,
                   methodFactory: MethodFactory,
@@ -48,7 +47,7 @@ class BasicBlockFactory private[silAST]
     migrateP(receiver)
     arguments foreach migrateP
 
-    block.appendStatement(new CallStatement(targets, receiver, methodFactory.method, arguments)(sourceLocation))
+    block.appendStatement(new CallStatement(targets, methodFactory.method, PTermSequence(receiver ::arguments.toList :_*))(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -137,6 +136,8 @@ class BasicBlockFactory private[silAST]
   //////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////
   override def programVariables = scope.programVariables
+  override def inputProgramVariables = scope.factory.inputProgramVariables
+  override def outputProgramVariables = scope.factory.outputProgramVariables
   override def predicates = scope.factory.predicates
   override def functions  = scope.factory.functions
   override def domainFunctions  = scope.factory.domainFunctions
@@ -154,4 +155,5 @@ class BasicBlockFactory private[silAST]
   override def typeVariables = Set()
 
   override val block : BasicBlock = new BasicBlock(cfg,scope,name,this)(sourceLocation)
+
 }

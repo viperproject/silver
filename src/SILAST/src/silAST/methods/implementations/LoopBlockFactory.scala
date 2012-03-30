@@ -22,6 +22,8 @@ class LoopBlockFactory(
   override val programFactory = parentScope.factory.programFactory
   override val parentFactory =  Some(parentScope.factory)
 
+  override def inputProgramVariables = implementation.factory.inputProgramVariables
+  override def outputProgramVariables = implementation.factory.outputProgramVariables
   override def compile() : LoopBlock =
   {
     require (block.pInvariant!=None)

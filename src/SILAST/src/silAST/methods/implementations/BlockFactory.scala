@@ -12,7 +12,6 @@ import silAST.programs.symbols.{ProgramVariable, ProgramVariableSequence, Field}
 abstract class BlockFactory private[silAST]
   (
     val scope: Scope,
-
     val name: String
   ) (val sourceLocation: SourceLocation)
   extends NodeFactory
@@ -48,40 +47,5 @@ abstract class BlockFactory private[silAST]
     require (block.pControlStatement == None)
     block.setControlStatement(new Halt()(sl))
   }
-
-  //////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////
-//  val parentFactory = Some(scope.factory)
-
-//  override def fields: Set[Field] = scope.factory.fields
-
-//  override def dataTypes = scope.factory.dataTypes
-//  override def programVariables = scope.programVariables
-//  override def predicates = scope.factory.predicates
-//  override def functions  = scope.factory.functions
-//  override def domainFunctions  = scope.factory.domainFunctions
-  //override def domainPredicates = scope.factory.domainPredicates
-//  override def typeVariables  = scope.factory.typeVariables
-//  override protected[silAST] def domainFactories = scope.factory.domainFactories
-
-//  def localVariables = block.localVariables
-
-  //scopedVariables;
-
-//  def results = implementationFactory.results
-
-//  private def parameters = implementationFactory.parameters
-
-//  override def programVariables: Set[ProgramVariable] = scope.
-//    localVariables union parameters.toSet[ProgramVariable]
-
-  //  override def functions = implementationFactory.functions
-
-//  override val programVariableSequences = new HashSet[ProgramVariableSequence]
-
-//  override def dataTypes = implementationFactory.dataTypes union pDataTypes
-
-//  override def typeVariables = Set()
-
   private[silAST] val block: B
 }

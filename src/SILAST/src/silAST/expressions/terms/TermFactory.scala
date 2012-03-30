@@ -128,6 +128,7 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   /////////////////////////////////////////////////////////////////////////
   def makeOldTerm(t: Term)(sourceLocation : SourceLocation): OldTerm = {
     migrate(t)
+    require(t.programVariables intersect outputProgramVariables isEmpty)
     addTerm(new OldTerm(t)(sourceLocation))
   }
 

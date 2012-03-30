@@ -144,6 +144,7 @@ trait ExpressionFactory
   //////////////////////////////////////////////////////////////////////////
   def makeOldExpression(e : Expression)(sourceLocation : SourceLocation) : OldExpression = {
     migrate(e)
+    require((e.programVariables intersect outputProgramVariables).isEmpty)
     addExpression(OldExpression(e)(sourceLocation))
   }
 

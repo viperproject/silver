@@ -11,7 +11,6 @@ import silAST.types.{referenceType, DataType}
 
 class MethodFactory(
                      val programFactory: ProgramFactory,
-
                      val name: String
                      )(val sourceLocation : SourceLocation)
   extends NodeFactory
@@ -109,9 +108,11 @@ class MethodFactory(
 
 //  private[silAST] def methodFactories = programFactory.methodFactories
 
-  override def programVariables = parametersGenerator.toSet[ProgramVariable] union resultsGenerator.toSet[ProgramVariable]
+  override def programVariables = inputProgramVariables union outputProgramVariables
+  override def inputProgramVariables = parametersGenerator.toSet[ProgramVariable]
+  override def outputProgramVariables = resultsGenerator.toSet[ProgramVariable]
 
-//  protected[silAST] override def functions = programFactory.functions.toSet
+  //  protected[silAST] override def functions = programFactory.functions.toSet
 
 //  protected[silAST] override def predicates = programFactory.predicates
 

@@ -10,7 +10,6 @@ import silAST.methods.{Scope, ScopeFactory, MethodFactory}
 
 final class ProgramFactory
   (
-
     val name: String
   )(val sourceLocation : SourceLocation)
   extends NodeFactory
@@ -149,6 +148,8 @@ final class ProgramFactory
 
   override val typeVariables = collection.Set[TypeVariable]()
   override val programVariables = collection.Set[ProgramVariable]()
+  override val inputProgramVariables = collection.Set[ProgramVariable]()
+  override val outputProgramVariables = collection.Set[ProgramVariable]()
 }
 
 }

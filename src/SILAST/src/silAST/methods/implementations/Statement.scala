@@ -63,14 +63,14 @@ case class NewStatement private[silAST](
 //TODO:check signature
 final case class CallStatement private[silAST]
 (
-
   targets: ProgramVariableSequence,
-  receiver: PTerm,
   method: Method,
   arguments: PTermSequence
   )(override val sourceLocation: SourceLocation)
-  extends Statement {
-  override def toString: String = targets.toString + " := " + receiver.toString + "." + method.name + arguments.toString
+  extends Statement
+{
+  def receiver = arguments.head
+  override def toString: String = targets.toString + " := " + arguments.head.toString + "." + method.name + arguments.tail.toString
 }
 
 //////////////////////////////////////////////////////////////////////////////

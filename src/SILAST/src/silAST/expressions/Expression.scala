@@ -9,14 +9,15 @@ import terms._
 import util.{GTermSequence, TermSequence, PTermSequence, DTermSequence}
 import silAST.domains._
 import silAST.types.{referenceType, permissionType}
-import silAST.programs.symbols.{Field, Predicate}
 import silAST.source.SourceLocation
+import silAST.programs.symbols.{ProgramVariable, Field, Predicate}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed abstract class Expression protected[silAST] extends ASTNode {
   def subExpressions: Seq[Expression]
   def freeVariables: Set[LogicalVariable]
+  def programVariables: Set[ProgramVariable]
 
   override def equals(other : Any) : Boolean
   override def hashCode() : Int
@@ -44,6 +45,7 @@ final case class PermissionExpression private[silAST]
   require(reference.dataType == referenceType)
   require(permission.dataType == permissionType)
 
+  override val programVariables: Set[ProgramVariable] = reference.programVariables union permission.programVariables
   override val toString = "acc(" + reference.toString + "." + field.name + "," + permission.toString + ")"
 
   override def freeVariables = reference.freeVariables ++ permission.freeVariables
@@ -69,6 +71,7 @@ final case class OldExpression private[silAST]
   override val toString = "old(" + expression.toString + ")"
 
   override def freeVariables = expression.freeVariables
+  override val programVariables: Set[ProgramVariable] = expression.programVariables
 
   override def substitute(s: TypeVariableSubstitution): OldExpression =
     new OldExpression(expression.substitute(s))(s.sourceLocation(sourceLocation))
@@ -90,6 +93,7 @@ sealed case class UnfoldingExpression private[silAST]
   override val subExpressions: Seq[Expression] = List(expression)
 
   override def freeVariables = predicate.freeVariables ++ expression.freeVariables
+  override val programVariables: Set[ProgramVariable] = predicate.programVariables union expression.programVariables
 
   override def substitute(s: TypeVariableSubstitution): UnfoldingExpression =
     new UnfoldingExpression(predicate.substitute(s), expression.substitute(s))(s.sourceLocation(sourceLocation))
@@ -118,6 +122,7 @@ sealed case class EqualityExpression private[silAST]
   override val subExpressions: Seq[Expression] = Nil
 
   override def freeVariables = term1.freeVariables ++ term2.freeVariables
+  override def programVariables = term1.programVariables union term2.programVariables
 
   override def substitute(s: TypeVariableSubstitution): EqualityExpression =
     new EqualityExpression(term1.substitute(s), term2.substitute(s))(s.sourceLocation(sourceLocation))
@@ -139,6 +144,7 @@ sealed case class UnaryExpression private[silAST]
   override val subExpressions: Seq[Expression] = List(operand1)
 
   override def freeVariables = operand1.freeVariables
+  override val programVariables = operand1.programVariables
 
   override def substitute(s: TypeVariableSubstitution): UnaryExpression =
     new UnaryExpression(operator, operand1.substitute(s))(s.sourceLocation(sourceLocation))
@@ -160,6 +166,7 @@ sealed case class BinaryExpression private[silAST]
   override val subExpressions: Seq[Expression] = List(operand1, operand2)
 
   override def freeVariables = operand1.freeVariables ++ operand2.freeVariables
+  override val programVariables = operand1.programVariables union operand2.programVariables
 
   override def substitute(s: TypeVariableSubstitution): BinaryExpression =
     new BinaryExpression(operator, operand1.substitute(s), operand2.substitute(s))(s.sourceLocation(sourceLocation))
@@ -181,6 +188,7 @@ sealed case class DomainPredicateExpression private[silAST]
   override lazy val toString: String = predicate.toString(arguments)
 
   override def freeVariables = arguments.freeVariables
+  override val programVariables = arguments.programVariables
 
   override def substitute(s: TypeVariableSubstitution): DomainPredicateExpression =
     new DomainPredicateExpression(predicate.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation))
@@ -202,6 +210,8 @@ sealed case class PredicateExpression private[silAST]
   override val toString = receiver + "." + predicate.name
 
   override def freeVariables = receiver.freeVariables //TODO:Can receiver have free variables?
+  override val programVariables = receiver.programVariables
+
   override def substitute(s: TypeVariableSubstitution): PredicateExpression =
     new PredicateExpression(receiver.substitute(s), predicate)(s.sourceLocation(sourceLocation))
   override def substitute(s: LogicalVariableSubstitution): PredicateExpression =
@@ -226,6 +236,7 @@ sealed case class QuantifierExpression private[silAST]
   override val subExpressions: Seq[Expression] = List(expression)
 
   override def freeVariables = expression.freeVariables - variable
+  override val programVariables = expression.programVariables
 
   override def substitute(s: TypeVariableSubstitution): QuantifierExpression = {
     val newVar = new LogicalVariable(variable.name, variable.dataType.substitute(s))(s.sourceLocation((variable.sourceLocation)))
@@ -633,6 +644,8 @@ sealed trait GExpression
   override val subExpressions: Seq[GExpression] = gSubExpressions
   protected[expressions] final override val pSubExpressions = subExpressions
   protected[expressions] final override val dSubExpressions = subExpressions
+
+  override val programVariables = Set[ProgramVariable]()
 
   protected[expressions] def gSubExpressions: Seq[GExpression]
 

@@ -18,8 +18,10 @@ trait ScopeFactory
   /////////////////////////////////////////////////////////////////////////////////////
   private[silAST] def programFactory : ProgramFactory
 
-  protected[silAST] def parentFactory: Option[ScopeFactory] //= scope.parentScope match
-  def programVariables: Set[ProgramVariable] // = scope.get.programVariables
+  protected[silAST] def parentFactory: Option[ScopeFactory]
+  def programVariables: Set[ProgramVariable]
+  def inputProgramVariables: Set[ProgramVariable]
+  def outputProgramVariables: Set[ProgramVariable]
   def functions: Set[Function] = parentFactory.get.functions
   def predicates: Set[Predicate] = parentFactory.get.predicates
   def domainFunctions: Set[DomainFunction] = parentFactory.get.domainFunctions

@@ -132,7 +132,9 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] def functions: Set[Function]
 
-  protected[silAST] def programVariables: Set[ProgramVariable]
+  protected[silAST] def programVariables: collection.Set[ProgramVariable]
+  protected[silAST] def inputProgramVariables : collection.Set[ProgramVariable] //included in programVariables
+  protected[silAST] def outputProgramVariables: collection.Set[ProgramVariable] //included in programVariables
 
   protected[silAST] def fields: Set[Field]
 
