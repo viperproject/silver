@@ -8,11 +8,11 @@ import silAST.expressions.ExpressionFactory
 import silAST.programs.symbols.ProgramVariable
 
 final class Method private[silAST](
-    val sourceLocation : SourceLocation,
+
     val name: String,
     val signature: MethodSignature,
     override val factory : MethodFactory
-  )
+  )(val sourceLocation : SourceLocation)
   extends Scope
 {
   override val parentScope = None

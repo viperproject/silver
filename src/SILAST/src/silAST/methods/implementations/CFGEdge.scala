@@ -6,11 +6,11 @@ import silAST.source.SourceLocation
 
 final class CFGEdge private[silAST]
   (
-     val sourceLocation: SourceLocation,
+
      val source: Block,
      val target: Block,
      val condition: Expression
-  )
+  )  (val sourceLocation: SourceLocation)
   extends ASTNode
 {
   require(source.cfg == target.cfg)

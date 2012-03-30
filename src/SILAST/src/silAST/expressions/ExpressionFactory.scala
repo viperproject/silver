@@ -78,84 +78,84 @@ trait ExpressionFactory
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def makeUnaryExpression(sourceLocation : SourceLocation, op: UnaryConnective, e1: Expression): UnaryExpression = {
+  def makeUnaryExpression(op: UnaryConnective, e1: Expression)(sourceLocation : SourceLocation) : UnaryExpression = {
     migrate(e1)
 
     (e1) match {
-      case (e1: GExpression) => makeGUnaryExpression(sourceLocation, op, e1)
-      case (e1: PExpression) => makePUnaryExpression(sourceLocation, op, e1)
-      case (e1: DExpression) => makeDUnaryExpression(sourceLocation, op, e1)
+      case (e1: GExpression) => makeGUnaryExpression(op, e1)(sourceLocation)
+      case (e1: PExpression) => makePUnaryExpression(op, e1)(sourceLocation)
+      case (e1: DExpression) => makeDUnaryExpression(op, e1)(sourceLocation)
       case _ => addExpression(new UnaryExpression(op, e1)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def makeBinaryExpression(sourceLocation : SourceLocation, op: BinaryConnective, e1: Expression, e2: Expression): BinaryExpression = {
+  def makeBinaryExpression(op: BinaryConnective, e1: Expression, e2: Expression)(sourceLocation : SourceLocation): BinaryExpression = {
     migrate(e1)
     migrate(e2)
 
     (e1, e2) match {
-      case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(sourceLocation, op, e1, e2)
-      case (e1: PExpression, e2: PExpression) => makePBinaryExpression(sourceLocation, op, e1, e2)
-      case (e1: DExpression, e2: DExpression) => makeDBinaryExpression(sourceLocation, op, e1, e2)
+      case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(op, e1, e2)(sourceLocation)
+      case (e1: PExpression, e2: PExpression) => makePBinaryExpression(op, e1, e2)(sourceLocation)
+      case (e1: DExpression, e2: DExpression) => makeDBinaryExpression(op, e1, e2)(sourceLocation)
       case _ => addExpression(new BinaryExpression(op, e1, e2)(sourceLocation))
     }
   }
 
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDomainPredicateExpression(sourceLocation : SourceLocation, p: DomainPredicate, args: TermSequence): DomainPredicateExpression = {
+  def makeDomainPredicateExpression(p: DomainPredicate, args: TermSequence)(sourceLocation : SourceLocation): DomainPredicateExpression = {
     require(domainPredicates contains p)
     args.foreach(migrate (_))
 
     (args) match {
-      case (a: GTermSequence) => makeGDomainPredicateExpression(sourceLocation, p, a)
-      case (a: PTermSequence) => makePDomainPredicateExpression(sourceLocation, p, a)
-      case (a: DTermSequence) => makeDDomainPredicateExpression(sourceLocation, p, a)
+      case (a: GTermSequence) => makeGDomainPredicateExpression(p, a)(sourceLocation)
+      case (a: PTermSequence) => makePDomainPredicateExpression(p, a)(sourceLocation)
+      case (a: DTermSequence) => makeDDomainPredicateExpression(p, a)(sourceLocation)
       case _ => addExpression(new DomainPredicateExpression(p, args)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePredicateExpression(sourceLocation : SourceLocation, r: Term, pf: PredicateFactory): PredicateExpression = {
+  def makePredicateExpression(r: Term, pf: PredicateFactory)(sourceLocation : SourceLocation): PredicateExpression = {
     require(predicates contains pf.pPredicate)
     migrate(r)
 
     (r) match {
-      case (r: PTerm) => makePPredicateExpression(sourceLocation, r, pf.pPredicate)
+      case (r: PTerm) => makePPredicateExpression(r, pf.pPredicate)(sourceLocation)
       case _ => addExpression(new PredicateExpression(r, pf.pPredicate)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeEqualityExpression(sourceLocation : SourceLocation, t1: Term, t2: Term): EqualityExpression = {
+  def makeEqualityExpression(t1: Term, t2: Term)(sourceLocation : SourceLocation): EqualityExpression = {
     migrate(t1)
     migrate(t2)
 
     (t1, t2) match {
-      case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sourceLocation, t1, t2)
-      case (t1: PTerm, t2: PTerm) => makePEqualityExpression(sourceLocation, t1, t2)
-      case (t1: DTerm, t2: DTerm) => makeDEqualityExpression(sourceLocation, t1, t2)
+      case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(t1, t2)(sourceLocation)
+      case (t1: PTerm, t2: PTerm) => makePEqualityExpression(t1, t2)(sourceLocation)
+      case (t1: DTerm, t2: DTerm) => makeDEqualityExpression(t1, t2)(sourceLocation)
       case _ => addExpression(new EqualityExpression(t1, t2)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeOldExpression(sourceLocation : SourceLocation, e : Expression) : OldExpression = {
+  def makeOldExpression(e : Expression)(sourceLocation : SourceLocation) : OldExpression = {
     migrate(e)
     addExpression(OldExpression(e)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeQuantifierExpression(sourceLocation : SourceLocation, q: Quantifier, v: LogicalVariable, e: Expression): QuantifierExpression = {
+  def makeQuantifierExpression(q: Quantifier, v: LogicalVariable, e: Expression)(sourceLocation : SourceLocation): QuantifierExpression = {
     require(boundVariables contains v)
     require(!(boundVariableMap contains v))
 
     migrate(e)
 
     e match {
-      case e: DExpression => makeDQuantifierExpression(sourceLocation, q, v, e)
+      case e: DExpression => makeDQuantifierExpression(q, v, e)(sourceLocation)
       case _ => {
         val result = addExpression(new QuantifierExpression(q, v, e)(sourceLocation))
         boundVariableMap += v -> result
@@ -166,7 +166,7 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePermissionExpression(sourceLocation : SourceLocation, r: Term, f : Field, p: Term): PermissionExpression = {
+  def makePermissionExpression(r: Term, f : Field, p: Term)(sourceLocation : SourceLocation): PermissionExpression = {
     require(fields contains f)
     migrate(r)
     migrate(p)
@@ -175,12 +175,12 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeUnfoldingExpression(sourceLocation : SourceLocation, p: PredicateExpression, e: Expression): UnfoldingExpression = {
+  def makeUnfoldingExpression(p: PredicateExpression, e: Expression)(sourceLocation : SourceLocation): UnfoldingExpression = {
     migrate(p)
     migrate(e)
 
     (p, e) match {
-      case (p: PPredicateExpression, e: PExpression) => makePUnfoldingExpression(sourceLocation, p, e)
+      case (p: PPredicateExpression, e: PExpression) => makePUnfoldingExpression(p, e)(sourceLocation)
       case _ => addExpression(new UnfoldingExpression(p, e)(sourceLocation))
     }
   }

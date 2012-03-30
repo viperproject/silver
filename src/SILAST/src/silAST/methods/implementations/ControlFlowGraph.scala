@@ -7,10 +7,10 @@ import silAST.methods.Scope
 
 final class ControlFlowGraph private[silAST]
   (
-    val sourceLocation: SourceLocation,
+
     val scope : Scope,
     val implementation : Implementation
-  )
+  ) (val sourceLocation: SourceLocation)
   extends ASTNode
 {
   def compile() {

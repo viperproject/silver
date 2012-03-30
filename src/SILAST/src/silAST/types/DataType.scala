@@ -24,7 +24,7 @@ sealed abstract class DataType extends ASTNode
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-final class TypeVariable private[silAST](val sourceLocation : SourceLocation, val name : String, val domain : Domain)
+final class TypeVariable private[silAST](val name : String, val domain : Domain)(val sourceLocation : SourceLocation)
   extends ASTNode
 {
   override val toString = name
@@ -42,14 +42,14 @@ final class TypeVariable private[silAST](val sourceLocation : SourceLocation, va
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 final case class VariableType(
-                               sourceLocation:SourceLocation,
+
                                variable : TypeVariable
-                             ) extends DataType
+                             )(override val sourceLocation:SourceLocation) extends DataType
 {
   override val toString = variable.name
   
   override def isCompatible(other : DataType) =
-    other match {case VariableType(_,v) => v == variable case _ => false}
+    other match {case VariableType(v) => v == variable case _ => false}
 
   override def substitute(s : TypeVariableSubstitution) = s.mapType(variable,this)
   override def freeTypeVariables = Set(variable)
@@ -69,9 +69,9 @@ final case class VariableType(
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 case class NonReferenceDataType private[silAST](
-                                                 sourceLocation : SourceLocation,
+
                                                  domain: Domain
-                                                 )
+                                                 )(override val sourceLocation : SourceLocation)
   extends DataType
 {
   require (domain ne  referenceDomain)
@@ -82,7 +82,7 @@ case class NonReferenceDataType private[silAST](
 
   def isCompatible(other : DataType) =
     other match{
-      case NonReferenceDataType(_,d:Domain) => domain.isCompatible(d)
+      case NonReferenceDataType(d) => domain.isCompatible(d)
       case _ => false
     }
 
@@ -90,7 +90,7 @@ case class NonReferenceDataType private[silAST](
     if (s.typeVariables.intersect(freeTypeVariables).isEmpty)
       this
     else
-      new NonReferenceDataType(s.sourceLocation, domain.substitute(s))
+      new NonReferenceDataType(domain.substitute(s))(s.sourceLocation)
   }
 
   override def equals(other : Any) : Boolean =

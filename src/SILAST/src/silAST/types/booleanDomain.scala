@@ -25,14 +25,14 @@ object booleanDomain extends Domain
   override def isCompatible(other : Domain) = other == this
 }
 
-object booleanType extends NonReferenceDataType(noLocation,booleanDomain)
+object booleanType extends NonReferenceDataType(booleanDomain)(noLocation)
 
 ///////////////////////////////////////////////////////////////////////////
 object booleanTrue extends DomainFunction
 {
   override lazy val sourceLocation = noLocation
   override lazy val name = "true"
-  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(),booleanType)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(),booleanType)(noLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts : TermSequence) =
@@ -50,7 +50,7 @@ object booleanFalse extends DomainFunction
 {
   override lazy val sourceLocation = noLocation
   override lazy val name = "false"
-  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(),booleanType)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(),booleanType)(noLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts : TermSequence) =
@@ -68,7 +68,7 @@ object booleanNegation extends DomainFunction
 {
   override lazy val sourceLocation = noLocation
   override lazy val name = "!"
-  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(booleanType),booleanType)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType),booleanType)(noLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts : TermSequence) =
@@ -86,7 +86,7 @@ object booleanConjunction extends DomainFunction
 {
   override lazy val sourceLocation = noLocation
   override lazy val name = "/\\"
-  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(booleanType,booleanType),booleanType)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType,booleanType),booleanType)(noLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts : TermSequence) =
@@ -104,7 +104,7 @@ object booleanDisjunction extends DomainFunction
 {
   override lazy val sourceLocation = noLocation
   override lazy val name = "\\/"
-  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(booleanType,booleanType),booleanType)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType,booleanType),booleanType)(noLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts : TermSequence) =
@@ -121,7 +121,7 @@ object booleanImplication extends DomainFunction
 {
   override lazy val sourceLocation = noLocation
   override lazy val name = "=>"
-  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(booleanType,booleanType),booleanType)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType,booleanType),booleanType)(noLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts : TermSequence) =
@@ -138,7 +138,7 @@ object booleanEquivalence extends DomainFunction
 {
   override lazy val sourceLocation = noLocation
   override lazy val name = "<=>"
-  override lazy val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(booleanType,booleanType),booleanType)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType,booleanType),booleanType)(noLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts : TermSequence) =
@@ -156,7 +156,7 @@ object booleanEvaluate extends DomainPredicate
 {
   override val sourceLocation = noLocation
   override val name = "eval"
-  override val signature = new DomainPredicateSignature(noLocation,DataTypeSequence(booleanType))
+  override val signature = new DomainPredicateSignature(DataTypeSequence(booleanType))(noLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts : TermSequence) =

@@ -8,11 +8,11 @@ import silAST.expressions.Expression
 
 class FunctionFactory private[silAST](
                                        private val programFactory: ProgramFactory,
-                                       val sourceLocation : SourceLocation,
+
                                        val name: String,
                                        pParameters: Seq[(SourceLocation, String, DataType)],
                                        resultType : DataType
-                                       ) extends SymbolFactory[Function](programFactory) {
+                                       )(val sourceLocation : SourceLocation) extends SymbolFactory[Function](programFactory) {
   def compile(): Function = {
     require(pFunction.pBody != None)
     require(pFunction.pSignature.terminationMeasure != None)
@@ -45,7 +45,7 @@ class FunctionFactory private[silAST](
 
   protected[silAST] override def programVariables = Set(thisVar, resultVar) ++ pFunction.pSignature.pParameters
 
-  private[silAST] val pFunction = new Function(sourceLocation, name,pParameters, resultType)
+  private[silAST] val pFunction = new Function(name,pParameters, resultType)(sourceLocation)
   val resultVar = pFunction.pSignature.result
 
   override def typeVariables = Set()

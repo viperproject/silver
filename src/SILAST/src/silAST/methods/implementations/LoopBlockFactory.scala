@@ -14,7 +14,7 @@ class LoopBlockFactory(
     condition : PExpression
   )
   (sourceLocation : SourceLocation)
-  extends BlockFactory(parentScope,sourceLocation,name)
+  extends BlockFactory(parentScope,name)(sourceLocation)
   with ScopeFactory
 {
   type B = LoopBlock
@@ -30,11 +30,11 @@ class LoopBlockFactory(
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def addProgramVariable(sourceLocation: SourceLocation, name: String, dataType: DataType) = {
+  def addProgramVariable(name: String, dataType: DataType)(sourceLocation: SourceLocation) = {
     require(programVariables.forall(_.name != name))
     require(dataTypes contains dataType)
 
-    val result = new ProgramVariable(sourceLocation, name, dataType)
+    val result = new ProgramVariable(name, dataType)(sourceLocation)
     scope.pLocals.append(result)
     result
   }

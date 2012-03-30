@@ -32,7 +32,7 @@ object nullFunction extends DomainFunction
 {
   override val sourceLocation = noLocation
   override val name = "null"
-  override val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(),referenceType)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(),referenceType)(noLocation)
   override lazy val domain = referenceDomain
 
   override def toString(ts : TermSequence) = name
@@ -46,7 +46,7 @@ object referenceEquality extends DomainFunction
 {
   override val sourceLocation = noLocation
   override val name = "==<ref>"
-  override val signature = new DomainFunctionSignature(noLocation,DataTypeSequence(referenceType,referenceType),booleanType)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(referenceType,referenceType),booleanType)(noLocation)
   override lazy val domain = referenceDomain
 
   override def toString(ts : TermSequence) = 

@@ -41,20 +41,20 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGUnaryExpression(sourceLocation : SourceLocation, op: UnaryConnective, e1: GExpression): GUnaryExpression = {
+  def makeGUnaryExpression(op: UnaryConnective, e1: GExpression)(sourceLocation : SourceLocation): GUnaryExpression = {
     require(expressions contains e1)
     addExpression(new GUnaryExpression(op,e1)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGDomainPredicateExpression(sourceLocation : SourceLocation, p: DomainPredicate, args: GTermSequence): GDomainPredicateExpression = {
+  def makeGDomainPredicateExpression(p: DomainPredicate, args: GTermSequence)(sourceLocation : SourceLocation): GDomainPredicateExpression = {
     require(domainPredicates contains p)
     args.foreach(migrate(_))
     addExpression(new GDomainPredicateExpression(p, args)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGBinaryExpression(sourceLocation : SourceLocation, op: BinaryConnective, e1: GExpression, e2: GExpression): GBinaryExpression = {
+  def makeGBinaryExpression(op: BinaryConnective, e1: GExpression, e2: GExpression)(sourceLocation : SourceLocation): GBinaryExpression = {
     migrate(e1)
     migrate(e2)
 
@@ -64,10 +64,10 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
 
   //////////////////////////////////////////////////////////////////////////
   def makeGEqualityExpression(
-                               sourceLocation : SourceLocation,
+
                                t1: GTerm,
                                t2: GTerm
-                               ): GEqualityExpression = {
+                               )(sourceLocation : SourceLocation): GEqualityExpression = {
     migrate(t1)
     migrate(t2)
     addExpression(new GEqualityExpression(t1, t2)(sourceLocation))

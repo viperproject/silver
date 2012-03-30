@@ -12,9 +12,9 @@ import silAST.programs.symbols.{ProgramVariable, ProgramVariableSequence, Field}
 abstract class BlockFactory private[silAST]
   (
     val scope: Scope,
-    val sourceLocation: SourceLocation,
+
     val name: String
-  )
+  ) (val sourceLocation: SourceLocation)
   extends NodeFactory
 //  with ExpressionFactory
 {
@@ -31,7 +31,7 @@ abstract class BlockFactory private[silAST]
     require (block.pControlStatement == None)
     require(trueTarget.block.cfg == block.cfg)
     require(falseTarget.block.cfg == block.cfg)
-    block.setControlStatement(new Branch(sl,block,trueTarget.block,falseTarget.block,condition))
+    block.setControlStatement(new Branch(block,trueTarget.block,falseTarget.block,condition)(sl))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -46,7 +46,7 @@ abstract class BlockFactory private[silAST]
   def setHalt()(sl : SourceLocation)
   {
     require (block.pControlStatement == None)
-    block.setControlStatement(new Halt(sl))
+    block.setControlStatement(new Halt()(sl))
   }
 
   //////////////////////////////////////////////////////////////////

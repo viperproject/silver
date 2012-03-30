@@ -42,17 +42,18 @@ abstract class Domain private[silAST] extends ASTNode
 
 ////////////////////////////////////////////////////////////////////////
 private[silAST] class DomainC(
-          val sourceLocation : SourceLocation,
           val name: String,
           typeVariableNames : Seq[(SourceLocation, String)]
-    ) extends Domain
+    )
+    (val sourceLocation : SourceLocation)
+  extends Domain
 {
   //No duplicate type variable name
   require(typeVariableNames.forall((s)=>typeVariableNames.count(_._2==s._2)==1))
 
   override def fullName : String =
     name + (if (typeParameters.length==0) "" else typeParameters.mkString("[",",","]"))
-  val typeParameters : Seq[TypeVariable] = for (n <- typeVariableNames) yield new TypeVariable(n._1,n._2,this)
+  val typeParameters : Seq[TypeVariable] = for (n <- typeVariableNames) yield new TypeVariable(n._2,this)(n._1)
   val freeTypeVariables = typeParameters.toSet
 
   def functions: Set[DomainFunction] = pFunctions
@@ -70,34 +71,35 @@ private[silAST] class DomainC(
     if (typeArguments.isEmpty)
       this
     else
-      pInstances.getOrElseUpdate(typeArguments, new DomainInstance(typeArguments.sourceLocation,this,typeArguments))
+      pInstances.getOrElseUpdate(typeArguments, new DomainInstance(this,typeArguments)(typeArguments.sourceLocation))
   }
 
   def substitute(s:TypeVariableSubstitution): Domain = {
-    val typeArguments = new DataTypeSequence((for (t<-typeParameters) yield s.mapType(t,new VariableType(t.sourceLocation,t))))
+    val typeArguments = new DataTypeSequence((for (t<-typeParameters) yield s.mapType(t,new VariableType(t)(t.sourceLocation))))
     getInstance(typeArguments)
   }
 
   //Maybe relax a bit
   def isCompatible(other:Domain) : Boolean = other==this
 
-  def getType : NonReferenceDataType = new NonReferenceDataType(sourceLocation,this)
+  def getType : NonReferenceDataType = new NonReferenceDataType(this)(sourceLocation)
 }
 
 
 private[silAST] final class DomainInstance(
-  val sourceLocation : SourceLocation,
-  val original : DomainC,
-  val typeArguments:DataTypeSequence  )
+    val original : DomainC,
+    val typeArguments:DataTypeSequence
+  )
+  (val sourceLocation : SourceLocation)
   extends Domain
 {
   protected[silAST] def typeHeaderString : String = ""
 
   override def fullName : String = name
   val name : String = original.name + typeArguments.toString
-  val substitution = new TypeSubstitutionC(original.typeParameters.zip(typeArguments).toSet, Set(), noLocation, this)
+  val substitution = new TypeSubstitutionC(original.typeParameters.zip(typeArguments).toSet, Set(), this)(noLocation)
 
-  val getType : NonReferenceDataType = new NonReferenceDataType(sourceLocation,this)
+  val getType : NonReferenceDataType = new NonReferenceDataType(this)(sourceLocation)
 
   override lazy val functions = for (f <- original.functions) yield f.substitute(substitution)
   override lazy val predicates = (for (p <- original.predicates) yield p.substitute(substitution)).toSet

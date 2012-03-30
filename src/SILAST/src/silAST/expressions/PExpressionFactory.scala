@@ -48,26 +48,26 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   }
 
   //////////////////////////////////////////////////////////////////
-  def makeProgramVariableSequence(sourceLocation : SourceLocation, vs: Seq[ProgramVariable]): ProgramVariableSequence = {
+  def makeProgramVariableSequence(vs: Seq[ProgramVariable])(sourceLocation : SourceLocation): ProgramVariableSequence = {
     require(vs.forall(programVariables contains _))
-    val result = new ProgramVariableSequence(sourceLocation, vs)
+    val result = new ProgramVariableSequence(vs)(sourceLocation)
     programVariableSequences += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePDomainPredicateExpression(sourceLocation : SourceLocation, p: DomainPredicate, args: PTermSequence): PDomainPredicateExpression = {
+  def makePDomainPredicateExpression(p: DomainPredicate, args: PTermSequence)(sourceLocation : SourceLocation): PDomainPredicateExpression = {
     require(domainPredicates contains p)
     args.foreach(migrate(_))
 
     (args) match {
-      case (a: GTermSequence) => makeGDomainPredicateExpression(sourceLocation, p, a)
+      case (a: GTermSequence) => makeGDomainPredicateExpression(p, a)(sourceLocation)
       case _ => addExpression(new PDomainPredicateExpressionC(p, args)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePPredicateExpression(sourceLocation : SourceLocation, r: PTerm, p: Predicate): PPredicateExpression = {
+  def makePPredicateExpression(r: PTerm, p: Predicate)(sourceLocation : SourceLocation): PPredicateExpression = {
     require(predicates contains p)
     migrate(r)
 
@@ -75,39 +75,39 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePUnaryExpression(sourceLocation : SourceLocation, op: UnaryConnective, e1: PExpression): PUnaryExpression = {
+  def makePUnaryExpression(op: UnaryConnective, e1: PExpression)(sourceLocation : SourceLocation): PUnaryExpression = {
     migrate(e1)
 
     (e1) match {
-      case (e1: GExpression) => makeGUnaryExpression(sourceLocation, op, e1)
+      case (e1: GExpression) => makeGUnaryExpression(op, e1)(sourceLocation)
       case _ => addExpression(new PUnaryExpressionC(op, e1)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePBinaryExpression(sourceLocation : SourceLocation, op: BinaryConnective, e1: PExpression, e2: PExpression): PBinaryExpression = {
+  def makePBinaryExpression(op: BinaryConnective, e1: PExpression, e2: PExpression)(sourceLocation : SourceLocation): PBinaryExpression = {
     migrate(e1)
     migrate(e2)
 
     (e1, e2) match {
-      case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(sourceLocation, op, e1, e2)
+      case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(op, e1, e2)(sourceLocation)
       case _ => addExpression(new PBinaryExpressionC(op, e1, e2)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePEqualityExpression(sourceLocation : SourceLocation, t1: PTerm, t2: PTerm): PEqualityExpression = {
+  def makePEqualityExpression(t1: PTerm, t2: PTerm)(sourceLocation : SourceLocation): PEqualityExpression = {
     migrate(t1)
     migrate(t2)
 
     (t1, t2) match {
-      case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sourceLocation, t1, t2)
+      case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(t1, t2)(sourceLocation)
       case _ => addExpression(new PEqualityExpressionC(t1, t2)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePUnfoldingExpression(sourceLocation : SourceLocation, p: PPredicateExpression, e: PExpression): UnfoldingExpression = {
+  def makePUnfoldingExpression(p: PPredicateExpression, e: PExpression)(sourceLocation : SourceLocation): UnfoldingExpression = {
     migrate(p)
     migrate(e)
 

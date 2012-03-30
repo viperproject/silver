@@ -10,7 +10,7 @@ import silAST.methods.{Scope, Method}
 
 final class Program private[silAST]
   (
-    val sourceLocation : SourceLocation,
+
     val name: String,
     val domains: Set[Domain],
     val fields: Set[Field],
@@ -18,7 +18,7 @@ final class Program private[silAST]
     val predicates: Set[Predicate],
     val methods: Set[Method],
     val factory : ProgramFactory
-  ) extends ASTNode with Scope
+  )(val sourceLocation : SourceLocation) extends ASTNode with Scope
 {
   override val parentScope = None
   override def toString =
@@ -41,5 +41,5 @@ final class Program private[silAST]
 
 object Program {
 
-  def getFactory(sourceLocation : SourceLocation, name: String): ProgramFactory = new ProgramFactory(sourceLocation, name)
+  def getFactory(name: String)(sourceLocation : SourceLocation): ProgramFactory = new ProgramFactory(name)(sourceLocation)
 }

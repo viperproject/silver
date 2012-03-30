@@ -5,11 +5,11 @@ import silAST.source.SourceLocation
 import silAST.types.DataTypeSequence
 
 final class DomainPredicateSignature private[silAST](
-                                                      val sourceLocation : SourceLocation,
+
                                                       val parameterTypes: DataTypeSequence
-                                                      ) extends ASTNode {
+                                                      )(val sourceLocation : SourceLocation) extends ASTNode {
   def substitute(s: TypeVariableSubstitution): DomainPredicateSignature =
-    new DomainPredicateSignature(sourceLocation,parameterTypes.substitute(s))
+    new DomainPredicateSignature(parameterTypes.substitute(s))(sourceLocation)
 
   override lazy val toString = parameterTypes.toString()
 

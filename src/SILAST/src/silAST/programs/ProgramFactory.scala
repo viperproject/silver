@@ -10,9 +10,9 @@ import silAST.methods.{Scope, ScopeFactory, MethodFactory}
 
 final class ProgramFactory
   (
-    val sourceLocation : SourceLocation,
+
     val name: String
-  )
+  )(val sourceLocation : SourceLocation)
   extends NodeFactory
   with DataTypeFactory
   with ExpressionFactory
@@ -31,7 +31,7 @@ final class ProgramFactory
     for (ff <- functionFactories) ff.compile()
 
 
-    val program = new Program(sourceLocation, name, domains, fields, functions, predicates, (for (mf <- methodFactories) yield mf.method).toSet, this)
+    val program = new Program(name, domains, fields, functions, predicates, (for (mf <- methodFactories) yield mf.method).toSet, this)(sourceLocation)
 //    scope = Some[Scope](program)
     program
   }
@@ -40,33 +40,33 @@ final class ProgramFactory
   //////////////////////////////////////////////////////////////////////////
   def getDomainFactory(name: String,typeVariableNames :Seq[(SourceLocation,String)])(implicit sourceLocation : SourceLocation): DomainFactory = {
     require(domainFactories.forall(_.name != name))
-    val result = new DomainFactory(this, sourceLocation, name,typeVariableNames)
+    val result = new DomainFactory(this, name,typeVariableNames)(sourceLocation)
     domainFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getMethodFactory(sourceLocation : SourceLocation, name: String): MethodFactory = {
+  def getMethodFactory(name: String)(sourceLocation : SourceLocation): MethodFactory = {
     require(methodFactories.forall(_.name != name))
-    val result = new MethodFactory(this, sourceLocation, name)
+    val result = new MethodFactory(this, name)(sourceLocation)
     methodFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getPredicateFactory(sourceLocation : SourceLocation, name: String): PredicateFactory = {
+  def getPredicateFactory(name: String)(sourceLocation : SourceLocation): PredicateFactory = {
     require(predicateFactories.forall(_.name != name))
-    val result = new PredicateFactory(this, sourceLocation, name)
+    val result = new PredicateFactory(this, name)(sourceLocation)
     predicateFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getFunctionFactory(sourceLocation : SourceLocation, name: String, params: Seq[(SourceLocation, String, DataType)], resultType: DataType): FunctionFactory = {
+  def getFunctionFactory(name: String, params: Seq[(SourceLocation, String, DataType)], resultType: DataType)(sourceLocation : SourceLocation): FunctionFactory = {
     require(functionFactories.forall(_.name != name))
     require(params.forall(dataTypes contains _._3))
     require(params.forall((x) => params.forall((y) => x == y || x._2 != y._2)))
-    val result = new FunctionFactory(this, sourceLocation, name, params, resultType)
+    val result = new FunctionFactory(this, name, params, resultType)(sourceLocation)
     functionFactories += result
     result
   }
@@ -84,14 +84,14 @@ final class ProgramFactory
   //@Symbol construction
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def defineField(sourceLocation : SourceLocation, name: String, dataType: DataType): Field = {
+  def defineField(name: String, dataType: DataType)(sourceLocation : SourceLocation): Field = {
     require(fields.forall(_.name != name))
     require(dataTypes contains dataType)
     require(dataType.freeTypeVariables.isEmpty)
     defineField(
       dataType match{
-        case d : NonReferenceDataType => new NonReferenceField(sourceLocation, name, d)
-        case r : ReferenceDataType    => new ReferenceField(sourceLocation,name)
+        case d : NonReferenceDataType => new NonReferenceField(name, d)(sourceLocation)
+        case r : ReferenceDataType    => new ReferenceField(name)(sourceLocation)
         case _ => throw new Exception("Tried to create field of non groud type")
       }
     )

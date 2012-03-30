@@ -12,9 +12,8 @@ import silAST.types.DataType
 
 class ImplementationFactory private[silAST]
   (
-    private[silAST] val methodFactory: MethodFactory,
-    sourceLocation: SourceLocation
-  )
+    private[silAST] val methodFactory: MethodFactory
+  )(sourceLocation: SourceLocation)
   extends NodeFactory
   with ExpressionFactory
   with ScopeFactory
@@ -27,17 +26,17 @@ class ImplementationFactory private[silAST]
 
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def addProgramVariable(sourceLocation: SourceLocation, name: String, dataType: DataType) = {
+  def addProgramVariable(name: String, dataType: DataType)(sourceLocation: SourceLocation) = {
     require(programVariables.forall(_.name != name))
     require(dataTypes contains dataType)
 
-    val result = new ProgramVariable(sourceLocation, name, dataType)
+    val result = new ProgramVariable(name, dataType)(sourceLocation)
     implementation.pLocals.append(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  private[silAST] val implementation = new Implementation(sourceLocation, methodFactory.method, this)
+  private[silAST] val implementation = new Implementation(methodFactory.method, this)(sourceLocation)
   /////////////////////////////////////////////////////////////////////////////////////
   val cfgFactory = new CFGFactory(implementation,implementation)(sourceLocation)
 

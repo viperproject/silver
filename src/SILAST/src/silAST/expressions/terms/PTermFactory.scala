@@ -64,7 +64,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeProgramVariableTerm(sourceLocation : SourceLocation, v: ProgramVariable): ProgramVariableTerm = {
+  def makeProgramVariableTerm(v: ProgramVariable)(sourceLocation : SourceLocation): ProgramVariableTerm = {
     if (!(programVariables contains  v)){
       System.out.println("PTF : " + programVariables.mkString(","))
     }
@@ -73,7 +73,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePFunctionApplicationTerm(sourceLocation : SourceLocation, r: PTerm, ff: FunctionFactory, a: PTermSequence): PFunctionApplicationTerm = {
+  def makePFunctionApplicationTerm(r: PTerm, ff: FunctionFactory, a: PTermSequence)(sourceLocation : SourceLocation): PFunctionApplicationTerm = {
     migrate(r)
     require(functions contains ff.pFunction)
     a.foreach(migrate(_))
@@ -82,7 +82,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePCastTerm(sourceLocation : SourceLocation, t: PTerm, dt: DataType): PCastTerm = {
+  def makePCastTerm(t: PTerm, dt: DataType)(sourceLocation : SourceLocation): PCastTerm = {
     migrate(t)
     migrate(dt)
 
@@ -90,7 +90,7 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePFieldReadTerm(sourceLocation : SourceLocation, t: PTerm, f: Field): PFieldReadTerm = {
+  def makePFieldReadTerm(t: PTerm, f: Field)(sourceLocation : SourceLocation): PFieldReadTerm = {
     migrate(t)
     require(fields contains f)
 
@@ -98,18 +98,18 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePDomainFunctionApplicationTerm(sourceLocation : SourceLocation, f: DomainFunction, a: PTermSequence): PDomainFunctionApplicationTerm = {
+  def makePDomainFunctionApplicationTerm(f: DomainFunction, a: PTermSequence)(sourceLocation : SourceLocation): PDomainFunctionApplicationTerm = {
     a.foreach(migrate (_))
     require(domainFunctions contains f)
 
     a match {
-      case a: GTermSequence => makeGDomainFunctionApplicationTerm(sourceLocation, f, a)
+      case a: GTermSequence => makeGDomainFunctionApplicationTerm(f, a)(sourceLocation)
       case _ => addTerm(new PDomainFunctionApplicationTermC(f, a)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePUnfoldingTerm(sourceLocation : SourceLocation, r: PTerm, p: PredicateFactory, t: PTerm): PUnfoldingTerm = {
+  def makePUnfoldingTerm(r: PTerm, p: PredicateFactory, t: PTerm)(sourceLocation : SourceLocation): PUnfoldingTerm = {
     require(predicates contains p.pPredicate)
     migrate(r)
     migrate(t)
@@ -118,13 +118,13 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePIfThenElseTerm(sourceLocation : SourceLocation, c : PTerm,  p:PTerm,  n : PTerm): PIfThenElseTerm = {
+  def makePIfThenElseTerm(c : PTerm,  p:PTerm,  n : PTerm)(sourceLocation : SourceLocation): PIfThenElseTerm = {
     migrate(c)
     migrate(p)
     migrate(n)
     require(c.dataType == booleanType)
     (c, p, n) match {
-      case (gc:GTerm, gp:GTerm,gn:GTerm) => makeGIfThenElseTerm(sourceLocation,gc,gp,gn)
+      case (gc:GTerm, gp:GTerm,gn:GTerm) => makeGIfThenElseTerm(gc,gp,gn)(sourceLocation)
       case _ => addTerm(new PIfThenElseTermC(c,p,n)(sourceLocation))
     }
   }

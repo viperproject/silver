@@ -42,19 +42,19 @@ protected[silAST] trait GTermFactory
     }
   }
   /////////////////////////////////////////////////////////////////////////
-  def makeIntegerLiteralTerm(sourceLocation : SourceLocation, v: BigInt): IntegerLiteralTerm = {
+  def makeIntegerLiteralTerm(v: BigInt)(sourceLocation : SourceLocation): IntegerLiteralTerm = {
     addTerm(new IntegerLiteralTerm(v)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeGDomainFunctionApplicationTerm(sourceLocation : SourceLocation, f: DomainFunction, a: GTermSequence): GDomainFunctionApplicationTerm = {
+  def makeGDomainFunctionApplicationTerm(f: DomainFunction, a: GTermSequence)(sourceLocation : SourceLocation): GDomainFunctionApplicationTerm = {
     a.foreach(migrate (_))
     require(domainFunctions contains f)
     addTerm(new GDomainFunctionApplicationTerm(f, a)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeGIfThenElseTerm(sourceLocation : SourceLocation, c : GTerm,  p:GTerm,  n : GTerm): GIfThenElseTerm = {
+  def makeGIfThenElseTerm(c : GTerm,  p:GTerm,  n : GTerm)(sourceLocation : SourceLocation): GIfThenElseTerm = {
     migrate(c)
     migrate(p)
     migrate(n)

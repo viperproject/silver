@@ -43,7 +43,7 @@ final class CFGFactory(
   /////////////////////////////////////////////////////////////////////////////////////
   def addBasicBlock(name: String)(sourceLocation: SourceLocation): BasicBlockFactory = {
     require(blocks.forall(_.name != name))
-    val result = new BasicBlockFactory(cfg, sourceLocation, name)
+    val result = new BasicBlockFactory(cfg, name)(sourceLocation)
     blocks += result
     cfg.addNode(result.block)
     result
@@ -64,7 +64,7 @@ final class CFGFactory(
   val blocks = new HashSet[BlockFactory]
   var startNode: Option[BasicBlockFactory] = None
   var endNode: Option[BasicBlockFactory] = None
-  private[silAST] val cfg = new ControlFlowGraph(sourceLocation, scope, implementation)
+  private[silAST] val cfg = new ControlFlowGraph(scope, implementation)(sourceLocation)
 
 
 }

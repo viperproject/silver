@@ -46,50 +46,50 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDUnaryExpression(sourceLocation : SourceLocation, op: UnaryConnective, e1: DExpression): DUnaryExpression = {
+  def makeDUnaryExpression(op: UnaryConnective, e1: DExpression)(sourceLocation : SourceLocation): DUnaryExpression = {
     migrate(e1)
 
     (e1) match {
-      case (e1: GExpression) => makeGUnaryExpression(sourceLocation, op, e1)
+      case (e1: GExpression) => makeGUnaryExpression(op, e1)(sourceLocation)
       case _ => addExpression(new DUnaryExpressionC(op, e1)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDBinaryExpression(sourceLocation : SourceLocation, op: BinaryConnective, e1: DExpression, e2: DExpression): DBinaryExpression = {
+  def makeDBinaryExpression(op: BinaryConnective, e1: DExpression, e2: DExpression)(sourceLocation : SourceLocation): DBinaryExpression = {
     migrate(e1)
     migrate(e2)
 
     (e1, e2) match {
-      case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(sourceLocation, op, e1, e2)
+      case (e1: GExpression, e2: GExpression) => makeGBinaryExpression(op, e1, e2)(sourceLocation)
       case _ => addExpression(new DBinaryExpressionC(op, e1, e2)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDDomainPredicateExpression(sourceLocation : SourceLocation, p: DomainPredicate, args: DTermSequence): DDomainPredicateExpression = {
+  def makeDDomainPredicateExpression(p: DomainPredicate, args: DTermSequence)(sourceLocation : SourceLocation): DDomainPredicateExpression = {
     require(domainPredicates contains p,"Unknown domain predicate %s.".format(p))
     args.foreach(migrate(_))
 
     (args) match {
-      case (a: GTermSequence) => makeGDomainPredicateExpression(sourceLocation, p, a)
+      case (a: GTermSequence) => makeGDomainPredicateExpression(p, a)(sourceLocation)
       case _ => addExpression(new DDomainPredicateExpressionC(sourceLocation, p, args))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDEqualityExpression(sourceLocation : SourceLocation, t1: DTerm, t2: DTerm): DEqualityExpression = {
+  def makeDEqualityExpression(t1: DTerm, t2: DTerm)(sourceLocation : SourceLocation): DEqualityExpression = {
     migrate(t1)
     migrate(t2)
 
     (t1, t2) match {
-      case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(sourceLocation, t1, t2)
+      case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(t1, t2)(sourceLocation)
       case _ => addExpression[DEqualityExpression](new DEqualityExpressionC(t1, t2)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeDQuantifierExpression(sourceLocation : SourceLocation, q: Quantifier, v: LogicalVariable, e: DExpression): DQuantifierExpression = {
+  def makeDQuantifierExpression(q: Quantifier, v: LogicalVariable, e: DExpression)(sourceLocation : SourceLocation): DQuantifierExpression = {
     require(boundVariables contains v)
     require(!(boundVariableMap contains v))
 

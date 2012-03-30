@@ -28,12 +28,12 @@ trait DomainPredicate extends ASTNode
 }
 
 class DomainPredicateC private[silAST](
-                                             val sourceLocation : SourceLocation,
+
                                              val name: String,
                                              val signature: DomainPredicateSignature,
                                              val domain : Domain
-                                             ) extends DomainPredicate
+                                             )(val sourceLocation : SourceLocation) extends DomainPredicate
 {
   def substitute(s: TypeVariableSubstitution) =
-    new DomainPredicateC(sourceLocation,name,signature.substitute(s),s.newDomain)
+    new DomainPredicateC(name,signature.substitute(s),s.newDomain)(sourceLocation)
 }

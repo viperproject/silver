@@ -6,12 +6,12 @@ import silAST.source.SourceLocation
 import silAST.programs.symbols.ProgramVariableSequence
 
 final class MethodSignature private[silAST](
-                                             val sourceLocation: SourceLocation,
+
                                              val parameters: ProgramVariableSequence,
                                              val results: ProgramVariableSequence,
                                              val precondition: ExpressionSequence,
                                              val postcondition: ExpressionSequence
-                                             ) extends ASTNode {
+                                             )(val sourceLocation: SourceLocation) extends ASTNode {
   override def toString =
     parameters.toStringWithTypes + " : " + results.toStringWithTypes + "\n" +
       (for (p <- precondition) yield "requires " + p.toString).mkString("\t", "\n\t", "\n") +

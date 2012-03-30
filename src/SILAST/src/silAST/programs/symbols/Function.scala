@@ -6,13 +6,13 @@ import silAST.types.DataType
 import silAST.source.{noLocation, SourceLocation}
 
 final class Function private[programs](
-                                        val sourceLocation : SourceLocation,
+
                                         val name: String,
                                         pParams  : Seq[(SourceLocation, String, DataType)],
                                         resultType : DataType
-                                        ) extends ASTNode
+                                        )(val sourceLocation : SourceLocation) extends ASTNode
 {
-  private[symbols] var pSignature = new FunctionSignature(noLocation, pParams, resultType)
+  private[symbols] var pSignature = new FunctionSignature(pParams, resultType)(noLocation)
 
   lazy val signature: FunctionSignature = pSignature
 

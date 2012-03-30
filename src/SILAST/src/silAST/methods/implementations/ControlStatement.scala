@@ -12,7 +12,7 @@ sealed abstract class ControlStatement
 }
 
 
-final class Halt(val sourceLocation : SourceLocation) extends ControlStatement
+final class Halt()(val sourceLocation : SourceLocation) extends ControlStatement
 {
   override val successors: Set[CFGEdge] = Set()
 
@@ -23,20 +23,20 @@ final class Halt(val sourceLocation : SourceLocation) extends ControlStatement
 
 final class Branch private[silAST]
 (
-  val sourceLocation : SourceLocation,
+
   val source: Block,
   val  trueTarget : Block,
   val falseTarget : Block,
   val condition : PExpression
-  )
+  )(val sourceLocation : SourceLocation)
   extends ControlStatement
 {
   require( source.cfg == trueTarget.cfg)
   require( source.cfg == falseTarget.cfg)
-  private val conditionNegation = source.factory.scope.factory.makeUnaryExpression(sourceLocation,new Not()(sourceLocation),condition)
+  private val conditionNegation = source.factory.scope.factory.makeUnaryExpression(new Not()(sourceLocation),condition)(sourceLocation)
 
-  private val  trueEdge = new CFGEdge(sourceLocation,source,trueTarget ,condition        )
-  private val falseEdge = new CFGEdge(sourceLocation,source,falseTarget,conditionNegation)
+  private val  trueEdge = new CFGEdge(source,trueTarget ,condition        )(sourceLocation)
+  private val falseEdge = new CFGEdge(source,falseTarget,conditionNegation)(sourceLocation)
   override val successors: Set[CFGEdge] = Set(trueEdge,falseEdge)
 
   override val toString = "if " + condition.toString() + " then goto " + trueTarget.label + " else goto " + falseTarget.label
@@ -55,7 +55,7 @@ final class Goto private[silAST]
 {
   require( source.cfg == target.cfg)
 
-  private val  edge = new CFGEdge(sourceLocation,source,target,TrueExpression()(sourceLocation))
+  private val  edge = new CFGEdge(source,target,TrueExpression()(sourceLocation))(sourceLocation)
   override val successors: Set[CFGEdge] = Set(edge)
 
   override val toString = "goto " + target.label

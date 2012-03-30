@@ -233,9 +233,8 @@ sealed case class QuantifierExpression private[silAST]
       new TypeSubstitutionC(
         Set(),
         Set((variable, newVar)),
-        (newVar.sourceLocation),
         s.newDomain
-      )
+      ) (newVar.sourceLocation)
     new QuantifierExpression(quantifier, newVar, expression.substitute(newS))(sourceLocation)
   }
   override def substitute(s: LogicalVariableSubstitution): QuantifierExpression = {
@@ -612,7 +611,7 @@ final class DQuantifierExpression private[silAST]
 
   override def substitute(s: TypeVariableSubstitution): DQuantifierExpression = {
     val newVar = new LogicalVariable(variable.name, variable.dataType.substitute(s))(s.sourceLocation(variable.sourceLocation))
-    val newS = s + new TypeSubstitutionC(Set(), Set((variable, newVar)),s.sourceLocation, s.newDomain)
+    val newS = s + new TypeSubstitutionC(Set(), Set((variable, newVar)),s.newDomain)(s.sourceLocation)
     new DQuantifierExpression(quantifier, newVar, expression.substitute(newS))(s.sourceLocation(sourceLocation))
   }
   override def substitute(s: DLogicalVariableSubstitution): DQuantifierExpression = {

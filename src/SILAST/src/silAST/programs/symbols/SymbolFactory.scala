@@ -11,7 +11,7 @@ abstract class SymbolFactory[T] private[silAST](
                                                  ) extends NodeFactory with ExpressionFactory {
   def compile(): T
 
-  val thisVar = new ProgramVariable(noLocation, "this", referenceType)
+  val thisVar = new ProgramVariable("this", referenceType)(noLocation)
 
   protected[silAST] override def programVariables = Set(thisVar)
 

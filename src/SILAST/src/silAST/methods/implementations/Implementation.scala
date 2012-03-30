@@ -5,10 +5,10 @@ import silAST.methods.{Scope, Method}
 
 final class Implementation private[silAST]
   (
-    override val sourceLocation: SourceLocation,
+
     val method: Method,
     override val factory: ImplementationFactory
-  )
+  ) (override val sourceLocation: SourceLocation)
   extends Scope
 {
   val parentScope: Option[Scope] = Some(method)

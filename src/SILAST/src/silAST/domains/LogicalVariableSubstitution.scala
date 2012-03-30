@@ -31,9 +31,8 @@ abstract class TypeVariableSubstitution
 private [silAST] class TypeSubstitutionC[Term] (
     val types     : Set[(TypeVariable,DataType)],
     val variables : Set[(LogicalVariable,LogicalVariable)],
-    val sourceLocation : SourceLocation,
     val newDomain : Domain
-  ) extends TypeVariableSubstitution
+  )(val sourceLocation : SourceLocation) extends TypeVariableSubstitution
 {
   override def toString = typeMap.mkString("[",",","]")
   val typeVariables : Set[TypeVariable] = for (t <- types) yield t._1
@@ -44,7 +43,7 @@ private [silAST] class TypeSubstitutionC[Term] (
   protected[silAST] override val varMap : Map[LogicalVariable,LogicalVariable] = variables.toMap
 
   override def +(other : TypeVariableSubstitution)  : TypeVariableSubstitution =
-    new TypeSubstitutionC(types ++ other.types,(varMap ++ other.varMap).toSet,other.sourceLocation,newDomain)
+    new TypeSubstitutionC(types ++ other.types,(varMap ++ other.varMap).toSet,newDomain)(other.sourceLocation)
 
 }
 

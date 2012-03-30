@@ -38,24 +38,24 @@ trait DataTypeFactory extends NodeFactory {
     }
   }
 
-  def makeNonReferenceDataType(sourceLocation : SourceLocation, df: DomainFactory,ta : DataTypeSequence): NonReferenceDataType = {
+  def makeNonReferenceDataType(df: DomainFactory,ta : DataTypeSequence)(sourceLocation : SourceLocation): NonReferenceDataType = {
     require(domainFactories contains df)
     migrate(ta)
 //    require(ta.forall(dataTypes contains _))
     require(df.domain.typeParameters.length == ta.length)
     val domain = df.domain.getInstance(ta)
-    val result = new NonReferenceDataType(sourceLocation, domain)
+    val result = new NonReferenceDataType(domain)(sourceLocation)
     pDataTypes += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def makeVariableType(sourceLocation : SourceLocation, variable : TypeVariable): VariableType =
+  def makeVariableType(variable : TypeVariable)(sourceLocation : SourceLocation): VariableType =
   {
     require(typeVariables contains  variable)
 
-    val result = new VariableType(sourceLocation,variable)
+    val result = new VariableType(variable)(sourceLocation)
     pDataTypes += result
     result
   }

@@ -79,73 +79,73 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeFunctionApplicationTerm(sourceLocation : SourceLocation, r: Term, ff: FunctionFactory, a: TermSequence): FunctionApplicationTerm = {
+  def makeFunctionApplicationTerm(r: Term, ff: FunctionFactory, a: TermSequence)(sourceLocation : SourceLocation): FunctionApplicationTerm = {
     migrate(r)
     require(functions contains ff.pFunction)
     a.foreach(migrate (_))
 
     (r, a) match {
-      case (r: PTerm, a: PTermSequence) => makePFunctionApplicationTerm(sourceLocation, r, ff, a)
+      case (r: PTerm, a: PTermSequence) => makePFunctionApplicationTerm(r, ff, a)(sourceLocation)
       case _ => addTerm(new FunctionApplicationTerm(r, ff.pFunction, a)(sourceLocation))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeUnfoldingTerm(sourceLocation : SourceLocation, r: Term, p: PredicateFactory, t: Term): UnfoldingTerm = {
+  def makeUnfoldingTerm(r: Term, p: PredicateFactory, t: Term)(sourceLocation : SourceLocation): UnfoldingTerm = {
     require(predicates contains p.pPredicate)
     migrate(r)
     migrate(t)
 
     (r, t) match {
-      case (r: PTerm, t: PTerm) => makePUnfoldingTerm(sourceLocation, r, p, t)
+      case (r: PTerm, t: PTerm) => makePUnfoldingTerm(r, p, t)(sourceLocation)
       case _ => addTerm(new UnfoldingTerm(r, p.pPredicate, t)(sourceLocation))
     }
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeCastTerm(sourceLocation : SourceLocation, t: Term, dt: DataType): CastTerm = {
+  def makeCastTerm(t: Term, dt: DataType)(sourceLocation : SourceLocation): CastTerm = {
     migrate(dt)
     migrate(t)
 
     t match {
-      case t: PTerm => makePCastTerm(sourceLocation, t, dt)
+      case t: PTerm => makePCastTerm(t, dt)(sourceLocation)
       case _ => addTerm(new CastTerm(t, dt)(sourceLocation))
     }
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeFieldReadTerm(sourceLocation : SourceLocation, t: Term, f: Field): FieldReadTerm = {
+  def makeFieldReadTerm(t: Term, f: Field)(sourceLocation : SourceLocation): FieldReadTerm = {
     require(fields contains f)
     migrate(t)
 
     t match {
-      case t: PTerm => makePFieldReadTerm(sourceLocation, t, f)
+      case t: PTerm => makePFieldReadTerm(t, f)(sourceLocation)
       case _ => addTerm(new FieldReadTerm(t, f)(sourceLocation))
     }
 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeOldTerm(sourceLocation : SourceLocation, t: Term): OldTerm = {
+  def makeOldTerm(t: Term)(sourceLocation : SourceLocation): OldTerm = {
     migrate(t)
     addTerm(new OldTerm(t)(sourceLocation))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeDomainFunctionApplicationTerm(sourceLocation : SourceLocation, f: DomainFunction, a: TermSequence): DomainFunctionApplicationTerm = {
+  def makeDomainFunctionApplicationTerm(f: DomainFunction, a: TermSequence)(sourceLocation : SourceLocation): DomainFunctionApplicationTerm = {
     require(domainFunctions contains f)
     a.foreach(migrate (_))
 
     a match {
-      case a: GTermSequence => makeGDomainFunctionApplicationTerm(sourceLocation, f, a)
-      case a: PTermSequence => makePDomainFunctionApplicationTerm(sourceLocation, f, a)
-      case a: DTermSequence => makeDDomainFunctionApplicationTerm(sourceLocation, f, a)
+      case a: GTermSequence => makeGDomainFunctionApplicationTerm(f, a)(sourceLocation)
+      case a: PTermSequence => makePDomainFunctionApplicationTerm(f, a)(sourceLocation)
+      case a: DTermSequence => makeDDomainFunctionApplicationTerm(f, a)(sourceLocation)
       case _ => addTerm(new DomainFunctionApplicationTerm(f, a)(sourceLocation))
     }
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermTerm(sourceLocation : SourceLocation, location: Term,  field: Field): PermTerm = {
+  def makePermTerm(location: Term,  field: Field)(sourceLocation : SourceLocation): PermTerm = {
     migrate(location)
     require (fields contains field)
     require (location.dataType == referenceType)
@@ -156,59 +156,59 @@ protected[silAST] trait TermFactory extends NodeFactory with PTermFactory with D
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePercentagePermission(sourceLocation : SourceLocation, percentage: Term): Term = {
+  def makePercentagePermission(percentage: Term)(sourceLocation : SourceLocation): Term = {
     val result = new DomainFunctionApplicationTerm(percentagePermission, TermSequence(percentage))(sourceLocation)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makeFullPermission(sourceLocation : SourceLocation): FullPermissionTerm = {
+  def makeFullPermission()(sourceLocation : SourceLocation): FullPermissionTerm = {
     val result = new FullPermissionTerm()(sourceLocation)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makeNoPermission(sourceLocation : SourceLocation): NoPermissionTerm = {
+  def makeNoPermission()(sourceLocation : SourceLocation): NoPermissionTerm = {
     val result = new NoPermissionTerm()(sourceLocation)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makeEpsilonPermission(sourceLocation : SourceLocation): EpsilonPermissionTerm = {
+  def makeEpsilonPermission()(sourceLocation : SourceLocation): EpsilonPermissionTerm = {
     val result = new EpsilonPermissionTerm()(sourceLocation)
     addTerm(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionAdditionTerm(sourceLocation : SourceLocation, t1: Term, t2: Term) =
-    makeDomainFunctionApplicationTerm(sourceLocation, permissionAddition, TermSequence(t1, t2))
+  def makePermissionAdditionTerm(t1: Term, t2: Term)(sourceLocation : SourceLocation) =
+    makeDomainFunctionApplicationTerm(permissionAddition, TermSequence(t1, t2))(sourceLocation)
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionSubtractionTerm(sourceLocation : SourceLocation, t1: Term, t2: Term) =
-    makeDomainFunctionApplicationTerm(sourceLocation, permissionSubtraction, TermSequence(t1, t2))
+  def makePermissionSubtractionTerm(t1: Term, t2: Term)(sourceLocation : SourceLocation) =
+    makeDomainFunctionApplicationTerm(permissionSubtraction, TermSequence(t1, t2))(sourceLocation)
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionMultiplicationTerm(sourceLocation : SourceLocation, t1: Term, t2: Term) =
-    makeDomainFunctionApplicationTerm(sourceLocation, permissionMultiplication, TermSequence(t1, t2))
+  def makePermissionMultiplicationTerm(t1: Term, t2: Term)(sourceLocation : SourceLocation) =
+    makeDomainFunctionApplicationTerm(permissionMultiplication, TermSequence(t1, t2))(sourceLocation)
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionIntegerMultiplicationTerm(sourceLocation : SourceLocation, t1: Term, i: Term) =
-    makeDomainFunctionApplicationTerm(sourceLocation, permissionIntegerMultiplication, TermSequence(t1, i))
+  def makePermissionIntegerMultiplicationTerm(t1: Term, i: Term)(sourceLocation : SourceLocation) =
+    makeDomainFunctionApplicationTerm(permissionIntegerMultiplication, TermSequence(t1, i))(sourceLocation)
 
   /////////////////////////////////////////////////////////////////////////
-  def makeIfThenElseTerm(sourceLocation : SourceLocation, c : Term,  p:Term,  n : Term): IfThenElseTerm = {
+  def makeIfThenElseTerm(c : Term,  p:Term,  n : Term)(sourceLocation : SourceLocation): IfThenElseTerm = {
     migrate(c)
     migrate(p)
     migrate(n)
     require(c.dataType == booleanType)
     (c, p, n) match {
-      case (gc:GTerm, gp:GTerm,gn:GTerm) => makeGIfThenElseTerm(sourceLocation,gc,gp,gn)
-      case (dc:DTerm, dp:DTerm,dn:DTerm) => makeDIfThenElseTerm(sourceLocation,dc,dp,dn)
-      case (pc:PTerm, pp:PTerm,pn:PTerm) => makePIfThenElseTerm(sourceLocation,pc,pp,pn)
+      case (gc:GTerm, gp:GTerm,gn:GTerm) => makeGIfThenElseTerm(gc,gp,gn)(sourceLocation)
+      case (dc:DTerm, dp:DTerm,dn:DTerm) => makeDIfThenElseTerm(dc,dp,dn)(sourceLocation)
+      case (pc:PTerm, pp:PTerm,pn:PTerm) => makePIfThenElseTerm(pc,pp,pn)(sourceLocation)
       case _ => addTerm(new IfThenElseTerm(c,p,n)(sourceLocation))
     }
   }

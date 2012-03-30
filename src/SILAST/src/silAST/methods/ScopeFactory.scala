@@ -15,28 +15,10 @@ trait ScopeFactory
   with ExpressionFactory
 {
   /////////////////////////////////////////////////////////////////////////////////////
-//  def scope: Scope // = pScope
-/*
-  /////////////////////////////////////////////////////////////////////////////////////
-  def addProgramVariable(sourceLocation: SourceLocation, name: String, dataType: DataType) = {
-    require(programVariables.forall(_.name != name))
-    require(dataTypes contains dataType)
-
-    val result = new ProgramVariable(sourceLocation, name, dataType)
-    scope.pLocals.append(result)
-    result
-  }
-  */
-  /////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////
   private[silAST] def programFactory : ProgramFactory
 
   protected[silAST] def parentFactory: Option[ScopeFactory] //= scope.parentScope match
-/*  {
-    case Some(s) => Some(s.factory)
-    case _ => None
-  }
-  */
   def programVariables: Set[ProgramVariable] // = scope.get.programVariables
   def functions: Set[Function] = parentFactory.get.functions
   def predicates: Set[Predicate] = parentFactory.get.predicates
