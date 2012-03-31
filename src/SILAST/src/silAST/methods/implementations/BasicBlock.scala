@@ -23,7 +23,7 @@ final class BasicBlock private[silAST]
   private val pStatements = new ListBuffer[Statement]
 
   private[silAST] def appendStatement(s: Statement) = {
-    require(!(pStatements contains s))
+    require((pStatements.forall(_ ne s))  )
     pStatements += s
   }
 

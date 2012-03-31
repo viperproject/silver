@@ -91,7 +91,7 @@ private[silAST] class DomainTemplateC(
   override lazy val domain: Domain = getInstance(DataTypeSequence((for (t <- typeParameters) yield VariableType(t)(t.sourceLocation)): _*))
   private[silAST] lazy val dataType = NonReferenceDataType(domain)(domain.sourceLocation)
 
-  override def getType() = dataType
+  override def getType = dataType
 
 
   val pInstances = new HashMap[DataTypeSequence, DomainInstance]

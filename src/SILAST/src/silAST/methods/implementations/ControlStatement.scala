@@ -41,7 +41,7 @@ final class Branch private[silAST]
   private val falseEdge = new CFGEdge(source, falseTarget, conditionNegation)(sourceLocation)
   override val successors: Set[CFGEdge] = Set(trueEdge, falseEdge)
 
-  override val toString = "if " + condition.toString() + " then goto " + trueTarget.label + " else goto " + falseTarget.label
+  override val toString = "if " + condition.toString + " then goto " + trueTarget.label + " else goto " + falseTarget.label
 
   override def equals(other: Any) = other match {
     case b: Branch => b eq this
