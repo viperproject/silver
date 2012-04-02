@@ -33,7 +33,7 @@ final class LoopBlock private[silAST]
   private[silAST] var pInvariant: Option[Expression] = None
 
   override def readVariables: Set[ProgramVariable] =
-    (for (n <- cfg.nodes) yield n.readVariables).flatten.toSet union
+    (for (n <- body.nodes) yield n.readVariables).flatten.toSet union
       invariant.programVariables union
       condition.programVariables
 
