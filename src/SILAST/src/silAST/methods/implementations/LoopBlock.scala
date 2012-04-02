@@ -38,7 +38,7 @@ final class LoopBlock private[silAST]
       condition.programVariables
 
   override def writtenVariables: Set[ProgramVariable] =
-    (for (n <- cfg.nodes) yield n.writtenVariables).flatten.toSet //TODO:is this enough?
+    (for (n <- body.nodes) yield n.writtenVariables).flatten.toSet //TODO:is this enough?
 
   /////////////////////////////////////////////////////////////////////////////////////
   override def toString = label + ": while " + condition + " do {" + body.toString + "} " + controlFlowToString
