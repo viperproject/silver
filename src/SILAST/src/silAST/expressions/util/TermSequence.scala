@@ -47,6 +47,8 @@ object TermSequence {
     else if (ts.forall(_.isInstanceOf[PTerm])) PTermSequence(ts.asInstanceOf[Seq[PTerm]]: _*)
     else new TermSequence(ts)
   }
+
+  def unapplySeq(ts: TermSequence) : Option[Seq[Term]] = Some(ts)
 }
 
 ///////////////////////////////////////////////////////////////
@@ -74,6 +76,8 @@ object PTermSequence {
     if (ts.forall(_.isInstanceOf[GTerm])) GTermSequence(ts.asInstanceOf[Seq[GTerm]]: _*)
     else new PTermSequenceC(ts)
   }
+
+  def unapplySeq(ts : PTermSequence) : Option[Seq[PTerm]] = Some(ts:Seq[PTerm])
 }
 
 private[silAST] final class PTermSequenceC(
@@ -112,6 +116,8 @@ object DTermSequence {
     if (ts.forall(_.isInstanceOf[GTerm])) GTermSequence(ts.asInstanceOf[Seq[GTerm]]: _*)
     else new DTermSequenceC(ts)
   }
+
+  def unapplySeq(ts : DTermSequence) : Option[Seq[DTerm]] = Some(ts:Seq[DTerm])
 }
 
 
@@ -133,5 +139,6 @@ final class GTermSequence private[silAST](
 
 object GTermSequence {
   def apply(ts: GTerm*): GTermSequence = new GTermSequence(ts)
+  def unapplySeq(ts : GTermSequence) : Option[Seq[GTerm]] = Some(ts:Seq[GTerm])
 }
 
