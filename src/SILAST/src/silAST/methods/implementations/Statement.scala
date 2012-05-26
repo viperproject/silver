@@ -9,6 +9,7 @@ import silAST.expressions.util.PTermSequence
 import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import silAST.methods.Method
 import silAST.expressions.terms.PTerm
+import scala.Some
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -109,11 +110,15 @@ final case class InhaleStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 final case class ExhaleStatement private[silAST](
-
-                                                  expression: Expression
+                                                  expression: Expression,
+                                                  message : Option[String]
                                                   )(override val sourceLocation: SourceLocation)
   extends Statement {
-  override def toString: String = "exhale " + expression.toString
+
+  override def toString: String = message match {
+    case Some(m) => "exhale " + expression + "  (\"" + m + "\")"
+    case None => "exhale " + expression
+  }
 
   override val readVariables = expression.programVariables
   override val writtenVariables = Set[ProgramVariable]()

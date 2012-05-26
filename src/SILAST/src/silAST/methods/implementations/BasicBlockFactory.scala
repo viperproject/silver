@@ -63,9 +63,13 @@ class BasicBlockFactory private[silAST]
 
                     e: Expression
                     )(sourceLocation: SourceLocation) {
+    appendExhale(e,None)(sourceLocation)
+  }
+
+  def appendExhale(e:Expression, message : Option[String])(sourceLocation:SourceLocation){
     migrate(e)
 
-    block.appendStatement(new ExhaleStatement(e)(sourceLocation))
+    block.appendStatement(new ExhaleStatement(e,message)(sourceLocation))
   }
 
   //////////////////////////////////////////////////////////////////
