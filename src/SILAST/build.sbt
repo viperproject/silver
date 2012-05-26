@@ -2,7 +2,9 @@
 
 name := "silast"
 
-version := "0.1"
+organization  := "pm.inf.ethz.ch"
+
+version := "0.1-SNAPSHOT"
 
 scalaVersion := "2.9.1"
 
