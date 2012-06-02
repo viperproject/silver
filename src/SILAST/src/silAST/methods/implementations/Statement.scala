@@ -1,15 +1,14 @@
 package silAST.methods.implementations
 
 import silAST.ASTNode
-import silAST.types.DataType
 import silAST.expressions.Expression
-import silAST.expressions.PredicateExpression
 import silAST.source.SourceLocation
 import silAST.expressions.util.PTermSequence
 import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import silAST.methods.Method
-import silAST.expressions.terms.PTerm
 import scala.Some
+import silAST.expressions.terms.{Term, PredicateLocation, PTerm}
+import silAST.types.{permissionType, DataType}
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -126,12 +125,16 @@ final case class ExhaleStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //TODO:FoldStatement/UnfoldStatement arrays?
 final case class FoldStatement private[silAST](
-      predicate: PredicateExpression
+      location: PredicateLocation,
+      permission : Term
       )(override val sourceLocation: SourceLocation,val comment:List[String])
-  extends Statement {
-  override def toString: String = "fold " + predicate.toString
+  extends Statement
+{
+  require(permission.dataType==permissionType)
 
-  override val readVariables = predicate.programVariables
+  override def toString: String = "fold " + location.toString + " by " + permission.toString
+
+  override val readVariables = location.programVariables
   override val writtenVariables = Set[ProgramVariable]()
 }
 
@@ -140,11 +143,12 @@ final case class FoldStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 final case class UnfoldStatement private[silAST](
-      predicate: PredicateExpression
-      )(override val sourceLocation: SourceLocation,val comment:List[String])
+                                                  location: PredicateLocation,
+                                                  permission : Term
+                                                  )(override val sourceLocation: SourceLocation,val comment:List[String])
   extends Statement {
-  override def toString: String = "unfold " + predicate.toString
+  override def toString: String = "unfold " + location.toString + " by " + permission.toString
 
-  override val readVariables = predicate.programVariables
+  override val readVariables = location.programVariables
   override val writtenVariables = Set[ProgramVariable]()
 }

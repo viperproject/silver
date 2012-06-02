@@ -45,12 +45,14 @@ trait ExpressionFactory
         migrate(ee.term1)
         migrate(ee.term2)
       }
-      case ppe: PredicateExpression => {
-        require(predicates contains ppe.predicate)
-      }
+/*      case ppe: PredicateExpression => {
+        require(predicates contains ppe.location.predicate)
+      }*/
       case pue: UnfoldingExpression => {
+        require(predicates contains pue.location.predicate)
+        migrate(pue.location.receiver)
+        migrate(pue.permission)
         migrate(pue.expression)
-        migrate(pue.predicate)
       }
       case qe: QuantifierExpression => {
         require(boundVariables contains qe.variable)
@@ -58,8 +60,11 @@ trait ExpressionFactory
         migrate(qe.expression)
       }
       case pe: PermissionExpression => {
-        require(fields contains pe.field)
-        migrate(pe.reference)
+        pe.location match {
+          case fl : FieldLocation     => require(fields contains fl.field)
+          case pl : PredicateLocation => require(predicates contains pl.predicate)
+        }
+        migrate(pe.location.receiver)
         migrate(pe.permission)
       }
       case oe: OldExpression => {
@@ -118,7 +123,7 @@ trait ExpressionFactory
       case _ => addExpression(new DomainPredicateExpression(p, args)(sourceLocation,comment))
     }
   }
-
+/*
   //////////////////////////////////////////////////////////////////////////
   def makePredicateExpression(r: Term, pf: PredicateFactory,sourceLocation: SourceLocation,comment : List[String] = Nil): PredicateExpression = {
     require(predicates contains pf.pPredicate)
@@ -129,7 +134,7 @@ trait ExpressionFactory
       case _ => addExpression(new PredicateExpression(r, pf.pPredicate)(sourceLocation,comment))
     }
   }
-
+  */
   //////////////////////////////////////////////////////////////////////////
   def makeEqualityExpression(t1: Term, t2: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): EqualityExpression = {
     migrate(t1)
@@ -174,22 +179,33 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePermissionExpression(r: Term, f: Field, p: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): PermissionExpression = {
+  def makeFieldPermissionExpression(r: Term, f: Field, p: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): PermissionExpression = {
     require(fields contains f)
     migrate(r)
     migrate(p)
 
-    addExpression(new PermissionExpression(r, f, p)(sourceLocation,comment))
+    addExpression(new PermissionExpression(new FieldLocation(r, f), p)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeUnfoldingExpression(p: PredicateExpression, e: Expression,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingExpression = {
+  def makePredicatePermissionExpression(r: Term, pf: PredicateFactory, p: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): PermissionExpression = {
+    require(predicates contains pf.pPredicate)
+    migrate(r)
     migrate(p)
+
+    addExpression(new PermissionExpression(new PredicateLocation(r, pf.pPredicate), p)(sourceLocation,comment))
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  def makeUnfoldingExpression(r: Term, pf: PredicateFactory, perm : Term, e: Expression,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingExpression = {
+    require(predicates contains pf.pPredicate)
+    migrate(r)
+    migrate(perm)
     migrate(e)
 
-    (p, e) match {
-      case (p: PPredicateExpression, e: PExpression) => makePUnfoldingExpression(p, e,sourceLocation,comment)
-      case _ => addExpression(new UnfoldingExpression(p, e)(sourceLocation,comment))
+    (r, perm, e) match {
+      case (r: PTerm, perm : PTerm, e: PExpression) => makePUnfoldingExpression(r, pf,perm, e,sourceLocation,comment)
+      case _ => addExpression(new UnfoldingExpression(new PredicateLocation(r,pf.pPredicate), perm, e)(sourceLocation,comment))
     }
   }
 }

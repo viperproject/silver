@@ -53,13 +53,14 @@ protected[silAST] trait PTermFactory
         addTerm(t)
       }
       case fr: PFieldReadTerm => {
-        require(fields contains fr.field)
-        migrate(fr.location)
+        require(fields contains fr.location.field)
+        migrate(fr.location.receiver)
         addTerm(fr)
       }
       case ut: PUnfoldingTerm => {
-        require(predicates contains ut.predicate)
-        migrate(ut.receiver)
+        require(predicates contains ut.location.predicate)
+        migrate(ut.location.receiver)
+        migrate(ut.permission)
         migrate(ut.term)
         addTerm(ut)
       }
@@ -108,7 +109,7 @@ protected[silAST] trait PTermFactory
     migrate(t)
     require(fields contains f)
 
-    addTerm(new PFieldReadTerm(t, f)(sourceLocation,comment))
+    addTerm(new PFieldReadTerm(new PFieldLocation(t, f))(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -130,6 +131,7 @@ protected[silAST] trait PTermFactory
   def makePUnfoldingTerm(
                           r: PTerm,
                           p: PredicateFactory,
+                          perm : PTerm,
                           t: PTerm,
                           sourceLocation: SourceLocation,
                           comment : List[String] = Nil
@@ -137,8 +139,9 @@ protected[silAST] trait PTermFactory
     require(predicates contains p.pPredicate)
     migrate(r)
     migrate(t)
+    migrate(perm)
 
-    addTerm(new PUnfoldingTerm(r, p.pPredicate, t)(sourceLocation,comment))
+    addTerm(new PUnfoldingTerm(new PPredicateLocation(r, p.pPredicate), perm,t)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////

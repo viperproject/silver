@@ -2,13 +2,14 @@ package silAST.expressions
 
 import silAST.source.SourceLocation
 import silAST.domains.DomainPredicate
-import terms.{PTermFactory, PTerm, GTerm}
+import terms._
 import util.{GTermSequence, PTermSequence}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.programs.NodeFactory
 import collection.Set
-import silAST.programs.symbols.{ProgramVariableSequence, ProgramVariable, Predicate}
 import collection.mutable.HashSet
+import silAST.types.permissionType
+import silAST.programs.symbols.{PredicateFactory, ProgramVariableSequence, ProgramVariable, Predicate}
 
 
 trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermFactory {
@@ -34,12 +35,11 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
         migrate(ee.term1)
         migrate(ee.term2)
       }
-      case ppe: PPredicateExpression => {
-        require(predicates contains ppe.predicate)
-      }
       case pue: PUnfoldingExpression => {
+        require(predicates contains pue.location.predicate)
         migrate(pue.expression)
-        migrate(pue.predicate)
+        migrate(pue.permission)
+        migrate(pue.location.receiver)
       }
     }
     addExpression(e)
@@ -63,7 +63,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
       case _ => addExpression(new PDomainPredicateExpressionC(p, args)(sourceLocation,comment))
     }
   }
-
+/*
   //////////////////////////////////////////////////////////////////////////
   def makePPredicateExpression(r: PTerm, p: Predicate,sourceLocation: SourceLocation,comment : List[String] = Nil): PPredicateExpression = {
     require(predicates contains p)
@@ -71,7 +71,7 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
     addExpression(new PPredicateExpression(r, p)(sourceLocation,comment))
   }
-
+  */
   //////////////////////////////////////////////////////////////////////////
   def makePUnaryExpression(op: UnaryConnective, e1: PExpression,sourceLocation: SourceLocation,comment : List[String] = Nil): PUnaryExpression = {
     migrate(e1)
@@ -105,11 +105,14 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePUnfoldingExpression(p: PPredicateExpression, e: PExpression,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingExpression = {
-    migrate(p)
+  def makePUnfoldingExpression(r : PTerm, pf: PredicateFactory, perm : PTerm, e: PExpression,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingExpression = {
+    require(predicates contains pf.pPredicate)
+    require(perm.dataType == permissionType)
+    migrate(r)
+    migrate(perm)
     migrate(e)
 
-    addExpression(new PUnfoldingExpression(p, e)(sourceLocation,comment))
+    addExpression(new PUnfoldingExpression(new PPredicateLocation(r,pf.pPredicate),perm,e)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////////////

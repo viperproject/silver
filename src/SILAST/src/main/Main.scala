@@ -71,15 +71,15 @@ object Main {
       val this_next_seq = vp.makeFieldReadTerm(this_next, seqField,nl)
 
       val nullTerm = vp.makeDomainFunctionApplicationTerm(nullFunction, TermSequence(),nl)
-      val this_next_valid = vp.makePredicateExpression(this_next, vp,nl)
+      val this_next_valid = vp.makePredicatePermissionExpression(this_next, vp,vp.makeFullPermission(nl), nl)
       val this_next_eq_null = vp.makeDomainFunctionApplicationTerm(referenceEquality, TermSequence(this_next, nullTerm),nl)
       val this_next_neq_null = vp.makeDomainFunctionApplicationTerm(booleanNegation, TermSequence(this_next_eq_null),nl)
       //      val ite = vp.makeIfThenElseTerm(nl,this_next_neq_null,thisT,this_next)
       val singleton_this_val = vp.makeDomainFunctionApplicationTerm(singletonInt, TermSequence(this_val),nl)
-      val acc_val_100 = vp.makePermissionExpression(thisT, valField, vp.makeFullPermission(nl),nl)
-      val acc_next_100 = vp.makePermissionExpression(thisT, nextField, vp.makeFullPermission(nl),nl)
-      val acc_seq_50 = vp.makePermissionExpression(thisT, seqField, vp.makePercentagePermission(vp.makeIntegerLiteralTerm(50,nl),nl),nl)
-      val acc_next_seq_50 = vp.makePermissionExpression(this_next, seqField, vp.makePercentagePermission(vp.makeIntegerLiteralTerm(50,nl),nl),nl)
+      val acc_val_100 = vp.makeFieldPermissionExpression(thisT, valField, vp.makeFullPermission(nl),nl)
+      val acc_next_100 = vp.makeFieldPermissionExpression(thisT, nextField, vp.makeFullPermission(nl),nl)
+      val acc_seq_50 = vp.makeFieldPermissionExpression(thisT, seqField, vp.makePercentagePermission(vp.makeIntegerLiteralTerm(50,nl),nl),nl)
+      val acc_next_seq_50 = vp.makeFieldPermissionExpression(this_next, seqField, vp.makePercentagePermission(vp.makeIntegerLiteralTerm(50,nl),nl),nl)
       val next_eq_null = vp.makeEqualityExpression(this_next, nullTerm,nl)
       val next_ne_null = vp.makeUnaryExpression(Not()(nl), next_eq_null,nl)
       val prepend_val_next_seq = vp.makeDomainFunctionApplicationTerm(prependInt, TermSequence(this_val, this_next_seq),nl)
@@ -118,7 +118,7 @@ object Main {
       ff.addPostcondition(numXs_this_next_le_numXs_this)
 
       val numXs_this_next_plus_x = ff.makePDomainFunctionApplicationTerm(integerAddition, PTermSequence(numXs_this_next, x),nl)
-      val b = ff.makePUnfoldingTerm(thisVar, vp, numXs_this_next_plus_x,nl)
+      val b = ff.makePUnfoldingTerm(thisVar, vp, ff.makeFullPermission(nl),numXs_this_next_plus_x,nl)
 
       ff.setBody(b)
 
@@ -140,7 +140,7 @@ object Main {
       val zeroTerm = mf.makeIntegerLiteralTerm(0,nl)
 
 
-      val this_valid = mf.makePredicateExpression(this_var, vp,nl)
+      val this_valid = mf.makePredicatePermissionExpression(this_var, vp,vp.makeFullPermission(nl), nl)
       mf.addPrecondition(this_valid,nl)
       mf.addPrecondition(mf.makeDomainPredicateExpression(integerLE, TermSequence(zeroTerm, xTerm),nl),nl)
       mf.addPostcondition(this_valid,nl)
@@ -166,9 +166,9 @@ object Main {
 
         {
           val this_term = startBlock.makeProgramVariableTerm(thisVar,nl)
-          val this_valid = startBlock.makePredicateExpression(this_term, vp,nl)
+          val this_valid = startBlock.makePredicatePermissionExpression(this_term, vp,vp.makeFullPermission(nl), nl)
           startBlock.appendInhale(this_valid,nl)
-          startBlock.appendUnfold(this_valid,nl)
+          startBlock.appendUnfold(this_term,vp,vp.makeFullPermission(nl),nl)
 
           val nTerm = startBlock.makeProgramVariableTerm(nVar,nl)
           //this.numXs(n)
@@ -176,7 +176,7 @@ object Main {
           startBlock.appendAssignment(nVar, numXs_nTerm,nl)
 
 
-          startBlock.appendFold(this_valid,nl)
+          startBlock.appendFold(this_term, vp,vp.makeFullPermission(nl),nl)
           val lb = midBlock.bodyFactory.addBasicBlock("whileBody",nl)
           lb.appendAssignment(nVar, numXs_nTerm,nl)
           lb.setHalt(nl)
@@ -220,13 +220,13 @@ object Main {
       case OldExpression(_) => 0
       case TrueExpression() => 0
       case FalseExpression() => 0
-      case PermissionExpression(_, _, _) => 0
-      case UnfoldingExpression(_, _) => 1
+      case PermissionExpression(_, _) => 0
+      case UnfoldingExpression(_, _,_) => 1
       case EqualityExpression(_, _) => 2
       case UnaryExpression(_, _) => 3
       case BinaryExpression(_, _, _) => 4
       case DomainPredicateExpression(_, _) => 5
-      case PredicateExpression(_, _) => 6
+//      case PredicateExpression(_, _) => 6
       case QuantifierExpression(_, _, _) => 7
     }
   }
@@ -236,13 +236,13 @@ object Main {
       case OldExpression(_) => 0
       case TrueExpression() => 0
       case FalseExpression() => 0
-      case PermissionExpression(_, _, _) => 0
-      case UnfoldingExpression(_, _) => 1
+      case PermissionExpression(_, _) => 0
+      case UnfoldingExpression(_, _,_) => 1
       case EqualityExpression(_, _) => 2
       case UnaryExpression(_, _) => 3
       case BinaryExpression(_, _, _) => 4
       case DomainPredicateExpression(_, _) => 5
-      case PredicateExpression(_, _) => 6
+//      case PredicateExpression(_, _) => 6
       //      case QuantifierExpression(_,_,_) => 7
     }
   }
@@ -258,7 +258,7 @@ object Main {
 
       case ProgramVariableTerm(_) => 2
       case CastTerm(_, _) => 2
-      case FieldReadTerm(_, _) => 6
+      case FieldReadTerm(_) => 6
 
       case UnfoldingTerm(_, _, _) => 6
     }
@@ -272,7 +272,7 @@ object Main {
 
       case ProgramVariableTerm(_) => 2
       case CastTerm(_, _) => 2
-      case FieldReadTerm(_, _) => 6
+      case FieldReadTerm(_) => 6
     }
   }
 }

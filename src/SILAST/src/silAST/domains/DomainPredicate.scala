@@ -13,7 +13,7 @@ trait DomainPredicate extends ASTNode {
 
   lazy val fullName = domain.fullName + "." + name
 
-  override def toString = "predicate " + name + signature.toString
+  override def toString = "location " + name + signature.toString
 
   def toString(ts: TermSequence) = fullName + ts.toString()
 

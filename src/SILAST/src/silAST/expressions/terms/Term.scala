@@ -11,6 +11,98 @@ import silAST.types._
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
+sealed trait Location
+  extends ASTNode
+{
+  override val sourceLocation = receiver.sourceLocation
+  override val comment = Nil
+  def receiver: Term
+  def dataType : DataType
+
+  require(receiver.dataType == referenceType)
+
+  def freeVariables: collection.immutable.Set[LogicalVariable]
+
+  def programVariables: collection.immutable.Set[ProgramVariable]
+
+  def substitute(s: TypeVariableSubstitution): Location
+  def substitute(s: LogicalVariableSubstitution): Location
+  def substitute(s: ProgramVariableSubstitution): Location
+}
+
+sealed trait PLocation extends Location
+{
+  override def receiver : PTerm
+  def substitute(s: TypeVariableSubstitution): PLocation
+  def substitute(s: PLogicalVariableSubstitution): PLocation
+  def substitute(s: PProgramVariableSubstitution): PLocation
+}
+
+sealed case class FieldLocation private[silAST](receiver: Term,field : Field)  extends Location
+{
+  override val toString = receiver.toString + "." + field.name
+  override lazy val dataType = field.dataType
+
+  override def freeVariables = receiver.freeVariables
+
+  override def programVariables = receiver.programVariables
+
+  def substitute(s: TypeVariableSubstitution): FieldLocation =
+    new FieldLocation(receiver.substitute(s),field)
+
+  def substitute(s: LogicalVariableSubstitution): FieldLocation =
+    new FieldLocation(receiver.substitute(s),field)
+
+  def substitute(s: ProgramVariableSubstitution): FieldLocation =
+    new FieldLocation(receiver.substitute(s),field)
+}
+
+final class PFieldLocation private[silAST](override val receiver: PTerm,field : Field) extends FieldLocation(receiver,field) with PLocation
+{
+  override def substitute(s: TypeVariableSubstitution): PFieldLocation =
+    new PFieldLocation(receiver.substitute(s),field)
+
+  def substitute(s: PLogicalVariableSubstitution): PFieldLocation =
+    new PFieldLocation(receiver.substitute(s),field)
+
+  def substitute(s: PProgramVariableSubstitution): PFieldLocation =
+    new PFieldLocation(receiver.substitute(s),field)
+}
+
+sealed case class PredicateLocation private[silAST](receiver: Term,predicate : Predicate)
+  extends Location
+{
+  override val toString = receiver.toString + "." + predicate.name
+  override lazy val dataType = booleanType
+
+  override def freeVariables = receiver.freeVariables
+
+  override def programVariables = receiver.programVariables
+
+  def substitute(s: TypeVariableSubstitution): PredicateLocation =
+    new PredicateLocation(receiver.substitute(s),predicate)
+
+  def substitute(s: LogicalVariableSubstitution): PredicateLocation =
+    new PredicateLocation(receiver.substitute(s),predicate)
+
+  def substitute(s: ProgramVariableSubstitution): PredicateLocation =
+    new PredicateLocation(receiver.substitute(s),predicate)
+}
+
+final class PPredicateLocation private[silAST](override val receiver: PTerm,predicate : Predicate) extends PredicateLocation(receiver,predicate) with PLocation
+{
+  override def substitute(s: TypeVariableSubstitution): PPredicateLocation =
+    new PPredicateLocation(receiver.substitute(s),predicate)
+
+  override def substitute(s: PLogicalVariableSubstitution): PPredicateLocation =
+    new PPredicateLocation(receiver.substitute(s),predicate)
+
+  override def substitute(s: PProgramVariableSubstitution): PPredicateLocation =
+    new PPredicateLocation(receiver.substitute(s),predicate)
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
 sealed trait Term extends ASTNode {
   def subTerms: Seq[Term]
 
@@ -176,34 +268,34 @@ sealed case class FunctionApplicationTerm private[silAST]
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class UnfoldingTerm private[silAST]
-(receiver: Term, predicate: Predicate, term: Term)
+(location : PredicateLocation, permission:Term, term: Term)
 (override val sourceLocation: SourceLocation, override val comment : List[String])
   extends ASTNode with Term
 {
-  require(receiver.dataType == referenceType)
+  require (permission.dataType == permissionType)
 
-  override lazy val toString: String = "unfolding " + receiver.toString + "." + predicate.name + " in (" + term.toString + ")"
+  override lazy val toString: String = "unfolding " + location.toString + " by " + permission.toString + " in (" + term.toString + ")"
 
-  override lazy val subTerms: Seq[Term] = List(receiver, term)
+  override lazy val subTerms: Seq[Term] = List(location.receiver,term)
 
   override def dataType = term.dataType
 
-  override def freeVariables = receiver.freeVariables ++ term.freeVariables
+  override def freeVariables = location.freeVariables ++ term.freeVariables
 
-  override def programVariables = receiver.programVariables ++ term.programVariables
+  override def programVariables = location.programVariables ++ term.programVariables
 
   def substitute(s: TypeVariableSubstitution): UnfoldingTerm =
-    new UnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(
+    new UnfoldingTerm(location.substitute(s), permission.substitute(s),term.substitute(s))(
       s.sourceLocation(sourceLocation),Nil
     )
 
   def substitute(s: LogicalVariableSubstitution): UnfoldingTerm =
-    new UnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(
+    new UnfoldingTerm(location.substitute(s), permission.substitute(s),term.substitute(s))(
       s.sourceLocation(sourceLocation),Nil
     )
 
   def substitute(s: ProgramVariableSubstitution): UnfoldingTerm =
-    new UnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(
+    new UnfoldingTerm(location.substitute(s), permission.substitute(s),term.substitute(s))(
       s.sourceLocation(sourceLocation),Nil
     )
 }
@@ -243,42 +335,38 @@ sealed case class CastTerm protected[silAST]
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class FieldReadTerm protected[silAST]
-(location: Term, field: Field)
+(location : FieldLocation)
 (override val sourceLocation: SourceLocation, override val comment : List[String])
   extends ASTNode with Term
 {
-  require(location.dataType == referenceType)
+  override lazy val toString: String = location.toString
+  override lazy val subTerms: Seq[Term] = List(location.receiver)
 
-  override lazy val toString: String = location.toString + "." + field.name
-  override lazy val subTerms: Seq[Term] = List(location)
-
-  override lazy val dataType = field.dataType
+  override lazy val dataType = location.dataType
 
   override def freeVariables = location.freeVariables
 
   override def programVariables = location.programVariables
 
   def substitute(s: TypeVariableSubstitution): FieldReadTerm =
-    new FieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
+    new FieldReadTerm(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: LogicalVariableSubstitution): FieldReadTerm =
-    new FieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
+    new FieldReadTerm(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: ProgramVariableSubstitution): FieldReadTerm =
-    new FieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
+    new FieldReadTerm(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class PermTerm protected[silAST]
-    (location: Term, field: Field)
+    (location: FieldLocation)
     (override val sourceLocation: SourceLocation, override val comment : List[String])
   extends ASTNode with Term
 {
-  require(location.dataType == referenceType)
-
-  override lazy val toString: String = "perm(" + location.toString + "." + field.name + ")";
-  override lazy val subTerms: Seq[Term] = List(location)
+  override lazy val toString: String = "perm(" + location.toString + ")";
+  override lazy val subTerms: Seq[Term] = List(location.receiver)
 
   override lazy val dataType = permissionType
 
@@ -287,13 +375,13 @@ sealed case class PermTerm protected[silAST]
   override def programVariables = location.programVariables
 
   def substitute(s: TypeVariableSubstitution): PermTerm =
-    new PermTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
+    new PermTerm(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: LogicalVariableSubstitution): PermTerm =
-    new PermTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
+    new PermTerm(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: ProgramVariableSubstitution): PermTerm =
-    new PermTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
+    new PermTerm(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -477,22 +565,20 @@ sealed case class ProgramVariableTerm protected[silAST]
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 final class PUnfoldingTerm private[silAST]
-(override val receiver: PTerm, predicate: Predicate, override val term: PTerm)
+(override val location : PPredicateLocation, override val permission : PTerm, override val term: PTerm)
 (sourceLocation: SourceLocation, comment : List[String])
-  extends UnfoldingTerm(receiver, predicate, term)(sourceLocation,comment) with PTerm
+  extends UnfoldingTerm(location, permission, term)(sourceLocation,comment) with PTerm
 {
-  require(receiver.dataType == referenceType)
-
-  override val pSubTerms: Seq[PTerm] = List(receiver, term)
-  //  override def substitute(s: LogicalVariableSubstitution): UnfoldingTerm = new UnfoldingTerm(sourceLocation,receiver.substitute(s),predicate,term.substitute(s))
+  override val pSubTerms: Seq[PTerm] = List(location.receiver, permission,term)
+  //  override def substitute(s: LogicalVariableSubstitution): UnfoldingTerm = new UnfoldingTerm(sourceLocation,receiver.substitute(s),location,term.substitute(s))
   override def substitute(s: TypeVariableSubstitution): PUnfoldingTerm =
-    new PUnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new PUnfoldingTerm(location.substitute(s), permission.substitute(s), term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PLogicalVariableSubstitution): PUnfoldingTerm =
-    new PUnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new PUnfoldingTerm(location.substitute(s), permission.substitute(s), term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: PProgramVariableSubstitution): PUnfoldingTerm =
-    new PUnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new PUnfoldingTerm(location.substitute(s), permission.substitute(s), term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -584,26 +670,26 @@ object PCastTerm {
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 final class PFieldReadTerm private[silAST]
-(override val location: PTerm, field: Field)
+(override val location: PFieldLocation)
 (sourceLocation: SourceLocation, comment : List[String])
-  extends FieldReadTerm(location, field)(sourceLocation,comment)
+  extends FieldReadTerm(location)(sourceLocation,comment)
   with PTerm
 {
-  override val pSubTerms: Seq[PTerm] = List(location)
+  override val pSubTerms: Seq[PTerm] = List(location.receiver)
 
   override def substitute(s: TypeVariableSubstitution): PFieldReadTerm =
-    new PFieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
+    new PFieldReadTerm(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PLogicalVariableSubstitution): PFieldReadTerm =
-    new PFieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
+    new PFieldReadTerm(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PProgramVariableSubstitution): PFieldReadTerm =
-    new PFieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
+    new PFieldReadTerm(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 object PFieldReadTerm {
-  def unapply(t: PFieldReadTerm): Option[(PTerm, Field)] =
-    Some((t.location, t.field))
+  def unapply(t: PFieldReadTerm): Option[(PLocation)] =
+    Some((t.location))
 }
 
 ///////////////////////////////////////////////////////////////////////////

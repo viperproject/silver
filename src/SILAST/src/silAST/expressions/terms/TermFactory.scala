@@ -57,13 +57,13 @@ protected[silAST] trait TermFactory
         addTerm(t)
       }
       case fr: FieldReadTerm => {
-        require(fields contains fr.field)
-        migrate(fr.location)
+        require(fields contains fr.location.field)
+        migrate(fr.location.receiver)
         addTerm(fr)
       }
       case ut: UnfoldingTerm => {
-        require(predicates contains ut.predicate)
-        migrate(ut.receiver)
+        require(predicates contains ut.location.predicate)
+        migrate(ut.location.receiver)
         migrate(ut.term)
         addTerm(ut)
       }
@@ -72,8 +72,8 @@ protected[silAST] trait TermFactory
         addTerm(ot)
       }
       case pt: PermTerm => {
-        migrate(pt.location)
-        require(fields contains pt.field)
+        migrate(pt.location.receiver)
+        require(fields contains pt.location.field)
         addTerm(pt)
       }
       case itet: IfThenElseTerm => {
@@ -104,14 +104,15 @@ protected[silAST] trait TermFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeUnfoldingTerm(r: Term, p: PredicateFactory, t: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingTerm = {
-    require(predicates contains p.pPredicate)
+  def makeUnfoldingTerm(r: Term, pf: PredicateFactory, p : Term, t: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingTerm = {
+    require(predicates contains pf.pPredicate)
     migrate(r)
     migrate(t)
+    migrate(p)
 
-    (r, t) match {
-      case (r: PTerm, t: PTerm) => makePUnfoldingTerm(r, p, t,sourceLocation,comment)
-      case _ => addTerm(new UnfoldingTerm(r, p.pPredicate, t)(sourceLocation,comment))
+    (r, t, p) match {
+      case (r: PTerm, t: PTerm, p : PTerm) => makePUnfoldingTerm(r, pf, p, t,sourceLocation,comment)
+      case _ => addTerm(new UnfoldingTerm(new PredicateLocation(r, pf.pPredicate), p, t)(sourceLocation,comment))
     }
   }
 
@@ -133,7 +134,7 @@ protected[silAST] trait TermFactory
 
     t match {
       case t: PTerm => makePFieldReadTerm(t, f,sourceLocation,comment)
-      case _ => addTerm(new FieldReadTerm(t, f)(sourceLocation,comment))
+      case _ => addTerm(new FieldReadTerm(new FieldLocation(t, f))(sourceLocation,comment))
     }
 
   }
@@ -169,7 +170,7 @@ protected[silAST] trait TermFactory
     require(fields contains field)
     require(location.dataType == referenceType)
 
-    val result = new PermTerm(location, field)(sourceLocation,comment)
+    val result = new PermTerm(new FieldLocation(location, field))(sourceLocation,comment)
     addTerm(result)
     result
   }

@@ -2,13 +2,13 @@ package silAST.methods.implementations
 
 import silAST.source.SourceLocation
 import silAST.types.DataType
-import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import silAST.expressions.util.PTermSequence
 import collection.Set
-import silAST.expressions.{PredicateExpression, Expression, ExpressionFactory}
-import silAST.expressions.terms.PTerm
+import silAST.expressions.{Expression, ExpressionFactory}
 import silAST.methods.{Scope, MethodFactory}
 import silAST.programs.NodeFactory
+import silAST.programs.symbols.{PredicateFactory, ProgramVariableSequence, Field, ProgramVariable}
+import silAST.expressions.terms.{PredicateLocation, Term, PTerm}
 
 
 class BasicBlockFactory private[silAST]
@@ -75,22 +75,30 @@ class BasicBlockFactory private[silAST]
 
   //////////////////////////////////////////////////////////////////
   def appendFold(
-                  e: PredicateExpression,
+                  r : Term,
+                  pf : PredicateFactory,
+                  perm : Term,
                   sourceLocation: SourceLocation,
                   comment : List[String] = Nil) {
-    migrate(e)
+    require(predicates contains pf.pPredicate)
+    migrate(r)
+    migrate(perm)
 
-    block.appendStatement(new FoldStatement(e)(sourceLocation,comment))
+    block.appendStatement(new FoldStatement(new PredicateLocation(r,pf.pPredicate),perm)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendUnfold(
-                    e: PredicateExpression,
+                    r : Term,
+                    pf : PredicateFactory,
+                    perm : Term,
                     sourceLocation: SourceLocation,
                     comment : List[String] = Nil) {
-    migrate(e)
+    require(predicates contains pf.pPredicate)
+    migrate(r)
+    migrate(perm)
 
-    block.appendStatement(new UnfoldStatement(e)(sourceLocation,comment))
+    block.appendStatement(new UnfoldStatement(new PredicateLocation(r,pf.pPredicate),perm)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////
