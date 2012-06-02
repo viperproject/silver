@@ -36,8 +36,8 @@ final private[silAST] class DomainFunctionC(
                                              val name: String,
                                              val signature: DomainFunctionSignature,
                                              val domain: GDomain
-                                             )(val sourceLocation: SourceLocation) extends DomainFunction {
+                                             )(val sourceLocation: SourceLocation,override val comment : List[String]) extends DomainFunction {
   override def substitute(s: TypeVariableSubstitution): DomainFunction = {
-    new DomainFunctionC(name, signature.substitute(s), s.newDomain)(sourceLocation)
+    new DomainFunctionC(name, signature.substitute(s), s.newDomain)(sourceLocation,Nil)
   }
 }

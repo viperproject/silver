@@ -54,42 +54,42 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
     name != "this"
 
   /////////////////////////////////////////////////////////////////////////
-  def makeBoundVariable(name: String, dataType: DataType)(sourceLocation: SourceLocation): LogicalVariable = {
+  def makeBoundVariable(name: String, dataType: DataType,sourceLocation: SourceLocation,comment : List[String] = Nil): LogicalVariable = {
     require(dataTypes contains dataType)
     require(validBoundVariableName(name))
-    val result: LogicalVariable = new LogicalVariable(name, dataType)(sourceLocation)
+    val result: LogicalVariable = new LogicalVariable(name, dataType)(sourceLocation,comment)
     boundVariables += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeBoundVariableTerm(v: LogicalVariable)(sourceLocation: SourceLocation): LogicalVariableTerm = {
+  def makeBoundVariableTerm(v: LogicalVariable,sourceLocation: SourceLocation,comment : List[String] = Nil): LogicalVariableTerm = {
     require(boundVariables contains v)
-    addTerm(new LogicalVariableTerm(v)(sourceLocation))
+    addTerm(new LogicalVariableTerm(v)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeDDomainFunctionApplicationTerm(f: DomainFunction, a: DTermSequence)(sourceLocation: SourceLocation): DDomainFunctionApplicationTerm = {
+  def makeDDomainFunctionApplicationTerm(f: DomainFunction, a: DTermSequence,sourceLocation: SourceLocation,comment : List[String] = Nil): DDomainFunctionApplicationTerm = {
     require(a != null)
     require(a.forall(_ != null))
     require(a.forall(terms contains _))
     require(domainFunctions contains f)
 
     a match {
-      case a: GTermSequence => makeGDomainFunctionApplicationTerm(f, a)(sourceLocation)
-      case _ => addTerm(new DDomainFunctionApplicationTermC(f, a)(sourceLocation))
+      case a: GTermSequence => makeGDomainFunctionApplicationTerm(f, a,sourceLocation,comment)
+      case _ => addTerm(new DDomainFunctionApplicationTermC(f, a)(sourceLocation,comment))
     }
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeDIfThenElseTerm(c: DTerm, p: DTerm, n: DTerm)(sourceLocation: SourceLocation): DIfThenElseTerm = {
+  def makeDIfThenElseTerm(c: DTerm, p: DTerm, n: DTerm,sourceLocation: SourceLocation,comment : List[String] = Nil): DIfThenElseTerm = {
     migrate(c)
     migrate(p)
     migrate(n)
     require(c.dataType == booleanType)
     (c, p, n) match {
-      case (gc: GTerm, gp: GTerm, gn: GTerm) => makeGIfThenElseTerm(gc, gp, gn)(sourceLocation)
-      case _ => addTerm(new DIfThenElseTermC(c, p, n)(sourceLocation))
+      case (gc: GTerm, gp: GTerm, gn: GTerm) => makeGIfThenElseTerm(gc, gp, gn,sourceLocation,comment)
+      case _ => addTerm(new DIfThenElseTermC(c, p, n)(sourceLocation,comment))
     }
   }
 

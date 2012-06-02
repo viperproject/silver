@@ -5,9 +5,9 @@ import silAST.expressions.Expression
 import silAST.source.SourceLocation
 
 final class Predicate private[silAST](
-
-                                       val name: String
-                                       )(val sourceLocation: SourceLocation) extends ASTNode {
+         val name: String
+         )(val sourceLocation: SourceLocation,val comment:List[String])
+  extends ASTNode {
   override def toString = "predicate " + name + " = " + expression.toString
 
   private[silAST] var pExpression: Option[Expression] = None

@@ -6,6 +6,7 @@ import silAST.expressions.util.TermSequence
 
 object referenceDomain extends Domain {
   override val name = "Ref"
+  override val comment = Nil
   override val fullName: String = name
   override val sourceLocation = noLocation
 
@@ -29,12 +30,14 @@ object referenceDomain extends Domain {
 /////////////////////////////////////////////////////////////////////
 object referenceType extends ReferenceDataType {
   override val toString = "ref"
+  override val comment = Nil
 
   override def isCompatible(other: DataType) = other eq referenceType
 }
 
 ///////////////////////////////////////////////////////////////////////////
 object nullFunction extends DomainFunction {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "null"
   override val signature = new DomainFunctionSignature(DataTypeSequence(), referenceType)(noLocation)
@@ -48,6 +51,7 @@ object nullFunction extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object referenceEquality extends DomainFunction {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "==<ref>"
   override val signature = new DomainFunctionSignature(DataTypeSequence(referenceType, referenceType), booleanType)(noLocation)

@@ -12,7 +12,7 @@ import silAST.types.DataType
 class MethodFactory(
                      val programFactory: ProgramFactory,
                      val name: String
-                     )(val sourceLocation: SourceLocation)
+                     )(val sourceLocation: SourceLocation,val comment : List[String])
   extends NodeFactory
   with ExpressionFactory
   with ScopeFactory {
@@ -26,30 +26,29 @@ class MethodFactory(
     method
   }
 
-  def addParameter(name: String, dataType: DataType)(sourceLocation: SourceLocation) = {
+  def addParameter(name: String, dataType: DataType,sourceLocation: SourceLocation,comment : List[String] = Nil) = {
     require(!signatureDefined)
     require(programVariables.forall(_.name != name))
-    val result = new ProgramVariable(name, dataType)(sourceLocation)
+    val result = new ProgramVariable(name, dataType)(sourceLocation,comment)
     parametersGenerator += result
-    //    programVariables += result
     result
   }
 
-  def addResult(name: String, dataType: DataType)(sourceLocation: SourceLocation) = {
+  def addResult(name: String, dataType: DataType,sourceLocation: SourceLocation,comment : List[String] = Nil) = {
     require(!signatureDefined)
     require(programVariables.forall(_.name != name))
-    val result = new ProgramVariable(name, dataType)(sourceLocation)
+    val result = new ProgramVariable(name, dataType)(sourceLocation,comment)
     resultsGenerator += result
     //    programVariables += result
     result
   }
 
-  def addPrecondition(e: Expression)(sourceLocation: SourceLocation) = {
+  def addPrecondition(e: Expression,sourceLocation: SourceLocation) = {
     require(!signatureDefined)
     preconditions += e
   }
 
-  def addPostcondition(e: Expression)(sourceLocation: SourceLocation) = {
+  def addPostcondition(e: Expression,sourceLocation: SourceLocation) = {
     require(!signatureDefined)
     postconditions += e
   }
@@ -57,19 +56,19 @@ class MethodFactory(
   def finalizeSignature() {
     require(!signatureDefined)
 
-    pParameters = Some(new ProgramVariableSequence(parametersGenerator)(sourceLocation))
-    pResults = Some(new ProgramVariableSequence(resultsGenerator)(sourceLocation))
+    pParameters = Some(new ProgramVariableSequence(parametersGenerator)(sourceLocation,Nil))
+    pResults = Some(new ProgramVariableSequence(resultsGenerator)(sourceLocation,Nil))
     val preconditions = new ExpressionSequence(this.preconditions) //TODO:more accurate locations
     val postconditions = new ExpressionSequence(this.postconditions) //TODO:more accurate locations
     val signature = new MethodSignature(pParameters.get, pResults.get, preconditions, postconditions)(sourceLocation)
-    pMethod = Some(new Method(name, signature, this)(sourceLocation))
+    pMethod = Some(new Method(name, signature, this)(sourceLocation,comment))
     //    signatureDefined = true
 
   }
 
-  def addImplementation()(sourceLocation: SourceLocation): ImplementationFactory = {
+  def addImplementation(sourceLocation: SourceLocation,comment : List[String] = Nil): ImplementationFactory = {
     if (!signatureDefined) finalizeSignature()
-    val result = new ImplementationFactory(this)(sourceLocation)
+    val result = new ImplementationFactory(this)(sourceLocation,comment)
     implementationFactories += result
     method.pImplementations += result.implementation
     result

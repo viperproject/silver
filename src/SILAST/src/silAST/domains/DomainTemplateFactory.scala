@@ -8,11 +8,11 @@ import silAST.types._
 final class DomainTemplateFactory private[silAST](
                                                    val programFactory: ProgramFactory,
                                                    val name: String,
-                                                   typeVariableNames: Seq[(SourceLocation, String)]
+                                                   typeVariableNames: Seq[(SourceLocation, String,List[String])]
                                                    )
-                                                 (val sourceLocation: SourceLocation)
+                                                 (val sourceLocation: SourceLocation,comment : List[String])
   extends NodeFactory with DExpressionFactory with DataTypeFactory {
-  private[silAST] val pDomainTemplate: DomainTemplateC = new DomainTemplateC(name, typeVariableNames)(sourceLocation)
+  private[silAST] val pDomainTemplate: DomainTemplateC = new DomainTemplateC(name, typeVariableNames)(sourceLocation,comment)
   val domainTemplate: DomainTemplate = pDomainTemplate
 
   private[silAST] def getInstance(ta: DataTypeSequence): DomainInstance =
@@ -23,29 +23,29 @@ final class DomainTemplateFactory private[silAST](
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def defineDomainFunction(name: String, p: DataTypeSequence, r: DataType)(sourceLocation: SourceLocation) = {
+  def defineDomainFunction(name: String, p: DataTypeSequence, r: DataType,sourceLocation: SourceLocation,comment : List[String] = Nil) = {
     require(p.forall(dataTypes contains _))
     require(dataTypes contains r)
     require(domainFunctions.forall(_.name != name))
-    val result = new DomainFunctionC(name, new DomainFunctionSignature(p, r)(noLocation), pDomainTemplate)(sourceLocation)
+    val result = new DomainFunctionC(name, new DomainFunctionSignature(p, r)(noLocation), pDomainTemplate)(sourceLocation,comment)
     pDomainTemplate.pFunctions += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def defineDomainPredicate(name: String, p: DataTypeSequence)(sourceLocation: SourceLocation) = {
+  def defineDomainPredicate(name: String, p: DataTypeSequence,sourceLocation: SourceLocation,comment : List[String] = Nil) = {
     require(domainPredicates.forall(_.name != name))
     require(p.forall(dataTypes contains _))
-    val result = new DomainPredicateC(name, new DomainPredicateSignature(p)(noLocation), pDomainTemplate)(sourceLocation)
+    val result = new DomainPredicateC(name, new DomainPredicateSignature(p)(noLocation), pDomainTemplate)(sourceLocation,comment)
     pDomainTemplate.pPredicates += result
     result
   }
 
   /////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////
-  def addDomainAxiom(name: String, e: DExpression)(sourceLocation: SourceLocation): DomainAxiom = {
+  def addDomainAxiom(name: String, e: DExpression,sourceLocation: SourceLocation,comment : List[String] = Nil): DomainAxiom = {
     require(pDomainTemplate.axioms.forall(_.name != name))
-    val result = new DomainAxiom(name, e)(sourceLocation)
+    val result = new DomainAxiom(name, e)(sourceLocation,comment)
     pDomainTemplate.pAxioms += result
     result
   }

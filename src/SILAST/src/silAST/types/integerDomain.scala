@@ -12,7 +12,8 @@ import silAST.source.noLocation
 
 ///////////////////////////////////////////////////////////////////////////
 object integerDomain extends Domain {
-  override def name = "Integer"
+  override val name = "Integer"
+  override val comment = Nil
 
   override def fullName: String = name
 
@@ -33,11 +34,12 @@ object integerDomain extends Domain {
   override def isCompatible(other: Domain) = other == this
 }
 
-object integerType extends NonReferenceDataType(integerDomain)(noLocation)
+object integerType extends NonReferenceDataType(integerDomain)(noLocation,Nil)
 
 ///////////////////////////////////////////////////////////////////////////
 object integerAddition extends DomainFunction {
   override lazy val sourceLocation = noLocation
+  override val comment = Nil
   override lazy val name = "+"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), integerType)(noLocation)
   override lazy val domain = integerDomain
@@ -54,6 +56,7 @@ object integerAddition extends DomainFunction {
 ///////////////////////////////////////////////////////////////////////////
 object integerSubtraction extends DomainFunction {
   override lazy val sourceLocation = noLocation
+  override val comment = Nil
   override lazy val name = "-"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), integerType)(noLocation)
   override lazy val domain = integerDomain
@@ -68,6 +71,7 @@ object integerSubtraction extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object integerMultiplication extends DomainFunction {
+  override val comment = Nil
   override lazy val sourceLocation = noLocation
   override lazy val name = "*"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), integerType)(noLocation)
@@ -83,6 +87,7 @@ object integerMultiplication extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object integerDivision extends DomainFunction {
+  override val comment = Nil
   override lazy val sourceLocation = noLocation
   override lazy val name = "/"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), integerType)(noLocation)
@@ -98,6 +103,7 @@ object integerDivision extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object integerModulo extends DomainFunction {
+  override val comment = Nil
   override lazy val sourceLocation = noLocation
   override lazy val name = "%"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), integerType)(noLocation)
@@ -113,6 +119,7 @@ object integerModulo extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object integerNegation extends DomainFunction {
+  override val comment = Nil
   override lazy val sourceLocation = noLocation
   override lazy val name = "-"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType), integerType)(noLocation)
@@ -128,6 +135,7 @@ object integerNegation extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object integerLE extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "<="
   override val signature = new DomainPredicateSignature(DataTypeSequence(integerType, integerType))(noLocation)
@@ -143,6 +151,7 @@ object integerLE extends DomainPredicate {
 
 ///////////////////////////////////////////////////////////////////////////
 object integerLT extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "<"
   override val signature = new DomainPredicateSignature(DataTypeSequence(integerType, integerType))(noLocation)
@@ -158,6 +167,7 @@ object integerLT extends DomainPredicate {
 
 ///////////////////////////////////////////////////////////////////////////
 object integerGE extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = ">="
   override val signature = new DomainPredicateSignature(DataTypeSequence(integerType, integerType))(noLocation)
@@ -173,6 +183,7 @@ object integerGE extends DomainPredicate {
 
 ///////////////////////////////////////////////////////////////////////////
 object integerGT extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = ">"
   override val signature = new DomainPredicateSignature(DataTypeSequence(integerType, integerType))(noLocation)
@@ -188,6 +199,7 @@ object integerGT extends DomainPredicate {
 
 ///////////////////////////////////////////////////////////////////////////
 object integerEQ extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "=="
   override val signature = new DomainPredicateSignature(DataTypeSequence(integerType, integerType))(noLocation)
@@ -203,6 +215,7 @@ object integerEQ extends DomainPredicate {
 
 ///////////////////////////////////////////////////////////////////////////
 object integerNE extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "!="
   override val signature = new DomainPredicateSignature(DataTypeSequence(integerType, integerType))(noLocation)

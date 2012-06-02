@@ -6,7 +6,7 @@ import silAST.source.SourceLocation
 class ProgramVariable(
                        val name: String,
                        val dataType: DataType
-                       )(val sourceLocation: SourceLocation) extends Variable {
+                       )(val sourceLocation: SourceLocation,val comment:List[String]) extends Variable {
 
   override def toString: String = name
 

@@ -39,24 +39,24 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGUnaryExpression(op: UnaryConnective, e1: GExpression)(sourceLocation: SourceLocation): GUnaryExpression = {
+  def makeGUnaryExpression(op: UnaryConnective, e1: GExpression,sourceLocation: SourceLocation,comment : List[String] = Nil): GUnaryExpression = {
     require(expressions contains e1)
-    addExpression(new GUnaryExpression(op, e1)(sourceLocation))
+    addExpression(new GUnaryExpression(op, e1)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGDomainPredicateExpression(p: DomainPredicate, args: GTermSequence)(sourceLocation: SourceLocation): GDomainPredicateExpression = {
+  def makeGDomainPredicateExpression(p: DomainPredicate, args: GTermSequence,sourceLocation: SourceLocation,comment : List[String] = Nil): GDomainPredicateExpression = {
     require(domainPredicates contains p)
     args.foreach(migrate(_))
-    addExpression(new GDomainPredicateExpression(p, args)(sourceLocation))
+    addExpression(new GDomainPredicateExpression(p, args)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGBinaryExpression(op: BinaryConnective, e1: GExpression, e2: GExpression)(sourceLocation: SourceLocation): GBinaryExpression = {
+  def makeGBinaryExpression(op: BinaryConnective, e1: GExpression, e2: GExpression,sourceLocation: SourceLocation,comment : List[String] = Nil): GBinaryExpression = {
     migrate(e1)
     migrate(e2)
 
-    addExpression(new GBinaryExpression(op, e1, e2)(sourceLocation))
+    addExpression(new GBinaryExpression(op, e1, e2)(sourceLocation,comment))
 
   }
 
@@ -64,11 +64,13 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
   def makeGEqualityExpression(
 
                                t1: GTerm,
-                               t2: GTerm
-                               )(sourceLocation: SourceLocation): GEqualityExpression = {
+                               t2: GTerm,
+                               sourceLocation: SourceLocation,
+                               comment : List[String] = Nil
+                       ): GEqualityExpression = {
     migrate(t1)
     migrate(t2)
-    addExpression(new GEqualityExpression(t1, t2)(sourceLocation))
+    addExpression(new GEqualityExpression(t1, t2)(sourceLocation,comment))
   }
 
 

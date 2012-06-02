@@ -11,7 +11,11 @@ import silAST.expressions.{PProgramVariableSubstitutionC, PProgramVariableSubsti
 import silAST.symbols.logical.quantification.LogicalVariable
 import silAST.domains._
 
-protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
+protected[silAST] trait PTermFactory
+  extends NodeFactory
+  with GTermFactory
+  with DataTypeFactory
+{
   def makePProgramVariableSubstitution(subs: immutable.Set[(ProgramVariable, PTerm)]): PProgramVariableSubstitution = {
     subs.foreach(kv => migrate(kv._2))
     new PProgramVariableSubstitutionC(subs, immutable.Set[(LogicalVariable, LogicalVariable)]())
@@ -69,68 +73,83 @@ protected[silAST] trait PTermFactory extends NodeFactory with GTermFactory with 
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeProgramVariableTerm(v: ProgramVariable)(sourceLocation: SourceLocation): ProgramVariableTerm = {
+  def makeProgramVariableTerm(v: ProgramVariable,sourceLocation: SourceLocation,comment : List[String] = Nil): ProgramVariableTerm = {
     if (!(programVariables contains v)) {
       System.out.println("PTF : " + programVariables.mkString(","))
     }
     require(programVariables contains v)
-    addTerm(new ProgramVariableTerm(v)(sourceLocation))
+    addTerm(new ProgramVariableTerm(v)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePFunctionApplicationTerm(r: PTerm, ff: FunctionFactory, a: PTermSequence)(sourceLocation: SourceLocation): PFunctionApplicationTerm = {
+  def makePFunctionApplicationTerm(
+                                    r: PTerm,
+                                    ff: FunctionFactory,
+                                    a: PTermSequence,
+                                    sourceLocation: SourceLocation,
+                                    comment : List[String] = Nil): PFunctionApplicationTerm = {
     migrate(r)
     require(functions contains ff.pFunction)
     a.foreach(migrate(_))
 
-    addTerm(new PFunctionApplicationTerm(r, ff.pFunction, a)(sourceLocation))
+    addTerm(new PFunctionApplicationTerm(r, ff.pFunction, a)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePCastTerm(t: PTerm, dt: DataType)(sourceLocation: SourceLocation): PCastTerm = {
+  def makePCastTerm(t: PTerm, dt: DataType,sourceLocation: SourceLocation,comment : List[String] = Nil): PCastTerm = {
     migrate(t)
     migrate(dt)
 
-    addTerm(new PCastTerm(t, dt)(sourceLocation))
+    addTerm(new PCastTerm(t, dt)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePFieldReadTerm(t: PTerm, f: Field)(sourceLocation: SourceLocation): PFieldReadTerm = {
+  def makePFieldReadTerm(t: PTerm, f: Field,sourceLocation: SourceLocation,comment : List[String] = Nil): PFieldReadTerm = {
     migrate(t)
     require(fields contains f)
 
-    addTerm(new PFieldReadTerm(t, f)(sourceLocation))
+    addTerm(new PFieldReadTerm(t, f)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePDomainFunctionApplicationTerm(f: DomainFunction, a: PTermSequence)(sourceLocation: SourceLocation): PDomainFunctionApplicationTerm = {
+  def makePDomainFunctionApplicationTerm(
+                                          f: DomainFunction,
+                                          a: PTermSequence,
+                                          sourceLocation:  SourceLocation,
+                                          comment : List[String] = Nil): PDomainFunctionApplicationTerm = {
     a.foreach(migrate(_))
     require(domainFunctions contains f)
 
     a match {
-      case a: GTermSequence => makeGDomainFunctionApplicationTerm(f, a)(sourceLocation)
-      case _ => addTerm(new PDomainFunctionApplicationTermC(f, a)(sourceLocation))
+      case a: GTermSequence => makeGDomainFunctionApplicationTerm(f, a,sourceLocation,comment)
+      case _ => addTerm(new PDomainFunctionApplicationTermC(f, a)(sourceLocation,comment))
     }
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePUnfoldingTerm(r: PTerm, p: PredicateFactory, t: PTerm)(sourceLocation: SourceLocation): PUnfoldingTerm = {
+  def makePUnfoldingTerm(
+                          r: PTerm,
+                          p: PredicateFactory,
+                          t: PTerm,
+                          sourceLocation: SourceLocation,
+                          comment : List[String] = Nil
+                          ): PUnfoldingTerm = {
     require(predicates contains p.pPredicate)
     migrate(r)
     migrate(t)
 
-    addTerm(new PUnfoldingTerm(r, p.pPredicate, t)(sourceLocation))
+    addTerm(new PUnfoldingTerm(r, p.pPredicate, t)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makePIfThenElseTerm(c: PTerm, p: PTerm, n: PTerm)(sourceLocation: SourceLocation): PIfThenElseTerm = {
+  def makePIfThenElseTerm(c: PTerm, p: PTerm, n: PTerm,sourceLocation: SourceLocation,comment : List[String] = Nil): PIfThenElseTerm = {
     migrate(c)
     migrate(p)
     migrate(n)
     require(c.dataType == booleanType)
     (c, p, n) match {
-      case (gc: GTerm, gp: GTerm, gn: GTerm) => makeGIfThenElseTerm(gc, gp, gn)(sourceLocation)
-      case _ => addTerm(new PIfThenElseTermC(c, p, n)(sourceLocation))
+      case (gc: GTerm, gp: GTerm, gn: GTerm) => makeGIfThenElseTerm(gc, gp, gn,sourceLocation,comment)
+      case _ => addTerm(new PIfThenElseTermC(c, p, n)(sourceLocation,comment))
     }
   }
 

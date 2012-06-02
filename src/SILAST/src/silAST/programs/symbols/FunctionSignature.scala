@@ -9,24 +9,24 @@ import silAST.expressions.Expression
 import silAST.source.{noLocation, SourceLocation}
 
 final class FunctionSignature private[silAST](
-
-                                               paParameters: Seq[(SourceLocation, String, DataType)],
-                                               resultType: DataType
-                                               )(val sourceLocation: SourceLocation) extends ASTNode {
+         paParameters: Seq[(SourceLocation, String, DataType)],
+         resultType: DataType
+         )(val sourceLocation: SourceLocation,val comment:List[String])
+  extends ASTNode {
 
   //Check no duplicate names
   require(paParameters.forall(_._2 != "result"))
   require(paParameters.forall((x) => paParameters.find(x._2 == _._2) == Some(x)))
 
-  private[symbols] val pParameters = new ProgramVariableSequence((for (pp <- paParameters) yield new ProgramVariable(pp._2, pp._3)(pp._1)).toList)(noLocation)
+  private[symbols] val pParameters = new ProgramVariableSequence((for (pp <- paParameters) yield new ProgramVariable(pp._2, pp._3)(pp._1,Nil)).toList)(noLocation,Nil)
 
   private[symbols] var pPreconditions = new ListBuffer[Expression]
   private[symbols] var pPostconditions = new ListBuffer[Expression]
   private[symbols] var pMeasure: Option[Term] = None
 
-  val result = new ProgramVariable("result", resultType)(noLocation)
+  val result = new ProgramVariable("result", resultType)(noLocation,Nil)
 
-  def parameters: ProgramVariableSequence = new ProgramVariableSequence(pParameters)(noLocation)
+  def parameters: ProgramVariableSequence = new ProgramVariableSequence(pParameters)(noLocation,Nil)
 
   def precondition: ExpressionSequence = new ExpressionSequence(pPreconditions)
 

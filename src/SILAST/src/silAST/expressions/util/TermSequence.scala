@@ -16,6 +16,7 @@ sealed class TermSequence private[silAST](
   require(prArgs.forall(_ != null))
 
 
+  override val comment = Nil
   override val sourceLocation: SourceLocation = (if (prArgs.isEmpty) noLocation else prArgs.head.sourceLocation)
 
   def args: Seq[Term] = prArgs

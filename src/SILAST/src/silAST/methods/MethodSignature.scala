@@ -11,7 +11,11 @@ final class MethodSignature private[silAST](
                                              val results: ProgramVariableSequence,
                                              val precondition: ExpressionSequence,
                                              val postcondition: ExpressionSequence
-                                             )(val sourceLocation: SourceLocation) extends ASTNode {
+                                             )(val sourceLocation: SourceLocation) extends ASTNode
+{
+
+  override val comment = Nil
+
   override def toString =
     parameters.toStringWithTypes + " : " + results.toStringWithTypes + "\n" +
       (for (p <- precondition) yield "requires " + p.toString).mkString("\t", "\n\t", "\n") +

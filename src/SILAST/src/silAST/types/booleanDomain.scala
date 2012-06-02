@@ -13,6 +13,7 @@ import silAST.source.noLocation
 ///////////////////////////////////////////////////////////////////////////
 object booleanDomain extends Domain {
   override def name = "Boolean"
+  override def comment = List()
 
   override def fullName: String = name
 
@@ -33,10 +34,11 @@ object booleanDomain extends Domain {
   override def isCompatible(other: Domain) = other == this
 }
 
-object booleanType extends NonReferenceDataType(booleanDomain)(noLocation)
+object booleanType extends NonReferenceDataType(booleanDomain)(noLocation,Nil)
 
 ///////////////////////////////////////////////////////////////////////////
 object booleanTrue extends DomainFunction {
+  override val comment = Nil
   override lazy val sourceLocation = noLocation
   override lazy val name = "true"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(), booleanType)(noLocation)
@@ -53,6 +55,7 @@ object booleanTrue extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object booleanFalse extends DomainFunction {
+  override val comment = Nil
   override lazy val sourceLocation = noLocation
   override lazy val name = "false"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(), booleanType)(noLocation)
@@ -69,6 +72,7 @@ object booleanFalse extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object booleanNegation extends DomainFunction {
+  override val comment = Nil
   override lazy val sourceLocation = noLocation
   override lazy val name = "!"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType), booleanType)(noLocation)
@@ -85,6 +89,7 @@ object booleanNegation extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object booleanConjunction extends DomainFunction {
+  override val comment = Nil
   override lazy val sourceLocation = noLocation
   override lazy val name = "/\\"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(noLocation)
@@ -101,6 +106,7 @@ object booleanConjunction extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object booleanDisjunction extends DomainFunction {
+  override val comment = Nil
   override lazy val sourceLocation = noLocation
   override lazy val name = "\\/"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(noLocation)
@@ -117,6 +123,7 @@ object booleanDisjunction extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object booleanImplication extends DomainFunction {
+  override val comment = Nil
   override lazy val sourceLocation = noLocation
   override lazy val name = "=>"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(noLocation)
@@ -133,6 +140,7 @@ object booleanImplication extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object booleanEquivalence extends DomainFunction {
+  override val comment = Nil
   override lazy val sourceLocation = noLocation
   override lazy val name = "<=>"
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(noLocation)
@@ -149,6 +157,7 @@ object booleanEquivalence extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object booleanEvaluate extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "eval"
   override val signature = new DomainPredicateSignature(DataTypeSequence(booleanType))(noLocation)

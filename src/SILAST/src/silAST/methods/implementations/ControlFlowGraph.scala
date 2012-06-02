@@ -10,7 +10,7 @@ final class ControlFlowGraph private[silAST]
 
   val scope: Scope,
   val implementation: Implementation
-  )(val sourceLocation: SourceLocation)
+  )(val sourceLocation: SourceLocation,val comment:List[String])
   extends ASTNode {
   def compile() {
     require(pStartNode != None)

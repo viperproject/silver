@@ -11,7 +11,7 @@ class FunctionFactory private[silAST](
                                        val name: String,
                                        pParameters: Seq[(SourceLocation, String, DataType)],
                                        resultType: DataType
-                                       )(val sourceLocation: SourceLocation)
+                                       )(val sourceLocation: SourceLocation,comment : List[String])
   extends SymbolFactory[Function](programFactory) {
   def compile(): Function = {
     require(pFunction.pBody != None)
@@ -49,7 +49,7 @@ class FunctionFactory private[silAST](
 
   protected[silAST] override def outputProgramVariables = Set(resultVar)
 
-  private[silAST] val pFunction = new Function(name, pParameters, resultType)(sourceLocation,this)
+  private[silAST] val pFunction = new Function(name, pParameters, resultType)(sourceLocation,this,comment)
   val resultVar = pFunction.pSignature.result
 
   override def typeVariables = Set()

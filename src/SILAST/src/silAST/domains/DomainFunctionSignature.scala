@@ -12,6 +12,8 @@ final class DomainFunctionSignature private[silAST](
     new DomainFunctionSignature(parameterTypes.substitute(s), resultType.substitute(s))(sourceLocation)
   }
 
+  override val comment = Nil
+
   override def toString = "(" + parameterTypes.toString + ")" + " : " + resultType.toString
 
   override def equals(other: Any): Boolean = {

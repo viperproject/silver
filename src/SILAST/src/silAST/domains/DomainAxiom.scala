@@ -9,13 +9,13 @@ final class DomainAxiom private[silAST](
                                          val name: String,
                                          val expression: DExpression
                                          )
-                                       (val sourceLocation: SourceLocation)
+                                       (val sourceLocation: SourceLocation,override val comment : List[String])
   extends ASTNode {
   def substitute(ts: TypeVariableSubstitution): DomainAxiom =
     new DomainAxiom(
       name,
       expression.substitute(new DLogicalVariableSubstitutionC(ts.types, Set()))
-    )(sourceLocation)
+    )(sourceLocation,Nil)
 
 
   override def toString = "axiom " + name + " = " + expression.toString

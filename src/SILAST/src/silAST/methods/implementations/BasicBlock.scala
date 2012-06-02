@@ -13,7 +13,7 @@ final class BasicBlock private[silAST]
   val label: String,
   val factory: BasicBlockFactory
   )
-(val sourceLocation: SourceLocation)
+(val sourceLocation: SourceLocation,override val comment : List[String])
   extends Block {
 
   def statements: Seq[Statement] = pStatements.result()

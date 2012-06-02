@@ -12,6 +12,7 @@ import silAST.domains._
 
 object permissionDomain extends Domain {
   override val name = "Permission"
+  override val comment = Nil
   override val sourceLocation = noLocation
 
   override def fullName: String = name
@@ -31,12 +32,13 @@ object permissionDomain extends Domain {
   override def substitute(s: TypeVariableSubstitution) = this
 }
 
-object permissionType extends NonReferenceDataType(permissionDomain)(noLocation)
+object permissionType extends NonReferenceDataType(permissionDomain)(noLocation,Nil)
 
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 object permissionAddition extends DomainFunction {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "+"
   override val signature = new DomainFunctionSignature(DataTypeSequence(permissionType, permissionType), permissionType)(noLocation)
@@ -52,6 +54,7 @@ object permissionAddition extends DomainFunction {
 }
 
 object percentagePermission extends DomainFunction {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "%"
   override val signature = new DomainFunctionSignature(DataTypeSequence(integerType), permissionType)(noLocation)
@@ -66,6 +69,7 @@ object percentagePermission extends DomainFunction {
 }
 
 object permissionSubtraction extends DomainFunction {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "-"
   override val signature = new DomainFunctionSignature(DataTypeSequence(permissionType, permissionType), permissionType)(noLocation)
@@ -80,6 +84,7 @@ object permissionSubtraction extends DomainFunction {
 }
 
 object permissionMultiplication extends DomainFunction {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "*"
   override val signature = new DomainFunctionSignature(DataTypeSequence(permissionType, permissionType), permissionType)(noLocation)
@@ -94,6 +99,7 @@ object permissionMultiplication extends DomainFunction {
 }
 
 object permissionIntegerMultiplication extends DomainFunction {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "*"
   override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, permissionType), permissionType)(noLocation)
@@ -109,6 +115,7 @@ object permissionIntegerMultiplication extends DomainFunction {
 
 ///////////////////////////////////////////////////////////////////////////
 object permissionLE extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "<="
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)
@@ -124,6 +131,7 @@ object permissionLE extends DomainPredicate {
 
 ///////////////////////////////////////////////////////////////////////////
 object permissionLT extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "<"
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)
@@ -139,6 +147,7 @@ object permissionLT extends DomainPredicate {
 
 ///////////////////////////////////////////////////////////////////////////
 object permissionGE extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = ">="
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)
@@ -154,6 +163,7 @@ object permissionGE extends DomainPredicate {
 
 ///////////////////////////////////////////////////////////////////////////
 object permissionGT extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = ">"
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)
@@ -169,6 +179,7 @@ object permissionGT extends DomainPredicate {
 
 ///////////////////////////////////////////////////////////////////////////
 object permissionEQ extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "=="
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)
@@ -184,6 +195,7 @@ object permissionEQ extends DomainPredicate {
 
 ///////////////////////////////////////////////////////////////////////////
 object permissionNE extends DomainPredicate {
+  override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "!="
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)

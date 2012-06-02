@@ -5,8 +5,8 @@ import silAST.source.SourceLocation
 import silAST.programs.symbols.Variable
 
 sealed class LogicalVariable private[silAST]
-(val name: String, val dataType: DataType)
-(val sourceLocation: SourceLocation)
+  (val name: String, val dataType: DataType)
+  (val sourceLocation: SourceLocation,val comment:List[String])
   extends Variable {
   override def toString: String = name
 

@@ -7,6 +7,8 @@ sealed abstract class BinaryConnective extends ASTNode {
 
   override def toString = name
 
+  override def comment = List()
+
   def name: String
 
 }

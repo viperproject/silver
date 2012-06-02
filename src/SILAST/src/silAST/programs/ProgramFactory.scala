@@ -11,7 +11,7 @@ import silAST.methods.{ScopeFactory, MethodFactory}
 final class ProgramFactory
 (
   val name: String
-  )(val sourceLocation: SourceLocation)
+  )(val sourceLocation: SourceLocation,val comment:List[String])
   extends NodeFactory
   with DataTypeFactory
   with ExpressionFactory
@@ -29,42 +29,42 @@ final class ProgramFactory
     for (ff <- functionFactories) ff.compile()
 
 
-    val program = new Program(name, domains, fields, functions, predicates, (for (mf <- methodFactories) yield mf.method).toSet, this)(sourceLocation)
+    val program = new Program(name, domains, fields, functions, predicates, (for (mf <- methodFactories) yield mf.method).toSet, this)(sourceLocation,comment)
     //    scope = Some[Scope](program)
     program
   }
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def getDomainFactory(name: String, typeVariableNames: Seq[(SourceLocation, String)])(implicit sourceLocation: SourceLocation): DomainTemplateFactory = {
+  def getDomainFactory(name: String, typeVariableNames: Seq[(SourceLocation, String,List[String])], sourceLocation: SourceLocation, comment:List[String]=Nil): DomainTemplateFactory = {
     require(domainFactories.forall(_.name != name))
-    val result = new DomainTemplateFactory(this, name, typeVariableNames)(sourceLocation)
+    val result = new DomainTemplateFactory(this, name, typeVariableNames)(sourceLocation,comment)
     domainFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getMethodFactory(name: String)(sourceLocation: SourceLocation): MethodFactory = {
+  def getMethodFactory(name: String)(sourceLocation: SourceLocation,comment : List[String] = Nil): MethodFactory = {
     require(methodFactories.forall(_.name != name))
-    val result = new MethodFactory(this, name)(sourceLocation)
+    val result = new MethodFactory(this, name)(sourceLocation,comment)
     methodFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getPredicateFactory(name: String)(sourceLocation: SourceLocation): PredicateFactory = {
+  def getPredicateFactory(name: String,sourceLocation: SourceLocation,comment:List[String] = Nil): PredicateFactory = {
     require(predicateFactories.forall(_.name != name))
-    val result = new PredicateFactory(this, name)(sourceLocation)
+    val result = new PredicateFactory(this, name)(sourceLocation,comment)
     predicateFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getFunctionFactory(name: String, params: Seq[(SourceLocation, String, DataType)], resultType: DataType)(sourceLocation: SourceLocation): FunctionFactory = {
+  def getFunctionFactory(name: String, params: Seq[(SourceLocation, String, DataType)], resultType: DataType,sourceLocation: SourceLocation,comment:List[String] = Nil): FunctionFactory = {
     require(functionFactories.forall(_.name != name))
     require(params.forall(dataTypes contains _._3))
     require(params.forall((x) => params.forall((y) => x == y || x._2 != y._2)))
-    val result = new FunctionFactory(this, name, params, resultType)(sourceLocation)
+    val result = new FunctionFactory(this, name, params, resultType)(sourceLocation,comment)
     functionFactories += result
     result
   }
@@ -87,8 +87,8 @@ final class ProgramFactory
     require(dataType.freeTypeVariables.isEmpty)
     defineField(
       dataType match {
-        case d: NonReferenceDataType => new NonReferenceField(name, d)(sourceLocation)
-        case r: ReferenceDataType => new ReferenceField(name)(sourceLocation)
+        case d: NonReferenceDataType => new NonReferenceField(name, d)(sourceLocation,"lala" :: Nil)
+        case r: ReferenceDataType => new ReferenceField(name)(sourceLocation,"lalo" :: Nil)
         case _ => throw new Exception("Tried to create field of non groud type")
       }
     )

@@ -9,6 +9,7 @@ sealed class DataTypeSequence private[silAST](
                                                ) extends ASTNode with Seq[DataType] {
   def freeTypeVariables = (for (t <- dataTypes) yield t.freeTypeVariables).flatten
 
+  override val comment = Nil
   override val sourceLocation: SourceLocation = if (dataTypes.isEmpty) noLocation else dataTypes.head.sourceLocation
 
   def isCompatible(other: DataTypeSequence): Boolean =

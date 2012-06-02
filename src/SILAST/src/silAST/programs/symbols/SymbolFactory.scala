@@ -7,11 +7,13 @@ import silAST.types.referenceType
 
 
 abstract class SymbolFactory[T] private[silAST](
-                                                 private val programFactory: ProgramFactory
-                                                 ) extends NodeFactory with ExpressionFactory {
+       private val programFactory: ProgramFactory
+       )
+  extends NodeFactory
+  with ExpressionFactory {
   def compile(): T
 
-  val thisVar = new ProgramVariable("this", referenceType)(noLocation)
+  val thisVar = new ProgramVariable("this", referenceType)(noLocation,Nil)
 
   protected[silAST] override def programVariables = Set(thisVar)
 

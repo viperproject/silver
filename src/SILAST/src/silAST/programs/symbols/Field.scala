@@ -13,15 +13,13 @@ sealed abstract class Field private[silAST] extends ASTNode {
 }
 
 final case class ReferenceField private[silAST](
-
-                                                 name: String
-                                                 )(override val sourceLocation: SourceLocation) extends Field {
+     name: String
+     )(override val sourceLocation: SourceLocation,val comment:List[String]) extends Field {
   override val dataType = referenceType
 }
 
 final case class NonReferenceField private[silAST](
-
-                                                    name: String,
-                                                    dataType: NonReferenceDataType
-                                                    )(override val sourceLocation: SourceLocation) extends Field {
+      name: String,
+      dataType: NonReferenceDataType
+      )(override val sourceLocation: SourceLocation,val comment:List[String]) extends Field {
 }

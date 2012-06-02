@@ -12,7 +12,7 @@ final class Method private[silAST](
                                     val name: String,
                                     val signature: MethodSignature,
                                     override val factory: MethodFactory
-                                    )(val sourceLocation: SourceLocation)
+                                    )(val sourceLocation: SourceLocation,override val comment : List[String])
   extends Scope {
   override val parentScope = None
 

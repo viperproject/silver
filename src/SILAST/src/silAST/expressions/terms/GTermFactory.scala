@@ -10,15 +10,6 @@ import silAST.types.booleanType
 
 protected[silAST] trait GTermFactory
   extends NodeFactory {
-  /*  /////////////////////////////////////////////////////////////////////////
-  def migrate(t : Term)
-  {
-    t match {
-      case gt : GTerm => migrate(gt)
-      case _ => throw new Exception("Tried to migrate invalid expression " + t.toString)
-    }
-  }
-  */
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] def migrate(t: GTerm) {
     if (terms contains t)
@@ -40,24 +31,24 @@ protected[silAST] trait GTermFactory
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeIntegerLiteralTerm(v: BigInt)(sourceLocation: SourceLocation): IntegerLiteralTerm = {
-    addTerm(new IntegerLiteralTerm(v)(sourceLocation))
+  def makeIntegerLiteralTerm(v: BigInt,sourceLocation: SourceLocation,comment : List[String] =  Nil): IntegerLiteralTerm = {
+    addTerm(new IntegerLiteralTerm(v)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeGDomainFunctionApplicationTerm(f: DomainFunction, a: GTermSequence)(sourceLocation: SourceLocation): GDomainFunctionApplicationTerm = {
+  def makeGDomainFunctionApplicationTerm(f: DomainFunction, a: GTermSequence,sourceLocation: SourceLocation,comment : List[String] = Nil): GDomainFunctionApplicationTerm = {
     a.foreach(migrate(_))
     require(domainFunctions contains f)
-    addTerm(new GDomainFunctionApplicationTerm(f, a)(sourceLocation))
+    addTerm(new GDomainFunctionApplicationTerm(f, a)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeGIfThenElseTerm(c: GTerm, p: GTerm, n: GTerm)(sourceLocation: SourceLocation): GIfThenElseTerm = {
+  def makeGIfThenElseTerm(c: GTerm, p: GTerm, n: GTerm,sourceLocation: SourceLocation,comment : List[String] = Nil): GIfThenElseTerm = {
     migrate(c)
     migrate(p)
     migrate(n)
     require(c.dataType == booleanType)
-    addTerm(new GIfThenElseTerm(c, p, n)(sourceLocation))
+    addTerm(new GIfThenElseTerm(c, p, n)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////

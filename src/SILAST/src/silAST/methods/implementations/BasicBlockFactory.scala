@@ -16,8 +16,8 @@ class BasicBlockFactory private[silAST]
   val cfg: ControlFlowGraph,
 
   override val name: String
-  )(override val sourceLocation: SourceLocation)
-  extends BlockFactory(cfg.scope, name)(sourceLocation)
+  )(override val sourceLocation: SourceLocation,comment : List[String])
+  extends BlockFactory(cfg.scope, name)(sourceLocation,comment)
   with NodeFactory
   with ExpressionFactory {
   //////////////////////////////////////////////////////////////////
@@ -36,8 +36,8 @@ class BasicBlockFactory private[silAST]
                   targets: ProgramVariableSequence,
                   receiver: PTerm,
                   methodFactory: MethodFactory,
-                  arguments: PTermSequence
-                  )(sourceLocation: SourceLocation) {
+                  arguments: PTermSequence,
+                  sourceLocation: SourceLocation,comment : List[String] = Nil) {
     require(programVariableSequences contains targets)
     require(targets.forall(programVariables contains _))
     require(scope.factory.methodFactories contains methodFactory)
@@ -45,51 +45,52 @@ class BasicBlockFactory private[silAST]
     migrateP(receiver)
     arguments foreach migrateP
 
-    block.appendStatement(new CallStatement(targets, methodFactory.method, PTermSequence(receiver :: arguments.toList: _*))(sourceLocation))
+    block.appendStatement(new CallStatement(targets, methodFactory.method, PTermSequence(receiver :: arguments.toList: _*))
+      (sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendInhale(
-
-                    e: Expression
-                    )(sourceLocation: SourceLocation) {
+                    e: Expression,
+                    sourceLocation: SourceLocation,
+                    comment : List[String] = Nil) {
     migrate(e)
 
-    block.appendStatement(new InhaleStatement(e)(sourceLocation))
+    block.appendStatement(new InhaleStatement(e)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendExhale(
 
-                    e: Expression
-                    )(sourceLocation: SourceLocation) {
-    appendExhale(e,None)(sourceLocation)
+                    e: Expression,
+                    sourceLocation: SourceLocation) {
+    appendExhale(e,None,sourceLocation)
   }
 
-  def appendExhale(e:Expression, message : Option[String])(sourceLocation:SourceLocation){
+  def appendExhale(e:Expression, message : Option[String],sourceLocation:SourceLocation,comment : List[String] = Nil){
     migrate(e)
 
-    block.appendStatement(new ExhaleStatement(e,message)(sourceLocation))
+    block.appendStatement(new ExhaleStatement(e,message)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendFold(
-
-                  e: PredicateExpression
-                  )(sourceLocation: SourceLocation) {
+                  e: PredicateExpression,
+                  sourceLocation: SourceLocation,
+                  comment : List[String] = Nil) {
     migrate(e)
 
-    block.appendStatement(new FoldStatement(e)(sourceLocation))
+    block.appendStatement(new FoldStatement(e)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendUnfold(
-
-                    e: PredicateExpression
-                    )(sourceLocation: SourceLocation) {
+                    e: PredicateExpression,
+                    sourceLocation: SourceLocation,
+                    comment : List[String] = Nil) {
     migrate(e)
 
-    block.appendStatement(new UnfoldStatement(e)(sourceLocation))
+    block.appendStatement(new UnfoldStatement(e)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -98,41 +99,40 @@ class BasicBlockFactory private[silAST]
 
   //////////////////////////////////////////////////////////////////
   def appendAssignment(
-
                         target: ProgramVariable,
                         source: PTerm
-                        )(sourceLocation: SourceLocation) = {
+                        ,sourceLocation: SourceLocation,comment : List[String] = Nil) = {
     require(writableVariables contains target) //no writing to inputs
 
     migrateP(source)
-    block.appendStatement(new AssignmentStatement(target, source)(sourceLocation))
+    block.appendStatement(new AssignmentStatement(target, source)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendFieldAssignment(
-
                              target: ProgramVariable,
                              field: Field,
                              source: PTerm
-                             )(sourceLocation: SourceLocation) {
+                             ,sourceLocation: SourceLocation,
+                             comment : List[String] = Nil) {
     require(programVariables contains target)
     require(fields contains field)
 
     migrateP(source)
 
-    block.appendStatement(new FieldAssignmentStatement(target, field, source)(sourceLocation))
+    block.appendStatement(new FieldAssignmentStatement(target, field, source)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////
   def appendNew(
-
                  target: ProgramVariable,
-                 dataType: DataType
-                 )(sourceLocation: SourceLocation) {
+                 dataType: DataType,
+                 sourceLocation: SourceLocation,
+                 comment : List[String] = Nil) {
     require(writableVariables contains target)
     require(scope.factory.dataTypes contains dataType)
 
-    block.appendStatement(new NewStatement(target, dataType)(sourceLocation))
+    block.appendStatement(new NewStatement(target, dataType)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////
@@ -163,6 +163,6 @@ class BasicBlockFactory private[silAST]
 
   override def typeVariables = Set()
 
-  override val block: BasicBlock = new BasicBlock(cfg, scope, name, this)(sourceLocation)
+  override val block: BasicBlock = new BasicBlock(cfg, scope, name, this)(sourceLocation,comment)
 
 }

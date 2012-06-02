@@ -37,19 +37,19 @@ final class CFGFactory(
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def addBasicBlock(name: String)(sourceLocation: SourceLocation): BasicBlockFactory = {
+  def addBasicBlock(name: String,sourceLocation: SourceLocation,comment : List[String] = Nil): BasicBlockFactory = {
     require(blocks.forall(_.name != name))
-    val result = new BasicBlockFactory(cfg, name)(sourceLocation)
+    val result = new BasicBlockFactory(cfg, name)(sourceLocation,comment)
     blocks += result
     cfg.addNode(result.block)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def addLoopBlock(name: String, condition: PExpression)(sourceLocation: SourceLocation): LoopBlockFactory = {
+  def addLoopBlock(name: String, condition: PExpression,sourceLocation: SourceLocation,comment : List[String] = Nil): LoopBlockFactory = {
     require(blocks.forall(_.name != name))
     scope.factory.migrateP(condition)
-    val result = new LoopBlockFactory(cfg, scope, implementation, name, condition)(sourceLocation)
+    val result = new LoopBlockFactory(cfg, scope, implementation, name, condition)(sourceLocation,comment)
     blocks += result
     cfg.addNode(result.block)
     result
@@ -60,7 +60,7 @@ final class CFGFactory(
   val blocks = new HashSet[BlockFactory]
   var startNode: Option[BasicBlockFactory] = None
   var endNode: Option[BasicBlockFactory] = None
-  private[silAST] val cfg = new ControlFlowGraph(scope, implementation)(sourceLocation)
+  private[silAST] val cfg = new ControlFlowGraph(scope, implementation)(sourceLocation,Nil)
 
 
 }

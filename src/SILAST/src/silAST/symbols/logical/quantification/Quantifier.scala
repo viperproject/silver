@@ -4,6 +4,9 @@ import silAST.ASTNode
 import silAST.source.SourceLocation
 
 sealed abstract class Quantifier extends ASTNode
+{
+  override def comment = List()
+}
 
 sealed case class Forall()(override val sourceLocation: SourceLocation) extends Quantifier {
   override def toString: String = "forall"

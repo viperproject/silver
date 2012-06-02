@@ -13,7 +13,7 @@ import silAST.types.DataType
 class ImplementationFactory private[silAST]
 (
   private[silAST] val methodFactory: MethodFactory
-  )(sourceLocation: SourceLocation)
+  )(sourceLocation: SourceLocation,comment : List[String])
   extends NodeFactory
   with ExpressionFactory
   with ScopeFactory {
@@ -29,13 +29,13 @@ class ImplementationFactory private[silAST]
     require(programVariables.forall(_.name != name))
     require(dataTypes contains dataType)
 
-    val result = new ProgramVariable(name, dataType)(sourceLocation)
+    val result = new ProgramVariable(name, dataType)(sourceLocation,Nil)
     implementation.pLocals.append(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  private[silAST] val implementation = new Implementation(methodFactory.method, this)(sourceLocation)
+  private[silAST] val implementation = new Implementation(methodFactory.method, this)(sourceLocation,comment)
   /////////////////////////////////////////////////////////////////////////////////////
   val cfgFactory = new CFGFactory(implementation, implementation)(sourceLocation)
 

@@ -63,9 +63,9 @@ trait DomainTemplate extends GDomain {
 ////////////////////////////////////////////////////////////////////////
 private[silAST] class DomainTemplateC(
                                        val name: String,
-                                       typeVariableNames: Seq[(SourceLocation, String)]
+                                       typeVariableNames: Seq[(SourceLocation, String,List[String])]
                                        )
-                                     (val sourceLocation: SourceLocation)
+                                     (val sourceLocation: SourceLocation,override val comment : List[String])
   extends DomainTemplate {
   //No duplicate type variable name
   require(typeVariableNames.forall((s) => typeVariableNames.count(_._2 == s._2) == 1))
@@ -73,7 +73,7 @@ private[silAST] class DomainTemplateC(
   override def fullName: String =
     name + (if (typeParameters.length == 0) "" else typeParameters.mkString("[", ",", "]"))
 
-  val typeParameters: Seq[TypeVariable] = for (n <- typeVariableNames) yield new TypeVariable(n._2, this)(n._1)
+  val typeParameters: Seq[TypeVariable] = for (n <- typeVariableNames) yield new TypeVariable(n._2, this)(n._1,n._3)
   val freeTypeVariables = typeParameters.toSet
 
   def functions: Set[DomainFunction] = pFunctions
@@ -88,8 +88,8 @@ private[silAST] class DomainTemplateC(
 
   override def instances: Set[Domain] = pInstances.values.toSet
 
-  override lazy val domain: Domain = getInstance(DataTypeSequence((for (t <- typeParameters) yield VariableType(t)(t.sourceLocation)): _*))
-  private[silAST] lazy val dataType = NonReferenceDataType(domain)(domain.sourceLocation)
+  override lazy val domain: Domain = getInstance(DataTypeSequence((for (t <- typeParameters) yield VariableType(t)(t.sourceLocation,t.comment)): _*))
+  private[silAST] lazy val dataType = NonReferenceDataType(domain)(domain.sourceLocation,domain.comment)
 
   override def getType = dataType
 
@@ -105,7 +105,7 @@ private[silAST] class DomainTemplateC(
   }
 
   def substitute(s: TypeVariableSubstitution): Domain = {
-    val typeArguments = new DataTypeSequence((for (t <- typeParameters) yield s.mapType(t, new VariableType(t)(t.sourceLocation))))
+    val typeArguments = new DataTypeSequence((for (t <- typeParameters) yield s.mapType(t, new VariableType(t)(t.sourceLocation,t.comment))))
     getInstance(typeArguments)
   }
 
@@ -121,15 +121,18 @@ private[silAST] final class DomainInstance(
                                             val typeArguments: DataTypeSequence
                                             )
                                           (val sourceLocation: SourceLocation)
-  extends Domain {
+  extends Domain
+{
   protected[silAST] def typeHeaderString: String = ""
+
+  override val comment = Nil
 
   override def fullName: String = name
 
   val name: String = template.name + typeArguments.toString
   val substitution = new TypeSubstitutionC(template.typeParameters.zip(typeArguments).toSet, Set(), this)(noLocation)
 
-  val getType: NonReferenceDataType = new NonReferenceDataType(this)(sourceLocation)
+  val getType: NonReferenceDataType = new NonReferenceDataType(this)(sourceLocation,comment)
 
   override lazy val functions = for (f <- template.functions) yield f.substitute(substitution)
   override lazy val predicates = (for (p <- template.predicates) yield p.substitute(substitution)).toSet

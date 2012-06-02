@@ -11,6 +11,7 @@ sealed abstract class UnaryConnective private[silAST]() extends ASTNode {
 
 final case class Not()(override val sourceLocation: SourceLocation) extends UnaryConnective {
 
+  override val comment = Nil
   def name: String = "!"
 
 }

@@ -41,8 +41,9 @@ sealed trait AtomicTerm extends Term {
 ///////////////////////////////////////////////////////////////////////////
 sealed case class IfThenElseTerm private[silAST]
 (condition: Term, pTerm: Term, nTerm: Term)
-(override val sourceLocation: SourceLocation)
-  extends Term {
+(override val sourceLocation: SourceLocation, override val comment : List[String])
+  extends Term
+{
   require(condition.dataType == booleanType)
   require(pTerm.dataType.isCompatible(nTerm.dataType))
   require(nTerm.dataType.isCompatible(pTerm.dataType))
@@ -53,20 +54,21 @@ sealed case class IfThenElseTerm private[silAST]
   override lazy val subTerms: Seq[Term] = List(condition, pTerm, nTerm)
 
   def substitute(s: TypeVariableSubstitution): IfThenElseTerm =
-    new IfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+    new IfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: LogicalVariableSubstitution): IfThenElseTerm =
-    new IfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+    new IfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: ProgramVariableSubstitution): IfThenElseTerm =
-    new IfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+    new IfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 sealed case class OldTerm private[silAST]
-(term: Term)
-(override val sourceLocation: SourceLocation)
+    (term: Term)
+    (override val sourceLocation: SourceLocation, override val comment : List[String])
   extends ASTNode
-  with Term {
+  with Term
+{
   override val toString: String = "old(" + term.toString + ")"
 
   override val subTerms: Seq[Term] = List(term)
@@ -78,21 +80,22 @@ sealed case class OldTerm private[silAST]
   override def programVariables = term.programVariables
 
   def substitute(s: TypeVariableSubstitution): OldTerm =
-    new OldTerm(term.substitute(s))(s.sourceLocation(sourceLocation))
+    new OldTerm(term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: LogicalVariableSubstitution): OldTerm =
-    new OldTerm(term.substitute(s))(s.sourceLocation(sourceLocation))
+    new OldTerm(term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: ProgramVariableSubstitution): OldTerm =
-    new OldTerm(term.substitute(s))(s.sourceLocation(sourceLocation))
+    new OldTerm(term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class DomainFunctionApplicationTerm private[silAST]
-(private val f: DomainFunction, private val as: TermSequence)
-(override val sourceLocation: SourceLocation)
-  extends ASTNode with Term {
+    (private val f: DomainFunction, private val as: TermSequence)
+    (override val sourceLocation: SourceLocation, override val comment : List[String])
+  extends ASTNode with Term
+{
   require(f != null)
   require(as != null)
   require(as.forall(_ != null))
@@ -121,21 +124,22 @@ sealed case class DomainFunctionApplicationTerm private[silAST]
   override def programVariables = arguments.programVariables
 
   def substitute(s: TypeVariableSubstitution): DomainFunctionApplicationTerm =
-    new DomainFunctionApplicationTerm(function.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation))
+    new DomainFunctionApplicationTerm(function.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: LogicalVariableSubstitution): DomainFunctionApplicationTerm =
-    new DomainFunctionApplicationTerm(function, arguments.substitute(s))(s.sourceLocation(sourceLocation))
+    new DomainFunctionApplicationTerm(function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: ProgramVariableSubstitution): DomainFunctionApplicationTerm =
-    new DomainFunctionApplicationTerm(function, arguments.substitute(s))(s.sourceLocation(sourceLocation))
+    new DomainFunctionApplicationTerm(function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class FunctionApplicationTerm private[silAST]
-(receiver: Term, function: Function, arguments: TermSequence)
-(override val sourceLocation: SourceLocation)
-  extends ASTNode with Term {
+    (receiver: Term, function: Function, arguments: TermSequence)
+    (override val sourceLocation: SourceLocation, override val comment : List[String])
+  extends ASTNode with Term
+{
   require(receiver.dataType == referenceType)
   require(function.signature.parameters.length == arguments.length)
   require(function.signature.parameters.zip(arguments).forall((x) => x._2.dataType.isCompatible(x._1.dataType)),
@@ -158,23 +162,24 @@ sealed case class FunctionApplicationTerm private[silAST]
 
   def substitute(s: TypeVariableSubstitution): FunctionApplicationTerm =
     new FunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(
-      s.sourceLocation(sourceLocation))
+      s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: LogicalVariableSubstitution): FunctionApplicationTerm =
     new FunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(
-      s.sourceLocation(sourceLocation))
+      s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: ProgramVariableSubstitution): FunctionApplicationTerm =
     new FunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(
-      s.sourceLocation(sourceLocation))
+      s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class UnfoldingTerm private[silAST]
 (receiver: Term, predicate: Predicate, term: Term)
-(override val sourceLocation: SourceLocation)
-  extends ASTNode with Term {
+(override val sourceLocation: SourceLocation, override val comment : List[String])
+  extends ASTNode with Term
+{
   require(receiver.dataType == referenceType)
 
   override lazy val toString: String = "unfolding " + receiver.toString + "." + predicate.name + " in (" + term.toString + ")"
@@ -189,17 +194,17 @@ sealed case class UnfoldingTerm private[silAST]
 
   def substitute(s: TypeVariableSubstitution): UnfoldingTerm =
     new UnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(
-      s.sourceLocation(sourceLocation)
+      s.sourceLocation(sourceLocation),Nil
     )
 
   def substitute(s: LogicalVariableSubstitution): UnfoldingTerm =
     new UnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(
-      s.sourceLocation(sourceLocation)
+      s.sourceLocation(sourceLocation),Nil
     )
 
   def substitute(s: ProgramVariableSubstitution): UnfoldingTerm =
     new UnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(
-      s.sourceLocation(sourceLocation)
+      s.sourceLocation(sourceLocation),Nil
     )
 }
 
@@ -211,8 +216,9 @@ sealed case class UnfoldingTerm private[silAST]
 ///////////////////////////////////////////////////////////////////////////
 sealed case class CastTerm protected[silAST]
 (operand1: Term, newType: DataType)
-(override val sourceLocation: SourceLocation)
-  extends ASTNode with Term {
+(override val sourceLocation: SourceLocation, override val comment : List[String])
+  extends ASTNode with Term
+{
   override val toString: String = "(" + operand1 + ") : " + newType.toString
 
   override lazy val subTerms: Seq[Term] = operand1 :: Nil
@@ -224,13 +230,13 @@ sealed case class CastTerm protected[silAST]
   override def programVariables = operand1.programVariables
 
   def substitute(s: TypeVariableSubstitution): CastTerm =
-    new CastTerm(operand1.substitute(s), newType.substitute(s))(s.sourceLocation(sourceLocation))
+    new CastTerm(operand1.substitute(s), newType.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: LogicalVariableSubstitution): CastTerm =
-    new CastTerm(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation))
+    new CastTerm(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: ProgramVariableSubstitution): CastTerm =
-    new CastTerm(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation))
+    new CastTerm(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation),Nil)
 }
 
 
@@ -238,8 +244,9 @@ sealed case class CastTerm protected[silAST]
 ///////////////////////////////////////////////////////////////////////////
 sealed case class FieldReadTerm protected[silAST]
 (location: Term, field: Field)
-(override val sourceLocation: SourceLocation)
-  extends ASTNode with Term {
+(override val sourceLocation: SourceLocation, override val comment : List[String])
+  extends ASTNode with Term
+{
   require(location.dataType == referenceType)
 
   override lazy val toString: String = location.toString + "." + field.name
@@ -252,21 +259,22 @@ sealed case class FieldReadTerm protected[silAST]
   override def programVariables = location.programVariables
 
   def substitute(s: TypeVariableSubstitution): FieldReadTerm =
-    new FieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation))
+    new FieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: LogicalVariableSubstitution): FieldReadTerm =
-    new FieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation))
+    new FieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: ProgramVariableSubstitution): FieldReadTerm =
-    new FieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation))
+    new FieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class PermTerm protected[silAST]
-(location: Term, field: Field)
-(override val sourceLocation: SourceLocation)
-  extends ASTNode with Term {
+    (location: Term, field: Field)
+    (override val sourceLocation: SourceLocation, override val comment : List[String])
+  extends ASTNode with Term
+{
   require(location.dataType == referenceType)
 
   override lazy val toString: String = "perm(" + location.toString + "." + field.name + ")";
@@ -279,91 +287,94 @@ sealed case class PermTerm protected[silAST]
   override def programVariables = location.programVariables
 
   def substitute(s: TypeVariableSubstitution): PermTerm =
-    new PermTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation))
+    new PermTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: LogicalVariableSubstitution): PermTerm =
-    new PermTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation))
+    new PermTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: ProgramVariableSubstitution): PermTerm =
-    new PermTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation))
+    new PermTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 case class FullPermissionTerm()
-                             (override val sourceLocation: SourceLocation)
-  extends LiteralTerm
-  with AtomicTerm {
+    (sourceLocation: SourceLocation, comment : List[String])
+  extends LiteralTerm()(sourceLocation,comment)
+  with AtomicTerm
+{
   override def toString: String = "write"
 
   override val gSubTerms = Seq[GTerm]()
   override val dataType = permissionType
 
-  override def substitute(s: TypeVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: TypeVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: LogicalVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: LogicalVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: DLogicalVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: DLogicalVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: PLogicalVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: PLogicalVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: GLogicalVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: GLogicalVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: ProgramVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: ProgramVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: PProgramVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: PProgramVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 case class NoPermissionTerm()
-                           (override val sourceLocation: SourceLocation)
-  extends LiteralTerm
-  with AtomicTerm {
+                           (sourceLocation: SourceLocation, comment : List[String])
+  extends LiteralTerm()(sourceLocation,comment)
+  with AtomicTerm
+{
   override def toString: String = "0"
 
   override val gSubTerms = Seq()
   override val dataType = permissionType
 
-  override def substitute(s: TypeVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: TypeVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: LogicalVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: LogicalVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: DLogicalVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: DLogicalVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: PLogicalVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: PLogicalVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: GLogicalVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: GLogicalVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: ProgramVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: ProgramVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: PProgramVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: PProgramVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 case class EpsilonPermissionTerm()
-                                (override val sourceLocation: SourceLocation)
-  extends LiteralTerm
-  with AtomicTerm {
+                                (sourceLocation: SourceLocation, comment : List[String])
+extends LiteralTerm()(sourceLocation,comment)
+  with AtomicTerm
+{
   override def toString: String = "E"
 
   override val gSubTerms = Seq()
   override val dataType = permissionType
 
-  override def substitute(s: TypeVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: TypeVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: LogicalVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: LogicalVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: DLogicalVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: DLogicalVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: PLogicalVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: PLogicalVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: GLogicalVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: GLogicalVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: ProgramVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: ProgramVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
-  override def substitute(s: PProgramVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation))
+  override def substitute(s: PProgramVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -374,7 +385,8 @@ case class EpsilonPermissionTerm()
 ///////////////////////////////////////////////////////////////////////////
 //Program terms
 ///////////////////////////////////////////////////////////////////////////
-sealed trait PTerm extends Term {
+sealed trait PTerm extends Term
+{
   override lazy val subTerms: Seq[PTerm] = pSubTerms
 
   protected def pSubTerms: Seq[PTerm]
@@ -392,7 +404,8 @@ sealed trait PTerm extends Term {
 ///////////////////////////////////////////////////////////////////////////
 sealed trait PIfThenElseTerm
   extends IfThenElseTerm
-  with PTerm {
+  with PTerm
+{
   override val condition: PTerm = pCondition
   override val pTerm: PTerm = ppTerm
   override val nTerm: PTerm = pnTerm
@@ -404,13 +417,13 @@ sealed trait PIfThenElseTerm
   protected[silAST] def pnTerm: PTerm
 
   override def substitute(s: TypeVariableSubstitution): PIfThenElseTerm =
-    new PIfThenElseTermC(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+    new PIfThenElseTermC(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: PLogicalVariableSubstitution): PIfThenElseTerm =
-    new PIfThenElseTermC(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+    new PIfThenElseTermC(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: PProgramVariableSubstitution): PIfThenElseTerm =
-    new PIfThenElseTermC(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+    new PIfThenElseTermC(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 object PIfThenElseTerm {
@@ -422,9 +435,10 @@ object PIfThenElseTerm {
 ///////////////////////////////////////////////////////////////////////////
 private[silAST] final class PIfThenElseTermC
 (override val pCondition: PTerm, override val ppTerm: PTerm, override val pnTerm: PTerm)
-(override val sourceLocation: SourceLocation)
-  extends IfThenElseTerm(pCondition, ppTerm, pnTerm)(sourceLocation)
-  with PIfThenElseTerm {
+(override val sourceLocation: SourceLocation, comment : List[String])
+  extends IfThenElseTerm(pCondition, ppTerm, pnTerm)(sourceLocation,comment)
+  with PIfThenElseTerm
+{
   require(condition.dataType == booleanType)
   require(pTerm.dataType.isCompatible(nTerm.dataType))
   require(nTerm.dataType.isCompatible(pTerm.dataType))
@@ -436,10 +450,11 @@ private[silAST] final class PIfThenElseTermC
 ///////////////////////////////////////////////////////////////////////////
 sealed case class ProgramVariableTerm protected[silAST]
 (variable: ProgramVariable)
-(override val sourceLocation: SourceLocation)
+(override val sourceLocation: SourceLocation, override val comment : List[String])
   extends ASTNode
   with PTerm
-  with AtomicTerm {
+  with AtomicTerm
+{
   override val toString: String = variable.name
   override val pSubTerms = Nil
 
@@ -447,11 +462,11 @@ sealed case class ProgramVariableTerm protected[silAST]
 
   override def programVariables = Set(variable)
 
-  def substitute(s: TypeVariableSubstitution): ProgramVariableTerm = new ProgramVariableTerm(variable)(s.sourceLocation(sourceLocation))
+  def substitute(s: TypeVariableSubstitution): ProgramVariableTerm = new ProgramVariableTerm(variable)(s.sourceLocation(sourceLocation),Nil)
 
-  def substitute(s: LogicalVariableSubstitution): ProgramVariableTerm = new ProgramVariableTerm(variable)(s.sourceLocation(sourceLocation))
+  def substitute(s: LogicalVariableSubstitution): ProgramVariableTerm = new ProgramVariableTerm(variable)(s.sourceLocation(sourceLocation),Nil)
 
-  def substitute(s: PLogicalVariableSubstitution): ProgramVariableTerm = new ProgramVariableTerm(variable)(s.sourceLocation(sourceLocation))
+  def substitute(s: PLogicalVariableSubstitution): ProgramVariableTerm = new ProgramVariableTerm(variable)(s.sourceLocation(sourceLocation),Nil)
 
   //Must have mapping
   def substitute(s: ProgramVariableSubstitution): Term = s.mapVariable(variable).get
@@ -463,39 +478,41 @@ sealed case class ProgramVariableTerm protected[silAST]
 ///////////////////////////////////////////////////////////////////////////
 final class PUnfoldingTerm private[silAST]
 (override val receiver: PTerm, predicate: Predicate, override val term: PTerm)
-(sourceLocation: SourceLocation)
-  extends UnfoldingTerm(receiver, predicate, term)(sourceLocation) with PTerm {
+(sourceLocation: SourceLocation, comment : List[String])
+  extends UnfoldingTerm(receiver, predicate, term)(sourceLocation,comment) with PTerm
+{
   require(receiver.dataType == referenceType)
 
   override val pSubTerms: Seq[PTerm] = List(receiver, term)
   //  override def substitute(s: LogicalVariableSubstitution): UnfoldingTerm = new UnfoldingTerm(sourceLocation,receiver.substitute(s),predicate,term.substitute(s))
   override def substitute(s: TypeVariableSubstitution): PUnfoldingTerm =
-    new PUnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(s.sourceLocation(sourceLocation))
+    new PUnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PLogicalVariableSubstitution): PUnfoldingTerm =
-    new PUnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(s.sourceLocation(sourceLocation))
+    new PUnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: PProgramVariableSubstitution): PUnfoldingTerm =
-    new PUnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(s.sourceLocation(sourceLocation))
+    new PUnfoldingTerm(receiver.substitute(s), predicate, term.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 final class PFunctionApplicationTerm private[silAST]
 (override val receiver: PTerm, function: Function, override val arguments: PTermSequence)
-(sourceLocation: SourceLocation)
-  extends FunctionApplicationTerm(receiver, function, arguments)(sourceLocation)
-  with PTerm {
+(sourceLocation: SourceLocation, comment : List[String])
+  extends FunctionApplicationTerm(receiver, function, arguments)(sourceLocation,comment)
+  with PTerm
+{
   override val pSubTerms: Seq[PTerm] = List(receiver) ++ arguments
 
   override def substitute(s: TypeVariableSubstitution): PFunctionApplicationTerm =
-    new PFunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(s.sourceLocation(sourceLocation))
+    new PFunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PLogicalVariableSubstitution): PFunctionApplicationTerm =
-    new PFunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(s.sourceLocation(sourceLocation))
+    new PFunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PProgramVariableSubstitution): PFunctionApplicationTerm =
-    new PFunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(s.sourceLocation(sourceLocation))
+    new PFunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 object PFunctionApplicationTerm {
@@ -507,19 +524,20 @@ object PFunctionApplicationTerm {
 ///////////////////////////////////////////////////////////////////////////
 sealed trait PDomainFunctionApplicationTerm
   extends DomainFunctionApplicationTerm
-  with PTerm {
+  with PTerm
+{
   override def arguments: PTermSequence = pArguments // needs to be a `def`, otherwise it is initialized to `null`.
 
   protected def pArguments: PTermSequence
 
   override def substitute(s: TypeVariableSubstitution): PDomainFunctionApplicationTerm =
-    new PDomainFunctionApplicationTermC(function.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation))
+    new PDomainFunctionApplicationTermC(function.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PLogicalVariableSubstitution): PDomainFunctionApplicationTerm =
-    new PDomainFunctionApplicationTermC(function, arguments.substitute(s))(s.sourceLocation(sourceLocation))
+    new PDomainFunctionApplicationTermC(function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PProgramVariableSubstitution): PDomainFunctionApplicationTerm =
-    new PDomainFunctionApplicationTermC(function, arguments.substitute(s))(s.sourceLocation(sourceLocation))
+    new PDomainFunctionApplicationTermC(function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 object PDomainFunctionApplicationTerm {
@@ -529,9 +547,10 @@ object PDomainFunctionApplicationTerm {
 
 private[silAST] final class PDomainFunctionApplicationTermC
 (function: DomainFunction, arguments: PTermSequence)
-(sourceLocation: SourceLocation)
-  extends DomainFunctionApplicationTerm(function, arguments)(sourceLocation)
-  with PDomainFunctionApplicationTerm {
+(sourceLocation: SourceLocation, comment : List[String])
+  extends DomainFunctionApplicationTerm(function, arguments)(sourceLocation,comment)
+  with PDomainFunctionApplicationTerm
+{
   override val pSubTerms = arguments
   override val pArguments = arguments
 }
@@ -540,19 +559,20 @@ private[silAST] final class PDomainFunctionApplicationTermC
 ///////////////////////////////////////////////////////////////////////////
 final class PCastTerm private[silAST]
 (override val operand1: PTerm, override val newType: DataType)
-(sourceLocation: SourceLocation)
-  extends CastTerm(operand1, newType)(sourceLocation)
-  with PTerm {
+(sourceLocation: SourceLocation, comment : List[String])
+  extends CastTerm(operand1, newType)(sourceLocation,comment)
+  with PTerm
+{
   override val pSubTerms: Seq[PTerm] = List(operand1)
 
   override def substitute(s: TypeVariableSubstitution): PCastTerm =
-    new PCastTerm(operand1.substitute(s), newType.substitute(s))(s.sourceLocation(sourceLocation))
+    new PCastTerm(operand1.substitute(s), newType.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PLogicalVariableSubstitution): PCastTerm =
-    new PCastTerm(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation))
+    new PCastTerm(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PProgramVariableSubstitution): PCastTerm =
-    new PCastTerm(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation))
+    new PCastTerm(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation),Nil)
 }
 
 object PCastTerm {
@@ -565,19 +585,20 @@ object PCastTerm {
 ///////////////////////////////////////////////////////////////////////////
 final class PFieldReadTerm private[silAST]
 (override val location: PTerm, field: Field)
-(sourceLocation: SourceLocation)
-  extends FieldReadTerm(location, field)(sourceLocation)
-  with PTerm {
+(sourceLocation: SourceLocation, comment : List[String])
+  extends FieldReadTerm(location, field)(sourceLocation,comment)
+  with PTerm
+{
   override val pSubTerms: Seq[PTerm] = List(location)
 
   override def substitute(s: TypeVariableSubstitution): PFieldReadTerm =
-    new PFieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation))
+    new PFieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PLogicalVariableSubstitution): PFieldReadTerm =
-    new PFieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation))
+    new PFieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PProgramVariableSubstitution): PFieldReadTerm =
-    new PFieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation))
+    new PFieldReadTerm(location.substitute(s), field)(s.sourceLocation(sourceLocation),Nil)
 }
 
 object PFieldReadTerm {
@@ -591,7 +612,8 @@ object PFieldReadTerm {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed trait DTerm extends Term {
+sealed trait DTerm extends Term
+{
   protected def dSubTerms: Seq[DTerm]
 
   override lazy val subTerms: Seq[DTerm] = dSubTerms
@@ -607,7 +629,8 @@ sealed trait DTerm extends Term {
 ///////////////////////////////////////////////////////////////////////////
 sealed trait DIfThenElseTerm
   extends IfThenElseTerm
-  with DTerm {
+  with DTerm
+{
   override val condition: DTerm = dCondition
   override val pTerm: DTerm = dpTerm
   override val nTerm: DTerm = dnTerm
@@ -619,10 +642,10 @@ sealed trait DIfThenElseTerm
   protected[silAST] def dnTerm: DTerm
 
   override def substitute(s: TypeVariableSubstitution): DIfThenElseTerm =
-    new DIfThenElseTermC(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+    new DIfThenElseTermC(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: DLogicalVariableSubstitution): DIfThenElseTerm =
-    new DIfThenElseTermC(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+    new DIfThenElseTermC(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 object DIfThenElseTerm {
@@ -634,9 +657,10 @@ object DIfThenElseTerm {
 ///////////////////////////////////////////////////////////////////////////
 private[silAST] final class DIfThenElseTermC
 (override val dCondition: DTerm, override val dpTerm: DTerm, override val dnTerm: DTerm)
-(override val sourceLocation: SourceLocation)
-  extends IfThenElseTerm(dCondition, dpTerm, dnTerm)(sourceLocation)
-  with DIfThenElseTerm {
+(override val sourceLocation: SourceLocation,comment : List[String])
+  extends IfThenElseTerm(dCondition, dpTerm, dnTerm)(sourceLocation,comment)
+  with DIfThenElseTerm
+{
   require(condition.dataType == booleanType)
   require(pTerm.dataType.isCompatible(nTerm.dataType))
   require(nTerm.dataType.isCompatible(pTerm.dataType))
@@ -650,9 +674,10 @@ private[silAST] final class DIfThenElseTermC
 //Quantification terms
 sealed case class LogicalVariableTerm protected[silAST]
 (variable: LogicalVariable)
-(override val sourceLocation: SourceLocation)
+(override val sourceLocation: SourceLocation,override val comment : List[String])
   extends ASTNode
-  with DTerm {
+  with DTerm
+{
   override val toString = variable.name
   override val dSubTerms = Nil
 
@@ -662,20 +687,20 @@ sealed case class LogicalVariableTerm protected[silAST]
 
   def substitute(s: TypeVariableSubstitution): LogicalVariableTerm =
     s.mapVariable(variable) match {
-      case Some(t: LogicalVariable) => new LogicalVariableTerm(t)(s.sourceLocation(sourceLocation))
-      case _ => new LogicalVariableTerm(variable)(s.sourceLocation(sourceLocation))
+      case Some(t: LogicalVariable) => new LogicalVariableTerm(t)(s.sourceLocation(sourceLocation),Nil)
+      case _ => new LogicalVariableTerm(variable)(s.sourceLocation(sourceLocation),Nil)
     }
 
   def substitute(s: LogicalVariableSubstitution): Term =
     s.mapVariable(variable) match {
       case Some(t: DTerm) => t
-      case _ => new LogicalVariableTerm(variable)(s.sourceLocation(sourceLocation))
+      case _ => new LogicalVariableTerm(variable)(s.sourceLocation(sourceLocation),Nil)
     }
 
   def substitute(s: DLogicalVariableSubstitution): DTerm =
     s.mapVariable(variable) match {
       case Some(t: DTerm) => t
-      case _ => new LogicalVariableTerm(variable)(s.sourceLocation(sourceLocation))
+      case _ => new LogicalVariableTerm(variable)(s.sourceLocation(sourceLocation),Nil)
     }
 
   def substitute(s: ProgramVariableSubstitution): Term =
@@ -687,16 +712,17 @@ sealed case class LogicalVariableTerm protected[silAST]
 ///////////////////////////////////////////////////////////////////////////
 sealed trait DDomainFunctionApplicationTerm
   extends DomainFunctionApplicationTerm
-  with DTerm {
+  with DTerm
+{
   protected def dArguments: DTermSequence
 
   override def arguments: DTermSequence = dArguments
 
   override def substitute(s: TypeVariableSubstitution): DDomainFunctionApplicationTerm =
-    new DDomainFunctionApplicationTermC(function.substitute(s), arguments.substitute(s))(s.sourceLocation((sourceLocation)))
+    new DDomainFunctionApplicationTermC(function.substitute(s), arguments.substitute(s))(s.sourceLocation((sourceLocation)),Nil)
 
   def substitute(s: DLogicalVariableSubstitution): DDomainFunctionApplicationTerm =
-    new DDomainFunctionApplicationTermC(function, arguments.substitute(s))(s.sourceLocation((sourceLocation)))
+    new DDomainFunctionApplicationTermC(function, arguments.substitute(s))(s.sourceLocation((sourceLocation)),Nil)
 }
 
 object DDomainFunctionApplicationTerm {
@@ -707,9 +733,10 @@ object DDomainFunctionApplicationTerm {
 
 private[silAST] final class DDomainFunctionApplicationTermC
 (function: DomainFunction, arguments: DTermSequence)
-(sourceLocation: SourceLocation)
-  extends DomainFunctionApplicationTerm(function, arguments)(sourceLocation)
-  with DDomainFunctionApplicationTerm {
+(sourceLocation: SourceLocation, comment : List[String])
+  extends DomainFunctionApplicationTerm(function, arguments)(sourceLocation,comment)
+  with DDomainFunctionApplicationTerm
+{
   override val dSubTerms = arguments
   override val dArguments = arguments
 }
@@ -718,7 +745,8 @@ private[silAST] final class DDomainFunctionApplicationTermC
 ///////////////////////////////////////////////////////////////////////////
 //Domains + Programs = General
 
-sealed trait GTerm extends Term with DTerm with PTerm {
+sealed trait GTerm extends Term with DTerm with PTerm
+{
   override lazy val subTerms: Seq[GTerm] = gSubTerms
 
   protected def gSubTerms: Seq[GTerm]
@@ -733,72 +761,50 @@ sealed trait GTerm extends Term with DTerm with PTerm {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-/*
-sealed class GIfThenElseTerm private[silAST]
-(override val condition:GTerm, override val pTerm : GTerm, override val nTerm : GTerm)
-(override val sourceLocation : SourceLocation)
-  extends IfThenElseTerm(condition,pTerm,nTerm)
-  with PIfThenElseTerm
-  with DIfThenElseTerm
-  with GTerm
-{
-  require(condition.dataType == booleanType)
-  require(pTerm.dataType.isCompatible(nTerm.dataType))
-  require(nTerm.dataType.isCompatible(pTerm.dataType))
 
-  override val dSubTerms = List(condition,pTerm,nTerm)
-  override val dCondition = condition
-  override val dpTerm = pTerm
-  override val ppTerm = pTerm
-  override val dnTerm = nTerm
-  override val pnTerm = nTerm
-
-  override def substitute(s: TypeVariableSubstitution): DIfThenElseTerm =
-    new DIfThenElseTerm(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
-  override def substitute(s: DLogicalVariableSubstitution): DIfThenElseTerm =
-    new DIfThenElseTerm(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
-}
-  */
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed abstract case class LiteralTerm protected[silAST]()
+sealed abstract case class LiteralTerm protected[silAST]
+    ()(override val sourceLocation: SourceLocation,override val comment : List[String])
   extends ASTNode with Term
   with GTerm
-  with AtomicTerm {
+  with AtomicTerm
+{
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 final class IntegerLiteralTerm private[silAST]
 (val value: BigInt)
-(override val sourceLocation: SourceLocation)
-  extends LiteralTerm
-  with GTerm {
+(sourceLocation: SourceLocation,comment:List[String])
+  extends LiteralTerm()(sourceLocation,comment)
+  with GTerm
+{
   override val toString: String = value.toString()
   override val gSubTerms = Nil
 
   override def dataType = integerType
 
   override def substitute(s: TypeVariableSubstitution): IntegerLiteralTerm =
-    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation))
+    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: LogicalVariableSubstitution): IntegerLiteralTerm =
-    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation))
+    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: PLogicalVariableSubstitution): IntegerLiteralTerm =
-    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation))
+    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: DLogicalVariableSubstitution): IntegerLiteralTerm =
-    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation))
+    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: GLogicalVariableSubstitution): IntegerLiteralTerm =
-    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation))
+    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: ProgramVariableSubstitution): IntegerLiteralTerm =
-    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation))
+    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: PProgramVariableSubstitution): IntegerLiteralTerm =
-    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation))
+    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation),Nil)
 
 }
 
@@ -806,11 +812,12 @@ final class IntegerLiteralTerm private[silAST]
 ///////////////////////////////////////////////////////////////////////////
 final class GDomainFunctionApplicationTerm
 (function: DomainFunction, override val arguments: GTermSequence)
-(sourceLocation: SourceLocation)
-  extends DomainFunctionApplicationTerm(function, arguments)(sourceLocation)
+(sourceLocation: SourceLocation,comment : List[String])
+  extends DomainFunctionApplicationTerm(function, arguments)(sourceLocation,comment)
   with DDomainFunctionApplicationTerm
   with PDomainFunctionApplicationTerm
-  with GTerm {
+  with GTerm
+{
   //  override val parameters : GTermSequence = gArguments
   override val dArguments = gArguments
   override val pArguments = gArguments
@@ -820,21 +827,22 @@ final class GDomainFunctionApplicationTerm
   override val dataType = function.signature.resultType
 
   override def substitute(s: TypeVariableSubstitution): GDomainFunctionApplicationTerm =
-    new GDomainFunctionApplicationTerm(function.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation))
+    new GDomainFunctionApplicationTerm(function.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: GLogicalVariableSubstitution): GDomainFunctionApplicationTerm =
-    new GDomainFunctionApplicationTerm(function, arguments.substitute(s))(s.sourceLocation(sourceLocation))
+    new GDomainFunctionApplicationTerm(function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 final class GIfThenElseTerm private[silAST]
 (override val condition: GTerm, override val pTerm: GTerm, override val nTerm: GTerm)
-(override val sourceLocation: SourceLocation)
-  extends IfThenElseTerm(condition, pTerm, nTerm)(sourceLocation)
+(override val sourceLocation: SourceLocation,comment : List[String])
+  extends IfThenElseTerm(condition, pTerm, nTerm)(sourceLocation,comment)
   with PIfThenElseTerm
   with DIfThenElseTerm
-  with GTerm {
+  with GTerm
+{
   override val pCondition = condition
   override val dCondition = condition
   override val ppTerm = pTerm
@@ -849,16 +857,14 @@ final class GIfThenElseTerm private[silAST]
   val gSubTerms = List(condition, pTerm, nTerm)
 
   override def substitute(s: TypeVariableSubstitution): GIfThenElseTerm =
-    new GIfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+    new GIfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: GLogicalVariableSubstitution): GIfThenElseTerm =
-    new GIfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation))
-
-  //  override def substitute(s: PProgramVariableSubstitution): GIfThenElseTerm =
-  //    new GIfThenElseTerm(condition.substitute(s),pTerm.substitute(s),nTerm.substitute(s))(s.sourceLocation(sourceLocation))
+    new GIfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
-object GIfThenElseTerm {
+object GIfThenElseTerm
+{
   def unapply(t: GIfThenElseTerm): Option[(GTerm, GTerm, GTerm)] =
     Some((t.condition, t.ppTerm, t.pnTerm))
 }

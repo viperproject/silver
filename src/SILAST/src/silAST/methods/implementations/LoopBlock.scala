@@ -14,7 +14,7 @@ final class LoopBlock private[silAST]
   pParentScope: Scope,
   val condition: PExpression
   )
-(val sourceLocation: SourceLocation)
+(val sourceLocation: SourceLocation,val comment:List[String])
   extends Block
   with Scope {
   /////////////////////////////////////////////////////////////////////////////////////

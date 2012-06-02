@@ -26,10 +26,9 @@ sealed abstract class Statement private[silAST] extends ASTNode {
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 final case class AssignmentStatement private[silAST](
-
-                                                      target: ProgramVariable,
-                                                      source: PTerm
-                                                      )(override val sourceLocation: SourceLocation)
+      target: ProgramVariable,
+      source: PTerm
+      )(override val sourceLocation: SourceLocation,val comment:List[String])
   extends Statement {
   override def toString: String = target.name + ":=" + source.toString
 
@@ -42,11 +41,10 @@ final case class AssignmentStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 case class FieldAssignmentStatement private[silAST](
-
-                                                     target: ProgramVariable,
-                                                     field: Field,
-                                                     source: PTerm
-                                                     )(override val sourceLocation: SourceLocation)
+     target: ProgramVariable,
+     field: Field,
+     source: PTerm
+     )(override val sourceLocation: SourceLocation,val comment:List[String])
   extends Statement {
   override def toString: String = target.name + "." + field.name + " := " + source.toString
 
@@ -59,10 +57,9 @@ case class FieldAssignmentStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 case class NewStatement private[silAST](
-
-                                         target: ProgramVariable,
-                                         dataType: DataType
-                                         )(override val sourceLocation: SourceLocation)
+         target: ProgramVariable,
+         dataType: DataType
+         )(override val sourceLocation: SourceLocation,val comment:List[String])
   extends Statement {
   override def toString: String = target.name + ":= new " + dataType.toString
 
@@ -80,7 +77,7 @@ final case class CallStatement private[silAST]
   targets: ProgramVariableSequence,
   method: Method,
   arguments: PTermSequence
-  )(override val sourceLocation: SourceLocation)
+  )(override val sourceLocation: SourceLocation,val comment:List[String])
   extends Statement {
   def receiver = arguments.head
 
@@ -95,9 +92,8 @@ final case class CallStatement private[silAST]
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 final case class InhaleStatement private[silAST](
-
-                                                  expression: Expression
-                                                  )(override val sourceLocation: SourceLocation)
+      expression: Expression
+      )(override val sourceLocation: SourceLocation,val comment:List[String])
   extends Statement {
   override def toString: String = "inhale " + expression.toString
 
@@ -110,9 +106,9 @@ final case class InhaleStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 final case class ExhaleStatement private[silAST](
-                                                  expression: Expression,
-                                                  message : Option[String]
-                                                  )(override val sourceLocation: SourceLocation)
+        expression: Expression,
+        message : Option[String]
+        )(override val sourceLocation: SourceLocation,val comment:List[String])
   extends Statement {
 
   override def toString: String = message match {
@@ -130,9 +126,8 @@ final case class ExhaleStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //TODO:FoldStatement/UnfoldStatement arrays?
 final case class FoldStatement private[silAST](
-
-                                                predicate: PredicateExpression
-                                                )(override val sourceLocation: SourceLocation)
+      predicate: PredicateExpression
+      )(override val sourceLocation: SourceLocation,val comment:List[String])
   extends Statement {
   override def toString: String = "fold " + predicate.toString
 
@@ -145,9 +140,8 @@ final case class FoldStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 final case class UnfoldStatement private[silAST](
-
-                                                  predicate: PredicateExpression
-                                                  )(override val sourceLocation: SourceLocation)
+      predicate: PredicateExpression
+      )(override val sourceLocation: SourceLocation,val comment:List[String])
   extends Statement {
   override def toString: String = "unfold " + predicate.toString
 
