@@ -105,7 +105,7 @@ object Main {
     {
       val x = ff.makeProgramVariableTerm(ff.parameters(0),nl)
       val v0 = ff.makeIntegerLiteralTerm(0,nl)
-      val v0_le_x = ff.makePDomainPredicateExpression(integerLE, PTermSequence(v0, x),nl)
+      val v0_le_x = ff.makePDomainPredicateExpression(booleanEvaluate,PTermSequence(ff.makePDomainFunctionApplicationTerm(integerLE, PTermSequence(v0, x),nl)),nl)
       ff.addPrecondition(v0_le_x)
 
       val thisVar = ff.makeProgramVariableTerm(ff.thisVar,nl)
@@ -114,7 +114,7 @@ object Main {
 
       //nonsensical - check recursion - next.numXs(x)
       val numXs_this_next = ff.makePFunctionApplicationTerm(thisVar_next, ff, PTermSequence(x),nl)
-      val numXs_this_next_le_numXs_this = ff.makeDomainPredicateExpression(integerLE, PTermSequence(numXs_this_next, resultVar),nl)
+      val numXs_this_next_le_numXs_this = ff.makeDomainPredicateExpression(booleanEvaluate,PTermSequence(ff.makePDomainFunctionApplicationTerm(integerLE, PTermSequence(numXs_this_next, resultVar),nl)),nl)
       ff.addPostcondition(numXs_this_next_le_numXs_this)
 
       val numXs_this_next_plus_x = ff.makePDomainFunctionApplicationTerm(integerAddition, PTermSequence(numXs_this_next, x),nl)
@@ -142,9 +142,9 @@ object Main {
 
       val this_valid = mf.makePredicatePermissionExpression(this_var, vp,vp.makeFullPermission(nl), nl)
       mf.addPrecondition(this_valid,nl)
-      mf.addPrecondition(mf.makeDomainPredicateExpression(integerLE, TermSequence(zeroTerm, xTerm),nl),nl)
+      mf.addPrecondition(mf.makeDomainPredicateExpression(booleanEvaluate,TermSequence(mf.makeDomainFunctionApplicationTerm(integerLE, TermSequence(zeroTerm, xTerm),nl)),nl),nl)
       mf.addPostcondition(this_valid,nl)
-      mf.addPostcondition(mf.makeDomainPredicateExpression(integerLE, TermSequence(rTerm, xTerm),nl),nl)
+      mf.addPostcondition(mf.makeDomainPredicateExpression(booleanEvaluate,TermSequence(mf.makeDomainFunctionApplicationTerm(integerLE, TermSequence(rTerm, xTerm),nl)),nl),nl)
 
       val impl = mf.addImplementation(nl);
 
