@@ -361,7 +361,7 @@ sealed case class FieldReadTerm protected[silAST]
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class PermTerm protected[silAST]
-    (location: FieldLocation)
+    (location: Location)
     (override val sourceLocation: SourceLocation, override val comment : List[String])
   extends ASTNode with Term
 {

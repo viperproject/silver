@@ -33,6 +33,16 @@ protected[silAST] trait TermFactory
     super[PTermFactory].migrate(t)
   }
 
+  def migrate(location: Location)
+  {
+    migrate(location.receiver)
+    location match{
+      case fl : FieldLocation => require(fields contains fl.field)
+      case pl : PredicateLocation => require(predicates contains pl.predicate)
+    }
+
+  }
+
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] def migrate(t: Term) {
     if (terms contains t)
@@ -73,7 +83,7 @@ protected[silAST] trait TermFactory
       }
       case pt: PermTerm => {
         migrate(pt.location.receiver)
-        require(fields contains pt.location.field)
+        migrate(pt.location)
         addTerm(pt)
       }
       case itet: IfThenElseTerm => {
