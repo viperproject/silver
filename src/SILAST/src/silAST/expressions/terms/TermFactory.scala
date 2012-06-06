@@ -6,9 +6,9 @@ import silAST.expressions.util._
 import silAST.types._
 import collection.immutable
 import silAST.programs.symbols.{ProgramVariable, PredicateFactory, FunctionFactory, Field}
-import silAST.expressions.{ProgramVariableSubstitutionC, ProgramVariableSubstitution}
 import silAST.symbols.logical.quantification.LogicalVariable
 import silAST.domains.{LogicalVariableSubstitutionC, LogicalVariableSubstitution, DomainFunction}
+import silAST.expressions.{PredicatePermissionExpression, ProgramVariableSubstitutionC, ProgramVariableSubstitution}
 
 protected[silAST] trait TermFactory
   extends NodeFactory
@@ -72,8 +72,8 @@ protected[silAST] trait TermFactory
         addTerm(fr)
       }
       case ut: UnfoldingTerm => {
-        require(predicates contains ut.location.predicate)
-        migrate(ut.location.receiver)
+        require(predicates contains ut.location.location.predicate) //Hack - how do we fix this?
+        migrate(ut.location.location.receiver)
         migrate(ut.term)
         addTerm(ut)
       }
@@ -114,16 +114,12 @@ protected[silAST] trait TermFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeUnfoldingTerm(r: Term, pf: PredicateFactory, p : Term, t: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingTerm = {
-    require(predicates contains pf.pPredicate)
-    migrate(r)
+  def makeUnfoldingTerm(r:PredicatePermissionExpression, t: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingTerm = {
+    require(predicates contains r.location.predicate)                                     //Hack
+    migrate(r.location.receiver)
     migrate(t)
-    migrate(p)
 
-    (r, t, p) match {
-      case (r: PTerm, t: PTerm, p : PTerm) => makePUnfoldingTerm(r, pf, p, t,sourceLocation,comment)
-      case _ => addTerm(new UnfoldingTerm(new PredicateLocation(r, pf.pPredicate), p, t)(sourceLocation,comment))
-    }
+    addTerm(new UnfoldingTerm(r, t)(sourceLocation,this,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////

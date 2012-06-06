@@ -57,13 +57,6 @@ protected[silAST] trait PTermFactory
         migrate(fr.location.receiver)
         addTerm(fr)
       }
-      case ut: PUnfoldingTerm => {
-        require(predicates contains ut.location.predicate)
-        migrate(ut.location.receiver)
-        migrate(ut.permission)
-        migrate(ut.term)
-        addTerm(ut)
-      }
       case itet: PIfThenElseTerm => {
         require(itet.condition.dataType == booleanType)
         migrate(itet.condition)
@@ -125,23 +118,6 @@ protected[silAST] trait PTermFactory
       case a: GTermSequence => makeGDomainFunctionApplicationTerm(f, a,sourceLocation,comment)
       case _ => addTerm(new PDomainFunctionApplicationTermC(f, a)(sourceLocation,comment))
     }
-  }
-
-  //////////////////////////////////////////////////////////////////////////
-  def makePUnfoldingTerm(
-                          r: PTerm,
-                          p: PredicateFactory,
-                          perm : PTerm,
-                          t: PTerm,
-                          sourceLocation: SourceLocation,
-                          comment : List[String] = Nil
-                          ): PUnfoldingTerm = {
-    require(predicates contains p.pPredicate)
-    migrate(r)
-    migrate(t)
-    migrate(perm)
-
-    addTerm(new PUnfoldingTerm(new PPredicateLocation(r, p.pPredicate), perm,t)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////

@@ -118,7 +118,8 @@ object Main {
       ff.addPostcondition(numXs_this_next_le_numXs_this)
 
       val numXs_this_next_plus_x = ff.makePDomainFunctionApplicationTerm(integerAddition, PTermSequence(numXs_this_next, x),nl)
-      val b = ff.makePUnfoldingTerm(thisVar, vp, ff.makeFullPermission(nl),numXs_this_next_plus_x,nl)
+      val acc_thisVar_valid_write = ff.makePredicatePermissionExpression(thisVar, vp, ff.makeFullPermission(nl),nl)
+      val b = ff.makeUnfoldingTerm(acc_thisVar_valid_write,numXs_this_next_plus_x,nl)
 
       ff.setBody(b)
 
@@ -220,8 +221,9 @@ object Main {
       case OldExpression(_) => 0
       case TrueExpression() => 0
       case FalseExpression() => 0
-      case PermissionExpression(_, _) => 0
-      case UnfoldingExpression(_, _,_) => 1
+      case PredicatePermissionExpression(_, _) => 0
+      case FieldPermissionExpression(_, _) => 0
+      case UnfoldingExpression( _,_) => 1
       case EqualityExpression(_, _) => 2
       case UnaryExpression(_, _) => 3
       case BinaryExpression(_, _, _) => 4
@@ -236,8 +238,9 @@ object Main {
       case OldExpression(_) => 0
       case TrueExpression() => 0
       case FalseExpression() => 0
-      case PermissionExpression(_, _) => 0
-      case UnfoldingExpression(_, _,_) => 1
+      case PredicatePermissionExpression(_, _) => 0
+      case FieldPermissionExpression(_, _) => 0
+      case UnfoldingExpression(_, _) => 1
       case EqualityExpression(_, _) => 2
       case UnaryExpression(_, _) => 3
       case BinaryExpression(_, _, _) => 4
@@ -260,7 +263,7 @@ object Main {
       case CastTerm(_, _) => 2
       case FieldReadTerm(_) => 6
 
-      case UnfoldingTerm(_, _, _) => 6
+      case UnfoldingTerm(_, _) => 6
     }
 
     t match {

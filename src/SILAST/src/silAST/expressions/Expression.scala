@@ -41,8 +41,8 @@ sealed trait AtomicExpression extends Expression {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-final case class PermissionExpression private[silAST]
-(location : Location, permission: Term)
+sealed abstract class PermissionExpression private[silAST]
+(val location : Location, val permission: Term)
 (val sourceLocation: SourceLocation,override val comment : List[String])
   extends Expression
   with AtomicExpression {
@@ -53,14 +53,43 @@ final case class PermissionExpression private[silAST]
 
   override def freeVariables = location.freeVariables ++ permission.freeVariables
 
+  override def substitute(s: TypeVariableSubstitution) : PermissionExpression
+  override def substitute(s: LogicalVariableSubstitution)  : PermissionExpression
+  override def substitute(s: ProgramVariableSubstitution) : PermissionExpression
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final case class FieldPermissionExpression private[silAST]
+  (override val location : FieldLocation, override val permission: Term)
+  (sourceLocation: SourceLocation,comment : List[String])
+  extends PermissionExpression(location,permission)(sourceLocation,comment)
+{
   override def substitute(s: TypeVariableSubstitution) =
-    new PermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new FieldPermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: LogicalVariableSubstitution) =
-    new PermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new FieldPermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: ProgramVariableSubstitution) =
-    new PermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new FieldPermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final case class PredicatePermissionExpression private[silAST]
+(override val location : PredicateLocation, override val permission: Term)
+(sourceLocation: SourceLocation,comment : List[String])
+  extends PermissionExpression(location,permission)(sourceLocation,comment)
+{
+  override def substitute(s: TypeVariableSubstitution) =
+    new PredicatePermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+
+  override def substitute(s: LogicalVariableSubstitution) =
+    new PredicatePermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+
+  override def substitute(s: ProgramVariableSubstitution) =
+    new PredicatePermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -89,12 +118,11 @@ final case class OldExpression private[silAST]
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class UnfoldingExpression private[silAST]
-(location : PredicateLocation, permission : Term, expression: Expression)
-(val sourceLocation: SourceLocation,override val comment : List[String])
+(location : PermissionExpression, expression: Expression)
+(val sourceLocation: SourceLocation, override val comment : List[String])
   extends Expression
 {
-  require (permission.dataType == permissionType)
-  override val toString = "unfolding " + location.toString + " by " + permission.toString + " in " + expression.toString
+  override val toString = "unfolding " + location.toString + " in " + expression.toString
 
   override val subExpressions: Seq[Expression] = List(expression)
 
@@ -103,13 +131,13 @@ sealed case class UnfoldingExpression private[silAST]
   override val programVariables: Set[ProgramVariable] = location.programVariables union expression.programVariables
 
   override def substitute(s: TypeVariableSubstitution): UnfoldingExpression =
-    new UnfoldingExpression(location.substitute(s), permission.substitute(s),expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new UnfoldingExpression(location.substitute(s), expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: LogicalVariableSubstitution): UnfoldingExpression =
-    new UnfoldingExpression(location.substitute(s), permission.substitute(s),expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new UnfoldingExpression(location.substitute(s),expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: ProgramVariableSubstitution): UnfoldingExpression =
-    new UnfoldingExpression(location.substitute(s), permission.substitute(s),expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new UnfoldingExpression(location.substitute(s), expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -352,35 +380,6 @@ private[silAST] final class PEqualityExpressionC
   override val pSubExpressions = subExpressions
   override val pTerm1: PTerm = term1
   override val pTerm2: PTerm = term2
-
-}
-
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-final class PUnfoldingExpression private[silAST]
-(override val location: PPredicateLocation, override val permission : PTerm, override val expression: PExpression)
-(sourceLocation: SourceLocation,comment:List[String])
-  extends UnfoldingExpression(location, permission, expression)(sourceLocation,comment)
-  with PExpression {
-
-  override val pSubExpressions: Seq[PExpression] = List(expression)
-
-  override def substitute(s: TypeVariableSubstitution): PUnfoldingExpression =
-    new PUnfoldingExpression(location.substitute(s), permission.substitute(s),expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
-
-  override def substitute(s: PLogicalVariableSubstitution): PUnfoldingExpression =
-    new PUnfoldingExpression(location.substitute(s), permission.substitute(s),expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
-
-  override def substitute(s: PProgramVariableSubstitution): PUnfoldingExpression =
-    new PUnfoldingExpression(location.substitute(s), permission.substitute(s),expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
-
-  override def equals(other: Any): Boolean =
-    other match {
-      case e: PUnfoldingExpression => (location.predicate == e.location.predicate && permission == e.permission && expression == e.expression)
-      case _ => false
-    }
-
-  override def hashCode(): Int = location.hashCode() + permission.hashCode() + expression.hashCode()
 
 }
 

@@ -49,9 +49,7 @@ trait ExpressionFactory
         require(predicates contains ppe.location.predicate)
       }*/
       case pue: UnfoldingExpression => {
-        require(predicates contains pue.location.predicate)
-        migrate(pue.location.receiver)
-        migrate(pue.permission)
+        migrate(pue.location)
         migrate(pue.expression)
       }
       case qe: QuantifierExpression => {
@@ -179,33 +177,28 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeFieldPermissionExpression(r: Term, f: Field, p: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): PermissionExpression = {
+  def makeFieldPermissionExpression(r: Term, f: Field, p: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): FieldPermissionExpression = {
     require(fields contains f)
     migrate(r)
     migrate(p)
 
-    addExpression(new PermissionExpression(new FieldLocation(r, f), p)(sourceLocation,comment))
+    addExpression(new FieldPermissionExpression(new FieldLocation(r, f), p)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePredicatePermissionExpression(r: Term, pf: PredicateFactory, p: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): PermissionExpression = {
+  def makePredicatePermissionExpression(r: Term, pf: PredicateFactory, p: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): PredicatePermissionExpression = {
     require(predicates contains pf.pPredicate)
     migrate(r)
     migrate(p)
 
-    addExpression(new PermissionExpression(new PredicateLocation(r, pf.pPredicate), p)(sourceLocation,comment))
+    addExpression(new PredicatePermissionExpression(new PredicateLocation(r, pf.pPredicate), p)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeUnfoldingExpression(r: Term, pf: PredicateFactory, perm : Term, e: Expression,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingExpression = {
-    require(predicates contains pf.pPredicate)
+  def makeUnfoldingExpression(r: PermissionExpression, e: Expression,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingExpression = {
     migrate(r)
-    migrate(perm)
     migrate(e)
 
-    (r, perm, e) match {
-      case (r: PTerm, perm : PTerm, e: PExpression) => makePUnfoldingExpression(r, pf,perm, e,sourceLocation,comment)
-      case _ => addExpression(new UnfoldingExpression(new PredicateLocation(r,pf.pPredicate), perm, e)(sourceLocation,comment))
-    }
+    addExpression(new UnfoldingExpression(r, e)(sourceLocation,comment))
   }
 }

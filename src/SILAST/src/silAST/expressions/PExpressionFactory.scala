@@ -35,12 +35,6 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
         migrate(ee.term1)
         migrate(ee.term2)
       }
-      case pue: PUnfoldingExpression => {
-        require(predicates contains pue.location.predicate)
-        migrate(pue.expression)
-        migrate(pue.permission)
-        migrate(pue.location.receiver)
-      }
     }
     addExpression(e)
   }
@@ -102,17 +96,6 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
       case (t1: GTerm, t2: GTerm) => makeGEqualityExpression(t1, t2,sourceLocation,comment)
       case _ => addExpression(new PEqualityExpressionC(t1, t2)(sourceLocation,comment))
     }
-  }
-
-  //////////////////////////////////////////////////////////////////////////
-  def makePUnfoldingExpression(r : PTerm, pf: PredicateFactory, perm : PTerm, e: PExpression,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingExpression = {
-    require(predicates contains pf.pPredicate)
-    require(perm.dataType == permissionType)
-    migrate(r)
-    migrate(perm)
-    migrate(e)
-
-    addExpression(new PUnfoldingExpression(new PPredicateLocation(r,pf.pPredicate),perm,e)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////////////
