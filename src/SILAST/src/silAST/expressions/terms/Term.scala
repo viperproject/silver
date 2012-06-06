@@ -763,6 +763,7 @@ sealed case class LogicalVariableTerm protected[silAST]
 (override val sourceLocation: SourceLocation,override val comment : List[String])
   extends ASTNode
   with DTerm
+  with AtomicTerm
 {
   override val toString = variable.name
   override val dSubTerms = Nil
