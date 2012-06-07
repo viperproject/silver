@@ -118,7 +118,7 @@ final case class OldExpression private[silAST]
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class UnfoldingExpression private[silAST]
-(location : PermissionExpression, expression: Expression)
+(location : PredicatePermissionExpression, expression: Expression)
 (val sourceLocation: SourceLocation, override val comment : List[String])
   extends Expression
 {

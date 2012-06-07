@@ -195,7 +195,7 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeUnfoldingExpression(r: PermissionExpression, e: Expression,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingExpression = {
+  def makeUnfoldingExpression(r: PredicatePermissionExpression, e: Expression,sourceLocation: SourceLocation,comment : List[String] = Nil): UnfoldingExpression = {
     migrate(r)
     migrate(e)
 
