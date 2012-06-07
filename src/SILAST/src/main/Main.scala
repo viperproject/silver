@@ -140,7 +140,6 @@ object Main {
       val rTerm = mf.makeProgramVariableTerm(r,nl)
       val zeroTerm = mf.makeIntegerLiteralTerm(0,nl)
 
-
       val this_valid = mf.makePredicatePermissionExpression(this_var, vp,vp.makeFullPermission(nl), nl)
       mf.addPrecondition(this_valid,nl)
       mf.addPrecondition(mf.makeDomainPredicateExpression(booleanEvaluate,TermSequence(mf.makeDomainFunctionApplicationTerm(integerLE, TermSequence(zeroTerm, xTerm),nl)),nl),nl)
@@ -152,6 +151,7 @@ object Main {
       {
         val nVar = impl.addProgramVariable("n", integerType)(nl)
         val xxVar = impl.addProgramVariable("xx", integerSeqType)(nl)
+        val rVar = impl.addProgramVariable("pointer", referenceType)(nl)
 
 
         val startBlock = impl.cfgFactory.addBasicBlock("start",nl);
@@ -167,6 +167,7 @@ object Main {
 
         {
           val this_term = startBlock.makeProgramVariableTerm(thisVar,nl)
+          val rVar_term = startBlock.makeProgramVariableTerm(rVar,nl)
           val this_valid = startBlock.makePredicatePermissionExpression(this_term, vp,vp.makeFullPermission(nl), nl)
           startBlock.appendInhale(this_valid,nl)
           startBlock.appendUnfold(this_term,vp,vp.makeFullPermission(nl),nl)
@@ -175,6 +176,8 @@ object Main {
           //this.numXs(n)
           val numXs_nTerm = startBlock.makePFunctionApplicationTerm(this_term, ff, PTermSequence(nTerm),nl)
           startBlock.appendAssignment(nVar, numXs_nTerm,nl)
+          //This means exhale of predicate expression
+          startBlock.appendExhale(vp.predicate.expression.substitute(impl.makeProgramVariableSubstitution(Set((vp.thisVar,rVar_term)))),Some("bugger"),nl)
 
 
           startBlock.appendFold(this_term, vp,vp.makeFullPermission(nl),nl)

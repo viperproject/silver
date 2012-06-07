@@ -17,7 +17,7 @@ object permissionDomain extends Domain {
 
   override def fullName: String = name
 
-  override def functions = Set(permissionAddition, permissionSubtraction, permissionMultiplication, permissionIntegerMultiplication)
+  override def functions = Set(permissionAddition, permissionSubtraction, permissionMultiplication, permissionIntegerMultiplication,percentagePermission)
 
   override def predicates = Set(permissionEQ, permissionNE, permissionLT, permissionLE, permissionGT, permissionGE)
 

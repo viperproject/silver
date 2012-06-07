@@ -105,24 +105,11 @@ class MethodFactory(
   private def signatureDefined = pMethod != None;
   private val implementationFactories = new HashSet[ImplementationFactory]
 
-  //  private[silAST] def methodFactories = programFactory.methodFactories
-
   override def programVariables = inputProgramVariables union outputProgramVariables
 
   override def inputProgramVariables = parametersGenerator.toSet[ProgramVariable]
 
   override def outputProgramVariables = resultsGenerator.toSet[ProgramVariable]
 
-  //  protected[silAST] override def functions = programFactory.functions.toSet
-
-  //  protected[silAST] override def predicates = programFactory.predicates
-
-  //  protected[silAST] override def dataTypes = programFactory.dataTypes union pDataTypes
-
-  //  protected[silAST] override def domainFactories = programFactory.domainFactories
-
-  //  protected[silAST] override def domainFunctions = programFactory.domainFunctions
-
-  //  protected[silAST] override def domainPredicates = programFactory.domainPredicates
   override def typeVariables = Set()
 }
