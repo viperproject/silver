@@ -6,7 +6,7 @@ import silAST.source.SourceLocation
 
 final class Predicate private[silAST](
          val name: String
-         )(val sourceLocation: SourceLocation,val comment:List[String])
+         )(val sourceLocation: SourceLocation,val factory : PredicateFactory, val comment:List[String])
   extends ASTNode
 {
   override def toString = "location " + name + " = " + expression.toString

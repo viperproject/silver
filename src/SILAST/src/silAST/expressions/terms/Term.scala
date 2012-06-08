@@ -11,7 +11,7 @@ import silAST.expressions.{PredicatePermissionExpression, PProgramVariableSubsti
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed trait Location
+sealed abstract class Location
   extends ASTNode
 {
   override val sourceLocation = receiver.sourceLocation
@@ -57,7 +57,9 @@ sealed case class FieldLocation private[silAST](receiver: Term,field : Field)  e
     new FieldLocation(receiver.substitute(s),field)
 }
 
-final class PFieldLocation private[silAST](override val receiver: PTerm,field : Field) extends FieldLocation(receiver,field) with PLocation
+final class PFieldLocation private[silAST](override val receiver: PTerm,field : Field)
+  extends FieldLocation(receiver,field)
+  with PLocation
 {
   override def substitute(s: TypeVariableSubstitution): PFieldLocation =
     new PFieldLocation(receiver.substitute(s),field)
@@ -89,7 +91,9 @@ sealed case class PredicateLocation private[silAST](receiver: Term,predicate : P
     new PredicateLocation(receiver.substitute(s),predicate)
 }
 
-final class PPredicateLocation private[silAST](override val receiver: PTerm,predicate : Predicate) extends PredicateLocation(receiver,predicate) with PLocation
+final class PPredicateLocation private[silAST](override val receiver: PTerm,predicate : Predicate)
+  extends PredicateLocation(receiver,predicate)
+  with PLocation
 {
   override def substitute(s: TypeVariableSubstitution): PPredicateLocation =
     new PPredicateLocation(receiver.substitute(s),predicate)

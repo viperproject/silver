@@ -22,7 +22,7 @@ class PredicateFactory private[silAST](
     pPredicate.pExpression = Some(e)
   }
 
-  private[silAST] var pPredicate = new Predicate(name)(sourceLocation,comment)
+  private[silAST] var pPredicate = new Predicate(name)(sourceLocation,this,comment)
 
   def predicate: Predicate = pPredicate.pExpression match {
     case None => throw new Exception
