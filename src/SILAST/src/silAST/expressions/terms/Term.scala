@@ -105,6 +105,13 @@ final class PPredicateLocation private[silAST](override val receiver: PTerm,pred
     new PPredicateLocation(receiver.substitute(s),predicate)
 }
 
+object PPredicateLocation {
+	def unapply(location : Location) : Option[(PTerm,Predicate)] = location match {
+		case p:PPredicateLocation => Some((p.receiver,p.predicate))
+		case _ => None
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait Term extends ASTNode {
@@ -709,6 +716,13 @@ final class PUnfoldingTerm private[silAST]
     new PUnfoldingTerm(predicate.substitute(s), term.substitute(s))(
       s.sourceLocation(sourceLocation),factory,Nil
     )
+}
+
+object PUnfoldingTerm {
+	def unapply(term : Term) : Option[(PPredicatePermissionExpression,PTerm)] = term match {
+		case pt:PUnfoldingTerm => Some((pt.predicate,pt.term))
+		case _ => None
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////

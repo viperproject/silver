@@ -41,7 +41,7 @@ sealed trait AtomicExpression extends Expression {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed abstract class PermissionExpression private[silAST]
+sealed abstract case class PermissionExpression private[silAST]
 (val location : Location, val permission: Term)
 (val sourceLocation: SourceLocation,override val comment : List[String])
   extends Expression
@@ -500,6 +500,14 @@ sealed class PPredicatePermissionExpression private[silAST]
   override def substitute(s: PProgramVariableSubstitution) =
     new PPredicatePermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
+
+object PPredicatePermissionExpression {
+	def unapply(e : Expression) : Option[(PPredicateLocation,PTerm)] = e match {
+		case p:PPredicatePermissionExpression => Some((p.location,p.permission))
+		case _ => None
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed class PFieldPermissionExpression private[silAST]
