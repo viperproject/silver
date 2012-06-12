@@ -8,7 +8,7 @@ import collection.immutable
 import silAST.programs.symbols.{ProgramVariable, PredicateFactory, FunctionFactory, Field}
 import silAST.symbols.logical.quantification.LogicalVariable
 import silAST.domains.{LogicalVariableSubstitutionC, LogicalVariableSubstitution, DomainFunction}
-import silAST.expressions.{PredicatePermissionExpression, ProgramVariableSubstitutionC, ProgramVariableSubstitution}
+import silAST.expressions.{PredicatePermissionExpression,PPredicatePermissionExpression, ProgramVariableSubstitutionC, ProgramVariableSubstitution}
 
 protected[silAST] trait TermFactory
   extends NodeFactory
