@@ -118,8 +118,11 @@ protected[silAST] trait TermFactory
     require(predicates contains r.location.predicate)                                     //Hack
     migrate(r.location.receiver)
     migrate(t)
-
-    addTerm(new UnfoldingTerm(r, t)(sourceLocation,this,comment))
+	
+	(r,t) match {
+		case (pr:PPredicatePermissionExpression,pt:PTerm) => makePUnfoldingTerm(pr,pt,sourceLocation,comment)
+		case _ => addTerm(new UnfoldingTerm(r, t)(sourceLocation,this,comment))
+	}
   }
 
   /////////////////////////////////////////////////////////////////////////
