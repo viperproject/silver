@@ -7,9 +7,10 @@ import silAST.expressions.util.{PTermSequence, GTermSequence}
 import silAST.programs.symbols._
 import silAST.types.{booleanType, DataTypeFactory, DataType}
 import collection.{immutable, Set}
-import silAST.expressions.{PProgramVariableSubstitutionC, PProgramVariableSubstitution}
 import silAST.symbols.logical.quantification.LogicalVariable
 import silAST.domains._
+import silAST.expressions._
+import collection.mutable.HashSet
 
 protected[silAST] trait PTermFactory
   extends NodeFactory
@@ -27,6 +28,20 @@ protected[silAST] trait PTermFactory
     new PLogicalVariableSubstitutionC(Set(), subs)
   }
 
+  /////////////////////////////////////////////////////////////////////////
+  protected[silAST] def migrate(l : PLocation) {
+    migrate(l.receiver)
+
+    l match {
+      case pl : PPredicateLocation => require (predicates contains pl.predicate)
+      case pl : PFieldLocation     => require (fields     contains pl.field)
+    }
+  }
+  /////////////////////////////////////////////////////////////////////////
+  protected[silAST] def migratePPredicatePermissionExpression(e: PPredicatePermissionExpression) {
+    migrate(e.location)
+    migrate(e.permission)
+  }
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] def migrate(t: PTerm) {
     if (terms contains t)
@@ -47,6 +62,11 @@ protected[silAST] trait PTermFactory
         require(domainFunctions contains dfa.function)
         addTerm(dfa)
       }
+      case put: PUnfoldingTerm => {
+        migratePPredicatePermissionExpression(put.predicate)
+        migrate(put.term)
+        addTerm(put)
+      }
       case ct: PCastTerm => {
         migrate(ct.operand1)
         migrate(ct.newType)
@@ -64,6 +84,24 @@ protected[silAST] trait PTermFactory
         migrate(itet.nTerm)
       }
     }
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  def makePFieldPermissionExpression(r: PTerm, f: Field, p: PTerm,sourceLocation: SourceLocation,comment : List[String] = Nil): PFieldPermissionExpression = {
+    require(fields contains f)
+    migrate(r)
+    migrate(p)
+
+    addExpression(new PFieldPermissionExpression(new PFieldLocation(r, f), p)(sourceLocation,comment))
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  def makePPredicatePermissionExpression(r: PTerm, pf: PredicateFactory, p: PTerm,sourceLocation: SourceLocation,comment : List[String] = Nil): PPredicatePermissionExpression = {
+    require(predicates contains pf.pPredicate)
+    migrate(r)
+    migrate(p)
+
+    addExpression(new PPredicatePermissionExpression(new PPredicateLocation(r, pf.pPredicate), p)(sourceLocation,comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -132,7 +170,25 @@ protected[silAST] trait PTermFactory
     }
   }
 
+  //////////////////////////////////////////////////////////////////////////
+  def makePUnfoldingTerm(r:PPredicatePermissionExpression, t: PTerm,sourceLocation: SourceLocation,comment : List[String] = Nil): PUnfoldingTerm = {
+    require(predicates contains r.location.predicate)                                     //Hack
+    migrate(r.location.receiver)
+    migrate(t)
+
+    addTerm(new PUnfoldingTerm(r, t)(sourceLocation,this,comment))
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  protected[silAST] def addExpression[E <: Expression](e: E): E = {
+    pExpressions += e
+    nodeMap += e.sourceLocation -> e //Overrides sub expressions - always largest in the map
+    e
+  }
+
   /////////////////////////////////////////////////////////////////////////
+  protected[expressions] val pExpressions = new HashSet[Expression]
+
   protected[silAST] def functions: Set[Function]
 
   protected[silAST] def programVariables: collection.Set[ProgramVariable]

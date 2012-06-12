@@ -45,7 +45,8 @@ sealed abstract class PermissionExpression private[silAST]
 (val location : Location, val permission: Term)
 (val sourceLocation: SourceLocation,override val comment : List[String])
   extends Expression
-  with AtomicExpression {
+  with AtomicExpression
+{
   require(permission.dataType == permissionType)
 
   override val programVariables: Set[ProgramVariable] = location.programVariables union permission.programVariables
@@ -60,9 +61,9 @@ sealed abstract class PermissionExpression private[silAST]
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-final case class FieldPermissionExpression private[silAST]
+sealed case class FieldPermissionExpression private[silAST]
   (override val location : FieldLocation, override val permission: Term)
-  (sourceLocation: SourceLocation,comment : List[String])
+  (sourceLocation: SourceLocation,comment : scala.collection.immutable.List[String])
   extends PermissionExpression(location,permission)(sourceLocation,comment)
 {
   override def substitute(s: TypeVariableSubstitution) =
@@ -77,7 +78,7 @@ final case class FieldPermissionExpression private[silAST]
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-final case class PredicatePermissionExpression private[silAST]
+sealed case class PredicatePermissionExpression private[silAST]
 (override val location : PredicateLocation, override val permission: Term)
 (sourceLocation: SourceLocation,comment : List[String])
   extends PermissionExpression(location,permission)(sourceLocation,comment)
@@ -246,24 +247,24 @@ sealed case class DomainPredicateExpression private[silAST]
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class PredicateExpression private[silAST]
-(location : PredicateLocation)
+(predicate : PredicateLocation)
 (val sourceLocation: SourceLocation, override val comment : List[String])
   extends Expression
   with AtomicExpression
 {
-  override val toString = location.toString
+  override val toString = predicate.toString
 
-  override def freeVariables = location.freeVariables //TODO:Can receiver have free variables?
-  override val programVariables = location.programVariables
+  override def freeVariables = predicate.freeVariables //TODO:Can receiver have free variables?
+  override val programVariables = predicate.programVariables
 
   override def substitute(s: TypeVariableSubstitution): PredicateExpression =
-    new PredicateExpression(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new PredicateExpression(predicate.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: LogicalVariableSubstitution): PredicateExpression =
-    new PredicateExpression(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new PredicateExpression(predicate.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: ProgramVariableSubstitution): PredicateExpression =
-    new PredicateExpression(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new PredicateExpression(predicate.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
   */
 ///////////////////////////////////////////////////////////////////////////
@@ -476,24 +477,66 @@ private[silAST] final class PDomainPredicateExpressionC
   override val pArguments = arguments
   override val pSubExpressions = Nil
 }
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+sealed class PPredicatePermissionExpression private[silAST]
+(override val location : PPredicateLocation, override val permission: PTerm)
+(sourceLocation: SourceLocation,comment : List[String])
+  extends PredicatePermissionExpression(location,permission)(sourceLocation,comment)
+  with PExpression
+{
+  override val pSubExpressions : scala.collection.immutable.Seq[PExpression] = scala.collection.immutable.List()
+
+  override def substitute(s: TypeVariableSubstitution) : PPredicatePermissionExpression =
+    new PPredicatePermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+
+  override def substitute(s: LogicalVariableSubstitution) =
+    new PredicatePermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+  override def substitute(s: PLogicalVariableSubstitution) =
+    new PPredicatePermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+
+  override def substitute(s: ProgramVariableSubstitution) =
+    new PredicatePermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+  override def substitute(s: PProgramVariableSubstitution) =
+    new PPredicatePermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+}
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+sealed class PFieldPermissionExpression private[silAST]
+(override val location : PFieldLocation, override val permission: PTerm)
+(sourceLocation: SourceLocation,comment : List[String])
+  extends FieldPermissionExpression(location,permission)(sourceLocation,comment)
+  with PExpression
+{
+  override val pSubExpressions : scala.collection.immutable.Seq[PExpression] = scala.collection.immutable.List()
+
+  override def substitute(s: TypeVariableSubstitution) : PFieldPermissionExpression =
+    new PFieldPermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+
+  override def substitute(s: PLogicalVariableSubstitution) =
+    new PFieldPermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+
+  override def substitute(s: PProgramVariableSubstitution) =
+    new PFieldPermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+}
 /*
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 final class PPredicateExpression private[silAST]
-(override val location : PPredicateLocation)
+(override val predicate : PPredicateLocation)
 (sourceLocation: SourceLocation,comment:List[String])
-  extends PredicateExpression(location)(sourceLocation,comment)
+  extends PredicateExpression(predicate)(sourceLocation,comment)
   with PExpression {
   override val pSubExpressions = Nil
 
   override def substitute(s: TypeVariableSubstitution): PPredicateExpression =
-    new PPredicateExpression(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new PPredicateExpression(predicate.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: PLogicalVariableSubstitution): PPredicateExpression =
-    new PPredicateExpression(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new PPredicateExpression(predicate.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: PProgramVariableSubstitution): PPredicateExpression =
-    new PPredicateExpression(location.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new PPredicateExpression(predicate.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 */
 ///////////////////////////////////////////////////////////////////////////

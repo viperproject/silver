@@ -7,7 +7,7 @@ import silAST.programs.symbols.{Predicate, ProgramVariable, Field, Function}
 import silAST.domains._
 import silAST.source.SourceLocation
 import silAST.types._
-import silAST.expressions.{PredicatePermissionExpression, PProgramVariableSubstitution, ProgramVariableSubstitution}
+import silAST.expressions.{PPredicatePermissionExpression, PredicatePermissionExpression, PProgramVariableSubstitution, ProgramVariableSubstitution}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -272,32 +272,32 @@ sealed case class FunctionApplicationTerm private[silAST]
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class UnfoldingTerm private[silAST]
-(location : PredicatePermissionExpression, term: Term)
-(override val sourceLocation: SourceLocation, val factory: TermFactory, override val comment : List[String])
+(predicate : PredicatePermissionExpression, term: Term)
+(override val sourceLocation: SourceLocation, val factory: PTermFactory, override val comment : List[String])
   extends ASTNode with Term
 {
-  override lazy val toString: String = "unfolding " + location.toString + " in (" + term.toString + ")"
+  override lazy val toString: String = "unfolding " + predicate.toString + " in (" + term.toString + ")"
 
-  override lazy val subTerms: Seq[Term] = List(location.location.receiver,term)
+  override lazy val subTerms: Seq[Term] = List(predicate.location.receiver,term)
 
   override def dataType = term.dataType
 
-  override def freeVariables = location.freeVariables ++ term.freeVariables
+  override def freeVariables = predicate.freeVariables ++ term.freeVariables
 
-  override def programVariables = location.programVariables ++ term.programVariables
+  override def programVariables = predicate.programVariables ++ term.programVariables
 
   def substitute(s: TypeVariableSubstitution): UnfoldingTerm =
-    new UnfoldingTerm(location.substitute(s), term.substitute(s))(
+    new UnfoldingTerm(predicate.substitute(s), term.substitute(s))(
       s.sourceLocation(sourceLocation),factory,Nil
     )
 
   def substitute(s: LogicalVariableSubstitution): UnfoldingTerm =
-    new UnfoldingTerm(location.substitute(s), term.substitute(s))(
+    new UnfoldingTerm(predicate.substitute(s), term.substitute(s))(
       s.sourceLocation(sourceLocation),factory,Nil
     )
 
   def substitute(s: ProgramVariableSubstitution): UnfoldingTerm =
-    new UnfoldingTerm(location.substitute(s), term.substitute(s))(
+    new UnfoldingTerm(predicate.substitute(s), term.substitute(s))(
       s.sourceLocation(sourceLocation),factory,Nil
     )
 }
@@ -673,6 +673,42 @@ final class PFieldReadTerm private[silAST]
 object PFieldReadTerm {
   def unapply(t: PFieldReadTerm): Option[(PLocation)] =
     Some((t.location))
+}
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final class PUnfoldingTerm private[silAST]
+(override val predicate : PPredicatePermissionExpression, override val term: PTerm)
+(sourceLocation: SourceLocation, override val factory: PTermFactory, comment : List[String])
+  extends UnfoldingTerm(predicate,term)(sourceLocation,factory,comment)
+  with PTerm
+{
+  override lazy val toString: String = "unfolding " + predicate.toString + " in (" + term.toString + ")"
+
+  override lazy val pSubTerms: Seq[PTerm] = List(predicate.location.receiver,term)
+
+  override def substitute(s: TypeVariableSubstitution): PUnfoldingTerm =
+    new PUnfoldingTerm(predicate.substitute(s), term.substitute(s))(
+      s.sourceLocation(sourceLocation),factory,Nil
+    )
+
+  override def substitute(s: LogicalVariableSubstitution): UnfoldingTerm =
+    new UnfoldingTerm(predicate.substitute(s), term.substitute(s))(
+      s.sourceLocation(sourceLocation),factory,Nil
+    )
+  override def substitute(s: PLogicalVariableSubstitution): PUnfoldingTerm =
+    new PUnfoldingTerm(predicate.substitute(s), term.substitute(s))(
+      s.sourceLocation(sourceLocation),factory,Nil
+    )
+
+  override def substitute(s: ProgramVariableSubstitution): UnfoldingTerm =
+    new UnfoldingTerm(predicate.substitute(s), term.substitute(s))(
+      s.sourceLocation(sourceLocation),factory,Nil
+    )
+  override def substitute(s: PProgramVariableSubstitution): PUnfoldingTerm =
+    new PUnfoldingTerm(predicate.substitute(s), term.substitute(s))(
+      s.sourceLocation(sourceLocation),factory,Nil
+    )
 }
 
 ///////////////////////////////////////////////////////////////////////////

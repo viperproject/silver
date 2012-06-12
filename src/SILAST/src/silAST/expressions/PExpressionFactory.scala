@@ -35,6 +35,13 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
         migrate(ee.term1)
         migrate(ee.term2)
       }
+      case ppe : PPredicatePermissionExpression => migratePPredicatePermissionExpression(ppe)
+      case fpe : PFieldPermissionExpression =>
+      {
+        migrate(fpe.location)
+        migrate(fpe.permission)
+      }
+
     }
     addExpression(e)
   }
@@ -99,7 +106,15 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
+  protected[silAST] override def addExpression[E <: Expression](e: E): E = {
+    pExpressions += e
+    nodeMap += e.sourceLocation -> e //Overrides sub expressions - always largest in the map
+    e
+  }
+
   //////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////
+  protected[silAST] override val pExpressions = new HashSet[Expression]
   protected[silAST] def predicates: Set[Predicate]
 
   protected[silAST] val programVariableSequences = new HashSet[ProgramVariableSequence]

@@ -65,7 +65,7 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
 
   //////////////////////////////////////////////////////////////////////////
   def makeDDomainPredicateExpression(p: DomainPredicate, args: DTermSequence,sourceLocation: SourceLocation,comment : List[String] = Nil): DDomainPredicateExpression = {
-    require(domainPredicates contains p, "Unknown domain location %s.".format(p))
+    require(domainPredicates contains p, "Unknown domain predicate %s.".format(p))
     args.foreach(migrate(_))
 
     (args) match {

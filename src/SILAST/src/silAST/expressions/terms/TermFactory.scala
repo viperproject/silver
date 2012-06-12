@@ -72,8 +72,8 @@ protected[silAST] trait TermFactory
         addTerm(fr)
       }
       case ut: UnfoldingTerm => {
-        require(predicates contains ut.location.location.predicate) //Hack - how do we fix this?
-        migrate(ut.location.location.receiver)
+        require(predicates contains ut.predicate.location.predicate) //Hack - how do we fix this?
+        migrate(ut.predicate.location.receiver)
         migrate(ut.term)
         addTerm(ut)
       }

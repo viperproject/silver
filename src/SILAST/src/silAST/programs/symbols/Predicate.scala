@@ -9,7 +9,7 @@ final class Predicate private[silAST](
          )(val sourceLocation: SourceLocation,val factory : PredicateFactory, val comment:List[String])
   extends ASTNode
 {
-  override def toString = "location " + name + " = " + expression.toString
+  override def toString = "predicate " + name + " = " + expression.toString
 
   private[silAST] var pExpression: Option[Expression] = None
 

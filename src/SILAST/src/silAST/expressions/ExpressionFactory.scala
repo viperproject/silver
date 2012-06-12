@@ -46,7 +46,7 @@ trait ExpressionFactory
         migrate(ee.term2)
       }
 /*      case ppe: PredicateExpression => {
-        require(predicates contains ppe.location.predicate)
+        require(predicates contains ppe.predicate.predicate)
       }*/
       case pue: UnfoldingExpression => {
         migrate(pue.location)

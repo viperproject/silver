@@ -178,7 +178,8 @@ object Main {
           startBlock.appendAssignment(nVar, numXs_nTerm,nl)
           //This means exhale of predicate expression
           startBlock.appendExhale(vp.predicate.expression.substitute(impl.makeProgramVariableSubstitution(Set((vp.thisVar,rVar_term)))),Some("bugger"),nl)
-
+          val pe = startBlock.makePPredicatePermissionExpression(rVar_term,vp,vp.makeFullPermission(nl),nl)
+          startBlock.appendAssignment(rVar,startBlock.makePUnfoldingTerm(pe,rTerm,nl),nl)
 
           startBlock.appendFold(this_term, vp,vp.makeFullPermission(nl),nl)
           val lb = midBlock.bodyFactory.addBasicBlock("whileBody",nl)
