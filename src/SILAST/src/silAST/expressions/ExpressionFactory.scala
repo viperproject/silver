@@ -199,6 +199,10 @@ trait ExpressionFactory
     migrate(r)
     migrate(e)
 
-    addExpression(new UnfoldingExpression(r, e)(sourceLocation,comment))
+    (r,e) match{
+      case (pr:PPredicatePermissionExpression,pe:PExpression) => makePUnfoldingExpression(pr,pe,sourceLocation,comment)
+      case _ => addExpression(new UnfoldingExpression(r, e)(sourceLocation,comment))
+    }
+
   }
 }

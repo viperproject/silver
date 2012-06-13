@@ -8,8 +8,7 @@ import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.programs.NodeFactory
 import collection.Set
 import collection.mutable.HashSet
-import silAST.types.permissionType
-import silAST.programs.symbols.{PredicateFactory, ProgramVariableSequence, ProgramVariable, Predicate}
+import silAST.programs.symbols.{ProgramVariableSequence, ProgramVariable, Predicate}
 
 
 trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermFactory {
@@ -104,8 +103,15 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
       case _ => addExpression(new PEqualityExpressionC(t1, t2)(sourceLocation,comment))
     }
   }
-
   //////////////////////////////////////////////////////////////////////////
+  def makePUnfoldingExpression(r: PPredicatePermissionExpression, e: PExpression,sourceLocation: SourceLocation,comment : List[String] = Nil): PUnfoldingExpression = {
+    migrate(r)
+    migrate(e)
+
+    addExpression(new PUnfoldingExpression(r, e)(sourceLocation,comment))
+  }
+
+    //////////////////////////////////////////////////////////////////////////
   protected[silAST] override def addExpression[E <: Expression](e: E): E = {
     pExpressions += e
     nodeMap += e.sourceLocation -> e //Overrides sub expressions - always largest in the map

@@ -5,7 +5,7 @@ import silAST.programs.NodeFactory
 import silAST.expressions.util._
 import silAST.types._
 import collection.immutable
-import silAST.programs.symbols.{ProgramVariable, PredicateFactory, FunctionFactory, Field}
+import silAST.programs.symbols.{ProgramVariable, FunctionFactory, Field}
 import silAST.symbols.logical.quantification.LogicalVariable
 import silAST.domains.{LogicalVariableSubstitutionC, LogicalVariableSubstitution, DomainFunction}
 import silAST.expressions.{PredicatePermissionExpression,PPredicatePermissionExpression, ProgramVariableSubstitutionC, ProgramVariableSubstitution}

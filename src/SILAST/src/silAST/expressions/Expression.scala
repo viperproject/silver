@@ -8,9 +8,9 @@ import silAST.ASTNode
 import terms._
 import util.{GTermSequence, TermSequence, PTermSequence, DTermSequence}
 import silAST.domains._
-import silAST.types.{referenceType, permissionType}
+import silAST.types.permissionType
 import silAST.source.SourceLocation
-import silAST.programs.symbols.{ProgramVariable, Field, Predicate}
+import silAST.programs.symbols.ProgramVariable
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -527,6 +527,29 @@ sealed class PFieldPermissionExpression private[silAST]
   override def substitute(s: PProgramVariableSubstitution) =
     new PFieldPermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
+
+///////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////
+final class PUnfoldingExpression private[silAST]
+    (override val location : PPredicatePermissionExpression, override val expression: PExpression)
+    (sourceLocation: SourceLocation, comment : collection.immutable.List[String])
+  extends UnfoldingExpression(location,expression)(sourceLocation,comment)
+  with PExpression
+{
+  override val pSubExpressions: Seq[PExpression] = List(expression)
+
+  override val programVariables: Set[ProgramVariable] = location.programVariables union expression.programVariables
+
+  override def substitute(s: TypeVariableSubstitution): PUnfoldingExpression =
+    new PUnfoldingExpression(location.substitute(s), expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+
+  override def substitute(s: PLogicalVariableSubstitution): PUnfoldingExpression =
+    new PUnfoldingExpression(location.substitute(s),expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+
+  override def substitute(s: PProgramVariableSubstitution): PUnfoldingExpression =
+    new PUnfoldingExpression(location.substitute(s), expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+}
+
 /*
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
