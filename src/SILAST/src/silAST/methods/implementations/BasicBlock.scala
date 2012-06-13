@@ -44,10 +44,12 @@ final class BasicBlock private[silAST]
   override def hashCode(): Int = statements.hashCode()
 
 
-  override def toString =
-    "\t" + label + ":{\n" +
-      (if (!statements.isEmpty) statements.mkString("\t\t", "\n\t\t", "\n") else "") +
-      controlFlowToString +
-      "\t}\n"
+  override def toString = {
+      def withComments(stmt : Statement) : List[String] = stmt.comment.map("// " + _) ++ List(stmt.toString)
+      "\t" + label + ":{\n" +
+        (if (!statements.isEmpty) statements.map(withComments).flatten.mkString("\t\t", "\n\t\t", "\n") else "") +
+        controlFlowToString +
+        "\t}\n"
+    }
 
 }
