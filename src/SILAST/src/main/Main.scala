@@ -170,7 +170,7 @@ object Main {
           val rVar_term = startBlock.makeProgramVariableTerm(rVar,nl)
           val this_valid = startBlock.makePredicatePermissionExpression(this_term, vp,vp.makeFullPermission(nl), nl)
           startBlock.appendInhale(this_valid,nl)
-          startBlock.appendUnfold(this_term,vp,vp.makeFullPermission(nl),nl)
+          startBlock.appendUnfold(startBlock.makePredicatePermissionExpression(this_term,vp,vp.makeFullPermission(nl),nl),nl)
 
           val nTerm = startBlock.makeProgramVariableTerm(nVar,nl)
           //this.numXs(n)

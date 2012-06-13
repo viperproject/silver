@@ -1,7 +1,6 @@
 package silAST.methods.implementations
 
 import silAST.ASTNode
-import silAST.expressions.Expression
 import silAST.source.SourceLocation
 import silAST.expressions.util.PTermSequence
 import silAST.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
@@ -9,6 +8,7 @@ import silAST.methods.Method
 import scala.Some
 import silAST.expressions.terms.{Term, PredicateLocation, PTerm}
 import silAST.types.{permissionType, DataType}
+import silAST.expressions.{PredicatePermissionExpression, Expression}
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -142,13 +142,13 @@ final case class FoldStatement private[silAST](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class UnfoldStatement private[silAST](
-                                                  location: PredicateLocation,
-                                                  permission : Term
-                                                  )(override val sourceLocation: SourceLocation,val comment:List[String])
-  extends Statement {
-  override def toString: String = "unfold " + location.toString + " by " + permission.toString
+final case class UnfoldStatement private[silAST]
+    (permissionExpression : PredicatePermissionExpression)
+    (override val sourceLocation: SourceLocation,val comment:List[String])
+  extends Statement
+{
+  override def toString: String = "unfold " + permissionExpression.toString
 
-  override val readVariables = location.programVariables
-  override val writtenVariables = Set[ProgramVariable]()
+  override val readVariables = permissionExpression.programVariables
+  override val writtenVariables = collection.immutable.Set[ProgramVariable]()
 }

@@ -550,26 +550,7 @@ final class PUnfoldingExpression private[silAST]
     new PUnfoldingExpression(location.substitute(s), expression.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
-/*
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-final class PPredicateExpression private[silAST]
-(override val predicate : PPredicateLocation)
-(sourceLocation: SourceLocation,comment:List[String])
-  extends PredicateExpression(predicate)(sourceLocation,comment)
-  with PExpression {
-  override val pSubExpressions = Nil
 
-  override def substitute(s: TypeVariableSubstitution): PPredicateExpression =
-    new PPredicateExpression(predicate.substitute(s))(s.sourceLocation(sourceLocation),Nil)
-
-  override def substitute(s: PLogicalVariableSubstitution): PPredicateExpression =
-    new PPredicateExpression(predicate.substitute(s))(s.sourceLocation(sourceLocation),Nil)
-
-  override def substitute(s: PProgramVariableSubstitution): PPredicateExpression =
-    new PPredicateExpression(predicate.substitute(s))(s.sourceLocation(sourceLocation),Nil)
-}
-*/
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 //Domain

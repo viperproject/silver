@@ -4,11 +4,11 @@ import silAST.source.SourceLocation
 import silAST.types.DataType
 import silAST.expressions.util.PTermSequence
 import collection.Set
-import silAST.expressions.{Expression, ExpressionFactory}
 import silAST.methods.{Scope, MethodFactory}
 import silAST.programs.NodeFactory
 import silAST.programs.symbols.{PredicateFactory, ProgramVariableSequence, Field, ProgramVariable}
 import silAST.expressions.terms.{PredicateLocation, Term, PTerm}
+import silAST.expressions.{PredicatePermissionExpression, Expression, ExpressionFactory}
 
 
 class BasicBlockFactory private[silAST]
@@ -89,16 +89,12 @@ class BasicBlockFactory private[silAST]
 
   //////////////////////////////////////////////////////////////////
   def appendUnfold(
-                    r : Term,
-                    pf : PredicateFactory,
-                    perm : Term,
+                    ppe : PredicatePermissionExpression,
                     sourceLocation: SourceLocation,
                     comment : List[String] = Nil) {
-    require(predicates contains pf.pPredicate)
-    migrate(r)
-    migrate(perm)
+    migrate(ppe)
 
-    block.appendStatement(new UnfoldStatement(new PredicateLocation(r,pf.pPredicate),perm)(sourceLocation,comment))
+    block.appendStatement(new UnfoldStatement(ppe)(sourceLocation,comment))
   }
 
   //////////////////////////////////////////////////////////////////
