@@ -47,12 +47,12 @@ sealed trait AtomicExpression extends Expression {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed abstract case class PermissionExpression private[silAST]
-(location : Location, permission: Term)
-(val sourceLocation: SourceLocation,override val comment : List[String])
+sealed trait PermissionExpression
   extends Expression
   with AtomicExpression
 {
+  def location : Location
+  def permission: Term
   require(permission.dataType == permissionType)
 
 
@@ -70,8 +70,9 @@ sealed abstract case class PermissionExpression private[silAST]
 ///////////////////////////////////////////////////////////////////////////
 sealed case class FieldPermissionExpression private[silAST]
   (override val location : FieldLocation, override val permission: Term)
-  (sourceLocation: SourceLocation,comment : scala.collection.immutable.List[String])
-  extends PermissionExpression(location,permission)(sourceLocation,comment)
+  (override val sourceLocation: SourceLocation,override val comment : scala.collection.immutable.List[String])
+  extends Expression
+  with PermissionExpression
 {
   override def freeTypeVariables: Set[TypeVariable] =
     location.freeTypeVariables union permission.freeTypeVariables
@@ -91,8 +92,8 @@ sealed case class FieldPermissionExpression private[silAST]
 ///////////////////////////////////////////////////////////////////////////
 sealed case class PredicatePermissionExpression private[silAST]
 (override val location : PredicateLocation, override val permission: Term)
-(sourceLocation: SourceLocation,comment : List[String])
-  extends PermissionExpression(location,permission)(sourceLocation,comment)
+(override val sourceLocation: SourceLocation,override val comment : List[String])
+  extends Expression with PermissionExpression
 {
   override val subTerms = location.receiver :: permission :: Nil
 

@@ -232,7 +232,22 @@ object Main {
       case UnaryExpression(_, _) => 3
       case BinaryExpression(_, _, _) => 4
       case DomainPredicateExpression(_, _) => 5
-//      case PredicateExpression(_, _) => 6
+//      case QuantifierExpression(_, _, _) => 7
+    }
+  }
+
+  def fef(e: Expression) {
+    e match {
+      case OldExpression(_) => 0
+      case TrueExpression() => 0
+      case FalseExpression() => 0
+      case PredicatePermissionExpression(_, _) => 0
+      case FieldPermissionExpression(_, _) => 0
+      case UnfoldingExpression( _,_) => 1
+      case EqualityExpression(_, _) => 2
+      case UnaryExpression(_, _) => 3
+      case BinaryExpression(_, _, _) => 4
+      case DomainPredicateExpression(_, _) => 5
       case QuantifierExpression(_, _, _) => 7
     }
   }
@@ -248,8 +263,8 @@ object Main {
       case EqualityExpression(_, _) => 2
       case UnaryExpression(_, _) => 3
       case BinaryExpression(_, _, _) => 4
-//      case DomainPredicateExpression(_, _) => 5
-      //      case QuantifierExpression(_,_,_) => 7
+      case DomainPredicateExpression(_, _) => 5
+      case QuantifierExpression(_,_,_) => 7
     }
   }
 
@@ -257,6 +272,7 @@ object Main {
     t match {
       case OldTerm(_) => 1
       case LiteralTerm() => 1
+      case IfThenElseTerm(_, _,_) => 7
 
       case LogicalVariableTerm(_) => 1
       case FunctionApplicationTerm(_, _, _) => 3
@@ -267,6 +283,7 @@ object Main {
       case FieldReadTerm(_) => 6
 
       case UnfoldingTerm(_, _) => 6
+      case PermTerm(_) => 19
     }
 
     t match {
@@ -281,4 +298,5 @@ object Main {
       case FieldReadTerm(_) => 6
     }
   }
+
 }
