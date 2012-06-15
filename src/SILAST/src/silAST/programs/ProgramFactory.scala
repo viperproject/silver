@@ -7,6 +7,7 @@ import silAST.types._
 import scala.collection.mutable.HashSet
 import silAST.expressions.ExpressionFactory
 import silAST.methods.{ScopeFactory, MethodFactory}
+import collection.mutable
 
 final class ProgramFactory
 (
@@ -103,13 +104,13 @@ final class ProgramFactory
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] override val domainFactories = new HashSet[DomainTemplateFactory]
-  protected[silAST] override val methodFactories = new HashSet[MethodFactory]
+  protected[silAST] override val domainFactories = new mutable.HashSet[DomainTemplateFactory]
+  protected[silAST] override val methodFactories = new mutable.HashSet[MethodFactory]
 
-  protected[silAST] val predicateFactories = new HashSet[PredicateFactory]
-  protected[silAST] val functionFactories = new HashSet[FunctionFactory]
+  protected[silAST] val predicateFactories = new mutable.HashSet[PredicateFactory]
+  protected[silAST] val functionFactories = new mutable.HashSet[FunctionFactory]
 
-  override val fields: collection.mutable.Set[Field] = new HashSet[Field]
+  override val fields: collection.mutable.Set[Field] = new mutable.HashSet[Field]
 
   override def functions: Set[Function] = (for (ff <- functionFactories) yield ff.pFunction).toSet
 
@@ -126,7 +127,7 @@ final class ProgramFactory
 
   def emptyDTSequence = new DataTypeSequence(List.empty[DataType])
 
-  private[silAST] val pDomains: HashSet[Domain] = HashSet(integerDomain, permissionDomain, referenceDomain, booleanDomain)
+  private[silAST] val pDomains: mutable.HashSet[Domain] = mutable.HashSet(integerDomain, permissionDomain, referenceDomain, booleanDomain)
 
   def domains: collection.Set[Domain] =
     pDomains ++

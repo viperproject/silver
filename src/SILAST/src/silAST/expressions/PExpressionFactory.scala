@@ -6,7 +6,7 @@ import terms._
 import util.{GTermSequence, PTermSequence}
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
 import silAST.programs.NodeFactory
-import collection.Set
+import collection.{mutable, Set}
 import collection.mutable.HashSet
 import silAST.programs.symbols.{ProgramVariableSequence, ProgramVariable, Predicate}
 
@@ -39,6 +39,11 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
       {
         migrate(fpe.location)
         migrate(fpe.permission)
+      }
+
+      case pue : PUnfoldingExpression => {
+        migrate(pue.location)
+        migrate(pue.expression)
       }
 
     }
@@ -120,8 +125,8 @@ trait PExpressionFactory extends NodeFactory with GExpressionFactory with PTermF
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] override val pExpressions = new HashSet[Expression]
+  protected[silAST] override val pExpressions = new mutable.HashSet[Expression]
   protected[silAST] def predicates: Set[Predicate]
 
-  protected[silAST] val programVariableSequences = new HashSet[ProgramVariableSequence]
+  protected[silAST] val programVariableSequences = new mutable.HashSet[ProgramVariableSequence]
 }

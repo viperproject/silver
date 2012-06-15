@@ -6,7 +6,7 @@ import silAST.symbols.logical.quantification.LogicalVariable
 import collection.mutable.HashSet
 import silAST.expressions.util.{DTermSequence, GTermSequence}
 import silAST.types.{booleanType, DataTypeFactory, DataType}
-import collection.immutable
+import collection.{mutable, immutable}
 import silAST.programs.symbols.ProgramVariable
 import silAST.domains._
 import silAST.expressions.{DProgramVariableSubstitutionC, DProgramVariableSubstitution}
@@ -28,7 +28,7 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] def migrate(t: DTerm) {
     if (terms contains t)
-      return;
+      return
     t match {
       case gt: GTerm => super.migrate(gt)
       case lv: LogicalVariableTerm => {
@@ -94,5 +94,5 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
   }
 
   /////////////////////////////////////////////////////////////////////////
-  protected[silAST] val boundVariables = new HashSet[LogicalVariable]
+  protected[silAST] val boundVariables = new mutable.HashSet[LogicalVariable]
 }

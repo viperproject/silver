@@ -46,7 +46,7 @@ class ImplementationFactory private[silAST]
   /////////////////////////////////////////////////////////////////////////////////////
   override val parentFactory = Some(methodFactory)
 
-  def localVariables: Set[ProgramVariable] = implementation.pLocals.toSet[ProgramVariable];
+  def localVariables: Set[ProgramVariable] = implementation.pLocals.toSet[ProgramVariable]
 
   //  val fields: Set[Field] = methodFactory.fields
 

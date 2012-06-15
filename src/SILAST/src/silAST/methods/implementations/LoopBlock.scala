@@ -16,7 +16,8 @@ final class LoopBlock private[silAST]
   )
 (val sourceLocation: SourceLocation,val comment:List[String])
   extends Block
-  with Scope {
+  with Scope
+{
   /////////////////////////////////////////////////////////////////////////////////////
   override val factory = lbFactory
   override val parentScope = Some(pParentScope)
@@ -43,7 +44,7 @@ final class LoopBlock private[silAST]
   /////////////////////////////////////////////////////////////////////////////////////
   override def toString = label + ": while " + condition + " do {" + body.toString + "} " + controlFlowToString
 
-  override def hashCode = toString.hashCode()
+  override def hashCode() = toString.hashCode()
 
   override def equals(other: Any) = other match {
     case lb: LoopBlock => this eq lb

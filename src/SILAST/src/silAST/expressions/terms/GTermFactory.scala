@@ -2,7 +2,7 @@ package silAST.expressions.terms
 
 import silAST.source.SourceLocation
 import collection.mutable.HashSet
-import collection.Set
+import collection.{mutable, Set}
 import silAST.domains.DomainFunction
 import silAST.expressions.util.GTermSequence
 import silAST.programs.NodeFactory
@@ -13,7 +13,7 @@ protected[silAST] trait GTermFactory
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] def migrate(t: GTerm) {
     if (terms contains t)
-      return;
+      return
     t match {
       case t: LiteralTerm => addTerm(t)
       case fa: GDomainFunctionApplicationTerm => {
@@ -59,7 +59,7 @@ protected[silAST] trait GTermFactory
   }
 
   /////////////////////////////////////////////////////////////////////////
-  protected val terms = new HashSet[Term]
+  protected val terms = new mutable.HashSet[Term]
 
   protected[silAST] def domainFunctions: Set[DomainFunction]
 }

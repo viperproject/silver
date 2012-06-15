@@ -5,6 +5,7 @@ import collection.mutable.HashSet
 import silAST.source.SourceLocation
 import silAST.methods.Scope
 import silAST.expressions.PExpression
+import collection.mutable
 
 final class CFGFactory(
                         implementation: Implementation,
@@ -57,7 +58,7 @@ final class CFGFactory(
 
   /////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////
-  val blocks = new HashSet[BlockFactory]
+  val blocks = new mutable.HashSet[BlockFactory]
   var startNode: Option[BasicBlockFactory] = None
   var endNode: Option[BasicBlockFactory] = None
   private[silAST] val cfg = new ControlFlowGraph(scope, implementation)(sourceLocation,Nil)

@@ -11,7 +11,7 @@ sealed abstract class DataType extends ASTNode {
 
   def substitute(s: TypeVariableSubstitution): DataType = this
 
-  def freeTypeVariables: collection.Set[TypeVariable] = Set()
+  def freeTypeVariables: collection.immutable.Set[TypeVariable] = Set()
 
   def domain: Domain
 
@@ -50,7 +50,11 @@ final case class VariableType(
       case _ => false
     }
 
-  override def substitute(s: TypeVariableSubstitution) = s.mapType(variable, this)
+  override def substitute(s: TypeVariableSubstitution) =
+  {
+    var result = s.mapType(variable, this)
+    result
+  }
 
   override def freeTypeVariables = Set(variable)
 
@@ -85,10 +89,13 @@ case class NonReferenceDataType private[silAST](
     }
 
   override def substitute(s: TypeVariableSubstitution) = {
-    if (s.typeVariables.intersect(freeTypeVariables).isEmpty)
+
+    val result = if (s.typeVariables.intersect(freeTypeVariables).isEmpty)
       this
     else
-      new NonReferenceDataType(domain.substitute(s))(s.sourceLocation,Nil)
+      new NonReferenceDataType(domain.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+
+    result
   }
 
   override def equals(other: Any): Boolean = {

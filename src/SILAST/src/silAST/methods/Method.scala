@@ -2,7 +2,7 @@ package silAST.methods
 
 import implementations.Implementation
 import silAST.source.SourceLocation
-import collection.Set
+import collection.{mutable, Set}
 import collection.mutable.HashSet
 import silAST.expressions.ExpressionFactory
 import silAST.programs.symbols.ProgramVariable
@@ -19,7 +19,7 @@ final class Method private[silAST](
   def implementations: Set[Implementation] = pImplementations.toSet
 
   lazy val expressionFactory: ExpressionFactory = factory
-  private[silAST] val pImplementations = new HashSet[Implementation]
+  private[silAST] val pImplementations = new mutable.HashSet[Implementation]
 
   override def locals = signature.parameters.toSet[ProgramVariable] union signature.results.toSet
 

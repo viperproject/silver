@@ -2,7 +2,7 @@ package silAST.programs.symbols
 
 import silAST.ASTNode
 import silAST.expressions.terms.Term
-import silAST.types.DataType
+import silAST.types.{TypeVariable, DataType}
 import silAST.source.{noLocation, SourceLocation}
 
 final case class Function private[programs](
@@ -16,6 +16,7 @@ final case class Function private[programs](
   private[symbols] var pSignature = new FunctionSignature(pParams, resultType)(noLocation,Nil)
 
   lazy val signature: FunctionSignature = pSignature
+  lazy val freeTypeVariables: Set[TypeVariable] = signature.freeTypeVariables
 
   override def toString = "function " + name + signature.toString + " = " + body.toString
 

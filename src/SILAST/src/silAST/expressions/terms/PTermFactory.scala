@@ -6,7 +6,7 @@ import silAST.programs.NodeFactory
 import silAST.expressions.util.{PTermSequence, GTermSequence}
 import silAST.programs.symbols._
 import silAST.types.{booleanType, DataTypeFactory, DataType}
-import collection.{immutable, Set}
+import collection.{mutable, immutable, Set}
 import silAST.symbols.logical.quantification.LogicalVariable
 import silAST.domains._
 import silAST.expressions._
@@ -45,7 +45,7 @@ protected[silAST] trait PTermFactory
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] def migrate(t: PTerm) {
     if (terms contains t)
-      return;
+      return
     t match {
       case gt: GTerm => super.migrate(gt)
       case pv: ProgramVariableTerm => {
@@ -187,7 +187,7 @@ protected[silAST] trait PTermFactory
   }
 
   /////////////////////////////////////////////////////////////////////////
-  protected[expressions] val pExpressions = new HashSet[Expression]
+  protected[expressions] val pExpressions = new mutable.HashSet[Expression]
 
   protected[silAST] def functions: Set[Function]
 

@@ -36,5 +36,5 @@ class DomainPredicateC private[silAST](
                                         val domain: GDomain
                                         )(val sourceLocation: SourceLocation,override val comment : List[String]) extends DomainPredicate {
   def substitute(s: TypeVariableSubstitution) =
-    new DomainPredicateC(name, signature.substitute(s), s.newDomain)(sourceLocation,Nil)
+    new DomainPredicateC(name, signature.substitute(s),domain.substitute(s))(sourceLocation,Nil)
 }

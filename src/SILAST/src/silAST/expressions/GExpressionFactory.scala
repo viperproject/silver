@@ -2,7 +2,7 @@ package silAST.expressions
 
 import silAST.domains.DomainPredicate
 import silAST.source.SourceLocation
-import collection.Set
+import collection.{mutable, Set}
 import collection.mutable.HashSet
 import silAST.expressions.util.GTermSequence
 import silAST.symbols.logical.{UnaryConnective, BinaryConnective}
@@ -86,7 +86,7 @@ private[silAST] trait GExpressionFactory extends NodeFactory with GTermFactory {
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
 
-  protected[expressions] val pExpressions = new HashSet[Expression]
+  protected[expressions] val pExpressions = new mutable.HashSet[Expression]
 
   protected[silAST] def expressions: Set[Expression] = pExpressions
 

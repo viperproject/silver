@@ -10,11 +10,11 @@ import silAST.source._
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract class TypeVariableSubstitution {
-  def sourceLocation: SourceLocation
+//  def sourceLocation: SourceLocation
 
   def typeVariables: Set[TypeVariable]
 
-  def newDomain: Domain
+//  def newDomain: Domain
 
   def mapType(v: TypeVariable, t: DataType): DataType
 
@@ -32,9 +32,8 @@ abstract class TypeVariableSubstitution {
 
 private[silAST] class TypeSubstitutionC[Term](
                                                val types: Set[(TypeVariable, DataType)],
-                                               val variables: Set[(LogicalVariable, LogicalVariable)],
-                                               val newDomain: Domain
-                                               )(val sourceLocation: SourceLocation) extends TypeVariableSubstitution {
+                                               val variables: Set[(LogicalVariable, LogicalVariable)]
+                                               ) extends TypeVariableSubstitution {
   override def toString = typeMap.mkString("[", ",", "]")
 
   val typeVariables: Set[TypeVariable] = for (t <- types) yield t._1
@@ -48,7 +47,7 @@ private[silAST] class TypeSubstitutionC[Term](
   protected[silAST] override val varMap: Map[LogicalVariable, LogicalVariable] = variables.toMap
 
   override def +(other: TypeVariableSubstitution): TypeVariableSubstitution =
-    new TypeSubstitutionC(types ++ other.types, (varMap ++ other.varMap).toSet, newDomain)(other.sourceLocation)
+    new TypeSubstitutionC(types ++ other.types, (varMap ++ other.varMap).toSet)
 
 }
 
@@ -65,13 +64,14 @@ trait LogicalVariableSubstitution {//extends TypeVariableSubstitution {
 
   def mapVariable(v: LogicalVariable): Option[T] //= varMap.get(v)
   protected[silAST] def varMap: Map[LogicalVariable, T]
+  protected[silAST] def variables : Set[(LogicalVariable,T)]
 
   def sourceLocation(sl: SourceLocation): LogicalSubstitutedSourceLocation = new LogicalSubstitutedSourceLocation(sl, this)
 }
 
 private[silAST] class LogicalVariableSubstitutionC[TT <: Term](
                                                                 override val types: Set[(TypeVariable, DataType)],
-                                                                variables: Set[(LogicalVariable, TT)]
+                                                                override val variables: Set[(LogicalVariable, TT)]
                                                                 ) extends LogicalVariableSubstitution {
   override def toString = super.toString + varMap.mkString("(", ",", ")")
 

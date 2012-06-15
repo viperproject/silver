@@ -22,6 +22,7 @@ sealed abstract class Location
   require(receiver.dataType == referenceType)
 
   def freeVariables: collection.immutable.Set[LogicalVariable]
+  def freeTypeVariables: collection.immutable.Set[TypeVariable]
 
   def programVariables: collection.immutable.Set[ProgramVariable]
 
@@ -44,6 +45,7 @@ sealed case class FieldLocation private[silAST](receiver: Term,field : Field)  e
   override lazy val dataType = field.dataType
 
   override def freeVariables = receiver.freeVariables
+  override def freeTypeVariables =   receiver.freeTypeVariables union field.dataType.freeTypeVariables
 
   override def programVariables = receiver.programVariables
 
@@ -78,6 +80,7 @@ sealed case class PredicateLocation private[silAST](receiver: Term,predicate : P
   override lazy val dataType = booleanType
 
   override def freeVariables = receiver.freeVariables
+  override def freeTypeVariables =  receiver.freeTypeVariables
 
   override def programVariables = receiver.programVariables
 
@@ -120,6 +123,7 @@ sealed trait Term extends ASTNode {
   def dataType: DataType
 
   def freeVariables: collection.immutable.Set[LogicalVariable]
+  def freeTypeVariables: collection.immutable.Set[TypeVariable]
 
   def programVariables: collection.immutable.Set[ProgramVariable]
 
@@ -153,6 +157,8 @@ sealed case class IfThenElseTerm private[silAST]
 
   override val dataType = pTerm.dataType
   override val freeVariables = condition.freeVariables ++ pTerm.freeVariables ++ nTerm.freeVariables
+  override val freeTypeVariables = condition.freeTypeVariables union pTerm.freeTypeVariables union nTerm.freeTypeVariables
+
   override val programVariables = condition.programVariables ++ pTerm.programVariables ++ nTerm.programVariables
   override lazy val subTerms: Seq[Term] = List(condition, pTerm, nTerm)
 
@@ -179,6 +185,7 @@ sealed case class OldTerm private[silAST]
   override def dataType = term.dataType
 
   override def freeVariables = term.freeVariables
+  override val freeTypeVariables = term.freeTypeVariables
 
   override def programVariables = term.programVariables
 
@@ -223,6 +230,7 @@ sealed case class DomainFunctionApplicationTerm private[silAST]
   override def dataType = function.signature.resultType
 
   override def freeVariables = arguments.freeVariables
+  override lazy val freeTypeVariables = arguments.freeTypeVariables
 
   override def programVariables = arguments.programVariables
 
@@ -230,7 +238,7 @@ sealed case class DomainFunctionApplicationTerm private[silAST]
     new DomainFunctionApplicationTerm(function.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: LogicalVariableSubstitution): DomainFunctionApplicationTerm =
-    new DomainFunctionApplicationTerm(function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new DomainFunctionApplicationTerm(function.substitute(new TypeSubstitutionC[DTerm](s.types,Set())), arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: ProgramVariableSubstitution): DomainFunctionApplicationTerm =
     new DomainFunctionApplicationTerm(function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
@@ -260,6 +268,7 @@ sealed case class FunctionApplicationTerm private[silAST]
   override def dataType = function.signature.result.dataType
 
   override def freeVariables = arguments.freeVariables ++ receiver.freeVariables
+  override val freeTypeVariables = receiver.freeTypeVariables union function.freeTypeVariables union arguments.freeTypeVariables
 
   override def programVariables = arguments.programVariables ++ receiver.programVariables
 
@@ -290,6 +299,7 @@ sealed case class UnfoldingTerm private[silAST]
   override def dataType = term.dataType
 
   override def freeVariables = predicate.freeVariables ++ term.freeVariables
+  override val freeTypeVariables = predicate.freeTypeVariables union term.freeTypeVariables
 
   override def programVariables = predicate.programVariables ++ term.programVariables
 
@@ -327,6 +337,7 @@ sealed case class CastTerm protected[silAST]
   override def dataType = newType
 
   override def freeVariables = operand1.freeVariables
+  override val freeTypeVariables = operand1.freeTypeVariables union newType.freeTypeVariables
 
   override def programVariables = operand1.programVariables
 
@@ -354,6 +365,7 @@ sealed case class FieldReadTerm protected[silAST]
   override lazy val dataType = location.dataType
 
   override def freeVariables = location.freeVariables
+  override val freeTypeVariables = location.freeTypeVariables
 
   override def programVariables = location.programVariables
 
@@ -374,12 +386,13 @@ sealed case class PermTerm protected[silAST]
     (override val sourceLocation: SourceLocation, override val comment : List[String])
   extends ASTNode with Term
 {
-  override lazy val toString: String = "perm(" + location.toString + ")";
+  override lazy val toString: String = "perm(" + location.toString + ")"
   override lazy val subTerms: Seq[Term] = List(location.receiver)
 
   override lazy val dataType = permissionType
 
   override def freeVariables = location.freeVariables
+  override val freeTypeVariables = location.freeTypeVariables
 
   override def programVariables = location.programVariables
 
@@ -405,6 +418,8 @@ case class FullPermissionTerm()
   override val gSubTerms = Seq[GTerm]()
   override val dataType = permissionType
 
+  override val freeTypeVariables = collection.immutable.Set[TypeVariable]()
+
   override def substitute(s: TypeVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
 
   override def substitute(s: LogicalVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation),Nil)
@@ -428,6 +443,8 @@ case class NoPermissionTerm()
   with AtomicTerm
 {
   override def toString: String = "0"
+
+  override val freeTypeVariables = collection.immutable.Set[TypeVariable]()
 
   override val gSubTerms = Seq()
   override val dataType = permissionType
@@ -455,6 +472,8 @@ extends LiteralTerm()(sourceLocation,comment)
   with AtomicTerm
 {
   override def toString: String = "E"
+
+  override val freeTypeVariables = collection.immutable.Set[TypeVariable]()
 
   override val gSubTerms = Seq()
   override val dataType = permissionType
@@ -558,6 +577,7 @@ sealed case class ProgramVariableTerm protected[silAST]
   override def dataType = variable.dataType
 
   override def programVariables = Set(variable)
+  override def freeTypeVariables = variable.dataType.freeTypeVariables
 
   def substitute(s: TypeVariableSubstitution): ProgramVariableTerm = new ProgramVariableTerm(variable)(s.sourceLocation(sourceLocation),Nil)
 
@@ -610,7 +630,7 @@ sealed trait PDomainFunctionApplicationTerm
     new PDomainFunctionApplicationTermC(function.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PLogicalVariableSubstitution): PDomainFunctionApplicationTerm =
-    new PDomainFunctionApplicationTermC(function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new PDomainFunctionApplicationTermC(function.substitute(new TypeSubstitutionC[DTerm](s.types,Set())), arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: PProgramVariableSubstitution): PDomainFunctionApplicationTerm =
     new PDomainFunctionApplicationTermC(function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
@@ -804,6 +824,7 @@ sealed case class LogicalVariableTerm protected[silAST]
   override def dataType = variable.dataType
 
   override def freeVariables = Set(variable)
+  override def freeTypeVariables = variable.dataType.freeTypeVariables
 
   def substitute(s: TypeVariableSubstitution): LogicalVariableTerm =
     s.mapVariable(variable) match {
@@ -842,7 +863,7 @@ sealed trait DDomainFunctionApplicationTerm
     new DDomainFunctionApplicationTermC(function.substitute(s), arguments.substitute(s))(s.sourceLocation((sourceLocation)),Nil)
 
   def substitute(s: DLogicalVariableSubstitution): DDomainFunctionApplicationTerm =
-    new DDomainFunctionApplicationTermC(function, arguments.substitute(s))(s.sourceLocation((sourceLocation)),Nil)
+    new DDomainFunctionApplicationTermC(function.substitute(new TypeSubstitutionC[DTerm](s.types,Set())), arguments.substitute(s))(s.sourceLocation((sourceLocation)),Nil)
 }
 
 object DDomainFunctionApplicationTerm {
@@ -904,6 +925,7 @@ final class IntegerLiteralTerm private[silAST]
   override val gSubTerms = Nil
 
   override def dataType = integerType
+  override def freeTypeVariables = collection.immutable.Set()
 
   override def substitute(s: TypeVariableSubstitution): IntegerLiteralTerm =
     new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation),Nil)
@@ -950,7 +972,7 @@ final class GDomainFunctionApplicationTerm
     new GDomainFunctionApplicationTerm(function.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 
   def substitute(s: GLogicalVariableSubstitution): GDomainFunctionApplicationTerm =
-    new GDomainFunctionApplicationTerm(function, arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+    new GDomainFunctionApplicationTerm(function.substitute(new TypeSubstitutionC[DTerm](s.types,Set())), arguments.substitute(s))(s.sourceLocation(sourceLocation),Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -8,6 +8,7 @@ import util.{GTermSequence, DTermSequence}
 import silAST.symbols.logical.quantification.{Quantifier, LogicalVariable}
 import collection.mutable.HashMap
 import silAST.programs.NodeFactory
+import collection.mutable
 
 
 trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermFactory {
@@ -99,6 +100,6 @@ trait DExpressionFactory extends NodeFactory with GExpressionFactory with DTermF
   }
 
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] val boundVariableMap = new HashMap[LogicalVariable, QuantifierExpression]
+  protected[silAST] val boundVariableMap = new mutable.HashMap[LogicalVariable, QuantifierExpression]
 
 }

@@ -23,7 +23,7 @@ object Main {
 
     val pf = new ProgramFactory("P1")(nl,"Program1" :: Nil)
 
-    val sd = pf.getDomainFactory("Seq", List((nl, "T",List("Element type"))),nl);
+    val sd = pf.getDomainFactory("Seq", List((nl, "T",List("Element type"))),nl)
 
     val tVarT = sd.makeVariableType(sd.typeParameters(0),nl)
     val tail = sd.defineDomainFunction("tail", DataTypeSequence(sd.thisType), sd.thisType,nl)
@@ -56,7 +56,7 @@ object Main {
     val valField = pf.defineField("Node.val", integerType)(nl)
     val seqField = pf.defineField("Node.seq", integerSeqType)(nl)
 
-    val vp: PredicateFactory = pf.getPredicateFactory("Node.valid",nl);
+    val vp: PredicateFactory = pf.getPredicateFactory("Node.valid",nl)
 
     {
       //acc(val,100)
@@ -146,7 +146,7 @@ object Main {
       mf.addPostcondition(this_valid,nl)
       mf.addPostcondition(mf.makeDomainPredicateExpression(booleanEvaluate,TermSequence(mf.makeDomainFunctionApplicationTerm(integerLE, TermSequence(rTerm, xTerm),nl)),nl),nl)
 
-      val impl = mf.addImplementation(nl);
+      val impl = mf.addImplementation(nl)
 
       {
         val nVar = impl.addProgramVariable("n", integerType)(nl)
@@ -154,9 +154,9 @@ object Main {
         val rVar = impl.addProgramVariable("pointer", referenceType)(nl)
 
 
-        val startBlock = impl.cfgFactory.addBasicBlock("start",nl);
-        val midBlock = impl.cfgFactory.addLoopBlock("mid", TrueExpression()(nl),nl);
-        val endBlock = impl.cfgFactory.addBasicBlock("end",nl);
+        val startBlock = impl.cfgFactory.addBasicBlock("start",nl)
+        val midBlock = impl.cfgFactory.addLoopBlock("mid", TrueExpression()(nl),nl)
+        val endBlock = impl.cfgFactory.addBasicBlock("end",nl)
         endBlock.setHalt(nl,"enough!" :: Nil)
         impl.cfgFactory.setStartNode(startBlock)
         impl.cfgFactory.setEndNode(endBlock)
@@ -193,8 +193,8 @@ object Main {
         1
       }
 
-      val bdf = pf.getDomainFactory("BB", List((nl, "T",List("Element type","covariant"))),nl);
-      val bd = bdf.compile
+      val bdf = pf.getDomainFactory("BB", List((nl, "T",List("Element type","covariant"))),nl)
+      val bd = bdf.compile()
 
       {
         val bdI = pf.makeDomainInstance(bdf, DataTypeSequence(integerType))
@@ -248,8 +248,7 @@ object Main {
       case EqualityExpression(_, _) => 2
       case UnaryExpression(_, _) => 3
       case BinaryExpression(_, _, _) => 4
-      case DomainPredicateExpression(_, _) => 5
-//      case PredicateExpression(_, _) => 6
+//      case DomainPredicateExpression(_, _) => 5
       //      case QuantifierExpression(_,_,_) => 7
     }
   }

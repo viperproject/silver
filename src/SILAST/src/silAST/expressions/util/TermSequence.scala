@@ -8,6 +8,7 @@ import silAST.programs.symbols.ProgramVariable
 import silAST.source.{SourceLocation, noLocation}
 import silAST.expressions.{PProgramVariableSubstitution, ProgramVariableSubstitution}
 import silAST.domains._
+import silAST.types.TypeVariable
 
 sealed class TermSequence private[silAST](
                                            private val prArgs: Seq[Term]
@@ -30,6 +31,7 @@ sealed class TermSequence private[silAST](
   override def toString() = "(" + args.mkString(",") + ")"
 
   def freeVariables: Set[LogicalVariable] = (for (a <- args) yield a.freeVariables).flatten.toSet
+  def freeTypeVariables: Set[TypeVariable] = args.foldLeft(Set[TypeVariable]())(_ union  _.freeTypeVariables)
 
   def programVariables: Set[ProgramVariable] = (for (a <- args) yield a.programVariables).flatten.toSet
 

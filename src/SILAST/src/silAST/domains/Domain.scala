@@ -1,7 +1,7 @@
 package silAST.domains
 
 import silAST.ASTNode
-import collection.Set
+import collection.{mutable, Set}
 import collection.mutable.HashSet
 import collection.mutable.HashMap
 import silAST.types._
@@ -21,15 +21,15 @@ trait GDomain extends ASTNode {
 
   def fullName: String
 
-  def freeTypeVariables: Set[TypeVariable]
+  def freeTypeVariables: collection.immutable.Set[TypeVariable]
 
   def substitute(ts: TypeVariableSubstitution): Domain
 
-  def functions: Set[DomainFunction]
+  def functions: collection.Set[DomainFunction]
 
-  def predicates: Set[DomainPredicate]
+  def predicates: collection.Set[DomainPredicate]
 
-  def axioms: Set[DomainAxiom]
+  def axioms: collection.Set[DomainAxiom]
 
   def getType: DataType
 
@@ -82,9 +82,9 @@ private[silAST] class DomainTemplateC(
 
   def axioms: Set[DomainAxiom] = pAxioms
 
-  private[silAST] val pFunctions = new HashSet[DomainFunction]
-  private[silAST] val pPredicates = new HashSet[DomainPredicate]
-  private[silAST] val pAxioms = new HashSet[DomainAxiom]
+  private[silAST] val pFunctions = new mutable.HashSet[DomainFunction]
+  private[silAST] val pPredicates = new mutable.HashSet[DomainPredicate]
+  private[silAST] val pAxioms = new mutable.HashSet[DomainAxiom]
 
   override def instances: Set[Domain] = pInstances.values.toSet
 
@@ -94,7 +94,7 @@ private[silAST] class DomainTemplateC(
   override def getType = dataType
 
 
-  val pInstances = new HashMap[DataTypeSequence, DomainInstance]
+  val pInstances = new mutable.HashMap[DataTypeSequence, DomainInstance]
 
   def getInstance(typeArguments: DataTypeSequence): DomainInstance = {
     require(typeArguments.length == typeParameters.length)
@@ -130,13 +130,26 @@ private[silAST] final class DomainInstance(
   override def fullName: String = name
 
   val name: String = template.name + typeArguments.toString
-  val substitution = new TypeSubstitutionC(template.typeParameters.zip(typeArguments).toSet, Set(), this)(noLocation)
+  val substitution = new TypeSubstitutionC(template.typeParameters.zip(typeArguments).toSet, Set())
 
   val getType: NonReferenceDataType = new NonReferenceDataType(this)(sourceLocation,comment)
 
   override lazy val functions = for (f <- template.functions) yield f.substitute(substitution)
   override lazy val predicates = (for (p <- template.predicates) yield p.substitute(substitution)).toSet
-  override lazy val axioms = (for (a <- template.axioms) yield a.substitute(substitution)).toSet
+  override def axioms =
+  {
+    val result = (for (a <- template.axioms) yield a.substitute(substitution)).toSet
+/*    System.out.println("domain " + name)
+    System.out.println("   substitution " + substitution)
+    System.out.println("   type arguments " + typeArguments)
+    for (a <- template.axioms){
+      val ac = a.substitute(substitution)
+      System.out.println("axiom " + a.toString)
+      System.out.println("   result = " + ac.toString)
+    }                                                                                                         */
+    assert (!typeArguments.freeTypeVariables.isEmpty || result.forall(_.expression.freeTypeVariables.isEmpty))
+    result
+  }
 
   def substitute(s: TypeVariableSubstitution): Domain = template.getInstance(typeArguments.substitute(s))
 

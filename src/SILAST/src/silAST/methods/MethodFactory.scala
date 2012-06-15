@@ -8,6 +8,7 @@ import silAST.expressions.util.ExpressionSequence
 import silAST.source.SourceLocation
 import silAST.expressions.{Expression, ExpressionFactory}
 import silAST.types.DataType
+import collection.mutable
 
 class MethodFactory(
                      val programFactory: ProgramFactory,
@@ -102,8 +103,9 @@ class MethodFactory(
   private val preconditions = new ListBuffer[Expression]
   private val postconditions = new ListBuffer[Expression]
 
-  private def signatureDefined = pMethod != None;
-  private val implementationFactories = new HashSet[ImplementationFactory]
+  private def signatureDefined = pMethod != None
+
+  private val implementationFactories = new mutable.HashSet[ImplementationFactory]
 
   override def programVariables = inputProgramVariables union outputProgramVariables
 

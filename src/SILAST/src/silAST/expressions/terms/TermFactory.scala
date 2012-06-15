@@ -46,7 +46,7 @@ protected[silAST] trait TermFactory
   /////////////////////////////////////////////////////////////////////////
   protected[silAST] def migrate(t: Term) {
     if (terms contains t)
-      return;
+      return
     t match {
       case gt: GTerm => super[GTermFactory].migrate(gt)
       case dt: DTerm => super.migrate(dt)

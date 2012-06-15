@@ -3,7 +3,7 @@ package silAST.programs.symbols
 import silAST.ASTNode
 import silAST.expressions.terms.Term
 import silAST.expressions.util.ExpressionSequence
-import silAST.types.DataType
+import silAST.types.{TypeVariable, DataType}
 import collection.mutable.ListBuffer
 import silAST.expressions.Expression
 import silAST.source.{noLocation, SourceLocation}
@@ -25,6 +25,17 @@ final class FunctionSignature private[silAST](
   private[symbols] var pMeasure: Option[Term] = None
 
   val result = new ProgramVariable("result", resultType)(noLocation,Nil)
+
+  lazy val freeTypeVariables: Set[TypeVariable] =
+    pParameters.foldLeft(Set[TypeVariable]())(_ union _.dataType.freeTypeVariables) union
+    result.dataType.freeTypeVariables union
+    pPreconditions.foldLeft(Set[TypeVariable]())(_ union _.freeTypeVariables) union
+    pPostconditions.foldLeft(Set[TypeVariable]())(_ union _.freeTypeVariables) union
+  (
+    terminationMeasure match {
+      case Some(t) => t.freeTypeVariables
+      case _ => Set[TypeVariable]()}
+  )
 
   def parameters: ProgramVariableSequence = new ProgramVariableSequence(pParameters)(noLocation,Nil)
 
