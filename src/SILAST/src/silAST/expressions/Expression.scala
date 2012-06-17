@@ -66,6 +66,14 @@ sealed trait PermissionExpression
   override def substitute(s: ProgramVariableSubstitution) : PermissionExpression
 }
 
+object PermissionExpression {  
+  def unapply(expr : Expression) : Option[(Location,Term)] = expr match {
+    case FieldPermissionExpression(location,permission) => Some((location,permission))
+    case PredicatePermissionExpression(location,permission) => Some((location,permission))
+    case _ => None
+  }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class FieldPermissionExpression private[silAST]
