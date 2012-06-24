@@ -134,8 +134,6 @@ private[silAST] final class DomainInstance(
 
   val getType: NonReferenceDataType = new NonReferenceDataType(this)(sourceLocation,comment)
 
-  override lazy val functions = for (f <- template.functions) yield f.substitute(substitution)
-  override lazy val predicates = (for (p <- template.predicates) yield p.substitute(substitution)).toSet
   override def axioms =
   {
     val result = (for (a <- template.axioms) yield a.substitute(substitution)).toSet
@@ -169,4 +167,7 @@ private[silAST] final class DomainInstance(
   }
 
   override def hashCode(): Int = fullName.hashCode()
+
+  override lazy val functions = for (f <- template.functions) yield f.substitute(substitution)
+  override def predicates = (for (p <- template.predicates) yield p.substitute(substitution)).toSet
 }

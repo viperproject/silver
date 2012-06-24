@@ -194,6 +194,7 @@ object Main {
       }
 
       val bdf = pf.getDomainFactory("BB", List((nl, "T",List("Element type","covariant"))),nl)
+      bdf.defineDomainFunction("ff",DataTypeSequence(integerType),integerType,nl)
       val bd = bdf.compile()
 
       {
