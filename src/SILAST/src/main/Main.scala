@@ -210,7 +210,12 @@ object Main {
 
         1
       }
-      1
+      
+      // Domain with no type parameters
+      val sdf = pf.getDomainFactory("SD",Nil,nl)
+      sdf.defineDomainFunction("sf",DataTypeSequence(),integerType,nl)
+      val sd = sdf.compile()
+      val sdI = pf.makeDomainInstance(sdf, DataTypeSequence())
     }
 
     val p = pf.getProgram
