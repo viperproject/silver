@@ -169,6 +169,12 @@ protected[silAST] trait TermFactory
       case a: GTermSequence => makeGDomainFunctionApplicationTerm(f, a,sourceLocation,comment)
       case a: PTermSequence => makePDomainFunctionApplicationTerm(f, a,sourceLocation,comment)
       case a: DTermSequence => makeDDomainFunctionApplicationTerm(f, a,sourceLocation,comment)
+      case a if a.forall(_.isInstanceOf[GTerm]) => 
+        makeGDomainFunctionApplicationTerm(f,GTermSequence(a.map(_.asInstanceOf[GTerm]):_*),sourceLocation,comment)
+      case a if a.forall(_.isInstanceOf[PTerm]) =>
+        makePDomainFunctionApplicationTerm(f,PTermSequence(a.map(_.asInstanceOf[PTerm]):_*),sourceLocation,comment)
+      case a if a.forall(_.isInstanceOf[DTerm]) =>
+        makeDDomainFunctionApplicationTerm(f,DTermSequence(a.map(_.asInstanceOf[DTerm]):_*),sourceLocation,comment)
       case _ => addTerm(new DomainFunctionApplicationTerm(f, a)(sourceLocation,comment))
     }
   }
@@ -186,9 +192,7 @@ protected[silAST] trait TermFactory
 
   /////////////////////////////////////////////////////////////////////////////////////
   def makePercentagePermission(percentage: Term,sourceLocation: SourceLocation,comment : List[String] = Nil): Term = {
-    val result = new DomainFunctionApplicationTerm(percentagePermission, TermSequence(percentage))(sourceLocation,comment)
-    addTerm(result)
-    result
+    makeDomainFunctionApplicationTerm(percentagePermission,TermSequence(percentage),sourceLocation,comment)
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
