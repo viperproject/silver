@@ -23,7 +23,7 @@ final class DomainTemplateFactory private[silAST](
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def defineDomainFunction(name: String, p: DataTypeSequence, r: DataType,sourceLocation: SourceLocation,comment : List[String] = Nil) = {
+  def defineDomainFunction(name: String, p: DataTypeSequence, r: DataType,sourceLocation: SourceLocation,comment : List[String] = Nil) : DomainFunction = {
     require(p.forall(dataTypes contains _))
     require(dataTypes contains r)
     require(domainFunctions.forall(_.name != name))
@@ -33,7 +33,7 @@ final class DomainTemplateFactory private[silAST](
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def defineDomainPredicate(name: String, p: DataTypeSequence,sourceLocation: SourceLocation,comment : List[String] = Nil) = {
+  def defineDomainPredicate(name: String, p: DataTypeSequence,sourceLocation: SourceLocation,comment : List[String] = Nil) : DomainPredicate = {
     require(domainPredicates.forall(_.name != name))
     require(p.forall(dataTypes contains _))
     val result = new DomainPredicateC(name, new DomainPredicateSignature(p)(noLocation), pDomainTemplate)(sourceLocation,comment)
