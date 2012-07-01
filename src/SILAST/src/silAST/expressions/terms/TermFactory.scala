@@ -161,8 +161,11 @@ protected[silAST] trait TermFactory
                                          a: TermSequence,
                                          sourceLocation: SourceLocation,
                                          comment : List[String] = Nil
-                                     ): DomainFunctionApplicationTerm = {
-    require(domainFunctions contains f)
+                                     ): DomainFunctionApplicationTerm =
+  {
+    println("makeDomainFunctionAT(" + f + ")")
+    println(domainFunctions.mkString("\n   ","\n   ",""))
+    assert(domainFunctions contains f)
     a.foreach(migrate(_))
 
     a match {

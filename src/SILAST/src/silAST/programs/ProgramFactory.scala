@@ -137,16 +137,16 @@ final class ProgramFactory
   def domainTemplates: collection.Set[DomainTemplate] = (for (dt <- domainFactories) yield dt.pDomainTemplate)
 
   override def domainFunctions: collection.Set[DomainFunction] =
-    (for (f <- (for (d <- domains) yield d.functions).flatten) yield f) union
-      (for (f <- (for (d <- domainFactories) yield d.domainTemplate.functions).flatten) yield f)
+    (for (f <- (for (d <- domains) yield d.functions).flatten) yield f) //union
+//      (for (f <- (for (d <- domainFactories) yield d.domainTemplate.functions).flatten) yield f)
 
   //  (nullFunction)
 
   //TODO:check duplicate names/prefix names
 
   override def domainPredicates: collection.Set[DomainPredicate] =
-    (for (p <- (for (d <- domains) yield d.predicates).flatten) yield p) union
-      (for (p <- (for (d <- domainFactories) yield d.domainTemplate.predicates).flatten) yield p)
+    (for (p <- (for (d <- domains) yield d.predicates).flatten) yield p) //union
+//      (for (p <- (for (d <- domainFactories) yield d.domainTemplate.predicates).flatten) yield p)
 
 
   //  override def parentFactory = None

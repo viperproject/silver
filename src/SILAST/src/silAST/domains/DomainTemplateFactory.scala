@@ -63,8 +63,8 @@ final class DomainTemplateFactory private[silAST](
 
   protected[silAST] override def domainFactories = programFactory.domainFactories
 
-  protected[silAST] override def domainFunctions = programFactory.domainFunctions
+  protected[silAST] override def domainFunctions = programFactory.domainFunctions union pDomainTemplate.functions
 
-  protected[silAST] override def domainPredicates = programFactory.domainPredicates
+  protected[silAST] override def domainPredicates = programFactory.domainPredicates union pDomainTemplate.predicates
 
 }

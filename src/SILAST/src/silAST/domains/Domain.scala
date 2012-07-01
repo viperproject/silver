@@ -168,6 +168,6 @@ private[silAST] final class DomainInstance(
 
   override def hashCode(): Int = fullName.hashCode()
 
-  override lazy val functions = for (f <- template.functions) yield f.substitute(substitution)
+  override def functions = for (f <- template.functions) yield f.substitute(substitution)
   override def predicates = (for (p <- template.predicates) yield p.substitute(substitution)).toSet
 }
