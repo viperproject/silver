@@ -276,7 +276,7 @@ object Main {
   def g(t: Term) {
     t match {
       case OldTerm(_) => 1
-      case LiteralTerm() => 1
+      case IntegerLiteralTerm(_) => 1
       case IfThenElseTerm(_, _,_) => 7
 
       case LogicalVariableTerm(_) => 1
@@ -292,7 +292,7 @@ object Main {
     }
 
     t match {
-      case LiteralTerm() => 1
+      case IntegerLiteralTerm(_) => 1
 
       case LogicalVariableTerm(_) => 1
       case FunctionApplicationTerm(_, _, _) => 3

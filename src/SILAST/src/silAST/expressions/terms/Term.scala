@@ -905,7 +905,7 @@ sealed trait GTerm extends Term with DTerm with PTerm
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed abstract case class LiteralTerm protected[silAST]
+sealed abstract class LiteralTerm protected[silAST]
     ()(override val sourceLocation: SourceLocation,override val comment : List[String])
   extends ASTNode with Term
   with GTerm
@@ -915,7 +915,7 @@ sealed abstract case class LiteralTerm protected[silAST]
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-final class IntegerLiteralTerm private[silAST]
+final case class IntegerLiteralTerm private[silAST]
 (val value: BigInt)
 (sourceLocation: SourceLocation,comment:List[String])
   extends LiteralTerm()(sourceLocation,comment)
@@ -926,6 +926,15 @@ final class IntegerLiteralTerm private[silAST]
 
   override def dataType = integerType
   override def freeTypeVariables = collection.immutable.Set()
+
+  override def equals(other:Any) = {
+    other match {
+      case ilt : IntegerLiteralTerm => value.equals(ilt.value)
+      case _ => false
+    }
+  }
+
+  override val hashCode = value.hashCode()
 
   override def substitute(s: TypeVariableSubstitution): IntegerLiteralTerm =
     new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation),Nil)
