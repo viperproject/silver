@@ -130,9 +130,9 @@ final class ProgramFactory
   private[silAST] val pDomains: mutable.HashSet[Domain] = mutable.HashSet(integerDomain, permissionDomain, referenceDomain, booleanDomain)
 
   def domains: collection.Set[Domain] =
-    pDomains ++
+    pDomains //++
       //      ( for (df <- domainFactories) yield df.domainTemplate).toSet ++
-      (for (df <- domainFactories) yield df.pDomainTemplate.instances).flatten
+//      (for (df <- domainFactories) yield df.pDomainTemplate.instances).flatten
 
   def domainTemplates: collection.Set[DomainTemplate] = (for (dt <- domainFactories) yield dt.pDomainTemplate)
 

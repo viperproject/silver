@@ -163,8 +163,6 @@ protected[silAST] trait TermFactory
                                          comment : List[String] = Nil
                                      ): DomainFunctionApplicationTerm =
   {
-    println("makeDomainFunctionAT(" + f + ")")
-    println(domainFunctions.mkString("\n   ","\n   ",""))
     assert(domainFunctions contains f)
     a.foreach(migrate(_))
 

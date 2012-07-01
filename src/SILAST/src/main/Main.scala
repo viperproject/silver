@@ -23,11 +23,6 @@ object Main {
 
     val pf = new ProgramFactory("P1")(nl,"Program1" :: Nil)
 
-    val sdf = pf.getDomainFactory("SD",Nil,nl)
-    sdf.defineDomainFunction("sf",DataTypeSequence(),integerType,nl)
-    val sdc = sdf.compile()
-    val sdI = pf.makeDomainInstance(sdf, DataTypeSequence())
-
     val sd = pf.getDomainFactory("Seq", List((nl, "T",List("Element type"))),nl)
 
     val tVarT = sd.makeVariableType(sd.typeParameters(0),nl)
@@ -219,6 +214,7 @@ object Main {
       // Domain with no type parameters
       val sdf = pf.getDomainFactory("SD",Nil,nl)
       sdf.defineDomainFunction("sf",DataTypeSequence(),integerType,nl)
+      sdf.defineDomainPredicate("sp",DataTypeSequence(),nl)
       val sd = sdf.compile()
       val sdI = pf.makeDomainInstance(sdf, DataTypeSequence())
     }
@@ -226,8 +222,6 @@ object Main {
     val p = pf.getProgram
 
     println(p.toString)
-
-    println(integerAddition.domain.name)
 
   }
 

@@ -80,10 +80,10 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="Main.scala" pinned="false" current="true" current-in-tab="true">
+      <file leaf-file-name="Main.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/SILAST/src/main/Main.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="56" column="38" selection-start="2381" selection-end="2381" vertical-scroll-proportion="-3.4109948">
+            <state line="223" column="0" selection-start="11096" selection-end="11096" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -92,7 +92,7 @@
       <file leaf-file-name="DomainTemplateFactory.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/domains/DomainTemplateFactory.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="65" column="92" selection-start="3177" selection-end="3177" vertical-scroll-proportion="0.0">
+            <state line="65" column="92" selection-start="3212" selection-end="3212" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -101,7 +101,7 @@
       <file leaf-file-name="Domain.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/domains/Domain.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="103" column="4" selection-start="3432" selection-end="3432" vertical-scroll-proportion="0.0">
+            <state line="171" column="19" selection-start="6123" selection-end="6123" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -119,7 +119,7 @@
       <file leaf-file-name="ProgramFactory.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/programs/ProgramFactory.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="134" column="63" selection-start="5815" selection-end="5815" vertical-scroll-proportion="0.0">
+            <state line="40" column="0" selection-start="1570" selection-end="1570" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
@@ -146,16 +146,25 @@
       <file leaf-file-name="TermFactory.scala" pinned="false" current="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/TermFactory.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="167" column="0" selection-start="6233" selection-end="6233" vertical-scroll-proportion="0.0">
+            <state line="165" column="0" selection-start="6128" selection-end="6128" vertical-scroll-proportion="0.0">
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="SymbolFactory.scala" pinned="false" current="false" current-in-tab="false">
+      <file leaf-file-name="GTermFactory.scala" pinned="false" current="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/GTermFactory.scala">
+          <provider selected="true" editor-type-id="text-editor">
+            <state line="63" column="24" selection-start="2357" selection-end="2357" vertical-scroll-proportion="0.0">
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="SymbolFactory.scala" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/programs/symbols/SymbolFactory.scala">
           <provider selected="true" editor-type-id="text-editor">
-            <state line="8" column="0" selection-start="198" selection-end="198" vertical-scroll-proportion="0.0">
+            <state line="29" column="81" selection-start="978" selection-end="978" vertical-scroll-proportion="1.4481013">
               <folding />
             </state>
           </provider>
@@ -171,7 +180,6 @@
   <component name="IdeDocumentHistory">
     <option name="changedFiles">
       <list>
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/symbols/FunctionSignature.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/PExpressionFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/domains/DomainPredicate.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/domains/LogicalVariableSubstitution.scala" />
@@ -182,11 +190,12 @@
         <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/NodeFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/methods/implementations/LoopBlock.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/Expression.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/TermFactory.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/domains/DomainTemplateFactory.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/ProgramFactory.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/silAST/domains/Domain.scala" />
         <option value="$PROJECT_DIR$/SILAST/src/main/Main.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/ProgramFactory.scala" />
-        <option value="$PROJECT_DIR$/SILAST/src/silAST/domains/DomainTemplateFactory.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/TermFactory.scala" />
+        <option value="$PROJECT_DIR$/SILAST/src/silAST/programs/symbols/SymbolFactory.scala" />
       </list>
     </option>
   </component>
@@ -965,11 +974,6 @@
         <state line="47" column="0" selection-start="1861" selection-end="1861" vertical-scroll-proportion="0.0" />
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/GTermFactory.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="41" column="36" selection-start="1557" selection-end="1557" vertical-scroll-proportion="0.0" />
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/domains/DomainFunction.scala">
       <provider selected="true" editor-type-id="text-editor">
         <state line="34" column="0" selection-start="715" selection-end="715" vertical-scroll-proportion="-267.5" />
@@ -996,44 +1000,51 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/programs/ProgramFactory.scala">
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/domains/DomainTemplateFactory.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="134" column="63" selection-start="5815" selection-end="5815" vertical-scroll-proportion="0.0">
+        <state line="65" column="92" selection-start="3212" selection-end="3212" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/GTermFactory.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="63" column="24" selection-start="2357" selection-end="2357" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/domains/Domain.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="103" column="4" selection-start="3432" selection-end="3432" vertical-scroll-proportion="0.0">
+        <state line="171" column="19" selection-start="6123" selection-end="6123" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/programs/symbols/SymbolFactory.scala">
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/programs/ProgramFactory.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="8" column="0" selection-start="198" selection-end="198" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/TermFactory.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="167" column="0" selection-start="6233" selection-end="6233" vertical-scroll-proportion="0.0">
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/domains/DomainTemplateFactory.scala">
-      <provider selected="true" editor-type-id="text-editor">
-        <state line="65" column="92" selection-start="3177" selection-end="3177" vertical-scroll-proportion="0.0">
+        <state line="40" column="0" selection-start="1570" selection-end="1570" vertical-scroll-proportion="0.0">
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/SILAST/src/main/Main.scala">
       <provider selected="true" editor-type-id="text-editor">
-        <state line="56" column="38" selection-start="2381" selection-end="2381" vertical-scroll-proportion="-3.4109948">
+        <state line="223" column="0" selection-start="11096" selection-end="11096" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/expressions/terms/TermFactory.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="165" column="0" selection-start="6128" selection-end="6128" vertical-scroll-proportion="0.0">
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/SILAST/src/silAST/programs/symbols/SymbolFactory.scala">
+      <provider selected="true" editor-type-id="text-editor">
+        <state line="29" column="81" selection-start="978" selection-end="978" vertical-scroll-proportion="1.4481013">
           <folding />
         </state>
       </provider>
