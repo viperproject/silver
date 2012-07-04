@@ -15,8 +15,7 @@ trait DomainFunction extends ASTNode {
 
   def substitute(s: TypeVariableSubstitution): DomainFunction
 
-  def fullName =
-    domain.fullName + "." + name
+  def fullName = domain.fullName + "." + name
 
   override def toString = "function " + name + signature.toString
 
@@ -29,7 +28,7 @@ trait DomainFunction extends ASTNode {
     }
   }
 
-  override lazy val hashCode: Int = fullName.hashCode()
+  override def hashCode: Int = (fullName + signature.toString).hashCode()
 
 }
 

@@ -71,7 +71,7 @@ private[silAST] class DomainTemplateC(
   require(typeVariableNames.forall((s) => typeVariableNames.count(_._2 == s._2) == 1))
 
   override def fullName: String =
-    name + (if (typeParameters.length == 0) "" else typeParameters.mkString("[", ",", "]"))
+    name + typeParameters.mkString("[", ",", "]")
 
   val typeParameters: Seq[TypeVariable] = for (n <- typeVariableNames) yield new TypeVariable(n._2, this)(n._1,n._3)
   val freeTypeVariables = typeParameters.toSet
@@ -137,14 +137,6 @@ private[silAST] final class DomainInstance(
   override def axioms =
   {
     val result = (for (a <- template.axioms) yield a.substitute(substitution)).toSet
-/*    System.out.println("domain " + name)
-    System.out.println("   substitution " + substitution)
-    System.out.println("   type arguments " + typeArguments)
-    for (a <- template.axioms){
-      val ac = a.substitute(substitution)
-      System.out.println("axiom " + a.toString)
-      System.out.println("   result = " + ac.toString)
-    }                                                                                                         */
     assert (!typeArguments.freeTypeVariables.isEmpty || result.forall(_.expression.freeTypeVariables.isEmpty))
     result
   }

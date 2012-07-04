@@ -29,7 +29,6 @@ final class ProgramFactory
     for (mf <- methodFactories) mf.compile()
     for (ff <- functionFactories) ff.compile()
 
-
     val program = new Program(name, domains, fields, functions, predicates, (for (mf <- methodFactories) yield mf.method).toSet, this)(sourceLocation,comment)
     //    scope = Some[Scope](program)
     program
@@ -137,19 +136,20 @@ final class ProgramFactory
   def domainTemplates: collection.Set[DomainTemplate] = (for (dt <- domainFactories) yield dt.pDomainTemplate)
 
   override def domainFunctions: collection.Set[DomainFunction] =
-    domains.flatMap(_.functions)
-//      (for (f <- (for (d <- domainFactories) yield d.domainTemplate.functions).flatten) yield f)
-
-  //  (nullFunction)
-
-  //TODO:check duplicate names/prefix names
+    domains.flatMap(_.functions) union
+      (for (f <-
+            (for (d <- domainFactories) yield
+              if (d.typeVariables.isEmpty) d.domainTemplate.functions
+              else collection.Set[DomainFunction]()).flatten)
+      yield f)
 
   override def domainPredicates: collection.Set[DomainPredicate] =
-    (for (p <- (for (d <- domains) yield d.predicates).flatten) yield p) //union
-//      (for (p <- (for (d <- domainFactories) yield d.domainTemplate.predicates).flatten) yield p)
-
-
-  //  override def parentFactory = None
+    domains.flatMap(_.predicates) union
+      (for (p <-
+            (for (d <- domainFactories) yield
+              if (d.typeVariables.isEmpty) d.domainTemplate.predicates
+              else collection.Set[DomainPredicate]()).flatten)
+      yield p)
 
   override val typeVariables = collection.Set[TypeVariable]()
   override val programVariables = collection.Set[ProgramVariable]()

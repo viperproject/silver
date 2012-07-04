@@ -10,7 +10,7 @@ final class DomainPredicateSignature private[silAST](
   def substitute(s: TypeVariableSubstitution): DomainPredicateSignature =
     new DomainPredicateSignature(parameterTypes.substitute(s))(sourceLocation)
 
-  override lazy val toString = parameterTypes.toString()
+  override lazy val toString = "(" + parameterTypes.mkString("",",","") + ")"
   override val comment = Nil
 
   override def equals(other: Any): Boolean = {

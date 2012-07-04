@@ -14,7 +14,7 @@ final class DomainFunctionSignature private[silAST](
 
   override val comment = Nil
 
-  override def toString = "(" + parameterTypes.toString + ")" + " : " + resultType.toString
+  override def toString = "(" + parameterTypes.mkString("",",","") + ")" + " : " + resultType.toString
 
   override def equals(other: Any): Boolean = {
     other match {
