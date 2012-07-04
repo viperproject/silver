@@ -137,7 +137,7 @@ final class ProgramFactory
   def domainTemplates: collection.Set[DomainTemplate] = (for (dt <- domainFactories) yield dt.pDomainTemplate)
 
   override def domainFunctions: collection.Set[DomainFunction] =
-    (for (f <- (for (d <- domains) yield d.functions).flatten) yield f) //union
+    domains.flatMap(_.functions)
 //      (for (f <- (for (d <- domainFactories) yield d.domainTemplate.functions).flatten) yield f)
 
   //  (nullFunction)
