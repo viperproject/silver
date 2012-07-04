@@ -15,13 +15,6 @@ final class Implementation private[silAST]
 
   val implementation = this
 
-  System.out.println(
-    "Implementation " + method.name + " pvs" + programVariables.mkString(",") +
-      " method.pvs: " + method.programVariables.mkString(",") +
-      " method.params: " + method.signature.parameters.mkString(",") +
-      " method.results: " + method.signature.results.mkString(",")
-  )
-
   //////////////////////////////////////////////////////////////////
   override def equals(other: Any): Boolean = {
     other match {

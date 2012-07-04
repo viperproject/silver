@@ -32,7 +32,9 @@ trait DTermFactory extends NodeFactory with GTermFactory with DataTypeFactory {
     t match {
       case gt: GTerm => super.migrate(gt)
       case lv: LogicalVariableTerm => {
-        require(boundVariables contains lv.variable)
+        // TODO: Decide how to handle this.
+        // I think that bound variables should be migrated automatically. ~~~~ Christian Klauser <klauserc@ethz.ch>
+        boundVariables.add(lv.variable)
         addTerm(lv)
       }
       case fa: DDomainFunctionApplicationTerm => {

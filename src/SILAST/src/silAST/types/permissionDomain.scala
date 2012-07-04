@@ -38,11 +38,12 @@ object permissionType extends NonReferenceDataType(permissionDomain)(noLocation,
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 object permissionAddition extends DomainFunction {
+  override val domain = permissionDomain
   override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "+"
   override val signature = new DomainFunctionSignature(DataTypeSequence(permissionType, permissionType), permissionType)(noLocation)
-  override val domain = permissionDomain
+
 
   override def substitute(ts: TypeVariableSubstitution) = this
 
