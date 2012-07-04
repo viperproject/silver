@@ -28,7 +28,7 @@ trait DomainFunction extends ASTNode {
     }
   }
 
-  override val hashCode: Int = fullName.hashCode()
+  override def hashCode: Int = fullName.hashCode()
 
 }
 

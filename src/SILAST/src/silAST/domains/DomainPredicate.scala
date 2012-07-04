@@ -26,7 +26,7 @@ trait DomainPredicate extends ASTNode {
     }
   }
 
-  override def hashCode(): Int = name.hashCode()
+  override def hashCode(): Int = fullName.hashCode()
 
 }
 
