@@ -207,7 +207,7 @@ sealed case class UnaryExpression private[silAST]
 (operator: UnaryConnective, operand1: Expression)
 (val sourceLocation: SourceLocation, override val comment : List[String])
   extends Expression {
-  override val toString = operator.toString + operand1.toString
+  override val toString = operator.toString + "(" + operand1.toString + ")"
 
   override val subExpressions: Seq[Expression] = List(operand1)
 

@@ -18,6 +18,7 @@ class PredicateFactory private[silAST](
 
   def setExpression(e: Expression) {
     require(pPredicate.pExpression == None)
+    migrate(e)
     require(expressions contains e)
     pPredicate.pExpression = Some(e)
   }
