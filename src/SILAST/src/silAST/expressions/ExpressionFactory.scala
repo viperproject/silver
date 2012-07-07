@@ -53,7 +53,9 @@ trait ExpressionFactory
         migrate(pue.expression)
       }
       case qe: QuantifierExpression => {
-        require(boundVariables contains qe.variable)
+        // TODO: decide how to handle bound variables in migration (Christian Klauser <klauserc@ethz.ch>)
+        //require(boundVariables contains qe.variable)
+        boundVariables += qe.variable
         require(!(boundVariableMap contains qe.variable))
         migrate(qe.expression)
       }
