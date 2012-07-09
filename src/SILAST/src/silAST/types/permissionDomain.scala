@@ -46,6 +46,7 @@ object permissionAddition extends DomainFunction {
 
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 
   override def toString(ts: TermSequence) = {
     require(ts.length == 2)
@@ -62,6 +63,7 @@ object percentagePermission extends DomainFunction {
   override val domain = permissionDomain
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 
   override def toString(ts: TermSequence) = {
     require(ts.length == 1)
@@ -77,6 +79,7 @@ object permissionSubtraction extends DomainFunction {
   override val domain = permissionDomain
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 
   override def toString(ts: TermSequence) = {
     require(ts.length == 2)
@@ -92,6 +95,7 @@ object permissionMultiplication extends DomainFunction {
   override val domain = permissionDomain
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 
   override def toString(ts: TermSequence) = {
     require(ts.length == 2)
@@ -107,6 +111,7 @@ object permissionIntegerMultiplication extends DomainFunction {
   override val domain = permissionDomain
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 
   override def toString(ts: TermSequence) = {
     require(ts.length == 2)
@@ -128,6 +133,7 @@ object permissionLE extends DomainPredicate {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -144,6 +150,7 @@ object permissionLT extends DomainPredicate {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -160,6 +167,7 @@ object permissionGE extends DomainPredicate {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -176,6 +184,7 @@ object permissionGT extends DomainPredicate {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -192,6 +201,7 @@ object permissionEQ extends DomainPredicate {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -208,5 +218,5 @@ object permissionNE extends DomainPredicate {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }

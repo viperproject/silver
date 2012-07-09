@@ -51,6 +51,7 @@ object booleanTrue extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -68,6 +69,7 @@ object booleanFalse extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -85,6 +87,7 @@ object booleanNegation extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -102,6 +105,7 @@ object booleanConjunction extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -119,6 +123,7 @@ object booleanDisjunction extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -136,6 +141,7 @@ object booleanImplication extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -153,6 +159,7 @@ object booleanEquivalence extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -169,4 +176,5 @@ object booleanEvaluate extends DomainPredicate {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }

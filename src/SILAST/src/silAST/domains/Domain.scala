@@ -70,7 +70,7 @@ private[silAST] class DomainTemplateC(
   //No duplicate type variable name
   require(typeVariableNames.forall((s) => typeVariableNames.count(_._2 == s._2) == 1))
 
-  override def fullName: String =
+  def fullName: String =
     name + typeParameters.mkString("[", ",", "]")
 
   val typeParameters: Seq[TypeVariable] = for (n <- typeVariableNames) yield new TypeVariable(n._2, this)(n._1,n._3)
@@ -92,7 +92,6 @@ private[silAST] class DomainTemplateC(
   private[silAST] lazy val dataType = NonReferenceDataType(domain)(domain.sourceLocation,domain.comment)
 
   override def getType = dataType
-
 
   val pInstances = new mutable.HashMap[DataTypeSequence, DomainInstance]
 
@@ -129,17 +128,10 @@ private[silAST] final class DomainInstance(
 
   override def fullName: String = name
 
-  val name: String = template.name + typeArguments.toString
+  val name: String = template.name + (if (typeArguments.isEmpty) "" else typeArguments.toString)
   val substitution = new TypeSubstitutionC(template.typeParameters.zip(typeArguments).toSet, Set())
 
   val getType: NonReferenceDataType = new NonReferenceDataType(this)(sourceLocation,comment)
-
-  override def axioms =
-  {
-    val result = (for (a <- template.axioms) yield a.substitute(substitution)).toSet
-    assert (!typeArguments.freeTypeVariables.isEmpty || result.forall(_.expression.freeTypeVariables.isEmpty))
-    result
-  }
 
   def substitute(s: TypeVariableSubstitution): Domain = template.getInstance(typeArguments.substitute(s))
 
@@ -160,6 +152,7 @@ private[silAST] final class DomainInstance(
 
   override def hashCode(): Int = fullName.hashCode()
 
-  override lazy val functions = for (f <- template.functions) yield f.substitute(substitution)
-  override lazy val predicates = (for (p <- template.predicates) yield p.substitute(substitution)).toSet
+  override lazy val functions  =  for (f <- template.functions) yield f.substituteI(substitution)
+  override lazy val predicates = (for (p <- template.predicates) yield p.substituteI(substitution)).toSet
+  override lazy val axioms     = (for (a <- template.axioms) yield a.substitute(substitution)).toSet
 }

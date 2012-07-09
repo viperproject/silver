@@ -136,20 +136,20 @@ final class ProgramFactory
   def domainTemplates: collection.Set[DomainTemplate] = (for (dt <- domainFactories) yield dt.pDomainTemplate)
 
   override def domainFunctions: collection.Set[DomainFunction] =
-    domains.flatMap(_.functions) union
+    domains.flatMap(_.functions) /*union
       (for (f <-
             (for (d <- domainFactories) yield
               if (d.typeVariables.isEmpty) d.domainTemplate.functions
               else collection.Set[DomainFunction]()).flatten)
-      yield f)
+      yield f)*/
 
   override def domainPredicates: collection.Set[DomainPredicate] =
-    domains.flatMap(_.predicates) union
+    domains.flatMap(_.predicates) /*union
       (for (p <-
             (for (d <- domainFactories) yield
               if (d.typeVariables.isEmpty) d.domainTemplate.predicates
               else collection.Set[DomainPredicate]()).flatten)
-      yield p)
+      yield p)                      */
 
   override val typeVariables = collection.Set[TypeVariable]()
   override val programVariables = collection.Set[ProgramVariable]()

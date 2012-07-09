@@ -14,6 +14,7 @@ trait DomainFunction extends ASTNode {
   def domain: GDomain
 
   def substitute(s: TypeVariableSubstitution): DomainFunction
+  private[silAST] def substituteI(s: TypeVariableSubstitution): DomainFunction
 
   def fullName = domain.fullName + "." + name
 
@@ -38,6 +39,9 @@ final private[silAST] class DomainFunctionC(
                                              val domain: GDomain
                                              )(val sourceLocation: SourceLocation,override val comment : List[String]) extends DomainFunction {
   override def substitute(s: TypeVariableSubstitution): DomainFunction =
+    domain.substitute(s).functions.find(_.name == name).get
+
+  private[silAST] def substituteI(s: TypeVariableSubstitution): DomainFunction =
   {
     val result = new DomainFunctionC(name, signature.substitute(s),domain.substitute(s))(sourceLocation,Nil)
     result

@@ -51,6 +51,7 @@ object integerAddition extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -67,6 +68,7 @@ object integerSubtraction extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -83,6 +85,7 @@ object integerMultiplication extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -99,6 +102,7 @@ object integerDivision extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -115,6 +119,7 @@ object integerModulo extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -131,6 +136,7 @@ object integerNegation extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -147,6 +153,7 @@ object integerLE extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -163,6 +170,7 @@ object integerLT extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -179,6 +187,7 @@ object integerGE extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -195,6 +204,7 @@ object integerGT extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -211,6 +221,7 @@ object integerEQ extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -227,4 +238,5 @@ object integerNE extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
+  private[silAST] override def substituteI(ts: TypeVariableSubstitution) = this
 }
