@@ -1,12 +1,12 @@
-package silAST.programs.symbols
+package semper.sil.ast.programs.symbols
 
-import silAST.programs.ProgramFactory
-import silAST.source.SourceLocation
-import silAST.expressions.terms.Term
-import silAST.types.DataType
-import silAST.expressions.Expression
+import semper.sil.ast.programs.ProgramFactory
+import semper.sil.ast.source.SourceLocation
+import semper.sil.ast.expressions.terms.Term
+import semper.sil.ast.types.DataType
+import semper.sil.ast.expressions.Expression
 
-class FunctionFactory private[silAST](
+class FunctionFactory private [sil](
                                        private val programFactory: ProgramFactory,
                                        val name: String,
                                        pParameters: Seq[(SourceLocation, String, DataType)],
@@ -43,13 +43,13 @@ class FunctionFactory private[silAST](
 
   def parameters: ProgramVariableSequence = pFunction.pSignature.pParameters
 
-  protected[silAST] override def programVariables = Set(thisVar, resultVar) ++ pFunction.pSignature.pParameters
+  protected[sil] override def programVariables = Set(thisVar, resultVar) ++ pFunction.pSignature.pParameters
 
-  protected[silAST] override def inputProgramVariables = Set(thisVar) ++ pFunction.pSignature.pParameters
+  protected[sil] override def inputProgramVariables = Set(thisVar) ++ pFunction.pSignature.pParameters
 
-  protected[silAST] override def outputProgramVariables = Set(resultVar)
+  protected[sil] override def outputProgramVariables = Set(resultVar)
 
-  private[silAST] val pFunction = new Function(name, pParameters, resultType)(sourceLocation,this,comment)
+  private [sil] val pFunction = new Function(name, pParameters, resultType)(sourceLocation,this,comment)
   val resultVar = pFunction.pSignature.result
 
   override def typeVariables = Set()

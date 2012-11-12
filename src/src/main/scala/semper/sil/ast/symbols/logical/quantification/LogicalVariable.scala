@@ -1,10 +1,10 @@
-package silAST.symbols.logical.quantification
+package semper.sil.ast.symbols.logical.quantification
 
-import silAST.types.DataType
-import silAST.source.SourceLocation
-import silAST.programs.symbols.Variable
+import semper.sil.ast.types.DataType
+import semper.sil.ast.source.SourceLocation
+import semper.sil.ast.programs.symbols.Variable
 
-sealed class LogicalVariable private[silAST]
+sealed class LogicalVariable private [sil]
   (val name: String, val dataType: DataType)
   (val sourceLocation: SourceLocation,val comment:List[String])
   extends Variable {

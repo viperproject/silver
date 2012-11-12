@@ -1,11 +1,11 @@
-package silAST.methods
+package semper.sil.ast.methods
 
 import collection.Set
-import silAST.types.{DataTypeFactory, DataType}
-import silAST.domains.{DomainFunction, DomainPredicate, DomainTemplateFactory}
-import silAST.expressions.ExpressionFactory
-import silAST.programs.{ProgramFactory, NodeFactory}
-import silAST.programs.symbols.{Field, ProgramVariable, Function, Predicate}
+import semper.sil.ast.types.{DataTypeFactory, DataType}
+import semper.sil.ast.domains.{DomainFunction, DomainPredicate, DomainTemplateFactory}
+import semper.sil.ast.expressions.ExpressionFactory
+import semper.sil.ast.programs.{ProgramFactory, NodeFactory}
+import semper.sil.ast.programs.symbols.{Field, ProgramVariable, Function, Predicate}
 
 trait ScopeFactory
   extends NodeFactory
@@ -13,9 +13,9 @@ trait ScopeFactory
   with ExpressionFactory {
   /////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////
-  private[silAST] def programFactory: ProgramFactory
+  private [sil] def programFactory: ProgramFactory
 
-  protected[silAST] def parentFactory: Option[ScopeFactory]
+  protected[sil] def parentFactory: Option[ScopeFactory]
 
   def programVariables: Set[ProgramVariable]
 
@@ -35,9 +35,9 @@ trait ScopeFactory
 
   override def dataTypes: Set[DataType] = parentFactory.get.dataTypes union pDataTypes
 
-  protected[silAST] def methodFactories: Set[MethodFactory] = parentFactory.get.methodFactories
+  protected[sil] def methodFactories: Set[MethodFactory] = parentFactory.get.methodFactories
 
-  protected[silAST] override def domainFactories: Set[DomainTemplateFactory] = parentFactory.get.domainFactories
+  protected[sil] override def domainFactories: Set[DomainTemplateFactory] = parentFactory.get.domainFactories
 
-  //  private[silAST] val pScope: Scope
+  //  private[semper.sil.ast] val pScope: Scope
 }

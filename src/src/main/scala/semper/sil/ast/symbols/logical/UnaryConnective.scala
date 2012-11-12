@@ -1,9 +1,9 @@
-package silAST.symbols.logical
+package semper.sil.ast.symbols.logical
 
-import silAST.ASTNode
-import silAST.source.SourceLocation
+import semper.sil.ast.ASTNode
+import semper.sil.ast.source.SourceLocation
 
-sealed abstract class UnaryConnective private[silAST]() extends ASTNode {
+sealed abstract class UnaryConnective private [sil]() extends ASTNode {
   override def toString: String = name
 
   def name: String

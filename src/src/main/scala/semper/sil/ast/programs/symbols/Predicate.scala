@@ -1,17 +1,17 @@
-package silAST.programs.symbols
+package semper.sil.ast.programs.symbols
 
-import silAST.ASTNode
-import silAST.expressions.Expression
-import silAST.source.SourceLocation
+import semper.sil.ast.ASTNode
+import semper.sil.ast.expressions.Expression
+import semper.sil.ast.source.SourceLocation
 
-final class Predicate private[silAST](
+final class Predicate private [sil](
          val name: String
          )(val sourceLocation: SourceLocation,val factory : PredicateFactory, val comment:List[String])
   extends ASTNode
 {
   override def toString = "predicate " + name + " = " + expression.toString
 
-  private[silAST] var pExpression: Option[Expression] = None
+  private [sil] var pExpression: Option[Expression] = None
 
   def expression: Expression = pExpression.get
 

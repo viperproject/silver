@@ -1,20 +1,20 @@
-package silAST.types
+package semper.sil.ast.types
 
-import silAST.programs.NodeFactory
+import semper.sil.ast.programs.NodeFactory
 import collection.{mutable, Set}
 import collection.mutable.HashSet
-import silAST.source.SourceLocation
-import silAST.domains.DomainTemplateFactory
+import semper.sil.ast.source.SourceLocation
+import semper.sil.ast.domains.DomainTemplateFactory
 
 
 trait DataTypeFactory extends NodeFactory {
 
   //////////////////////////////////////////////////////////////////////////
-  protected[silAST] def migrate(dts: DataTypeSequence) {
+  protected[sil] def migrate(dts: DataTypeSequence) {
     dts.foreach(migrate(_))
   }
 
-  protected[silAST] def migrate(dt: DataType) {
+  protected[sil] def migrate(dt: DataType) {
     if (dataTypes contains dt)
       return
 
@@ -57,13 +57,13 @@ trait DataTypeFactory extends NodeFactory {
     result
   }
 
-  protected[silAST] val pDataTypes = new mutable.HashSet[DataType] //(integerType,permissionType)
+  protected[sil] val pDataTypes = new mutable.HashSet[DataType] //(integerType,permissionType)
   //  pDataTypes += integerType
   //  pDataTypes += permissionType
 
-  protected[silAST] def domainFactories: Set[DomainTemplateFactory] //= new HashSet[DomainTemplateFactory]
-  protected[silAST] def dataTypes: Set[DataType] //= pDataTypes //new HashSet[DataType]
-  protected[silAST] final val dataTypeSequences = new mutable.HashSet[DataTypeSequence]
+  protected[sil] def domainFactories: Set[DomainTemplateFactory] //= new HashSet[DomainTemplateFactory]
+  protected[sil] def dataTypes: Set[DataType] //= pDataTypes //new HashSet[DataType]
+  protected[sil] final val dataTypeSequences = new mutable.HashSet[DataTypeSequence]
 
-  protected[silAST] def typeVariables: Set[TypeVariable]
+  protected[sil] def typeVariables: Set[TypeVariable]
 }
