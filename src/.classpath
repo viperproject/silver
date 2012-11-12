@@ -1,5 +1,6 @@
 <classpath>
-  <classpathentry output="target\scala-2.9.1\classes" path="src" kind="src"></classpathentry>
+  <classpathentry kind="src" output="target/scala-2.9.1/classes" path="src/main/scala"/>
+  <classpathentry kind="src" output="target/scala-2.9.1/test-classes" path="src/test/scala"/>
   <classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"></classpathentry>
   <classpathentry path="org.eclipse.jdt.launching.JRE_CONTAINER" kind="con"></classpathentry>
   <classpathentry path="bin" kind="output"></classpathentry>
