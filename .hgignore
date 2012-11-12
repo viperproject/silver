@@ -1,5 +1,5 @@
 syntax: glob
-src/SILAST/.cache
-src/SILAST/project/project/**
-src/SILAST/project/target/**
-src/SILAST/target/**
+src/.cache
+src/project/project/**
+src/project/target/**
+src/target/**
