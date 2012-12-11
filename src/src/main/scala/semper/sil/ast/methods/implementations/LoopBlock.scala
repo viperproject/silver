@@ -42,7 +42,12 @@ final class LoopBlock private [sil]
     (for (n <- body.nodes) yield n.writtenVariables).flatten.toSet //TODO:is this enough?
 
   /////////////////////////////////////////////////////////////////////////////////////
-  override def toString = label + ": while " + condition + " do {" + body.toString + "} " + controlFlowToString
+  override def toString = label + ": while " + condition + sys.props("line.separator") + 
+  (pInvariant match { 
+    case Some(e) => " -- invariant: " + e.toString + sys.props("line.separator") 
+    case _ => ""
+  }) +
+  "  do {" + body.toString + "} " + controlFlowToString
 
   override def hashCode() = toString.hashCode()
 
