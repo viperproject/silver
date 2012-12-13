@@ -1,5 +1,5 @@
 syntax: glob
-src/.cache
-src/project/project/**
-src/project/target/**
-src/target/**
+.cache
+project/project/**
+project/target/**
+target/**
