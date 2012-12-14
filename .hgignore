@@ -3,3 +3,4 @@ syntax: glob
 project/project/**
 project/target/**
 target/**
+bin/**
