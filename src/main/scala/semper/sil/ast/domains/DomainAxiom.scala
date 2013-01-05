@@ -3,6 +3,8 @@ package semper.sil.ast.domains
 import semper.sil.ast.ASTNode
 import semper.sil.ast.expressions.Expression
 import semper.sil.ast.source.SourceLocation
+import semper.sil.ast.symbols.logical.quantification.LogicalVariable
+import semper.sil.ast.expressions.terms.Term
 
 final class DomainAxiom private[sil](
 
@@ -14,7 +16,7 @@ final class DomainAxiom private[sil](
   def substitute(ts: TypeVariableSubstitution): DomainAxiom =
     new DomainAxiom(
       name,
-      expression.substitute(new LogicalVariableSubstitutionC(ts.types, Set()))
+      expression.substitute(new LogicalVariableSubstitutionC(ts.types, Set[(LogicalVariable, Term)]()))
     )(sourceLocation, Nil)
 
 

@@ -4,6 +4,8 @@ import semper.sil.ast.programs.{NodeFactory, ProgramFactory}
 import semper.sil.ast.expressions.{Expression, ExpressionFactory}
 import semper.sil.ast.source.{noLocation, SourceLocation}
 import semper.sil.ast.types._
+import scala.collection
+import semper.sil.ast.programs.symbols.{Predicate, Function, ProgramVariable, Field}
 
 final class DomainTemplateFactory private[sil](
                                                 val programFactory: ProgramFactory,
@@ -67,4 +69,16 @@ final class DomainTemplateFactory private[sil](
 
   protected[sil] override def domainPredicates = programFactory.domainPredicates union pDomainTemplate.predicates
 
+  protected[sil] def predicates: collection.Set[Predicate] = Set()
+
+  protected[sil] def functions: collection.Set[Function] = Set()
+
+  protected[sil] def programVariables: collection.Set[ProgramVariable] = Set()
+
+  protected[sil] def inputProgramVariables: collection.Set[ProgramVariable] = Set()
+
+  //included in programVariables
+  protected[sil] def outputProgramVariables: collection.Set[ProgramVariable] = Set()
+
+  protected[sil] def fields: collection.Set[Field] = Set()
 }

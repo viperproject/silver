@@ -2,7 +2,7 @@ package semper.sil.ast.expressions.terms
 
 import semper.sil.ast.symbols.logical.quantification.LogicalVariable
 import semper.sil.ast.ASTNode
-import semper.sil.ast.expressions.util.{GTermSequence, DTermSequence, PTermSequence, TermSequence}
+import semper.sil.ast.expressions.util.TermSequence
 import semper.sil.ast.programs.symbols.{Predicate, ProgramVariable, Field, Function}
 import semper.sil.ast.domains._
 import semper.sil.ast.source.SourceLocation
@@ -375,7 +375,6 @@ case class FullPermissionTerm()
   with AtomicTerm {
   override def toString: String = "write"
 
-  override val subTerms = Nil
   override val dataType = permissionType
 
   override val freeTypeVariables = collection.immutable.Set[TypeVariable]()
@@ -397,7 +396,6 @@ case class NoPermissionTerm()
 
   override val freeTypeVariables = collection.immutable.Set[TypeVariable]()
 
-  override val subTerms = Seq()
   override val dataType = permissionType
 
   override def substitute(s: TypeVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation), Nil)
@@ -417,7 +415,6 @@ case class EpsilonPermissionTerm()
 
   override val freeTypeVariables = collection.immutable.Set[TypeVariable]()
 
-  override val subTerms = Seq()
   override val dataType = permissionType
 
   override def substitute(s: TypeVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation), Nil)
@@ -433,32 +430,19 @@ case class EpsilonPermissionTerm()
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-//Program terms
-///////////////////////////////////////////////////////////////////////////
-sealed trait PTerm extends Term {
-  override lazy val subTerms: Seq[PTerm] = pSubTerms
-
-  protected def pSubTerms: Seq[PTerm]
-
-  final override val freeVariables = Set[LogicalVariable]()
-
-  def substitute(s: TypeVariableSubstitution): PTerm
-}
-
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
 sealed case class ProgramVariableTerm protected[sil]
 (variable: ProgramVariable)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
   extends ASTNode
-  with PTerm
+  with Term
   with AtomicTerm {
   override val toString: String = variable.name
-  override val pSubTerms = Nil
 
   override def dataType = variable.dataType
 
   override def programVariables = Set(variable)
+
+  override val freeVariables = Set[LogicalVariable]()
 
   override def freeTypeVariables = variable.dataType.freeTypeVariables
 
@@ -480,7 +464,6 @@ sealed case class LogicalVariableTerm protected[sil]
   with Term
   with AtomicTerm {
   override val toString = variable.name
-  override val subTerms = Nil
 
   override def dataType = variable.dataType
 
@@ -525,7 +508,6 @@ final case class IntegerLiteralTerm private[sil]
   extends LiteralTerm()(sourceLocation, comment)
   with Term {
   override val toString: String = value.toString()
-  override val subTerms = Nil
 
   override def dataType = integerType
 

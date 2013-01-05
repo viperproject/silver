@@ -7,7 +7,7 @@ import semper.sil.ast.programs.symbols.PredicateFactory
 import semper.sil.ast.methods.MethodFactory
 import semper.sil.ast.source.noLocation
 import semper.sil.ast.types._
-import semper.sil.ast.expressions.util.{PTermSequence, TermSequence, DTermSequence}
+import semper.sil.ast.expressions.util.TermSequence
 import semper.sil.ast.expressions.terms._
 import semper.sil.ast.expressions._
 
@@ -39,11 +39,11 @@ object Main {
       val eT = sd.makeBoundVariableTerm(varE,nl)
 
       // forall x : Seq[T], e : T :: !isEmpty(x) -> tail(prepend(e,x)) == x
-      val e1 = sd.makeDUnaryExpression(Not()(nl), sd.makeDDomainPredicateExpression(isEmpty, DTermSequence(xT),nl),nl)
-      val e2 = sd.makeDDomainFunctionApplicationTerm(prepend, DTermSequence(eT, xT),nl)
-      val e3 = sd.makeDEqualityExpression(sd.makeDDomainFunctionApplicationTerm(tail, DTermSequence(e2),nl), xT,nl)
-      val e4 = sd.makeDBinaryExpression(Implication()(nl), e1, e3,nl)
-      val e = sd.makeDQuantifierExpression(Forall()(nl), varX, sd.makeDQuantifierExpression(Forall()(nl), varE, e4,nl),nl)
+      val e1 = sd.makeUnaryExpression(Not()(nl), sd.makeDomainPredicateExpression(isEmpty, TermSequence(xT),nl),nl)
+      val e2 = sd.makeDomainFunctionApplicationTerm(prepend, TermSequence(eT, xT),nl)
+      val e3 = sd.makeEqualityExpression(sd.makeDomainFunctionApplicationTerm(tail, TermSequence(e2),nl), xT,nl)
+      val e4 = sd.makeBinaryExpression(Implication()(nl), e1, e3,nl)
+      val e = sd.makeQuantifierExpression(Forall()(nl), varX, sd.makeQuantifierExpression(Forall()(nl), varE, e4)(nl))(nl)
       sd.addDomainAxiom("tailPrepend1", e,nl)
     }
 
@@ -105,25 +105,25 @@ object Main {
     {
       val x = ff.makeProgramVariableTerm(ff.parameters(0),nl)
       val v0 = ff.makeIntegerLiteralTerm(0,nl)
-      val v0_le_x = ff.makePDomainPredicateExpression(booleanEvaluate,PTermSequence(ff.makePDomainFunctionApplicationTerm(integerLE, PTermSequence(v0, x),nl)),nl)
+      val v0_le_x = ff.makeDomainPredicateExpression(booleanEvaluate,TermSequence(ff.makeDomainFunctionApplicationTerm(integerLE, TermSequence(v0, x),nl)),nl)
       ff.addPrecondition(v0_le_x)
 
       val thisVar = ff.makeProgramVariableTerm(ff.thisVar,nl)
       val resultVar = ff.makeProgramVariableTerm(ff.resultVar,nl)
-      val thisVar_next = ff.makePFieldReadTerm(thisVar, nextField,nl)
+      val thisVar_next = ff.makeFieldReadTerm(thisVar, nextField,nl)
 
       //nonsensical - check recursion - next.numXs(x)
-      val numXs_this_next = ff.makePFunctionApplicationTerm(thisVar_next, ff, PTermSequence(x),nl)
-      val numXs_this_next_le_numXs_this = ff.makeDomainPredicateExpression(booleanEvaluate,PTermSequence(ff.makePDomainFunctionApplicationTerm(integerLE, PTermSequence(numXs_this_next, resultVar),nl)),nl)
+      val numXs_this_next = ff.makeFunctionApplicationTerm(thisVar_next, ff, TermSequence(x),nl)
+      val numXs_this_next_le_numXs_this = ff.makeDomainPredicateExpression(booleanEvaluate,TermSequence(ff.makeDomainFunctionApplicationTerm(integerLE, TermSequence(numXs_this_next, resultVar),nl)),nl)
       ff.addPostcondition(numXs_this_next_le_numXs_this)
 
-      val numXs_this_next_plus_x = ff.makePDomainFunctionApplicationTerm(integerAddition, PTermSequence(numXs_this_next, x),nl)
+      val numXs_this_next_plus_x = ff.makeDomainFunctionApplicationTerm(integerAddition, TermSequence(numXs_this_next, x),nl)
       val acc_thisVar_valid_write = ff.makePredicatePermissionExpression(thisVar, vp, ff.makeFullPermission(nl),nl)
       val b = ff.makeUnfoldingTerm(acc_thisVar_valid_write,numXs_this_next_plus_x,nl)
 
       ff.setBody(b)
 
-      val this_next_seq = ff.makePFieldReadTerm(thisVar_next, seqField,nl)
+      val this_next_seq = ff.makeFieldReadTerm(thisVar_next, seqField,nl)
       ff.setMeasure(this_next_seq)
     }
 
@@ -174,12 +174,12 @@ object Main {
 
           val nTerm = startBlock.makeProgramVariableTerm(nVar,nl)
           //this.numXs(n)
-          val numXs_nTerm = startBlock.makePFunctionApplicationTerm(this_term, ff, PTermSequence(nTerm),nl)
+          val numXs_nTerm = startBlock.makeFunctionApplicationTerm(this_term, ff, TermSequence(nTerm),nl)
           startBlock.appendAssignment(nVar, numXs_nTerm,nl)
           //This means exhale of predicate expression
           startBlock.appendExhale(vp.predicate.expression.substitute(impl.makeProgramVariableSubstitution(Set((vp.thisVar,rVar_term)))),Some("bugger"),nl)
-          val pe = startBlock.makePPredicatePermissionExpression(rVar_term,vp,vp.makeFullPermission(nl),nl)
-          startBlock.appendAssignment(rVar,startBlock.makePUnfoldingTerm(pe,rTerm,nl),nl)
+          val pe = startBlock.makePredicatePermissionExpression(rVar_term,vp,vp.makeFullPermission(nl),nl)
+          startBlock.appendAssignment(rVar,startBlock.makeUnfoldingTerm(pe,rTerm,nl),nl)
 
           startBlock.appendFold(this_term, vp,vp.makeFullPermission(nl),nl)
           val lb = midBlock.bodyFactory.addBasicBlock("whileBody",nl)

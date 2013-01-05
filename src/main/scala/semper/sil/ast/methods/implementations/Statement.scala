@@ -2,11 +2,11 @@ package semper.sil.ast.methods.implementations
 
 import semper.sil.ast.ASTNode
 import semper.sil.ast.source.SourceLocation
-import semper.sil.ast.expressions.util.PTermSequence
+import semper.sil.ast.expressions.util.TermSequence
 import semper.sil.ast.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import semper.sil.ast.methods.Method
 import scala.Some
-import semper.sil.ast.expressions.terms.{Term, PredicateLocation, PTerm}
+import semper.sil.ast.expressions.terms.{Term, PredicateLocation}
 import semper.sil.ast.types.{permissionType, DataType}
 import semper.sil.ast.expressions.{PredicatePermissionExpression, Expression}
 
@@ -26,7 +26,7 @@ sealed abstract class Statement private[sil] extends ASTNode {
 //////////////////////////////////////////////////////////////////////////////
 final case class AssignmentStatement private[sil](
                                                    target: ProgramVariable,
-                                                   source: PTerm
+                                                   source: Term
                                                    )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   override def toString: String = target.name + ":=" + source.toString
@@ -42,7 +42,7 @@ final case class AssignmentStatement private[sil](
 case class FieldAssignmentStatement private[sil](
                                                   target: ProgramVariable,
                                                   field: Field,
-                                                  source: PTerm
+                                                  source: Term
                                                   )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   override def toString: String = target.name + "." + field.name + " := " + source.toString
@@ -75,7 +75,7 @@ final case class CallStatement private[sil]
 (
   targets: ProgramVariableSequence,
   method: Method,
-  arguments: PTermSequence
+  arguments: TermSequence
   )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   def receiver = arguments.head

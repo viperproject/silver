@@ -2,12 +2,12 @@ package semper.sil.ast.methods.implementations
 
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.types.DataType
-import semper.sil.ast.expressions.util.PTermSequence
+import semper.sil.ast.expressions.util.TermSequence
 import collection.Set
 import semper.sil.ast.methods.{Scope, MethodFactory}
 import semper.sil.ast.programs.NodeFactory
 import semper.sil.ast.programs.symbols.{PredicateFactory, ProgramVariableSequence, Field, ProgramVariable}
-import semper.sil.ast.expressions.terms.{PredicateLocation, Term, PTerm}
+import semper.sil.ast.expressions.terms.{PredicateLocation, Term}
 import semper.sil.ast.expressions.{PredicatePermissionExpression, Expression, ExpressionFactory}
 
 
@@ -34,9 +34,9 @@ class BasicBlockFactory private[sil]
   //////////////////////////////////////////////////////////////////
   def appendCall(
                   targets: ProgramVariableSequence,
-                  receiver: PTerm,
+                  receiver: Term,
                   methodFactory: MethodFactory,
-                  arguments: PTermSequence,
+                  arguments: TermSequence,
                   sourceLocation: SourceLocation, comment: List[String] = Nil) {
     require(programVariableSequences contains targets)
     require(targets.forall(programVariables contains _))
@@ -45,7 +45,7 @@ class BasicBlockFactory private[sil]
     migrate(receiver)
     arguments foreach migrate
 
-    block.appendStatement(new CallStatement(targets, methodFactory.method, PTermSequence(receiver :: arguments.toList: _*))
+    block.appendStatement(new CallStatement(targets, methodFactory.method, TermSequence(receiver :: arguments.toList: _*))
     (sourceLocation, comment))
   }
 
@@ -104,7 +104,7 @@ class BasicBlockFactory private[sil]
   //////////////////////////////////////////////////////////////////
   def appendAssignment(
                         target: ProgramVariable,
-                        source: PTerm
+                        source: Term
                         , sourceLocation: SourceLocation, comment: List[String] = Nil) = {
     require(writableVariables contains target) //no writing to inputs
 
@@ -116,7 +116,7 @@ class BasicBlockFactory private[sil]
   def appendFieldAssignment(
                              target: ProgramVariable,
                              field: Field,
-                             source: PTerm
+                             source: Term
                              , sourceLocation: SourceLocation,
                              comment: List[String] = Nil) {
     require(programVariables contains target)

@@ -6,7 +6,7 @@ import semper.sil.ast.symbols.logical.quantification.{Quantifier, LogicalVariabl
 import semper.sil.ast.symbols.logical.{UnaryConnective, BinaryConnective}
 import semper.sil.ast.ASTNode
 import terms._
-import util.{GTermSequence, TermSequence, PTermSequence, DTermSequence}
+import util.TermSequence
 import semper.sil.ast.domains._
 import semper.sil.ast.types.{TypeVariable, permissionType}
 import semper.sil.ast.source.SourceLocation
