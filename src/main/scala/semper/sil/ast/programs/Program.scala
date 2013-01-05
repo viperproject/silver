@@ -8,7 +8,7 @@ import symbols.{Field, Predicate, Function}
 import semper.sil.ast.methods.{Scope, Method}
 
 
-final class Program private [sil]
+final class Program private[sil]
 (
 
   val name: String,
@@ -18,7 +18,7 @@ final class Program private [sil]
   val predicates: Set[Predicate],
   val methods: Set[Method],
   val factory: ProgramFactory
-  )(val sourceLocation: SourceLocation,val comment:List[String]) extends ASTNode with Scope {
+  )(val sourceLocation: SourceLocation, val comment: List[String]) extends ASTNode with Scope {
   override val parentScope = None
 
   override def toString =
@@ -41,6 +41,6 @@ final class Program private [sil]
 
 object Program {
 
-  def getFactory(name: String,sourceLocation: SourceLocation,comment:List[String] = Nil):
-    ProgramFactory = new ProgramFactory(name)(sourceLocation,comment)
+  def getFactory(name: String, sourceLocation: SourceLocation, comment: List[String] = Nil):
+  ProgramFactory = new ProgramFactory(name)(sourceLocation, comment)
 }

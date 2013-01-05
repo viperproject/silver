@@ -6,12 +6,12 @@ import semper.sil.ast.expressions.terms.Term
 import semper.sil.ast.types.DataType
 import semper.sil.ast.expressions.Expression
 
-class FunctionFactory private [sil](
-                                       private val programFactory: ProgramFactory,
-                                       val name: String,
-                                       pParameters: Seq[(SourceLocation, String, DataType)],
-                                       resultType: DataType
-                                       )(val sourceLocation: SourceLocation,comment : List[String])
+class FunctionFactory private[sil](
+                                    private val programFactory: ProgramFactory,
+                                    val name: String,
+                                    pParameters: Seq[(SourceLocation, String, DataType)],
+                                    resultType: DataType
+                                    )(val sourceLocation: SourceLocation, comment: List[String])
   extends SymbolFactory[Function](programFactory) {
   def compile(): Function = {
     require(pFunction.pBody != None)
@@ -49,7 +49,7 @@ class FunctionFactory private [sil](
 
   protected[sil] override def outputProgramVariables = Set(resultVar)
 
-  private [sil] val pFunction = new Function(name, pParameters, resultType)(sourceLocation,this,comment)
+  private[sil] val pFunction = new Function(name, pParameters, resultType)(sourceLocation, this, comment)
   val resultVar = pFunction.pSignature.result
 
   override def typeVariables = Set()

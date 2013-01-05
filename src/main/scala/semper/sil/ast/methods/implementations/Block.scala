@@ -41,7 +41,7 @@ trait Block
   }
 
   private val pPredecessors = new ListBuffer[CFGEdge]
-  private [sil] var pControlStatement: Option[ControlStatement] = None
+  private[sil] var pControlStatement: Option[ControlStatement] = None
 
   protected def controlFlowToString = (if (!successors.isEmpty) ("\t\tgoto " + (for (s <- successors) yield {
     s.condition.toString + " ⇒ " + s.target.label

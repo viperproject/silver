@@ -11,7 +11,7 @@ sealed abstract class ControlStatement
 }
 
 
-final class Halt()(val sourceLocation: SourceLocation,val comment:List[String]) extends ControlStatement {
+final class Halt()(val sourceLocation: SourceLocation, val comment: List[String]) extends ControlStatement {
   override val successors: Set[CFGEdge] = Set()
 
   override val toString = "Halt"
@@ -24,21 +24,21 @@ final class Halt()(val sourceLocation: SourceLocation,val comment:List[String]) 
   override val hashCode = toString.hashCode()
 }
 
-final class Branch private [sil]
+final class Branch private[sil]
 (
   val source: Block,
   val trueTarget: Block,
   val falseTarget: Block,
   val condition: PExpression
-  )(val sourceLocation: SourceLocation,val comment:List[String])
+  )(val sourceLocation: SourceLocation, val comment: List[String])
   extends ControlStatement {
   require(source.cfg == trueTarget.cfg)
   require(source.cfg == falseTarget.cfg)
   private val conditionNegation =
-    source.factory.scope.factory.makeUnaryExpression(new Not()(sourceLocation), condition,sourceLocation,Nil)
+    source.factory.scope.factory.makeUnaryExpression(new Not()(sourceLocation), condition, sourceLocation, Nil)
 
-  private val trueEdge = new CFGEdge(source, trueTarget, condition)(sourceLocation,Nil)
-  private val falseEdge = new CFGEdge(source, falseTarget, conditionNegation)(sourceLocation,Nil)
+  private val trueEdge = new CFGEdge(source, trueTarget, condition)(sourceLocation, Nil)
+  private val falseEdge = new CFGEdge(source, falseTarget, conditionNegation)(sourceLocation, Nil)
   override val successors: Set[CFGEdge] = Set(trueEdge, falseEdge)
 
   override val toString = "if " + condition.toString + " then goto " + trueTarget.label + " else goto " + falseTarget.label
@@ -52,16 +52,16 @@ final class Branch private [sil]
 
 }
 
-final class Goto private [sil]
+final class Goto private[sil]
 (
   val source: Block,
   val target: Block
   )
-(val sourceLocation: SourceLocation,override val comment : List[String])
+(val sourceLocation: SourceLocation, override val comment: List[String])
   extends ControlStatement {
   require(source.cfg == target.cfg)
 
-  private val edge = new CFGEdge(source, target, TrueExpression()(sourceLocation,Nil))(sourceLocation,Nil)
+  private val edge = new CFGEdge(source, target, TrueExpression()(sourceLocation, Nil))(sourceLocation, Nil)
   override val successors: Set[CFGEdge] = Set(edge)
 
   override val toString = "goto " + target.label

@@ -6,14 +6,14 @@ import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.methods.Scope
 import semper.sil.ast.programs.symbols.ProgramVariable
 
-final class BasicBlock private [sil]
+final class BasicBlock private[sil]
 (
   val cfg: ControlFlowGraph,
   val scope: Scope,
   val label: String,
   val factory: BasicBlockFactory
   )
-(val sourceLocation: SourceLocation,override val comment : List[String])
+(val sourceLocation: SourceLocation, override val comment: List[String])
   extends Block {
 
   def statements: Seq[Statement] = pStatements.result()
@@ -22,8 +22,8 @@ final class BasicBlock private [sil]
 
   private val pStatements = new ListBuffer[Statement]
 
-  private [sil] def appendStatement(s: Statement) = {
-    require((pStatements.forall(_ ne s))  )
+  private[sil] def appendStatement(s: Statement) = {
+    require((pStatements.forall(_ ne s)))
     pStatements += s
   }
 
@@ -45,11 +45,11 @@ final class BasicBlock private [sil]
 
 
   override def toString = {
-      def withComments(stmt : Statement) : List[String] = stmt.comment.map("// " + _) ++ List(stmt.toString)
-      "\t" + label + ":{\n" +
-        (if (!statements.isEmpty) statements.map(withComments).flatten.mkString("\t\t", "\n\t\t", "\n") else "") +
-        controlFlowToString +
-        "\t}\n"
-    }
+    def withComments(stmt: Statement): List[String] = stmt.comment.map("// " + _) ++ List(stmt.toString)
+    "\t" + label + ":{\n" +
+      (if (!statements.isEmpty) statements.map(withComments).flatten.mkString("\t\t", "\n\t\t", "\n") else "") +
+      controlFlowToString +
+      "\t}\n"
+  }
 
 }

@@ -10,17 +10,17 @@ import semper.sil.ast.source._
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 abstract class TypeVariableSubstitution {
-//  def sourceLocation: SourceLocation
+  //  def sourceLocation: SourceLocation
 
   def typeVariables: Set[TypeVariable]
 
-//  def newDomain: Domain
+  //  def newDomain: Domain
 
   def mapType(v: TypeVariable, t: DataType): DataType
 
   def mapVariable(v: LogicalVariable): Option[LogicalVariable]
 
-  private [sil] def types: Set[(TypeVariable, DataType)]
+  private[sil] def types: Set[(TypeVariable, DataType)]
 
   protected[sil] val varMap: Map[LogicalVariable, LogicalVariable]
 
@@ -30,10 +30,10 @@ abstract class TypeVariableSubstitution {
   def +(other: TypeVariableSubstitution): TypeVariableSubstitution
 }
 
-private [sil] class TypeSubstitutionC[Term](
-                                               val types: Set[(TypeVariable, DataType)],
-                                               val variables: Set[(LogicalVariable, LogicalVariable)]
-                                               ) extends TypeVariableSubstitution {
+private[sil] class TypeSubstitutionC[Term](
+                                            val types: Set[(TypeVariable, DataType)],
+                                            val variables: Set[(LogicalVariable, LogicalVariable)]
+                                            ) extends TypeVariableSubstitution {
   override def toString = typeMap.mkString("[", ",", "]")
 
   val typeVariables: Set[TypeVariable] = for (t <- types) yield t._1
@@ -53,7 +53,8 @@ private [sil] class TypeSubstitutionC[Term](
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-trait LogicalVariableSubstitution {//extends TypeVariableSubstitution {
+trait LogicalVariableSubstitution {
+  //extends TypeVariableSubstitution {
   type T <: Term
 
   def types: Set[(TypeVariable, DataType)]
@@ -62,17 +63,20 @@ trait LogicalVariableSubstitution {//extends TypeVariableSubstitution {
 
   //   private[semper.sil.ast] def variables : Set[(LogicalVariable,T)]
 
-  def mapVariable(v: LogicalVariable): Option[T] //= varMap.get(v)
+  def mapVariable(v: LogicalVariable): Option[T]
+
+  //= varMap.get(v)
   protected[sil] def varMap: Map[LogicalVariable, T]
-  protected[sil] def variables : Set[(LogicalVariable,T)]
+
+  protected[sil] def variables: Set[(LogicalVariable, T)]
 
   def sourceLocation(sl: SourceLocation): LogicalSubstitutedSourceLocation = new LogicalSubstitutedSourceLocation(sl, this)
 }
 
-private [sil] class LogicalVariableSubstitutionC[TT <: Term](
-                                                                override val types: Set[(TypeVariable, DataType)],
-                                                                override val variables: Set[(LogicalVariable, TT)]
-                                                                ) extends LogicalVariableSubstitution {
+private[sil] class LogicalVariableSubstitutionC[TT <: Term](
+                                                             override val types: Set[(TypeVariable, DataType)],
+                                                             override val variables: Set[(LogicalVariable, TT)]
+                                                             ) extends LogicalVariableSubstitution {
   override def toString = super.toString + varMap.mkString("(", ",", ")")
 
   override type T = TT
@@ -95,10 +99,10 @@ trait PLogicalVariableSubstitution extends LogicalVariableSubstitution {
     new PLogicalVariableSubstitutionC(types ++ other.types, varMap.toSet ++ other.varMap.toSet /*,newDomain*/)
 }
 
-private [sil] class PLogicalVariableSubstitutionC(
-                                                     override val types: Set[(TypeVariable, DataType)],
-                                                     variables: Set[(LogicalVariable, PTerm)]
-                                                     ) extends LogicalVariableSubstitutionC(types, variables /*,newDomain*/) with PLogicalVariableSubstitution {
+private[sil] class PLogicalVariableSubstitutionC(
+                                                  override val types: Set[(TypeVariable, DataType)],
+                                                  variables: Set[(LogicalVariable, PTerm)]
+                                                  ) extends LogicalVariableSubstitutionC(types, variables /*,newDomain*/) with PLogicalVariableSubstitution {
 
 }
 
@@ -111,18 +115,18 @@ trait DLogicalVariableSubstitution extends LogicalVariableSubstitution {
     new DLogicalVariableSubstitutionC(types ++ other.types, varMap.toSet ++ other.varMap.toSet /*,newDomain*/)
 }
 
-private [sil] class DLogicalVariableSubstitutionC(
-                                                     types: Set[(TypeVariable, DataType)],
-                                                     variables: Set[(LogicalVariable, DTerm)] //,
-                                                     //                                      newDomain : Domain
-                                                     ) extends LogicalVariableSubstitutionC(types, variables /*, newDomain*/) with DLogicalVariableSubstitution {
+private[sil] class DLogicalVariableSubstitutionC(
+                                                  types: Set[(TypeVariable, DataType)],
+                                                  variables: Set[(LogicalVariable, DTerm)] //,
+                                                  //                                      newDomain : Domain
+                                                  ) extends LogicalVariableSubstitutionC(types, variables /*, newDomain*/) with DLogicalVariableSubstitution {
 }
 
-class GLogicalVariableSubstitution private [sil](
-                                                    types: Set[(TypeVariable, DataType)],
-                                                    variables: Set[(LogicalVariable, GTerm)] //,
-                                                    //                                           newDomain : Domain
-                                                    ) extends LogicalVariableSubstitutionC[GTerm](types, variables /*,newDomain*/)
+class GLogicalVariableSubstitution private[sil](
+                                                 types: Set[(TypeVariable, DataType)],
+                                                 variables: Set[(LogicalVariable, GTerm)] //,
+                                                 //                                           newDomain : Domain
+                                                 ) extends LogicalVariableSubstitutionC[GTerm](types, variables /*,newDomain*/)
 with PLogicalVariableSubstitution with DLogicalVariableSubstitution {
   override type T = GTerm
 

@@ -5,12 +5,12 @@ import collection.mutable.ListBuffer
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.methods.Scope
 
-final class ControlFlowGraph private [sil]
+final class ControlFlowGraph private[sil]
 (
 
   val scope: Scope,
   val implementation: Implementation
-  )(val sourceLocation: SourceLocation,val comment:List[String])
+  )(val sourceLocation: SourceLocation, val comment: List[String])
   extends ASTNode {
   def compile() {
     require(pStartNode != None)
@@ -50,8 +50,8 @@ final class ControlFlowGraph private [sil]
   }
 
   private val pNodes = new ListBuffer[Block]
-  private [sil] var pStartNode: Option[BasicBlock] = None
-  private [sil] var pEndNode: Option[BasicBlock] = None
+  private[sil] var pStartNode: Option[BasicBlock] = None
+  private[sil] var pEndNode: Option[BasicBlock] = None
 
   /////////////////////////////////////////////////////////////////
   override def toString = pNodes.mkString("\n")

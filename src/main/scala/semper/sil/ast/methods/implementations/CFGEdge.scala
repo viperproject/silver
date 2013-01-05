@@ -4,13 +4,13 @@ import semper.sil.ast.ASTNode
 import semper.sil.ast.expressions.Expression
 import semper.sil.ast.source.SourceLocation
 
-final class CFGEdge private [sil]
+final class CFGEdge private[sil]
 (
 
   val source: Block,
   val target: Block,
   val condition: Expression
-  )(val sourceLocation: SourceLocation,val comment:List[String])
+  )(val sourceLocation: SourceLocation, val comment: List[String])
   extends ASTNode {
   require(source.cfg == target.cfg)
   target.addPredecessor(this)

@@ -10,10 +10,10 @@ import semper.sil.ast.types.DataType
 
 //TODO: Should implementations have names/ids?
 
-class ImplementationFactory private [sil]
+class ImplementationFactory private[sil]
 (
-  private [sil] val methodFactory: MethodFactory
-  )(sourceLocation: SourceLocation,comment : List[String])
+  private[sil] val methodFactory: MethodFactory
+  )(sourceLocation: SourceLocation, comment: List[String])
   extends NodeFactory
   with ExpressionFactory
   with ScopeFactory {
@@ -29,13 +29,13 @@ class ImplementationFactory private [sil]
     require(programVariables.forall(_.name != name))
     require(dataTypes contains dataType)
 
-    val result = new ProgramVariable(name, dataType)(sourceLocation,Nil)
+    val result = new ProgramVariable(name, dataType)(sourceLocation, Nil)
     implementation.pLocals.append(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  private [sil] val implementation = new Implementation(methodFactory.method, this)(sourceLocation,comment)
+  private[sil] val implementation = new Implementation(methodFactory.method, this)(sourceLocation, comment)
   /////////////////////////////////////////////////////////////////////////////////////
   val cfgFactory = new CFGFactory(implementation, implementation)(sourceLocation)
 
@@ -50,9 +50,9 @@ class ImplementationFactory private [sil]
 
   //  val fields: Set[Field] = methodFactory.fields
 
-  private [sil] def parameters = methodFactory.parameters
+  private[sil] def parameters = methodFactory.parameters
 
-  private [sil] def results = methodFactory.results
+  private[sil] def results = methodFactory.results
 
   override def functions = methodFactory.functions
 
@@ -72,7 +72,7 @@ class ImplementationFactory private [sil]
   protected[sil] override def domainFactories = methodFactory.domainFactories
 
 
-  private [sil] val cfg = implementation.body
+  private[sil] val cfg = implementation.body
 
   //  cfg.initialNode.pFactory = cfg.
 

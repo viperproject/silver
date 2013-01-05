@@ -4,7 +4,6 @@ import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.domains._
 import symbols._
 import semper.sil.ast.types._
-import scala.collection.mutable.HashSet
 import semper.sil.ast.expressions.ExpressionFactory
 import semper.sil.ast.methods.{ScopeFactory, MethodFactory}
 import collection.mutable
@@ -12,7 +11,7 @@ import collection.mutable
 final class ProgramFactory
 (
   val name: String
-  )(val sourceLocation: SourceLocation,val comment:List[String])
+  )(val sourceLocation: SourceLocation, val comment: List[String])
   extends NodeFactory
   with DataTypeFactory
   with ExpressionFactory
@@ -29,42 +28,42 @@ final class ProgramFactory
     for (mf <- methodFactories) mf.compile()
     for (ff <- functionFactories) ff.compile()
 
-    val program = new Program(name, domains, fields, functions, predicates, (for (mf <- methodFactories) yield mf.method).toSet, this)(sourceLocation,comment)
+    val program = new Program(name, domains, fields, functions, predicates, (for (mf <- methodFactories) yield mf.method).toSet, this)(sourceLocation, comment)
     //    scope = Some[Scope](program)
     program
   }
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def getDomainFactory(name: String, typeVariableNames: Seq[(SourceLocation, String,List[String])], sourceLocation: SourceLocation, comment:List[String]=Nil): DomainTemplateFactory = {
+  def getDomainFactory(name: String, typeVariableNames: Seq[(SourceLocation, String, List[String])], sourceLocation: SourceLocation, comment: List[String] = Nil): DomainTemplateFactory = {
     require(domainFactories.forall(_.name != name))
-    val result = new DomainTemplateFactory(this, name, typeVariableNames)(sourceLocation,comment)
+    val result = new DomainTemplateFactory(this, name, typeVariableNames)(sourceLocation, comment)
     domainFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getMethodFactory(name: String)(sourceLocation: SourceLocation,comment : List[String] = Nil): MethodFactory = {
+  def getMethodFactory(name: String)(sourceLocation: SourceLocation, comment: List[String] = Nil): MethodFactory = {
     require(methodFactories.forall(_.name != name))
-    val result = new MethodFactory(this, name)(sourceLocation,comment)
+    val result = new MethodFactory(this, name)(sourceLocation, comment)
     methodFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getPredicateFactory(name: String,sourceLocation: SourceLocation,comment:List[String] = Nil): PredicateFactory = {
+  def getPredicateFactory(name: String, sourceLocation: SourceLocation, comment: List[String] = Nil): PredicateFactory = {
     require(predicateFactories.forall(_.name != name))
-    val result = new PredicateFactory(this, name)(sourceLocation,comment)
+    val result = new PredicateFactory(this, name)(sourceLocation, comment)
     predicateFactories += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def getFunctionFactory(name: String, params: Seq[(SourceLocation, String, DataType)], resultType: DataType,sourceLocation: SourceLocation,comment:List[String] = Nil): FunctionFactory = {
+  def getFunctionFactory(name: String, params: Seq[(SourceLocation, String, DataType)], resultType: DataType, sourceLocation: SourceLocation, comment: List[String] = Nil): FunctionFactory = {
     require(functionFactories.forall(_.name != name))
     require(params.forall(dataTypes contains _._3))
     require(params.forall((x) => params.forall((y) => x == y || x._2 != y._2)))
-    val result = new FunctionFactory(this, name, params, resultType)(sourceLocation,comment)
+    val result = new FunctionFactory(this, name, params, resultType)(sourceLocation, comment)
     functionFactories += result
     result
   }
@@ -87,8 +86,8 @@ final class ProgramFactory
     require(dataType.freeTypeVariables.isEmpty)
     defineField(
       dataType match {
-        case d: NonReferenceDataType => new NonReferenceField(name, d)(sourceLocation,"lala" :: Nil)
-        case r: ReferenceDataType => new ReferenceField(name)(sourceLocation,"lalo" :: Nil)
+        case d: NonReferenceDataType => new NonReferenceField(name, d)(sourceLocation, "lala" :: Nil)
+        case r: ReferenceDataType => new ReferenceField(name)(sourceLocation, "lalo" :: Nil)
         case _ => throw new Exception("Tried to create field of non groud type")
       }
     )
@@ -126,30 +125,34 @@ final class ProgramFactory
 
   def emptyDTSequence = new DataTypeSequence(List.empty[DataType])
 
-  private [sil] val pDomains: mutable.HashSet[Domain] = mutable.HashSet(integerDomain, permissionDomain, referenceDomain, booleanDomain)
+  private[sil] val pDomains: mutable.HashSet[Domain] = mutable.HashSet(integerDomain, permissionDomain, referenceDomain, booleanDomain)
 
   def domains: collection.Set[Domain] =
     pDomains //++
-      //      ( for (df <- domainFactories) yield df.domainTemplate).toSet ++
-//      (for (df <- domainFactories) yield df.pDomainTemplate.instances).flatten
+  //      ( for (df <- domainFactories) yield df.domainTemplate).toSet ++
+  //      (for (df <- domainFactories) yield df.pDomainTemplate.instances).flatten
 
   def domainTemplates: collection.Set[DomainTemplate] = (for (dt <- domainFactories) yield dt.pDomainTemplate)
 
   override def domainFunctions: collection.Set[DomainFunction] =
-    domains.flatMap(_.functions) /*union
-      (for (f <-
-            (for (d <- domainFactories) yield
-              if (d.typeVariables.isEmpty) d.domainTemplate.functions
-              else collection.Set[DomainFunction]()).flatten)
-      yield f)*/
+    domains.flatMap(_.functions)
+
+  /*union
+       (for (f <-
+             (for (d <- domainFactories) yield
+               if (d.typeVariables.isEmpty) d.domainTemplate.functions
+               else collection.Set[DomainFunction]()).flatten)
+       yield f)*/
 
   override def domainPredicates: collection.Set[DomainPredicate] =
-    domains.flatMap(_.predicates) /*union
-      (for (p <-
-            (for (d <- domainFactories) yield
-              if (d.typeVariables.isEmpty) d.domainTemplate.predicates
-              else collection.Set[DomainPredicate]()).flatten)
-      yield p)                      */
+    domains.flatMap(_.predicates)
+
+  /*union
+       (for (p <-
+             (for (d <- domainFactories) yield
+               if (d.typeVariables.isEmpty) d.domainTemplate.predicates
+               else collection.Set[DomainPredicate]()).flatten)
+       yield p)                      */
 
   override val typeVariables = collection.Set[TypeVariable]()
   override val programVariables = collection.Set[ProgramVariable]()

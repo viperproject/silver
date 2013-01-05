@@ -21,7 +21,7 @@ trait Scope
 
   def factory: ScopeFactory
 
-  private [sil] val pLocals = new ListBuffer[ProgramVariable]
+  private[sil] val pLocals = new ListBuffer[ProgramVariable]
 
 
 }

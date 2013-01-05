@@ -13,6 +13,7 @@ import semper.sil.ast.source.noLocation
 ///////////////////////////////////////////////////////////////////////////
 object booleanDomain extends Domain {
   override def name = "Boolean"
+
   override def comment = List()
 
   override def fullName: String = name
@@ -34,7 +35,7 @@ object booleanDomain extends Domain {
   override def isCompatible(other: Domain) = other == this
 }
 
-object booleanType extends NonReferenceDataType(booleanDomain)(noLocation,Nil)
+object booleanType extends NonReferenceDataType(booleanDomain)(noLocation, Nil)
 
 ///////////////////////////////////////////////////////////////////////////
 object booleanTrue extends DomainFunction {
@@ -51,7 +52,8 @@ object booleanTrue extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -69,7 +71,8 @@ object booleanFalse extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -87,7 +90,8 @@ object booleanNegation extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -105,7 +109,8 @@ object booleanConjunction extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -123,7 +128,8 @@ object booleanDisjunction extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -141,7 +147,8 @@ object booleanImplication extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -159,7 +166,8 @@ object booleanEquivalence extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -176,5 +184,6 @@ object booleanEvaluate extends DomainPredicate {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }

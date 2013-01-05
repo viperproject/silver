@@ -9,7 +9,8 @@ abstract class ASTNode protected[sil] {
   override def toString: String //String representation
 
   override def equals(other: Any): Boolean
+
   override def hashCode(): Int
 
-  def comment : scala.collection.immutable.List[String] //comments
+  def comment: scala.collection.immutable.List[String] //comments
 }

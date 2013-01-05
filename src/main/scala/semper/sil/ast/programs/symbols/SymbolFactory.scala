@@ -6,14 +6,14 @@ import semper.sil.ast.expressions.ExpressionFactory
 import semper.sil.ast.types.referenceType
 
 
-abstract class SymbolFactory[T] private [sil](
-       private val programFactory: ProgramFactory
-       )
+abstract class SymbolFactory[T] private[sil](
+                                              private val programFactory: ProgramFactory
+                                              )
   extends NodeFactory
   with ExpressionFactory {
   def compile(): T
 
-  val thisVar = new ProgramVariable("this", referenceType)(noLocation,Nil)
+  val thisVar = new ProgramVariable("this", referenceType)(noLocation, Nil)
 
   protected[sil] override def programVariables = Set(thisVar)
 

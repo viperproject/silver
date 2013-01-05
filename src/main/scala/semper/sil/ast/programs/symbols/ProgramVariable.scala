@@ -6,7 +6,7 @@ import semper.sil.ast.source.SourceLocation
 class ProgramVariable(
                        val name: String,
                        val dataType: DataType
-                       )(val sourceLocation: SourceLocation,val comment:List[String]) extends Variable {
+                       )(val sourceLocation: SourceLocation, val comment: List[String]) extends Variable {
 
   override def toString: String = name
 

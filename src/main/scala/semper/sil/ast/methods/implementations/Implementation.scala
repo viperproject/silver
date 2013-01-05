@@ -3,11 +3,11 @@ package semper.sil.ast.methods.implementations
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.methods.{Scope, Method}
 
-final class Implementation private [sil]
+final class Implementation private[sil]
 (
   val method: Method,
   override val factory: ImplementationFactory
-  )(override val sourceLocation: SourceLocation,val comment:List[String])
+  )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Scope {
   val parentScope: Option[Scope] = Some(method)
 

@@ -4,9 +4,9 @@ import semper.sil.ast.ASTNode
 import semper.sil.ast.domains.TypeVariableSubstitution
 import semper.sil.ast.source.{SourceLocation, noLocation}
 
-sealed class DataTypeSequence private [sil](
-                                               val dataTypes: Seq[DataType]
-                                               ) extends ASTNode with Seq[DataType] {
+sealed class DataTypeSequence private[sil](
+                                            val dataTypes: Seq[DataType]
+                                            ) extends ASTNode with Seq[DataType] {
   def freeTypeVariables = (for (t <- dataTypes) yield t.freeTypeVariables).flatten
 
   override val comment = Nil

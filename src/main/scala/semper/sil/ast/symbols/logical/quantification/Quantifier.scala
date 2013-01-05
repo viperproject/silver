@@ -3,8 +3,7 @@ package semper.sil.ast.symbols.logical.quantification
 import semper.sil.ast.ASTNode
 import semper.sil.ast.source.SourceLocation
 
-sealed abstract class Quantifier extends ASTNode
-{
+sealed abstract class Quantifier extends ASTNode {
   override def comment = List()
 }
 

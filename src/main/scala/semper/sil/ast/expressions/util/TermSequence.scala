@@ -10,9 +10,9 @@ import semper.sil.ast.expressions.{PProgramVariableSubstitution, ProgramVariable
 import semper.sil.ast.domains._
 import semper.sil.ast.types.TypeVariable
 
-sealed class TermSequence private [sil](
-                                           private val prArgs: Seq[Term]
-                                           ) extends ASTNode with Seq[Term] {
+sealed class TermSequence private[sil](
+                                        private val prArgs: Seq[Term]
+                                        ) extends ASTNode with Seq[Term] {
   require(prArgs != null)
   require(prArgs.forall(_ != null))
 
@@ -31,7 +31,8 @@ sealed class TermSequence private [sil](
   override def toString() = "(" + args.mkString(",") + ")"
 
   def freeVariables: Set[LogicalVariable] = (for (a <- args) yield a.freeVariables).flatten.toSet
-  def freeTypeVariables: Set[TypeVariable] = args.foldLeft(Set[TypeVariable]())(_ union  _.freeTypeVariables)
+
+  def freeTypeVariables: Set[TypeVariable] = args.foldLeft(Set[TypeVariable]())(_ union _.freeTypeVariables)
 
   def programVariables: Set[ProgramVariable] = (for (a <- args) yield a.programVariables).flatten.toSet
 
@@ -51,7 +52,7 @@ object TermSequence {
     else new TermSequence(ts)
   }
 
-  def unapplySeq(ts: TermSequence) : Option[Seq[Term]] = Some(ts)
+  def unapplySeq(ts: TermSequence): Option[Seq[Term]] = Some(ts)
 }
 
 ///////////////////////////////////////////////////////////////
@@ -80,12 +81,12 @@ object PTermSequence {
     else new PTermSequenceC(ts)
   }
 
-  def unapplySeq(ts : PTermSequence) : Option[Seq[PTerm]] = Some(ts:Seq[PTerm])
+  def unapplySeq(ts: PTermSequence): Option[Seq[PTerm]] = Some(ts: Seq[PTerm])
 }
 
-private [sil] final class PTermSequenceC(
-                                            override val args: Seq[PTerm]
-                                            ) extends TermSequence(args) with PTermSequence {
+private[sil] final class PTermSequenceC(
+                                         override val args: Seq[PTerm]
+                                         ) extends TermSequence(args) with PTermSequence {
   override def pArgs = args
 
   override def apply(idx: Int) = args.apply(idx)
@@ -108,9 +109,9 @@ sealed trait DTermSequence extends TermSequence with Seq[DTerm] {
   def substitute(s: DLogicalVariableSubstitution): DTermSequence = new DTermSequenceC(for (t <- dArgs) yield t.substitute(s))
 }
 
-private [sil] final class DTermSequenceC(
-                                            override val args: Seq[DTerm]
-                                            ) extends TermSequence(args) with DTermSequence {
+private[sil] final class DTermSequenceC(
+                                         override val args: Seq[DTerm]
+                                         ) extends TermSequence(args) with DTermSequence {
   override val dArgs = args
 }
 
@@ -120,14 +121,14 @@ object DTermSequence {
     else new DTermSequenceC(ts)
   }
 
-  def unapplySeq(ts : DTermSequence) : Option[Seq[DTerm]] = Some(ts:Seq[DTerm])
+  def unapplySeq(ts: DTermSequence): Option[Seq[DTerm]] = Some(ts: Seq[DTerm])
 }
 
 
 ///////////////////////////////////////////////////////////////
-final class GTermSequence private [sil](
-                                           override val args: Seq[GTerm]
-                                           ) extends TermSequence(args) with DTermSequence with PTermSequence with Seq[GTerm] {
+final class GTermSequence private[sil](
+                                        override val args: Seq[GTerm]
+                                        ) extends TermSequence(args) with DTermSequence with PTermSequence with Seq[GTerm] {
   override def apply(idx: Int) = args(idx)
 
   override def iterator: Iterator[GTerm] = args.iterator
@@ -142,6 +143,7 @@ final class GTermSequence private [sil](
 
 object GTermSequence {
   def apply(ts: GTerm*): GTermSequence = new GTermSequence(ts)
-  def unapplySeq(ts : GTermSequence) : Option[Seq[GTerm]] = Some(ts:Seq[GTerm])
+
+  def unapplySeq(ts: GTermSequence): Option[Seq[GTerm]] = Some(ts: Seq[GTerm])
 }
 

@@ -3,14 +3,13 @@ package semper.sil.ast.expressions
 import semper.sil.ast.domains.DomainPredicate
 import semper.sil.ast.source.SourceLocation
 import collection.{mutable, Set}
-import collection.mutable.HashSet
 import semper.sil.ast.expressions.util.GTermSequence
 import semper.sil.ast.symbols.logical.{UnaryConnective, BinaryConnective}
 import terms.{GTermFactory, GTerm}
 import semper.sil.ast.programs.NodeFactory
 
 
-private [sil] trait GExpressionFactory extends NodeFactory with GTermFactory {
+private[sil] trait GExpressionFactory extends NodeFactory with GTermFactory {
   //////////////////////////////////////////////////////////////////////////
   protected[sil] def migrate(e: GExpression) {
     if (expressions contains e)
@@ -39,24 +38,24 @@ private [sil] trait GExpressionFactory extends NodeFactory with GTermFactory {
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGUnaryExpression(op: UnaryConnective, e1: GExpression,sourceLocation: SourceLocation,comment : List[String] = Nil): GUnaryExpression = {
+  def makeGUnaryExpression(op: UnaryConnective, e1: GExpression, sourceLocation: SourceLocation, comment: List[String] = Nil): GUnaryExpression = {
     require(expressions contains e1)
-    addExpression(new GUnaryExpression(op, e1)(sourceLocation,comment))
+    addExpression(new GUnaryExpression(op, e1)(sourceLocation, comment))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGDomainPredicateExpression(p: DomainPredicate, args: GTermSequence,sourceLocation: SourceLocation,comment : List[String] = Nil): GDomainPredicateExpression = {
+  def makeGDomainPredicateExpression(p: DomainPredicate, args: GTermSequence, sourceLocation: SourceLocation, comment: List[String] = Nil): GDomainPredicateExpression = {
     require(domainPredicates contains p)
     args.foreach(migrate(_))
-    addExpression(new GDomainPredicateExpression(p, args)(sourceLocation,comment))
+    addExpression(new GDomainPredicateExpression(p, args)(sourceLocation, comment))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeGBinaryExpression(op: BinaryConnective, e1: GExpression, e2: GExpression,sourceLocation: SourceLocation,comment : List[String] = Nil): GBinaryExpression = {
+  def makeGBinaryExpression(op: BinaryConnective, e1: GExpression, e2: GExpression, sourceLocation: SourceLocation, comment: List[String] = Nil): GBinaryExpression = {
     migrate(e1)
     migrate(e2)
 
-    addExpression(new GBinaryExpression(op, e1, e2)(sourceLocation,comment))
+    addExpression(new GBinaryExpression(op, e1, e2)(sourceLocation, comment))
 
   }
 
@@ -66,11 +65,11 @@ private [sil] trait GExpressionFactory extends NodeFactory with GTermFactory {
                                t1: GTerm,
                                t2: GTerm,
                                sourceLocation: SourceLocation,
-                               comment : List[String] = Nil
-                       ): GEqualityExpression = {
+                               comment: List[String] = Nil
+                               ): GEqualityExpression = {
     migrate(t1)
     migrate(t2)
-    addExpression(new GEqualityExpression(t1, t2)(sourceLocation,comment))
+    addExpression(new GEqualityExpression(t1, t2)(sourceLocation, comment))
   }
 
 

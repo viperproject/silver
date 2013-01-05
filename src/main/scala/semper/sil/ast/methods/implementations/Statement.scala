@@ -12,7 +12,7 @@ import semper.sil.ast.expressions.{PredicatePermissionExpression, Expression}
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-sealed abstract class Statement private [sil] extends ASTNode {
+sealed abstract class Statement private[sil] extends ASTNode {
   override def toString: String
 
   def readVariables: Set[ProgramVariable]
@@ -24,10 +24,10 @@ sealed abstract class Statement private [sil] extends ASTNode {
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class AssignmentStatement private [sil](
-      target: ProgramVariable,
-      source: PTerm
-      )(override val sourceLocation: SourceLocation,val comment:List[String])
+final case class AssignmentStatement private[sil](
+                                                   target: ProgramVariable,
+                                                   source: PTerm
+                                                   )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   override def toString: String = target.name + ":=" + source.toString
 
@@ -39,11 +39,11 @@ final case class AssignmentStatement private [sil](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class FieldAssignmentStatement private [sil](
-     target: ProgramVariable,
-     field: Field,
-     source: PTerm
-     )(override val sourceLocation: SourceLocation,val comment:List[String])
+case class FieldAssignmentStatement private[sil](
+                                                  target: ProgramVariable,
+                                                  field: Field,
+                                                  source: PTerm
+                                                  )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   override def toString: String = target.name + "." + field.name + " := " + source.toString
 
@@ -55,10 +55,10 @@ case class FieldAssignmentStatement private [sil](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-case class NewStatement private [sil](
-         target: ProgramVariable,
-         dataType: DataType
-         )(override val sourceLocation: SourceLocation,val comment:List[String])
+case class NewStatement private[sil](
+                                      target: ProgramVariable,
+                                      dataType: DataType
+                                      )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   override def toString: String = target.name + ":= new " + dataType.toString
 
@@ -71,12 +71,12 @@ case class NewStatement private [sil](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //TODO:check signature
-final case class CallStatement private [sil]
+final case class CallStatement private[sil]
 (
   targets: ProgramVariableSequence,
   method: Method,
   arguments: PTermSequence
-  )(override val sourceLocation: SourceLocation,val comment:List[String])
+  )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   def receiver = arguments.head
 
@@ -90,9 +90,9 @@ final case class CallStatement private [sil]
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class InhaleStatement private [sil](
-      expression: Expression
-      )(override val sourceLocation: SourceLocation,val comment:List[String])
+final case class InhaleStatement private[sil](
+                                               expression: Expression
+                                               )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   override def toString: String = "inhale " + expression.toString
 
@@ -104,10 +104,10 @@ final case class InhaleStatement private [sil](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class ExhaleStatement private [sil](
-        expression: Expression,
-        message : Option[String]
-        )(override val sourceLocation: SourceLocation,val comment:List[String])
+final case class ExhaleStatement private[sil](
+                                               expression: Expression,
+                                               message: Option[String]
+                                               )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
 
   override def toString: String = message match {
@@ -124,13 +124,12 @@ final case class ExhaleStatement private [sil](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //TODO:FoldStatement/UnfoldStatement arrays?
-final case class FoldStatement private [sil](
-      location: PredicateLocation,
-      permission : Term
-      )(override val sourceLocation: SourceLocation,val comment:List[String])
-  extends Statement
-{
-  require(permission.dataType==permissionType)
+final case class FoldStatement private[sil](
+                                             location: PredicateLocation,
+                                             permission: Term
+                                             )(override val sourceLocation: SourceLocation, val comment: List[String])
+  extends Statement {
+  require(permission.dataType == permissionType)
 
   override def toString: String = "fold " + location.toString + " by " + permission.toString
 
@@ -142,11 +141,10 @@ final case class FoldStatement private [sil](
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-final case class UnfoldStatement private [sil]
-    (permissionExpression : PredicatePermissionExpression)
-    (override val sourceLocation: SourceLocation,val comment:List[String])
-  extends Statement
-{
+final case class UnfoldStatement private[sil]
+(permissionExpression: PredicatePermissionExpression)
+(override val sourceLocation: SourceLocation, val comment: List[String])
+  extends Statement {
   override def toString: String = "unfold " + permissionExpression.toString
 
   override val readVariables = permissionExpression.programVariables

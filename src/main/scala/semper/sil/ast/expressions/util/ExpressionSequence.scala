@@ -5,9 +5,9 @@ import semper.sil.ast.expressions.{GExpression, DExpression, PExpression, Expres
 import semper.sil.ast.source.{SourceLocation, noLocation}
 
 /////////////////////////////////////////////////////////////////
-sealed class ExpressionSequence private [sil](
-                                                 val args: Seq[Expression]
-                                                 ) extends ASTNode with Seq[Expression] {
+sealed class ExpressionSequence private[sil](
+                                              val args: Seq[Expression]
+                                              ) extends ASTNode with Seq[Expression] {
 
   override val sourceLocation: SourceLocation = (if (args.isEmpty) noLocation else args.head.sourceLocation)
   override val comment = Nil
@@ -32,9 +32,9 @@ sealed trait PExpressionSequence extends ExpressionSequence with Seq[PExpression
 }
 
 /////////////////////////////////////////////////////////////////
-private final class PExpressionSequenceC private [sil](
-                                                          args: Seq[PExpression]
-                                                          ) extends ExpressionSequence(args) with PExpressionSequence {
+private final class PExpressionSequenceC private[sil](
+                                                       args: Seq[PExpression]
+                                                       ) extends ExpressionSequence(args) with PExpressionSequence {
   override val pArgs = args
 }
 
@@ -51,16 +51,16 @@ sealed trait DExpressionSequence extends ExpressionSequence with Seq[DExpression
 }
 
 /////////////////////////////////////////////////////////////////
-private final class DExpressionSequenceC private [sil](
-                                                          args: Seq[DExpression]
-                                                          ) extends ExpressionSequence(args) with DExpressionSequence {
+private final class DExpressionSequenceC private[sil](
+                                                       args: Seq[DExpression]
+                                                       ) extends ExpressionSequence(args) with DExpressionSequence {
   override val dArgs = args
 }
 
 /////////////////////////////////////////////////////////////////
-final class GExpressionSequence private [sil](
-                                                 override val args: Seq[GExpression]
-                                                 ) extends ExpressionSequence(args) with PExpressionSequence with DExpressionSequence with Seq[GExpression] {
+final class GExpressionSequence private[sil](
+                                              override val args: Seq[GExpression]
+                                              ) extends ExpressionSequence(args) with PExpressionSequence with DExpressionSequence with Seq[GExpression] {
   override val pArgs = args
   override val dArgs = args
 

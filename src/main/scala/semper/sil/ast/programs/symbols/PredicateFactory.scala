@@ -5,12 +5,11 @@ import semper.sil.ast.expressions.Expression
 import semper.sil.ast.source.SourceLocation
 
 
-class PredicateFactory private [sil](
-      programFactory: ProgramFactory,
-      val name: String
-    )(val sourceLocation: SourceLocation, val comment:List[String])
-  extends SymbolFactory[Predicate](programFactory)
-{
+class PredicateFactory private[sil](
+                                     programFactory: ProgramFactory,
+                                     val name: String
+                                     )(val sourceLocation: SourceLocation, val comment: List[String])
+  extends SymbolFactory[Predicate](programFactory) {
   override def compile(): Predicate = {
     require(pPredicate.pExpression != None)
     predicate
@@ -23,7 +22,7 @@ class PredicateFactory private [sil](
     pPredicate.pExpression = Some(e)
   }
 
-  private [sil] var pPredicate = new Predicate(name)(sourceLocation,this,comment)
+  private[sil] var pPredicate = new Predicate(name)(sourceLocation, this, comment)
 
   def predicate: Predicate = pPredicate.pExpression match {
     case None => throw new Exception

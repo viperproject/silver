@@ -2,7 +2,6 @@ package semper.sil.ast.types
 
 import semper.sil.ast.programs.NodeFactory
 import collection.{mutable, Set}
-import collection.mutable.HashSet
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.domains.DomainTemplateFactory
 
@@ -36,23 +35,23 @@ trait DataTypeFactory extends NodeFactory {
     }
   }
 
-  def makeNonReferenceDataType(df: DomainTemplateFactory, ta: DataTypeSequence,sourceLocation: SourceLocation,comment:List[String] = Nil): NonReferenceDataType = {
+  def makeNonReferenceDataType(df: DomainTemplateFactory, ta: DataTypeSequence, sourceLocation: SourceLocation, comment: List[String] = Nil): NonReferenceDataType = {
     require(domainFactories contains df)
     migrate(ta)
     //    require(ta.forall(dataTypes contains _))
     require(df.pDomainTemplate.typeParameters.length == ta.length)
     val domain = df.pDomainTemplate.getInstance(ta)
-    val result = new NonReferenceDataType(domain)(sourceLocation,comment)
+    val result = new NonReferenceDataType(domain)(sourceLocation, comment)
     pDataTypes += result
     result
   }
 
   //////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////
-  def makeVariableType(variable: TypeVariable,sourceLocation: SourceLocation,comment : List[String] = Nil): VariableType = {
+  def makeVariableType(variable: TypeVariable, sourceLocation: SourceLocation, comment: List[String] = Nil): VariableType = {
     require(typeVariables contains variable)
 
-    val result = new VariableType(variable)(sourceLocation,comment)
+    val result = new VariableType(variable)(sourceLocation, comment)
     pDataTypes += result
     result
   }
@@ -61,8 +60,12 @@ trait DataTypeFactory extends NodeFactory {
   //  pDataTypes += integerType
   //  pDataTypes += permissionType
 
-  protected[sil] def domainFactories: Set[DomainTemplateFactory] //= new HashSet[DomainTemplateFactory]
-  protected[sil] def dataTypes: Set[DataType] //= pDataTypes //new HashSet[DataType]
+  protected[sil] def domainFactories: Set[DomainTemplateFactory]
+
+  //= new HashSet[DomainTemplateFactory]
+  protected[sil] def dataTypes: Set[DataType]
+
+  //= pDataTypes //new HashSet[DataType]
   protected[sil] final val dataTypeSequences = new mutable.HashSet[DataTypeSequence]
 
   protected[sil] def typeVariables: Set[TypeVariable]

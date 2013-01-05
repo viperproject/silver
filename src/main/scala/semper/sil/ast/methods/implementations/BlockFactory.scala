@@ -6,11 +6,11 @@ import semper.sil.ast.programs.NodeFactory
 import semper.sil.ast.expressions.{PExpression, ExpressionFactory}
 
 
-abstract class BlockFactory private [sil]
+abstract class BlockFactory private[sil]
 (
   val scope: Scope,
   val name: String
-  )(val sourceLocation: SourceLocation,val comment:List[String])
+  )(val sourceLocation: SourceLocation, val comment: List[String])
   extends NodeFactory
   with ExpressionFactory {
   type B <: Block
@@ -21,26 +21,25 @@ abstract class BlockFactory private [sil]
   }
 
   //////////////////////////////////////////////////////////////////
-  def setBranch(condition: PExpression, trueTarget: BlockFactory, falseTarget: BlockFactory,sl: SourceLocation,comment:List[String] = Nil)
-  {
+  def setBranch(condition: PExpression, trueTarget: BlockFactory, falseTarget: BlockFactory, sl: SourceLocation, comment: List[String] = Nil) {
     require(block.pControlStatement == None)
     require(trueTarget.block.cfg == block.cfg)
     require(falseTarget.block.cfg == block.cfg)
-    block.setControlStatement(new Branch(block, trueTarget.block, falseTarget.block, condition)(sl,comment))
+    block.setControlStatement(new Branch(block, trueTarget.block, falseTarget.block, condition)(sl, comment))
   }
 
   //////////////////////////////////////////////////////////////////
-  def setGoto(target: BlockFactory,sl: SourceLocation,comment : List[String] = Nil) {
+  def setGoto(target: BlockFactory, sl: SourceLocation, comment: List[String] = Nil) {
     require(block.pControlStatement == None)
     require(target.block.cfg == block.cfg)
-    block.setControlStatement(new Goto(block, target.block)(sl,comment))
+    block.setControlStatement(new Goto(block, target.block)(sl, comment))
   }
 
   //////////////////////////////////////////////////////////////////
-  def setHalt(sl: SourceLocation,comment:List[String] = Nil) {
+  def setHalt(sl: SourceLocation, comment: List[String] = Nil) {
     require(block.pControlStatement == None)
-    block.setControlStatement(new Halt()(sl,comment))
+    block.setControlStatement(new Halt()(sl, comment))
   }
 
-  private [sil] val block: B
+  private[sil] val block: B
 }

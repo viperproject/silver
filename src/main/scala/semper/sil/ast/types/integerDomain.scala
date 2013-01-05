@@ -19,7 +19,7 @@ object integerDomain extends Domain {
 
   override val sourceLocation = noLocation
 
-  override def functions = Set[DomainFunction](integerAddition, integerSubtraction, integerMultiplication, integerDivision, integerModulo, integerNegation,integerEQ, integerNE, integerLE, integerLT, integerGE, integerGT)
+  override def functions = Set[DomainFunction](integerAddition, integerSubtraction, integerMultiplication, integerDivision, integerModulo, integerNegation, integerEQ, integerNE, integerLE, integerLT, integerGE, integerGT)
 
   override def predicates = Set[DomainPredicate]()
 
@@ -34,7 +34,7 @@ object integerDomain extends Domain {
   override def isCompatible(other: Domain) = other == this
 }
 
-object integerType extends NonReferenceDataType(integerDomain)(noLocation,Nil)
+object integerType extends NonReferenceDataType(integerDomain)(noLocation, Nil)
 
 ///////////////////////////////////////////////////////////////////////////
 object integerAddition extends DomainFunction {
@@ -51,7 +51,8 @@ object integerAddition extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -68,7 +69,8 @@ object integerSubtraction extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -85,7 +87,8 @@ object integerMultiplication extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -102,7 +105,8 @@ object integerDivision extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -119,7 +123,8 @@ object integerModulo extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -136,7 +141,8 @@ object integerNegation extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -144,7 +150,7 @@ object integerLE extends DomainFunction {
   override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "<="
-  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType),booleanType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(noLocation)
   override lazy val domain = integerDomain
 
   override def toString(ts: TermSequence) = {
@@ -153,7 +159,8 @@ object integerLE extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -161,7 +168,7 @@ object integerLT extends DomainFunction {
   override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "<"
-  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType),booleanType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(noLocation)
   override lazy val domain = integerDomain
 
   override def toString(ts: TermSequence) = {
@@ -170,7 +177,8 @@ object integerLT extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -178,7 +186,7 @@ object integerGE extends DomainFunction {
   override val comment = Nil
   override val sourceLocation = noLocation
   override val name = ">="
-  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType),booleanType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(noLocation)
   override lazy val domain = integerDomain
 
   override def toString(ts: TermSequence) = {
@@ -187,7 +195,8 @@ object integerGE extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -195,7 +204,7 @@ object integerGT extends DomainFunction {
   override val comment = Nil
   override val sourceLocation = noLocation
   override val name = ">"
-  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType),booleanType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(noLocation)
   override lazy val domain = integerDomain
 
   override def toString(ts: TermSequence) = {
@@ -204,7 +213,8 @@ object integerGT extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -212,7 +222,7 @@ object integerEQ extends DomainFunction {
   override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "=="
-  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType),booleanType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(noLocation)
   override lazy val domain = integerDomain
 
   override def toString(ts: TermSequence) = {
@@ -221,7 +231,8 @@ object integerEQ extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -229,7 +240,7 @@ object integerNE extends DomainFunction {
   override val comment = Nil
   override val sourceLocation = noLocation
   override val name = "!="
-  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType),booleanType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(noLocation)
   override lazy val domain = integerDomain
 
   override def toString(ts: TermSequence) = {
@@ -238,5 +249,6 @@ object integerNE extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }

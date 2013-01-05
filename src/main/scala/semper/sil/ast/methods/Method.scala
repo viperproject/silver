@@ -3,23 +3,22 @@ package semper.sil.ast.methods
 import implementations.Implementation
 import semper.sil.ast.source.SourceLocation
 import collection.{mutable, Set}
-import collection.mutable.HashSet
 import semper.sil.ast.expressions.ExpressionFactory
 import semper.sil.ast.programs.symbols.ProgramVariable
 
-final class Method private [sil](
+final class Method private[sil](
 
-                                    val name: String,
-                                    val signature: MethodSignature,
-                                    override val factory: MethodFactory
-                                    )(val sourceLocation: SourceLocation,override val comment : List[String])
+                                 val name: String,
+                                 val signature: MethodSignature,
+                                 override val factory: MethodFactory
+                                 )(val sourceLocation: SourceLocation, override val comment: List[String])
   extends Scope {
   override val parentScope = None
 
   def implementations: Set[Implementation] = pImplementations.toSet
 
   lazy val expressionFactory: ExpressionFactory = factory
-  private [sil] val pImplementations = new mutable.HashSet[Implementation]
+  private[sil] val pImplementations = new mutable.HashSet[Implementation]
 
   override def locals = signature.parameters.toSet[ProgramVariable] union signature.results.toSet
 

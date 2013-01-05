@@ -6,14 +6,14 @@ import semper.sil.ast.types.{TypeVariable, DataType}
 import semper.sil.ast.source.{noLocation, SourceLocation}
 
 final case class Function private[programs](
-      name: String,
-      pParams: Seq[(SourceLocation, String, DataType)],
-      resultType: DataType
-      )(
-        val sourceLocation: SourceLocation,
-        val factory: FunctionFactory,val comment:List[String])
-      extends ASTNode {
-  private[symbols] var pSignature = new FunctionSignature(pParams, resultType)(noLocation,Nil)
+                                             name: String,
+                                             pParams: Seq[(SourceLocation, String, DataType)],
+                                             resultType: DataType
+                                             )(
+                                             val sourceLocation: SourceLocation,
+                                             val factory: FunctionFactory, val comment: List[String])
+  extends ASTNode {
+  private[symbols] var pSignature = new FunctionSignature(pParams, resultType)(noLocation, Nil)
 
   lazy val signature: FunctionSignature = pSignature
   lazy val freeTypeVariables: Set[TypeVariable] = signature.freeTypeVariables

@@ -23,7 +23,7 @@ sealed abstract class DataType extends ASTNode {
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-final class TypeVariable private [sil](val name: String, val domainTemplate: DomainTemplate)(val sourceLocation: SourceLocation,override val comment : List[String])
+final class TypeVariable private[sil](val name: String, val domainTemplate: DomainTemplate)(val sourceLocation: SourceLocation, override val comment: List[String])
   extends ASTNode {
   override val toString = name
 
@@ -41,7 +41,7 @@ final class TypeVariable private [sil](val name: String, val domainTemplate: Dom
 /////////////////////////////////////////////////////////////////////
 final case class VariableType(
                                variable: TypeVariable
-                               )(override val sourceLocation: SourceLocation,override val comment : List[String]) extends DataType {
+                               )(override val sourceLocation: SourceLocation, override val comment: List[String]) extends DataType {
   override val toString = variable.name
 
   override def isCompatible(other: DataType) =
@@ -50,8 +50,7 @@ final case class VariableType(
       case _ => false
     }
 
-  override def substitute(s: TypeVariableSubstitution) =
-  {
+  override def substitute(s: TypeVariableSubstitution) = {
     var result = s.mapType(variable, this)
     result
   }
@@ -72,9 +71,9 @@ final case class VariableType(
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-case class NonReferenceDataType private [sil](
-                                                 domain: Domain
-                                                 )(override val sourceLocation: SourceLocation,override val comment : List[String])
+case class NonReferenceDataType private[sil](
+                                              domain: Domain
+                                              )(override val sourceLocation: SourceLocation, override val comment: List[String])
   extends DataType {
   require(domain ne referenceDomain)
 
@@ -93,7 +92,7 @@ case class NonReferenceDataType private [sil](
     val result = if (s.typeVariables.intersect(freeTypeVariables).isEmpty)
       this
     else
-      new NonReferenceDataType(domain.substitute(s))(s.sourceLocation(sourceLocation),Nil)
+      new NonReferenceDataType(domain.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
     result
   }
@@ -110,7 +109,7 @@ case class NonReferenceDataType private [sil](
 
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
-case class ReferenceDataType private [sil]() extends DataType {
+case class ReferenceDataType private[sil]() extends DataType {
   override val sourceLocation = noLocation
   override val comment = Nil
   val domain: Domain = referenceDomain

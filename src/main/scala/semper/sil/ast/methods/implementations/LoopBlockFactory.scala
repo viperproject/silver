@@ -13,8 +13,8 @@ class LoopBlockFactory(
                         name: String,
                         condition: PExpression
                         )
-                      (override val sourceLocation: SourceLocation,override val comment:List[String])
-  extends BlockFactory(parentScope, name)(sourceLocation,comment)
+                      (override val sourceLocation: SourceLocation, override val comment: List[String])
+  extends BlockFactory(parentScope, name)(sourceLocation, comment)
   with ScopeFactory {
   type B = LoopBlock
 
@@ -36,7 +36,7 @@ class LoopBlockFactory(
     require(programVariables.forall(_.name != name))
     require(dataTypes contains dataType)
 
-    val result = new ProgramVariable(name, dataType)(sourceLocation,Nil)
+    val result = new ProgramVariable(name, dataType)(sourceLocation, Nil)
     scope.pLocals.append(result)
     result
   }
@@ -49,7 +49,7 @@ class LoopBlockFactory(
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  val block = new LoopBlock(this, cfg, implementation, name, scope, condition)(sourceLocation,comment)
+  val block = new LoopBlock(this, cfg, implementation, name, scope, condition)(sourceLocation, comment)
   val bodyFactory = block.bodyFactory
   val typeVariables: Set[TypeVariable] = Set()
 

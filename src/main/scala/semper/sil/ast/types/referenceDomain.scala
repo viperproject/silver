@@ -46,7 +46,8 @@ object nullFunction extends DomainFunction {
   override def toString(ts: TermSequence) = name
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -63,5 +64,6 @@ object referenceEquality extends DomainFunction {
   }
 
   override def substitute(ts: TypeVariableSubstitution) = this
-  private [sil] override def substituteI(ts: TypeVariableSubstitution) = this
+
+  private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 }

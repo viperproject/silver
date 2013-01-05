@@ -5,14 +5,13 @@ import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.programs.symbols.ProgramVariableSequence
 
-final class MethodSignature private [sil](
+final class MethodSignature private[sil](
 
-                                             val parameters: ProgramVariableSequence,
-                                             val results: ProgramVariableSequence,
-                                             val precondition: ExpressionSequence,
-                                             val postcondition: ExpressionSequence
-                                             )(val sourceLocation: SourceLocation) extends ASTNode
-{
+                                          val parameters: ProgramVariableSequence,
+                                          val results: ProgramVariableSequence,
+                                          val precondition: ExpressionSequence,
+                                          val postcondition: ExpressionSequence
+                                          )(val sourceLocation: SourceLocation) extends ASTNode {
 
   override val comment = Nil
 

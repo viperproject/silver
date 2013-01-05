@@ -18,7 +18,8 @@ trait DomainPredicate extends ASTNode {
   def toString(ts: TermSequence) = fullName + ts.toString()
 
   def substitute(s: TypeVariableSubstitution): DomainPredicate
-  private [sil] def substituteI(s: TypeVariableSubstitution) : DomainPredicate
+
+  private[sil] def substituteI(s: TypeVariableSubstitution): DomainPredicate
 
   override def equals(other: Any): Boolean = {
     other match {
@@ -31,13 +32,14 @@ trait DomainPredicate extends ASTNode {
 
 }
 
-class DomainPredicateC private [sil](
-                                        val name: String,
-                                        val signature: DomainPredicateSignature,
-                                        val domain: GDomain
-                                        )(val sourceLocation: SourceLocation,override val comment : List[String]) extends DomainPredicate {
+class DomainPredicateC private[sil](
+                                     val name: String,
+                                     val signature: DomainPredicateSignature,
+                                     val domain: GDomain
+                                     )(val sourceLocation: SourceLocation, override val comment: List[String]) extends DomainPredicate {
   def substitute(s: TypeVariableSubstitution) =
     domain.substitute(s).predicates.find(_.name == name).get
+
   def substituteI(s: TypeVariableSubstitution) =
-    new DomainPredicateC(name, signature.substitute(s),domain.substitute(s))(sourceLocation,Nil)
+    new DomainPredicateC(name, signature.substitute(s), domain.substitute(s))(sourceLocation, Nil)
 }

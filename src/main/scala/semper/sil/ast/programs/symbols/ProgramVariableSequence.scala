@@ -4,12 +4,11 @@ import semper.sil.ast.ASTNode
 import scala.collection.Seq
 import semper.sil.ast.source.SourceLocation
 
-final class ProgramVariableSequence private [sil](
-         val variables: Seq[ProgramVariable]
-         )(val sourceLocation: SourceLocation,val comment:List[String])
+final class ProgramVariableSequence private[sil](
+                                                  val variables: Seq[ProgramVariable]
+                                                  )(val sourceLocation: SourceLocation, val comment: List[String])
   extends ASTNode
-  with Seq[ProgramVariable]
-{
+  with Seq[ProgramVariable] {
   override def toString() = "(" + variables.mkString(",") + ")"
 
   def toStringWithTypes = "(" + (for (v <- variables) yield (v.name + " : " + v.dataType.toString)).mkString(",") + ")"

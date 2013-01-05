@@ -5,7 +5,7 @@ import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.expressions.{PExpression, Expression}
 import semper.sil.ast.programs.symbols.ProgramVariable
 
-final class LoopBlock private [sil]
+final class LoopBlock private[sil]
 (
   lbFactory: LoopBlockFactory,
   override val cfg: ControlFlowGraph,
@@ -14,10 +14,9 @@ final class LoopBlock private [sil]
   pParentScope: Scope,
   val condition: PExpression
   )
-(val sourceLocation: SourceLocation,val comment:List[String])
+(val sourceLocation: SourceLocation, val comment: List[String])
   extends Block
-  with Scope
-{
+  with Scope {
   /////////////////////////////////////////////////////////////////////////////////////
   override val factory = lbFactory
   override val parentScope = Some(pParentScope)
@@ -31,7 +30,7 @@ final class LoopBlock private [sil]
     case _ => throw new Exception()
   }
 
-  private [sil] var pInvariant: Option[Expression] = None
+  private[sil] var pInvariant: Option[Expression] = None
 
   override def readVariables: Set[ProgramVariable] =
     (for (n <- body.nodes) yield n.readVariables).flatten.toSet union
@@ -42,12 +41,12 @@ final class LoopBlock private [sil]
     (for (n <- body.nodes) yield n.writtenVariables).flatten.toSet //TODO:is this enough?
 
   /////////////////////////////////////////////////////////////////////////////////////
-  override def toString = label + ": while " + condition + sys.props("line.separator") + 
-  (pInvariant match { 
-    case Some(e) => " -- invariant: " + e.toString + sys.props("line.separator") 
-    case _ => ""
-  }) +
-  "  do {" + body.toString + "} " + controlFlowToString
+  override def toString = label + ": while " + condition + sys.props("line.separator") +
+    (pInvariant match {
+      case Some(e) => " -- invariant: " + e.toString + sys.props("line.separator")
+      case _ => ""
+    }) +
+    "  do {" + body.toString + "} " + controlFlowToString
 
   override def hashCode() = toString.hashCode()
 

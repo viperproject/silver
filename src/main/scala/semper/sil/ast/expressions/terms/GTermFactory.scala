@@ -1,7 +1,6 @@
 package semper.sil.ast.expressions.terms
 
 import semper.sil.ast.source.SourceLocation
-import collection.mutable.HashSet
 import collection.{mutable, Set}
 import semper.sil.ast.domains.DomainFunction
 import semper.sil.ast.expressions.util.GTermSequence
@@ -31,24 +30,24 @@ protected[sil] trait GTermFactory
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeIntegerLiteralTerm(v: BigInt,sourceLocation: SourceLocation,comment : List[String] =  Nil): IntegerLiteralTerm = {
-    addTerm(new IntegerLiteralTerm(v)(sourceLocation,comment))
+  def makeIntegerLiteralTerm(v: BigInt, sourceLocation: SourceLocation, comment: List[String] = Nil): IntegerLiteralTerm = {
+    addTerm(new IntegerLiteralTerm(v)(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeGDomainFunctionApplicationTerm(f: DomainFunction, a: GTermSequence,sourceLocation: SourceLocation,comment : List[String] = Nil): GDomainFunctionApplicationTerm = {
+  def makeGDomainFunctionApplicationTerm(f: DomainFunction, a: GTermSequence, sourceLocation: SourceLocation, comment: List[String] = Nil): GDomainFunctionApplicationTerm = {
     a.foreach(migrate(_))
     require(domainFunctions contains f)
-    addTerm(new GDomainFunctionApplicationTerm(f, a)(sourceLocation,comment))
+    addTerm(new GDomainFunctionApplicationTerm(f, a)(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeGIfThenElseTerm(c: GTerm, p: GTerm, n: GTerm,sourceLocation: SourceLocation,comment : List[String] = Nil): GIfThenElseTerm = {
+  def makeGIfThenElseTerm(c: GTerm, p: GTerm, n: GTerm, sourceLocation: SourceLocation, comment: List[String] = Nil): GIfThenElseTerm = {
     migrate(c)
     migrate(p)
     migrate(n)
     require(c.dataType == booleanType)
-    addTerm(new GIfThenElseTerm(c, p, n)(sourceLocation,comment))
+    addTerm(new GIfThenElseTerm(c, p, n)(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
