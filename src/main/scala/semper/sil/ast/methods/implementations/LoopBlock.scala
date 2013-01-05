@@ -2,7 +2,7 @@ package semper.sil.ast.methods.implementations
 
 import semper.sil.ast.methods.Scope
 import semper.sil.ast.source.SourceLocation
-import semper.sil.ast.expressions.{PExpression, Expression}
+import semper.sil.ast.expressions.{Expression}
 import semper.sil.ast.programs.symbols.ProgramVariable
 
 final class LoopBlock private[sil]
@@ -12,7 +12,7 @@ final class LoopBlock private[sil]
   override val implementation: Implementation,
   override val label: String,
   pParentScope: Scope,
-  val condition: PExpression
+  val condition: Expression
   )
 (val sourceLocation: SourceLocation, val comment: List[String])
   extends Block

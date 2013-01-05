@@ -42,8 +42,8 @@ class BasicBlockFactory private[sil]
     require(targets.forall(programVariables contains _))
     require(scope.factory.methodFactories contains methodFactory)
 
-    migrateP(receiver)
-    arguments foreach migrateP
+    migrate(receiver)
+    arguments foreach migrate
 
     block.appendStatement(new CallStatement(targets, methodFactory.method, PTermSequence(receiver :: arguments.toList: _*))
     (sourceLocation, comment))
@@ -108,7 +108,7 @@ class BasicBlockFactory private[sil]
                         , sourceLocation: SourceLocation, comment: List[String] = Nil) = {
     require(writableVariables contains target) //no writing to inputs
 
-    migrateP(source)
+    migrate(source)
     block.appendStatement(new AssignmentStatement(target, source)(sourceLocation, comment))
   }
 
@@ -122,7 +122,7 @@ class BasicBlockFactory private[sil]
     require(programVariables contains target)
     require(fields contains field)
 
-    migrateP(source)
+    migrate(source)
 
     block.appendStatement(new FieldAssignmentStatement(target, field, source)(sourceLocation, comment))
   }

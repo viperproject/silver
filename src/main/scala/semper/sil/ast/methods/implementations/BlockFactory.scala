@@ -3,7 +3,7 @@ package semper.sil.ast.methods.implementations
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.methods.Scope
 import semper.sil.ast.programs.NodeFactory
-import semper.sil.ast.expressions.{PExpression, ExpressionFactory}
+import semper.sil.ast.expressions.{Expression, ExpressionFactory}
 
 
 abstract class BlockFactory private[sil]
@@ -21,7 +21,7 @@ abstract class BlockFactory private[sil]
   }
 
   //////////////////////////////////////////////////////////////////
-  def setBranch(condition: PExpression, trueTarget: BlockFactory, falseTarget: BlockFactory, sl: SourceLocation, comment: List[String] = Nil) {
+  def setBranch(condition: Expression, trueTarget: BlockFactory, falseTarget: BlockFactory, sl: SourceLocation, comment: List[String] = Nil) {
     require(block.pControlStatement == None)
     require(trueTarget.block.cfg == block.cfg)
     require(falseTarget.block.cfg == block.cfg)

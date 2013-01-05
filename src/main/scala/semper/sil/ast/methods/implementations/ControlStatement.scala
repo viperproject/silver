@@ -3,7 +3,7 @@ package semper.sil.ast.methods.implementations
 import semper.sil.ast.ASTNode
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.symbols.logical.Not
-import semper.sil.ast.expressions.{TrueExpression, PExpression}
+import semper.sil.ast.expressions.{TrueExpression, Expression}
 
 sealed abstract class ControlStatement
   extends ASTNode {
@@ -29,7 +29,7 @@ final class Branch private[sil]
   val source: Block,
   val trueTarget: Block,
   val falseTarget: Block,
-  val condition: PExpression
+  val condition: Expression
   )(val sourceLocation: SourceLocation, val comment: List[String])
   extends ControlStatement {
   require(source.cfg == trueTarget.cfg)

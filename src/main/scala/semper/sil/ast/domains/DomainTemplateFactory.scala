@@ -1,7 +1,7 @@
 package semper.sil.ast.domains
 
 import semper.sil.ast.programs.{NodeFactory, ProgramFactory}
-import semper.sil.ast.expressions.{DExpression, DExpressionFactory}
+import semper.sil.ast.expressions.{Expression, ExpressionFactory}
 import semper.sil.ast.source.{noLocation, SourceLocation}
 import semper.sil.ast.types._
 
@@ -11,7 +11,7 @@ final class DomainTemplateFactory private[sil](
                                                 typeVariableNames: Seq[(SourceLocation, String, List[String])]
                                                 )
                                               (val sourceLocation: SourceLocation, comment: List[String])
-  extends NodeFactory with DExpressionFactory with DataTypeFactory {
+  extends NodeFactory with ExpressionFactory with DataTypeFactory {
   private[sil] val pDomainTemplate: DomainTemplateC = new DomainTemplateC(name, typeVariableNames)(sourceLocation, comment)
   val domainTemplate: DomainTemplate = pDomainTemplate
 
@@ -43,7 +43,7 @@ final class DomainTemplateFactory private[sil](
 
   /////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////
-  def addDomainAxiom(name: String, e: DExpression, sourceLocation: SourceLocation, comment: List[String] = Nil): DomainAxiom = {
+  def addDomainAxiom(name: String, e: Expression, sourceLocation: SourceLocation, comment: List[String] = Nil): DomainAxiom = {
     require(pDomainTemplate.axioms.forall(_.name != name))
     val result = new DomainAxiom(name, e)(sourceLocation, comment)
     pDomainTemplate.pAxioms += result

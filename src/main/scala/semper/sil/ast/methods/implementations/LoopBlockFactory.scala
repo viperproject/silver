@@ -1,7 +1,7 @@
 package semper.sil.ast.methods.implementations
 
 import semper.sil.ast.source.SourceLocation
-import semper.sil.ast.expressions.{PExpression, Expression}
+import semper.sil.ast.expressions.{Expression}
 import semper.sil.ast.methods.{ScopeFactory, Scope}
 import semper.sil.ast.types.{DataType, TypeVariable}
 import semper.sil.ast.programs.symbols.ProgramVariable
@@ -11,7 +11,7 @@ class LoopBlockFactory(
                         val parentScope: Scope,
                         implementation: Implementation,
                         name: String,
-                        condition: PExpression
+                        condition: Expression
                         )
                       (override val sourceLocation: SourceLocation, override val comment: List[String])
   extends BlockFactory(parentScope, name)(sourceLocation, comment)

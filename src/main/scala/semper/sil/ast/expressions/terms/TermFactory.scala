@@ -5,16 +5,15 @@ import semper.sil.ast.programs.NodeFactory
 import semper.sil.ast.expressions.util._
 import semper.sil.ast.types._
 import collection.immutable
-import semper.sil.ast.programs.symbols.{ProgramVariable, FunctionFactory, Field}
+import collection.mutable
+import semper.sil.ast.programs.symbols.{Function, Predicate, ProgramVariable, FunctionFactory, Field}
 import semper.sil.ast.symbols.logical.quantification.LogicalVariable
 import semper.sil.ast.domains.{LogicalVariableSubstitutionC, LogicalVariableSubstitution, DomainFunction}
-import semper.sil.ast.expressions.{PredicatePermissionExpression, PPredicatePermissionExpression, ProgramVariableSubstitutionC, ProgramVariableSubstitution}
+import semper.sil.ast.expressions.{Expression, PredicatePermissionExpression, ProgramVariableSubstitutionC, ProgramVariableSubstitution}
 
 protected[sil] trait TermFactory
   extends NodeFactory
-  with PTermFactory
-  with DTermFactory
-  with GTermFactory {
+  with DataTypeFactory {
   /////////////////////////////////////////////////////////////////////////
   def makeProgramVariableSubstitution(subs: immutable.Set[(ProgramVariable, Term)]): ProgramVariableSubstitution = {
     subs.foreach(kv => migrate(kv._2))
@@ -28,10 +27,6 @@ protected[sil] trait TermFactory
   }
 
   /////////////////////////////////////////////////////////////////////////
-  protected[sil] def migrateP(t: PTerm) {
-    super[PTermFactory].migrate(t)
-  }
-
   def migrate(location: Location) {
     migrate(location.receiver)
     location match {
@@ -46,13 +41,21 @@ protected[sil] trait TermFactory
     if (terms contains t)
       return
     t match {
-      case gt: GTerm => super[GTermFactory].migrate(gt)
-      case dt: DTerm => super.migrate(dt)
-      case pt: PTerm => super.migrate(pt)
+      case t: LiteralTerm => addTerm(t)
       case fa: DomainFunctionApplicationTerm => {
         require(domainFunctions contains fa.function)
         fa.arguments.foreach(migrate(_))
         addTerm(fa)
+      }
+      case pv: ProgramVariableTerm => {
+        require(programVariables contains pv.variable)
+        addTerm(pv)
+      }
+      case lv: LogicalVariableTerm => {
+        // TODO: Decide how to handle this.
+        // I think that bound variables should be migrated automatically. ~~~~ Christian Klauser <klauserc@ethz.ch>
+        boundVariables.add(lv.variable)
+        addTerm(lv)
       }
       case fa: FunctionApplicationTerm => {
         require(functions contains fa.function)
@@ -95,6 +98,30 @@ protected[sil] trait TermFactory
   }
 
   /////////////////////////////////////////////////////////////////////////
+  def validBoundVariableName(name: String): Boolean =
+    name != "this"
+
+  /////////////////////////////////////////////////////////////////////////
+  def makeBoundVariable(name: String, dataType: DataType, sourceLocation: SourceLocation, comment: List[String] = Nil): LogicalVariable = {
+    require(dataTypes contains dataType)
+    require(validBoundVariableName(name))
+    val result: LogicalVariable = new LogicalVariable(name, dataType)(sourceLocation, comment)
+    boundVariables += result
+    result
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  def makeBoundVariableTerm(v: LogicalVariable, sourceLocation: SourceLocation, comment: List[String] = Nil): LogicalVariableTerm = {
+    require(boundVariables contains v)
+    addTerm(new LogicalVariableTerm(v)(sourceLocation, comment))
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  def makeIntegerLiteralTerm(v: BigInt, sourceLocation: SourceLocation, comment: List[String] = Nil): IntegerLiteralTerm = {
+    addTerm(new IntegerLiteralTerm(v)(sourceLocation, comment))
+  }
+
+  /////////////////////////////////////////////////////////////////////////
   def makeFunctionApplicationTerm(
                                    r: Term,
                                    ff: FunctionFactory,
@@ -105,10 +132,16 @@ protected[sil] trait TermFactory
     require(functions contains ff.pFunction)
     a.foreach(migrate(_))
 
-    (r, a) match {
-      case (r: PTerm, a: PTermSequence) => makePFunctionApplicationTerm(r, ff, a, sourceLocation, comment)
-      case _ => addTerm(new FunctionApplicationTerm(r, ff.pFunction, a)(sourceLocation, comment))
+    addTerm(new FunctionApplicationTerm(r, ff.pFunction, a)(sourceLocation, comment))
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  def makeProgramVariableTerm(v: ProgramVariable, sourceLocation: SourceLocation, comment: List[String] = Nil): ProgramVariableTerm = {
+    if (!(programVariables contains v)) {
+      System.out.println("PTF : " + programVariables.mkString(","))
     }
+    require(programVariables contains v)
+    addTerm(new ProgramVariableTerm(v)(sourceLocation, comment))
   }
 
   //////////////////////////////////////////////////////////////////////////
@@ -117,10 +150,7 @@ protected[sil] trait TermFactory
     migrate(r.location.receiver)
     migrate(t)
 
-    (r, t) match {
-      case (pr: PPredicatePermissionExpression, pt: PTerm) => makePUnfoldingTerm(pr, pt, sourceLocation, comment)
-      case _ => addTerm(new UnfoldingTerm(r, t)(sourceLocation, this, comment))
-    }
+    addTerm(new UnfoldingTerm(r, t)(sourceLocation, this, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -128,10 +158,7 @@ protected[sil] trait TermFactory
     migrate(dt)
     migrate(t)
 
-    t match {
-      case t: PTerm => makePCastTerm(t, dt, sourceLocation, comment)
-      case _ => addTerm(new CastTerm(t, dt)(sourceLocation, comment))
-    }
+    addTerm(new CastTerm(t, dt)(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -139,11 +166,7 @@ protected[sil] trait TermFactory
     require(fields contains f)
     migrate(t)
 
-    t match {
-      case t: PTerm => makePFieldReadTerm(t, f, sourceLocation, comment)
-      case _ => addTerm(new FieldReadTerm(new FieldLocation(t, f))(sourceLocation, comment))
-    }
-
+    addTerm(new FieldReadTerm(new FieldLocation(t, f))(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -163,18 +186,7 @@ protected[sil] trait TermFactory
     assert(domainFunctions contains f)
     a.foreach(migrate(_))
 
-    a match {
-      case a: GTermSequence => makeGDomainFunctionApplicationTerm(f, a, sourceLocation, comment)
-      case a: PTermSequence => makePDomainFunctionApplicationTerm(f, a, sourceLocation, comment)
-      case a: DTermSequence => makeDDomainFunctionApplicationTerm(f, a, sourceLocation, comment)
-      case a if a.forall(_.isInstanceOf[GTerm]) =>
-        makeGDomainFunctionApplicationTerm(f, GTermSequence(a.map(_.asInstanceOf[GTerm]): _*), sourceLocation, comment)
-      case a if a.forall(_.isInstanceOf[PTerm]) =>
-        makePDomainFunctionApplicationTerm(f, PTermSequence(a.map(_.asInstanceOf[PTerm]): _*), sourceLocation, comment)
-      case a if a.forall(_.isInstanceOf[DTerm]) =>
-        makeDDomainFunctionApplicationTerm(f, DTermSequence(a.map(_.asInstanceOf[DTerm]): _*), sourceLocation, comment)
-      case _ => addTerm(new DomainFunctionApplicationTerm(f, a)(sourceLocation, comment))
-    }
+    addTerm(new DomainFunctionApplicationTerm(f, a)(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
@@ -236,11 +248,42 @@ protected[sil] trait TermFactory
     migrate(p)
     migrate(n)
     require(c.dataType == booleanType)
-    (c, p, n) match {
-      case (gc: GTerm, gp: GTerm, gn: GTerm) => makeGIfThenElseTerm(gc, gp, gn, sourceLocation, comment)
-      case (dc: DTerm, dp: DTerm, dn: DTerm) => makeDIfThenElseTerm(dc, dp, dn, sourceLocation, comment)
-      case (pc: PTerm, pp: PTerm, pn: PTerm) => makePIfThenElseTerm(pc, pp, pn, sourceLocation, comment)
-      case _ => addTerm(new IfThenElseTerm(c, p, n)(sourceLocation, comment))
-    }
+    addTerm(new IfThenElseTerm(c, p, n)(sourceLocation, comment))
   }
+
+  protected[sil] def addTerm[T <: Term](t: T): T = {
+    terms += t
+    t
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  protected[sil] def addExpression[E <: Expression](e: E): E = {
+    pExpressions += e
+    nodeMap += e.sourceLocation -> e //Overrides sub expressions - always largest in the map
+    e
+  }
+
+  /////////////////////////////////////////////////////////////////////////
+  protected val terms = new mutable.HashSet[Term]
+
+  protected[sil] def domainFunctions: collection.Set[DomainFunction]
+
+  /////////////////////////////////////////////////////////////////////////
+  protected[expressions] val pExpressions = new mutable.HashSet[Expression]
+
+  protected[sil] def functions: collection.Set[Function]
+
+  protected[sil] def programVariables: collection.Set[ProgramVariable]
+
+  protected[sil] def inputProgramVariables: collection.Set[ProgramVariable]
+
+  //included in programVariables
+  protected[sil] def outputProgramVariables: collection.Set[ProgramVariable] //included in programVariables
+
+  protected[sil] def fields: collection.Set[Field]
+
+  protected[sil] def predicates: collection.Set[Predicate]
+
+  /////////////////////////////////////////////////////////////////////////
+  protected[sil] val boundVariables = new mutable.HashSet[LogicalVariable]
 }

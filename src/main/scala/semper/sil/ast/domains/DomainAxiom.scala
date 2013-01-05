@@ -1,20 +1,20 @@
 package semper.sil.ast.domains
 
 import semper.sil.ast.ASTNode
-import semper.sil.ast.expressions.DExpression
+import semper.sil.ast.expressions.Expression
 import semper.sil.ast.source.SourceLocation
 
 final class DomainAxiom private[sil](
 
                                       val name: String,
-                                      val expression: DExpression
+                                      val expression: Expression
                                       )
                                     (val sourceLocation: SourceLocation, override val comment: List[String])
   extends ASTNode {
   def substitute(ts: TypeVariableSubstitution): DomainAxiom =
     new DomainAxiom(
       name,
-      expression.substitute(new DLogicalVariableSubstitutionC(ts.types, Set()))
+      expression.substitute(new LogicalVariableSubstitutionC(ts.types, Set()))
     )(sourceLocation, Nil)
 
 

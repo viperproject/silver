@@ -47,29 +47,3 @@ private[sil] sealed class ProgramVariableSubstitutionC[TT <: Term](
 
   protected[sil] val logicalVarMap: Map[LogicalVariable, LogicalVariable] = logicalVariables.toMap
 }
-
-
-sealed trait PProgramVariableSubstitution extends ProgramVariableSubstitution {
-  override type T <: PTerm
-}
-
-private[sil] sealed class PProgramVariableSubstitutionC(
-                                                         variables: Set[(ProgramVariable, PTerm)],
-                                                         override val logicalVariables: Set[(LogicalVariable, LogicalVariable)]
-                                                         )
-  extends ProgramVariableSubstitutionC[PTerm](variables, logicalVariables)
-  with PProgramVariableSubstitution {
-}
-
-/////////////////////////////////////////////////////////////////////////////////
-sealed trait DProgramVariableSubstitution extends ProgramVariableSubstitution {
-  override type T <: DTerm
-}
-
-private[sil] sealed class DProgramVariableSubstitutionC(
-                                                         variables: Set[(ProgramVariable, DTerm)],
-                                                         override val logicalVariables: Set[(LogicalVariable, LogicalVariable)]
-                                                         )
-  extends ProgramVariableSubstitutionC[DTerm](variables, logicalVariables)
-  with DProgramVariableSubstitution {
-}

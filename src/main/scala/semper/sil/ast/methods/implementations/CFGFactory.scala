@@ -3,8 +3,8 @@ package semper.sil.ast.methods.implementations
 import semper.sil.ast.programs.NodeFactory
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.methods.Scope
-import semper.sil.ast.expressions.PExpression
 import collection.mutable
+import semper.sil.ast.expressions.Expression
 
 final class CFGFactory(
                         implementation: Implementation,
@@ -46,9 +46,9 @@ final class CFGFactory(
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def addLoopBlock(name: String, condition: PExpression, sourceLocation: SourceLocation, comment: List[String] = Nil): LoopBlockFactory = {
+  def addLoopBlock(name: String, condition: Expression, sourceLocation: SourceLocation, comment: List[String] = Nil): LoopBlockFactory = {
     require(blocks.forall(_.name != name))
-    scope.factory.migrateP(condition)
+    scope.factory.migrate(condition)
     val result = new LoopBlockFactory(cfg, scope, implementation, name, condition)(sourceLocation, comment)
     blocks += result
     cfg.addNode(result.block)
