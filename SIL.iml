@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="JAVA_MODULE" version="4">
   <component name="EclipseModuleManager">
+    <varelement var="jar://$IVY_HOME$/cache/org.scalatest/scalatest_2.9.1/jars/scalatest_2.9.1-1.8.jar!/" value="IVY_HOME/cache/org.scalatest/scalatest_2.9.1/jars/scalatest_2.9.1-1.8.jar" />
     <conelement value="org.scala-ide.sdt.launching.SCALA_CONTAINER" />
     <src_description expected_position="0">
       <src_folder value="file://$MODULE_DIR$/src/main/scala" expected_position="0" />
@@ -25,6 +26,17 @@
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module-library">
+      <library name="scalatest_2.9.1-1.8.jar">
+        <CLASSES>
+          <root url="jar://$IVY_HOME$/cache/org.scalatest/scalatest_2.9.1/jars/scalatest_2.9.1-1.8.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$IVY_HOME$/cache/org.scalatest/scalatest_2.9.1/srcs/scalatest_2.9.1-1.8-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="library" name="org.scala-lang:scala-library:2.9.1" level="project" />
   </component>
