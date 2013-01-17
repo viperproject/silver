@@ -160,7 +160,8 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   def registerTestDirectory(dir: File, prefix: String = "") {
     require(dir != null)
     val newPrefix = prefix + dir.getName + "/"
-    for (f: File <- dir.listFiles.filter(_.isDirectory)) {
+    if (dir.listFiles == null) return
+    for (f: File <- dir.listFiles.filter(x => x != null && x.isDirectory)) {
       registerTestDirectory(f, newPrefix)
     }
     for (f: File <- dir.listFiles.filter(!_.isDirectory)) {
