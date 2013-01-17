@@ -1,8 +1,7 @@
-// SIL AST
 
 name := "sil"
 
-organization  := "pm.inf.ethz.ch"
+organization  := "semper"
 
 version := "0.1-SNAPSHOT"
 
