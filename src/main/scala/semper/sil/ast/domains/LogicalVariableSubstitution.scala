@@ -30,7 +30,7 @@ abstract class TypeVariableSubstitution {
   def +(other: TypeVariableSubstitution): TypeVariableSubstitution
 }
 
-private[sil] class TypeSubstitutionC[Term](
+private[sil] class TypeSubstitutionC[Expression](
                                             val types: Set[(TypeVariable, DataType)],
                                             val variables: Set[(LogicalVariable, LogicalVariable)]
                                             ) extends TypeVariableSubstitution {
@@ -55,7 +55,7 @@ private[sil] class TypeSubstitutionC[Term](
 ///////////////////////////////////////////////////////////////////////////
 trait LogicalVariableSubstitution {
   //extends TypeVariableSubstitution {
-  type T <: Term
+  type T <: Expression
 
   def types: Set[(TypeVariable, DataType)]
 
@@ -73,7 +73,7 @@ trait LogicalVariableSubstitution {
   def sourceLocation(sl: SourceLocation): LogicalSubstitutedSourceLocation = new LogicalSubstitutedSourceLocation(sl, this)
 }
 
-private[sil] class LogicalVariableSubstitutionC[TT <: Term](
+private[sil] class LogicalVariableSubstitutionC[TT <: Expression](
                                                              override val types: Set[(TypeVariable, DataType)],
                                                              override val variables: Set[(LogicalVariable, TT)]
                                                              ) extends LogicalVariableSubstitution {
@@ -83,7 +83,7 @@ private[sil] class LogicalVariableSubstitutionC[TT <: Term](
   require(variables.forall((x) => variables.count((y) => y._1 == x._1) == 1))
 
   override def +(other: LogicalVariableSubstitution): LogicalVariableSubstitution =
-    new LogicalVariableSubstitutionC[Term](types ++ other.types, (varMap ++ other.varMap).toSet /*,newDomain*/)
+    new LogicalVariableSubstitutionC[Expression](types ++ other.types, (varMap ++ other.varMap).toSet /*,newDomain*/)
 
   protected[sil] override val varMap: Map[LogicalVariable, TT] = variables.toMap
 

@@ -2,11 +2,11 @@ package semper.sil.ast.methods.implementations
 
 import semper.sil.ast.ASTNode
 import semper.sil.ast.source.SourceLocation
-import semper.sil.ast.expressions.util.TermSequence
+import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import semper.sil.ast.methods.Method
 import scala.Some
-import semper.sil.ast.expressions.terms.{Term, PredicateLocation}
+import semper.sil.ast.expressions.terms.{Expression, PredicateLocation}
 import semper.sil.ast.types.{permissionType, DataType}
 import semper.sil.ast.expressions.{PredicatePermissionExpression, Expression}
 
@@ -26,7 +26,7 @@ sealed abstract class Statement private[sil] extends ASTNode {
 //////////////////////////////////////////////////////////////////////////////
 final case class AssignmentStatement private[sil](
                                                    target: ProgramVariable,
-                                                   source: Term
+                                                   source: Expression
                                                    )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   override def toString: String = target.name + ":=" + source.toString
@@ -42,7 +42,7 @@ final case class AssignmentStatement private[sil](
 case class FieldAssignmentStatement private[sil](
                                                   target: ProgramVariable,
                                                   field: Field,
-                                                  source: Term
+                                                  source: Expression
                                                   )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   override def toString: String = target.name + "." + field.name + " := " + source.toString
@@ -75,7 +75,7 @@ final case class CallStatement private[sil]
 (
   targets: ProgramVariableSequence,
   method: Method,
-  arguments: TermSequence
+  arguments: ExpressionSequence
   )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   def receiver = arguments.head
@@ -126,7 +126,7 @@ final case class ExhaleStatement private[sil](
 //TODO:FoldStatement/UnfoldStatement arrays?
 final case class FoldStatement private[sil](
                                              location: PredicateLocation,
-                                             permission: Term
+                                             permission: Expression
                                              )(override val sourceLocation: SourceLocation, val comment: List[String])
   extends Statement {
   require(permission.dataType == permissionType)

@@ -1,6 +1,6 @@
 package semper.sil.ast.types
 
-import semper.sil.ast.expressions.util.TermSequence
+import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.source.NoLocation
 import semper.sil.ast.domains._
 
@@ -49,7 +49,7 @@ object permissionAddition extends DomainFunction {
 
   private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "+" + ts(1).toString
   }
@@ -67,7 +67,7 @@ object percentagePermission extends DomainFunction {
 
   private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 1)
     ts.head.toString + "%"
   }
@@ -84,7 +84,7 @@ object permissionSubtraction extends DomainFunction {
 
   private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "-" + ts(1).toString
   }
@@ -101,7 +101,7 @@ object permissionMultiplication extends DomainFunction {
 
   private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "*" + ts(1).toString
   }
@@ -118,7 +118,7 @@ object permissionIntegerMultiplication extends DomainFunction {
 
   private[sil] override def substituteI(ts: TypeVariableSubstitution) = this
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "*" + ts(1).toString
   }
@@ -132,7 +132,7 @@ object permissionLE extends DomainPredicate {
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "<=" + ts(1).toString
   }
@@ -150,7 +150,7 @@ object permissionLT extends DomainPredicate {
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "<" + ts(1).toString
   }
@@ -168,7 +168,7 @@ object permissionGE extends DomainPredicate {
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + ">=" + ts(1).toString
   }
@@ -186,7 +186,7 @@ object permissionGT extends DomainPredicate {
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + ">" + ts(1).toString
   }
@@ -204,7 +204,7 @@ object permissionEQ extends DomainPredicate {
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "==" + ts(1).toString
   }
@@ -222,7 +222,7 @@ object permissionNE extends DomainPredicate {
   override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "!=" + ts(1).toString
   }

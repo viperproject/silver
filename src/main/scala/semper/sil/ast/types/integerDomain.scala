@@ -1,7 +1,7 @@
 package semper.sil.ast.types
 
 import semper.sil.ast.domains._
-import semper.sil.ast.expressions.util.TermSequence
+import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.source.NoLocation
 
 ///////////////////////////////////////////////////////////////////////////
@@ -44,7 +44,7 @@ object integerAddition extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), integerType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts != null)
     require(ts.length == 2)
     ts(0).toString + "+" + ts(1).toString
@@ -63,7 +63,7 @@ object integerSubtraction extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), integerType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "-" + ts(1).toString
   }
@@ -81,7 +81,7 @@ object integerMultiplication extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), integerType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "*" + ts(1).toString
   }
@@ -99,7 +99,7 @@ object integerDivision extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), integerType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "/" + ts(1).toString
   }
@@ -117,7 +117,7 @@ object integerModulo extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), integerType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "%" + ts(1).toString
   }
@@ -135,7 +135,7 @@ object integerNegation extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(integerType), integerType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 1)
     "-" + ts(0).toString
   }
@@ -153,7 +153,7 @@ object integerLE extends DomainFunction {
   override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "<=" + ts(1).toString
   }
@@ -171,7 +171,7 @@ object integerLT extends DomainFunction {
   override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "<" + ts(1).toString
   }
@@ -189,7 +189,7 @@ object integerGE extends DomainFunction {
   override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + ">=" + ts(1).toString
   }
@@ -207,7 +207,7 @@ object integerGT extends DomainFunction {
   override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + ">" + ts(1).toString
   }
@@ -225,7 +225,7 @@ object integerEQ extends DomainFunction {
   override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "==" + ts(1).toString
   }
@@ -243,7 +243,7 @@ object integerNE extends DomainFunction {
   override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, integerType), booleanType)(NoLocation)
   override lazy val domain = integerDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 2)
     ts(0).toString + "!=" + ts(1).toString
   }

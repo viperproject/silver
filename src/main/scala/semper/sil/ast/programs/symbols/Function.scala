@@ -1,7 +1,7 @@
 package semper.sil.ast.programs.symbols
 
 import semper.sil.ast.ASTNode
-import semper.sil.ast.expressions.terms.Term
+import semper.sil.ast.expressions.terms.Expression
 import semper.sil.ast.types.{TypeVariable, DataType}
 import semper.sil.ast.source.{NoLocation, SourceLocation}
 
@@ -20,9 +20,9 @@ final case class Function private[programs](
 
   override def toString = "function " + name + signature.toString + " = " + body.toString
 
-  def body: Term = pBody.get
+  def body: Expression = pBody.get
 
-  private[symbols] var pBody: Option[Term] = None
+  private[symbols] var pBody: Option[Expression] = None
 
   override def equals(other: Any): Boolean = {
     other match {

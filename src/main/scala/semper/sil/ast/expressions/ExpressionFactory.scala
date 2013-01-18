@@ -14,7 +14,7 @@ import collection.mutable
 
 trait ExpressionFactory
   extends NodeFactory
-  with TermFactory {
+  with ExpressionFactory {
   //////////////////////////////////////////////////////////////////////////
 
   protected[sil] def migrate(e: Expression) {
@@ -94,7 +94,7 @@ trait ExpressionFactory
   //////////////////////////////////////////////////////////////////////////
   def makeDomainPredicateExpression(
                                      p: DomainPredicate,
-                                     args: TermSequence,
+                                     args: ExpressionSequence,
                                      sourceLocation: SourceLocation,
                                      comment: List[String] = Nil): DomainPredicateExpression = {
     require(domainPredicates contains p)
@@ -105,18 +105,18 @@ trait ExpressionFactory
 
   /*
     //////////////////////////////////////////////////////////////////////////
-    def makePredicateExpression(r: Term, pf: PredicateFactory,sourceLocation: SourceLocation,comment : List[String] = Nil): PredicateExpression = {
+    def makePredicateExpression(r: Expression, pf: PredicateFactory,sourceLocation: SourceLocation,comment : List[String] = Nil): PredicateExpression = {
       require(predicates contains pf.pPredicate)
       migrate(r)
 
       (r) match {
-        case (r: PTerm) => makePPredicateExpression(r, pf.pPredicate,sourceLocation,comment)
+        case (r: PExpression) => makePPredicateExpression(r, pf.pPredicate,sourceLocation,comment)
         case _ => addExpression(new PredicateExpression(r, pf.pPredicate)(sourceLocation,comment))
       }
     }
     */
   //////////////////////////////////////////////////////////////////////////
-  def makeEqualityExpression(t1: Term, t2: Term, sourceLocation: SourceLocation, comment: List[String] = Nil): EqualityExpression = {
+  def makeEqualityExpression(t1: Expression, t2: Expression, sourceLocation: SourceLocation, comment: List[String] = Nil): EqualityExpression = {
     migrate(t1)
     migrate(t2)
 
@@ -148,7 +148,7 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeFieldPermissionExpression(r: Term, f: Field, p: Term, sourceLocation: SourceLocation, comment: List[String] = Nil): FieldPermissionExpression = {
+  def makeFieldPermissionExpression(r: Expression, f: Field, p: Expression, sourceLocation: SourceLocation, comment: List[String] = Nil): FieldPermissionExpression = {
     require(fields contains f)
     migrate(r)
     migrate(p)
@@ -157,7 +157,7 @@ trait ExpressionFactory
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makePredicatePermissionExpression(r: Term, pf: PredicateFactory, p: Term, sourceLocation: SourceLocation, comment: List[String] = Nil): PredicatePermissionExpression = {
+  def makePredicatePermissionExpression(r: Expression, pf: PredicateFactory, p: Expression, sourceLocation: SourceLocation, comment: List[String] = Nil): PredicatePermissionExpression = {
     require(predicates contains pf.pPredicate)
     migrate(r)
     migrate(p)

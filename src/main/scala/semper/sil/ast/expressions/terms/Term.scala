@@ -2,12 +2,12 @@ package semper.sil.ast.expressions.terms
 
 import semper.sil.ast.symbols.logical.quantification.LogicalVariable
 import semper.sil.ast.ASTNode
-import semper.sil.ast.expressions.util.TermSequence
+import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.programs.symbols.{Predicate, ProgramVariable, Field, Function}
 import semper.sil.ast.domains._
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.types._
-import semper.sil.ast.expressions.{PredicatePermissionExpression, ProgramVariableSubstitution}
+import semper.sil.ast.expressions.{Expression, PredicatePermissionExpression, ProgramVariableSubstitution}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -16,7 +16,7 @@ sealed abstract class Location
   override val sourceLocation = receiver.sourceLocation
   override val comment = Nil
 
-  def receiver: Term
+  def receiver: Expression
 
   def dataType: DataType
 
@@ -35,7 +35,7 @@ sealed abstract class Location
   def substitute(s: ProgramVariableSubstitution): Location
 }
 
-sealed case class FieldLocation private[sil](receiver: Term, field: Field) extends Location {
+sealed case class FieldLocation private[sil](receiver: Expression, field: Field) extends Location {
   override val toString = receiver.toString + "." + field.name
   override lazy val dataType = field.dataType
 
@@ -55,7 +55,7 @@ sealed case class FieldLocation private[sil](receiver: Term, field: Field) exten
     new FieldLocation(receiver.substitute(s), field)
 }
 
-sealed case class PredicateLocation private[sil](receiver: Term, predicate: Predicate)
+sealed case class PredicateLocation private[sil](receiver: Expression, predicate: Predicate)
   extends Location {
   override val toString = receiver.toString + "." + predicate.name
   override lazy val dataType = booleanType
@@ -78,28 +78,8 @@ sealed case class PredicateLocation private[sil](receiver: Term, predicate: Pred
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed trait Term extends ASTNode {
-  def subTerms: Seq[Term]
-
-  def dataType: DataType
-
-  def freeVariables: collection.immutable.Set[LogicalVariable]
-
-  def freeTypeVariables: collection.immutable.Set[TypeVariable]
-
-  def programVariables: collection.immutable.Set[ProgramVariable]
-
-  def substitute(s: TypeVariableSubstitution): Term
-
-  def substitute(s: LogicalVariableSubstitution): Term
-
-  def substitute(s: ProgramVariableSubstitution): Term
-}
-
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-sealed trait AtomicTerm extends Term {
-  final override lazy val subTerms: Seq[Term] = Nil
+sealed trait AtomicExpression extends Expression {
+  final override lazy val subExpressions: Seq[Expression] = Nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -108,39 +88,39 @@ sealed trait AtomicTerm extends Term {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed case class IfThenElseTerm private[sil]
-(condition: Term, pTerm: Term, nTerm: Term)
+sealed case class IfThenElseExpression private[sil]
+(condition: Expression, pExpression: Expression, nExpression: Expression)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends Term {
+  extends Expression {
   require(condition.dataType == booleanType)
-  require(pTerm.dataType.isCompatible(nTerm.dataType))
-  require(nTerm.dataType.isCompatible(pTerm.dataType))
+  require(pExpression.dataType.isCompatible(nExpression.dataType))
+  require(nExpression.dataType.isCompatible(pExpression.dataType))
 
-  override val dataType = pTerm.dataType
-  override val freeVariables = condition.freeVariables ++ pTerm.freeVariables ++ nTerm.freeVariables
-  override val freeTypeVariables = condition.freeTypeVariables union pTerm.freeTypeVariables union nTerm.freeTypeVariables
+  override val dataType = pExpression.dataType
+  override val freeVariables = condition.freeVariables ++ pExpression.freeVariables ++ nExpression.freeVariables
+  override val freeTypeVariables = condition.freeTypeVariables union pExpression.freeTypeVariables union nExpression.freeTypeVariables
 
-  override val programVariables = condition.programVariables ++ pTerm.programVariables ++ nTerm.programVariables
-  override lazy val subTerms: Seq[Term] = List(condition, pTerm, nTerm)
+  override val programVariables = condition.programVariables ++ pExpression.programVariables ++ nExpression.programVariables
+  override lazy val subExpressions: Seq[Expression] = List(condition, pExpression, nExpression)
 
-  def substitute(s: TypeVariableSubstitution): IfThenElseTerm =
-    new IfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: TypeVariableSubstitution): IfThenElseExpression =
+    new IfThenElseExpression(condition.substitute(s), pExpression.substitute(s), nExpression.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: LogicalVariableSubstitution): IfThenElseTerm =
-    new IfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: LogicalVariableSubstitution): IfThenElseExpression =
+    new IfThenElseExpression(condition.substitute(s), pExpression.substitute(s), nExpression.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: ProgramVariableSubstitution): IfThenElseTerm =
-    new IfThenElseTerm(condition.substitute(s), pTerm.substitute(s), nTerm.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: ProgramVariableSubstitution): IfThenElseExpression =
+    new IfThenElseExpression(condition.substitute(s), pExpression.substitute(s), nExpression.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 }
 
-sealed case class OldTerm private[sil]
-(term: Term)
+sealed case class OldExpression private[sil]
+(term: Expression)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
   extends ASTNode
-  with Term {
+  with Expression {
   override val toString: String = "old(" + term.toString + ")"
 
-  override val subTerms: Seq[Term] = List(term)
+  override val subExpressions: Seq[Expression] = List(term)
 
   override def dataType = term.dataType
 
@@ -150,22 +130,22 @@ sealed case class OldTerm private[sil]
 
   override def programVariables = term.programVariables
 
-  def substitute(s: TypeVariableSubstitution): OldTerm =
-    new OldTerm(term.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: TypeVariableSubstitution): OldExpression =
+    new OldExpression(term.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: LogicalVariableSubstitution): OldTerm =
-    new OldTerm(term.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: LogicalVariableSubstitution): OldExpression =
+    new OldExpression(term.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: ProgramVariableSubstitution): OldTerm =
-    new OldTerm(term.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: ProgramVariableSubstitution): OldExpression =
+    new OldExpression(term.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed case class DomainFunctionApplicationTerm private[sil]
-(private val f: DomainFunction, private val as: TermSequence)
+sealed case class DomainFunctionApplicationExpression private[sil]
+(private val f: DomainFunction, private val as: ExpressionSequence)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Term {
+  extends ASTNode with Expression {
   require(f != null)
   require(as != null)
   require(as.forall(_ != null))
@@ -181,11 +161,11 @@ sealed case class DomainFunctionApplicationTerm private[sil]
 
   override lazy val toString: String = function.toString(as)
 
-  override lazy val subTerms: Seq[Term] = arguments
+  override lazy val subExpressions: Seq[Expression] = arguments
 
   def function: DomainFunction = f
 
-  def arguments: TermSequence = as
+  def arguments: ExpressionSequence = as
 
   override def dataType = function.signature.resultType
 
@@ -195,22 +175,22 @@ sealed case class DomainFunctionApplicationTerm private[sil]
 
   override def programVariables = arguments.programVariables
 
-  def substitute(s: TypeVariableSubstitution): DomainFunctionApplicationTerm =
-    new DomainFunctionApplicationTerm(function.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: TypeVariableSubstitution): DomainFunctionApplicationExpression =
+    new DomainFunctionApplicationExpression(function.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: LogicalVariableSubstitution): DomainFunctionApplicationTerm =
-    new DomainFunctionApplicationTerm(function.substitute(new TypeSubstitutionC[Term](s.types, Set())), arguments.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: LogicalVariableSubstitution): DomainFunctionApplicationExpression =
+    new DomainFunctionApplicationExpression(function.substitute(new TypeSubstitutionC[Expression](s.types, Set())), arguments.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: ProgramVariableSubstitution): DomainFunctionApplicationTerm =
-    new DomainFunctionApplicationTerm(function, arguments.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: ProgramVariableSubstitution): DomainFunctionApplicationExpression =
+    new DomainFunctionApplicationExpression(function, arguments.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed case class FunctionApplicationTerm private[sil]
-(receiver: Term, function: Function, arguments: TermSequence)
+sealed case class FunctionApplicationExpression private[sil]
+(receiver: Expression, function: Function, arguments: ExpressionSequence)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Term {
+  extends ASTNode with Expression {
   require(receiver.dataType == referenceType)
   require(function.signature.parameters.length == arguments.length)
   require(function.signature.parameters.zip(arguments).forall((x) => x._2.dataType.isCompatible(x._1.dataType)),
@@ -223,7 +203,7 @@ sealed case class FunctionApplicationTerm private[sil]
 
   override val toString: String = receiver.toString + "." + function.name + arguments.toString
 
-  override lazy val subTerms: Seq[Term] = List(receiver) ++ arguments.toList
+  override lazy val subExpressions: Seq[Expression] = List(receiver) ++ arguments.toList
 
   override def dataType = function.signature.result.dataType
 
@@ -233,28 +213,28 @@ sealed case class FunctionApplicationTerm private[sil]
 
   override def programVariables = arguments.programVariables ++ receiver.programVariables
 
-  def substitute(s: TypeVariableSubstitution): FunctionApplicationTerm =
-    new FunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(
+  def substitute(s: TypeVariableSubstitution): FunctionApplicationExpression =
+    new FunctionApplicationExpression(receiver.substitute(s), function, arguments.substitute(s))(
       s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: LogicalVariableSubstitution): FunctionApplicationTerm =
-    new FunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(
+  def substitute(s: LogicalVariableSubstitution): FunctionApplicationExpression =
+    new FunctionApplicationExpression(receiver.substitute(s), function, arguments.substitute(s))(
       s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: ProgramVariableSubstitution): FunctionApplicationTerm =
-    new FunctionApplicationTerm(receiver.substitute(s), function, arguments.substitute(s))(
+  def substitute(s: ProgramVariableSubstitution): FunctionApplicationExpression =
+    new FunctionApplicationExpression(receiver.substitute(s), function, arguments.substitute(s))(
       s.sourceLocation(sourceLocation), Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed case class UnfoldingTerm private[sil]
-(predicate: PredicatePermissionExpression, term: Term)
-(override val sourceLocation: SourceLocation, val factory: TermFactory, override val comment: List[String])
-  extends ASTNode with Term {
+sealed case class UnfoldingExpression private[sil]
+(predicate: PredicatePermissionExpression, term: Expression)
+(override val sourceLocation: SourceLocation, val factory: ExpressionFactory, override val comment: List[String])
+  extends ASTNode with Expression {
   override lazy val toString: String = "unfolding " + predicate.toString + " in (" + term.toString + ")"
 
-  override lazy val subTerms: Seq[Term] = List(predicate.location.receiver, term)
+  override lazy val subExpressions: Seq[Expression] = List(predicate.location.receiver, term)
 
   override def dataType = term.dataType
 
@@ -264,18 +244,18 @@ sealed case class UnfoldingTerm private[sil]
 
   override def programVariables = predicate.programVariables ++ term.programVariables
 
-  def substitute(s: TypeVariableSubstitution): UnfoldingTerm =
-    new UnfoldingTerm(predicate.substitute(s), term.substitute(s))(
+  def substitute(s: TypeVariableSubstitution): UnfoldingExpression =
+    new UnfoldingExpression(predicate.substitute(s), term.substitute(s))(
       s.sourceLocation(sourceLocation), factory, Nil
     )
 
-  def substitute(s: LogicalVariableSubstitution): UnfoldingTerm =
-    new UnfoldingTerm(predicate.substitute(s), term.substitute(s))(
+  def substitute(s: LogicalVariableSubstitution): UnfoldingExpression =
+    new UnfoldingExpression(predicate.substitute(s), term.substitute(s))(
       s.sourceLocation(sourceLocation), factory, Nil
     )
 
-  def substitute(s: ProgramVariableSubstitution): UnfoldingTerm =
-    new UnfoldingTerm(predicate.substitute(s), term.substitute(s))(
+  def substitute(s: ProgramVariableSubstitution): UnfoldingExpression =
+    new UnfoldingExpression(predicate.substitute(s), term.substitute(s))(
       s.sourceLocation(sourceLocation), factory, Nil
     )
 }
@@ -286,13 +266,13 @@ sealed case class UnfoldingTerm private[sil]
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed case class CastTerm protected[sil]
-(operand1: Term, newType: DataType)
+sealed case class CastExpression protected[sil]
+(operand1: Expression, newType: DataType)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Term {
+  extends ASTNode with Expression {
   override val toString: String = "(" + operand1 + ") : " + newType.toString
 
-  override lazy val subTerms: Seq[Term] = operand1 :: Nil
+  override lazy val subExpressions: Seq[Expression] = operand1 :: Nil
 
   override def dataType = newType
 
@@ -302,25 +282,25 @@ sealed case class CastTerm protected[sil]
 
   override def programVariables = operand1.programVariables
 
-  def substitute(s: TypeVariableSubstitution): CastTerm =
-    new CastTerm(operand1.substitute(s), newType.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: TypeVariableSubstitution): CastExpression =
+    new CastExpression(operand1.substitute(s), newType.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: LogicalVariableSubstitution): CastTerm =
-    new CastTerm(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: LogicalVariableSubstitution): CastExpression =
+    new CastExpression(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: ProgramVariableSubstitution): CastTerm =
-    new CastTerm(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: ProgramVariableSubstitution): CastExpression =
+    new CastExpression(operand1.substitute(s), newType)(s.sourceLocation(sourceLocation), Nil)
 }
 
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed case class FieldReadTerm protected[sil]
+sealed case class FieldReadExpression protected[sil]
 (location: FieldLocation)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Term {
+  extends ASTNode with Expression {
   override lazy val toString: String = location.toString
-  override lazy val subTerms: Seq[Term] = List(location.receiver)
+  override lazy val subExpressions: Seq[Expression] = List(location.receiver)
 
   override lazy val dataType = location.dataType
 
@@ -330,24 +310,24 @@ sealed case class FieldReadTerm protected[sil]
 
   override def programVariables = location.programVariables
 
-  def substitute(s: TypeVariableSubstitution): FieldReadTerm =
-    new FieldReadTerm(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: TypeVariableSubstitution): FieldReadExpression =
+    new FieldReadExpression(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: LogicalVariableSubstitution): FieldReadTerm =
-    new FieldReadTerm(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: LogicalVariableSubstitution): FieldReadExpression =
+    new FieldReadExpression(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: ProgramVariableSubstitution): FieldReadTerm =
-    new FieldReadTerm(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: ProgramVariableSubstitution): FieldReadExpression =
+    new FieldReadExpression(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed case class PermTerm protected[sil]
+sealed case class PermExpression protected[sil]
 (location: Location)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Term {
+  extends ASTNode with Expression {
   override lazy val toString: String = "perm(" + location.toString + ")"
-  override lazy val subTerms: Seq[Term] = List(location.receiver)
+  override lazy val subExpressions: Seq[Expression] = List(location.receiver)
 
   override lazy val dataType = permissionType
 
@@ -357,71 +337,71 @@ sealed case class PermTerm protected[sil]
 
   override def programVariables = location.programVariables
 
-  def substitute(s: TypeVariableSubstitution): PermTerm =
-    new PermTerm(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: TypeVariableSubstitution): PermExpression =
+    new PermExpression(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: LogicalVariableSubstitution): PermTerm =
-    new PermTerm(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: LogicalVariableSubstitution): PermExpression =
+    new PermExpression(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: ProgramVariableSubstitution): PermTerm =
-    new PermTerm(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: ProgramVariableSubstitution): PermExpression =
+    new PermExpression(location.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-case class FullPermissionTerm()
+case class FullPermissionExpression()
                              (sourceLocation: SourceLocation, comment: List[String])
-  extends LiteralTerm()(sourceLocation, comment)
-  with AtomicTerm {
+  extends LiteralExpression()(sourceLocation, comment)
+  with AtomicExpression {
   override def toString: String = "write"
 
   override val dataType = permissionType
 
   override val freeTypeVariables = collection.immutable.Set[TypeVariable]()
 
-  override def substitute(s: TypeVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: TypeVariableSubstitution): FullPermissionExpression = new FullPermissionExpression()(s.sourceLocation(sourceLocation), Nil)
 
-  override def substitute(s: LogicalVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: LogicalVariableSubstitution): FullPermissionExpression = new FullPermissionExpression()(s.sourceLocation(sourceLocation), Nil)
 
-  override def substitute(s: ProgramVariableSubstitution): FullPermissionTerm = new FullPermissionTerm()(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: ProgramVariableSubstitution): FullPermissionExpression = new FullPermissionExpression()(s.sourceLocation(sourceLocation), Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-case class NoPermissionTerm()
+case class NoPermissionExpression()
                            (sourceLocation: SourceLocation, comment: List[String])
-  extends LiteralTerm()(sourceLocation, comment)
-  with AtomicTerm {
+  extends LiteralExpression()(sourceLocation, comment)
+  with AtomicExpression {
   override def toString: String = "0"
 
   override val freeTypeVariables = collection.immutable.Set[TypeVariable]()
 
   override val dataType = permissionType
 
-  override def substitute(s: TypeVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: TypeVariableSubstitution): NoPermissionExpression = new NoPermissionExpression()(s.sourceLocation(sourceLocation), Nil)
 
-  override def substitute(s: LogicalVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: LogicalVariableSubstitution): NoPermissionExpression = new NoPermissionExpression()(s.sourceLocation(sourceLocation), Nil)
 
-  override def substitute(s: ProgramVariableSubstitution): NoPermissionTerm = new NoPermissionTerm()(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: ProgramVariableSubstitution): NoPermissionExpression = new NoPermissionExpression()(s.sourceLocation(sourceLocation), Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-case class EpsilonPermissionTerm()
+case class EpsilonPermissionExpression()
                                 (sourceLocation: SourceLocation, comment: List[String])
-  extends LiteralTerm()(sourceLocation, comment)
-  with AtomicTerm {
+  extends LiteralExpression()(sourceLocation, comment)
+  with AtomicExpression {
   override def toString: String = "E"
 
   override val freeTypeVariables = collection.immutable.Set[TypeVariable]()
 
   override val dataType = permissionType
 
-  override def substitute(s: TypeVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: TypeVariableSubstitution): EpsilonPermissionExpression = new EpsilonPermissionExpression()(s.sourceLocation(sourceLocation), Nil)
 
-  override def substitute(s: LogicalVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: LogicalVariableSubstitution): EpsilonPermissionExpression = new EpsilonPermissionExpression()(s.sourceLocation(sourceLocation), Nil)
 
-  override def substitute(s: ProgramVariableSubstitution): EpsilonPermissionTerm = new EpsilonPermissionTerm()(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: ProgramVariableSubstitution): EpsilonPermissionExpression = new EpsilonPermissionExpression()(s.sourceLocation(sourceLocation), Nil)
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -430,12 +410,12 @@ case class EpsilonPermissionTerm()
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed case class ProgramVariableTerm protected[sil]
+sealed case class ProgramVariableExpression protected[sil]
 (variable: ProgramVariable)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
   extends ASTNode
-  with Term
-  with AtomicTerm {
+  with Expression
+  with AtomicExpression {
   override val toString: String = variable.name
 
   override def dataType = variable.dataType
@@ -446,23 +426,23 @@ sealed case class ProgramVariableTerm protected[sil]
 
   override def freeTypeVariables = variable.dataType.freeTypeVariables
 
-  def substitute(s: TypeVariableSubstitution): ProgramVariableTerm = new ProgramVariableTerm(variable)(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: TypeVariableSubstitution): ProgramVariableExpression = new ProgramVariableExpression(variable)(s.sourceLocation(sourceLocation), Nil)
 
-  def substitute(s: LogicalVariableSubstitution): ProgramVariableTerm = new ProgramVariableTerm(variable)(s.sourceLocation(sourceLocation), Nil)
+  def substitute(s: LogicalVariableSubstitution): ProgramVariableExpression = new ProgramVariableExpression(variable)(s.sourceLocation(sourceLocation), Nil)
 
   //Must have mapping
-  def substitute(s: ProgramVariableSubstitution): Term = s.mapVariable(variable).get
+  def substitute(s: ProgramVariableSubstitution): Expression = s.mapVariable(variable).get
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 //Quantification terms
-sealed case class LogicalVariableTerm protected[sil]
+sealed case class LogicalVariableExpression protected[sil]
 (variable: LogicalVariable)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
   extends ASTNode
-  with Term
-  with AtomicTerm {
+  with Expression
+  with AtomicExpression {
   override val toString = variable.name
 
   override def dataType = variable.dataType
@@ -473,40 +453,40 @@ sealed case class LogicalVariableTerm protected[sil]
 
   override def freeTypeVariables = variable.dataType.freeTypeVariables
 
-  def substitute(s: TypeVariableSubstitution): LogicalVariableTerm =
+  def substitute(s: TypeVariableSubstitution): LogicalVariableExpression =
     s.mapVariable(variable) match {
-      case Some(t: LogicalVariable) => new LogicalVariableTerm(t)(s.sourceLocation(sourceLocation), Nil)
-      case _ => new LogicalVariableTerm(variable)(s.sourceLocation(sourceLocation), Nil)
+      case Some(t: LogicalVariable) => new LogicalVariableExpression(t)(s.sourceLocation(sourceLocation), Nil)
+      case _ => new LogicalVariableExpression(variable)(s.sourceLocation(sourceLocation), Nil)
     }
 
-  def substitute(s: LogicalVariableSubstitution): Term =
+  def substitute(s: LogicalVariableSubstitution): Expression =
     s.mapVariable(variable) match {
-      case Some(t: Term) => t
-      case _ => new LogicalVariableTerm(variable)(s.sourceLocation(sourceLocation), Nil)
+      case Some(t: Expression) => t
+      case _ => new LogicalVariableExpression(variable)(s.sourceLocation(sourceLocation), Nil)
     }
 
-  def substitute(s: ProgramVariableSubstitution): Term =
+  def substitute(s: ProgramVariableSubstitution): Expression =
     this
 
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed abstract class LiteralTerm protected[sil]
+sealed abstract class LiteralExpression protected[sil]
 ()(override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Term
-  with AtomicTerm {
+  extends ASTNode with Expression
+  with AtomicExpression {
   override val  freeVariables: Set[LogicalVariable] = Set()
   override val  programVariables: Set[ProgramVariable] = Set()
 }
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-final case class IntegerLiteralTerm private[sil]
+final case class IntegerLiteralExpression private[sil]
 (val value: BigInt)
 (sourceLocation: SourceLocation, comment: List[String])
-  extends LiteralTerm()(sourceLocation, comment)
-  with Term {
+  extends LiteralExpression()(sourceLocation, comment)
+  with Expression {
   override val toString: String = value.toString()
 
   override def dataType = integerType
@@ -515,19 +495,19 @@ final case class IntegerLiteralTerm private[sil]
 
   override def equals(other: Any) = {
     other match {
-      case ilt: IntegerLiteralTerm => value.equals(ilt.value)
+      case ilt: IntegerLiteralExpression => value.equals(ilt.value)
       case _ => false
     }
   }
 
   override val hashCode = value.hashCode()
 
-  override def substitute(s: TypeVariableSubstitution): IntegerLiteralTerm =
-    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: TypeVariableSubstitution): IntegerLiteralExpression =
+    new IntegerLiteralExpression(value)(s.sourceLocation(sourceLocation), Nil)
 
-  override def substitute(s: LogicalVariableSubstitution): IntegerLiteralTerm =
-    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: LogicalVariableSubstitution): IntegerLiteralExpression =
+    new IntegerLiteralExpression(value)(s.sourceLocation(sourceLocation), Nil)
 
-  override def substitute(s: ProgramVariableSubstitution): IntegerLiteralTerm =
-    new IntegerLiteralTerm(value)(s.sourceLocation(sourceLocation), Nil)
+  override def substitute(s: ProgramVariableSubstitution): IntegerLiteralExpression =
+    new IntegerLiteralExpression(value)(s.sourceLocation(sourceLocation), Nil)
 }

@@ -1,7 +1,7 @@
 package semper.sil.ast.programs.symbols
 
 import semper.sil.ast.ASTNode
-import semper.sil.ast.expressions.terms.Term
+import semper.sil.ast.expressions.terms.Expression
 import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.types.{TypeVariable, DataType}
 import collection.mutable.ListBuffer
@@ -22,7 +22,7 @@ final class FunctionSignature private[sil](
 
   private[symbols] var pPreconditions = new ListBuffer[Expression]
   private[symbols] var pPostconditions = new ListBuffer[Expression]
-  private[symbols] var pMeasure: Option[Term] = None
+  private[symbols] var pMeasure: Option[Expression] = None
 
   val result = new ProgramVariable("result", resultType)(NoLocation, Nil)
 
@@ -44,7 +44,7 @@ final class FunctionSignature private[sil](
 
   def postcondition: ExpressionSequence = new ExpressionSequence(pPostconditions)
 
-  def terminationMeasure: Option[Term] = pMeasure
+  def terminationMeasure: Option[Expression] = pMeasure
 
   override def toString =
     parameters.toString + " : " + result.toString + "\n" +

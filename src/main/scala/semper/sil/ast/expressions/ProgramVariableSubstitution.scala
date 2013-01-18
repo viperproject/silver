@@ -7,9 +7,9 @@ import terms._
 
 
 sealed trait ProgramVariableSubstitution {
-  type T <: Term
+  type T <: Expression
 
-  //  def targetFactory: PTermFactory
+  //  def targetFactory: PExpressionFactory
 
   def mapVariable(v: ProgramVariable): Option[T]
 
@@ -21,7 +21,7 @@ sealed trait ProgramVariableSubstitution {
   def logicalVariables: Set[(LogicalVariable, LogicalVariable)]
 }
 
-private[sil] sealed class ProgramVariableSubstitutionC[TT <: Term](
+private[sil] sealed class ProgramVariableSubstitutionC[TT <: Expression](
                                                                     //    override val targetFactory: TF,
                                                                     variables: Set[(ProgramVariable, TT)],
                                                                     override val logicalVariables: Set[(LogicalVariable, LogicalVariable)]
@@ -35,8 +35,8 @@ private[sil] sealed class ProgramVariableSubstitutionC[TT <: Term](
 
   def +(other: ProgramVariableSubstitution): ProgramVariableSubstitution = {
     //    require (other.targetFactory == targetFactory)
-    new ProgramVariableSubstitutionC[Term](
-      (varMap.++[Term](other.varMap)).toSet,
+    new ProgramVariableSubstitutionC[Expression](
+      (varMap.++[Expression](other.varMap)).toSet,
       logicalVariables union other.logicalVariables
     )
   }

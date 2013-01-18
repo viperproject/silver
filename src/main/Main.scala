@@ -7,7 +7,7 @@ import semper.sil.ast.programs.symbols.PredicateFactory
 import semper.sil.ast.methods.MethodFactory
 import semper.sil.ast.source.NoLocation
 import semper.sil.ast.types._
-import semper.sil.ast.expressions.util.TermSequence
+import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.expressions.terms._
 import semper.sil.ast.expressions._
 
@@ -35,13 +35,13 @@ object Main {
     {
       val varX = sd.makeBoundVariable("x", sd.thisType,nl)
       val varE = sd.makeBoundVariable("y", tVarT,nl)
-      val xT = sd.makeBoundVariableTerm(varX,nl)
-      val eT = sd.makeBoundVariableTerm(varE,nl)
+      val xT = sd.makeBoundVariableExpression(varX,nl)
+      val eT = sd.makeBoundVariableExpression(varE,nl)
 
       // forall x : Seq[T], e : T :: !isEmpty(x) -> tail(prepend(e,x)) == x
-      val e1 = sd.makeUnaryExpression(Not()(nl), sd.makeDomainPredicateExpression(isEmpty, TermSequence(xT),nl),nl)
-      val e2 = sd.makeDomainFunctionApplicationTerm(prepend, TermSequence(eT, xT),nl)
-      val e3 = sd.makeEqualityExpression(sd.makeDomainFunctionApplicationTerm(tail, TermSequence(e2),nl), xT,nl)
+      val e1 = sd.makeUnaryExpression(Not()(nl), sd.makeDomainPredicateExpression(isEmpty, ExpressionSequence(xT),nl),nl)
+      val e2 = sd.makeDomainFunctionApplicationExpression(prepend, ExpressionSequence(eT, xT),nl)
+      val e3 = sd.makeEqualityExpression(sd.makeDomainFunctionApplicationExpression(tail, ExpressionSequence(e2),nl), xT,nl)
       val e4 = sd.makeBinaryExpression(Implication()(nl), e1, e3,nl)
       val e = sd.makeQuantifierExpression(Forall()(nl), varX, sd.makeQuantifierExpression(Forall()(nl), varE, e4)(nl))(nl)
       sd.addDomainAxiom("tailPrepend1", e,nl)
@@ -64,25 +64,25 @@ object Main {
       // && acc(next,100)
       // && next!=null ==> next.valid && acc(next.seq,50) && seq==val :: next.seq
       // && next==null ==> seq==[val]
-      val thisT = vp.makeProgramVariableTerm(vp.thisVar,nl)
-      val this_val = vp.makeFieldReadTerm(thisT, valField,nl)
-      val this_next = vp.makeFieldReadTerm(thisT, nextField,nl)
-      val this_seq = vp.makeFieldReadTerm(thisT, seqField,nl)
-      val this_next_seq = vp.makeFieldReadTerm(this_next, seqField,nl)
+      val thisT = vp.makeProgramVariableExpression(vp.thisVar,nl)
+      val this_val = vp.makeFieldReadExpression(thisT, valField,nl)
+      val this_next = vp.makeFieldReadExpression(thisT, nextField,nl)
+      val this_seq = vp.makeFieldReadExpression(thisT, seqField,nl)
+      val this_next_seq = vp.makeFieldReadExpression(this_next, seqField,nl)
 
-      val nullTerm = vp.makeDomainFunctionApplicationTerm(nullFunction, TermSequence(),nl)
+      val nullExpression = vp.makeDomainFunctionApplicationExpression(nullFunction, ExpressionSequence(),nl)
       val this_next_valid = vp.makePredicatePermissionExpression(this_next, vp,vp.makeFullPermission(nl), nl)
-      val this_next_eq_null = vp.makeDomainFunctionApplicationTerm(referenceEquality, TermSequence(this_next, nullTerm),nl)
-      val this_next_neq_null = vp.makeDomainFunctionApplicationTerm(booleanNegation, TermSequence(this_next_eq_null),nl)
-      //      val ite = vp.makeIfThenElseTerm(nl,this_next_neq_null,thisT,this_next)
-      val singleton_this_val = vp.makeDomainFunctionApplicationTerm(singletonInt, TermSequence(this_val),nl)
+      val this_next_eq_null = vp.makeDomainFunctionApplicationExpression(referenceEquality, ExpressionSequence(this_next, nullExpression),nl)
+      val this_next_neq_null = vp.makeDomainFunctionApplicationExpression(booleanNegation, ExpressionSequence(this_next_eq_null),nl)
+      //      val ite = vp.makeIfThenElseExpression(nl,this_next_neq_null,thisT,this_next)
+      val singleton_this_val = vp.makeDomainFunctionApplicationExpression(singletonInt, ExpressionSequence(this_val),nl)
       val acc_val_100 = vp.makeFieldPermissionExpression(thisT, valField, vp.makeFullPermission(nl),nl)
       val acc_next_100 = vp.makeFieldPermissionExpression(thisT, nextField, vp.makeFullPermission(nl),nl)
-      val acc_seq_50 = vp.makeFieldPermissionExpression(thisT, seqField, vp.makePercentagePermission(vp.makeIntegerLiteralTerm(50,nl),nl),nl)
-      val acc_next_seq_50 = vp.makeFieldPermissionExpression(this_next, seqField, vp.makePercentagePermission(vp.makeIntegerLiteralTerm(50,nl),nl),nl)
-      val next_eq_null = vp.makeEqualityExpression(this_next, nullTerm,nl)
+      val acc_seq_50 = vp.makeFieldPermissionExpression(thisT, seqField, vp.makePercentagePermission(vp.makeIntegerLiteralExpression(50,nl),nl),nl)
+      val acc_next_seq_50 = vp.makeFieldPermissionExpression(this_next, seqField, vp.makePercentagePermission(vp.makeIntegerLiteralExpression(50,nl),nl),nl)
+      val next_eq_null = vp.makeEqualityExpression(this_next, nullExpression,nl)
       val next_ne_null = vp.makeUnaryExpression(Not()(nl), next_eq_null,nl)
-      val prepend_val_next_seq = vp.makeDomainFunctionApplicationTerm(prependInt, TermSequence(this_val, this_next_seq),nl)
+      val prepend_val_next_seq = vp.makeDomainFunctionApplicationExpression(prependInt, ExpressionSequence(this_val, this_next_seq),nl)
       val seq_eq_prep = vp.makeEqualityExpression(this_seq, prepend_val_next_seq,nl)
       val seq_eq_singleton = vp.makeEqualityExpression(this_seq, singleton_this_val,nl)
       //next==null ==> seq==[val]
@@ -103,27 +103,27 @@ object Main {
     val ff = pf.getFunctionFactory("numXs", ((nl, "x", integerType)) :: Nil, integerType,nl,List("number of Xs"))
 
     {
-      val x = ff.makeProgramVariableTerm(ff.parameters(0),nl)
-      val v0 = ff.makeIntegerLiteralTerm(0,nl)
-      val v0_le_x = ff.makeDomainPredicateExpression(booleanEvaluate,TermSequence(ff.makeDomainFunctionApplicationTerm(integerLE, TermSequence(v0, x),nl)),nl)
+      val x = ff.makeProgramVariableExpression(ff.parameters(0),nl)
+      val v0 = ff.makeIntegerLiteralExpression(0,nl)
+      val v0_le_x = ff.makeDomainPredicateExpression(booleanEvaluate,ExpressionSequence(ff.makeDomainFunctionApplicationExpression(integerLE, ExpressionSequence(v0, x),nl)),nl)
       ff.addPrecondition(v0_le_x)
 
-      val thisVar = ff.makeProgramVariableTerm(ff.thisVar,nl)
-      val resultVar = ff.makeProgramVariableTerm(ff.resultVar,nl)
-      val thisVar_next = ff.makeFieldReadTerm(thisVar, nextField,nl)
+      val thisVar = ff.makeProgramVariableExpression(ff.thisVar,nl)
+      val resultVar = ff.makeProgramVariableExpression(ff.resultVar,nl)
+      val thisVar_next = ff.makeFieldReadExpression(thisVar, nextField,nl)
 
       //nonsensical - check recursion - next.numXs(x)
-      val numXs_this_next = ff.makeFunctionApplicationTerm(thisVar_next, ff, TermSequence(x),nl)
-      val numXs_this_next_le_numXs_this = ff.makeDomainPredicateExpression(booleanEvaluate,TermSequence(ff.makeDomainFunctionApplicationTerm(integerLE, TermSequence(numXs_this_next, resultVar),nl)),nl)
+      val numXs_this_next = ff.makeFunctionApplicationExpression(thisVar_next, ff, ExpressionSequence(x),nl)
+      val numXs_this_next_le_numXs_this = ff.makeDomainPredicateExpression(booleanEvaluate,ExpressionSequence(ff.makeDomainFunctionApplicationExpression(integerLE, ExpressionSequence(numXs_this_next, resultVar),nl)),nl)
       ff.addPostcondition(numXs_this_next_le_numXs_this)
 
-      val numXs_this_next_plus_x = ff.makeDomainFunctionApplicationTerm(integerAddition, TermSequence(numXs_this_next, x),nl)
+      val numXs_this_next_plus_x = ff.makeDomainFunctionApplicationExpression(integerAddition, ExpressionSequence(numXs_this_next, x),nl)
       val acc_thisVar_valid_write = ff.makePredicatePermissionExpression(thisVar, vp, ff.makeFullPermission(nl),nl)
-      val b = ff.makeUnfoldingTerm(acc_thisVar_valid_write,numXs_this_next_plus_x,nl)
+      val b = ff.makeUnfoldingExpression(acc_thisVar_valid_write,numXs_this_next_plus_x,nl)
 
       ff.setBody(b)
 
-      val this_next_seq = ff.makeFieldReadTerm(thisVar_next, seqField,nl)
+      val this_next_seq = ff.makeFieldReadExpression(thisVar_next, seqField,nl)
       ff.setMeasure(this_next_seq)
     }
 
@@ -135,16 +135,16 @@ object Main {
       val thisVar = mf.addParameter("this", referenceType,nl)
       val r = mf.addResult("r", integerType,nl) //dummy for checking
 
-      val this_var = mf.makeProgramVariableTerm(thisVar,nl)
-      val xTerm = mf.makeProgramVariableTerm(xVar,nl)
-      val rTerm = mf.makeProgramVariableTerm(r,nl)
-      val zeroTerm = mf.makeIntegerLiteralTerm(0,nl)
+      val this_var = mf.makeProgramVariableExpression(thisVar,nl)
+      val xExpression = mf.makeProgramVariableExpression(xVar,nl)
+      val rExpression = mf.makeProgramVariableExpression(r,nl)
+      val zeroExpression = mf.makeIntegerLiteralExpression(0,nl)
 
       val this_valid = mf.makePredicatePermissionExpression(this_var, vp,vp.makeFullPermission(nl), nl)
       mf.addPrecondition(this_valid,nl)
-      mf.addPrecondition(mf.makeDomainPredicateExpression(booleanEvaluate,TermSequence(mf.makeDomainFunctionApplicationTerm(integerLE, TermSequence(zeroTerm, xTerm),nl)),nl),nl)
+      mf.addPrecondition(mf.makeDomainPredicateExpression(booleanEvaluate,ExpressionSequence(mf.makeDomainFunctionApplicationExpression(integerLE, ExpressionSequence(zeroExpression, xExpression),nl)),nl),nl)
       mf.addPostcondition(this_valid,nl)
-      mf.addPostcondition(mf.makeDomainPredicateExpression(booleanEvaluate,TermSequence(mf.makeDomainFunctionApplicationTerm(integerLE, TermSequence(rTerm, xTerm),nl)),nl),nl)
+      mf.addPostcondition(mf.makeDomainPredicateExpression(booleanEvaluate,ExpressionSequence(mf.makeDomainFunctionApplicationExpression(integerLE, ExpressionSequence(rExpression, xExpression),nl)),nl),nl)
 
       val impl = mf.addImplementation(nl)
 
@@ -166,24 +166,24 @@ object Main {
         midBlock.setInvariant(TrueExpression()(nl))
 
         {
-          val this_term = startBlock.makeProgramVariableTerm(thisVar,nl)
-          val rVar_term = startBlock.makeProgramVariableTerm(rVar,nl)
+          val this_term = startBlock.makeProgramVariableExpression(thisVar,nl)
+          val rVar_term = startBlock.makeProgramVariableExpression(rVar,nl)
           val this_valid = startBlock.makePredicatePermissionExpression(this_term, vp,vp.makeFullPermission(nl), nl)
           startBlock.appendInhale(this_valid,nl)
           startBlock.appendUnfold(startBlock.makePredicatePermissionExpression(this_term,vp,vp.makeFullPermission(nl),nl),nl)
 
-          val nTerm = startBlock.makeProgramVariableTerm(nVar,nl)
+          val nExpression = startBlock.makeProgramVariableExpression(nVar,nl)
           //this.numXs(n)
-          val numXs_nTerm = startBlock.makeFunctionApplicationTerm(this_term, ff, TermSequence(nTerm),nl)
-          startBlock.appendAssignment(nVar, numXs_nTerm,nl)
+          val numXs_nExpression = startBlock.makeFunctionApplicationExpression(this_term, ff, ExpressionSequence(nExpression),nl)
+          startBlock.appendAssignment(nVar, numXs_nExpression,nl)
           //This means exhale of predicate expression
           startBlock.appendExhale(vp.predicate.expression.substitute(impl.makeProgramVariableSubstitution(Set((vp.thisVar,rVar_term)))),Some("bugger"),nl)
           val pe = startBlock.makePredicatePermissionExpression(rVar_term,vp,vp.makeFullPermission(nl),nl)
-          startBlock.appendAssignment(rVar,startBlock.makeUnfoldingTerm(pe,rTerm,nl),nl)
+          startBlock.appendAssignment(rVar,startBlock.makeUnfoldingExpression(pe,rExpression,nl),nl)
 
           startBlock.appendFold(this_term, vp,vp.makeFullPermission(nl),nl)
           val lb = midBlock.bodyFactory.addBasicBlock("whileBody",nl)
-          lb.appendAssignment(nVar, numXs_nTerm,nl)
+          lb.appendAssignment(nVar, numXs_nExpression,nl)
           lb.setHalt(nl)
           midBlock.bodyFactory.setStartNode(lb)
           midBlock.bodyFactory.setEndNode(lb)
@@ -273,34 +273,34 @@ object Main {
     }
   }
 
-  def g(t: Term) {
+  def g(t: Expression) {
     t match {
-      case OldTerm(_) => 1
-      case IntegerLiteralTerm(_) => 1
-      case IfThenElseTerm(_, _,_) => 7
+      case OldExpression(_) => 1
+      case IntegerLiteralExpression(_) => 1
+      case IfThenElseExpression(_, _,_) => 7
 
-      case LogicalVariableTerm(_) => 1
-      case FunctionApplicationTerm(_, _, _) => 3
-      case DomainFunctionApplicationTerm(_, _) => 3
+      case LogicalVariableExpression(_) => 1
+      case FunctionApplicationExpression(_, _, _) => 3
+      case DomainFunctionApplicationExpression(_, _) => 3
 
-      case ProgramVariableTerm(_) => 2
-      case CastTerm(_, _) => 2
-      case FieldReadTerm(_) => 6
+      case ProgramVariableExpression(_) => 2
+      case CastExpression(_, _) => 2
+      case FieldReadExpression(_) => 6
 
-      case UnfoldingTerm(_, _) => 6
-      case PermTerm(_) => 19
+      case UnfoldingExpression(_, _) => 6
+      case PermExpression(_) => 19
     }
 
     t match {
-      case IntegerLiteralTerm(_) => 1
+      case IntegerLiteralExpression(_) => 1
 
-      case LogicalVariableTerm(_) => 1
-      case FunctionApplicationTerm(_, _, _) => 3
-      //      case DomainFunctionApplicationTerm(_,_,_) => 3
+      case LogicalVariableExpression(_) => 1
+      case FunctionApplicationExpression(_, _, _) => 3
+      //      case DomainFunctionApplicationExpression(_,_,_) => 3
 
-      case ProgramVariableTerm(_) => 2
-      case CastTerm(_, _) => 2
-      case FieldReadTerm(_) => 6
+      case ProgramVariableExpression(_) => 2
+      case CastExpression(_, _) => 2
+      case FieldReadExpression(_) => 6
     }
   }
 

@@ -2,7 +2,7 @@ package semper.sil.ast.domains
 
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.ASTNode
-import semper.sil.ast.expressions.util.TermSequence
+import semper.sil.ast.expressions.util.ExpressionSequence
 
 trait DomainPredicate extends ASTNode {
   def name: String
@@ -15,7 +15,7 @@ trait DomainPredicate extends ASTNode {
 
   override def toString = "predicate " + name + signature.toString
 
-  def toString(ts: TermSequence) = fullName + ts.toString()
+  def toString(ts: ExpressionSequence) = fullName + ts.toString()
 
   def substitute(s: TypeVariableSubstitution): DomainPredicate
 

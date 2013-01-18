@@ -2,7 +2,7 @@ package semper.sil.ast.domains
 
 import semper.sil.ast.ASTNode
 import semper.sil.ast.source.SourceLocation
-import semper.sil.ast.expressions.util.TermSequence
+import semper.sil.ast.expressions.util.ExpressionSequence
 
 trait DomainFunction extends ASTNode {
   def sourceLocation: SourceLocation
@@ -21,7 +21,7 @@ trait DomainFunction extends ASTNode {
 
   override def toString = "function " + name + signature.toString
 
-  def toString(args: TermSequence) = fullName + args
+  def toString(args: ExpressionSequence) = fullName + args
 
   override def equals(other: Any): Boolean = {
     other match {

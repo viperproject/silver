@@ -2,7 +2,7 @@ package semper.sil.ast.programs.symbols
 
 import semper.sil.ast.programs.ProgramFactory
 import semper.sil.ast.source.SourceLocation
-import semper.sil.ast.expressions.terms.Term
+import semper.sil.ast.expressions.terms.Expression
 import semper.sil.ast.types.DataType
 import semper.sil.ast.expressions.Expression
 
@@ -29,13 +29,13 @@ class FunctionFactory private[sil](
     pFunction.pSignature.pPostconditions += e
   }
 
-  def setMeasure(t: Term) {
+  def setMeasure(t: Expression) {
     require(terms contains t)
     require(pFunction.pSignature.pMeasure == None)
     pFunction.pSignature.pMeasure = Some(t)
   }
 
-  def setBody(t: Term) {
+  def setBody(t: Expression) {
     require(pFunction.pBody == None)
     require(terms contains t)
     pFunction.pBody = Some(t)

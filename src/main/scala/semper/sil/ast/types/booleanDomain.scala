@@ -1,7 +1,7 @@
 package semper.sil.ast.types
 
 import semper.sil.ast.domains._
-import semper.sil.ast.expressions.util.TermSequence
+import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.source.NoLocation
 
 ///////////////////////////////////////////////////////////////////////////
@@ -45,7 +45,7 @@ object booleanTrue extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts != null)
     require(ts.length == 0)
     name
@@ -64,7 +64,7 @@ object booleanFalse extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts != null)
     require(ts.length == 0)
     name
@@ -83,7 +83,7 @@ object booleanNegation extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts != null)
     require(ts.length == 1)
     name + ts(0).toString
@@ -102,7 +102,7 @@ object booleanConjunction extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts != null)
     require(ts.length == 2)
     ts(0).toString + name + ts(1).toString
@@ -121,7 +121,7 @@ object booleanDisjunction extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts != null)
     require(ts.length == 2)
     ts(0).toString + name + ts(1).toString
@@ -140,7 +140,7 @@ object booleanImplication extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts != null)
     require(ts.length == 2)
     ts(0).toString + name + ts(1).toString
@@ -159,7 +159,7 @@ object booleanEquivalence extends DomainFunction {
   override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts != null)
     require(ts.length == 2)
     ts(0).toString + name + ts(1).toString
@@ -178,7 +178,7 @@ object booleanEvaluate extends DomainPredicate {
   override val signature = new DomainPredicateSignature(DataTypeSequence(booleanType))(NoLocation)
   override lazy val domain = booleanDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.length == 1)
     ts(0).toString
   }

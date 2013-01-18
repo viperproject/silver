@@ -11,17 +11,17 @@ import semper.sil.ast.symbols.logical.quantification.LogicalVariable
 import semper.sil.ast.domains.{LogicalVariableSubstitutionC, LogicalVariableSubstitution, DomainFunction}
 import semper.sil.ast.expressions.{Expression, PredicatePermissionExpression, ProgramVariableSubstitutionC, ProgramVariableSubstitution}
 
-protected[sil] trait TermFactory
+protected[sil] trait ExpressionFactory
   extends NodeFactory
   with DataTypeFactory {
   /////////////////////////////////////////////////////////////////////////
-  def makeProgramVariableSubstitution(subs: immutable.Set[(ProgramVariable, Term)]): ProgramVariableSubstitution = {
+  def makeProgramVariableSubstitution(subs: immutable.Set[(ProgramVariable, Expression)]): ProgramVariableSubstitution = {
     subs.foreach(kv => migrate(kv._2))
     new ProgramVariableSubstitutionC(subs, Set())
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeLogicalVariableSubstitution(subs: immutable.Set[(LogicalVariable, Term)]): LogicalVariableSubstitution = {
+  def makeLogicalVariableSubstitution(subs: immutable.Set[(LogicalVariable, Expression)]): LogicalVariableSubstitution = {
     subs.foreach(kv => migrate(kv._2))
     new LogicalVariableSubstitutionC(Set(), subs)
   }
@@ -37,61 +37,61 @@ protected[sil] trait TermFactory
   }
 
   /////////////////////////////////////////////////////////////////////////
-  protected[sil] def migrate(t: Term) {
+  protected[sil] def migrate(t: Expression) {
     if (terms contains t)
       return
     t match {
-      case t: LiteralTerm => addTerm(t)
-      case fa: DomainFunctionApplicationTerm => {
+      case t: LiteralExpression => addExpression(t)
+      case fa: DomainFunctionApplicationExpression => {
         require(domainFunctions contains fa.function)
         fa.arguments.foreach(migrate(_))
-        addTerm(fa)
+        addExpression(fa)
       }
-      case pv: ProgramVariableTerm => {
+      case pv: ProgramVariableExpression => {
         require(programVariables contains pv.variable)
-        addTerm(pv)
+        addExpression(pv)
       }
-      case lv: LogicalVariableTerm => {
+      case lv: LogicalVariableExpression => {
         // TODO: Decide how to handle this.
         // I think that bound variables should be migrated automatically. ~~~~ Christian Klauser <klauserc@ethz.ch>
         boundVariables.add(lv.variable)
-        addTerm(lv)
+        addExpression(lv)
       }
-      case fa: FunctionApplicationTerm => {
+      case fa: FunctionApplicationExpression => {
         require(functions contains fa.function)
         fa.arguments.foreach(migrate(_))
-        addTerm(fa)
+        addExpression(fa)
       }
-      case ct: CastTerm => {
+      case ct: CastExpression => {
         migrate(ct.operand1)
         migrate(ct.newType)
-        addTerm(t)
+        addExpression(t)
       }
-      case fr: FieldReadTerm => {
+      case fr: FieldReadExpression => {
         require(fields contains fr.location.field)
         migrate(fr.location.receiver)
-        addTerm(fr)
+        addExpression(fr)
       }
-      case ut: UnfoldingTerm => {
+      case ut: UnfoldingExpression => {
         require(predicates contains ut.predicate.location.predicate) //Hack - how do we fix this?
         migrate(ut.predicate.location.receiver)
         migrate(ut.term)
-        addTerm(ut)
+        addExpression(ut)
       }
-      case ot: OldTerm => {
+      case ot: OldExpression => {
         migrate(ot.term)
-        addTerm(ot)
+        addExpression(ot)
       }
-      case pt: PermTerm => {
+      case pt: PermExpression => {
         migrate(pt.location.receiver)
         migrate(pt.location)
-        addTerm(pt)
+        addExpression(pt)
       }
-      case itet: IfThenElseTerm => {
+      case itet: IfThenElseExpression => {
         require(itet.condition.dataType == booleanType)
         migrate(itet.condition)
-        migrate(itet.pTerm)
-        migrate(itet.nTerm)
+        migrate(itet.pExpression)
+        migrate(itet.nExpression)
       }
 
     }
@@ -111,147 +111,147 @@ protected[sil] trait TermFactory
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeBoundVariableTerm(v: LogicalVariable, sourceLocation: SourceLocation, comment: List[String] = Nil): LogicalVariableTerm = {
+  def makeBoundVariableExpression(v: LogicalVariable, sourceLocation: SourceLocation, comment: List[String] = Nil): LogicalVariableExpression = {
     require(boundVariables contains v)
-    addTerm(new LogicalVariableTerm(v)(sourceLocation, comment))
+    addExpression(new LogicalVariableExpression(v)(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeIntegerLiteralTerm(v: BigInt, sourceLocation: SourceLocation, comment: List[String] = Nil): IntegerLiteralTerm = {
-    addTerm(new IntegerLiteralTerm(v)(sourceLocation, comment))
+  def makeIntegerLiteralExpression(v: BigInt, sourceLocation: SourceLocation, comment: List[String] = Nil): IntegerLiteralExpression = {
+    addExpression(new IntegerLiteralExpression(v)(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeFunctionApplicationTerm(
-                                   r: Term,
+  def makeFunctionApplicationExpression(
+                                   r: Expression,
                                    ff: FunctionFactory,
-                                   a: TermSequence,
+                                   a: ExpressionSequence,
                                    sourceLocation: SourceLocation,
-                                   comment: List[String] = Nil): FunctionApplicationTerm = {
+                                   comment: List[String] = Nil): FunctionApplicationExpression = {
     migrate(r)
     require(functions contains ff.pFunction)
     a.foreach(migrate(_))
 
-    addTerm(new FunctionApplicationTerm(r, ff.pFunction, a)(sourceLocation, comment))
+    addExpression(new FunctionApplicationExpression(r, ff.pFunction, a)(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeProgramVariableTerm(v: ProgramVariable, sourceLocation: SourceLocation, comment: List[String] = Nil): ProgramVariableTerm = {
+  def makeProgramVariableExpression(v: ProgramVariable, sourceLocation: SourceLocation, comment: List[String] = Nil): ProgramVariableExpression = {
     if (!(programVariables contains v)) {
       System.out.println("PTF : " + programVariables.mkString(","))
     }
     require(programVariables contains v)
-    addTerm(new ProgramVariableTerm(v)(sourceLocation, comment))
+    addExpression(new ProgramVariableExpression(v)(sourceLocation, comment))
   }
 
   //////////////////////////////////////////////////////////////////////////
-  def makeUnfoldingTerm(r: PredicatePermissionExpression, t: Term, sourceLocation: SourceLocation, comment: List[String] = Nil): UnfoldingTerm = {
+  def makeUnfoldingExpression(r: PredicatePermissionExpression, t: Expression, sourceLocation: SourceLocation, comment: List[String] = Nil): UnfoldingExpression = {
     require(predicates contains r.location.predicate) //Hack
     migrate(r.location.receiver)
     migrate(t)
 
-    addTerm(new UnfoldingTerm(r, t)(sourceLocation, this, comment))
+    addExpression(new UnfoldingExpression(r, t)(sourceLocation, this, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeCastTerm(t: Term, dt: DataType, sourceLocation: SourceLocation, comment: List[String] = Nil): CastTerm = {
+  def makeCastExpression(t: Expression, dt: DataType, sourceLocation: SourceLocation, comment: List[String] = Nil): CastExpression = {
     migrate(dt)
     migrate(t)
 
-    addTerm(new CastTerm(t, dt)(sourceLocation, comment))
+    addExpression(new CastExpression(t, dt)(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeFieldReadTerm(t: Term, f: Field, sourceLocation: SourceLocation, comment: List[String] = Nil): FieldReadTerm = {
+  def makeFieldReadExpression(t: Expression, f: Field, sourceLocation: SourceLocation, comment: List[String] = Nil): FieldReadExpression = {
     require(fields contains f)
     migrate(t)
 
-    addTerm(new FieldReadTerm(new FieldLocation(t, f))(sourceLocation, comment))
+    addExpression(new FieldReadExpression(new FieldLocation(t, f))(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeOldTerm(t: Term)(sourceLocation: SourceLocation, comment: List[String] = Nil): OldTerm = {
+  def makeOldExpression(t: Expression)(sourceLocation: SourceLocation, comment: List[String] = Nil): OldExpression = {
     migrate(t)
     require(t.programVariables intersect outputProgramVariables isEmpty)
-    addTerm(new OldTerm(t)(sourceLocation, comment))
+    addExpression(new OldExpression(t)(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////
-  def makeDomainFunctionApplicationTerm(
+  def makeDomainFunctionApplicationExpression(
                                          f: DomainFunction,
-                                         a: TermSequence,
+                                         a: ExpressionSequence,
                                          sourceLocation: SourceLocation,
                                          comment: List[String] = Nil
-                                         ): DomainFunctionApplicationTerm = {
+                                         ): DomainFunctionApplicationExpression = {
     assert(domainFunctions contains f)
     a.foreach(migrate(_))
 
-    addTerm(new DomainFunctionApplicationTerm(f, a)(sourceLocation, comment))
+    addExpression(new DomainFunctionApplicationExpression(f, a)(sourceLocation, comment))
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermTerm(location: Term, field: Field)(sourceLocation: SourceLocation, comment: List[String] = Nil): PermTerm = {
+  def makePermExpression(location: Expression, field: Field)(sourceLocation: SourceLocation, comment: List[String] = Nil): PermExpression = {
     migrate(location)
     require(fields contains field)
     require(location.dataType == referenceType)
 
-    val result = new PermTerm(new FieldLocation(location, field))(sourceLocation, comment)
-    addTerm(result)
+    val result = new PermExpression(new FieldLocation(location, field))(sourceLocation, comment)
+    addExpression(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePercentagePermission(percentage: Term, sourceLocation: SourceLocation, comment: List[String] = Nil): Term = {
-    makeDomainFunctionApplicationTerm(percentagePermission, TermSequence(percentage), sourceLocation, comment)
+  def makePercentagePermission(percentage: Expression, sourceLocation: SourceLocation, comment: List[String] = Nil): Expression = {
+    makeDomainFunctionApplicationExpression(percentagePermission, ExpressionSequence(percentage), sourceLocation, comment)
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makeFullPermission(sourceLocation: SourceLocation, comment: List[String] = Nil): FullPermissionTerm = {
-    val result = new FullPermissionTerm()(sourceLocation, comment)
-    addTerm(result)
+  def makeFullPermission(sourceLocation: SourceLocation, comment: List[String] = Nil): FullPermissionExpression = {
+    val result = new FullPermissionExpression()(sourceLocation, comment)
+    addExpression(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makeNoPermission(sourceLocation: SourceLocation, comment: List[String] = Nil): NoPermissionTerm = {
-    val result = new NoPermissionTerm()(sourceLocation, comment)
-    addTerm(result)
+  def makeNoPermission(sourceLocation: SourceLocation, comment: List[String] = Nil): NoPermissionExpression = {
+    val result = new NoPermissionExpression()(sourceLocation, comment)
+    addExpression(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makeEpsilonPermission(sourceLocation: SourceLocation, comment: List[String] = Nil): EpsilonPermissionTerm = {
-    val result = new EpsilonPermissionTerm()(sourceLocation, comment)
-    addTerm(result)
+  def makeEpsilonPermission(sourceLocation: SourceLocation, comment: List[String] = Nil): EpsilonPermissionExpression = {
+    val result = new EpsilonPermissionExpression()(sourceLocation, comment)
+    addExpression(result)
     result
   }
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionAdditionTerm(t1: Term, t2: Term, sourceLocation: SourceLocation, comment: List[String] = Nil) =
-    makeDomainFunctionApplicationTerm(permissionAddition, TermSequence(t1, t2), sourceLocation, comment)
+  def makePermissionAdditionExpression(t1: Expression, t2: Expression, sourceLocation: SourceLocation, comment: List[String] = Nil) =
+    makeDomainFunctionApplicationExpression(permissionAddition, ExpressionSequence(t1, t2), sourceLocation, comment)
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionSubtractionTerm(t1: Term, t2: Term, sourceLocation: SourceLocation, comment: List[String] = Nil) =
-    makeDomainFunctionApplicationTerm(permissionSubtraction, TermSequence(t1, t2), sourceLocation, comment)
+  def makePermissionSubtractionExpression(t1: Expression, t2: Expression, sourceLocation: SourceLocation, comment: List[String] = Nil) =
+    makeDomainFunctionApplicationExpression(permissionSubtraction, ExpressionSequence(t1, t2), sourceLocation, comment)
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionMultiplicationTerm(t1: Term, t2: Term, sourceLocation: SourceLocation, comment: List[String] = Nil) =
-    makeDomainFunctionApplicationTerm(permissionMultiplication, TermSequence(t1, t2), sourceLocation, comment)
+  def makePermissionMultiplicationExpression(t1: Expression, t2: Expression, sourceLocation: SourceLocation, comment: List[String] = Nil) =
+    makeDomainFunctionApplicationExpression(permissionMultiplication, ExpressionSequence(t1, t2), sourceLocation, comment)
 
   /////////////////////////////////////////////////////////////////////////////////////
-  def makePermissionIntegerMultiplicationTerm(t1: Term, i: Term, sourceLocation: SourceLocation, comment: List[String] = Nil) =
-    makeDomainFunctionApplicationTerm(permissionIntegerMultiplication, TermSequence(t1, i), sourceLocation, comment)
+  def makePermissionIntegerMultiplicationExpression(t1: Expression, i: Expression, sourceLocation: SourceLocation, comment: List[String] = Nil) =
+    makeDomainFunctionApplicationExpression(permissionIntegerMultiplication, ExpressionSequence(t1, i), sourceLocation, comment)
 
   /////////////////////////////////////////////////////////////////////////
-  def makeIfThenElseTerm(c: Term, p: Term, n: Term)(sourceLocation: SourceLocation, comment: List[String] = Nil): IfThenElseTerm = {
+  def makeIfThenElseExpression(c: Expression, p: Expression, n: Expression)(sourceLocation: SourceLocation, comment: List[String] = Nil): IfThenElseExpression = {
     migrate(c)
     migrate(p)
     migrate(n)
     require(c.dataType == booleanType)
-    addTerm(new IfThenElseTerm(c, p, n)(sourceLocation, comment))
+    addExpression(new IfThenElseExpression(c, p, n)(sourceLocation, comment))
   }
 
-  protected[sil] def addTerm[T <: Term](t: T): T = {
+  protected[sil] def addExpression[T <: Expression](t: T): T = {
     terms += t
     t
   }
@@ -264,7 +264,7 @@ protected[sil] trait TermFactory
   }
 
   /////////////////////////////////////////////////////////////////////////
-  protected val terms = new mutable.HashSet[Term]
+  protected val terms = new mutable.HashSet[Expression]
 
   protected[sil] def domainFunctions: collection.Set[DomainFunction]
 

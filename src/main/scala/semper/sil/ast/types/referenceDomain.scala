@@ -2,7 +2,7 @@ package semper.sil.ast.types
 
 import semper.sil.ast.domains._
 import semper.sil.ast.source.NoLocation
-import semper.sil.ast.expressions.util.TermSequence
+import semper.sil.ast.expressions.util.ExpressionSequence
 
 object referenceDomain extends Domain {
   override val name = "Ref"
@@ -43,7 +43,7 @@ object nullFunction extends DomainFunction {
   override val signature = new DomainFunctionSignature(DataTypeSequence(), referenceType)(NoLocation)
   override lazy val domain = referenceDomain
 
-  override def toString(ts: TermSequence) = name
+  override def toString(ts: ExpressionSequence) = name
 
   override def substitute(ts: TypeVariableSubstitution) = this
 
@@ -58,7 +58,7 @@ object referenceEquality extends DomainFunction {
   override val signature = new DomainFunctionSignature(DataTypeSequence(referenceType, referenceType), booleanType)(NoLocation)
   override lazy val domain = referenceDomain
 
-  override def toString(ts: TermSequence) = {
+  override def toString(ts: ExpressionSequence) = {
     require(ts.size == 2)
     ts(0) + "==" + ts(1)
   }
