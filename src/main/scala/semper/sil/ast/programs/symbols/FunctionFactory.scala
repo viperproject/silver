@@ -29,14 +29,14 @@ class FunctionFactory private[sil](
   }
 
   def setMeasure(t: Expression) {
-    require(terms contains t)
+    require(expressions contains t)
     require(pFunction.pSignature.pMeasure == None)
     pFunction.pSignature.pMeasure = Some(t)
   }
 
   def setBody(t: Expression) {
     require(pFunction.pBody == None)
-    require(terms contains t)
+    require(expressions contains t)
     pFunction.pBody = Some(t)
   }
 

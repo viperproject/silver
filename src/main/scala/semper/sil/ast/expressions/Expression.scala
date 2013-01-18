@@ -7,35 +7,19 @@ import semper.sil.ast.symbols.logical._
 import semper.sil.ast.ASTNode
 import terms._
 import terms.FieldLocation
-import terms.FieldLocation
 import terms.LogicalVariableExpression
-import terms.LogicalVariableExpression
-import terms.PredicateLocation
 import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.domains._
 import semper.sil.ast.types.{booleanType, DataType, TypeVariable, permissionType}
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.programs.symbols.ProgramVariable
-import semper.sil.ast.symbols.logical.Not
 import scala._
-import semper.sil.ast.symbols.logical.Equivalence
 import semper.sil.ast.symbols.logical.Or
-import semper.sil.ast.expressions.UnaryExpression
-import semper.sil.ast.expressions.FalseExpression
 import semper.sil.ast.symbols.logical.Not
-import semper.sil.ast.expressions.FieldPermissionExpression
-import semper.sil.ast.expressions.EqualityExpression
-import semper.sil.ast.expressions.TrueExpression
 import scala.Some
 import semper.sil.ast.symbols.logical.Implication
-import semper.sil.ast.expressions.BinaryExpression
-import semper.sil.ast.expressions.QuantifierExpression
 import semper.sil.ast.symbols.logical.And
-import semper.sil.ast.expressions.PredicatePermissionExpression
-import semper.sil.ast.expressions.OldExpression
-import semper.sil.ast.expressions.UnfoldingExpression
 import terms.PredicateLocation
-import semper.sil.ast.expressions.DomainPredicateExpression
 import semper.sil.ast.symbols.logical.Equivalence
 
 ///////////////////////////////////////////////////////////////////////////

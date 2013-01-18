@@ -201,40 +201,6 @@ sealed case class FunctionApplicationExpression private[sil]
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
-sealed case class UnfoldingExpression private[sil]
-(predicate: PredicatePermissionExpression, term: Expression)
-(override val sourceLocation: SourceLocation, val factory: ExpressionFactory, override val comment: List[String])
-  extends Expression {
-  override lazy val toString: String = "unfolding " + predicate.toString + " in (" + term.toString + ")"
-
-  override lazy val subExpressions: Seq[Expression] = List(predicate.location.receiver, term)
-
-  override def dataType = term.dataType
-
-  override def freeVariables = predicate.freeVariables ++ term.freeVariables
-
-  override val freeTypeVariables = predicate.freeTypeVariables union term.freeTypeVariables
-
-  override def programVariables = predicate.programVariables ++ term.programVariables
-
-  def substitute(s: TypeVariableSubstitution): UnfoldingExpression =
-    new UnfoldingExpression(predicate.substitute(s), term.substitute(s))(
-      s.sourceLocation(sourceLocation), factory, Nil
-    )
-
-  def substitute(s: LogicalVariableSubstitution): UnfoldingExpression =
-    new UnfoldingExpression(predicate.substitute(s), term.substitute(s))(
-      s.sourceLocation(sourceLocation), factory, Nil
-    )
-
-  def substitute(s: ProgramVariableSubstitution): UnfoldingExpression =
-    new UnfoldingExpression(predicate.substitute(s), term.substitute(s))(
-      s.sourceLocation(sourceLocation), factory, Nil
-    )
-}
-
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
 //Heap related terms
 
 ///////////////////////////////////////////////////////////////////////////
