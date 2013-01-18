@@ -6,6 +6,7 @@ import semper.source.Translator
 import org.scalatest._
 import java.nio.file.Path
 import io.Source
+import semper.sil.ast.source.RealSourceLocation
 
 /** A test suite for verification toolchains that use SIL as the intermediate language.
   *
@@ -81,8 +82,9 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
           case semper.sil.verifier.Error(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
             val findError: VerificationError => Option[ErrorAnnotation] = (actual: VerificationError) => {
-              expectedErrors.filter({
-                case ErrorAnnotation(id, lineNr) => actual.id == id && actual.lineNr == lineNr
+              if (!actual.location.isInstanceOf[RealSourceLocation]) None
+              else expectedErrors.filter({
+                case ErrorAnnotation(id, lineNr) => actual.id == id && actual.location.asInstanceOf[RealSourceLocation].line == lineNr
               }) match {
                 case x :: _ => {
                   // remove the error from the list of expected errors (i.e. only match once)
