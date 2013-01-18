@@ -113,39 +113,12 @@ sealed case class IfThenElseExpression private[sil]
     new IfThenElseExpression(condition.substitute(s), pExpression.substitute(s), nExpression.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 }
 
-sealed case class OldExpression private[sil]
-(term: Expression)
-(override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode
-  with Expression {
-  override val toString: String = "old(" + term.toString + ")"
-
-  override val subExpressions: Seq[Expression] = List(term)
-
-  override def dataType = term.dataType
-
-  override def freeVariables = term.freeVariables
-
-  override val freeTypeVariables = term.freeTypeVariables
-
-  override def programVariables = term.programVariables
-
-  def substitute(s: TypeVariableSubstitution): OldExpression =
-    new OldExpression(term.substitute(s))(s.sourceLocation(sourceLocation), Nil)
-
-  def substitute(s: LogicalVariableSubstitution): OldExpression =
-    new OldExpression(term.substitute(s))(s.sourceLocation(sourceLocation), Nil)
-
-  def substitute(s: ProgramVariableSubstitution): OldExpression =
-    new OldExpression(term.substitute(s))(s.sourceLocation(sourceLocation), Nil)
-}
-
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed case class DomainFunctionApplicationExpression private[sil]
 (private val f: DomainFunction, private val as: ExpressionSequence)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Expression {
+  extends Expression {
   require(f != null)
   require(as != null)
   require(as.forall(_ != null))
@@ -190,7 +163,7 @@ sealed case class DomainFunctionApplicationExpression private[sil]
 sealed case class FunctionApplicationExpression private[sil]
 (receiver: Expression, function: Function, arguments: ExpressionSequence)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Expression {
+  extends Expression  {
   require(receiver.dataType == referenceType)
   require(function.signature.parameters.length == arguments.length)
   require(function.signature.parameters.zip(arguments).forall((x) => x._2.dataType.isCompatible(x._1.dataType)),
@@ -231,7 +204,7 @@ sealed case class FunctionApplicationExpression private[sil]
 sealed case class UnfoldingExpression private[sil]
 (predicate: PredicatePermissionExpression, term: Expression)
 (override val sourceLocation: SourceLocation, val factory: ExpressionFactory, override val comment: List[String])
-  extends ASTNode with Expression {
+  extends Expression {
   override lazy val toString: String = "unfolding " + predicate.toString + " in (" + term.toString + ")"
 
   override lazy val subExpressions: Seq[Expression] = List(predicate.location.receiver, term)
@@ -269,7 +242,7 @@ sealed case class UnfoldingExpression private[sil]
 sealed case class CastExpression protected[sil]
 (operand1: Expression, newType: DataType)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Expression {
+  extends Expression {
   override val toString: String = "(" + operand1 + ") : " + newType.toString
 
   override lazy val subExpressions: Seq[Expression] = operand1 :: Nil
@@ -298,7 +271,7 @@ sealed case class CastExpression protected[sil]
 sealed case class FieldReadExpression protected[sil]
 (location: FieldLocation)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Expression {
+  extends Expression {
   override lazy val toString: String = location.toString
   override lazy val subExpressions: Seq[Expression] = List(location.receiver)
 
@@ -325,7 +298,7 @@ sealed case class FieldReadExpression protected[sil]
 sealed case class PermExpression protected[sil]
 (location: Location)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Expression {
+  extends Expression {
   override lazy val toString: String = "perm(" + location.toString + ")"
   override lazy val subExpressions: Seq[Expression] = List(location.receiver)
 
@@ -413,8 +386,7 @@ case class EpsilonPermissionExpression()
 sealed case class ProgramVariableExpression protected[sil]
 (variable: ProgramVariable)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode
-  with Expression
+  extends Expression
   with AtomicExpression {
   override val toString: String = variable.name
 
@@ -440,8 +412,7 @@ sealed case class ProgramVariableExpression protected[sil]
 sealed case class LogicalVariableExpression protected[sil]
 (variable: LogicalVariable)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode
-  with Expression
+  extends Expression
   with AtomicExpression {
   override val toString = variable.name
 
@@ -474,7 +445,7 @@ sealed case class LogicalVariableExpression protected[sil]
 ///////////////////////////////////////////////////////////////////////////
 sealed abstract class LiteralExpression protected[sil]
 ()(override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends ASTNode with Expression
+  extends Expression
   with AtomicExpression {
   override val  freeVariables: Set[LogicalVariable] = Set()
   override val  programVariables: Set[ProgramVariable] = Set()
@@ -483,10 +454,9 @@ sealed abstract class LiteralExpression protected[sil]
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 final case class IntegerLiteralExpression private[sil]
-(val value: BigInt)
+(value: BigInt)
 (sourceLocation: SourceLocation, comment: List[String])
-  extends LiteralExpression()(sourceLocation, comment)
-  with Expression {
+  extends LiteralExpression()(sourceLocation, comment) {
   override val toString: String = value.toString()
 
   override def dataType = integerType

@@ -1,7 +1,6 @@
 package semper.sil.ast.programs.symbols
 
 import semper.sil.ast.ASTNode
-import semper.sil.ast.expressions.terms.Expression
 import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.types.{TypeVariable, DataType}
 import collection.mutable.ListBuffer

@@ -1,9 +1,9 @@
 package semper.sil.ast.programs.symbols
 
 import semper.sil.ast.ASTNode
-import semper.sil.ast.expressions.terms.Expression
 import semper.sil.ast.types.{TypeVariable, DataType}
 import semper.sil.ast.source.{NoLocation, SourceLocation}
+import semper.sil.ast.expressions.Expression
 
 final case class Function private[programs](
                                              name: String,

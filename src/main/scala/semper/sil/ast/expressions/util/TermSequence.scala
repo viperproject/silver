@@ -2,17 +2,16 @@ package semper.sil.ast.expressions.util
 
 import collection.immutable.Set
 import semper.sil.ast.ASTNode
-import semper.sil.ast.expressions.terms.Expression
 import semper.sil.ast.symbols.logical.quantification.LogicalVariable
 import semper.sil.ast.programs.symbols.ProgramVariable
 import semper.sil.ast.source.{SourceLocation, NoLocation}
-import semper.sil.ast.expressions.ProgramVariableSubstitution
+import semper.sil.ast.expressions.{Expression, ProgramVariableSubstitution}
 import semper.sil.ast.domains._
 import semper.sil.ast.types.TypeVariable
 
 sealed class ExpressionSequence private[sil](
-                                        private val prArgs: Seq[Expression]
-                                        ) extends ASTNode with Seq[Expression] {
+                                              private val prArgs: Seq[Expression]
+                                              ) extends ASTNode with Seq[Expression] {
   require(prArgs != null)
   require(prArgs.forall(_ != null))
 
@@ -44,7 +43,6 @@ sealed class ExpressionSequence private[sil](
 }
 
 object ExpressionSequence {
-  //  def apply() : ExpressionSequence = apply(List())
   def apply(ts: Expression*): ExpressionSequence = {
     new ExpressionSequence(ts)
   }

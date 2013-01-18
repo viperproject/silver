@@ -4,7 +4,6 @@ import semper.sil.ast.ASTNode
 import semper.sil.ast.expressions.Expression
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.symbols.logical.quantification.LogicalVariable
-import semper.sil.ast.expressions.terms.Expression
 
 final class DomainAxiom private[sil](
 

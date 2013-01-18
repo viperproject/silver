@@ -9,7 +9,24 @@ import collection.mutable
 import semper.sil.ast.programs.symbols.{Function, Predicate, ProgramVariable, FunctionFactory, Field}
 import semper.sil.ast.symbols.logical.quantification.LogicalVariable
 import semper.sil.ast.domains.{LogicalVariableSubstitutionC, LogicalVariableSubstitution, DomainFunction}
-import semper.sil.ast.expressions.{Expression, PredicatePermissionExpression, ProgramVariableSubstitutionC, ProgramVariableSubstitution}
+import semper.sil.ast.expressions._
+import terms.CastExpression
+import terms.DomainFunctionApplicationExpression
+import terms.EpsilonPermissionExpression
+import terms.FieldLocation
+import terms.FieldReadExpression
+import terms.FullPermissionExpression
+import terms.FunctionApplicationExpression
+import terms.IfThenElseExpression
+import semper.sil.ast.programs.symbols.Function
+import terms.IntegerLiteralExpression
+import terms.LogicalVariableExpression
+import terms.NoPermissionExpression
+import terms.PermExpression
+import semper.sil.ast.expressions.PredicatePermissionExpression
+import terms.PredicateLocation
+import terms.ProgramVariableExpression
+import terms.UnfoldingExpression
 
 protected[sil] trait ExpressionFactory
   extends NodeFactory
@@ -79,7 +96,7 @@ protected[sil] trait ExpressionFactory
         addExpression(ut)
       }
       case ot: OldExpression => {
-        migrate(ot.term)
+        migrate(ot.expression)
         addExpression(ot)
       }
       case pt: PermExpression => {

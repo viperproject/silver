@@ -2,7 +2,6 @@ package semper.sil.ast.programs.symbols
 
 import semper.sil.ast.programs.ProgramFactory
 import semper.sil.ast.source.SourceLocation
-import semper.sil.ast.expressions.terms.Expression
 import semper.sil.ast.types.DataType
 import semper.sil.ast.expressions.Expression
 

@@ -3,14 +3,40 @@ package semper.sil.ast.expressions
 import scala.collection.Seq
 
 import semper.sil.ast.symbols.logical.quantification.{Quantifier, LogicalVariable}
-import semper.sil.ast.symbols.logical.{UnaryConnective, BinaryConnective}
+import semper.sil.ast.symbols.logical._
 import semper.sil.ast.ASTNode
 import terms._
-import util.ExpressionSequence
+import terms.FieldLocation
+import terms.FieldLocation
+import terms.LogicalVariableExpression
+import terms.LogicalVariableExpression
+import terms.PredicateLocation
+import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.domains._
-import semper.sil.ast.types.{DataType, TypeVariable, permissionType}
+import semper.sil.ast.types.{booleanType, DataType, TypeVariable, permissionType}
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.programs.symbols.ProgramVariable
+import semper.sil.ast.symbols.logical.Not
+import scala._
+import semper.sil.ast.symbols.logical.Equivalence
+import semper.sil.ast.symbols.logical.Or
+import semper.sil.ast.expressions.UnaryExpression
+import semper.sil.ast.expressions.FalseExpression
+import semper.sil.ast.symbols.logical.Not
+import semper.sil.ast.expressions.FieldPermissionExpression
+import semper.sil.ast.expressions.EqualityExpression
+import semper.sil.ast.expressions.TrueExpression
+import scala.Some
+import semper.sil.ast.symbols.logical.Implication
+import semper.sil.ast.expressions.BinaryExpression
+import semper.sil.ast.expressions.QuantifierExpression
+import semper.sil.ast.symbols.logical.And
+import semper.sil.ast.expressions.PredicatePermissionExpression
+import semper.sil.ast.expressions.OldExpression
+import semper.sil.ast.expressions.UnfoldingExpression
+import terms.PredicateLocation
+import semper.sil.ast.expressions.DomainPredicateExpression
+import semper.sil.ast.symbols.logical.Equivalence
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -41,11 +67,7 @@ abstract class Expression protected[sil] extends ASTNode {
 ///////////////////////////////////////////////////////////////////////////
 
 sealed trait AtomicExpression extends Expression {
-  override val subExpressions: Seq[Expression] = Nil
-
-  //  def freeTypeVariables: Set[TypeVariable] =
-  //    subExpressions.foldLeft(Set[TypeVariable]())(_ union _.freeTypeVariables)
-  def subExpressions: Seq[Expression]
+  final override def subExpressions: Seq[Expression] = Nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -92,6 +114,8 @@ sealed case class FieldPermissionExpression private[sil]
 
   override val subExpressions = location.receiver :: permission :: Nil
 
+  override def dataType = permissionType
+
   override def substitute(s: TypeVariableSubstitution) =
     new FieldPermissionExpression(location.substitute(s), permission.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
@@ -109,6 +133,8 @@ sealed case class PredicatePermissionExpression private[sil]
 (override val sourceLocation: SourceLocation, override val comment: List[String])
   extends Expression with PermissionExpression {
   override val subExpressions = location.receiver :: permission :: Nil
+
+  override def dataType = permissionType
 
   override def freeTypeVariables: Set[TypeVariable] =
     location.freeTypeVariables union permission.freeTypeVariables
@@ -131,6 +157,8 @@ final case class OldExpression private[sil]
   extends Expression {
   override val subExpressions = expression :: Nil
   override val toString = "old(" + expression.toString + ")"
+
+  override def dataType = expression.dataType
 
   override def freeVariables = expression.freeVariables
 
@@ -156,7 +184,11 @@ sealed case class UnfoldingExpression private[sil]
   extends Expression {
   override val toString = "unfolding " + location.toString + " in " + expression.toString
 
-  override val subExpressions: Seq[Expression] = List(expression)
+  override lazy val subExpressions: Seq[Expression] = List(predicate.location.receiver, expression)
+
+  override val dataType = expression.dataType
+
+  def predicate: PredicatePermissionExpression = location
 
   override def freeVariables = location.freeVariables ++ expression.freeVariables
 
@@ -188,6 +220,8 @@ sealed case class EqualityExpression private[sil]
   def term1: Expression = t1
 
   def term2: Expression = t2
+
+  override val dataType = booleanType
 
   override val subExpressions: Seq[Expression] = Nil
 
@@ -223,6 +257,10 @@ sealed case class UnaryExpression private[sil]
 
   override val programVariables = operand1.programVariables
 
+  override val dataType = operator match {
+    case Not() => booleanType
+  }
+
   override def substitute(s: TypeVariableSubstitution): UnaryExpression =
     new UnaryExpression(operator, operand1.substitute(s))(s.sourceLocation(sourceLocation), Nil)
 
@@ -248,6 +286,13 @@ sealed case class BinaryExpression private[sil]
   override def freeTypeVariables = operand1.freeTypeVariables ++ operand2.freeTypeVariables
 
   override val programVariables = operand1.programVariables union operand2.programVariables
+
+  override val dataType = operator match {
+    case _: Equivalence => booleanType
+    case _: Implication => booleanType
+    case _: Or => booleanType
+    case _: And => booleanType
+  }
 
   override def substitute(s: TypeVariableSubstitution): BinaryExpression =
     new BinaryExpression(operator, operand1.substitute(s), operand2.substitute(s))(s.sourceLocation(sourceLocation), Nil)
@@ -276,6 +321,8 @@ sealed case class DomainPredicateExpression private[sil]
   override val programVariables = arguments.programVariables
 
   override val subExpressions = arguments
+
+  override val dataType = booleanType
 
   override def substitute(s: TypeVariableSubstitution): DomainPredicateExpression =
     new DomainPredicateExpression(predicate.substitute(s), arguments.substitute(s))(s.sourceLocation(sourceLocation), Nil)
@@ -306,6 +353,8 @@ sealed case class QuantifierExpression private[sil]
   override def freeTypeVariables = variable.dataType.freeTypeVariables union expression.freeTypeVariables
 
   override val programVariables = expression.programVariables
+
+  override val dataType = booleanType
 
   override def substitute(s: TypeVariableSubstitution): QuantifierExpression = {
     val newVar = new LogicalVariable(variable.name, variable.dataType.substitute(s))(s.sourceLocation((variable.sourceLocation)), Nil)
@@ -351,12 +400,13 @@ final case class TrueExpression()(override val sourceLocation: SourceLocation, o
   extends Expression
   with AtomicExpression {
   override val toString = "true"
-  override val subExpressions = List.empty
   override val programVariables = Set[ProgramVariable]()
 
   override val subExpressions = Nil
 
   override def freeTypeVariables = Set()
+
+  override val dataType = booleanType
 
   override def substitute(s: TypeVariableSubstitution): TrueExpression = new TrueExpression()(s.sourceLocation(sourceLocation), Nil)
 
@@ -371,12 +421,13 @@ final case class FalseExpression()(override val sourceLocation: SourceLocation, 
   extends Expression
   with AtomicExpression {
   override val toString = "false"
-  override val subExpressions = List.empty
   override val programVariables = Set[ProgramVariable]()
 
   override val subExpressions = Nil
 
   override def freeTypeVariables = Set()
+
+  override val dataType = booleanType
 
   override def substitute(s: TypeVariableSubstitution): FalseExpression = new FalseExpression()(s.sourceLocation(sourceLocation), Nil)
 
