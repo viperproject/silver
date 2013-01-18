@@ -7,7 +7,7 @@ import semper.sil.ast.programs.symbols.{Predicate, ProgramVariable, Field, Funct
 import semper.sil.ast.domains._
 import semper.sil.ast.source.SourceLocation
 import semper.sil.ast.types._
-import semper.sil.ast.expressions.{Expression, PredicatePermissionExpression, ProgramVariableSubstitution}
+import semper.sil.ast.expressions.{AtomicExpression, Expression, ProgramVariableSubstitution}
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -74,12 +74,6 @@ sealed case class PredicateLocation private[sil](receiver: Expression, predicate
 
   def substitute(s: ProgramVariableSubstitution): PredicateLocation =
     new PredicateLocation(receiver.substitute(s), predicate)
-}
-
-///////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////
-sealed trait AtomicExpression extends Expression {
-  final override lazy val subExpressions: Seq[Expression] = Nil
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -163,7 +157,7 @@ sealed case class DomainFunctionApplicationExpression private[sil]
 sealed case class FunctionApplicationExpression private[sil]
 (receiver: Expression, function: Function, arguments: ExpressionSequence)
 (override val sourceLocation: SourceLocation, override val comment: List[String])
-  extends Expression  {
+  extends Expression {
   require(receiver.dataType == referenceType)
   require(function.signature.parameters.length == arguments.length)
   require(function.signature.parameters.zip(arguments).forall((x) => x._2.dataType.isCompatible(x._1.dataType)),
@@ -289,7 +283,7 @@ sealed case class PermExpression protected[sil]
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 case class FullPermissionExpression()
-                             (sourceLocation: SourceLocation, comment: List[String])
+                                   (sourceLocation: SourceLocation, comment: List[String])
   extends LiteralExpression()(sourceLocation, comment)
   with AtomicExpression {
   override def toString: String = "write"
@@ -308,7 +302,7 @@ case class FullPermissionExpression()
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 case class NoPermissionExpression()
-                           (sourceLocation: SourceLocation, comment: List[String])
+                                 (sourceLocation: SourceLocation, comment: List[String])
   extends LiteralExpression()(sourceLocation, comment)
   with AtomicExpression {
   override def toString: String = "0"
@@ -327,7 +321,7 @@ case class NoPermissionExpression()
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 case class EpsilonPermissionExpression()
-                                (sourceLocation: SourceLocation, comment: List[String])
+                                      (sourceLocation: SourceLocation, comment: List[String])
   extends LiteralExpression()(sourceLocation, comment)
   with AtomicExpression {
   override def toString: String = "E"
@@ -413,8 +407,8 @@ sealed abstract class LiteralExpression protected[sil]
 ()(override val sourceLocation: SourceLocation, override val comment: List[String])
   extends Expression
   with AtomicExpression {
-  override val  freeVariables: Set[LogicalVariable] = Set()
-  override val  programVariables: Set[ProgramVariable] = Set()
+  override val freeVariables: Set[LogicalVariable] = Set()
+  override val programVariables: Set[ProgramVariable] = Set()
 }
 
 ///////////////////////////////////////////////////////////////////////////

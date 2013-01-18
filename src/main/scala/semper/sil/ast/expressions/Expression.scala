@@ -50,7 +50,7 @@ abstract class Expression protected[sil] extends ASTNode {
 
 ///////////////////////////////////////////////////////////////////////////
 
-sealed trait AtomicExpression extends Expression {
+trait AtomicExpression extends Expression {
   final override def subExpressions: Seq[Expression] = Nil
 }
 
