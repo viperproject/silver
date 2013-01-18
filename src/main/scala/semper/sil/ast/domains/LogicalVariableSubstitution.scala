@@ -3,8 +3,8 @@ package semper.sil.ast.domains
 import collection.Set
 import semper.sil.ast.symbols.logical.quantification.LogicalVariable
 import semper.sil.ast.types.{DataType, TypeVariable}
-import semper.sil.ast.expressions.terms._
 import semper.sil.ast.source._
+import semper.sil.ast.expressions.Expression
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -31,9 +31,9 @@ abstract class TypeVariableSubstitution {
 }
 
 private[sil] class TypeSubstitutionC[Expression](
-                                            val types: Set[(TypeVariable, DataType)],
-                                            val variables: Set[(LogicalVariable, LogicalVariable)]
-                                            ) extends TypeVariableSubstitution {
+                                                  val types: Set[(TypeVariable, DataType)],
+                                                  val variables: Set[(LogicalVariable, LogicalVariable)]
+                                                  ) extends TypeVariableSubstitution {
   override def toString = typeMap.mkString("[", ",", "]")
 
   val typeVariables: Set[TypeVariable] = for (t <- types) yield t._1
@@ -74,9 +74,9 @@ trait LogicalVariableSubstitution {
 }
 
 private[sil] class LogicalVariableSubstitutionC[TT <: Expression](
-                                                             override val types: Set[(TypeVariable, DataType)],
-                                                             override val variables: Set[(LogicalVariable, TT)]
-                                                             ) extends LogicalVariableSubstitution {
+                                                                   override val types: Set[(TypeVariable, DataType)],
+                                                                   override val variables: Set[(LogicalVariable, TT)]
+                                                                   ) extends LogicalVariableSubstitution {
   override def toString = super.toString + varMap.mkString("(", ",", ")")
 
   override type T = TT

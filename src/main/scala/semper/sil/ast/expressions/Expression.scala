@@ -57,8 +57,7 @@ sealed trait AtomicExpression extends Expression {
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 sealed trait PermissionExpression
-  extends Expression
-  with AtomicExpression {
+  extends Expression {
   def location: Location
 
   def permission: Expression
@@ -293,8 +292,7 @@ sealed case class BinaryExpression private[sil]
 sealed case class DomainPredicateExpression private[sil]
 (predicate: DomainPredicate, arguments: ExpressionSequence)
 (val sourceLocation: SourceLocation, override val comment: List[String])
-  extends Expression
-  with AtomicExpression {
+  extends Expression {
   require((predicate.signature.parameterTypes.zip(arguments).forall((x) => x._2.dataType.isCompatible(x._1))))
   override lazy val toString: String = predicate.toString(arguments)
 
@@ -386,8 +384,6 @@ final case class TrueExpression()(override val sourceLocation: SourceLocation, o
   override val toString = "true"
   override val programVariables = Set[ProgramVariable]()
 
-  override val subExpressions = Nil
-
   override def freeTypeVariables = Set()
 
   override val dataType = booleanType
@@ -406,8 +402,6 @@ final case class FalseExpression()(override val sourceLocation: SourceLocation, 
   with AtomicExpression {
   override val toString = "false"
   override val programVariables = Set[ProgramVariable]()
-
-  override val subExpressions = Nil
 
   override def freeTypeVariables = Set()
 

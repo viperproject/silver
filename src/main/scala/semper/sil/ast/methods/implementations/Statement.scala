@@ -6,7 +6,7 @@ import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.programs.symbols.{ProgramVariableSequence, Field, ProgramVariable}
 import semper.sil.ast.methods.Method
 import scala.Some
-import semper.sil.ast.expressions.terms.{Expression, PredicateLocation}
+import semper.sil.ast.expressions.terms.PredicateLocation
 import semper.sil.ast.types.{permissionType, DataType}
 import semper.sil.ast.expressions.{PredicatePermissionExpression, Expression}
 

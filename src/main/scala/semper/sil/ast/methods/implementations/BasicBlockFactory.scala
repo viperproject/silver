@@ -7,7 +7,7 @@ import collection.Set
 import semper.sil.ast.methods.{Scope, MethodFactory}
 import semper.sil.ast.programs.NodeFactory
 import semper.sil.ast.programs.symbols.{PredicateFactory, ProgramVariableSequence, Field, ProgramVariable}
-import semper.sil.ast.expressions.terms.{PredicateLocation, Expression}
+import semper.sil.ast.expressions.terms.PredicateLocation
 import semper.sil.ast.expressions.{PredicatePermissionExpression, Expression, ExpressionFactory}
 
 

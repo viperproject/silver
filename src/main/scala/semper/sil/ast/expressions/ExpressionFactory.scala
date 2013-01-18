@@ -77,10 +77,6 @@ trait ExpressionFactory
       /*      case ppe: PredicateExpression => {
               require(predicates contains ppe.predicate.predicate)
             }*/
-      case pue: UnfoldingExpression => {
-        migrate(pue.location)
-        migrate(pue.expression)
-      }
       case qe: QuantifierExpression => {
         // TODO: decide how to handle bound variables in migration (Christian Klauser <klauserc@ethz.ch>)
         //require(boundVariables contains qe.variable)
@@ -95,9 +91,6 @@ trait ExpressionFactory
         }
         migrate(pe.location.receiver)
         migrate(pe.permission)
-      }
-      case oe: OldExpression => {
-        migrate(oe.expression)
       }
       case t: LiteralExpression => addExpression(t)
       case fa: DomainFunctionApplicationExpression => {
