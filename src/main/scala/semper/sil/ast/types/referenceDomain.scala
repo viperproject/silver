@@ -1,14 +1,14 @@
 package semper.sil.ast.types
 
 import semper.sil.ast.domains._
-import semper.sil.ast.source.noLocation
+import semper.sil.ast.source.NoLocation
 import semper.sil.ast.expressions.util.TermSequence
 
 object referenceDomain extends Domain {
   override val name = "Ref"
   override val comment = Nil
   override val fullName: String = name
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
 
   override def functions = Set[DomainFunction](nullFunction, referenceEquality)
 
@@ -38,9 +38,9 @@ object referenceType extends ReferenceDataType {
 ///////////////////////////////////////////////////////////////////////////
 object nullFunction extends DomainFunction {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "null"
-  override val signature = new DomainFunctionSignature(DataTypeSequence(), referenceType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(), referenceType)(NoLocation)
   override lazy val domain = referenceDomain
 
   override def toString(ts: TermSequence) = name
@@ -53,9 +53,9 @@ object nullFunction extends DomainFunction {
 ///////////////////////////////////////////////////////////////////////////
 object referenceEquality extends DomainFunction {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "==<ref>"
-  override val signature = new DomainFunctionSignature(DataTypeSequence(referenceType, referenceType), booleanType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(referenceType, referenceType), booleanType)(NoLocation)
   override lazy val domain = referenceDomain
 
   override def toString(ts: TermSequence) = {

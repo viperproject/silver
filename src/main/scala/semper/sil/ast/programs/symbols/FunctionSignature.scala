@@ -6,7 +6,7 @@ import semper.sil.ast.expressions.util.ExpressionSequence
 import semper.sil.ast.types.{TypeVariable, DataType}
 import collection.mutable.ListBuffer
 import semper.sil.ast.expressions.Expression
-import semper.sil.ast.source.{noLocation, SourceLocation}
+import semper.sil.ast.source.{NoLocation, SourceLocation}
 
 final class FunctionSignature private[sil](
                                             paParameters: Seq[(SourceLocation, String, DataType)],
@@ -18,13 +18,13 @@ final class FunctionSignature private[sil](
   require(paParameters.forall(_._2 != "result"))
   require(paParameters.forall((x) => paParameters.find(x._2 == _._2) == Some(x)))
 
-  private[symbols] val pParameters = new ProgramVariableSequence((for (pp <- paParameters) yield new ProgramVariable(pp._2, pp._3)(pp._1, Nil)).toList)(noLocation, Nil)
+  private[symbols] val pParameters = new ProgramVariableSequence((for (pp <- paParameters) yield new ProgramVariable(pp._2, pp._3)(pp._1, Nil)).toList)(NoLocation, Nil)
 
   private[symbols] var pPreconditions = new ListBuffer[Expression]
   private[symbols] var pPostconditions = new ListBuffer[Expression]
   private[symbols] var pMeasure: Option[Term] = None
 
-  val result = new ProgramVariable("result", resultType)(noLocation, Nil)
+  val result = new ProgramVariable("result", resultType)(NoLocation, Nil)
 
   lazy val freeTypeVariables: Set[TypeVariable] =
     pParameters.foldLeft(Set[TypeVariable]())(_ union _.dataType.freeTypeVariables) union
@@ -38,7 +38,7 @@ final class FunctionSignature private[sil](
         }
         )
 
-  def parameters: ProgramVariableSequence = new ProgramVariableSequence(pParameters)(noLocation, Nil)
+  def parameters: ProgramVariableSequence = new ProgramVariableSequence(pParameters)(NoLocation, Nil)
 
   def precondition: ExpressionSequence = new ExpressionSequence(pPreconditions)
 

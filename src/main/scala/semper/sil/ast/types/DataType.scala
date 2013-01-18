@@ -1,7 +1,7 @@
 package semper.sil.ast.types
 
 import semper.sil.ast.ASTNode
-import semper.sil.ast.source.{noLocation, SourceLocation}
+import semper.sil.ast.source.{NoLocation, SourceLocation}
 import semper.sil.ast.domains.{DomainTemplate, TypeVariableSubstitution, Domain}
 
 /////////////////////////////////////////////////////////////////////
@@ -110,7 +110,7 @@ case class NonReferenceDataType private[sil](
 /////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////
 case class ReferenceDataType private[sil]() extends DataType {
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val comment = Nil
   val domain: Domain = referenceDomain
 

@@ -2,7 +2,7 @@ package semper.sil.ast.domains
 
 import semper.sil.ast.programs.{NodeFactory, ProgramFactory}
 import semper.sil.ast.expressions.{Expression, ExpressionFactory}
-import semper.sil.ast.source.{noLocation, SourceLocation}
+import semper.sil.ast.source.{NoLocation, SourceLocation}
 import semper.sil.ast.types._
 import scala.collection
 import semper.sil.ast.programs.symbols.{Predicate, Function, ProgramVariable, Field}
@@ -29,7 +29,7 @@ final class DomainTemplateFactory private[sil](
     require(p.forall(dataTypes contains _))
     require(dataTypes contains r)
     require(domainFunctions.forall(_.name != name))
-    val result = new DomainFunctionC(name, new DomainFunctionSignature(p, r)(noLocation), pDomainTemplate)(sourceLocation, comment)
+    val result = new DomainFunctionC(name, new DomainFunctionSignature(p, r)(NoLocation), pDomainTemplate)(sourceLocation, comment)
     pDomainTemplate.pFunctions += result
     result
   }
@@ -38,7 +38,7 @@ final class DomainTemplateFactory private[sil](
   def defineDomainPredicate(name: String, p: DataTypeSequence, sourceLocation: SourceLocation, comment: List[String] = Nil): DomainPredicate = {
     require(domainPredicates.forall(_.name != name))
     require(p.forall(dataTypes contains _))
-    val result = new DomainPredicateC(name, new DomainPredicateSignature(p)(noLocation), pDomainTemplate)(sourceLocation, comment)
+    val result = new DomainPredicateC(name, new DomainPredicateSignature(p)(NoLocation), pDomainTemplate)(sourceLocation, comment)
     pDomainTemplate.pPredicates += result
     result
   }

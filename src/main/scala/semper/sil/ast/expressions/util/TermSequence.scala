@@ -5,7 +5,7 @@ import semper.sil.ast.ASTNode
 import semper.sil.ast.expressions.terms.Term
 import semper.sil.ast.symbols.logical.quantification.LogicalVariable
 import semper.sil.ast.programs.symbols.ProgramVariable
-import semper.sil.ast.source.{SourceLocation, noLocation}
+import semper.sil.ast.source.{SourceLocation, NoLocation}
 import semper.sil.ast.expressions.ProgramVariableSubstitution
 import semper.sil.ast.domains._
 import semper.sil.ast.types.TypeVariable
@@ -18,7 +18,7 @@ sealed class TermSequence private[sil](
 
 
   override val comment = Nil
-  override val sourceLocation: SourceLocation = (if (prArgs.isEmpty) noLocation else prArgs.head.sourceLocation)
+  override val sourceLocation: SourceLocation = (if (prArgs.isEmpty) NoLocation else prArgs.head.sourceLocation)
 
   def args: Seq[Term] = prArgs
 

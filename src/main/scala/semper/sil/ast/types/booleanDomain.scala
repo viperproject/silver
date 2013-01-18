@@ -2,7 +2,7 @@ package semper.sil.ast.types
 
 import semper.sil.ast.domains._
 import semper.sil.ast.expressions.util.TermSequence
-import semper.sil.ast.source.noLocation
+import semper.sil.ast.source.NoLocation
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
@@ -18,7 +18,7 @@ object booleanDomain extends Domain {
 
   override def fullName: String = name
 
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
 
   override def functions = Set[DomainFunction](booleanTrue, booleanFalse, booleanConjunction, booleanDisjunction, booleanNegation, booleanImplication, booleanEquivalence)
 
@@ -35,14 +35,14 @@ object booleanDomain extends Domain {
   override def isCompatible(other: Domain) = other == this
 }
 
-object booleanType extends NonReferenceDataType(booleanDomain)(noLocation, Nil)
+object booleanType extends NonReferenceDataType(booleanDomain)(NoLocation, Nil)
 
 ///////////////////////////////////////////////////////////////////////////
 object booleanTrue extends DomainFunction {
   override val comment = Nil
-  override lazy val sourceLocation = noLocation
+  override lazy val sourceLocation = NoLocation
   override lazy val name = "true"
-  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(), booleanType)(noLocation)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts: TermSequence) = {
@@ -59,9 +59,9 @@ object booleanTrue extends DomainFunction {
 ///////////////////////////////////////////////////////////////////////////
 object booleanFalse extends DomainFunction {
   override val comment = Nil
-  override lazy val sourceLocation = noLocation
+  override lazy val sourceLocation = NoLocation
   override lazy val name = "false"
-  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(), booleanType)(noLocation)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts: TermSequence) = {
@@ -78,9 +78,9 @@ object booleanFalse extends DomainFunction {
 ///////////////////////////////////////////////////////////////////////////
 object booleanNegation extends DomainFunction {
   override val comment = Nil
-  override lazy val sourceLocation = noLocation
+  override lazy val sourceLocation = NoLocation
   override lazy val name = "!"
-  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType), booleanType)(noLocation)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts: TermSequence) = {
@@ -97,9 +97,9 @@ object booleanNegation extends DomainFunction {
 ///////////////////////////////////////////////////////////////////////////
 object booleanConjunction extends DomainFunction {
   override val comment = Nil
-  override lazy val sourceLocation = noLocation
+  override lazy val sourceLocation = NoLocation
   override lazy val name = "/\\"
-  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(noLocation)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts: TermSequence) = {
@@ -116,9 +116,9 @@ object booleanConjunction extends DomainFunction {
 ///////////////////////////////////////////////////////////////////////////
 object booleanDisjunction extends DomainFunction {
   override val comment = Nil
-  override lazy val sourceLocation = noLocation
+  override lazy val sourceLocation = NoLocation
   override lazy val name = "\\/"
-  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(noLocation)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts: TermSequence) = {
@@ -135,9 +135,9 @@ object booleanDisjunction extends DomainFunction {
 ///////////////////////////////////////////////////////////////////////////
 object booleanImplication extends DomainFunction {
   override val comment = Nil
-  override lazy val sourceLocation = noLocation
+  override lazy val sourceLocation = NoLocation
   override lazy val name = "=>"
-  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(noLocation)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts: TermSequence) = {
@@ -154,9 +154,9 @@ object booleanImplication extends DomainFunction {
 ///////////////////////////////////////////////////////////////////////////
 object booleanEquivalence extends DomainFunction {
   override val comment = Nil
-  override lazy val sourceLocation = noLocation
+  override lazy val sourceLocation = NoLocation
   override lazy val name = "<=>"
-  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(noLocation)
+  override lazy val signature = new DomainFunctionSignature(DataTypeSequence(booleanType, booleanType), booleanType)(NoLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts: TermSequence) = {
@@ -173,9 +173,9 @@ object booleanEquivalence extends DomainFunction {
 ///////////////////////////////////////////////////////////////////////////
 object booleanEvaluate extends DomainPredicate {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "eval"
-  override val signature = new DomainPredicateSignature(DataTypeSequence(booleanType))(noLocation)
+  override val signature = new DomainPredicateSignature(DataTypeSequence(booleanType))(NoLocation)
   override lazy val domain = booleanDomain
 
   override def toString(ts: TermSequence) = {

@@ -5,7 +5,7 @@ import semper.sil.ast.symbols.logical.quantification.Forall
 import semper.sil.ast.symbols.logical.{And, Implication, Not}
 import semper.sil.ast.programs.symbols.PredicateFactory
 import semper.sil.ast.methods.MethodFactory
-import semper.sil.ast.source.noLocation
+import semper.sil.ast.source.NoLocation
 import semper.sil.ast.types._
 import semper.sil.ast.expressions.util.TermSequence
 import semper.sil.ast.expressions.terms._
@@ -19,7 +19,7 @@ object Main {
   }
 
   def makeProgram() {
-    val nl = noLocation
+    val nl = NoLocation
 
     val pf = new ProgramFactory("P1")(nl,"Program1" :: Nil)
 

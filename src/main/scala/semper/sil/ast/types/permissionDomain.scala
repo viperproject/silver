@@ -1,7 +1,7 @@
 package semper.sil.ast.types
 
 import semper.sil.ast.expressions.util.TermSequence
-import semper.sil.ast.source.noLocation
+import semper.sil.ast.source.NoLocation
 import semper.sil.ast.domains._
 
 ///////////////////////////////////////////////////////////////////////////
@@ -13,7 +13,7 @@ import semper.sil.ast.domains._
 object permissionDomain extends Domain {
   override val name = "Permission"
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
 
   override def fullName: String = name
 
@@ -32,7 +32,7 @@ object permissionDomain extends Domain {
   override def substitute(s: TypeVariableSubstitution) = this
 }
 
-object permissionType extends NonReferenceDataType(permissionDomain)(noLocation, Nil)
+object permissionType extends NonReferenceDataType(permissionDomain)(NoLocation, Nil)
 
 
 ///////////////////////////////////////////////////////////////////////////
@@ -40,9 +40,9 @@ object permissionType extends NonReferenceDataType(permissionDomain)(noLocation,
 object permissionAddition extends DomainFunction {
   override val domain = permissionDomain
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "+"
-  override val signature = new DomainFunctionSignature(DataTypeSequence(permissionType, permissionType), permissionType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(permissionType, permissionType), permissionType)(NoLocation)
 
 
   override def substitute(ts: TypeVariableSubstitution) = this
@@ -58,9 +58,9 @@ object permissionAddition extends DomainFunction {
 
 object percentagePermission extends DomainFunction {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "%"
-  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType), permissionType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType), permissionType)(NoLocation)
   override val domain = permissionDomain
 
   override def substitute(ts: TypeVariableSubstitution) = this
@@ -75,9 +75,9 @@ object percentagePermission extends DomainFunction {
 
 object permissionSubtraction extends DomainFunction {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "-"
-  override val signature = new DomainFunctionSignature(DataTypeSequence(permissionType, permissionType), permissionType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(permissionType, permissionType), permissionType)(NoLocation)
   override val domain = permissionDomain
 
   override def substitute(ts: TypeVariableSubstitution) = this
@@ -92,9 +92,9 @@ object permissionSubtraction extends DomainFunction {
 
 object permissionMultiplication extends DomainFunction {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "*"
-  override val signature = new DomainFunctionSignature(DataTypeSequence(permissionType, permissionType), permissionType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(permissionType, permissionType), permissionType)(NoLocation)
   override val domain = permissionDomain
 
   override def substitute(ts: TypeVariableSubstitution) = this
@@ -109,9 +109,9 @@ object permissionMultiplication extends DomainFunction {
 
 object permissionIntegerMultiplication extends DomainFunction {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "*"
-  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, permissionType), permissionType)(noLocation)
+  override val signature = new DomainFunctionSignature(DataTypeSequence(integerType, permissionType), permissionType)(NoLocation)
   override val domain = permissionDomain
 
   override def substitute(ts: TypeVariableSubstitution) = this
@@ -127,9 +127,9 @@ object permissionIntegerMultiplication extends DomainFunction {
 ///////////////////////////////////////////////////////////////////////////
 object permissionLE extends DomainPredicate {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "<="
-  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)
+  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
   override def toString(ts: TermSequence) = {
@@ -145,9 +145,9 @@ object permissionLE extends DomainPredicate {
 ///////////////////////////////////////////////////////////////////////////
 object permissionLT extends DomainPredicate {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "<"
-  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)
+  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
   override def toString(ts: TermSequence) = {
@@ -163,9 +163,9 @@ object permissionLT extends DomainPredicate {
 ///////////////////////////////////////////////////////////////////////////
 object permissionGE extends DomainPredicate {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = ">="
-  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)
+  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
   override def toString(ts: TermSequence) = {
@@ -181,9 +181,9 @@ object permissionGE extends DomainPredicate {
 ///////////////////////////////////////////////////////////////////////////
 object permissionGT extends DomainPredicate {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = ">"
-  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)
+  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
   override def toString(ts: TermSequence) = {
@@ -199,9 +199,9 @@ object permissionGT extends DomainPredicate {
 ///////////////////////////////////////////////////////////////////////////
 object permissionEQ extends DomainPredicate {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "=="
-  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)
+  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
   override def toString(ts: TermSequence) = {
@@ -217,9 +217,9 @@ object permissionEQ extends DomainPredicate {
 ///////////////////////////////////////////////////////////////////////////
 object permissionNE extends DomainPredicate {
   override val comment = Nil
-  override val sourceLocation = noLocation
+  override val sourceLocation = NoLocation
   override val name = "!="
-  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(noLocation)
+  override val signature = new DomainPredicateSignature(DataTypeSequence(permissionType, permissionType))(NoLocation)
   override lazy val domain = permissionDomain
 
   override def toString(ts: TermSequence) = {

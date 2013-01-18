@@ -3,7 +3,7 @@ package semper.sil.ast.programs.symbols
 import semper.sil.ast.ASTNode
 import semper.sil.ast.expressions.terms.Term
 import semper.sil.ast.types.{TypeVariable, DataType}
-import semper.sil.ast.source.{noLocation, SourceLocation}
+import semper.sil.ast.source.{NoLocation, SourceLocation}
 
 final case class Function private[programs](
                                              name: String,
@@ -13,7 +13,7 @@ final case class Function private[programs](
                                              val sourceLocation: SourceLocation,
                                              val factory: FunctionFactory, val comment: List[String])
   extends ASTNode {
-  private[symbols] var pSignature = new FunctionSignature(pParams, resultType)(noLocation, Nil)
+  private[symbols] var pSignature = new FunctionSignature(pParams, resultType)(NoLocation, Nil)
 
   lazy val signature: FunctionSignature = pSignature
   lazy val freeTypeVariables: Set[TypeVariable] = signature.freeTypeVariables

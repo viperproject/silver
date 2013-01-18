@@ -2,7 +2,7 @@ package semper.sil.ast.types
 
 import semper.sil.ast.ASTNode
 import semper.sil.ast.domains.TypeVariableSubstitution
-import semper.sil.ast.source.{SourceLocation, noLocation}
+import semper.sil.ast.source.{SourceLocation, NoLocation}
 
 sealed class DataTypeSequence private[sil](
                                             val dataTypes: Seq[DataType]
@@ -10,7 +10,7 @@ sealed class DataTypeSequence private[sil](
   def freeTypeVariables = (for (t <- dataTypes) yield t.freeTypeVariables).flatten
 
   override val comment = Nil
-  override val sourceLocation: SourceLocation = if (dataTypes.isEmpty) noLocation else dataTypes.head.sourceLocation
+  override val sourceLocation: SourceLocation = if (dataTypes.isEmpty) NoLocation else dataTypes.head.sourceLocation
 
   def isCompatible(other: DataTypeSequence): Boolean =
     dataTypes.length == other.length &&
