@@ -4,3 +4,5 @@ project/project/**
 project/target/**
 target/**
 bin/**
+.idea/
+.idea_modules/

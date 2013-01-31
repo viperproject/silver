@@ -4,8 +4,7 @@ package semper.sil.verifier
   *
   * @author Stefan Heule
   */
-trait VerificationResult {
-}
+trait VerificationResult
 
 /** A successful verification. */
 object Success extends VerificationResult
