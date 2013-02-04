@@ -26,6 +26,9 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   /** The list of verifiers to be used. */
   def verifiers: Seq[Verifier]
 
+  /** The config map passed to ScalaTest. */
+  protected var configMap: Map[String, Any] = _
+
   private var _testsRegistered = false
 
   /** Registers a tests that runs the translator for all given verifiers. */
@@ -82,9 +85,9 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
           case semper.sil.verifier.Error(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
             val findError: VerificationError => Option[ErrorAnnotation] = (actual: VerificationError) => {
-              if (!actual.location.isInstanceOf[RealSourceLocation]) None
+              if (!actual.sourceLocation.isInstanceOf[RealSourceLocation]) None
               else expectedErrors.filter({
-                case ErrorAnnotation(id, lineNr) => actual.id == id && actual.location.asInstanceOf[RealSourceLocation].line == lineNr
+                case ErrorAnnotation(id, lineNr) => actual.id == id && actual.sourceLocation.asInstanceOf[RealSourceLocation].line == lineNr
               }) match {
                 case x :: _ => {
                   // remove the error from the list of expected errors (i.e. only match once)
@@ -186,16 +189,19 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   }
 
   protected override def runTest(testName: String, reporter: Reporter, stopper: Stopper, configMap: Map[String, Any], tracker: Tracker) {
+    this.configMap = configMap
     registerTests()
     super.runTest(testName, reporter, stopper, configMap, tracker)
   }
 
   protected override def runTests(testName: Option[String], reporter: Reporter, stopper: Stopper, filter: Filter, configMap: Map[String, Any], distributor: Option[Distributor], tracker: Tracker) {
+    this.configMap = configMap
     registerTests()
     super.runTests(testName, reporter, stopper, filter, configMap, distributor, tracker)
   }
 
   override def run(testName: Option[String], reporter: Reporter, stopper: Stopper, filter: Filter, configMap: Map[String, Any], distributor: Option[Distributor], tracker: Tracker) {
+    this.configMap = configMap
     registerTests()
     super.run(testName, reporter, stopper, filter, configMap, distributor, tracker)
   }

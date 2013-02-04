@@ -56,6 +56,9 @@ trait AtomicExpression extends Expression {
 
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
+/* TODO: PermissionExpression should be renamed into AccessPredicate.
+ *       Rename subclasses accordingly.
+ */
 sealed trait PermissionExpression
   extends Expression {
   def location: Location

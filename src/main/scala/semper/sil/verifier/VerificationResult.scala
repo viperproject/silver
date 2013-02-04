@@ -4,7 +4,7 @@ package semper.sil.verifier
   *
   * @author Stefan Heule
   */
-trait VerificationResult
+sealed trait VerificationResult
 
 /** A successful verification. */
 object Success extends VerificationResult
@@ -13,4 +13,4 @@ object Success extends VerificationResult
   *
   * @param errors The errors encountered during verification.
   */
-sealed case class Error(errors: Seq[VerificationError]) extends VerificationResult
+case class Error(errors: Seq[VerificationError]) extends VerificationResult
