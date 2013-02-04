@@ -1,9 +1,9 @@
 package semper.sil.verifier
 
 import semper.sil.ast.source.SourceLocation
-import semper.sil.ast.expressions.terms.FieldReadExpression
 import semper.sil.ast.expressions.Expression
 import semper.sil.ast.ASTNode
+import semper.sil.ast.methods.implementations.{UnfoldStatement, FoldStatement}
 
 /** A case class to describe an error during the verification of a SIL program.
   *
@@ -43,8 +43,8 @@ object errors {
     val text = "An internal error occurred."
   }
 
-  case class Illformed(offendingNode: ASTNode, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "illformed"
+  case class AssertionMalformed(offendingNode: Expression, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "ass.malformed"
     val text = "$offendingNode is not well-formed."
   }
 
@@ -57,15 +57,35 @@ object errors {
     val text = "Invocation of $offendingNode failed."
   }
 
-  case class AssertionViolated(offendingNode: ASTNode, reason: ErrorReason) extends AbstractVerificationError {
+  case class AssertionViolated(offendingNode: Expression, reason: ErrorReason) extends AbstractVerificationError {
     val id = "ass.violated"
     val text = "Assertion might not hold."
   }
 
   /* RFC: Would it be reasonable to have PostconditionViolated <: AssertionViolated? */
-  case class PostconditionViolated(offendingNode: ASTNode, reason: ErrorReason) extends AbstractVerificationError {
+  case class PostconditionViolated(offendingNode: Expression, reason: ErrorReason) extends AbstractVerificationError {
     val id = "post.violated"
     val text = "Postcondition might not hold."
+  }
+
+  case class FoldFailed(offendingNode: FoldStatement, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "fold.failed"
+    val text = "Folding ${offendingNode.location} failed."
+  }
+
+  case class UnfoldFailed(offendingNode: UnfoldStatement, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "unfold.failed"
+    val text = "Unfolding ${offendingNode.location} failed."
+  }
+
+  case class LoopInvariantNotPreserved(offendingNode: Expression, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "loopinv.not.preserved"
+    val text = "Loop invariant might not be preserved."
+  }
+
+  case class LoopInvariantNotEstablished(offendingNode: Expression, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "loopinv.not.established"
+    val text = "Loop invariant might not hold on entry."
   }
 }
 
@@ -77,17 +97,31 @@ object reasons {
     def readableMessage = s"${feature.toString} is not supported."
   }
 
+  case class AssertionFalse(assertion: ASTNode) extends AbstractErrorReason {
+    val id = "ass.false"
+    override val offendingNode = Some(assertion)
+
+    def readableMessage = "Assertion might not hold."
+  }
+
   case class ReceiverNull(receiver: Expression) extends AbstractErrorReason {
-    val id = "receiver.null"
+    val id = "rcvr.null"
     override val offendingNode = Some(receiver)
 
-    def readableMessage = s"The receiver $receiver might be null."
+    def readableMessage = s"Receiver $receiver might be null."
   }
 
   case class NegativeFraction(fraction: Expression) extends AbstractErrorReason {
     val id = "negative.fraction"
     override val offendingNode = Some(fraction)
 
-    def readableMessage = s"The fraction $fraction might be negative."
+    def readableMessage = s"Fraction $fraction might be negative."
+  }
+
+  case class InsufficientPermissions(where: Expression) extends AbstractErrorReason {
+    val id = "insufficient.permissions"
+    override val offendingNode = Some(where)
+
+    def readableMessage = "Insufficient permissions to access $where."
   }
 }
