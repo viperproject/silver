@@ -87,7 +87,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
             val findError: VerificationError => Option[ErrorAnnotation] = (actual: VerificationError) => {
               if (!actual.sourceLocation.isInstanceOf[RealSourceLocation]) None
               else expectedErrors.filter({
-                case ErrorAnnotation(id, lineNr) => actual.id == id && actual.sourceLocation.asInstanceOf[RealSourceLocation].line == lineNr
+                case ErrorAnnotation(id, lineNr) => actual.fullId == id && actual.sourceLocation.asInstanceOf[RealSourceLocation].line == lineNr
               }) match {
                 case x :: _ => {
                   // remove the error from the list of expected errors (i.e. only match once)

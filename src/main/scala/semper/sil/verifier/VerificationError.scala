@@ -1,40 +1,56 @@
 package semper.sil.verifier
 
-import semper.sil.ast.source.SourceLocation
-import semper.sil.ast.expressions.Expression
+import semper.sil.ast.source.{NoLocation, SourceLocation}
 import semper.sil.ast.ASTNode
 import semper.sil.ast.methods.implementations.{UnfoldStatement, FoldStatement}
 
-/** A case class to describe an error during the verification of a SIL program.
-  *
-  * @author Stefan Heule
-  */
-abstract class VerificationError {
+trait ErrorMessage {
   def id: String
   def offendingNode: ASTNode
-  def reason: ErrorReason
-  def readableMessage: String
   def sourceLocation: SourceLocation
+  def readableMessage: String
 }
 
-abstract class ErrorReason {
-  def id: String
-  def offendingNode: Option[ASTNode]
-  def sourceLocation: Option[SourceLocation]
-  def readableMessage: String
+trait VerificationError extends ErrorMessage {
+  def reason: ErrorReason
+  def readableMessage(full: Boolean): String
+  override def readableMessage = readableMessage(false)
+  def fullId = s"$id:${reason.id}"
+}
+
+trait ErrorReason extends ErrorMessage
+
+case class PartialVerificationError(f: ErrorReason => VerificationError) {
+  private object DummyReason extends AbstractErrorReason {
+    val id = "?"
+    val readableMessage = "?"
+
+    val offendingNode = new ASTNode {
+      val comment = Nil
+      val sourceLocation = NoLocation
+    }
+  }
+
+  def dueTo(reason: ErrorReason) = f(reason)
+  override lazy val toString = f(DummyReason).readableMessage(true)
 }
 
 abstract class AbstractVerificationError extends VerificationError {
-  def text: String
+  protected def text: String
 
-  val sourceLocation = offendingNode.sourceLocation
-  val readableMessage = s"[$sourceLocation]: $text ${reason.readableMessage}"
-  override val toString = readableMessage
+  def sourceLocation = offendingNode.sourceLocation
+
+  def readableMessage(full: Boolean = true) = {
+    val id = if (full) s" [$fullId]" else ""
+    s"$sourceLocation:$id $text ${reason.readableMessage}"
+  }
+
+  override def toString = readableMessage(true)
 }
 
 abstract class AbstractErrorReason extends ErrorReason {
-  val sourceLocation = offendingNode map (_.sourceLocation)
-  override val toString = readableMessage
+  def sourceLocation = offendingNode.sourceLocation
+  override def toString = readableMessage
 }
 
 object errors {
@@ -43,10 +59,24 @@ object errors {
     val text = "An internal error occurred."
   }
 
-  case class AssertionMalformed(offendingNode: Expression, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "ass.malformed"
-    val text = "$offendingNode is not well-formed."
+  def Internal(offendingNode: ASTNode): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => Internal(offendingNode, reason))
+  
+  case class UnsafeCode(offendingNode: ASTNode, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "unsafe"
+    val text = "Unsafe code found."
   }
+  
+  def UnsafeCode(offendingNode: ASTNode): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => UnsafeCode(offendingNode, reason))
+
+  case class AssertionMalformed(offendingNode: ASTNode, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "ass.malformed"
+    val text = s"$offendingNode is not well-formed."
+  }
+
+  def AssertionMalformed(offendingNode: ASTNode): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => AssertionMalformed(offendingNode, reason))
 
   /* TODO: Narrow down the type of offendingNode to something like Invokable, which would be
    *       a subtype of procedures and functions. We could then refine the error message to
@@ -54,74 +84,85 @@ object errors {
    */
   case class InvocationFailed(offendingNode: ASTNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "call.failed"
-    val text = "Invocation of $offendingNode failed."
+    val text = s"Invocation of $offendingNode failed."
   }
 
-  case class AssertionViolated(offendingNode: Expression, reason: ErrorReason) extends AbstractVerificationError {
+  def InvocationFailed(offendingNode: ASTNode): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => InvocationFailed(offendingNode, reason))
+
+  case class AssertionViolated(offendingNode: ASTNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "ass.violated"
     val text = "Assertion might not hold."
   }
 
+  def AssertionViolated(offendingNode: ASTNode): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => AssertionViolated(offendingNode, reason))
+
   /* RFC: Would it be reasonable to have PostconditionViolated <: AssertionViolated? */
-  case class PostconditionViolated(offendingNode: Expression, reason: ErrorReason) extends AbstractVerificationError {
+  case class PostconditionViolated(offendingNode: ASTNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "post.violated"
     val text = "Postcondition might not hold."
   }
+  
+  def PostconditionViolated(offendingNode: ASTNode): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => PostconditionViolated(offendingNode, reason))
 
   case class FoldFailed(offendingNode: FoldStatement, reason: ErrorReason) extends AbstractVerificationError {
     val id = "fold.failed"
-    val text = "Folding ${offendingNode.location} failed."
+    val text = s"Folding ${offendingNode.location} failed."
   }
+  
+  def FoldFailed(offendingNode: FoldStatement): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => FoldFailed(offendingNode, reason))
 
   case class UnfoldFailed(offendingNode: UnfoldStatement, reason: ErrorReason) extends AbstractVerificationError {
     val id = "unfold.failed"
-    val text = "Unfolding ${offendingNode.location} failed."
+    val text = s"Unfolding ${offendingNode.permissionExpression.location} failed."
   }
+  
+  def UnfoldFailed(offendingNode: UnfoldStatement): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => UnfoldFailed(offendingNode, reason))
 
-  case class LoopInvariantNotPreserved(offendingNode: Expression, reason: ErrorReason) extends AbstractVerificationError {
+  case class LoopInvariantNotPreserved(offendingNode: ASTNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "loopinv.not.preserved"
     val text = "Loop invariant might not be preserved."
   }
+  
+  def LoopInvariantNotPreserved(offendingNode: ASTNode): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => LoopInvariantNotPreserved(offendingNode, reason))
 
-  case class LoopInvariantNotEstablished(offendingNode: Expression, reason: ErrorReason) extends AbstractVerificationError {
+  case class LoopInvariantNotEstablished(offendingNode: ASTNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "loopinv.not.established"
     val text = "Loop invariant might not hold on entry."
   }
+  
+  def LoopInvariantNotEstablished(offendingNode: ASTNode): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => LoopInvariantNotEstablished(offendingNode, reason))
 }
 
 object reasons {
-  case class FeatureUnsupported(feature: ASTNode) extends AbstractErrorReason {
+  case class FeatureUnsupported(offendingNode: ASTNode) extends AbstractErrorReason {
     val id = "feature.unsupported"
-    override val offendingNode = Some(feature)
-
-    def readableMessage = s"${feature.toString} is not supported."
+    def readableMessage = s"$offendingNode is not supported."
   }
 
-  case class AssertionFalse(assertion: ASTNode) extends AbstractErrorReason {
+  case class AssertionFalse(offendingNode: ASTNode) extends AbstractErrorReason {
     val id = "ass.false"
-    override val offendingNode = Some(assertion)
-
-    def readableMessage = "Assertion might not hold."
+    def readableMessage = s"Assertion $offendingNode might not hold."
   }
 
-  case class ReceiverNull(receiver: Expression) extends AbstractErrorReason {
+  case class ReceiverNull(offendingNode: ASTNode) extends AbstractErrorReason {
     val id = "rcvr.null"
-    override val offendingNode = Some(receiver)
-
-    def readableMessage = s"Receiver $receiver might be null."
+    def readableMessage = s"Receiver $offendingNode might be null."
   }
 
-  case class NegativeFraction(fraction: Expression) extends AbstractErrorReason {
+  case class NegativeFraction(offendingNode: ASTNode) extends AbstractErrorReason {
     val id = "negative.fraction"
-    override val offendingNode = Some(fraction)
-
-    def readableMessage = s"Fraction $fraction might be negative."
+    def readableMessage = s"Fraction $offendingNode might be negative."
   }
 
-  case class InsufficientPermissions(where: Expression) extends AbstractErrorReason {
+  case class InsufficientPermissions(offendingNode: ASTNode) extends AbstractErrorReason {
     val id = "insufficient.permissions"
-    override val offendingNode = Some(where)
-
-    def readableMessage = "Insufficient permissions to access $where."
+    def readableMessage = s"Insufficient permissions to access $offendingNode."
   }
 }
