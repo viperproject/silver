@@ -35,6 +35,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   def registerSilTest(file: File, prefix: String) {
     require(file != null)
     require(verifiers != null)
+
     val input = Source.fromFile(file).mkString
     val testName = prefix + file.getName
     val testAnnotations = parseAnnotations(input)
@@ -158,18 +159,27 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   def time[T](f: () => T): (T, String) = {
     val start = System.currentTimeMillis()
     val r = f.apply()
+
     (r, formatTime(System.currentTimeMillis() - start))
   }
 
   /** Registers all the files in a given directory as a test. */
   def registerTestDirectory(dir: File, prefix: String = "") {
     require(dir != null)
-    val newPrefix = prefix + dir.getName + "/"
+
     if (dir.listFiles == null) return
+
+    val newPrefix = prefix + dir.getName + "/"
+    val namePattern = configMap.getOrElse("include", ".*").toString
+
     for (f: File <- dir.listFiles.filter(x => x != null && x.isDirectory)) {
       registerTestDirectory(f, newPrefix)
     }
-    for (f: File <- dir.listFiles.filter(!_.isDirectory)) {
+
+    for (f: File <- dir.listFiles
+                       .filterNot(_.isDirectory)
+                       .filter(_.getCanonicalPath().matches(namePattern))) {
+
       registerSilTest(f, newPrefix)
     }
   }
@@ -177,9 +187,11 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   /** Register all the tests. */
   def registerTests() {
     if (_testsRegistered) return
+
     for (testDir <- testDirectories) {
       registerTestDirectory(baseDirectory.resolve(testDir).toFile)
     }
+
     _testsRegistered = true
   }
 
