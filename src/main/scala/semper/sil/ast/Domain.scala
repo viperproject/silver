@@ -41,6 +41,10 @@ sealed trait IntDomainFunc extends AbstractDomainFunc {
 sealed trait BoolDomainFunc extends AbstractDomainFunc {
   lazy val typ = Bool
 }
+/** Domain functions with return type permission. */
+sealed trait PermDomainFunc extends AbstractDomainFunc {
+  lazy val typ = Perm
+}
 
 /** Domain functions that represent built-in binary operators */
 sealed trait BinOp extends Op {
@@ -54,16 +58,22 @@ sealed trait LeftAssoc {
   lazy val fixity = Infix (LeftAssoc)
 }
 
-/** Domain functions that represent built-in binary operators where both arguments are integers */
+/** Domain functions that represent built-in binary operators where both arguments are integers. */
 sealed trait IntBinOp extends BinOp {
   lazy val leftTyp = Int
   lazy val rightTyp = Int
 }
 
-/** Domain functions that represent built-in binary operators where both arguments are booleans */
+/** Domain functions that represent built-in binary operators where both arguments are booleans. */
 sealed trait BoolBinOp extends BinOp {
   lazy val leftTyp = Bool
   lazy val rightTyp = Bool
+}
+
+/** Domain functions that represent built-in binary operators where both arguments are permissions. */
+sealed trait PermBinOp extends BinOp {
+  lazy val leftTyp = Perm
+  lazy val rightTyp = Perm
 }
 
 /** Domain functions that represent built-in unary operators */
@@ -86,12 +96,21 @@ sealed abstract class RelOp(val op: String) extends BoolDomainFunc {
   lazy val fixity = Infix (NonAssoc)
 }
 
-// Arithmetic operators
+// Arithmetic integer operators
 case object PlusOp extends SumOp("+") with IntBinOp with IntDomainFunc
 case object MinusOp extends SumOp("-") with IntBinOp with IntDomainFunc
 case object TimesOp extends ProdOp("*") with IntBinOp with IntDomainFunc
 case object DividedOp extends ProdOp("/") with IntBinOp with IntDomainFunc
 case object ModuloOp extends ProdOp("%") with IntBinOp with IntDomainFunc
+
+// Arithmetic permission operators
+case object PermPlusOp extends SumOp("+") with PermBinOp with PermDomainFunc
+case object PermMinusOp extends SumOp("-") with PermBinOp with PermDomainFunc
+case object PermTimesOp extends ProdOp("*") with PermBinOp with PermDomainFunc
+case object IntPermTimesOp extends SumOp("*") with BinOp with PermDomainFunc {
+  lazy val leftTyp = Int
+  lazy val rightTyp = Perm
+}
 
 /** Integer negation. */
 case object NegOp extends UnOp with IntDomainFunc {
@@ -106,6 +125,14 @@ case object LtOp extends RelOp("<") with IntBinOp
 case object LeOp extends RelOp("<=") with IntBinOp
 case object GtOp extends RelOp(">") with IntBinOp
 case object GeOp extends RelOp(">=") with IntBinOp
+
+// Permission comparison operators
+case object PermLtOp extends RelOp("<") with PermBinOp
+case object PermLeOp extends RelOp("<=") with PermBinOp
+case object PermGtOp extends RelOp(">") with PermBinOp
+case object PermGeOp extends RelOp(">=") with PermBinOp
+
+// Equality and inequality operators
 case object EqOp extends RelOp("==") with IntBinOp
 case object NeOp extends RelOp("!=") with IntBinOp
 
