@@ -157,8 +157,10 @@ trait BaseParser extends PositionedParserUtilities {
   // --- Identifier and keywords
 
   lazy val ident =
-    not(keyword) ~> "[a-zA-Z$_][a-zA-Z0-9$_']*".r |
+    not(keyword) ~> identifier.r |
       failure("identifier expected")
+
+  lazy val identifier = "[a-zA-Z$_][a-zA-Z0-9$_']*"
 
   lazy val keyword =
     keywords("[^a-zA-Z0-9]".r, reserved)

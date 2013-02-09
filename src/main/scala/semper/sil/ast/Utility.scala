@@ -1,5 +1,7 @@
 package semper.sil.ast
 
+import semper.sil.parser.Parser
+
 /** Utility methods for statements. */
 object Statements {
   /** An empty statement. */
@@ -23,7 +25,10 @@ object Statements {
 object Consistency {
 
   /** Names that are not allowed for use in programs. */
-  def reservedNames: Seq[String] = Vector("this", "result")
+  def reservedNames: Seq[String] = Parser.reserved
+
+  /** Returns true iff the string `name` is a valid identifier. */
+  def validIdentifier(s: String) = ("^" + Parser.identifier + "$").r.findFirstIn(s).isDefined
 
   /** Returns true iff the two arguments are of equal length. */
   def sameLength[S, T](a: Seq[T], b: Seq[S]) = a.size == b.size
