@@ -30,7 +30,7 @@ trait Call {
 
 /** A call that has a receiver, i.e. a method or function call. */
 trait RcvCall {
-  require(rcv.typ.isSubtype(Ref))
+  require(rcv isSubtype Ref)
   def rcv: Exp
 }
 
@@ -43,22 +43,22 @@ case class MethodCall(m: Method, rcv: Exp, args: Seq[Exp], targets: Seq[LocalVar
 
 /** An exhale statement. */
 case class Exhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
-  require(exp.typ.isSubtype(Bool))
+  require(exp isSubtype Bool)
 }
 
 /** An inhale statement. */
 case class Inhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
-  require(exp.typ.isSubtype(Bool))
+  require(exp isSubtype Bool)
 }
 
 /** An fold statement. */
 case class Fold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
-  require(acc.typ.isSubtype(Bool))
+  require(acc isSubtype Bool)
 }
 
 /** An unfold statement. */
 case class Unfold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
-  require(acc.typ.isSubtype(Bool))
+  require(acc isSubtype Bool)
 }
 
 /** A sequence of statements. */

@@ -121,7 +121,7 @@ case class PredicateAccess(field: Predicate, rcv: Exp)(val pos: Position = NoPos
 
 /** A conditional expressions. */
 case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
-  require(cond.typ.isSubtype(Bool))
+  require(cond isSubtype Bool)
   require(thn.typ == els.typ)
   lazy val typ = Bool
 }
@@ -239,7 +239,7 @@ sealed trait LocationAccess extends Exp {
 
 /** A common trait for quantified expressions. */
 sealed trait QuantifiedExp extends Exp {
-  require(exp.typ isSubtype Bool)
+  require(exp isSubtype Bool)
   def variable: LocalVar
   def exp: Exp
   lazy val typ = Bool
@@ -247,8 +247,8 @@ sealed trait QuantifiedExp extends Exp {
 
 /** A common trait for accessibility predicates. */
 trait AccessPredicate extends Exp {
-  require(perm.typ isSubtype Perm)
+  require(perm isSubtype Perm)
   def loc: LocationAccess
-  def perm: Exp
+  def perm: PermExp
   lazy val typ = Bool
 }

@@ -35,7 +35,7 @@ object Consistency {
 
   /** Returns true iff the first argument can be assigned to the second one,
    * i.e. if the type of the first one is a subtype of the type of the second one. */
-  def isAssignable(a: Typed, b: Typed) = a.typ isSubtype b.typ
+  def isAssignable(a: Typed, b: Typed) = a isSubtype b
   
   /** Returns true iff the arguments are equal of length and
    * the elements of the first argument are assignable to the corresponding elements of the second argument */

@@ -8,7 +8,7 @@ case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAx
 
 /** A domain axiom. */
 trait DomainAxiom {
-  require(exp.typ isSubtype Bool)
+  require(exp isSubtype Bool)
   def name: String
   def exp: Exp
 }

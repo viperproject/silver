@@ -53,5 +53,8 @@ trait Positioned {
 /** A trait for nodes that have a type. */
 trait Typed {
   def typ: Type
-}
 
+  // for convenience when checking subtyping
+  def isSubtype(other: Type) = typ isSubtype other
+  def isSubtype(other: Typed) = typ isSubtype other.typ
+}
