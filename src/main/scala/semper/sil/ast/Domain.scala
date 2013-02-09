@@ -6,8 +6,9 @@ import org.kiama.output.Infix
 /** A user-defined domain. */
 case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed
 
+/** A domain axiom. */
 trait DomainAxiom {
-  require(exp.typ == Bool)
+  require(exp.typ isSubtype Bool)
   def name: String
   def exp: Exp
 }
@@ -48,7 +49,7 @@ sealed trait BinOp extends Op {
   def rightTyp: Type
 }
 
-/** Left associative expression. */
+/** Left associative operator. */
 sealed trait LeftAssoc {
   lazy val fixity = Infix (LeftAssoc)
 }
@@ -71,21 +72,21 @@ sealed trait UnOp extends Op {
   def expTyp: Type
 }
 
-/** Common interface for sum expressions. */
+/** Common interface for sum operators. */
 sealed abstract class SumOp(val op: String) extends LeftAssoc {
   lazy val priority = 12
 }
-/** Common interface for product expressions. */
+/** Common interface for product operators. */
 sealed abstract class ProdOp(val op: String) extends LeftAssoc {
   lazy val priority = 11
 }
-/** Common interface for relational expressions. */
+/** Common interface for relational operators. */
 sealed abstract class RelOp(val op: String) extends BoolDomainFunc {
   lazy val priority = 13
   lazy val fixity = Infix (NonAssoc)
 }
 
-// Arithmetic expressions
+// Arithmetic operators
 case object PlusOp extends SumOp("+") with IntBinOp with IntDomainFunc
 case object MinusOp extends SumOp("-") with IntBinOp with IntDomainFunc
 case object TimesOp extends ProdOp("*") with IntBinOp with IntDomainFunc
@@ -100,7 +101,7 @@ case object NegOp extends UnOp with IntDomainFunc {
   lazy val fixity = Prefix
 }
 
-// Integer comparison expressions
+// Integer comparison operators
 case object LtOp extends RelOp("<") with IntBinOp
 case object LeOp extends RelOp("<=") with IntBinOp
 case object GtOp extends RelOp(">") with IntBinOp
@@ -108,7 +109,8 @@ case object GeOp extends RelOp(">=") with IntBinOp
 case object EqOp extends RelOp("==") with IntBinOp
 case object NeOp extends RelOp("!=") with IntBinOp
 
-// Boolean expressions
+// Boolean operators
+
 /** Boolean or. */
 case object OrOp extends BoolBinOp with BoolDomainFunc with LeftAssoc {
   lazy val op = "||"
