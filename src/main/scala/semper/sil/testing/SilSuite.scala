@@ -86,9 +86,9 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
           case semper.sil.verifier.Error(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
             val findError: VerificationError => Option[ErrorAnnotation] = (actual: VerificationError) => {
-              if (!actual.sourceLocation.isInstanceOf[SourcePosition]) None
+              if (!actual.pos.isInstanceOf[SourcePosition]) None
               else expectedErrors.filter({
-                case ErrorAnnotation(id, lineNr) => actual.fullId == id && actual.sourceLocation.asInstanceOf[SourcePosition].line == lineNr
+                case ErrorAnnotation(id, lineNr) => actual.fullId == id && actual.pos.asInstanceOf[SourcePosition].line == lineNr
               }) match {
                 case x :: _ => {
                   // remove the error from the list of expected errors (i.e. only match once)
