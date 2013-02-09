@@ -177,6 +177,14 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         parens("exists" <+> showVar(v) <+> "::" <+> show(exp))
       case Forall(v, exp) =>
         parens("forall" <+> showVar(v) <+> "::" <+> show(exp))
+      case ReadPerm() =>
+        "read"
+      case FullPerm() =>
+        "write"
+      case NoPerm() =>
+        "0"
+      case CurrentPerm(loc) =>
+        "perm" <> parens(show(loc))
       case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)
     }
   }
