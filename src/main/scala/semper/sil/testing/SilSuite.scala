@@ -3,10 +3,10 @@ package semper.sil.testing
 import java.io.File
 import semper.sil.verifier.{VerificationError, Success, Verifier}
 import semper.source.Translator
-import org.scalatest._
 import java.nio.file.Path
 import io.Source
-import semper.sil.ast.source.RealSourceLocation
+import semper.sil.ast.SourcePosition
+import org.scalatest._
 
 /** A test suite for verification toolchains that use SIL as the intermediate language.
   *
@@ -86,9 +86,9 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
           case semper.sil.verifier.Error(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
             val findError: VerificationError => Option[ErrorAnnotation] = (actual: VerificationError) => {
-              if (!actual.sourceLocation.isInstanceOf[RealSourceLocation]) None
+              if (!actual.sourceLocation.isInstanceOf[SourcePosition]) None
               else expectedErrors.filter({
-                case ErrorAnnotation(id, lineNr) => actual.fullId == id && actual.sourceLocation.asInstanceOf[RealSourceLocation].line == lineNr
+                case ErrorAnnotation(id, lineNr) => actual.fullId == id && actual.sourceLocation.asInstanceOf[SourcePosition].line == lineNr
               }) match {
                 case x :: _ => {
                   // remove the error from the list of expected errors (i.e. only match once)

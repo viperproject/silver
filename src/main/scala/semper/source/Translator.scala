@@ -1,9 +1,9 @@
 package semper.source
 
 import semper.sil.verifier.{VerificationResult, Verifier}
-import semper.sil.ast.programs.Program
 import java.io.File
 import io.Source
+import semper.sil.ast.Program
 
 /** A translator for some programming language that produces a SIL program (which then in turn can be verified using a
   * SIL verifier).

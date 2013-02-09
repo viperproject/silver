@@ -1,7 +1,7 @@
 
 package semper.sil.verifier
 
-import semper.sil.ast.programs.Program
+import semper.sil.ast.Program
 
 /** An abstract class for verifiers of SIL programs.
   *
