@@ -38,11 +38,11 @@ case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 case class Equiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(EquivOp)
 
 /** Boolean literals. */
-sealed abstract class BoolLit(val b: Boolean) extends Exp {
+sealed abstract class BoolLit(val value: Boolean) extends Exp {
   lazy val typ = Bool
 }
 object BoolLit {
-  def unapply(b: BoolLit) = Some(b.b)
+  def unapply(b: BoolLit) = Some(b.value)
 }
 case class TrueLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends BoolLit(true)
 case class FalseLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends BoolLit(false)
