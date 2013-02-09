@@ -54,13 +54,13 @@ case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 // --- Permissions
 
 /** An accessibility predicate for a field location. */
-case class FieldAccessPredicate(loc: FieldAccess, perm: Perm)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AccessPredicate
+case class FieldAccessPredicate(loc: FieldAccess, perm: PermExp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AccessPredicate
 
 /** An accessibility predicate for a predicate location. */
-case class PredicateAccessPredicate(loc: PredicateAccess, perm: Perm)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AccessPredicate
+case class PredicateAccessPredicate(loc: PredicateAccess, perm: PermExp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AccessPredicate
 
 /** An abstract read permission. */
-case class ReadPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends Perm
+case class ReadPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 
 /** The full permission. */
 case class FullPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractConcretePerm(1, 1)
@@ -78,13 +78,13 @@ case class ConcretePerm(override val numerator: BigInt, override val denominator
 }
 
 /** The permission currently held for a given location. */
-case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Perm
+case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 
 // Arithmetic expressions
-case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(PermPlusOp) with Perm
-case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(PermMinusOp) with Perm
-case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(PermTimesOp) with Perm
-case class PermIntMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(IntPermTimesOp) with Perm
+case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(PermPlusOp) with PermExp
+case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(PermMinusOp) with PermExp
+case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(PermTimesOp) with PermExp
+case class PermIntMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(IntPermTimesOp) with PermExp
 
 // Comparison expressions
 case class PermLtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(LtOp)
@@ -182,12 +182,12 @@ case class ThisLit()(val pos: Position = NoPosition, val info: Info = NoInfo) ex
 // --- Common functionality
 
 /** A common trait for permissions. */
-sealed trait Perm extends Exp {
-  lazy val typ = Perm
+sealed trait PermExp extends Exp {
+  override lazy val typ = Perm
 }
 
 /** A common class for concrete permissions. */
-sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominator: BigInt) extends Perm
+sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominator: BigInt) extends PermExp
 
 /** Common ancestor of Domain Function applications and Function applications. */
 sealed trait FuncLikeApp extends Exp with Call with Typed {
