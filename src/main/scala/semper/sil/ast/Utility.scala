@@ -28,7 +28,10 @@ object Consistency {
   def reservedNames: Seq[String] = Parser.reserved
 
   /** Returns true iff the string `name` is a valid identifier. */
-  def validIdentifier(s: String) = ("^" + Parser.identifier + "$").r.findFirstIn(s).isDefined
+  def validIdentifier(name: String) = ("^" + Parser.identifier + "$").r.findFirstIn(name).isDefined
+
+  /** Returns true iff the string `name` is a valid identifier, and not a reserved word. */
+  def validUserDefinedIdentifier(name: String) = validIdentifier(name) && !reservedNames.contains(name)
 
   /** Returns true iff the two arguments are of equal length. */
   def sameLength[S, T](a: Seq[T], b: Seq[S]) = a.size == b.size

@@ -163,8 +163,7 @@ object AbstractLocalVar {
 
 /** A normal local variable (used both for declarations and usages). */
 case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar {
-  require(!Consistency.reservedNames.contains(name))
-  require(!Consistency.validIdentifier(name))
+  require(!Consistency.validUserDefinedIdentifier(name))
 }
 
 /** A special local variable for the result of a function. */

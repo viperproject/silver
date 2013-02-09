@@ -71,7 +71,9 @@ case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, v
 case class While(cond: Exp, invs: Seq[Exp], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
 
 /** A label (that can be the target of a goto). */
-case class Label(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
+case class Label(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+  require(Consistency.validUserDefinedIdentifier(name))
+}
 
 /** A goto statement. */
 case class Goto(target: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
