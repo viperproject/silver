@@ -72,25 +72,25 @@ sealed trait UnOp extends Op {
 }
 
 /** Common interface for sum expressions. */
-sealed abstract class SumOp(val op: String) extends IntBinOp with IntDomainFunc with LeftAssoc {
+sealed abstract class SumOp(val op: String) extends LeftAssoc {
   lazy val priority = 12
 }
 /** Common interface for product expressions. */
-sealed abstract class ProdOp(val op: String) extends IntBinOp with IntDomainFunc with LeftAssoc {
+sealed abstract class ProdOp(val op: String) extends LeftAssoc {
   lazy val priority = 11
 }
 /** Common interface for relational expressions. */
-sealed abstract class RelOp(val op: String) extends IntBinOp with BoolDomainFunc {
+sealed abstract class RelOp(val op: String) extends BoolDomainFunc {
   lazy val priority = 13
   lazy val fixity = Infix (NonAssoc)
 }
 
 // Arithmetic expressions
-case object PlusOp extends SumOp("+")
-case object MinusOp extends SumOp("-")
-case object TimesOp extends ProdOp("*")
-case object DividedOp extends ProdOp("/")
-case object ModuloOp extends ProdOp("%")
+case object PlusOp extends SumOp("+") with IntBinOp with IntDomainFunc
+case object MinusOp extends SumOp("-") with IntBinOp with IntDomainFunc
+case object TimesOp extends ProdOp("*") with IntBinOp with IntDomainFunc
+case object DividedOp extends ProdOp("/") with IntBinOp with IntDomainFunc
+case object ModuloOp extends ProdOp("%") with IntBinOp with IntDomainFunc
 
 /** Integer negation. */
 case object NegOp extends UnOp with IntDomainFunc {
@@ -101,12 +101,12 @@ case object NegOp extends UnOp with IntDomainFunc {
 }
 
 // Integer comparison expressions
-case object LtOp extends RelOp("<")
-case object LeOp extends RelOp("<=")
-case object GtOp extends RelOp(">")
-case object GeOp extends RelOp(">=")
-case object EqOp extends RelOp("==")
-case object NeOp extends RelOp("!=")
+case object LtOp extends RelOp("<") with IntBinOp
+case object LeOp extends RelOp("<=") with IntBinOp
+case object GtOp extends RelOp(">") with IntBinOp
+case object GeOp extends RelOp(">=") with IntBinOp
+case object EqOp extends RelOp("==") with IntBinOp
+case object NeOp extends RelOp("!=") with IntBinOp
 
 // Boolean expressions
 /** Boolean or. */
