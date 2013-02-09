@@ -148,6 +148,10 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           if (els.children.size == 0) empty
           else empty <+> "else" <+> showBlock(els)
         }
+      case Label(name) =>
+        name <> ":"
+      case Goto(target) =>
+        "goto" <+> target
     }
     showComment(stmt) <> stmtDoc
   }
