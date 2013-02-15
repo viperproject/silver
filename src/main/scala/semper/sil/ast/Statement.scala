@@ -9,6 +9,11 @@ sealed trait Stmt extends Node with Infoed with Positioned {
    * is, all statements except `Seqn`, including statements in the body of loops, etc.
    */
   def children = Statements.children(this)
+
+  /**
+   * Returns a control flow graph that corresponds to this statement.
+   */
+  def cfg = CfgGenerator.toCFG(this)
 }
 
 /** An assignment to a local variable. */
