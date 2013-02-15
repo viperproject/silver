@@ -225,7 +225,7 @@ object CfgGenerator {
     // to the block that `stmt` will be part of (stmt must be a leader). the
     // function f sets the edge on the source correctly (whether it is a conditional
     // or unconditional edge).
-    val missingEdges: ListBuffer[(ExtendedStmt, TmpBlock => ())] = ListBuffer()
+    val missingEdges: ListBuffer[(ExtendedStmt, (TmpBlock => Unit))] = ListBuffer()
 
     // run phase 2
     run()
@@ -244,13 +244,13 @@ object CfgGenerator {
         nodes(i) match {
           case Jump(lbl) =>
             // finish current block and add a missing edge
-            missingEdges += ((resolveLbl(lbl), _ => cur += UncondEdge(_)))
+            missingEdges += ((resolveLbl(lbl), (t: TmpBlock) => cur += UncondEdge(t)))
             cur = new VarBlock()
           case CondJump(thn, els, cond) =>
             // finish current block and add two missing edges
             val notCond = Not(cond)(NoPosition)
-            missingEdges += ((resolveLbl(thn), _ => cur += CondEdge(_, cond)))
-            missingEdges += ((resolveLbl(els), _ => cur += CondEdge(_, notCond)))
+            missingEdges += ((resolveLbl(thn), (t: TmpBlock) => cur += CondEdge(t, cond)))
+            missingEdges += ((resolveLbl(els), (t: TmpBlock) => cur += CondEdge(t, notCond)))
             cur = new VarBlock()
           case Loop(after, cond, invs) =>
             // handle loop body: start with a new block, and a different
@@ -385,8 +385,8 @@ object CfgVisualizer {
           edges.append(s"    ${name(b)} -> ${name(succ)};\n")
           worklist.enqueue(succ)
         case ConditionalBlock(_, _, thn, els) =>
-          edges.append(s"    ${name(b)} -> ${name(thn)} [label=\"then\"];\n")
-          edges.append(s"    ${name(b)} -> ${name(els)} [label=\"else\"];\n")
+          edges.append(s"    ${name(b)} -> ${name(thn)} " + "[label=\"then\"];\n")
+          edges.append(s"    ${name(b)} -> ${name(els)} " + "[label=\"else\"];\n")
           worklist.enqueue(thn, els)
       }
     }
