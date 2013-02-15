@@ -153,7 +153,9 @@ object CfgGenerator {
   }
 
   /** Extended statements are used during the translation of an AST to a CFG. */
-  sealed trait ExtendedStmt
+  sealed trait ExtendedStmt {
+    var isLeader = false
+  }
   case class RegularStmt(stmt: Stmt) extends ExtendedStmt
   case class Jump(lbl: Lbl) extends ExtendedStmt
   case class CondJump(thn: Lbl, els: Lbl, cond: Exp) extends ExtendedStmt
@@ -241,12 +243,25 @@ object CfgGenerator {
       var i = -1
       while (i < nodes.size) {
         var b: TmpBlock = null
-        nodes(i) match {
+        val n = nodes(i)
+        n match {
           case Jump(lbl) =>
+            if (n.isLeader) {
+              val newCur = new VarBlock()
+              cur += UncondEdge(newCur)
+              cur = newCur
+              b = cur
+            }
             // finish current block and add a missing edge
             missingEdges += ((resolveLbl(lbl), (t: TmpBlock) => cur += UncondEdge(t)))
             cur = new VarBlock()
           case CondJump(thn, els, cond) =>
+            if (n.isLeader) {
+              val newCur = new VarBlock()
+              cur += UncondEdge(newCur)
+              cur = newCur
+              b = cur
+            }
             // finish current block and add two missing edges
             val notCond = Not(cond)(NoPosition)
             missingEdges += ((resolveLbl(thn), (t: TmpBlock) => cur += CondEdge(t, cond)))
@@ -273,14 +288,27 @@ object CfgGenerator {
             loop += UncondEdge(cur)
             b = loop
           case EmptyStmt() =>
-            // skip it
-            b = cur
+            // skip it, and only deal with leader stuff
+            if (n.isLeader) {
+              val newCur = new VarBlock()
+              cur += UncondEdge(newCur)
+              cur = newCur
+              b = cur
+            }
           case RegularStmt(s) =>
+            if (n.isLeader) {
+              val newCur = new VarBlock()
+              cur += UncondEdge(newCur)
+              cur = newCur
+              b = cur
+            }
             cur.stmts += s
-            b = cur
         }
         i += 1
-        if (b != null) nodeToBlock.put(nodes(i), b)
+        if (n.isLeader) {
+          assert(b != null)
+          nodeToBlock.put(n, b)
+        }
       }
     }
 
@@ -295,10 +323,13 @@ object CfgGenerator {
     val nodes: ListBuffer[ExtendedStmt] = ListBuffer()
     /** A mapping of Labels to indices into `nodes`. */
     val lblmap: collection.mutable.Map[Lbl, Int] = collection.mutable.Map()
+    /** The extended statements that are leaders (indices into `nodes`). */
+    val leaders: ListBuffer[Int] = ListBuffer()
 
     run(ast)
     // in case anything points to the 'next' node.
     nodes += EmptyStmt()
+    setLeader()
 
     /**
      * Translates a statement and adds the appropriate information to `nodes` and `lblmap`. Note that
@@ -339,6 +370,12 @@ object CfgGenerator {
 
     /** The index of the next extended node. */
     private def nextNode = nodes.size
+
+    private def setLeader() {
+      for ((n, i) <- nodes.zipWithIndex) {
+        n.isLeader = leaders contains i
+      }
+    }
   }
 
 }
