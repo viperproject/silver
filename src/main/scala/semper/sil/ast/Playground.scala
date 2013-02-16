@@ -2,8 +2,7 @@ package semper.sil.ast
 
 import pretty.PrettyPrinter
 import semper.sil.parser.{Resolver, Translator, Parser}
-import org.kiama.util.Messaging.{message, messagecount, report,
-resetmessages, sortedmessages}
+import org.kiama.util.Messaging.{messagecount, sortedmessages}
 
 // --- Playground
 
@@ -16,7 +15,8 @@ object Main {
     //exp
     //parse("1+(2*(1-3))+4")
     //println(program)
-    parse(
+    cfg
+    /*parse(
       """
         |  method foo(a: Int, b: Bool)
         |    requires true
@@ -34,7 +34,7 @@ object Main {
     )
     if (args.size > 0) {
       parse(args(0))
-    }
+    }*/
   }
 
   def parse(s: String) = {
@@ -47,7 +47,7 @@ object Main {
           println(PrettyPrinter.pretty(n))
         } else {
           for (m <- sortedmessages)
-          println(m)
+            println(m)
         }
       case f => println(f)
     }
@@ -55,31 +55,67 @@ object Main {
 
   implicit def lift(s: String): Info = SimpleInfo(List(s))
 
-  val n = NoPosition
-  val T = TypeVar("T")
-  val S = TypeVar("S")
-  val tru = TrueLit()()
-  val fals = FalseLit()()
-  val self = ThisLit()()
-  val domain = Domain("Map", Nil, Nil, List(T, S))()
-  val domainType = DomainType(domain, Map())
-  val domainType2 = DomainType(domain, Map(T -> Int, S -> Bool))
+  lazy val n = NoPosition
+  lazy val T = TypeVar("T")
+  lazy val S = TypeVar("S")
+  lazy val tru = TrueLit()()
+  lazy val fals = FalseLit()()
+  lazy val self = ThisLit()()
+  lazy val domain = Domain("Map", Nil, Nil, List(T, S))()
+  lazy val domainType = DomainType(domain, Map())
+  lazy val domainType2 = DomainType(domain, Map(T -> Int, S -> Bool))
   def vari(s: String, t: Type) = LocalVar(s)(t)
+  lazy val one = IntLit(1)()
+  lazy val two = IntLit(2)()
+  lazy val c1 = LeCmp(l4, two)()
 
-  val l1 = LocalVar("a")(Int)
-  val l2 = LocalVar("b")(Int)
-  val l3 = LocalVar("c")(domainType2)
-  val l4 = LocalVar("d")(Int)
-  val l5 = LocalVar("e")(domainType2)
+  lazy val l1 = LocalVar("a")(Int)
+  lazy val l2 = LocalVar("b")(Int)
+  lazy val l3 = LocalVar("c")(domainType2)
+  lazy val l4 = LocalVar("d")(Int)
+  lazy val l5 = LocalVar("e")(domainType2)
 
-  val f1 = Field("val")(Int, n, "Some field description")
-  val f2 = Field("test")(domainType2, n, "Another comment")
+  lazy val f1 = Field("val")(Int, n, "Some field description")
+  lazy val f2 = Field("test")(domainType2, n, "Another comment")
 
-  val emptyStmt = Statements.EmptyStmt
+  lazy val emptyStmt = Statements.EmptyStmt
 
-  val method = Method("foo", List(l1, l2), List(l3, l4), Nil, Nil, Vector(l5), emptyStmt)()
+  lazy val method = Method("foo", List(l1, l2), List(l3, l4), Nil, Nil, Vector(l5), emptyStmt)()
 
-  val program = Program("ListReverse", Nil, List(f1, f2), Nil, Nil, List(method))()
+  lazy val program = Program("ListReverse", Nil, List(f1, f2), Nil, Nil, List(method))()
+
+  lazy val if1 = If(c1,
+    LocalVarAssign(l1, one)(),
+    LocalVarAssign(l2, two)()
+  )()
+
+  lazy val if2 = If(c1,
+    if1,
+    LocalVarAssign(l2, two)()
+  )()
+
+  lazy val lbl1 = Label("lbl1")()
+  lazy val lbl2 = Label("lbl2")()
+
+  lazy val goto1 = Goto("lbl1")()
+  lazy val goto2 = Goto("lbl2")()
+
+  def cfg {
+    val s = Seqn(Seq(
+      If(c1,
+        if1,
+        goto1
+      )(),
+      Seqn(Seq(
+        LocalVarAssign(l4, two)(),
+        lbl1,
+        LocalVarAssign(l2, two)(),
+        LocalVarAssign(l2, two)()
+      ))()
+    ))()
+
+    printCfg(s)
+  }
 
   def meth = {
     val m = MethodCall(method, self, List(l1, l1), List(l3, l4))()
@@ -99,5 +135,20 @@ object Main {
     val b3 = tru
     val r = Not(And(b1, Or(b2, b3)())())()
     println(PrettyPrinter.pretty(r))
+  }
+
+  def printCfg(b: Stmt) {
+    println(b)
+    printCfg(b.cfg)
+  }
+  def printCfg(b: Block) {
+    val file = "C:\\tmp\\sil\\cfg.dot"
+    val dot = b.toDot
+    val pw = new java.io.PrintWriter(new java.io.File(file))
+    pw.write(dot)
+    pw.close()
+    println(dot)
+    import scala.sys.process._
+    Seq("dot", "-Tpdf", file, "-o", "C:\\tmp\\sil\\cfg.pdf").!
   }
 }
