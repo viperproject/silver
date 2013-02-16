@@ -98,9 +98,21 @@ object Consistency {
 
 /**
  * An object that can take an AST and translate it into the corresponding CFG.
+ *
+ * The generation proceeds in four phases:
+ * 1. From the AST, a list of 'extended nodes' is generated.  These extended nodes correspond to
+ * statements (but no labels or gotos), and some additional instructions to model control flow (jumps
+ * or conditional jumps).
+ * 2. The list of extended nodes is turned into a temporary CFG (TmpBlock).  This representation has various
+ * mutable fields to make generation easier.
+ * 3. Some degenerated cases are cleaned up (e.g., empty basic blocks).
+ * 4. The temporary CFG is converted to the final CFG.
  */
 object CfgGenerator {
 
+  /**
+   * Returns a control flow graph that corresponds to a statement.
+   */
   def toCFG(ast: Stmt): Block = {
     val p1 = new Phase1(ast)
     val p2 = new Phase2(p1)
@@ -109,6 +121,7 @@ object CfgGenerator {
     p4.result
   }
 
+  // temporary CFG blocks (mutable to allow incremental creation)
   trait TmpBlock {
     var pred: ListBuffer[TmpBlock] = ListBuffer()
 
@@ -185,6 +198,9 @@ object CfgGenerator {
   case class Loop(after: Lbl, cond: Exp, invs: Seq[Exp]) extends ExtendedStmt
   case class EmptyStmt() extends ExtendedStmt
 
+  /**
+   * Convert the temporary CFG to the final one.
+   */
   class Phase4(p3: Phase3) {
     val b2b: collection.mutable.HashMap[TmpBlock, Block] = collection.mutable.HashMap()
 
@@ -231,13 +247,17 @@ object CfgGenerator {
     }
   }
 
+  /**
+   * Clean up degenerated cases in the CFG:
+   * - empty blocks
+   */
   class Phase3(p2: Phase2) {
     var start = p2.start
 
     // find and remove empty blocks
     bfs(start) {
       tb =>
-        // only consider VarBlocks with exactly one successor that are empty
+      // only consider VarBlocks with exactly one successor that are empty
         tb match {
           case vb: VarBlock if vb.stmt.children.size == 0 =>
             vb.edges match {
@@ -272,6 +292,9 @@ object CfgGenerator {
     }
   }
 
+  /**
+   * Create a temporary CFG from the node list of phase 1.  The CFG might contain empty blocks.
+   */
   class Phase2(p1: Phase1) {
     val start = new VarBlock()
     var cur = start
