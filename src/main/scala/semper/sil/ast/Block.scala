@@ -13,7 +13,7 @@ sealed trait Block {
    * Returns a DOT representation of the control flow graph that can be visualized using
    * tools such as Graphviz.
    */
-  def toDot = CfgVisualizer.toDot(this)
+  def toDot = ControlFlowGraph.toDot(this)
 }
 object Block {
   private var id: Int = 0

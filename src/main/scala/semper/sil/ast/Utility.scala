@@ -104,7 +104,8 @@ object CfgGenerator {
   def toCFG(ast: Stmt): Block = {
     val p1 = new Phase1(ast)
     val p2 = new Phase2(p1)
-    val p4 = new Phase4(p2)
+    val p3 = new Phase3(p2)
+    val p4 = new Phase4(p3)
     p4.result
   }
 
@@ -145,6 +146,22 @@ object CfgGenerator {
   case class UncondEdge(dest: TmpBlock) extends TmpEdge
 
   /**
+   * Performs a breadth-first search over a temporary control flow graph.
+   */
+  def bfs(block: TmpBlock)(f: TmpBlock => Unit) {
+    val worklist = collection.mutable.Queue[TmpBlock]()
+    worklist.enqueue(block)
+    val visited = collection.mutable.Set[TmpBlock]()
+
+    while (!worklist.isEmpty) {
+      val tb = worklist.dequeue()
+      worklist.enqueue((tb.succs filterNot (visited contains _)): _*)
+      visited ++= tb.succs
+      f(tb)
+    }
+  }
+
+  /**
    * A label that is the target of a jump (the name identifies the target, and we
    * use a special format for labels with generated names).
    */
@@ -168,58 +185,90 @@ object CfgGenerator {
   case class Loop(after: Lbl, cond: Exp, invs: Seq[Exp]) extends ExtendedStmt
   case class EmptyStmt() extends ExtendedStmt
 
-  class Phase4(p3: Phase2) {
+  class Phase4(p3: Phase3) {
     val b2b: collection.mutable.HashMap[TmpBlock, Block] = collection.mutable.HashMap()
 
     def result = b2b(p3.start)
 
     // create a Block for every TmpBlock
-    val worklist = collection.mutable.Queue[TmpBlock]()
-    val visited = collection.mutable.Set[TmpBlock]()
-    worklist.enqueue(p3.start)
-    while (!worklist.isEmpty) {
-      val tb = worklist.dequeue()
-      worklist.enqueue((tb.succs filterNot (visited contains _)): _*)
-      visited ++= tb.succs
-      var b: Block = null
-      tb match {
-        case loop: TmpLoopBlock =>
-          b = LoopBlock(null, loop.cond, loop.invs, null)
-        case vb: VarBlock if vb.edges.size == 0 =>
-          b = TerminalBlock(vb.stmt)
-        case vb: VarBlock if vb.edges.size == 1 =>
-          b = NormalBlock(vb.stmt, null)
-        case vb: VarBlock if vb.edges.size == 2 =>
-          b = ConditionalBlock(vb.stmt, vb.edges(0).asInstanceOf[CondEdge].cond, null, null)
-        case _ =>
-          sys.error("unexpected block")
-      }
-      b2b += tb -> b
+    bfs(p3.start) {
+      tb =>
+        var b: Block = null
+        tb match {
+          case loop: TmpLoopBlock =>
+            b = LoopBlock(null, loop.cond, loop.invs, null)
+          case vb: VarBlock if vb.edges.size == 0 =>
+            b = TerminalBlock(vb.stmt)
+          case vb: VarBlock if vb.edges.size == 1 =>
+            b = NormalBlock(vb.stmt, null)
+          case vb: VarBlock if vb.edges.size == 2 =>
+            b = ConditionalBlock(vb.stmt, vb.edges(0).asInstanceOf[CondEdge].cond, null, null)
+          case _ =>
+            sys.error("unexpected block")
+        }
+        b2b += tb -> b
     }
 
     // add all edges between blocks
-    worklist.enqueue(p3.start)
-    visited.clear()
-    while (!worklist.isEmpty) {
-      val tb = worklist.dequeue()
-      worklist.enqueue((tb.succs filterNot (visited contains _)): _*)
-      visited ++= tb.succs
-      val b: Block = b2b(tb)
-      tb match {
-        case loop: TmpLoopBlock =>
-          val lb = b.asInstanceOf[LoopBlock]
-          lb.body = b2b(loop.body)
-          lb.succ = b2b(loop.edge.dest)
-        case vb: VarBlock if vb.edges.size == 0 => // nothing to do, no successors
-        case vb: VarBlock if vb.edges.size == 1 =>
-          b.asInstanceOf[NormalBlock].succ = b2b(vb.edges(0).dest)
-        case vb: VarBlock if vb.edges.size == 2 =>
-          val cb = b.asInstanceOf[ConditionalBlock]
-          cb.thn = b2b(vb.edges(0).dest)
-          cb.els = b2b(vb.edges(1).dest)
-        case _ =>
-          sys.error("unexpected block")
-      }
+    bfs(p3.start) {
+      tb =>
+        val b: Block = b2b(tb)
+        tb match {
+          case loop: TmpLoopBlock =>
+            val lb = b.asInstanceOf[LoopBlock]
+            lb.body = b2b(loop.body)
+            lb.succ = b2b(loop.edge.dest)
+          case vb: VarBlock if vb.edges.size == 0 => // nothing to do, no successors
+          case vb: VarBlock if vb.edges.size == 1 =>
+            b.asInstanceOf[NormalBlock].succ = b2b(vb.edges(0).dest)
+          case vb: VarBlock if vb.edges.size == 2 =>
+            val cb = b.asInstanceOf[ConditionalBlock]
+            cb.thn = b2b(vb.edges(0).dest)
+            cb.els = b2b(vb.edges(1).dest)
+          case _ =>
+            sys.error("unexpected block")
+        }
+    }
+  }
+
+  class Phase3(p2: Phase2) {
+    var start = p2.start
+
+    // find and remove empty blocks
+    bfs(start) {
+      tb =>
+        // only consider VarBlocks with exactly one successor that are empty
+        tb match {
+          case vb: VarBlock if vb.stmt.children.size == 0 =>
+            vb.edges match {
+              case ListBuffer(UncondEdge(succ)) =>
+                // go through all predecessors and relink them to 'succ', and update the predecessors of 'succ'
+                succ.pred -= vb
+                for (pred <- vb.pred) {
+                  succ.pred += pred
+                  pred match {
+                    case loop: TmpLoopBlock =>
+                      loop.edge = UncondEdge(succ)
+                    case vb: VarBlock if vb.edges.size == 1 =>
+                      vb.edges(0) = UncondEdge(succ)
+                    case vb: VarBlock if vb.edges.size == 2 =>
+                      if (vb.edges(0).dest == vb) {
+                        vb.edges(0) = CondEdge(succ, vb.edges(0).asInstanceOf[CondEdge].cond)
+                      } else {
+                        vb.edges(1) = CondEdge(succ, vb.edges(1).asInstanceOf[CondEdge].cond)
+                      }
+                    case _ =>
+                      sys.error("unexpected block")
+                  }
+                }
+                if (vb.pred.size == 0) {
+                  assert(vb == start)
+                  start == succ
+                }
+              case _ =>
+            }
+          case _ =>
+        }
     }
   }
 
@@ -372,8 +421,7 @@ object CfgGenerator {
           nodes += EmptyStmt()
           for (s <- ss) run(s)
         case Goto(target) =>
-          Jump(Lbl(target))
-          nodes += EmptyStmt()
+          nodes += Jump(Lbl(target))
         case Label(name) =>
           lblmap += Lbl(name) -> nextNode
           nodes += EmptyStmt()
@@ -398,11 +446,26 @@ object CfgGenerator {
       }
     }
   }
-
 }
 
-/** A utility object to visualize a control flow graph. */
-object CfgVisualizer {
+/** A utility object for control flow graphs. */
+object ControlFlowGraph {
+
+  /**
+   * Performs a breadth-first search over a control flow graph.
+   */
+  def bfs(block: Block)(f: Block => Unit) {
+    val worklist = collection.mutable.Queue[Block]()
+    worklist.enqueue(block)
+    val visited = collection.mutable.Set[Block]()
+
+    while (!worklist.isEmpty) {
+      val b = worklist.dequeue()
+      worklist.enqueue((b.succs map (_.dest) filterNot (visited contains _)): _*)
+      visited ++= b.succs map (_.dest)
+      f(b)
+    }
+  }
 
   /**
    * Returns a DOT representation of the control flow graph that can be visualized using
@@ -425,34 +488,27 @@ object CfgVisualizer {
       r.replaceAll("\\n", "\\\\l")
     }
 
-    val worklist = collection.mutable.Queue[Block]()
-    worklist.enqueue(block)
-    val visited = collection.mutable.Set[Block]()
-
-    while (!worklist.isEmpty) {
-      val b = worklist.dequeue()
-      worklist.enqueue((b.succs map (_.dest) filterNot (visited contains _)): _*)
-      visited ++= b.succs map (_.dest)
-
+    bfs(block) {
+      b =>
       // output node
-      nodes.append("    " + name(b) + " [")
-      if (b.isInstanceOf[LoopBlock]) nodes.append("shape=polygon sides=8 ");
-      nodes.append("label=\""
-        + label(b)
-        + "\",];\n")
+        nodes.append("    " + name(b) + " [")
+        if (b.isInstanceOf[LoopBlock]) nodes.append("shape=polygon sides=8 ");
+        nodes.append("label=\""
+          + label(b)
+          + "\",];\n")
 
-      // output edge and follow edges
-      b match {
-        case LoopBlock(body, _, _, succ) =>
-          edges.append(s"    ${name(b)} -> ${name(body)};\n")
-          edges.append(s"    ${name(b)} -> ${name(succ)};\n")
-        case TerminalBlock(stmt) =>
-        case NormalBlock(_, succ) =>
-          edges.append(s"    ${name(b)} -> ${name(succ)};\n")
-        case ConditionalBlock(_, _, thn, els) =>
-          edges.append(s"    ${name(b)} -> ${name(thn)} " + "[label=\"then\"];\n")
-          edges.append(s"    ${name(b)} -> ${name(els)} " + "[label=\"else\"];\n")
-      }
+        // output edge and follow edges
+        b match {
+          case LoopBlock(body, _, _, succ) =>
+            edges.append(s"    ${name(b)} -> ${name(body)};\n")
+            edges.append(s"    ${name(b)} -> ${name(succ)};\n")
+          case TerminalBlock(stmt) =>
+          case NormalBlock(_, succ) =>
+            edges.append(s"    ${name(b)} -> ${name(succ)};\n")
+          case ConditionalBlock(_, _, thn, els) =>
+            edges.append(s"    ${name(b)} -> ${name(thn)} " + "[label=\"then\"];\n")
+            edges.append(s"    ${name(b)} -> ${name(els)} " + "[label=\"else\"];\n")
+        }
     }
 
     val res = new StringBuilder()
