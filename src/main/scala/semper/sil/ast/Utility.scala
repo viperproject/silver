@@ -111,6 +111,8 @@ object CfgGenerator {
   trait TmpBlock {
     var pred: ListBuffer[TmpBlock] = ListBuffer()
 
+    def succs: Seq[TmpBlock]
+
     def +=(e: TmpEdge) {
       e.dest.pred += this
     }
@@ -123,6 +125,8 @@ object CfgGenerator {
       edges += e
     }
     def stmt = if (stmts.size == 1) stmts(0) else Seqn(stmts)(NoPosition)
+    override def toString = s"VarBlock(${stmts.mkString(";\n  ")}, ${edges.mkString("[", ",", "]")})"
+    def succs = (edges map (_.dest)).toSeq
   }
   class TmpLoopBlock(val cond: Exp, val invs: Seq[Exp], val body: TmpBlock) extends TmpBlock {
     var edge: TmpEdge = null
@@ -131,6 +135,8 @@ object CfgGenerator {
       require(edge == null)
       edge = e
     }
+    override def toString = s"TmpLoopBlock($cond, $edge)"
+    def succs = if (edge == null) Nil else List(edge.dest)
   }
   trait TmpEdge {
     def dest: TmpBlock
@@ -168,10 +174,13 @@ object CfgGenerator {
     def result = b2b(p3.start)
 
     // create a Block for every TmpBlock
-    val worklist: collection.mutable.Queue[TmpBlock] = collection.mutable.Queue()
+    val worklist = collection.mutable.Queue[TmpBlock]()
+    val visited = collection.mutable.Set[TmpBlock]()
     worklist.enqueue(p3.start)
     while (!worklist.isEmpty) {
       val tb = worklist.dequeue()
+      worklist.enqueue((tb.succs filterNot (visited contains _)): _*)
+      visited ++= tb.succs
       var b: Block = null
       tb match {
         case loop: TmpLoopBlock =>
@@ -190,8 +199,11 @@ object CfgGenerator {
 
     // add all edges between blocks
     worklist.enqueue(p3.start)
+    visited.clear()
     while (!worklist.isEmpty) {
       val tb = worklist.dequeue()
+      worklist.enqueue((tb.succs filterNot (visited contains _)): _*)
+      visited ++= tb.succs
       val b: Block = b2b(tb)
       tb match {
         case loop: TmpLoopBlock =>
@@ -208,7 +220,6 @@ object CfgGenerator {
         case _ =>
           sys.error("unexpected block")
       }
-      b2b += tb -> b
     }
   }
 
@@ -217,7 +228,7 @@ object CfgGenerator {
     var cur = start
     var nodes = p1.nodes.toSeq
     var offset = 0
-    val nodeToBlock: collection.mutable.HashMap[ExtendedStmt, TmpBlock] = collection.mutable.HashMap()
+    val nodeToBlock: java.util.IdentityHashMap[ExtendedStmt, TmpBlock] = new java.util.IdentityHashMap()
 
     // assumes that all labels are defined
     def resolveLbl(lbl: Lbl) = nodes(lblToIdx(lbl))
@@ -240,7 +251,7 @@ object CfgGenerator {
      * and added later.
      */
     private def run() {
-      var i = -1
+      var i = 0
       while (i < nodes.size) {
         var b: TmpBlock = null
         val n = nodes(i)
@@ -253,7 +264,8 @@ object CfgGenerator {
               b = cur
             }
             // finish current block and add a missing edge
-            missingEdges += ((resolveLbl(lbl), (t: TmpBlock) => cur += UncondEdge(t)))
+            val c = cur
+            missingEdges += ((resolveLbl(lbl), (t: TmpBlock) => c += UncondEdge(t)))
             cur = new VarBlock()
           case CondJump(thn, els, cond) =>
             if (n.isLeader) {
@@ -264,8 +276,9 @@ object CfgGenerator {
             }
             // finish current block and add two missing edges
             val notCond = Not(cond)(NoPosition)
-            missingEdges += ((resolveLbl(thn), (t: TmpBlock) => cur += CondEdge(t, cond)))
-            missingEdges += ((resolveLbl(els), (t: TmpBlock) => cur += CondEdge(t, notCond)))
+            val c = cur
+            missingEdges += ((resolveLbl(thn), (t: TmpBlock) => c += CondEdge(t, cond)))
+            missingEdges += ((resolveLbl(els), (t: TmpBlock) => c += CondEdge(t, notCond)))
             cur = new VarBlock()
           case Loop(after, cond, invs) =>
             // handle loop body: start with a new block, and a different
@@ -314,7 +327,9 @@ object CfgGenerator {
 
     /** Add all the missing edges. */
     private def addMissingEdges() {
-      for ((n, f) <- missingEdges) f(nodeToBlock(n))
+      for ((n, f) <- missingEdges) {
+        f(nodeToBlock.get(n))
+      }
     }
   }
 
@@ -341,11 +356,14 @@ object CfgGenerator {
         case If(cond, thn, els) =>
           val thnTarget = Lbl("then", generated = true)
           val elsTarget = Lbl("else", generated = true)
+          val afterTarget = Lbl("afterIf", generated = true)
           nodes += CondJump(thnTarget, elsTarget, cond)
           lblmap += thnTarget -> nextNode
           run(thn)
+          nodes += Jump(afterTarget)
           lblmap += elsTarget -> nextNode
           run(els)
+          lblmap += afterTarget -> nextNode
         case While(cond, inv, body) =>
           val afterLoop = Lbl("afterLoop", generated = true)
           nodes += Loop(afterLoop, cond, inv)
@@ -369,7 +387,10 @@ object CfgGenerator {
     }
 
     /** The index of the next extended node. */
-    private def nextNode = nodes.size
+    private def nextNode = {
+      leaders += nodes.size
+      nodes.size
+    }
 
     private def setLeader() {
       for ((n, i) <- nodes.zipWithIndex) {
@@ -392,23 +413,32 @@ object CfgVisualizer {
     val edges = new StringBuilder()
 
     def name(b: Block) = b.hashCode.toString
-    def label(b: Block) = b match {
-      case LoopBlock(_, cond, _, _) => s"while ($cond)"
-      case TerminalBlock(stmt) => stmt.toString
-      case NormalBlock(stmt, _) => stmt.toString
-      case ConditionalBlock(stmt, cond, _, _) => s"$stmt\n\nif ($cond)"
+    def label(b: Block) = {
+      val r = b match {
+        case LoopBlock(_, cond, _, _) => s"while ($cond)"
+        case TerminalBlock(stmt) => stmt.toString
+        case NormalBlock(stmt, _) => stmt.toString
+        case ConditionalBlock(stmt, cond, _, _) =>
+          if (stmt.toString == "") s"if ($cond)"
+          else s"$stmt\n\nif ($cond)"
+      }
+      r.replaceAll("\\n", "\\\\l")
     }
 
-    val worklist: collection.mutable.Queue[Block] = collection.mutable.Queue()
+    val worklist = collection.mutable.Queue[Block]()
     worklist.enqueue(block)
+    val visited = collection.mutable.Set[Block]()
+
     while (!worklist.isEmpty) {
       val b = worklist.dequeue()
+      worklist.enqueue((b.succs map (_.dest) filterNot (visited contains _)): _*)
+      visited ++= b.succs map (_.dest)
 
       // output node
       nodes.append("    " + name(b) + " [")
       if (b.isInstanceOf[LoopBlock]) nodes.append("shape=polygon sides=8 ");
       nodes.append("label=\""
-        + label(b).replace("\\n", "\\l")
+        + label(b)
         + "\",];\n")
 
       // output edge and follow edges
@@ -416,15 +446,12 @@ object CfgVisualizer {
         case LoopBlock(body, _, _, succ) =>
           edges.append(s"    ${name(b)} -> ${name(body)};\n")
           edges.append(s"    ${name(b)} -> ${name(succ)};\n")
-          worklist.enqueue(body, succ)
         case TerminalBlock(stmt) =>
         case NormalBlock(_, succ) =>
           edges.append(s"    ${name(b)} -> ${name(succ)};\n")
-          worklist.enqueue(succ)
         case ConditionalBlock(_, _, thn, els) =>
           edges.append(s"    ${name(b)} -> ${name(thn)} " + "[label=\"then\"];\n")
           edges.append(s"    ${name(b)} -> ${name(els)} " + "[label=\"else\"];\n")
-          worklist.enqueue(thn, els)
       }
     }
 
@@ -433,6 +460,9 @@ object CfgVisualizer {
     // header
     res.append("digraph {\n");
     res.append("    node [shape=rectangle];\n\n");
+
+    res.append(nodes)
+    res.append(edges)
 
     // footer
     res.append("}\n");
