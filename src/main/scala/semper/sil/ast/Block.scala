@@ -2,17 +2,12 @@ package semper.sil.ast
 
 /** A common trait for basic blocks. */
 sealed trait Block {
-  // A unique ID for basic blocks to define a good hash function
-  private val id = {
-    Block.id
-    Block.id += 1
-  }
   def succs: Seq[Edge]
   final override def equals(o: Any) = o match {
     case o: AnyRef => this eq o
     case _ => false
   }
-  final override def hashCode = id.hashCode
+  final override def hashCode = System.identityHashCode(this)
 
   /**
    * Returns a DOT representation of the control flow graph that can be visualized using
