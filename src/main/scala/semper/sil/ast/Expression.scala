@@ -1,6 +1,7 @@
 package semper.sil.ast
 
 import org.kiama.output._
+import utility.Consistency
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression

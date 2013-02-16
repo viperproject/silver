@@ -1,5 +1,7 @@
 package semper.sil.ast
 
+import utility.{Consistency, Statements, CfgGenerator}
+
 // --- Statements
 
 /** A common trait for statements. */

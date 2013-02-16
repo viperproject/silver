@@ -3,6 +3,7 @@ package semper.sil.ast
 import pretty.PrettyPrinter
 import semper.sil.parser.{Resolver, Translator, Parser}
 import org.kiama.util.Messaging.{messagecount, sortedmessages}
+import utility.Statements
 
 // --- Playground
 
@@ -67,6 +68,7 @@ object Main {
   def vari(s: String, t: Type) = LocalVar(s)(t)
   lazy val one = IntLit(1)()
   lazy val two = IntLit(2)()
+  lazy val hundred = IntLit(100)()
   lazy val c1 = LeCmp(l4, two)()
 
   lazy val l1 = LocalVar("a")(Int)
@@ -100,19 +102,29 @@ object Main {
   lazy val goto1 = Goto("lbl1")()
   lazy val goto2 = Goto("lbl2")()
 
-  def cfg {
-    val s = Seqn(Seq(
-      If(c1,
-        if1,
-        goto1
-      )(),
-      Seqn(Seq(
-        LocalVarAssign(l4, two)(),
-        lbl1,
-        LocalVarAssign(l2, two)(),
-        LocalVarAssign(l2, two)()
-      ))()
+  lazy val block1 = Seqn(Seq(
+    If(c1,
+      if1,
+      goto1
+    )(),
+    Seqn(Seq(
+      LocalVarAssign(l4, two)(),
+      lbl1,
+      LocalVarAssign(l2, two)(),
+      LocalVarAssign(l2, hundred)()
     ))()
+  ))()
+
+  lazy val block2 = Seqn(Seq(
+    LocalVarAssign(l4, two)(),
+    loop1,
+    LocalVarAssign(l1, hundred)()
+  ))()
+
+  lazy val loop1 = While(tru, Nil, block1)()
+
+  def cfg {
+    val s = block2
 
     printCfg(s)
   }

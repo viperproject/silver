@@ -1,5 +1,7 @@
 package semper.sil.ast
 
+import utility.ControlFlowGraph
+
 /** A common trait for basic blocks. */
 sealed trait Block {
   def succs: Seq[Edge]
