@@ -66,7 +66,7 @@ object CfgGenerator {
     override def toString = s"VarBlock(${stmts.mkString(";\n  ")}, ${edges.mkString("[", ",", "]")})"
     def succs = (edges map (_.dest)).toSeq
   }
-  class TmpLoopBlock(val cond: Exp, val invs: Seq[Exp], private var _body: TmpBlock) extends TmpBlock {
+  class TmpLoopBlock(val loop: While, private var _body: TmpBlock) extends TmpBlock {
     body.pred += this
     def body = _body
     var edge: TmpEdge = null
@@ -79,7 +79,7 @@ object CfgGenerator {
       _body = b
       b.pred += this
     }
-    override def toString = s"TmpLoopBlock($cond, $edge)"
+    override def toString = s"TmpLoopBlock(${loop.cond}, $edge)"
     def succs = if (edge == null) Nil else List(edge.dest)
   }
   trait TmpEdge {
@@ -129,7 +129,7 @@ object CfgGenerator {
   case class RegularStmt(stmt: Stmt) extends ExtendedStmt
   case class Jump(lbl: Lbl) extends ExtendedStmt
   case class CondJump(thn: Lbl, els: Lbl, cond: Exp) extends ExtendedStmt
-  case class Loop(after: Lbl, cond: Exp, invs: Seq[Exp]) extends ExtendedStmt
+  case class Loop(after: Lbl, loop: While) extends ExtendedStmt
   case class EmptyStmt() extends ExtendedStmt
 
   /**
@@ -146,7 +146,7 @@ object CfgGenerator {
         var b: Block = null
         tb match {
           case loop: TmpLoopBlock =>
-            b = LoopBlock(null, loop.cond, loop.invs, null)
+            b = LoopBlock(null, loop.loop.cond, loop.loop.invs, loop.loop.locals, null)
           case vb: VarBlock if vb.edges.size == 0 =>
             b = TerminalBlock(vb.stmt)
           case vb: VarBlock if vb.edges.size == 1 =>
@@ -291,7 +291,7 @@ object CfgGenerator {
             missingEdges += ((resolveLbl(thn), (t: TmpBlock) => c += CondEdge(t, cond)))
             missingEdges += ((resolveLbl(els), (t: TmpBlock) => c += CondEdge(t, notCond)))
             cur = new VarBlock()
-          case Loop(after, cond, invs) =>
+          case Loop(after, l) =>
             // handle loop body: start with a new block, and a different
             // set of nodes (the ones in the loop body), but use the same
             // missingEdges
@@ -308,7 +308,7 @@ object CfgGenerator {
             i = lblToIdx(after) - 1
 
             // create the loop block
-            val loop = new TmpLoopBlock(cond, invs, body)
+            val loop = new TmpLoopBlock(l, body)
             oldCur += UncondEdge(loop)
             cur = new VarBlock()
             loop += UncondEdge(cur)
@@ -377,9 +377,9 @@ object CfgGenerator {
           lblmap += elsTarget -> nextNode
           run(els)
           lblmap += afterTarget -> nextNode
-        case While(cond, inv, body) =>
+        case w@While(cond, inv, locals, body) =>
           val afterLoop = Lbl("afterLoop", generated = true)
-          nodes += Loop(afterLoop, cond, inv)
+          nodes += Loop(afterLoop, w)
           run(body)
           lblmap += afterLoop -> nextNode
         case Seqn(ss) =>

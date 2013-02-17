@@ -121,7 +121,7 @@ object Main {
     LocalVarAssign(l1, hundred)()
   ))()
 
-  lazy val loop1 = While(tru, Nil, block1)()
+  lazy val loop1 = While(tru, Nil, Nil, block1)()
 
   lazy val block1b = Seqn(Seq(
     If(c1,
@@ -145,7 +145,7 @@ object Main {
     ))()
   ))()
 
-  lazy val loop1b = While(tru, Nil, block1b)()
+  lazy val loop1b = While(tru, Nil, Nil, block1b)()
 
   def cfg {
     val s = block1

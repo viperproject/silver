@@ -14,7 +14,7 @@ object Statements {
    */
   def children(s: Stmt): Seq[Stmt] = {
     s match {
-      case While(_, _, body) => Seq(s) ++ children(body)
+      case While(_, _, _, body) => Seq(s) ++ children(body)
       case If(_, thn, els) => Seq(s) ++ children(thn) ++ children(els)
       case Seqn(ss) => ss
       case _ => List(s)
@@ -74,7 +74,7 @@ object Consistency {
       case t: TerminalBlock => (okSoFar, true, Set(t))
       case _ =>
         start match {
-          case LoopBlock(body, cond, invs, succ) =>
+          case LoopBlock(body, cond, invs, locals, succ) =>
             val (loopok, acyclic, terminalBlocks) = isWellformedCfgImpl(body)
             ok = okSoFar && loopok && acyclic && terminalBlocks.size == 1
           case _ =>
@@ -110,7 +110,7 @@ object ControlFlowGraph {
     while (!worklist.isEmpty) {
       val b = worklist.dequeue()
       val succsAndBody = (b.succs map (_.dest)) ++ (b match {
-        case LoopBlock(body, _, _, _) => Seq(body)
+        case LoopBlock(body, _, _, _, _) => Seq(body)
         case _ => Nil
       })
       worklist.enqueue((succsAndBody filterNot (visited contains _)): _*)
@@ -130,7 +130,7 @@ object ControlFlowGraph {
     def name(b: Block) = b.hashCode.toString
     def label(b: Block) = {
       val r = b match {
-        case LoopBlock(_, cond, _, _) => s"while ($cond)"
+        case LoopBlock(_, cond, _, _, _) => s"while ($cond)"
         case TerminalBlock(stmt) => stmt.toString
         case NormalBlock(stmt, _) => stmt.toString
         case ConditionalBlock(stmt, cond, _, _) =>
@@ -144,14 +144,14 @@ object ControlFlowGraph {
       b =>
       // output node
         nodes.append("    " + name(b) + " [")
-        if (b.isInstanceOf[LoopBlock]) nodes.append("shape=polygon sides=8 ");
+        if (b.isInstanceOf[LoopBlock]) nodes.append("shape=polygon sides=8 ")
         nodes.append("label=\""
           + label(b)
           + "\",];\n")
 
         // output edge and follow edges
         b match {
-          case LoopBlock(body, _, _, succ) =>
+          case LoopBlock(body, _, _, _, succ) =>
             edges.append(s"    ${name(b)} -> ${name(body)} " + "[label=\"body\"];\n")
             edges.append(s"    ${name(b)} -> ${name(succ)} " + "[label=\"endLoop\"];\n")
           case TerminalBlock(stmt) =>
@@ -166,14 +166,14 @@ object ControlFlowGraph {
     val res = new StringBuilder()
 
     // header
-    res.append("digraph {\n");
-    res.append("    node [shape=rectangle];\n\n");
+    res.append("digraph {\n")
+    res.append("    node [shape=rectangle];\n\n")
 
     res.append(nodes)
     res.append(edges)
 
     // footer
-    res.append("}\n");
+    res.append("}\n")
 
     res.toString()
   }

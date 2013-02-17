@@ -141,7 +141,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         }
       case Seqn(ss) =>
         ssep(ss map show, line)
-      case While(cond, invs, body) =>
+      case While(cond, invs, locals, body) =>
+        // TODO: invariants and locals
         "while" <+> "(" <> show(cond) <> ")" <+> showBlock(body)
       case If(cond, thn, els) =>
         "if" <+> "(" <> show(cond) <> ")" <+> showBlock(thn) <> {

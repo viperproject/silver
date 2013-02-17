@@ -50,7 +50,11 @@ object Translator {
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn), stmt(els))(pos)
       case PWhile(cond, invs, body) =>
-        While(exp(cond), invs map exp, stmt(body))(pos)
+        val plocals = body.childStmts collect { case l: PLocalVarDecl => l }
+        val locals = plocals map {
+          case p@PLocalVarDecl(idndef, t, _) => LocalVar(idndef.name)(typ(t), p.start)
+        }
+        While(exp(cond), invs map exp, locals, stmt(body))(pos)
     }
   }
 
