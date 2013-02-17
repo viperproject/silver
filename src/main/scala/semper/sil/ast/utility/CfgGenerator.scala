@@ -66,12 +66,18 @@ object CfgGenerator {
     override def toString = s"VarBlock(${stmts.mkString(";\n  ")}, ${edges.mkString("[", ",", "]")})"
     def succs = (edges map (_.dest)).toSeq
   }
-  class TmpLoopBlock(val cond: Exp, val invs: Seq[Exp], val body: TmpBlock) extends TmpBlock {
+  class TmpLoopBlock(val cond: Exp, val invs: Seq[Exp], private var _body: TmpBlock) extends TmpBlock {
+    body.pred += this
+    def body = _body
     var edge: TmpEdge = null
     override def +=(e: TmpEdge) {
       super.+=(e)
       require(edge == null)
       edge = e
+    }
+    def body_=(b: TmpBlock) {
+      _body = b
+      b.pred += this
     }
     override def toString = s"TmpLoopBlock($cond, $edge)"
     def succs = if (edge == null) Nil else List(edge.dest)
@@ -92,8 +98,12 @@ object CfgGenerator {
 
     while (!worklist.isEmpty) {
       val tb = worklist.dequeue()
-      worklist.enqueue((tb.succs filterNot (visited contains _)): _*)
-      visited ++= tb.succs
+      val succsAndBody = tb.succs ++ (tb match {
+        case l: TmpLoopBlock => Seq(l.body)
+        case _ => Nil
+      })
+      worklist.enqueue((succsAndBody filterNot (visited contains _)): _*)
+      visited ++= succsAndBody
       f(tb)
     }
   }
@@ -192,7 +202,11 @@ object CfgGenerator {
                   succ.pred += pred
                   pred match {
                     case loop: TmpLoopBlock =>
-                      loop.edge = UncondEdge(succ)
+                      if (loop.edge.dest == vb) {
+                        loop.edge = UncondEdge(succ)
+                      } else {
+                        loop.body = succ
+                      }
                     case vb: VarBlock if vb.edges.size == 1 =>
                       vb.edges(0) = UncondEdge(succ)
                     case vb: VarBlock if vb.edges.size == 2 =>
@@ -280,6 +294,7 @@ object CfgGenerator {
             // handle loop body: start with a new block, and a different
             // set of nodes (the ones in the loop body), but use the same
             // missingEdges
+            val oldCur = cur
             cur = new VarBlock()
             val oldNodes = nodes
             val oldOffset = offset
@@ -292,7 +307,7 @@ object CfgGenerator {
 
             // create the loop block
             val loop = new TmpLoopBlock(cond, invs, cur)
-            cur += UncondEdge(loop)
+            oldCur += UncondEdge(loop)
             cur = new VarBlock()
             loop += UncondEdge(cur)
             b = loop

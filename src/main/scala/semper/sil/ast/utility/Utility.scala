@@ -109,8 +109,12 @@ object ControlFlowGraph {
 
     while (!worklist.isEmpty) {
       val b = worklist.dequeue()
-      worklist.enqueue((b.succs map (_.dest) filterNot (visited contains _)): _*)
-      visited ++= b.succs map (_.dest)
+      val succsAndBody = (b.succs map (_.dest)) ++ (b match {
+        case LoopBlock(body, _, _, _) => Seq(body)
+        case _ => Nil
+      })
+      worklist.enqueue((succsAndBody filterNot (visited contains _)): _*)
+      visited ++= succsAndBody
       f(b)
     }
   }
@@ -148,8 +152,8 @@ object ControlFlowGraph {
         // output edge and follow edges
         b match {
           case LoopBlock(body, _, _, succ) =>
-            edges.append(s"    ${name(b)} -> ${name(body)};\n")
-            edges.append(s"    ${name(b)} -> ${name(succ)};\n")
+            edges.append(s"    ${name(b)} -> ${name(body)} " + "[label=\"body\"];\n")
+            edges.append(s"    ${name(b)} -> ${name(succ)} " + "[label=\"endLoop\"];\n")
           case TerminalBlock(stmt) =>
           case NormalBlock(_, succ) =>
             edges.append(s"    ${name(b)} -> ${name(succ)};\n")
