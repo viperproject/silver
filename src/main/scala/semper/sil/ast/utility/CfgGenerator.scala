@@ -237,11 +237,12 @@ object CfgGenerator {
     val start = new VarBlock()
     var cur = start
     var nodes = p1.nodes.toSeq
+    val allNodes = nodes
     var offset = 0
     val nodeToBlock: java.util.IdentityHashMap[ExtendedStmt, TmpBlock] = new java.util.IdentityHashMap()
 
     // assumes that all labels are defined
-    def resolveLbl(lbl: Lbl) = nodes(lblToIdx(lbl))
+    def resolveLbl(lbl: Lbl) = allNodes(p1.lblmap.get(lbl).get)
     def lblToIdx(lbl: Lbl) = p1.lblmap.get(lbl).get - offset
 
     // a list of missing edges: every entry (stmt, f) stands for a missing edge
@@ -300,7 +301,7 @@ object CfgGenerator {
             val oldNodes = nodes
             val oldOffset = offset
             nodes = nodes.slice(i + 1, lblToIdx(after))
-            offset = i + 1
+            offset = oldOffset + (i + 1)
             run()
             nodes = oldNodes
             offset = oldOffset
