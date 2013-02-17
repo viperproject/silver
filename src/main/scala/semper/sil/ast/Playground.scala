@@ -123,8 +123,32 @@ object Main {
 
   lazy val loop1 = While(tru, Nil, block1)()
 
+  lazy val block1b = Seqn(Seq(
+    If(c1,
+      if1,
+      goto2
+    )(),
+    Seqn(Seq(
+      LocalVarAssign(l4, two)(),
+      lbl1,
+      LocalVarAssign(l2, two)(),
+      LocalVarAssign(l2, hundred)()
+    ))()
+  ))()
+
+  lazy val block2b = Seqn(Seq(
+    LocalVarAssign(l4, two)(),
+    loop1b,
+    Seqn(Seq(
+      lbl2,
+      LocalVarAssign(l1, hundred)()
+    ))()
+  ))()
+
+  lazy val loop1b = While(tru, Nil, block1b)()
+
   def cfg {
-    val s = block2
+    val s = block1
 
     printCfg(s)
   }
