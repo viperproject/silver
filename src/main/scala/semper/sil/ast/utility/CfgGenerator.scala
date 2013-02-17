@@ -295,7 +295,8 @@ object CfgGenerator {
             // set of nodes (the ones in the loop body), but use the same
             // missingEdges
             val oldCur = cur
-            cur = new VarBlock()
+            val body = new VarBlock()
+            cur = body
             val oldNodes = nodes
             val oldOffset = offset
             nodes = nodes.slice(i + 1, lblToIdx(after))
@@ -306,7 +307,7 @@ object CfgGenerator {
             i = lblToIdx(after) - 1
 
             // create the loop block
-            val loop = new TmpLoopBlock(cond, invs, cur)
+            val loop = new TmpLoopBlock(cond, invs, body)
             oldCur += UncondEdge(loop)
             cur = new VarBlock()
             loop += UncondEdge(cur)
@@ -378,6 +379,7 @@ object CfgGenerator {
         case While(cond, inv, body) =>
           val afterLoop = Lbl("afterLoop", generated = true)
           nodes += Loop(afterLoop, cond, inv)
+          run(body)
           lblmap += afterLoop -> nextNode
         case Seqn(ss) =>
           nodes += EmptyStmt()
