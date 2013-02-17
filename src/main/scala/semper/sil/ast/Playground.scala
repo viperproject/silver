@@ -175,7 +175,7 @@ object Main {
 
   def printCfg(b: Stmt) {
     println(b)
-    printCfg(b.cfg)
+    printCfg(b.toCfg)
   }
   def printCfg(b: Block) {
     val file = "C:\\tmp\\sil\\cfg.dot"

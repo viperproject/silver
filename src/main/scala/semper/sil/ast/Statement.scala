@@ -15,7 +15,7 @@ sealed trait Stmt extends Node with Infoed with Positioned {
   /**
    * Returns a control flow graph that corresponds to this statement.
    */
-  def cfg = CfgGenerator.toCFG(this)
+  def toCfg = CfgGenerator.toCFG(this)
 }
 
 /** An assignment to a local variable. */
