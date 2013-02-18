@@ -194,7 +194,9 @@ sealed trait PermExp extends Exp {
   override lazy val typ = Perm
 }
 
-/** A common class for concrete permissions. */
+/**
+ * A common class for concrete permissions.  The name AbstractConcretePerm is used because it is an abstract superclass for concrete permissions.
+ */
 sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominator: BigInt) extends PermExp
 
 /** Common ancestor of Domain Function applications and Function applications. */
