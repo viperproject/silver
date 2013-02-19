@@ -271,6 +271,6 @@ sealed trait QuantifiedExp extends Exp {
 trait AccessPredicate extends Exp {
   require(perm isSubtype Perm)
   def loc: LocationAccess
-  def perm: PermExp
+  def perm: Exp
   lazy val typ = Bool
 }
