@@ -38,7 +38,6 @@ case class Neg(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(OrOp)
 case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(AndOp)
 case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(ImpliesOp)
-case class Equiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(EquivOp)
 
 /** Boolean literals. */
 sealed abstract class BoolLit(val value: Boolean) extends Exp {

@@ -78,7 +78,7 @@ object Translator {
           case "==" => EqCmp(l, r)(pos)
           case "!=" => NeCmp(l, r)(pos)
           case "==>" => Implies(l, r)(pos)
-          case "<==>" => Equiv(l, r)(pos)
+          case "<==>" => EqCmp(l, r)(pos)
           case "&&" => And(l, r)(pos)
           case "||" => Or(l, r)(pos)
         }

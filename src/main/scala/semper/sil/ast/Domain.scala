@@ -154,12 +154,6 @@ case object ImpliesOp extends BoolBinOp with BoolDomainFunc {
   lazy val fixity = Infix (RightAssoc)
 }
 
-/** Boolean equivalence. */
-case object EquivOp extends BoolBinOp with BoolDomainFunc with LeftAssoc {
-  lazy val op = "<==>"
-  lazy val priority = 5
-}
-
 /** Boolean negation. */
 case object NotOp extends UnOp with BoolDomainFunc {
   lazy val expTyp = Bool
