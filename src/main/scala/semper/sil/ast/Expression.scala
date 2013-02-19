@@ -23,8 +23,8 @@ case class GtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info
 case class GeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(GeOp)
 
 // Equality and non-equality (defined for all types)
-case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(EqOp)
-case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(NeOp)
+case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends EqualityCmd("==")
+case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends EqualityCmd("!=")
 
 /** Integer literal. */
 case class IntLit(i: BigInt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
@@ -209,6 +209,19 @@ sealed trait FuncLikeApp extends Exp with Call with Typed {
 /** Common superclass for domain functions with arbitrary parameters and return type, binary and unary operations are a special case. */
 sealed trait AbstractDomainFuncApp extends FuncLikeApp {
   def func: AbstractDomainFunc
+}
+
+/**
+ * A common class for equality and inequality comparisons.  Note that equality is defined for
+ * all types, and therefore is not a domain function and does not belong to a domain.
+ */
+abstract class EqualityCmd(val op: String) extends Exp with PrettyBinaryExpression {
+  require(left.typ == right.typ)
+  def left: Exp
+  def right: Exp
+  lazy val priority = 13
+  lazy val fixity = Infix (NonAssoc)
+  lazy val typ = Bool
 }
 
 /** Expressions with a unary or binary operator. */
