@@ -2,12 +2,35 @@ package semper.sil.ast.utility
 
 import semper.sil.parser.Parser
 import scala.actors.Actor
+import scala.collection.mutable.HashMap
 
 object UniqueNames {
   
+  private val uniqueActor = new UniqueActor  
+
+  /**
+   * Returns a different string every time it is called. If possible, it
+   * returns the input string, otherwise, it appends a number at the end.
+   * If the input is a valid SIL identifier, the output is also a valid SIL identifier.
+   * This is thread safe.
+   * TODO Contexts
+   */
+  def createUnique(s: String) = {
+    val res = uniqueActor !? s
+    res match {
+      case i: String => i
+      case _ => throw new RuntimeException("Invalid response " + res + "from UniqueActor")
+    }   
+  }
+  
+  /**
+   * Creates a different identifier every time it is called.
+   */
+  def createUniqueIdentifier(s: String) = createUnique(createIdentifier(s))
+  
   /**
    * Takes an arbitrary string and returns a valid identifier that
-   * resembles that string. Special characters are deleted or removed.
+   * resembles that string. Special characters are replaced or removed.
    */
   def createIdentifier(input: String) = {
     if (input.isEmpty) {
@@ -88,4 +111,38 @@ object UniqueNames {
       'ψ' -> "psi",
       'ω' -> "omega"
       )
+}
+
+class UniqueActor extends Actor {
+  def act {
+    receive {
+      case s: String => reply(createUnique(s))
+    }
+  }
+  
+  private val identCounters: HashMap[String, Int] = HashMap()
+  
+  val separator = "_"
+   
+  /**
+   * Returns a different string every time it is called. If possible, it
+   * returns the input string, otherwise, it appends a number at the end.
+   * If the input is a valid SIL identifier, the output is also a valid SIL identifier.
+   * Calling this method directly would not be thread safe.
+   */
+  private def createUnique(s: String) = {
+    if (!identCounters.contains(s)) {
+      identCounters.put(s, 0)
+      s
+    } else {
+      var counter = identCounters(s) + 1
+      var newS = s + separator + counter.toString
+      while (identCounters.contains(newS)) {
+        counter += 1
+        newS = s + separator + counter.toString
+      }
+      identCounters.put(newS, counter)
+      newS
+    }
+  }
 }
