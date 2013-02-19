@@ -1,0 +1,12 @@
+
+- [b] Cfg2Ast
+- [b] generate unique identifiers from arbitrary strings
+- [b] positions that store source language positions
+- [s] visitors and transformers
+- [s] finish parser
+- [s] finish typechecker/resolver
+- finish pretty printer
+- error reporting when translating to SIL
+- no parenthesis for prettyprinting unfolding, exists and condexp when possible
+- many more consistency checks, in particular checks that are "less local" that types of sub-expressions
+  - all variables used in methods/functions/quantifications are declared (formal arguments or locals)
