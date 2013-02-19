@@ -132,9 +132,6 @@ case object PermLeOp extends RelOp("<=") with PermBinOp
 case object PermGtOp extends RelOp(">") with PermBinOp
 case object PermGeOp extends RelOp(">=") with PermBinOp
 
-// Equality and inequality operators
-case object EqOp extends RelOp("==") with IntBinOp
-case object NeOp extends RelOp("!=") with IntBinOp
 
 // Boolean operators
 
