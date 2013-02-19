@@ -1,6 +1,5 @@
-
 - [b] Cfg2Ast
-- [b] generate unique identifiers from arbitrary strings
+- [b] contexts for unique identifier
 - [b] positions that store source language positions
 - [s] visitors and transformers
 - [s] finish parser
