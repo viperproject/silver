@@ -82,5 +82,9 @@ case class Label(name: String)(val pos: Position = NoPosition, val info: Info = 
   require(Consistency.validUserDefinedIdentifier(name))
 }
 
-/** A goto statement. */
+/**
+ * A goto statement.  Note that goto's in SIL are limited to forward jumps, and a jump cannot enter
+ * a loop but might leave one or several loops.  This ensures that the only back edges in the
+ * control flow graph are due to while loops.
+ */
 case class Goto(target: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt

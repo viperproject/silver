@@ -189,7 +189,7 @@ case class ThisLit()(val pos: Position = NoPosition, val info: Info = NoInfo) ex
 
 // --- Common functionality
 
-/** A common trait for permissions. */
+/** A common trait for expressions of type permission. */
 sealed trait PermExp extends Exp {
   override lazy val typ = Perm
 }
