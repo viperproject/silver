@@ -71,6 +71,7 @@ object Nodes {
           case BoolLit(b) => Nil
           case AbstractLocalVar(n) => Nil
           case FieldAccess(rcv, field) => Seq(rcv)
+          case PredicateAccess(rcv, predicate) => Seq(rcv)
           case Unfolding(acc, exp) => Seq(acc, exp)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
@@ -81,7 +82,12 @@ object Nodes {
           case NoPerm() => Nil
           case EpsilonPerm() => Nil
           case CurrentPerm(loc) => Seq(loc)
+          case ConcretePerm(a, b) => Nil
           case AccessPredicate(loc, perm) => Seq(loc, perm)
+          case BinExp(left, right) => Seq(left, right)
+          case UnExp(exp) => Seq(exp)
+          case FuncApp(func, rcv, args) => Seq(rcv) ++ args
+          case DomainFuncApp(func, args) => args
         }
       case t: Type => Nil
     }
