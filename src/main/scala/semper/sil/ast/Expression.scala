@@ -2,6 +2,7 @@ package semper.sil.ast
 
 import org.kiama.output._
 import utility.Consistency
+import utility.Transformer
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression
@@ -23,8 +24,8 @@ case class GtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info
 case class GeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(GeOp)
 
 // Equality and non-equality (defined for all types)
-case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends EqualityCmd("==")
-case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends EqualityCmd("!=")
+case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends EqualityCmp("==")
+case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends EqualityCmp("!=")
 
 /** Integer literal. */
 case class IntLit(i: BigInt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
@@ -212,7 +213,7 @@ sealed trait AbstractDomainFuncApp extends FuncLikeApp {
  * A common class for equality and inequality comparisons.  Note that equality is defined for
  * all types, and therefore is not a domain function and does not belong to a domain.
  */
-abstract class EqualityCmd(val op: String) extends BinExp with PrettyBinaryExpression {
+sealed abstract class EqualityCmp(val op: String) extends BinExp with PrettyBinaryExpression {
   require(left.typ == right.typ)
   lazy val priority = 13
   lazy val fixity = Infix (NonAssoc)
@@ -267,7 +268,7 @@ sealed trait QuantifiedExp extends Exp {
 }
 
 /** A common trait for accessibility predicates. */
-trait AccessPredicate extends Exp {
+sealed trait AccessPredicate extends Exp {
   require(perm isSubtype Perm)
   def loc: LocationAccess
   def perm: Exp
