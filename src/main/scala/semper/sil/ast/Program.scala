@@ -6,47 +6,29 @@ import org.kiama.output._
 /** A SIL program. */
 // TODO consistency checks
 case class Program(name: String, domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
-                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed
-
-/** Common ancestor for members of a program. */
-sealed trait Member extends Node with Positioned with Infoed {
-  def name: String
+                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
+  require(Consistency.validUserDefinedIdentifier(name))
 }
 
-/** Common ancestor for things with formal arguments. */
-trait Callable {
-  require(Consistency.noDuplicates(formalArgs))
-  def formalArgs: Seq[LocalVar]
-  def name: String
+// --- Program members
+
+/** A field declaration. */
+case class Field(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends Location with Typed {
+  require(typ isConcrete)
 }
 
-/** Common ancestor for functions and domain functions */
-trait FuncLike extends Callable with Typed
-
-
-/** A member with a contract. */
-sealed trait Contracted extends Member {
-  require(pres.forall(_ isSubtype Bool))
-  require(posts.forall(_ isSubtype Bool))
-  def pres: Seq[Exp]
-  def posts: Seq[Exp]
+/** A predicate declaration. */
+case class Predicate(name: String, var body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
+  require(body isSubtype Bool)
 }
 
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVar], formalReturns: Seq[LocalVar], pres: Seq[Exp], posts: Seq[Exp], locals: Seq[LocalVar], private var _body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Callable with Contracted {
-  require(Consistency.noDuplicates(formalArgs ++ formalReturns ++ locals))
+  require(Consistency.noDuplicates(formalArgs ++ formalReturns ++ locals ++ Seq(LocalVar(name)(Bool))))
+  require((formalArgs ++ formalReturns) forall (_.typ isConcrete))
   def body = _body
 }
-
-/** A common trait for locations (fields and predicates). */
-sealed trait Location extends Member
-
-/** A field declaration. */
-case class Field(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends Location with Typed
-
-/** A predicate declaration. */
-case class Predicate(name: String, var body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location
 
 /** A function declaration */
 case class Function(name: String, formalArgs: Seq[LocalVar], pres: Seq[Exp], posts: Seq[Exp], private var _exp: Exp)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLike with Contracted {
@@ -59,24 +41,66 @@ case class Function(name: String, formalArgs: Seq[LocalVar], pres: Seq[Exp], pos
 }
 
 
+// --- Domains and domain members
 
 /** A user-defined domain. */
-case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed
-
-/** A domain axiom. */
-trait DomainAxiom {
-  require(exp isSubtype Bool)
-  def name: String
-  def exp: Exp
+case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil)
+                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
+  require(Consistency.validUserDefinedIdentifier(name))
 }
 
-/** Common superclass for Domain functions and binary/unary operators. */
-sealed trait AbstractDomainFunc extends FuncLike with Positioned with Infoed
+/** A domain axiom. */
+case class DomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainMember {
+  require(exp isSubtype Bool)
+}
 
 /** Domain function which is not a binary or unary operator. */
-case class DomainFunc(name: String, formalArgs: Seq[LocalVar])(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFunc
+case class DomainFunc(name: String, formalArgs: Seq[LocalVar])
+                     (val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFunc with DomainMember
 
-/** Built in domain functions  */
+
+// --- Common functionality
+
+/** Common ancestor for members of a program. */
+sealed trait Member extends Node with Positioned with Infoed {
+  require(Consistency.validUserDefinedIdentifier(name))
+  def name: String
+}
+
+/** Common ancestor for domain members. */
+sealed trait DomainMember extends Node with Positioned with Infoed {
+  require(Consistency.validUserDefinedIdentifier(name))
+  def name: String
+}
+
+/** Common ancestor for things with formal arguments. */
+sealed trait Callable {
+  require(Consistency.noDuplicates(formalArgs))
+  def formalArgs: Seq[LocalVar]
+  def name: String
+}
+
+/** Common ancestor for functions and domain functions */
+sealed trait FuncLike extends Callable with Typed
+
+/** A member with a contract. */
+sealed trait Contracted extends Member {
+  require(pres.forall(_ isSubtype Bool))
+  require(posts.forall(_ isSubtype Bool))
+  def pres: Seq[Exp]
+  def posts: Seq[Exp]
+}
+
+/** A common trait for locations (fields and predicates). */
+sealed trait Location extends Member
+
+/** Common superclass for domain functions and binary/unary operators. */
+sealed trait AbstractDomainFunc extends FuncLike with Positioned with Infoed
+
+
+// --- Built-in domain functions and operators
+
+/** Built-in domain functions  */
 sealed trait BuiltinDomainFunc extends AbstractDomainFunc {
   lazy val info = NoInfo
   lazy val pos = NoPosition
@@ -188,9 +212,6 @@ case object PermLtOp extends RelOp("<") with PermBinOp
 case object PermLeOp extends RelOp("<=") with PermBinOp
 case object PermGtOp extends RelOp(">") with PermBinOp
 case object PermGeOp extends RelOp(">=") with PermBinOp
-
-
-// Boolean operators
 
 /** Boolean or. */
 case object OrOp extends BoolBinOp with BoolDomainFunc with LeftAssoc {
