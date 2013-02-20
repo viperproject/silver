@@ -22,6 +22,76 @@ object Statements {
   }
 }
 
+/** Utility methods for AST nodes. */
+object Nodes {
+
+  /**
+   * See Node.subnodes.
+   */
+  def subnodes(n: Node): Seq[Node] = {
+    val subnodesWithType = n match {
+      case Program(name, domains, fields, functions, predicates, methods) =>
+        domains ++ fields ++ functions ++ predicates ++ methods
+      case m: Member =>
+        m match {
+          case Field(name) => Nil
+          case Function(name, formalArgs, pres, posts, exp) =>
+            formalArgs ++ pres ++ posts ++ Seq(exp)
+          case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
+            formalArgs ++ formalReturns ++ pres ++ posts ++ locals ++ Seq(body)
+          case Predicate(name, body) => Seq(body)
+        }
+      case Domain(name, functions, axioms, typVars) =>
+        functions ++ axioms ++ typVars
+      case dm: DomainMember =>
+        dm match {
+          case DomainAxiom(name, exp) => Seq(exp)
+          case DomainFunc(name, formalArgs) => formalArgs
+        }
+      case s: Stmt =>
+        s match {
+          case LocalVarAssign(lhs, rhs) => Seq(lhs, rhs)
+          case FieldAssign(lhs, rhs) => Seq(lhs, rhs)
+          case Fold(e) => Seq(e)
+          case Unfold(e) => Seq(e)
+          case Inhale(e) => Seq(e)
+          case Exhale(e) => Seq(e)
+          case MethodCall(m, rcv, args, targets) => Seq(rcv) ++ args ++ targets
+          case Seqn(ss) => ss
+          case While(cond, invs, locals, body) => Seq(cond) ++ invs ++ locals ++ Seq(body)
+          case If(cond, thn, els) => Seq(cond, thn, els)
+          case Label(name) => Nil
+          case Goto(target) => Nil
+        }
+      case e: Exp =>
+        // Note: If you have to update this pattern match to make it exhaustive, it
+        // might also be necessary to update the PrettyPrinter.toParenDoc method.
+        e match {
+          case IntLit(i) => Nil
+          case BoolLit(b) => Nil
+          case AbstractLocalVar(n) => Nil
+          case FieldAccess(rcv, field) => Seq(rcv)
+          case Unfolding(acc, exp) => Seq(acc, exp)
+          case Old(exp) => Seq(exp)
+          case CondExp(cond, thn, els) => Seq(cond, thn, els)
+          case Exists(v, exp) => Seq(v, exp)
+          case Forall(v, exp) => Seq(v, exp)
+          case ReadPerm() => Nil
+          case FullPerm() => Nil
+          case NoPerm() => Nil
+          case EpsilonPerm() => Nil
+          case CurrentPerm(loc) => Seq(loc)
+          case AccessPredicate(loc, perm) => Seq(loc, perm)
+        }
+      case t: Type => Nil
+    }
+    n match {
+      case t: Typed => subnodesWithType ++ Seq(t.typ)
+      case _ => subnodesWithType
+    }
+  }
+}
+
 /** An utility object for consistency checking. */
 object Consistency {
 

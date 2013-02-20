@@ -1,6 +1,7 @@
 package semper.sil.ast
 
 import pretty.PrettyPrinter
+import utility.Nodes
 
 /*
 
@@ -36,6 +37,14 @@ Some design choices:
  * - Type
  */
 trait Node {
+  /**
+   * Returns a list of all direct sub-nodes of this node. The type of nodes is
+   * included in this list only for declarations (but not for expressions, for instance).
+   * Furthermore, pointers to declarations are not included (e.g., the `field` of a field
+   * write is not included in the result).
+   */
+  def subnodes = Nodes.subnodes(this)
+
   override def toString = PrettyPrinter.pretty(this)
 }
 
