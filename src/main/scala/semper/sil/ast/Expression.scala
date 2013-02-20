@@ -116,8 +116,8 @@ case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, v
 }
 
 /** A predicate access expression. */
-case class PredicateAccess(field: Predicate, rcv: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess {
-  lazy val loc = field
+case class PredicateAccess(rcv: Exp, predicate: Predicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess {
+  lazy val loc = predicate
   lazy val typ = Pred
 }
 
