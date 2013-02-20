@@ -10,17 +10,17 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
 // --- Simple integer and boolean expressions (binary and unary operations, literals)
 
 // Arithmetic expressions
-case class Add(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(PlusOp)
-case class Sub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(MinusOp)
-case class Mul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(TimesOp)
-case class Div(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(DividedOp)
-case class Mod(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(ModuloOp)
+case class Add(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PlusOp)
+case class Sub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(MinusOp)
+case class Mul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(TimesOp)
+case class Div(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(DividedOp)
+case class Mod(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(ModuloOp)
 
 // Integer comparison expressions
-case class LtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(LtOp)
-case class LeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(LeOp)
-case class GtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(GtOp)
-case class GeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(GeOp)
+case class LtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(LtOp)
+case class LeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(LeOp)
+case class GtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(GtOp)
+case class GeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(GeOp)
 
 // Equality and non-equality (defined for all types)
 case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends EqualityCmd("==")
@@ -32,12 +32,12 @@ case class IntLit(i: BigInt)(val pos: Position = NoPosition, val info: Info = No
 }
 
 /** Integer negation. */
-case class Neg(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractUnExp(NegOp)
+case class Neg(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NegOp)
 
 // Boolean expressions
-case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(OrOp)
-case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(AndOp)
-case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(ImpliesOp)
+case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(OrOp)
+case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(AndOp)
+case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(ImpliesOp)
 
 /** Boolean literals. */
 sealed abstract class BoolLit(val value: Boolean) extends Exp {
@@ -50,7 +50,7 @@ case class TrueLit()(val pos: Position = NoPosition, val info: Info = NoInfo) ex
 case class FalseLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends BoolLit(false)
 
 /** Boolean negation. */
-case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractUnExp(NotOp)
+case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NotOp)
 
 
 // --- Permissions
@@ -86,16 +86,16 @@ case class ConcretePerm(override val numerator: BigInt, override val denominator
 case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 
 // Arithmetic expressions
-case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(PermPlusOp) with PermExp
-case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(PermMinusOp) with PermExp
-case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(PermTimesOp) with PermExp
-case class PermIntMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(IntPermTimesOp) with PermExp
+case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermPlusOp) with PermExp
+case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermMinusOp) with PermExp
+case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermTimesOp) with PermExp
+case class PermIntMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(IntPermTimesOp) with PermExp
 
 // Comparison expressions
-case class PermLtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(LtOp)
-case class PermLeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(LeOp)
-case class PermGtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(GtOp)
-case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractBinExp(GeOp)
+case class PermLtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(LtOp)
+case class PermLeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(LeOp)
+case class PermGtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(GtOp)
+case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(GeOp)
 
 
 // --- Function application (domain and normal)
@@ -222,33 +222,37 @@ abstract class EqualityCmd(val op: String) extends Exp with PrettyBinaryExpressi
 }
 
 /** Expressions with a unary or binary operator. */
-sealed trait OpExp extends AbstractDomainFuncApp {
+sealed trait DomainOpExp extends AbstractDomainFuncApp {
   def func: Op
   def op = func.op
   def fixity = func.fixity
   def priority = func.priority
 }
 
-/** Binary expressions. */
-sealed trait BinExp extends OpExp with PrettyBinaryExpression {
+/** Binary expressions of any kind (whether or not they belong to a domain). */
+sealed trait BinExp extends PrettyBinaryExpression {
   lazy val args = List(left, right)
   def left: Exp
   def right: Exp
-  def func: BinOp
+}
+object BinExp {
+  def unapply(binExp: BinExp) = Some((binExp.left, binExp.right))
 }
 
-/** Unary expressions. */
-sealed trait UnExp extends OpExp with PrettyUnaryExpression {
+/** Unary expressions of any kind (whether or not they belong to a domain). */
+sealed trait UnExp extends PrettyUnaryExpression {
   lazy val args = List(exp)
   def exp: Exp
-  def func: UnOp
+}
+object UnExp {
+  def unapply(unExp: UnExp) = Some(unExp.exp)
 }
 
-/** Common superclass for binary expressions. */
-sealed abstract class AbstractBinExp(val func: BinOp) extends BinExp with OpExp
+/** Common superclass for binary expressions that belong to a domain (and thus have a domain operator). */
+sealed abstract class DomainBinExp(val func: BinOp) extends BinExp with DomainOpExp
 
-/** Common superclass for unary expressions. */
-sealed abstract class AbstractUnExp(val func: UnOp) extends UnExp with OpExp
+/** Common superclass for unary expressions that belong to a domain (and thus have a domain operator). */
+sealed abstract class DomainUnExp(val func: UnOp) extends UnExp with DomainOpExp
 
 /** A common trait for expressions accessing a location. */
 sealed trait LocationAccess extends Exp {
