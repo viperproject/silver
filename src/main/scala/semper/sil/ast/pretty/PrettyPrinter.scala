@@ -172,6 +172,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case AbstractLocalVar(n) => n
       case FieldAccess(rcv, field) =>
         show(rcv) <> "." <> field.name
+      case PredicateAccess(rcv, predicate) =>
+        show(rcv) <> "." <> predicate.name
       case Unfolding(acc, exp) =>
         parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
       case Old(exp) =>
@@ -194,6 +196,10 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         "perm" <> parens(show(loc))
       case AccessPredicate(loc, perm) =>
         "acc" <> parens(show(loc) <> "," <+> show(perm))
+      case FuncApp(func, rcv, args) =>
+        show(rcv) <> "." <> func.name <> parens(ssep(args map show, comma <> space))
+      case DomainFuncApp(func, args) =>
+        func.name <> parens(ssep(args map show, comma <> space))
       case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)
     }
   }
