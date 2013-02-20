@@ -58,6 +58,7 @@ case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], stmt: PStmt) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt
+case class PFreshReadPerm(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
 
 // Program
 sealed trait PProgram extends PNode

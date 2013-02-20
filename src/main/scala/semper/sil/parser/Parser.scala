@@ -37,7 +37,9 @@ trait BaseParser extends PositionedParserUtilities {
     // statements
     "fold", "unfold", "inhale", "exhale",
     // control structures
-    "while", "if", "else"
+    "while", "if", "else",
+    // special fresh block
+    "fresh"
   )
 
   lazy val parser = phrase(methodDecl)
@@ -93,6 +95,10 @@ trait BaseParser extends PositionedParserUtilities {
     }
   lazy val varDecl =
     ("var" ~> idndef) ~ (":" ~> typ) ~ opt(":=" ~> exp) ^^ PLocalVarDecl
+  lazy val freshReadPerm =
+    ("fresh" ~> "(" ~> repsep(idnuse, ",") <~ ")") ~ block ^^ {
+      case vars ~ stmts => PFreshReadPerm(vars, PSeqn(stmts))
+    }
 
   // --- Types
 
