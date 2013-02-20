@@ -271,3 +271,6 @@ trait AccessPredicate extends Exp {
   def perm: Exp
   lazy val typ = Bool
 }
+object AccessPredicate {
+  def unapply(a: AccessPredicate) = Some((a.loc, a.perm))
+}
