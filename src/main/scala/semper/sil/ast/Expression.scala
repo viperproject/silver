@@ -75,7 +75,7 @@ case class EpsilonPerm()(val pos: Position = NoPosition, val info: Info = NoInfo
 
 /** A concrete fraction as permission amount. */
 case class ConcretePerm(override val numerator: BigInt, override val denominator: BigInt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractConcretePerm(numerator, denominator) with PrettyBinaryExpression {
-  lazy val priority = 11
+  lazy val priority = 0 // always at parenthesis
   lazy val fixity = Infix(LeftAssoc)
   lazy val left: PrettyExpression = IntLit(numerator)()
   lazy val op = "/"
@@ -141,7 +141,7 @@ case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position 
 
 // --- Old expression
 
-case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnExp {
   lazy val typ = exp.typ
 }
 
@@ -212,10 +212,8 @@ sealed trait AbstractDomainFuncApp extends FuncLikeApp {
  * A common class for equality and inequality comparisons.  Note that equality is defined for
  * all types, and therefore is not a domain function and does not belong to a domain.
  */
-abstract class EqualityCmd(val op: String) extends Exp with PrettyBinaryExpression {
+abstract class EqualityCmd(val op: String) extends BinExp with PrettyBinaryExpression {
   require(left.typ == right.typ)
-  def left: Exp
-  def right: Exp
   lazy val priority = 13
   lazy val fixity = Infix (NonAssoc)
   lazy val typ = Bool
@@ -230,7 +228,7 @@ sealed trait DomainOpExp extends AbstractDomainFuncApp {
 }
 
 /** Binary expressions of any kind (whether or not they belong to a domain). */
-sealed trait BinExp extends PrettyBinaryExpression {
+sealed trait BinExp extends Exp with PrettyBinaryExpression {
   lazy val args = List(left, right)
   def left: Exp
   def right: Exp
@@ -240,7 +238,7 @@ object BinExp {
 }
 
 /** Unary expressions of any kind (whether or not they belong to a domain). */
-sealed trait UnExp extends PrettyUnaryExpression {
+sealed trait UnExp extends Exp {
   lazy val args = List(exp)
   def exp: Exp
 }
@@ -252,7 +250,7 @@ object UnExp {
 sealed abstract class DomainBinExp(val func: BinOp) extends BinExp with DomainOpExp
 
 /** Common superclass for unary expressions that belong to a domain (and thus have a domain operator). */
-sealed abstract class DomainUnExp(val func: UnOp) extends UnExp with DomainOpExp
+sealed abstract class DomainUnExp(val func: UnOp) extends UnExp with DomainOpExp with PrettyUnaryExpression
 
 /** A common trait for expressions accessing a location. */
 sealed trait LocationAccess extends Exp {
