@@ -23,7 +23,7 @@ case class Predicate(name: String, var body: Exp)(val pos: Position = NoPosition
 }
 
 /** A method declaration. */
-case class Method(name: String, formalArgs: Seq[LocalVar], formalReturns: Seq[LocalVar], pres: Seq[Exp], posts: Seq[Exp], locals: Seq[LocalVar], private var _body: Stmt)
+case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], locals: Seq[LocalVarDecl], private var _body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Callable with Contracted {
   require(Consistency.noDuplicates(formalArgs ++ formalReturns ++ locals ++ Seq(LocalVar(name)(Bool))))
   require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
@@ -31,7 +31,7 @@ case class Method(name: String, formalArgs: Seq[LocalVar], formalReturns: Seq[Lo
 }
 
 /** A function declaration */
-case class Function(name: String, formalArgs: Seq[LocalVar], pres: Seq[Exp], posts: Seq[Exp], private var _exp: Exp)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLike with Contracted {
+case class Function(name: String, formalArgs: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], private var _exp: Exp)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLike with Contracted {
   require(_exp == null || (_exp isSubtype typ))
   def exp = _exp
   def exp_=(e: Exp) {
@@ -51,6 +51,7 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
   require(Consistency.validUserDefinedIdentifier(name))
 }
 
+
 // --- Domains and domain members
 
 /** A user-defined domain. */
@@ -65,7 +66,7 @@ case class DomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, v
 }
 
 /** Domain function which is not a binary or unary operator. */
-case class DomainFunc(name: String, formalArgs: Seq[LocalVar])
+case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl])
                      (val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFunc with DomainMember
 
 
@@ -86,7 +87,7 @@ sealed trait DomainMember extends Node with Positioned with Infoed {
 /** Common ancestor for things with formal arguments. */
 sealed trait Callable {
   require(Consistency.noDuplicates(formalArgs))
-  def formalArgs: Seq[LocalVar]
+  def formalArgs: Seq[LocalVarDecl]
   def name: String
 }
 
@@ -139,7 +140,7 @@ sealed trait PermDomainFunc extends AbstractDomainFunc {
 
 /** Domain functions that represent built-in binary operators */
 sealed trait BinOp extends Op {
-  lazy val formalArgs = List(LocalVar("left")(leftTyp), LocalVar("right")(rightTyp))
+  lazy val formalArgs = List(LocalVarDecl("left", leftTyp)(), LocalVarDecl("right", rightTyp)())
   def leftTyp: Type
   def rightTyp: Type
 }
@@ -169,7 +170,7 @@ sealed trait PermBinOp extends BinOp {
 
 /** Domain functions that represent built-in unary operators */
 sealed trait UnOp extends Op {
-  lazy val formalArgs = List(LocalVar("exp")(expTyp))
+  lazy val formalArgs = List(LocalVarDecl("exp", expTyp)())
   def expTyp: Type
 }
 

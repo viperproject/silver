@@ -16,26 +16,21 @@ object Main {
     //exp
     //parse("1+(2*(1-3))+4")
     //println(program)
-    cfg
-    /*parse(
+    //cfg
+    parse(
       """
         |  method foo(a: Int, b: Bool)
         |    requires true
         |    ensures false
         |  {
-        |    var x: Int := 1 + a
-        |    var y: Int := 2 + x
-        |    if (true) {
-        |       y := -30;
-        |    } else {
-        |       x := x*x
-        |    }
+        |    var x: Int := 1
+        |    if (true) {}
         |  }
       """.stripMargin
     )
     if (args.size > 0) {
       parse(args(0))
-    }*/
+    }
   }
 
   def parse(s: String) = {
@@ -77,13 +72,18 @@ object Main {
   lazy val l3 = LocalVar("c")(domainType2)
   lazy val l4 = LocalVar("d")(Int)
   lazy val l5 = LocalVar("e")(domainType2)
+  lazy val l1d = LocalVarDecl("a", Int)()
+  lazy val l2d = LocalVarDecl("b", Int)()
+  lazy val l3d = LocalVarDecl("c", domainType2)()
+  lazy val l4d = LocalVarDecl("d", Int)()
+  lazy val l5d = LocalVarDecl("e", domainType2)()
 
   lazy val f1 = Field("val")(Int, n, "Some field description")
   lazy val f2 = Field("test")(domainType2, n, "Another comment")
 
   lazy val emptyStmt = Statements.EmptyStmt
 
-  lazy val method = Method("foo", List(l1, l2), List(l3, l4), Nil, Nil, Vector(l5), emptyStmt)()
+  lazy val method = Method("foo", List(l1d, l2d), List(l3d, l4d), Nil, Nil, Vector(l5d), emptyStmt)()
 
   lazy val program = Program("ListReverse", Nil, List(f1, f2), Nil, Nil, List(method))()
 

@@ -159,10 +159,10 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 // --- Quantifications
 
 /** Universal quantifiction. */
-case class Forall(variable: LocalVar, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
+case class Forall(variable: LocalVarDecl, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
 
 /** Existential quantifiction. */
-case class Exists(variable: LocalVar, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
+case class Exists(variable: LocalVarDecl, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
 
 
 // --- Variables, this, result
@@ -271,7 +271,7 @@ sealed trait LocationAccess extends Exp {
 /** A common trait for quantified expressions. */
 sealed trait QuantifiedExp extends Exp {
   require(exp isSubtype Bool)
-  def variable: LocalVar
+  def variable: LocalVarDecl
   def exp: Exp
   lazy val typ = Bool
 }

@@ -92,9 +92,9 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   }
 
   /** Show a list of formal arguments. */
-  def showVars(vars: Seq[LocalVar]): Doc = ssep(vars map showVar, comma <> space)
+  def showVars(vars: Seq[LocalVarDecl]): Doc = ssep(vars map showVar, comma <> space)
   /** Show a variable name with the type of the variable (e.g. to be used in formal argument lists). */
-  def showVar(v: LocalVar): Doc = v.name <> ":" <+> showType(v.typ)
+  def showVar(v: LocalVarDecl): Doc = v.name <> ":" <+> showType(v.typ)
 
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Doc = {

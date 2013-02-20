@@ -75,7 +75,7 @@ case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = 
 case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
 
 /** A while loop. */
-case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
+case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
 
 /** A label (that can be the target of a goto). */
 case class Label(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {

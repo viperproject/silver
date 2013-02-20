@@ -21,7 +21,7 @@ object Translator {
       case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
         val plocals = body.childStmts collect { case l: PLocalVarDecl => l }
         val locals = plocals map {
-          case p@PLocalVarDecl(idndef, t, _) => LocalVar(idndef.name)(typ(t), p.start)
+          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, typ(t))(p.start)
         }
         Method(name.name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, pres map exp, posts map exp, locals, stmt(body))()
     }
@@ -53,7 +53,7 @@ object Translator {
       case PWhile(cond, invs, body) =>
         val plocals = body.childStmts collect { case l: PLocalVarDecl => l }
         val locals = plocals map {
-          case p@PLocalVarDecl(idndef, t, _) => LocalVar(idndef.name)(typ(t), p.start)
+          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, typ(t))(p.start)
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos)
     }
@@ -101,7 +101,7 @@ object Translator {
   implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition = SourcePosition(pos.line, pos.column)
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
-  def liftVarDecl(formal: PFormalArgDecl) = LocalVar(formal.idndef.name)(typ(formal.typ))
+  def liftVarDecl(formal: PFormalArgDecl) = LocalVarDecl(formal.idndef.name, typ(formal.typ))()
 
   /** Takes a `PType` and turns it into a `Type`. */
   def typ(t: PType) = t match {
