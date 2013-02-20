@@ -62,6 +62,7 @@ object Nodes {
           case If(cond, thn, els) => Seq(cond, thn, els)
           case Label(name) => Nil
           case Goto(target) => Nil
+          case FreshReadPerm(vars, body) => vars ++ Seq(body)
         }
       case e: Exp =>
         // Note: If you have to update this pattern match to make it exhaustive, it

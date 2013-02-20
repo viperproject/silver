@@ -88,3 +88,10 @@ case class Label(name: String)(val pos: Position = NoPosition, val info: Info = 
  * control flow graph are due to while loops.
  */
 case class Goto(target: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
+
+/**
+ * A special block that is annotated with a list of permission-typed variables.  At the start of the
+ * block, these variables should each be havoced, their values should be assumed to be strictly
+ * between 0 and 1, and within the block, they can have additional assumptions introduced.
+ */
+case class FreshReadPerm(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt

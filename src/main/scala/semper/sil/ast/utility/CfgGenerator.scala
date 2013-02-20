@@ -393,7 +393,7 @@ object CfgGenerator {
         case _: LocalVarAssign | _: FieldAssign |
              _: Inhale | _: Exhale |
              _: Fold | _: Unfold |
-             _: MethodCall =>
+             _: MethodCall | _: FreshReadPerm =>
           // regular, non-control statements
           nodes += RegularStmt(s)
       }

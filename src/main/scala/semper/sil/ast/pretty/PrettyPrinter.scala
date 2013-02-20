@@ -133,6 +133,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case Unfold(e) => "unfold" <> parens(show(e))
       case Inhale(e) => "inhale" <> parens(show(e))
       case Exhale(e) => "exhale" <> parens(show(e))
+      case FreshReadPerm(vars, body) =>
+        "fresh" <> parens(ssep(vars map show, comma <> space)) <+> showBlock(body)
       case MethodCall(m, rcv, args, targets) =>
         val call = show(rcv) <> "." <> m.name <> parens(ssep(args map show, comma <> space))
         targets match {
