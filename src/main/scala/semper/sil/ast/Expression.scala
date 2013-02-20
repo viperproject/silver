@@ -5,7 +5,16 @@ import utility.Consistency
 import utility.Transformer
 
 /** Expressions. */
-sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression
+sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
+
+  /**
+   * Transforms an expression using the function `f`;  if `f` returns `Some(e)`, then the previous expression
+   * is replaced by e, and otherwise the previous expression is reused.
+   * The function `f` must produce expressions that are valid in the given context.  For instance, it cannot
+   * replace an integer literal by a boolean literal.
+   */
+  def transform(f: Exp => Option[Exp]): Exp = Transformer.transform(this, f)
+}
 
 
 // --- Simple integer and boolean expressions (binary and unary operations, literals)
