@@ -187,9 +187,13 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case FullPerm() =>
         "write"
       case NoPerm() =>
-        "0"
+        "none"
+      case EpsilonPerm() =>
+        "eps"
       case CurrentPerm(loc) =>
         "perm" <> parens(show(loc))
+      case AccessPredicate(loc, perm) =>
+        "acc" <> parens(show(loc) <> "," <+> show(perm))
       case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)
     }
   }
