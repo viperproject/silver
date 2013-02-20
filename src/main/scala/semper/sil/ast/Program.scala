@@ -41,6 +41,16 @@ case class Function(name: String, formalArgs: Seq[LocalVar], pres: Seq[Exp], pos
 }
 
 
+// --- Local variable declarations
+
+/**
+ * Local variable declaration.  Note that these are not statements in the AST, but
+ * rather occur as part of a method, loop, function, etc.
+ */
+case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed with Typed {
+  require(Consistency.validUserDefinedIdentifier(name))
+}
+
 // --- Domains and domain members
 
 /** A user-defined domain. */

@@ -176,7 +176,7 @@ object AbstractLocalVar {
   def unapply(l: AbstractLocalVar) = Some(l.name)
 }
 
-/** A normal local variable (used both for declarations and usages). */
+/** A normal local variable. */
 case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar {
   require(Consistency.validUserDefinedIdentifier(name))
 }
