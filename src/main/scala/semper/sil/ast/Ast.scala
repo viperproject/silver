@@ -23,7 +23,18 @@ Some design choices:
 
 */
 
-/** A common ancestor for AST nodes. */
+/**
+ * A common ancestor for AST nodes.  Note that this trait is not sealed, because we having all
+ * AST node classes in a single file would be too tedious and difficult to manage.  However,
+ * there is only a small number of subtypes of `Node`, all of which are sealed.  These are:
+ * - Program
+ * - Member
+ * - Domain
+ * - DomainMember
+ * - Exp
+ * - Stmt
+ * - Type
+ */
 trait Node {
   override def toString = PrettyPrinter.pretty(this)
 }
