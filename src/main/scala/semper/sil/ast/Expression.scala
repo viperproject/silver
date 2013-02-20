@@ -250,7 +250,7 @@ object UnExp {
 sealed abstract class DomainBinExp(val func: BinOp) extends BinExp with DomainOpExp
 
 /** Common superclass for unary expressions that belong to a domain (and thus have a domain operator). */
-sealed abstract class DomainUnExp(val func: UnOp) extends UnExp with DomainOpExp with PrettyUnaryExpression
+sealed abstract class DomainUnExp(val func: UnOp) extends PrettyUnaryExpression with DomainOpExp with UnExp
 
 /** A common trait for expressions accessing a location. */
 sealed trait LocationAccess extends Exp {
