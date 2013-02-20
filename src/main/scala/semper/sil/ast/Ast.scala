@@ -2,6 +2,7 @@ package semper.sil.ast
 
 import pretty.PrettyPrinter
 import utility.Nodes
+import utility.Visitor
 
 /*
 
@@ -44,6 +45,37 @@ trait Node {
    * write is not included in the result).
    */
   def subnodes = Nodes.subnodes(this)
+
+  /**
+   * Applies the function `f` to the AST node, then visits all subnodes.
+   */
+  def visit(f: Node => Unit) {
+    Visitor.visit(this)(f)
+  }
+
+  /**
+   * Applies the function `f1` to the AST node, then visits all subnodes,
+   * and finally calls `f2` to the AST node.
+   */
+  def visit(n: Node, f1: Node => Unit, f2: Node => Unit) {
+    Visitor.visit(this, f1, f2)
+  }
+
+  /**
+   * Applies the function `f` to the AST node, then visits all subnodes if `f`
+   * returned true.
+   */
+  def visitOpt(n: Node)(f: Node => Boolean) {
+    Visitor.visitOpt(this)(f)
+  }
+
+  /**
+   * Applies the function `f1` to the AST node, then visits all subnodes if `f1`
+   * returned true, and finally calls `f2` to the AST node.
+   */
+  def visitOpt(n: Node, f1: Node => Boolean, f2: Node => Unit) {
+    Visitor.visitOpt(this, f1, f2)
+  }
 
   override def toString = PrettyPrinter.pretty(this)
 }

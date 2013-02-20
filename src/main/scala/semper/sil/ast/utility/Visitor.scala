@@ -7,10 +7,10 @@ import semper.sil.ast._
  *
  * @author Stefan Heule
  */
-class Visitor {
+object Visitor {
 
   /**
-   * Applies the function `f` to the AST node, then visits all subnodes.
+   * See Node.visit.
    */
   def visit(n: Node)(f: Node => Unit) {
     f(n)
@@ -20,8 +20,7 @@ class Visitor {
   }
 
   /**
-   * Applies the function `f1` to the AST node, then visits all subnodes,
-   * and finally calls `f2` to the AST node.
+   * See Node.visit.
    */
   def visit(n: Node, f1: Node => Unit, f2: Node => Unit) {
     f1(n)
@@ -32,8 +31,7 @@ class Visitor {
   }
 
   /**
-   * Applies the function `f` to the AST node, then visits all subnodes if `f`
-   * returned true.
+   * See Node.visitOpt.
    */
   def visitOpt(n: Node)(f: Node => Boolean) {
     if (f(n)) {
@@ -44,8 +42,7 @@ class Visitor {
   }
 
   /**
-   * Applies the function `f1` to the AST node, then visits all subnodes if `f1`
-   * returned true, and finally calls `f2` to the AST node.
+   * See Node.visitOpt.
    */
   def visitOpt(n: Node, f1: Node => Boolean, f2: Node => Unit) {
     if (f1(n)) {
