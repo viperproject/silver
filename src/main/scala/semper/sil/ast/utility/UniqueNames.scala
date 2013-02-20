@@ -2,7 +2,6 @@ package semper.sil.ast.utility
 
 import semper.sil.parser.Parser
 import scala.actors.Actor
-import scala.collection.mutable.HashMap
 
 object UniqueNames {
   
@@ -13,13 +12,13 @@ object UniqueNames {
    * returns the input string, otherwise, it appends a number at the end.
    * If the input is a valid SIL identifier, the output is also a valid SIL identifier.
    * This is thread safe.
-   * TODO Contexts
    */
+  // TODO: Contexts
   def createUnique(s: String) = {
     val res = uniqueActor !? s
     res match {
       case i: String => i
-      case _ => throw new RuntimeException("Invalid response " + res + "from UniqueActor")
+      case _ => sys.error(s"Invalid response $res from UniqueActor")
     }   
   }
   
@@ -114,13 +113,13 @@ object UniqueNames {
 }
 
 class UniqueActor extends Actor {
-  def act {
+  def act() {
     receive {
       case s: String => reply(createUnique(s))
     }
   }
   
-  private val identCounters: HashMap[String, Int] = HashMap()
+  private val identCounters = collection.mutable.HashMap[String, Int]()
   
   val separator = "_"
    
