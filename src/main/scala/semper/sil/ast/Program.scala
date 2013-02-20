@@ -14,7 +14,7 @@ case class Program(name: String, domains: Seq[Domain], fields: Seq[Field], funct
 
 /** A field declaration. */
 case class Field(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends Location with Typed {
-  require(typ isConcrete)
+  require(typ.isConcrete)
 }
 
 /** A predicate declaration. */
@@ -26,7 +26,7 @@ case class Predicate(name: String, var body: Exp)(val pos: Position = NoPosition
 case class Method(name: String, formalArgs: Seq[LocalVar], formalReturns: Seq[LocalVar], pres: Seq[Exp], posts: Seq[Exp], locals: Seq[LocalVar], private var _body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Callable with Contracted {
   require(Consistency.noDuplicates(formalArgs ++ formalReturns ++ locals ++ Seq(LocalVar(name)(Bool))))
-  require((formalArgs ++ formalReturns) forall (_.typ isConcrete))
+  require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
   def body = _body
 }
 

@@ -54,6 +54,7 @@ object Main {
     }
   }
 
+  import language.implicitConversions
   implicit def lift(s: String): Info = SimpleInfo(List(s))
 
   lazy val n = NoPosition

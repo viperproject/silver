@@ -2,6 +2,7 @@ package semper.sil.parser
 
 import semper.sil.ast._
 import utility.Statements
+import language.implicitConversions
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into a SIL abstract
