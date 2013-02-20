@@ -70,10 +70,8 @@ case class FullPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) e
 /** No permission. */
 case class NoPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractConcretePerm(0, 1)
 
-/** An epsilon permission (represents `n` epsilons. */
-case class EpsilonPerm(n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp {
-  require(n isSubtype Int)
-}
+/** An epsilon permission. */
+case class EpsilonPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 
 /** A concrete fraction as permission amount. */
 case class ConcretePerm(override val numerator: BigInt, override val denominator: BigInt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractConcretePerm(numerator, denominator) with PrettyBinaryExpression {
