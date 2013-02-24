@@ -1,6 +1,7 @@
 package semper.sil.ast
 
 import utility.ControlFlowGraph
+import utility.AstGenerator
 
 /** A common trait for basic blocks. */
 sealed trait Block {
@@ -16,7 +17,13 @@ sealed trait Block {
    * tools such as Graphviz.
    */
   def toDot = ControlFlowGraph.toDot(this)
+  
+  /**
+   * Returns an AST representation of this control flow graph.
+   */
+  def toAst = AstGenerator.toAst(this)
 }
+
 object Block {
   private var id: Int = 0
 }

@@ -16,3 +16,5 @@ scalacOptions += "-deprecation"
 scalacOptions += "-feature"
 
 scalacOptions += "-unchecked"
+
+scalacOptions += "-Dscalac.patmat.analysisBudget=2048"
