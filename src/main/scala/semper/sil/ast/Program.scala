@@ -23,11 +23,10 @@ case class Predicate(name: String, var body: Exp)(val pos: Position = NoPosition
 }
 
 /** A method declaration. */
-case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], locals: Seq[LocalVarDecl], private var _body: Stmt)
+case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], var locals: Seq[LocalVarDecl], var body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Callable with Contracted {
   require(Consistency.noDuplicates(formalArgs ++ formalReturns ++ locals ++ Seq(LocalVar(name)(Bool))))
   require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
-  def body = _body
 }
 
 /** A function declaration */
