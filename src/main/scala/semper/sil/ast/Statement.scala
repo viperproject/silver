@@ -35,14 +35,14 @@ trait Call {
   def args: Seq[Exp]
 }
 
-/** A call that has a receiver, i.e. a method or function call. */
-trait RcvCall {
+/** A node that has a receiver. */
+trait RcvNode {
   require(rcv isSubtype Ref)
   def rcv: Exp
 }
 
 /** A method call. */
-case class MethodCall(m: Method, rcv: Exp, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class MethodCall(m: Method, rcv: Exp, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt with RcvNode {
   require(Consistency.areAssignable(m.formalReturns, targets))
   require(Consistency.noDuplicates(targets))
   lazy val callee = m

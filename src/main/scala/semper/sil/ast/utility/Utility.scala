@@ -70,6 +70,7 @@ object Nodes {
         e match {
           case IntLit(i) => Nil
           case BoolLit(b) => Nil
+          case NullLit() => Nil
           case AbstractLocalVar(n) => Nil
           case FieldAccess(rcv, field) => Seq(rcv)
           case PredicateAccess(rcv, predicate) => Seq(rcv)

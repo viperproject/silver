@@ -62,6 +62,9 @@ case class FalseLit()(val pos: Position = NoPosition, val info: Info = NoInfo) e
 /** Boolean negation. */
 case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NotOp)
 
+case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+  lazy val typ = Ref
+}
 
 // --- Permissions
 
@@ -111,7 +114,7 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 // --- Function application (domain and normal)
 
 /** Function application. */
-case class FuncApp(func: Function, rcv: Exp, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp with RcvCall
+case class FuncApp(func: Function, rcv: Exp, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp with RcvNode
 
 /** User-defined domain function application. */
 case class DomainFuncApp(func: DomainFunc, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFuncApp
@@ -120,13 +123,13 @@ case class DomainFuncApp(func: DomainFunc, args: Seq[Exp])(val pos: Position = N
 // --- Field and predicate accesses
 
 /** A field access expression. */
-case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess {
+case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess with RcvNode {
   lazy val loc = field
   lazy val typ = field.typ
 }
 
 /** A predicate access expression. */
-case class PredicateAccess(rcv: Exp, predicate: Predicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess {
+case class PredicateAccess(rcv: Exp, predicate: Predicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess with RcvNode {
   lazy val loc = predicate
   lazy val typ = Pred
 }
