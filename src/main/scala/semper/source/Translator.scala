@@ -10,32 +10,53 @@ import semper.sil.ast.Program
   *
   * @author Stefan Heule
   */
-abstract class Translator(verifier: Verifier, input: String) {
+trait Translator {
 
+  /** Initialize this translator with a given verifier. */
+  def init(verifier: Verifier)
+
+  /** Reset the translator, and set the input program. */
+  def reset(input: String)
+
+  /** Reset the translator, and set the input program. */
+  def reset(input: File) {
+    reset(Source.fromFile(input).mkString)
+  }
+
+  /** Parse the program. */
   def parse()
 
+  /** Type-check the program. */
   def typecheck()
 
+  /** Translate the program to SIL. */
   def translate(): Program
 
+  /** Verify the SIL program using the verifier. */
   def verify(): VerificationResult
 }
 
 /** A default implementation of a translator that keeps track of the state of the translator.
-  *
-  * @param verifier The verifier to be used.
-  * @param input The program to be translated and verified.
   */
-abstract class DefaultTranslator(verifier: Verifier, input: String) extends Translator(verifier, input) {
+trait DefaultTranslator extends Translator {
 
   private var _state: TranslatorState.Value = TranslatorState.Initial
   private var _verificationResult: VerificationResult = null
   private var _translationResult: Program = null
+  private var _verifier: Verifier = null
+  private var _input: String = null
 
   def state = _state
 
-  def this(verifier: Verifier, input: File) {
-    this(verifier, Source.fromFile(input).mkString)
+  def init(verifier: Verifier) {
+    _state = TranslatorState.Initialized
+    _verifier = verifier
+  }
+
+  def reset(input: String) {
+    if (state < TranslatorState.InputSet) sys.error("The translator has not been initialized.")
+    _state = TranslatorState.InputSet
+    _input = input
   }
 
   protected def mapVerificationResult(in: VerificationResult): VerificationResult
@@ -47,6 +68,7 @@ abstract class DefaultTranslator(verifier: Verifier, input: String) extends Tran
   protected def doTranslate(): Program
 
   override def parse() {
+    if (state < TranslatorState.InputSet) sys.error("The translator has not been initialized, or there is no input set.")
     if (state >= TranslatorState.Parsed) return
     doParse()
   }
@@ -67,7 +89,7 @@ abstract class DefaultTranslator(verifier: Verifier, input: String) extends Tran
   override def verify(): VerificationResult = {
     val program = translate()
     if (state >= TranslatorState.Verified) return _verificationResult
-    _verificationResult = mapVerificationResult(verifier.verify(program))
+    _verificationResult = mapVerificationResult(_verifier.verify(program))
     _state = TranslatorState.Verified
     _verificationResult
   }
@@ -75,5 +97,5 @@ abstract class DefaultTranslator(verifier: Verifier, input: String) extends Tran
 
 object TranslatorState extends Enumeration {
   type TranslatorState = Value
-  val Initial, Parsed, Typechecked, Translated, Verified = Value
+  val Initial, Initialized, InputSet, Parsed, Typechecked, Translated, Verified = Value
 }
