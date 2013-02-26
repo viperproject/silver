@@ -1,7 +1,7 @@
 package semper.sil.testing
 
 import java.io.File
-import semper.sil.verifier.{VerificationError, Success, Verifier}
+import semper.sil.verifier.{AbstractError, VerificationError, Success, Verifier}
 import semper.source.Translator
 import java.nio.file.Path
 import io.Source
@@ -74,7 +74,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
         var expectedButMissingErrors: List[ExpectedError] = Nil
         var unexpectedButMissingErrors: List[UnexpectedError] = Nil
         var missingButPresentErrors: List[MissingError] = Nil
-        var additionalErrors: List[VerificationError] = Nil
+        var additionalErrors: List[AbstractError] = Nil
         result match {
           case Success =>
             // no actual errors, thus there should not be any expected ones
@@ -83,9 +83,9 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
               case u: UnexpectedError => unexpectedButMissingErrors ::= u
               case m: MissingError => // it is known that this one is missing
             }
-          case semper.sil.verifier.Error(actualErrors) => {
+          case semper.sil.verifier.Failure(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
-            val findError: VerificationError => Option[ErrorAnnotation] = (actual: VerificationError) => {
+            val findError: AbstractError => Option[ErrorAnnotation] = (actual: AbstractError) => {
               if (!actual.pos.isInstanceOf[SourcePosition]) None
               else expectedErrors.filter({
                 case ErrorAnnotation(id, lineNr) => actual.fullId == id && actual.pos.asInstanceOf[SourcePosition].line == lineNr
@@ -178,7 +178,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
     for (f: File <- dir.listFiles
                        .filterNot(_.isDirectory)
-                       .filter(_.getCanonicalPath().matches(namePattern))) {
+                       .filter(_.getCanonicalPath.matches(namePattern))) {
 
       registerSilTest(f, newPrefix)
     }
