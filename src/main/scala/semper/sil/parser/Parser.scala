@@ -67,6 +67,8 @@ trait BaseParser extends PositionedParserUtilities {
 
   // --- Statements
 
+  def parens[A](p: Parser[A]) = "(" ~> p <~ ")"
+
   lazy val block: Parser[Seq[PStmt]] =
     "{" ~> (stmts <~ "}")
   lazy val stmts =
@@ -79,9 +81,9 @@ trait BaseParser extends PositionedParserUtilities {
   lazy val unfold =
     "unfold" ~> exp ^^ PUnfold
   lazy val inhale =
-    "inhale" ~> exp ^^ PInhale
+    "inhale" ~> parens(exp) ^^ PInhale
   lazy val exhale =
-    "exhale" ~> exp ^^ PExhale
+    "exhale" ~> parens(exp) ^^ PExhale
   lazy val assign =
     idnuse ~ (":=" ~> exp) ^^ PVarAssign
   lazy val ifthnels =
