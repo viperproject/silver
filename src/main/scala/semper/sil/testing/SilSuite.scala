@@ -1,7 +1,7 @@
 package semper.sil.testing
 
 import java.io.File
-import semper.sil.verifier.{AbstractError, VerificationError, Success, Verifier}
+import semper.sil.verifier._
 import semper.source.Translator
 import java.nio.file.Path
 import io.Source
@@ -65,9 +65,10 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
         val (_, tTranslate) = time {
           t.translate
         }
-        val (result, tVerification) = time {
+        val (_, tVerification) = time {
           t.verify
         }
+        val result = t.result
         assert(result != null)
 
         // postprocessing of errors: match up expected errors with actual errors and report inconsistencies
@@ -83,7 +84,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
               case u: UnexpectedError => unexpectedButMissingErrors ::= u
               case m: MissingError => // it is known that this one is missing
             }
-          case semper.sil.verifier.Failure(actualErrors) => {
+          case Failure(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
             val findError: AbstractError => Option[ErrorAnnotation] = (actual: AbstractError) => {
               if (!actual.pos.isInstanceOf[SourcePosition]) None
