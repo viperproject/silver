@@ -171,6 +171,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     e match {
       case IntLit(i) => value(i)
       case BoolLit(b) => value(b)
+      case NullLit() => value(null)
       case AbstractLocalVar(n) => n
       case FieldAccess(rcv, field) =>
         show(rcv) <> "." <> field.name

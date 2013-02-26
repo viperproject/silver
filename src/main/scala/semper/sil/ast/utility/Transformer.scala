@@ -23,6 +23,7 @@ object Transformer {
         exp match {
           case IntLit(_) => exp
           case BoolLit(_) => exp
+          case NullLit() => exp
           case AbstractLocalVar(_) => exp
           case FieldAccess(rcv, field) => FieldAccess(func(rcv), field)(p, i)
           case PredicateAccess(rcv, predicate) => PredicateAccess(func(rcv), predicate)(p, i)
