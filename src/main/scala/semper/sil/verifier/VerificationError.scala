@@ -10,7 +10,7 @@ trait ErrorMessage {
   def readableMessage: String
 }
 
-trait VerificationError extends ErrorMessage {
+trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
   def readableMessage(full: Boolean): String
   override def readableMessage = readableMessage(false)
