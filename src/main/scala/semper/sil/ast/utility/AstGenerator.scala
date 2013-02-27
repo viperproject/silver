@@ -78,12 +78,12 @@ object AstGenerator {
      * branches of conditionals. */
     private def continuation(block: Block, surroundingLoop: Option[LoopBlock], previousBlocks: Set[Block] = Set()): List[Block] = {
       if (usedBlocks.contains(block) || previousBlocks.contains(block)) {
-        throw new RuntimeException("Backward gotos are not allowed.")
+        sys.error("Backward gotos are not allowed.")
       } else if (surroundingLoops(block) != surroundingLoop) {
         if (loopIsInside(surroundingLoop, surroundingLoops(block))) {
           Nil
         } else {
-          throw new RuntimeException("Jumping into a loop with a goto is not allowed.")
+          sys.error("Jumping into a loop with a goto is not allowed.")
         }
       } else block match {
         case b: ConditionalBlock => b :: extractBranches(b, previousBlocks).continuation
