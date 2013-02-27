@@ -20,6 +20,29 @@ object Statements {
       case _ => List(s)
     }
   }
+
+  /**
+   * Returns a list of all local variables used in this statement. If the same local variable is used with different
+   * types, an exception is thrown.
+   */
+  def localVars(s: Stmt) = {
+    def extractLocal(n: Node) = n match {
+      case l: LocalVar => Set(l)
+      case _ => Set[LocalVar]()
+    }
+    def combineSets(s1: Set[LocalVar], s2: Set[LocalVar]) = {
+      for (l1 <- s1; l2 <- s2) {
+        if (l1.name == l2.name && l1.typ != l2.typ) {
+          throw new RuntimeException("Local variable " + l1.name + " is used with different types " + l1.typ + " and " + l2.typ)
+        }
+      }
+      s1.union(s2)
+    }
+    def foo(n: Node, sets: Seq[Set[LocalVar]]): Set[LocalVar] = {
+      sets.fold(extractLocal(n))(combineSets)
+    }
+    s.reduce[Set[LocalVar]]((n, sets) => sets.fold(extractLocal(n))(combineSets))
+  }
 }
 
 /** Utility methods for AST nodes. */
