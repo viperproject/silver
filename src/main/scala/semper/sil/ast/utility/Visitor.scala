@@ -8,6 +8,14 @@ import semper.sil.ast._
  * @author Stefan Heule
  */
 object Visitor {
+  
+  /**
+   * See Node.reduce.
+   */
+  def reduce[T](n: Node)(f: (Node, Seq[T]) => T): T = {
+    val subResults = n.subnodes.map(reduce[T](_)(f))
+    f(n, subResults)
+  }
 
   /**
    * See Node.visit.

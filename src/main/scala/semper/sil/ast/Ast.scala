@@ -47,6 +47,14 @@ trait Node {
   def subnodes = Nodes.subnodes(this)
 
   /**
+   * Applies the function `f` to the node and the results of the subnodes.
+   */
+  def reduce[T](f: (Node, Seq[T]) => T) = Visitor.reduce(this)(f)
+
+  // TODO If necessary, a more powerful version could be introduced with the signature
+  // reduce[Context, Result](context: Context, enter: (Node, Context) -> Context, combine: (Node, Context, List[Result]) -> Result)
+
+  /**
    * Applies the function `f` to the AST node, then visits all subnodes.
    */
   def visit(f: Node => Unit) {
