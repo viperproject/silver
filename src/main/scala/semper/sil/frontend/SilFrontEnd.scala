@@ -29,6 +29,8 @@ trait SilFrontEnd extends DefaultTranslator {
    */
   def main(args: Seq[String]) {
 
+    val start = System.currentTimeMillis()
+
     // initialize the translator
     init(verifier)
 
@@ -37,10 +39,21 @@ trait SilFrontEnd extends DefaultTranslator {
     // run the parser, typechecker, and verifier (calling verify will do all of them)
     verify()
 
+    val timeMs = System.currentTimeMillis() - start
+    val time = s"${(timeMs / 1000)} seconds"
+
     // print the result
+    val depToString = ((dep: (String, String)) => s"${dep._1} v${dep._2}")
+    val dep = (verifier.dependencyVersions map depToString).mkString(", ")
+    println(s"${verifier.name} v${verifier.version} (using $dep) finished in $time.")
     result match {
       case Success =>
+        println("No errors found.")
       case Failure(errors) =>
+        println("The following errors were found:")
+        for (e <- errors) {
+          println("  " + e.readableMessage)
+        }
     }
   }
 
