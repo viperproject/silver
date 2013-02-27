@@ -69,30 +69,30 @@ trait DefaultTranslator extends Translator {
   protected type TypecheckerResult <: AnyRef
 
   protected var _state: TranslatorState.Value = TranslatorState.Initial
-  protected var _program: Program = null
-  protected var _verifier: Verifier = null
-  protected var _input: String = null
+  protected var _verifier: Option[Verifier] = None
+  protected var _input: Option[String] = None
   protected var _errors: Seq[AbstractError] = Seq()
-  protected var _verificationResult: VerificationResult = null
-  protected var _parseResult: ParserResult = null
-  protected var _typecheckResult: TypecheckerResult = null
+  protected var _verificationResult: Option[VerificationResult] = None
+  protected var _parseResult: Option[ParserResult] = None
+  protected var _typecheckResult: Option[TypecheckerResult] = None
+  protected var _program: Option[Program] = None
 
   def state = _state
 
   override def init(verifier: Verifier) {
     _state = TranslatorState.Initialized
-    _verifier = verifier
+    _verifier = Some(verifier)
   }
 
   override def reset(input: String) {
     if (state < TranslatorState.InputSet) sys.error("The translator has not been initialized.")
     _state = TranslatorState.InputSet
-    _input = input
+    _input = Some(input)
     _errors = Seq()
-    _program = null
-    _verificationResult = null
-    _parseResult = null
-    _typecheckResult = null
+    _program = None
+    _verificationResult = None
+    _parseResult = None
+    _typecheckResult = None
   }
 
   protected def mapVerificationResult(in: VerificationResult): VerificationResult
@@ -106,8 +106,8 @@ trait DefaultTranslator extends Translator {
   override def parse() {
     if (state < TranslatorState.InputSet) sys.error("The translator has not been initialized, or there is no input set.")
     if (state >= TranslatorState.Parsed) return
-    doParse(_input) match {
-      case Succ(r) => _parseResult = r
+    doParse(_input.get) match {
+      case Succ(r) => _parseResult = Some(r)
       case Fail(e) => _errors ++= e
     }
     _state = TranslatorState.Parsed
@@ -116,8 +116,8 @@ trait DefaultTranslator extends Translator {
   override def typecheck() {
     if (state >= TranslatorState.Typechecked || !_errors.isEmpty) return
     parse()
-    doTypecheck(_parseResult) match {
-      case Succ(r) => _typecheckResult = r
+    doTypecheck(_parseResult.get) match {
+      case Succ(r) => _typecheckResult = Some(r)
       case Fail(e) => _errors ++= e
     }
     _state = TranslatorState.Typechecked
@@ -126,8 +126,8 @@ trait DefaultTranslator extends Translator {
   override def translate() {
     if (state >= TranslatorState.Translated || !_errors.isEmpty) return
     typecheck()
-    doTranslate(_typecheckResult) match {
-      case Succ(r) => _program = r
+    doTranslate(_typecheckResult.get) match {
+      case Succ(r) => _program = Some(r)
       case Fail(e) => _errors ++= e
     }
     _state = TranslatorState.Translated
@@ -136,14 +136,14 @@ trait DefaultTranslator extends Translator {
   override def verify() {
     if (state >= TranslatorState.Verified || !_errors.isEmpty) return
     translate()
-    _verificationResult = mapVerificationResult(_verifier.verify(_program))
+    _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
     assert(_verificationResult != null)
     _state = TranslatorState.Verified
   }
 
   override def result = {
     require(state >= TranslatorState.Verified)
-    if (_errors.isEmpty) _verificationResult
+    if (_errors.isEmpty) _verificationResult.get
     else Failure(_errors)
   }
 }
