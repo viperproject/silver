@@ -1,6 +1,6 @@
 package semper.source
 
-import semper.sil.verifier.{AbstractError, VerificationResult, Verifier}
+import semper.sil.verifier.{Failure, AbstractError, VerificationResult, Verifier}
 import java.io.File
 import io.Source
 import semper.sil.ast.Program
@@ -61,12 +61,21 @@ trait Translator {
   */
 trait DefaultTranslator extends Translator {
 
-  private var _state: TranslatorState.Value = TranslatorState.Initial
-  private var _verificationResult: VerificationResult = null
-  private var _program: Program = null
-  private var _verifier: Verifier = null
-  private var _input: String = null
-  private var _errors: Seq[AbstractError] = Seq()
+  sealed trait Result[+A]
+  case class Succ[+A](a: A) extends Result[A]
+  case class Fail(errors: Seq[AbstractError]) extends Result[Nothing]
+
+  protected type ParserResult <: AnyRef
+  protected type TypecheckerResult <: AnyRef
+
+  protected var _state: TranslatorState.Value = TranslatorState.Initial
+  protected var _program: Program = null
+  protected var _verifier: Verifier = null
+  protected var _input: String = null
+  protected var _errors: Seq[AbstractError] = Seq()
+  protected var _verificationResult: VerificationResult = null
+  protected var _parseResult: ParserResult = null
+  protected var _typecheckResult: TypecheckerResult = null
 
   def state = _state
 
@@ -82,48 +91,60 @@ trait DefaultTranslator extends Translator {
     _errors = Seq()
     _program = null
     _verificationResult = null
+    _parseResult = null
+    _typecheckResult = null
   }
 
   protected def mapVerificationResult(in: VerificationResult): VerificationResult
 
-  protected def doParse(): Seq[AbstractError]
+  protected def doParse(input: String): Result[ParserResult]
 
-  protected def doTypecheck(): Seq[AbstractError]
+  protected def doTypecheck(input: ParserResult): Result[TypecheckerResult]
 
-  protected def doTranslate(): (Program, Seq[AbstractError])
+  protected def doTranslate(input: TypecheckerResult): Result[Program]
 
   override def parse() {
     if (state < TranslatorState.InputSet) sys.error("The translator has not been initialized, or there is no input set.")
     if (state >= TranslatorState.Parsed) return
-    _errors ++= doParse()
+    doParse(_input) match {
+      case Succ(r) => _parseResult = r
+      case Fail(e) => _errors ++= e
+    }
+    _state = TranslatorState.Parsed
   }
 
   override def typecheck() {
-    if (state >= TranslatorState.Typechecked) return
+    if (state >= TranslatorState.Typechecked || !_errors.isEmpty) return
     parse()
-    _errors ++= doTypecheck()
-    _errors
+    doTypecheck(_parseResult) match {
+      case Succ(r) => _typecheckResult = r
+      case Fail(e) => _errors ++= e
+    }
+    _state = TranslatorState.Typechecked
   }
 
   override def translate() {
-    if (state >= TranslatorState.Translated) return
+    if (state >= TranslatorState.Translated || !_errors.isEmpty) return
     typecheck()
-    val (p, e) = doTranslate()
+    doTranslate(_typecheckResult) match {
+      case Succ(r) => _program = r
+      case Fail(e) => _errors ++= e
+    }
     _state = TranslatorState.Translated
-    _program = p
-    _errors ++= e
   }
 
   override def verify() {
-    if (state >= TranslatorState.Verified) return
+    if (state >= TranslatorState.Verified || !_errors.isEmpty) return
     translate()
     _verificationResult = mapVerificationResult(_verifier.verify(_program))
+    assert(_verificationResult != null)
     _state = TranslatorState.Verified
   }
 
   override def result = {
     require(state >= TranslatorState.Verified)
-    _verificationResult
+    if (_errors.isEmpty) _verificationResult
+    else Failure(_errors)
   }
 }
 

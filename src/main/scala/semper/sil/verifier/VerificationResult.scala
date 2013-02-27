@@ -30,3 +30,15 @@ trait AbstractError {
   /** A readable message describing the error. */
   def readableMessage: String
 }
+
+/** A parser error. */
+case class ParseError(message: String, pos: Position) extends AbstractError {
+  def fullId = "parser.error"
+  def readableMessage = s"$pos: $message"
+}
+
+/** A typechecker error. */
+case class TypecheckerError(message: String, pos: Position) extends AbstractError {
+  def fullId = "typechecker.error"
+  def readableMessage = s"$pos: $message"
+}
