@@ -38,9 +38,6 @@ object Statements {
       }
       s1.union(s2)
     }
-    def foo(n: Node, sets: Seq[Set[LocalVar]]): Set[LocalVar] = {
-      sets.fold(extractLocal(n))(combineSets)
-    }
     s.reduce[Set[LocalVar]]((n, sets) => sets.fold(extractLocal(n))(combineSets))
   }
 }
