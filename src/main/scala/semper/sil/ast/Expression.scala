@@ -55,6 +55,7 @@ sealed abstract class BoolLit(val value: Boolean) extends Exp {
 }
 object BoolLit {
   def unapply(b: BoolLit) = Some(b.value)
+  def apply(b: Boolean)(pos: Position = NoPosition, info: Info = NoInfo) = if (b) TrueLit()(pos, info) else FalseLit()(pos, info)
 }
 case class TrueLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends BoolLit(true)
 case class FalseLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends BoolLit(false)
