@@ -33,7 +33,7 @@ object Statements {
     def combineSets(s1: Set[LocalVar], s2: Set[LocalVar]) = {
       for (l1 <- s1; l2 <- s2) {
         if (l1.name == l2.name && l1.typ != l2.typ) {
-          throw new RuntimeException("Local variable " + l1.name + " is used with different types " + l1.typ + " and " + l2.typ)
+          sys.error("Local variable " + l1.name + " is used with different types " + l1.typ + " and " + l2.typ)
         }
       }
       s1.union(s2)
