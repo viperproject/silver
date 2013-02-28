@@ -108,14 +108,21 @@ object UniqueNames {
       'φ' -> "phi",
       'χ' -> "chi",
       'ψ' -> "psi",
-      'ω' -> "omega"
+      'ω' -> "omega",
+      '+' -> "plus",
+      '-' -> "minus",
+      '*' -> "times",
+      '/' -> "divided",
+      '%' -> "mod"
       )
 }
 
 class UniqueActor extends Actor {
   def act() {
-    receive {
-      case s: String => reply(createUnique(s))
+    while (true) {
+      receive {
+        case s: String => reply(createUnique(s))
+      }
     }
   }
   
