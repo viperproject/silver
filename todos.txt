@@ -1,6 +1,6 @@
-- [b] Cfg2Ast
+- [b] Cfg2Ast tests
 - [b] contexts for unique identifier
-- [b] positions that store source language positions
+- [b] collect local variables
 - [s] finish parser
 - [s] finish typechecker/resolver
 - finish pretty printer
