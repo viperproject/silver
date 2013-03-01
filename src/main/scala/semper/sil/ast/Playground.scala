@@ -4,11 +4,14 @@ import pretty.PrettyPrinter
 import semper.sil.parser.{Resolver, Translator, Parser}
 import org.kiama.util.Messaging.{messagecount, sortedmessages}
 import utility.Statements
+import semper.sil.ast.utility.UniqueNames
 
 // --- Playground
 
 object Main {
   def main(args: Array[String]) {
+    for (i <- 1 to 10)
+      println(UniqueNames.createUniqueIdentifier("asdf"))
     println("\n\n")
     //meth
     //tp

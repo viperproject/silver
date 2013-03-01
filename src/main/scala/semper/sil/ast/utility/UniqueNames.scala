@@ -5,23 +5,35 @@ import scala.actors.Actor
 
 object UniqueNames {
   
-  private val uniqueActor = new UniqueActor  
+  val separator = "_"
+    
+  val lock = new Object
 
-  /**
+    /**
    * Returns a different string every time it is called. If possible, it
    * returns the input string, otherwise, it appends a number at the end.
    * If the input is a valid SIL identifier, the output is also a valid SIL identifier.
-   * This is thread safe.
+   * Calling this method directly would not be thread safe.
    */
   // TODO: Contexts
-  def createUnique(s: String) = {
-    val res = uniqueActor !? s
-    res match {
-      case i: String => i
-      case _ => sys.error(s"Invalid response $res from UniqueActor")
-    }   
+  def createUnique(s: String) = lock.synchronized {
+    if (!identCounters.contains(s)) {
+      identCounters.put(s, 0)
+      s
+    } else {
+      var counter = identCounters(s) + 1
+      var newS = s + separator + counter.toString
+      while (identCounters.contains(newS)) {
+        counter += 1
+        newS = s + separator + counter.toString
+      }
+      identCounters.put(newS, counter)
+      newS
+    }
   }
   
+  private val identCounters = collection.mutable.HashMap[String, Int]()
+    
   /**
    * Creates a different identifier every time it is called.
    */
@@ -115,40 +127,4 @@ object UniqueNames {
       '/' -> "divided",
       '%' -> "mod"
       )
-}
-
-class UniqueActor extends Actor {
-  def act() {
-    while (true) {
-      receive {
-        case s: String => reply(createUnique(s))
-      }
-    }
-  }
-  
-  private val identCounters = collection.mutable.HashMap[String, Int]()
-  
-  val separator = "_"
-   
-  /**
-   * Returns a different string every time it is called. If possible, it
-   * returns the input string, otherwise, it appends a number at the end.
-   * If the input is a valid SIL identifier, the output is also a valid SIL identifier.
-   * Calling this method directly would not be thread safe.
-   */
-  private def createUnique(s: String) = {
-    if (!identCounters.contains(s)) {
-      identCounters.put(s, 0)
-      s
-    } else {
-      var counter = identCounters(s) + 1
-      var newS = s + separator + counter.toString
-      while (identCounters.contains(newS)) {
-        counter += 1
-        newS = s + separator + counter.toString
-      }
-      identCounters.put(newS, counter)
-      newS
-    }
-  }
 }
