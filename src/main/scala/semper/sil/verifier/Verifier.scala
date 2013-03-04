@@ -21,7 +21,10 @@ abstract class Verifier() {
   /** Returns the copyright string of this verifier, e.g., "(c) 2013 Name" */
   def copyright: String
 
-  /** Returns the versions of its dependencies.
+  /** Returns the versions of its dependencies.  A dependency could be any library or stand-alone
+    * tool that this verifier relies on, either directly or indirectly.  Typically only other
+    * tools in the verification tool-chain are included here which can easily influence the
+    * verification outcome.
     *
     * @return A sequence of pairs `(toolName, version)`.
     */
