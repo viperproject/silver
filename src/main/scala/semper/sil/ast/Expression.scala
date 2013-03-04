@@ -96,6 +96,9 @@ sealed trait PermExp extends Exp {
 /** An abstract read permission. Has an unknown local value, but it has the same value inside one method and its contracts. */
 case class ReadPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 
+/** A wildcard permission. Has an unknown value, but there are no guarantees that it will be the same inside one method. */
+case class WildCard()(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
+
 /** The full permission. */
 case class FullPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractConcretePerm(1, 1)
 
