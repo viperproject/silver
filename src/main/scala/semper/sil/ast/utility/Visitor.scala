@@ -16,6 +16,15 @@ object Visitor {
     val subResults = n.subnodes.map(reduce[T](_)(f))
     f(n, subResults)
   }
+  
+  /**
+   * See Node.reduce.
+   */
+  def reduce[C, R](n: Node)(context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R): R = {
+    val newContext = enter(n, context)
+    val subResults = n.subnodes.map(reduce[C, R](_)(newContext, enter, combine))
+    combine(n, context, subResults)
+  }
 
   /**
    * See Node.visit.

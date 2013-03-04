@@ -49,10 +49,14 @@ trait Node {
   /**
    * Applies the function `f` to the node and the results of the subnodes.
    */
-  def reduce[T](f: (Node, Seq[T]) => T) = Visitor.reduce(this)(f)
+  def reduce[T](f: (Node, Seq[T]) => T) = Visitor.reduce[T](this)(f)
 
-  // TODO If necessary, a more powerful version could be introduced with the signature
-  // reduce[Context, Result](context: Context, enter: (Node, Context) -> Context, combine: (Node, Context, List[Result]) -> Result)
+  /**
+   * More powerful version of reduce that also carries a context argument through the tree.
+   */
+  def reduce[C, R](context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R) = {
+    Visitor.reduce[C, R](this)(context, enter, combine)
+  }
 
   /**
    * Applies the function `f` to the AST node, then visits all subnodes.
