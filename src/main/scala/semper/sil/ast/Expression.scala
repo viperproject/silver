@@ -162,10 +162,10 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 
 // --- Quantifications
 
-/** Universal quantifiction. */
+/** Universal quantification. */
 case class Forall(variable: LocalVarDecl, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
 
-/** Existential quantifiction. */
+/** Existential quantification. */
 case class Exists(variable: LocalVarDecl, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
 
 
