@@ -26,6 +26,10 @@ trait SilFrontEnd extends DefaultTranslator {
   override protected type ParserResult = PNode
   override protected type TypecheckerResult = Program
 
+  /** The current configuration. */
+  var _config: SilFrontEndConfig = null
+  def config = _config
+
   /**
    * Main method that parses command-line arguments, parses the input file and passes
    * the SIL program to the verifier.  The resulting error messages (if any) will be
@@ -36,14 +40,33 @@ trait SilFrontEnd extends DefaultTranslator {
     val start = System.currentTimeMillis()
 
     // parse command line arguments
-    val config = SilFrontEndConfig(List("C:\\tmp\\sil\\cfg.dot"), verifier)
+    var opts = List("C:\\tmp\\sil\\cfg.dot", "--no-timing")
+    //opts = List("--version")
+    try {
+      _config = SilFrontEndConfig(opts, verifier)
+      config.file() // hack: force command-line option parsing
+    } catch {
+      case t: Exception =>
+        printFinishHeaderWithTime(start)
+        printErrors(CliOptionError(t.getMessage + "."))
+        return
+      case t: Throwable =>
+        printFinishHeaderWithTime(start)
+        printErrors(CliOptionError(t.toString + "."))
+        return
+    }
 
     // exit if there were errors during parsing of command-line options
     if (config.error.isDefined) {
-      printHeader(start)
+      printHeader()
+      printFinishHeader(start)
       printErrors(CliOptionError(config.error.get + "."))
-      sys.exit()
+      return
+    } else if (config.exit) {
+      return
     }
+
+    printHeader()
 
     // forward verifier arguments
     verifier.commandLineArgs(Nil)
@@ -54,11 +77,11 @@ trait SilFrontEnd extends DefaultTranslator {
     // set the file we want to verify
     reset(new File(config.file()))
 
-    // run the parser, typechecker, and verifier (calling verify will do all of them)
+    // run the parser, typechecker, and verifier
     verify()
 
     // print the result
-    printHeader(start)
+    printFinishHeader(start)
     result match {
       case Success =>
         printSuccess()
@@ -67,18 +90,26 @@ trait SilFrontEnd extends DefaultTranslator {
     }
   }
 
-  def printHeader(startTime: Long) {
-    val timeMs = System.currentTimeMillis() - startTime
-    val time = s"${(timeMs / 1000)} seconds"
-
-    val depToString = ((dep: (String, String)) => s"${dep._1} v${dep._2}")
-    val dep = verifier.dependencyVersions match {
-      case Nil => ""
-      case deps => "using " + (deps map depToString).mkString(", ") + " "
+  def printHeader() {
+    if (!config.noHeader()) {
+      println(config.fullVersion)
+      println()
     }
-    println(s"${verifier.name} ${verifier.version} ${dep}finished in $time.")
   }
 
+  def printFinishHeader(startTime: Long) {
+    if (config.noTiming()) {
+      println(s"${verifier.name} finished.")
+    } else {
+      printFinishHeaderWithTime(startTime)
+    }
+  }
+
+  def printFinishHeaderWithTime(startTime: Long) {
+    val timeMs = System.currentTimeMillis() - startTime
+    val time = f"${(timeMs / 1000.0)}%.3f seconds"
+    println(s"${verifier.name} finished in $time.")
+  }
   def printErrors(errors: AbstractError*) {
     println("The following errors were found:")
     for (e <- errors) {
