@@ -5,6 +5,7 @@ import semper.sil.ast._
 import semper.sil.parser.{PNode, Translator, Resolver, Parser}
 import org.kiama.util.Messaging._
 import semper.sil.verifier._
+import java.io.File
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
@@ -19,6 +20,9 @@ import semper.sil.verifier._
  */
 trait SilFrontEnd extends DefaultTranslator {
 
+  /** The SIL verifier to be used for verification. */
+  def verifier: Verifier
+
   override protected type ParserResult = PNode
   override protected type TypecheckerResult = Program
 
@@ -27,34 +31,63 @@ trait SilFrontEnd extends DefaultTranslator {
    * the SIL program to the verifier.  The resulting error messages (if any) will be
    * shown in a user-friendly fashion.
    */
-  def main(args: Seq[String]) {
+  def execute(args: Seq[String]) {
 
     val start = System.currentTimeMillis()
+
+    // parse command line arguments
+    val config = SilFrontEndConfig(List("C:\\tmp\\sil\\cfg.dot"), verifier)
+
+    // exit if there were errors during parsing of command-line options
+    if (config.error.isDefined) {
+      printHeader(start)
+      printErrors(CliOptionError(config.error.get + "."))
+      sys.exit()
+    }
+
+    // forward verifier arguments
+    verifier.commandLineArgs(Nil)
 
     // initialize the translator
     init(verifier)
 
-    // parse command line arguments
+    // set the file we want to verify
+    reset(new File(config.file()))
 
     // run the parser, typechecker, and verifier (calling verify will do all of them)
     verify()
 
-    val timeMs = System.currentTimeMillis() - start
-    val time = s"${(timeMs / 1000)} seconds"
-
     // print the result
-    val depToString = ((dep: (String, String)) => s"${dep._1} v${dep._2}")
-    val dep = (verifier.dependencyVersions map depToString).mkString(", ")
-    println(s"${verifier.name} v${verifier.version} (using $dep) finished in $time.")
+    printHeader(start)
     result match {
       case Success =>
-        println("No errors found.")
+        printSuccess()
       case Failure(errors) =>
-        println("The following errors were found:")
-        for (e <- errors) {
-          println("  " + e.readableMessage)
-        }
+        printErrors(errors: _*)
     }
+  }
+
+  def printHeader(startTime: Long) {
+    val timeMs = System.currentTimeMillis() - startTime
+    val time = s"${(timeMs / 1000)} seconds"
+
+    val depToString = ((dep: (String, String)) => s"${dep._1} v${dep._2}")
+    val dep = verifier.dependencyVersions match {
+      case Nil => ""
+      case deps => "using " + (deps map depToString).mkString(", ") + " "
+    }
+    println(s"${verifier.name} ${verifier.version} ${dep}finished in $time.")
+  }
+
+  def printErrors(errors: AbstractError*) {
+    println("The following errors were found:")
+    for (e <- errors) {
+      println("  " + e.readableMessage)
+    }
+  }
+
+  def printSuccess() {
+    println("No errors found.")
   }
 
   override def doParse(input: String): Result[ParserResult] = {
@@ -87,7 +120,6 @@ trait SilFrontEnd extends DefaultTranslator {
     Succ(input)
   }
 
-  /** The SIL verifier to be used for verification. */
-  def verifier: Verifier
+  override def mapVerificationResult(in: VerificationResult) = in
 
 }
