@@ -33,6 +33,7 @@ object Transformer {
           case Exists(v, e) => Exists(v, func(e))(p, i)
           case Forall(v, e) => Forall(v, func(e))(p, i)
           case ReadPerm() => exp
+          case WildCardPerm() => exp
           case FullPerm() => exp
           case NoPerm() => exp
           case EpsilonPerm() => exp

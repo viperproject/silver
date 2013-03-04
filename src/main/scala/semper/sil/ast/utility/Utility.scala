@@ -100,6 +100,7 @@ object Nodes {
           case Exists(v, exp) => Seq(v, exp)
           case Forall(v, exp) => Seq(v, exp)
           case ReadPerm() => Nil
+          case WildCardPerm() => Nil
           case FullPerm() => Nil
           case NoPerm() => Nil
           case EpsilonPerm() => Nil
