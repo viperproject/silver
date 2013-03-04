@@ -1,6 +1,6 @@
 package semper.sil.verifier
 
-import semper.sil.ast.Position
+import semper.sil.ast.{NoPosition, Position}
 
 /** Describes the outcome of a verification attempt of a SIL program.
   *
@@ -41,4 +41,11 @@ case class ParseError(message: String, pos: Position) extends AbstractError {
 case class TypecheckerError(message: String, pos: Position) extends AbstractError {
   def fullId = "typechecker.error"
   def readableMessage = s"$pos: $message"
+}
+
+/** An error during command-line option parsing. */
+case class CliOptionError(message: String) extends AbstractError {
+  def pos = NoPosition
+  def fullId = "clioption.error"
+  def readableMessage = s"Command-line interface: $message"
 }
