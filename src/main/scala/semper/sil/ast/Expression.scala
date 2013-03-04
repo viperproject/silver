@@ -67,7 +67,18 @@ case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo) ex
   lazy val typ = Ref
 }
 
-// --- Permissions
+// --- Accessibility predicates
+
+/** A common trait for accessibility predicates. */
+sealed trait AccessPredicate extends Exp {
+  require(perm isSubtype Perm)
+  def loc: LocationAccess
+  def perm: Exp
+  lazy val typ = Bool
+}
+object AccessPredicate {
+  def unapply(a: AccessPredicate) = Some((a.loc, a.perm))
+}
 
 /** An accessibility predicate for a field location. */
 case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AccessPredicate
@@ -75,7 +86,14 @@ case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position =
 /** An accessibility predicate for a predicate location. */
 case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AccessPredicate
 
-/** An abstract read permission. */
+// --- Permissions
+
+/** A common trait for expressions of type permission. */
+sealed trait PermExp extends Exp {
+  override lazy val typ = Perm
+}
+
+/** An abstract read permission. Has an unknown local value, but it has the same value inside one method and its contracts. */
 case class ReadPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 
 /** The full permission. */
@@ -123,6 +141,12 @@ case class DomainFuncApp(func: DomainFunc, args: Seq[Exp])(val pos: Position = N
 
 // --- Field and predicate accesses
 
+/** A common trait for expressions accessing a location. */
+sealed trait LocationAccess extends Exp {
+  def loc: Location
+  def rcv: Exp
+}
+
 /** A field access expression. */
 case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess with RcvNode {
   lazy val loc = field
@@ -152,7 +176,6 @@ case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position 
   lazy val typ = exp.typ
 }
 
-
 // --- Old expression
 
 case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnExp {
@@ -161,6 +184,14 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 
 
 // --- Quantifications
+
+/** A common trait for quantified expressions. */
+sealed trait QuantifiedExp extends Exp {
+  require(exp isSubtype Bool)
+  def variable: LocalVarDecl
+  def exp: Exp
+  lazy val typ = Bool
+}
 
 /** Universal quantification. */
 case class Forall(variable: LocalVarDecl, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
@@ -199,11 +230,6 @@ case class ThisLit()(val pos: Position = NoPosition, val info: Info = NoInfo) ex
 
 
 // --- Common functionality
-
-/** A common trait for expressions of type permission. */
-sealed trait PermExp extends Exp {
-  override lazy val typ = Perm
-}
 
 /**
  * A common class for concrete permissions.  The name AbstractConcretePerm is used because it is an abstract superclass for concrete permissions.
@@ -266,27 +292,4 @@ sealed abstract class DomainBinExp(val func: BinOp) extends BinExp with DomainOp
 /** Common superclass for unary expressions that belong to a domain (and thus have a domain operator). */
 sealed abstract class DomainUnExp(val func: UnOp) extends PrettyUnaryExpression with DomainOpExp with UnExp
 
-/** A common trait for expressions accessing a location. */
-sealed trait LocationAccess extends Exp {
-  def loc: Location
-  def rcv: Exp
-}
 
-/** A common trait for quantified expressions. */
-sealed trait QuantifiedExp extends Exp {
-  require(exp isSubtype Bool)
-  def variable: LocalVarDecl
-  def exp: Exp
-  lazy val typ = Bool
-}
-
-/** A common trait for accessibility predicates. */
-sealed trait AccessPredicate extends Exp {
-  require(perm isSubtype Perm)
-  def loc: LocationAccess
-  def perm: Exp
-  lazy val typ = Bool
-}
-object AccessPredicate {
-  def unapply(a: AccessPredicate) = Some((a.loc, a.perm))
-}
