@@ -20,7 +20,6 @@
         <JAVADOC />
         <SOURCES>
           <root url="jar://$IVY_HOME$/cache/org.rogach/scallop_2.10/srcs/scallop_2.10-0.8.1-sources.jar!/" />
-          <root url="jar://$IVY_HOME$/cache/org.rogach/scallop_2.10/srcs/scallop_2.10-0.8.1-sources.jar!/" />
         </SOURCES>
       </library>
     </orderEntry>
