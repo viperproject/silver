@@ -231,16 +231,6 @@ case class ThisLit()(val pos: Position = NoPosition, val info: Info = NoInfo) ex
   override lazy val mutable = false
 }
 
-// --- Invalid Expression
-
-/** Special class that can be used to represent an invalid expression
- * it is ignored by most consistency checks, but it invalidates the
- * whole program and should never be passed to the verifier.
- * This is useful if a problem occurs while generating an expression,
- * but still some kind of expression has to be returned. */
-case class InvalidExp()(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
-  val typ = Bottom
-}
 
 // --- Common functionality
 

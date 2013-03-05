@@ -88,13 +88,6 @@ case class Label(name: String)(val pos: Position = NoPosition, val info: Info = 
   require(Consistency.validUserDefinedIdentifier(name))
 }
 
-/** Special class that can be used to represent an invalid statement
- * it is ignored by most consistency checks, but it invalidates the
- * whole program and should never be passed to the verifier.
- * This is useful if a problem occurs while generating a statement,
- * but still some kind of statement has to be returned. */
-case class InvalidStmt()(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
-
 /**
  * A goto statement.  Note that goto's in SIL are limited to forward jumps, and a jump cannot enter
  * a loop but might leave one or several loops.  This ensures that the only back edges in the
