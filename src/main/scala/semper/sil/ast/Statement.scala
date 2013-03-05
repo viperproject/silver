@@ -18,10 +18,10 @@ sealed trait Stmt extends Node with Infoed with Positioned {
   def toCfg = CfgGenerator.toCFG(this)
   
   /**
-   * Returns a list of all local variables contained in this statement and
+   * Returns a list of all undeclared local variables contained in this statement and
    * throws an exception if the same variable is used with different types.
    */
-  def localVars = Statements.localVars(this)
+  def undeclLocalVars = Statements.undeclLocalVars(this)
 }
 
 /** An assignment to a local variable. */
