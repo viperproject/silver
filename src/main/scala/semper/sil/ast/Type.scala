@@ -3,7 +3,7 @@ package semper.sil.ast
 /** SIL typs. */
 sealed trait Type extends Node{
   // At the moment, there is no subtyping in SIL.
-  def isSubtype(other: Type) = this == other
+  def isSubtype(other: Type) = this == other || this == Bottom
   /** Is this a concrete type (i.e. no uninstantiated type variables)? */
   def isConcrete: Boolean
 }
@@ -19,6 +19,8 @@ case object Bool extends BuiltInType
 case object Perm extends BuiltInType
 /** Type for references. */
 case object Ref extends BuiltInType
+/** Bottom type (only used internally). */
+case object Bottom extends BuiltInType
 /** Type for predicates (only used internally). */
 case object Pred extends BuiltInType
 /** Type for user-defined domains. */
