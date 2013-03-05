@@ -22,12 +22,19 @@ object Statements {
   }
 
   /**
-   * Returns a list of all local variables used in this statement. If the same local variable is used with different
+   * Returns a list of all undeclared local variables used in this statement.
+   * If the same local variable is used with different
    * types, an exception is thrown.
    */
-  def localVars(s: Stmt) = {
-    def extractLocal(n: Node) = n match {
-      case l: LocalVar => Set(l)
+  def undeclLocalVars(s: Stmt) = {
+    def extractLocal(n: Node, decls: Set[LocalVarDecl]) = n match {
+      case l: LocalVar => decls.find(_.name == l.name) match {
+        case None => Set(l)
+        case Some(d) if d.typ != l.typ => {
+          sys.error("Local variable " + l.name + " is declared with type " + d.typ + " but used with type " + l.typ + ".")
+        }
+        case _ => Set[LocalVar]()
+      }
       case _ => Set[LocalVar]()
     }
     def combineSets(s1: Set[LocalVar], s2: Set[LocalVar]) = {
@@ -38,7 +45,14 @@ object Statements {
       }
       s1.union(s2)
     }
-    s.reduce[Set[LocalVar]]((n, sets) => sets.fold(extractLocal(n))(combineSets))
+    def addDecls(n: Node, decls: Set[LocalVarDecl]) = n match {
+      case While(_, _, locals, _) => decls ++ locals
+      case _ => decls
+    }
+    def combineResults(n: Node, decls: Set[LocalVarDecl], localss: Seq[Set[LocalVar]]) = {
+      localss.fold(extractLocal(n, decls))(combineSets)
+    }
+    s.reduce[Set[LocalVarDecl], Set[LocalVar]](Set(), addDecls, combineResults)
   }
 }
 
