@@ -4,12 +4,15 @@ package semper.sil.ast
 sealed trait Position
 
 /** Describes ''no location'' for cases where a `Position` is expected, but not available. */
-case object NoPosition extends Position
+case object NoPosition extends Position {
+  override def toString = "no position"
+}
 
 /** An actual position that has a line and column. */
 trait RealPosition {
   def line: Int
   def column: Int
+  override def toString = s"$line.$column"
 }
 
 /** Describes a location in a file by line and column number. */

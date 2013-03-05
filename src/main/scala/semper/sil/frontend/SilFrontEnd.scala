@@ -5,6 +5,7 @@ import semper.sil.ast._
 import semper.sil.parser.{PNode, Translator, Resolver, Parser}
 import org.kiama.util.Messaging._
 import semper.sil.verifier._
+import java.io.File
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
@@ -19,42 +20,105 @@ import semper.sil.verifier._
  */
 trait SilFrontEnd extends DefaultTranslator {
 
+  /** The SIL verifier to be used for verification. */
+  def verifier: Verifier
+
   override protected type ParserResult = PNode
   override protected type TypecheckerResult = Program
+
+  /** The current configuration. */
+  var _config: SilFrontEndConfig = null
+  def config = _config
 
   /**
    * Main method that parses command-line arguments, parses the input file and passes
    * the SIL program to the verifier.  The resulting error messages (if any) will be
    * shown in a user-friendly fashion.
    */
-  def main(args: Seq[String]) {
+  def execute(args: Seq[String]) {
 
     val start = System.currentTimeMillis()
+
+    // parse command line arguments
+    var opts = List("C:\\tmp\\sil\\cfg.dot", "--no-timing")
+    //opts = List("--version")
+    try {
+      _config = SilFrontEndConfig(opts, verifier)
+      config.file() // hack: force command-line option parsing
+    } catch {
+      case t: Exception =>
+        printFinishHeaderWithTime(start)
+        printErrors(CliOptionError(t.getMessage + "."))
+        return
+      case t: Throwable =>
+        printFinishHeaderWithTime(start)
+        printErrors(CliOptionError(t.toString + "."))
+        return
+    }
+
+    // exit if there were errors during parsing of command-line options
+    if (config.error.isDefined) {
+      printHeader()
+      printFinishHeader(start)
+      printErrors(CliOptionError(config.error.get + "."))
+      return
+    } else if (config.exit) {
+      return
+    }
+
+    printHeader()
+
+    // forward verifier arguments
+    verifier.commandLineArgs(Nil)
 
     // initialize the translator
     init(verifier)
 
-    // parse command line arguments
+    // set the file we want to verify
+    reset(new File(config.file()))
 
-    // run the parser, typechecker, and verifier (calling verify will do all of them)
+    // run the parser, typechecker, and verifier
     verify()
 
-    val timeMs = System.currentTimeMillis() - start
-    val time = s"${(timeMs / 1000)} seconds"
-
     // print the result
-    val depToString = ((dep: (String, String)) => s"${dep._1} v${dep._2}")
-    val dep = (verifier.dependencyVersions map depToString).mkString(", ")
-    println(s"${verifier.name} v${verifier.version} (using $dep) finished in $time.")
+    printFinishHeader(start)
     result match {
       case Success =>
-        println("No errors found.")
+        printSuccess()
       case Failure(errors) =>
-        println("The following errors were found:")
-        for (e <- errors) {
-          println("  " + e.readableMessage)
-        }
+        printErrors(errors: _*)
     }
+  }
+
+  def printHeader() {
+    if (!config.noHeader()) {
+      println(config.fullVersion)
+      println()
+    }
+  }
+
+  def printFinishHeader(startTime: Long) {
+    if (config.noTiming()) {
+      println(s"${verifier.name} finished.")
+    } else {
+      printFinishHeaderWithTime(startTime)
+    }
+  }
+
+  def printFinishHeaderWithTime(startTime: Long) {
+    val timeMs = System.currentTimeMillis() - startTime
+    val time = f"${(timeMs / 1000.0)}%.3f seconds"
+    println(s"${verifier.name} finished in $time.")
+  }
+  def printErrors(errors: AbstractError*) {
+    println("The following errors were found:")
+    for (e <- errors) {
+      println("  " + e.readableMessage)
+    }
+  }
+
+  def printSuccess() {
+    println("No errors found.")
   }
 
   override def doParse(input: String): Result[ParserResult] = {
@@ -87,7 +151,6 @@ trait SilFrontEnd extends DefaultTranslator {
     Succ(input)
   }
 
-  /** The SIL verifier to be used for verification. */
-  def verifier: Verifier
+  override def mapVerificationResult(in: VerificationResult) = in
 
 }
