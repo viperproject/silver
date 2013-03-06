@@ -1,4 +1,4 @@
-package semper.source
+package semper.sil.frontend
 
 import semper.sil.verifier.{Failure, AbstractError, VerificationResult, Verifier}
 import java.io.File
@@ -10,7 +10,7 @@ import semper.sil.ast.Program
   *
   * @author Stefan Heule
   */
-trait Translator {
+trait Frontend {
 
   /** Initialize this translator with a given verifier. Only meant to be called once. */
   def init(verifier: Verifier)
@@ -59,7 +59,7 @@ trait Translator {
 
 /** A default implementation of a translator that keeps track of the state of the translator.
   */
-trait DefaultTranslator extends Translator {
+trait DefaultFrontend extends Frontend {
 
   sealed trait Result[+A]
   case class Succ[+A](a: A) extends Result[A]

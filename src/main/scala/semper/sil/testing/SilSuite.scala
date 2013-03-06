@@ -2,11 +2,11 @@ package semper.sil.testing
 
 import java.io.File
 import semper.sil.verifier._
-import semper.source.Translator
 import java.nio.file.Path
 import io.Source
 import semper.sil.ast.SourcePosition
 import org.scalatest._
+import semper.sil.frontend.Frontend
 
 /** A test suite for verification toolchains that use SIL as the intermediate language.
   *
@@ -21,7 +21,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   def baseDirectory: Path
 
   /** The translator to be used. */
-  def translator(verifier: Verifier, input: String): Translator
+  def translator(verifier: Verifier, input: String): Frontend
 
   /** The list of verifiers to be used. */
   def verifiers: Seq[Verifier]

@@ -10,7 +10,7 @@ import org.rogach.scallop.exceptions.{Help, Version, ScallopException, Exit}
  *
  * @author Stefan Heule
  */
-case class SilFrontEndConfig(ars: Seq[String], verifier: Verifier) extends LazyScallopConf(ars) {
+case class SilFrontendConfig(ars: Seq[String], verifier: Verifier) extends LazyScallopConf(ars) {
 
   /** None if there has no error occurred during command-line parsing, and an error message oderwise. */
   var error: Option[String] = None
@@ -20,7 +20,7 @@ case class SilFrontEndConfig(ars: Seq[String], verifier: Verifier) extends LazyS
   val file = trailArg[String]("file", "The file to verify.", (x: String) => {
     val f = new java.io.File(x)
     f.canRead
-  })
+  }, hidden = true)
 
   val noTiming = opt[Boolean]("no-timing",
     descr = "Don't display timing information",

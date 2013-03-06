@@ -1,6 +1,5 @@
 package semper.sil.frontend
 
-import semper.source.DefaultTranslator
 import semper.sil.ast._
 import semper.sil.parser.{PNode, Translator, Resolver, Parser}
 import org.kiama.util.Messaging._
@@ -12,13 +11,13 @@ import java.io.File
  * provides code to invoke the parser, parse common command-line options and print
  * error messages in a user-friendly fashion.
  *
- * Users of this trait should implement a main method that calls `SilFrontEnd.run`.
+ * Users of this trait should implement a main method that calls `SilFrontend.run`.
  * Furthermore, they must implement the method `verifier` that returns a verifier
  * for SIL.
  *
  * @author Stefan Heule
  */
-trait SilFrontEnd extends DefaultTranslator {
+trait SilFrontend extends DefaultFrontend {
 
   /** The SIL verifier to be used for verification. */
   def verifier: Verifier
@@ -27,7 +26,7 @@ trait SilFrontEnd extends DefaultTranslator {
   override protected type TypecheckerResult = Program
 
   /** The current configuration. */
-  var _config: SilFrontEndConfig = null
+  var _config: SilFrontendConfig = null
   def config = _config
 
   /**
@@ -40,10 +39,10 @@ trait SilFrontEnd extends DefaultTranslator {
     val start = System.currentTimeMillis()
 
     // parse command line arguments
-    var opts = List("C:\\tmp\\sil\\cfg.dot", "--no-timing")
+    var opts = List("--no-timing", "C:\\tmp\\sil\\cfg.dot")
     //opts = List("--version")
     try {
-      _config = SilFrontEndConfig(opts, verifier)
+      _config = SilFrontendConfig(opts, verifier)
       config.file() // hack: force command-line option parsing
     } catch {
       case t: Exception =>
