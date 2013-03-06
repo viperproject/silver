@@ -20,7 +20,7 @@ case class SilFrontendConfig(ars: Seq[String], verifier: Verifier) extends LazyS
   val file = trailArg[String]("file", "The file to verify.", (x: String) => {
     val f = new java.io.File(x)
     f.canRead
-  }, hidden = true)
+  })
 
   val dependencies = opt[Boolean]("dependencies",
     descr = "Print full information about dependencies.",
