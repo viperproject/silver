@@ -7,7 +7,7 @@ import semper.sil.ast.Program
   *
   * @author Stefan Heule
   */
-abstract class Verifier() {
+trait Verifier {
 
   /** Set the command-line arguments to be used in this verifier. */
   def commandLineArgs(options: Seq[String])
