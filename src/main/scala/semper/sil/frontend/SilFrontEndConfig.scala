@@ -2,7 +2,7 @@ package semper.sil.frontend
 
 import collection._
 import org.rogach.scallop.LazyScallopConf
-import semper.sil.verifier.Verifier
+import semper.sil.verifier.{Dependency, Verifier}
 import org.rogach.scallop.exceptions.{Help, Version, ScallopException, Exit}
 
 /**
@@ -40,16 +40,15 @@ case class SilFrontendConfig(ars: Seq[String], verifier: Verifier) extends LazyS
     noshort = true
   )
 
-  def fullVersion = {
-    val depToString = ((dep: (String, String)) => s"${dep._1} ${dep._2}")
-    val dep = verifier.dependencyVersions match {
+  lazy val fullVersion = {
+    val depToString = ((dep: Dependency) => s"${dep.name} ${dep.version}")
+    val dep = verifier.dependencies match {
       case Nil => ""
       case deps => "\n  using " + (deps map depToString).mkString(", ") + " "
     }
     s"${verifier.name} ${verifier.version} ${verifier.copyright}$dep"
   }
 
-  version(fullVersion)
   banner( s"""Usage: ${verifier.name} [options] <file>
              |
              |Options:""".stripMargin)

@@ -5,6 +5,7 @@ import semper.sil.parser.{PNode, Translator, Resolver, Parser}
 import org.kiama.util.Messaging._
 import semper.sil.verifier._
 import java.io.File
+import semper.sil.utility.Paths
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
@@ -65,10 +66,15 @@ trait SilFrontend extends DefaultFrontend {
       return
     }
 
-    printHeader()
-
     // forward verifier arguments
     verifier.commandLineArgs(Nil)
+
+    // wait with setting the version, such that the verifier can use command-line arguments first to determine
+    // the versions of dependencies
+    config.version(config.fullVersion)
+
+    // print the header
+    printHeader()
 
     // initialize the translator
     init(verifier)
