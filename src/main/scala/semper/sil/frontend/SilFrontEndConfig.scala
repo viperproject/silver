@@ -47,12 +47,7 @@ case class SilFrontendConfig(ars: Seq[String], verifier: Verifier) extends LazyS
   )
 
   lazy val fullVersion = {
-    val depToString = ((dep: Dependency) => s"${dep.name} ${dep.version}")
-    val dep = verifier.dependencies match {
-      case Nil => ""
-      case deps => "\n  using " + (deps map depToString).mkString(", ") + " "
-    }
-    s"${verifier.name} ${verifier.version} ${verifier.copyright}$dep"
+    s"${verifier.name} ${verifier.version} ${verifier.copyright}"
   }
 
   banner( s"""Usage: ${verifier.name} [options] <file>
