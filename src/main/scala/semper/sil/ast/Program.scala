@@ -198,8 +198,7 @@ case object ModuloOp extends ProdOp("%") with IntBinOp with IntDomainFunc
 case object PermPlusOp extends SumOp("+") with PermBinOp with PermDomainFunc
 case object PermMinusOp extends SumOp("-") with PermBinOp with PermDomainFunc
 case object PermTimesOp extends ProdOp("*") with PermBinOp with PermDomainFunc
-// TODO Is SumOp a typo?
-case object IntPermTimesOp extends SumOp("*") with BinOp with PermDomainFunc {
+case object IntPermTimesOp extends ProdOp("*") with BinOp with PermDomainFunc {
   lazy val leftTyp = Int
   lazy val rightTyp = Perm
 }
