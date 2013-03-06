@@ -22,14 +22,20 @@ case class SilFrontendConfig(ars: Seq[String], verifier: Verifier) extends LazyS
     f.canRead
   }, hidden = true)
 
-  val noTiming = opt[Boolean]("no-timing",
-    descr = "Don't display timing information",
+  val dependencies = opt[Boolean]("dependencies",
+    descr = "Print full information about dependencies.",
     default = Some(false),
     noshort = true
   )
 
   val noHeader = opt[Boolean]("no-header",
     descr = "Don't display the header (includes name and version of the tool as well as its dependencies)",
+    default = Some(false),
+    noshort = true
+  )
+
+  val noTiming = opt[Boolean]("no-timing",
+    descr = "Don't display timing information",
     default = Some(false),
     noshort = true
   )

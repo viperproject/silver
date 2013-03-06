@@ -40,7 +40,7 @@ trait SilFrontend extends DefaultFrontend {
     val start = System.currentTimeMillis()
 
     // parse command line arguments
-    var opts = List("--no-timing", "C:\\tmp\\sil\\cfg.dot")
+    var opts = List("--help", "C:\\tmp\\sil\\cfg.dot")
     //opts = List("--version")
     try {
       _config = SilFrontendConfig(opts, verifier)
@@ -75,6 +75,16 @@ trait SilFrontend extends DefaultFrontend {
 
     // print the header
     printHeader()
+
+    // print dependencies if necessary
+    if (config.dependencies()) {
+      val s = (verifier.dependencies map (dep => {
+        s"  ${dep.name} ${dep.version}, located at ${dep.location}."
+      })).mkString("\n")
+      println("The following dependencies are used:")
+      println(s)
+      println()
+    }
 
     // initialize the translator
     init(verifier)
