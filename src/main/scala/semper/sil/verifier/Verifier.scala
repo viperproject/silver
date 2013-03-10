@@ -19,6 +19,11 @@ trait Verifier {
   def copyright: String
 
   /**
+   * The full command used to invoke this verification (useful for debugging).
+   */
+  def fullCmd: String
+
+  /**
    * Returns the dependencies.  A dependency could be any library or stand-alone
    * tool that this verifier relies on, either directly or indirectly.  Typically only other
    * tools in the verification tool-chain are included here which can easily influence the
