@@ -20,8 +20,15 @@ import semper.sil.utility.Paths
  */
 trait SilFrontend extends DefaultFrontend {
 
-  /** The SIL verifier to be used for verification. */
-  def verifier: Verifier
+  /**
+   * Create the verifier.  The full command is just available for debugging
+   * purposes; the verifier-specific arguments will be passed later.
+   */
+  def createVerifier(fullCmd: String): Verifier
+
+  /** The SIL verifier to be used for verification (after it has been initialized). */
+  def verifier: Verifier = _ver
+  var _ver: Verifier = null
 
   override protected type ParserResult = PNode
   override protected type TypecheckerResult = Program
@@ -39,9 +46,11 @@ trait SilFrontend extends DefaultFrontend {
 
     val start = System.currentTimeMillis()
 
+    // create the verifier
+    _ver = createVerifier(args.mkString(" "))
+
     // parse command line arguments
     var opts = List("--help", "C:\\tmp\\sil\\cfg.dot")
-    //opts = List("--version")
     try {
       _config = SilFrontendConfig(opts, verifier)
       config.file() // hack: force command-line option parsing
