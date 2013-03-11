@@ -21,7 +21,14 @@ case object Perm extends BuiltInType
 case object Ref extends BuiltInType
 /** Type for predicates (only used internally). */
 case object Pred extends BuiltInType
-/** Type for user-defined domains. */
+
+
+/**
+ * Type for user-defined domains.
+ * @param domain The underlying domain.
+ * @param typVarsMap Maps type parameters to (possibly concrete) types. May not map all type
+ *                   parameters, may even be empty.
+ */
 case class DomainType(domain: Domain, typVarsMap: Map[TypeVar, Type]) extends Type {
   lazy val isConcrete: Boolean = {
     var res = true

@@ -33,7 +33,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 case class Function(name: String, formalArgs: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], private var _exp: Exp)
                    (val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with FuncLike with Contracted {
   require(_exp == null || (_exp isSubtype typ))
-  def exp = _exp
+  def exp = _exp /* TODO: [Malte] I suggest to rename 'exp' to 'body' since the latter is more descriptive. */
   def exp_=(e: Exp) {
     require(e isSubtype typ)
     _exp = e
@@ -49,6 +49,8 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], pres: Seq[Exp],
  */
 case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed with Typed {
   require(Consistency.validUserDefinedIdentifier(name))
+
+  val localVar = LocalVar(name)(typ, pos, info)
 }
 
 

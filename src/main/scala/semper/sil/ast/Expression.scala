@@ -121,16 +121,16 @@ case class ConcretePerm(override val numerator: BigInt, override val denominator
 case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 
 // Arithmetic expressions
-case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermPlusOp) with PermExp
-case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermMinusOp) with PermExp
-case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermTimesOp) with PermExp
-case class PermIntMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(IntPermTimesOp) with PermExp
+case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermPlusOp)
+case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermMinusOp)
+case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermTimesOp)
+case class PermIntMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(IntPermTimesOp)
 
 // Comparison expressions
-case class PermLtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(LtOp)
-case class PermLeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(LeOp)
-case class PermGtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(GtOp)
-case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(GeOp)
+case class PermLtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermLtOp)
+case class PermLeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermLeOp)
+case class PermGtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermGtOp)
+case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermGeOp)
 
 
 // --- Function application (domain and normal)
@@ -146,8 +146,12 @@ case class DomainFuncApp(func: DomainFunc, args: Seq[Exp])(val pos: Position = N
 
 /** A common trait for expressions accessing a location. */
 sealed trait LocationAccess extends Exp {
-  def loc: Location
   def rcv: Exp
+  def loc: Location
+}
+
+object LocationAccess {
+  def unapply(la: LocationAccess) = Some((la.rcv, la.loc))
 }
 
 /** A field access expression. */
@@ -197,6 +201,10 @@ sealed trait QuantifiedExp extends Exp {
 }
 object QuantifiedExp {
   def unapply(q: QuantifiedExp) = Some(q.variable, q.exp)
+}
+
+object QuantifiedExp {
+  def unapply(qe: QuantifiedExp) = Some((qe.variable, qe.exp))
 }
 
 /** Universal quantification. */

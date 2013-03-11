@@ -19,9 +19,11 @@ trait Verifier {
   def copyright: String
 
   /**
-   * The full command used to invoke this verification (useful for debugging).
+   * Key-value mapping of information that could help during debugging. For example,
+   * the full command line that was used to (indirectly, for instance, via a translator) start the
+   * verifier
    */
-  def fullCmd: String
+  def debugInfo: Map[String, Any]
 
   /**
    * Returns the dependencies.  A dependency could be any library or stand-alone
@@ -53,3 +55,5 @@ trait Dependency {
   /** The location of this dependency.  Typically a path. */
   def location: String
 }
+
+case class DefaultDependency(val name: String, version: String, location: String) extends Dependency
