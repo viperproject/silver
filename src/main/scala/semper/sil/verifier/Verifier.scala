@@ -19,11 +19,11 @@ trait Verifier {
   def copyright: String
 
   /**
-   * Key-value mapping of information that could help during debugging. For example,
+   * Key-value pairs of information that could help during debugging. For example,
    * the full command line that was used to (indirectly, for instance, via a translator) start the
    * verifier
    */
-  def debugInfo: Map[String, Any]
+  def debugInfo: Seq[(String, Any)]
 
   /**
    * Returns the dependencies.  A dependency could be any library or stand-alone
