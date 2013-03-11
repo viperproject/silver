@@ -56,4 +56,4 @@ trait Dependency {
   def location: String
 }
 
-case class DefaultDependency(val name: String, version: String, location: String) extends Dependency
+case class DefaultDependency(name: String, version: String, location: String) extends Dependency
