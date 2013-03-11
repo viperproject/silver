@@ -2,11 +2,12 @@ package semper.sil.ast.utility
 
 import semper.sil.parser.Parser
 
-object UniqueNames {
+/**
+ * A class to generate unique names.
+ */
+case class UniqueNames(separator: String = "_") {
   
-  val separator = "_"
-    
-  val lock = new Object
+  private val lock = new Object
 
     /**
    * Returns a different string every time it is called. If possible, it
