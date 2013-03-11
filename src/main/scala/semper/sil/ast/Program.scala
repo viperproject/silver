@@ -24,13 +24,14 @@ case class Predicate(name: String, var body: Exp)(val pos: Position = NoPosition
 
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], var locals: Seq[LocalVarDecl], var body: Stmt)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Callable with Contracted {
+                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted {
   require(Consistency.noDuplicates(formalArgs ++ formalReturns ++ locals ++ Seq(LocalVar(name)(Bool))))
   require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
 }
 
 /** A function declaration */
-case class Function(name: String, formalArgs: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], private var _exp: Exp)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLike with Contracted {
+case class Function(name: String, formalArgs: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], private var _exp: Exp)
+                   (val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with FuncLike with Contracted {
   require(_exp == null || (_exp isSubtype typ))
   def exp = _exp
   def exp_=(e: Exp) {
@@ -55,7 +56,7 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
 
 /** A user-defined domain. */
 case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
+                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Positioned with Infoed {
   require(Consistency.validUserDefinedIdentifier(name))
 }
 

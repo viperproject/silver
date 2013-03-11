@@ -77,6 +77,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           braces(nest(
             line <> show(exp)
           ) <> line)
+      case d: Domain =>
+        showDomain(d)
     }
     showComment(m) <> memberDoc
   }
@@ -98,7 +100,10 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
 
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Doc = {
-    empty // TODO
+    d match {
+      case Domain(name, functions, axioms, typVars) =>
+        empty // TODO
+    }
   }
 
   /** Show a type. */
