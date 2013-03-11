@@ -17,7 +17,7 @@ object AstGenerator {
   
   def toAst(block: Block) = AstGeneratorContext(block).toAst
 
-  case class AstGeneratorContext(val block: Block) {
+  case class AstGeneratorContext(block: Block) {
 
     private val names = UniqueNames()
   
