@@ -81,7 +81,24 @@ case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = 
 case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
 
 /** A while loop. */
-case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
+case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+  /**
+   * The list of variables that are written to in this loop (not counting local variables).
+   */
+  def writtenVars: Seq[LocalVar] = {
+    var candidates = undeclLocalVars
+    var writtenTo: Seq[LocalVar] = Nil
+    body visit {
+      case LocalVarAssign(lhs, _) =>
+        writtenTo = writtenTo ++ Seq(lhs)
+      case MethodCall(_, _, _, targets) =>
+        writtenTo = writtenTo ++ targets
+      case FreshReadPerm(vars, _) =>
+        writtenTo = writtenTo ++ vars
+    }
+    (candidates intersect writtenTo.toSet).toSeq
+  }
+}
 
 /** A label (that can be the target of a goto). */
 case class Label(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
