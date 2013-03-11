@@ -10,8 +10,9 @@ import semper.sil.ast.utility.UniqueNames
 
 object Main {
   def main(args: Array[String]) {
+    val names = UniqueNames()
     for (i <- 1 to 10)
-      println(UniqueNames.createUniqueIdentifier("asdf"))
+      println(names.createUniqueIdentifier("asdf"))
     println("\n\n")
     //meth
     //tp

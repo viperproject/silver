@@ -18,6 +18,8 @@ object AstGenerator {
   def toAst(block: Block) = AstGeneratorContext(block).toAst
 
   case class AstGeneratorContext(val block: Block) {
+
+    private val names = UniqueNames()
   
     lazy val surroundingLoops = calculateSurroundingLoops(block)
   
@@ -108,7 +110,7 @@ object AstGenerator {
       if (labels contains block) {
         labels(block)
       } else {
-        val newLabel = UniqueNames.createUnique("label")
+        val newLabel = names.createUnique("label")
         labels.put(block, newLabel)
         newLabel
       }
