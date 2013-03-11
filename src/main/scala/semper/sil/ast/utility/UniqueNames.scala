@@ -46,7 +46,7 @@ object UniqueNames {
     if (input.isEmpty) {
       "i"
     } else {
-      var result = new StringBuilder
+      val result = new StringBuilder
       val firstLetter = Parser.identFirstLetter.r
       val otherLetter = Parser.identOtherLetter.r
       // If the first letter of `string` is allowed inside, but not at the beginning, put an additional i at the beginning.
@@ -124,6 +124,7 @@ object UniqueNames {
       '-' -> "minus",
       '*' -> "times",
       '/' -> "divided",
-      '%' -> "mod"
+      '%' -> "mod",
+      '!' -> "bang"
       )
 }
