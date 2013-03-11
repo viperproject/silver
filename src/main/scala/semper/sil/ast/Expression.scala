@@ -195,6 +195,9 @@ sealed trait QuantifiedExp extends Exp {
   def exp: Exp
   lazy val typ = Bool
 }
+object QuantifiedExp {
+  def unapply(q: QuantifiedExp) = Some(q.variable, q.exp)
+}
 
 /** Universal quantification. */
 case class Forall(variable: LocalVarDecl, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
