@@ -203,10 +203,6 @@ object QuantifiedExp {
   def unapply(q: QuantifiedExp) = Some(q.variable, q.exp)
 }
 
-object QuantifiedExp {
-  def unapply(qe: QuantifiedExp) = Some((qe.variable, qe.exp))
-}
-
 /** Universal quantification. */
 case class Forall(variable: LocalVarDecl, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
 
