@@ -75,9 +75,9 @@ object Nodes {
           case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ locals ++ Seq(body)
           case Predicate(name, body) => Seq(body)
+          case Domain(name, functions, axioms, typVars) =>
+            functions ++ axioms ++ typVars
         }
-      case Domain(name, functions, axioms, typVars) =>
-        functions ++ axioms ++ typVars
       case dm: DomainMember =>
         dm match {
           case DomainAxiom(name, exp) => Seq(exp)

@@ -1,7 +1,6 @@
 package semper.sil.ast.utility
 
 import semper.sil.parser.Parser
-import scala.actors.Actor
 
 object UniqueNames {
   
