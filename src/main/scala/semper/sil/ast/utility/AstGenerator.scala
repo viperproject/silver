@@ -5,13 +5,13 @@ import semper.sil.ast.Block
 import semper.sil.ast.Stmt
 import semper.sil.ast.TerminalBlock
 import semper.sil.ast.NormalBlock
-import semper.sil.ast.ConditionalBlock
 import semper.sil.ast.LoopBlock
 import semper.sil.ast.Seqn
 import semper.sil.ast.ConditionalBlock
 import semper.sil.ast.Goto
 import semper.sil.ast.Label
 import semper.sil.ast.If
+import semper.sil.utility.NameGenerator
 
 object AstGenerator {
   
@@ -19,7 +19,7 @@ object AstGenerator {
 
   case class AstGeneratorContext(block: Block) {
 
-    private val names = UniqueNames()
+    private val nameGen = NameGenerator()
   
     lazy val surroundingLoops = calculateSurroundingLoops(block)
   
@@ -110,7 +110,7 @@ object AstGenerator {
       if (labels contains block) {
         labels(block)
       } else {
-        val newLabel = names.createUnique("label")
+        val newLabel = nameGen.createUnique("label")
         labels.put(block, newLabel)
         newLabel
       }

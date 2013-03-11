@@ -1,11 +1,12 @@
-package semper.sil.ast.utility
+package semper.sil.utility
 
+import semper.sil.ast.utility.Consistency
 import semper.sil.parser.Parser
 
 /**
  * A class to generate unique names.
  */
-case class UniqueNames(separator: String = "_") {
+case class NameGenerator(separator: String = "_") {
   
   private val lock = new Object
 

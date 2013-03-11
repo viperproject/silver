@@ -4,15 +4,15 @@ import pretty.PrettyPrinter
 import semper.sil.parser.{Resolver, Translator, Parser}
 import org.kiama.util.Messaging.{messagecount, sortedmessages}
 import utility.Statements
-import semper.sil.ast.utility.UniqueNames
+import semper.sil.utility.NameGenerator
 
 // --- Playground
 
 object Main {
   def main(args: Array[String]) {
-    val names = UniqueNames()
+    val nameGen = NameGenerator()
     for (i <- 1 to 10)
-      println(names.createUniqueIdentifier("asdf"))
+      println(nameGen.createUniqueIdentifier("asdf"))
     println("\n\n")
     //meth
     //tp
