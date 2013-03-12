@@ -25,7 +25,10 @@ sealed trait Stmt extends Node with Infoed with Positioned {
 }
 
 /** An assignment to a field or a local variable */
-sealed abstract class AbstractAssign(val lhs: Lhs, val rhs: Exp) extends Stmt
+sealed trait AbstractAssign extends Stmt {
+  def lhs: Lhs
+  def rhs: Exp
+}
 object AbstractAssign {
   def apply(lhs: Lhs, rhs: Exp)(pos: Position = NoPosition, info: Info = NoInfo) = lhs match {
     case l: LocalVar => LocalVarAssign(l, rhs)(pos, info)
@@ -35,12 +38,12 @@ object AbstractAssign {
 }
 
 /** An assignment to a local variable. */
-case class LocalVarAssign(override val lhs: LocalVar, override val rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign(lhs, rhs) {
+case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign(lhs, rhs) {
   require(Consistency.isAssignable(rhs, lhs))
 }
 
 /** An assignment to a field variable. */
-case class FieldAssign(override val lhs: FieldAccess, override val rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign(lhs, rhs) {
+case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign(lhs, rhs) {
   require(Consistency.isAssignable(rhs, lhs))
 }
 
