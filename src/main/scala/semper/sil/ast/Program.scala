@@ -55,7 +55,11 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], pres: Seq[Exp],
 case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed with Typed {
   require(Consistency.validUserDefinedIdentifier(name))
 
-  val localVar = LocalVar(name)(typ, pos, info)
+  /**
+   * Returns a local variable of the same name and type as this declaration, without position or
+   * information.
+   */
+  lazy val localVar = LocalVar(name)(typ)
 }
 
 
