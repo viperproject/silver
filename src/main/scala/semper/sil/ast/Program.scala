@@ -38,6 +38,11 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], pres: Seq[Exp],
     require(e isSubtype typ)
     _exp = e
   }
+  
+  /**
+   * The result variable of this function (without position or info).
+   */
+  def result = Result()(typ)
 }
 
 
