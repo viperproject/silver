@@ -8,4 +8,5 @@
 - many more consistency checks, in particular checks that are "less local" that types of sub-expressions
   - all variables used in methods/functions/quantifications are declared (formal arguments or locals)
 - API consistency: Receiver and function/method appear in different order everywhere
+- API consistency: typ appears in first and second argument list inconsistently
 - new expression

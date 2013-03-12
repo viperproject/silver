@@ -155,7 +155,7 @@ object LocationAccess {
 }
 
 /** A field access expression. */
-case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess with RcvNode {
+case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess with RcvNode with Lhs {
   lazy val loc = field
   lazy val typ = field.typ
 }
@@ -222,7 +222,7 @@ object AbstractLocalVar {
 }
 
 /** A normal local variable. */
-case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar {
+case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar with Lhs {
   require(Consistency.validUserDefinedIdentifier(name))
 }
 
@@ -302,4 +302,5 @@ sealed abstract class DomainBinExp(val func: BinOp) extends BinExp with DomainOp
 /** Common superclass for unary expressions that belong to a domain (and thus have a domain operator). */
 sealed abstract class DomainUnExp(val func: UnOp) extends PrettyUnaryExpression with DomainOpExp with UnExp
 
-
+/** Expressions which can appear on the left hand side of an assignment */
+sealed trait Lhs
