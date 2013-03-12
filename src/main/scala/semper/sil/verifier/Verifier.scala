@@ -5,6 +5,9 @@ import semper.sil.ast.Program
 
 /** An abstract class for verifiers of SIL programs.
   *
+  * The lifetime of a verifier is as follows.  After the object has been created, `commandLineArgs` is called
+  * at most once to set the command line arguments.  Afterwards, one or more calls to `verify` follow.
+  *
   * @author Stefan Heule
   */
 trait Verifier {
@@ -21,7 +24,7 @@ trait Verifier {
   /**
    * Key-value pairs of information that could help during debugging. For example,
    * the full command line that was used to (indirectly, for instance, via a translator) start the
-   * verifier
+   * verifier.
    */
   def debugInfo: Seq[(String, Any)]
 
