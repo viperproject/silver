@@ -132,6 +132,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   /** Show a statement. */
   def showStmt(stmt: Stmt): Doc = {
     val stmtDoc = stmt match {
+      case NewStmt(lhs) => show(lhs) <+> ":=" <+> "new()"
       case LocalVarAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case FieldAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case Fold(e) => "fold" <> parens(show(e))

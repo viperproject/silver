@@ -24,6 +24,11 @@ sealed trait Stmt extends Node with Infoed with Positioned {
   def undeclLocalVars = Statements.undeclLocalVars(this)
 }
 
+/** A statement that creates a new object and assigns it to a local variable. */
+case class NewStmt(lhs: LocalVar)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+  require(Ref isSubtype lhs)
+}
+
 /** An assignment to a field or a local variable */
 sealed trait AbstractAssign extends Stmt {
   def lhs: Lhs

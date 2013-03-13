@@ -4,6 +4,8 @@ package semper.sil.ast
 sealed trait Type extends Node{
   // At the moment, there is no subtyping in SIL.
   def isSubtype(other: Type) = this == other
+  // Convenience method for checking subtypes
+  def isSubtype(other: Typed): Boolean = isSubtype(other.typ)
   /** Is this a concrete type (i.e. no uninstantiated type variables)? */
   def isConcrete: Boolean
 }

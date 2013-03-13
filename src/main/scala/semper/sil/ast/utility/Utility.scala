@@ -85,6 +85,7 @@ object Nodes {
         }
       case s: Stmt =>
         s match {
+          case NewStmt(lhs) => Seq(lhs)
           case LocalVarAssign(lhs, rhs) => Seq(lhs, rhs)
           case FieldAssign(lhs, rhs) => Seq(lhs, rhs)
           case Fold(e) => Seq(e)
