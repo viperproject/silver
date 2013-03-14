@@ -19,14 +19,20 @@ case class Field(name: String)(val typ: Type, val pos: Position = NoPosition, va
 
 /** A predicate declaration. */
 case class Predicate(name: String, var body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
-  require(body isSubtype Bool)
+  require(body == null || body isSubtype Bool)
 }
 
 /** A method declaration. */
-case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], var locals: Seq[LocalVarDecl], var body: Stmt)
+case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], var body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted {
-  require(Consistency.noDuplicates(formalArgs ++ formalReturns ++ locals ++ Seq(LocalVar(name)(Bool))))
+  require(noDuplicates)
   require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
+  private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
+  def locals = _locals
+  def locals_=(s: Seq[LocalVarDecl]) {
+    require(noDuplicates)
+    _locals = s
+  }
 }
 
 /** A function declaration */
