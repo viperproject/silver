@@ -43,7 +43,7 @@ object Statements {
           sys.error("Local variable " + l1.name + " is used with different types " + l1.typ + " and " + l2.typ)
         }
       }
-      s1 ++ s2
+      (s1 ++ s2).distinct
     }
     def addDecls(n: Node, decls: Seq[LocalVarDecl]) = n match {
       case While(_, _, locals, _) => decls ++ locals
