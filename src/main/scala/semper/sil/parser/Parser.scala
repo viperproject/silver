@@ -35,7 +35,7 @@ trait BaseParser extends PositionedParserUtilities {
     // specifications
     "requires", "ensures", "old", "invariants",
     // statements
-    "fold", "unfold", "inhale", "exhale",
+    "fold", "unfold", "inhale", "exhale", "new",
     // control structures
     "while", "if", "else",
     // special fresh block
