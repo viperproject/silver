@@ -71,44 +71,39 @@ object errors {
 
   case class AssertionMalformed(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "ass.malformed"
-    val text = s"$offendingNode is not well-formed."
+    val text = s"$offendingNode might not be well-formed."
   }
 
   def AssertionMalformed(offendingNode: PositionedNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => AssertionMalformed(offendingNode, reason))
 
-  /* TODO: Narrow down the type of offendingNode to something like Invokable, which would be
-   *       a subtype of procedures and functions. We could then refine the error message to
-   *       say something like "Invocation of <offendingNode.receiver>.<offendingNode.name> failed.".
-   */
-  case class InvocationFailed(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
+  case class MethodCallFailed(offendingNode: MethodCall, reason: ErrorReason) extends AbstractVerificationError {
     val id = "call.failed"
-    val text = s"Invocation of $offendingNode failed."
+    val text = s"Method call of ${offendingNode.rcv}.${offendingNode.method.name} might fail."
   }
 
-  def InvocationFailed(offendingNode: PositionedNode): PartialVerificationError =
-    PartialVerificationError((reason: ErrorReason) => InvocationFailed(offendingNode, reason))
+  def MethodCallFailed(offendingNode: MethodCall): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => MethodCallFailed(offendingNode, reason))
 
-  case class AssertionViolated(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "ass.violated"
-    val text = "Assertion might not hold."
+  case class ExhaleFailed(offendingNode: Exhale, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "exhale.failed"
+    val text = "Exhale might fail."
   }
 
-  def AssertionViolated(offendingNode: PositionedNode): PartialVerificationError =
-    PartialVerificationError((reason: ErrorReason) => AssertionViolated(offendingNode, reason))
+  def ExhaleFailed(offendingNode: Exhale): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => ExhaleFailed(offendingNode, reason))
 
-  /* RFC: Would it be reasonable to have PostconditionViolated <: AssertionViolated? */
-  case class PostconditionViolated(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
+  case class PostconditionViolated(offendingNode: Exp, member: Contracted, reason: ErrorReason) extends AbstractVerificationError {
     val id = "post.violated"
-    val text = "Postcondition might not hold."
+    val text = s"Postcondition of ${member.name} might not hold."
   }
-  
-  def PostconditionViolated(offendingNode: PositionedNode): PartialVerificationError =
-    PartialVerificationError((reason: ErrorReason) => PostconditionViolated(offendingNode, reason))
+
+  def PostconditionViolated(offendingNode: Exp, member: Contracted): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => PostconditionViolated(offendingNode, member, reason))
 
   case class FoldFailed(offendingNode: Fold, reason: ErrorReason) extends AbstractVerificationError {
     val id = "fold.failed"
-    val text = s"Folding ${offendingNode.acc.loc} failed."
+    val text = s"Folding ${offendingNode.acc.loc} might fail."
   }
   
   def FoldFailed(offendingNode: Fold): PartialVerificationError =
@@ -116,7 +111,7 @@ object errors {
 
   case class UnfoldFailed(offendingNode: Unfold, reason: ErrorReason) extends AbstractVerificationError {
     val id = "unfold.failed"
-    val text = s"Unfolding ${offendingNode.acc.loc} failed."
+    val text = s"Unfolding ${offendingNode.acc.loc} might fail."
   }
   
   def UnfoldFailed(offendingNode: Unfold): PartialVerificationError =
@@ -146,7 +141,7 @@ object reasons {
     def readableMessage = s"$offendingNode is not supported."
   }
 
-  case class AssertionFalse(offendingNode: PositionedNode) extends AbstractErrorReason {
+  case class AssertionFalse(offendingNode: Exp) extends AbstractErrorReason {
     val id = "ass.false"
     def readableMessage = s"Assertion $offendingNode might not hold."
   }
