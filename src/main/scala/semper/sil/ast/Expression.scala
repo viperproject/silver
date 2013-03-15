@@ -298,6 +298,9 @@ object UnExp {
 
 /** Common superclass for binary expressions that belong to a domain (and thus have a domain operator). */
 sealed abstract class DomainBinExp(val func: BinOp) extends BinExp with DomainOpExp
+object DomainBinExp {
+  def unapply(e: DomainBinExp) = Some((e.left, e.func, e.right))
+}
 
 /** Common superclass for unary expressions that belong to a domain (and thus have a domain operator). */
 sealed abstract class DomainUnExp(val func: UnOp) extends PrettyUnaryExpression with DomainOpExp with UnExp
