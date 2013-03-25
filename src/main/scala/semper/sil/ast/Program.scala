@@ -213,10 +213,10 @@ case object DivOp extends ProdOp("/") with IntBinOp with IntDomainFunc
 case object ModOp extends ProdOp("%") with IntBinOp with IntDomainFunc
 
 // Arithmetic permission operators
-case object PermPlusOp extends SumOp("+") with PermBinOp with PermDomainFunc
-case object PermMinusOp extends SumOp("-") with PermBinOp with PermDomainFunc
-case object PermTimesOp extends ProdOp("*") with PermBinOp with PermDomainFunc
-case object IntPermTimesOp extends ProdOp("*") with BinOp with PermDomainFunc {
+case object PermAddOp extends SumOp("+") with PermBinOp with PermDomainFunc
+case object PermSubOp extends SumOp("-") with PermBinOp with PermDomainFunc
+case object PermMulOp extends ProdOp("*") with PermBinOp with PermDomainFunc
+case object IntPermMulOp extends ProdOp("*") with BinOp with PermDomainFunc {
   lazy val leftTyp = Int
   lazy val rightTyp = Perm
 }
