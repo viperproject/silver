@@ -60,8 +60,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
                 (locals map ("var" <+> showVar(_))) ++
                   Seq(showStmt(body)), line)
           ) <> line)
-      case p@Predicate(name, body) =>
-        "predicate" <+> name <>
+      case p@Predicate(name, formalArg, body) =>
+        "predicate" <+> name <> parens(showVar(formalArg)) <>
           braces(nest(
             line <> show(body)
           ) <> line)
@@ -141,8 +141,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case Exhale(e) => "exhale" <> parens(show(e))
       case FreshReadPerm(vars, body) =>
         "fresh" <> parens(ssep(vars map show, comma <> space)) <+> showBlock(body)
-      case MethodCall(m, rcv, args, targets) =>
-        val call = show(rcv) <> "." <> m.name <> parens(ssep(args map show, comma <> space))
+      case MethodCall(m, args, targets) =>
+        val call = m.name <> parens(ssep(args map show, comma <> space))
         targets match {
           case Nil => call
           case _ => parens(ssep(targets map show, comma <> space)) <+> ":=" <+> call
@@ -207,8 +207,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         "perm" <> parens(show(loc))
       case AccessPredicate(loc, perm) =>
         "acc" <> parens(show(loc) <> "," <+> show(perm))
-      case FuncApp(func, rcv, args) =>
-        show(rcv) <> "." <> func.name <> parens(ssep(args map show, comma <> space))
+      case FuncApp(func, args) =>
+        func.name <> parens(ssep(args map show, comma <> space))
       case DomainFuncApp(func, args) =>
         func.name <> parens(ssep(args map show, comma <> space))
       case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)

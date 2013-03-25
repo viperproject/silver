@@ -61,7 +61,6 @@ object Main {
   lazy val S = TypeVar("S")
   lazy val tru = TrueLit()()
   lazy val fals = FalseLit()()
-  lazy val self = ThisLit()()
   lazy val domain = Domain("Map", Nil, Nil, List(T, S))()
   lazy val domainType = DomainType(domain, Map())
   lazy val domainType2 = DomainType(domain, Map(T -> Int, S -> Bool))
@@ -159,7 +158,7 @@ object Main {
   }
 
   def meth = {
-    val m = MethodCall(method, self, List(l1, l1), List(l3, l4))()
+    val m = MethodCall(method, List(l1, l1), List(l3, l4))()
     println(PrettyPrinter.pretty(m))
   }
 

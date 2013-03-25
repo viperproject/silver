@@ -136,7 +136,7 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 // --- Function application (domain and normal)
 
 /** Function application. */
-case class FuncApp(func: Function, rcv: Exp, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp with RcvNode
+case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp
 
 /** User-defined domain function application. */
 case class DomainFuncApp(func: DomainFunc, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFuncApp
@@ -155,13 +155,13 @@ object LocationAccess {
 }
 
 /** A field access expression. */
-case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess with RcvNode with Lhs {
+case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess with Lhs {
   lazy val loc = field
   lazy val typ = field.typ
 }
 
 /** A predicate access expression. */
-case class PredicateAccess(rcv: Exp, predicate: Predicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess with RcvNode {
+case class PredicateAccess(rcv: Exp, predicate: Predicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess {
   lazy val loc = predicate
   lazy val typ = Pred
 }
@@ -229,13 +229,6 @@ case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition,
 /** A special local variable for the result of a function. */
 case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar {
   lazy val name = "result"
-}
-
-/** The `this` literal. */
-case class ThisLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar {
-  lazy val typ = Ref
-  lazy val name = "this"
-  override lazy val mutable = false
 }
 
 

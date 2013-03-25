@@ -74,7 +74,7 @@ object Nodes {
             formalArgs ++ pres ++ posts ++ Seq(exp)
           case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ locals ++ Seq(body)
-          case Predicate(name, body) => Seq(body)
+          case Predicate(name, formalArg, body) => Seq(body)
           case Domain(name, functions, axioms, typVars) =>
             functions ++ axioms ++ typVars
         }
@@ -92,7 +92,7 @@ object Nodes {
           case Unfold(e) => Seq(e)
           case Inhale(e) => Seq(e)
           case Exhale(e) => Seq(e)
-          case MethodCall(m, rcv, args, targets) => Seq(rcv) ++ args ++ targets
+          case MethodCall(m, args, targets) => args ++ targets
           case Seqn(ss) => ss
           case While(cond, invs, locals, body) => Seq(cond) ++ invs ++ locals ++ Seq(body)
           case If(cond, thn, els) => Seq(cond, thn, els)
@@ -125,7 +125,7 @@ object Nodes {
           case AccessPredicate(loc, perm) => Seq(loc, perm)
           case BinExp(left, right) => Seq(left, right)
           case UnExp(exp) => Seq(exp)
-          case FuncApp(func, rcv, args) => Seq(rcv) ++ args
+          case FuncApp(func, args) => args
           case DomainFuncApp(func, args) => args
         }
       case t: Type => Nil
