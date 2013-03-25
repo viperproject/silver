@@ -173,7 +173,7 @@ case class PredicateAccess(rcv: Exp, predicate: Predicate)(val pos: Position = N
 case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
   require(cond isSubtype Bool)
   require(thn.typ == els.typ)
-  lazy val typ = Bool
+  lazy val typ = thn.typ
 }
 
 
