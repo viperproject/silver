@@ -5,7 +5,7 @@ sealed trait Position
 
 /** Describes ''no location'' for cases where a `Position` is expected, but not available. */
 case object NoPosition extends Position {
-  override def toString = "no position"
+  override def toString = "<no position>"
 }
 
 /** An actual position that has a line and column. */

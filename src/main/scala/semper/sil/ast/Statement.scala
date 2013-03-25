@@ -60,10 +60,10 @@ trait Call {
 }
 
 /** A method call. */
-case class MethodCall(m: Method, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
-  require(Consistency.areAssignable(m.formalReturns, targets))
+case class MethodCall(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+  require(Consistency.areAssignable(method.formalReturns, targets))
   require(Consistency.noDuplicates(targets))
-  lazy val callee = m
+  lazy val callee = method
 }
 
 /** An exhale statement. */

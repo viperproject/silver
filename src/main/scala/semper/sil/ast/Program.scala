@@ -211,17 +211,17 @@ sealed abstract class RelOp(val op: String) extends BoolDomainFunc {
 }
 
 // Arithmetic integer operators
-case object PlusOp extends SumOp("+") with IntBinOp with IntDomainFunc
-case object MinusOp extends SumOp("-") with IntBinOp with IntDomainFunc
-case object TimesOp extends ProdOp("*") with IntBinOp with IntDomainFunc
-case object DividedOp extends ProdOp("/") with IntBinOp with IntDomainFunc
-case object ModuloOp extends ProdOp("%") with IntBinOp with IntDomainFunc
+case object AddOp extends SumOp("+") with IntBinOp with IntDomainFunc
+case object SubOp extends SumOp("-") with IntBinOp with IntDomainFunc
+case object MulOp extends ProdOp("*") with IntBinOp with IntDomainFunc
+case object DivOp extends ProdOp("/") with IntBinOp with IntDomainFunc
+case object ModOp extends ProdOp("%") with IntBinOp with IntDomainFunc
 
 // Arithmetic permission operators
-case object PermPlusOp extends SumOp("+") with PermBinOp with PermDomainFunc
-case object PermMinusOp extends SumOp("-") with PermBinOp with PermDomainFunc
-case object PermTimesOp extends ProdOp("*") with PermBinOp with PermDomainFunc
-case object IntPermTimesOp extends ProdOp("*") with BinOp with PermDomainFunc {
+case object PermAddOp extends SumOp("+") with PermBinOp with PermDomainFunc
+case object PermSubOp extends SumOp("-") with PermBinOp with PermDomainFunc
+case object PermMulOp extends ProdOp("*") with PermBinOp with PermDomainFunc
+case object IntPermMulOp extends ProdOp("*") with BinOp with PermDomainFunc {
   lazy val leftTyp = Int
   lazy val rightTyp = Perm
 }

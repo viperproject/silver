@@ -16,7 +16,7 @@ object Statements {
     s match {
       case While(_, _, _, body) => Seq(s) ++ children(body)
       case If(_, thn, els) => Seq(s) ++ children(thn) ++ children(els)
-      case Seqn(ss) => ss
+      case Seqn(ss) => ss flatMap children
       case _ => List(s)
     }
   }

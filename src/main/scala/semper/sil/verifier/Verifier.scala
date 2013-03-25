@@ -20,8 +20,17 @@ trait Verifier {
   /** The name of this verifier (all-lowercase, to be used to uniquely identify this verifier). */
   def name: String
 
-  /** Returns the version of the verifier. */
+  /**
+   * Returns the version of the verifier. This should be the main version only, e.g., "1.0.1"
+   * or "1.0.1-SNAPSHOT".
+   */
   def version: String
+
+  /**
+   * Returns the version of the verifier, including any information that could help identifying
+   * the build, e.g., the code revision. This version is intended to be used for debugging.
+   */
+  def buildVersion: String
 
   /** Returns the copyright string of this verifier, e.g., "(c) 2013 Name" */
   def copyright: String
