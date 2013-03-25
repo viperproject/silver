@@ -60,12 +60,12 @@ object errors {
 
   def Internal(offendingNode: PositionedNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => Internal(offendingNode, reason))
-  
+
   case class UnsafeCode(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "unsafe"
     val text = "Unsafe code found."
   }
-  
+
   def UnsafeCode(offendingNode: PositionedNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => UnsafeCode(offendingNode, reason))
 
@@ -84,6 +84,14 @@ object errors {
 
   def MethodCallFailed(offendingNode: MethodCall): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => MethodCallFailed(offendingNode, reason))
+
+  case class FunctionApplicationFailed(offendingNode: FuncApp, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "fapp.failed"
+    val text = s"Function application ${offendingNode.rcv}.${offendingNode.func.name} might fail."
+  }
+
+  def FunctionApplicationFailed(offendingNode: FuncApp): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => FunctionApplicationFailed(offendingNode, reason))
 
   case class ExhaleFailed(offendingNode: Exhale, reason: ErrorReason) extends AbstractVerificationError {
     val id = "exhale.failed"
@@ -105,7 +113,7 @@ object errors {
     val id = "fold.failed"
     val text = s"Folding ${offendingNode.acc.loc} might fail."
   }
-  
+
   def FoldFailed(offendingNode: Fold): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => FoldFailed(offendingNode, reason))
 
@@ -113,7 +121,7 @@ object errors {
     val id = "unfold.failed"
     val text = s"Unfolding ${offendingNode.acc.loc} might fail."
   }
-  
+
   def UnfoldFailed(offendingNode: Unfold): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => UnfoldFailed(offendingNode, reason))
 
@@ -121,7 +129,7 @@ object errors {
     val id = "loopinv.not.preserved"
     val text = "Loop invariant might not be preserved."
   }
-  
+
   def LoopInvariantNotPreserved(offendingNode: PositionedNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LoopInvariantNotPreserved(offendingNode, reason))
 
@@ -129,7 +137,7 @@ object errors {
     val id = "loopinv.not.established"
     val text = "Loop invariant might not hold on entry."
   }
-  
+
   def LoopInvariantNotEstablished(offendingNode: PositionedNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LoopInvariantNotEstablished(offendingNode, reason))
 }
