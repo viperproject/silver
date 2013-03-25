@@ -29,7 +29,6 @@ sealed trait PExp extends PNode
 case class PBinExp(left: PExp, op: String, right: PExp) extends PExp
 case class PUnExp(op: String, exp: PExp) extends PExp
 case class PIntLit(i: BigInt) extends PExp
-case class PThisLit() extends PExp
 case class PResultLit() extends PExp
 case class PBoolLit(b: Boolean) extends PExp
 case class PFieldAcc(rcv: PExp, idnuse: PIdnUse) extends PExp

@@ -18,8 +18,13 @@ case class Field(name: String)(val typ: Type, val pos: Position = NoPosition, va
 }
 
 /** A predicate declaration. */
-case class Predicate(name: String, var body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
-  require(body == null || (body isSubtype Bool))
+case class Predicate(name: String, formalArg: LocalVarDecl, private var _body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
+  require(_body == null || (_body isSubtype Bool))
+  def body = _body
+  def body_=(b: Exp) {
+    require(b == null || (b isSubtype Bool))
+    _body = b
+  }
 }
 
 /** A method declaration. */

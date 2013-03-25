@@ -79,7 +79,7 @@ object errors {
 
   case class MethodCallFailed(offendingNode: MethodCall, reason: ErrorReason) extends AbstractVerificationError {
     val id = "call.failed"
-    val text = s"Method call of ${offendingNode.rcv}.${offendingNode.method.name} might fail."
+    val text = s"Method call of ${offendingNode.method.name} might fail."
   }
 
   def MethodCallFailed(offendingNode: MethodCall): PartialVerificationError =

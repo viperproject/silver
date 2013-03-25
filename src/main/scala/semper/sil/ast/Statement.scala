@@ -59,14 +59,8 @@ trait Call {
   def args: Seq[Exp]
 }
 
-/** A node that has a receiver. */
-trait RcvNode {
-  require(rcv isSubtype Ref)
-  def rcv: Exp
-}
-
 /** A method call. */
-case class MethodCall(method: Method, rcv: Exp, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt with RcvNode {
+case class MethodCall(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
   require(Consistency.areAssignable(method.formalReturns, targets))
   require(Consistency.noDuplicates(targets))
   lazy val callee = method
@@ -109,7 +103,7 @@ case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stm
     body visit {
       case LocalVarAssign(lhs, _) =>
         writtenTo = writtenTo ++ Seq(lhs)
-      case MethodCall(_, _, _, targets) =>
+      case MethodCall(_, _, targets) =>
         writtenTo = writtenTo ++ targets
       case FreshReadPerm(vars, _) =>
         writtenTo = writtenTo ++ vars

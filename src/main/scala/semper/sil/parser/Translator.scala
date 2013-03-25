@@ -90,7 +90,6 @@ object Translator {
           case "-" => Neg(e)(pos)
         }
       case PIntLit(i) => IntLit(i)(pos)
-      case PThisLit() => ThisLit()(pos)
       case PResultLit() => Result()(Int, pos) // TODO correct typ
       case PBoolLit(b) => if (b) TrueLit()(pos) else FalseLit()(pos)
       case PFieldAcc(rcv, idn) => FieldAccess(exp(rcv), null)(pos) // correct field

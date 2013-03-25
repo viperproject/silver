@@ -25,7 +25,7 @@ trait BaseParser extends PositionedParserUtilities {
   /** All keywords of SIL. */
   def reserved: List[String] = List(
     // special variables
-    "this", "result",
+    "result",
     // types
     "Int", "Perm", "Bool", "Ref",
     // boolean constants
@@ -144,7 +144,7 @@ trait BaseParser extends PositionedParserUtilities {
       factor
 
   lazy val factor: PackratParser[PExp] =
-    fieldAcc | integer | bool | idnuse | "result" ^^^ PResultLit() | "this" ^^^ PThisLit() |
+    fieldAcc | integer | bool | idnuse | "result" ^^^ PResultLit() |
       "-" ~ sum ^^ PUnExp | "(" ~> exp <~ ")"
 
   lazy val fieldAcc: PackratParser[PExp] =
