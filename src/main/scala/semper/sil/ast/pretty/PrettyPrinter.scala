@@ -23,6 +23,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case typ: Type => showType(typ)
       case p: Program => showProgram(p)
       case m: Member => showMember(m)
+      case v: LocalVarDecl => showVar(v)
     }
   }
 
