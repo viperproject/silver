@@ -10,6 +10,9 @@ import semper.sil.ast.Program
   * at most once, either before or after `commandLineArgs`.
   * Afterwards, one or more calls to `verify` follow.
   *
+  * RFC: [Malte] If we made this an abstract class, then `commandLineArgs` and `debugInfo` could
+  *      be constructor arguments and we wouldn't have to impose a protocol on clients.
+  *
   * @author Stefan Heule
   */
 trait Verifier {
@@ -17,8 +20,17 @@ trait Verifier {
   /** The name of this verifier (all-lowercase, to be used to uniquely identify this verifier). */
   def name: String
 
-  /** Returns the version of the verifier. */
+  /**
+   * Returns the version of the verifier. This should be the main version only, e.g., "1.0.1"
+   * or "1.0.1-SNAPSHOT".
+   */
   def version: String
+
+  /**
+   * Returns the version of the verifier, including any information that could help identifying
+   * the build, e.g., the code revision. This version is intended to be used for debugging.
+   */
+  def buildVersion: String
 
   /** Returns the copyright string of this verifier, e.g., "(c) 2013 Name" */
   def copyright: String
@@ -30,7 +42,7 @@ trait Verifier {
    * the full command line that was used to (indirectly, for instance, via a translator) start the
    * verifier.
    */
-  def debugInfo_=(info: Seq[(String, Any)])
+  def debugInfo(info: Seq[(String, Any)])
 
   /**
    * Returns the dependencies.  A dependency could be any library or stand-alone
