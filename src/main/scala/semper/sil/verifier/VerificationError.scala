@@ -87,7 +87,7 @@ object errors {
 
   case class FunctionApplicationFailed(offendingNode: FuncApp, reason: ErrorReason) extends AbstractVerificationError {
     val id = "fapp.failed"
-    val text = s"Function application ${offendingNode.rcv}.${offendingNode.func.name} might fail."
+    val text = s"Function application of ${offendingNode.func.name} might fail."
   }
 
   def FunctionApplicationFailed(offendingNode: FuncApp): PartialVerificationError =
