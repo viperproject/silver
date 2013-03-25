@@ -28,11 +28,21 @@ case class Predicate(name: String, formalArg: LocalVarDecl, private var _body: E
 }
 
 /** A method declaration. */
-case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], var body: Stmt)
+case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], var body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted {
   require(noDuplicates)
   require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
   private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
+  def pres = _pres
+  def pres_=(s: Seq[Exp]) {
+    require(allBool(s))
+    _pres = s
+  }
+  def posts = _posts
+  def posts_=(s: Seq[Exp]) {
+    require(allBool(s))
+    _posts = s
+  }
   def locals = _locals
   def locals_=(s: Seq[LocalVarDecl]) {
     require(noDuplicates)
@@ -41,9 +51,19 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 }
 
 /** A function declaration */
-case class Function(name: String, formalArgs: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], private var _exp: Exp)
+case class Function(name: String, formalArgs: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _exp: Exp)
                    (val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with FuncLike with Contracted {
   require(_exp == null || (_exp isSubtype typ))
+  def pres = _pres
+  def pres_=(s: Seq[Exp]) {
+    require(allBool(s))
+    _pres = s
+  }
+  def posts = _posts
+  def posts_=(s: Seq[Exp]) {
+    require(allBool(s))
+    _posts = s
+  }
   def exp = _exp /* TODO: [Malte] I suggest to rename 'exp' to 'body' since the latter is more descriptive. */
   def exp_=(e: Exp) {
     require(e isSubtype typ)
@@ -118,8 +138,8 @@ sealed trait FuncLike extends Callable with Typed
 
 /** A member with a contract. */
 sealed trait Contracted extends Member {
-  require(pres.forall(_ isSubtype Bool))
-  require(posts.forall(_ isSubtype Bool))
+  require(allBool(pres) && allBool(posts))
+  def allBool(s: Seq[Exp]) = Consistency.nullValue(s, Nil).forall(_ isSubtype Bool)
   def pres: Seq[Exp]
   def posts: Seq[Exp]
 }
