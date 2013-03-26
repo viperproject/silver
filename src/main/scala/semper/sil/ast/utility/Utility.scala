@@ -92,6 +92,7 @@ object Nodes {
           case Unfold(e) => Seq(e)
           case Inhale(e) => Seq(e)
           case Exhale(e) => Seq(e)
+          case Assert(e) => Seq(e)
           case MethodCall(m, args, targets) => args ++ targets
           case Seqn(ss) => ss
           case While(cond, invs, locals, body) => Seq(cond) ++ invs ++ locals ++ Seq(body)

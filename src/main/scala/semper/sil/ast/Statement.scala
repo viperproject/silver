@@ -76,6 +76,11 @@ case class Inhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoI
   require(exp isSubtype Bool)
 }
 
+/** An assert statement. */
+case class Assert(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+  require(exp isSubtype Bool)
+}
+
 /** An fold statement. */
 case class Fold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
   require(acc isSubtype Bool)
