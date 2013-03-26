@@ -101,6 +101,14 @@ object errors {
   def ExhaleFailed(offendingNode: Exhale): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => ExhaleFailed(offendingNode, reason))
 
+  case class AssertFailed(offendingNode: Assert, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "assert.failed"
+    val text = "Assert might fail."
+  }
+
+  def AssertFailed(offendingNode: Assert): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => AssertFailed(offendingNode, reason))
+
   case class PostconditionViolated(offendingNode: Exp, member: Contracted, reason: ErrorReason) extends AbstractVerificationError {
     val id = "post.violated"
     val text = s"Postcondition of ${member.name} might not hold."
