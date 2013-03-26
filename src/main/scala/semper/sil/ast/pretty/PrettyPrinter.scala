@@ -153,7 +153,11 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         ssep(ss map show, line)
       case While(cond, invs, locals, body) =>
         // TODO: invariants and locals
-        "while" <+> "(" <> show(cond) <> ")" <+> showBlock(body)
+        "while" <+> "(" <> show(cond) <> ")" <>
+          nest(
+            lineIfSomeNonEmpty(invs) <>
+            ssep(invs map ("invariant" <+> show(_)), line)
+          ) <+> lineIfSomeNonEmpty(invs) <> showBlock(body)
       case If(cond, thn, els) =>
         "if" <+> "(" <> show(cond) <> ")" <+> showBlock(thn) <> {
           if (els.children.size == 0) empty
