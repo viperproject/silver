@@ -24,8 +24,12 @@ object Translator {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, typ(t))(p.start)
         }
         Method(name.name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, pres map exp, posts map exp, locals, stmt(body))(pnode.start)
-      case PProgram(name, methods) =>
-        Program(name.name, Nil, Nil, Nil, Nil, methods map (translate(_).asInstanceOf[Method]))(pnode.start)
+      case PProgram(name, fields, methods) =>
+        val f: Seq[Field] = fields map (translate(_).asInstanceOf[Field])
+        val m: Seq[Method] = methods map (translate(_).asInstanceOf[Method])
+        Program(name.name, Nil, f, Nil, Nil, m)(pnode.start)
+      case PField(name, t) =>
+        Field(name.name)(typ(t), pnode.start)
       case _: PDomain => ???
     }
   }
@@ -36,6 +40,7 @@ object Translator {
     s match {
       case PVarAssign(idndef, rhs) =>
         LocalVarAssign(LocalVar(idndef.name)(Int, pos), exp(rhs))(pos) // TODO correct type
+      case PFieldAssign(field, rhs) => ???
       case PLocalVarDecl(idndef, t, Some(init)) =>
         LocalVarAssign(LocalVar(idndef.name)(typ(t), pos), exp(init))(pos)
       case PLocalVarDecl(_, _, None) =>
@@ -51,6 +56,7 @@ object Translator {
         Inhale(exp(e))(pos)
       case PExhale(e) =>
         Exhale(exp(e))(pos)
+      case PNewStmt(idnuse) => ???
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn), stmt(els))(pos)
       case PWhile(cond, invs, body) =>

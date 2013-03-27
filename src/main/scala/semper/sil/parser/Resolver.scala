@@ -55,6 +55,14 @@ case class TypeChecker(names: NameAnalyser) {
           case _ =>
             message(stmt, "expected variable as lhs")
         }
+      case PNewStmt(idnuse) =>
+        names.definition(idnuse) match {
+          case LocVarEnt(PLocalVarDecl(_, typ, _)) =>
+            ensure(typ == Ref, stmt, "target of new statement must be of Ref type")
+          case _ =>
+            message(stmt, "expected variable as lhs")
+        }
+      case PFieldAssign(field, rhs) => ???
       case PIf(cond, thn, els) =>
         check(cond, Bool)
         check(thn)
@@ -88,7 +96,7 @@ case class TypeChecker(names: NameAnalyser) {
    */
   def check(e: PExp, expected: PType) {
     def setType(actual: PType) {
-      if (actual == PUnkown) {
+      if (actual == PUnkown()) {
         return // no error for unknown type (an error has already been issued)
       }
       if (expected == actual) {
@@ -98,6 +106,13 @@ case class TypeChecker(names: NameAnalyser) {
       }
     }
     e match {
+      case i@PIdnUse(name) =>
+        names.definition(i) match {
+          case LocVarEnt(PLocalVarDecl(_, typ, _)) =>
+            setType(typ)
+          case _ =>
+            message(i, "expected variable")
+        }
       case PBinExp(left, op, right) =>
         op match {
           case "+" | "-" | "*" =>
@@ -139,6 +154,12 @@ case class TypeChecker(names: NameAnalyser) {
    */
   def possibleTypes(exp: PExp): Seq[PType] = {
     exp match {
+      case i@PIdnUse(name) =>
+        names.definition(i) match {
+        case LocVarEnt(PLocalVarDecl(_, typ, _)) =>
+          Seq(typ)
+        case _ => Nil
+      }
       case PBinExp(left, op, right) =>
         val l = possibleTypes(left)
         val r = possibleTypes(right)

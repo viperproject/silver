@@ -105,20 +105,19 @@ case class PFold(e: PExp) extends PStmt
 case class PUnfold(e: PExp) extends PStmt
 case class PExhale(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
+case class PNewStmt(target: PIdnUse) extends PStmt
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
+case class PFieldAssign(fieldAcc: PFieldAcc, rhs: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PStmt) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt
 case class PFreshReadPerm(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
 
-// Program
-case class PProgram(idndef: PIdnDef, methods: Seq[PMethod]) extends PNode
-
-// Method
+// Declarations
+case class PProgram(idndef: PIdnDef, fields: Seq[PField], methods: Seq[PMethod]) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PNode
-
-// Domain
 case class PDomain(idndef: PIdnDef) extends PNode
+case class PField(idndef: PIdnDef, typ: PType) extends PNode
 
 
 /**
@@ -151,13 +150,16 @@ object Nodes {
       case PUnfold(exp) => Seq(exp)
       case PExhale(exp) => Seq(exp)
       case PInhale(exp) => Seq(exp)
+      case PNewStmt(idnuse) => Seq(idnuse)
       case PVarAssign(target, rhs) => Seq(target, rhs)
+      case PFieldAssign(field, rhs) => Seq(field, rhs)
       case PIf(cond, thn, els) => Seq(cond, thn, els)
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
       case PFreshReadPerm(vars, stmt) => vars ++ Seq(stmt)
-      case PProgram(idndef, methods) => Seq(idndef) ++ methods
+      case PProgram(idndef, fields, methods) => Seq(idndef) ++ fields ++ methods
       case PDomain(idndef) => Seq(idndef)
+      case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) => Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ Seq(body)
     }
   }

@@ -47,7 +47,10 @@ trait BaseParser extends PositionedParserUtilities {
   // --- Declarations
 
   lazy val programDecl =
-    ("program" ~> idndef) ~ ("{" ~> (rep(methodDecl) <~ "}")) ^^ PProgram
+    ("program" ~> idndef) ~ ("{" ~> rep(fieldDecl)) ~ ((rep(methodDecl) <~ "}")) ^^ PProgram
+
+  lazy val fieldDecl =
+    ("var" ~> idndef) ~ (":" ~> typ) ^^ PField
 
   lazy val methodDecl =
     methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
@@ -77,7 +80,7 @@ trait BaseParser extends PositionedParserUtilities {
   lazy val stmts =
     rep(stmt <~ opt(";"))
   lazy val stmt =
-    assign | fold | unfold | exhale | inhale | ifthnels | whle | varDecl
+    fieldassign | localassign | fold | unfold | exhale | inhale | ifthnels | whle | varDecl | newstmt
 
   lazy val fold =
     "fold" ~> exp ^^ PFold
@@ -87,8 +90,10 @@ trait BaseParser extends PositionedParserUtilities {
     "inhale" ~> parens(exp) ^^ PInhale
   lazy val exhale =
     "exhale" ~> parens(exp) ^^ PExhale
-  lazy val assign =
+  lazy val localassign =
     idnuse ~ (":=" ~> exp) ^^ PVarAssign
+  lazy val fieldassign =
+    fieldAcc ~ (":=" ~> exp) ^^ PFieldAssign
   lazy val ifthnels =
     ("if" ~> "(" ~> exp <~ ")") ~ block ~ opt("else" ~> block) ^^ {
       case cond ~ thn ~ els =>
@@ -104,6 +109,8 @@ trait BaseParser extends PositionedParserUtilities {
     ("fresh" ~> "(" ~> repsep(idnuse, ",") <~ ")") ~ block ^^ {
       case vars ~ stmts => PFreshReadPerm(vars, PSeqn(stmts))
     }
+  lazy val newstmt =
+    idnuse <~ (":=" ~ "new" ~ "()") ^^ PNewStmt
 
   // --- Types
 
@@ -132,7 +139,7 @@ trait BaseParser extends PositionedParserUtilities {
   lazy val andExp: PackratParser[PExp] =
     cmpExp ~ "&&" ~ andExp ^^ PBinExp | cmpExp
 
-  lazy val cmpOp = "==" | "!=" | "<" | "<=" | ">=" | ">" | "<<" | "in" | "!in"
+  lazy val cmpOp = "==" | "!=" | "<=" | ">=" | "<" | ">"
   lazy val cmpExp: PackratParser[PExp] =
     sum ~ cmpOp ~ sum ^^ PBinExp | sum
 
@@ -150,7 +157,7 @@ trait BaseParser extends PositionedParserUtilities {
     fieldAcc | integer | bool | idnuse | "result" ^^^ PResultLit() |
       "-" ~ sum ^^ PUnExp | "(" ~> exp <~ ")"
 
-  lazy val fieldAcc: PackratParser[PExp] =
+  lazy val fieldAcc: PackratParser[PFieldAcc] =
     (exp <~ ".") ~ idnuse ^^ PFieldAcc
 
   lazy val integer =
