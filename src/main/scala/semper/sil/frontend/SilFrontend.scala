@@ -164,7 +164,7 @@ trait SilFrontend extends DefaultFrontend {
   override def doTypecheck(input: ParserResult): Result[TypecheckerResult] = {
     Resolver.run(input)
     if (messagecount == 0) {
-      val n = Translator.translate(input).asInstanceOf[Program]
+      val n = Translator(input).translate
       Succ(n)
     } else {
       val errors = for (m <- sortedmessages) yield {

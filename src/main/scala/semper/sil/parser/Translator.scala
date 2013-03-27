@@ -11,36 +11,51 @@ import language.implicitConversions
  * Note that the translator assumes that the tree is well-formed (it typechecks and follows all the rules
  * of a valid SIL program).  No checks are performed, and the code might crash if the input is malformed.
  */
-object Translator {
+case class Translator(p: PProgram) {
 
-  def translate(pnode: PNode): Node = {
+  def translate: Program = {
+    p match {
+      case PProgram(name, fields, methods) =>
+        val f: Seq[Field] = fields map (translate(_).asInstanceOf[Field])
+        val m: Seq[Method] = methods map (translate(_).asInstanceOf[Method])
+        Program(name.name, Nil, f, Nil, Nil, m)(p.start)
+    }
+  }
+
+  private def translate(pnode: PNode): Node = {
     pnode match {
       case e: PExp => exp(e)
       case s: PStmt => stmt(s)
       case _: PFormalArgDecl | _: PIdnDef | _: PType => sys.error("unexpected node")
       case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
-        val plocals = body.childStmts collect { case l: PLocalVarDecl => l }
+        val plocals = body.childStmts collect {
+          case l: PLocalVarDecl => l
+        }
         val locals = plocals map {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, typ(t))(p.start)
         }
         Method(name.name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, pres map exp, posts map exp, locals, stmt(body))(pnode.start)
       case PProgram(name, fields, methods) =>
-        val f: Seq[Field] = fields map (translate(_).asInstanceOf[Field])
-        val m: Seq[Method] = methods map (translate(_).asInstanceOf[Method])
-        Program(name.name, Nil, f, Nil, Nil, m)(pnode.start)
+        sys.error("should invoke translate(program)")
       case PField(name, t) =>
         Field(name.name)(typ(t), pnode.start)
       case _: PDomain => ???
     }
   }
 
+  private def findField(idnuse: PIdnUse) = {
+    val field = p.fields.find(_.idndef.name == idnuse.name).get
+    Field(idnuse.name)(typ(field.typ), field.start)
+  }
+
   /** Takes a `PStmt` and turns it into a `Stmt`. */
-  def stmt(s: PStmt): Stmt = {
+  private def stmt(s: PStmt): Stmt = {
     val pos = s.start
     s match {
-      case PVarAssign(idndef, rhs) =>
-        LocalVarAssign(LocalVar(idndef.name)(Int, pos), exp(rhs))(pos) // TODO correct type
-      case PFieldAssign(field, rhs) => ???
+      case PVarAssign(idnuse, rhs) =>
+        LocalVarAssign(LocalVar(idnuse.name)(typ(idnuse.typ), pos), exp(rhs))(pos)
+      case PFieldAssign(field, rhs) =>
+        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field.start), exp(rhs))(pos)
       case PLocalVarDecl(idndef, t, Some(init)) =>
         LocalVarAssign(LocalVar(idndef.name)(typ(t), pos), exp(init))(pos)
       case PLocalVarDecl(_, _, None) =>
@@ -60,7 +75,9 @@ object Translator {
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn), stmt(els))(pos)
       case PWhile(cond, invs, body) =>
-        val plocals = body.childStmts collect { case l: PLocalVarDecl => l }
+        val plocals = body.childStmts collect {
+          case l: PLocalVarDecl => l
+        }
         val locals = plocals map {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, typ(t))(p.start)
         }
@@ -69,7 +86,7 @@ object Translator {
   }
 
   /** Takes a `PExp` and turns it into an `Exp`. */
-  def exp(pexp: PExp): Exp = {
+  private def exp(pexp: PExp): Exp = {
     val pos = pexp.start
     pexp match {
       case PIdnUse(name) => LocalVar(name)(Int, pos) // TODO correct typ and consider fields
@@ -110,10 +127,10 @@ object Translator {
   implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition = SourcePosition(pos.line, pos.column)
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
-  def liftVarDecl(formal: PFormalArgDecl) = LocalVarDecl(formal.idndef.name, typ(formal.typ))(formal.start)
+  private def liftVarDecl(formal: PFormalArgDecl) = LocalVarDecl(formal.idndef.name, typ(formal.typ))(formal.start)
 
   /** Takes a `PType` and turns it into a `Type`. */
-  def typ(t: PType) = t match {
+  private def typ(t: PType) = t match {
     case PPrimitiv(name) => name match {
       case "Int" => Int
       case "Bool" => Bool
