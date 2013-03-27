@@ -75,7 +75,9 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType
 case class PUnkown() extends PType // for resolving if something cannot be typed
 
 // Expressions
-sealed trait PExp extends PNode
+sealed trait PExp extends PNode {
+  var typ: PType = PUnkown()
+}
 case class PBinExp(left: PExp, op: String, right: PExp) extends PExp
 case class PUnExp(op: String, exp: PExp) extends PExp
 case class PIntLit(i: BigInt) extends PExp
