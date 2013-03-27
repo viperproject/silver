@@ -179,9 +179,8 @@ object Main {
     val p = Parser.parse(s)
     p match {
       case Parser.Success(e, _) =>
-        Resolver.run(e)
-        if (messagecount == 0) {
-          val n = Translator.translate(e)
+        if (Resolver(e).run) {
+          val n = Translator(e).translate
           println(PrettyPrinter.pretty(n))
         } else {
           for (m <- sortedmessages)
