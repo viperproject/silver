@@ -10,9 +10,6 @@ import semper.sil.utility.NameGenerator
 
 object Main {
   def main(args: Array[String]) {
-    val nameGen = NameGenerator()
-    for (i <- 1 to 10)
-      println(nameGen.createUniqueIdentifier("asdf"))
     println("\n\n")
     //meth
     //tp
@@ -23,6 +20,7 @@ object Main {
     //cfg
     parse(
       """
+        |program test {
         |  method foo(a: Int, b: Bool)
         |    requires true
         |    ensures false
@@ -30,26 +28,11 @@ object Main {
         |    var x: Int := 1
         |    if (true) {}
         |  }
+        |}
       """.stripMargin
     )
     if (args.size > 0) {
       parse(args(0))
-    }
-  }
-
-  def parse(s: String) = {
-    val p = Parser.parse(s)
-    p match {
-      case Parser.Success(e, _) =>
-        Resolver.check(e)
-        if (messagecount == 0) {
-          val n = Translator.translate(e)
-          println(PrettyPrinter.pretty(n))
-        } else {
-          for (m <- sortedmessages)
-            println(m)
-        }
-      case f => println(f)
     }
   }
 
@@ -190,5 +173,21 @@ object Main {
     println(dot)
     import scala.sys.process._
     Seq("dot", "-Tpdf", file, "-o", "C:\\tmp\\sil\\cfg.pdf").!
+  }
+
+  def parse(s: String) = {
+    val p = Parser.parse(s)
+    p match {
+      case Parser.Success(e, _) =>
+        Resolver.run(e)
+        if (messagecount == 0) {
+          val n = Translator.translate(e)
+          println(PrettyPrinter.pretty(n))
+        } else {
+          for (m <- sortedmessages)
+            println(m)
+        }
+      case f => println(f)
+    }
   }
 }
