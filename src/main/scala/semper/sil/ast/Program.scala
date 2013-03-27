@@ -35,12 +35,12 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
-    require(allBool(s))
+    require(s.forall(_ isSubtype Bool))
     _pres = s
   }
   def posts = _posts
   def posts_=(s: Seq[Exp]) {
-    require(allBool(s))
+    require(s.forall(_ isSubtype Bool))
     _posts = s
   }
   def locals = _locals
@@ -56,12 +56,12 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], private var _pr
   require(_exp == null || (_exp isSubtype typ))
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
-    require(allBool(s))
+    require(s.forall(_ isSubtype Bool))
     _pres = s
   }
   def posts = _posts
   def posts_=(s: Seq[Exp]) {
-    require(allBool(s))
+    require(s.forall(_ isSubtype Bool))
     _posts = s
   }
   def exp = _exp /* TODO: [Malte] I suggest to rename 'exp' to 'body' since the latter is more descriptive. */
@@ -138,8 +138,8 @@ sealed trait FuncLike extends Callable with Typed
 
 /** A member with a contract. */
 sealed trait Contracted extends Member {
-  require(allBool(pres) && allBool(posts))
-  def allBool(s: Seq[Exp]) = Consistency.nullValue(s, Nil).forall(_ isSubtype Bool)
+  require((pres == null || pres.forall(_ isSubtype Bool)))
+  require((posts == null || posts.forall(_ isSubtype Bool)))
   def pres: Seq[Exp]
   def posts: Seq[Exp]
 }
