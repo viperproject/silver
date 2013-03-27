@@ -83,6 +83,7 @@ case class PUnExp(op: String, exp: PExp) extends PExp
 case class PIntLit(i: BigInt) extends PExp
 case class PResultLit() extends PExp
 case class PBoolLit(b: Boolean) extends PExp
+case class PNullLit() extends PExp
 case class PFieldAcc(rcv: PExp, idnuse: PIdnUse) extends PExp
 
 // Statements
@@ -159,6 +160,7 @@ object Nodes {
       case PUnExp(op, exp) => Seq(exp)
       case PIntLit(i) => Nil
       case PBoolLit(b) => Nil
+      case PNullLit() => Nil
       case PResultLit() => Nil
       case PFieldAcc(rcv, field) => Seq(rcv, field)
       case PSeqn(ss) => ss

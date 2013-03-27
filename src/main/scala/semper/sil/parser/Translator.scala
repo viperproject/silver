@@ -101,6 +101,7 @@ object Translator {
       case PIntLit(i) => IntLit(i)(pos)
       case PResultLit() => Result()(Int, pos) // TODO correct typ
       case PBoolLit(b) => if (b) TrueLit()(pos) else FalseLit()(pos)
+      case PNullLit() => NullLit()(pos)
       case PFieldAcc(rcv, idn) => FieldAccess(exp(rcv), null)(pos) // correct field
     }
   }

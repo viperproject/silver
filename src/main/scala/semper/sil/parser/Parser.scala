@@ -30,6 +30,8 @@ trait BaseParser extends PositionedParserUtilities {
     "Int", "Perm", "Bool", "Ref",
     // boolean constants
     "true", "false",
+    // null
+    "null",
     // declaration keywords
     "method", "function", "predicate", "program", "domain", "axiom",
     // specifications
@@ -164,7 +166,8 @@ trait BaseParser extends PositionedParserUtilities {
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))
 
   lazy val bool =
-    "true" ^^^ PBoolLit(b = true) | "false" ^^^ PBoolLit(b = false)
+    "true" ^^^ PBoolLit(b = true) | "false" ^^^ PBoolLit(b = false) |
+    "null" ^^^ PNullLit()
 
   lazy val idndef =
     ident ^^ PIdnDef

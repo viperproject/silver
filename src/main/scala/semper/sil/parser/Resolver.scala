@@ -145,6 +145,8 @@ case class TypeChecker(names: NameAnalyser) {
       case PResultLit() => ???
       case PBoolLit(b) =>
         setType(Bool)
+      case PNullLit() =>
+        setType(Ref)
       case PFieldAcc(rcv, idnuse) => ???
     }
   }
@@ -180,6 +182,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PIntLit(i) => Seq(Int)
       case PResultLit() => ???
       case PBoolLit(b) => Seq(Bool)
+      case PNullLit() => Seq(Ref)
       case PFieldAcc(rcv, idnuse) => ???
     }
   }
