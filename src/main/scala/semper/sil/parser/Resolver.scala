@@ -42,6 +42,8 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(m: PMethod) {
+    m.pres map (check(_, Bool))
+    m.posts map (check(_, Bool))
     check(m.body)
   }
 
