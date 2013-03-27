@@ -38,7 +38,7 @@ sealed trait PNode extends Positioned with Attributable {
    * Applies the function `f1` to the AST node, then visits all subnodes,
    * and finally calls `f2` to the AST node.
    */
-  def visit(n: PNode, f1: PNode => Unit, f2: PNode => Unit) {
+  def visit(f1: PNode => Unit, f2: PNode => Unit) {
     Visitor.visit(this, f1, f2)
   }
 
