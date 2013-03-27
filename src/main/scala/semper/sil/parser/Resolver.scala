@@ -58,8 +58,10 @@ case class TypeChecker(names: NameAnalyser) {
       case PVarAssign(idnuse, rhs) =>
         names.definition(idnuse) match {
           case PLocalVarDecl(_, typ, _) =>
+            check(idnuse, typ)
             check(rhs, typ)
           case PFormalArgDecl(_, typ) =>
+            check(idnuse, typ)
             check(rhs, typ)
           case _ =>
             message(stmt, "expected variable as lhs")
