@@ -79,7 +79,7 @@ case class Translator(p: PProgram) {
           case l: PLocalVarDecl => l
         }
         val locals = plocals map {
-          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, typ(t))(p.start)
+          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, typ(t))(pos)
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos)
     }

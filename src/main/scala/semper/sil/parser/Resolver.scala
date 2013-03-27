@@ -7,13 +7,17 @@ import org.kiama.util.Positioned
 /**
  * A resolver and type-checker for the intermediate SIL AST.
  */
-object Resolver {
+case class Resolver(p: PProgram) {
   val names = NameAnalyser()
+  val typechecker = TypeChecker(names)
 
-  def run(p: PProgram) {
+  def run: Boolean = {
     if (names.run(p)) {
-
+      if (typechecker.run(p)) {
+        return true
+      }
     }
+    false
   }
 }
 
@@ -21,6 +25,11 @@ object Resolver {
  * Performs type-checking and sets the type of all typed nodes.
  */
 case class TypeChecker(names: NameAnalyser) {
+
+  def run(p: PProgram): Boolean = {
+    check(p)
+    messagecount == 0
+  }
 
   // some useful type aliases
   def Int = PPrimitiv("Int")
