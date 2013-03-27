@@ -150,7 +150,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           case _ => parens(ssep(targets map show, comma <> space)) <+> ":=" <+> call
         }
       case Seqn(ss) =>
-        ssep(ss map show, line)
+        val sss = ss filter (s => !(s.isInstanceOf[Seqn] && s.children.size == 0))
+        ssep(sss map show, line)
       case While(cond, invs, locals, body) =>
         // TODO: invariants and locals
         "while" <+> "(" <> show(cond) <> ")" <>
