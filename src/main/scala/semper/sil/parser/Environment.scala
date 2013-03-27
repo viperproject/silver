@@ -22,6 +22,9 @@ trait Environment {
   case class FormalArgEnt(decl: PFormalArgDecl) extends NamedEntity {
     val name = decl.idndef.name
   }
+  case class ProgramEnt(decl: PProgram) extends NamedEntity {
+    val name = decl.idndef.name
+  }
 
   /**
    * A named entity.

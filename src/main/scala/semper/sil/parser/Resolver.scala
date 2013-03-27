@@ -1,112 +1,67 @@
 package semper.sil.parser
 
-import org.kiama.attribution.Decorators._
-import org.kiama._
-import attribution.Decorators.Chain
-import org.kiama.attribution.Attribution.attr
 import org.kiama.util.Messaging.message
-import util.Patterns.HasParent
+import org.kiama.util.Messaging.messagecount
 
 /**
  * A resolver and type-checker for our intermediate SIL AST.  The approach is based on the example
  * called oberon0 from kiama.
  */
-object Resolver extends NameAnalyser
+object Resolver {
+  def analyser = Seq(NameAnalyser())
+
+  def run(p: PProgram) {
+    analyser foreach {
+      a => a.run(p)
+      if (messagecount > 0) return
+    }
+  }
+}
 
 trait Analyser {
 
   /**
-   * Check an AST node for semantic errors such as invalid types or uses of expressions in
-   * places they are not allowed.  Errors are reported using kiama's messaging framework.
-   * By default, all child nodes are checked.
+   * Run the resolver, reporting any potential errors.
    */
-  def check(n: PNode) {
-    for (child <- n.children)
-      check(child.asInstanceOf[PNode])
-  }
+  def run(p: PProgram)
+
 }
 
-trait NameAnalyser extends Analyser with Environment {
+case class NameAnalyser() extends Analyser with Environment {
 
-  override def check(n: PNode) {
-    println("check: " + n)
-    n match {
-      case d@PIdnDef(i) if d -> entity == MultipleEntity() =>
-        message(d, i + " is already declared")
+  private val idnMap = collection.mutable.HashMap[String, Entity]()
 
-      case u@PIdnUse(i) if u -> entity == UnknownEntity() =>
-        message(u, i + " is not declared")
-
+  def run(p: PProgram) {
+    // find all declarations
+    p.visit {
+      case i@PIdnDef(name) =>
+        idnMap.get(name) match {
+          case Some(MultipleEntity()) =>
+            message(i, s"$name already defined.")
+          case Some(e) =>
+            message(i, s"$name already defined.")
+            idnMap.put(name, MultipleEntity())
+          case None =>
+            val e = i.parent match {
+              case decl: PProgram => ProgramEnt(decl)
+              case decl: PMethod => MethodEnt(decl)
+              case decl: PLocalVarDecl => LocVarEnt(decl)
+              case decl: PFormalArgDecl => FormalArgEnt(decl)
+              case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
+            }
+            idnMap.put(name, e)
+        }
       case _ =>
-      // Do nothing by default
     }
-
-    super.check(n)
-  }
-
-  /**
-   * The entity for an identifier definition as given by its declaration
-   * context.
-   */
-  def entityFromDecl(n: PIdnDef, i: String): Entity = {
-    n.parent match {
-      case p: PMethod => MethodEnt(p)
-      case p: PLocalVarDecl => LocVarEnt(p)
-      case p: PFormalArgDecl => FormalArgEnt(p)
+    // check all identifier uses
+    p visit {
+      case i@PIdnUse(name) =>
+        idnMap.getOrElse(name, UnknownEntity()) match {
+          case UnknownEntity() =>
+            message(i, s"$name has not been defined.")
+          case _ =>
+        }
+      case _ =>
     }
-  }
-
-  /**
-   * The default environment.
-   */
-  def defenv: Environment =
-    rootenv(defenvPairs: _*)
-
-  def defenvPairs: List[(String, Entity)] =
-    List()
-
-  /**
-   * The program entity referred to by an identifier definition or use.  In
-   * the case of a definition it's the thing being defined, so define it to
-   * be a reference to the declaration.  If it's already defined, return a
-   * entity that indicates a multiple definition.  In the case of a use,
-   * it's the thing defined elsewhere that is being referred to here, so
-   * look it up in the environment.
-   */
-  lazy val entity: Identifier => Entity =
-    attr("entity") {
-      case n@PIdnDef(i) => println("entity: "+n)
-        if (isDefinedInScope(n -> (env.in), i))
-          MultipleEntity()
-        else
-          entityFromDecl(n, i)
-      case n@PIdnUse(i) => println("entity: "+n)
-        lookup(n -> (env.in), i, UnknownEntity())
-    }
-
-  /**
-   * The environment containing bindings for all identifiers visible at the
-   * given node.  It starts at the module declaration with the default
-   * environment.  At blocks we enter a nested scope which is removed on
-   * exit from the block.  At constant and type declarations the left-hand
-   * side binding is not in scope on the right-hand side.  Each identifier
-   * definition just adds its binding to the chain.  The envout cases for
-   * assignment and expression mean that we don't need to traverse into
-   * those constructs, since declarations can't occur there.
-   */
-  lazy val env: Chain[PNode, Environment] =
-    chain(envin, envout)
-
-  def envin(in: PNode => Environment): PNode ==> Environment = {
-    case _: PMethod => enter(defenv)
-    case HasParent(_: PExp, p: PLocalVarDecl) => p -> (env.in)
-  }
-
-  def envout(out: PNode => Environment): PNode ==> Environment = {
-    case m: PMethod => println("envout: "+m); leave(out(m))
-    case p@PLocalVarDecl(d, _, _) => println("envout: "+p); d -> env
-    case p@PFormalArgDecl(d, _) => println("envout: "+p); d -> env
-    case n@PIdnDef(i) => println("envout: "+n); define(n -> out, i, n -> entity)
-    case a => println("envout: "+a); a -> (env.in)
   }
 }
