@@ -71,7 +71,8 @@ case class Translator(p: PProgram) {
         Inhale(exp(e))(pos)
       case PExhale(e) =>
         Exhale(exp(e))(pos)
-      case PNewStmt(idnuse) => ???
+      case PNewStmt(idnuse) =>
+        NewStmt(exp(idnuse).asInstanceOf[LocalVar])(pos)
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn), stmt(els))(pos)
       case PWhile(cond, invs, body) =>
@@ -89,7 +90,8 @@ case class Translator(p: PProgram) {
   private def exp(pexp: PExp): Exp = {
     val pos = pexp.start
     pexp match {
-      case PIdnUse(name) => LocalVar(name)(Int, pos) // TODO correct typ and consider fields
+      case PIdnUse(name) =>
+        LocalVar(name)(typ(pexp.typ), pos)
       case PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
         op match {
