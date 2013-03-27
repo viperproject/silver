@@ -162,7 +162,7 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def doTypecheck(input: ParserResult): Result[TypecheckerResult] = {
-    if (Resolver(input).run == 0) {
+    if (Resolver(input).run) {
       val n = Translator(input).translate
       Succ(n)
     } else {

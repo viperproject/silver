@@ -26,16 +26,12 @@ case class Resolver(p: PProgram) {
  */
 case class TypeChecker(names: NameAnalyser) {
 
+  import TypeHelper._
+
   def run(p: PProgram): Boolean = {
     check(p)
     messagecount == 0
   }
-
-  // some useful type aliases
-  def Int = PPrimitiv("Int")
-  def Bool = PPrimitiv("Bool")
-  def Perm = PPrimitiv("Perm")
-  def Ref = PPrimitiv("Ref")
 
   def check(p: PProgram) {
     p.methods map check
@@ -63,17 +59,28 @@ case class TypeChecker(names: NameAnalyser) {
         names.definition(idnuse) match {
           case PLocalVarDecl(_, typ, _) =>
             check(rhs, typ)
+          case PFormalArgDecl(_, typ) =>
+            check(rhs, typ)
           case _ =>
             message(stmt, "expected variable as lhs")
         }
       case PNewStmt(idnuse) =>
         names.definition(idnuse) match {
           case PLocalVarDecl(_, typ, _) =>
-            ensure(typ == Ref, stmt, "target of new statement must be of Ref type")
+            check(idnuse, Ref)
+          case PFormalArgDecl(_, typ) =>
+            check(idnuse, Ref)
           case _ =>
             message(stmt, "expected variable as lhs")
         }
-      case PFieldAssign(field, rhs) => ???
+      case PFieldAssign(field, rhs) =>
+        names.definition(field.idnuse) match {
+          case PField(_, typ) =>
+            check(field, typ)
+            check(rhs, typ)
+          case _ =>
+            message(stmt, "expected a field as lhs")
+        }
       case PIf(cond, thn, els) =>
         check(cond, Bool)
         check(thn)
@@ -92,8 +99,9 @@ case class TypeChecker(names: NameAnalyser) {
           v =>
             names.definition(v) match {
               case PLocalVarDecl(_, typ, _) =>
-                ensure(typ == Perm, v, "expected permission variable")
-                check(v, typ)
+                check(v, Perm)
+              case PFormalArgDecl(_, typ) =>
+                check(v, Perm)
               case _ =>
                 message(v, "expected variable in fresh read permission block")
             }
@@ -105,24 +113,28 @@ case class TypeChecker(names: NameAnalyser) {
    * Type-check and resolve e and ensure that it has type expected.  If that is not the case, then an
    * error should be issued.
    */
-  def check(e: PExp, expected: PType) {
+  def check(exp: PExp, expected: PType) {
     def setType(actual: PType) {
       if (actual == PUnkown()) {
         return // no error for unknown type (an error has already been issued)
       }
       if (expected == actual) {
-        e.typ = expected
+        exp.typ = expected
       } else {
-        message(e, s"expected $expected, but got $actual")
+        message(exp, s"expected $expected, but got $actual")
       }
     }
-    e match {
+    exp match {
       case i@PIdnUse(name) =>
         names.definition(i) match {
           case PLocalVarDecl(_, typ, _) =>
             setType(typ)
-          case _ =>
-            message(i, "expected variable")
+          case PFormalArgDecl(_, typ) =>
+            setType(typ)
+          case PField(_, typ) =>
+            setType(typ)
+          case x =>
+            message(i, s"expected variable or field, but got $x")
         }
       case PBinExp(left, op, right) =>
         op match {
@@ -133,12 +145,22 @@ case class TypeChecker(names: NameAnalyser) {
           case "/" => ???
           case "%" => ???
           case "<" | "<=" | ">" | ">=" =>
+            val l = possibleTypes(left)
+            val r = possibleTypes(right)
+            val t = l intersect r
+            if (t.size > 0) {
+              check(left, t(0))
+              check(right, t(0))
+            } else {
+              message(exp, s"expected two Ints or two Perms, but found $l and $r")
+            }
+            setType(Bool)
           case "==" | "!=" =>
             val l = possibleTypes(left)
             val r = possibleTypes(right)
             (l intersect r) match {
               case Nil =>
-                message(e, s"require same type for left/right side, but found (${possibleTypes(left)}} and ${possibleTypes(right)}})")
+                message(exp, s"require same type for left/right side, but found $l and $r")
               case t :: ts =>
                 check(left, t)
                 check(right, t)
@@ -150,7 +172,13 @@ case class TypeChecker(names: NameAnalyser) {
             setType(Bool)
           case _ => sys.error(s"unexpected operator $op")
         }
-      case PUnExp(op, exp: PExp) => ???
+      case PUnExp(op, e) =>
+        op match {
+          case "-" =>
+            check(e, expected)
+            setType(expected)
+          case _ => sys.error(s"unexpected operator $op")
+        }
       case PIntLit(i) =>
         setType(Int)
       case PResultLit() => ???
@@ -158,7 +186,9 @@ case class TypeChecker(names: NameAnalyser) {
         setType(Bool)
       case PNullLit() =>
         setType(Ref)
-      case PFieldAcc(rcv, idnuse) => ???
+      case PFieldAcc(rcv, idnuse) =>
+        check(rcv, Ref)
+        check(idnuse, expected)
     }
   }
 
@@ -170,6 +200,10 @@ case class TypeChecker(names: NameAnalyser) {
       case i@PIdnUse(name) =>
         names.definition(i) match {
         case PLocalVarDecl(_, typ, _) =>
+          Seq(typ)
+        case PFormalArgDecl(_, typ) =>
+          Seq(typ)
+        case PField(_, typ) =>
           Seq(typ)
         case _ => Nil
       }
@@ -189,12 +223,21 @@ case class TypeChecker(names: NameAnalyser) {
             Seq(Bool)
           case _ => sys.error(s"unexpected operator $op")
         }
-      case PUnExp(op, exp: PExp) => ???
+      case PUnExp(op, e) =>
+        op match {
+          case "-" => possibleTypes(e)
+          case _ => sys.error(s"unexpected operator $op")
+        }
       case PIntLit(i) => Seq(Int)
       case PResultLit() => ???
       case PBoolLit(b) => Seq(Bool)
       case PNullLit() => Seq(Ref)
-      case PFieldAcc(rcv, idnuse) => ???
+      case PFieldAcc(rcv, idnuse) =>
+        names.definition(idnuse) match {
+          case PField(_, typ) =>
+            Seq(typ)
+          case _ => Nil
+        }
     }
   }
 

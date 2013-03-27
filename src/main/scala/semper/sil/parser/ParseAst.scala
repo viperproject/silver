@@ -2,6 +2,7 @@ package semper.sil.parser
 
 import org.kiama.util.Positioned
 import org.kiama.attribution.Attributable
+import TypeHelper._
 
 /**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
@@ -59,6 +60,13 @@ sealed trait PNode extends Positioned with Attributable {
   }
 }
 
+object TypeHelper {
+  val Int = PPrimitiv("Int")
+  val Bool = PPrimitiv("Bool")
+  val Perm = PPrimitiv("Perm")
+  val Ref = PPrimitiv("Ref")
+}
+
 // Identifiers (uses and definitions)
 trait Identifier
 case class PIdnDef(name: String) extends PNode with Identifier
@@ -80,10 +88,16 @@ sealed trait PExp extends PNode {
 }
 case class PBinExp(left: PExp, op: String, right: PExp) extends PExp
 case class PUnExp(op: String, exp: PExp) extends PExp
-case class PIntLit(i: BigInt) extends PExp
+case class PIntLit(i: BigInt) extends PExp {
+  typ = Int
+}
 case class PResultLit() extends PExp
-case class PBoolLit(b: Boolean) extends PExp
-case class PNullLit() extends PExp
+case class PBoolLit(b: Boolean) extends PExp {
+  typ = Bool
+}
+case class PNullLit() extends PExp {
+  typ = Ref
+}
 case class PFieldAcc(rcv: PExp, idnuse: PIdnUse) extends PExp
 
 // Statements
