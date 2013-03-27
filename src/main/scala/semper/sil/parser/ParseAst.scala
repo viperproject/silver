@@ -46,7 +46,7 @@ sealed trait PNode extends Positioned with Attributable {
    * Applies the function `f` to the AST node, then visits all subnodes if `f`
    * returned true.
    */
-  def visitOpt(n: PNode)(f: PNode => Boolean) {
+  def visitOpt(f: PNode => Boolean) {
     Visitor.visitOpt(this)(f)
   }
 
@@ -54,7 +54,7 @@ sealed trait PNode extends Positioned with Attributable {
    * Applies the function `f1` to the AST node, then visits all subnodes if `f1`
    * returned true, and finally calls `f2` to the AST node.
    */
-  def visitOpt(n: PNode, f1: PNode => Boolean, f2: PNode => Unit) {
+  def visitOpt(f1: PNode => Boolean, f2: PNode => Unit) {
     Visitor.visitOpt(this, f1, f2)
   }
 }
