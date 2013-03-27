@@ -45,8 +45,8 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   }
   def locals = _locals
   def locals_=(s: Seq[LocalVarDecl]) {
-    require(noDuplicates)
     _locals = s
+    require(noDuplicates)
   }
 }
 
