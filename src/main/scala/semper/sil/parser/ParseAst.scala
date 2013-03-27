@@ -65,7 +65,7 @@ case class PIdnDef(name: String) extends PNode with Identifier
 case class PIdnUse(name: String) extends PExp with Identifier
 
 // Formal arguments
-case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode
+case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with RealEntity
 
 // Types
 sealed trait PType extends PNode
@@ -110,14 +110,30 @@ case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
 case class PFieldAssign(fieldAcc: PFieldAcc, rhs: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PStmt) extends PStmt
-case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt
 case class PFreshReadPerm(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
+case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with RealEntity
 
 // Declarations
-case class PProgram(idndef: PIdnDef, fields: Seq[PField], methods: Seq[PMethod]) extends PNode
-case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PNode
-case class PDomain(idndef: PIdnDef) extends PNode
-case class PField(idndef: PIdnDef, typ: PType) extends PNode
+case class PProgram(idndef: PIdnDef, fields: Seq[PField], methods: Seq[PMethod]) extends PNode with RealEntity
+case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PNode with RealEntity
+case class PDomain(idndef: PIdnDef) extends PNode with RealEntity
+case class PField(idndef: PIdnDef, typ: PType) extends PNode with RealEntity
+
+/** An entity is a declaration (i.e. something that contains a PIdnDef). */
+sealed trait Entity
+sealed trait RealEntity extends Entity
+abstract class ErrorEntity(name: String) extends Entity
+
+/**
+ * A entity represented by names for whom we have seen more than one
+ * declaration so we are unsure what is being represented.
+ */
+case class MultipleEntity() extends ErrorEntity("multiple")
+
+/**
+ * An unknown entity, represented by names whose declarations are missing.
+ */
+case class UnknownEntity() extends ErrorEntity("unknown")
 
 
 /**

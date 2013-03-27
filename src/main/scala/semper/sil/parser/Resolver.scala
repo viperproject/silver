@@ -50,14 +50,14 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PVarAssign(idnuse, rhs) =>
         names.definition(idnuse) match {
-          case LocVarEnt(PLocalVarDecl(_, typ, _)) =>
+          case PLocalVarDecl(_, typ, _) =>
             check(rhs, typ)
           case _ =>
             message(stmt, "expected variable as lhs")
         }
       case PNewStmt(idnuse) =>
         names.definition(idnuse) match {
-          case LocVarEnt(PLocalVarDecl(_, typ, _)) =>
+          case PLocalVarDecl(_, typ, _) =>
             ensure(typ == Ref, stmt, "target of new statement must be of Ref type")
           case _ =>
             message(stmt, "expected variable as lhs")
@@ -80,7 +80,7 @@ case class TypeChecker(names: NameAnalyser) {
         vars map {
           v =>
             names.definition(v) match {
-              case LocVarEnt(PLocalVarDecl(_, typ, _)) =>
+              case PLocalVarDecl(_, typ, _) =>
                 ensure(typ == Perm, v, "expected permission variable")
                 check(v, typ)
               case _ =>
@@ -108,7 +108,7 @@ case class TypeChecker(names: NameAnalyser) {
     e match {
       case i@PIdnUse(name) =>
         names.definition(i) match {
-          case LocVarEnt(PLocalVarDecl(_, typ, _)) =>
+          case PLocalVarDecl(_, typ, _) =>
             setType(typ)
           case _ =>
             message(i, "expected variable")
@@ -156,7 +156,7 @@ case class TypeChecker(names: NameAnalyser) {
     exp match {
       case i@PIdnUse(name) =>
         names.definition(i) match {
-        case LocVarEnt(PLocalVarDecl(_, typ, _)) =>
+        case PLocalVarDecl(_, typ, _) =>
           Seq(typ)
         case _ => Nil
       }
@@ -215,10 +215,12 @@ case class NameAnalyser() {
             idnMap.put(name, MultipleEntity())
           case None =>
             val e = i.parent match {
-              case decl: PProgram => ProgramEnt(decl)
-              case decl: PMethod => MethodEnt(decl)
-              case decl: PLocalVarDecl => LocVarEnt(decl)
-              case decl: PFormalArgDecl => FormalArgEnt(decl)
+              case decl: PProgram => decl
+              case decl: PMethod => decl
+              case decl: PLocalVarDecl => decl
+              case decl: PFormalArgDecl => decl
+              case decl: PField => decl
+              case decl: PDomain => decl
               case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
             }
             idnMap.put(name, e)
@@ -238,41 +240,3 @@ case class NameAnalyser() {
     messagecount == 0
   }
 }
-
-
-/** An entity is some kind of definition */
-sealed trait Entity
-case class LocVarEnt(decl: PLocalVarDecl) extends RealEntity {
-  val name = decl.idndef.name
-}
-case class MethodEnt(decl: PMethod) extends RealEntity {
-  val name = decl.idndef.name
-}
-case class FormalArgEnt(decl: PFormalArgDecl) extends RealEntity {
-  val name = decl.idndef.name
-}
-case class ProgramEnt(decl: PProgram) extends RealEntity {
-  val name = decl.idndef.name
-}
-
-/**
- * A named entity.
- */
-sealed trait RealEntity extends Entity
-
-/**
- * An entity that represents an error situation.  These entities are
- * usually accepted in most situations to avoid cascade errors.
- */
-abstract class ErrorEntity(name: String) extends Entity
-
-/**
- * A entity represented by names for whom we have seen more than one
- * declaration so we are unsure what is being represented.
- */
-case class MultipleEntity() extends ErrorEntity("multiple")
-
-/**
- * An unknown entity, represented by names whose declarations are missing.
- */
-case class UnknownEntity() extends ErrorEntity("unknown")
