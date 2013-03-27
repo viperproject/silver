@@ -23,7 +23,10 @@ object Translator {
         val locals = plocals map {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, typ(t))(p.start)
         }
-        Method(name.name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, pres map exp, posts map exp, locals, stmt(body))()
+        Method(name.name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, pres map exp, posts map exp, locals, stmt(body))(pnode.start)
+      case PProgram(name, methods) =>
+        Program(name.name, Nil, Nil, Nil, Nil, methods map (translate(_).asInstanceOf[Method]))(pnode.start)
+      case _: PDomain => ???
     }
   }
 
@@ -100,7 +103,7 @@ object Translator {
   implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition = SourcePosition(pos.line, pos.column)
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
-  def liftVarDecl(formal: PFormalArgDecl) = LocalVarDecl(formal.idndef.name, typ(formal.typ))()
+  def liftVarDecl(formal: PFormalArgDecl) = LocalVarDecl(formal.idndef.name, typ(formal.typ))(formal.start)
 
   /** Takes a `PType` and turns it into a `Type`. */
   def typ(t: PType) = t match {

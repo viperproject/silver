@@ -1,11 +1,15 @@
 package semper.sil.frontend
 
-import semper.sil.ast._
-import semper.sil.parser.{PNode, Translator, Resolver, Parser}
+import semper.sil.parser._
 import org.kiama.util.Messaging._
 import semper.sil.verifier._
 import java.io.File
-import semper.sil.utility.Paths
+import semper.sil.verifier.CliOptionError
+import semper.sil.verifier.Failure
+import semper.sil.verifier.ParseError
+import semper.sil.ast.SourcePosition
+import semper.sil.verifier.TypecheckerError
+import semper.sil.ast.Program
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
@@ -30,7 +34,7 @@ trait SilFrontend extends DefaultFrontend {
   def verifier: Verifier = _ver
   var _ver: Verifier = null
 
-  override protected type ParserResult = PNode
+  override protected type ParserResult = PProgram
   override protected type TypecheckerResult = Program
 
   /** The current configuration. */
@@ -158,7 +162,7 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def doTypecheck(input: ParserResult): Result[TypecheckerResult] = {
-    Resolver.check(input)
+    Resolver.run(input)
     if (messagecount == 0) {
       val n = Translator.translate(input).asInstanceOf[Program]
       Succ(n)

@@ -42,9 +42,12 @@ trait BaseParser extends PositionedParserUtilities {
     "fresh"
   )
 
-  lazy val parser = phrase(methodDecl)
+  lazy val parser = phrase(programDecl)
 
   // --- Declarations
+
+  lazy val programDecl =
+    ("program" ~> idndef) ~ ("{" ~> (rep(methodDecl) <~ "}")) ^^ PProgram
 
   lazy val methodDecl =
     methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
