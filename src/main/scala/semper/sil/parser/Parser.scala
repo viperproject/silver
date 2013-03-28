@@ -22,7 +22,12 @@ object Parser extends BaseParser {
 
 trait BaseParser extends WhitespacePositionedParserUtilities {
 
-  /** All keywords of SIL. */
+  /**
+   * All keywords of SIL.
+   *
+   * IMPORTANT: If you add any new keywords, please also update all syntax highlighters
+   * in util/highlighting.
+   */
   def reserved: List[String] = List(
     // special variables
     "result",
