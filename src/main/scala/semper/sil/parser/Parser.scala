@@ -1,6 +1,6 @@
 package semper.sil.parser
 
-import org.kiama.util.PositionedParserUtilities
+import org.kiama.util.WhitespacePositionedParserUtilities
 
 /**
  * A parser for the SIL language that takes a string and produces an intermediate
@@ -20,7 +20,7 @@ object Parser extends BaseParser {
   }
 }
 
-trait BaseParser extends PositionedParserUtilities {
+trait BaseParser extends WhitespacePositionedParserUtilities {
 
   /** All keywords of SIL. */
   def reserved: List[String] = List(
@@ -45,6 +45,15 @@ trait BaseParser extends PositionedParserUtilities {
   )
 
   lazy val parser = phrase(programDecl)
+
+  // --- Whitespace
+
+  lazy val whitespaceParser: PackratParser[Any] =
+    rep(whiteSpace | comment)
+
+  lazy val comment: PackratParser[Any] =
+    ("/*" ~ rep(not("*/") ~ (comment | any)) ~ "*/") |
+      ("//" ~ rep(not("\n") ~ any))
 
   // --- Declarations
 
@@ -167,7 +176,7 @@ trait BaseParser extends PositionedParserUtilities {
 
   lazy val bool =
     "true" ^^^ PBoolLit(b = true) | "false" ^^^ PBoolLit(b = false) |
-    "null" ^^^ PNullLit()
+      "null" ^^^ PNullLit()
 
   lazy val idndef =
     ident ^^ PIdnDef
@@ -180,9 +189,9 @@ trait BaseParser extends PositionedParserUtilities {
   lazy val ident =
     not(keyword) ~> identifier.r |
       failure("identifier expected")
-      
+
   lazy val identFirstLetter = "[a-zA-Z$_]"
-    
+
   lazy val identOtherLetter = "[a-zA-Z0-9$_']"
 
   lazy val identifier = identFirstLetter + identOtherLetter + "*"
