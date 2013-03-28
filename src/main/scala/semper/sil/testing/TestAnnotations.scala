@@ -38,9 +38,12 @@ case class ErrorAnnotationId(reasonId: String, errorId: Option[String]) {
     }
   }
 
-  def matches(id: String) = {
+  def matches(id: String): Boolean = {
     val ids = id.split(":")
-    assert(ids.size == 2)
+    if (ids.size == 1) {
+      return errorId == None && reasonId == id
+    }
+    assert(ids.size == 2, s"Expected full ID, but got $id.")
     errorId match {
       case None => reasonId == ids(1)
       case Some(s) => s == ids(0) && reasonId == ids(1)
