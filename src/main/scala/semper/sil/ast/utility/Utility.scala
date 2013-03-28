@@ -69,7 +69,7 @@ object Nodes {
         domains ++ fields ++ functions ++ predicates ++ methods
       case m: Member =>
         m match {
-          case Field(name) => Nil
+          case Field(name, typ) => Nil
           case Function(name, formalArgs, typ, pres, posts, exp) =>
             formalArgs ++ pres ++ posts ++ Seq(exp)
           case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>

@@ -38,7 +38,7 @@ case class Translator(p: PProgram) {
       case PProgram(name, domains, fields, functions, predicates, methods) =>
         sys.error("should invoke translate(program)")
       case PField(name, t) =>
-        Field(name.name)(typ(t), pnode.start)
+        Field(name.name, typ(t))(pnode.start)
       case _: PDomain => ???
       case PFunction(name, args, typ, pres, posts, exp) =>
         ???
@@ -48,7 +48,7 @@ case class Translator(p: PProgram) {
 
   private def findField(idnuse: PIdnUse) = {
     val field = p.fields.find(_.idndef.name == idnuse.name).get
-    Field(idnuse.name)(typ(field.typ), field.start)
+    Field(idnuse.name, typ(field.typ))(field.start)
   }
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */

@@ -13,7 +13,7 @@ case class Program(name: String, domains: Seq[Domain], fields: Seq[Field], funct
 // --- Program members
 
 /** A field declaration. */
-case class Field(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends Location with Typed {
+case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location with Typed {
   require(typ.isConcrete)
 }
 
