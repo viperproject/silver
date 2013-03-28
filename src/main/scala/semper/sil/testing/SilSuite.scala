@@ -141,8 +141,13 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
         }
 
         // report some other useful information
-        info("Verifier used: %s v%s.".format(verifier.name, verifier.version))
-        info("Time required: %s (parsing), %s (typechecking), %s (translation), %s (verification).".format(tParse, tTypeCheck, tTranslate, tVerification))
+        info(s"Verifier used: ${verifier.name} ${verifier.version}.")
+        verifier.dependencies foreach {
+          dep =>
+            info(s"  using ${dep.name} ${dep.version} located at ${dep.location}")
+        }
+        info(s"Time required: $tParse (parsing), $tTypeCheck (typechecking), " +
+          s"$tTranslate (translation), $tVerification (verification).")
 
         // if there were any errors that could not be matched up (or other problems), make the test fail
         if (!testErrors.isEmpty) {
