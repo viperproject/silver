@@ -70,7 +70,7 @@ object errors {
     PartialVerificationError((reason: ErrorReason) => UnsafeCode(offendingNode, reason))
 
   case class AssertionMalformed(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "ass.malformed"
+    val id = "assertion.malformed"
     val text = s"$offendingNode might not be well-formed."
   }
 
@@ -86,7 +86,7 @@ object errors {
     PartialVerificationError((reason: ErrorReason) => MethodCallFailed(offendingNode, reason))
 
   case class FunctionApplicationFailed(offendingNode: FuncApp, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "fapp.failed"
+    val id = "function.application.failed"
     val text = s"Function application of ${offendingNode.func.name} might fail."
   }
 
@@ -110,7 +110,7 @@ object errors {
     PartialVerificationError((reason: ErrorReason) => AssertFailed(offendingNode, reason))
 
   case class PostconditionViolated(offendingNode: Exp, member: Contracted, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "post.violated"
+    val id = "postcondition.violated"
     val text = s"Postcondition of ${member.name} might not hold."
   }
 
@@ -134,7 +134,7 @@ object errors {
     PartialVerificationError((reason: ErrorReason) => UnfoldFailed(offendingNode, reason))
 
   case class LoopInvariantNotPreserved(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "loopinv.not.preserved"
+    val id = "invariant.not.preserved"
     val text = "Loop invariant might not be preserved."
   }
 
@@ -142,7 +142,7 @@ object errors {
     PartialVerificationError((reason: ErrorReason) => LoopInvariantNotPreserved(offendingNode, reason))
 
   case class LoopInvariantNotEstablished(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "loopinv.not.established"
+    val id = "invariant.not.established"
     val text = "Loop invariant might not hold on entry."
   }
 
@@ -158,12 +158,12 @@ object reasons {
   }
 
   case class AssertionFalse(offendingNode: Exp) extends AbstractErrorReason {
-    val id = "ass.false"
+    val id = "assertion.false"
     def readableMessage = s"Assertion $offendingNode might not hold."
   }
 
   case class ReceiverNull(offendingNode: PositionedNode) extends AbstractErrorReason {
-    val id = "rcvr.null"
+    val id = "receiver.null"
     def readableMessage = s"Receiver $offendingNode might be null."
   }
 
