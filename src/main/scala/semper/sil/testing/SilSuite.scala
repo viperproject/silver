@@ -91,7 +91,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
             val findError: AbstractError => Option[ErrorAnnotation] = (actual: AbstractError) => {
               if (!actual.pos.isInstanceOf[SourcePosition]) None
               else expectedErrors.filter({
-                case ErrorAnnotation(id, lineNr) => actual.fullId == id && actual.pos.asInstanceOf[SourcePosition].line == lineNr
+                case ErrorAnnotation(id, lineNr) => id.matches(actual.fullId) && actual.pos.asInstanceOf[SourcePosition].line == lineNr
               }) match {
                 case x :: _ => {
                   // remove the error from the list of expected errors (i.e. only match once)

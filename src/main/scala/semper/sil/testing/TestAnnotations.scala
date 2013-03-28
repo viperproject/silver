@@ -37,6 +37,15 @@ case class ErrorAnnotationId(reasonId: String, errorId: Option[String]) {
       case Some(i) => s"$i.$reasonId"
     }
   }
+
+  def matches(id: String) = {
+    val ids = id.split(":")
+    assert(ids.size == 2)
+    errorId match {
+      case None => reasonId == ids(1)
+      case Some(s) => s == ids(0) && reasonId == ids(1)
+    }
+  }
 }
 
 /** Test annotations that have a location and an identifier (i.e. describe an error of some sort). */
