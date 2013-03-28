@@ -28,6 +28,8 @@ case class TypeChecker(names: NameAnalyser) {
 
   import TypeHelper._
 
+  var curMethod: PMethod = null
+
   def run(p: PProgram): Boolean = {
     check(p)
     messagecount == 0
@@ -38,9 +40,11 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(m: PMethod) {
+    curMethod = m
     m.pres map (check(_, Bool))
     m.posts map (check(_, Bool))
     check(m.body)
+    curMethod = null
   }
 
   def check(stmt: PStmt) {
@@ -56,7 +60,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PInhale(e) =>
         check(e, Bool)
       case PVarAssign(idnuse, rhs) =>
-        names.definition(idnuse) match {
+        names.definition(curMethod)(idnuse) match {
           case PLocalVarDecl(_, typ, _) =>
             check(idnuse, typ)
             check(rhs, typ)
@@ -67,7 +71,7 @@ case class TypeChecker(names: NameAnalyser) {
             message(stmt, "expected variable as lhs")
         }
       case PNewStmt(idnuse) =>
-        names.definition(idnuse) match {
+        names.definition(curMethod)(idnuse) match {
           case PLocalVarDecl(_, typ, _) =>
             check(idnuse, Ref)
           case PFormalArgDecl(_, typ) =>
@@ -76,7 +80,7 @@ case class TypeChecker(names: NameAnalyser) {
             message(stmt, "expected variable as lhs")
         }
       case PFieldAssign(field, rhs) =>
-        names.definition(field.idnuse) match {
+        names.definition(curMethod)(field.idnuse) match {
           case PField(_, typ) =>
             check(field, typ)
             check(rhs, typ)
@@ -99,7 +103,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PFreshReadPerm(vars, s) =>
         vars map {
           v =>
-            names.definition(v) match {
+            names.definition(curMethod)(v) match {
               case PLocalVarDecl(_, typ, _) =>
                 check(v, Perm)
               case PFormalArgDecl(_, typ) =>
@@ -128,7 +132,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
     exp match {
       case i@PIdnUse(name) =>
-        names.definition(i) match {
+        names.definition(curMethod)(i) match {
           case PLocalVarDecl(_, typ, _) =>
             setType(typ)
           case PFormalArgDecl(_, typ) =>
@@ -200,15 +204,15 @@ case class TypeChecker(names: NameAnalyser) {
   def possibleTypes(exp: PExp): Seq[PType] = {
     exp match {
       case i@PIdnUse(name) =>
-        names.definition(i) match {
-        case PLocalVarDecl(_, typ, _) =>
-          Seq(typ)
-        case PFormalArgDecl(_, typ) =>
-          Seq(typ)
-        case PField(_, typ) =>
-          Seq(typ)
-        case _ => Nil
-      }
+        names.definition(curMethod)(i) match {
+          case PLocalVarDecl(_, typ, _) =>
+            Seq(typ)
+          case PFormalArgDecl(_, typ) =>
+            Seq(typ)
+          case PField(_, typ) =>
+            Seq(typ)
+          case _ => Nil
+        }
       case PBinExp(left, op, right) =>
         val l = possibleTypes(left)
         val r = possibleTypes(right)
@@ -235,7 +239,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PBoolLit(b) => Seq(Bool)
       case PNullLit() => Seq(Ref)
       case PFieldAcc(rcv, idnuse) =>
-        names.definition(idnuse) match {
+        names.definition(curMethod)(idnuse) match {
           case PField(_, typ) =>
             Seq(typ)
           case _ => Nil
@@ -256,22 +260,37 @@ case class TypeChecker(names: NameAnalyser) {
  */
 case class NameAnalyser() {
 
-  def definition(idnuse: PIdnUse) = {
-    idnMap.get(idnuse.name).get.asInstanceOf[RealEntity]
+  def definition(method: PMethod)(idnuse: PIdnUse) = {
+    if (method == null) {
+      idnMap.get(idnuse.name).get.asInstanceOf[RealEntity]
+    }
+    else {
+      // lookup in method map first, and otherwise in the general one
+      methodIdnMap.get(method).get.getOrElse(idnuse.name,
+        idnMap.get(idnuse.name).get
+      ).asInstanceOf[RealEntity]
+    }
   }
 
   private val idnMap = collection.mutable.HashMap[String, Entity]()
+  private val methodIdnMap = collection.mutable.HashMap[PMethod, collection.mutable.HashMap[String, Entity]]()
 
   def run(p: PProgram): Boolean = {
+    var curMap = idnMap
+    var curMethod: PMethod = null
+    def getMap = if (curMethod == null) idnMap else methodIdnMap.get(curMethod).get
     // find all declarations
-    p.visit {
+    p.visit({
+      case m: PMethod =>
+        methodIdnMap.put(m, collection.mutable.HashMap[String, Entity]())
+        curMethod = m
       case i@PIdnDef(name) =>
-        idnMap.get(name) match {
+        getMap.get(name) match {
           case Some(MultipleEntity()) =>
             message(i, s"$name already defined.")
           case Some(e) =>
             message(i, s"$name already defined.")
-            idnMap.put(name, MultipleEntity())
+            getMap.put(name, MultipleEntity())
           case None =>
             val e = i.parent match {
               case decl: PProgram => decl
@@ -282,20 +301,31 @@ case class NameAnalyser() {
               case decl: PDomain => decl
               case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
             }
-            idnMap.put(name, e)
+            getMap.put(name, e)
         }
       case _ =>
-    }
+    }, {
+      case m: PMethod =>
+        curMethod = null
+      case _ =>
+    })
     // check all identifier uses
-    p visit {
+    p.visit({
+      case m: PMethod =>
+        curMethod = m
       case i@PIdnUse(name) =>
-        idnMap.getOrElse(name, UnknownEntity()) match {
+        // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
+        getMap.getOrElse(name, idnMap.getOrElse(name, UnknownEntity())) match {
           case UnknownEntity() =>
             message(i, s"$name not defined.")
           case _ =>
         }
       case _ =>
-    }
+    }, {
+      case m: PMethod =>
+        curMethod = null
+      case _ =>
+    })
     messagecount == 0
   }
 }
