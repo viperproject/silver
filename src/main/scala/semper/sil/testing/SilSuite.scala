@@ -83,6 +83,8 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
               case e: ExpectedError => expectedButMissingErrors ::= e
               case u: UnexpectedError => unexpectedButMissingErrors ::= u
               case m: MissingError => // it is known that this one is missing
+              case _: IgnoreFile =>
+                sys.error("the test should not have run in the first place")
             }
           case Failure(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
