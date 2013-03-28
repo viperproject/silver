@@ -70,7 +70,7 @@ object Nodes {
       case m: Member =>
         m match {
           case Field(name) => Nil
-          case Function(name, formalArgs, pres, posts, exp) =>
+          case Function(name, formalArgs, typ, pres, posts, exp) =>
             formalArgs ++ pres ++ posts ++ Seq(exp)
           case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ locals ++ Seq(body)
