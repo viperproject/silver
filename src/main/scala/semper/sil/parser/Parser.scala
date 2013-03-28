@@ -33,9 +33,9 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // null
     "null",
     // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom",
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns",
     // specifications
-    "requires", "ensures", "old", "invariants",
+    "requires", "ensures", "old", "invariant",
     // statements
     "fold", "unfold", "inhale", "exhale", "new",
     // control structures
