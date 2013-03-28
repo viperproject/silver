@@ -154,9 +154,13 @@ trait DefaultFrontend extends Frontend {
   }
 
   override def result = {
-    require(state >= TranslatorState.Verified)
-    if (_errors.isEmpty) _verificationResult.get
-    else Failure(_errors)
+    if (_errors.isEmpty) {
+      require(state >= TranslatorState.Verified)
+      _verificationResult.get
+    }
+    else {
+      Failure(_errors)
+    }
   }
 }
 
