@@ -55,20 +55,20 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     // one test per verifier
     for (verifier <- verifiers) {
       test(testName + " [" + verifier.name + "]") {
-        val t = frontend(verifier, input)
+        val fe = frontend(verifier, input)
         val (_, tParse) = time {
-          t.parse
+          fe.parse
         }
         val (_, tTypeCheck) = time {
-          t.typecheck
+          fe.typecheck
         }
         val (_, tTranslate) = time {
-          t.translate
+          fe.translate
         }
         val (_, tVerification) = time {
-          t.verify
+          fe.verify
         }
-        val result = t.result
+        val result = fe.result
         assert(result != null)
 
         // postprocessing of errors: match up expected errors with actual errors and report inconsistencies
