@@ -63,7 +63,12 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   // --- Declarations
 
   lazy val programDecl =
-    ("program" ~> idndef) ~ ("{" ~> rep(fieldDecl)) ~ ((rep(methodDecl) <~ "}")) ^^ PProgram
+    ("program" ~> idndef) ~
+      rep(domainDecl) ~
+      ("{" ~> rep(fieldDecl)) ~
+      rep(functionDecl) ~
+      rep(predicateDecl) ~
+      ((rep(methodDecl) <~ "}")) ^^ PProgram
 
   lazy val fieldDecl =
     ("var" ~> idndef) ~ (":" ~> typ) ^^ PField
@@ -86,6 +91,17 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     repsep(formalArg, ",")
   lazy val formalArg =
     idndef ~ (":" ~> typ) ^^ PFormalArgDecl
+
+  lazy val functionDecl =
+    functionSignature ~ rep(pre) ~ rep(post) ~ ("{" ~> (exp <~ "}")) ^^ PFunction
+  lazy val functionSignature =
+    ("function" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ (":" ~> typ)
+
+  lazy val predicateDecl =
+    ("predicate" ~> idndef) ~ ("(" ~> formalArg <~ ")") ~ ("{" ~> (exp <~ "}")) ^^ PPredicate
+
+  lazy val domainDecl =
+    ("domain" ~> idndef) ^^ PDomain
 
   // --- Statements
 

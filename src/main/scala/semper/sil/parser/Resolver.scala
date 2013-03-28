@@ -37,6 +37,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(p: PProgram) {
     p.methods map check
+    // TODO: check fields/functions/...
   }
 
   def check(m: PMethod) {
@@ -298,6 +299,8 @@ case class NameAnalyser() {
               case decl: PLocalVarDecl => decl
               case decl: PFormalArgDecl => decl
               case decl: PField => decl
+              case decl: PFunction => decl
+              case decl: PPredicate => decl
               case decl: PDomain => decl
               case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
             }

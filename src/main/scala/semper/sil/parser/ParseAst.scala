@@ -129,10 +129,12 @@ case class PFreshReadPerm(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with RealEntity
 
 // Declarations
-case class PProgram(idndef: PIdnDef, fields: Seq[PField], methods: Seq[PMethod]) extends PNode with RealEntity
+case class PProgram(idndef: PIdnDef, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode with RealEntity
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PNode with RealEntity
 case class PDomain(idndef: PIdnDef) extends PNode with RealEntity
 case class PField(idndef: PIdnDef, typ: PType) extends PNode with RealEntity
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PNode with RealEntity
+case class PPredicate(idndef: PIdnDef, formalArg: PFormalArgDecl, body: PExp) extends PNode with RealEntity
 
 /** An entity is a declaration (i.e. something that contains a PIdnDef). */
 sealed trait Entity
@@ -189,10 +191,16 @@ object Nodes {
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
       case PFreshReadPerm(vars, stmt) => vars ++ Seq(stmt)
-      case PProgram(idndef, fields, methods) => Seq(idndef) ++ fields ++ methods
+      case PProgram(idndef, domains, fields, functions, predicates, methods) =>
+        Seq(idndef) ++ domains ++ fields ++ functions ++ predicates ++ methods
       case PDomain(idndef) => Seq(idndef)
       case PField(idndef, typ) => Seq(idndef, typ)
-      case PMethod(idndef, args, rets, pres, posts, body) => Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ Seq(body)
+      case PMethod(idndef, args, rets, pres, posts, body) =>
+        Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ Seq(body)
+      case PFunction(name, args, typ, pres, posts, exp) =>
+        args ++ Seq(typ) ++ pres ++ posts ++ Seq(exp)
+      case PPredicate(name, arg, body) =>
+        Seq(arg, body)
     }
   }
 }

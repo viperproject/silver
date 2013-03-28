@@ -15,7 +15,7 @@ case class Translator(p: PProgram) {
 
   def translate: Program = {
     p match {
-      case PProgram(name, fields, methods) =>
+      case PProgram(name, domains, fields, functions, predicates, methods) =>
         val f: Seq[Field] = fields map (translate(_).asInstanceOf[Field])
         val m: Seq[Method] = methods map (translate(_).asInstanceOf[Method])
         Program(name.name, Nil, f, Nil, Nil, m)(p.start)
@@ -35,11 +35,14 @@ case class Translator(p: PProgram) {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, typ(t))(p.start)
         }
         Method(name.name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, pres map exp, posts map exp, locals, stmt(body))(pnode.start)
-      case PProgram(name, fields, methods) =>
+      case PProgram(name, domains, fields, functions, predicates, methods) =>
         sys.error("should invoke translate(program)")
       case PField(name, t) =>
         Field(name.name)(typ(t), pnode.start)
       case _: PDomain => ???
+      case PFunction(name, args, typ, pres, posts, exp) =>
+        ???
+      case PPredicate(name, arg, body) => ???
     }
   }
 
