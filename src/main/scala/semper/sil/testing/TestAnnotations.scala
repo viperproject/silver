@@ -30,8 +30,17 @@ sealed case class TestAnnotations(errors: Seq[TestAnnotationParseError], annotat
 /** A trait for test annotations. */
 sealed trait TestAnnotation
 
+case class ErrorAnnotationId(reasonId: String, errorId: Option[String]) {
+  override def toString = {
+    errorId match {
+      case None => reasonId
+      case Some(i) => s"$i.$reasonId"
+    }
+  }
+}
+
 /** Test annotations that have a location and an identifier (i.e. describe an error of some sort). */
-sealed abstract class ErrorAnnotation(val id: String, val forLineNr: Int) extends TestAnnotation {
+sealed abstract class ErrorAnnotation(val id: ErrorAnnotationId, val forLineNr: Int) extends TestAnnotation {
   override def toString = s"$forLineNr.*: $id"
 }
 
@@ -39,11 +48,11 @@ object ErrorAnnotation {
   def unapply(e: ErrorAnnotation) = Some((e.id, e.forLineNr))
 }
 
-sealed case class ExpectedError(override val id: String, override val forLineNr: Int, annotationLineNr: Int) extends ErrorAnnotation(id, forLineNr)
+sealed case class ExpectedError(override val id: ErrorAnnotationId, override val forLineNr: Int, annotationLineNr: Int) extends ErrorAnnotation(id, forLineNr)
 
-sealed case class UnexpectedError(override val id: String, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, forLineNr)
+sealed case class UnexpectedError(override val id: ErrorAnnotationId, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, forLineNr)
 
-sealed case class MissingError(override val id: String, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, forLineNr)
+sealed case class MissingError(override val id: ErrorAnnotationId, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, forLineNr)
 
 sealed case class IgnoreFile(annotationLineNr: Int, project: String, issueNr: Int) extends TestAnnotation
 

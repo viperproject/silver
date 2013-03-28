@@ -75,29 +75,44 @@ trait TestAnnotationParser {
     }
   }
 
+  /**
+   * A regular expression that matches an error id, either only using the error reason, or
+   * with the full id.
+   */
+  val errorIdPattern = "([^:]*)(:(.*))?"
+
   /** Try to parse the annotation as `ExpectedError`, and otherwise use `next`. */
   private def isExpectedError(annotation: String, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
-    val regex = """^ExpectedError\((.*)\)$""".r
+    val regex = ("""^ExpectedError\(""" + errorIdPattern + """\)$""").r
     annotation match {
-      case regex(id) => Some(ExpectedError(id, -1, lineNr))
+      case regex(reasonId, _, null) =>
+        Some(ExpectedError(ErrorAnnotationId(reasonId, None), -1, lineNr))
+      case regex(errorId, _, reasonId) =>
+        Some(ExpectedError(ErrorAnnotationId(reasonId, Some(errorId)), -1, lineNr))
       case _ => next()
     }
   }
 
   /** Try to parse the annotation as `UnexpectedError`, and otherwise use `next`. */
   private def isUnexpectedError(annotation: String, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
-    val regex = """^UnexpectedError\((.*), /(.*)/issue/([0-9]+)/\)$""".r
+    val regex = ("""^UnexpectedError\(""" + errorIdPattern + """, /(.*)/issue/([0-9]+)/\)$""").r
     annotation match {
-      case regex(id, project, issueNr) => Some(UnexpectedError(id, -1, lineNr, project, issueNr.toInt))
+      case regex(reasonId, _, null, project, issueNr) =>
+        Some(UnexpectedError(ErrorAnnotationId(reasonId, None), -1, lineNr, project, issueNr.toInt))
+      case regex(errorId, _, reasonId, project, issueNr) =>
+        Some(UnexpectedError(ErrorAnnotationId(reasonId, Some(errorId)), -1, lineNr, project, issueNr.toInt))
       case _ => next()
     }
   }
 
   /** Try to parse the annotation as `MissingError`, and otherwise use `next`. */
   private def isMissingError(annotation: String, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
-    val regex = """^MissingError\((.*), /(.*)/issue/([0-9]+)/\)$""".r
+    val regex = ("""^MissingError\(""" + errorIdPattern + """, /(.*)/issue/([0-9]+)/\)$""").r
     annotation match {
-      case regex(id, project, issueNr) => Some(MissingError(id, -1, lineNr, project, issueNr.toInt))
+      case regex(reasonId, _, null, project, issueNr) =>
+        Some(MissingError(ErrorAnnotationId(reasonId, None), -1, lineNr, project, issueNr.toInt))
+      case regex(errorId, _, reasonId, project, issueNr) =>
+        Some(MissingError(ErrorAnnotationId(reasonId, Some(errorId)), -1, lineNr, project, issueNr.toInt))
       case _ => next()
     }
   }
