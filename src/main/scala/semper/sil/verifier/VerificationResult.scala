@@ -29,6 +29,8 @@ trait AbstractError {
 
   /** A readable message describing the error. */
   def readableMessage: String
+
+  override def toString = readableMessage
 }
 
 /** A parser error. */
