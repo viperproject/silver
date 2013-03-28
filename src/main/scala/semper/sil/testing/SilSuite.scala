@@ -20,8 +20,8 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   /** The base directory for tests. */
   def baseDirectory: Path
 
-  /** The translator to be used. */
-  def translator(verifier: Verifier, input: String): Frontend
+  /** The frontend to be used. */
+  def frontend(verifier: Verifier, input: String): Frontend
 
   /** The list of verifiers to be used. */
   def verifiers: Seq[Verifier]
@@ -55,7 +55,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     // one test per verifier
     for (verifier <- verifiers) {
       test(testName + " [" + verifier.name + "]") {
-        val t = translator(verifier, input)
+        val t = frontend(verifier, input)
         val (_, tParse) = time {
           t.parse
         }
