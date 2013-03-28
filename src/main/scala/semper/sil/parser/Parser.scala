@@ -103,9 +103,9 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val unfold =
     "unfold" ~> exp ^^ PUnfold
   lazy val inhale =
-    "inhale" ~> parens(exp) ^^ PInhale
+    "inhale" ~> (exp) ^^ PInhale
   lazy val exhale =
-    "exhale" ~> parens(exp) ^^ PExhale
+    "exhale" ~> (exp) ^^ PExhale
   lazy val localassign =
     idnuse ~ (":=" ~> exp) ^^ PVarAssign
   lazy val fieldassign =
