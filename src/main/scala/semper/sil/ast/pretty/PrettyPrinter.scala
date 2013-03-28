@@ -68,6 +68,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           ) <> line)
       case p@Function(name, formalArgs, typ, pres, posts, exp) =>
         "function" <+> name <> parens(showVars(formalArgs)) <>
+          ":" <+> show(typ) <>
           nest(
             lineIfSomeNonEmpty(pres, posts) <>
               ssep(
