@@ -28,7 +28,7 @@ sealed case class TestAnnotations(errors: Seq[TestAnnotationParseError], annotat
 }
 
 /** A trait for test annotations. */
-trait TestAnnotation
+sealed trait TestAnnotation
 
 /** Test annotations that have a location and an identifier (i.e. describe an error of some sort). */
 abstract class ErrorAnnotation(val id: String, val forLineNr: Int) extends TestAnnotation
