@@ -36,7 +36,7 @@ trait AbstractError {
 /** A parser error. */
 case class ParseError(message: String, pos: Position) extends AbstractError {
   def fullId = "parser.error"
-  def readableMessage = s"$pos: $message"
+  def readableMessage = s"$pos: Parse error: $message"
 }
 
 /** A typechecker error. */
