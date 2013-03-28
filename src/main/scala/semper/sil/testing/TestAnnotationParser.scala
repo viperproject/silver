@@ -24,7 +24,7 @@ trait TestAnnotationParser {
 
     // go through all lines to find test annotations
     while (lines.hasNext) {
-      var l = lines.next.trim
+      var l = lines.next().trim
       curLineNr += 1
 
       // found a line that looks like a test annotations
