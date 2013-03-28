@@ -47,7 +47,7 @@ sealed case class IgnoreFile(annotationLineNr: Int, project: String, issueNr: In
 
 case class TestAnnotationParseError(offendingLine: String, lineNr: Int) {
   def errorMessage: String = {
-    "Line %s looks like a test annotation (it starts with '//::'), but it was not " +
-      "possible to parse it correctly.  The line is : '%s'.".format(lineNr.toString, offendingLine)
+    s"Line ${lineNr} looks like a test annotation (it starts with '//::'), but it was not " +
+      s"possible to parse it correctly.  The line is : '$offendingLine'."
   }
 }
