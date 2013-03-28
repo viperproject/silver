@@ -31,7 +31,9 @@ sealed case class TestAnnotations(errors: Seq[TestAnnotationParseError], annotat
 sealed trait TestAnnotation
 
 /** Test annotations that have a location and an identifier (i.e. describe an error of some sort). */
-abstract class ErrorAnnotation(val id: String, val forLineNr: Int) extends TestAnnotation
+sealed abstract class ErrorAnnotation(val id: String, val forLineNr: Int) extends TestAnnotation {
+  override def toString = s"$forLineNr.*: $id"
+}
 
 object ErrorAnnotation {
   def unapply(e: ErrorAnnotation) = Some((e.id, e.forLineNr))
