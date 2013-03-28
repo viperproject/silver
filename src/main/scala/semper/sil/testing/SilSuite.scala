@@ -180,8 +180,8 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     }
 
     for (f: File <- dir.listFiles
-                       .filterNot(_.isDirectory)
-                       .filter(_.getCanonicalPath.matches(namePattern))) {
+      .filterNot(_.isDirectory)
+      .filter(_.getCanonicalPath.matches(namePattern))) {
 
       registerSilTest(f, newPrefix)
     }
