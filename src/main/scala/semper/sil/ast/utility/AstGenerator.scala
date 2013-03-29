@@ -11,7 +11,7 @@ import semper.sil.ast.ConditionalBlock
 import semper.sil.ast.Goto
 import semper.sil.ast.Label
 import semper.sil.ast.If
-import semper.sil.utility.NameGenerator
+import semper.sil.utility.SilNameGenerator
 
 object AstGenerator {
   
@@ -19,8 +19,8 @@ object AstGenerator {
 
   case class AstGeneratorContext(block: Block) {
 
-    private val nameGen = NameGenerator()
-  
+    private val nameGen = new SilNameGenerator()
+
     lazy val surroundingLoops = calculateSurroundingLoops(block)
   
     def toAst = statementize(translateList(continuation(block, None)))
