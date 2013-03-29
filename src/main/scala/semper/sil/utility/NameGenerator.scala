@@ -2,12 +2,29 @@ package semper.sil.utility
 
 import semper.sil.ast.utility.Consistency
 import semper.sil.parser.Parser
+import util.matching.Regex
 
 /**
- * A class to generate unique names.
+ * A trait to generate unique names.
  */
-case class NameGenerator(separator: String = "_") {
-  
+trait NameGenerator {
+
+  /**
+   * The string used to separate the preferred identifier from the number postfix.
+   */
+  def separator: String
+
+  /**
+   * A regular expression that matches any character allowed as a first char in a valid
+   * identifier.
+   */
+  def firstCharacter: Regex
+
+  /**
+   * A regular expression that matches the characters allowed (except in the first position).
+   */
+  def otherCharacter: Regex
+
   private val lock = new Object
 
     /**
@@ -32,14 +49,14 @@ case class NameGenerator(separator: String = "_") {
       newS
     }
   }
-  
+
   private val identCounters = collection.mutable.HashMap[String, Int]()
-    
+
   /**
    * Creates a different identifier every time it is called.
    */
   def createUniqueIdentifier(s: String) = createUnique(createIdentifier(s))
-  
+
   /**
    * Takes an arbitrary string and returns a valid identifier that
    * resembles that string. Special characters are replaced or removed.
@@ -52,7 +69,7 @@ case class NameGenerator(separator: String = "_") {
       val firstLetter = Parser.identFirstLetter.r
       val otherLetter = Parser.identOtherLetter.r
       // If the first letter of `string` is allowed inside, but not at the beginning, put an additional i at the beginning.
-      val first = input.head.toString 
+      val first = input.head.toString
       if (otherLetter.findFirstIn(first).isDefined && !firstLetter.findFirstIn(first).isDefined) {
         result append "i"
       }
@@ -70,7 +87,7 @@ case class NameGenerator(separator: String = "_") {
       }
     }
   } ensuring { Consistency.validIdentifier(_) }
-  
+
   /** Special letters that can be replaced with a specific string inside identifiers */
   lazy val replacableLetters = Map(
       'Α' -> "Alpha",
