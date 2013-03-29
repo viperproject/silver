@@ -9,13 +9,20 @@ import semper.sil.ast.{NoPosition, Position}
 sealed trait VerificationResult
 
 /** A successful verification. */
-object Success extends VerificationResult
+object Success extends VerificationResult {
+  override def toString = "Verification successful."
+}
 
 /** A non-successful verification.
   *
   * @param errors The errors encountered during parsing, translation or verification.
   */
-case class Failure(errors: Seq[AbstractError]) extends VerificationResult
+case class Failure(errors: Seq[AbstractError]) extends VerificationResult {
+  override def toString = {
+    s"Verification failed with ${errors.size} errors:\n  " +
+      (errors map (e => e.toString)).mkString("\n  ")
+  }
+}
 
 /**
  * A common super-trait for errors that occur during parsing, translation or verification.
