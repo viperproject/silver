@@ -173,13 +173,28 @@ case class Translator(program: PProgram) {
       case PExists(variable, exp) => ???
       case PForall(variable, exp) => ???
       case PCondExp(cond, thn, els) => ???
-      case PCurPerm(loc) => ???
-      case PNoPerm() => ???
-      case PWrite() => ???
-      case PWildcard() => ???
-      case PConcretePerm(a, b) => ???
-      case PEpsilon() => ???
-      case PAccPred(loc, perm) => ???
+      case PCurPerm(loc) =>
+        CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos)
+      case PNoPerm() =>
+        NoPerm()(pos)
+      case PWrite() =>
+        FullPerm()(pos)
+      case PWildcard() =>
+        WildCardPerm()(pos)
+      case PConcretePerm(a, b) =>
+        ConcretePerm(a, b)(pos)
+      case PEpsilon() =>
+        EpsilonPerm()(pos)
+      case PAccPred(loc, perm) =>
+        val p = exp(perm)
+        exp(loc) match {
+          case loc@FieldAccess(rcv, field) =>
+            FieldAccessPredicate(loc, p)(pos)
+          case loc@PredicateAccess(rcv, pred) =>
+            PredicateAccessPredicate(loc, p)(pos)
+          case _ =>
+            sys.error("unexpected location")
+        }
     }
   }
 
@@ -197,8 +212,13 @@ case class Translator(program: PProgram) {
       case "Ref" => Ref
       case "Perm" => Perm
     }
-    case PTypeVar(n) => TypeVar(n)
-    case PDomainType(domain, args) => Int // TODO
-    case PUnkown() => sys.error("unknown type unexpected here")
+    case PTypeVar(n) =>
+      TypeVar(n)
+    case PDomainType(domain, args) =>
+      ???
+    case PUnkown() =>
+      sys.error("unknown type unexpected here")
+    case PPredicateType() =>
+      sys.error("unexpected use of internal typ")
   }
 }
