@@ -84,8 +84,6 @@ trait NameGenerator {
         result.result
       }
     }
-  } ensuring {
-    Consistency.validIdentifier(_)
   }
 
   /** Special letters that can be replaced with a specific string inside identifiers */
