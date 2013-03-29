@@ -129,12 +129,13 @@ case class PFreshReadPerm(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with RealEntity
 
 // Declarations
+sealed trait PMember extends PNode
 case class PProgram(idndef: PIdnDef, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode with RealEntity
-case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PNode with RealEntity
-case class PDomain(idndef: PIdnDef) extends PNode with RealEntity
-case class PField(idndef: PIdnDef, typ: PType) extends PNode with RealEntity
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PNode with RealEntity
-case class PPredicate(idndef: PIdnDef, formalArg: PFormalArgDecl, body: PExp) extends PNode with RealEntity
+case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with RealEntity
+case class PDomain(idndef: PIdnDef) extends PMember with RealEntity
+case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with RealEntity
+case class PPredicate(idndef: PIdnDef, formalArg: PFormalArgDecl, body: PExp) extends PMember with RealEntity
 
 /** An entity is a declaration (i.e. something that contains a PIdnDef). */
 sealed trait Entity
