@@ -247,7 +247,14 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case PIntLit(i) =>
         setType(Int)
-      case PResultLit() => ???
+      case r@PResultLit() =>
+        curMember match {
+          case PFunction(_, _, typ, _, _, _) =>
+            setType(typ)
+          case _ =>
+            message(r, "'result' can only be used in functions")
+            setType(expected) // suppress further warnings
+        }
       case PBoolLit(b) =>
         setType(Bool)
       case PNullLit() =>
@@ -295,7 +302,12 @@ case class TypeChecker(names: NameAnalyser) {
           case _ => sys.error(s"unexpected operator $op")
         }
       case PIntLit(i) => Seq(Int)
-      case PResultLit() => ???
+      case PResultLit() =>
+        curMember match {
+          case PFunction(_, _, typ, _, _, _) =>
+            Seq(typ)
+          case _ => Nil
+        }
       case PBoolLit(b) => Seq(Bool)
       case PNullLit() => Seq(Ref)
       case PFieldAcc(rcv, idnuse) =>
