@@ -175,6 +175,7 @@ case class Translator(program: PProgram) {
       case PCondExp(cond, thn, els) => ???
       case PCurPerm(loc) => ???
       case PNoPerm() => ???
+      case PWrite() => ???
       case PWildcard() => ???
       case PConcretePerm(a, b) => ???
       case PEpsilon() => ???

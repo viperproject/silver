@@ -108,6 +108,7 @@ case class PForall(variable: PLocalVarDecl, exp: PExp) extends PExp
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
 case class PCurPerm(loc: PLocationAccess) extends PExp
 case class PNoPerm() extends PExp
+case class PWrite() extends PExp
 case class PWildcard() extends PExp
 case class PConcretePerm(a: BigInt, b: BigInt) extends PExp
 case class PEpsilon() extends PExp
@@ -204,6 +205,7 @@ object Nodes {
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PCurPerm(loc) => Seq(loc)
       case PNoPerm() => Nil
+      case PWrite() => Nil
       case PWildcard() => Nil
       case PConcretePerm(a, b) => Nil
       case PEpsilon() => Nil
