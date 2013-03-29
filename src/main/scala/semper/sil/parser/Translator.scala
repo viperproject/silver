@@ -11,15 +11,17 @@ import language.implicitConversions
  * Note that the translator assumes that the tree is well-formed (it typechecks and follows all the rules
  * of a valid SIL program).  No checks are performed, and the code might crash if the input is malformed.
  */
-case class Translator(p: PProgram) {
+case class Translator(program: PProgram) {
 
   def translate: Program = {
-    p match {
+    program match {
       case PProgram(name, domains, fields, functions, predicates, methods) =>
         (domains ++ fields ++ functions ++ predicates ++ methods) map translateMemberSignature
-        val f: Seq[Field] = fields map (translate(_))
-        val m: Seq[Method] = methods map (translate(_))
-        Program(name.name, Nil, f, Nil, Nil, m)(p.start)
+        val f = fields map (translate(_))
+        val fs = functions map (translate(_))
+        val p = predicates map (translate(_))
+        val m = methods map (translate(_))
+        Program(name.name, Nil, f, fs, p, m)(program.start)
     }
   }
 
@@ -37,6 +39,22 @@ case class Translator(p: PProgram) {
       m.posts = posts map exp
       m.body = stmt(body)
       m
+  }
+
+  private def translate(f: PFunction) = f match {
+    case PFunction(name, formalArgs, typ, pres, posts, body) =>
+      val f = findFunction(name)
+      f.pres = pres map exp
+      f.posts = posts map exp
+      f.exp = exp(body)
+      f
+  }
+
+  private def translate(p: PPredicate) = p match {
+    case PPredicate(name, formalArg, body) =>
+      val p = findPredicate(name)
+      p.body = exp(body)
+      p
   }
 
   private def translate(f: PField) = findField(f.idndef)
