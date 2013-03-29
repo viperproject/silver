@@ -206,7 +206,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred | perm | quant
 
   lazy val perm: PackratParser[PExp] =
-    "none" ^^^ PNoPerm() | "wildcard" ^^^ PWildcard() | "write" ^^^ PWrite() |
+    "none" ^^^ PNoPerm() | "wildcard" ^^^ PWildcard() | "write" ^^^ PFullPerm() |
       "epsilon" ^^^ PEpsilon() | "perm" ~> parens(locAcc) ^^ PCurPerm |
       integer ~ ("/" ~> integer) ^^ {
         case a ~ b => PConcretePerm(a.i, b.i)

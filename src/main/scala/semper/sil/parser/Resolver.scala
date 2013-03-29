@@ -287,7 +287,7 @@ case class TypeChecker(names: NameAnalyser) {
         setType(Perm)
       case PNoPerm() =>
         setType(Perm)
-      case PWrite() =>
+      case PFullPerm() =>
         setType(Perm)
       case PWildcard() =>
         setType(Perm)
@@ -359,7 +359,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PCondExp(cond, thn, els) => possibleTypes(thn) intersect possibleTypes(els)
       case PCurPerm(loc) => Seq(Perm)
       case PNoPerm() => Seq(Perm)
-      case PWrite() => Seq(Perm)
+      case PFullPerm() => Seq(Perm)
       case PWildcard() => Seq(Perm)
       case PConcretePerm(a, b) => Seq(Perm)
       case PEpsilon() => Seq(Perm)

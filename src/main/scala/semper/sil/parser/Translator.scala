@@ -177,10 +177,10 @@ case class Translator(program: PProgram) {
         CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos)
       case PNoPerm() =>
         NoPerm()(pos)
-      case PWrite() =>
+      case PFullPerm() =>
         FullPerm()(pos)
       case PWildcard() =>
-        WildCardPerm()(pos)
+        WildcardPerm()(pos)
       case PConcretePerm(a, b) =>
         ConcretePerm(a, b)(pos)
       case PEpsilon() =>

@@ -203,7 +203,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         parens("forall" <+> showVar(v) <+> "::" <+> show(exp))
       case ReadPerm() =>
         "read"
-      case WildCardPerm() =>
+      case WildcardPerm() =>
         "wildcard"
       case FullPerm() =>
         "write"
