@@ -27,7 +27,7 @@ trait NameGenerator {
 
   private val lock = new Object
 
-    /**
+  /**
    * Returns a different string every time it is called. If possible, it
    * returns the input string, otherwise, it appends a number at the end.
    * If the input is a valid SIL identifier, the output is also a valid SIL identifier.
@@ -73,12 +73,13 @@ trait NameGenerator {
       if (otherLetter.findFirstIn(first).isDefined && !firstLetter.findFirstIn(first).isDefined) {
         result append "i"
       }
-      input foreach { c =>
-        if (otherLetter.findFirstIn(c.toString).isDefined) {
-          result append c
-        } else if (replacableLetters.contains(c)) {
-          result append replacableLetters(c)
-        }
+      input foreach {
+        c =>
+          if (otherLetter.findFirstIn(c.toString).isDefined) {
+            result append c
+          } else if (replacableLetters.contains(c)) {
+            result append replacableLetters(c)
+          }
       }
       if (result.isEmpty) {
         "i"
@@ -86,64 +87,66 @@ trait NameGenerator {
         result.result
       }
     }
-  } ensuring { Consistency.validIdentifier(_) }
+  } ensuring {
+    Consistency.validIdentifier(_)
+  }
 
   /** Special letters that can be replaced with a specific string inside identifiers */
   lazy val replacableLetters = Map(
-      'Α' -> "Alpha",
-      'Β' -> "Beta",
-      'Γ' -> "Gamma",
-      'Δ' -> "Delta",
-      'Ε' -> "Epsilon",
-      'Ζ' -> "Zeta",
-      'Η' -> "Eta",
-      'Θ' -> "Theta",
-      'Ι' -> "Iota",
-      'Κ' -> "Kappa",
-      'Λ' -> "Lambda",
-      'Μ' -> "My",
-      'Ν' -> "Ny",
-      'Ξ' -> "Xi",
-      'Ο' -> "Omikron",
-      'Π' -> "Pi",
-      'Ρ' -> "Rho",
-      'Σ' -> "Sigma",
-      'Τ' -> "Tau",
-      'Υ' -> "Ypsilon",
-      'Φ' -> "Phi",
-      'Χ' -> "Chi",
-      'Ψ' -> "Psi",
-      'Ω' -> "Omega",
-      'α' -> "alpha",
-      'β' -> "beta",
-      'γ' -> "gamma",
-      'δ' -> "delta",
-      'ε' -> "epsilon",
-      'ζ' -> "zeta",
-      'η' -> "eta",
-      'θ' -> "theta",
-      'ι' -> "iota",
-      'κ' -> "kappa",
-      'λ' -> "lambda",
-      'μ' -> "my",
-      'ν' -> "ny",
-      'ξ' -> "xi",
-      'ο' -> "omikron",
-      'π' -> "pi",
-      'ρ' -> "rho",
-      'ς' -> "varsigma",
-      'σ' -> "sigma",
-      'τ' -> "tau",
-      'υ' -> "ypsilon",
-      'φ' -> "phi",
-      'χ' -> "chi",
-      'ψ' -> "psi",
-      'ω' -> "omega",
-      '+' -> "plus",
-      '-' -> "minus",
-      '*' -> "times",
-      '/' -> "divided",
-      '%' -> "mod",
-      '!' -> "bang"
-      )
+    'Α' -> "Alpha",
+    'Β' -> "Beta",
+    'Γ' -> "Gamma",
+    'Δ' -> "Delta",
+    'Ε' -> "Epsilon",
+    'Ζ' -> "Zeta",
+    'Η' -> "Eta",
+    'Θ' -> "Theta",
+    'Ι' -> "Iota",
+    'Κ' -> "Kappa",
+    'Λ' -> "Lambda",
+    'Μ' -> "My",
+    'Ν' -> "Ny",
+    'Ξ' -> "Xi",
+    'Ο' -> "Omikron",
+    'Π' -> "Pi",
+    'Ρ' -> "Rho",
+    'Σ' -> "Sigma",
+    'Τ' -> "Tau",
+    'Υ' -> "Ypsilon",
+    'Φ' -> "Phi",
+    'Χ' -> "Chi",
+    'Ψ' -> "Psi",
+    'Ω' -> "Omega",
+    'α' -> "alpha",
+    'β' -> "beta",
+    'γ' -> "gamma",
+    'δ' -> "delta",
+    'ε' -> "epsilon",
+    'ζ' -> "zeta",
+    'η' -> "eta",
+    'θ' -> "theta",
+    'ι' -> "iota",
+    'κ' -> "kappa",
+    'λ' -> "lambda",
+    'μ' -> "my",
+    'ν' -> "ny",
+    'ξ' -> "xi",
+    'ο' -> "omikron",
+    'π' -> "pi",
+    'ρ' -> "rho",
+    'ς' -> "varsigma",
+    'σ' -> "sigma",
+    'τ' -> "tau",
+    'υ' -> "ypsilon",
+    'φ' -> "phi",
+    'χ' -> "chi",
+    'ψ' -> "psi",
+    'ω' -> "omega",
+    '+' -> "plus",
+    '-' -> "minus",
+    '*' -> "times",
+    '/' -> "divided",
+    '%' -> "mod",
+    '!' -> "bang"
+  )
 }
