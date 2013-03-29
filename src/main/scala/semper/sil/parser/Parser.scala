@@ -40,13 +40,21 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // declaration keywords
     "method", "function", "predicate", "program", "domain", "axiom", "var", "returns",
     // specifications
-    "requires", "ensures", "old", "invariant",
+    "requires", "ensures", "invariant",
     // statements
-    "fold", "unfold", "inhale", "exhale", "new",
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume",
     // control structures
     "while", "if", "else",
     // special fresh block
-    "fresh"
+    "fresh",
+    // unfolding expressions
+    "unfolding", "in",
+    // old expression
+    "old",
+    // quantification
+    "forall", "exists",
+    // permission syntax
+    "acc", "wildcard", "write", "none", "epsilon", "perm"
   )
 
   lazy val parser = phrase(programDecl)
