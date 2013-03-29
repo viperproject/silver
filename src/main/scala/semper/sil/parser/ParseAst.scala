@@ -65,6 +65,7 @@ object TypeHelper {
   val Bool = PPrimitiv("Bool")
   val Perm = PPrimitiv("Perm")
   val Ref = PPrimitiv("Ref")
+  val Pred = PPredicateType()
 }
 
 // Identifiers (uses and definitions)
@@ -83,6 +84,7 @@ case class PPrimitiv(name: String) extends PType
 case class PTypeVar(name: String) extends PType
 case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType
 case class PUnkown() extends PType // for resolving if something cannot be typed
+case class PPredicateType() extends PType // used during resolving for predicate accesses
 
 // Expressions
 sealed trait PExp extends PNode {
@@ -196,6 +198,7 @@ object Nodes {
       case PIntLit(i) => Nil
       case PBoolLit(b) => Nil
       case PNullLit() => Nil
+      case PPredicateType() => Nil
       case PResultLit() => Nil
       case PLocationAccess(rcv, field) => Seq(rcv, field)
       case PFunctApp(func, args) => Seq(func) ++ args

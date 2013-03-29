@@ -161,6 +161,8 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(typ: PType) {
     typ match {
+      case PPredicateType() =>
+        sys.error("unexpected use of internal typ")
       case PPrimitiv(_) =>
       case PTypeVar(n) =>
         message(typ, "expected concrete type, but found type variable")
@@ -179,13 +181,15 @@ case class TypeChecker(names: NameAnalyser) {
   /**
    * Type-check and resolve e and ensure that it has type expected.  If that is not the case, then an
    * error should be issued.
+   *
+   * null can be passed for expected, if any type is fine.
    */
   def check(exp: PExp, expected: PType) {
     def setType(actual: PType) {
       if (actual == PUnkown()) {
         return // no error for unknown type (an error has already been issued)
       }
-      if (expected == actual) {
+      if (expected == null || expected == actual) {
         exp.typ = expected
       } else {
         message(exp, s"expected $expected, but got $actual")
@@ -268,17 +272,32 @@ case class TypeChecker(names: NameAnalyser) {
         check(rcv, Ref)
         check(idnuse, expected)
       case PFunctApp(func, args) => ???
-      case PUnfolding(loc, exp) => ???
-      case PExists(variable, exp) => ???
-      case PForall(variable, exp) => ???
+      case PUnfolding(loc, e) =>
+        check(loc, Pred)
+        check(e, expected)
+      case PExists(variable, e) =>
+        check(variable)
+        check(e, Bool)
+      case PForall(variable, e) =>
+        check(variable)
+        check(e, Bool)
       case PCondExp(cond, thn, els) => ???
-      case PCurPerm(loc) => ???
-      case PNoPerm() => ???
-      case PWrite() => ???
-      case PWildcard() => ???
-      case PConcretePerm(a, b) => ???
-      case PEpsilon() => ???
-      case PAccPred(loc, perm) => ???
+      case PCurPerm(loc) =>
+        check(loc, null)
+        setType(Perm)
+      case PNoPerm() =>
+        setType(Perm)
+      case PWrite() =>
+        setType(Perm)
+      case PWildcard() =>
+        setType(Perm)
+      case PConcretePerm(a, b) =>
+        setType(Perm)
+      case PEpsilon() =>
+        setType(Perm)
+      case PAccPred(loc, perm) =>
+        check(loc, null)
+        check(perm, Perm)
     }
   }
 
@@ -334,17 +353,17 @@ case class TypeChecker(names: NameAnalyser) {
           case _ => Nil
         }
       case PFunctApp(func, args) => ???
-      case PUnfolding(loc, exp) => ???
-      case PExists(variable, exp) => ???
-      case PForall(variable, exp) => ???
-      case PCondExp(cond, thn, els) => ???
-      case PCurPerm(loc) => ???
-      case PNoPerm() => ???
-      case PWrite() => ???
-      case PWildcard() => ???
-      case PConcretePerm(a, b) => ???
-      case PEpsilon() => ???
-      case PAccPred(loc, perm) => ???
+      case PUnfolding(loc, e) => Seq(Bool)
+      case PExists(variable, e) => Seq(Bool)
+      case PForall(variable, e) => Seq(Bool)
+      case PCondExp(cond, thn, els) => possibleTypes(thn) intersect possibleTypes(els)
+      case PCurPerm(loc) => Seq(Perm)
+      case PNoPerm() => Seq(Perm)
+      case PWrite() => Seq(Perm)
+      case PWildcard() => Seq(Perm)
+      case PConcretePerm(a, b) => Seq(Perm)
+      case PEpsilon() => Seq(Perm)
+      case PAccPred(loc, perm) => Seq(Bool)
     }
   }
 
