@@ -141,7 +141,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val localassign =
     idnuse ~ (":=" ~> exp) ^^ PVarAssign
   lazy val fieldassign =
-    fieldAcc ~ (":=" ~> exp) ^^ PFieldAssign
+    locAcc ~ (":=" ~> exp) ^^ PFieldAssign
   lazy val ifthnels =
     ("if" ~> "(" ~> exp <~ ")") ~ block ~ opt("else" ~> block) ^^ {
       case cond ~ thn ~ els =>
@@ -201,10 +201,22 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       factor
 
   lazy val factor: PackratParser[PExp] =
-    fieldAcc | integer | bool | nul | idnuse | "result" ^^^ PResultLit() |
-      "-" ~ sum ^^ PUnExp | "(" ~> exp <~ ")"
+    locAcc | integer | bool | nul | idnuse | "result" ^^^ PResultLit() |
+      ("-" | "!" | "+") ~ sum ^^ PUnExp | "(" ~> exp <~ ")" |
+      "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred | perm | quant
 
-  lazy val fieldAcc: PackratParser[PLocationAccess] =
+  lazy val perm: PackratParser[PExp] =
+    "none" ^^^ PNoPerm() | "wildcard" ^^^ PWildcard() | "write" ^^^ PWrite() |
+      "epsilon" ^^^ PEpsilon() | "perm" ~> parens(locAcc) ^^ PCurPerm |
+      integer ~ ("/" ~> integer) ^^ {
+        case a ~ b => PConcretePerm(a.i, b.i)
+      }
+
+  lazy val quant: PackratParser[PExp] =
+    ("forall" ~> varDecl <~ "::") ~ exp ^^ PForall |
+      ("exists" ~> varDecl <~ "::") ~ exp ^^ PForall
+
+  lazy val locAcc: PackratParser[PLocationAccess] =
     (exp <~ ".") ~ idnuse ^^ PLocationAccess
 
   lazy val integer =
