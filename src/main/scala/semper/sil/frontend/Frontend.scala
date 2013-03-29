@@ -77,6 +77,10 @@ trait DefaultFrontend extends Frontend {
   protected var _typecheckResult: Option[TypecheckerResult] = None
   protected var _program: Option[Program] = None
 
+  def parserResult: ParserResult = _parseResult.asInstanceOf[Succ[ParserResult]].a
+  def typecheckerResult: TypecheckerResult = _typecheckResult.asInstanceOf[Succ[TypecheckerResult]].a
+  def translatorResult: Program = _program.get
+
   def state = _state
 
   override def init(verifier: Verifier) {
