@@ -100,7 +100,18 @@ case class PBoolLit(b: Boolean) extends PExp {
 case class PNullLit() extends PExp {
   typ = Ref
 }
-case class PFieldAcc(rcv: PExp, idnuse: PIdnUse) extends PExp
+case class PLocationAccess(rcv: PExp, idnuse: PIdnUse) extends PExp
+case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
+case class PUnfolding(loc: PLocationAccess, exp: PExp) extends PExp
+case class PExists(variable: PLocalVarDecl, exp: PExp) extends PExp
+case class PForall(variable: PLocalVarDecl, exp: PExp) extends PExp
+case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
+case class PCurPerm(loc: PLocationAccess) extends PExp
+case class PNoPerm() extends PExp
+case class PWildcard() extends PExp
+case class PConcretePerm(a: BigInt, b: BigInt) extends PExp
+case class PEpsilon() extends PExp
+case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 
 // Statements
 sealed trait PStmt extends PNode {
@@ -121,10 +132,11 @@ case class PSeqn(ss: Seq[PStmt]) extends PStmt
 case class PFold(e: PExp) extends PStmt
 case class PUnfold(e: PExp) extends PStmt
 case class PExhale(e: PExp) extends PStmt
+case class PAssert(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
 case class PNewStmt(target: PIdnUse) extends PStmt
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
-case class PFieldAssign(fieldAcc: PFieldAcc, rhs: PExp) extends PStmt
+case class PFieldAssign(fieldAcc: PLocationAccess, rhs: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PStmt) extends PStmt
 case class PFreshReadPerm(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
@@ -136,10 +148,11 @@ sealed trait PMember extends PNode {
 }
 case class PProgram(idndef: PIdnDef, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode with RealEntity
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with RealEntity
-case class PDomain(idndef: PIdnDef) extends PMember with RealEntity
+case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PFunction], axioms: Seq[PAxiom]) extends PMember with RealEntity
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with RealEntity
 case class PPredicate(idndef: PIdnDef, formalArg: PFormalArgDecl, body: PExp) extends PMember with RealEntity
+case class PAxiom(idndef: PIdnDef, exp: PExp) extends PNode
 
 /** An entity is a declaration (i.e. something that contains a PIdnDef). */
 sealed trait Entity
@@ -183,11 +196,23 @@ object Nodes {
       case PBoolLit(b) => Nil
       case PNullLit() => Nil
       case PResultLit() => Nil
-      case PFieldAcc(rcv, field) => Seq(rcv, field)
+      case PLocationAccess(rcv, field) => Seq(rcv, field)
+      case PFunctApp(func, args) => Seq(func) ++ args
+      case PUnfolding(loc, exp) => Seq(loc, exp)
+      case PExists(variable, exp) => Seq(variable, exp)
+      case PForall(variable, exp) => Seq(variable, exp)
+      case PCondExp(cond, thn, els) => Seq(cond, thn, els)
+      case PCurPerm(loc) => Seq(loc)
+      case PNoPerm() => Nil
+      case PWildcard() => Nil
+      case PConcretePerm(a, b) => Nil
+      case PEpsilon() => Nil
+      case PAccPred(loc, perm) => Seq(loc, perm)
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)
       case PExhale(exp) => Seq(exp)
+      case PAssert(exp) => Seq(exp)
       case PInhale(exp) => Seq(exp)
       case PNewStmt(idnuse) => Seq(idnuse)
       case PVarAssign(target, rhs) => Seq(target, rhs)
@@ -198,7 +223,7 @@ object Nodes {
       case PFreshReadPerm(vars, stmt) => vars ++ Seq(stmt)
       case PProgram(idndef, domains, fields, functions, predicates, methods) =>
         Seq(idndef) ++ domains ++ fields ++ functions ++ predicates ++ methods
-      case PDomain(idndef) => Seq(idndef)
+      case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ Seq(body)
@@ -206,6 +231,7 @@ object Nodes {
         args ++ Seq(typ) ++ pres ++ posts ++ Seq(exp)
       case PPredicate(name, arg, body) =>
         Seq(arg, body)
+      case PAxiom(idndef, exp) => Seq(idndef, exp)
     }
   }
 }

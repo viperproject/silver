@@ -99,6 +99,8 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PExhale(e) =>
         check(e, Bool)
+      case PAssert(e) =>
+        check(e, Bool)
       case PInhale(e) =>
         check(e, Bool)
       case PVarAssign(idnuse, rhs) =>
@@ -165,7 +167,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PDomainType(domain, args) =>
         args map check
         names.definition(curMember)(domain) match {
-          case PDomain(name) => // TODO: check typ args
+          case PDomain(name, typVars, _, _) => ???
           case _ =>
             message(typ, "expected domain")
         }
@@ -240,9 +242,12 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case PUnExp(op, e) =>
         op match {
-          case "-" =>
+          case "-" | "+" =>
             check(e, expected)
             setType(expected)
+          case "!" =>
+            check(e, expected)
+            setType(Bool)
           case _ => sys.error(s"unexpected operator $op")
         }
       case PIntLit(i) =>
@@ -259,9 +264,20 @@ case class TypeChecker(names: NameAnalyser) {
         setType(Bool)
       case PNullLit() =>
         setType(Ref)
-      case PFieldAcc(rcv, idnuse) =>
+      case PLocationAccess(rcv, idnuse) =>
         check(rcv, Ref)
         check(idnuse, expected)
+      case PFunctApp(func, args) => ???
+      case PUnfolding(loc, exp) => ???
+      case PExists(variable, exp) => ???
+      case PForall(variable, exp) => ???
+      case PCondExp(cond, thn, els) => ???
+      case PCurPerm(loc) => ???
+      case PNoPerm() => ???
+      case PWildcard() => ???
+      case PConcretePerm(a, b) => ???
+      case PEpsilon() => ???
+      case PAccPred(loc, perm) => ???
     }
   }
 
@@ -310,12 +326,23 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case PBoolLit(b) => Seq(Bool)
       case PNullLit() => Seq(Ref)
-      case PFieldAcc(rcv, idnuse) =>
+      case PLocationAccess(rcv, idnuse) =>
         names.definition(curMember)(idnuse) match {
           case PField(_, typ) =>
             Seq(typ)
           case _ => Nil
         }
+      case PFunctApp(func, args) => ???
+      case PUnfolding(loc, exp) => ???
+      case PExists(variable, exp) => ???
+      case PForall(variable, exp) => ???
+      case PCondExp(cond, thn, els) => ???
+      case PCurPerm(loc) => ???
+      case PNoPerm() => ???
+      case PWildcard() => ???
+      case PConcretePerm(a, b) => ???
+      case PEpsilon() => ???
+      case PAccPred(loc, perm) => ???
     }
   }
 

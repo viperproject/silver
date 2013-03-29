@@ -109,7 +109,13 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     ("predicate" ~> idndef) ~ ("(" ~> formalArg <~ ")") ~ ("{" ~> (exp <~ "}")) ^^ PPredicate
 
   lazy val domainDecl =
-    ("domain" ~> idndef) ^^ PDomain
+    ("domain" ~> idndef) ~
+      ("[" ~> repsep(idndef, ",") <~ "]") ~
+      rep(functionDecl) ~
+      rep(axiomDecl) ^^ PDomain
+
+  lazy val axiomDecl =
+    ("axiom" ~> idndef) ~ ("{" ~> (exp <~ "}")) ^^ PAxiom
 
   // --- Statements
 
@@ -120,16 +126,18 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val stmts =
     rep(stmt <~ opt(";"))
   lazy val stmt =
-    fieldassign | localassign | fold | unfold | exhale | inhale | ifthnels | whle | varDecl | newstmt
+    fieldassign | localassign | fold | unfold | exhale | assert | inhale | ifthnels | whle | varDecl | newstmt
 
   lazy val fold =
     "fold" ~> exp ^^ PFold
   lazy val unfold =
     "unfold" ~> exp ^^ PUnfold
   lazy val inhale =
-    "inhale" ~> (exp) ^^ PInhale
+    ("inhale" | "assume") ~> (exp) ^^ PInhale
   lazy val exhale =
     "exhale" ~> (exp) ^^ PExhale
+  lazy val assert =
+    "assert" ~> (exp) ^^ PAssert
   lazy val localassign =
     idnuse ~ (":=" ~> exp) ^^ PVarAssign
   lazy val fieldassign =
@@ -147,7 +155,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     ("var" ~> idndef) ~ (":" ~> typ) ~ opt(":=" ~> exp) ^^ PLocalVarDecl
   lazy val freshReadPerm =
     ("fresh" ~> "(" ~> repsep(idnuse, ",") <~ ")") ~ block ^^ {
-      case vars ~ stmts => PFreshReadPerm(vars, PSeqn(stmts))
+      case vars ~ s => PFreshReadPerm(vars, PSeqn(s))
     }
   lazy val newstmt =
     idnuse <~ (":=" ~ "new" ~ "()") ^^ PNewStmt
@@ -165,11 +173,10 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   // --- Expressions
 
   lazy val exp: PackratParser[PExp] =
-    iffExp
+    iteExpr
 
-  // TODO
-  //lazy val iteExpr: Parser[Expression] =
-  //iffExpr ~ ("?" ~> iteExpr) ~ (":" ~> iteExpr) ^^ {
+  lazy val iteExpr: PackratParser[PExp] =
+    ((iffExp <~ "?") ~ iteExpr ~ (":" ~> iteExpr)) ^^ PCondExp | implExp
   lazy val iffExp: PackratParser[PExp] =
     implExp ~ "<==>" ~ iffExp ^^ PBinExp | implExp
   lazy val implExp: PackratParser[PExp] =
@@ -194,18 +201,20 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       factor
 
   lazy val factor: PackratParser[PExp] =
-    fieldAcc | integer | bool | idnuse | "result" ^^^ PResultLit() |
+    fieldAcc | integer | bool | nul | idnuse | "result" ^^^ PResultLit() |
       "-" ~ sum ^^ PUnExp | "(" ~> exp <~ ")"
 
-  lazy val fieldAcc: PackratParser[PFieldAcc] =
-    (exp <~ ".") ~ idnuse ^^ PFieldAcc
+  lazy val fieldAcc: PackratParser[PLocationAccess] =
+    (exp <~ ".") ~ idnuse ^^ PLocationAccess
 
   lazy val integer =
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))
 
   lazy val bool =
-    "true" ^^^ PBoolLit(b = true) | "false" ^^^ PBoolLit(b = false) |
-      "null" ^^^ PNullLit()
+    "true" ^^^ PBoolLit(b = true) | "false" ^^^ PBoolLit(b = false)
+
+  lazy val nul =
+    "null" ^^^ PNullLit()
 
   lazy val idndef =
     ident ^^ PIdnDef

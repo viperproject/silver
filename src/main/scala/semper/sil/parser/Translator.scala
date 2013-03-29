@@ -71,7 +71,7 @@ case class Translator(program: PProgram) {
         Field(name, ttyp(typ))(pos)
       case PFunction(_, formalArgs, typ, _, _, _) =>
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
-      case PDomain(_) => ???
+      case PDomain(name, typVars, funcs, axioms) => ???
       case PPredicate(_, formalArg, _) =>
         Predicate(name, liftVarDecl(formalArg), null)(pos)
       case PMethod(_, formalArgs, formalReturns, _, _, _) =>
@@ -109,6 +109,8 @@ case class Translator(program: PProgram) {
         Inhale(exp(e))(pos)
       case PExhale(e) =>
         Exhale(exp(e))(pos)
+      case PAssert(e) =>
+        Assert(exp(e))(pos)
       case PNewStmt(idnuse) =>
         NewStmt(exp(idnuse).asInstanceOf[LocalVar])(pos)
       case PIf(cond, thn, els) =>
@@ -154,6 +156,7 @@ case class Translator(program: PProgram) {
         op match {
           case "+" => e
           case "-" => Neg(e)(pos)
+          case "!" => Not(e)(pos)
         }
       case PIntLit(i) =>
         IntLit(i)(pos)
@@ -163,8 +166,19 @@ case class Translator(program: PProgram) {
         if (b) TrueLit()(pos) else FalseLit()(pos)
       case PNullLit() =>
         NullLit()(pos)
-      case PFieldAcc(rcv, idn) =>
+      case PLocationAccess(rcv, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos)
+      case PFunctApp(func, args) => ???
+      case PUnfolding(loc, exp) => ???
+      case PExists(variable, exp) => ???
+      case PForall(variable, exp) => ???
+      case PCondExp(cond, thn, els) => ???
+      case PCurPerm(loc) => ???
+      case PNoPerm() => ???
+      case PWildcard() => ???
+      case PConcretePerm(a, b) => ???
+      case PEpsilon() => ???
+      case PAccPred(loc, perm) => ???
     }
   }
 
