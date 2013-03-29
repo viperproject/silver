@@ -16,51 +16,68 @@ case class Translator(p: PProgram) {
   def translate: Program = {
     p match {
       case PProgram(name, domains, fields, functions, predicates, methods) =>
-        val f: Seq[Field] = fields map (translate(_).asInstanceOf[Field])
-        val m: Seq[Method] = methods map (translate(_).asInstanceOf[Method])
+        (domains ++ fields ++ functions ++ predicates ++ methods) map translateMemberSignature
+        val f: Seq[Field] = fields map (translate(_))
+        val m: Seq[Method] = methods map (translate(_))
         Program(name.name, Nil, f, Nil, Nil, m)(p.start)
     }
   }
 
-  private def translate(pnode: PNode): Node = {
-    pnode match {
-      case e: PExp => exp(e)
-      case s: PStmt => stmt(s)
-      case _: PFormalArgDecl | _: PIdnDef | _: PType => sys.error("unexpected node")
-      case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
-        val plocals = body.childStmts collect {
-          case l: PLocalVarDecl => l
-        }
-        val locals = plocals map {
-          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, typ(t))(p.start)
-        }
-        Method(name.name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, pres map exp, posts map exp, locals, stmt(body))(pnode.start)
-      case PProgram(name, domains, fields, functions, predicates, methods) =>
-        sys.error("should invoke translate(program)")
-      case PField(name, t) =>
-        Field(name.name, typ(t))(pnode.start)
-      case _: PDomain => ???
-      case PFunction(name, args, typ, pres, posts, exp) =>
-        ???
-      case PPredicate(name, arg, body) => ???
-    }
+  private def translate(m: PMethod): Method = m match {
+    case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
+      val m = findMethod(name)
+      val plocals = body.childStmts collect {
+        case l: PLocalVarDecl => l
+      }
+      val locals = plocals map {
+        case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p.start)
+      }
+      m.locals = locals
+      m.pres = pres map exp
+      m.posts = posts map exp
+      m.body = stmt(body)
+      m
   }
 
-  private def findField(idnuse: PIdnUse) = {
-    val field = p.fields.find(_.idndef.name == idnuse.name).get
-    Field(idnuse.name, typ(field.typ))(field.start)
+  private def translate(f: PField) = findField(f.idndef)
+
+  private val members = collection.mutable.HashMap[String, Member]()
+  /**
+   * Translate the signature of a member, so that it can be looked up later.
+   */
+  private def translateMemberSignature(p: PMember) {
+    val pos = p.start
+    val name = p.idndef.name
+    val t: Member = p match {
+      case PField(_, typ) =>
+        Field(name, ttyp(typ))(pos)
+      case PFunction(_, formalArgs, typ, _, _, _) =>
+        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
+      case PDomain(_) => ???
+      case PPredicate(_, formalArg, _) =>
+        Predicate(name, liftVarDecl(formalArg), null)(pos)
+      case PMethod(_, formalArgs, formalReturns, _, _, _) =>
+        Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null, null)(pos)
+    }
+    members.put(p.idndef.name, t)
   }
+
+  private def findDomain(id: Identifier) = members.get(id.name).get.asInstanceOf[Domain]
+  private def findField(id: Identifier) = members.get(id.name).get.asInstanceOf[Field]
+  private def findFunction(id: Identifier) = members.get(id.name).get.asInstanceOf[Function]
+  private def findPredicate(id: Identifier) = members.get(id.name).get.asInstanceOf[Predicate]
+  private def findMethod(id: Identifier) = members.get(id.name).get.asInstanceOf[Method]
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */
   private def stmt(s: PStmt): Stmt = {
     val pos = s.start
     s match {
       case PVarAssign(idnuse, rhs) =>
-        LocalVarAssign(LocalVar(idnuse.name)(typ(idnuse.typ), pos), exp(rhs))(pos)
+        LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos), exp(rhs))(pos)
       case PFieldAssign(field, rhs) =>
         FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field.start), exp(rhs))(pos)
       case PLocalVarDecl(idndef, t, Some(init)) =>
-        LocalVarAssign(LocalVar(idndef.name)(typ(t), pos), exp(init))(pos)
+        LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos), exp(init))(pos)
       case PLocalVarDecl(_, _, None) =>
         // there are no declarations in the SIL AST; rather they are part of the method signature
         Statements.EmptyStmt
@@ -83,7 +100,7 @@ case class Translator(p: PProgram) {
           case l: PLocalVarDecl => l
         }
         val locals = plocals map {
-          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, typ(t))(pos)
+          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos)
     }
@@ -94,7 +111,7 @@ case class Translator(p: PProgram) {
     val pos = pexp.start
     pexp match {
       case PIdnUse(name) =>
-        LocalVar(name)(typ(pexp.typ), pos)
+        LocalVar(name)(ttyp(pexp.typ), pos)
       case PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
         op match {
@@ -137,10 +154,10 @@ case class Translator(p: PProgram) {
   implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition = SourcePosition(pos.line, pos.column)
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
-  private def liftVarDecl(formal: PFormalArgDecl) = LocalVarDecl(formal.idndef.name, typ(formal.typ))(formal.start)
+  private def liftVarDecl(formal: PFormalArgDecl) = LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.start)
 
   /** Takes a `PType` and turns it into a `Type`. */
-  private def typ(t: PType) = t match {
+  private def ttyp(t: PType) = t match {
     case PPrimitiv(name) => name match {
       case "Int" => Int
       case "Bool" => Bool

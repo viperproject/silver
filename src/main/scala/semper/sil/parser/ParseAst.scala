@@ -68,7 +68,9 @@ object TypeHelper {
 }
 
 // Identifiers (uses and definitions)
-trait Identifier
+trait Identifier {
+  def name: String
+}
 case class PIdnDef(name: String) extends PNode with Identifier
 case class PIdnUse(name: String) extends PExp with Identifier
 
@@ -129,7 +131,9 @@ case class PFreshReadPerm(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with RealEntity
 
 // Declarations
-sealed trait PMember extends PNode
+sealed trait PMember extends PNode {
+  def idndef: PIdnDef
+}
 case class PProgram(idndef: PIdnDef, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode with RealEntity
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with RealEntity
 case class PDomain(idndef: PIdnDef) extends PMember with RealEntity
