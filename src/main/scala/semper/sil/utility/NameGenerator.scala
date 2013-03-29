@@ -1,7 +1,6 @@
 package semper.sil.utility
 
 import semper.sil.ast.utility.Consistency
-import semper.sil.parser.Parser
 import util.matching.Regex
 
 /**
@@ -66,16 +65,14 @@ trait NameGenerator {
       "i"
     } else {
       val result = new StringBuilder
-      val firstLetter = Parser.identFirstLetter.r
-      val otherLetter = Parser.identOtherLetter.r
       // If the first letter of `string` is allowed inside, but not at the beginning, put an additional i at the beginning.
       val first = input.head.toString
-      if (otherLetter.findFirstIn(first).isDefined && !firstLetter.findFirstIn(first).isDefined) {
+      if (otherCharacter.findFirstIn(first).isDefined && !firstCharacter.findFirstIn(first).isDefined) {
         result append "i"
       }
       input foreach {
         c =>
-          if (otherLetter.findFirstIn(c.toString).isDefined) {
+          if (otherCharacter.findFirstIn(c.toString).isDefined) {
             result append c
           } else if (replacableLetters.contains(c)) {
             result append replacableLetters(c)
