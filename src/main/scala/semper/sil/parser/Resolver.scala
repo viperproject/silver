@@ -200,6 +200,7 @@ case class TypeChecker(names: NameAnalyser) {
             setType(typ)
           case x =>
             message(i, s"expected variable or field, but got $x")
+            setType(expected) // suppress further warnings
         }
       case PBinExp(left, op, right) =>
         op match {
