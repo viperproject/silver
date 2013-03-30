@@ -246,7 +246,7 @@ case class TypeChecker(names: NameAnalyser) {
           case "<" | "<=" | ">" | ">=" =>
             val l = possibleTypes(left)
             val r = possibleTypes(right)
-            val t = intersect(l, r)
+            val t = l intersect r
             if (t.size > 0) {
               check(left, t(0))
               check(right, t(0))
@@ -257,7 +257,7 @@ case class TypeChecker(names: NameAnalyser) {
           case "==" | "!=" =>
             val l = possibleTypes(left)
             val r = possibleTypes(right)
-            intersect(l, r) match {
+            (l intersect r) match {
               case Nil =>
                 message(exp, s"require same type for left/right side, but found $l and $r")
               case t :: ts =>
@@ -367,11 +367,11 @@ case class TypeChecker(names: NameAnalyser) {
         val r = possibleTypes(right)
         op match {
           case "+" | "-" | "*" =>
-            intersect(intersect(Seq(Int, Perm), l), r)
+            (Seq(Int, Perm) intersect l) intersect r
           case "/" => ???
           case "%" => ???
           case "<" | "<=" | ">" | ">=" =>
-            intersect(intersect(Seq(Int, Perm), l), r)
+            (Seq(Int, Perm) intersect l) intersect r
           case "==" | "!=" =>
             Seq(Bool)
           case "&&" | "||" | "<==>" | "==>" =>
@@ -409,7 +409,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnfolding(loc, e) => Seq(Bool)
       case PExists(variable, e) => Seq(Bool)
       case PForall(variable, e) => Seq(Bool)
-      case PCondExp(cond, thn, els) => intersect(possibleTypes(thn), possibleTypes(els))
+      case PCondExp(cond, thn, els) => possibleTypes(thn) intersect possibleTypes(els)
       case PCurPerm(loc) => Seq(Perm)
       case PNoPerm() => Seq(Perm)
       case PFullPerm() => Seq(Perm)
@@ -418,23 +418,6 @@ case class TypeChecker(names: NameAnalyser) {
       case PEpsilon() => Seq(Perm)
       case PAccPred(loc, perm) => Seq(Bool)
     }
-  }
-
-  /**
-   * Intersects two sets of types, keeping the more specific version
-   */
-  def intersect(as: Seq[PType], bs: Seq[PType]): Seq[PType] = {
-    def isMoreSpecific(a: PType, b: PType): Boolean = {
-      a.isConcrete && !b.isConcrete
-    }
-    val base = as intersect bs
-    val res = base map {
-      z =>
-        if ((as contains z) && isMoreSpecific(as.find(x => x==z).get, z)) as.find(x => x==z).get
-        else if ((bs contains z) && isMoreSpecific(bs.find(x => x==z).get, z)) bs.find(x => x==z).get
-        else z
-    }
-    res
   }
 
   /**
