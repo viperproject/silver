@@ -17,7 +17,8 @@ case class Translator(program: PProgram) {
   def translate: Program = {
     program match {
       case PProgram(name, domains, fields, functions, predicates, methods) =>
-        (domains ++ fields ++ functions ++ predicates ++ methods) map translateMemberSignature
+        (domains ++ fields ++ functions ++ predicates ++
+          methods ++ (domains flatMap (_.funcs))) map translateMemberSignature
         val d = domains map (translate(_))
         val f = fields map (translate(_))
         val fs = functions map (translate(_))
@@ -195,7 +196,11 @@ case class Translator(program: PProgram) {
       case PLocationAccess(rcv, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos)
       case PFunctApp(func, args) =>
-        FuncApp(findFunction(func), args map exp)(pos)
+        members.get(func.name).get match {
+          case f: Function => FuncApp(f, args map exp)(pos)
+          case f: DomainFunc => DomainFuncApp(f, args map exp)(pos)
+          case _ => sys.error("unexpected reference to non-function")
+        }
       case PUnfolding(loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
       case PExists(variable, e) =>

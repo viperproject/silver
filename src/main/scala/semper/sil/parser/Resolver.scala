@@ -290,6 +290,13 @@ case class TypeChecker(names: NameAnalyser) {
                 check(actual, formal.typ)
             }
             setType(typ)
+          case PDomainFunction(_, formalArgs, typ) =>
+            ensure(formalArgs.size == args.size, fa, "wrong number of arguments")
+            (formalArgs zip args) foreach {
+              case (formal, actual) =>
+                check(actual, formal.typ)
+            }
+            setType(typ)
           case x =>
             message(func, s"expected function")
             setType(expected) // suppress further warnings
@@ -374,7 +381,14 @@ case class TypeChecker(names: NameAnalyser) {
             Seq(typ)
           case _ => Nil
         }
-      case PFunctApp(func, args) => ???
+      case PFunctApp(func, args) =>
+        names.definition(curMember)(func) match {
+          case PFunction(_, _, typ, _, _, _) =>
+            Seq(typ)
+          case PDomainFunction(_, _, typ) =>
+            Seq(typ)
+          case _ => Nil
+        }
       case PUnfolding(loc, e) => Seq(Bool)
       case PExists(variable, e) => Seq(Bool)
       case PForall(variable, e) => Seq(Bool)
@@ -440,6 +454,8 @@ case class NameAnalyser() {
               case decl: PFormalArgDecl => getMap.put(name, decl)
               case decl: PField => idnMap.put(name, decl)
               case decl: PFunction => idnMap.put(name, decl)
+              case decl: PDomainFunction => idnMap.put(name, decl)
+              case decl: PAxiom => // nothing refors to axioms, thus do not store it
               case decl: PPredicate => idnMap.put(name, decl)
               case decl: PDomain => idnMap.put(name, decl)
               case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
