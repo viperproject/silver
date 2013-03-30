@@ -206,7 +206,7 @@ case class Translator(program: PProgram) {
       case PExists(variable, e) =>
         Exists(liftVarDecl(variable), exp(e))(pos)
       case PForall(variable, e) =>
-        Exists(liftVarDecl(variable), exp(e))(pos)
+        Forall(liftVarDecl(variable), exp(e))(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
       case PCurPerm(loc) =>
