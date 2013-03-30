@@ -141,6 +141,13 @@ case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPositio
 /** User-defined domain function application. */
 case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFuncApp {
   override lazy val typ = super.typ.substitute(typVarMap)
+  override def formalArgs: Seq[LocalVarDecl] = {
+    callee.formalArgs map {
+      fa =>
+        // substitute parameter types
+        LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
+    }
+  }
 }
 
 // --- Field and predicate accesses

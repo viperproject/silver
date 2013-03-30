@@ -54,9 +54,11 @@ case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPositio
 
 /** A method/function/domain function call. */
 trait Call {
-  require(Consistency.areAssignable(args, callee.formalArgs))
+  println((args, formalArgs))
+  require(Consistency.areAssignable(args, formalArgs))
   def callee: Callable
   def args: Seq[Exp]
+  def formalArgs: Seq[LocalVarDecl] = callee.formalArgs
 }
 
 /** A method call. */
