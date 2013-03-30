@@ -3,6 +3,7 @@ package semper.sil.parser
 import semper.sil.ast._
 import utility.Statements
 import language.implicitConversions
+import org.kiama.attribution.Attributable
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into a SIL abstract
@@ -160,21 +161,30 @@ case class Translator(program: PProgram) {
         }
       case PIntLit(i) =>
         IntLit(i)(pos)
-      case PResultLit() =>
-        Result()(Int, pos) // TODO correct typ
+      case p@PResultLit() =>
+        // find function
+        var par: Attributable = p.parent
+        while (!par.isInstanceOf[PFunction]) {
+          if (par == null) sys.error("cannot use 'result' outside of function")
+          par = par.parent
+        }
+        Result()(ttyp(par.asInstanceOf[PFunction].typ), pos)
       case PBoolLit(b) =>
         if (b) TrueLit()(pos) else FalseLit()(pos)
       case PNullLit() =>
         NullLit()(pos)
       case PLocationAccess(rcv, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos)
-      case PFunctApp(func, args) => ???
-      case PUnfolding(loc, e) => ???
+      case PFunctApp(func, args) =>
+        FuncApp(findFunction(func), args map exp)(pos)
+      case PUnfolding(loc, e) =>
+        Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
       case PExists(variable, e) =>
         Exists(liftVarDecl(variable), exp(e))(pos)
       case PForall(variable, e) =>
         Exists(liftVarDecl(variable), exp(e))(pos)
-      case PCondExp(cond, thn, els) => ???
+      case PCondExp(cond, thn, els) =>
+        CondExp(exp(cond), exp(thn), exp(els))(pos)
       case PCurPerm(loc) =>
         CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos)
       case PNoPerm() =>
