@@ -241,17 +241,22 @@ case class Translator(program: PProgram) {
   private def liftVarDecl(formal: PFormalArgDecl) = LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.start)
 
   /** Takes a `PType` and turns it into a `Type`. */
-  private def ttyp(t: PType) = t match {
+  private def ttyp(t: PType): Type = t match {
     case PPrimitiv(name) => name match {
       case "Int" => Int
       case "Bool" => Bool
       case "Ref" => Ref
       case "Perm" => Perm
     }
-    case PTypeVar(n) =>
-      TypeVar(n)
-    case PDomainType(domain, args) =>
-      DomainType(findDomain(domain), null); ???
+    case PDomainType(name, args) =>
+      members.get(name.name) match {
+        case Some(d) =>
+          val domain = d.asInstanceOf[Domain]
+          DomainType(domain, (domain.typVars zip (args map ttyp)).toMap)
+        case None =>
+          assert(args.length == 0)
+          TypeVar(name.name) // not a domain, i.e. it must be a type variable
+      }
     case PUnkown() =>
       sys.error("unknown type unexpected here")
     case PPredicateType() =>

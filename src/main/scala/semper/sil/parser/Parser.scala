@@ -168,13 +168,16 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
 
   // --- Types
 
-  lazy val typ =
-    primitiveTyp | typVar
-  // TODO: | domainTyp
-  lazy val primitiveTyp =
+  lazy val typ: PackratParser[PType] =
+    primitiveTyp | domainTyp
+  lazy val domainTyp: PackratParser[PDomainType] =
+    idnuse ~ ("[" ~> (repsep(typ, ",") <~ "]")) ^^ PDomainType |
+      idnuse ^^ {
+        // domain type without type arguments (might also be a type variable)
+        case name => PDomainType(name, Nil)
+      }
+  lazy val primitiveTyp: PackratParser[PType] =
     ("Int" | "Bool" | "Perm" | "Ref") ^^ PPrimitiv
-  lazy val typVar =
-    ident ^^ PTypeVar
 
   // --- Expressions
 

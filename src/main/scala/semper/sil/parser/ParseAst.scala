@@ -81,7 +81,6 @@ case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with RealEn
 // Types
 sealed trait PType extends PNode
 case class PPrimitiv(name: String) extends PType
-case class PTypeVar(name: String) extends PType
 case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType
 case class PUnkown() extends PType // for resolving if something cannot be typed
 case class PPredicateType() extends PType // used during resolving for predicate accesses
@@ -191,7 +190,6 @@ object Nodes {
       case PIdnUse(name) => Nil
       case PFormalArgDecl(idndef, typ) => Seq(idndef, typ)
       case PPrimitiv(name) => Nil
-      case PTypeVar(name) => Nil
       case PDomainType(domain, args) => Seq(domain) ++ args
       case PUnkown() => Nil
       case PBinExp(left, op, right) => Seq(left, right)

@@ -174,14 +174,23 @@ case class TypeChecker(names: NameAnalyser) {
       case PPredicateType() =>
         sys.error("unexpected use of internal typ")
       case PPrimitiv(_) =>
-      case PTypeVar(n) =>
-        message(typ, "expected concrete type, but found type variable")
       case PDomainType(domain, args) =>
         args map check
-        names.definition(curMember)(domain) match {
-          case PDomain(name, typVars, _, _) => ???
+        var x: Any = null
+        try {
+          x = names.definition(curMember)(domain)
+        } catch {
+          case _: Throwable =>
+        }
+        x match {
+          case d@PDomain(name, typVars, _, _) =>
+            ensure(args.length == typVars.length, typ, "wrong number of type arguments")
           case _ =>
-            message(typ, "expected domain")
+            if (args.length == 0) {
+              // this must be a type variable, then
+            } else {
+              message(typ, "expected domain")
+            }
         }
       case PUnkown() =>
         message(typ, "expected concrete type, but found unknown typ")
@@ -457,7 +466,9 @@ case class NameAnalyser() {
               case decl: PDomainFunction => idnMap.put(name, decl)
               case decl: PAxiom => // nothing refors to axioms, thus do not store it
               case decl: PPredicate => idnMap.put(name, decl)
-              case decl: PDomain => idnMap.put(name, decl)
+              case decl: PDomain =>
+                if (name == decl.idndef.name)
+                  idnMap.put(name, decl)
               case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
             }
         }
@@ -475,7 +486,9 @@ case class NameAnalyser() {
         // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
         getMap.getOrElse(name, idnMap.getOrElse(name, UnknownEntity())) match {
           case UnknownEntity() =>
-            message(i, s"$name not defined.")
+            // domain types can also be type variables, which need not be declared
+            if (!i.parent.isInstanceOf[PDomainType])
+              message(i, s"$name not defined.")
           case _ =>
         }
       case _ =>
