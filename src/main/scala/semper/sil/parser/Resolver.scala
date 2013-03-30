@@ -271,7 +271,19 @@ case class TypeChecker(names: NameAnalyser) {
       case PLocationAccess(rcv, idnuse) =>
         check(rcv, Ref)
         check(idnuse, expected)
-      case PFunctApp(func, args) => ???
+      case fa@PFunctApp(func, args) =>
+        names.definition(curMember)(func) match {
+          case PFunction(_, formalArgs, typ, _, _, _) =>
+            ensure(formalArgs.size == args.size, fa, "wrong number of arguments")
+            (formalArgs zip args) foreach {
+              case (formal, actual) =>
+                check(actual, formal.typ)
+            }
+            setType(typ)
+          case x =>
+            message(func, s"expected function")
+            setType(expected) // suppress further warnings
+        }
       case PUnfolding(loc, e) =>
         check(loc, Pred)
         check(e, expected)
