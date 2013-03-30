@@ -45,7 +45,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case DomainFunc(name, formalArgs, typ) =>
         "function" <+> name <> parens(showVars(formalArgs)) <> ":" <+> show(typ)
       case DomainAxiom(name, exp) =>
-        "axiom" <+> name <>
+        "axiom" <+> name <+>
           braces(nest(
             line <> show(exp)
           ) <> line)
@@ -122,9 +122,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         "domain" <+> name <>
           (if (typVars.isEmpty) empty else "[" <> ssep(typVars map show, comma <> space) <> "]") <+>
           braces(nest(
-            line <>
-              ssep(functions map show, line) <>
-              ssep(axioms map show, line)
+            line <> line <>
+              ssep((functions ++ axioms) map show, line <> line)
           ) <> line)
     }
   }
