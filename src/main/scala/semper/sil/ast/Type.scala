@@ -1,7 +1,13 @@
 package semper.sil.ast
 
 /** SIL typs. */
-sealed trait Type extends Node{
+sealed trait Type extends Node {
+  /**
+   * Takes a mapping of type variables to types and substitutes all
+   * occurrences of those type variables with the corresponding type.
+   */
+  def substitute(typVarsMap: Map[TypeVar, Type]): Type
+
   // At the moment, there is no subtyping in SIL.
   def isSubtype(other: Type): Boolean = {
     (this, other) match {
@@ -24,6 +30,7 @@ sealed trait Type extends Node{
 /** Trait for typs build into SIL. */
 sealed trait BuiltInType extends Type {
   lazy val isConcrete = true
+  def substitute(typVarsMap: Map[TypeVar, Type]): Type = this
 }
 /** Type for integers. */
 case object Int extends BuiltInType
@@ -56,8 +63,30 @@ case class DomainType(domain: Domain, typVarsMap: Map[TypeVar, Type]) extends Ty
     }
     res
   }
+
+  def substitute(newTypVarsMap: Map[TypeVar, Type]): Type = {
+    val map = domain.typVars flatMap {
+      t =>
+        newTypVarsMap.get(t) match {
+          case Some(v) => Seq(t -> v)
+          case None =>
+            typVarsMap.get(t) match {
+              case Some(v) => Seq(t -> v)
+              case None => Nil
+            }
+        }
+    }
+    DomainType(domain, map.toMap)
+  }
 }
 /** Type variables. */
 case class TypeVar(name: String) extends Type {
   lazy val isConcrete = false
+
+  def substitute(typVarsMap: Map[TypeVar, Type]): Type = {
+    typVarsMap.get(this) match {
+      case Some(t) => t
+      case None => this
+    }
+  }
 }
