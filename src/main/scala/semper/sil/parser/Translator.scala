@@ -18,11 +18,12 @@ case class Translator(program: PProgram) {
     program match {
       case PProgram(name, domains, fields, functions, predicates, methods) =>
         (domains ++ fields ++ functions ++ predicates ++ methods) map translateMemberSignature
+        val d = domains map (translate(_))
         val f = fields map (translate(_))
         val fs = functions map (translate(_))
         val p = predicates map (translate(_))
         val m = methods map (translate(_))
-        Program(name.name, Nil, f, fs, p, m)(program.start)
+        Program(name.name, d, f, fs, p, m)(program.start)
     }
   }
 
@@ -40,6 +41,19 @@ case class Translator(program: PProgram) {
       m.posts = posts map exp
       m.body = stmt(body)
       m
+  }
+
+  private def translate(d: PDomain): Domain = d match {
+    case PDomain(name, typVars, functions, axioms) =>
+      val d = findDomain(name)
+      d.functions = functions map (f => findDomainFunction(f.idndef))
+      d.axioms = axioms map (translate(_))
+      d
+  }
+
+  private def translate(a: PAxiom): DomainAxiom = a match {
+    case PAxiom(name, e) =>
+      DomainAxiom(name.name, exp(e))(a.start)
   }
 
   private def translate(f: PFunction) = f match {
@@ -72,7 +86,8 @@ case class Translator(program: PProgram) {
         Field(name, ttyp(typ))(pos)
       case PFunction(_, formalArgs, typ, _, _, _) =>
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
-      case PDomain(name, typVars, funcs, axioms) => ???
+      case PDomain(_, typVars, funcs, axioms) =>
+        Domain(name, null, null, typVars map (t => TypeVar(t.name)))(pos)
       case PPredicate(_, formalArg, _) =>
         Predicate(name, liftVarDecl(formalArg), null)(pos)
       case PMethod(_, formalArgs, formalReturns, _, _, _) =>
@@ -81,11 +96,15 @@ case class Translator(program: PProgram) {
     members.put(p.idndef.name, t)
   }
 
+  // helper methods that can be called if one knows what 'id' refers to
   private def findDomain(id: Identifier) = members.get(id.name).get.asInstanceOf[Domain]
   private def findField(id: Identifier) = members.get(id.name).get.asInstanceOf[Field]
   private def findFunction(id: Identifier) = members.get(id.name).get.asInstanceOf[Function]
+  private def findDomainFunction(id: Identifier) = members.get(id.name).get.asInstanceOf[DomainFunc]
   private def findPredicate(id: Identifier) = members.get(id.name).get.asInstanceOf[Predicate]
   private def findMethod(id: Identifier) = members.get(id.name).get.asInstanceOf[Method]
+  // works for both functions and domain functions
+  private def findFuncLike(id: Identifier) = members.get(id.name).get.asInstanceOf[FuncLike]
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */
   private def stmt(s: PStmt): Stmt = {
@@ -227,7 +246,7 @@ case class Translator(program: PProgram) {
     case PTypeVar(n) =>
       TypeVar(n)
     case PDomainType(domain, args) =>
-      ???
+      DomainType(findDomain(domain), null); ???
     case PUnkown() =>
       sys.error("unknown type unexpected here")
     case PPredicateType() =>
