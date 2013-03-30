@@ -201,9 +201,23 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       factor
 
   lazy val factor: PackratParser[PExp] =
-    locAcc | integer | bool | nul | idnuse | "result" ^^^ PResultLit() |
-      ("-" | "!" | "+") ~ sum ^^ PUnExp | "(" ~> exp <~ ")" |
-      "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred | perm | quant
+    fapp |
+      locAcc |
+      integer |
+      bool |
+      nul |
+      idnuse |
+      "result" ^^^ PResultLit() |
+      ("-" | "!" | "+") ~ sum ^^ PUnExp |
+      "(" ~> exp <~ ")" |
+      "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred |
+      perm |
+      quant
+
+  lazy val fapp: PackratParser[PExp] =
+    idnuse ~ parens(actualArgList) ^^ PFunctApp
+  lazy val actualArgList: PackratParser[Seq[PExp]] =
+    repsep(exp, ",")
 
   lazy val perm: PackratParser[PExp] =
     "none" ^^^ PNoPerm() | "wildcard" ^^^ PWildcard() | "write" ^^^ PFullPerm() |
