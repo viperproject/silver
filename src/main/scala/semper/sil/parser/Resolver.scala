@@ -211,11 +211,11 @@ case class TypeChecker(names: NameAnalyser) {
         if (expected == null) {
           // ignore
         } else if (expected == actual) {
-          exp.typ = expected
+          exp.typ = actual
         } else {
           if (actual.isInstanceOf[PDomainType] || expected.isInstanceOf[PDomainType]) {
             // TODO: check type arguments
-            exp.typ = expected
+            exp.typ = actual
           } else {
             message(exp, s"expected $expected, but got $actual")
           }
