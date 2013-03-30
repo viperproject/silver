@@ -24,6 +24,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case p: Program => showProgram(p)
       case m: Member => showMember(m)
       case v: LocalVarDecl => showVar(v)
+      case dm: DomainMember => showDomainMember(dm)
     }
   }
 
@@ -34,8 +35,22 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       "program" <+> name <+>
       braces(nest(line <>
         lineIfSomeNonEmpty(domains, fields, functions, predicates, domains) <>
-          ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
+        ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
       ) <> line)
+  }
+
+  /** Show a domain member. */
+  def showDomainMember(m: DomainMember): Doc = {
+    val memberDoc = m match {
+      case DomainFunc(name, formalArgs, typ) =>
+        "function" <+> name <> parens(showVars(formalArgs)) <> ":" <+> show(typ)
+      case DomainAxiom(name, exp) =>
+        "axiom" <+> name <>
+          braces(nest(
+            line <> show(exp)
+          ) <> line)
+    }
+    showComment(m) <> memberDoc
   }
 
   /** Show a program member. */
@@ -104,7 +119,13 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   def showDomain(d: Domain): Doc = {
     d match {
       case Domain(name, functions, axioms, typVars) =>
-        empty // TODO
+        "domain" <+> name <>
+          (if (typVars.isEmpty) empty else "[" <> ssep(typVars map show, comma <> space) <> "]") <+>
+          braces(nest(
+            line <>
+              ssep(functions map show, line) <>
+              ssep(axioms map show, line)
+          ) <> line)
     }
   }
 
@@ -158,7 +179,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         "while" <+> "(" <> show(cond) <> ")" <>
           nest(
             lineIfSomeNonEmpty(invs) <>
-            ssep(invs map ("invariant" <+> show(_)), line)
+              ssep(invs map ("invariant" <+> show(_)), line)
           ) <+> lineIfSomeNonEmpty(invs) <> showBlock(body)
       case If(cond, thn, els) =>
         "if" <+> "(" <> show(cond) <> ")" <+> showBlock(thn) <> {
