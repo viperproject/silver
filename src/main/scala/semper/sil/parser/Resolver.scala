@@ -276,10 +276,10 @@ case class TypeChecker(names: NameAnalyser) {
         check(loc, Pred)
         check(e, expected)
       case PExists(variable, e) =>
-        check(variable)
+        check(variable.typ)
         check(e, Bool)
       case PForall(variable, e) =>
-        check(variable)
+        check(variable.typ)
         check(e, Bool)
       case PCondExp(cond, thn, els) => ???
       case PCurPerm(loc) =>
