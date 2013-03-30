@@ -206,12 +206,19 @@ case class TypeChecker(names: NameAnalyser) {
   def check(exp: PExp, expected: PType) {
     def setType(actual: PType) {
       if (actual == PUnkown()) {
-        return // no error for unknown type (an error has already been issued)
-      }
-      if (expected == null || expected == actual) {
-        exp.typ = expected
+        // no error for unknown type (an error has already been issued)
       } else {
-        message(exp, s"expected $expected, but got $actual")
+        if (expected == null) {
+          // ignore
+        } else if (expected == actual) {
+          exp.typ = expected
+        } else {
+          if (actual.isInstanceOf[PDomainType] && expected.isInstanceOf[PDomainType]) {
+            // TODO: check type arguments
+          } else {
+            message(exp, s"expected $expected, but got $actual")
+          }
+        }
       }
     }
     exp match {
@@ -489,6 +496,8 @@ case class NameAnalyser() {
             // domain types can also be type variables, which need not be declared
             if (!i.parent.isInstanceOf[PDomainType])
               message(i, s"$name not defined.")
+            else
+              i.parent.asInstanceOf[PDomainType].isTypeVar = true
           case _ =>
         }
       case _ =>
