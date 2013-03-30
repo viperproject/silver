@@ -257,7 +257,7 @@ sealed trait AbstractDomainFuncApp extends FuncLikeApp {
  * all types, and therefore is not a domain function and does not belong to a domain.
  */
 sealed abstract class EqualityCmp(val op: String) extends BinExp with PrettyBinaryExpression {
-  require(left.typ == right.typ)
+  require(left.typ == right.typ, s"expected the same typ, but got ${left.typ} and ${right.typ}")
   lazy val priority = 13
   lazy val fixity = Infix (NonAssoc)
   lazy val typ = Bool
