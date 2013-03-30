@@ -233,7 +233,7 @@ object Nodes {
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ Seq(body)
       case PFunction(name, args, typ, pres, posts, exp) =>
-        args ++ Seq(typ) ++ pres ++ posts ++ Seq(exp)
+        Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ Seq(exp)
       case PPredicate(name, arg, body) =>
         Seq(arg, body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
