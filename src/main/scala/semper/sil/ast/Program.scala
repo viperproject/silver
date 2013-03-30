@@ -97,9 +97,17 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
 // --- Domains and domain members
 
 /** A user-defined domain. */
-case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil)
+case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Positioned with Infoed {
   require(Consistency.validUserDefinedIdentifier(name))
+  def functions = _functions
+  def functions_=(fs: Seq[DomainFunc]) {
+    _functions = fs
+  }
+  def axioms = _axioms
+  def axioms_=(as: Seq[DomainAxiom]) {
+    _axioms = as
+  }
 }
 
 /** A domain axiom. */
