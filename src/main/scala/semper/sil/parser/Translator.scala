@@ -169,9 +169,11 @@ case class Translator(program: PProgram) {
       case PLocationAccess(rcv, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos)
       case PFunctApp(func, args) => ???
-      case PUnfolding(loc, exp) => ???
-      case PExists(variable, exp) => ???
-      case PForall(variable, exp) => ???
+      case PUnfolding(loc, e) => ???
+      case PExists(variable, e) =>
+        Exists(liftVarDecl(variable), exp(e))(pos)
+      case PForall(variable, e) =>
+        Exists(liftVarDecl(variable), exp(e))(pos)
       case PCondExp(cond, thn, els) => ???
       case PCurPerm(loc) =>
         CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos)
