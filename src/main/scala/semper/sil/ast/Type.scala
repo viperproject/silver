@@ -44,6 +44,7 @@ case object Pred extends BuiltInType
  *                   parameters, may even be empty.
  */
 case class DomainType(domain: Domain, typVarsMap: Map[TypeVar, Type]) extends Type {
+  require(typVarsMap.values.forall(t => !t.isInstanceOf[TypeVar]))
   lazy val isConcrete: Boolean = {
     var res = true
     // all type variables need to be gone
