@@ -85,8 +85,18 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(d: PDomain) {
     checkMember(d) {
-      ???
+      d.funcs map check
+      d.axioms map check
     }
+  }
+
+  def check(a: PAxiom) {
+    check(a.exp, Bool)
+  }
+
+  def check(f: PDomainFunction) {
+    check(f.typ)
+    f.formalArgs map (a => check(a.typ))
   }
 
   def check(stmt: PStmt) {

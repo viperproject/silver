@@ -105,13 +105,15 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val functionSignature =
     ("function" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ (":" ~> typ)
 
+  lazy val domainFunctionDecl = functionSignature <~ opt(";") ^^ PDomainFunction
+
   lazy val predicateDecl =
     ("predicate" ~> idndef) ~ ("(" ~> formalArg <~ ")") ~ ("{" ~> (exp <~ "}")) ^^ PPredicate
 
   lazy val domainDecl =
     ("domain" ~> idndef) ~
       opt("[" ~> repsep(idndef, ",") <~ "]") ~
-      ("{" ~> rep(functionDecl)) ~
+      ("{" ~> rep(domainFunctionDecl)) ~
       (rep(axiomDecl) <~ "}") ^^ {
       case name ~ typparams ~ funcs ~ axioms =>
         PDomain(name, typparams.getOrElse(Nil), funcs, axioms)

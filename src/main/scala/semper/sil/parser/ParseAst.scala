@@ -151,9 +151,10 @@ sealed trait PMember extends PNode {
 }
 case class PProgram(idndef: PIdnDef, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode with RealEntity
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with RealEntity
-case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PFunction], axioms: Seq[PAxiom]) extends PMember with RealEntity
+case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with RealEntity
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with RealEntity
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType) extends PMember with RealEntity
 case class PPredicate(idndef: PIdnDef, formalArg: PFormalArgDecl, body: PExp) extends PMember with RealEntity
 case class PAxiom(idndef: PIdnDef, exp: PExp) extends PNode
 
@@ -234,6 +235,8 @@ object Nodes {
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ Seq(body)
       case PFunction(name, args, typ, pres, posts, exp) =>
         Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ Seq(exp)
+      case PDomainFunction(name, args, typ) =>
+        Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, arg, body) =>
         Seq(arg, body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)

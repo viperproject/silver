@@ -74,18 +74,20 @@ case class Translator(program: PProgram) {
 
   private def translate(f: PField) = findField(f.idndef)
 
-  private val members = collection.mutable.HashMap[String, Member]()
+  private val members = collection.mutable.HashMap[String, Node]()
   /**
    * Translate the signature of a member, so that it can be looked up later.
    */
   private def translateMemberSignature(p: PMember) {
     val pos = p.start
     val name = p.idndef.name
-    val t: Member = p match {
+    val t = p match {
       case PField(_, typ) =>
         Field(name, ttyp(typ))(pos)
       case PFunction(_, formalArgs, typ, _, _, _) =>
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
+      case PDomainFunction(_, args, typ) =>
+        DomainFunc(name, args map liftVarDecl, ttyp(typ))(pos)
       case PDomain(_, typVars, funcs, axioms) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.name)))(pos)
       case PPredicate(_, formalArg, _) =>
@@ -103,8 +105,6 @@ case class Translator(program: PProgram) {
   private def findDomainFunction(id: Identifier) = members.get(id.name).get.asInstanceOf[DomainFunc]
   private def findPredicate(id: Identifier) = members.get(id.name).get.asInstanceOf[Predicate]
   private def findMethod(id: Identifier) = members.get(id.name).get.asInstanceOf[Method]
-  // works for both functions and domain functions
-  private def findFuncLike(id: Identifier) = members.get(id.name).get.asInstanceOf[FuncLike]
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */
   private def stmt(s: PStmt): Stmt = {
