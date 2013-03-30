@@ -213,8 +213,9 @@ case class TypeChecker(names: NameAnalyser) {
         } else if (expected == actual) {
           exp.typ = expected
         } else {
-          if (actual.isInstanceOf[PDomainType] && expected.isInstanceOf[PDomainType]) {
+          if (actual.isInstanceOf[PDomainType] || expected.isInstanceOf[PDomainType]) {
             // TODO: check type arguments
+            exp.typ = expected
           } else {
             message(exp, s"expected $expected, but got $actual")
           }

@@ -83,6 +83,11 @@ sealed trait PType extends PNode
 case class PPrimitiv(name: String) extends PType
 case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
   var isTypeVar = false
+  override def hashCode = domain.hashCode
+  override def equals(o: Any) = o match {
+    case PDomainType(other, _) => domain == other
+    case _ => false
+  }
 }
 case class PUnkown() extends PType // for resolving if something cannot be typed
 case class PPredicateType() extends PType // used during resolving for predicate accesses
