@@ -79,7 +79,9 @@ case class PIdnUse(name: String) extends PExp with Identifier
 case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with RealEntity
 
 // Types
-sealed trait PType extends PNode
+sealed trait PType extends PNode {
+  def isConcrete: Boolean = true
+}
 case class PPrimitiv(name: String) extends PType
 case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
   var isTypeVar = false
@@ -87,6 +89,9 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
   override def equals(o: Any) = o match {
     case PDomainType(other, _) => domain == other
     case _ => false
+  }
+  override def isConcrete: Boolean = {
+    args.forall(_.isConcrete) && args.size > 0
   }
 }
 case class PUnkown() extends PType // for resolving if something cannot be typed
