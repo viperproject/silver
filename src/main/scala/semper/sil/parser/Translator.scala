@@ -198,7 +198,17 @@ case class Translator(program: PProgram) {
       case PFunctApp(func, args) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
-          case f: DomainFunc => DomainFuncApp(f, args map exp, Map[TypeVar, Type]())(pos)
+          case f: DomainFunc =>
+            // infer the type variable mapping for this call
+            // TODO: also use the parameters for inference
+            val map = f.typ match {
+              case t: TypeVar =>
+                val t2 = ttyp(pexp.typ)
+                if (!t2.isInstanceOf[TypeVar]) Seq(t -> t2)
+                else Nil
+              case _ => Nil
+            }
+            DomainFuncApp(f, args map exp, map.toMap)(pos)
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>
