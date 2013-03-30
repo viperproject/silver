@@ -105,8 +105,8 @@ case class PNullLit() extends PExp {
 case class PLocationAccess(rcv: PExp, idnuse: PIdnUse) extends PExp
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
 case class PUnfolding(loc: PLocationAccess, exp: PExp) extends PExp
-case class PExists(variable: PLocalVarDecl, exp: PExp) extends PExp
-case class PForall(variable: PLocalVarDecl, exp: PExp) extends PExp
+case class PExists(variable: PFormalArgDecl, exp: PExp) extends PExp
+case class PForall(variable: PFormalArgDecl, exp: PExp) extends PExp
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
 case class PCurPerm(loc: PLocationAccess) extends PExp
 case class PNoPerm() extends PExp

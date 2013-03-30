@@ -213,8 +213,8 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       }
 
   lazy val quant: PackratParser[PExp] =
-    ("forall" ~> varDecl <~ "::") ~ exp ^^ PForall |
-      ("exists" ~> varDecl <~ "::") ~ exp ^^ PForall
+    ("forall" ~> formalArg <~ "::") ~ exp ^^ PForall |
+      ("exists" ~> formalArg <~ "::") ~ exp ^^ PForall
 
   lazy val locAcc: PackratParser[PLocationAccess] =
     (exp <~ ".") ~ idnuse ^^ PLocationAccess
