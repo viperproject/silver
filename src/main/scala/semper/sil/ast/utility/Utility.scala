@@ -127,7 +127,8 @@ object Nodes {
           case BinExp(left, right) => Seq(left, right)
           case UnExp(exp) => Seq(exp)
           case FuncApp(func, args) => args
-          case DomainFuncApp(func, args) => args
+          case DomainFuncApp(func, args, m) =>
+            args ++ m.keys ++ m.values
         }
       case t: Type => Nil
     }

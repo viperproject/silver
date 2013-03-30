@@ -198,7 +198,7 @@ case class Translator(program: PProgram) {
       case PFunctApp(func, args) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
-          case f: DomainFunc => DomainFuncApp(f, args map exp)(pos)
+          case f: DomainFunc => DomainFuncApp(f, args map exp, Map[TypeVar, Type]())(pos)
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>

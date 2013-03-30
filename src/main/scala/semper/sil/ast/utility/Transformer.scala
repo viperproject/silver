@@ -44,7 +44,7 @@ object Transformer {
           case PredicateAccessPredicate(loc, perm) =>
             PredicateAccessPredicate(func(loc).asInstanceOf[PredicateAccess], func(perm))(p, i)
           case FuncApp(ff, args) => FuncApp(ff, args map func)(p, i)
-          case DomainFuncApp(ff, args) => DomainFuncApp(ff, args map func)(p, i)
+          case DomainFuncApp(ff, args, m) => DomainFuncApp(ff, args map func, m)(p, i)
 
           case Neg(e) => Neg(func(e))(p, i)
           case Not(e) => Not(func(e))(p, i)

@@ -139,8 +139,9 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp
 
 /** User-defined domain function application. */
-case class DomainFuncApp(func: DomainFunc, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFuncApp
-
+case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFuncApp {
+  override lazy val typ = super.typ.substitute(typVarMap)
+}
 
 // --- Field and predicate accesses
 
@@ -243,7 +244,7 @@ sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominato
 sealed trait FuncLikeApp extends Exp with Call with Typed {
   def func: FuncLike
   lazy val callee = func
-  lazy val typ = func.typ
+  def typ = func.typ
 }
 
 /** Common superclass for domain functions with arbitrary parameters and return type, binary and unary operations are a special case. */

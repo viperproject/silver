@@ -237,7 +237,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         "acc" <> parens(show(loc) <> "," <+> show(perm))
       case FuncApp(func, args) =>
         func.name <> parens(ssep(args map show, comma <> space))
-      case DomainFuncApp(func, args) =>
+      case DomainFuncApp(func, args, _) =>
         func.name <> parens(ssep(args map show, comma <> space))
       case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)
     }
