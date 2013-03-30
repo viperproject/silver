@@ -3,7 +3,19 @@ package semper.sil.ast
 /** SIL typs. */
 sealed trait Type extends Node{
   // At the moment, there is no subtyping in SIL.
-  def isSubtype(other: Type) = this == other
+  def isSubtype(other: Type): Boolean = {
+    (this, other) match {
+      case (a: DomainType, b: DomainType) =>
+        a.domain == b.domain && a.typVarsMap.forall {
+          case (tv, t1) =>
+            b.typVarsMap.get(tv) match {
+              case Some(t2) => t1 isSubtype t2
+              case None => false
+            }
+        }
+      case _ => this == other
+    }
+  }
   // Convenience method for checking subtypes
   def isSubtype(other: Typed): Boolean = isSubtype(other.typ)
   /** Is this a concrete type (i.e. no uninstantiated type variables)? */
