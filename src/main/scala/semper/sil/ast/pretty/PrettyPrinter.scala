@@ -157,11 +157,11 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case NewStmt(lhs) => show(lhs) <+> ":=" <+> "new()"
       case LocalVarAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case FieldAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
-      case Fold(e) => "fold" <> parens(show(e))
-      case Unfold(e) => "unfold" <> parens(show(e))
-      case Inhale(e) => "inhale" <> parens(show(e))
-      case Exhale(e) => "exhale" <> parens(show(e))
-      case Assert(e) => "assert" <> parens(show(e))
+      case Fold(e) => "fold" <+> show(e)
+      case Unfold(e) => "unfold" <+> show(e)
+      case Inhale(e) => "inhale" <+> show(e)
+      case Exhale(e) => "exhale" <+> show(e)
+      case Assert(e) => "assert" <+> show(e)
       case FreshReadPerm(vars, body) =>
         "fresh" <> parens(ssep(vars map show, comma <> space)) <+> showBlock(body)
       case MethodCall(m, args, targets) =>
