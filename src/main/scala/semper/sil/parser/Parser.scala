@@ -120,7 +120,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     }
 
   lazy val axiomDecl =
-    ("axiom" ~> idndef) ~ ("{" ~> (exp <~ "}")) ^^ PAxiom
+    ("axiom" ~> idndef) ~ ("{" ~> (exp <~ "}")) <~ opt(";") ^^ PAxiom
 
   // --- Statements
 
