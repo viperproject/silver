@@ -72,8 +72,8 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
 
   lazy val programDecl =
     ("program" ~> idndef) ~
-      rep(domainDecl) ~
-      ("{" ~> rep(fieldDecl)) ~
+      ("{" ~> rep(domainDecl)) ~
+      rep(fieldDecl) ~
       rep(functionDecl) ~
       rep(predicateDecl) ~
       ((rep(methodDecl) <~ "}")) ^^ PProgram
@@ -110,9 +110,12 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
 
   lazy val domainDecl =
     ("domain" ~> idndef) ~
-      ("[" ~> repsep(idndef, ",") <~ "]") ~
-      rep(functionDecl) ~
-      rep(axiomDecl) ^^ PDomain
+      opt("[" ~> repsep(idndef, ",") <~ "]") ~
+      ("{" ~> rep(functionDecl)) ~
+      (rep(axiomDecl) <~ "}") ^^ {
+      case name ~ typparams ~ funcs ~ axioms =>
+        PDomain(name, typparams.getOrElse(Nil), funcs, axioms)
+    }
 
   lazy val axiomDecl =
     ("axiom" ~> idndef) ~ ("{" ~> (exp <~ "}")) ^^ PAxiom
@@ -126,7 +129,8 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val stmts =
     rep(stmt <~ opt(";"))
   lazy val stmt =
-    fieldassign | localassign | fold | unfold | exhale | assert | inhale | ifthnels | whle | varDecl | newstmt
+    fieldassign | localassign | fold | unfold | exhale | assert |
+      inhale | ifthnels | whle | varDecl | newstmt
 
   lazy val fold =
     "fold" ~> exp ^^ PFold
