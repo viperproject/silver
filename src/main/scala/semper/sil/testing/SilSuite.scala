@@ -56,18 +56,9 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     for (verifier <- verifiers) {
       test(testName + " [" + verifier.name + "]") {
         val fe = frontend(verifier, input)
-        val (_, tParse) = time {
-          fe.parse
-        }
-        val (_, tTypeCheck) = time {
-          fe.typecheck
-        }
-        val (_, tTranslate) = time {
-          fe.translate
-        }
-        val (_, tVerification) = time {
-          fe.verify
-        }
+        val tPhases = fe.phases.map { p =>
+          time(p.action)._2 + " (" + p.name + ")"
+        }.mkString(", ")
         val result = fe.result
         assert(result != null)
 
@@ -146,8 +137,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
           dep =>
             info(s"  using ${dep.name} ${dep.version} located at ${dep.location}")
         }
-        info(s"Time required: $tParse (parsing), $tTypeCheck (typechecking), " +
-          s"$tTranslate (translation), $tVerification (verification).")
+        info(s"Time required: $tPhases.")
 
         // if there were any errors that could not be matched up (or other problems), make the test fail
         if (!testErrors.isEmpty) {

@@ -5,6 +5,9 @@ import java.io.File
 import io.Source
 import semper.sil.ast.Program
 
+/** Represents one phase of a frontend */
+case class Phase(name: String, action: () => Unit)
+
 /** A translator for some programming language that produces a SIL program (which then in turn can be verified using a
   * SIL verifier).
   *
@@ -27,16 +30,31 @@ trait Frontend {
   }
 
   /**
-   * Run the verification on the input and return the result.  This is equivalent to calling parse, typecheck
-   * translate, verify and then returning result.
+   * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then
+   * returning result.
    */
   def run(): VerificationResult = {
-    parse()
-    typecheck()
-    translate()
-    verify()
+    phases.foreach(p => p.action())
     result
   }
+
+  /** The phases of this frontend which have to be executed in the order given by the list. */
+  def phases: List[Phase]
+
+  /**
+   * The result of the verification attempt (only available after parse, typecheck, translate and
+   * verify have been called).
+   */
+  def result: VerificationResult
+}
+
+trait DefaultPhases extends Frontend {
+
+  val phases = List(
+    Phase("parse", parse),
+    Phase("typecheck", typecheck),
+    Phase("translate", translate),
+    Phase("verify", verify))
 
   /** Parse the program. */
   def parse()
@@ -50,16 +68,11 @@ trait Frontend {
   /** Verify the SIL program using the verifier. */
   def verify()
 
-  /**
-   * The result of the verification attempt (only available after parse, typecheck, translate and
-   * verify have been called).
-   */
-  def result: VerificationResult
 }
 
 /** A default implementation of a translator that keeps track of the state of the translator.
   */
-trait DefaultFrontend extends Frontend {
+trait DefaultFrontend extends Frontend with DefaultPhases {
 
   sealed trait Result[+A]
   case class Succ[+A](a: A) extends Result[A]
