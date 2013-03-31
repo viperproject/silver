@@ -199,24 +199,23 @@ case class Translator(program: PProgram) {
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
           case f@DomainFunc(name, formalArgs, typ) =>
-            // infer the type variable mapping for this call
-            val map = typ match {
-              case t: TypeVar =>
-                val t2 = ttyp(pexp.typ)
-                if (t2.isConcrete) Seq(t -> t2)
-                else Nil
-              case _ => Nil
-            }
-            val map2 = (for ((formalArg, actualArg) <- (formalArgs zip args)) yield {
-              formalArg.typ match {
-                case t: TypeVar =>
-                  val t2 = ttyp(actualArg.typ)
-                  if (t2.isConcrete) Seq(t -> t2)
-                  else Nil
+            val actualArgs = args map exp
+            val translatedTyp = ttyp(pexp.typ)
+            // 'learn' looks at the formal type of an expression and the one actually
+            // occurring in the program and tries to learn instantiations for type variables.
+            def learn(formal: Type, actual: Type): Seq[(TypeVar, Type)] = {
+              (formal, actual) match {
+                case (tv: TypeVar, t) if t.isConcrete => Seq(tv -> t)
+                case (DomainType(_, m1), DomainType(_, m2)) =>
+                  m2.toSeq
                 case _ => Nil
               }
-            }).flatten
-            DomainFuncApp(f, args map exp, (map ++ map2).toMap)(pos)
+            }
+            // infer the type variable mapping for this call
+            val map = learn(typ, translatedTyp) ++
+              ((formalArgs map (_.typ)) zip (actualArgs map (_.typ)) flatMap (x => learn(x._1, x._2)))
+
+            DomainFuncApp(f, actualArgs, map.toMap)(pos)
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>
