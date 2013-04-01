@@ -132,7 +132,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     rep(stmt <~ opt(";"))
   lazy val stmt =
     fieldassign | localassign | fold | unfold | exhale | assert |
-      inhale | ifthnels | whle | varDecl | newstmt
+      inhale | ifthnels | whle | varDecl | newstmt | freshReadPerm
 
   lazy val fold =
     "fold" ~> exp ^^ PFold
