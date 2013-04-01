@@ -88,8 +88,8 @@ domain-function ::= "function" ident "(" formal-arg* ")" ":" type
                   | "wildcard"                  // wildcard permission
                   | integer "/" integer         // concrete fractional permission
 
-                  | "Seq()"                     // the empty sequence (special case)
-                  | "Seq" "(" exp* ")"          // explicit sequence
+                  | "Seq()"                     // the empty sequence
+                  | "Seq" "(" exp ("," exp)* ")"  // explicit sequence
                   | "[" exp ".." exp ")"        // half-open range of numbers
                   | exp "++" exp                // sequence append
                   | "|" exp "|"                 // length of a sequence
