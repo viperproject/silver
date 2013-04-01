@@ -1,0 +1,46 @@
+% 
+% SIL syntax highlighting for the LaTeX listings package
+%
+% Author: Stefan Heule, April 2013
+%
+
+\usepackage{listings}
+
+\lstdefinelanguage{sil}{
+    morekeywords={
+        result,
+        Int, Perm, Bool, Ref,
+        true, false,
+        null,
+        method, function, predicate, program, domain, axiom, var, returns,
+        requires, ensures, invariant,
+        fold, unfold, inhale, exhale, new, assert, assume,
+        while, if, else,
+        fresh,
+        unfolding, in,
+        old,
+        forall, exists,
+        acc, wildcard, write, none, epsilon, perm
+    },
+    sensitive=true,
+    morecomment=[l]{//},
+    morecomment=[s]{/*}{*/},
+    morestring=[b]",
+    numbers=none,
+    firstnumber=0,
+    numberstyle=\tiny,
+    stepnumber=5,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\bfseries,
+    ndkeywordstyle=\bfseries,
+}
+\lstnewenvironment{sil}[1][]{%
+    \lstset{language=sil,
+        floatplacement={tbp},captionpos=b,
+        frame=lines,xleftmargin=8pt,xrightmargin=8pt,#1}}{}
+\newcommand{\silfile}[1]{
+  \lstinputlisting[language=sil,%
+    frame=lines,xleftmargin=8pt,xrightmargin=8pt,columns=fixed]{#1}
+}
+\def\inlinesil{%
+    \lstinline[language=sil,basicstyle=\ttfamily\small,columns=fixed]}
