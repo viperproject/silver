@@ -1,0 +1,110 @@
+    sil-program ::= "program" "{"
+                        domain*
+                        field*
+                        function*
+                        predicate*
+                        method*
+                    "}"
+
+         domain ::= "domain" "{"
+                        domain-function*
+                        axiom*
+                    "}"
+
+domain-function ::= "function" ident "(" formal-arg* ")" ":" type
+
+     formal-arg ::= ident ":" type
+
+          axiom ::= "axiom" ident "{"
+                        exp ";"?
+                    "}"
+
+          field ::= "var" ident ":" type
+
+       function ::= "function" ident "(" formal-arg* ")" ":" type
+                        precondition*
+                        postcondition*
+                    "{" exp "}"
+
+   precondition ::= "requires" exp ";"?
+  postcondition ::= "ensures" exp ";"?
+      invariant ::= "invariant" exp ";"?
+
+      predicate ::= "predicate" ident "{" exp "}"
+
+         method ::= "method" ident "(" formal-arg* ")" ("returns" "(" formal-arg* ")")?
+                        precondition*
+                        postcondition*
+                    "{" local-decl* stmt* "}"
+
+     local-decl ::= "var" ident ":" type
+
+           stmt ::= (stmt ";"?)*
+                  | "assert" exp
+                  | "inhale" exp
+                  | "exhale" exp
+                  | "fold" loc-access
+                  | "unfold" loc-access
+                  | loc-access ":=" exp         // field assignment
+                  | ident ":=" exp              // local variable assignment
+                  | "if" "(" exp ")" "{"
+                        stmt
+                    "}"
+                    ("else" "{" stmt "}")?      // (the else branch is optional)
+                  | "while" "(" exp ")"
+                        invariant*
+                    "{" stmt "}"
+                  | ident ":=" "new()"          // object creation
+                  | ident "(" exp* ")"          // method call
+                  | "(" ident* ")" := ident "(" exp* ")"  // method call with return values
+                  | "fresh" (ident*) "{"        // fresh abstract read permission block
+                        stmt
+                    "}"
+
+            exp ::= exp "?" exp ":" exp         // conditional expression
+                  | exp "==>" exp               // implication
+                  | exp ("||" | "&&") exp       // disjunction and conjunction
+                  | "!" exp                     // boolean negation
+                  | exp ("==" | "!=") exp       // equality comparison
+                  | exp ("<" | "<=" | ">" | ">=") exp // ordering (both numerical/permission)
+                  | exp ("+" | "*" | "-") exp   // math operators (both numerical/permission)
+                  | exp ("/" | "%") exp         // numerical math operators
+                  | ("+" | "-") exp             // math operators (both numerical/permission)
+                  | ident "(" exp* ")"          // function application
+                  | loc-access                  // field read
+                  | integer                     // integer literal
+                  | "null"                      // null literal
+                  | "true" | "false"            // boolean literal
+                  | ident                       // local variable read
+                  | "result"                    // result literal in function postconditions
+                  | "acc" "(" loc-access "," exp ")"   // accessibility predicate
+                  | "forall" formal-arg "::" exp   // universal quantification
+                  | "exists" formal-arg "::" exp   // existential quantification
+                  | "(" exp ")"
+                  | "perm" "(" loc-access ")"   // current permission of given location
+                  | "write"                     // full permission literal
+                  | "none"                      // no permission literal
+                  | "epsilon"                   // epsilon permission literal
+                  | "wildcard"                  // wildcard permission
+                  | integer "/" integer         // concrete fractional permission
+
+                  | "Seq()"                     // the empty sequence (special case)
+                  | "Seq" "(" exp* ")"          // explicit sequence
+                  | "[" exp ".." exp ")"        // half-open range of numbers
+                  | exp "++" exp                // sequence append
+                  | "|" exp "|"                 // length of a sequence
+                  | exp "[" exp "]"             // sequence element for given index
+                  | exp "[" ".." exp "]"        // take the some of the first elements
+                  | exp "[" exp ".." "]"        // drop some elements at the end
+                  | exp "[" exp ".." exp "]"    // take and drop at the same time
+                  | exp "in" exp                // element containment test
+                  | exp "[" exp ":=" exp "]"    // sequence with one element updated
+
+     loc-access ::= exp "." ident               // location access (field or predicate)
+
+           type ::= "Int" | "Bool" | "Perm" | "Ref"  // primitive types
+                  | "Seq" "[" type "]"          // sequence type
+                  | ident                       // type variable or non-generic domain type
+                  | ident "[" type* "]"         // generic domain type
+
+          ident ::= "[a-zA-Z$_][a-zA-Z0-9$_']*" // an identifier (specified as regular exp)
