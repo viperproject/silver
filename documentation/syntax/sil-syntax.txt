@@ -35,7 +35,7 @@ domain-function ::= "function" ident "(" formal-arg* ")" ":" type
          method ::= "method" ident "(" formal-arg* ")" ("returns" "(" formal-arg* ")")?
                         precondition*
                         postcondition*
-                    "{" local-decl* stmt* "}"
+                    "{" local-decl* stmt "}"
 
      local-decl ::= "var" ident ":" type
 
