@@ -261,8 +261,11 @@ case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val inf
 }
 
 /** Appending two sequences of the same type. */
-case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp with PrettyBinaryExpression {
   require((left isSubtype right) && (left isSubtype right))
+  lazy val priority = 0
+  lazy val fixity = Infix(LeftAssoc)
+  lazy val op = "++"
   lazy val typ = left.typ
 }
 
@@ -288,9 +291,14 @@ case class SeqDrop(seq: Exp, n: Exp)(val pos: Position = NoPosition, val info: I
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
-case class SeqContains(elem: Exp, seq: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class SeqContains(elem: Exp, seq: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp with PrettyBinaryExpression {
   require(seq.typ.isInstanceOf[SeqType])
   require(elem isSubtype seq.typ.asInstanceOf[SeqType].elementType)
+  lazy val priority = 0
+  lazy val fixity = Infix(LeftAssoc)
+  lazy val left: PrettyExpression = elem
+  lazy val op = "in"
+  lazy val right: PrettyExpression = seq
   lazy val typ = Bool
 }
 
