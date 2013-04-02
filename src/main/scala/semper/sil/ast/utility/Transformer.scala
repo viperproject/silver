@@ -76,6 +76,17 @@ object Transformer {
           case PermLeCmp(l, r) => PermLeCmp(func(l), func(r))(p, i)
           case PermGtCmp(l, r) => PermGtCmp(func(l), func(r))(p, i)
           case PermGeCmp(l, r) => PermGeCmp(func(l), func(r))(p, i)
+
+          case EmptySeq(elemTyp) => exp
+          case ExplicitSeq(elems) => ExplicitSeq(elems map func)(p, i)
+          case RangeSeq(low, high) => RangeSeq(func(low), func(high))(p, i)
+          case SeqAppend(left, right) => SeqAppend(func(left), func(right))(p, i)
+          case SeqElement(seq, idx) => SeqElement(func(seq), func(idx))(p, i)
+          case SeqTake(seq, n) => SeqTake(func(seq), func(n))(p, i)
+          case SeqDrop(seq, n) => SeqDrop(func(seq), func(n))(p, i)
+          case SeqContains(elem, seq) => SeqContains(func(elem), func(seq))(p, i)
+          case SeqUpdate(seq, idx, elem) => SeqUpdate(func(seq), func(idx), func(elem))(p, i)
+          case SeqLength(seq) => SeqLength(func(seq))(p, i)
         }
     }
   }
