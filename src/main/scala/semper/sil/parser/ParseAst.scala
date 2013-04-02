@@ -94,6 +94,7 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
     args.forall(_.isConcrete) && args.size > 0
   }
 }
+case class PSeqType(elementType: PType) extends PType
 case class PUnkown() extends PType // for resolving if something cannot be typed
 case class PPredicateType() extends PType // used during resolving for predicate accesses
 
@@ -126,6 +127,15 @@ case class PWildcard() extends PExp
 case class PConcretePerm(a: BigInt, b: BigInt) extends PExp
 case class PEpsilon() extends PExp
 case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
+
+case class PEmptySeq() extends PExp
+case class PExplicitSeq(elems: Seq[PExp]) extends PExp
+case class PRangeSeq(low: PExp, high: PExp) extends PExp
+case class PSeqElement(seq: PExp, idx: PExp) extends PExp
+case class PSeqTake(seq: PExp, n: PExp) extends PExp
+case class PSeqDrop(seq: PExp, n: PExp) extends PExp
+case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends PExp
+case class PPSeqLength(seq: PExp) extends PExp
 
 // Statements
 sealed trait PStmt extends PNode {
@@ -203,6 +213,7 @@ object Nodes {
       case PFormalArgDecl(idndef, typ) => Seq(idndef, typ)
       case PPrimitiv(name) => Nil
       case PDomainType(domain, args) => Seq(domain) ++ args
+      case PSeqType(elemType) => Seq(elemType)
       case PUnkown() => Nil
       case PBinExp(left, op, right) => Seq(left, right)
       case PUnExp(op, exp) => Seq(exp)
@@ -224,6 +235,14 @@ object Nodes {
       case PConcretePerm(a, b) => Nil
       case PEpsilon() => Nil
       case PAccPred(loc, perm) => Seq(loc, perm)
+      case PEmptySeq() => Nil
+      case PExplicitSeq(elems) => elems
+      case PRangeSeq(low, high) => Seq(low, high)
+      case PSeqElement(seq, idx) => Seq(seq, idx)
+      case PSeqTake(seq, nn) => Seq(seq, nn)
+      case PSeqDrop(seq, nn) => Seq(seq, nn)
+      case PSeqUpdate(seq, idx, elem) => Seq(seq, idx, elem)
+      case PPSeqLength(seq) => Seq(seq)
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)
