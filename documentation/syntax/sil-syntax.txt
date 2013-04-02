@@ -1,17 +1,17 @@
-    sil-program ::= "program" "{"
-                        domain*
-                        field*
-                        function*
-                        predicate*
-                        method*
-                    "}"
+    sil-program ::= (
+                        domain |
+                        field |
+                        function |
+                        predicate |
+                        method
+                    )*
 
          domain ::= "domain" "{"
                         domain-function*
                         axiom*
                     "}"
 
-domain-function ::= "function" ident "(" formal-arg* ")" ":" type
+domain-function ::= "function" ident "(" formal-arg^,* ")" ":" type
 
      formal-arg ::= ident ":" type
 
@@ -21,7 +21,7 @@ domain-function ::= "function" ident "(" formal-arg* ")" ":" type
 
           field ::= "var" ident ":" type
 
-       function ::= "function" ident "(" formal-arg* ")" ":" type
+       function ::= "function" ident "(" formal-arg^,* ")" ":" type
                         precondition*
                         postcondition*
                     "{" exp "}"
@@ -32,7 +32,7 @@ domain-function ::= "function" ident "(" formal-arg* ")" ":" type
 
       predicate ::= "predicate" ident "{" exp "}"
 
-         method ::= "method" ident "(" formal-arg* ")" ("returns" "(" formal-arg* ")")?
+         method ::= "method" ident "(" formal-arg^,* ")" ("returns" "(" formal-arg^,* ")")?
                         precondition*
                         postcondition*
                     "{" local-decl* stmt "}"
@@ -55,8 +55,8 @@ domain-function ::= "function" ident "(" formal-arg* ")" ":" type
                         invariant*
                     "{" stmt "}"
                   | ident ":=" "new()"          // object creation
-                  | ident "(" exp* ")"          // method call
-                  | "(" ident* ")" := ident "(" exp* ")"  // method call with return values
+                  | ident "(" exp^,* ")"         // method call
+                  | "(" ident^,* ")" := ident "(" exp^,* ")"  // method call with return values
                   | "fresh" (ident*) "{"        // fresh abstract read permission block
                         stmt
                     "}"
@@ -67,10 +67,11 @@ domain-function ::= "function" ident "(" formal-arg* ")" ":" type
                   | "!" exp                     // boolean negation
                   | exp ("==" | "!=") exp       // equality comparison
                   | exp ("<" | "<=" | ">" | ">=") exp // ordering (both numerical/permission)
-                  | exp ("+" | "*" | "-") exp   // math operators (both numerical/permission)
-                  | exp ("/" | "%") exp         // numerical math operators
+                  | exp ("+" | "-") exp         // math operators (both numerical/permission)
+                  | exp "*" exp                 // int/int, perm/perm and int/perm multiplic.
+                  | exp ("\ " | "%") exp        // integer division and modulo
                   | ("+" | "-") exp             // math operators (both numerical/permission)
-                  | ident "(" exp* ")"          // function application
+                  | ident "(" exp^,* ")"         // function application
                   | loc-access                  // field read
                   | integer                     // integer literal
                   | "null"                      // null literal
@@ -86,10 +87,10 @@ domain-function ::= "function" ident "(" formal-arg* ")" ":" type
                   | "none"                      // no permission literal
                   | "epsilon"                   // epsilon permission literal
                   | "wildcard"                  // wildcard permission
-                  | integer "/" integer         // concrete fractional permission
+                  | exp "/" exp                 // concrete fractional permission
 
-                  | "Seq()"                     // the empty sequence
-                  | "Seq" "(" exp ("," exp)* ")"  // explicit sequence
+                  | "Seq" "[" type "]" "()"     // the empty sequence
+                  | "Seq" "(" exp^,* ")"         // explicit sequence
                   | "[" exp ".." exp ")"        // half-open range of numbers
                   | exp "++" exp                // sequence append
                   | "|" exp "|"                 // length of a sequence
@@ -105,6 +106,6 @@ domain-function ::= "function" ident "(" formal-arg* ")" ":" type
            type ::= "Int" | "Bool" | "Perm" | "Ref"  // primitive types
                   | "Seq" "[" type "]"          // sequence type
                   | ident                       // type variable or non-generic domain type
-                  | ident "[" type* "]"         // generic domain type
+                  | ident "[" type^,* "]"        // generic domain type
 
           ident ::= "[a-zA-Z$_][a-zA-Z0-9$_']*" // an identifier (specified as regular exp)
