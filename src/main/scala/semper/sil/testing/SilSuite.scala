@@ -11,6 +11,12 @@ import java.util.regex.Pattern
 
 /** A test suite for verification toolchains that use SIL as the intermediate language.
   *
+  * Note that tests are named by the first file for a given test, e.g. `basic/functions.sil`.
+  * The tests are also tagged by their name and by the file name (with and without extension);
+  * in the example the tags would be `basic/functions.sil`, `functions.sil` and `functions`.
+  * These tags can be used to execute just a single test:
+  * `test-only * -- -n functions`
+  *
   * @author Stefan Heule
   */
 abstract class SilSuite extends FunSuite with TestAnnotationParser {
@@ -87,7 +93,9 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
     // one test per verifier
     for (verifier <- verifiers) {
-      test(name + " [" + verifier.name + "]") {
+      val headFileName = rawFiles.head.getName
+      val headFileNameWithoutExt = headFileName.substring(0, headFileName.lastIndexOf("."))
+      test(name + " [" + verifier.name + "]", Tag(name), Tag(headFileName), Tag(headFileNameWithoutExt)) {
         val fe = frontend(verifier, List(file))
         val tPhases = fe.phases.map { p =>
           time(p.action)._2 + " (" + p.name + ")"

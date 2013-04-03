@@ -248,6 +248,14 @@ case class Translator(program: PProgram) {
           case _ =>
             sys.error("unexpected location")
         }
+      case PEmptySeq() => ???
+      case PExplicitSeq(elems) => ???
+      case PRangeSeq(low, high) => ???
+      case PSeqElement(seq, idx) => ???
+      case PSeqTake(seq, n) => ???
+      case PSeqDrop(seq, n) => ???
+      case PSeqUpdate(seq, idx, elem) => ???
+      case PPSeqLength(seq) => ???
     }
   }
 
@@ -265,6 +273,8 @@ case class Translator(program: PProgram) {
       case "Ref" => Ref
       case "Perm" => Perm
     }
+    case PSeqType(elemType) =>
+      SeqType(ttyp(elemType))
     case PDomainType(name, args) =>
       members.get(name.name) match {
         case Some(d) =>

@@ -37,7 +37,7 @@
     stepnumber=0,
     breaklines=true,
     frame=lines,
-    showstringspaces=true,
+    showstringspaces=false,
     tabsize=2,
     commentstyle=\color{gray},
     captionpos=b,
@@ -54,6 +54,7 @@
     literate=%
        *{|}{{\color{DarkBlue}|\color{black}}}1
         {?}{{\color{DarkBlue}?\color{black}}}1
+        {\^,*}{{\color{DarkBlue}$^{,\star}$\color{black}}}2
         {*}{{\color{DarkBlue}$^{\star}$\color{black}}}1
         {::=}{{\color{DarkBlue}::=\color{black} }}3
     ,
@@ -80,6 +81,8 @@ This document describes the syntax of SIL in BNF.  Note that white-space is
 mostly ignored, and that the binding strength of expressions is not modeled
 in the grammar for simplicity.  Also, the grammar allows for more programs
 than what the SIL type-checker will accept.
+The special repetition operator \lstinline[language=bnf]{^,*} is used to
+denote a comma-separated list.
 
 
 \lstset{language=bnf}
