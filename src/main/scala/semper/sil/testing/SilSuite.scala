@@ -45,14 +45,17 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     case name => name
   }
 
-  def fileList(file: File): Seq[File] = {
-    val regex = (Pattern.quote(fileListName(file)) + """_file(\d*).*""").r
-    var files = List[(File, Int)]()
-    file.getParentFile.listFiles.foreach(f => f.getName match {
-      case regex(index) => files = (f, index.toInt) :: files
-      case _ => ()
-    })
-    files.sortBy(_._2).map(_._1)
+  def fileList(file: File): Seq[File] = file.getName match {
+    case fileListRegex(name) => {
+      val regex = (Pattern.quote(name) + """_file(\d*).*""").r
+      var files = List[(File, Int)]()
+      file.getParentFile.listFiles.foreach(f => f.getName match {
+        case regex(index) => files = (f, index.toInt) :: files
+        case _ => ()
+      })
+      files.sortBy(_._2).map(_._1)
+    }
+    case _ => Seq(file)
   }
 
   /** Registers a tests that runs the translator for all given verifiers. */

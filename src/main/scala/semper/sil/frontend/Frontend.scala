@@ -4,6 +4,7 @@ import semper.sil.verifier.{Failure, AbstractError, VerificationResult, Verifier
 import java.io.File
 import io.Source
 import semper.sil.ast.Program
+import io.Source
 
 /** Represents one phase of a frontend */
 case class Phase(name: String, action: () => Unit)
@@ -22,12 +23,7 @@ trait Frontend {
    * Reset the translator, and set the input program. Can be called many times to verify multiple programs
    * using the same verifier.
    */
-  def reset(input: String)
-
-  /** Reset the translator, and set the input program. */
-  def reset(input: File) {
-    reset(Source.fromFile(input).mkString)
-  }
+  def reset(input: Seq[File])
 
   /**
    * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then
@@ -39,13 +35,20 @@ trait Frontend {
   }
 
   /** The phases of this frontend which have to be executed in the order given by the list. */
-  def phases: List[Phase]
+  val phases: Seq[Phase]
 
   /**
    * The result of the verification attempt (only available after parse, typecheck, translate and
    * verify have been called).
    */
   def result: VerificationResult
+}
+
+trait SinglePhase extends Frontend {
+  val phases = List(
+    Phase("singlePhase", runPhase)
+  )
+  def runPhase()
 }
 
 trait DefaultPhases extends Frontend {
@@ -70,9 +73,22 @@ trait DefaultPhases extends Frontend {
 
 }
 
+trait SingleFileFrontend {
+  def reset(input: String)
+  def reset(file: File) {
+    reset(Source.fromFile(file).mkString)
+  }
+  def reset(files: Seq[File]) {
+    files match {
+      case f :: Nil => reset(f)
+      case _ => sys.error("This frontend can only handle single files.")
+    }
+  }
+}
+
 /** A default implementation of a translator that keeps track of the state of the translator.
   */
-trait DefaultFrontend extends Frontend with DefaultPhases {
+trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFrontend {
 
   sealed trait Result[+A]
   case class Succ[+A](a: A) extends Result[A]
