@@ -15,7 +15,7 @@ import java.util.regex.Pattern
   * The tests are also tagged by their name and by the file name (with and without extension);
   * in the example the tags would be `basic/functions.sil`, `functions.sil` and `functions`.
   * These tags can be used to execute just a single test:
-  * `test-only * -- -n function`
+  * `test-only * -- -n functions`
   *
   * @author Stefan Heule
   */
