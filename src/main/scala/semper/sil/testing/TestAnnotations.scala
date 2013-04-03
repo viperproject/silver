@@ -1,5 +1,7 @@
 package semper.sil.testing
 
+import java.io.File
+
 /**
  * The result of parsing the test annotations in a single file.
  *
@@ -9,8 +11,9 @@ package semper.sil.testing
  * @author Stefan Heule
  */
 sealed case class TestAnnotations(errors: Seq[TestAnnotationParseError], annotations: Seq[TestAnnotation]) {
-  def isFileIgnored: Boolean = annotations contains ((x: TestAnnotation) => x match {
-    case _: IgnoreFile => true
+  def isFileIgnored(file: File): Boolean = annotations contains ((x: TestAnnotation) => x match {
+    case _: IgnoreFileList => true
+    case IgnoreFile(f, _, _, _) => f == file
     case _ => false
   })
 
@@ -52,25 +55,27 @@ case class ErrorAnnotationId(reasonId: String, errorId: Option[String]) {
 }
 
 /** Test annotations that have a location and an identifier (i.e. describe an error of some sort). */
-sealed abstract class ErrorAnnotation(val id: ErrorAnnotationId, val forLineNr: Int) extends TestAnnotation {
-  override def toString = s"$forLineNr.*: $id"
+sealed abstract class ErrorAnnotation(val id: ErrorAnnotationId, val file: File, val forLineNr: Int) extends TestAnnotation {
+  override def toString = s"${file.getName}: $forLineNr.*: $id"
 }
 
 object ErrorAnnotation {
-  def unapply(e: ErrorAnnotation) = Some((e.id, e.forLineNr))
+  def unapply(e: ErrorAnnotation) = Some((e.id, e.file, e.forLineNr))
 }
 
-sealed case class ExpectedError(override val id: ErrorAnnotationId, override val forLineNr: Int, annotationLineNr: Int) extends ErrorAnnotation(id, forLineNr)
+sealed case class ExpectedError(override val id: ErrorAnnotationId, override val file: File, override val forLineNr: Int, annotationLineNr: Int) extends ErrorAnnotation(id, file, forLineNr)
 
-sealed case class UnexpectedError(override val id: ErrorAnnotationId, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, forLineNr)
+sealed case class UnexpectedError(override val id: ErrorAnnotationId, override val file: File, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, file, forLineNr)
 
-sealed case class MissingError(override val id: ErrorAnnotationId, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, forLineNr)
+sealed case class MissingError(override val id: ErrorAnnotationId, override val file: File, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, file, forLineNr)
 
-sealed case class IgnoreFile(annotationLineNr: Int, project: String, issueNr: Int) extends TestAnnotation
+sealed case class IgnoreFile(file: File, annotationLineNr: Int, project: String, issueNr: Int) extends TestAnnotation
 
-case class TestAnnotationParseError(offendingLine: String, lineNr: Int) {
+sealed case class IgnoreFileList(file: File, annotationLineNr: Int, project: String, issueNr: Int) extends TestAnnotation
+
+case class TestAnnotationParseError(offendingLine: String, file: File, lineNr: Int) {
   def errorMessage: String = {
-    s"Line ${lineNr} looks like a test annotation (it starts with '//::'), but it was not " +
+    s"Line ${lineNr} in ${file.getName} looks like a test annotation (it starts with '//::'), but it was not " +
       s"possible to parse it correctly.  The line is : '$offendingLine'."
   }
 }

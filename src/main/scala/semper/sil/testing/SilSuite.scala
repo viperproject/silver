@@ -4,9 +4,10 @@ import java.io.File
 import semper.sil.verifier._
 import java.nio.file.Path
 import io.Source
-import semper.sil.ast.SourcePosition
+import semper.sil.ast.{RealPosition, TranslatedPosition, SourcePosition}
 import org.scalatest._
 import semper.sil.frontend.Frontend
+import java.util.regex.Pattern
 
 /** A test suite for verification toolchains that use SIL as the intermediate language.
   *
@@ -21,7 +22,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   def baseDirectory: Path
 
   /** The frontend to be used. */
-  def frontend(verifier: Verifier, input: String): Frontend
+  def frontend(verifier: Verifier, files: Seq[File]): Frontend
 
   /** The list of verifiers to be used. */
   def verifiers: Seq[Verifier]
@@ -31,21 +32,50 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
   private var _testsRegistered = false
 
+  def testName(prefix: String, files: Seq[File]) = files match {
+    case f :: Nil => prefix + f.getName
+    case f :: _ => prefix + fileListName(f)
+    case _ => prefix
+  }
+
+  val fileListRegex = """(.*)_file\d*""".r
+
+  def fileListName(f: File) = f.getName match {
+    case fileListRegex(name) => name
+    case name => name
+  }
+
+  def fileList(file: File): Seq[File] = {
+    val regex = (Pattern.quote(fileListName(file)) + """_file(\d*)""").r
+    var files = List[(File, Int)]()
+    file.getParentFile.listFiles.foreach(f => f.getName match {
+      case regex(index) => files = (f, index.toInt) :: files
+      case _ => ()
+    })
+    files.sortBy(_._2).map(_._1)
+  }
+
   /** Registers a tests that runs the translator for all given verifiers. */
   def registerSilTest(file: File, prefix: String) {
     require(file != null)
     require(verifiers != null)
 
-    val input = Source.fromFile(file).mkString
-    val testName = prefix + file.getName
-    val testAnnotations = parseAnnotations(input)
-    var testErrors: List[String] = Nil
-
-    // ignore test if necessary
-    if (testAnnotations.isFileIgnored) {
-      ignore(testName) {}
+    val rawFiles = fileList(file)
+    if (rawFiles.head != file) {
+      // Only register the file list once, not for every file it contains.
       return
     }
+    val name = testName(prefix, rawFiles)
+    val testAnnotations = parseAnnotations(rawFiles)
+    val files = rawFiles.filter(f => !testAnnotations.isFileIgnored(f))
+
+    // ignore test if necessary
+    if (files.isEmpty) {
+      ignore(name) {}
+      return
+    }
+
+    var testErrors: List[String] = Nil
 
     // error for parse failures of test annotations
     if (testAnnotations.hasErrors) {
@@ -54,8 +84,8 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
     // one test per verifier
     for (verifier <- verifiers) {
-      test(testName + " [" + verifier.name + "]") {
-        val fe = frontend(verifier, input)
+      test(name + " [" + verifier.name + "]") {
+        val fe = frontend(verifier, List(file))
         val tPhases = fe.phases.map { p =>
           time(p.action)._2 + " (" + p.name + ")"
         }.mkString(", ")
@@ -74,15 +104,17 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
               case e: ExpectedError => expectedButMissingErrors ::= e
               case u: UnexpectedError => unexpectedButMissingErrors ::= u
               case m: MissingError => // it is known that this one is missing
-              case _: IgnoreFile =>
+              case _: IgnoreFileList =>
                 sys.error("the test should not have run in the first place")
+              case _: IgnoreFile => ()
             }
           case Failure(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
             val findError: AbstractError => Option[ErrorAnnotation] = (actual: AbstractError) => {
-              if (!actual.pos.isInstanceOf[SourcePosition]) None
+              if (!actual.pos.isInstanceOf[SourcePosition] && !actual.pos.isInstanceOf[TranslatedPosition]) None
               else expectedErrors.filter({
-                case ErrorAnnotation(id, lineNr) => id.matches(actual.fullId) && actual.pos.asInstanceOf[SourcePosition].line == lineNr
+                // TODO Find out how we could check for the right file.
+                case ErrorAnnotation(id, file, lineNr) => id.matches(actual.fullId) && actual.pos.asInstanceOf[RealPosition].line == lineNr
               }) match {
                 case x :: _ => {
                   // remove the error from the list of expected errors (i.e. only match once)
@@ -95,7 +127,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
             // go through all actual errors and try to match them up with the expected ones
             actualErrors foreach (a => findError(a) match {
-              case Some(m@MissingError(_, _, _, _, _)) =>
+              case Some(m@MissingError(_, _, _, _, _, _)) =>
                 missingButPresentErrors ::= m
               case Some(_) => // expected this error
               case None =>
