@@ -9,4 +9,4 @@
   - all variables used in methods/functions/quantifications are declared (formal arguments or locals)
 - API consistency: Receiver and function/method appear in different order everywhere
 - API consistency: typ appears in first and second argument list inconsistently
-- new expression
+- Make front end more abstract: Using several phases and only one file should be optional
