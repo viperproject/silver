@@ -57,6 +57,29 @@ object Statements {
   }
 }
 
+/** Utility methods for expressions. */
+object Expressions {
+  def isPure(e: Exp): Boolean = e match {
+    case    _: IntLit
+          | _: BoolLit
+          | _: NullLit
+          | _: PermExp
+          | _: FuncLikeApp
+          | _: LocationAccess
+          | _: AbstractLocalVar
+          | _: SeqExp
+      => true
+
+    case _: AccessPredicate => false
+
+    case UnExp(e0) => isPure(e0)
+    case BinExp(e0, e1) => isPure(e0) && isPure(e1)
+    case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
+    case Unfolding(_, in) => isPure(in) /* Assuming that the first argument is pure */
+    case QuantifiedExp(_, e0) => isPure(e0)
+  }
+}
+
 /** Utility methods for AST nodes. */
 object Nodes {
 

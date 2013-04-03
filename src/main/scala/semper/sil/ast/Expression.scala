@@ -2,7 +2,7 @@ package semper.sil.ast
 
 import org.kiama.output._
 import utility.Consistency
-import utility.Transformer
+import utility.{Transformer, Expressions}
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
@@ -14,6 +14,8 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
    * replace an integer literal by a boolean literal.
    */
   def transform(f: Exp => Option[Exp]): Exp = Transformer.transform(this, f)
+
+  def isPure = Expressions.isPure(this)
 }
 
 
@@ -242,26 +244,32 @@ case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Inf
 
 // --- Mathematical sequences
 
+/**
+ * Marker trait for all sequence-related expressions. Does not imply that the type of the
+ * expression is `SeqType`.
+ */
+sealed trait SeqExp extends Exp
+
 /** The empty sequence of a given element type. */
-case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   lazy val typ = SeqType(elemTyp)
 }
 
 /** An explicit, non-emtpy sequence. */
-case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require(elems.length > 0)
   require(elems.tail.forall(e => (e isSubtype elems.head) && (elems.head isSubtype e)))
   lazy val typ = SeqType(elems.head.typ)
 }
 
 /** A range of integers from 'low' to 'high', not including 'high', but including 'low'. */
-case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require((low isSubtype Int) && (high isSubtype Int))
   lazy val typ = SeqType(Int)
 }
 
 /** Appending two sequences of the same type. */
-case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp with PrettyBinaryExpression {
+case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp with PrettyBinaryExpression {
   require((left isSubtype right) && (left isSubtype right))
   lazy val priority = 0
   lazy val fixity = Infix(LeftAssoc)
@@ -270,28 +278,28 @@ case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 }
 
 /** Access to an element of a sequence at a given index position (starting at 0). */
-case class SeqElement(seq: Exp, idx: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class SeqElement(seq: Exp, idx: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require(seq.typ.isInstanceOf[SeqType])
   require(idx isSubtype Int)
   lazy val typ = seq.typ.asInstanceOf[SeqType].elementType
 }
 
 /** Take the first 'n' elements of the sequence 'seq'. */
-case class SeqTake(seq: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class SeqTake(seq: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require(seq.typ.isInstanceOf[SeqType])
   require(n isSubtype Int)
   lazy val typ = seq.typ
 }
 
 /** Drop the last 'n' elements of the sequence 'seq'. */
-case class SeqDrop(seq: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class SeqDrop(seq: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require(seq.typ.isInstanceOf[SeqType])
   require(n isSubtype Int)
   lazy val typ = seq.typ
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
-case class SeqContains(elem: Exp, seq: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp with PrettyBinaryExpression {
+case class SeqContains(elem: Exp, seq: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp with PrettyBinaryExpression {
   require(seq.typ.isInstanceOf[SeqType])
   require(elem isSubtype seq.typ.asInstanceOf[SeqType].elementType)
   lazy val priority = 0
@@ -303,7 +311,7 @@ case class SeqContains(elem: Exp, seq: Exp)(val pos: Position = NoPosition, val 
 }
 
 /** The same sequence as 'seq', but with the element at index 'idx' replaced with 'elem'. */
-case class SeqUpdate(seq: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class SeqUpdate(seq: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require(seq.typ.isInstanceOf[SeqType])
   require(idx isSubtype Int)
   require(elem isSubtype seq.typ.asInstanceOf[SeqType].elementType)
@@ -311,7 +319,7 @@ case class SeqUpdate(seq: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPositi
 }
 
 /** The length of a sequence. */
-case class SeqLength(seq: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class SeqLength(seq: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require(seq.typ.isInstanceOf[SeqType])
   lazy val typ = Int
 }
