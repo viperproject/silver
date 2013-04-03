@@ -192,7 +192,8 @@ case class TypeChecker(names: NameAnalyser) {
               message(typ, "expected domain")
             }
         }
-      case PSeqType(elemType) => ???
+      case PSeqType(elemType) =>
+        check(elemType)
       case PUnkown() =>
         message(typ, "expected concrete type, but found unknown typ")
     }
@@ -426,14 +427,14 @@ case class TypeChecker(names: NameAnalyser) {
       case PConcretePerm(a, b) => Seq(Perm)
       case PEpsilon() => Seq(Perm)
       case PAccPred(loc, perm) => Seq(Bool)
-      case PEmptySeq() => ???
-      case PExplicitSeq(elems) => ???
-      case PRangeSeq(low, high) => ???
-      case PSeqElement(seq, idx) => ???
-      case PSeqTake(seq, n) => ???
-      case PSeqDrop(seq, n) => ???
-      case PSeqUpdate(seq, idx, elem) => ???
-      case PPSeqLength(seq) => ???
+      case PEmptySeq() => Seq(PSeqType(PUnkown()))
+      case PExplicitSeq(elems) => possibleTypes(elems.head) map (PSeqType(_))
+      case PRangeSeq(low, high) => Seq(PSeqType(Int))
+      case PSeqElement(seq, idx) => possibleTypes(seq) map (_.asInstanceOf[PSeqType].elementType)
+      case PSeqTake(seq, n) => possibleTypes(seq)
+      case PSeqDrop(seq, n) => possibleTypes(seq)
+      case PSeqUpdate(seq, idx, elem) => possibleTypes(seq)
+      case PPSeqLength(seq) => Seq(Int)
     }
   }
 

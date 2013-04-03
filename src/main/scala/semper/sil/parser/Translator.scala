@@ -273,7 +273,8 @@ case class Translator(program: PProgram) {
       case "Ref" => Ref
       case "Perm" => Perm
     }
-    case PSeqType(elemType) => ???
+    case PSeqType(elemType) =>
+      SeqType(ttyp(elemType))
     case PDomainType(name, args) =>
       members.get(name.name) match {
         case Some(d) =>
