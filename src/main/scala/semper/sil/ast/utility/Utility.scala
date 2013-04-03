@@ -129,6 +129,16 @@ object Nodes {
           case FuncApp(func, args) => args
           case DomainFuncApp(func, args, m) =>
             args ++ m.keys ++ m.values
+          case EmptySeq(elemTyp) => Seq(elemTyp)
+          case ExplicitSeq(elems) => elems
+          case RangeSeq(low, high) => Seq(low, high)
+          case SeqAppend(left, right) => Seq(left, right)
+          case SeqElement(seq, idx) => Seq(seq, idx)
+          case SeqTake(seq, nn) => Seq(seq, nn)
+          case SeqDrop(seq, nn) => Seq(seq, nn)
+          case SeqContains(elem, seq) => Seq(elem, seq)
+          case SeqUpdate(seq, idx, elem) => Seq(seq, idx, elem)
+          case SeqLength(seq) => Seq(seq)
         }
       case t: Type => Nil
     }

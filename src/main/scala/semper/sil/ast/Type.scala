@@ -42,7 +42,12 @@ case object Perm extends BuiltInType
 case object Ref extends BuiltInType
 /** Type for predicates (only used internally). */
 case object Pred extends BuiltInType
-
+/** Type for sequences */
+case class SeqType(elementType: Type) extends BuiltInType {
+  override lazy val isConcrete = elementType.isConcrete
+  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
+    SeqType(elementType.substitute(typVarsMap))
+}
 
 /**
  * Type for user-defined domains.

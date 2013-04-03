@@ -136,6 +136,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case Ref => "Ref"
       case Perm => "Perm"
       case Pred => "$PredicateType"
+      case SeqType(elemType) => "Seq" <> "[" <> show(elemType) <> "]"
       case TypeVar(v) => v
       case DomainType(domain, typVarsMap) =>
         val typArgs = domain.typVars map (t => show(typVarsMap.getOrElse(t, t)))
@@ -239,6 +240,22 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         func.name <> parens(ssep(args map show, comma <> space))
       case DomainFuncApp(func, args, _) =>
         func.name <> parens(ssep(args map show, comma <> space))
+      case EmptySeq(elemTyp) =>
+        "Seq()"
+      case ExplicitSeq(elems) =>
+        "Seq" <> parens(ssep(elems map show, comma <> space))
+      case RangeSeq(low, high) =>
+        "[" <> show(low) <> ".." <> show(high) <> ")"
+      case SeqElement(seq, idx) =>
+        show(seq) <> brackets(show(idx))
+      case SeqTake(seq, n) =>
+        show(seq) <> brackets(".." <> show(n))
+      case SeqDrop(seq, n) =>
+        show(seq) <> brackets(show(n) <> "..")
+      case SeqUpdate(seq, idx, elem) =>
+        show(seq) <> brackets(show(idx) <+> ":=" <+> show(elem))
+      case SeqLength(seq) =>
+        "|" <> show(seq) <> "|"
       case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)
     }
   }

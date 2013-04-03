@@ -7,6 +7,10 @@ import org.kiama.util.WhitespacePositionedParserUtilities
  * AST ([[semper.sil.parser.PNode]]), or a parse error.  The intermediate AST can
  * then be type-checked and translated into the SIL AST ([[semper.sil.ast.Node]])
  * using [[semper.sil.parser.Translator]].
+ *
+ * IMPORTANT: If you change or extend the syntax, please also update the synatx
+ * description in documentation/syntax as well as the syntax highlighting definitions
+ * in util/highlighting!
  */
 object Parser extends BaseParser {
   def parse(s: String) = {
@@ -26,7 +30,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
    * All keywords of SIL.
    *
    * IMPORTANT: If you add any new keywords, please also update all syntax highlighters
-   * in util/highlighting.
+   * in util/highlighting.  Also update the SIL syntax description in documentation/syntax.
    */
   def reserved: List[String] = List(
     // special variables
