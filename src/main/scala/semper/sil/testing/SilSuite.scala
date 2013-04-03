@@ -38,7 +38,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     case _ => prefix
   }
 
-  val fileListRegex = """(.*)_file\d*""".r
+  val fileListRegex = """(.*)_file\d*.*""".r
 
   def fileListName(f: File) = f.getName match {
     case fileListRegex(name) => name
@@ -46,7 +46,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   }
 
   def fileList(file: File): Seq[File] = {
-    val regex = (Pattern.quote(fileListName(file)) + """_file(\d*)""").r
+    val regex = (Pattern.quote(fileListName(file)) + """_file(\d*).*""").r
     var files = List[(File, Int)]()
     file.getParentFile.listFiles.foreach(f => f.getName match {
       case regex(index) => files = (f, index.toInt) :: files
