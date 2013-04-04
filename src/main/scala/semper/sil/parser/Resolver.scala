@@ -236,6 +236,9 @@ case class TypeChecker(names: NameAnalyser) {
       case (PTypeVar(name), t) => true
       case (t, PTypeVar(name)) => true
       case (PSeqType(e1), PSeqType(e2)) => isCompatible(e1, e2)
+      case (PDomainType(domain1, args1), PDomainType(domain2, args2))
+        if domain1 == domain2 && args1.length == args2.length =>
+          (args1 zip args2) forall (x => isCompatible(x._1, x._2))
       case _ if a == b => true
       case _ => false
     }
