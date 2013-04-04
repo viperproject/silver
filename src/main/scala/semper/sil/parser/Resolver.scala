@@ -174,7 +174,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PPredicateType() =>
         sys.error("unexpected use of internal typ")
       case PPrimitiv(_) =>
-      case PDomainType(domain, args) =>
+      case dt@PDomainType(domain, args) =>
         args map check
         var x: Any = null
         try {
@@ -185,9 +185,11 @@ case class TypeChecker(names: NameAnalyser) {
         x match {
           case d@PDomain(name, typVars, _, _) =>
             ensure(args.length == typVars.length, typ, "wrong number of type arguments")
+            dt._isTypeVar = Some(false)
           case _ =>
             if (args.length == 0) {
               // this must be a type variable, then
+              dt._isTypeVar = Some(true)
             } else {
               message(typ, "expected domain")
             }
@@ -200,29 +202,73 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   /**
+   * Look at two valid types for an expression and attempts to learn the instantiations for
+   * type variables.  Returns a mapping of type variables to types.
+   */
+  def learn(a: PType, b: PType): Seq[(String, PType)] = {
+    (a, b) match {
+      case (PTypeVar(name), t) if t.isConcrete => Seq(name -> t)
+      case (t, PTypeVar(name)) if t.isConcrete => Seq(name -> t)
+      case (PDomainType(n1, m1), PDomainType(n2, m2))
+        if n1 == n2 && m1.length == m2.length =>
+        (m1 zip m2) flatMap (x => learn(x._1, x._2))
+      case _ => Nil
+    }
+  }
+
+  /**
+   * Are types 'a' and 'b' compatible?  Type variables are assumed to be unbound so far,
+   * and if they occur they are compatible with any type.  PUnkown is also compatible with
+   * everything.
+   */
+  def isCompatible(a: PType, b: PType): Boolean = {
+    (a, b) match {
+      case (PUnkown(), t) => true
+      case (t, PUnkown()) => true
+      case (PTypeVar(name), t) => true
+      case (t, PTypeVar(name)) => true
+      case (PSeqType(e1), PSeqType(e2)) => isCompatible(e1, e2)
+      case _ if a == b => true
+      case _ => false
+    }
+  }
+
+  /**
    * Type-check and resolve e and ensure that it has type expected.  If that is not the case, then an
    * error should be issued.
    *
-   * null can be passed for expected, if any type is fine.
+   * The empty set can be passed for expected, if any type is fine.
    */
-  def check(exp: PExp, expected: PType) {
+  def check(exp: PExp, expected: PType): Unit = check(exp, Seq(expected))
+  def check(exp: PExp, expected: Seq[PType]): Unit = {
     def setType(actual: PType) {
-      if (actual == PUnkown()) {
+      if (actual.isUnknown) {
         // no error for unknown type (an error has already been issued)
+        exp.typ = actual
       } else {
-        if (expected == null) {
-          // ignore
-        } else if (expected == actual) {
-          exp.typ = if (!actual.isConcrete) expected else actual
-        } else {
-          if (actual.isInstanceOf[PDomainType] || expected.isInstanceOf[PDomainType]) {
-            // TODO: check type arguments
-            exp.typ = if (!actual.isConcrete) expected else actual
+        var found = false
+        if (expected.isEmpty) {
+          found = true
+          exp.typ = actual
+        }
+        for (e <- expected) {
+          if (!found && isCompatible(e, actual)) {
+            found = true
+            exp.typ = actual
+          }
+        }
+        if (!found) {
+          if (expected.size == 1) {
+            message(exp, s"expected ${expected.head}, but got $actual")
           } else {
-            message(exp, s"expected $expected, but got $actual")
+            message(exp, s"expected one of $expected, but got $actual")
           }
         }
       }
+    }
+    def issueError(n: Positioned, m: String) {
+      message(n, m)
+      setType(PUnkown()) // suppress further warnings
     }
     exp match {
       case i@PIdnUse(name) =>
@@ -234,37 +280,46 @@ case class TypeChecker(names: NameAnalyser) {
           case PField(_, typ) =>
             setType(typ)
           case x =>
-            message(i, s"expected variable or field, but got $x")
-            setType(expected) // suppress further warnings
+            issueError(i, s"expected variable or field, but got $x")
         }
       case PBinExp(left, op, right) =>
         op match {
-          case "+" | "-" | "*" =>
-            check(left, expected)
-            check(right, expected)
-            setType(expected)
+          case "+" | "-" =>
+            expected.filter(x => Seq(Int, Perm) contains x) match {
+              case Nil =>
+                issueError(exp, s"expected type $expected, but found operator $op that cannot have such a type")
+              case expectedStillPossible =>
+                check(left, expectedStillPossible)
+                check(right, expectedStillPossible)
+                if (left.typ.isUnknown || right.typ.isUnknown) {
+                  setType(PUnkown()) // error has already been issued
+                } else if (left.typ == right.typ) {
+                  setType(left.typ)
+                } else {
+                  issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
+                }
+            }
+          case "*" => ???
           case "/" => ???
           case "%" => ???
           case "<" | "<=" | ">" | ">=" =>
-            val l = possibleTypes(left)
-            val r = possibleTypes(right)
-            val t = l intersect r
-            if (t.size > 0) {
-              check(left, t(0))
-              check(right, t(0))
+            check(left, Seq(Int, Perm))
+            check(right, Seq(Int, Perm))
+            if (left.typ.isUnknown || right.typ.isUnknown) {
+              // nothing to do, error has already been issued
+            } else if (left.typ == right.typ) {
+              // ok
             } else {
-              message(exp, s"expected two Ints or two Perms, but found $l and $r")
+              issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
             }
             setType(Bool)
           case "==" | "!=" =>
-            val l = possibleTypes(left)
-            val r = possibleTypes(right)
-            (l intersect r) match {
-              case Nil =>
-                message(exp, s"require same type for left/right side, but found $l and $r")
-              case t :: ts =>
-                check(left, t)
-                check(right, t)
+            check(left, Nil) // any type is fine
+            check(right, Nil)
+            if (left.typ == right.typ) {
+              // ok
+            } else {
+              issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
             }
             setType(Bool)
           case "&&" | "||" | "<==>" | "==>" =>
@@ -276,10 +331,20 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnExp(op, e) =>
         op match {
           case "-" | "+" =>
-            check(e, expected)
-            setType(expected)
+            expected.filter(x => Seq(Int, Perm) contains x) match {
+              case Nil =>
+                issueError(exp, s"expected type $expected, but found unary operator $op that cannot have such a type")
+              case expectedStillPossible =>
+                check(e, expectedStillPossible)
+                if (e.typ.isUnknown) {
+                  // nothing to do, error has already been issued
+                } else {
+                  // ok
+                  setType(e.typ)
+                }
+            }
           case "!" =>
-            check(e, expected)
+            check(e, Bool)
             setType(Bool)
           case _ => sys.error(s"unexpected operator $op")
         }
@@ -290,8 +355,7 @@ case class TypeChecker(names: NameAnalyser) {
           case PFunction(_, _, typ, _, _, _) =>
             setType(typ)
           case _ =>
-            message(r, "'result' can only be used in functions")
-            setType(expected) // suppress further warnings
+            issueError(r, "'result' can only be used in functions")
         }
       case PBoolLit(b) =>
         setType(Bool)
@@ -300,6 +364,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PLocationAccess(rcv, idnuse) =>
         check(rcv, Ref)
         check(idnuse, expected)
+        setType(idnuse.typ)
       case fa@PFunctApp(func, args) =>
         names.definition(curMember)(func) match {
           case PFunction(_, formalArgs, typ, _, _, _) =>
@@ -311,14 +376,20 @@ case class TypeChecker(names: NameAnalyser) {
             setType(typ)
           case PDomainFunction(_, formalArgs, typ) =>
             ensure(formalArgs.size == args.size, fa, "wrong number of arguments")
+            val inferred = collection.mutable.ListBuffer[(String, PType)]()
             (formalArgs zip args) foreach {
               case (formal, actual) =>
                 check(actual, formal.typ)
+                // infer type information based on arguments
+                inferred ++= learn(actual.typ, formal.typ)
             }
-            setType(typ)
+            // also infer type information based on the context (expected type)
+            if (expected.size == 1) {
+              inferred ++= learn(typ, expected.head)
+            }
+            setType(typ.substitute(inferred.toMap))
           case x =>
-            message(func, s"expected function")
-            setType(expected) // suppress further warnings
+            issueError(func, s"expected function")
         }
       case PUnfolding(loc, e) =>
         check(loc, Pred)
@@ -331,7 +402,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PCondExp(cond, thn, els) => ???
       case PCurPerm(loc) =>
-        check(loc, null)
+        check(loc, Seq())
         setType(Perm)
       case PNoPerm() =>
         setType(Perm)
@@ -344,7 +415,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PEpsilon() =>
         setType(Perm)
       case PAccPred(loc, perm) =>
-        check(loc, null)
+        check(loc, Seq())
         check(perm, Perm)
       case PEmptySeq() => ???
       case PExplicitSeq(elems) => ???
@@ -354,87 +425,6 @@ case class TypeChecker(names: NameAnalyser) {
       case PSeqDrop(seq, n) => ???
       case PSeqUpdate(seq, idx, elem) => ???
       case PPSeqLength(seq) => ???
-    }
-  }
-
-  /**
-   * Returns the set of types that exp might possibly have.
-   */
-  def possibleTypes(exp: PExp): Seq[PType] = {
-    exp match {
-      case i@PIdnUse(name) =>
-        names.definition(curMember)(i) match {
-          case PLocalVarDecl(_, typ, _) =>
-            Seq(typ)
-          case PFormalArgDecl(_, typ) =>
-            Seq(typ)
-          case PField(_, typ) =>
-            Seq(typ)
-          case _ => Nil
-        }
-      case PBinExp(left, op, right) =>
-        val l = possibleTypes(left)
-        val r = possibleTypes(right)
-        op match {
-          case "+" | "-" | "*" =>
-            (Seq(Int, Perm) intersect l) intersect r
-          case "/" => ???
-          case "%" => ???
-          case "<" | "<=" | ">" | ">=" =>
-            (Seq(Int, Perm) intersect l) intersect r
-          case "==" | "!=" =>
-            Seq(Bool)
-          case "&&" | "||" | "<==>" | "==>" =>
-            Seq(Bool)
-          case _ => sys.error(s"unexpected operator $op")
-        }
-      case PUnExp(op, e) =>
-        op match {
-          case "-" => possibleTypes(e)
-          case _ => sys.error(s"unexpected operator $op")
-        }
-      case PIntLit(i) => Seq(Int)
-      case PResultLit() =>
-        curMember match {
-          case PFunction(_, _, typ, _, _, _) =>
-            Seq(typ)
-          case _ => Nil
-        }
-      case PBoolLit(b) => Seq(Bool)
-      case PNullLit() => Seq(Ref)
-      case PLocationAccess(rcv, idnuse) =>
-        names.definition(curMember)(idnuse) match {
-          case PField(_, typ) =>
-            Seq(typ)
-          case _ => Nil
-        }
-      case PFunctApp(func, args) =>
-        names.definition(curMember)(func) match {
-          case PFunction(_, _, typ, _, _, _) =>
-            Seq(typ)
-          case PDomainFunction(_, _, typ) =>
-            Seq(typ)
-          case _ => Nil
-        }
-      case PUnfolding(loc, e) => Seq(Bool)
-      case PExists(variable, e) => Seq(Bool)
-      case PForall(variable, e) => Seq(Bool)
-      case PCondExp(cond, thn, els) => possibleTypes(thn) intersect possibleTypes(els)
-      case PCurPerm(loc) => Seq(Perm)
-      case PNoPerm() => Seq(Perm)
-      case PFullPerm() => Seq(Perm)
-      case PWildcard() => Seq(Perm)
-      case PConcretePerm(a, b) => Seq(Perm)
-      case PEpsilon() => Seq(Perm)
-      case PAccPred(loc, perm) => Seq(Bool)
-      case PEmptySeq() => Seq(PSeqType(PUnkown()))
-      case PExplicitSeq(elems) => possibleTypes(elems.head) map (PSeqType(_))
-      case PRangeSeq(low, high) => Seq(PSeqType(Int))
-      case PSeqElement(seq, idx) => possibleTypes(seq) map (_.asInstanceOf[PSeqType].elementType)
-      case PSeqTake(seq, n) => possibleTypes(seq)
-      case PSeqDrop(seq, n) => possibleTypes(seq)
-      case PSeqUpdate(seq, idx, elem) => possibleTypes(seq)
-      case PPSeqLength(seq) => Seq(Int)
     }
   }
 
@@ -515,8 +505,6 @@ case class NameAnalyser() {
             // domain types can also be type variables, which need not be declared
             if (!i.parent.isInstanceOf[PDomainType])
               message(i, s"$name not defined.")
-            else
-              i.parent.asInstanceOf[PDomainType].isTypeVar = true
           case _ =>
         }
       case _ =>

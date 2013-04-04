@@ -80,19 +80,34 @@ case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with RealEn
 
 // Types
 sealed trait PType extends PNode {
+  def isUnknown: Boolean = this.isInstanceOf[PUnkown]
   def isConcrete: Boolean = true
+  def substitute(newTypVarsMap: Map[String, PType]): PType = this
 }
 case class PPrimitiv(name: String) extends PType
 case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
-  var isTypeVar = false
-  override def hashCode = domain.hashCode
-  override def equals(o: Any) = o match {
-    case PDomainType(other, _) => domain == other
-    case _ => false
-  }
+  // this class is also used to represent type variables, as they cannot syntactically
+  // distinguished from domain types without generic arguments.  For type variables, we have
+  // args.length = 0
+  def isTypeVar = _isTypeVar.getOrElse(sys.error("type has not been checked yet, call check(t) first"))
+  var _isTypeVar: Option[Boolean] = None
   override def isConcrete: Boolean = {
-    args.forall(_.isConcrete) && args.size > 0
+    args.forall(_.isConcrete) && args.size > 0 && !isTypeVar
   }
+  override def substitute(newTypVarsMap: Map[String, PType]): PType = {
+    if (isTypeVar && newTypVarsMap.isDefinedAt(domain.name)) {
+      return newTypVarsMap.get(domain.name).get
+    }
+    val newArgs = args map {
+      case PTypeVar(name) if newTypVarsMap.isDefinedAt(name) =>
+        newTypVarsMap.get(name).get
+      case t => t
+    }
+    PDomainType(domain, newArgs)
+  }
+}
+object PTypeVar {
+  def unapply(p: PDomainType) = if (p.isTypeVar) Some(p.domain.name) else None
 }
 case class PSeqType(elementType: PType) extends PType
 case class PUnkown() extends PType // for resolving if something cannot be typed
