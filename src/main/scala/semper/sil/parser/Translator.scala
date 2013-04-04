@@ -16,7 +16,7 @@ case class Translator(program: PProgram) {
 
   def translate: Program = {
     program match {
-      case PProgram(name, domains, fields, functions, predicates, methods) =>
+      case PProgram(domains, fields, functions, predicates, methods) =>
         (domains ++ fields ++ functions ++ predicates ++
           methods ++ (domains flatMap (_.funcs))) map translateMemberSignature
         val d = domains map (translate(_))
@@ -24,7 +24,7 @@ case class Translator(program: PProgram) {
         val fs = functions map (translate(_))
         val p = predicates map (translate(_))
         val m = methods map (translate(_))
-        Program(name.name, d, f, fs, p, m)(program.start)
+        Program(d, f, fs, p, m)(program.start)
     }
   }
 

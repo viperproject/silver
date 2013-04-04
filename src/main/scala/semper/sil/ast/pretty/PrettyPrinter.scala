@@ -30,13 +30,9 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
 
   /** Show a program. */
   def showProgram(p: Program): Doc = {
-    val Program(name, domains, fields, functions, predicates, methods) = p
+    val Program(domains, fields, functions, predicates, methods) = p
     showComment(p) <>
-      "program" <+> name <+>
-      braces(nest(line <>
-        lineIfSomeNonEmpty(domains, fields, functions, predicates, domains) <>
-        ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
-      ) <> line)
+      ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
   }
 
   /** Show a domain member. */

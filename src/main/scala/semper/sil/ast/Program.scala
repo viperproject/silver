@@ -5,10 +5,8 @@ import org.kiama.output._
 
 /** A SIL program. */
 // TODO consistency checks
-case class Program(name: String, domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
-                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
-  require(Consistency.validUserDefinedIdentifier(name))
-}
+case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
+                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed
 
 // --- Program members
 

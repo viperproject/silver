@@ -75,12 +75,11 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   // --- Declarations
 
   lazy val programDecl =
-    ("program" ~> idndef) ~
-      ("{" ~> rep(domainDecl)) ~
+      rep(domainDecl) ~
       rep(fieldDecl) ~
       rep(functionDecl) ~
       rep(predicateDecl) ~
-      ((rep(methodDecl) <~ "}")) ^^ PProgram
+      rep(methodDecl) ^^ PProgram
 
   lazy val fieldDecl =
     ("var" ~> idndef) ~ (":" ~> typ) ^^ PField

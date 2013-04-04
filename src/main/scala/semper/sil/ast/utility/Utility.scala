@@ -89,7 +89,7 @@ object Nodes {
    */
   def subnodes(n: Node): Seq[Node] = {
     val subnodesWithType = n match {
-      case Program(name, domains, fields, functions, predicates, methods) =>
+      case Program(domains, fields, functions, predicates, methods) =>
         domains ++ fields ++ functions ++ predicates ++ methods
       case m: Member =>
         m match {

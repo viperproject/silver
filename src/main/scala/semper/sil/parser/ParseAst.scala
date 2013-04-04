@@ -197,7 +197,7 @@ case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extend
 sealed trait PMember extends PNode {
   def idndef: PIdnDef
 }
-case class PProgram(idndef: PIdnDef, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode with RealEntity
+case class PProgram(domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with RealEntity
 case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with RealEntity
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
@@ -283,8 +283,8 @@ object Nodes {
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
       case PFreshReadPerm(vars, stmt) => vars ++ Seq(stmt)
-      case PProgram(idndef, domains, fields, functions, predicates, methods) =>
-        Seq(idndef) ++ domains ++ fields ++ functions ++ predicates ++ methods
+      case PProgram(domains, fields, functions, predicates, methods) =>
+        domains ++ fields ++ functions ++ predicates ++ methods
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>

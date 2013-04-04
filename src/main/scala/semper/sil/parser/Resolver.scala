@@ -490,7 +490,6 @@ case class NameAnalyser() {
             getMap.put(name, MultipleEntity())
           case None =>
             i.parent match {
-              case decl: PProgram => idnMap.put(name, decl)
               case decl: PMethod => idnMap.put(name, decl)
               case decl: PLocalVarDecl => getMap.put(name, decl)
               case decl: PFormalArgDecl => getMap.put(name, decl)
