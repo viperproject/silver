@@ -95,9 +95,6 @@ sealed trait PermExp extends Exp {
   override lazy val typ = Perm
 }
 
-/** An abstract read permission. Has an unknown local value, but it has the same value inside one method and its contracts. */
-case class ReadPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
-
 /** A wild card permission. Has an unknown value, but there are no guarantees that it will be the same inside one method. */
 case class WildcardPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 

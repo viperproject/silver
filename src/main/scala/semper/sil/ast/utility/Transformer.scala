@@ -32,7 +32,6 @@ object Transformer {
           case CondExp(cond, thn, els) => CondExp(func(cond), func(thn), func(els))(p, i)
           case Exists(v, e) => Exists(v, func(e))(p, i)
           case Forall(v, e) => Forall(v, func(e))(p, i)
-          case ReadPerm() => exp
           case WildcardPerm() => exp
           case FullPerm() => exp
           case NoPerm() => exp
