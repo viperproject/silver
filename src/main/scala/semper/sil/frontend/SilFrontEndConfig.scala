@@ -12,7 +12,7 @@ import org.rogach.scallop.exceptions.{Help, Version, ScallopException, Exit}
  */
 case class SilFrontendConfig(ars: Seq[String], verifier: Verifier) extends LazyScallopConf(ars) {
 
-  /** None if there has no error occurred during command-line parsing, and an error message oderwise. */
+  /** None if there has no error occurred during command-line parsing, and an error message otherwise. */
   var error: Option[String] = None
   /** True if (after command-line parsing) we should exit. */
   var exit: Boolean = false
