@@ -518,7 +518,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PSeqTake(seq, n) => ???
       case PSeqDrop(seq, n) => ???
       case PSeqUpdate(seq, idx, elem) => ???
-      case PPSeqLength(seq) =>
+      case PSeqLength(seq) =>
         if (expected.nonEmpty && !(expected contains Int)) {
           issueError(exp, s"expected $expectedString, but found |.| which has type Int")
         } else {

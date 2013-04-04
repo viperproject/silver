@@ -262,7 +262,7 @@ case class Translator(program: PProgram) {
         SeqDrop(exp(seq), exp(n))(pos)
       case PSeqUpdate(seq, idx, elem) =>
         SeqUpdate(exp(seq), exp(idx), exp(elem))(pos)
-      case PPSeqLength(seq) =>
+      case PSeqLength(seq) =>
         SeqLength(exp(seq))(pos)
     }
   }

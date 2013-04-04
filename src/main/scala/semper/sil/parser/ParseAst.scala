@@ -167,7 +167,7 @@ case class PSeqElement(seq: PExp, idx: PExp) extends PExp
 case class PSeqTake(seq: PExp, n: PExp) extends PExp
 case class PSeqDrop(seq: PExp, n: PExp) extends PExp
 case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends PExp
-case class PPSeqLength(seq: PExp) extends PExp
+case class PSeqLength(seq: PExp) extends PExp
 
 // Statements
 sealed trait PStmt extends PNode {
@@ -274,7 +274,7 @@ object Nodes {
       case PSeqTake(seq, nn) => Seq(seq, nn)
       case PSeqDrop(seq, nn) => Seq(seq, nn)
       case PSeqUpdate(seq, idx, elem) => Seq(seq, idx, elem)
-      case PPSeqLength(seq) => Seq(seq)
+      case PSeqLength(seq) => Seq(seq)
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)

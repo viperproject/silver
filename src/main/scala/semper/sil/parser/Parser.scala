@@ -286,7 +286,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       seqTake | seqDrop | seqTakeDrop | seqAppend |
       seqElement | seqContains | seqUpdate
   lazy val seqLength: PackratParser[PExp] =
-    "|" ~> exp <~ "|" ^^ PPSeqLength
+    "|" ~> exp <~ "|" ^^ PSeqLength
   lazy val seqTake: PackratParser[PExp] =
     exp ~ ("[.." ~> exp <~ "]") ^^ PSeqTake
   lazy val seqDrop: PackratParser[PExp] =
