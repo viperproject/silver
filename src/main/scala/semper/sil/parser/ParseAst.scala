@@ -111,6 +111,11 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
 }
 object PTypeVar {
   def unapply(p: PDomainType) = if (p.isTypeVar) Some(p.domain.name) else None
+  def apply(name: String) = {
+    val t = PDomainType(PIdnUse(name), Nil)
+    t._isTypeVar = Some(true)
+    t
+  }
 }
 case class PSeqType(elementType: PType) extends PType {
   override def toString = s"Seq[$elementType]"

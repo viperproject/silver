@@ -238,7 +238,7 @@ case class TypeChecker(names: NameAnalyser) {
       case (PSeqType(e1), PSeqType(e2)) => isCompatible(e1, e2)
       case (PDomainType(domain1, args1), PDomainType(domain2, args2))
         if domain1 == domain2 && args1.length == args2.length =>
-          (args1 zip args2) forall (x => isCompatible(x._1, x._2))
+        (args1 zip args2) forall (x => isCompatible(x._1, x._2))
       case _ if a == b => true
       case _ => false
     }
@@ -252,6 +252,24 @@ case class TypeChecker(names: NameAnalyser) {
    */
   def check(exp: PExp, expected: PType): Unit = check(exp, Seq(expected))
   def check(exp: PExp, expected: Seq[PType]): Unit = {
+    def setRefinedType(actual: PType, inferred: Seq[(String, PType)]) {
+      val t = actual.substitute(inferred.toMap)
+      check(t)
+      setType(t)
+    }
+    /**
+     * Turn 'expected' into a readable string.
+     */
+    lazy val expectedString = {
+      if (expected.size == 1) {
+        expected.head.toString
+      } else {
+        s"one of [${expected.mkString(", ")}]"
+      }
+    }
+    /**
+     * Set the type of 'exp', and check that the actual type is allowed by one of the expected types.
+     */
     def setType(actual: PType) {
       if (actual.isUnknown) {
         // no error for unknown type (an error has already been issued)
@@ -269,18 +287,25 @@ case class TypeChecker(names: NameAnalyser) {
           }
         }
         if (!found) {
-          if (expected.size == 1) {
-            message(exp, s"expected ${expected.head}, but got $actual")
-          } else {
-            message(exp, s"expected one of $expected, but got $actual")
-          }
+          message(exp, s"expected $expectedString, but got $actual")
         }
       }
     }
+    /**
+     * Issue an error for the node at 'n'. Also sets an error type for 'exp' to suppress
+     * further warnings.
+     */
     def issueError(n: Positioned, m: String) {
       message(n, m)
-      setType(PUnkown()) // suppress further warnings
+      setErrorType() // suppress further warnings
     }
+    /**
+     * Sets an error type for 'exp' to suppress further warnings.
+     */
+    def setErrorType() {
+      setType(PUnkown())
+    }
+    def genericSeqType: PSeqType = PSeqType(PTypeVar("."))
     exp match {
       case i@PIdnUse(name) =>
         names.definition(curMember)(i) match {
@@ -299,12 +324,12 @@ case class TypeChecker(names: NameAnalyser) {
             val safeExpected = if (expected.size == 0) Seq(Int, Perm) else expected
             safeExpected.filter(x => Seq(Int, Perm) contains x) match {
               case Nil =>
-                issueError(exp, s"expected type $expected, but found operator $op that cannot have such a type")
+                issueError(exp, s"expected $expectedString, but found operator $op that cannot have such a type")
               case expectedStillPossible =>
                 check(left, expectedStillPossible)
                 check(right, expectedStillPossible)
                 if (left.typ.isUnknown || right.typ.isUnknown) {
-                  setType(PUnkown()) // error has already been issued
+                  setErrorType()
                 } else if (left.typ == right.typ) {
                   setType(left.typ)
                 } else {
@@ -330,8 +355,9 @@ case class TypeChecker(names: NameAnalyser) {
             check(right, Nil)
             if (left.typ.isUnknown || right.typ.isUnknown) {
               // nothing to do, error has already been issued
-            } else if (left.typ == right.typ) {
+            } else if (isCompatible(left.typ, right.typ)) {
               // ok
+              // TODO: perform type refinement and propagate down
             } else {
               issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
             }
@@ -348,11 +374,11 @@ case class TypeChecker(names: NameAnalyser) {
             val safeExpected = if (expected.size == 0) Seq(Int, Perm) else expected
             safeExpected.filter(x => Seq(Int, Perm) contains x) match {
               case Nil =>
-                issueError(exp, s"expected type $expected, but found unary operator $op that cannot have such a type")
+                issueError(exp, s"expected $expectedString, but found unary operator $op that cannot have such a type")
               case expectedStillPossible =>
                 check(e, expectedStillPossible)
                 if (e.typ.isUnknown) {
-                  // nothing to do, error has already been issued
+                  setErrorType()
                 } else {
                   // ok
                   setType(e.typ)
@@ -402,22 +428,33 @@ case class TypeChecker(names: NameAnalyser) {
             if (expected.size == 1) {
               inferred ++= learn(typ, expected.head)
             }
-            val t = typ.substitute(inferred.toMap)
-            check(t)
-            setType(t)
+            setRefinedType(typ, inferred)
           case x =>
             issueError(func, s"expected function")
         }
       case PUnfolding(loc, e) =>
         check(loc, Pred)
         check(e, expected)
+        setType(e.typ)
       case PExists(variable, e) =>
         check(variable.typ)
         check(e, Bool)
       case PForall(variable, e) =>
         check(variable.typ)
         check(e, Bool)
-      case PCondExp(cond, thn, els) => ???
+      case PCondExp(cond, thn, els) =>
+        check(cond, Bool)
+        check(thn, Nil)
+        check(els, Nil)
+        if (thn.typ.isUnknown || els.typ.isUnknown) {
+          setErrorType()
+        } else if (isCompatible(thn.typ, els.typ)) {
+          // ok
+          // TODO: perform type refinement and propagate down
+          setType(thn.typ)
+        } else {
+          issueError(exp, s"both branches of a conditional expression must have same type, but found ${thn.typ} and ${els.typ}")
+        }
       case PCurPerm(loc) =>
         check(loc, Seq())
         setType(Perm)
@@ -434,14 +471,60 @@ case class TypeChecker(names: NameAnalyser) {
       case PAccPred(loc, perm) =>
         check(loc, Seq())
         check(perm, Perm)
-      case PEmptySeq() => ???
-      case PExplicitSeq(elems) => ???
-      case PRangeSeq(low, high) => ???
-      case PSeqElement(seq, idx) => ???
+        setType(Bool)
+      case PEmptySeq() =>
+        val typ = genericSeqType
+        if (expected.size == 1) {
+          setRefinedType(typ, learn(typ, expected.head))
+        } else {
+          setType(typ)
+        }
+      case PExplicitSeq(elems) =>
+        assert(elems.nonEmpty)
+        val expextedElemTyp = (expected map {
+          case PSeqType(e) => Some(e)
+          case _ => None
+        }) filter (_.isDefined) map (_.get)
+        elems map (check(_, expextedElemTyp))
+        elems map (_.typ) filterNot (_.isUnknown) match {
+          case Nil =>
+            // all elements have an error type
+            setErrorType()
+          case types =>
+            for (t <- types.tail) {
+              ensure(isCompatible(t, types.head), exp,
+                s"expected the same type for all elements of the explicit sequence, but found ${types.head} and $t")
+            }
+            // TODO: perform type inference and propagate type down
+            setType(PSeqType(types.head))
+        }
+      case PRangeSeq(low, high) =>
+        check(low, Int)
+        check(high, Int)
+        setType(PSeqType(Int))
+      case PSeqElement(seq, idx) =>
+        val expectedSeqType = expected match {
+          case Nil => Seq(genericSeqType)
+          case _ => expected map (PSeqType(_))
+        }
+        check(seq, expectedSeqType)
+        check(idx, Int)
+        seq.typ match {
+          case PSeqType(elemType) =>
+            setType(elemType)
+          case _ =>
+            setErrorType()
+        }
       case PSeqTake(seq, n) => ???
       case PSeqDrop(seq, n) => ???
       case PSeqUpdate(seq, idx, elem) => ???
-      case PPSeqLength(seq) => ???
+      case PPSeqLength(seq) =>
+        if (expected.nonEmpty && !(expected contains Int)) {
+          issueError(exp, s"expected $expectedString, but found |.| which has type Int")
+        } else {
+          check(seq, genericSeqType)
+          setType(Int)
+        }
     }
   }
 
