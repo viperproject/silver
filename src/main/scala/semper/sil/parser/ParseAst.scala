@@ -84,7 +84,9 @@ sealed trait PType extends PNode {
   def isConcrete: Boolean = true
   def substitute(newTypVarsMap: Map[String, PType]): PType = this
 }
-case class PPrimitiv(name: String) extends PType
+case class PPrimitiv(name: String) extends PType {
+  override def toString = name
+}
 case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
   // this class is also used to represent type variables, as they cannot syntactically
   // distinguished from domain types without generic arguments.  For type variables, we have
@@ -105,13 +107,23 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
     }
     PDomainType(domain, newArgs)
   }
+  override def toString = domain.name + (if (args.isEmpty) "" else s"[${args.mkString(", ")}]")
 }
 object PTypeVar {
   def unapply(p: PDomainType) = if (p.isTypeVar) Some(p.domain.name) else None
 }
-case class PSeqType(elementType: PType) extends PType
-case class PUnkown() extends PType // for resolving if something cannot be typed
-case class PPredicateType() extends PType // used during resolving for predicate accesses
+case class PSeqType(elementType: PType) extends PType {
+  override def toString = s"Seq[$elementType]"
+}
+// for resolving if something cannot be typed
+case class PUnkown() extends PType {
+  override def toString = "<error type>"
+}
+// used during resolving for predicate accesses
+case class PPredicateType() extends PType {
+  override def toString = "$predicate"
+}
+
 
 // Expressions
 sealed trait PExp extends PNode {
