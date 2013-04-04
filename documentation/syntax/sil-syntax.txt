@@ -1,10 +1,4 @@
-    sil-program ::= (
-                        domain |
-                        field |
-                        function |
-                        predicate |
-                        method
-                    )*
+    sil-program ::= ( domain | field | function | predicate | method )*
 
          domain ::= "domain" "{"
                         domain-function*
