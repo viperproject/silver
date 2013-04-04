@@ -249,7 +249,7 @@ case class Translator(program: PProgram) {
             sys.error("unexpected location")
         }
       case PEmptySeq() =>
-        EmptySeq(ttyp(pexp.typ))(pos)
+        EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos)
       case PExplicitSeq(elems) =>
         ExplicitSeq(elems map exp)(pos)
       case PRangeSeq(low, high) =>
