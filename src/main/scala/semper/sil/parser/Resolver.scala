@@ -217,6 +217,8 @@ case class TypeChecker(names: NameAnalyser) {
     (a, b) match {
       case (PTypeVar(name), t) if t.isConcrete => Seq(name -> t)
       case (t, PTypeVar(name)) if t.isConcrete => Seq(name -> t)
+      case (PSeqType(e1), PSeqType(e2)) =>
+        learn(e1, e2)
       case (PDomainType(n1, m1), PDomainType(n2, m2))
         if n1 == n2 && m1.length == m2.length =>
         (m1 zip m2) flatMap (x => learn(x._1, x._2))

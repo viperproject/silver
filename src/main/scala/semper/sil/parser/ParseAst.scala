@@ -119,6 +119,8 @@ object PTypeVar {
 }
 case class PSeqType(elementType: PType) extends PType {
   override def toString = s"Seq[$elementType]"
+  override def isConcrete = elementType.isConcrete
+  override def substitute(map: Map[String, PType]) = PSeqType(elementType.substitute(map))
 }
 // for resolving if something cannot be typed
 case class PUnkown() extends PType {
