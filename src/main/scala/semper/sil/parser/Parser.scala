@@ -58,7 +58,9 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // quantification
     "forall", "exists",
     // permission syntax
-    "acc", "wildcard", "write", "none", "epsilon", "perm"
+    "acc", "wildcard", "write", "none", "epsilon", "perm",
+    // sequences
+    "Seq"
   )
 
   lazy val parser = phrase(programDecl)
@@ -186,13 +188,15 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   // --- Types
 
   lazy val typ: PackratParser[PType] =
-    primitiveTyp | domainTyp
+    primitiveTyp | domainTyp | seqType
   lazy val domainTyp: PackratParser[PDomainType] =
     idnuse ~ ("[" ~> (repsep(typ, ",") <~ "]")) ^^ PDomainType |
       idnuse ^^ {
         // domain type without type arguments (might also be a type variable)
         case name => PDomainType(name, Nil)
       }
+  lazy val seqType: PackratParser[PType] =
+    "Seq[" ~> typ <~ "]" ^^ PSeqType
   lazy val primitiveTyp: PackratParser[PType] =
     ("Int" | "Bool" | "Perm" | "Ref") ^^ PPrimitiv
 
@@ -238,7 +242,8 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       "(" ~> exp <~ ")" |
       "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred |
       perm |
-      quant
+      quant |
+      seq
 
   lazy val fapp: PackratParser[PExp] =
     idnuse ~ parens(actualArgList) ^^ PFunctApp
@@ -273,6 +278,37 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
 
   lazy val idnuse =
     ident ^^ PIdnUse
+
+  // --- Sequences
+
+  lazy val seq =
+    seqLength | emptySeq | explicitSeq | seqRange |
+      seqTake | seqDrop | seqTakeDrop | seqAppend |
+      seqElement | seqContains | seqUpdate
+  lazy val seqLength: PackratParser[PExp] =
+    "|" ~> exp <~ "|" ^^ PPSeqLength
+  lazy val seqTake: PackratParser[PExp] =
+    exp ~ ("[.." ~> exp <~ "]") ^^ PSeqTake
+  lazy val seqDrop: PackratParser[PExp] =
+    exp ~ ("[" ~> exp <~ "..]") ^^ PSeqDrop
+  lazy val seqTakeDrop: PackratParser[PExp] =
+    exp ~ ("[" ~> exp <~ "..") ~ (exp <~ "]") ^^ {
+      case s ~ take ~ drop => PSeqTake(PSeqDrop(s, drop), take)
+    }
+  lazy val seqAppend: PackratParser[PExp] =
+    exp ~ "++" ~ exp ^^ PBinExp
+  lazy val seqElement: PackratParser[PExp] =
+    (exp <~ "[") ~ (exp <~ "]") ^^ PSeqElement
+  lazy val seqContains: PackratParser[PExp] =
+    exp ~ "in" ~ exp ^^ PBinExp
+  lazy val seqUpdate: PackratParser[PExp] =
+    exp ~ ("[" ~> exp <~ ":=") ~ (exp <~ "]") ^^ PSeqUpdate
+  lazy val emptySeq: PackratParser[PExp] =
+    "Seq()" ^^^ PEmptySeq()
+  lazy val explicitSeq: PackratParser[PExp] =
+    "Seq(" ~> rep1(exp) <~ ")" ^^ PExplicitSeq
+  lazy val seqRange: PackratParser[PExp] =
+    ("[" ~> exp <~ "..") ~ (exp <~ ")") ^^ PRangeSeq
 
   // --- Identifier and keywords
 
