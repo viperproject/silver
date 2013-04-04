@@ -51,34 +51,6 @@ case class TypeChecker(names: NameAnalyser) {
     p.methods map check
   }
 
-  def checkSignature(p: PProgram) {
-    for (d <- p.domains) {
-      d.funcs map checkSignature
-    }
-    p.fields map checkSignature
-    p.functions map checkSignature
-    p.predicates map checkSignature
-    p.methods map checkSignature
-  }
-  def checkSignature(p: PMethod) {
-    p.formalArgs map (x => check(x.typ))
-    p.formalReturns map (x => check(x.typ))
-  }
-  def checkSignature(p: PFunction) {
-    p.formalArgs map (x => check(x.typ))
-    check(p.typ)
-  }
-  def checkSignature(p: PDomainFunction) {
-    p.formalArgs map (x => check(x.typ))
-    check(p.typ)
-  }
-  def checkSignature(p: PPredicate) {
-    check(p.formalArg.typ)
-  }
-  def checkSignature(p: PField) {
-    check(p.typ)
-  }
-
   def checkMember(m: PMember)(fcheck: => Unit) {
     curMember = m
     fcheck
