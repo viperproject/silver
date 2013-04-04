@@ -21,11 +21,10 @@ sealed case class TestAnnotations(errors: Seq[TestAnnotationParseError], annotat
 
   /** Returns all the annotations without 'ignores'. */
   def errorAnnotations: Seq[ErrorAnnotation] = {
-    annotations flatMap {
-      case x: ExpectedError => x :: Nil
-      case x: UnexpectedError => x :: Nil
-      case x: MissingError => x :: Nil
-      case _ => Nil
+    annotations collect {
+      case x: ExpectedError => x
+      case x: UnexpectedError => x
+      case x: MissingError => x
     }
   }
 }
