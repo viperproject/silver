@@ -89,7 +89,7 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
   // this class is also used to represent type variables, as they cannot syntactically
   // distinguished from domain types without generic arguments.  For type variables, we have
   // args.length = 0
-  def isTypeVar = _isTypeVar.getOrElse(sys.error("type has not been checked yet, call check(t) first"))
+  def isTypeVar = _isTypeVar.getOrElse(sys.error(s"type has not been checked yet, call check($this) first"))
   var _isTypeVar: Option[Boolean] = None
   override def isConcrete: Boolean = {
     args.forall(_.isConcrete) && args.size > 0 && !isTypeVar

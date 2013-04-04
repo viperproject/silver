@@ -36,11 +36,47 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(p: PProgram) {
+    // first, check all types to make sure we know what PDomainType's are actually
+    // domain types, and which are type variables.
+    p visit {
+      case t: PType =>
+        check(t)
+      case _ =>
+    }
+    // now check all program parts
     p.domains map check
     p.fields map check
     p.functions map check
     p.predicates map check
     p.methods map check
+  }
+
+  def checkSignature(p: PProgram) {
+    for (d <- p.domains) {
+      d.funcs map checkSignature
+    }
+    p.fields map checkSignature
+    p.functions map checkSignature
+    p.predicates map checkSignature
+    p.methods map checkSignature
+  }
+  def checkSignature(p: PMethod) {
+    p.formalArgs map (x => check(x.typ))
+    p.formalReturns map (x => check(x.typ))
+  }
+  def checkSignature(p: PFunction) {
+    p.formalArgs map (x => check(x.typ))
+    check(p.typ)
+  }
+  def checkSignature(p: PDomainFunction) {
+    p.formalArgs map (x => check(x.typ))
+    check(p.typ)
+  }
+  def checkSignature(p: PPredicate) {
+    check(p.formalArg.typ)
+  }
+  def checkSignature(p: PField) {
+    check(p.typ)
   }
 
   def checkMember(m: PMember)(fcheck: => Unit) {
@@ -285,7 +321,8 @@ case class TypeChecker(names: NameAnalyser) {
       case PBinExp(left, op, right) =>
         op match {
           case "+" | "-" =>
-            expected.filter(x => Seq(Int, Perm) contains x) match {
+            val safeExpected = if (expected.size == 0) Seq(Int, Perm) else expected
+            safeExpected.filter(x => Seq(Int, Perm) contains x) match {
               case Nil =>
                 issueError(exp, s"expected type $expected, but found operator $op that cannot have such a type")
               case expectedStillPossible =>
@@ -316,7 +353,9 @@ case class TypeChecker(names: NameAnalyser) {
           case "==" | "!=" =>
             check(left, Nil) // any type is fine
             check(right, Nil)
-            if (left.typ == right.typ) {
+            if (left.typ.isUnknown || right.typ.isUnknown) {
+              // nothing to do, error has already been issued
+            } else if (left.typ == right.typ) {
               // ok
             } else {
               issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
@@ -331,7 +370,8 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnExp(op, e) =>
         op match {
           case "-" | "+" =>
-            expected.filter(x => Seq(Int, Perm) contains x) match {
+            val safeExpected = if (expected.size == 0) Seq(Int, Perm) else expected
+            safeExpected.filter(x => Seq(Int, Perm) contains x) match {
               case Nil =>
                 issueError(exp, s"expected type $expected, but found unary operator $op that cannot have such a type")
               case expectedStillPossible =>
@@ -387,7 +427,9 @@ case class TypeChecker(names: NameAnalyser) {
             if (expected.size == 1) {
               inferred ++= learn(typ, expected.head)
             }
-            setType(typ.substitute(inferred.toMap))
+            val t = typ.substitute(inferred.toMap)
+            check(t)
+            setType(t)
           case x =>
             issueError(func, s"expected function")
         }
