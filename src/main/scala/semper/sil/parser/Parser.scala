@@ -294,7 +294,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     exp ~ ("[" ~> exp <~ "..]") ^^ PSeqDrop
   lazy val seqTakeDrop: PackratParser[PExp] =
     exp ~ ("[" ~> exp <~ "..") ~ (exp <~ "]") ^^ {
-      case s ~ take ~ drop => PSeqTake(PSeqDrop(s, drop), take)
+      case s ~ drop ~ take => PSeqDrop(PSeqTake(s, take), drop)
     }
   lazy val seqIndex: PackratParser[PExp] =
     (exp <~ "[") ~ (exp <~ "]") ^^ PSeqIndex
