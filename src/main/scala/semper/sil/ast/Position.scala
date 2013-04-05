@@ -1,5 +1,7 @@
 package semper.sil.ast
 
+import java.io.File
+
 /** A trait describing the position of occurance of an AST node. */
 sealed trait Position
 
@@ -19,7 +21,7 @@ trait RealPosition {
 case class SourcePosition(line: Int, column: Int) extends Position with RealPosition
 
 /** Refers to a location in a source language that has been translated to SIL. */
-case class TranslatedPosition(pos: RealPosition) extends Position with RealPosition {
-  def line = pos.line
-  def column = pos.column
+case class TranslatedPosition(file: File, pos: RealPosition) extends Position with RealPosition {
+  val line = pos.line
+  val column = pos.column
 }
