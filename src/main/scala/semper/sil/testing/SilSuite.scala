@@ -127,6 +127,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
                 case ErrorAnnotation(id, file, lineNr) => id.matches(actual.fullId) && (actual.pos match {
                   case p: SourcePosition => lineNr == p.line
                   case p: TranslatedPosition => file == p.file && lineNr == p.line
+                  case _ => sys.error("Position is neither a source position nor a translated position even though we checked this before.")
                 })
               }) match {
                 case x :: _ => {
