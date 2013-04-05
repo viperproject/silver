@@ -17,6 +17,7 @@ import semper.sil.ast.Inhale
 import semper.sil.ast.Goto
 import semper.sil.ast.FieldAssign
 import semper.sil.ast.LoopBlock
+import semper.sil.ast.FreshReadPermBlock
 import semper.sil.ast.LocalVarAssign
 import semper.sil.ast.If
 
@@ -82,6 +83,22 @@ object CfgGenerator {
     override def toString = s"TmpLoopBlock(${loop.cond}, $edge)"
     def succs = if (edge == null) Nil else List(edge.dest)
   }
+  class TmpFreshReadPermBlock(val frp: FreshReadPerm, private var _body: TmpBlock) extends TmpBlock {
+    body.pred += this
+    def body = _body
+    var edge: TmpEdge = null
+    override def +=(e: TmpEdge) {
+      super.+=(e)
+      require(edge == null)
+      edge = e
+    }
+    def body_=(b: TmpBlock) {
+      _body = b
+      b.pred += this
+    }
+    override def toString = s"TmpFreshReadPermBlock(${frp.vars}, $edge)"
+    def succs = if (edge == null) Nil else List(edge.dest)
+  }
   trait TmpEdge {
     def dest: TmpBlock
   }
@@ -100,6 +117,7 @@ object CfgGenerator {
       val tb = worklist.dequeue()
       val succsAndBody = tb.succs ++ (tb match {
         case l: TmpLoopBlock => Seq(l.body)
+        case tmpFRP: TmpFreshReadPermBlock => Seq(tmpFRP.body)
         case _ => Nil
       })
       worklist.enqueue((succsAndBody filterNot (visited contains _)): _*)
@@ -130,6 +148,7 @@ object CfgGenerator {
   case class Jump(lbl: Lbl) extends ExtendedStmt
   case class CondJump(thn: Lbl, els: Lbl, cond: Exp) extends ExtendedStmt
   case class Loop(after: Lbl, loop: While) extends ExtendedStmt
+  case class FreshReadPermES(after: Lbl, frp: FreshReadPerm) extends ExtendedStmt
   case class EmptyStmt() extends ExtendedStmt
 
   /**
@@ -147,6 +166,8 @@ object CfgGenerator {
         tb match {
           case loop: TmpLoopBlock =>
             b = LoopBlock(null, loop.loop.cond, loop.loop.invs, loop.loop.locals, null)
+          case tmpFRP: TmpFreshReadPermBlock =>
+            b = FreshReadPermBlock(tmpFRP.frp.vars, null, null)
           case vb: VarBlock if vb.edges.size == 0 =>
             b = TerminalBlock(vb.stmt)
           case vb: VarBlock if vb.edges.size == 1 =>
@@ -168,6 +189,10 @@ object CfgGenerator {
             val lb = b.asInstanceOf[LoopBlock]
             lb.body = b2b(loop.body)
             lb.succ = b2b(loop.edge.dest)
+          case tmpFRP: TmpFreshReadPermBlock =>
+            val frpb = b.asInstanceOf[FreshReadPermBlock]
+            frpb.body = b2b(tmpFRP.body)
+            frpb.succ = b2b(tmpFRP.edge.dest)
           case vb: VarBlock if vb.edges.size == 0 => // nothing to do, no successors
           case vb: VarBlock if vb.edges.size == 1 =>
             b.asInstanceOf[NormalBlock].succ = b2b(vb.edges(0).dest)
@@ -206,6 +231,12 @@ object CfgGenerator {
                         loop.edge = UncondEdge(succ)
                       } else {
                         loop.body = succ
+                      }
+                    case tmpFRP: TmpFreshReadPermBlock =>
+                      if (tmpFRP.edge.dest == vb) {
+                        tmpFRP.edge = UncondEdge(succ)
+                      } else {
+                        tmpFRP.body = succ
                       }
                     case vb: VarBlock if vb.edges.size == 1 =>
                       vb.edges(0) = UncondEdge(succ)
@@ -313,6 +344,25 @@ object CfgGenerator {
             cur = new VarBlock()
             loop += UncondEdge(cur)
             b = loop
+          case FreshReadPermES(after, frp) =>
+            val oldCur = cur
+            val body = new VarBlock()
+            cur = body
+            val oldNodes = nodes
+            val oldOffset = offset
+            nodes = nodes.slice(i + 1, lblToIdx(after))
+            offset = oldOffset + (i + 1)
+            run()
+            nodes = oldNodes
+            offset = oldOffset
+            i = lblToIdx(after) - 1
+
+            // create the frp block
+            val tmpFRP = new TmpFreshReadPermBlock(frp, body)
+            oldCur += UncondEdge(tmpFRP)
+            cur = new VarBlock()
+            tmpFRP += UncondEdge(cur)
+            b = tmpFRP
           case EmptyStmt() =>
             // skip it, and only deal with leader stuff
             if (n.isLeader) {
@@ -382,6 +432,11 @@ object CfgGenerator {
           nodes += Loop(afterLoop, w)
           run(body)
           lblmap += afterLoop -> nextNode
+        case frp @ FreshReadPerm(vars, body) =>
+          val afterFRP = Lbl("afterFRP", generated = true)
+          nodes += FreshReadPermES(afterFRP, frp)
+          run(body)
+          lblmap += afterFRP -> nextNode
         case Seqn(ss) =>
           nodes += EmptyStmt()
           for (s <- ss) run(s)

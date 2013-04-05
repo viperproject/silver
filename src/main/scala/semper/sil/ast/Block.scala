@@ -70,3 +70,8 @@ case class ConditionalBlock(stmt: Stmt, cond: Exp, var thn: Block, var els: Bloc
 case class LoopBlock(var body: Block, cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], var succ: Block) extends Block {
   lazy val succs = List(UnconditionalEdge(succ))
 }
+
+/** Corresponds to the `FreshReadPerm` statement, that is, the `vars` can be constrained inside the `body`. */
+case class FreshReadPermBlock(vars: Seq[LocalVar], var body: Block, var succ: Block) extends Block {
+  lazy val succs = List(UnconditionalEdge(succ))
+}

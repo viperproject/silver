@@ -1,11 +1,14 @@
 package semper.sil.ast.utility
 
 import semper.sil.ast.While
+import semper.sil.ast.FreshReadPerm
 import semper.sil.ast.Block
 import semper.sil.ast.Stmt
 import semper.sil.ast.TerminalBlock
 import semper.sil.ast.NormalBlock
 import semper.sil.ast.LoopBlock
+import semper.sil.ast.FreshReadPermBlock
+import semper.sil.ast.FreshReadPermBlock
 import semper.sil.ast.Seqn
 import semper.sil.ast.ConditionalBlock
 import semper.sil.ast.Goto
@@ -14,7 +17,7 @@ import semper.sil.ast.If
 import semper.sil.utility.SilNameGenerator
 
 object AstGenerator {
-  
+
   def toAst(block: Block) = AstGeneratorContext(block).toAst
 
   case class AstGeneratorContext(block: Block) {
@@ -22,9 +25,9 @@ object AstGenerator {
     private val nameGen = new SilNameGenerator()
 
     lazy val surroundingLoops = calculateSurroundingLoops(block)
-  
+
     def toAst = statementize(translateList(continuation(block, None)))
-    
+
     /** Calculates the next surrounding loop (or none) for every block. */
     def calculateSurroundingLoops(block: Block, surroundingLoop: Option[LoopBlock] = None, knownSurroundingLoops: Map[Block, Option[LoopBlock]] = Map()): Map[Block, Option[LoopBlock]] = {
       if (knownSurroundingLoops.contains(block))  {
@@ -42,12 +45,16 @@ object AstGenerator {
             val loops2 = calculateSurroundingLoops(succ, surroundingLoop, loops1)
             calculateSurroundingLoops(body, Some(b), loops2)
           }
+          case frp @ FreshReadPermBlock(_, body, _) => {
+            /* [Malte] Tried to follow what happens in case of a ConditionalBlock. */
+            calculateSurroundingLoops(body, surroundingLoop, loops1)
+          }
         }
       }
     }
-  
+
     case class BranchInformation(thn: List[Block], els: List[Block], continuation: List[Block])
-  
+
     val branchesCache = scala.collection.mutable.HashMap[ConditionalBlock, BranchInformation]()
 
     /** Finds both branches and the continuation of a conditional block. */
@@ -65,7 +72,7 @@ object AstGenerator {
         branchInfo
       }
     }
-  
+
     /** Returns true iff the first loop is equal to or inside the second loop */
     def loopIsInside(first: Option[LoopBlock], second: Option[LoopBlock]): Boolean = {
       if (first == second) {
@@ -75,7 +82,7 @@ object AstGenerator {
         case Some(loop) => loopIsInside(surroundingLoops(loop), second)
       }
     }
-  
+
     /** Returns the list of one node and all successors in the AST without gotos or loop bodies and overjumping
      * branches of conditionals. */
     private def continuation(block: Block, surroundingLoop: Option[LoopBlock], previousBlocks: Set[Block] = Set()): List[Block] = {
@@ -91,20 +98,21 @@ object AstGenerator {
         case b: ConditionalBlock => b :: extractBranches(b, previousBlocks).continuation
         case b: TerminalBlock => List(b)
         case b @ LoopBlock(body, _, _, _, succ) => b :: continuation(succ, surroundingLoop, previousBlocks + b)
+        case frp @ FreshReadPermBlock(_, _, succ) => frp :: continuation(succ, surroundingLoop, previousBlocks + frp)
         case b @ NormalBlock(_, succ) => b :: continuation(succ, surroundingLoop, previousBlocks + b)
-      } 
+      }
     }
-  
+
     private val labels = scala.collection.mutable.HashMap[Block, String]()
-  
+
     private val usedBlocks = scala.collection.mutable.Set[Block]()
-  
+
     /** Creates a statement from a list of statements by either using the unique element or a Seqn. */
     def statementize(stmts: List[Stmt]) = stmts match {
       case List(stmt) => stmt
       case _ => Seqn(stmts)()
     }
-  
+
     /** Returns the label of the given block or creates one if necessary. */
     def label(block: Block) = {
       if (labels contains block) {
@@ -115,7 +123,7 @@ object AstGenerator {
         newLabel
       }
     }
-  
+
     /** Translates a list of blocks. */
     private def translateList(blocks: List[Block]): List[Stmt] = blocks match {
       case Nil => Nil
@@ -130,7 +138,7 @@ object AstGenerator {
         stmts ++ restStmts
       }
     }
-  
+
     /** Translates a block into a list of statements. */
     private def translate(block: Block): List[Stmt] = {
       usedBlocks add block
@@ -149,6 +157,10 @@ object AstGenerator {
           val translatedLoop = While(cond, invs, locals, statementize(translatedBody))()
           List(translatedLoop)
         }
+        case frp @ FreshReadPermBlock(vars, body, _) =>
+          val translatedBody = translateList(continuation(body, None))
+          val translatedFRP = FreshReadPerm(vars, statementize(translatedBody))()
+          List(translatedFRP)
       }
       if (labels contains block) {
         Label(labels(block))() :: translated
@@ -156,7 +168,7 @@ object AstGenerator {
         translated
       }
     }
-  
+
   }
 
 }
