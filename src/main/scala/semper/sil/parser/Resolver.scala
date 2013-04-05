@@ -543,9 +543,56 @@ case class TypeChecker(names: NameAnalyser) {
           case _ =>
             setErrorType()
         }
-      case PSeqTake(seq, n) => ???
-      case PSeqDrop(seq, n) => ???
-      case PSeqUpdate(seq, idx, elem) => ???
+      case PSeqTake(seq, n) =>
+        val expectedSeqType = expected match {
+          case Nil => Seq(genericSeqType)
+          case _ => expected
+        }
+        check(seq, expectedSeqType)
+        check(n, Int)
+        seq.typ match {
+          case t: PSeqType =>
+            setType(t)
+          case _ =>
+            setErrorType()
+        }
+      case PSeqDrop(seq, n) =>
+        val expectedSeqType = expected match {
+          case Nil => Seq(genericSeqType)
+          case _ => expected
+        }
+        check(seq, expectedSeqType)
+        check(n, Int)
+        seq.typ match {
+          case t: PSeqType =>
+            setType(t)
+          case _ =>
+            setErrorType()
+        }
+      case PSeqUpdate(seq, idx, elem) =>
+        val expectedSeqType = expected match {
+          case Nil => Seq(genericSeqType)
+          case _ => expected collect {
+            case t: PSeqType => t
+          }
+        }
+        if (expectedSeqType.isEmpty) {
+          issueError(exp, s"expected $expected, but found a sequence update which has a sequence type")
+        } else {
+          check(seq, expectedSeqType)
+          check(elem, expectedSeqType map (_.elementType))
+          check(idx, Int)
+          seq.typ match {
+            case t: PSeqType =>
+              if (!isCompatible(t.elementType, elem.typ)) {
+                issueError(elem, s"found ${elem.typ} for $elem, but expected ${t.elementType}")
+              } else {
+                setType(t)
+              }
+            case _ =>
+              setErrorType()
+          }
+        }
       case PSeqLength(seq) =>
         if (expected.nonEmpty && !(expected contains Int)) {
           issueError(exp, s"expected $expectedString, but found |.| which has type Int")
