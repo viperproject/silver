@@ -141,6 +141,9 @@ case class TypeChecker(names: NameAnalyser) {
           case _ =>
             message(stmt, "expected variable as lhs")
         }
+      case PMethodCall(targets, method, args) => ???
+      case PLabel(name) => ???
+      case PGoto(label) => ???
       case PFieldAssign(field, rhs) =>
         names.definition(curMember)(field.idnuse) match {
           case PField(_, typ) =>

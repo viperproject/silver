@@ -199,6 +199,9 @@ case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PStmt) extends PStmt
 case class PFreshReadPerm(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with RealEntity
+case class PMethodCall(targets: Option[Seq[PIdnUse]], method: PIdnUse, args: Seq[PExp]) extends PStmt
+case class PLabel(idndef: PIdnDef) extends PStmt with RealEntity
+case class PGoto(targets: PIdnUse) extends PStmt
 
 // Declarations
 sealed trait PMember extends PNode {
@@ -284,6 +287,13 @@ object Nodes {
       case PAssert(exp) => Seq(exp)
       case PInhale(exp) => Seq(exp)
       case PNewStmt(idnuse) => Seq(idnuse)
+      case PMethodCall(targets, method, args) =>
+        targets match {
+          case None => Seq(method) ++ args
+          case Some(ts) => ts ++ Seq(method) ++ args
+        }
+      case PLabel(name) => Seq(name)
+      case PGoto(label) => Seq(label)
       case PVarAssign(target, rhs) => Seq(target, rhs)
       case PFieldAssign(field, rhs) => Seq(field, rhs)
       case PIf(cond, thn, els) => Seq(cond, thn, els)
