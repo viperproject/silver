@@ -244,6 +244,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         show(seq) <> brackets(show(idx))
       case SeqTake(seq, n) =>
         show(seq) <> brackets(".." <> show(n))
+      case SeqDrop(SeqTake(seq, n1), n2) =>
+        show(seq) <> brackets(show(n2) <> ".." <> show(n1))
       case SeqDrop(seq, n) =>
         show(seq) <> brackets(show(n) <> "..")
       case SeqUpdate(seq, idx, elem) =>
