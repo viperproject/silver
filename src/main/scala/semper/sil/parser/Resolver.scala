@@ -253,7 +253,11 @@ case class TypeChecker(names: NameAnalyser) {
    * The empty set can be passed for expected, if any type is fine.
    */
   def check(exp: PExp, expected: PType): Unit = check(exp, Seq(expected))
-  def check(exp: PExp, expected: Seq[PType]): Unit = {
+  def check(exp: PExp, expectedRaw: Seq[PType]): Unit = {
+    val expected = expectedRaw filter ({
+      case PTypeVar(_) => false
+      case _ => true
+    })
     def setRefinedType(actual: PType, inferred: Seq[(String, PType)]) {
       val t = actual.substitute(inferred.toMap)
       check(t)
