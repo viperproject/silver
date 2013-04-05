@@ -368,6 +368,32 @@ case class TypeChecker(names: NameAnalyser) {
             check(left, Bool)
             check(right, Bool)
             setType(Bool)
+          case "in" =>
+            check(left, Nil)
+            check(right, genericSeqType)
+            if (left.typ.isUnknown || right.typ.isUnknown) {
+              // nothing to do, error has already been issued
+            } else if (!right.typ.isInstanceOf[PSeqType]) {
+              issueError(right, s"expected sequence type, but found ${right.typ}")
+            } else if (!isCompatible(left.typ, right.typ.asInstanceOf[PSeqType].elementType)) {
+              issueError(right, s"element $left with type ${left.typ} cannot be in a sequence of type ${right.typ}")
+            }
+            // TODO: perform type refinement and propagate down
+            setType(Bool)
+          case "++" =>
+            val newExpected = if (expected.isEmpty) Seq(genericSeqType) else expected
+            check(left, newExpected)
+            check(right, newExpected)
+            if (left.typ.isUnknown || right.typ.isUnknown) {
+              // nothing to do, error has already been issued
+              setErrorType()
+            } else if (isCompatible(left.typ, right.typ)) {
+              // ok
+              // TODO: perform type refinement and propagate down
+              setType(left.typ)
+            } else {
+              issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
+            }
           case _ => sys.error(s"unexpected operator $op")
         }
       case PUnExp(op, e) =>

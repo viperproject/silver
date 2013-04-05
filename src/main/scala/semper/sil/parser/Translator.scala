@@ -171,6 +171,9 @@ case class Translator(program: PProgram) {
           case "<==>" => EqCmp(l, r)(pos)
           case "&&" => And(l, r)(pos)
           case "||" => Or(l, r)(pos)
+          case "in" => SeqContains(l, r)(pos)
+          case "++" => SeqAppend(l, r)(pos)
+          case _ => sys.error(s"unexpected operator $op")
         }
       case PUnExp(op, pe) =>
         val e = exp(pe)
