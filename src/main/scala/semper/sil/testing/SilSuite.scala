@@ -124,8 +124,11 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
             val findError: AbstractError => Option[ErrorAnnotation] = (actual: AbstractError) => {
               if (!actual.pos.isInstanceOf[SourcePosition] && !actual.pos.isInstanceOf[TranslatedPosition]) None
               else expectedErrors.filter({
-                // TODO Find out how we could check for the right file.
-                case ErrorAnnotation(id, file, lineNr) => id.matches(actual.fullId) && actual.pos.asInstanceOf[RealPosition].line == lineNr
+                case ErrorAnnotation(id, file, lineNr) => id.matches(actual.fullId) && (actual.pos match {
+                  case p: SourcePosition => lineNr == p.line
+                  case p: TranslatedPosition => file == p.file && lineNr == p.line
+                  case _ => sys.error("Position is neither a source position nor a translated position even though we checked this before.")
+                })
               }) match {
                 case x :: _ => {
                   // remove the error from the list of expected errors (i.e. only match once)

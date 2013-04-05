@@ -44,12 +44,12 @@ object AbstractAssign {
 
 /** An assignment to a local variable. */
 case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign {
-  require(Consistency.isAssignable(rhs, lhs))
+  require(Consistency.isAssignable(rhs, lhs), s"${rhs.typ} ($rhs) is not assignable to ${lhs.typ} ($lhs)")
 }
 
 /** An assignment to a field variable. */
 case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign {
-  require(Consistency.isAssignable(rhs, lhs))
+  require(Consistency.isAssignable(rhs, lhs), s"${rhs.typ} ($rhs) is not assignable to ${lhs.typ} ($lhs)")
 }
 
 /** A method/function/domain function call. */

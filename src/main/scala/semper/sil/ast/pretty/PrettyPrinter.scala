@@ -240,7 +240,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         "Seq" <> parens(ssep(elems map show, comma <> space))
       case RangeSeq(low, high) =>
         "[" <> show(low) <> ".." <> show(high) <> ")"
-      case SeqElement(seq, idx) =>
+      case SeqIndex(seq, idx) =>
         show(seq) <> brackets(show(idx))
       case SeqTake(seq, n) =>
         show(seq) <> brackets(".." <> show(n))

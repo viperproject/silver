@@ -171,6 +171,9 @@ case class Translator(program: PProgram) {
           case "<==>" => EqCmp(l, r)(pos)
           case "&&" => And(l, r)(pos)
           case "||" => Or(l, r)(pos)
+          case "in" => SeqContains(l, r)(pos)
+          case "++" => SeqAppend(l, r)(pos)
+          case _ => sys.error(s"unexpected operator $op")
         }
       case PUnExp(op, pe) =>
         val e = exp(pe)
@@ -248,14 +251,22 @@ case class Translator(program: PProgram) {
           case _ =>
             sys.error("unexpected location")
         }
-      case PEmptySeq() => ???
-      case PExplicitSeq(elems) => ???
-      case PRangeSeq(low, high) => ???
-      case PSeqElement(seq, idx) => ???
-      case PSeqTake(seq, n) => ???
-      case PSeqDrop(seq, n) => ???
-      case PSeqUpdate(seq, idx, elem) => ???
-      case PPSeqLength(seq) => ???
+      case PEmptySeq() =>
+        EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos)
+      case PExplicitSeq(elems) =>
+        ExplicitSeq(elems map exp)(pos)
+      case PRangeSeq(low, high) =>
+        RangeSeq(exp(low), exp(high))(pos)
+      case PSeqIndex(seq, idx) =>
+        SeqIndex(exp(seq), exp(idx))(pos)
+      case PSeqTake(seq, n) =>
+        SeqTake(exp(seq), exp(n))(pos)
+      case PSeqDrop(seq, n) =>
+        SeqDrop(exp(seq), exp(n))(pos)
+      case PSeqUpdate(seq, idx, elem) =>
+        SeqUpdate(exp(seq), exp(idx), exp(elem))(pos)
+      case PSeqLength(seq) =>
+        SeqLength(exp(seq))(pos)
     }
   }
 

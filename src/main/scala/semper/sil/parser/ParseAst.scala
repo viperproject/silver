@@ -111,9 +111,16 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
 }
 object PTypeVar {
   def unapply(p: PDomainType) = if (p.isTypeVar) Some(p.domain.name) else None
+  def apply(name: String) = {
+    val t = PDomainType(PIdnUse(name), Nil)
+    t._isTypeVar = Some(true)
+    t
+  }
 }
 case class PSeqType(elementType: PType) extends PType {
   override def toString = s"Seq[$elementType]"
+  override def isConcrete = elementType.isConcrete
+  override def substitute(map: Map[String, PType]) = PSeqType(elementType.substitute(map))
 }
 // for resolving if something cannot be typed
 case class PUnkown() extends PType {
@@ -158,11 +165,11 @@ case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 case class PEmptySeq() extends PExp
 case class PExplicitSeq(elems: Seq[PExp]) extends PExp
 case class PRangeSeq(low: PExp, high: PExp) extends PExp
-case class PSeqElement(seq: PExp, idx: PExp) extends PExp
+case class PSeqIndex(seq: PExp, idx: PExp) extends PExp
 case class PSeqTake(seq: PExp, n: PExp) extends PExp
 case class PSeqDrop(seq: PExp, n: PExp) extends PExp
 case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends PExp
-case class PPSeqLength(seq: PExp) extends PExp
+case class PSeqLength(seq: PExp) extends PExp
 
 // Statements
 sealed trait PStmt extends PNode {
@@ -265,11 +272,11 @@ object Nodes {
       case PEmptySeq() => Nil
       case PExplicitSeq(elems) => elems
       case PRangeSeq(low, high) => Seq(low, high)
-      case PSeqElement(seq, idx) => Seq(seq, idx)
+      case PSeqIndex(seq, idx) => Seq(seq, idx)
       case PSeqTake(seq, nn) => Seq(seq, nn)
       case PSeqDrop(seq, nn) => Seq(seq, nn)
       case PSeqUpdate(seq, idx, elem) => Seq(seq, idx, elem)
-      case PPSeqLength(seq) => Seq(seq)
+      case PSeqLength(seq) => Seq(seq)
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)
