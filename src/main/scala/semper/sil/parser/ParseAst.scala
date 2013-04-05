@@ -165,7 +165,7 @@ case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 case class PEmptySeq() extends PExp
 case class PExplicitSeq(elems: Seq[PExp]) extends PExp
 case class PRangeSeq(low: PExp, high: PExp) extends PExp
-case class PSeqElement(seq: PExp, idx: PExp) extends PExp
+case class PSeqIndex(seq: PExp, idx: PExp) extends PExp
 case class PSeqTake(seq: PExp, n: PExp) extends PExp
 case class PSeqDrop(seq: PExp, n: PExp) extends PExp
 case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends PExp
@@ -272,7 +272,7 @@ object Nodes {
       case PEmptySeq() => Nil
       case PExplicitSeq(elems) => elems
       case PRangeSeq(low, high) => Seq(low, high)
-      case PSeqElement(seq, idx) => Seq(seq, idx)
+      case PSeqIndex(seq, idx) => Seq(seq, idx)
       case PSeqTake(seq, nn) => Seq(seq, nn)
       case PSeqDrop(seq, nn) => Seq(seq, nn)
       case PSeqUpdate(seq, idx, elem) => Seq(seq, idx, elem)

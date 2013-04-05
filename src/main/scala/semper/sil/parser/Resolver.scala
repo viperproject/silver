@@ -530,7 +530,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(low, Int)
         check(high, Int)
         setType(PSeqType(Int))
-      case PSeqElement(seq, idx) =>
+      case PSeqIndex(seq, idx) =>
         val expectedSeqType = expected match {
           case Nil => Seq(genericSeqType)
           case _ => expected map (PSeqType(_))

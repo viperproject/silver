@@ -257,7 +257,7 @@ case class Translator(program: PProgram) {
         ExplicitSeq(elems map exp)(pos)
       case PRangeSeq(low, high) =>
         RangeSeq(exp(low), exp(high))(pos)
-      case PSeqElement(seq, idx) =>
+      case PSeqIndex(seq, idx) =>
         SeqIndex(exp(seq), exp(idx))(pos)
       case PSeqTake(seq, n) =>
         SeqTake(exp(seq), exp(n))(pos)
