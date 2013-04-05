@@ -284,6 +284,7 @@ object ControlFlowGraph {
     def label(b: Block) = {
       val r = b match {
         case LoopBlock(_, cond, _, _, _) => s"while ($cond)"
+        case FreshReadPermBlock(vars, _, _) => s"freshReadPerms ($vars)"
         case TerminalBlock(stmt) => stmt.toString
         case NormalBlock(stmt, _) => stmt.toString
         case ConditionalBlock(stmt, cond, _, _) =>
@@ -307,6 +308,9 @@ object ControlFlowGraph {
           case LoopBlock(body, _, _, _, succ) =>
             edges.append(s"    ${name(b)} -> ${name(body)} " + "[label=\"body\"];\n")
             edges.append(s"    ${name(b)} -> ${name(succ)} " + "[label=\"endLoop\"];\n")
+          case FreshReadPermBlock(_, body, succ) =>
+            edges.append(s"    ${name(b)} -> ${name(body)} " + "[label=\"body\"];\n")
+            edges.append(s"    ${name(b)} -> ${name(succ)} " + "[label=\"succ\"];\n")
           case TerminalBlock(stmt) =>
           case NormalBlock(_, succ) =>
             edges.append(s"    ${name(b)} -> ${name(succ)};\n")
