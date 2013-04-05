@@ -80,7 +80,7 @@ object Transformer {
           case ExplicitSeq(elems) => ExplicitSeq(elems map func)(p, i)
           case RangeSeq(low, high) => RangeSeq(func(low), func(high))(p, i)
           case SeqAppend(left, right) => SeqAppend(func(left), func(right))(p, i)
-          case SeqElement(seq, idx) => SeqElement(func(seq), func(idx))(p, i)
+          case SeqIndex(seq, idx) => SeqIndex(func(seq), func(idx))(p, i)
           case SeqTake(seq, n) => SeqTake(func(seq), func(n))(p, i)
           case SeqDrop(seq, n) => SeqDrop(func(seq), func(n))(p, i)
           case SeqContains(elem, seq) => SeqContains(func(elem), func(seq))(p, i)

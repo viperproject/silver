@@ -156,7 +156,7 @@ object Nodes {
           case ExplicitSeq(elems) => elems
           case RangeSeq(low, high) => Seq(low, high)
           case SeqAppend(left, right) => Seq(left, right)
-          case SeqElement(seq, idx) => Seq(seq, idx)
+          case SeqIndex(seq, idx) => Seq(seq, idx)
           case SeqTake(seq, nn) => Seq(seq, nn)
           case SeqDrop(seq, nn) => Seq(seq, nn)
           case SeqContains(elem, seq) => Seq(elem, seq)
