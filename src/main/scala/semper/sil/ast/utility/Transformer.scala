@@ -31,7 +31,10 @@ object Transformer {
           case Old(e) => Old(func(e))(p, i)
           case CondExp(cond, thn, els) => CondExp(func(cond), func(thn), func(els))(p, i)
           case Exists(v, e) => Exists(v, func(e))(p, i)
-          case Forall(v, e) => Forall(v, func(e))(p, i)
+          case Forall(v, triggers, e) =>
+            Forall(v,
+              triggers map (t => Trigger(t.exps map func)(t.pos, t.info)),
+              func(e))(p, i)
           case WildcardPerm() => exp
           case FullPerm() => exp
           case NoPerm() => exp

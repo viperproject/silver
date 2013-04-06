@@ -104,6 +104,7 @@ object Nodes {
    */
   def subnodes(n: Node): Seq[Node] = {
     val subnodesWithType = n match {
+      case Trigger(exps) => exps
       case Program(domains, fields, functions, predicates, methods) =>
         domains ++ fields ++ functions ++ predicates ++ methods
       case m: Member =>
@@ -154,7 +155,7 @@ object Nodes {
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
           case Exists(v, exp) => Seq(v, exp)
-          case Forall(v, exp) => Seq(v, exp)
+          case Forall(v, triggers, exp) => Seq(v) ++ triggers ++ Seq(exp)
           case WildcardPerm() => Nil
           case FullPerm() => Nil
           case NoPerm() => Nil

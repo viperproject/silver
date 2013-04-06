@@ -36,6 +36,8 @@ Some design choices:
  * - Exp
  * - Stmt
  * - Type
+ * - LocalVarDecl
+ * - Trigger
  */
 trait Node {
   /**

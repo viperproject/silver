@@ -216,8 +216,10 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         parens(show(cond) <+> "?" <+> show(thn) <+> ":" <+> show(els))
       case Exists(v, exp) =>
         parens("exists" <+> showVar(v) <+> "::" <+> show(exp))
-      case Forall(v, exp) =>
-        parens("forall" <+> showVar(v) <+> "::" <+> show(exp))
+      case Forall(v, triggers, exp) =>
+        parens("forall" <+> showVar(v) <+> "::" <>
+          (if (triggers.isEmpty) empty else space <> ssep(triggers map show, space)) <+>
+          show(exp))
       case WildcardPerm() =>
         "wildcard"
       case FullPerm() =>
