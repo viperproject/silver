@@ -29,8 +29,8 @@ object Visitor {
   /**
    * See Node.visit.
    */
-  def visit(n: Node)(f: Node => Unit) {
-    f(n)
+  def visit(n: Node)(f: PartialFunction[Node, Unit]) {
+    if (f.isDefinedAt(n)) f(n)
     for (sub <- n.subnodes) {
       visit(sub)(f)
     }
@@ -39,12 +39,12 @@ object Visitor {
   /**
    * See Node.visit.
    */
-  def visit(n: Node, f1: Node => Unit, f2: Node => Unit) {
-    f1(n)
+  def visit(n: Node, f1: PartialFunction[Node, Unit], f2: PartialFunction[Node, Unit]) {
+    if (f1.isDefinedAt(n)) f1(n)
     for (sub <- n.subnodes) {
       visit(sub, f1, f2)
     }
-    f2(n)
+    if (f2.isDefinedAt(n)) f2(n)
   }
 
   /**

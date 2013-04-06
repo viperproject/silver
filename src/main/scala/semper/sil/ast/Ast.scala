@@ -61,7 +61,7 @@ trait Node {
   /**
    * Applies the function `f` to the AST node, then visits all subnodes.
    */
-  def visit(f: Node => Unit) {
+  def visit(f: PartialFunction[Node, Unit]) {
     Visitor.visit(this)(f)
   }
 
@@ -69,7 +69,7 @@ trait Node {
    * Applies the function `f1` to the AST node, then visits all subnodes,
    * and finally calls `f2` to the AST node.
    */
-  def visit(f1: Node => Unit, f2: Node => Unit) {
+  def visit(f1: PartialFunction[Node, Unit], f2: PartialFunction[Node, Unit]) {
     Visitor.visit(this, f1, f2)
   }
 
