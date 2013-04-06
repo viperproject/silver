@@ -50,7 +50,7 @@ domain-function ::= "function" ident "(" formal-arg^,* ")" ":" type
                     "{" stmt "}"
                   | ident ":=" "new()"          // object creation
                   | ident "(" exp^,* ")"         // method call
-                  | "(" ident^,* ")" := ident "(" exp^,* ")"  // method call with return values
+                  | ident^,* := ident "(" exp^,* ")"  // method call with return values
                   | "fresh" (ident*) "{"        // fresh abstract read permission block
                         stmt
                     "}"
