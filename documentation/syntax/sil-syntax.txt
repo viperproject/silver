@@ -51,6 +51,8 @@ domain-function ::= "function" ident "(" formal-arg^,* ")" ":" type
                   | ident ":=" "new()"          // object creation
                   | ident "(" exp^,* ")"         // method call
                   | ident^,* := ident "(" exp^,* ")"  // method call with return values
+                  | "goto" ident                // goto statement
+                  | ident ":"                   // a label (can be used as target for goto)
                   | "fresh" (ident*) "{"        // fresh abstract read permission block
                         stmt
                     "}"
