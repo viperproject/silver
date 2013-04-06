@@ -549,8 +549,6 @@ case class TypeChecker(names: NameAnalyser) {
         setType(Perm)
       case PWildcard() =>
         setType(Perm)
-      case PConcretePerm(a, b) =>
-        setType(Perm)
       case PEpsilon() =>
         setType(Perm)
       case PAccPred(loc, perm) =>

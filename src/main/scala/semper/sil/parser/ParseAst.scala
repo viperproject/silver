@@ -158,7 +158,6 @@ case class PCurPerm(loc: PLocationAccess) extends PExp
 case class PNoPerm() extends PExp
 case class PFullPerm() extends PExp
 case class PWildcard() extends PExp
-case class PConcretePerm(a: BigInt, b: BigInt) extends PExp
 case class PEpsilon() extends PExp
 case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 
@@ -269,7 +268,6 @@ object Nodes {
       case PNoPerm() => Nil
       case PFullPerm() => Nil
       case PWildcard() => Nil
-      case PConcretePerm(a, b) => Nil
       case PEpsilon() => Nil
       case PAccPred(loc, perm) => Seq(loc, perm)
       case PEmptySeq() => Nil
