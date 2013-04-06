@@ -190,7 +190,10 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val goto =
     "goto" ~> idnuse ^^ PGoto
   lazy val methodCall =
-    (repsep(idnuse, ",") <~ ":=") ~ idnuse ~ parens(repsep(exp, ",")) ^^ PMethodCall
+    opt(repsep(idnuse, ",") <~ ":=") ~ idnuse ~ parens(repsep(exp, ",")) ^^ {
+      case None ~ method ~ args => PMethodCall(Nil, method, args)
+      case Some(targets) ~ method ~ args => PMethodCall(targets, method, args)
+    }
 
   // --- Types
 
