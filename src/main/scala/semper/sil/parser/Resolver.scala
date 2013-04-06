@@ -141,9 +141,31 @@ case class TypeChecker(names: NameAnalyser) {
           case _ =>
             message(stmt, "expected variable as lhs")
         }
-      case PMethodCall(targets, method, args) => ???
-      case PLabel(name) => ???
-      case PGoto(label) => ???
+      case PMethodCall(targets, method, args) =>
+        names.definition(curMember)(method) match {
+          case PMethod(_, formalArgs, formalTargets, _, _, _) =>
+            if (formalArgs.length != args.length) {
+              message(stmt, "wrong number of arguments")
+            } else {
+              if (formalTargets.length != targets.length) {
+                message(stmt, "wrong number of targets")
+              } else {
+                for ((formal, actual) <- (formalArgs zip args) ++ (formalTargets zip targets)) {
+                  check(actual, formal.typ)
+                }
+              }
+            }
+          case _ =>
+            message(stmt, "expected a label")
+        }
+      case PLabel(name) =>
+        // nothing to check
+      case PGoto(label) =>
+        names.definition(curMember)(label) match {
+          case PLabel(_) =>
+          case _ =>
+            message(stmt, "expected a label")
+        }
       case PFieldAssign(field, rhs) =>
         names.definition(curMember)(field.idnuse) match {
           case PField(_, typ) =>
