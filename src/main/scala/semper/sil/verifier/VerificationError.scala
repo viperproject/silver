@@ -77,21 +77,21 @@ object errors {
   def AssertionMalformed(offendingNode: PositionedNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => AssertionMalformed(offendingNode, reason))
 
-  case class MethodCallFailed(offendingNode: MethodCall, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "call.failed"
-    val text = s"Method call of ${offendingNode.method.name} might fail."
+  case class PreconditionInCallFalse(offendingNode: MethodCall, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "call.precondition"
+    val text = s"The precondition of ${offendingNode.method.name} might not hold."
   }
 
-  def MethodCallFailed(offendingNode: MethodCall): PartialVerificationError =
-    PartialVerificationError((reason: ErrorReason) => MethodCallFailed(offendingNode, reason))
+  def PreconditionInCallFalse(offendingNode: MethodCall): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => PreconditionInCallFalse(offendingNode, reason))
 
-  case class FunctionApplicationFailed(offendingNode: FuncApp, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "function.application.failed"
-    val text = s"Function application of ${offendingNode.func.name} might fail."
+  case class PreconditionInAppFalse(offendingNode: FuncApp, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "application.precondition"
+    val text = s"Precondition of function ${offendingNode.func.name} might not hold."
   }
 
-  def FunctionApplicationFailed(offendingNode: FuncApp): PartialVerificationError =
-    PartialVerificationError((reason: ErrorReason) => FunctionApplicationFailed(offendingNode, reason))
+  def PreconditionInAppFalse(offendingNode: FuncApp): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => PreconditionInAppFalse(offendingNode, reason))
 
   case class ExhaleFailed(offendingNode: Exhale, reason: ErrorReason) extends AbstractVerificationError {
     val id = "exhale.failed"
