@@ -75,7 +75,7 @@ domain-function ::= "function" ident "(" formal-arg^,* ")" ":" type
                   | ident                       // local variable read
                   | "result"                    // result literal in function postconditions
                   | "acc" "(" loc-access "," exp ")"   // accessibility predicate
-                  | "forall" formal-arg "::" exp   // universal quantification
+                  | "forall" formal-arg "::" trigger^,* exp   // universal quantification
                   | "exists" formal-arg "::" exp   // existential quantification
                   | "(" exp ")"
                   | "perm" "(" loc-access ")"   // current permission of given location
@@ -96,6 +96,8 @@ domain-function ::= "function" ident "(" formal-arg^,* ")" ":" type
                   | exp "[" exp ".." exp "]"    // take and drop at the same time
                   | exp "in" exp                // element containment test
                   | exp "[" exp ":=" exp "]"    // sequence with one element updated
+
+        trigger ::= "{" exp^,* "}"              // a trigger for a quantification
 
      loc-access ::= exp "." ident               // location access (field or predicate)
 
