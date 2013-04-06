@@ -168,9 +168,29 @@ case class Translator(program: PProgram) {
       case PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
         op match {
-          case "+" => Add(l, r)(pos)
-          case "-" => Sub(l, r)(pos)
-          case "*" => Mul(l, r)(pos)
+          case "+" =>
+            r.typ match {
+              case Int => Add(l, r)(pos)
+              case Perm => PermAdd(l, r)(pos)
+              case _ => sys.error("should oocur in type-checked program")
+            }
+          case "-" =>
+            r.typ match {
+            case Int => Sub(l, r)(pos)
+            case Perm => PermSub(l, r)(pos)
+            case _ => sys.error("should oocur in type-checked program")
+          }
+          case "*" =>
+            r.typ match {
+              case Int => Mul(l, r)(pos)
+              case Perm =>
+                l.typ match {
+                  case Int => PermIntMul(l, r)(pos)
+                  case Perm => PermMul(l, r)(pos)
+                  case _ => sys.error("should oocur in type-checked program")
+                }
+              case _ => sys.error("should oocur in type-checked program")
+            }
           case "/" => Div(l, r)(pos)
           case "%" => Mod(l, r)(pos)
           case "<" => LtCmp(l, r)(pos)
