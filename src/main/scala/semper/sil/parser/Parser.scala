@@ -239,6 +239,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val term: PackratParser[PExp] =
     term ~ "*" ~ factor ^^ PBinExp |
       term ~ "/" ~ factor ^^ PBinExp |
+      term ~ "\\" ~ factor ^^ PBinExp |
       term ~ "%" ~ factor ^^ PBinExp |
       factor
 

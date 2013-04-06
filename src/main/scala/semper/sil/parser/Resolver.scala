@@ -390,7 +390,7 @@ case class TypeChecker(names: NameAnalyser) {
                   setType(left.typ)
                 }
             }
-          case "/" =>
+          case "\\" =>
             check(left, Int)
             check(right, Int)
             setType(Int)

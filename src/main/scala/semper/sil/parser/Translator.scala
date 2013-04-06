@@ -191,7 +191,7 @@ case class Translator(program: PProgram) {
                 }
               case _ => sys.error("should oocur in type-checked program")
             }
-          case "/" => Div(l, r)(pos)
+          case "\\" => Div(l, r)(pos)
           case "%" => Mod(l, r)(pos)
           case "<" => LtCmp(l, r)(pos)
           case "<=" => LeCmp(l, r)(pos)
