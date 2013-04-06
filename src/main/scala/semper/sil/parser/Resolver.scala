@@ -41,7 +41,6 @@ case class TypeChecker(names: NameAnalyser) {
     p visit {
       case t: PType =>
         check(t)
-      case _ =>
     }
     // now check all program parts
     p.domains map check
