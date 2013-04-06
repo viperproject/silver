@@ -370,9 +370,34 @@ case class TypeChecker(names: NameAnalyser) {
                   issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
                 }
             }
-          case "*" => ???
-          case "/" => ???
-          case "%" => ???
+          case "*" =>
+            val safeExpected = if (expected.size == 0) Seq(Int, Perm) else expected
+            safeExpected.filter(x => Seq(Int, Perm) contains x) match {
+              case Nil =>
+                issueError(exp, s"expected $expectedString, but found operator $op that cannot have such a type")
+              case expectedStillPossible =>
+                expectedStillPossible match {
+                  case Seq(Perm) =>
+                    check(left, Seq(Perm, Int))
+                    check(right, Perm)
+                  case _ =>
+                    check(left, expectedStillPossible)
+                    check(right, expectedStillPossible)
+                }
+                if (left.typ.isUnknown || right.typ.isUnknown) {
+                  setErrorType()
+                } else {
+                  setType(left.typ)
+                }
+            }
+          case "/" =>
+            check(left, Int)
+            check(right, Int)
+            setType(Int)
+          case "%" =>
+            check(left, Int)
+            check(right, Int)
+            setType(Int)
           case "<" | "<=" | ">" | ">=" =>
             check(left, Seq(Int, Perm))
             check(right, Seq(Int, Perm))
