@@ -31,7 +31,7 @@ sealed trait PNode extends Positioned with Attributable {
   /**
    * Applies the function `f` to the AST node, then visits all subnodes.
    */
-  def visit(f: PNode => Unit) {
+  def visit(f: PartialFunction[PNode, Unit]) {
     Visitor.visit(this)(f)
   }
 
@@ -39,7 +39,7 @@ sealed trait PNode extends Positioned with Attributable {
    * Applies the function `f1` to the AST node, then visits all subnodes,
    * and finally calls `f2` to the AST node.
    */
-  def visit(f1: PNode => Unit, f2: PNode => Unit) {
+  def visit(f1: PartialFunction[PNode, Unit], f2: PartialFunction[PNode, Unit]) {
     Visitor.visit(this, f1, f2)
   }
 
@@ -338,8 +338,8 @@ object Visitor {
   /**
    * See Node.visit.
    */
-  def visit(n: PNode)(f: PNode => Unit) {
-    f(n)
+  def visit(n: PNode)(f: PartialFunction[PNode, Unit]) {
+    if (f.isDefinedAt(n)) f(n)
     for (sub <- n.subnodes) {
       visit(sub)(f)
     }
@@ -348,12 +348,12 @@ object Visitor {
   /**
    * See Node.visit.
    */
-  def visit(n: PNode, f1: PNode => Unit, f2: PNode => Unit) {
-    f1(n)
+  def visit(n: PNode, f1: PartialFunction[PNode, Unit], f2: PartialFunction[PNode, Unit]) {
+    if (f1.isDefinedAt(n)) f1(n)
     for (sub <- n.subnodes) {
       visit(sub, f1, f2)
     }
-    f2(n)
+    if (f2.isDefinedAt(n)) f2(n)
   }
 
   /**
