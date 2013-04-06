@@ -135,10 +135,7 @@ case class Translator(program: PProgram) {
       case PNewStmt(idnuse) =>
         NewStmt(exp(idnuse).asInstanceOf[LocalVar])(pos)
       case PMethodCall(targets, method, args) =>
-        val ts = (targets match {
-          case None => Nil
-          case Some(t) => t map exp
-        }).asInstanceOf[Seq[LocalVar]]
+        val ts = (t map exp).asInstanceOf[Seq[LocalVar]]
         MethodCall(findMethod(method), args map exp, ts)(pos)
       case PLabel(name) =>
         Label(name.name)(pos)
