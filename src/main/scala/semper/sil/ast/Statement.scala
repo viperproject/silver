@@ -1,6 +1,6 @@
 package semper.sil.ast
 
-import utility.{Consistency, Statements, CfgGenerator}
+import semper.sil.ast.utility.{Expressions, Consistency, Statements, CfgGenerator}
 
 // --- Statements
 
@@ -16,7 +16,7 @@ sealed trait Stmt extends Node with Infoed with Positioned {
    * Returns a control flow graph that corresponds to this statement.
    */
   def toCfg = CfgGenerator.toCFG(this)
-  
+
   /**
    * Returns a list of all undeclared local variables contained in this statement and
    * throws an exception if the same variable is used with different types.
@@ -65,6 +65,20 @@ case class MethodCall(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(va
   require(Consistency.areAssignable(method.formalReturns, targets))
   require(Consistency.noDuplicates(targets))
   lazy val callee = method
+  /**
+   * The precondition of this method call (i.e., the precondition of the method with
+   * the arguments instantiated correctly).
+   */
+  lazy val pres = {
+    method.pres map (e => Expressions.instantiateVariables(e, method.formalArgs ++ method.formalReturns, args ++ targets))
+  }
+  /**
+   * The postcondition of this method call (i.e., the postcondition of the method with
+   * the arguments instantiated correctly).
+   */
+  lazy val posts = {
+    method.posts map (e => Expressions.instantiateVariables(e, method.formalArgs ++ method.formalReturns, args ++ targets))
+  }
 }
 
 /** An exhale statement. */

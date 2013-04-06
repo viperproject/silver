@@ -79,6 +79,22 @@ object Expressions {
         | _: SeqExp
     => true
   }
+
+  /**
+   * In an expression, instantiate a list of variables with given expressions.
+   */
+  def instantiateVariables(exp: Exp, variables: Seq[LocalVarDecl], values: Seq[Exp]): Exp = {
+    val argNames = (variables map (_.name)).zipWithIndex
+    def actualArg(formalArg: String): Option[Exp] = {
+      argNames.find(x => x._1 == formalArg) map {
+        case (_, idx) => values(idx)
+      }
+    }
+    exp.transform {
+      case LocalVar(name) if actualArg(name).isDefined => Some(actualArg(name).get)
+      case _ => None
+    }
+  }
 }
 
 /** Utility methods for AST nodes. */
