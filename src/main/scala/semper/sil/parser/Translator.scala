@@ -185,7 +185,7 @@ case class Translator(program: PProgram) {
               case Int => Mul(l, r)(pos)
               case Perm =>
                 l.typ match {
-                  case Int => PermIntMul(l, r)(pos)
+                  case Int => IntPermMul(l, r)(pos)
                   case Perm => PermMul(l, r)(pos)
                   case _ => sys.error("should oocur in type-checked program")
                 }

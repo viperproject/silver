@@ -69,7 +69,7 @@ object Transformer {
           case PermAdd(l, r) => PermAdd(func(l), func(r))(p, i)
           case PermSub(l, r) => PermSub(func(l), func(r))(p, i)
           case PermMul(l, r) => PermMul(func(l), func(r))(p, i)
-          case PermIntMul(l, r) => PermIntMul(func(l), func(r))(p, i)
+          case IntPermMul(l, r) => IntPermMul(func(l), func(r))(p, i)
 
           case PermLtCmp(l, r) => PermLtCmp(func(l), func(r))(p, i)
           case PermLeCmp(l, r) => PermLeCmp(func(l), func(r))(p, i)
