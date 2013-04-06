@@ -46,7 +46,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // specifications
     "requires", "ensures", "invariant",
     // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume",
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto",
     // control structures
     "while", "if", "else",
     // special fresh block
