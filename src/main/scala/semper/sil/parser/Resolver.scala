@@ -162,7 +162,7 @@ case class TypeChecker(names: NameAnalyser) {
             message(stmt, "expected a label")
         }
       case PLabel(name) =>
-        // nothing to check
+      // nothing to check
       case PGoto(label) =>
         names.definition(curMember)(label) match {
           case PLabel(_) =>
@@ -390,6 +390,10 @@ case class TypeChecker(names: NameAnalyser) {
                   setType(left.typ)
                 }
             }
+          case "/" =>
+            check(left, Int)
+            check(right, Int)
+            setType(Perm)
           case "\\" =>
             check(left, Int)
             check(right, Int)
