@@ -161,7 +161,7 @@ object Nodes {
           case NoPerm() => Nil
           case EpsilonPerm() => Nil
           case CurrentPerm(loc) => Seq(loc)
-          case ConcretePerm(a, b) => Nil
+          case FractionalPerm(left, right) => Seq(left, right)
           case AccessPredicate(loc, perm) => Seq(loc, perm)
           case BinExp(left, right) => Seq(left, right)
           case UnExp(exp) => Seq(exp)

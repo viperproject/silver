@@ -265,6 +265,10 @@ case object IntPermMulOp extends ProdOp("*") with BinOp with PermDomainFunc {
   lazy val leftTyp = Int
   lazy val rightTyp = Perm
 }
+case object FracOp extends ProdOp("/") with BinOp with PermDomainFunc {
+  lazy val leftTyp = Int
+  lazy val rightTyp = Int
+}
 
 /** Integer negation. */
 case object NegOp extends UnOp with IntDomainFunc {

@@ -270,7 +270,7 @@ case class Translator(program: PProgram) {
       case PWildcard() =>
         WildcardPerm()(pos)
       case PConcretePerm(a, b) =>
-        ConcretePerm(a, b)(pos)
+        FractionalPerm(null, null)(pos)
       case PEpsilon() =>
         EpsilonPerm()(pos)
       case PAccPred(loc, perm) =>

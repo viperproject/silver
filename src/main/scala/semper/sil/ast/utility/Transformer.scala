@@ -37,7 +37,7 @@ object Transformer {
           case NoPerm() => exp
           case EpsilonPerm() => exp
           case CurrentPerm(loc) => CurrentPerm(func(loc).asInstanceOf[LocationAccess])(p, i)
-          case ConcretePerm(a, b) => exp
+          case FractionalPerm(left, right) => FractionalPerm(func(left), func(right))(p, i)
           case FieldAccessPredicate(loc, perm) =>
             FieldAccessPredicate(func(loc).asInstanceOf[FieldAccess], func(perm))(p, i)
           case PredicateAccessPredicate(loc, perm) =>

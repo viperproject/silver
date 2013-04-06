@@ -108,13 +108,7 @@ case class NoPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) ext
 case class EpsilonPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 
 /** A concrete fraction as permission amount. */
-case class ConcretePerm(override val numerator: BigInt, override val denominator: BigInt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractConcretePerm(numerator, denominator) with PrettyBinaryExpression {
-  lazy val priority = 0 // always at parenthesis
-  lazy val fixity = Infix(LeftAssoc)
-  lazy val left: PrettyExpression = IntLit(numerator)()
-  lazy val op = "/"
-  lazy val right: PrettyExpression = IntLit(denominator)()
-}
+case class FractionalPerm(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(FracOp)
 
 /** The permission currently held for a given location. */
 case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
