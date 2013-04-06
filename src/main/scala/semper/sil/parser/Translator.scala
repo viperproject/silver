@@ -187,9 +187,9 @@ case class Translator(program: PProgram) {
                 l.typ match {
                   case Int => IntPermMul(l, r)(pos)
                   case Perm => PermMul(l, r)(pos)
-                  case _ => sys.error("should oocur in type-checked program")
+                  case _ => sys.error("should occur in type-checked program")
                 }
-              case _ => sys.error("should oocur in type-checked program")
+              case _ => sys.error("should occur in type-checked program")
             }
           case "/" => FractionalPerm(l, r)(pos)
           case "\\" => Div(l, r)(pos)
