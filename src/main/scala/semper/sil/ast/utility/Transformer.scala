@@ -12,11 +12,11 @@ object Transformer {
   /**
    * See Exp.transform.
    */
-  def transform(exp: Exp, f: Exp => Option[Exp]): Exp = {
+  def transform(exp: Exp, f: PartialFunction[Exp, Option[Exp]]): Exp = {
     val p = exp.pos
     val i = exp.info
     val func = (e: Exp) => transform(e, f)
-    val t = f(exp)
+    val t = if (f.isDefinedAt(exp)) f(exp) else None
     t match {
       case Some(ee) => ee
       case None =>

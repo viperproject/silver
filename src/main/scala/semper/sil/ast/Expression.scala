@@ -13,7 +13,7 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
    * The function `f` must produce expressions that are valid in the given context.  For instance, it cannot
    * replace an integer literal by a boolean literal.
    */
-  def transform(f: Exp => Option[Exp]): Exp = Transformer.transform(this, f)
+  def transform(f: PartialFunction[Exp, Option[Exp]]): Exp = Transformer.transform(this, f)
 
   def isPure = Expressions.isPure(this)
 }
