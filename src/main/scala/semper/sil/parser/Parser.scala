@@ -268,8 +268,10 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       "epsilon" ^^^ PEpsilon() | "perm" ~> parens(locAcc) ^^ PCurPerm
 
   lazy val quant: PackratParser[PExp] =
-    ("forall" ~> formalArg <~ "::") ~ exp ^^ PForall |
+    ("forall" ~> formalArg <~ "::") ~ rep(trigger) ~ exp ^^ PForall |
       ("exists" ~> formalArg <~ "::") ~ exp ^^ PExists
+  lazy val trigger: PackratParser[Seq[PExp]] =
+    "{" ~> rep1(exp) <~ "}"
 
   lazy val locAcc: PackratParser[PLocationAccess] =
     (exp <~ ".") ~ idnuse ^^ PLocationAccess
