@@ -111,6 +111,11 @@ case class Translator(program: PProgram) {
   private def stmt(s: PStmt): Stmt = {
     val pos = s.start
     s match {
+      case PVarAssign(idnuse, PFunctApp(func, args)) if members.get(func.name).get.isInstanceOf[Method] =>
+        // this is a method call that got parsed in a slightly confusing way
+        val call = PMethodCall(Seq(idnuse), func, args)
+        call.setStart(s.start)
+        stmt(call)
       case PVarAssign(idnuse, rhs) =>
         LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos), exp(rhs))(pos)
       case PFieldAssign(field, rhs) =>

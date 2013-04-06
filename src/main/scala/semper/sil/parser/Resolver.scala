@@ -121,6 +121,9 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PInhale(e) =>
         check(e, Bool)
+      case PVarAssign(idnuse, PFunctApp(func, args)) if names.definition(curMember)(func).isInstanceOf[PMethod] =>
+        // this is a method call that got parsed in a slightly confusing way
+        check(PMethodCall(Seq(idnuse), func, args))
       case PVarAssign(idnuse, rhs) =>
         names.definition(curMember)(idnuse) match {
           case PLocalVarDecl(_, typ, _) =>
@@ -688,6 +691,8 @@ case class NameAnalyser() {
               case decl: PDomain =>
                 if (name == decl.idndef.name)
                   idnMap.put(name, decl)
+              case decl: PLabel =>
+                idnMap.put(name, decl)
               case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
             }
         }
