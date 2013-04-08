@@ -4,7 +4,7 @@ import java.io.File
 import semper.sil.verifier._
 import java.nio.file.Path
 import io.Source
-import semper.sil.ast.{RealPosition, TranslatedPosition, SourcePosition}
+import semper.sil.ast.{Position, TranslatedPosition, SourcePosition}
 import org.scalatest._
 import semper.sil.frontend.Frontend
 import java.util.regex.Pattern
@@ -115,33 +115,39 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
               case e: ExpectedError => expectedButMissingErrors ::= e
               case u: UnexpectedError => unexpectedButMissingErrors ::= u
               case m: MissingError => // it is known that this one is missing
+              case _: IgnoreOthers =>
               case _: IgnoreFileList =>
                 sys.error("the test should not have run in the first place")
-              case _: IgnoreFile => ()
+              case _: IgnoreFile => () // Could be that some files of this test, but not all of them are ignored.
             }
           case Failure(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
-            val findError: AbstractError => Option[ErrorAnnotation] = (actual: AbstractError) => {
+            def sameLine(file: File, lineNr: Int, pos: Position) = pos match {
+              case p: SourcePosition => lineNr == p.line
+              case p: TranslatedPosition => file == p.file && lineNr == p.line
+              case _ => sys.error("Position is neither a source position nor a translated position even though we checked this before.")
+            }
+            val findError: AbstractError => Option[TestAnnotation] = (actual: AbstractError) => {
               if (!actual.pos.isInstanceOf[SourcePosition] && !actual.pos.isInstanceOf[TranslatedPosition]) None
               else expectedErrors.filter({
-                case ErrorAnnotation(id, file, lineNr) => id.matches(actual.fullId) && (actual.pos match {
-                  case p: SourcePosition => lineNr == p.line
-                  case p: TranslatedPosition => file == p.file && lineNr == p.line
-                  case _ => sys.error("Position is neither a source position nor a translated position even though we checked this before.")
-                })
+                case ErrorAnnotation(id, file, lineNr) => id.matches(actual.fullId) && sameLine(file, lineNr, actual.pos)
+                case IgnoreOthers(file, lineNr, _) => sameLine(file, lineNr, actual.pos)
               }) match {
-                case x :: _ => {
-                  // remove the error from the list of expected errors (i.e. only match once)
-                  expectedErrors = expectedErrors.filter(y => !y.eq(x))
-                  Some(x)
-                }
                 case Nil => None
+                case l => l.find(_.isInstanceOf[ErrorAnnotation]) match {
+                  case Some(x) => {
+                    // remove the error from the list of expected errors (i.e. only match once)
+                    expectedErrors = expectedErrors.filter(y => !y.eq(x))
+                    Some(x)
+                  }
+                  case None => Some(l.head) // IgnoreOthers should not be removed
+                }
               }
             }
 
             // go through all actual errors and try to match them up with the expected ones
             actualErrors foreach (a => findError(a) match {
-              case Some(m@MissingError(_, _, _, _, _, _)) =>
+              case Some(m: MissingError) =>
                 missingButPresentErrors ::= m
               case Some(_) => // expected this error
               case None =>
@@ -149,11 +155,12 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
             })
 
             // process remaining errors that have not been matched
-            expectedErrors.foreach({
+            expectedErrors.foreach {
               case e: ExpectedError => expectedButMissingErrors ::= e
               case u: UnexpectedError => unexpectedButMissingErrors ::= u
-              case m: MissingError => // it is known that this one is missing
-            })
+              case _: MissingError => // Expected to be missing
+              case _: IgnoreOthers =>
+            }
           }
         }
 

@@ -48,8 +48,9 @@ trait TestAnnotationParser {
           isExpectedError(l, file, curLineNr,
             () => isUnexpectedError(l, file, curLineNr,
               () => isMissingError(l, file, curLineNr,
-                () => isIgnoreFile(l, file, curLineNr,
-                  () => isIgnoreFileList(l, file, curLineNr))))) match {
+                () => isIgnoreOthers(l, file, curLineNr,
+                  () => isIgnoreFile(l, file, curLineNr,
+                    () => isIgnoreFileList(l, file, curLineNr)))))) match {
             case Some(e) =>
               curAnnotations ::= e
             case None =>
@@ -83,6 +84,7 @@ trait TestAnnotationParser {
         case ExpectedError(id, file, _, lineNr) => ExpectedError(id, file, forLineNr, lineNr)
         case UnexpectedError(id, file, _, lineNr, project, issueNr) => UnexpectedError(id, file, forLineNr, lineNr, project, issueNr)
         case MissingError(id, file, _, lineNr, project, issueNr) => MissingError(id, file, forLineNr, lineNr, project, issueNr)
+        case IgnoreOthers(file, _, lineNr) => IgnoreOthers(file, forLineNr, lineNr)
         case _ => a
       }
     }
@@ -126,6 +128,15 @@ trait TestAnnotationParser {
         Some(MissingError(ErrorAnnotationId(reasonId, None), file, -1, lineNr, project, issueNr.toInt))
       case regex(errorId, _, reasonId, project, issueNr) =>
         Some(MissingError(ErrorAnnotationId(reasonId, Some(errorId)), file, -1, lineNr, project, issueNr.toInt))
+      case _ => next()
+    }
+  }
+
+   /** Try to parse the annotation a ``IgnoreOthers``, and otherwise use `next`. */
+  private def isIgnoreOthers(annotation: String, file: File, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+    val regex = """^IgnoreOthers$""".r
+    annotation match {
+      case regex() => Some(IgnoreOthers(file, -1, lineNr))
       case _ => next()
     }
   }
