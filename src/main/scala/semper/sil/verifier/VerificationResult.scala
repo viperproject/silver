@@ -1,6 +1,6 @@
 package semper.sil.verifier
 
-import semper.sil.ast.{NoPosition, Position}
+import semper.sil.ast._
 
 /** Describes the outcome of a verification attempt of a SIL program.
   *
@@ -37,7 +37,13 @@ trait AbstractError {
   /** A readable message describing the error. */
   def readableMessage: String
 
-  override def toString = readableMessage
+  override def toString = readableMessage + " " + readablePosition
+
+  def readablePosition = pos match {
+    case TranslatedPosition(file, RealPosition(line, _)) => s"(${file.getName}:${line})"
+    case SourcePosition(line, _) => s"(${line})"
+    case _ => ""
+  }
 }
 
 /** A parser error. */

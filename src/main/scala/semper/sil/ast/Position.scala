@@ -16,6 +16,9 @@ trait RealPosition {
   def column: Int
   override def toString = s"$line.$column"
 }
+object RealPosition {
+  def unapply(pos: RealPosition) = Some(pos.line, pos.column)
+}
 
 /** Describes a location in a file by line and column number. */
 case class SourcePosition(line: Int, column: Int) extends Position with RealPosition

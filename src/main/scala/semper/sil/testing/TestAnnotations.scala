@@ -55,7 +55,7 @@ case class ErrorAnnotationId(reasonId: String, errorId: Option[String]) {
 
 /** Test annotations that have a location and an identifier (i.e. describe an error of some sort). */
 sealed abstract class ErrorAnnotation(val id: ErrorAnnotationId, val file: File, val forLineNr: Int) extends TestAnnotation {
-  override def toString = s"${file.getName}: $forLineNr.*: $id"
+  override def toString = s"$id (${file.getName}:$forLineNr)"
 }
 
 object ErrorAnnotation {
