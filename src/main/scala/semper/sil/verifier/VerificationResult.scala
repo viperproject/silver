@@ -64,3 +64,10 @@ case class CliOptionError(message: String) extends AbstractError {
   def fullId = "clioption.error"
   def readableMessage = s"Command-line interface: $message"
 }
+
+/** An error indicating that a dependency couldn't be found. */
+case class DependencyNotFoundError(message: String) extends AbstractError {
+  def pos = NoPosition
+  def fullId = "dependencynotfound.error"
+  def readableMessage = s"Dependency not found: $message"
+}

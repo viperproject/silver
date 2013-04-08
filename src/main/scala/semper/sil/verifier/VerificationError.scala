@@ -53,6 +53,7 @@ abstract class AbstractErrorReason extends ErrorReason {
 
 object errors {
   type PositionedNode = Node with Positioned
+
   case class Internal(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "internal"
     val text = "An internal error occurred."
