@@ -76,11 +76,13 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     }
     val name = testName(prefix, rawFiles)
     val testAnnotations = parseAnnotations(rawFiles)
-    val files = rawFiles.filter(f => !testAnnotations.isFileIgnored(f))
+    val files = rawFiles filter { f => !testAnnotations.isFileIgnored(f) }
+    val fileName = file.getName
+    val fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."))
 
     // ignore test if necessary
     if (files.isEmpty) {
-      ignore(name) {}
+      ignore(name, Tag(name), Tag(fileName), Tag(fileNameWithoutExt)) {}
       return
     }
 
@@ -93,9 +95,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
     // one test per verifier
     for (verifier <- verifiers) {
-      val headFileName = rawFiles.head.getName
-      val headFileNameWithoutExt = headFileName.substring(0, headFileName.lastIndexOf("."))
-      test(name + " [" + verifier.name + "]", Tag(name), Tag(headFileName), Tag(headFileNameWithoutExt)) {
+      test(name + " [" + verifier.name + "]", Tag(name), Tag(fileName), Tag(fileNameWithoutExt)) {
         val fe = frontend(verifier, List(file))
         val tPhases = fe.phases.map { p =>
           time(p.action)._2 + " (" + p.name + ")"
