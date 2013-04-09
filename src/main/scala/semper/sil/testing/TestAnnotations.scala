@@ -12,11 +12,11 @@ import semper.sil.verifier.AbstractError
  * @author Stefan Heule
  */
 sealed case class TestAnnotations(errors: Seq[TestAnnotationParseError], annotations: Seq[TestAnnotation]) {
-  def isFileIgnored(file: File): Boolean = annotations contains ((x: TestAnnotation) => x match {
+  def isFileIgnored(file: File): Boolean = annotations exists {
     case _: IgnoreFileList => true
     case IgnoreFile(f, _, _, _) => f.getAbsolutePath == file.getAbsolutePath
     case _ => false
-  })
+  }
 
   def hasErrors: Boolean = errors.size > 0
 
