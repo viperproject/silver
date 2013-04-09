@@ -35,7 +35,7 @@ case class ErrorAnnotationId(reasonId: String, errorId: Option[String]) {
   override def toString = {
     errorId match {
       case None => reasonId
-      case Some(i) => s"$i.$reasonId"
+      case Some(i) => s"$i:$reasonId"
     }
   }
 
