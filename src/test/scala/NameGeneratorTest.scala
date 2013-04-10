@@ -1,0 +1,126 @@
+package semper.sil
+
+import _root_.semper.sil.utility.{SilNameGenerator, NameGenerator}
+import org.scalatest.{BeforeAndAfter, FunSuite}
+
+class NameGeneratorTest extends FunSuite with BeforeAndAfter {
+
+  var gen: NameGenerator = null
+  var sub: NameGenerator#NameContext = null
+  var subsub: NameGenerator#NameContext = null
+  var subsub2: NameGenerator#NameContext = null
+  var sub2: NameGenerator#NameContext = null
+  var sub2sub: NameGenerator#NameContext = null
+
+  before {
+    gen = SilNameGenerator()
+    sub = gen.createSubContext()
+    subsub = sub.createSubContext()
+    subsub2 = sub.createSubContext()
+    sub2 = gen.createSubContext()
+    sub2sub = sub2.createSubContext()
+  }
+
+  def assertEq(a: String, b: String) = {
+    assert(a == b, s"""Expected "$b" and got "$a".""")
+  }
+
+  List(
+    (gen.createIdentifier(_), "createIdentifier"),
+    (gen.createUniqueIdentifier(_), "createUniqueIdentifier")).foreach { fn =>
+    val (f, name) = fn
+
+    test("Valid Identifier Unchanged " + name) {
+      assertEq(f("asdf"), "asdf")
+    }
+
+    test("Empty Identifier " + name) {
+      assertEq(f(""), gen.defaultIdent)
+    }
+
+    test("Invalid First Letter " + name) {
+      assertEq(f("9"), gen.defaultIdent + "9")
+      assertEq(f("1a"), gen.defaultIdent + "1a")
+    }
+
+    test("Replacing " + name) {
+      assertEq(f("!!=<"), "bangbangeqless")
+    }
+
+    test("Deleting " + name) {
+      assertEq(f("a′"), "a")
+    }
+
+  }
+
+  test("Unique Counter") {
+    assertEq(gen.createUniqueIdentifier("foo"), "foo")
+    assertEq(gen.createUniqueIdentifier("foo"), "foo_1")
+    assertEq(gen.createUniqueIdentifier("foo"), "foo_2")
+    assertEq(gen.createUniqueIdentifier("foo"), "foo_3")
+  }
+
+  test("Subcontext Unique Counter") {
+    assertEq(sub.createUniqueIdentifier("foo"), "foo")
+    assertEq(sub.createUniqueIdentifier("foo"), "foo_1")
+    assertEq(sub.createUniqueIdentifier("foo"), "foo_2")
+    assertEq(sub.createUniqueIdentifier("foo"), "foo_3")
+  }
+
+  test("Enclosing Context Common Unique Counter") {
+    assertEq(gen.createUniqueIdentifier("foo"), "foo")
+    assertEq(gen.createUniqueIdentifier("foo"), "foo_1")
+    assertEq(sub.createUniqueIdentifier("foo"), "foo_2")
+    assertEq(sub.createUniqueIdentifier("foo"), "foo_3")
+    assertEq(subsub.createUniqueIdentifier("foo"), "foo_4")
+    assertEq(subsub.createUniqueIdentifier("foo"), "foo_5")
+  }
+
+  test("Subcontext Common Unique Counter") {
+    assertEq(sub.createUniqueIdentifier("foo"), "foo")
+    assertEq(gen.createUniqueIdentifier("foo"), "foo_1")
+    assertEq(sub.createUniqueIdentifier("foo"), "foo_2")
+    assertEq(subsub.createUniqueIdentifier("foo"), "foo_3")
+    assertEq(sub.createUniqueIdentifier("foo"), "foo_4")
+    assertEq(gen.createUniqueIdentifier("foo"), "foo_5")
+  }
+
+  test("Independent Subcontexts") {
+    assertEq(sub.createUniqueIdentifier("foo"), "foo")
+    assertEq(sub2.createUniqueIdentifier("foo"), "foo")
+    assertEq(subsub.createUniqueIdentifier("bar"), "bar")
+    assertEq(subsub2.createUniqueIdentifier("bar"), "bar")
+    assertEq(sub2sub.createUniqueIdentifier("bar"), "bar")
+  }
+
+  test("Partially Independent Subcontexts") {
+    assertEq(sub.createUniqueIdentifier("foo"), "foo")
+    sub2.createUniqueIdentifier("foo")
+    for (i <- 1 until 10) {
+      assertEq(sub2.createUniqueIdentifier("foo"), "foo_" + i)
+    }
+    sub2.createUniqueIdentifier("foo_10")
+    assertEq(gen.createUniqueIdentifier("foo"), "foo_11")
+    assertEq(subsub.createUniqueIdentifier("bar"), "bar")
+    assertEq(subsub2.createUniqueIdentifier("bar"), "bar")
+    assertEq(sub2sub.createUniqueIdentifier("bar"), "bar")
+    assertEq(sub2sub.createUniqueIdentifier("bar"), "bar_1")
+    assertEq(sub2.createUniqueIdentifier("bar"), "bar_2")
+    assertEq(gen.createUniqueIdentifier("bar"), "bar_3")
+  }
+
+  test("Faked Counters") {
+    assertEq(gen.createUniqueIdentifier("foo"), "foo")
+    assertEq(gen.createUniqueIdentifier("foo_1"), "foo_1")
+    assertEq(gen.createUniqueIdentifier("foo_2"), "foo_2")
+    assertEq(gen.createUniqueIdentifier("foo"), "foo_3")
+  }
+
+  test("Faked Counters in Subcontexts") {
+    assertEq(sub.createUniqueIdentifier("foo"), "foo")
+    assertEq(sub2.createUniqueIdentifier("foo_1"), "foo_1")
+    assertEq(sub2sub.createUniqueIdentifier("foo"), "foo")
+    assertEq(subsub.createUniqueIdentifier("foo_2"), "foo_2")
+    assertEq(gen.createUniqueIdentifier("foo"), "foo_3")
+  }
+}
