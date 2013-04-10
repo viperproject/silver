@@ -168,13 +168,13 @@ object reasons {
     def readableMessage = s"Receiver of $offendingNode might be null."
   }
 
-  case class NegativeFraction(offendingNode: PositionedNode) extends AbstractErrorReason {
-    val id = "negative.fraction"
-    def readableMessage = s"Fraction $offendingNode might be negative."
+  case class NonPositiveFraction(offendingNode: Exp) extends AbstractErrorReason {
+    val id = "non.positive.fraction"
+    def readableMessage = s"Fraction $offendingNode might not be positive."
   }
 
-  case class InsufficientPermissions(offendingNode: PositionedNode) extends AbstractErrorReason {
-    val id = "insufficient.permissions"
-    def readableMessage = s"Insufficient permissions to access $offendingNode."
+  case class InsufficientPermission(offendingNode: LocationAccess) extends AbstractErrorReason {
+    val id = "insufficient.permission"
+    def readableMessage = s"There might be insufficient permission to access $offendingNode."
   }
 }
