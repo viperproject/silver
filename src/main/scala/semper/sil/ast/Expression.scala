@@ -47,9 +47,13 @@ case class IntLit(i: BigInt)(val pos: Position = NoPosition, val info: Info = No
 case class Neg(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NegOp)
 
 // Boolean expressions
-case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(OrOp)
+case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(OrOp) {
+  require(left.isPure && right.isPure)
+}
 case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(AndOp)
-case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(ImpliesOp)
+case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(ImpliesOp) {
+  require(left.isPure)
+}
 
 /** Boolean literals. */
 sealed abstract class BoolLit(val value: Boolean) extends Exp {
@@ -63,7 +67,9 @@ case class TrueLit()(val pos: Position = NoPosition, val info: Info = NoInfo) ex
 case class FalseLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends BoolLit(false)
 
 /** Boolean negation. */
-case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NotOp)
+case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NotOp) {
+  require(exp.isPure)
+}
 
 case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
   lazy val typ = Ref
