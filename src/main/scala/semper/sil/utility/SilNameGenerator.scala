@@ -8,7 +8,7 @@ import semper.sil.ast.utility.Consistency
  *
  * @author Stefan Heule
  */
-class SilNameGenerator extends NameGenerator {
+case class SilNameGenerator() extends NameGenerator {
 
   def separator = "_"
   def firstCharacter = Parser.identFirstLetter.r
