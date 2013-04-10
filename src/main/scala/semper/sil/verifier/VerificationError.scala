@@ -163,9 +163,9 @@ object reasons {
     def readableMessage = s"Assertion $offendingNode might not hold."
   }
 
-  case class ReceiverNull(offendingNode: PositionedNode) extends AbstractErrorReason {
+  case class ReceiverNull(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "receiver.null"
-    def readableMessage = s"Receiver $offendingNode might be null."
+    def readableMessage = s"Receiver of $offendingNode might be null."
   }
 
   case class NegativeFraction(offendingNode: PositionedNode) extends AbstractErrorReason {
