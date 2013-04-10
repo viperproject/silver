@@ -168,8 +168,8 @@ object reasons {
     def readableMessage = s"Receiver of $offendingNode might be null."
   }
 
-  case class NonPositiveFraction(offendingNode: Exp) extends AbstractErrorReason {
-    val id = "non.positive.fraction"
+  case class NonPositivePermission(offendingNode: Exp) extends AbstractErrorReason {
+    val id = "non.positive.permission"
     def readableMessage = s"Fraction $offendingNode might not be positive."
   }
 
