@@ -116,11 +116,20 @@ class NameGeneratorTest extends FunSuite with BeforeAndAfter {
     assertEq(gen.createUniqueIdentifier("foo"), "foo_3")
   }
 
+  test("Faked Counters in Enclosing Contexts") {
+    assertEq(gen.createUniqueIdentifier("foo"), "foo")
+    assertEq(gen.createUniqueIdentifier("foo_1"), "foo_1")
+    assertEq(gen.createUniqueIdentifier("foo_2"), "foo_2")
+    assertEq(sub.createUniqueIdentifier("foo_4"), "foo_4")
+    assertEq(subsub.createUniqueIdentifier("foo"), "foo_3")
+  }
+
   test("Faked Counters in Subcontexts") {
     assertEq(sub.createUniqueIdentifier("foo"), "foo")
     assertEq(sub2.createUniqueIdentifier("foo_1"), "foo_1")
     assertEq(sub2sub.createUniqueIdentifier("foo"), "foo")
     assertEq(subsub.createUniqueIdentifier("foo_2"), "foo_2")
+    assertEq(subsub2.createUniqueIdentifier("foo_4"), "foo_4")
     assertEq(gen.createUniqueIdentifier("foo"), "foo_3")
   }
 }
