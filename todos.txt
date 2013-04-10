@@ -1,5 +1,4 @@
 - [b] Cfg2Ast tests
-- [b] contexts for unique identifier
 - [s] finish parser
 - [s] finish typechecker/resolver
 - finish pretty printer
