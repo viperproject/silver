@@ -5,12 +5,12 @@ import org.scalatest.{BeforeAndAfter, FunSuite}
 
 class NameGeneratorTest extends FunSuite with BeforeAndAfter {
 
-  var gen: NameGenerator = null
-  var sub: NameGenerator#NameContext = null
-  var subsub: NameGenerator#NameContext = null
-  var subsub2: NameGenerator#NameContext = null
-  var sub2: NameGenerator#NameContext = null
-  var sub2sub: NameGenerator#NameContext = null
+  var gen: SilNameGenerator = null
+  var sub: NameGenerator = null
+  var subsub: NameGenerator = null
+  var subsub2: NameGenerator = null
+  var sub2: NameGenerator = null
+  var sub2sub: NameGenerator = null
 
   before {
     gen = SilNameGenerator()
@@ -41,6 +41,11 @@ class NameGeneratorTest extends FunSuite with BeforeAndAfter {
     test("Invalid First Letter " + name) {
       assertEq(f("9"), gen.defaultIdent + "9")
       assertEq(f("1a"), gen.defaultIdent + "1a")
+      assertEq(f("`a"), gen.defaultIdent + "a")
+    }
+
+    test("Reserved name " + name) {
+      assertEq(f("function"), gen.defaultIdent + "function")
     }
 
     test("Replacing " + name) {

@@ -8,11 +8,12 @@ import semper.sil.ast.utility.Consistency
  *
  * @author Stefan Heule
  */
-case class SilNameGenerator() extends NameGenerator {
+case class SilNameGenerator() extends DefaultNameGenerator {
 
-  def separator = "_"
-  def firstCharacter = Parser.identFirstLetter.r
-  def otherCharacter = Parser.identOtherLetter.r
+  val reservedNames = Consistency.reservedNames.toSet
+  val separator = "_"
+  val firstCharacter = Parser.identFirstLetter.r
+  val otherCharacter = Parser.identOtherLetter.r
 
   override def createIdentifier(input: String) = {
     super.createIdentifier(input)
