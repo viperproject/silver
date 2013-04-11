@@ -148,6 +148,8 @@ case class Translator(program: PProgram) {
         Goto(label.name)(pos)
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn), stmt(els))(pos)
+      case PFreshReadPerm(vars, s) =>
+        FreshReadPerm(vars map (v => LocalVar(v.name)(ttyp(v.typ), v.start)), stmt(s))(pos)
       case PWhile(cond, invs, body) =>
         val plocals = body.childStmts collect {
           case l: PLocalVarDecl => l

@@ -201,6 +201,7 @@ case class TypeChecker(names: NameAnalyser) {
                 message(v, "expected variable in fresh read permission block")
             }
         }
+        check(s)
     }
   }
 
