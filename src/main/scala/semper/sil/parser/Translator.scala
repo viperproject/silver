@@ -176,10 +176,10 @@ case class Translator(program: PProgram) {
             }
           case "-" =>
             r.typ match {
-            case Int => Sub(l, r)(pos)
-            case Perm => PermSub(l, r)(pos)
-            case _ => sys.error("should oocur in type-checked program")
-          }
+              case Int => Sub(l, r)(pos)
+              case Perm => PermSub(l, r)(pos)
+              case _ => sys.error("should oocur in type-checked program")
+            }
           case "*" =>
             r.typ match {
               case Int => Mul(l, r)(pos)
@@ -194,10 +194,30 @@ case class Translator(program: PProgram) {
           case "/" => FractionalPerm(l, r)(pos)
           case "\\" => Div(l, r)(pos)
           case "%" => Mod(l, r)(pos)
-          case "<" => LtCmp(l, r)(pos)
-          case "<=" => LeCmp(l, r)(pos)
-          case ">" => GtCmp(l, r)(pos)
-          case ">=" => GeCmp(l, r)(pos)
+          case "<" =>
+            l.typ match {
+              case Int => LtCmp(l, r)(pos)
+              case Perm => PermLtCmp(l, r)(pos)
+              case _ => sys.error("unexpected type")
+            }
+          case "<=" =>
+            l.typ match {
+              case Int => LeCmp(l, r)(pos)
+              case Perm => PermLeCmp(l, r)(pos)
+              case _ => sys.error("unexpected type")
+            }
+          case ">" =>
+            l.typ match {
+              case Int => GtCmp(l, r)(pos)
+              case Perm => PermGtCmp(l, r)(pos)
+              case _ => sys.error("unexpected type")
+            }
+          case ">=" =>
+            l.typ match {
+              case Int => GeCmp(l, r)(pos)
+              case Perm => PermGeCmp(l, r)(pos)
+              case _ => sys.error("unexpected type")
+            }
           case "==" => EqCmp(l, r)(pos)
           case "!=" => NeCmp(l, r)(pos)
           case "==>" => Implies(l, r)(pos)
