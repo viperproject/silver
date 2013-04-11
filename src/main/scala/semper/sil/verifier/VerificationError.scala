@@ -134,20 +134,20 @@ object errors {
   def UnfoldFailed(offendingNode: Unfold): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => UnfoldFailed(offendingNode, reason))
 
-  case class LoopInvariantNotPreserved(offendingNode: While, reason: ErrorReason) extends AbstractVerificationError {
+  case class LoopInvariantNotPreserved(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
     val id = "invariant.not.preserved"
-    val text = "Loop invariant might not be preserved."
+    val text = s"Loop invariant $offendingNode might not be preserved."
   }
 
-  def LoopInvariantNotPreserved(offendingNode: While): PartialVerificationError =
+  def LoopInvariantNotPreserved(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LoopInvariantNotPreserved(offendingNode, reason))
 
-  case class LoopInvariantNotEstablished(offendingNode: While, reason: ErrorReason) extends AbstractVerificationError {
+  case class LoopInvariantNotEstablished(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
     val id = "invariant.not.established"
-    val text = "Loop invariant might not hold on entry."
+    val text = s"Loop invariant $offendingNode might not hold on entry."
   }
 
-  def LoopInvariantNotEstablished(offendingNode: While): PartialVerificationError =
+  def LoopInvariantNotEstablished(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LoopInvariantNotEstablished(offendingNode, reason))
 }
 
