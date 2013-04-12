@@ -504,7 +504,7 @@ case class TypeChecker(names: NameAnalyser) {
                 check(actual, formal.typ)
             }
             setType(typ)
-          case PDomainFunction(_, formalArgs, typ) =>
+          case PDomainFunction(_, formalArgs, typ, unique) =>
             ensure(formalArgs.size == args.size, fa, "wrong number of arguments")
             val inferred = collection.mutable.ListBuffer[(String, PType)]()
             (formalArgs zip args) foreach {

@@ -60,7 +60,9 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // sequences
-    "Seq"
+    "Seq",
+    // modifiers
+    "unique"
   )
 
   lazy val parser = phrase(programDecl)
@@ -124,7 +126,12 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val functionSignature =
     ("function" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ (":" ~> typ)
 
-  lazy val domainFunctionDecl = functionSignature <~ opt(";") ^^ PDomainFunction
+  lazy val domainFunctionDecl = opt("unique") ~ (functionSignature <~ opt(";")) ^^ {
+    case unique ~ fdecl =>
+      fdecl match {
+        case name ~ formalArgs ~ t => PDomainFunction(name, formalArgs, t, unique.isDefined)
+      }
+  }
 
   lazy val predicateDecl =
     ("predicate" ~> idndef) ~ ("(" ~> formalArg <~ ")") ~ ("{" ~> (exp <~ "}")) ^^ PPredicate

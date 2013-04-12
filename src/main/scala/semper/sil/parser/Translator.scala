@@ -87,8 +87,8 @@ case class Translator(program: PProgram) {
         Field(name, ttyp(typ))(pos)
       case PFunction(_, formalArgs, typ, _, _, _) =>
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
-      case PDomainFunction(_, args, typ) =>
-        DomainFunc(name, args map liftVarDecl, ttyp(typ))(pos)
+      case PDomainFunction(_, args, typ, unique) =>
+        DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos)
       case PDomain(_, typVars, funcs, axioms) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.name)))(pos)
       case PPredicate(_, formalArg, _) =>
