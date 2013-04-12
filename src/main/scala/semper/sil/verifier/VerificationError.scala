@@ -111,6 +111,22 @@ object errors {
   def ExhaleFailed(offendingNode: Exhale): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => ExhaleFailed(offendingNode, reason))
 
+  case class InhaleFailed(offendingNode: Inhale, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "inhale.failed"
+    val text = "Inhale might fail."
+  }
+
+  def InhaleFailed(offendingNode: Inhale): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => InhaleFailed(offendingNode, reason))
+
+  case class IfFailed(offendingNode: If, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "if.failed"
+    val text = "Conditional statement might fail."
+  }
+
+  def IfFailed(offendingNode: If): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => IfFailed(offendingNode, reason))
+
   case class AssertFailed(offendingNode: Assert, reason: ErrorReason) extends AbstractVerificationError {
     val id = "assert.failed"
     val text = "Assert might fail."
