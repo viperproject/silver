@@ -1,6 +1,7 @@
 package semper.sil.verifier
 
 import semper.sil.ast._
+import semper.sil.verifier.reasons.InsufficientPermission
 
 trait ErrorMessage {
   type PositionedNode = Node with Positioned
@@ -62,21 +63,29 @@ object errors {
   def Internal(offendingNode: PositionedNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => Internal(offendingNode, reason))
 
-  case class UnsafeCode(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "unsafe"
-    val text = "Unsafe code found."
+  case class AssignmentFailed(offendingNode: AbstractAssign, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "assignment.failed"
+    val text = "Assignment might fail."
   }
 
-  def UnsafeCode(offendingNode: PositionedNode): PartialVerificationError =
-    PartialVerificationError((reason: ErrorReason) => UnsafeCode(offendingNode, reason))
+  def AssignmentFailed(offendingNode: AbstractAssign): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => AssignmentFailed(offendingNode, reason))
 
-  case class AssertionMalformed(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "assertion.malformed"
-    val text = s"$offendingNode might not be well-formed."
+  case class CallFailed(offendingNode: MethodCall, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "call.failed"
+    val text = "Method call might fail."
   }
 
-  def AssertionMalformed(offendingNode: PositionedNode): PartialVerificationError =
-    PartialVerificationError((reason: ErrorReason) => AssertionMalformed(offendingNode, reason))
+  def CallFailed(offendingNode: MethodCall): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => CallFailed(offendingNode, reason))
+
+  case class NotSelfFraming(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "not.self.framing"
+    val text = s"$offendingNode might not be self-framing."
+  }
+
+  def NotSelfFraming(offendingNode: Exp): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => NotSelfFraming(offendingNode, reason))
 
   case class PreconditionInCallFalse(offendingNode: MethodCall, reason: ErrorReason) extends AbstractVerificationError {
     val id = "call.precondition"
