@@ -256,7 +256,7 @@ case class Translator(program: PProgram) {
       case PFunctApp(func, args) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
-          case f@DomainFunc(name, formalArgs, typ) =>
+          case f @ DomainFunc(name, formalArgs, typ, _) =>
             val actualArgs = args map exp
             val translatedTyp = ttyp(pexp.typ)
             // 'learn' looks at the formal type of an expression and the one actually

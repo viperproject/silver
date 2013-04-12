@@ -120,8 +120,8 @@ object Nodes {
         }
       case dm: DomainMember =>
         dm match {
-          case DomainAxiom(name, exp) => Seq(exp)
-          case DomainFunc(name, formalArgs, typ) => formalArgs
+          case DomainAxiom(_, exp) => Seq(exp)
+          case DomainFunc(_, formalArgs, _, _) => formalArgs
         }
       case s: Stmt =>
         s match {

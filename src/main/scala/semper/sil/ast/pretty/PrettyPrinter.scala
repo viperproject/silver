@@ -40,8 +40,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   /** Show a domain member. */
   def showDomainMember(m: DomainMember): Doc = {
     val memberDoc = m match {
-      case DomainFunc(name, formalArgs, typ) =>
-        "function" <+> name <> parens(showVars(formalArgs)) <> ":" <+> show(typ)
+      case f @ DomainFunc(_, _, _, unique) =>
+        if (unique) "unique" <+> showDomainFunc(f) else showDomainFunc(f)
       case DomainAxiom(name, exp) =>
         "axiom" <+> name <+>
           braces(nest(
@@ -49,6 +49,12 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           ) <> line)
     }
     showComment(m) <> memberDoc
+  }
+
+
+  def showDomainFunc(f: DomainFunc) = {
+    val DomainFunc(name, formalArgs, typ, _) = f
+    "function" <+> name <> parens(showVars(formalArgs)) <> ":" <+> show(typ)
   }
 
   /** Show a program member. */
