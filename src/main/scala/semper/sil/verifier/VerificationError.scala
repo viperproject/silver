@@ -202,4 +202,9 @@ object reasons {
     val id = "insufficient.permission"
     def readableMessage = s"There might be insufficient permission to access $offendingNode."
   }
+
+  case class InvalidPermMultiplication(offendingNode: PermMul) extends AbstractErrorReason {
+    val id = "invalid.perm.multiplication"
+    def readableMessage = s"Permission multiplication might not be possible, as an operand might contain epsilons."
+  }
 }
