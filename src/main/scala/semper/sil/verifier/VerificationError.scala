@@ -77,9 +77,9 @@ object errors {
   }
 
   def CallFailed(offendingNode: MethodCall): PartialVerificationError =
-    PartialVerificationError((reason: ErrorReason) => AssignmentFailed(offendingNode, reason))
+    PartialVerificationError((reason: ErrorReason) => CallFailed(offendingNode, reason))
 
-  case class NotSelfFraming(offendingNode: Exp, reason: InsufficientPermission) extends AbstractVerificationError {
+  case class NotSelfFraming(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
     val id = "not.self.framing"
     val text = s"$offendingNode might not be self-framing."
   }
