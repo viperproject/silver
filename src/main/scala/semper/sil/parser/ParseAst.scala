@@ -160,6 +160,7 @@ case class PFullPerm() extends PExp
 case class PWildcard() extends PExp
 case class PEpsilon() extends PExp
 case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
+case class POld(e: PExp) extends PExp
 
 case class PEmptySeq() extends PExp
 case class PExplicitSeq(elems: Seq[PExp]) extends PExp
@@ -262,6 +263,7 @@ object Nodes {
       case PFunctApp(func, args) => Seq(func) ++ args
       case PUnfolding(loc, exp) => Seq(loc, exp)
       case PExists(variable, exp) => Seq(variable, exp)
+      case POld(exp) => Seq(exp)
       case PForall(variable, triggers, exp) => Seq(variable) ++ triggers.flatten ++ Seq(exp)
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PCurPerm(loc) => Seq(loc)

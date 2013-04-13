@@ -528,6 +528,14 @@ case class TypeChecker(names: NameAnalyser) {
       case PExists(variable, e) =>
         check(variable.typ)
         check(e, Bool)
+      case POld(e) =>
+        check(e, expected)
+        if (e.typ.isUnknown) {
+          setErrorType()
+        } else {
+          // ok
+          setType(e.typ)
+        }
       case PForall(variable, triggers, e) =>
         triggers.flatten map (x => check(x, Nil))
         check(variable.typ)
