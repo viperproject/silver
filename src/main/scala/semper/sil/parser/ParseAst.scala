@@ -160,6 +160,7 @@ case class PFullPerm() extends PExp
 case class PWildcard() extends PExp
 case class PEpsilon() extends PExp
 case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
+case class POld(e: PExp) extends PExp
 
 case class PEmptySeq() extends PExp
 case class PExplicitSeq(elems: Seq[PExp]) extends PExp
@@ -211,7 +212,7 @@ case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalRetur
 case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with RealEntity
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with RealEntity
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType) extends PMember with RealEntity
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with RealEntity
 case class PPredicate(idndef: PIdnDef, formalArg: PFormalArgDecl, body: PExp) extends PMember with RealEntity
 case class PAxiom(idndef: PIdnDef, exp: PExp) extends PNode
 
@@ -262,6 +263,7 @@ object Nodes {
       case PFunctApp(func, args) => Seq(func) ++ args
       case PUnfolding(loc, exp) => Seq(loc, exp)
       case PExists(variable, exp) => Seq(variable, exp)
+      case POld(exp) => Seq(exp)
       case PForall(variable, triggers, exp) => Seq(variable) ++ triggers.flatten ++ Seq(exp)
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PCurPerm(loc) => Seq(loc)
@@ -302,7 +304,7 @@ object Nodes {
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ Seq(body)
       case PFunction(name, args, typ, pres, posts, exp) =>
         Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ Seq(exp)
-      case PDomainFunction(name, args, typ) =>
+      case PDomainFunction(name, args, typ, unique) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, arg, body) =>
         Seq(arg, body)
