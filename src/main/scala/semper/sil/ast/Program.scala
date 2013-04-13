@@ -114,8 +114,10 @@ case class DomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, v
 }
 
 /** Domain function which is not a binary or unary operator. */
-case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, val unique: Boolean = false)
-                     (val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFunc with DomainMember
+case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
+                     (val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFunc with DomainMember {
+  require(!unique || formalArgs.isEmpty, "Only constants, i.e. nullary domain functions can be unique.")
+}
 
 
 // --- Common functionality
