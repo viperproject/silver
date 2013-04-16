@@ -33,12 +33,16 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
-    require(s.forall(_ isSubtype Bool))
+    s foreach { pre =>
+      require(pre isSubtype Bool, s"Precondition $pre is not boolean.")
+    }
     _pres = s
   }
   def posts = _posts
   def posts_=(s: Seq[Exp]) {
-    require(s.forall(_ isSubtype Bool))
+    s foreach { pre =>
+      require(pre isSubtype Bool, s"Postcondition $pre is not boolean.")
+    }
     _posts = s
   }
   def locals = _locals
