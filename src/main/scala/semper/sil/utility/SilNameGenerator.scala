@@ -8,7 +8,7 @@ import semper.sil.ast.utility.Consistency
  *
  * @author Stefan Heule
  */
-case class SilNameGenerator() extends DefaultNameGenerator {
+class SilNameGenerator extends DefaultNameGenerator {
 
   val reservedNames = Consistency.reservedNames.toSet
   val separator = "_"
