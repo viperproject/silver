@@ -14,7 +14,7 @@ case object NoPosition extends Position {
 trait RealPosition {
   def line: Int
   def column: Int
-  override def toString = s"$line.$column"
+  override def toString = line.toString
 }
 object RealPosition {
   def unapply(pos: RealPosition) = Some(pos.line, pos.column)
@@ -27,4 +27,5 @@ case class SourcePosition(line: Int, column: Int) extends Position with RealPosi
 case class TranslatedPosition(file: File, pos: RealPosition) extends Position with RealPosition {
   val line = pos.line
   val column = pos.column
+  override def toString = s"$file:$line"
 }

@@ -3,7 +3,6 @@ package semper.sil.testing
 import java.io.File
 import semper.sil.verifier._
 import java.nio.file.Path
-import io.Source
 import semper.sil.ast.{Position, TranslatedPosition, SourcePosition}
 import org.scalatest._
 import semper.sil.frontend.Frontend

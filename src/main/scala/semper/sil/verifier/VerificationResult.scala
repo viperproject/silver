@@ -37,25 +37,20 @@ trait AbstractError {
   /** A readable message describing the error. */
   def readableMessage: String
 
-  override def toString = readableMessage + " " + readablePosition
+  override def toString = s"$readableMessage ($pos)"
 
-  def readablePosition = pos match {
-    case TranslatedPosition(file, RealPosition(line, _)) => s"(${file.getName}:${line})"
-    case SourcePosition(line, _) => s"(${line})"
-    case _ => ""
-  }
 }
 
 /** A parser error. */
 case class ParseError(message: String, pos: Position) extends AbstractError {
   def fullId = "parser.error"
-  def readableMessage = s"$pos: Parse error: $message"
+  def readableMessage = s"Parse error: $message ($pos)"
 }
 
 /** A typechecker error. */
 case class TypecheckerError(message: String, pos: Position) extends AbstractError {
   def fullId = "typechecker.error"
-  def readableMessage = s"$pos: $message"
+  def readableMessage = s"$message ($pos)"
 }
 
 /** An error during command-line option parsing. */

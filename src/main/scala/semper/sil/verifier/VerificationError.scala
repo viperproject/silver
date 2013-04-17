@@ -41,7 +41,7 @@ abstract class AbstractVerificationError extends VerificationError {
 
   def readableMessage(full: Boolean = true) = {
     val id = if (full) s" [$fullId]" else ""
-    s"$pos:$id $text ${reason.readableMessage}"
+    s"$id $text ${reason.readableMessage} ($pos)"
   }
 
   override def toString = readableMessage(true)
