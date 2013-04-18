@@ -173,7 +173,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         val call = m.name <> parens(ssep(args map show, comma <> space))
         targets match {
           case Nil => call
-          case _ => parens(ssep(targets map show, comma <> space)) <+> ":=" <+> call
+          case _ => ssep(targets map show, comma <> space) <+> ":=" <+> call
         }
       case Seqn(ss) =>
         val sss = ss filter (s => !(s.isInstanceOf[Seqn] && s.children.size == 0))
