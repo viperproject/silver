@@ -28,7 +28,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   import TypeHelper._
 
-  var curMember: PMember = null
+  var curMember: PScope = null
 
   def run(p: PProgram): Boolean = {
     check(p)
@@ -50,7 +50,7 @@ case class TypeChecker(names: NameAnalyser) {
     p.methods map check
   }
 
-  def checkMember(m: PMember)(fcheck: => Unit) {
+  def checkMember(m: PScope)(fcheck: => Unit) {
     curMember = m
     fcheck
     curMember = null
@@ -98,7 +98,9 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(a: PAxiom) {
-    check(a.exp, Bool)
+    checkMember(a) {
+      check(a.exp, Bool)
+    }
   }
 
   def check(f: PDomainFunction) {
@@ -684,7 +686,7 @@ case class TypeChecker(names: NameAnalyser) {
  */
 case class NameAnalyser() {
 
-  def definition(member: PMember)(idnuse: PIdnUse) = {
+  def definition(member: PScope)(idnuse: PIdnUse) = {
     if (member == null) {
       idnMap.get(idnuse.name).get.asInstanceOf[RealEntity]
     }
@@ -697,14 +699,14 @@ case class NameAnalyser() {
   }
 
   private val idnMap = collection.mutable.HashMap[String, Entity]()
-  private val memberIdnMap = collection.mutable.HashMap[PMember, collection.mutable.HashMap[String, Entity]]()
+  private val memberIdnMap = collection.mutable.HashMap[PScope, collection.mutable.HashMap[String, Entity]]()
 
   def run(p: PProgram): Boolean = {
-    var curMember: PMember = null
+    var curMember: PScope = null
     def getMap = if (curMember == null) idnMap else memberIdnMap.get(curMember).get
     // find all declarations
     p.visit({
-      case m: PMember =>
+      case m: PScope =>
         memberIdnMap.put(m, collection.mutable.HashMap[String, Entity]())
         curMember = m
       case i@PIdnDef(name) =>
@@ -734,13 +736,13 @@ case class NameAnalyser() {
         }
       case _ =>
     }, {
-      case _: PMember =>
+      case _: PScope =>
         curMember = null
       case _ =>
     })
     // check all identifier uses
     p.visit({
-      case m: PMember =>
+      case m: PScope =>
         curMember = m
       case i@PIdnUse(name) =>
         // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
@@ -753,7 +755,7 @@ case class NameAnalyser() {
         }
       case _ =>
     }, {
-      case m: PMember =>
+      case m: PScope =>
         curMember = null
       case _ =>
     })
