@@ -204,9 +204,11 @@ case class PLabel(idndef: PIdnDef) extends PStmt with RealEntity
 case class PGoto(targets: PIdnUse) extends PStmt
 
 // Declarations
-sealed trait PMember extends PNode {
+sealed trait PMember extends PNode with PScope {
   def idndef: PIdnDef
 }
+// a member (like method or axiom) that is its own name scope
+sealed trait PScope
 case class PProgram(domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with RealEntity
 case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with RealEntity
@@ -214,7 +216,7 @@ case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with RealEntity
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with RealEntity
 case class PPredicate(idndef: PIdnDef, formalArg: PFormalArgDecl, body: PExp) extends PMember with RealEntity
-case class PAxiom(idndef: PIdnDef, exp: PExp) extends PNode
+case class PAxiom(idndef: PIdnDef, exp: PExp) extends PNode with PScope
 
 /** An entity is a declaration (i.e. something that contains a PIdnDef). */
 sealed trait Entity
