@@ -114,6 +114,7 @@ case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, v
 
 /** A while loop. */
 case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+  invs map Consistency.checkContract
   /**
    * The list of variables that are written to in this loop (not counting local variables).
    */

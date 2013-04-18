@@ -17,10 +17,10 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 
 /** A predicate declaration. */
 case class Predicate(name: String, formalArg: LocalVarDecl, private var _body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
-  require(_body == null || (_body isSubtype Bool))
+  if (body != null) Consistency.checkContract(body)
   def body = _body
   def body_=(b: Exp) {
-    require(b == null || (b isSubtype Bool))
+    Consistency.checkContract(body)
     _body = b
   }
 }
@@ -33,16 +33,12 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
-    s foreach { pre =>
-      require(pre isSubtype Bool, s"Precondition $pre is not boolean.")
-    }
+    s map Consistency.checkContract
     _pres = s
   }
   def posts = _posts
   def posts_=(s: Seq[Exp]) {
-    s foreach { pre =>
-      require(pre isSubtype Bool, s"Postcondition $pre is not boolean.")
-    }
+    s map Consistency.checkContract
     _posts = s
   }
   def locals = _locals
@@ -58,12 +54,12 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   require(_exp == null || (_exp isSubtype typ))
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
-    require(s.forall(_ isSubtype Bool))
+    s map Consistency.checkContract
     _pres = s
   }
   def posts = _posts
   def posts_=(s: Seq[Exp]) {
-    require(s.forall(_ isSubtype Bool))
+    s map Consistency.checkContract
     _posts = s
   }
   def exp = _exp /* TODO: [Malte] I suggest to rename 'exp' to 'body' since the latter is more descriptive. */
@@ -164,8 +160,8 @@ sealed trait FuncLike extends Callable with Typed
 
 /** A member with a contract. */
 sealed trait Contracted extends Member {
-  require((pres == null || pres.forall(_ isSubtype Bool)))
-  require((posts == null || posts.forall(_ isSubtype Bool)))
+  if (pres != null) pres map Consistency.checkContract
+  if (posts != null) posts map Consistency.checkContract
   def pres: Seq[Exp]
   def posts: Seq[Exp]
 }
