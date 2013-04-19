@@ -13,7 +13,7 @@ class NameGeneratorTest extends FunSuite with BeforeAndAfter {
   var sub2sub: NameGenerator = null
 
   before {
-    gen = SilNameGenerator()
+    gen = new SilNameGenerator()
     sub = gen.createSubContext()
     subsub = sub.createSubContext()
     subsub2 = sub.createSubContext()
