@@ -3,6 +3,7 @@ package semper.sil.parser
 import org.kiama.util.Positioned
 import org.kiama.attribution.Attributable
 import TypeHelper._
+import java.io.File
 
 /**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
@@ -209,7 +210,7 @@ sealed trait PMember extends PNode with PScope {
 }
 // a member (like method or axiom) that is its own name scope
 sealed trait PScope
-case class PProgram(domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
+case class PProgram(file: File, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with RealEntity
 case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with RealEntity
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
@@ -298,7 +299,7 @@ object Nodes {
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
       case PFreshReadPerm(vars, stmt) => vars ++ Seq(stmt)
-      case PProgram(domains, fields, functions, predicates, methods) =>
+      case PProgram(file, domains, fields, functions, predicates, methods) =>
         domains ++ fields ++ functions ++ predicates ++ methods
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)

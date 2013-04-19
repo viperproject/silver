@@ -150,14 +150,15 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def doParse(input: String): Result[ParserResult] = {
-    val p = Parser.parse(input)
+    val file = _inputFile.get
+    val p = Parser.parse(input, file)
     p match {
       case Parser.Success(e, _) =>
         Succ(e)
       case Parser.Failure(msg, next) =>
-        Fail(List(ParseError(s"Failure: $msg", SourcePosition(next.pos.line, next.pos.column))))
+        Fail(List(ParseError(s"Failure: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
       case Parser.Error(msg, next) =>
-        Fail(List(ParseError(s"Error: $msg", SourcePosition(next.pos.line, next.pos.column))))
+        Fail(List(ParseError(s"Error: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
     }
   }
 
@@ -167,7 +168,7 @@ trait SilFrontend extends DefaultFrontend {
       Succ(n)
     } else {
       val errors = for (m <- sortedmessages) yield {
-        TypecheckerError(m.message, SourcePosition(m.pos.line, m.pos.column))
+        TypecheckerError(m.message, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))
       }
       Fail(errors)
     }

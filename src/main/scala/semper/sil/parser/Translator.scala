@@ -14,9 +14,11 @@ import org.kiama.attribution.Attributable
  */
 case class Translator(program: PProgram) {
 
+  val file = program.file
+
   def translate: Program = {
     program match {
-      case PProgram(domains, fields, functions, predicates, methods) =>
+      case PProgram(f, domains, fields, functions, predicates, methods) =>
         (domains ++ fields ++ functions ++ predicates ++
           methods ++ (domains flatMap (_.funcs))) map translateMemberSignature
         val d = domains map (translate(_))
@@ -148,8 +150,8 @@ case class Translator(program: PProgram) {
         Goto(label.name)(pos)
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn), stmt(els))(pos)
-      case PFreshReadPerm(vars, s) =>
-        FreshReadPerm(vars map (v => LocalVar(v.name)(ttyp(v.typ), v.start)), stmt(s))(pos)
+      case PFreshReadPerm(vars, ss) =>
+        FreshReadPerm(vars map (v => LocalVar(v.name)(ttyp(v.typ), v.start)), stmt(ss))(pos)
       case PWhile(cond, invs, body) =>
         val plocals = body.childStmts collect {
           case l: PLocalVarDecl => l
@@ -327,7 +329,7 @@ case class Translator(program: PProgram) {
   }
 
   /** Takes a `scala.util.parsing.input.Position` and turns it into a `SourcePosition`. */
-  implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition = SourcePosition(pos.line, pos.column)
+  implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition = SourcePosition(file, pos.line, pos.column)
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
   private def liftVarDecl(formal: PFormalArgDecl) = LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.start)
