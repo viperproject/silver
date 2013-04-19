@@ -20,7 +20,7 @@ case class Predicate(name: String, formalArg: LocalVarDecl, private var _body: E
   if (body != null) Consistency.checkContract(body)
   def body = _body
   def body_=(b: Exp) {
-    Consistency.checkContract(body)
+    Consistency.checkContract(b)
     _body = b
   }
 }
