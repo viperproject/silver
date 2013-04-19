@@ -278,11 +278,11 @@ case class Translator(program: PProgram) {
         }
       case PUnfolding(loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
-      case PExists(variable, e) =>
-        ??? // Exists(liftVarDecl(variable), exp(e))(pos)
+      case PExists(vars, e) =>
+        Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(variable, triggers, e) =>
         val ts = triggers map (exps => Trigger(exps map exp)(exps(0).start))
-        ??? //Forall(liftVarDecl(variable), ts, exp(e))(pos)
+        Forall(vars map liftVarDecl, ts, exp(e))(pos)
       case POld(e) =>
         Old(exp(e))(pos)
       case PCondExp(cond, thn, els) =>
