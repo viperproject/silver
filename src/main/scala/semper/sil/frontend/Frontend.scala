@@ -74,10 +74,7 @@ trait DefaultPhases extends Frontend {
 }
 
 trait SingleFileFrontend {
-  def reset(input: String)
-  def reset(file: File) {
-    reset(Source.fromFile(file).mkString)
-  }
+  def reset(file: File)
   def reset(files: Seq[File]) {
     files match {
       case f :: Nil => reset(f)
@@ -100,6 +97,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   protected var _state: TranslatorState.Value = TranslatorState.Initial
   protected var _verifier: Option[Verifier] = None
   protected var _input: Option[String] = None
+  protected var _inputFile: Option[File] = None
   protected var _errors: Seq[AbstractError] = Seq()
   protected var _verificationResult: Option[VerificationResult] = None
   protected var _parseResult: Option[ParserResult] = None
@@ -117,10 +115,11 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _verifier = Some(verifier)
   }
 
-  override def reset(input: String) {
+  override def reset(input: File) {
     if (state < TranslatorState.Initialized) sys.error("The translator has not been initialized.")
     _state = TranslatorState.InputSet
-    _input = Some(input)
+    _inputFile = Some(input)
+    _input = Some(Source.fromFile(input).mkString)
     _errors = Seq()
     _program = None
     _verificationResult = None
