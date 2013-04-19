@@ -12,20 +12,21 @@ case object NoPosition extends Position {
 
 /** An actual position that has a line and column. */
 trait RealPosition {
+  def file: File
   def line: Int
   def column: Int
-  override def toString = s"$line.$column"
+  override def toString = s"${file.getName}:$line"
 }
 object RealPosition {
   def unapply(pos: RealPosition) = Some(pos.line, pos.column)
 }
 
 /** Describes a location in a file by line and column number. */
-case class SourcePosition(line: Int, column: Int) extends Position with RealPosition
+case class SourcePosition(file: File, line: Int, column: Int) extends Position with RealPosition
 
 /** Refers to a location in a source language that has been translated to SIL. */
-case class TranslatedPosition(file: File, pos: RealPosition) extends Position with RealPosition {
+case class TranslatedPosition(pos: RealPosition) extends Position with RealPosition {
   val line = pos.line
   val column = pos.column
-  override def toString = s"${file.getName}:$line"
+  val file = pos.file
 }
