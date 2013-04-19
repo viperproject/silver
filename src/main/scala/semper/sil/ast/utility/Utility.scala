@@ -47,7 +47,7 @@ object Statements {
     }
     def addDecls(n: Node, decls: Seq[LocalVarDecl]) = n match {
       case While(_, _, locals, _) => decls ++ locals
-      case QuantifiedExp(v, _) => decls :+ v
+      case QuantifiedExp(v, _) => decls ++ v
       case _ => decls
     }
     def combineResults(n: Node, decls: Seq[LocalVarDecl], localss: Seq[Seq[LocalVar]]) = {
@@ -154,8 +154,8 @@ object Nodes {
           case Unfolding(acc, exp) => Seq(acc, exp)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
-          case Exists(v, exp) => Seq(v, exp)
-          case Forall(v, triggers, exp) => Seq(v) ++ triggers ++ Seq(exp)
+          case Exists(v, exp) => v ++ Seq(exp)
+          case Forall(v, triggers, exp) => v ++ triggers ++ Seq(exp)
           case WildcardPerm() => Nil
           case FullPerm() => Nil
           case NoPerm() => Nil

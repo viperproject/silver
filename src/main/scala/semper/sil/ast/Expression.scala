@@ -202,19 +202,19 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 /** A common trait for quantified expressions. */
 sealed trait QuantifiedExp extends Exp {
   require(exp isSubtype Bool)
-  def variable: LocalVarDecl
+  def variables: Seq[LocalVarDecl]
   def exp: Exp
   lazy val typ = Bool
 }
 object QuantifiedExp {
-  def unapply(q: QuantifiedExp) = Some(q.variable, q.exp)
+  def unapply(q: QuantifiedExp) = Some(q.variables, q.exp)
 }
 
 /** Universal quantification. */
-case class Forall(variable: LocalVarDecl, triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
+case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
 
 /** Existential quantification. */
-case class Exists(variable: LocalVarDecl, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
+case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
 
 /** A trigger for a universally quantified formula. */
 case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed
