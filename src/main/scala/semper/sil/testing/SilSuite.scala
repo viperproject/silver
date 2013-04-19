@@ -156,7 +156,8 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
             // process remaining errors that have not been matched
             expectedErrors.foreach {
               case e: ExpectedError => expectedButMissingErrors ::= e
-              case u: UnexpectedError => unexpectedButMissingErrors ::= u
+              case u: UnexpectedError =>
+                if (u.project.toLowerCase == verifier.name.toLowerCase) unexpectedButMissingErrors ::= u
               case _: MissingError => // Expected to be missing
               case _: IgnoreOthers =>
             }

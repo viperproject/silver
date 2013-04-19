@@ -217,6 +217,14 @@ object Consistency {
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
   def nullValue[T](a: T, b: T) = if (a != null) a else b
 
+  /** Check all properties required for a contract expression (pre/postcondition, invariant, predicate) */
+  def checkContract(e: Exp) {
+    require(e isSubtype Bool, s"Contract $e must be boolean.")
+    e visit {
+      case CurrentPerm(_) => require(false, s"Contract $e is not allowed to contain perm(.)")
+    }
+  }
+
   /**
    * Is the control flow graph starting at `start` well-formed.  That is, does it have the following
    * properties:

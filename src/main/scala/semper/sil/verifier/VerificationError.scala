@@ -79,13 +79,13 @@ object errors {
   def CallFailed(offendingNode: MethodCall): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => CallFailed(offendingNode, reason))
 
-  case class NotSelfFraming(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
-    val id = "not.self.framing"
-    val text = s"$offendingNode might not be self-framing."
+  case class ContractNotWellformed(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "not.wellformed"
+    val text = s"Contract might not be well-formed."
   }
 
-  def NotSelfFraming(offendingNode: Exp): PartialVerificationError =
-    PartialVerificationError((reason: ErrorReason) => NotSelfFraming(offendingNode, reason))
+  def ContractNotWellformed(offendingNode: Exp): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => ContractNotWellformed(offendingNode, reason))
 
   case class PreconditionInCallFalse(offendingNode: MethodCall, reason: ErrorReason) extends AbstractVerificationError {
     val id = "call.precondition"
