@@ -527,8 +527,8 @@ case class TypeChecker(names: NameAnalyser) {
         check(loc, Pred)
         check(e, expected)
         setType(e.typ)
-      case PExists(variable, e) =>
-        check(variable.typ)
+      case PExists(vars, e) =>
+        vars map (v => check(v.typ))
         check(e, Bool)
       case POld(e) =>
         check(e, expected)
@@ -538,9 +538,9 @@ case class TypeChecker(names: NameAnalyser) {
           // ok
           setType(e.typ)
         }
-      case PForall(variable, triggers, e) =>
+      case PForall(vars, triggers, e) =>
+        vars map (v => check(v.typ))
         triggers.flatten map (x => check(x, Nil))
-        check(variable.typ)
         check(e, Bool)
       case PCondExp(cond, thn, els) =>
         check(cond, Bool)

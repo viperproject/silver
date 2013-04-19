@@ -151,8 +151,8 @@ case class PNullLit() extends PExp {
 case class PLocationAccess(rcv: PExp, idnuse: PIdnUse) extends PExp
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
 case class PUnfolding(loc: PLocationAccess, exp: PExp) extends PExp
-case class PExists(variable: PFormalArgDecl, exp: PExp) extends PExp
-case class PForall(variable: PFormalArgDecl, triggers: Seq[Seq[PExp]], exp: PExp) extends PExp
+case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp
+case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
 case class PCurPerm(loc: PLocationAccess) extends PExp
 case class PNoPerm() extends PExp
@@ -264,9 +264,9 @@ object Nodes {
       case PLocationAccess(rcv, field) => Seq(rcv, field)
       case PFunctApp(func, args) => Seq(func) ++ args
       case PUnfolding(loc, exp) => Seq(loc, exp)
-      case PExists(variable, exp) => Seq(variable, exp)
+      case PExists(vars, exp) => vars ++ Seq(exp)
       case POld(exp) => Seq(exp)
-      case PForall(variable, triggers, exp) => Seq(variable) ++ triggers.flatten ++ Seq(exp)
+      case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PCurPerm(loc) => Seq(loc)
       case PNoPerm() => Nil
