@@ -91,6 +91,13 @@ trait Node {
     Visitor.visitOpt(this, f1, f2)
   }
 
+  /**
+   * Checks whether the partial function is defined for any of the subnodes.  This is
+   * useful to check if the node contains a subnode of a given type, or with a
+   * certain property.
+   */
+  def exists(f: PartialFunction[Node, Unit]): Boolean = Visitor.exists(this, f)
+
   override def toString = PrettyPrinter.pretty(this)
 }
 

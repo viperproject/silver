@@ -8,7 +8,7 @@ import semper.sil.ast._
  * @author Stefan Heule
  */
 object Visitor {
-  
+
   /**
    * See Node.reduce.
    */
@@ -16,7 +16,7 @@ object Visitor {
     val subResults = n.subnodes.map(reduce[T](_)(f))
     f(n, subResults)
   }
-  
+
   /**
    * See Node.reduce.
    */
@@ -68,5 +68,16 @@ object Visitor {
       }
     }
     f2(n)
+  }
+
+  /**
+   * See Node.exists.
+   */
+  def exists(n: Node, f: PartialFunction[Node, Unit]): Boolean = {
+    n visit {
+      case e =>
+        if (f.isDefinedAt(e)) return true
+    }
+    false
   }
 }
