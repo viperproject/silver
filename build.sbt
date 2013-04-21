@@ -13,6 +13,8 @@ libraryDependencies += "com.googlecode.kiama" % "kiama_2.10" % "1.4.0"
 
 libraryDependencies += "org.rogach" %% "scallop" % "0.8.1"
 
+libraryDependencies += "org.jgrapht" % "jgrapht-jdk1.5" % "0.7.3"
+
 scalacOptions += "-deprecation"
 
 scalacOptions += "-feature"
