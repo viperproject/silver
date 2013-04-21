@@ -72,6 +72,13 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
    * The result variable of this function (without position or info).
    */
   def result = Result()(typ)
+
+  /**
+   * Is this function recursive?
+   */
+  def isRecursive: Boolean = exp exists {
+    case FuncApp(func, _) if name == func.name =>
+  }
 }
 
 
