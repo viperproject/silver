@@ -263,6 +263,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case SeqLength(seq) =>
         "|" <> show(seq) <> "|"
       case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)
+      case _ => sys.error(s"unknown expression: ${e.getClass}")
     }
   }
 }
