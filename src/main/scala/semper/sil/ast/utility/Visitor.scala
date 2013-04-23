@@ -29,7 +29,7 @@ object Visitor {
   /**
    * See Node.visit.
    */
-  def visit(n: Node)(f: PartialFunction[Node, Unit]) {
+  def visit[A](n: Node)(f: PartialFunction[Node, A]) {
     if (f.isDefinedAt(n)) f(n)
     for (sub <- n.subnodes) {
       visit(sub)(f)
@@ -39,7 +39,7 @@ object Visitor {
   /**
    * See Node.visit.
    */
-  def visit(n: Node, f1: PartialFunction[Node, Unit], f2: PartialFunction[Node, Unit]) {
+  def visit[A](n: Node, f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
     if (f1.isDefinedAt(n)) f1(n)
     for (sub <- n.subnodes) {
       visit(sub, f1, f2)
@@ -61,10 +61,10 @@ object Visitor {
   /**
    * See Node.visitOpt.
    */
-  def visitOpt(n: Node, f1: Node => Boolean, f2: Node => Unit) {
+  def visitOpt[A](n: Node, f1: Node => Boolean, f2: Node => A) {
     if (f1(n)) {
       for (sub <- n.subnodes) {
-        visitOpt(sub, f1, f2)
+        visitOpt[A](sub, f1, f2)
       }
     }
     f2(n)
@@ -73,7 +73,7 @@ object Visitor {
   /**
    * See Node.exists.
    */
-  def exists(n: Node, f: PartialFunction[Node, Unit]): Boolean = {
+  def exists[A](n: Node, f: PartialFunction[Node, A]): Boolean = {
     n visit {
       case e =>
         if (f.isDefinedAt(e)) return true
