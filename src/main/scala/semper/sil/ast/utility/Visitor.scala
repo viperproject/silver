@@ -10,19 +10,19 @@ import semper.sil.ast._
 object Visitor {
 
   /**
-   * See Node.reduce.
+   * See Node.reduceTree.
    */
-  def reduce[T](n: Node)(f: (Node, Seq[T]) => T): T = {
-    val subResults = n.subnodes.map(reduce[T](_)(f))
+  def reduceTree[T](n: Node)(f: (Node, Seq[T]) => T): T = {
+    val subResults = n.subnodes.map(reduceTree[T](_)(f))
     f(n, subResults)
   }
 
   /**
-   * See Node.reduce.
+   * See Node.reduceTree.
    */
-  def reduce[C, R](n: Node)(context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R): R = {
+  def reduceWithContext[C, R](n: Node)(context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R): R = {
     val newContext = enter(n, context)
-    val subResults = n.subnodes.map(reduce[C, R](_)(newContext, enter, combine))
+    val subResults = n.subnodes.map(reduceWithContext[C, R](_)(newContext, enter, combine))
     combine(n, context, subResults)
   }
 

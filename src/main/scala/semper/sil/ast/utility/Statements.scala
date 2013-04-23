@@ -52,6 +52,6 @@ object Statements {
     def combineResults(n: Node, decls: Seq[LocalVarDecl], localss: Seq[Seq[LocalVar]]) = {
       localss.fold(extractLocal(n, decls))(combineLists)
     }
-    s.reduce(Nil, addDecls, combineResults)
+    s.reduceWithContext(Nil, addDecls, combineResults)
   }
 }

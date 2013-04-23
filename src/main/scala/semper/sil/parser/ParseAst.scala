@@ -23,7 +23,7 @@ sealed trait PNode extends Positioned with Attributable {
   def reduce[T](f: (PNode, Seq[T]) => T) = Visitor.reduce[T](this)(f)
 
   /**
-   * More powerful version of reduce that also carries a context argument through the tree.
+   * More powerful version of reduceTree that also carries a context argument through the tree.
    */
   def reduce[C, R](context: C, enter: (PNode, C) => C, combine: (PNode, C, Seq[R]) => R) = {
     Visitor.reduce[C, R](this)(context, enter, combine)
@@ -324,7 +324,7 @@ object Nodes {
 object Visitor {
 
   /**
-   * See Node.reduce.
+   * See Node.reduceTree.
    */
   def reduce[T](n: PNode)(f: (PNode, Seq[T]) => T): T = {
     val subResults = n.subnodes.map(reduce[T](_)(f))
@@ -332,7 +332,7 @@ object Visitor {
   }
 
   /**
-   * See Node.reduce.
+   * See Node.reduceTree.
    */
   def reduce[C, R](n: PNode)(context: C, enter: (PNode, C) => C, combine: (PNode, C, Seq[R]) => R): R = {
     val newContext = enter(n, context)

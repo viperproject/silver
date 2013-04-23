@@ -39,7 +39,7 @@ Some design choices:
  * - LocalVarDecl
  * - Trigger
  */
-trait Node {
+trait Node extends Traversable[Node] {
   /**
    * Returns a list of all direct sub-nodes of this node. The type of nodes is
    * included in this list only for declarations (but not for expressions, for instance).
@@ -51,14 +51,19 @@ trait Node {
   /**
    * Applies the function `f` to the node and the results of the subnodes.
    */
-  def reduce[T](f: (Node, Seq[T]) => T) = Visitor.reduce[T](this)(f)
+  def reduceTree[A](f: (Node, Seq[A]) => A) = Visitor.reduceTree[A](this)(f)
 
   /**
-   * More powerful version of reduce that also carries a context argument through the tree.
+   * More powerful version of reduceTree that also carries a context argument through the tree.
    */
-  def reduce[C, R](context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R) = {
-    Visitor.reduce[C, R](this)(context, enter, combine)
+  def reduceWithContext[C, R](context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R) = {
+    Visitor.reduceWithContext[C, R](this)(context, enter, combine)
   }
+
+  /**
+   * Applies the function `f` to the AST node, then visits all subnodes.
+   */
+  def foreach[A](f: Node => A) = Visitor.visit(this) { case a: Node => f(a); () }
 
   /**
    * Applies the function `f` to the AST node, then visits all subnodes.
