@@ -68,7 +68,7 @@ trait Node extends Traversable[Node] {
   /**
    * Applies the function `f` to the AST node, then visits all subnodes.
    */
-  def visit(f: PartialFunction[Node, Unit]) {
+  def visit[A](f: PartialFunction[Node, A]) {
     Visitor.visit(this)(f)
   }
 
@@ -76,7 +76,7 @@ trait Node extends Traversable[Node] {
    * Applies the function `f1` to the AST node, then visits all subnodes,
    * and finally calls `f2` to the AST node.
    */
-  def visit(f1: PartialFunction[Node, Unit], f2: PartialFunction[Node, Unit]) {
+  def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
     Visitor.visit(this, f1, f2)
   }
 
@@ -92,7 +92,7 @@ trait Node extends Traversable[Node] {
    * Applies the function `f1` to the AST node, then visits all subnodes if `f1`
    * returned true, and finally calls `f2` to the AST node.
    */
-  def visitOpt(f1: Node => Boolean, f2: Node => Unit) {
+  def visitOpt[A](f1: Node => Boolean, f2: Node => A) {
     Visitor.visitOpt(this, f1, f2)
   }
 
@@ -101,7 +101,7 @@ trait Node extends Traversable[Node] {
    * useful to check if the node contains a subnode of a given type, or with a
    * certain property.
    */
-  def exists(f: PartialFunction[Node, Unit]): Boolean = Visitor.exists(this, f)
+  def exists[A](f: PartialFunction[Node, A]): Boolean = Visitor.exists(this, f)
 
   override def toString = PrettyPrinter.pretty(this)
 }

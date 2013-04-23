@@ -71,7 +71,7 @@ object Visitor {
   }
 
   /**
-   * See Node.exists.
+   * See Node.existsDefined.
    */
   def exists[A](n: Node, f: PartialFunction[Node, A]): Boolean = {
     n visit {

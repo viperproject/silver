@@ -76,9 +76,10 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   /**
    * Is this function recursive?
    */
-  def isRecursive: Boolean = exp exists {
+  def isRecursive: Boolean = exp existsDefined {
     case FuncApp(func, _) if name == func.name =>
   }
+
 }
 
 
