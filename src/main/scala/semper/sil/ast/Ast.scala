@@ -101,7 +101,7 @@ trait Node extends Traversable[Node] {
    * useful to check if the node contains a subnode of a given type, or with a
    * certain property.
    */
-  def exists[A](f: PartialFunction[Node, A]): Boolean = Visitor.exists(this, f)
+  def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitor.exists(this, f)
 
   override def toString = PrettyPrinter.pretty(this)
 }
