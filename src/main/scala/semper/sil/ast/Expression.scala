@@ -135,7 +135,22 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 // --- Function application (domain and normal)
 
 /** Function application. */
-case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp
+case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp {
+  /**
+   * The precondition of this function application (i.e., the precondition of the function with
+   * the arguments instantiated correctly).
+   */
+  lazy val pres = {
+    func.pres map (e => Expressions.instantiateVariables(e, func.formalArgs, args))
+  }
+  /**
+   * The postcondition of this function application (i.e., the postcondition of the function with
+   * the arguments instantiated correctly).
+   */
+  lazy val posts = {
+    func.posts map (e => Expressions.instantiateVariables(e, func.formalArgs, args))
+  }
+}
 
 /** User-defined domain function application. */
 case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFuncApp {
