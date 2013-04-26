@@ -190,6 +190,14 @@ object errors {
 
   def FunctionNotWellformed(offendingNode: Function): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => FunctionNotWellformed(offendingNode, reason))
+
+  case class PredicateNotWellformed(offendingNode: Predicate, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "predicate.not.wellformed"
+    val text = s"Predicate might not be well-formed."
+  }
+
+  def PredicateNotWellformed(offendingNode: Predicate): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => PredicateNotWellformed(offendingNode, reason))
 }
 
 object reasons {
