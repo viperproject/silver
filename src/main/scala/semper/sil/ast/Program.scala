@@ -6,7 +6,10 @@ import org.kiama.output._
 /** A SIL program. */
 // TODO consistency checks
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
-                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed
+                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
+
+  lazy val members = domains ++ fields ++ functions ++ predicates ++ methods
+}
 
 // --- Program members
 
@@ -67,7 +70,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
     require(e isSubtype typ)
     _exp = e
   }
-  
+
   /**
    * The result variable of this function (without position or info).
    */
