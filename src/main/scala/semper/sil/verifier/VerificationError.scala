@@ -182,6 +182,14 @@ object errors {
 
   def LoopInvariantNotEstablished(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LoopInvariantNotEstablished(offendingNode, reason))
+
+  case class FunctionNotWellformed(offendingNode: Function, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "function.not.wellformed"
+    val text = s"Function might not be well-formed."
+  }
+
+  def FunctionNotWellformed(offendingNode: Function): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => FunctionNotWellformed(offendingNode, reason))
 }
 
 object reasons {
