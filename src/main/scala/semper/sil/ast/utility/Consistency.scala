@@ -32,10 +32,10 @@ object Consistency {
   def noDuplicates[T](a: Seq[T]) = a.distinct.size == a.size
 
   /** Returns true if the given node contains no old expression. */
-  def noOld(n: Node) = n.existsDefined { case _: Old => }
+  def noOld(n: Node) = !n.existsDefined { case _: Old => }
 
   /** Returns true if the given node contains no result. */
-  def noResult(n: Node) = n.existsDefined { case _: Result => }
+  def noResult(n: Node) = !n.existsDefined { case _: Result => }
 
   /** Returns true if the given node contains no access locations. */
   def noAccessLocation(n: Node) = n == null || n.existsDefined { case _: LocationAccess => }
@@ -45,8 +45,8 @@ object Consistency {
 
   /** Check all properties required for a contract expression that is not a postcondition (precondition, invariant, predicate) */
   def checkNonPostContract(e: Exp) = {
-    require(Consistency.noOld(e), s"Old expression $e is only allowed in postconditions of methods.")
-    require(Consistency.noResult(e), s"Old expression $e is only allowed in postconditions of functions.")
+    require(Consistency.noOld(e), s"Old expressions are only allowed in postconditions of methods.")
+    require(Consistency.noResult(e), s"Result is only allowed in postconditions of functions.")
     checkPost(e)
   }
 
