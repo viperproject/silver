@@ -43,8 +43,14 @@ object Consistency {
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
   def nullValue[T](a: T, b: T) = if (a != null) a else b
 
-  /** Check all properties required for a contract expression (pre/postcondition, invariant, predicate) */
-  def checkContract(e: Exp) {
+  /** Check all properties required for a contract expression that is not a postcondition (precondition, invariant, predicate) */
+  def checkNonPostContract(e: Exp) = {
+    require(Consistency.noOld(e), s"Old expression $e is only allowed in postconditions of methods.")
+    require(Consistency.noResult(e), s"Old expression $e is only allowed in postconditions of functions.")
+    checkPost(e)
+  }
+
+  def checkPost(e: Exp) {
     require(e isSubtype Bool, s"Contract $e must be boolean.")
     e visit {
       case CurrentPerm(_) => require(false, s"Contract $e is not allowed to contain perm(.)")
