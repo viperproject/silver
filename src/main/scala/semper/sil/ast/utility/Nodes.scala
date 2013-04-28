@@ -52,9 +52,7 @@ object Nodes {
         // Note: If you have to update this pattern match to make it exhaustive, it
         // might also be necessary to update the PrettyPrinter.toParenDoc method.
         e match {
-          case IntLit(i) => Nil
-          case BoolLit(b) => Nil
-          case NullLit() => Nil
+          case _: Literal => Nil
           case AbstractLocalVar(n) => Nil
           case FieldAccess(rcv, field) => Seq(rcv)
           case PredicateAccess(rcv, predicate) => Seq(rcv)
