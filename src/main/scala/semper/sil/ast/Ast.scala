@@ -63,7 +63,7 @@ trait Node extends Traversable[Node] {
   /**
    * Applies the function `f` to the AST node, then visits all subnodes.
    */
-  def foreach[A](f: Node => A) = Visitor.visit(this) { case a: Node => f(a); () }
+  def foreach[A](f: Node => A) = Visitor.visit(this) { case a: Node => f(a) }
 
   /**
    * Applies the function `f` to the AST node, then visits all subnodes.
