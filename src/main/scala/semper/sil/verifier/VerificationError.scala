@@ -217,6 +217,11 @@ object reasons {
     def readableMessage = s"Receiver of $offendingNode might be null."
   }
 
+  case class DivisionByZero(offendingNode: Exp) extends AbstractErrorReason {
+    val id = "division.by.zero"
+    def readableMessage = s"Divisor $offendingNode might be zero."
+  }
+
   case class NonPositivePermission(offendingNode: Exp) extends AbstractErrorReason {
     val id = "non.positive.permission"
     def readableMessage = s"Fraction $offendingNode might not be positive."
