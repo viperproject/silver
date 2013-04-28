@@ -31,6 +31,12 @@ object Consistency {
   /** Returns true iff there are no duplicates. */
   def noDuplicates[T](a: Seq[T]) = a.distinct.size == a.size
 
+  /** Returns true if the given node contains no old. */
+  def noOld(n: Node) = n.existsDefined { case _: Old => }
+
+  /** Returns true if the given node contains no result. */
+  def noResult(n: Node) = n.existsDefined { case _: Result => }
+
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
   def nullValue[T](a: T, b: T) = if (a != null) a else b
 
