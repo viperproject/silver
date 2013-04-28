@@ -31,7 +31,7 @@ case class Predicate(name: String, formalArg: LocalVarDecl, private var _body: E
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], var body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted {
-  require(_posts != null || (_posts forall Consistency.noResult))
+  require(_posts == null || (_posts forall Consistency.noResult))
   require(noDuplicates)
   require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
   private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
@@ -56,7 +56,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 /** A function declaration */
 case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _exp: Exp)
                    (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with FuncLike with Contracted {
-  require(_posts != null || (_posts forall Consistency.noOld))
+  require(_posts == null || (_posts forall Consistency.noOld))
   require(_exp == null || (_exp isSubtype typ))
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
