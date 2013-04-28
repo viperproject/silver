@@ -125,9 +125,9 @@ case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Se
 
 /** A domain axiom. */
 case class DomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainMember {
-  require(Consistency.noResult(exp))
-  require(Consistency.noOld(exp))
-  require(Consistency.noAccessLocation(exp))
+  require(Consistency.noResult(exp), "Axioms can never contain result variables.")
+  require(Consistency.noOld(exp), "Axioms can never contain old expressions.")
+  require(Consistency.noAccessLocation(exp), "Axioms can never contain access locations.")
   require(exp isSubtype Bool)
 }
 

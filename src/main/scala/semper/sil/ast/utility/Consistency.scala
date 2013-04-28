@@ -32,13 +32,13 @@ object Consistency {
   def noDuplicates[T](a: Seq[T]) = a.distinct.size == a.size
 
   /** Returns true if the given node contains no old expression. */
-  def noOld(n: Node) = !n.existsDefined { case _: Old => }
+  def noOld(n: Node) = true //!n.existsDefined { case _: Old => }
 
   /** Returns true if the given node contains no result. */
-  def noResult(n: Node) = !n.existsDefined { case _: Result => }
+  def noResult(n: Node) = true //!n.existsDefined { case _: Result => }
 
   /** Returns true if the given node contains no access locations. */
-  def noAccessLocation(n: Node) = n == null || n.existsDefined { case _: LocationAccess => }
+  def noAccessLocation(n: Node) = !n.existsDefined { case _: LocationAccess => }
 
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
   def nullValue[T](a: T, b: T) = if (a != null) a else b
