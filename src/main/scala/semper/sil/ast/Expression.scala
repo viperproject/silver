@@ -39,7 +39,7 @@ case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info
 case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends EqualityCmp("!=")
 
 /** Integer literal. */
-case class IntLit(i: BigInt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class IntLit(i: BigInt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Literal {
   lazy val typ = Int
 }
 
@@ -56,7 +56,7 @@ case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 }
 
 /** Boolean literals. */
-sealed abstract class BoolLit(val value: Boolean) extends Exp {
+sealed abstract class BoolLit(val value: Boolean) extends Literal {
   lazy val typ = Bool
 }
 object BoolLit {
@@ -71,7 +71,7 @@ case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
   require(exp.isPure)
 }
 
-case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends Literal {
   lazy val typ = Ref
 }
 
@@ -341,6 +341,9 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
 
 
 // --- Common functionality
+
+/** Common super trait for all kinds of literals. */
+sealed trait Literal extends Exp
 
 /**
  * A common class for concrete permissions.  The name AbstractConcretePerm is used because it is an abstract superclass for concrete permissions.
