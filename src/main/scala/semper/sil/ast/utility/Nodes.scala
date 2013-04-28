@@ -47,6 +47,7 @@ object Nodes {
           case Goto(target) => Nil
           case FreshReadPerm(vars, body) => vars ++ Seq(body)
         }
+      case vd: LocalVarDecl => Nil
       case e: Exp =>
         // Note: If you have to update this pattern match to make it exhaustive, it
         // might also be necessary to update the PrettyPrinter.toParenDoc method.
