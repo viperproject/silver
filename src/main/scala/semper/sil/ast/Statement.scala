@@ -6,6 +6,9 @@ import semper.sil.ast.utility.{Expressions, Consistency, Statements, CfgGenerato
 
 /** A common trait for statements. */
 sealed trait Stmt extends Node with Infoed with Positioned {
+  require(Consistency.noOld(this), "Method bodies cannot contain any old expressions.")
+  require(Consistency.noResult(this), "Method bodies cannot contain any result expressions.")
+
   /**
    * Returns a list of all actual statements contained in this statement.  That
    * is, all statements except `Seqn`, including statements in the body of loops, etc.
@@ -114,7 +117,7 @@ case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, v
 
 /** A while loop. */
 case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
-  invs map Consistency.checkContract
+  invs map Consistency.checkNonPostContract
   /**
    * The list of variables that are written to in this loop (not counting local variables).
    */

@@ -20,10 +20,10 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 
 /** A predicate declaration. */
 case class Predicate(name: String, formalArg: LocalVarDecl, private var _body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
-  if (body != null) Consistency.checkContract(body)
+  if (body != null) Consistency.checkNonPostContract(body)
   def body = _body
   def body_=(b: Exp) {
-    Consistency.checkContract(b)
+    Consistency.checkNonPostContract(b)
     _body = b
   }
 }
@@ -31,17 +31,19 @@ case class Predicate(name: String, formalArg: LocalVarDecl, private var _body: E
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], var body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted {
+  require(_posts != null || (_posts forall Consistency.noResult))
   require(noDuplicates)
   require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
   private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
-    s map Consistency.checkContract
+    s map Consistency.checkNonPostContract
     _pres = s
   }
   def posts = _posts
   def posts_=(s: Seq[Exp]) {
-    s map Consistency.checkContract
+    require(s forall Consistency.noResult)
+    s map Consistency.checkPost
     _posts = s
   }
   def locals = _locals
@@ -54,15 +56,17 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 /** A function declaration */
 case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _exp: Exp)
                    (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with FuncLike with Contracted {
+  require(_posts != null || (_posts forall Consistency.noOld))
   require(_exp == null || (_exp isSubtype typ))
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
-    s map Consistency.checkContract
+    s map Consistency.checkNonPostContract
     _pres = s
   }
   def posts = _posts
   def posts_=(s: Seq[Exp]) {
-    s map Consistency.checkContract
+    require(s forall Consistency.noOld)
+    s map Consistency.checkPost
     _posts = s
   }
   def exp = _exp /* TODO: [Malte] I suggest to rename 'exp' to 'body' since the latter is more descriptive. */
@@ -121,6 +125,9 @@ case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Se
 
 /** A domain axiom. */
 case class DomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainMember {
+  require(Consistency.noResult(exp))
+  require(Consistency.noOld(exp))
+  require(Consistency.noAccessLocation(exp))
   require(exp isSubtype Bool)
 }
 
@@ -171,8 +178,8 @@ sealed trait FuncLike extends Callable with Typed
 
 /** A member with a contract. */
 sealed trait Contracted extends Member {
-  if (pres != null) pres map Consistency.checkContract
-  if (posts != null) posts map Consistency.checkContract
+  if (pres != null) pres map Consistency.checkNonPostContract
+  if (posts != null) posts map Consistency.checkPost
   def pres: Seq[Exp]
   def posts: Seq[Exp]
 }
