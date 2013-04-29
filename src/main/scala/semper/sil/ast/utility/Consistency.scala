@@ -43,10 +43,22 @@ object Consistency {
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
   def nullValue[T](a: T, b: T) = if (a != null) a else b
 
+  /** Check all properties required for a function body */
+  def checkFunctionBody(e: Exp) {
+    require(noOld(e), "Old expressions are not allowed in functions bodies.")
+    require(noResult(e), "Result variables are not allowed in function bodies.")
+  }
+
+  /** Check all properties required for a function body */
+  def checkPre(e: Exp) {
+    require(noOld(e), "Old expressions are not allowed in preconditions.")
+    require(noResult(e), "Result variables are not allowed in preconditions.")
+    checkNonPostContract(e)
+  }
+
   /** Check all properties required for a contract expression that is not a postcondition (precondition, invariant, predicate) */
-  def checkNonPostContract(e: Exp) = {
-    require(Consistency.noOld(e), s"Old expressions are only allowed in postconditions of methods.")
-    require(Consistency.noResult(e), s"Result is only allowed in postconditions of functions.")
+  def checkNonPostContract(e: Exp) {
+    require(noResult(e), "Result variables are only allowed in postconditions of functions.")
     checkPost(e)
   }
 

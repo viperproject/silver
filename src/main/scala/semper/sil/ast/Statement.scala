@@ -6,8 +6,7 @@ import semper.sil.ast.utility.{Expressions, Consistency, Statements, CfgGenerato
 
 /** A common trait for statements. */
 sealed trait Stmt extends Node with Infoed with Positioned {
-  require(Consistency.noOld(this), "Method bodies cannot contain any old expressions.")
-  require(Consistency.noResult(this), "Method bodies cannot contain any result expressions.")
+  require(Consistency.noResult(this), "Result variables are only allowed in postconditions of functions.")
 
   /**
    * Returns a list of all actual statements contained in this statement.  That

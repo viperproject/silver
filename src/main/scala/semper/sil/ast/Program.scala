@@ -31,19 +31,20 @@ case class Predicate(name: String, formalArg: LocalVarDecl, private var _body: E
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], var body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted {
-  require(_posts == null || (_posts forall Consistency.noResult))
+  if (_pres != null) _pres foreach Consistency.checkNonPostContract
+  if (_posts != null) _posts foreach Consistency.checkPost
   require(noDuplicates)
   require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
   private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
-    s map Consistency.checkNonPostContract
+    s foreach Consistency.checkNonPostContract
     _pres = s
   }
   def posts = _posts
   def posts_=(s: Seq[Exp]) {
     require(s forall Consistency.noResult)
-    s map Consistency.checkPost
+    s foreach Consistency.checkPost
     _posts = s
   }
   def locals = _locals
@@ -58,20 +59,24 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
                    (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with FuncLike with Contracted {
   require(_posts == null || (_posts forall Consistency.noOld))
   require(_exp == null || (_exp isSubtype typ))
+  if (_pres != null) _pres foreach Consistency.checkNonPostContract
+  if (_posts != null) _posts foreach Consistency.checkPost
+  if (_exp != null) Consistency.checkFunctionBody(_exp)
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
-    s map Consistency.checkNonPostContract
+    s foreach Consistency.checkNonPostContract
     _pres = s
   }
   def posts = _posts
   def posts_=(s: Seq[Exp]) {
     require(s forall Consistency.noOld)
-    s map Consistency.checkPost
+    s foreach Consistency.checkPost
     _posts = s
   }
   def exp = _exp /* TODO: [Malte] I suggest to rename 'exp' to 'body' since the latter is more descriptive. */
   def exp_=(e: Exp) {
     require(e isSubtype typ)
+    Consistency.checkFunctionBody(e)
     _exp = e
   }
 
