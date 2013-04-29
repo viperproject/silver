@@ -54,13 +54,15 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     case fileListRegex(name) => {
       val regex = (Pattern.quote(name) + """_file(\d*).*""").r
       var files = List[(File, Int)]()
-      file.getParentFile.listFiles.foreach(f => f.getName match {
-        case regex(index) => files = (f, index.toInt) :: files
-        case _ => ()
-      })
+      file.getParentFile.listFiles foreach { f =>
+        f.getName match {
+          case regex(index) => files = (f, index.toInt) :: files
+          case _ =>
+        }
+      }
       files.sortBy(_._2).map(_._1)
     }
-    case _ => Seq(file)
+    case _ => List(file)
   }
 
   /** Registers a tests that runs the translator for all given verifiers. */
@@ -95,7 +97,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     // one test per verifier
     for (verifier <- verifiers) {
       test(name + " [" + verifier.name + "]", Tag(name), Tag(fileName), Tag(fileNameWithoutExt)) {
-        val fe = frontend(verifier, List(file))
+        val fe = frontend(verifier, files)
         val tPhases = fe.phases.map { p =>
           time(p.action)._2 + " (" + p.name + ")"
         }.mkString(", ")
