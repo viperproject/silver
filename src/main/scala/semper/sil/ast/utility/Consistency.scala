@@ -69,6 +69,20 @@ object Consistency {
     }
   }
 
+  /** Returns true iff the given expression is a valid trigger. */
+  def validTrigger(e: Exp): Boolean = {
+    e.isInstanceOf[FuncLikeApp] && !(e.existsDefined {
+      case _: LtCmp =>
+      case _: LeCmp =>
+      case _: GtCmp =>
+      case _: GeCmp =>
+      case _: PermLtCmp =>
+      case _: PermLeCmp =>
+      case _: PermGtCmp =>
+      case _: PermGeCmp =>
+    })
+  }
+
   /**
    * Is the control flow graph starting at `start` well-formed.  That is, does it have the following
    * properties:
