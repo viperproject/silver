@@ -54,4 +54,18 @@ object Statements {
     }
     s.reduceWithContext(Nil, addDecls, combineResults)
   }
+
+  def writtenVars(s: Stmt): Set[LocalVar] = {
+    var writtenTo = Set[LocalVar]()
+
+    s visit {
+      case LocalVarAssign(lhs, _) => writtenTo = writtenTo + lhs
+      case MethodCall(_, _, targets) => writtenTo = writtenTo ++ targets
+      case FreshReadPerm(vars, _) => writtenTo = writtenTo ++ vars
+      case NewStmt(lhs) => writtenTo = writtenTo + lhs
+      case While(_, _, locals, body) => writtenTo = writtenTo ++ (writtenVars(body) -- locals.map(_.localVar))
+    }
+
+    writtenTo
+  }
 }

@@ -92,4 +92,16 @@ object ControlFlowGraph {
 
     res.toString()
   }
+
+  /**
+   * Computes the set of variables that are written to, but not declared, in the given block.
+   * @param b A block whose set of written variables is to be computed.
+   * @return The set of written variables.
+   */
+  def writtenVars(b: Block): Set[LocalVar] = b match {
+    case lb: LoopBlock => writtenVars(lb.body)
+    case cb: ConditionalBlock => cb.stmt.writtenVars ++ writtenVars(cb.thn) ++ writtenVars(cb.els)
+    case frpb: FreshReadPermBlock => writtenVars(frpb.body) ++ frpb.vars
+    case sb: StatementBlock => sb.stmt.writtenVars
+  }
 }
