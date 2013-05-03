@@ -1,7 +1,16 @@
 <classpath>
-  <classpathentry kind="src" output="target/scala-2.9.1/classes" path="src/main/scala"/>
-  <classpathentry kind="src" output="target/scala-2.9.1/test-classes" path="src/test/scala"/>
+  <classpathentry output="target/scala-2.10/classes" path="src/main/scala" kind="src"></classpathentry>
+  <classpathentry output="target/scala-2.10/classes" path="src/main/java" kind="src"></classpathentry>
+  <classpathentry output="target/scala-2.10/test-classes" path="src/test/scala" kind="src"></classpathentry>
+  <classpathentry output="target/scala-2.10/test-classes" path="src/test/java" kind="src"></classpathentry>
   <classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"></classpathentry>
+  <classpathentry path="/home/benjamin/.ivy2/cache/org.scalatest/scalatest_2.10/jars/scalatest_2.10-1.9.1.jar" kind="lib"></classpathentry>
+  <classpathentry path="/home/benjamin/.ivy2/cache/org.scala-lang/scala-actors/jars/scala-actors-2.10.0.jar" kind="lib"></classpathentry>
+  <classpathentry path="/home/benjamin/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-2.10.0.jar" kind="lib"></classpathentry>
+  <classpathentry path="/home/benjamin/.ivy2/cache/com.googlecode.kiama/kiama_2.10/jars/kiama_2.10-1.4.0.jar" kind="lib"></classpathentry>
+  <classpathentry path="/home/benjamin/.ivy2/cache/jline/jline/jars/jline-1.0.jar" kind="lib"></classpathentry>
+  <classpathentry path="/home/benjamin/.ivy2/cache/org.rogach/scallop_2.10/jars/scallop_2.10-0.8.1.jar" kind="lib"></classpathentry>
+  <classpathentry path="/home/benjamin/.ivy2/cache/org.jgrapht/jgrapht-jdk1.5/jars/jgrapht-jdk1.5-0.7.3.jar" kind="lib"></classpathentry>
   <classpathentry path="org.eclipse.jdt.launching.JRE_CONTAINER" kind="con"></classpathentry>
   <classpathentry path="bin" kind="output"></classpathentry>
 </classpath>

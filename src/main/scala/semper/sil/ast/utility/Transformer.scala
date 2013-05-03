@@ -121,8 +121,7 @@ object Transformer {
       case root @ Or(_, TrueLit()) => TrueLit()(root.pos, root.info)
 
       case root @ Implies(FalseLit(), _) => TrueLit()(root.pos, root.info)
-      case root @ Implies(TrueLit(), TrueLit()) =>
-        TrueLit()(root.pos, root.info)
+      case root @ Implies(_, TrueLit()) => TrueLit()(root.pos, root.info)
       case root @ Implies(TrueLit(), FalseLit()) =>
         FalseLit()(root.pos, root.info)
       case Implies(TrueLit(), consequent) => consequent
