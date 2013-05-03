@@ -310,7 +310,7 @@ object Nodes {
       case PDomainFunction(name, args, typ, unique) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, arg, body) =>
-        Seq(arg, body)
+        Seq(name, arg, body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
     }
   }
