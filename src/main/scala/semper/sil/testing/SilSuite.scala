@@ -19,12 +19,29 @@ import java.util.regex.Pattern
   * @author Stefan Heule
   */
 abstract class SilSuite extends FunSuite with TestAnnotationParser {
-
-  /** The directories (relative to `baseDirectory` where tests can be found. */
+  /**
+   * The test directories where tests can be found.
+   * The directories must be relative because they are resolved via [[ClassLoader.getResource]],
+   * see http://stackoverflow.com/a/7098501/491216.
+   * @return A sequence of test directories.
+   */
   def testDirectories: Seq[String]
 
-  /** The base directory for tests. */
-  def baseDirectory: Path
+  /**
+   * Returns a class loader that can be used to access resources such as test files
+   * via [[ClassLoader.getResource]].
+   *
+   * @return A class loader for accessing resources.
+   */
+  def classLoader: ClassLoader = getClass.getClassLoader
+
+  /* For debugging purposes only. */
+  protected def printClassPath() {
+    val urls = classLoader.asInstanceOf[java.net.URLClassLoader].getURLs()
+
+    println("\n[SilSuite/printClassPath]")
+    urls foreach (u => println("  " + u.getFile))
+  }
 
   /** The frontend to be used. */
   def frontend(verifier: Verifier, files: Seq[File]): Frontend
@@ -241,9 +258,8 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   def registerTests() {
     if (_testsRegistered) return
 
-    for (testDir <- testDirectories) {
-      registerTestDirectory(baseDirectory.resolve(testDir).toFile)
-    }
+    for (testDir <- testDirectories)
+      registerTestDirectory(new File(classLoader.getResource(testDir).toURI))
 
     _testsRegistered = true
   }

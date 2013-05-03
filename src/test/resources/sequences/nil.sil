@@ -1,0 +1,7 @@
+method test01() {
+  var bs1: Seq[Bool] := Seq()
+  var bs2: Seq[Bool] := Seq()
+
+  assert bs1 == bs2
+  assert |Seq()| == 0
+}
