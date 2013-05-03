@@ -1,8 +1,7 @@
 package semper.sil.ast
 
 import org.kiama.output._
-import utility.Consistency
-import utility.{Transformer, Expressions}
+import semper.sil.ast.utility.{Expressions, Consistency, Transformer}
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
@@ -186,6 +185,10 @@ case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, v
 case class PredicateAccess(rcv: Exp, predicate: Predicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess {
   lazy val loc = predicate
   lazy val typ = Pred
+
+  /** The body of the predicate with the receiver instantiated correctly. */
+  lazy val predicateBody =
+    Expressions.instantiateVariables(predicate.body, Seq(predicate.formalArg), Seq(rcv))
 }
 
 
