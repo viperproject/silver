@@ -2,22 +2,38 @@ package semper.sil.ast
 
 import org.kiama.output._
 import utility.Consistency
-import utility.{Transformer, Expressions}
+import utility.{ Transformer, Expressions }
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
 
   /**
-   * Transforms an expression using the partial function `f`;  if `f` is defined at `e`, then the previous expression
-   * is replaced by `e`, and otherwise the previous expression is reused.
-   * The function `f` must produce expressions that are valid in the given context.  For instance, it cannot
-   * replace an integer literal by a boolean literal.
+   * Transforms an expression using the partial function `pre`, recursing on
+   * the subexpressions and finally using the partial function `post`.
+   *
+   * The previous expression is replaced by applying `pre` and `post`,
+   * respectively, if and only if these partial functions are defined there.
+   * The functions `pre` and `post` must produce expressions that are valid in
+   * the given context. For instance, they cannot replace an integer literal by
+   * a Boolean literal.
+   *
+   * @param pre       Partial function used before the recursion.
+   *                   Default: partial function with the empty domain.
+   * @param recursive Given the original expression, should the children of the
+   *                   expression transformed with `pre` be transformed
+   *                   recursively? `pre`, `recursive` and `post` are kept the
+   *                   same during each recursion.
+   *                   Default: recurse if and only if `pre` is defined there.
+   * @param post      Partial function used after the recursion.
+   *                   Default: partial function with the empty domain.
    */
-  def transform(f: PartialFunction[Exp, Exp]): Exp = Transformer.transform(this, f)
+  def transform(pre: PartialFunction[Exp, Exp] = PartialFunction.empty)(
+    recursive: Exp => Boolean = !pre.isDefinedAt(_),
+    post: PartialFunction[Exp, Exp] = PartialFunction.empty): Exp =
+    Transformer.transform(this, pre)(recursive, post)
 
   def isPure = Expressions.isPure(this)
 }
-
 
 // --- Simple integer and boolean expressions (binary and unary operations, literals)
 
@@ -131,7 +147,6 @@ case class PermLeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 case class PermGtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermGtOp)
 case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermGeOp)
 
-
 // --- Function application (domain and normal)
 
 /** Function application. */
@@ -188,7 +203,6 @@ case class PredicateAccess(rcv: Exp, predicate: Predicate)(val pos: Position = N
   lazy val typ = Pred
 }
 
-
 // --- Conditional expression
 
 /** A conditional expressions. */
@@ -197,7 +211,6 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
   require(thn.typ == els.typ)
   lazy val typ = thn.typ
 }
-
 
 // --- Unfolding expression
 
@@ -210,7 +223,6 @@ case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position 
 case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnExp {
   lazy val typ = exp.typ
 }
-
 
 // --- Quantifications
 
@@ -236,7 +248,6 @@ case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Inf
   require(exps forall Consistency.validTrigger, s"The trigger { ${exps.mkString(", ")} } is not valid.")
 }
 
-
 // --- Variables, this, result
 
 /** A local variable, special or not (used both for declarations and usages). */
@@ -257,7 +268,6 @@ case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition,
 case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar {
   lazy val name = "result"
 }
-
 
 // --- Mathematical sequences
 
@@ -341,7 +351,6 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
   lazy val typ = Int
 }
 
-
 // --- Common functionality
 
 /** Common super trait for all kinds of literals. */
@@ -371,7 +380,7 @@ sealed trait AbstractDomainFuncApp extends FuncLikeApp {
 sealed abstract class EqualityCmp(val op: String) extends BinExp with PrettyBinaryExpression {
   require(left.typ == right.typ, s"expected the same typ, but got ${left.typ} and ${right.typ}")
   lazy val priority = 13
-  lazy val fixity = Infix (NonAssoc)
+  lazy val fixity = Infix(NonAssoc)
   lazy val typ = Bool
 }
 

@@ -58,6 +58,6 @@ object Expressions {
     }
     exp.transform {
       case LocalVar(name) if actualArg(name).isDefined => actualArg(name).get
-    }
+    }()
   }
 }
