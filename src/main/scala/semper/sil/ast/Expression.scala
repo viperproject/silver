@@ -18,14 +18,14 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
    * a Boolean literal.
    *
    * @param pre       Partial function used before the recursion.
-   *                   Default: partial function with the empty domain.
+   *                  Default: partial function with the empty domain.
    * @param recursive Given the original expression, should the children of the
-   *                   expression transformed with `pre` be transformed
-   *                   recursively? `pre`, `recursive` and `post` are kept the
-   *                   same during each recursion.
-   *                   Default: recurse if and only if `pre` is defined there.
+   *                  expression transformed with `pre` be transformed
+   *                  recursively? `pre`, `recursive` and `post` are kept the
+   *                  same during each recursion.
+   *                  Default: recurse if and only if `pre` is defined there.
    * @param post      Partial function used after the recursion.
-   *                   Default: partial function with the empty domain.
+   *                  Default: partial function with the empty domain.
    */
   def transform(pre: PartialFunction[Exp, Exp] = PartialFunction.empty)(
     recursive: Exp => Boolean = !pre.isDefinedAt(_),
