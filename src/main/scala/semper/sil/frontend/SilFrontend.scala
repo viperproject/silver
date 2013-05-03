@@ -10,6 +10,7 @@ import semper.sil.verifier.ParseError
 import semper.sil.ast.SourcePosition
 import semper.sil.verifier.TypecheckerError
 import semper.sil.ast.Program
+import java.nio.file.Paths
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
@@ -103,7 +104,8 @@ trait SilFrontend extends DefaultFrontend {
     init(verifier)
 
     // set the file we want to verify
-    reset(new File(config.file()))
+//    reset(new File(config.file()))
+    reset(Paths.get(config.file()))
 
     // run the parser, typechecker, and verifier
     verify()

@@ -1,0 +1,4 @@
+method test2() {
+  //:: ExpectedError(assert.failed:assertion.false)
+  assert 3 == 4
+}
