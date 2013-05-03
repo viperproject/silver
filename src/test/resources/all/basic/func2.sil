@@ -1,0 +1,41 @@
+
+var f: Int
+
+function f1(r: Ref): Int
+    requires acc(r.f, wildcard)
+{ r.f }
+
+function f3(r: Ref): Int
+    //:: ExpectedError(not.wellformed:insufficient.permission)
+    //:: ExpectedError(not.wellformed:receiver.null)
+    requires ((r.f) == 2)
+{ 2 }
+
+function f4(r: Ref): Int
+    requires acc(r.f, write)
+    requires (r.f) == 2
+{ 2 }
+
+//:: ExpectedError(function.not.wellformed:insufficient.permission)
+function f5(r: Ref): Int
+    requires r != null
+{
+    r.f
+}
+
+function f6(r: Ref): Int
+    requires r != null
+{
+    //:: ExpectedError(application.precondition:insufficient.permission)
+    f4(r)
+}
+
+method t1(r: Ref)
+    requires acc(r.f, write)
+{
+    r.f := 1
+    assert f1(r) == 1;
+
+    //:: ExpectedError(application.precondition:assertion.false)
+    assert f4(r) > 0;
+}

@@ -1,0 +1,41 @@
+
+var f: Int
+
+method t1(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    var read: Perm
+    fresh(read) {
+        t1b(r, read)
+    }
+    assert (perm(r.f) == write)
+}
+
+method t1b(r: Ref, p: Perm)
+    requires acc(r.f, p)
+    ensures acc(r.f, p)
+{
+    var a: Int := r.f
+}
+
+method t2(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    var read: Perm
+    fresh(read) {
+        exhale acc(r.f, read) && acc(r.f, write - read)
+    }
+    //:: ExpectedError(assertion.false)
+    assert false
+}
+
+method t2b(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    var read: Perm
+    fresh(read) {
+        exhale acc(r.f, write - read) && acc(r.f, read)
+    }
+    //:: ExpectedError(assertion.false)
+    assert false
+}

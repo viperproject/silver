@@ -1,0 +1,25 @@
+
+var f: Ref
+
+// test aliasing of heap values with other objects
+method t1() {
+    var a: Ref
+    var c: Ref
+
+    c := new()
+
+    inhale acc(a.f, write)
+
+    assert c.f != c
+    assert a.f != c
+}
+
+method t2(r: Ref)
+{
+    if (r != null) {
+        assert perm(r.f) == none
+    } else {
+        //:: ExpectedError(assert.failed:receiver.null)
+        assert perm(r.f) == none
+    }
+}

@@ -1,0 +1,78 @@
+
+var f: Int
+
+method t1(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    t1(r)
+}
+
+method t1b() {
+    //:: ExpectedError(call.precondition:receiver.null)
+    t1(null)
+}
+
+method t1c(r: Ref)
+    requires r != null
+{
+    //:: ExpectedError(call.precondition:insufficient.permission)
+    t1(r)
+}
+
+method t2(r: Ref, p: Perm) returns ()
+    requires acc(r.f, p)
+{
+    //:: ExpectedError(call.precondition:non.positive.permission)
+    t2(r, none)
+}
+
+method t3(r: Ref) returns ()
+    requires acc(r.f, wildcard)
+{
+    t2(r, wildcard)
+    t2(r, wildcard)
+    //:: ExpectedError(call.precondition:insufficient.permission)
+    t2(r, write)
+}
+
+method t4(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    assert acc(r.f, write)
+    assert acc(r.f, write)
+    assert acc(r.f, write)
+    exhale acc(r.f, write)
+    assert (perm(r.f) == none)
+    //:: ExpectedError(assert.failed:insufficient.permission)
+    assert acc(r.f, write)
+}
+
+method t5(r: Ref) returns ()
+    requires acc(r.f, write)
+{
+    exhale acc(r.f, 1/3)
+    assert (perm(r.f) == (2/3))
+    assert acc(r.f, wildcard)
+    exhale acc(r.f, epsilon)
+    assert acc(r.f, wildcard)
+    exhale acc(r.f, perm(r.f))
+    //:: ExpectedError(assert.failed:insufficient.permission)
+    assert acc(r.f, wildcard)
+}
+
+method t6(r: Ref)
+{
+    assert (none == none)
+    assert (none != write)
+    assert (epsilon <= write)
+    //:: ExpectedError(assert.failed:assertion.false)
+    assert (epsilon >= write)
+}
+
+method t7(r: Ref)
+{
+    assert (1/3 == ((2-1)/3))
+    assert (write > (1/10000))
+    //:: ExpectedError(assert.failed:assertion.false)
+    assert (write < (1/10000))
+}
