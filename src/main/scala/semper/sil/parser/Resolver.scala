@@ -351,6 +351,8 @@ case class TypeChecker(names: NameAnalyser) {
             setType(typ)
           case PField(_, typ) =>
             setType(typ)
+          case PPredicate(_, _, _) =>
+            setType(Pred)
           case x =>
             issueError(i, s"expected variable or field, but got $x")
         }

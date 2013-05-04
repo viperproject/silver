@@ -253,8 +253,10 @@ case class Translator(program: PProgram) {
         if (b) TrueLit()(pos) else FalseLit()(pos)
       case PNullLit() =>
         NullLit()(pos)
-      case PLocationAccess(rcv, idn) =>
+      case p@PLocationAccess(rcv, idn) if p.typ != TypeHelper.Pred =>
         FieldAccess(exp(rcv), findField(idn))(pos)
+      case p@PLocationAccess(rcv, idn) if p.typ == TypeHelper.Pred =>
+        PredicateAccess(exp(rcv), findPredicate(idn))(pos)
       case PFunctApp(func, args) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
