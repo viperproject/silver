@@ -1,6 +1,7 @@
 package semper.sil.testing
 
 import java.io.File
+import java.nio.file.{Files, Path}
 import io.Source
 
 /**
@@ -15,7 +16,7 @@ trait TestAnnotationParser {
    * Takes a sequence of files as input and parses all test annotations present in those
    * files and returns an object describing the result.
    */
-  def parseAnnotations(files: Seq[File]): TestAnnotations = {
+  def parseAnnotations(files: Seq[Path]): TestAnnotations = {
     val (parseErrors, annotations) = (files map parseAnnotations).unzip
     TestAnnotations(parseErrors.flatten, annotations.flatten)
   }
@@ -23,8 +24,14 @@ trait TestAnnotationParser {
   /** Takes a file as input and parses all test annotations present in that file and
     * returns an object describing the result.
     */
-  def parseAnnotations(file: File) = {
-    val lines = Source.fromFile(file).mkString.replace("""\r""", "").split("\n").iterator.buffered
+  def parseAnnotations(file: Path) = {
+// REMOVE:   val lines = Source.fromFile(file).mkString.replace("""\r""", "").split("\n").iterator.buffered
+    val lines = Source.fromInputStream(Files.newInputStream(file))
+                      .mkString
+                      .replace("""\r""", "")
+                      .split("\n")
+                      .iterator
+                      .buffered
     var curLineNr = 0
     var curAnnotations: List[TestAnnotation] = Nil
     var finalAnnotations: List[TestAnnotation] = Nil
@@ -97,7 +104,7 @@ trait TestAnnotationParser {
   val errorIdPattern = "([^:]*)(:(.*))?"
 
   /** Try to parse the annotation as `ExpectedError`, and otherwise use `next`. */
-  private def isExpectedError(annotation: String, file: File, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+  private def isExpectedError(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
     val regex = ("""^ExpectedError\(""" + errorIdPattern + """\)$""").r
     annotation match {
       case regex(reasonId, _, null) =>
@@ -109,7 +116,7 @@ trait TestAnnotationParser {
   }
 
   /** Try to parse the annotation as `UnexpectedError`, and otherwise use `next`. */
-  private def isUnexpectedError(annotation: String, file: File, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+  private def isUnexpectedError(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
     val regex = ("""^UnexpectedError\(""" + errorIdPattern + """, /(.*)/issue/([0-9]+)/\)$""").r
     annotation match {
       case regex(reasonId, _, null, project, issueNr) =>
@@ -121,7 +128,7 @@ trait TestAnnotationParser {
   }
 
   /** Try to parse the annotation as `MissingError`, and otherwise use `next`. */
-  private def isMissingError(annotation: String, file: File, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+  private def isMissingError(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
     val regex = ("""^MissingError\(""" + errorIdPattern + """, /(.*)/issue/([0-9]+)/\)$""").r
     annotation match {
       case regex(reasonId, _, null, project, issueNr) =>
@@ -133,7 +140,7 @@ trait TestAnnotationParser {
   }
 
    /** Try to parse the annotation a ``IgnoreOthers``, and otherwise use `next`. */
-  private def isIgnoreOthers(annotation: String, file: File, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+  private def isIgnoreOthers(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
     val regex = """^IgnoreOthers$""".r
     annotation match {
       case regex() => Some(IgnoreOthers(file, -1, lineNr))
@@ -142,7 +149,7 @@ trait TestAnnotationParser {
   }
 
   /** Try to parse the annotation a ``IgnoreFile``, and otherwise use `next`. */
-  private def isIgnoreFile(annotation: String, file: File, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+  private def isIgnoreFile(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
     val regex = """^IgnoreFile\(/(.*)/issue/([0-9]+)/\)$""".r
     annotation match {
       case regex(project, issueNr) => Some(IgnoreFile(file, lineNr, project, issueNr.toInt))
@@ -151,7 +158,7 @@ trait TestAnnotationParser {
   }
 
    /** Try to parse the annotation a ``IgnoreFileList``, and otherwise use `next`. */
-  private def isIgnoreFileList(annotation: String, file: File, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+  private def isIgnoreFileList(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
     val regex = """^IgnoreFileList\(/(.*)/issue/([0-9]+)/\)$""".r
     annotation match {
       case regex(project, issueNr) => Some(IgnoreFileList(file, lineNr, project, issueNr.toInt))

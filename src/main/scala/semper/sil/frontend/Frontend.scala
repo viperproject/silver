@@ -5,6 +5,7 @@ import java.io.File
 import io.Source
 import semper.sil.ast.Program
 import io.Source
+import java.nio.file.{Files, Path}
 
 /** Represents one phase of a frontend */
 case class Phase(name: String, action: () => Unit)
@@ -23,7 +24,7 @@ trait Frontend {
    * Reset the translator, and set the input program. Can be called many times to verify multiple programs
    * using the same verifier.
    */
-  def reset(input: Seq[File])
+  def reset(input: Seq[Path])
 
   /**
    * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then
@@ -74,8 +75,9 @@ trait DefaultPhases extends Frontend {
 }
 
 trait SingleFileFrontend {
-  def reset(file: File)
-  def reset(files: Seq[File]) {
+  def reset(file: Path)
+
+  def reset(files: Seq[Path]) {
     files match {
       case f :: Nil => reset(f)
       case _ => sys.error("This frontend can only handle single files.")
@@ -86,7 +88,6 @@ trait SingleFileFrontend {
 /** A default implementation of a translator that keeps track of the state of the translator.
   */
 trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFrontend {
-
   sealed trait Result[+A]
   case class Succ[+A](a: A) extends Result[A]
   case class Fail(errors: Seq[AbstractError]) extends Result[Nothing]
@@ -97,7 +98,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   protected var _state: TranslatorState.Value = TranslatorState.Initial
   protected var _verifier: Option[Verifier] = None
   protected var _input: Option[String] = None
-  protected var _inputFile: Option[File] = None
+  protected var _inputFile: Option[Path] = None
   protected var _errors: Seq[AbstractError] = Seq()
   protected var _verificationResult: Option[VerificationResult] = None
   protected var _parseResult: Option[ParserResult] = None
@@ -115,11 +116,11 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _verifier = Some(verifier)
   }
 
-  override def reset(input: File) {
+  override def reset(input: Path) {
     if (state < TranslatorState.Initialized) sys.error("The translator has not been initialized.")
     _state = TranslatorState.InputSet
     _inputFile = Some(input)
-    _input = Some(Source.fromFile(input).mkString)
+    _input = Some(Source.fromInputStream(Files.newInputStream(input)).mkString)
     _errors = Seq()
     _program = None
     _verificationResult = None

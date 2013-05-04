@@ -1,12 +1,13 @@
 package semper.sil.testing
 
-import java.io.File
-import semper.sil.verifier._
-import java.nio.file.Path
-import semper.sil.ast.{Position, TranslatedPosition, SourcePosition}
-import org.scalatest._
-import semper.sil.frontend.Frontend
+import java.nio.file.{FileSystem, FileSystems, Paths, Files, Path}
+import java.net.{URL, URI}
 import java.util.regex.Pattern
+import org.scalatest._
+import scala.collection.JavaConversions._
+import semper.sil.verifier._
+import semper.sil.ast.{Position, TranslatedPosition, SourcePosition}
+import semper.sil.frontend.Frontend
 
 /** A test suite for verification toolchains that use SIL as the intermediate language.
   *
@@ -21,7 +22,7 @@ import java.util.regex.Pattern
 abstract class SilSuite extends FunSuite with TestAnnotationParser {
   /**
    * The test directories where tests can be found.
-   * The directories must be relative because they are resolved via [[ClassLoader.getResource]],
+   * The directories must be relative because they are resolved via [[java.lang.ClassLoader.getResource]],
    * see http://stackoverflow.com/a/7098501/491216.
    * @return A sequence of test directories.
    */
@@ -29,22 +30,25 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
   /**
    * Returns a class loader that can be used to access resources such as test files
-   * via [[ClassLoader.getResource]].
+   * via [[java.lang.ClassLoader.getResource]].
    *
    * @return A class loader for accessing resources.
    */
   def classLoader: ClassLoader = getClass.getClassLoader
 
-  /* For debugging purposes only. */
-  protected def printClassPath() {
-    val urls = classLoader.asInstanceOf[java.net.URLClassLoader].getURLs()
+  private var openFileSystems: Seq[FileSystem] = Seq()
+  addShutdownHookForOpenFileSystems()
 
-    println("\n[SilSuite/printClassPath]")
-    urls foreach (u => println("  " + u.getFile))
-  }
+  /* For debugging purposes only. */
+//  protected def printClassPath() {
+//    val urls = classLoader.asInstanceOf[java.net.URLClassLoader].getURLs()
+//
+//    println("\n[SilSuite/printClassPath]")
+//    urls foreach (u => println("  " + u.getFile))
+//  }
 
   /** The frontend to be used. */
-  def frontend(verifier: Verifier, files: Seq[File]): Frontend
+  def frontend(verifier: Verifier, files: Seq[Path]): Frontend
 
   /** The list of verifiers to be used. */
   def verifiers: Seq[Verifier]
@@ -54,23 +58,23 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
   private var _testsRegistered = false
 
-  def testName(prefix: String, files: Seq[File]) = files match {
-    case f :: Nil => prefix + f.getName
+  def testName(prefix: String, files: Seq[Path]) = files match {
+    case f :: Nil => prefix + f.toString
     case f :: _ => prefix + fileListName(f)
     case _ => prefix
   }
 
   val fileListRegex = """(.*)_file\d*.*""".r
 
-  def fileListName(f: File) = f.getName match {
+  def fileListName(f: Path) = f.toString match {
     case fileListRegex(name) => name
     case name => name
   }
 
-  def fileList(file: File): Seq[File] = file.getName match {
-    case fileListRegex(name) => {
+  def fileList(file: Path): Seq[Path] = file.toString match {
+    case fileListRegex(name) => ??? /*{
       val regex = (Pattern.quote(name) + """_file(\d*).*""").r
-      var files = List[(File, Int)]()
+      var files = List[(Path, Int)]()
       file.getParentFile.listFiles foreach { f =>
         f.getName match {
           case regex(index) => files = (f, index.toInt) :: files
@@ -78,12 +82,12 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
         }
       }
       files.sortBy(_._2).map(_._1)
-    }
+    }*/
     case _ => List(file)
   }
 
   /** Registers a tests that runs the translator for all given verifiers. */
-  def registerSilTest(file: File, prefix: String) {
+  def registerSilTest(file: Path, prefix: String) {
     require(file != null)
     require(verifiers != null)
 
@@ -95,7 +99,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     val name = testName(prefix, rawFiles)
     val testAnnotations = parseAnnotations(rawFiles)
     val files = rawFiles filter { f => !testAnnotations.isFileIgnored(f) }
-    val fileName = file.getName
+    val fileName = file.toString // REMOVE: file.getName
     val fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."))
 
     // ignore test if necessary
@@ -140,7 +144,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
             }
           case Failure(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
-            def sameLine(file: File, lineNr: Int, pos: Position) = pos match {
+            def sameLine(file: Path, lineNr: Int, pos: Position) = pos match {
               case p: SourcePosition => lineNr == p.line
               case p: TranslatedPosition => file == p.file && lineNr == p.line
               case _ => sys.error("Position is neither a source position nor a translated position even though we checked this before.")
@@ -234,34 +238,130 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   }
 
   /** Registers all the files in a given directory as a test. */
-  def registerTestDirectory(dir: File, prefix: String = "") {
-    require(dir != null)
+  def registerTestDirectory(dir: Path, prefix: String = "") {
+    assert(dir != null, "Directory must not be null")
+    assert(Files.isDirectory(dir), "Path must represent a directory")
 
-    if (dir.listFiles == null) return
+    val directoryStream = Files.newDirectoryStream(dir)
+    val dirContent = directoryStream.toList
 
-    val newPrefix = prefix + dir.getName + "/"
+//    if (dir.listFiles == null) return
+
+    val newPrefix = prefix + dir.toString + "/"
     val namePattern = configMap.getOrElse("include", ".*").toString
 
-    for (f: File <- dir.listFiles.filter(x => x != null && x.isDirectory)) {
+//    for (f: File <- dirContent.filter(x => x != null && x.isDirectory)) {
+    for (f: Path <- dirContent
+         if Files.isDirectory(f)) {
+
       registerTestDirectory(f, newPrefix)
     }
 
-    for (f: File <- dir.listFiles
-      .filterNot(_.isDirectory)
-      .filter(_.getCanonicalPath.matches(namePattern))) {
+    for (f: Path <- dirContent
+         if !Files.isDirectory(f)
+         if f.toString.matches(namePattern)) {
+//                       .filterNot(_.isDirectory)
+//                       .filter(_.getCanonicalPath.matches(namePattern))) {
 
       registerSilTest(f, newPrefix)
     }
   }
 
-  /** Register all the tests. */
   def registerTests() {
     if (_testsRegistered) return
 
-    for (testDir <- testDirectories)
-      registerTestDirectory(new File(classLoader.getResource(testDir).toURI))
+    for (testDir <- testDirectories) {
+      val resource = classLoader.getResource(testDir)
+      assert(resource != null, s"Test directory $testDir couldn't be found")
+
+      val path = pathFromResource(classLoader.getResource(testDir))
+
+      registerTestDirectory(path)
+    }
 
     _testsRegistered = true
+  }
+
+  /**
+   * Creates a path from the given URL, which, for example, could have been obtained by
+   * calling [[java.lang.Class.getResource]]. The current implementation can handle URLs that
+   * point into the normal file system (file:...) or into a jar file (jar:...).
+   *
+   * Based on code taken from http://stackoverflow.com/a/15718001/491216.
+   *
+   * @param resource The URL to turn into a path.
+   * @return The path obtained from the URL.
+   */
+  private def pathFromResource(resource: URL): Path = {
+    assert(resource != null, "Resource URL must not be null")
+
+    val uri = resource.toURI
+
+    uri.getScheme match {
+      case "file" => Paths.get(uri)
+
+      case "jar" =>
+        val uriStr = uri.toString()
+        val separator = uriStr.indexOf("!/")
+        val entryName = uriStr.substring(separator + 2)
+        val fileURI = URI.create(uriStr.substring(0, separator))
+
+        /* 2013-05-03 Malte:
+         *   The following bit of code is quite nasty, but I wasn't able to get anything less
+         *   nasty to work reliably. There are two main problems:
+         *
+         *   1. It is not obvious when to close the file system, because several components of
+         *      our tool chain keep references to path objects that in turn have references
+         *      to their underlying file system. If these path objects are used (not all usages
+         *      seem dangerous, though) after the underlying file system has been closed, an
+         *      exception is thrown.
+         *
+         *   2. If the test suite is executed from an Sbt prompt then the shutdown hook of
+         *      the runtime environment doesn't seem to fire and the file systems don't seem
+         *      to be closed. Thus, if the tests are executed again without existing the
+         *      Sbt prompt, FileSystemAlreadyExistsExceptions can be thrown because some
+         *      file systems are still open.
+         *
+         *   The list of open file systems (openFileSystems) unfortunately doesn't seem to
+         *   survive, otherwise it might have been possible to maintain a map from file URI
+         *   to file system and only create a new file system if there is no map entry for
+         *   the given file URI yet.
+         *
+         *   I also tried to use a finalizer method instead of the shutdown hook, but the
+         *   finalizer also doesn't seem to be called if the Sbt prompt is not existed.
+         */
+
+        var fs: FileSystem = null
+
+        try {
+          fs = FileSystems.newFileSystem(fileURI, Map[String, Object]())
+          openFileSystems = fs +: openFileSystems
+        } catch {
+          case e: java.nio.file.FileSystemAlreadyExistsException =>
+            fs = FileSystems.getFileSystem(fileURI)
+        }
+
+        assert(fs != null, s"Could not get hold of a file system for $fileURI (from $uriStr)")
+
+        fs.getPath(entryName)
+
+      case other => sys.error(s"Resource $uri of scheme $other is not supported.")
+    }
+  }
+
+  /**
+   * Closes all open file systems stored in `openFileSystems`.
+   */
+  private def addShutdownHookForOpenFileSystems() {
+    Runtime.getRuntime().addShutdownHook(new Thread {
+      override def run() {
+        if (openFileSystems != null) {
+          //        println("\n[ShutdownHook] Closing file systems")
+          //        println("  |openFileSystems| = " + openFileSystems.size)
+          openFileSystems foreach (fs => if (fs.isOpen) {fs.close()/*; println("  closed " + fs)*/})
+        }
+      }
+    })
   }
 
   override def testNames = {

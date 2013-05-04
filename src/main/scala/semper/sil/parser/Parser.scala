@@ -2,6 +2,7 @@ package semper.sil.parser
 
 import org.kiama.util.WhitespacePositionedParserUtilities
 import java.io.File
+import java.nio.file.Path
 
 /**
  * A parser for the SIL language that takes a string and produces an intermediate
@@ -16,9 +17,9 @@ import java.io.File
 object Parser extends BaseParser {
 
   override def file = _file
-  var _file: File = null
+  var _file: Path = null
 
-  def parse(s: String, f: File) = {
+  def parse(s: String, f: Path) = {
     _file = f
     val r = parseAll(parser, s)
     r match {
@@ -33,7 +34,7 @@ object Parser extends BaseParser {
 trait BaseParser extends WhitespacePositionedParserUtilities {
 
   /** The file we are currently parsing (for creating positions later). */
-  def file: File
+  def file: Path
 
   /**
    * All keywords of SIL.

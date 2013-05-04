@@ -2,6 +2,7 @@ package semper.sil.testing
 
 import java.io.File
 import semper.sil.verifier.AbstractError
+import java.nio.file.Path
 
 /**
  * The result of parsing the test annotations in a single file.
@@ -12,9 +13,10 @@ import semper.sil.verifier.AbstractError
  * @author Stefan Heule
  */
 sealed case class TestAnnotations(errors: Seq[TestAnnotationParseError], annotations: Seq[TestAnnotation]) {
-  def isFileIgnored(file: File): Boolean = annotations exists {
+  def isFileIgnored(file: Path): Boolean = annotations exists {
     case _: IgnoreFileList => true
-    case IgnoreFile(f, _, _, _) => f.getAbsolutePath == file.getAbsolutePath
+// REMOVE:   case IgnoreFile(f, _, _, _) => f.getAbsolutePath == file.getAbsolutePath
+    case IgnoreFile(f, _, _, _) => f.toAbsolutePath == file.toAbsolutePath
     case _ => false
   }
 
@@ -54,34 +56,34 @@ case class ErrorAnnotationId(reasonId: String, errorId: Option[String]) {
 
 /** Annotations that refer to a location. */
 sealed trait LocatedAnnotation extends TestAnnotation {
-  val file: File
+  val file: Path
   val forLineNr: Int
 }
 
 /** Test annotations that have a location and an identifier (i.e. describe an error of some sort). */
-sealed abstract class ErrorAnnotation(val id: ErrorAnnotationId, val file: File, val forLineNr: Int) extends LocatedAnnotation {
-  override def toString = s"$id (${file.getName}:$forLineNr)"
+sealed abstract class ErrorAnnotation(val id: ErrorAnnotationId, val file: Path, val forLineNr: Int) extends LocatedAnnotation {
+  override def toString = s"$id (${file.toString}:$forLineNr)"
 }
 
 object ErrorAnnotation {
   def unapply(e: ErrorAnnotation) = Some((e.id, e.file, e.forLineNr))
 }
 
-sealed case class ExpectedError(override val id: ErrorAnnotationId, override val file: File, override val forLineNr: Int, annotationLineNr: Int) extends ErrorAnnotation(id, file, forLineNr)
+sealed case class ExpectedError(override val id: ErrorAnnotationId, override val file: Path, override val forLineNr: Int, annotationLineNr: Int) extends ErrorAnnotation(id, file, forLineNr)
 
-sealed case class UnexpectedError(override val id: ErrorAnnotationId, override val file: File, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, file, forLineNr)
+sealed case class UnexpectedError(override val id: ErrorAnnotationId, override val file: Path, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, file, forLineNr)
 
-sealed case class MissingError(override val id: ErrorAnnotationId, override val file: File, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, file, forLineNr)
+sealed case class MissingError(override val id: ErrorAnnotationId, override val file: Path, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, file, forLineNr)
 
-sealed case class IgnoreOthers(file: File, forLineNr: Int, annotationLineNr: Int) extends LocatedAnnotation
+sealed case class IgnoreOthers(file: Path, forLineNr: Int, annotationLineNr: Int) extends LocatedAnnotation
 
-sealed case class IgnoreFile(file: File, annotationLineNr: Int, project: String, issueNr: Int) extends TestAnnotation
+sealed case class IgnoreFile(file: Path, annotationLineNr: Int, project: String, issueNr: Int) extends TestAnnotation
 
-sealed case class IgnoreFileList(file: File, annotationLineNr: Int, project: String, issueNr: Int) extends TestAnnotation
+sealed case class IgnoreFileList(file: Path, annotationLineNr: Int, project: String, issueNr: Int) extends TestAnnotation
 
-case class TestAnnotationParseError(offendingLine: String, file: File, lineNr: Int) {
+case class TestAnnotationParseError(offendingLine: String, file: Path, lineNr: Int) {
   def errorMessage: String = {
-    s"Line ${lineNr} in ${file.getName} looks like a test annotation (it starts with '//::'), but it was not " +
+    s"Line ${lineNr} in ${file.toString} looks like a test annotation (it starts with '//::'), but it was not " +
       s"possible to parse it correctly.  The line is : '$offendingLine'."
   }
 }
