@@ -16,7 +16,7 @@ trait RealPosition {
   def file: Path
   def line: Int
   def column: Int
-  override def toString = s"${file.toString}:$line"
+  override def toString = s"${file.getFileName.toString}:$line"
 }
 object RealPosition {
   def unapply(pos: RealPosition) = Some(pos.line, pos.column)
