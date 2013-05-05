@@ -23,10 +23,10 @@ method t2(r: Ref) returns ()
     fold acc(r.valid, write)
 }
 
-method t(r: Ref) returns ()
+method t3(r: Ref) returns ()
     requires acc(r.f, write)
 {
     r.f := 1
-    //:: ExpectedError(unfold.failed:assertion.false)
+    //:: ExpectedError(unfold.failed:insufficient.permission)
     unfold acc(r.valid, write)
 }
