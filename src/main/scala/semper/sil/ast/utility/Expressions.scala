@@ -60,4 +60,7 @@ object Expressions {
       case LocalVar(name) if actualArg(name).isDefined => actualArg(name).get
     }()
   }
+
+  def subExps(e: Exp) = e.subnodes collect { case e: Exp => e }
+
 }

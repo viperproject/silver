@@ -22,7 +22,7 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
    *                  expression transformed with `pre` be transformed
    *                  recursively? `pre`, `recursive` and `post` are kept the
    *                  same during each recursion.
-   *                  Default: recurse if and only if `pre` is defined there.
+   *                  Default: recurse if and only if `pre` is not defined there.
    * @param post      Partial function used after the recursion.
    *                  Default: partial function with the empty domain.
    */
@@ -32,6 +32,10 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
     Transformer.transform(this, pre)(recursive, post)
 
   def isPure = Expressions.isPure(this)
+
+  /** Returns the subexpressions of this expression */
+  def subExps = Expressions.subExps(this)
+
 }
 
 // --- Simple integer and boolean expressions (binary and unary operations, literals)
@@ -108,6 +112,18 @@ case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position =
 
 /** An accessibility predicate for a predicate location. */
 case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AccessPredicate
+
+// --- Inhale exhale expressions.
+
+/**
+ * This is a special expression that is treated as `inhaleExp` if it is treated as an assumption and as `exhaleExp` if
+ * it is treated as a proof obligation.
+ */
+case class InhaleExhaleExp(inExp: Exp, exExp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+  require(inExp.typ isSubtype Bool)
+  require(exExp.typ isSubtype Bool)
+  val typ = Bool
+}
 
 // --- Permissions
 
