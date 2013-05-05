@@ -49,7 +49,7 @@ object Consistency {
     require(noResult(e), "Result variables are not allowed in function bodies.")
   }
 
-  /** Check all properties required for a function body */
+  /** Check all properties required for a precondition. */
   def checkPre(e: Exp) {
     require(noOld(e), "Old expressions are not allowed in preconditions.")
     require(noResult(e), "Result variables are not allowed in preconditions.")
