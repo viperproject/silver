@@ -34,9 +34,7 @@ object Expressions {
     case Unfolding(_, in) => isPure(in) /* Assuming that the first argument is pure */
     case QuantifiedExp(_, e0) => isPure(e0)
 
-    case  _: IntLit
-        | _: BoolLit
-        | _: NullLit
+    case  _: Literal
         | _: PermExp
         | _: FuncApp
         | _: DomainFuncApp
