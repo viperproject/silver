@@ -58,7 +58,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // statements
     "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto",
     // control structures
-    "while", "if", "else",
+    "while", "if", "elsif", "else",
     // special fresh block
     "fresh",
     // unfolding expressions
@@ -186,10 +186,15 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val fieldassign =
     locAcc ~ (":=" ~> exp) ^^ PFieldAssign
   lazy val ifthnels =
-    ("if" ~> "(" ~> exp <~ ")") ~ block ~ opt("else" ~> block) ^^ {
-      case cond ~ thn ~ els =>
-        PIf(cond, PSeqn(thn), PSeqn(els.getOrElse(Nil)))
+    ("if" ~> "(" ~> exp <~ ")") ~ block ~ elsifEls ^^ {
+      case cond ~ thn ~ els => PIf(cond, PSeqn(thn), els)
     }
+  lazy val elsifEls: PackratParser[PStmt] = elsif | els
+  lazy val elsif: PackratParser[PStmt] =
+    ("elsif" ~> "(" ~> exp <~ ")") ~ block ~ elsifEls ^^ {
+      case cond ~ thn ~ els => PIf(cond, PSeqn(thn), els)
+    }
+  lazy val els: PackratParser[PStmt] = opt("else" ~> block) ^^ { block => PSeqn(block.getOrElse(Nil)) }
   lazy val whle =
     ("while" ~> "(" ~> exp <~ ")") ~ rep(inv) ~ block ^^ {
       case cond ~ invs ~ body => PWhile(cond, invs, PSeqn(body))
