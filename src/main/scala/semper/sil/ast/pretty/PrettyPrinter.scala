@@ -181,22 +181,26 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         ssep(sss map show, line)
       case While(cond, invs, locals, body) =>
         // TODO: invariants and locals
-        "while" <+> "(" <> show(cond) <> ")" <>
+        "while" <+> parens(show(cond)) <>
           nest(
             lineIfSomeNonEmpty(invs) <>
               ssep(invs map ("invariant" <+> show(_)), line)
           ) <+> lineIfSomeNonEmpty(invs) <> showBlock(body)
       case If(cond, thn, els) =>
-        "if" <+> "(" <> show(cond) <> ")" <+> showBlock(thn) <> {
-          if (els.children.size == 0) empty
-          else empty <+> "else" <+> showBlock(els)
-        }
+        "if" <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
       case Label(name) =>
         name <> ":"
       case Goto(target) =>
         "goto" <+> target
     }
     showComment(stmt) <> stmtDoc
+  }
+
+  def showElse(els: Stmt): PrettyPrinter.Doc = els match {
+    case Seqn(Seq()) => empty
+    case Seqn(Seq(s)) => showElse(s)
+    case If(cond, thn, els) => empty <+> "elsif" <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
+    case _ => empty <+> "else" <+> showBlock(els)
   }
 
   /** Outputs the comments attached to `n` if there is at least one. */
