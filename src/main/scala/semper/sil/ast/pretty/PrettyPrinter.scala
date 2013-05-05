@@ -81,7 +81,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
                   Seq(showStmt(body)), line)
           ) <> line)
       case p@Predicate(name, formalArg, body) =>
-        "predicate" <+> name <> parens(showVar(formalArg)) <>
+        "predicate" <+> name <> parens(showVar(formalArg)) <+>
           braces(nest(
             line <> show(body)
           ) <> line)
