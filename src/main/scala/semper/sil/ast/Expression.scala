@@ -129,12 +129,12 @@ case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Po
 // --- Inhale exhale expressions.
 
 /**
- * This is a special expression that is treated as `inhaleExp` if it is treated as an assumption and as `exhaleExp` if
- * it is treated as a proof obligation.
+ * This is a special expression that is treated as `in` if it appears as an assumption and as `ex` if
+ * it appears as a proof obligation.
  */
-case class InhaleExhaleExp(inExp: Exp, exExp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
-  require(inExp.typ isSubtype Bool)
-  require(exExp.typ isSubtype Bool)
+case class InhaleExhaleExp(in: Exp, ex: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+  require(in.typ isSubtype Bool)
+  require(ex.typ isSubtype Bool)
   val typ = Bool
 }
 
