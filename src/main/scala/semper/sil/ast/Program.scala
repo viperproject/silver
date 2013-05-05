@@ -11,7 +11,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     Consistency.noDuplicates(
       (members map (_.name)) ++
         (domains flatMap (d => (d.axioms map (_.name)) ++ (d.functions map (_.name))))
-    )
+    ), "names of members must be distinct"
   )
   lazy val members = domains ++ fields ++ functions ++ predicates ++ methods
 }
