@@ -44,6 +44,9 @@ domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
                   | "if" "(" exp ")" "{"
                         stmt
                     "}"
+                    ("elsif" "(" exp ")" "{"
+                        stmt
+                    "}")*                       // There can be an arbitrary number of elsif branches.
                     ("else" "{" stmt "}")?      // (the else branch is optional)
                   | "while" "(" exp ")"
                         invariant*
