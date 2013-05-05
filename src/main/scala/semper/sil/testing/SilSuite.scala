@@ -1,6 +1,6 @@
 package semper.sil.testing
 
-import java.nio.file.{FileSystem, FileSystems, Paths, Files, Path}
+import java.nio.file._
 import java.net.{URL, URI}
 import java.util.regex.Pattern
 import org.scalatest._
@@ -20,6 +20,14 @@ import semper.sil.frontend.Frontend
   * @author Stefan Heule
   */
 abstract class SilSuite extends FunSuite with TestAnnotationParser {
+
+  /** The config map passed to ScalaTest. */
+  protected var configMap: Map[String, Any] = _
+
+  private var _testsRegistered = false
+
+  val fileListRegex = """(.*)_file\d*.*""".r
+
   /**
    * The test directories where tests can be found.
    * The directories must be relative because they are resolved via [[java.lang.ClassLoader.getResource]],
@@ -53,36 +61,37 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   /** The list of verifiers to be used. */
   def verifiers: Seq[Verifier]
 
-  /** The config map passed to ScalaTest. */
-  protected var configMap: Map[String, Any] = _
-
-  private var _testsRegistered = false
-
-  def testName(prefix: String, files: Seq[Path]) = files match {
-    case f :: Nil => prefix + f.toString
-    case f :: _ => prefix + fileListName(f)
-    case _ => prefix
+  /**
+   * Returns the name of a test. If it consists of only one file, it is the name of that file.
+   * If it consists of several files of the form foo_file*.ext, the name will be foo. */
+  def testName(prefix: String, f: Path) = f.getFileName.toString match {
+    case fileListRegex(name) => prefix + name
+    case name => prefix + name
   }
 
-  val fileListRegex = """(.*)_file\d*.*""".r
-
-  def fileListName(f: Path) = f.toString match {
-    case fileListRegex(name) => name
-    case name => name
-  }
-
+  /**
+   * Get the list of files which belong to the same test as the given file. For most files, this will be just a list
+   * consisting of the file itself. It is also possible to create a single with multiple files by naming the files
+   * foo_file1.ext foo_file2.ext etc. and putting them into the same directory.
+   * If a path of this form is handed to this method, a list of all files that belong to the same test are returned.
+   * They are ordered according to their number.
+   */
   def fileList(file: Path): Seq[Path] = file.toString match {
-    case fileListRegex(name) => ??? /*{
+    case fileListRegex(name) => {
+      // Create a regex for files that belong to the same test.
       val regex = (Pattern.quote(name) + """_file(\d*).*""").r
+      // Collect all files that match this regex and their numbers.
       var files = List[(Path, Int)]()
-      file.getParentFile.listFiles foreach { f =>
-        f.getName match {
+      val dirStream = Files.newDirectoryStream(file.getParent)
+      dirStream foreach { f =>
+        f.toString match {
           case regex(index) => files = (f, index.toInt) :: files
           case _ =>
         }
       }
+      // Sort the file by their numbers and return the files only. (We only needed the numbers for ordering)
       files.sortBy(_._2).map(_._1)
-    }*/
+    }
     case _ => List(file)
   }
 
@@ -91,20 +100,21 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     require(file != null)
     require(verifiers != null)
 
+    // The files that belong to the same test. Not filtered for ignored tests yet.
     val rawFiles = fileList(file)
     if (rawFiles.head != file) {
-      // Only register the file list once, not for every file it contains.
+      // Only register the multi file test once, not for every file it contains.
       return
     }
-    val name = testName(prefix, rawFiles)
+    val name = testName(prefix, file)
     val testAnnotations = parseAnnotations(rawFiles)
     val files = rawFiles filter { f => !testAnnotations.isFileIgnored(f) }
-    val fileName = file.toString // REMOVE: file.getName
+    val fileName = file.getFileName.toString
     val fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."))
 
     // ignore test if necessary
     if (files.isEmpty) {
-      ignore(name, Tag(file.getName), Tag(fileName), Tag(fileNameWithoutExt)) {}
+      ignore(name, Tag(file.toString), Tag(fileName), Tag(fileNameWithoutExt)) {}
       return
     }
 
@@ -117,7 +127,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
     // one test per verifier
     for (verifier <- verifiers) {
-      test(name + " [" + verifier.name + "]", Tag(name), Tag(fileName), Tag(fileNameWithoutExt)) {
+      test(name + " [" + verifier.name + "]", Tag(file.toString), Tag(fileName), Tag(fileNameWithoutExt)) {
         val fe = frontend(verifier, files)
         val tPhases = fe.phases.map { p =>
           time(p.action)._2 + " (" + p.name + ")"
