@@ -20,6 +20,7 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 
 /** A predicate declaration. */
 case class Predicate(name: String, formalArg: LocalVarDecl, private var _body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
+  require(formalArg.typ == Ref)
   if (body != null) Consistency.checkNonPostContract(body)
   def body = _body
   def body_=(b: Exp) {
