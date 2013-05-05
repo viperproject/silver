@@ -29,6 +29,7 @@ object Expressions {
     case _: AccessPredicate => false
 
     case UnExp(e0) => isPure(e0)
+    case InhaleExhaleExp(in, ex) => isPure(in) && isPure(ex)
     case BinExp(e0, e1) => isPure(e0) && isPure(e1)
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
     case Unfolding(_, in) => isPure(in) /* Assuming that the first argument is pure */
@@ -43,6 +44,14 @@ object Expressions {
         | _: SeqExp
     => true
   }
+
+  def whenInhaling(e: Exp) = e.transform {
+    case InhaleExhaleExp(in, _) => in
+  }()
+
+  def whenExhaling(e: Exp) = e.transform {
+    case InhaleExhaleExp(_, ex) => ex
+  }()
 
   /**
    * In an expression, instantiate a list of variables with given expressions.
