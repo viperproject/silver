@@ -78,6 +78,7 @@ domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
                   | "forall" formal-arg "::" trigger^,* exp   // universal quantification
                   | "exists" formal-arg "::" exp   // existential quantification
                   | "(" exp ")"
+                  | "[" exp "," exp "]"         // inhale exhale expression
                   | "perm" "(" loc-access ")"   // current permission of given location
                   | "write"                     // full permission literal
                   | "none"                      // no permission literal
