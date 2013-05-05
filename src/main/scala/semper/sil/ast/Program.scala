@@ -7,7 +7,12 @@ import org.kiama.output._
 // TODO consistency checks
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
                   (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
-
+  require(
+    Consistency.noDuplicates(
+      (members map (_.name)) ++
+        (domains flatMap (d => (d.axioms map (_.name)) ++ (d.functions map (_.name))))
+    ), "names of members must be distinct"
+  )
   lazy val members = domains ++ fields ++ functions ++ predicates ++ methods
 }
 
@@ -74,7 +79,8 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
     s foreach Consistency.checkPost
     _posts = s
   }
-  def exp = _exp /* TODO: [Malte] I suggest to rename 'exp' to 'body' since the latter is more descriptive. */
+  def exp = _exp
+  /* TODO: [Malte] I suggest to rename 'exp' to 'body' since the latter is more descriptive. */
   def exp_=(e: Exp) {
     require(e isSubtype typ)
     Consistency.checkFunctionBody(e)
@@ -236,7 +242,7 @@ sealed trait BinOp extends Op {
 
 /** Left associative operator. */
 sealed trait LeftAssoc {
-  lazy val fixity = Infix (LeftAssoc)
+  lazy val fixity = Infix(LeftAssoc)
 }
 
 /** Domain functions that represent built-in binary operators where both arguments are integers. */
@@ -274,7 +280,7 @@ sealed abstract class ProdOp(val op: String) extends LeftAssoc {
 /** Common interface for relational operators. */
 sealed abstract class RelOp(val op: String) extends BoolDomainFunc {
   lazy val priority = 13
-  lazy val fixity = Infix (NonAssoc)
+  lazy val fixity = Infix(NonAssoc)
 }
 
 // Arithmetic integer operators
@@ -333,7 +339,7 @@ case object AndOp extends BoolBinOp with BoolDomainFunc with LeftAssoc {
 case object ImpliesOp extends BoolBinOp with BoolDomainFunc {
   lazy val op = "==>"
   lazy val priority = 4
-  lazy val fixity = Infix (RightAssoc)
+  lazy val fixity = Infix(RightAssoc)
 }
 
 /** Boolean negation. */

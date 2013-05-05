@@ -525,7 +525,8 @@ case class TypeChecker(names: NameAnalyser) {
           case x =>
             issueError(func, s"expected function")
         }
-      case PUnfolding(loc, e) =>
+      case PUnfolding(PAccPred(loc, perm), e) =>
+        check(perm, Perm)
         check(loc, Pred)
         check(e, expected)
         setType(e.typ)
