@@ -20,7 +20,7 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 
 /** A predicate declaration. */
 case class Predicate(name: String, formalArg: LocalVarDecl, private var _body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
-  require(formalArg.typ == Ref)
+  require(formalArg.typ isSubtype Ref)
   if (body != null) Consistency.checkNonPostContract(body)
   def body = _body
   def body_=(b: Exp) {
@@ -135,6 +135,7 @@ case class DomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, v
   require(Consistency.noOld(exp), "Axioms can never contain old expressions.")
   require(Consistency.noAccessLocation(exp), "Axioms can never contain access locations.")
   require(exp isSubtype Bool)
+  Consistency.checkNoPositiveOnly(exp)
 }
 
 /** Domain function which is not a binary or unary operator. */

@@ -79,11 +79,17 @@ case class Neg(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 
 // Boolean expressions
 case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(OrOp) {
-  require(left.isPure && right.isPure)
+  Consistency.checkNoPositiveOnly(left)
+  Consistency.checkNoPositiveOnly(right)
 }
 case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(AndOp)
 case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(ImpliesOp) {
-  require(left.isPure)
+  Consistency.checkNoPositiveOnly(left)
+}
+
+/** Boolean negation. */
+case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NotOp) {
+  Consistency.checkNoPositiveOnly(exp)
 }
 
 /** Boolean literals. */
@@ -96,11 +102,6 @@ object BoolLit {
 }
 case class TrueLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends BoolLit(true)
 case class FalseLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends BoolLit(false)
-
-/** Boolean negation. */
-case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NotOp) {
-  require(exp.isPure)
-}
 
 case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends Literal {
   lazy val typ = Ref
@@ -178,6 +179,8 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
 /** Function application. */
 case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp {
+  args foreach Consistency.checkNoPositiveOnly
+
   /**
    * The precondition of this function application (i.e., the precondition of the function with
    * the arguments instantiated correctly).
@@ -196,8 +199,9 @@ case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPositio
 
 /** User-defined domain function application. */
 case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFuncApp {
+  args foreach Consistency.checkNoPositiveOnly
   override lazy val typ = super.typ.substitute(typVarMap)
-  override def formalArgs: Seq[LocalVarDecl] = {
+  override lazy val formalArgs: Seq[LocalVarDecl] = {
     callee.formalArgs map {
       fa =>
         // substitute parameter types
@@ -210,6 +214,7 @@ case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVa
 
 /** A common trait for expressions accessing a location. */
 sealed trait LocationAccess extends Exp {
+  require(rcv.typ isSubtype Ref)
   def rcv: Exp
   def loc: Location
 }
@@ -239,6 +244,7 @@ case class PredicateAccess(rcv: Exp, predicate: Predicate)(val pos: Position = N
 /** A conditional expressions. */
 case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
   require(cond isSubtype Bool)
+  Consistency.checkNoPositiveOnly(cond)
   require(thn.typ == els.typ)
   lazy val typ = thn.typ
 }
@@ -260,6 +266,7 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 /** A common trait for quantified expressions. */
 sealed trait QuantifiedExp extends Exp {
   require(exp isSubtype Bool)
+  Consistency.checkNoPositiveOnly(exp)
   def variables: Seq[LocalVarDecl]
   def exp: Exp
   lazy val typ = Bool
@@ -277,6 +284,7 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
 /** A trigger for a universally quantified formula. */
 case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
   require(exps forall Consistency.validTrigger, s"The trigger { ${exps.mkString(", ")} } is not valid.")
+  exps foreach Consistency.checkNoPositiveOnly
 }
 
 // --- Variables, this, result
@@ -316,7 +324,8 @@ case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Inf
 /** An explicit, non-emtpy sequence. */
 case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require(elems.length > 0)
-  require(elems.tail.forall(e => (e isSubtype elems.head) && (elems.head isSubtype e)))
+  require(elems.tail.forall(e => e.typ == elems.head.typ))
+  elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = SeqType(elems.head.typ)
 }
 
@@ -328,7 +337,7 @@ case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val inf
 
 /** Appending two sequences of the same type. */
 case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp with PrettyBinaryExpression {
-  require((left isSubtype right) && (left isSubtype right))
+  require(left.typ == right.typ)
   lazy val priority = 0
   lazy val fixity = Infix(LeftAssoc)
   lazy val op = "++"
@@ -373,6 +382,7 @@ case class SeqUpdate(s: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition
   require(s.typ.isInstanceOf[SeqType])
   require(idx isSubtype Int)
   require(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)
+  Consistency.checkNoPositiveOnly(elem)
   lazy val typ = s.typ
 }
 
@@ -393,7 +403,7 @@ sealed trait Literal extends Exp
 sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominator: BigInt) extends PermExp
 
 /** Common ancestor of Domain Function applications and Function applications. */
-sealed trait FuncLikeApp extends Exp with Call with Typed {
+sealed trait FuncLikeApp extends Exp with Call {
   def func: FuncLike
   lazy val callee = func
   def typ = func.typ
@@ -410,6 +420,8 @@ sealed trait AbstractDomainFuncApp extends FuncLikeApp {
  */
 sealed abstract class EqualityCmp(val op: String) extends BinExp with PrettyBinaryExpression {
   require(left.typ == right.typ, s"expected the same typ, but got ${left.typ} and ${right.typ}")
+  Consistency.checkNoPositiveOnly(left)
+  Consistency.checkNoPositiveOnly(right)
   lazy val priority = 13
   lazy val fixity = Infix(NonAssoc)
   lazy val typ = Bool
@@ -452,4 +464,4 @@ object DomainBinExp {
 sealed abstract class DomainUnExp(val func: UnOp) extends PrettyUnaryExpression with DomainOpExp with UnExp
 
 /** Expressions which can appear on the left hand side of an assignment */
-sealed trait Lhs
+sealed trait Lhs extends Exp

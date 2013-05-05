@@ -36,6 +36,7 @@ object Transformer {
           Forall(v,
             triggers map (t => Trigger(t.exps map func)(t.pos, t.info)),
             func(e))(p, i)
+        case InhaleExhaleExp(in, ex) => InhaleExhaleExp(func(in), func(ex))(p, i)
         case WildcardPerm() => exp
         case FullPerm() => exp
         case NoPerm() => exp
