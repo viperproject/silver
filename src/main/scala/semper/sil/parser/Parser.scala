@@ -272,6 +272,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       ("-" | "!" | "+") ~ sum ^^ PUnExp |
       "(" ~> exp <~ ")" |
       accessPred |
+      inhaleExhale |
       perm |
       quant |
       unfolding |
@@ -284,6 +285,8 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     idnuse ~ parens(actualArgList) ^^ PFunctApp
   lazy val actualArgList: PackratParser[Seq[PExp]] =
     repsep(exp, ",")
+
+  lazy val inhaleExhale: PackratParser[PExp] = ("[" ~> exp <~ ",") ~ (exp <~ "]") ^^ PInhaleExhaleExp
 
   lazy val perm: PackratParser[PExp] =
     "none" ^^^ PNoPerm() | "wildcard" ^^^ PWildcard() | "write" ^^^ PFullPerm() |
