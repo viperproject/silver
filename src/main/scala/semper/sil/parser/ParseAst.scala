@@ -156,6 +156,7 @@ case class PUnfolding(loc: PAccPred, exp: PExp) extends PExp
 case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp
 case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
+case class PInhaleExhaleExp(in: PExp, ex: PExp) extends PExp
 case class PCurPerm(loc: PLocationAccess) extends PExp
 case class PNoPerm() extends PExp
 case class PFullPerm() extends PExp
@@ -270,6 +271,7 @@ object Nodes {
       case POld(exp) => Seq(exp)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
+      case PInhaleExhaleExp(in, ex) => Seq(in, ex)
       case PCurPerm(loc) => Seq(loc)
       case PNoPerm() => Nil
       case PFullPerm() => Nil

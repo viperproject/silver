@@ -558,6 +558,10 @@ case class TypeChecker(names: NameAnalyser) {
         } else {
           issueError(exp, s"both branches of a conditional expression must have same type, but found ${thn.typ} and ${els.typ}")
         }
+      case PInhaleExhaleExp(in, ex) =>
+        check(in, Bool)
+        check(ex, Bool)
+        setType(Bool)
       case PCurPerm(loc) =>
         check(loc, Seq())
         setType(Perm)
