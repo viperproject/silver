@@ -271,10 +271,15 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       "result" ^^^ PResultLit() |
       ("-" | "!" | "+") ~ sum ^^ PUnExp |
       "(" ~> exp <~ ")" |
-      "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred |
+      accessPred |
       perm |
       quant |
+      unfolding |
       old
+
+
+  lazy val accessPred: PackratParser[PAccPred] =
+    "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred
 
   lazy val fapp: PackratParser[PExp] =
     idnuse ~ parens(actualArgList) ^^ PFunctApp
@@ -296,6 +301,9 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
 
   lazy val locAcc: PackratParser[PLocationAccess] =
     (exp <~ ".") ~ idnuse ^^ PLocationAccess
+
+  lazy val unfolding: PackratParser[PExp] =
+    ("unfolding" ~> accessPred) ~ ("in" ~> exp) ^^ PUnfolding
 
   lazy val integer =
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))
