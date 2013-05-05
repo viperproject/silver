@@ -83,7 +83,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
     // ignore test if necessary
     if (files.isEmpty) {
-      ignore(name, Tag(name), Tag(fileName), Tag(fileNameWithoutExt)) {}
+      ignore(name, Tag(file.getName), Tag(fileName), Tag(fileNameWithoutExt)) {}
       return
     }
 
