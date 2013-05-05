@@ -1,0 +1,13 @@
+
+domain Test {
+    function c(): Test
+    unique function u1(): Test
+    unique function u2(): Test
+}
+
+method test() {
+    assert u1() != u2()
+
+    //:: ExpectedError(assertion.false)
+    assert c() != u1()
+}

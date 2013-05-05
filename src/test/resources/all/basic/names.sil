@@ -1,0 +1,9 @@
+
+domain P {
+    axiom a1 {
+        forall x: Int :: x > 0
+    }
+    axiom a2 {
+        forall x: Int :: x > 0
+    }
+}

@@ -22,6 +22,11 @@ sealed trait Block {
    * Returns an AST representation of this control flow graph.
    */
   def toAst = AstGenerator.toAst(this)
+
+  /**
+   * See [[ControlFlowGraph.writtenVars]]
+   */
+  def writtenVars = ControlFlowGraph.writtenVars(this)
 }
 
 object Block {

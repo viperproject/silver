@@ -54,4 +54,21 @@ object Statements {
     }
     s.reduceWithContext(Nil, addDecls, combineResults)
   }
+
+  /**
+   * Computes all local variables that are written to in the given statement and that are declared outside of
+   */
+  def writtenVars(s: Stmt): Seq[LocalVar] = {
+    var writtenTo = Seq[LocalVar]()
+
+    s visit {
+      case LocalVarAssign(lhs, _) => writtenTo = lhs +: writtenTo
+      case MethodCall(_, _, targets) => writtenTo = writtenTo ++ targets
+      case FreshReadPerm(vars, _) => writtenTo = writtenTo ++ vars
+      case NewStmt(lhs) => writtenTo = lhs +: writtenTo
+      case While(_, _, locals, body) => writtenTo = writtenTo ++ (writtenVars(body) intersect s.undeclLocalVars)
+    }
+
+    writtenTo.distinct
+  }
 }

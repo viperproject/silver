@@ -24,6 +24,11 @@ sealed trait Stmt extends Node with Infoed with Positioned {
    * throws an exception if the same variable is used with different types.
    */
   def undeclLocalVars = Statements.undeclLocalVars(this)
+
+  /**
+   * Computes all local variables that are written to in this statement.
+   */
+  def writtenVars = Statements.writtenVars(this)
 }
 
 /** A statement that creates a new object and assigns it to a local variable. */
@@ -115,24 +120,11 @@ case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = 
 case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
 
 /** A while loop. */
-case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)
+                (val pos: Position = NoPosition, val info: Info = NoInfo)
+      extends Stmt {
+
   invs map Consistency.checkNonPostContract
-  /**
-   * The list of variables that are written to in this loop (not counting local variables).
-   */
-  def writtenVars: Seq[LocalVar] = {
-    val candidates = undeclLocalVars
-    var writtenTo: Seq[LocalVar] = Nil
-    body visit {
-      case LocalVarAssign(lhs, _) =>
-        writtenTo = writtenTo ++ Seq(lhs)
-      case MethodCall(_, _, targets) =>
-        writtenTo = writtenTo ++ targets
-      case FreshReadPerm(vars, _) =>
-        writtenTo = writtenTo ++ vars
-    }
-    candidates intersect writtenTo
-  }
 }
 
 /** A label (that can be the target of a goto). */
@@ -152,4 +144,5 @@ case class Goto(target: String)(val pos: Position = NoPosition, val info: Info =
  * block, these variables should each be havoced, their values should be assumed to be strictly
  * between 0 and 1, and within the block, they can have additional assumptions introduced.
  */
-case class FreshReadPerm(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
+case class FreshReadPerm(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo)
+    extends Stmt

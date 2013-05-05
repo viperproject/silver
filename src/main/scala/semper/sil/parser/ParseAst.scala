@@ -4,6 +4,7 @@ import org.kiama.util.Positioned
 import org.kiama.attribution.Attributable
 import TypeHelper._
 import java.io.File
+import java.nio.file.Path
 
 /**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
@@ -210,7 +211,7 @@ sealed trait PMember extends PNode with PScope {
 }
 // a member (like method or axiom) that is its own name scope
 sealed trait PScope
-case class PProgram(file: File, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
+case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with RealEntity
 case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with RealEntity
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
@@ -310,7 +311,7 @@ object Nodes {
       case PDomainFunction(name, args, typ, unique) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, arg, body) =>
-        Seq(arg, body)
+        Seq(name, arg, body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
     }
   }
