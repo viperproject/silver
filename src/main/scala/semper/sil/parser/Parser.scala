@@ -277,7 +277,6 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       unfolding |
       old
 
-
   lazy val accessPred: PackratParser[PAccPred] =
     "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred
 
