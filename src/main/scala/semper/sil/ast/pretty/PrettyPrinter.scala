@@ -27,6 +27,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case dm: DomainMember => showDomainMember(dm)
       case Trigger(exps) =>
         "{" <+> ssep(exps map show, comma) <+> "}"
+      case null => "<not initialized>"
     }
   }
 
