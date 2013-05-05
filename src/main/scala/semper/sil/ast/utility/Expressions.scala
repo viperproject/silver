@@ -47,11 +47,11 @@ object Expressions {
 
   def whenInhaling(e: Exp) = e.transform {
     case InhaleExhaleExp(in, _) => in
-  }()
+  }(e => true)
 
   def whenExhaling(e: Exp) = e.transform {
     case InhaleExhaleExp(_, ex) => ex
-  }()
+  }(e => true)
 
   /**
    * In an expression, instantiate a list of variables with given expressions.
