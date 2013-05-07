@@ -128,7 +128,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
     // one test per verifier
     for (verifier <- verifiers) {
-      test(name + " [" + verifier.name + "]", Tag(file.toString), Tag(fileName), Tag(fileNameWithoutExt)) {
+      test(name + " [" + verifier.name + "]", Tag(verifier.name), Tag(file.toString), Tag(fileName), Tag(fileNameWithoutExt)) {
         val fe = frontend(verifier, files)
         val tPhases = fe.phases.map { p =>
           time(p.action)._2 + " (" + p.name + ")"
