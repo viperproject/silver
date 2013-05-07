@@ -106,8 +106,8 @@ object Transformer {
   def simplify(expression: Exp): Exp = {
     /* Always simplify children first, then treat parent. */
     transform(expression)(_ => true, {
-      case root @ Not(literal: BoolLit) =>
-        BoolLit(!literal.value)(root.pos, root.info)
+      case root @ Not(BoolLit(literal)) =>
+        BoolLit(!literal)(root.pos, root.info)
       case Not(Not(single)) => single
 
       case And(TrueLit(), right) => right
@@ -163,6 +163,11 @@ object Transformer {
         And(condition, ifTrue)(root.pos, root.info)
       case root @ CondExp(condition, ifTrue, TrueLit()) =>
         Or(Not(condition)(), ifTrue)(root.pos, root.info)
+
+      case root @ Forall(_, _, BoolLit(literal)) =>
+        BoolLit(literal)(root.pos, root.info)
+      case root @ Exists(_, BoolLit(literal)) =>
+        BoolLit(literal)(root.pos, root.info)
 
       case root @ Neg(IntLit(literal)) => IntLit(-literal)(root.pos, root.info)
       case Neg(Neg(single)) => single
