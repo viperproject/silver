@@ -45,13 +45,13 @@ object Expressions {
     => true
   }
 
-  def whenInhaling(e: Exp) = e.transform {
+  def whenInhaling(e: Exp) = e.transform()(post = {
     case InhaleExhaleExp(in, _) => in
-  }(e => true)
+  })
 
-  def whenExhaling(e: Exp) = e.transform {
+  def whenExhaling(e: Exp) = e.transform()(post = {
     case InhaleExhaleExp(_, ex) => ex
-  }(e => true)
+  })
 
   /**
    * In an expression, instantiate a list of variables with given expressions.
