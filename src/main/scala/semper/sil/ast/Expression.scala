@@ -31,22 +31,22 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
     post: PartialFunction[Exp, Exp] = PartialFunction.empty): Exp =
     Transformer.transform(this, pre)(recursive, post)
 
-  def isPure = Expressions.isPure(this)
+  lazy val isPure = Expressions.isPure(this)
 
   /**
    * Returns a representation of this expression as it looks when it is used as a proof obligation, i.e. all
    * InhaleExhaleExp are replaced by the inhale part.
    */
-  def whenInhaling = Expressions.whenInhaling(this)
+  lazy val whenInhaling = Expressions.whenInhaling(this)
 
   /**
    * Returns a representation of this expression as it looks when it is used as a proof obligation, i.e. all
    * InhaleExhaleExp are replaced by the exhale part.
    */
-  def whenExhaling = Expressions.whenExhaling(this)
+  lazy val whenExhaling = Expressions.whenExhaling(this)
 
   /** Returns the subexpressions of this expression */
-  def subExps = Expressions.subExps(this)
+  lazy val subExps = Expressions.subExps(this)
 
 }
 
