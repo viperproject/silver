@@ -62,7 +62,7 @@ sealed trait LocatedAnnotation extends TestAnnotation {
 
 /** Test annotations that have a location and an identifier (i.e. describe an error of some sort). */
 sealed abstract class ErrorAnnotation(val id: ErrorAnnotationId, val file: Path, val forLineNr: Int) extends LocatedAnnotation {
-  override def toString = s"$id (${file.toString}:$forLineNr)"
+  override def toString = s"$id (${file.getFileName.toString}:$forLineNr)"
 }
 
 object ErrorAnnotation {
