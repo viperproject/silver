@@ -239,6 +239,8 @@ case class Translator(program: PProgram) {
           case "-" => Neg(e)(pos)
           case "!" => Not(e)(pos)
         }
+      case PInhaleExhaleExp(in, ex) =>
+        InhaleExhaleExp(exp(in), exp(ex))(pos)
       case PIntLit(i) =>
         IntLit(i)(pos)
       case p@PResultLit() =>
