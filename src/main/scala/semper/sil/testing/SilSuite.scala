@@ -113,6 +113,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     val fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."))
 
     // ignore test if necessary
+    // TODO Make ignoring verifier dependent.
     if (files.isEmpty) {
       ignore(name, Tag(file.toString), Tag(fileName), Tag(fileNameWithoutExt)) {}
       return
