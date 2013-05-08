@@ -46,7 +46,7 @@ domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
                     "}"
                     ("elsif" "(" exp ")" "{"
                         stmt
-                    "}")*                       // There can be an arbitrary number of elsif branches.
+                    "}")*                       // (any number of elseif branches)
                     ("else" "{" stmt "}")?      // (the else branch is optional)
                   | "while" "(" exp ")"
                         invariant*
@@ -101,7 +101,7 @@ domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
                   | exp "in" exp                // element containment test
                   | exp "[" exp ":=" exp "]"    // sequence with one element updated
 
-        trigger ::= "{" exp^,* "}"              // a trigger for a quantification
+        trigger ::= "{" exp^,* "}"               // a trigger for a quantification
 
      loc-access ::= exp "." ident               // location access (field or predicate)
 
