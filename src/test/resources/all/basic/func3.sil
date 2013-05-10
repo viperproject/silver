@@ -1,0 +1,54 @@
+
+var f: Int
+var fr: Ref
+
+function f1(r: Ref): Int
+    requires acc(r.f, wildcard)
+    ensures result == (r.f)
+{
+    r.f
+}
+
+function f2(r: Ref): Int
+    requires acc(r.f, wildcard)
+    //:: ExpectedError(postcondition.violated:assertion.false)
+    ensures result == 2
+{
+    r.f
+}
+
+function f3(r: Ref): Int
+    requires acc(r.f, wildcard)
+    requires (r.f) == 2
+    ensures result == 2
+{
+    r.f
+}
+
+function f4(r: Ref): Ref
+    requires acc(r.fr, wildcard)
+{ r.fr }
+
+method t1(r: Ref)
+    requires acc(r.f, write)
+{
+    r.f := 2
+    assert f3(r) == 2
+    //:: ExpectedError(assert.failed:assertion.false)
+    assert f3(r) == 1
+}
+
+method t2(r: Ref)
+    requires acc(r.f, write)
+{
+    assert f2(r) == 2
+}
+
+method t3(r: Ref)
+    requires acc(r.fr, wildcard)
+{
+    var y: Ref := f4(r)
+    var x: Ref
+    x := new()
+    assert x != y
+}

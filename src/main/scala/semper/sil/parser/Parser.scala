@@ -2,6 +2,7 @@ package semper.sil.parser
 
 import org.kiama.util.WhitespacePositionedParserUtilities
 import java.io.File
+import java.nio.file.Path
 
 /**
  * A parser for the SIL language that takes a string and produces an intermediate
@@ -16,9 +17,9 @@ import java.io.File
 object Parser extends BaseParser {
 
   override def file = _file
-  var _file: File = null
+  var _file: Path = null
 
-  def parse(s: String, f: File) = {
+  def parse(s: String, f: Path) = {
     _file = f
     val r = parseAll(parser, s)
     r match {
@@ -33,7 +34,7 @@ object Parser extends BaseParser {
 trait BaseParser extends WhitespacePositionedParserUtilities {
 
   /** The file we are currently parsing (for creating positions later). */
-  def file: File
+  def file: Path
 
   /**
    * All keywords of SIL.
@@ -57,7 +58,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // statements
     "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto",
     // control structures
-    "while", "if", "else",
+    "while", "if", "elsif", "else",
     // special fresh block
     "fresh",
     // unfolding expressions
@@ -185,10 +186,15 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val fieldassign =
     locAcc ~ (":=" ~> exp) ^^ PFieldAssign
   lazy val ifthnels =
-    ("if" ~> "(" ~> exp <~ ")") ~ block ~ opt("else" ~> block) ^^ {
-      case cond ~ thn ~ els =>
-        PIf(cond, PSeqn(thn), PSeqn(els.getOrElse(Nil)))
+    ("if" ~> "(" ~> exp <~ ")") ~ block ~ elsifEls ^^ {
+      case cond ~ thn ~ els => PIf(cond, PSeqn(thn), els)
     }
+  lazy val elsifEls: PackratParser[PStmt] = elsif | els
+  lazy val elsif: PackratParser[PStmt] =
+    ("elsif" ~> "(" ~> exp <~ ")") ~ block ~ elsifEls ^^ {
+      case cond ~ thn ~ els => PIf(cond, PSeqn(thn), els)
+    }
+  lazy val els: PackratParser[PStmt] = opt("else" ~> block) ^^ { block => PSeqn(block.getOrElse(Nil)) }
   lazy val whle =
     ("while" ~> "(" ~> exp <~ ")") ~ rep(inv) ~ block ^^ {
       case cond ~ invs ~ body => PWhile(cond, invs, PSeqn(body))
@@ -270,15 +276,22 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       "result" ^^^ PResultLit() |
       ("-" | "!" | "+") ~ sum ^^ PUnExp |
       "(" ~> exp <~ ")" |
-      "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred |
+      accessPred |
+      inhaleExhale |
       perm |
       quant |
+      unfolding |
       old
+
+  lazy val accessPred: PackratParser[PAccPred] =
+    "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred
 
   lazy val fapp: PackratParser[PExp] =
     idnuse ~ parens(actualArgList) ^^ PFunctApp
   lazy val actualArgList: PackratParser[Seq[PExp]] =
     repsep(exp, ",")
+
+  lazy val inhaleExhale: PackratParser[PExp] = ("[" ~> exp <~ ",") ~ (exp <~ "]") ^^ PInhaleExhaleExp
 
   lazy val perm: PackratParser[PExp] =
     "none" ^^^ PNoPerm() | "wildcard" ^^^ PWildcard() | "write" ^^^ PFullPerm() |
@@ -295,6 +308,9 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
 
   lazy val locAcc: PackratParser[PLocationAccess] =
     (exp <~ ".") ~ idnuse ^^ PLocationAccess
+
+  lazy val unfolding: PackratParser[PExp] =
+    ("unfolding" ~> accessPred) ~ ("in" ~> exp) ^^ PUnfolding
 
   lazy val integer =
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))

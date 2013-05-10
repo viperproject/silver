@@ -29,14 +29,13 @@ object Expressions {
     case _: AccessPredicate => false
 
     case UnExp(e0) => isPure(e0)
+    case InhaleExhaleExp(in, ex) => isPure(in) && isPure(ex)
     case BinExp(e0, e1) => isPure(e0) && isPure(e1)
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
     case Unfolding(_, in) => isPure(in) /* Assuming that the first argument is pure */
     case QuantifiedExp(_, e0) => isPure(e0)
 
-    case  _: IntLit
-        | _: BoolLit
-        | _: NullLit
+    case  _: Literal
         | _: PermExp
         | _: FuncApp
         | _: DomainFuncApp
@@ -45,6 +44,14 @@ object Expressions {
         | _: SeqExp
     => true
   }
+
+  def whenInhaling(e: Exp) = e.transform()(post = {
+    case InhaleExhaleExp(in, _) => in
+  })
+
+  def whenExhaling(e: Exp) = e.transform()(post = {
+    case InhaleExhaleExp(_, ex) => ex
+  })
 
   /**
    * In an expression, instantiate a list of variables with given expressions.
@@ -60,4 +67,7 @@ object Expressions {
       case LocalVar(name) if actualArg(name).isDefined => actualArg(name).get
     }()
   }
+
+  def subExps(e: Exp) = e.subnodes collect { case e: Exp => e }
+
 }

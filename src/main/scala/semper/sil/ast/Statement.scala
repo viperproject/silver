@@ -38,6 +38,8 @@ case class NewStmt(lhs: LocalVar)(val pos: Position = NoPosition, val info: Info
 
 /** An assignment to a field or a local variable */
 sealed trait AbstractAssign extends Stmt {
+  require(Consistency.isAssignable(rhs, lhs), s"${rhs.typ} ($rhs) is not assignable to ${lhs.typ} ($lhs)")
+  Consistency.checkNoPositiveOnly(rhs)
   def lhs: Lhs
   def rhs: Exp
 }
@@ -50,14 +52,10 @@ object AbstractAssign {
 }
 
 /** An assignment to a local variable. */
-case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign {
-  require(Consistency.isAssignable(rhs, lhs), s"${rhs.typ} ($rhs) is not assignable to ${lhs.typ} ($lhs)")
-}
+case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign
 
 /** An assignment to a field variable. */
-case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign {
-  require(Consistency.isAssignable(rhs, lhs), s"${rhs.typ} ($rhs) is not assignable to ${lhs.typ} ($lhs)")
-}
+case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign
 
 /** A method/function/domain function call. */
 trait Call {
@@ -71,6 +69,7 @@ trait Call {
 case class MethodCall(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
   require(Consistency.areAssignable(method.formalReturns, targets))
   require(Consistency.noDuplicates(targets))
+  args foreach Consistency.checkNoPositiveOnly
   lazy val callee = method
   /**
    * The precondition of this method call (i.e., the precondition of the method with
@@ -117,13 +116,15 @@ case class Unfold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition,
 case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
 
 /** An if control statement. */
-case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
+case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+  Consistency.checkNoPositiveOnly(cond)
+}
 
 /** A while loop. */
 case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)
                 (val pos: Position = NoPosition, val info: Info = NoInfo)
       extends Stmt {
-
+  Consistency.checkNoPositiveOnly(cond)
   invs map Consistency.checkNonPostContract
 }
 

@@ -43,13 +43,32 @@ object Consistency {
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
   def nullValue[T](a: T, b: T) = if (a != null) a else b
 
-  /** Check all properties required for a function body */
+  /**
+   * Checks that this boolean expression contains no subexpressions that can appear in positive positions (i.e. in
+   * conjuncts or on the right side of implications or conditional expressions) only, i.e. no access predicates and
+   * no InhaleExhaleExp.
+   */
+  def checkNoPositiveOnly(e: Exp): Unit = e match {
+    case _: AccessPredicate | _: InhaleExhaleExp => require(false, s"$e can only appear in positive positions.")
+    case And(left, right) => {
+      checkNoPositiveOnly(left)
+      checkNoPositiveOnly(right)
+    }
+    case Implies(_, right) => {
+      // The left side is checked during creation of the Implies expression.
+      checkNoPositiveOnly(right)
+    }
+    case _ => // All other cases are checked during creation of the expression.
+  }
+
+  /** Check all properties required for a function body. */
   def checkFunctionBody(e: Exp) {
     require(noOld(e), "Old expressions are not allowed in functions bodies.")
     require(noResult(e), "Result variables are not allowed in function bodies.")
+    checkNoPositiveOnly(e)
   }
 
-  /** Check all properties required for a function body */
+  /** Check all properties required for a precondition. */
   def checkPre(e: Exp) {
     require(noOld(e), "Old expressions are not allowed in preconditions.")
     require(noResult(e), "Result variables are not allowed in preconditions.")

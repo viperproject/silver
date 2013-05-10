@@ -1,0 +1,117 @@
+
+var f: Int
+
+method t1() {
+    var n: Int
+    //:: ExpectedError(call.precondition:assertion.false)
+    n := t3(-1)
+}
+
+method t2() {
+    var n: Int := -10
+    n := t3(1)
+    assert n > 0
+    //:: ExpectedError(assertion.false)
+    assert false
+}
+
+method t3(n: Int) returns (r: Int)
+    requires n > 0
+    ensures r > 0
+{
+    r := n
+}
+
+// test aliasing of return values with other objects
+method t4() {
+    var a: Ref
+    var b: Ref
+    var c: Ref
+
+    a, b := t4b()
+    c := new()
+    assert a != c
+    //:: ExpectedError(assertion.false)
+    assert a != b
+}
+
+method t4c() {
+    var a: Ref
+    var b: Ref
+    var c: Ref
+
+    c := new()
+    a, b := t4b()
+    //:: ExpectedError(assertion.false)
+    assert a != c
+}
+
+method t4b() returns (a: Ref, b: Ref)
+{
+}
+
+method t5(r: Ref)
+    //:: ExpectedError(not.wellformed:insufficient.permission)
+    //:: ExpectedError(not.wellformed:receiver.null)
+    requires r.f == 2
+{
+}
+
+method t6(r: Ref)
+    //:: ExpectedError(not.wellformed:insufficient.permission)
+    //:: ExpectedError(not.wellformed:receiver.null)
+    ensures r.f == 2
+{
+    assume false
+}
+
+method t7(r: Ref)
+    requires acc(r.f, write)
+{
+    r.f := 2
+    exhale acc(r.f, wildcard)
+    assert (r.f) == 2
+}
+
+method t8(r: Ref)
+    requires acc(r.f, write)
+    ensures acc(r.f, write)
+{
+    r.f := 2
+    exhale acc(r.f, write)
+    inhale acc(r.f, write)
+    //:: ExpectedError(assertion.false)
+    assert (r.f) == 2
+}
+
+method t9(r: Ref)
+    requires acc(r.f, write)
+    ensures acc(r.f, write)
+{
+    r.f := 2
+    t8(r)
+    //:: ExpectedError(assertion.false)
+    assert (r.f) == 2
+}
+
+method t10(r: Ref, o: Ref)
+    requires acc(r.f, write) && acc(o.f, write)
+    ensures acc(r.f, write) && acc(o.f, write)
+{
+    r.f := 2
+    o.f := 2
+    assert o != r
+    t9(o)
+    assert (r.f) == 2
+    //:: ExpectedError(assertion.false)
+    assert (o.f) == 2
+}
+
+method t11() returns (r: Ref)
+{
+    var x: Ref
+    var y: Ref
+    x := t11()
+    y := new()
+    assert x != y
+}

@@ -10,24 +10,25 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
 
   override val defaultIndent = 2
 
+  lazy val uninitialized: Doc = value("<not initialized>")
+
   /** Pretty-print any AST node. */
   def pretty(n: Node): String = {
     super.pretty(show(n))
   }
 
   /** Show any AST node. */
-  def show(n: Node): Doc = {
-    n match {
-      case exp: Exp => toParenDoc(exp)
-      case stmt: Stmt => showStmt(stmt)
-      case typ: Type => showType(typ)
-      case p: Program => showProgram(p)
-      case m: Member => showMember(m)
-      case v: LocalVarDecl => showVar(v)
-      case dm: DomainMember => showDomainMember(dm)
-      case Trigger(exps) =>
-        "{" <+> ssep(exps map show, comma) <+> "}"
-    }
+  def show(n: Node): Doc = n match {
+    case exp: Exp => toParenDoc(exp)
+    case stmt: Stmt => showStmt(stmt)
+    case typ: Type => showType(typ)
+    case p: Program => showProgram(p)
+    case m: Member => showMember(m)
+    case v: LocalVarDecl => showVar(v)
+    case dm: DomainMember => showDomainMember(dm)
+    case Trigger(exps) =>
+      "{" <+> ssep(exps map show, comma) <+> "}"
+    case null => uninitialized
   }
 
   /** Show a program. */
@@ -68,20 +69,18 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           else empty <+> "returns" <+> parens(showVars(formalReturns))
         } <>
           nest(
-            lineIfSomeNonEmpty(pres, posts) <>
-              ssep(
-                (pres map ("requires" <+> show(_))) ++
-                  (posts map ("ensures" <+> show(_))), line)
+            showContracts("requires", pres) <>
+            showContracts("ensures", posts)
           ) <>
           line <>
           braces(nest(
-            lineIfSomeNonEmpty(locals, body.children) <>
+            lineIfSomeNonEmpty(locals, if (body == null) null else body.children) <>
               ssep(
-                (locals map ("var" <+> showVar(_))) ++
+                (if (locals == null) Nil else locals map ("var" <+> showVar(_))) ++
                   Seq(showStmt(body)), line)
           ) <> line)
       case p@Predicate(name, formalArg, body) =>
-        "predicate" <+> name <> parens(showVar(formalArg)) <>
+        "predicate" <+> name <> parens(showVar(formalArg)) <+>
           braces(nest(
             line <> show(body)
           ) <> line)
@@ -89,10 +88,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         "function" <+> name <> parens(showVars(formalArgs)) <>
           ":" <+> show(typ) <>
           nest(
-            lineIfSomeNonEmpty(pres, posts) <>
-              ssep(
-                (pres map ("requires" <+> show(_))) ++
-                  (posts map ("ensures" <+> show(_))), line)
+            showContracts("requires", pres) <>
+            showContracts("ensures", posts)
           ) <>
           line <>
           braces(nest(
@@ -104,9 +101,17 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     showComment(m) <> memberDoc
   }
 
+  /** Shows contracts and use `name` as the contract name (usually `requires` or `ensures`). */
+  def showContracts(name: String, contracts: Seq[Exp]): Doc = {
+    if (contracts == null)
+      line <> name <+> uninitialized
+    else
+      lineIfSomeNonEmpty(contracts) <> ssep(contracts map (name <+> show(_)), line)
+  }
+
   /** Returns `n` lines if at least one element of `s` is non-empty, and an empty document otherwise. */
   def lineIfSomeNonEmpty[T](s: Seq[T]*)(implicit n: Int = 1) = {
-    if (s.forall(_.isEmpty)) empty
+    if (s.forall(e => e != null && e.isEmpty)) empty
     else {
       var r = empty
       for (i <- 1 to n) r = r <> line
@@ -180,90 +185,100 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         ssep(sss map show, line)
       case While(cond, invs, locals, body) =>
         // TODO: invariants and locals
-        "while" <+> "(" <> show(cond) <> ")" <>
+        "while" <+> parens(show(cond)) <>
           nest(
-            lineIfSomeNonEmpty(invs) <>
-              ssep(invs map ("invariant" <+> show(_)), line)
+            showContracts("invariant", invs)
           ) <+> lineIfSomeNonEmpty(invs) <> showBlock(body)
       case If(cond, thn, els) =>
-        "if" <+> "(" <> show(cond) <> ")" <+> showBlock(thn) <> {
-          if (els.children.size == 0) empty
-          else empty <+> "else" <+> showBlock(els)
-        }
+        "if" <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
       case Label(name) =>
         name <> ":"
       case Goto(target) =>
         "goto" <+> target
+      case null => uninitialized
     }
     showComment(stmt) <> stmtDoc
   }
 
+  def showElse(els: Stmt): PrettyPrinter.Doc = els match {
+    case Seqn(Seq()) => empty
+    case Seqn(Seq(s)) => showElse(s)
+    case If(cond, thn, els) => empty <+> "elsif" <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
+    case _ => empty <+> "else" <+> showBlock(els)
+  }
+
   /** Outputs the comments attached to `n` if there is at least one. */
   def showComment(n: Infoed): PrettyPrinter.Doc = {
-    val comment = n.info.comment
-    if (comment.size > 0) ssep(comment map ("//" <+> _), line) <> line
-    else empty
+    if (n == null)
+      empty
+    else {
+      val comment = n.info.comment
+      if (comment.size > 0) ssep(comment map ("//" <+> _), line) <> line
+      else empty
+    }
   }
 
   // Note: pretty-printing expressions is mostly taken care of by kiama
-  override def toParenDoc(e: PrettyExpression): Doc = {
-    e match {
-      case IntLit(i) => value(i)
-      case BoolLit(b) => value(b)
-      case NullLit() => value(null)
-      case AbstractLocalVar(n) => n
-      case FieldAccess(rcv, field) =>
-        show(rcv) <> "." <> field.name
-      case PredicateAccess(rcv, predicate) =>
-        show(rcv) <> "." <> predicate.name
-      case Unfolding(acc, exp) =>
-        parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
-      case Old(exp) =>
-        "old" <> parens(show(exp))
-      case CondExp(cond, thn, els) =>
-        parens(show(cond) <+> "?" <+> show(thn) <+> ":" <+> show(els))
-      case Exists(v, exp) =>
-        parens("exists" <+> showVars(v) <+> "::" <+> show(exp))
-      case Forall(v, triggers, exp) =>
-        parens("forall" <+> showVars(v) <+> "::" <>
-          (if (triggers.isEmpty) empty else space <> ssep(triggers map show, space)) <+>
-          show(exp))
-      case WildcardPerm() =>
-        "wildcard"
-      case FullPerm() =>
-        "write"
-      case NoPerm() =>
-        "none"
-      case EpsilonPerm() =>
-        "epsilon"
-      case CurrentPerm(loc) =>
-        "perm" <> parens(show(loc))
-      case AccessPredicate(loc, perm) =>
-        "acc" <> parens(show(loc) <> "," <+> show(perm))
-      case FuncApp(func, args) =>
-        func.name <> parens(ssep(args map show, comma <> space))
-      case DomainFuncApp(func, args, _) =>
-        func.name <> parens(ssep(args map show, comma <> space))
-      case EmptySeq(elemTyp) =>
-        "Seq()"
-      case ExplicitSeq(elems) =>
-        "Seq" <> parens(ssep(elems map show, comma <> space))
-      case RangeSeq(low, high) =>
-        "[" <> show(low) <> ".." <> show(high) <> ")"
-      case SeqIndex(seq, idx) =>
-        show(seq) <> brackets(show(idx))
-      case SeqTake(seq, n) =>
-        show(seq) <> brackets(".." <> show(n))
-      case SeqDrop(SeqTake(seq, n1), n2) =>
-        show(seq) <> brackets(show(n2) <> ".." <> show(n1))
-      case SeqDrop(seq, n) =>
-        show(seq) <> brackets(show(n) <> "..")
-      case SeqUpdate(seq, idx, elem) =>
-        show(seq) <> brackets(show(idx) <+> ":=" <+> show(elem))
-      case SeqLength(seq) =>
-        "|" <> show(seq) <> "|"
-      case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)
-      case _ => sys.error(s"unknown expression: ${e.getClass}")
-    }
+  override def toParenDoc(e: PrettyExpression): Doc = e match {
+    case IntLit(i) => value(i)
+    case BoolLit(b) => value(b)
+    case NullLit() => value(null)
+    case AbstractLocalVar(n) => n
+    case FieldAccess(rcv, field) =>
+      show(rcv) <> "." <> field.name
+    case PredicateAccess(rcv, predicate) =>
+      show(rcv) <> "." <> predicate.name
+    case Unfolding(acc, exp) =>
+      parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
+    case Old(exp) =>
+      "old" <> parens(show(exp))
+    case CondExp(cond, thn, els) =>
+      parens(show(cond) <+> "?" <+> show(thn) <+> ":" <+> show(els))
+    case Exists(v, exp) =>
+      parens("exists" <+> showVars(v) <+> "::" <+> show(exp))
+    case Forall(v, triggers, exp) =>
+      parens("forall" <+> showVars(v) <+> "::" <>
+        (if (triggers.isEmpty) empty else space <> ssep(triggers map show, space)) <+>
+        show(exp))
+    case InhaleExhaleExp(in, ex) =>
+      brackets(show(in) <> comma <+> show(ex))
+    case WildcardPerm() =>
+      "wildcard"
+    case FullPerm() =>
+      "write"
+    case NoPerm() =>
+      "none"
+    case EpsilonPerm() =>
+      "epsilon"
+    case CurrentPerm(loc) =>
+      "perm" <> parens(show(loc))
+    case AccessPredicate(loc, perm) =>
+      "acc" <> parens(show(loc) <> "," <+> show(perm))
+    case FuncApp(func, args) =>
+      func.name <> parens(ssep(args map show, comma <> space))
+    case DomainFuncApp(func, args, _) =>
+      func.name <> parens(ssep(args map show, comma <> space))
+    case EmptySeq(elemTyp) =>
+      "Seq()"
+    case ExplicitSeq(elems) =>
+      "Seq" <> parens(ssep(elems map show, comma <> space))
+    case RangeSeq(low, high) =>
+      "[" <> show(low) <> ".." <> show(high) <> ")"
+    case SeqIndex(seq, idx) =>
+      show(seq) <> brackets(show(idx))
+    case SeqTake(seq, n) =>
+      show(seq) <> brackets(".." <> show(n))
+    case SeqDrop(SeqTake(seq, n1), n2) =>
+      show(seq) <> brackets(show(n2) <> ".." <> show(n1))
+    case SeqDrop(seq, n) =>
+      show(seq) <> brackets(show(n) <> "..")
+    case SeqUpdate(seq, idx, elem) =>
+      show(seq) <> brackets(show(idx) <+> ":=" <+> show(elem))
+    case SeqLength(seq) =>
+      "|" <> show(seq) <> "|"
+    case null => uninitialized
+    case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)
+    case _ => sys.error(s"unknown expression: ${e.getClass}")
   }
+
 }

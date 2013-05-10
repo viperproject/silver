@@ -4,6 +4,7 @@ import org.kiama.util.Positioned
 import org.kiama.attribution.Attributable
 import TypeHelper._
 import java.io.File
+import java.nio.file.Path
 
 /**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
@@ -151,10 +152,11 @@ case class PNullLit() extends PExp {
 }
 case class PLocationAccess(rcv: PExp, idnuse: PIdnUse) extends PExp
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
-case class PUnfolding(loc: PLocationAccess, exp: PExp) extends PExp
+case class PUnfolding(loc: PAccPred, exp: PExp) extends PExp
 case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp
 case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
+case class PInhaleExhaleExp(in: PExp, ex: PExp) extends PExp
 case class PCurPerm(loc: PLocationAccess) extends PExp
 case class PNoPerm() extends PExp
 case class PFullPerm() extends PExp
@@ -210,7 +212,7 @@ sealed trait PMember extends PNode with PScope {
 }
 // a member (like method or axiom) that is its own name scope
 sealed trait PScope
-case class PProgram(file: File, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
+case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with RealEntity
 case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with RealEntity
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
@@ -269,6 +271,7 @@ object Nodes {
       case POld(exp) => Seq(exp)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
+      case PInhaleExhaleExp(in, ex) => Seq(in, ex)
       case PCurPerm(loc) => Seq(loc)
       case PNoPerm() => Nil
       case PFullPerm() => Nil
@@ -310,7 +313,7 @@ object Nodes {
       case PDomainFunction(name, args, typ, unique) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, arg, body) =>
-        Seq(arg, body)
+        Seq(name, arg, body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
     }
   }

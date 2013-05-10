@@ -1,0 +1,33 @@
+
+var f: Int
+
+domain Test {
+    function func(a: Int): Int
+}
+
+method t1(this: Ref)
+{
+    //:: ExpectedError(insufficient.permission)
+    //:: ExpectedError(assignment.failed:receiver.null)
+    var i: Int := this.f
+}
+
+method t2(this: Ref)
+{
+    //:: ExpectedError(insufficient.permission)
+    //:: ExpectedError(assignment.failed:receiver.null)
+    var i: Int := func(this.f)
+}
+
+method t3(this: Ref, p2: Perm)
+{
+    //:: ExpectedError(invalid.perm.multiplication)
+    var p: Perm := epsilon * p2
+}
+
+method t4(this: Ref)
+{
+    //:: ExpectedError(insufficient.permission)
+    //:: ExpectedError(assignment.failed:receiver.null)
+    this.f := 1
+}

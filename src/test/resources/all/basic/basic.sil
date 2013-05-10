@@ -1,0 +1,76 @@
+
+var test: Bool
+
+// some random tests
+method t1(this: Ref, a: Int, b: Bool, g: Ref) returns (c: Bool, d: Int)
+    requires b && acc(this.value, write)
+    ensures (d == 1) || (d == 2)
+{
+    var e: Int
+    var f1: Ref
+    var f2: Ref
+    this.value := 1
+    f1 := new()
+    f2 := new()
+    if (g != null) {
+        exhale g != f1
+    }
+    exhale this.value <= 42
+    exhale f1 != f2
+    inhale (a == -11)
+    exhale a < 0
+    d := 2
+    if (b) {
+        d := 1
+    } else {
+        d := 3
+    }
+}
+
+var value: Int
+
+// test aliasing information of newly created objects
+method t2(a: Ref, b: Ref) returns ()
+{
+    var l1: Ref
+    var l2: Ref
+    l1 := new()
+    l2 := new()
+    exhale a != l1
+    exhale l1 != l2
+    //:: ExpectedError(assertion.false)
+    exhale a != b
+}
+
+// test aliasing information of parameters 1
+method t3(a: Ref, b: Ref) returns ()
+{
+    if (a == null) {
+        //:: ExpectedError(assertion.false)
+        exhale a != b
+        if (b != null) {
+            exhale a != b
+        }
+    }
+}
+
+// test aliasing information of parameters 2
+method t4(a: Ref, b: Ref) returns ()
+{
+    if (a == null) {
+        if (b != null) {
+            exhale a != b
+        }
+    }
+}
+
+domain L {
+  function f1(x: Int): Int
+  function f2(x: Int): Int
+}
+
+// test trigger parsing
+method t5() returns ()
+{
+    assume forall i: Int :: {f1(i),f2(i)} f1(i) > 0
+}

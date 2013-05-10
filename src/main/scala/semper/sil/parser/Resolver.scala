@@ -351,6 +351,8 @@ case class TypeChecker(names: NameAnalyser) {
             setType(typ)
           case PField(_, typ) =>
             setType(typ)
+          case PPredicate(_, _, _) =>
+            setType(Pred)
           case x =>
             issueError(i, s"expected variable or field, but got $x")
         }
@@ -523,7 +525,8 @@ case class TypeChecker(names: NameAnalyser) {
           case x =>
             issueError(func, s"expected function")
         }
-      case PUnfolding(loc, e) =>
+      case PUnfolding(PAccPred(loc, perm), e) =>
+        check(perm, Perm)
         check(loc, Pred)
         check(e, expected)
         setType(e.typ)
@@ -555,6 +558,10 @@ case class TypeChecker(names: NameAnalyser) {
         } else {
           issueError(exp, s"both branches of a conditional expression must have same type, but found ${thn.typ} and ${els.typ}")
         }
+      case PInhaleExhaleExp(in, ex) =>
+        check(in, Bool)
+        check(ex, Bool)
+        setType(Bool)
       case PCurPerm(loc) =>
         check(loc, Seq())
         setType(Perm)

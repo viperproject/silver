@@ -61,6 +61,7 @@ object Nodes {
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
           case Exists(v, exp) => v ++ Seq(exp)
           case Forall(v, triggers, exp) => v ++ triggers ++ Seq(exp)
+          case InhaleExhaleExp(in, ex) => Seq(in, ex)
           case WildcardPerm() => Nil
           case FullPerm() => Nil
           case NoPerm() => Nil

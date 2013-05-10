@@ -63,6 +63,30 @@ trait Verifier {
   def verify(program: Program): VerificationResult
 }
 
+/**
+ * Empty verifier that can be used as a placeholder for tests if the verification never actually gets called.
+ */
+class NoVerifier extends Verifier {
+
+  val name = "noverifier"
+
+  val version = "0.0.0"
+
+  val buildVersion = ""
+
+  val copyright = ""
+
+  def debugInfo(info: Seq[(String, Any)]) {}
+
+  val dependencies = Nil
+
+  def commandLineArgs(options: Seq[String]) {}
+
+  /** Is not implemented and should never be called. */
+  def verify(program: Program) = ???
+
+}
+
 /** A description of a dependency of a verifier. */
 trait Dependency {
   /** The name of the dependency. */
