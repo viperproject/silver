@@ -48,6 +48,12 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
   /** Returns the subexpressions of this expression */
   lazy val subExps = Expressions.subExps(this)
 
+  /**
+   * Returns a conjunction of all proof obligations in this expression, e.g. rcv != null for all field accesses rcv.f,
+   * we have permissions for all field accesses, the preconditions of all used functions are fulfilled etc.
+   */
+  lazy val proofObligations = Expressions.proofObligations(this)
+
 }
 
 // --- Simple integer and boolean expressions (binary and unary operations, literals)
