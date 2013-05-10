@@ -92,6 +92,19 @@ object Nodes {
       case _ => subnodesWithType
     }
   }
+
+  def concreteDomainTypes(n: Node): Seq[DomainType] = {
+    var instances: Seq[DomainType] = Nil
+
+    n visit {
+      case e: Exp => e.typ match {
+        case dt: DomainType if dt.isConcrete => instances = dt +: instances
+        case _ => /* Ignore other types */
+      }
+    }
+
+    instances.distinct
+  }
 }
 
 
