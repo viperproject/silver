@@ -1,7 +1,7 @@
 
 var f: Int
 
-method t1(r: Ref) returns ()
+method t1(r: Ref)
     requires acc(r.f, write)
 {
     var read: Perm
@@ -18,7 +18,7 @@ method t1b(r: Ref, p: Perm)
     var a: Int := r.f
 }
 
-method t2(r: Ref) returns ()
+method t2(r: Ref)
     requires acc(r.f, write)
 {
     var read: Perm
@@ -29,7 +29,7 @@ method t2(r: Ref) returns ()
     assert false
 }
 
-method t2b(r: Ref) returns ()
+method t2b(r: Ref)
     requires acc(r.f, write)
 {
     var read: Perm
@@ -38,4 +38,29 @@ method t2b(r: Ref) returns ()
     }
     //:: ExpectedError(assertion.false)
     assert false
+}
+
+method t3(r: Ref)
+    requires acc(r.f, wildcard)
+{
+    var read: Perm
+    fresh(read) {
+        t1b(r, read)
+    }
+}
+
+method t4(r: Ref, read: Perm)
+    requires acc(r.f, read)
+{
+    var read2: Perm
+    fresh(read2) {
+        t1b(r, read2)
+    }
+}
+
+method t5(r: Ref)
+    requires acc(r.f, write)
+{
+    //:: ExpectedError(call.precondition:epsilon.as.param)
+    t1b(r, epsilon)
 }
