@@ -29,8 +29,8 @@ method t2(r: Ref, p: Perm) returns ()
 method t3(r: Ref) returns ()
     requires acc(r.f, wildcard)
 {
-    t2(r, wildcard)
-    t2(r, wildcard)
+    t3(r)
+    t3(r)
     //:: ExpectedError(call.precondition:insufficient.permission)
     t2(r, write)
 }
