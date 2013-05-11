@@ -101,6 +101,16 @@ domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
                   | exp "in" exp                // element containment test
                   | exp "[" exp ":=" exp "]"    // sequence with one element updated
 
+                  | "Set" "[" type "]" "()"     // the empty set
+                  | "Set" "(" exp^,* ")"         // explicit set
+                  | "Multiset" "[" type "]" "()"// the empty multiset
+                  | "Multiset" "(" exp^,* ")"    // explicit multiset
+                  | "|" exp "|"                 // set/multiset cardinality
+                  | exp "union" exp             // set/multiset union
+                  | exp "intersection" exp      // set/multiset intersection
+                  | exp "setminus" exp          // set/multiset subtraction
+                  | exp "subset" exp            // set/multiset subset test
+
         trigger ::= "{" exp^,* "}"               // a trigger for a quantification
 
      loc-access ::= exp "." ident               // location access (field or predicate)
