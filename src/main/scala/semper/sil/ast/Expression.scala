@@ -204,7 +204,7 @@ case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVa
   override lazy val formalArgs: Seq[LocalVarDecl] = {
     callee.formalArgs map {
       fa =>
-        // substitute parameter types
+      // substitute parameter types
         LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
     }
   }
