@@ -42,6 +42,8 @@ object Expressions {
         | _: LocationAccess
         | _: AbstractLocalVar
         | _: SeqExp
+        | _: SetExp
+        | _: MultisetExp
     => true
   }
 

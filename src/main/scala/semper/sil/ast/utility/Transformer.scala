@@ -91,6 +91,16 @@ object Transformer {
         case SeqContains(elem, seq) => SeqContains(func(elem), func(seq))(p, i)
         case SeqUpdate(seq, idx, elem) => SeqUpdate(func(seq), func(idx), func(elem))(p, i)
         case SeqLength(seq) => SeqLength(func(seq))(p, i)
+
+        case EmptySet(elemTyp) => exp
+        case ExplicitSet(elems) => ExplicitSet(elems map func)(p, i)
+        case EmptyMultiset(elemTyp) => exp
+        case ExplicitMultiset(elems) => ExplicitMultiset(elems map func)(p, i)
+        case AnySetUnion(left, right) => AnySetUnion(func(left), func(right))(p, i)
+        case AnySetIntersection(left, right) => AnySetIntersection(func(left), func(right))(p, i)
+        case AnySetSubset(left, right) => AnySetSubset(func(left), func(right))(p, i)
+        case AnySetContains(elem, s) => SeqContains(func(elem), func(s))(p, i)
+        case AnySetCardinality(s) => SeqLength(func(s))(p, i)
       }
     } else {
       beforeRecursion
