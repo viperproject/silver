@@ -392,6 +392,94 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
   lazy val typ = Int
 }
 
+// --- Mathematical sets and multisets
+
+/**
+ * Marker trait for all set-related expressions. Does not imply that the type of the
+ * expression is `SetType`.
+ */
+sealed trait SetExp extends Exp
+
+/**
+ * Marker trait for all set-related expressions. Does not imply that the type of the
+ * expression is `MultisetType`.
+ */
+sealed trait MultisetExp extends Exp
+
+/** The empty set of a given element type. */
+case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
+  lazy val typ = SetType(elemTyp)
+}
+
+/** An explicit, non-emtpy set. */
+case class ExplicitSet(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
+  require(elems.length > 0)
+  require(elems.tail.forall(e => e.typ == elems.head.typ))
+  elems foreach Consistency.checkNoPositiveOnly
+  lazy val typ = SetType(elems.head.typ)
+}
+
+/** The empty multiset of a given element type. */
+case class EmptyMultiset(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends MultisetExp {
+  lazy val typ = MultisetType(elemTyp)
+}
+
+/** An explicit, non-emtpy multiset. */
+case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends MultisetExp {
+  require(elems.length > 0)
+  require(elems.tail.forall(e => e.typ == elems.head.typ))
+  elems foreach Consistency.checkNoPositiveOnly
+  lazy val typ = MultisetType(elems.head.typ)
+}
+
+/** Union of two sets or two multisets. */
+case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+  require(left.typ == right.typ)
+  require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
+  lazy val priority = 0
+  lazy val fixity = Infix(LeftAssoc)
+  lazy val op = "union"
+  lazy val typ = left.typ
+}
+
+/** Intersection of two sets or two multisets. */
+case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+  require(left.typ == right.typ)
+  require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
+  lazy val priority = 0
+  lazy val fixity = Infix(LeftAssoc)
+  lazy val op = "union"
+  lazy val typ = left.typ
+}
+
+/** Subset relation of two sets or two multisets. */
+case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+  require(left.typ == right.typ)
+  require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
+  lazy val priority = 0
+  lazy val fixity = Infix(NonAssoc)
+  lazy val op = "subset"
+  lazy val typ = Bool
+}
+
+/** Is the element 'elem' contained in the sequence 'seq'? */
+case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+  require((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SeqType].elementType)) ||
+    (s.typ.isInstanceOf[MultisetType] && (elem isSubtype s.typ.asInstanceOf[MultisetType].elementType)))
+  lazy val priority = 0
+  lazy val fixity = Infix(NonAssoc)
+  lazy val left: PrettyExpression = elem
+  lazy val op = "in"
+  lazy val right: PrettyExpression = s
+  lazy val typ = Bool
+}
+
+/** The length of a sequence. */
+case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp {
+  require(s.typ.isInstanceOf[SetType] || s.typ.isInstanceOf[MultisetType])
+  lazy val typ = Int
+}
+
 // --- Common functionality
 
 /** Common super trait for all kinds of literals. */
