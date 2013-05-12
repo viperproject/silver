@@ -411,7 +411,7 @@ case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Inf
   lazy val typ = SetType(elemTyp)
 }
 
-/** An explicit, non-emtpy set. */
+/** An explicit, non-empty set. */
 case class ExplicitSet(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
   require(elems.length > 0)
   require(elems.tail.forall(e => e.typ == elems.head.typ))
@@ -424,7 +424,7 @@ case class EmptyMultiset(elemTyp: Type)(val pos: Position = NoPosition, val info
   lazy val typ = MultisetType(elemTyp)
 }
 
-/** An explicit, non-emtpy multiset. */
+/** An explicit, non-empty multiset. */
 case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends MultisetExp {
   require(elems.length > 0)
   require(elems.tail.forall(e => e.typ == elems.head.typ))
