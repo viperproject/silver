@@ -1,5 +1,6 @@
 package semper.sil.ast.utility
 
+import scala.collection.immutable.ListSet
 import semper.sil.ast._
 
 /** Utility methods for AST nodes. */
@@ -91,19 +92,6 @@ object Nodes {
       case t: Typed => subnodesWithType ++ Seq(t.typ)
       case _ => subnodesWithType
     }
-  }
-
-  def concreteDomainTypes(n: Node): Seq[DomainType] = {
-    var instances: Seq[DomainType] = Nil
-
-    n visit {
-      case e: Exp => e.typ match {
-        case dt: DomainType if dt.isConcrete => instances = dt +: instances
-        case _ => /* Ignore other types */
-      }
-    }
-
-    instances.distinct
   }
 }
 
