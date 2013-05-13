@@ -69,7 +69,7 @@ case class DomainType(domain: Domain, typVarsMap: Map[TypeVar, Type]) extends Ty
     res
   }
 
-  def substitute(newTypVarsMap: Map[TypeVar, Type]): Type = {
+  def substitute(newTypVarsMap: Map[TypeVar, Type]): DomainType = {
     val map = domain.typVars flatMap {
       t =>
         newTypVarsMap.get(t) match {
