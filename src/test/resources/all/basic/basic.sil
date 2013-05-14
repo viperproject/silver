@@ -77,7 +77,10 @@ method t5() returns ()
 
 domain Foo[A] {
   function foo(a: A): Int
-  axiom bar {forall a: A :: foo(a) > 0 } 
+  function fooid(a: A): A
+
+  axiom foo_ax1 {forall a: A :: foo(a) > 0 }
+  axiom foo_ax2 {forall a: A :: fooid(a) == a }
 }
 
 method t6() {
@@ -89,6 +92,7 @@ method t6() {
 domain Bar[A, B] {
   function barfoo1(a: A): Bool
   function barfoo2(a: A): Int
+
   axiom bar_ax1 {forall a: A :: barfoo1(a) == true}
   axiom bar_ax2 {forall b: B :: barfoo1(null) == true}
   axiom bar_ax3 {forall a: A :: barfoo2(a) != hide(a)}
@@ -96,5 +100,10 @@ domain Bar[A, B] {
 
 domain Hidden[A] {
   function hide(a: A): Int
+
   axiom hidden_ax1 {forall a: A :: hide(a) == 0}
+}
+
+method test7() {
+  assert barfoo2(101) != 0
 }
