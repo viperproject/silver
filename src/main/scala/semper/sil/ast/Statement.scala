@@ -76,7 +76,7 @@ case class MethodCall(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(va
    * the arguments instantiated correctly).
    */
   lazy val pres = {
-    method.pres map (e => Expressions.instantiateVariables(e, method.formalArgs ++ method.formalReturns, args ++ targets))
+    method.pres map (e => Expressions.instantiateVariables(e, method.formalArgs, args))
   }
   /**
    * The postcondition of this method call (i.e., the postcondition of the method with
