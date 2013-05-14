@@ -174,7 +174,7 @@ sealed trait DomainMember extends Node with Positioned with Infoed {
   // we override the definition of hashCode/equals to avoid unbounded recursion
   override def hashCode = name.hashCode
   override def equals(o: Any) = o match {
-    case m: Member => name == m.name
+    case m: DomainMember => name == m.name
     case _ => false
   }
 }
