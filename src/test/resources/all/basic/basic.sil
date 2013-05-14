@@ -107,3 +107,28 @@ domain Hidden[A] {
 method test7() {
   assert barfoo2(101) != 0
 }
+
+domain D10A[A] {
+  function hide2(a: A): Int
+}
+
+domain D10B {
+  axiom d10b_ax1 {forall x: Int :: hide2(x) > 0}
+}
+
+domain D10C[A] {
+  axiom d10c_ax1 {forall r: Ref :: hide2(r) < 0}
+}
+
+method test8() {
+  assert hide2(101) > 0
+  assert hide2(null) < 0
+}
+
+domain Cell[A] {
+  function Cell_cell(a: A): Cell[A]
+}
+
+method test9() {
+  assert Cell_cell(0) == Cell_cell(0)
+}

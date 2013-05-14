@@ -141,18 +141,22 @@ object Domains {
 
       newInstances foreach {case (domain, memberInstances) =>
         memberInstances foreach {instance =>
-          val ms =                              /* domain??? */
-            collectConcreteDomainMemberInstances(instance.member, instance.typeVarsMap, membersWithSource)
+          val ms =
+            collectConcreteDomainMemberInstances(membersWithSource(instance.member),
+                                                 instance.typeVarsMap,
+                                                 membersWithSource)
+
           insert(nextNewInstances, ms)
       }}
 
       continue = false
-      newInstances foreach {case (domain, memberInstances) =>
+      nextNewInstances foreach {case (domain, memberInstances) =>
         memberInstances foreach {instance =>
           if (!instances.entryExists(domain, _ == instance)) continue = true}}
 
       println("from a fix-point iteration")
-      printIC(diff(newInstances, instances))
+      println("  continue? " + continue)
+      printIC(diff(nextNewInstances, instances))
 
       newInstances = nextNewInstances
       insert(instances, newInstances)
@@ -181,17 +185,15 @@ object Domains {
         instances.addBinding(membersWithSource(df), DomainFunctionInstance(df, typeVarsMap))
 
       case da: DomainAxiom if freeTypeVars(da) forall typeVarsMap.contains =>
+//        println("da = " + da)
+//        println("domain = " + toStringD(membersWithSource(da)))
+//        println("freeTypeVars(da) = " + freeTypeVars(da))
+//        println("typeVarsMap = " + typeVarsMap)
         instances.addBinding(membersWithSource(da), DomainAxiomInstance(da, typeVarsMap))
     }
 
     instances
   }
-
-//  private def insert(into: InstanceCollection, from: InstanceCollection) {
-//    from foreach {case (domain, memberInstances) =>
-//      memberInstances foreach (into.addBinding(domain, _))
-//    }
-//  }
 
   private def insert(into: InstanceCollection, from: Iterable[(Domain, Iterable[DomainMemberInstance])]) {
     from foreach {case (domain, memberInstances) =>
