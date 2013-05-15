@@ -6,15 +6,17 @@ import semper.sil.ast._
 
 /** Utility methods for domain-related AST nodes. */
 object Domains {
-  def collectTypeVars(types: Set[Type]): Set[TypeVar] = types collect {case t: TypeVar => t}
-
-  def collectTypeVars(typ: Type): Set[TypeVar] = typ match {
-    case tv: TypeVar => Set(tv)
-    case _ => Set()
+  def collectTypeVars(types: Set[Type]): Set[TypeVar] = types flatMap {
+    case t: TypeVar => Set(t)
+    case DomainType(domain, typeVarsMap) => (domain.typVars filterNot typeVarsMap.contains).toSet
+    case _ => Set[TypeVar]()
   }
 
-  def freeTypeVars(domainFunction: DomainFunc): Set[TypeVar] =
-    collectTypeVars(domainFunction.formalArgs map (_.typ) toSet) ++ collectTypeVars(domainFunction.typ)
+  def collectTypeVars(typ: Type): Set[TypeVar] = collectTypeVars(Set(typ))
+
+  def freeTypeVars(domainFunction: DomainFunc): Set[TypeVar] = (
+       collectTypeVars(domainFunction.formalArgs map (_.typ) toSet)
+    ++ collectTypeVars(domainFunction.typ))
 
   def freeTypeVars(domainAxiom: DomainAxiom): Set[TypeVar] = {
     var ts = Set[TypeVar]()
@@ -45,13 +47,27 @@ object Domains {
     var domains: Set[DomainType] = Set()
     var newDomains: Set[DomainType] = Set()
 
-    domains ++= program.domains filter (_.typVars.isEmpty) map (DomainType(_, Map.empty))
-    domains ++= collectConcreteDomainTypes(program, Map())
+    var ds: Iterable[DomainType] = program.domains filter (_.typVars.isEmpty) map (DomainType(_, Map.empty))
+//    println("Domain types w/o type variables")
+//    ds foreach (dt => println("  " + toStringDT(dt)))
+    domains ++= ds
+
+    ds = collectConcreteDomainTypes(program, Map())
+//    println("Domain types w/o additional substitution")
+//    ds foreach (dt => println("  " + toStringDT(dt)))
+    domains ++= ds
 
     newDomains = domains
+    var continue = newDomains.nonEmpty
 
-    while (newDomains.nonEmpty) {
+    while (continue) {
       newDomains = newDomains flatMap (dt => collectConcreteDomainTypes(dt.domain, dt.typVarsMap))
+
+      newDomains = newDomains -- domains
+      continue = newDomains.nonEmpty
+//      println("Domain types fix-point iteration")
+//      newDomains foreach (dt => println(toStringDT(dt)))
+
       domains ++= newDomains
     }
 
@@ -83,7 +99,7 @@ object Domains {
     lazy val typeVars = freeTypeVars(member)
     lazy val isConcrete = typeVars forall typeVarsMap.contains
 
-    override lazy val toString = member + " where " + typeVarsMap
+    override lazy val toString = s"$member where $typeVarsMap"
   }
 
   case class DomainFunctionInstance(member: DomainFunc, typeVarsMap: Map[TypeVar, Type]) extends DomainMemberInstance
@@ -126,11 +142,11 @@ object Domains {
     insert(newInstances,
            collectConcreteDomainMemberInstances(program, Map[TypeVar, Type](), membersWithSource))
 
-    println("\n[collectConcreteDomainMemberInstances]")
-    println("from concrete domain types")
-    printIC(instances)
-    println("from the program without any type var subst")
-    printIC(diff(newInstances, instances))
+//    println("\n[collectConcreteDomainMemberInstances]")
+//    println("from concrete domain types")
+//    printIC(instances)
+//    println("from the program without any type var subst")
+//    printIC(diff(newInstances, instances))
 
     insert(instances, newInstances)
 
@@ -154,9 +170,9 @@ object Domains {
         memberInstances foreach {instance =>
           if (!instances.entryExists(domain, _ == instance)) continue = true}}
 
-      println("from a fix-point iteration")
-      println("  continue? " + continue)
-      printIC(diff(nextNewInstances, instances))
+//      println("from a fix-point iteration")
+//      println("  continue? " + continue)
+//      printIC(diff(nextNewInstances, instances))
 
       newInstances = nextNewInstances
       insert(instances, newInstances)
@@ -178,10 +194,15 @@ object Domains {
       case dfa: DomainFuncApp =>
         val combinedTypeVarsMap = typeVarsMap ++ dfa.typVarMap
 
-        if (freeTypeVars(dfa.func) forall (v => combinedTypeVarsMap.contains(v) && combinedTypeVarsMap(v).isConcrete))
+        if (freeTypeVars(dfa.func) forall (v => combinedTypeVarsMap.contains(v) && combinedTypeVarsMap(v).isConcrete)) {
+//          println("[dfa] " + DomainFunctionInstance(dfa.func, combinedTypeVarsMap))
           instances.addBinding(membersWithSource(dfa.func), DomainFunctionInstance(dfa.func, combinedTypeVarsMap))
+        }
 
       case df: DomainFunc if freeTypeVars(df) forall typeVarsMap.contains =>
+//        println("[df] " + DomainFunctionInstance(df, typeVarsMap))
+//        println("  freeTypeVars(df) = " + freeTypeVars(df))
+//        println("  typeVarsMap = " + typeVarsMap)
         instances.addBinding(membersWithSource(df), DomainFunctionInstance(df, typeVarsMap))
 
       case da: DomainAxiom if freeTypeVars(da) forall typeVarsMap.contains =>
@@ -203,9 +224,12 @@ object Domains {
 
   def toStringD(d: Domain) = d.name + d.typVars.mkString("[",",","]")
 
+  def toStringDT(dt: DomainType) =
+    dt.domain.name + dt.domain.typVars.mkString("[",",","]") + " where " + dt.typVarsMap
+
   def printIC(ic: Iterable[(Domain, Iterable[DomainMemberInstance])]) {
     ic foreach {case (domain, memberInstances) =>
-      println("  domain = " + toStringD(domain))
+//      println("  domain = " + toStringD(domain))
       memberInstances foreach (mi => println("    " + mi))
     }
   }

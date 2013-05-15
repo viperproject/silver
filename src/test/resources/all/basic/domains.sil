@@ -90,3 +90,82 @@ method test4(a: Int, b: Bool, c: Ref) {
   //:: ExpectedError(assertion.false)
   assert Triple_isPrefix(p, t2)
 }
+
+domain L {
+  function f1(x: Int): Int
+  function f2(x: Int): Int
+}
+
+// test trigger parsing
+method t5() returns () {
+  assume forall i: Int :: {f1(i),f2(i)} f1(i) > 0
+}
+
+domain Foo[A] {
+  function foo(a: A): Int
+  function fooid(a: A): A
+
+  axiom foo_ax1 {forall a: A :: foo(a) > 0}
+  axiom foo_ax2 {forall a: A :: fooid(a) == a}
+}
+
+method t6() {
+  assert foo(1) > 0
+  assert foo(null) > 0
+  assert foo(none) > 0
+}
+
+domain Bar[A, B] {
+  function barfoo1(a: A): Bool
+  function barfoo2(a: A): Int
+
+  axiom bar_ax1 {forall a: A :: barfoo1(a) == true}
+  axiom bar_ax2 {forall b: B :: barfoo1(null) == true}
+  axiom bar_ax3 {forall a: A :: barfoo2(a) != hide(a)}
+}
+
+domain Hidden[A] {
+  function hide(a: A): Int
+
+  axiom hidden_ax1 {forall a: A :: hide(a) == 0}
+}
+
+method test7() {
+  assert barfoo2(101) != 0
+}
+
+domain D10A[A] {
+  function hide2(a: A): Int
+}
+
+domain D10B {
+  axiom d10b_ax1 {forall x: Int :: hide2(x) > 0}
+}
+
+domain D10C[A] {
+  axiom d10c_ax1 {forall r: Ref :: hide2(r) < 0}
+}
+
+method test8() {
+  assert hide2(101) > 0
+  assert hide2(null) < 0
+}
+
+domain Cell[A] {
+  function Cell_cell(a: A): Cell[A]
+	function Cell_get(c: Cell[A]): A
+
+	axiom cell_ax1 {forall a: A :: Cell_get(Cell_cell(a)) == a}
+}
+
+method test9() {
+	var c1: Cell[Int] := Cell_cell(0)
+
+  assert c1 == Cell_cell(0)
+	assert Cell_get(c1) == 0
+	assert Cell_get(c1) == Cell_get(Cell_cell(0))
+
+	var c2: Cell[Ref] := Cell_cell(null)
+
+	assert Cell_get(c2) == null
+}
