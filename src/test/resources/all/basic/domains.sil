@@ -101,6 +101,10 @@ method t5() returns () {
   assume forall i: Int :: {f1(i),f2(i)} f1(i) > 0
 }
 
+/*
+ * The following tests were created to test Silicon's handling of higher-ranked domains.
+ */
+
 domain Foo[A] {
   function foo(a: A): Int
   function fooid(a: A): A
