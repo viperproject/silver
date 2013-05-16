@@ -1,5 +1,7 @@
 package semper.sil.ast
 
+import utility.Types
+
 /** SIL typs. */
 sealed trait Type extends Node {
   /**
@@ -22,11 +24,17 @@ sealed trait Type extends Node {
       case _ => this == other
     }
   }
+
   // Convenience method for checking subtypes
   def isSubtype(other: Typed): Boolean = isSubtype(other.typ)
+
   /** Is this a concrete type (i.e. no uninstantiated type variables)? */
   def isConcrete: Boolean
+
+  /** See [[semper.sil.ast.utility.Types.typeVariables]]. */
+  lazy val typeVariables = Types.typeVariables(this)
 }
+
 /** Trait for typs build into SIL. */
 sealed trait BuiltInType extends Type {
   lazy val isConcrete = true
