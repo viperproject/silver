@@ -47,14 +47,6 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   private var openFileSystems: Seq[FileSystem] = Seq()
   addShutdownHookForOpenFileSystems()
 
-  /* For debugging purposes only. */
-//  protected def printClassPath() {
-//    val urls = classLoader.asInstanceOf[java.net.URLClassLoader].getURLs()
-//
-//    println("\n[SilSuite/printClassPath]")
-//    urls foreach (u => println("  " + u.getFile))
-//  }
-
   /** The frontend to be used. */
   def frontend(verifier: Verifier, files: Seq[Path]): Frontend
 
@@ -256,12 +248,9 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     val directoryStream = Files.newDirectoryStream(dir)
     val dirContent = directoryStream.toList
 
-//    if (dir.listFiles == null) return
-
     val newPrefix = prefix + dir.toString + "/"
     val namePattern = configMap.getOrElse("include", ".*").toString
 
-//    for (f: File <- dirContent.filter(x => x != null && x.isDirectory)) {
     for (f: Path <- dirContent
          if Files.isDirectory(f)) {
 
@@ -271,8 +260,6 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     for (f: Path <- dirContent
          if !Files.isDirectory(f)
          if f.toString.matches(namePattern)) {
-//                       .filterNot(_.isDirectory)
-//                       .filter(_.getCanonicalPath.matches(namePattern))) {
 
       registerSilTest(f, newPrefix)
     }
@@ -367,9 +354,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     Runtime.getRuntime().addShutdownHook(new Thread {
       override def run() {
         if (openFileSystems != null) {
-          //        println("\n[ShutdownHook] Closing file systems")
-          //        println("  |openFileSystems| = " + openFileSystems.size)
-          openFileSystems foreach (fs => if (fs.isOpen) {fs.close()/*; println("  closed " + fs)*/})
+          openFileSystems foreach (fs => if (fs.isOpen) {fs.close()})
         }
       }
     })

@@ -70,4 +70,21 @@ object Expressions {
 
   def subExps(e: Exp) = e.subnodes collect { case e: Exp => e }
 
+  def proofObligations(e: Exp): Seq[Exp] = e.reduceTree[Seq[Exp]] { (n: Node, subConds: Seq[Seq[Exp]]) =>
+    val p = n match {
+      case n: Positioned => n.pos
+      case _ => NoPosition
+    }
+    val conds = n match {
+      case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, WildcardPerm()(p))(p))
+      case f: FuncApp => f.pres
+      case Div(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
+      case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
+      case _ => Nil
+    }
+    val nonTrivialSubConds: Seq[Exp] = subConds.flatten.filter { _ != TrueLit()() }
+    // The condition has to be at the end because the subtrees have to be well-formed first.
+    nonTrivialSubConds ++ conds
+  }
+
 }

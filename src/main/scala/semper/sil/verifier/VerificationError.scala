@@ -212,6 +212,11 @@ object reasons {
     def readableMessage = s"Assertion $offendingNode might not hold."
   }
 
+  case class EpsilonAsParam(offendingNode: Exp) extends AbstractErrorReason {
+    val id = "epsilon.as.param"
+    def readableMessage = s"The parameter $offendingNode might be an epsilon permission, which is not allowed for method parameters."
+  }
+
   case class ReceiverNull(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "receiver.null"
     def readableMessage = s"Receiver of $offendingNode might be null."

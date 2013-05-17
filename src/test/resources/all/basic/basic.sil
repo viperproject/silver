@@ -1,4 +1,3 @@
-
 var test: Bool
 
 // some random tests
@@ -62,15 +61,4 @@ method t4(a: Ref, b: Ref) returns ()
             exhale a != b
         }
     }
-}
-
-domain L {
-  function f1(x: Int): Int
-  function f2(x: Int): Int
-}
-
-// test trigger parsing
-method t5() returns ()
-{
-    assume forall i: Int :: {f1(i),f2(i)} f1(i) > 0
 }

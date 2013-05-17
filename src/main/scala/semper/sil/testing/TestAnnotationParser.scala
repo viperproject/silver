@@ -31,7 +31,6 @@ trait TestAnnotationParser {
     * returns an object describing the result.
     */
   def parseAnnotations(file: Path) = {
-// REMOVE:   val lines = Source.fromFile(file).mkString.replace("""\r""", "").split("\n").iterator.buffered
     val lines = Source.fromInputStream(Files.newInputStream(file))
                       .mkString
                       .replace("""\r""", "")

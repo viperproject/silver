@@ -1,5 +1,6 @@
 package semper.sil.ast.utility
 
+import scala.collection.immutable.ListSet
 import semper.sil.ast._
 
 /** Utility methods for AST nodes. */
