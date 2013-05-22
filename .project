@@ -1,12 +1,1390 @@
-<projectDescription>
-  <name>sil</name>
-  <buildSpec>
-    <buildCommand>
-      <name>org.scala-ide.sdt.core.scalabuilder</name>
-    </buildCommand>
-  </buildSpec>
-  <natures>
-    <nature>org.scala-ide.sdt.core.scalanature</nature>
-    <nature>org.eclipse.jdt.core.javanature</nature>
-  </natures>
-</projectDescription>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta charset="utf-8">
+  <title>
+  semperproject / sil 
+  / source  / .project
+ &mdash; Bitbucket
+</title>
+  <link rel="icon" type="image/png" href="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/img/favicon.png">
+  <meta id="bb-canon-url" name="bb-canon-url" content="https://bitbucket.org">
+  
+  
+<link rel="stylesheet" href="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/compressed/css/25964bc337ac.css" type="text/css" />
+<link rel="stylesheet" href="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/compressed/css/7e0f2b54e16a.css" type="text/css" />
+
+  <!--[if lt IE 9]><link rel="stylesheet" href="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/css/aui/aui-ie.css" media="all"><![endif]-->
+  <!--[if IE 9]><link rel="stylesheet" href="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/css/aui/aui-ie9.css" media="all"><![endif]-->
+  <!--[if IE]><link rel="stylesheet" href="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/css/aui-overrides-ie.css" media="all"><![endif]-->
+  <meta name="description" content=""/>
+  <link rel="search" type="application/opensearchdescription+xml" href="/opensearch.xml" title="Bitbucket" />
+  
+  <link href="/semperproject/sil/rss?token=b991d4195c5f6c98b870dc4e47ec3b00" rel="alternate nofollow" type="application/rss+xml" title="RSS feed for sil" />
+
+<script type="text/javascript">var NREUMQ=NREUMQ||[];NREUMQ.push(["mark","firstbyte",new Date().getTime()]);</script></head>
+<body class="production "
+      >
+<script type="text/javascript" src="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/compressed/js/e98deabf8a2e.js"></script>
+<div id="page">
+  <div id="wrapper">
+    
+    <header id="header" role="banner">
+      
+        
+      
+      <nav class="aui-header aui-dropdown2-trigger-group" role="navigation">
+        <div class="aui-header-inner">
+          <div class="aui-header-primary">
+            <h1 class="aui-header-logo aui-header-logo-bitbucket">
+              <a href="/" class="aui-nav-imagelink" id="logo-link">
+                <span class="aui-header-logo-device">Bitbucket</span>
+              </a>
+            </h1>
+            
+            <script id="repo-dropdown-template" type="text/html">
+  
+
+[[#hasViewed]]
+  <div class="aui-dropdown2-section">
+    <strong class="viewed">Recently viewed</strong>
+    <ul class="aui-list-truncate">
+      [[#viewed]]
+        <li class="[[#is_private]]private[[/is_private]][[^is_private]]public[[/is_private]] repository">
+          <a href="[[url]]" title="[[owner]]/[[name]]" class=" aui-icon-container">
+            <img class="repo-avatar size16" src="[[{avatar}]]" alt="[[owner]]/[[name]] avatar"/>
+            [[owner]] / [[name]]
+          </a>
+        </li>
+      [[/viewed]]
+    </ul>
+  </div>
+[[/hasViewed]]
+[[#hasUpdated]]
+<div class="aui-dropdown2-section">
+  <strong class="updated">Recently updated</strong>
+  <ul class="aui-list-truncate">
+    [[#updated]]
+    <li class="[[#is_private]]private[[/is_private]][[^is_private]]public[[/is_private]] repository">
+      <a href="[[url]]" title="[[owner]]/[[name]]" class=" aui-icon-container">
+        <img class="repo-avatar size16" src="[[{avatar}]]" alt="[[owner]]/[[name]] avatar"/>
+        [[owner]] / [[name]]
+      </a>
+    </li>
+    [[/updated]]
+  </ul>
+</div>
+[[/hasUpdated]]
+
+</script>
+            <ul role="menu" class="aui-nav">
+              
+                <li>
+                  <a class="aui-dropdown2-trigger aui-dropdown2-trigger selected"
+                     aria-owns="repo-dropdown" aria-haspopup="true" href="/repo/mine " id="repositories-dropdown-trigger">
+                    Repositories
+                    <span class="aui-icon-dropdown"></span>
+                  </a>
+                  <nav id="repo-dropdown" class="aui-dropdown2 aui-style-default">
+                    <div id="repo-dropdown-recent"></div>
+                    <div class="aui-dropdown2-section">
+                      <ul>
+                        <li>
+                          <a href="/repo/create" class="new-repository" id="create-repo-link">
+                            Create repository
+                          </a>
+                        </li>
+                        <li>
+                          <a href="/repo/import" class="import-repository" id="import-repo-link">
+                            Import repository
+                          </a>
+                        </li>
+                      </ul>
+                    </div>
+                  </nav>
+                </li>
+                  <li>
+                    <a class="aui-button aui-button-primary aui-style" href="/repo/create" id="repo-create-cta">
+                      Create
+                    </a>
+                  </li>
+              
+            </ul>
+            
+          </div>
+          <div class="aui-header-secondary">
+            
+            <ul role="menu" class="aui-nav">
+              <li>
+                <form action="/repo/all" method="get" class="aui-quicksearch">
+                  <label for="search-query" class="assistive">owner/repository</label>
+                  <input id="search-query" class="search" type="text" placeholder="owner/repository" name="name">
+                </form>
+              </li>
+              <li>
+                <a class="aui-dropdown2-trigger"aria-controls="header-help-dropdown" aria-owns="header-help-dropdown"
+                   aria-haspopup="true" data-container="#header .aui-header-inner" href="#header-help-dropdown">
+                  <span class="aui-icon aui-icon-small aui-iconfont-help">Help</span><span class="aui-icon-dropdown"></span>
+                </a>
+                <nav id="header-help-dropdown" class="aui-dropdown2 aui-style-default aui-dropdown2-in-header" aria-hidden="true">
+                  <div class="aui-dropdown2-section">
+                    <ul>
+                      <li>
+                        <a href="/whats-new" id="features-link">
+                          What's new
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="aui-dropdown2-section">
+                    <ul>
+                      <li>
+                        <a class="support-ga"
+                           data-support-gaq-page="DocumentationHome"
+                           href="https://confluence.atlassian.com/display/BITBUCKET/bitbucket+Documentation+Home"
+                           target="_blank">
+                          Documentation
+                        </a>
+                      </li>
+                      <li>
+                        <a class="support-ga"
+                           data-support-gaq-page="Documentation101"
+                           href="https://confluence.atlassian.com/display/BITBUCKET/bitbucket+101"
+                           target="_blank">
+                          Bitbucket 101
+                        </a>
+                      </li>
+                      <li>
+                        <a class="support-ga"
+                           data-support-gaq-page="DocumentationKB"
+                           href="https://confluence.atlassian.com/display/BBKB/Bitbucket+Knowledge+Base+Home"
+                           target="_blank">
+                          Knowledge base
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="aui-dropdown2-section">
+                    <ul>
+                      <li>
+                        <a class="support-ga"
+                           data-support-gaq-page="Answers"
+                           href="https://answers.atlassian.com/tags/bitbucket/"
+                           target="_blank">
+                          Bitbucket on Atlassian Answers
+                        </a>
+                      </li>
+                      <li>
+                        <a class="support-ga"
+                           data-support-gaq-page="Home"
+                           href="/support">
+                        Support
+                      </a>
+                      </li>
+                    </ul>
+                  </div>
+                </nav>
+              </li>
+                
+                  
+                
+              
+                <li>
+                  <a class="aui-dropdown2-trigger"
+                     aria-owns="user-dropdown" aria-haspopup="true" data-container="#header .aui-header-inner"
+                     href="/fischebe" title="fischebe" id="user-dropdown-trigger">
+                    <div class="aui-avatar aui-avatar-small">
+                        <div class="aui-avatar-inner">
+                            <img src="https://secure.gravatar.com/avatar/a8e41531d4681cf34b382291af5eb9aa?d=https%3A%2F%2Fd3oaxc4q5k2d6q.cloudfront.net%2Fm%2F7055bdccca2c%2Fimg%2Fdefault_avatar%2F32%2Fuser_blue.png&amp;s=32" alt="fischebe" height="24" width="24" />
+                        </div>
+                    </div>
+                  </a>
+                  <nav id="user-dropdown" class="aui-dropdown2 aui-style-default" aria-hidden="true">
+                    <div class="aui-dropdown2-section">
+                      <ul>
+                        <li>
+                          <a href="/fischebe" id="profile-link">View profile</a>
+                        </li>
+                        <li>
+                          <a href="/account/user/fischebe/" id="account-link">Manage account</a>
+                        </li>
+                        <li>
+                            <a href="/account/notifications/" id="inbox-link">Inbox <span id="inbox-unread-count"></span></a>
+                        </li>
+                        <li>
+                          <a href="/account/signout/">Log out</a>
+                        </li>
+                      </ul>
+                    </div>
+                      <div class="aui-dropdown2-section" id="account-admin-links">
+                        <strong>Teams</strong>
+                          <ul class="aui-list-truncate">
+                          </ul>
+                        </div>
+                      <div class="aui-dropdown2-section">
+                          <ul>
+                              <li>
+                                  <a href="#general-invite" class='general-invite-link'>Invite a friend</a>
+                              </li>
+                          </ul>
+                      </div>
+                      
+                      <div class="aui-dropdown2-section">
+                        <ul>
+                          <li>
+                            <a href="/account/create-team/" id="create-team-link">Create team</a>
+                          </li>
+                          <li>
+                            <a href="/account/user/fischebe/convert-team/">Convert to team</a>
+                          </li>
+                        </ul>
+                      </div>
+                    
+                  </nav>
+                </li>
+              
+            </ul>
+            
+          </div>
+        </div>
+      </nav>
+    </header>
+      <header id="account-warning" role="banner"
+              class="aui-message-banner warning ">
+        <div class="center-content">
+          <span class="aui-icon aui-icon-warning"></span>
+          <span class="message">
+            
+          </span>
+        </div>
+      </header>
+    
+      <header id="aui-message-bar">
+        
+      </header>
+    
+    
+  <header id="repo-warning" role="banner" class="aui-message-banner warning">
+    <div class="center-content">
+      <span class="aui-icon aui-icon-warning"></span>
+      <span class="message">
+      </span>
+    </div>
+  </header>
+  <script id="repo-warning-template" type="text/html">
+  
+
+
+
+
+  This repository's ownership is pending transfer to <a href="/[[username]]">[[username]]</a>.
+  Visit the <a href="/semperproject/sil/admin/transfer">transfer repository page</a> to view more details.
+
+
+</script>
+  <header id="repo-header" class="subhead row">
+    <div class="center-content">
+      <div class="repo-summary with-repo-watch">
+        <a class="repo-avatar-link" href="/semperproject/sil">
+          <span class="repo-avatar-container size64" title="semperproject/sil">
+  <img alt="semperproject/sil" src="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/img/language-avatars/default_64.png">
+</span>
+
+          
+          <span class="locked" rel="tooltip" title="Private repository" data-placement="bottom"></span>
+          
+        </a>
+        <h1><a class="repo-link" href="/semperproject/sil">sil</a></h1>
+        <ul class="repo-metadata clearfix">
+          <li>
+            <a class="user" href="/semperproject">
+              <span class="icon user">User icon</span>
+              <span>semperproject</span>
+            </a>
+          </li>
+          
+          
+          
+        </ul>
+      </div>
+      <div id="repo-toolbar" class="bb-toolbar">
+        
+        <div class="aui-buttons">
+          <a id="repo-clone-button" class="aui-button aui-style" href="https://fischebe@bitbucket.org/semperproject/sil">
+            <span class="icon clone">Clone icon</span>
+            <span>Clone</span>
+            <span class="aui-icon-dropdown"></span>
+          </a>
+          <a id="fork-button" class="aui-button aui-style"
+             href="/semperproject/sil/fork">
+            <span class="icon fork">Fork icon</span>
+            <span>Fork</span>
+          </a>
+        </div>
+        <div class="aui-buttons">
+          <a id="compare-button" class="aui-button aui-style"
+             href="/semperproject/sil/compare">
+            <span class="icon compare">Compare icon</span>
+            <span>Compare</span>
+          </a>
+          <a id="pull-request-button" class="aui-button aui-style"
+             href="/semperproject/sil/pull-request/new">
+            <span class="icon pull-request">Pull request icon</span>
+            <span>Pull request</span>
+          </a>
+        </div>
+        
+        
+          
+            
+
+<div class="aui-buttons repo-watch">
+  <a class="aui-button aui-style follow following" rel="nofollow"
+    href="/semperproject/sil/follow"
+    
+      title="Stop watching this repository"
+    
+    data-prefs-url="/xhr/watch-prefs/semperproject/sil"
+    data-unwatch-url="/api/1.0/repositories/unwatch/semperproject/sil"
+    data-url-pullrequests="/dashboard/pullrequests/watching"
+    data-url-issues="/dashboard/issues/watching"
+    data-repository="semperproject/sil">
+    <span class="icon watch text">Watch</span>
+  </a>
+  <a href="repo-preferences" class="aui-button aui-style repo-watch">
+    <span class="aui-icon-dropdown"></span>
+  </a>
+</div>
+
+          
+          <script id="watch-preferences-template" type="text/html">
+  
+
+<div id="repo-watch-preferences" class="repo-watch-container">
+  <div class="row">
+    <div class="content">
+      <div class="img-icon watch"></div>
+      [[#watching]]
+        <h2>
+          You are watching this repository
+        </h2>
+        <p>
+          
+          
+            Updates will appear in your <a href="/dashboard/overview">newsfeed</a>.
+          
+        </p>
+      [[/watching]]
+      [[^watching]]
+        <h2>
+          You are not watching this repository
+        </h2>
+        <p>
+          Start watching to receive updates.
+        </p>
+      [[/watching]]
+      <p>
+        <a class="aui-button aui-style follow following"
+          data-follow-text="Stop watching" href="#">
+          [[#watching]]
+            Stop watching
+          [[/watching]]
+          [[^watching]]
+            Watch this repository
+          [[/watching]]
+        </a>
+      </p>
+    </div>
+  </div>
+  <div class="row">
+    <div class="content"
+      [[^watching]] title="You must watch this repository before you can subscribe to its notifications"[[/watching]]>
+      <div class="img-icon email"></div>
+      <h4 class="subscribe-title">
+        Subscribe to notifications about
+      </h4>
+      [[#showRepo]]
+        <div class="checkbox">
+          <input type="checkbox" id="pref-pullrequests" name="pullrequests" [[#pullrequests]]checked[[/pullrequests]]/>
+          <label for="pref-pullrequests">All pull requests</label>
+        </div>
+      [[/showRepo]]
+      [[#showIssues]]
+        <div class="checkbox">
+          <input type="checkbox" id="pref-issues" name="issues" [[#issues]]checked[[/issues]]/>
+          <label for="pref-issues">All issues</label>
+        </div>
+      [[/showIssues]]
+      [[#showRepo]]
+        <div class="checkbox">
+          <input type="checkbox" id="pref-commits" name="commits" [[#commits]]checked[[/commits]]/>
+          <label for="pref-commits">All commits</label>
+        </div>
+      [[/showRepo]]
+      [[#showWiki]]
+        <div class="checkbox">
+          <input type="checkbox" id="pref-wiki" name="wiki" [[#wiki]]checked[[/wiki]]/>
+          <label for="pref-wiki">All wiki changes</label>
+        </div>
+      [[/showWiki]]
+      [[#showRepo]]
+        <div class="checkbox">
+          <input type="checkbox" id="pref-forks" name="forks" [[#forks]]checked[[/forks]]/>
+          <label for="pref-forks">All forks</label>
+        </div>
+      [[/showRepo]]
+    </div>
+  </div>
+</div>
+
+</script>
+          <script id="stop-watching-template" type="text/html">
+  
+
+<div id="stop-watching-container"
+  data-manage-all-url="/account/user/fischebe/notifications/">
+  <p>
+    
+      You may still get notifications from previously watched items in this
+      repository unless you unwatch them.
+    
+  </p>
+  <ul class="watching">
+    [[#pr_count]]
+      <li>
+        <a href="[[urlPullrequests]]">Pull requests</a>
+        <span class="aui-badge">[[pr_count]]</span>
+        <a class="unwatch" href="#unwatch-pullrequests" data-kind="pullrequest">
+          Unwatch
+        </a>
+      </li>
+    [[/pr_count]]
+    [[#issue_count]]
+      <li>
+        <a href="[[urlIssues]]">Issues</a>
+        <span class="aui-badge">[[issue_count]]</span>
+        <a class="unwatch" href="#unwatch-issues" data-kind="issues">
+          Unwatch
+        </a>
+      </li>
+    [[/issue_count]]
+  </ul>
+</div>
+
+</script>
+          <script id="preference-error-template" type="text/html">
+  
+<div class="aui-message error repo-watch">
+  <p>An error has occurred.</p>
+  <span class="aui-icon aui-icon-small aui-iconfont-error"></span>
+</div>
+
+</script>
+        
+        
+
+<div id="repo-clone-dialog" class="clone-dialog hidden">
+  
+<div class="clone-url">
+  <div class="aui-buttons">
+    <a href="https://fischebe@bitbucket.org/semperproject/sil"
+       class="aui-button aui-style aui-dropdown2-trigger" aria-haspopup="true"
+       aria-owns="clone-url-dropdown-header">
+      <span class="dropdown-text">HTTPS</span>
+    </a>
+    <div id="clone-url-dropdown-header" class="aui-dropdown2 aui-style-default">
+      <ul class="aui-list-truncate">
+        <li>
+          <a href="https://fischebe@bitbucket.org/semperproject/sil"
+            
+              data-command="hg clone https://fischebe@bitbucket.org/semperproject/sil"
+            
+            class="item-link https">HTTPS
+          </a>
+        </li>
+        <li>
+          <a href="ssh://hg@bitbucket.org/semperproject/sil"
+            
+              data-command="hg clone ssh://hg@bitbucket.org/semperproject/sil"
+            
+            class="item-link ssh">SSH
+          </a>
+        </li>
+      </ul>
+    </div>
+    <input type="text" readonly="readonly" value="hg clone https://fischebe@bitbucket.org/semperproject/sil">
+  </div>
+  
+  <p>Need help cloning? Visit
+     <a href="https://confluence.atlassian.com/x/cgozDQ" target="_blank">Bitbucket 101</a>.</p>
+  
+</div>
+
+
+  
+  
+  
+
+<div class="clone-in-sourcetree"
+  data-https-url="https://fischebe@bitbucket.org/semperproject/sil"
+  data-ssh-url="ssh://hg@bitbucket.org/semperproject/sil">
+  <p><button class="aui-button aui-style aui-button-primary">Clone in SourceTree</button></p>
+
+
+  <p class="windows-text">
+      
+        <a href="http://www.sourcetreeapp.com" target="_blank">SourceTree</a>
+        is a free Windows client by Atlassian for Git and Subversion.
+      
+  </p>
+  <p class="mac-text">
+      
+        <a href="http://www.sourcetreeapp.com" target="_blank">SourceTree</a>
+        is a free Mac client by Atlassian for Git, Mercurial, and Subversion.
+      
+  </p>
+</div>
+
+  
+</div>
+
+      </div>
+    </div>
+    <div class="clearfix"></div>
+  </header>
+  <nav id="repo-tabs" class="aui-navgroup aui-navgroup-horizontal aui-navgroup-horizontal-roomy">
+    <div class="aui-navgroup-inner">
+      <div class="aui-navgroup-primary">
+        <ul class="aui-nav">
+          
+            <li>
+              <a href="/semperproject/sil/overview" id="repo-overview-link">Overview</a>
+            </li>
+          
+          
+            <li class="aui-nav-selected">
+              <a href="/semperproject/sil/src" id="repo-source-link">Source</a>
+            </li>
+          
+          
+            <li>
+              <a href="/semperproject/sil/commits" id="repo-commits-link">
+                Commits
+              </a>
+            </li>
+          
+          
+            <li>
+              <a href="/semperproject/sil/pull-requests" id="repo-pullrequests-link">
+                Pull requests
+                
+                  
+                    <span class="aui-badge" title="1 open pull request" id="pullrequest-count">1</span>
+                  
+                
+              </a>
+            </li>
+          
+          
+            
+          
+            <li id="issues-tab" class="
+              
+                
+              
+            ">
+              <a href="/semperproject/sil/issues?status=new&amp;status=open" id="repo-issues-link">
+                Issues
+                
+                  
+                
+              </a>
+            </li>
+            <li id="wiki-tab" class="
+                
+                  
+                
+              ">
+              <a href="/semperproject/sil/wiki" id="repo-wiki-link">Wiki</a>
+            </li>
+          
+            <li>
+            <a href="/semperproject/sil/downloads" id="repo-downloads-link">
+              Downloads
+              
+                
+              
+            </a>
+            </li>
+          
+        </ul>
+      </div>
+      <div class="aui-navgroup-secondary">
+        <ul class="aui-nav">
+          
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+    <div id="content" role="main">
+      
+  <div id="repo-content">
+    
+  <div id="source-container">
+    
+
+
+
+<header id="source-path">
+  
+  <div class="labels labels-csv">
+    
+      <div class="aui-buttons">
+        <button data-branches-tags-url="/api/1.0/repositories/semperproject/sil/branches-tags"
+                class="aui-button aui-style branch-dialog-trigger" title="default">
+          
+            
+              <span class="branch icon">Branch</span>
+            
+            <span class="name">default</span>
+          
+          <span class="aui-icon-dropdown"></span>
+        </button>
+      </div>
+    
+  </div>
+  
+  
+    <div class="view-switcher">
+      <div class="aui-buttons">
+        
+          <a href="/semperproject/sil/src/9f9a603fcffa/.project?at=default"
+             class="aui-button aui-style pjax-trigger" aria-pressed="true">
+            Source
+          </a>
+          <a href="/semperproject/sil/diff/.project?diff2=9f9a603fcffa&at=default"
+             class="aui-button aui-style pjax-trigger"
+             title="Diff to previous change">
+            Diff
+          </a>
+          <a href="/semperproject/sil/history-node/9f9a603fcffa/.project?at=default"
+             class="aui-button aui-style pjax-trigger">
+            History
+          </a>
+        
+      </div>
+    </div>
+  
+  <h1>
+    <a href="/semperproject/sil/src/9f9a603fcffa?at=default"
+       class="pjax-trigger" title="semperproject/sil at 9f9a603fcffa">sil</a> /
+    
+      
+        
+          <span>.project</span>
+        
+      
+    
+  </h1>
+  
+    
+    
+  
+  <div class="clearfix"></div>
+</header>
+
+
+  
+    <div id="editor-container" class="maskable"
+         data-owner="semperproject"
+         data-slug="sil"
+         data-is-writer="false"
+         data-hash="9f9a603fcffa03c9b93421342a7cf8602a8e9885"
+         data-branch="default"
+         data-path=".project"
+         data-source-url="/api/2.0/repositories/semperproject/sil/src/9f9a603fcffa03c9b93421342a7cf8602a8e9885/.project">
+      <div id="source-view">
+        <div class="toolbar">
+          <div class="primary">
+            <div class="aui-buttons">
+              
+                <button id="file-history-trigger" class="aui-button aui-style changeset-info"
+                        data-changeset="9f9a603fcffa03c9b93421342a7cf8602a8e9885"
+                        data-path=".project"
+                        data-current="9f9a603fcffa03c9b93421342a7cf8602a8e9885">
+                  
+                     
+
+<img class="avatar avatar16" src="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/img/default_avatar/16/user_blue.png" alt="Anonymous avatar" />
+<span class="changeset-hash">9f9a603</span>
+<time datetime="2013-05-17T11:53:35+00:00" class="timestamp"></time>
+<span class="aui-icon-dropdown"></span>
+
+                  
+                </button>
+              
+            </div>
+          <a href="/semperproject/sil/full-commit/9f9a603fcffa/.project" id="full-commit-link"
+              title="View full commit 9f9a603">Full commit</a>
+          </div>
+            <div class="secondary">
+              <div class="aui-buttons">
+                
+                  <a href="/semperproject/sil/annotate/9f9a603fcffa03c9b93421342a7cf8602a8e9885/.project?at=default"
+                  class="aui-button aui-style pjax-trigger">Blame</a>
+                
+                
+                <a href="/semperproject/sil/raw/9f9a603fcffa03c9b93421342a7cf8602a8e9885/.project"
+                  class="aui-button aui-style">Raw</a>
+              </div>
+              
+                
+                  <div class="aui-buttons">
+                    
+                    <button class="edit-button aui-button aui-style">Edit</button>
+                  </div>
+                
+              
+            </div>
+          <div class="clearfix"></div>
+        </div>
+
+        
+          
+            
+              
+                <div class="file-source">
+                  <table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><a href="#cl-1"> 1</a>
+<a href="#cl-2"> 2</a>
+<a href="#cl-3"> 3</a>
+<a href="#cl-4"> 4</a>
+<a href="#cl-5"> 5</a>
+<a href="#cl-6"> 6</a>
+<a href="#cl-7"> 7</a>
+<a href="#cl-8"> 8</a>
+<a href="#cl-9"> 9</a>
+<a href="#cl-10">10</a>
+<a href="#cl-11">11</a>
+<a href="#cl-12">12</a></pre></div></td><td class="code"><div class="highlight"><pre><a name="cl-1"></a><span class="nt">&lt;projectDescription&gt;</span>
+<a name="cl-2"></a>  <span class="nt">&lt;name&gt;</span>SIL<span class="nt">&lt;/name&gt;</span>
+<a name="cl-3"></a>  <span class="nt">&lt;buildSpec&gt;</span>
+<a name="cl-4"></a>    <span class="nt">&lt;buildCommand&gt;</span>
+<a name="cl-5"></a>      <span class="nt">&lt;name&gt;</span>org.scala-ide.sdt.core.scalabuilder<span class="nt">&lt;/name&gt;</span>
+<a name="cl-6"></a>    <span class="nt">&lt;/buildCommand&gt;</span>
+<a name="cl-7"></a>  <span class="nt">&lt;/buildSpec&gt;</span>
+<a name="cl-8"></a>  <span class="nt">&lt;natures&gt;</span>
+<a name="cl-9"></a>    <span class="nt">&lt;nature&gt;</span>org.scala-ide.sdt.core.scalanature<span class="nt">&lt;/nature&gt;</span>
+<a name="cl-10"></a>    <span class="nt">&lt;nature&gt;</span>org.eclipse.jdt.core.javanature<span class="nt">&lt;/nature&gt;</span>
+<a name="cl-11"></a>  <span class="nt">&lt;/natures&gt;</span>
+<a name="cl-12"></a><span class="nt">&lt;/projectDescription&gt;</span>
+</pre></div>
+</td></tr></table>
+                </div>
+              
+            
+          
+        
+      </div>
+    </div>
+  
+
+
+  <script id="source-changeset" type="text/html">
+  
+
+<a href="/semperproject/sil/src/[[raw_node]]/.project?at=default"
+   class="[[#selected]]highlight[[/selected]]"
+   data-hash="[[node]]">
+  [[#author.username]]
+    <img class="avatar avatar16" src="[[author.avatar]]"/>
+    <span class="author" title="[[raw_author]]">[[author.display_name]]</span>
+  [[/author.username]]
+  [[^author.username]]
+    <img class="avatar avatar16" src="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/img/default_avatar/16/user_blue.png"/>
+    <span class="author unmapped" title="[[raw_author]]">[[author]]</span>
+  [[/author.username]]
+  <time datetime="[[utctimestamp]]" data-title="true">[[utctimestamp]]</time>
+  <span class="message">[[message]]</span>
+</a>
+
+</script>
+  <script id="embed-template" type="text/html">
+  
+
+<form class="aui embed">
+  <label for="embed-code">Embed this source in another page:</label>
+  <input type="text" readonly="true" value="&lt;script src=&quot;[[url]]&quot;&gt;&lt;/script&gt;" id="embed-code">
+</form>
+
+</script>
+  <script id="edit-form-template" type="text/html">
+  
+
+
+<form class="edit-form aui"
+      data-repository="[[owner]]/[[slug]]"
+      data-destination-repository="[[destinationOwner]]/[[destinationSlug]]"
+      data-local-id="[[localID]]"
+      data-is-writer="[[#isWriter]]true[[/isWriter]][[^isWriter]]false[[/isWriter]]"
+      data-is-pull-request="[[#isPullRequest]]true[[/isPullRequest]][[^isPullRequest]]false[[/isPullRequest]]"
+      data-hash="[[hash]]"
+      data-branch="[[branch]]"
+      data-path="[[path]]"
+      data-preview-url="/xhr/[[owner]]/[[slug]]/preview/[[hash]]/[[encodedPath]]"
+      data-preview-error="We had trouble generating your preview."
+      data-unsaved-changes-error="Your changes will be lost. Are you sure you want to leave?">
+  <div class="toolbar clearfix">
+    <div class="primary">
+      <h2>
+        
+          Editing <strong>[[path]]</strong> on branch: <strong>[[branch]]</strong>
+        
+      </h2>
+    </div>
+    <div class="secondary">
+      <div class="hunk-nav aui-buttons">
+        <button class="prev-hunk-button aui-button aui-button aui-style"
+              disabled="disabled" aria-disabled="true" title="previous change">&#x25B2;</button>
+        <button class="next-hunk-button aui-button aui-button aui-style"
+              disabled="disabled" aria-disabled="true" title="next change">&#x25BC;</button>
+      </div>
+    </div>
+  </div>
+  <div class="file-editor">
+    <textarea id="id_source">[[content]]</textarea>
+  </div>
+  <div class="preview-pane"></div>
+  <div class="toolbar footer-toolbar clearfix">
+    <div class="primary">
+      <div id="syntax-mode" class="field">
+        <label for="id_syntax-mode">Syntax mode:</label>
+        <select id="id_syntax-mode">
+          [[#syntaxes]]
+            <option value="[[#mime]][[mime]][[/mime]][[^mime]][[mode]][[/mime]]">[[label]]</option>
+          [[/syntaxes]]
+        </select>
+      </div>
+      <div id="indent-mode" class="field">
+        <label for="id_indent-mode">Indent mode:</label>
+        <select id="id_indent-mode">
+          <option value="tabs">Tabs</option>
+          <option value="spaces">Spaces</option>
+        </select>
+      </div>
+      <div id="indent-size" class="field">
+        <label for="id_indent-size">Indent size:</label>
+        <select id="id_indent-size">
+          <option value="2">2</option>
+          <option value="4">4</option>
+          <option value="8">8</option>
+        </select>
+      </div>
+    </div>
+    <div class="secondary">
+      <button class="preview-button aui-button aui-style"
+              disabled="disabled" aria-disabled="true"
+              data-preview-label="View diff"
+              data-edit-label="Edit file">View diff</button>
+      <button class="save-button aui-button aui-button-primary aui-style"
+              disabled="disabled" aria-disabled="true">Commit</button>
+      <a class="cancel-link" href="#">Cancel</a>
+    </div>
+  </div>
+</form>
+
+</script>
+  <script id="commit-form-template" type="text/html">
+  
+
+<form class="aui commit-form"
+      data-title="Commit changes"
+      data-default-message="[[filename]] edited online with Bitbucket"
+      data-fork-error="We had trouble creating your fork."
+      data-commit-error="We had trouble committing your changes."
+      data-pull-request-error="We had trouble creating your pull request."
+      data-update-error="We had trouble updating your pull request."
+      data-branch-conflict-error="A branch with that name already exists."
+      data-forking-message="Forking repository"
+      data-committing-message="Committing changes"
+      data-merging-message="Branching and merging changes"
+      data-creating-pr-message="Creating pull request"
+      data-updating-pr-message="Updating pull request"
+      data-cta-label="Commit"
+      data-cancel-label="Cancel">
+  <div class="aui-message error hidden">
+    <span class="aui-icon icon-error"></span>
+    <span class="message"></span>
+  </div>
+  [[^isWriter]]
+    <div class="aui-message info">
+      <span class="aui-icon icon-info"></span>
+      <p class="title">
+        
+          You don't have write access to this repository.
+        
+      </p>
+      <span class="message">
+        
+          We'll create a fork for your changes and submit a
+          pull request back to this repository.
+        
+      </span>
+    </div>
+  [[/isWriter]]
+  <div class="field-group">
+    <label for="id_message">Commit message</label>
+    <textarea id="id_message" class="textarea"></textarea>
+  </div>
+  [[^isPullRequest]]
+    [[#isWriter]]
+      <fieldset class="group">
+        <div class="checkbox">
+          <input id="id_create-pullrequest" class="checkbox" type="checkbox">
+          <label for="id_create-pullrequest">Create a pull request for this change</label>
+        </div>
+      </fieldset>
+      <div id="pr-fields">
+        <div id="branch-name-group" class="field-group">
+          <label for="id_branch-name">Branch name</label>
+          <input type="text" id="id_branch-name" class="text">
+        </div>
+        <div id="reviewers-group" class="field-group"
+              data-api-url="/[[owner]]/[[slug]]/pull-request/xhr/reviewer/:reviewer_name">
+          <label for="participants">Reviewers</label>
+          <select id="participants" name="reviewers" multiple></select>
+          <div class="error"></div>
+          
+        </div>
+      </div>
+    [[/isWriter]]
+  [[/isPullRequest]]
+  <button type="submit" id="id_submit">Commit</button>
+</form>
+
+</script>
+  <script id="merge-message-template" type="text/html">
+  Merged [[hash]] into [[branch]]
+
+[[message]]
+
+</script>
+  <script id="commit-merge-error-template" type="text/html">
+  
+
+
+
+  We had trouble merging your changes. We stored them on the <strong>[[branch]]</strong> branch, so feel free to
+  <a href="/[[owner]]/[[slug]]/full-commit/[[hash]]/[[path]]?at=[[encodedBranch]]">view them</a> or
+  <a href="#" class="create-pull-request-link">create a pull request</a>.
+
+
+</script>
+  
+<script id="mention-result" type="text/html">
+  
+<img class="avatar avatar24" src="[[avatar_url]]">
+[[#display_name]]
+  <span class="display-name">[[&display_name]]</span> <small class="username">[[&username]]</small>
+[[/display_name]]
+[[^display_name]]
+  <span class="username">[[&username]]</span>
+[[/display_name]]
+[[#is_teammate]][[^is_team]]
+  <span class="aui-lozenge aui-lozenge-complete aui-lozenge-subtle">teammate</span>
+[[/is_team]][[/is_teammate]]
+
+</script>
+<script id="mention-call-to-action" type="text/html">
+  
+[[^query]]
+<li class="bb-typeahead-item">Begin typing to search for a user</li>
+[[/query]]
+[[#query]]
+<li class="bb-typeahead-item">Continue typing to search for a user</li>
+[[/query]]
+
+</script>
+<script id="mention-no-results" type="text/html">
+  
+[[^searching]]
+<li class="bb-typeahead-item">Found no matching users for <em>[[query]]</em>.</li>
+[[/searching]]
+[[#searching]]
+<li class="bb-typeahead-item bb-typeahead-searching">Searching for <em>[[query]]</em>.</li>
+[[/searching]]
+
+</script>
+
+  <div id="recently-mentioned-1029114"
+       data-value="[]"></div>
+
+
+
+
+<div class="mask"></div>
+
+
+
+  <script id="branch-dialog-template" type="text/html">
+  
+
+<div class="tabbed-filter-widget branch-dialog">
+  <div class="tabbed-filter">
+    <input placeholder="Filter branches" class="filter-box" autosave="branch-dropdown-1366819" type="text">
+    [[^ignoreTags]]
+      <div class="aui-tabs horizontal-tabs aui-tabs-disabled filter-tabs">
+        <ul class="tabs-menu">
+          <li class="menu-item active-tab"><a href="#branches">Branches</a></li>
+          <li class="menu-item"><a href="#tags">Tags</a></li>
+        </ul>
+      </div>
+    [[/ignoreTags]]
+  </div>
+  
+    <div class="tab-pane active-pane" id="branches" data-filter-placeholder="Filter branches">
+      <ol class="filter-list">
+        <li class="empty-msg">No matching branches</li>
+        [[#branches]]
+          
+            [[#hasMultipleHeads]]
+              [[#heads]]
+                <li class="comprev filter-item">
+                  <a class="pjax-trigger" href="/semperproject/sil/src/[[changeset]]/.project?at=[[safeName]]"
+                     title="[[name]]">
+                    [[name]] ([[shortChangeset]])
+                  </a>
+                </li>
+              [[/heads]]
+            [[/hasMultipleHeads]]
+            [[^hasMultipleHeads]]
+              <li class="comprev filter-item">
+                <a class="pjax-trigger" href="/semperproject/sil/src/[[changeset]]/.project?at=[[safeName]]" title="[[name]]">
+                  [[name]]
+                </a>
+              </li>
+            [[/hasMultipleHeads]]
+          
+        [[/branches]]
+      </ol>
+    </div>
+    <div class="tab-pane" id="tags" data-filter-placeholder="Filter tags">
+      <ol class="filter-list">
+        <li class="empty-msg">No matching tags</li>
+        [[#tags]]
+          <li class="comprev filter-item">
+            <a class="pjax-trigger" href="/semperproject/sil/src/[[changeset]]/.project?at=[[safeName]]" title="[[name]]">
+              [[name]]
+            </a>
+          </li>
+        [[/tags]]
+      </ol>
+    </div>
+  
+</div>
+
+</script>
+
+
+
+  
+
+<script type="text/javascript" src="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/compressed/js/3188c55ac0c0.js"></script>
+
+
+
+
+  </div>
+
+  </div>
+  
+
+<form id="file-search-form" action="#"
+  
+  data-revision="9f9a603fcffa03c9b93421342a7cf8602a8e9885"
+  data-branch="default">
+  <input type="text" id="file-search-query" class="loading">
+  <div id="filtered-files"></div>
+  <div class="tip"><em>Tip:</em> Filter by directory path e.g. <strong>/media app.js</strong> to search for public<strong>/media/app.js</strong>.</div>
+  <div class="tip"><em>Tip:</em> Use camelCasing e.g. <strong>ProjME</strong> to search for <strong>ProjectModifiedE</strong>vent.java.</div>
+  <div class="tip"><em>Tip:</em> Filter by extension type e.g. <strong>/repo .js</strong> to search for all <strong>.js</strong> files in the <strong>/repo</strong> directory.</div>
+  <div class="tip"><em>Tip:</em> Separate your search with spaces e.g. <strong>/ssh pom.xml</strong> to search for src<strong>/ssh/pom.xml</strong>.</div>
+  <div class="tip"><em>Tip:</em> Use ↑ and ↓ arrow keys to navigate and <strong>return</strong> to view the file.</div>
+  <div class="tip mod-osx"><em>Tip:</em> You can also navigate files with <strong>Ctrl+j</strong> <em>(next)</em> and <strong>Ctrl+k</strong> <em>(previous)</em> and view the file with <strong>Ctrl+o</strong>.</div>
+  <div class="tip mod-win"><em>Tip:</em> You can also navigate files with <strong>Alt+j</strong> <em>(next)</em> and <strong>Alt+k</strong> <em>(previous)</em> and view the file with <strong>Alt+o</strong>.</div>
+  <script id="filtered-files-template" type="text/html">
+  
+
+<table class="aui bb-list">
+  <thead>
+    <tr class="assistive">
+      <th class="name">Filename</th>
+    </tr>
+  </thead>
+  <tbody>
+    [[#files]]
+    <tr class="iterable-item">
+      <td class="name [[#isDirectory]]directory[[/isDirectory]]">
+        <a href="/semperproject/sil/src/[[node]]/[[name]][[#branch]]?at=[[branch]][[/branch]]"
+           title="[[name]]" class="execute" tabindex="-1">
+          [[&highlightedName]]
+        </a>
+      </td>
+    </tr>
+    [[/files]]
+  </tbody>
+</table>
+
+</script>
+</form>
+
+
+    </div>
+  </div>
+  <footer id="footer" role="contentinfo">
+    <section class="footer-body">
+      <ul>
+        <li>
+          <a class="support-ga"
+               data-support-gaq-page="Blog"
+               href="http://blog.bitbucket.org">
+            Blog
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+               data-support-gaq-page="KnownIssues"
+               href="//bitbucket.org/site/master/issues">
+            Report a bug
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+               data-support-gaq-page="Home"
+               href="/support">
+            Support
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+               data-support-gaq-page="DocumentationHome"
+               href="//confluence.atlassian.com/display/BITBUCKET">
+            Documentation
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+               data-support-gaq-page="DocumentationAPI"
+               href="//confluence.atlassian.com/x/IYBGDQ">
+            API
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+               data-support-gaq-page="GoogleGroups"
+               href="//groups.google.com/group/bitbucket-users">
+            Forum
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+               data-support-gaq-page="SiteStatus"
+               href="http://status.bitbucket.org/">
+            Server status
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+               data-support-gaq-page="EndUserAgreement"
+               href="//www.atlassian.com/end-user-agreement/">
+            Terms of service
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+               data-support-gaq-page="PrivacyPolicy"
+               href="//www.atlassian.com/company/privacy/">
+            Privacy policy
+          </a>
+        </li>
+      </ul>
+      <ul>
+        
+          
+            <li><a href="/account/user/fischebe/"
+                   class="view-language-link">English</a></li>
+          
+        
+        <li>
+          <a class="support-ga"
+             data-support-gaq-page="GitDocumentation"
+             href="http://git-scm.com/">
+            Git 1.8.2.3
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+             data-support-gaq-page="HgDocumentation"
+             href="http://mercurial.selenic.com/">
+            Mercurial 2.2.2
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+             data-support-gaq-page="DjangoDocumentation"
+             href="https://www.djangoproject.com/">
+            Django 1.3.7
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+             data-support-gaq-page="PythonDocumentation"
+             href="http://www.python.org/">
+            Python 2.7.3
+          </a>
+        </li>
+        <li>
+          <a class="support-ga"
+             data-support-gaq-page="DeployedVersion"
+             href="#">15143234ec13 / 7055bdccca2c @ bitbucket16
+          </a>
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <a id="atlassian-footer-link"
+             href="http://www.atlassian.com?utm=bitbucket_footer">
+            Atlassian
+          </a>
+        </li>
+        <li>
+          <a id="atlassian-git-tools-link"
+             href="http://www.atlassian.com/git">
+            Our other git tools
+          </a>
+        </li>
+      </ul>
+    </section>
+  </footer>
+  
+</div>
+
+<script type="text/javascript" src="https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/compressed/js/cc0280de3618.js"></script>
+
+<!-- This script exists purely for the benefit of our selenium tests -->
+<script>
+  setTimeout(function () {
+    BB.JsLoaded = true;
+  }, 3000);
+</script>
+
+
+
+<script>
+  (function () {
+    BB = window.BB || {};
+
+    // Base URL to use for non-CNAME URLs.
+    BB.baseUrl = 'https://bitbucket.org';
+
+    BB.images = {
+      invitation: 'https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/img/icons/fugue/card_address.png',
+      noAvatar: 'https://d3oaxc4q5k2d6q.cloudfront.net/m/7055bdccca2c/img/default_avatar/16/user_blue.png'
+    };
+
+    BB.user = {"username": "fischebe", "displayName": "Benjamin Fischer", "firstName": "Benjamin", "avatarUrl": "https://secure.gravatar.com/avatar/a8e41531d4681cf34b382291af5eb9aa?d=https%3A%2F%2Fd3oaxc4q5k2d6q.cloudfront.net%2Fm%2F7055bdccca2c%2Fimg%2Fdefault_avatar%2F32%2Fuser_blue.png\u0026s=32", "lastName": "Fischer", "isTeam": false, "isSshEnabled": false, "isKbdShortcutsEnabled": true, "id": 1029114, "isAuthenticated": true};
+
+    var repo = {},
+        prefix = null,
+        changeset = null,
+        pullrequest = null,
+        pullrequestAuthor = null;
+
+    
+      repo.id = 1366819;
+      repo.scm = 'hg';
+      repo.readonly = false;
+
+      
+
+      
+        repo.language = 'scala';
+        repo.pygmentsLanguage = 'scala';
+      
+
+      
+        repo.slug = 'sil';
+      
+
+      
+        repo.owner = {};
+        repo.owner.username = 'semperproject';
+        repo.owner.is_team = true;
+      
+
+      
+        repo.creator = {};
+        repo.creator.username = 'semperproject';
+      
+
+      
+        changeset = '9f9a603fcffa03c9b93421342a7cf8602a8e9885';
+      
+
+      
+    
+
+    if (repo) {
+      BB.repo = repo;
+
+      // Coerce `BB.repo` to a string to get
+      // "davidchambers/mango" or whatever.
+      BB.repo.toString = function () {
+        return BB.cname ? this.slug : '{owner.username}/{slug}'.format(this);
+      };
+
+      if (prefix) {
+        BB.prefix = prefix;
+      }
+
+      if (changeset) {
+        BB.changeset = changeset;
+      }
+
+      if (pullrequest) {
+        BB.pullrequest = pullrequest;
+        BB.pullrequestAuthor = pullrequestAuthor;
+      }
+    }
+
+    var gaCommands = [];
+
+    // Track the main pageview to the Bitbucket GA account.
+    gaCommands.push(['_trackPageview']);
+    // Track the main pageview to the Atlassian GA account.
+    gaCommands.push(['atl._trackPageview']);
+
+    
+
+    
+
+    _.each(gaCommands, function (command) {
+      BB.gaqPush(command);
+    });
+  })();
+</script>
+
+<script>
+  (function () {
+    var ga = document.createElement('script');
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    ga.setAttribute('async', 'true');
+    document.documentElement.firstChild.appendChild(ga);
+  }());
+</script>
+
+
+
+<script type="text/javascript">if(!NREUMQ.f){NREUMQ.f=function(){NREUMQ.push(["load",new Date().getTime()]);var e=document.createElement("script");e.type="text/javascript";e.src=(("http:"===document.location.protocol)?"http:":"https:")+"//"+"d1ros97qkrwjf5.cloudfront.net/42/eum/rum.js";document.body.appendChild(e);if(NREUMQ.a)NREUMQ.a();};NREUMQ.a=window.onload;window.onload=NREUMQ.f;};NREUMQ.push(["nrfj","beacon-1.newrelic.com","7d4a9813d0","295788","MgMDYhcHDUJVVEIKWAtJJ0MLBRdYW1kZAV4RBBRVDgMXH1VHRhAZFwMRWVdIFVhRQEVZUQwKBFQXCRRCUQ==",0,401,new Date().getTime(),"","","","",""]);</script></body>
+</html>
