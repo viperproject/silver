@@ -1,27 +1,6 @@
 package semper.sil.ast.utility
 
 import semper.sil.ast._
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import scala.Some
-import semper.sil.ast.Unfolding
-import semper.sil.ast.LocalVarDecl
-import semper.sil.ast.CondExp
-import semper.sil.ast.IntLit
-import semper.sil.ast.NullLit
-import semper.sil.ast.DomainFuncApp
-import scala.Some
-import semper.sil.ast.FuncApp
 
 /** Utility methods for expressions. */
 object Expressions {
