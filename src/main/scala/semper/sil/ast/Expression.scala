@@ -1,7 +1,7 @@
 package semper.sil.ast
 
 import org.kiama.output._
-import semper.sil.ast.utility.{Expressions, Consistency, Transformer}
+import semper.sil.ast.utility.{ Expressions, Consistency, Transformer }
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
@@ -22,7 +22,8 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
    *                  expression transformed with `pre` be transformed
    *                  recursively? `pre`, `recursive` and `post` are kept the
    *                  same during each recursion.
-   *                  Default: recurse if and only if `pre` is not defined there.
+   *                  Default: recurse if and only if `pre` is not defined
+   *                  there.
    * @param post      Partial function used after the recursion.
    *                  Default: partial function with the empty domain.
    */
