@@ -99,6 +99,126 @@ object Transformer {
   }
 
   /**
+   * Apply transformation to general node of program. If partial function is
+   * defined at certain node, replace it. Otherwise, recursively transform
+   * children nodes. This can be useful to transform entire programs.
+   *
+   * @param node    Root of tree to transform.
+   * @param replace Partial function for replacement, if any. It should make
+   *                sure program is still valid.
+   *
+   * @return Transformed tree.
+   *
+   * @see transform(Exp, PartialFunction[Exp, Exp])(Exp => Boolean,
+   *        PartialFunction[Exp, Exp])
+   */
+  def transformNode(node: Node, replace: PartialFunction[Node, Node]): Node = {
+    def go(other: Node): Node = {
+      transformNode(other, replace)
+    }
+    val transformExpression = replace.asInstanceOf[PartialFunction[Exp, Exp]]
+    def goExpression(expression: Exp): Exp = {
+      expression.transform(transformExpression)()
+    }
+
+    def transform(other: Node): Node = {
+      other match {
+        case root @ Program(domains, fields, functions, predicates, methods) =>
+          Program(domains.map(go).asInstanceOf[Seq[Domain]],
+            fields.map(go).asInstanceOf[Seq[Field]],
+            functions.map(go).asInstanceOf[Seq[Function]],
+            predicates.map(go).asInstanceOf[Seq[Predicate]],
+            methods.map(go).asInstanceOf[Seq[Method]])(root.pos,
+              root.info)
+
+        case member: Member =>
+          member match {
+            case root @ Domain(name, functions, axioms, typeVariables) =>
+              Domain(name, functions.map(go).asInstanceOf[Seq[DomainFunc]],
+                axioms.map(go).asInstanceOf[Seq[DomainAxiom]],
+                typeVariables.map(go).asInstanceOf[Seq[TypeVar]])(root.pos,
+                  root.info)
+
+            case root @ Field(name, singleType) =>
+              Field(name,
+                go(singleType).asInstanceOf[Type])(root.pos, root.info)
+
+            case root @ Function(name, parameters, singleType, preconditions,
+              postconditions, body) =>
+              Function(name,
+                parameters.map(go).asInstanceOf[Seq[LocalVarDecl]],
+                singleType, preconditions.map(goExpression),
+                postconditions.map(goExpression), goExpression(body))(root.pos,
+                  root.info)
+
+            case root @ Predicate(name, parameter, body) =>
+              Predicate(name, go(parameter).asInstanceOf[LocalVarDecl],
+                goExpression(body))(root.pos, root.info)
+
+            case root @ Method(name, parameters, results, preconditions,
+              postconditions, locals, body) =>
+              Method(name, parameters.map(go).asInstanceOf[Seq[LocalVarDecl]],
+                results.map(go).asInstanceOf[Seq[LocalVarDecl]],
+                preconditions.map(goExpression),
+                postconditions.map(goExpression),
+                locals.map(go).asInstanceOf[Seq[LocalVarDecl]],
+                go(body).asInstanceOf[Stmt])(root.pos, root.info)
+          }
+
+        // TODO: Working here for cases.
+        case domainMember: DomainMember =>
+          domainMember match {
+            case root @ DomainAxiom(name, body) =>
+              DomainAxiom(name, goExpression(body))(root.pos, root.info)
+
+            case root @ DomainFunc(name, parameters, singleType, unique) =>
+              DomainFunc(name,
+                parameters.map(go).asInstanceOf[Seq[LocalVarDecl]], singleType,
+                unique)(root.pos, root.info)
+          }
+
+        case singleType: Type =>
+          singleType match {
+            case root @ Bool => root
+
+            case DomainType(domain, typeVariables) =>
+              DomainType(domain, typeVariables.toSeq.map(mapping => {
+                val (fromVariable, toType) = mapping
+                (go(fromVariable).asInstanceOf[TypeVar],
+                  go(toType).asInstanceOf[Type])
+              }).toMap)
+
+            case root @ Int => root
+            case root @ Perm => root
+            case root @ Pred => root
+            case root @ Ref => root
+
+            case SeqType(elementType) =>
+              SeqType(go(elementType).asInstanceOf[Type])
+
+            case root @ TypeVar(_) => root
+          }
+
+        case root @ LocalVarDecl(name, singleType) =>
+          LocalVarDecl(name,
+            go(singleType).asInstanceOf[Type])(root.pos, root.info)
+
+        case expression: Exp => goExpression(expression)
+
+        case statement: Stmt =>
+          statement match {
+            case root @ Assert(expression) =>
+              Assert(goExpression(expression))(root.pos, root.info)
+          }
+
+        // TODO. case root @ () => ()(root.pos, root.info)
+      }
+    }
+
+    replace.applyOrElse(node, transform)
+  }
+
+  /**
    * Simplify `expression`, in particular by making use of literals. For
    * example, `!true` is replaced by `false`. Division and modulo with divisor
    * 0 are not treated. Nonterminating expression due to endless recursion
