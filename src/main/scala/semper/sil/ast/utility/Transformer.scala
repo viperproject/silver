@@ -112,13 +112,19 @@ object Transformer {
    * @see #transform(Exp, PartialFunction[Exp, Exp])(Exp => Boolean,
    *        PartialFunction[Exp, Exp])
    */
-  def transformNode(node: Node, replace: PartialFunction[Node, Node]): Node = {
-    def go(other: Node): Node = {
+  def transformNode[A <: Node](node: A,
+    replace: PartialFunction[Node, Node]): A = {
+    def go[B <: Node](other: B): B = {
       transformNode(other, replace)
     }
-    def goExpression(expression: Exp): Exp = {
-      expression.transform(replace.asInstanceOf[PartialFunction[Exp, Exp]])()
+
+    def goExpression[B <: Exp](expression: B): B = {
+      expression.transform({
+        case root if replace.isDefinedAt(root) =>
+          replace(root).asInstanceOf[Exp]
+      })().asInstanceOf[B]
     }
+
     def goStatement(statement: Stmt): Stmt = {
       statement match {
         case root @ Assert(expression) =>
@@ -128,15 +134,14 @@ object Transformer {
           Exhale(goExpression(expression))(root.pos, root.info)
 
         case root @ FieldAssign(field, value) =>
-          FieldAssign(goExpression(field).asInstanceOf[FieldAccess],
+          FieldAssign(goExpression(field),
             goExpression(value))(root.pos, root.info)
 
         case root @ Fold(predicate) =>
-          Fold(goExpression(predicate).
-            asInstanceOf[PredicateAccessPredicate])(root.pos, root.info)
+          Fold(goExpression(predicate))(root.pos, root.info)
 
         case root @ FreshReadPerm(variables, body) =>
-          FreshReadPerm(variables.map(goExpression(_).asInstanceOf[LocalVar]),
+          FreshReadPerm(variables.map(goExpression),
             goStatement(body))(root.pos, root.info)
 
         case root @ Goto(_) => root
@@ -151,73 +156,61 @@ object Transformer {
         case root @ Label(_) => root
 
         case root @ LocalVarAssign(variable, value) =>
-          LocalVarAssign(goExpression(variable).asInstanceOf[LocalVar],
+          LocalVarAssign(goExpression(variable),
             goExpression(value))(root.pos, root.info)
 
         case root @ MethodCall(method, arguments, variables) =>
           /* Do not transform called method here. */
           MethodCall(method, arguments.map(goExpression), variables.
-            map(goExpression(_).asInstanceOf[LocalVar]))(root.pos, root.info)
+            map(goExpression))(root.pos, root.info)
 
         case root @ NewStmt(variable) =>
-          NewStmt(
-            goExpression(variable).asInstanceOf[LocalVar])(root.pos, root.info)
+          NewStmt(goExpression(variable))(root.pos, root.info)
 
         case root @ Seqn(statements) =>
           Seqn(statements.map(goStatement))(root.pos, root.info)
 
         case root @ Unfold(predicate) =>
-          Unfold(goExpression(predicate).
-            asInstanceOf[PredicateAccessPredicate])(root.pos, root.info)
+          Unfold(goExpression(predicate))(root.pos, root.info)
 
         case root @ While(condition, invariants, locals, body) =>
           While(goExpression(condition), invariants.map(goExpression),
-            locals.map(go(_).asInstanceOf[LocalVarDecl]),
-            goStatement(body))(root.pos, root.info)
+            locals.map(go), goStatement(body))(root.pos, root.info)
       }
     }
 
     def recurse(other: Node): Node = {
       other match {
         case root @ Program(domains, fields, functions, predicates, methods) =>
-          Program(domains.map(go(_).asInstanceOf[Domain]),
-            fields.map(go(_).asInstanceOf[Field]),
-            functions.map(go(_).asInstanceOf[Function]),
-            predicates.map(go(_).asInstanceOf[Predicate]),
-            methods.map(go(_).asInstanceOf[Method]))(root.pos, root.info)
+          Program(domains.map(go), fields.map(go), functions.map(go),
+            predicates.map(go), methods.map(go))(root.pos, root.info)
 
         case member: Member =>
           member match {
             case root @ Domain(name, functions, axioms, typeVariables) =>
-              Domain(name, functions.map(go(_).asInstanceOf[DomainFunc]),
-                axioms.map(go(_).asInstanceOf[DomainAxiom]),
-                typeVariables.map(go(_).asInstanceOf[TypeVar]))(root.pos,
-                  root.info)
+              Domain(name, functions.map(go), axioms.map(go),
+                typeVariables.map(go))(root.pos, root.info)
 
             case root @ Field(name, singleType) =>
-              Field(name,
-                go(singleType).asInstanceOf[Type])(root.pos, root.info)
+              Field(name, go(singleType))(root.pos, root.info)
 
             case root @ Function(name, parameters, singleType, preconditions,
               postconditions, body) =>
-              Function(name,
-                parameters.map(go(_).asInstanceOf[LocalVarDecl]),
-                singleType, preconditions.map(goExpression),
-                postconditions.map(goExpression), goExpression(body))(root.pos,
-                  root.info)
+              Function(name, parameters.map(go), singleType,
+                preconditions.map(goExpression),
+                postconditions.map(goExpression),
+                goExpression(body))(root.pos, root.info)
 
             case root @ Predicate(name, parameter, body) =>
-              Predicate(name, go(parameter).asInstanceOf[LocalVarDecl],
+              Predicate(name, go(parameter),
                 goExpression(body))(root.pos, root.info)
 
             case root @ Method(name, parameters, results, preconditions,
               postconditions, locals, body) =>
-              Method(name, parameters.map(go(_).asInstanceOf[LocalVarDecl]),
-                results.map(go(_).asInstanceOf[LocalVarDecl]),
+              Method(name, parameters.map(go), results.map(go),
                 preconditions.map(goExpression),
                 postconditions.map(goExpression),
-                locals.map(go(_).asInstanceOf[LocalVarDecl]),
-                goStatement(body))(root.pos, root.info)
+                locals.map(go), goStatement(body))(root.pos, root.info)
           }
 
         case domainMember: DomainMember =>
@@ -226,8 +219,7 @@ object Transformer {
               DomainAxiom(name, goExpression(body))(root.pos, root.info)
 
             case root @ DomainFunc(name, parameters, singleType, unique) =>
-              DomainFunc(name,
-                parameters.map(go(_).asInstanceOf[LocalVarDecl]), singleType,
+              DomainFunc(name, parameters.map(go), singleType,
                 unique)(root.pos, root.info)
           }
 
@@ -238,37 +230,32 @@ object Transformer {
             case DomainType(domain, typeVariables) =>
               DomainType(domain, typeVariables.toSeq.map(mapping => {
                 val (fromVariable, toType) = mapping
-                (go(fromVariable).asInstanceOf[TypeVar],
-                  go(toType).asInstanceOf[Type])
+                (go(fromVariable), go(toType))
               }).toMap)
 
             case root @ Int => root
             case root @ Perm => root
             case root @ Pred => root
             case root @ Ref => root
-
-            case SeqType(elementType) =>
-              SeqType(go(elementType).asInstanceOf[Type])
-
+            case SeqType(elementType) => SeqType(go(elementType))
             case root @ TypeVar(_) => root
           }
 
         case root @ LocalVarDecl(name, singleType) =>
-          LocalVarDecl(name,
-            go(singleType).asInstanceOf[Type])(root.pos, root.info)
+          LocalVarDecl(name, go(singleType))(root.pos, root.info)
 
         case expression: Exp => goExpression(expression)
-
         case statement: Stmt => goStatement(statement)
 
         case root @ Trigger(expressions) =>
           Trigger(expressions.map(goExpression))(root.pos, root.info)
 
-        case _ => throw new AssertionError("Kind of node not covered.")
+        case root => throw
+          new AssertionError("Kind of node not covered: " + root.getClass)
       }
     }
 
-    replace.applyOrElse(node, recurse)
+    replace.applyOrElse(node, recurse).asInstanceOf[A]
   }
 
   /**
