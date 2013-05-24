@@ -98,16 +98,24 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
       // Only register the multi file test once, not for every file it contains.
       return
     }
-    val name = testName(prefix, file)
+
+    val baseTestName = testName(prefix, file)
+    val relativeFileName = prefix + "/" + file.getName(file.getNameCount - 1)
     val testAnnotations = parseAnnotations(rawFiles)
     val files = rawFiles filter { f => !testAnnotations.isFileIgnored(f) }
     val fileName = file.getFileName.toString
     val fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."))
 
+    val tags = List(
+      Tag(relativeFileName),
+      Tag(file.toString),
+      Tag(fileName),
+      Tag(fileNameWithoutExt))
+
     // ignore test if necessary
     // TODO Make ignoring verifier dependent.
     if (files.isEmpty) {
-      ignore(name, Tag(file.toString), Tag(fileName), Tag(fileNameWithoutExt)) {}
+      ignore(baseTestName, tags: _*) {}
       return
     }
 
@@ -120,7 +128,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
     // one test per verifier
     for (verifier <- verifiers) {
-      test(name + " [" + verifier.name + "]", Tag(verifier.name), Tag(file.toString), Tag(fileName), Tag(fileNameWithoutExt)) {
+      test(baseTestName + " [" + verifier.name + "]", (Tag(verifier.name) :: tags) :_*) {
         val fe = frontend(verifier, files)
         val tPhases = fe.phases.map { p =>
           time(p.action)._2 + " (" + p.name + ")"
@@ -240,28 +248,61 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     (r, formatTime(System.currentTimeMillis() - start))
   }
 
-  /** Registers all the files in a given directory as a test. */
-  def registerTestDirectory(dir: Path, prefix: String = "") {
+  /** Recursively registers all files found in the given directory as a test.
+    *
+    * The prefix is used for naming and tagging the ScalaTest test case that is eventually
+    * generated for each test file found. Subdirectories of `dir` will be appended to the
+    * initial prefix.
+    *
+    * It is thus reasonable to make the initial prefix the (relative) root test directory.
+    * For example, given the following directories and files
+    *   .../issues/test1.scala
+    *              test2.scala
+    *   .../all/basic/test1.scala
+    *                 test2.scala
+    *                 test3.scala
+    * it would be reasonable to make the calls
+    *   registerTestDirectory(path_of(".../issues"), "issues")
+    *   registerTestDirectory(path_of(".../all/basic"), "all/basic")
+    * or
+    *   registerTestDirectory(path_of(".../issues"), "issues")
+    *   registerTestDirectory(path_of(".../all"), "all")
+    * to - in both cases - get ScalaTest test cases that can be identified by
+    *   issues/test1.scala
+    *   issues/test2.scala
+    *   all/basic/test1.scala
+    *   all/basic/test2.scala
+    *   all/basic/test3.scala
+    *
+    * @param dir The directory to recursively search for files. Every file in the directory is
+    *            assumed to be a test file.
+    * @param prefix The initial prefix used for naming and tagging the resulting ScalaTest tests.
+    */
+  def registerTestDirectory(dir: Path, prefix: String) {
     assert(dir != null, "Directory must not be null")
     assert(Files.isDirectory(dir), "Path must represent a directory")
 
     val directoryStream = Files.newDirectoryStream(dir)
     val dirContent = directoryStream.toList
-
-    val newPrefix = prefix + dir.toString + "/"
     val namePattern = configMap.getOrElse("include", ".*").toString
 
     for (f: Path <- dirContent
          if Files.isDirectory(f)) {
 
+      val newPrefix = prefix + "/" + f.getName(f.getNameCount - 1)
       registerTestDirectory(f, newPrefix)
     }
 
     for (f: Path <- dirContent
+         if f.toFile.canRead /* If a file is renamed while Sbt runs, AccessDeniedExceptions might be
+                              * thrown. Apparently, because the old file still exists in
+                              * target/.../test-classes, but it is somehow locked. Weird stuff.
+                              * Once the Sbt REPL is closed, the "ghost" file disappears.
+                              */
          if !Files.isDirectory(f)
          if f.toString.matches(namePattern)) {
 
-      registerSilTest(f, newPrefix)
+      registerSilTest(f, prefix)
     }
   }
 
@@ -273,8 +314,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
       assert(resource != null, s"Test directory $testDir couldn't be found")
 
       val path = pathFromResource(classLoader.getResource(testDir))
-
-      registerTestDirectory(path)
+      registerTestDirectory(path, testDir)
     }
 
     _testsRegistered = true
@@ -337,9 +377,10 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
         } catch {
           case e: java.nio.file.FileSystemAlreadyExistsException =>
             fs = FileSystems.getFileSystem(fileURI)
+            assert(fs.isOpen, "The reused file system is expected to still be open")
+        } finally {
+          assert(fs != null, s"Could not get hold of a file system for $fileURI (from $uriStr)")
         }
-
-        assert(fs != null, s"Could not get hold of a file system for $fileURI (from $uriStr)")
 
         fs.getPath(entryName)
 

@@ -1,6 +1,4 @@
-var test: Bool
-
-// some random tests
+// test aliasing information of newly created objects
 method t1(this: Ref, a: Int, b: Bool, g: Ref) returns (c: Bool, d: Int)
     requires b && acc(this.value, write)
     ensures (d == 1) || (d == 2)
@@ -45,11 +43,11 @@ method t2(a: Ref, b: Ref) returns ()
 method t3(a: Ref, b: Ref) returns ()
 {
     if (a == null) {
-        //:: ExpectedError(assertion.false)
-        exhale a != b
         if (b != null) {
             exhale a != b
         }
+        //:: ExpectedError(assertion.false)
+        exhale a != b
     }
 }
 
@@ -61,4 +59,37 @@ method t4(a: Ref, b: Ref) returns ()
             exhale a != b
         }
     }
+}
+
+/* test aliasing information between newly created objects and objects that already exist but are
+ * "hidden" in predicates.
+ */
+
+var Node_v: Int
+var Node_n: Ref
+
+predicate Node_P(this: Ref) {
+     acc(this.Node_v, wildcard)
+  && acc(this.Node_n, wildcard)
+  && (this.Node_n != null ==> acc(this.Node_n.Node_P, wildcard))
+}
+
+method test5(n: Ref)
+  requires n != null && acc(n.Node_P, wildcard)
+{
+  var m: Ref
+
+  m := new()
+  assert m != n
+
+  unfold acc(n.Node_P, wildcard)
+  if (n.Node_n != null) {
+    //:: UnexpectedError(assert.failed:assertion.false, /silicon/issue/29/)
+    assert m != (n.Node_n)
+
+    unfold acc(n.Node_P, wildcard)
+    if (n.Node_n.Node_n != null) {
+      assert m != (n.Node_n.Node_n)
+    }
+  }
 }
