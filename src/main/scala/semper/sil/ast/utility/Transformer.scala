@@ -99,29 +99,85 @@ object Transformer {
   }
 
   /**
-   * Apply transformation to general node of program. If partial function is
-   * defined at certain node, replace it. Otherwise, recursively transform
+   * Apply transformation to general `node` of program. If partial function is
+   * defined at certain node, `replace` it. Otherwise, recursively transform
    * children nodes. This can be useful to transform entire programs.
    *
    * @param node    Root of tree to transform.
    * @param replace Partial function for replacement, if any. It should make
-   *                sure program is still valid.
+   *                sure validity of program is preserved.
    *
    * @return Transformed tree.
    *
-   * @see transform(Exp, PartialFunction[Exp, Exp])(Exp => Boolean,
+   * @see #transform(Exp, PartialFunction[Exp, Exp])(Exp => Boolean,
    *        PartialFunction[Exp, Exp])
    */
   def transformNode(node: Node, replace: PartialFunction[Node, Node]): Node = {
     def go(other: Node): Node = {
       transformNode(other, replace)
     }
-    val transformExpression = replace.asInstanceOf[PartialFunction[Exp, Exp]]
     def goExpression(expression: Exp): Exp = {
-      expression.transform(transformExpression)()
+      expression.transform(replace.asInstanceOf[PartialFunction[Exp, Exp]])()
+    }
+    def goStatement(statement: Stmt): Stmt = {
+      statement match {
+        case root @ Assert(expression) =>
+          Assert(goExpression(expression))(root.pos, root.info)
+
+        case root @ Exhale(expression) =>
+          Exhale(goExpression(expression))(root.pos, root.info)
+
+        case root @ FieldAssign(field, value) =>
+          FieldAssign(goExpression(field).asInstanceOf[FieldAccess],
+            goExpression(value))(root.pos, root.info)
+
+        case root @ Fold(predicate) =>
+          Fold(goExpression(predicate).
+            asInstanceOf[PredicateAccessPredicate])(root.pos, root.info)
+
+        case root @ FreshReadPerm(variables, body) =>
+          FreshReadPerm(
+            variables.map(goExpression).asInstanceOf[Seq[LocalVar]],
+            goStatement(body))(root.pos, root.info)
+
+        case root @ Goto(_) => root
+
+        case root @ If(condition, ifTrue, ifFalse) =>
+          If(goExpression(condition), goStatement(ifTrue),
+            goStatement(ifFalse))(root.pos, root.info)
+
+        case root @ Inhale(expression) =>
+          Inhale(goExpression(expression))(root.pos, root.info)
+
+        case root @ Label(_) => root
+
+        case root @ LocalVarAssign(variable, value) =>
+          LocalVarAssign(goExpression(variable).asInstanceOf[LocalVar],
+            goExpression(value))(root.pos, root.info)
+
+        case root @ MethodCall(method, arguments, variables) =>
+          MethodCall(method, arguments.map(goExpression), variables.
+            map(goExpression).asInstanceOf[Seq[LocalVar]])(root.pos, root.info)
+
+        case root @ NewStmt(variable) =>
+          NewStmt(
+            goExpression(variable).asInstanceOf[LocalVar])(root.pos, root.info)
+
+        case root @ Seqn(statements) =>
+          Seqn(statements.map(goStatement))(root.pos, root.info)
+
+        case root @ Unfold(predicate) =>
+          Unfold(goExpression(predicate).
+            asInstanceOf[PredicateAccessPredicate])(root.pos, root.info)
+
+        case root @ While(condition, invariants, locals, body) =>
+          While(goExpression(condition), invariants.map(goExpression),
+            locals.map(go).asInstanceOf[Seq[LocalVarDecl]],
+            goStatement(body))(root.pos, root.info)
+      }
     }
 
-    def transform(other: Node): Node = {
+    def recurse(other: Node): Node = {
       other match {
         case root @ Program(domains, fields, functions, predicates, methods) =>
           Program(domains.map(go).asInstanceOf[Seq[Domain]],
@@ -205,17 +261,13 @@ object Transformer {
 
         case expression: Exp => goExpression(expression)
 
-        case statement: Stmt =>
-          statement match {
-            case root @ Assert(expression) =>
-              Assert(goExpression(expression))(root.pos, root.info)
-          }
+        case statement: Stmt => goStatement(statement)
 
         // TODO. case root @ () => ()(root.pos, root.info)
       }
     }
 
-    replace.applyOrElse(node, transform)
+    replace.applyOrElse(node, recurse)
   }
 
   /**
