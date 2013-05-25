@@ -259,6 +259,39 @@ object Transformer {
   }
 
   /**
+   * Recursively transform specifications in tree rooted at `node`. This can be
+   * useful to generate inhale exhale expressions.
+   */
+  def transformSpecifications[A <: Node](translate: Exp => Exp, node: A): A = {
+    def replace: PartialFunction[Node, Node] = {
+      case root @ Function(name, parameters, singleType, preconditions,
+        postconditions, body) =>
+        Function(name, parameters.map(recurse), recurse(singleType),
+          preconditions.map(translate), postconditions.map(translate),
+          recurse(body))(root.pos, root.info)
+
+      case root @ Method(name, parameters, results, preconditions,
+        postconditions, locals, body) =>
+        Method(name, parameters.map(recurse), results.map(recurse),
+          preconditions.map(translate), postconditions.map(translate),
+          locals.map(recurse), recurse(body))(root.pos, root.info)
+
+      case root @ While(condition, invariants, locals, body) =>
+        While(recurse(condition), invariants.map(translate),
+          locals.map(recurse), recurse(body))(root.pos, root.info)
+
+      case Assert(expression) => translate(expression)
+      case Exhale(expression) => translate(expression)
+      case Inhale(expression) => translate(expression)
+    }
+
+    def recurse[B <: Node](other: B): B = {
+      transformNode(other, replace)
+    }
+    recurse(node)
+  }
+
+  /**
    * Simplify `expression`, in particular by making use of literals. For
    * example, `!true` is replaced by `false`. Division and modulo with divisor
    * 0 are not treated. Nonterminating expression due to endless recursion
