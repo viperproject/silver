@@ -143,23 +143,32 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
         var additionalErrors: List[AbstractError] = Nil
         result match {
           case Success =>
+            var missingErrors: List[MissingError] = Nil
+            var expectedErrors: List[ExpectedError] = Nil
+
             // no actual errors, thus there should not be any expected ones
             testAnnotations.annotations foreach {
-              case e: ExpectedError => expectedButMissingErrors ::= e
+              case e: ExpectedError => expectedErrors ::= e
               case u: UnexpectedError => unexpectedButMissingErrors ::= u
-              case m: MissingError => // it is known that this one is missing
+              case m: MissingError => missingErrors ::= m
               case _: IgnoreOthers =>
-              case _: IgnoreFileList =>
-                sys.error("the test should not have run in the first place")
+              case _: IgnoreFileList => sys.error("the test should not have run in the first place")
               case _: IgnoreFile => () // Could be that some files of this test, but not all of them are ignored.
             }
+
+            /* Collect errors that were expected by the current verifier but are missing */
+            expectedButMissingErrors =
+              expectedErrors filterNot (expectedToBeMissing(_, missingErrors, verifier))
+
           case Failure(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
+
             def sameLine(file: Path, lineNr: Int, pos: Position) = pos match {
               case p: SourcePosition => lineNr == p.line
               case p: TranslatedPosition => file == p.file && lineNr == p.line
               case _ => sys.error("Position is neither a source position nor a translated position even though we checked this before.")
             }
+
             val findError: AbstractError => Option[TestAnnotation] = (actual: AbstractError) => {
               if (!actual.pos.isInstanceOf[SourcePosition] && !actual.pos.isInstanceOf[TranslatedPosition]) None
               else expectedErrors.filter({
@@ -187,19 +196,24 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
                 additionalErrors ::= a
             })
 
+            /* Partition remaining annotations into missing error annotations and all others */
+            val missingErrors: Seq[MissingError] = expectedErrors collect {case m: MissingError => m}
+            val remainingErrors: Seq[LocatedAnnotation] = expectedErrors filterNot (missingErrors contains _)
+
             // process remaining errors that have not been matched
-            expectedErrors.foreach {
-              case e: ExpectedError => expectedButMissingErrors ::= e
+            remainingErrors.foreach {
+              case e: ExpectedError =>
+                if (!expectedToBeMissing(e, missingErrors, verifier)) expectedButMissingErrors ::= e
               case u: UnexpectedError =>
                 if (u.project.toLowerCase == verifier.name.toLowerCase) unexpectedButMissingErrors ::= u
-              case _: MissingError => // Expected to be missing
               case _: IgnoreOthers =>
+              case _: MissingError => ??? /* Should not occur because they were previously filtered out */
             }
           }
         }
 
         if (!additionalErrors.isEmpty) {
-          testErrors ::= "The following errors occured during verification, but should not have according to the test annotations:\n" +
+          testErrors ::= "The following errors occurred during verification, but should not have according to the test annotations:\n" +
             additionalErrors.reverse.map("  " + _.toString).mkString("\n")
         }
 
@@ -209,12 +223,12 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
         }
 
         if (!unexpectedButMissingErrors.isEmpty) {
-          testErrors ::= "The following errors were specified to occur erroreanously (UnexpectedError) according to the test annotations, but did not occur during verification (this might be cause by invalid test anntoations):\n" +
+          testErrors ::= "The following errors were specified to occur erroneously (UnexpectedError) according to the test annotations, but did not occur during verification (this might be cause by invalid test annotations:\n" +
             unexpectedButMissingErrors.reverse.map("  " + _.toString).mkString("\n")
         }
 
         if (!missingButPresentErrors.isEmpty) {
-          testErrors ::= "The following errors were specified to be missing erroreanously (MissingError) according to the test annotations, but did occur during verification (this might be cause by invalid test anntoations):\n" +
+          testErrors ::= "The following errors were specified to be missing erroneously (MissingError) according to the test annotations, but did occur during verification (this might be cause by invalid test annotations):\n" +
             missingButPresentErrors.reverse.map("  " + _.toString).mkString("\n")
         }
 
@@ -233,6 +247,11 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
       }
     }
   }
+
+  private def expectedToBeMissing(e: LocatedAnnotation, ms: Seq[MissingError], verifier: Verifier) =
+    ms exists (m =>
+         m.project.toLowerCase == verifier.name.toLowerCase
+      && m.sameSource(e))
 
   /** Formats a time in milliseconds. */
   def formatTime(millis: Long): String = {

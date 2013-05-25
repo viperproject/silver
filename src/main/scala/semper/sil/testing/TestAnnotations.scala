@@ -1,8 +1,6 @@
 package semper.sil.testing
 
-import java.io.File
-import semper.sil.verifier.AbstractError
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 
 /**
  * The result of parsing the test annotations in a single file.
@@ -57,6 +55,9 @@ case class ErrorAnnotationId(reasonId: String, errorId: Option[String]) {
 sealed trait LocatedAnnotation extends TestAnnotation {
   val file: Path
   val forLineNr: Int
+
+  def sameSource(other: LocatedAnnotation) =
+    Files.isSameFile(this.file, other.file) && forLineNr == other.forLineNr
 }
 
 /** Test annotations that have a location and an identifier (i.e. describe an error of some sort). */
