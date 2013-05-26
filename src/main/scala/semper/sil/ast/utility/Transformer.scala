@@ -12,15 +12,16 @@ object Transformer {
   /**
    * See Exp.transform.
    */
-  def transform(exp: Exp,
+  def transform(expression: Exp,
     pre: PartialFunction[Exp, Exp] = PartialFunction.empty)(
       recursive: Exp => Boolean = !pre.isDefinedAt(_),
       post: PartialFunction[Exp, Exp] = PartialFunction.empty): Exp = {
-    val p = exp.pos
-    val i = exp.info
-    val beforeRecursion = pre.applyOrElse(exp, identity[Exp])
-    val afterRecursion = if (recursive(exp)) {
+    val p = expression.pos
+    val i = expression.info
+    val beforeRecursion = pre.applyOrElse(expression, identity[Exp])
+    val afterRecursion = if (recursive(expression)) {
       val func = (e: Exp) => transform(e, pre)(recursive, post)
+      val exp = beforeRecursion
       exp match {
         case IntLit(_) => exp
         case BoolLit(_) => exp
