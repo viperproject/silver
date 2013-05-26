@@ -1,36 +1,10 @@
 package semper.sil.ast
 
 import org.kiama.output._
-import semper.sil.ast.utility.{ Expressions, Consistency, Transformer }
+import semper.sil.ast.utility.{ Expressions, Consistency }
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
-
-  /**
-   * Transforms an expression using the partial function `pre`, recursing on
-   * the subexpressions and finally using the partial function `post`.
-   *
-   * The previous expression is replaced by applying `pre` and `post`,
-   * respectively, if and only if these partial functions are defined there.
-   * The functions `pre` and `post` must produce expressions that are valid in
-   * the given context. For instance, they cannot replace an integer literal by
-   * a Boolean literal.
-   *
-   * @param pre       Partial function used before the recursion.
-   *                  Default: partial function with the empty domain.
-   * @param recursive Given the original expression, should the children of the
-   *                  expression transformed with `pre` be transformed
-   *                  recursively? `pre`, `recursive` and `post` are kept the
-   *                  same during each recursion.
-   *                  Default: recurse if and only if `pre` is not defined
-   *                  there.
-   * @param post      Partial function used after the recursion.
-   *                  Default: partial function with the empty domain.
-   */
-  def transform(pre: PartialFunction[Exp, Exp] = PartialFunction.empty)(
-    recursive: Exp => Boolean = !pre.isDefinedAt(_),
-    post: PartialFunction[Exp, Exp] = PartialFunction.empty): Exp =
-    Transformer.transform(this, pre)(recursive, post)
 
   lazy val isPure = Expressions.isPure(this)
 

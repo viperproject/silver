@@ -1,8 +1,7 @@
 package semper.sil.ast
 
 import pretty.PrettyPrinter
-import utility.Nodes
-import utility.Visitor
+import utility.{ Nodes, Transformer, Visitor }
 
 /*
 
@@ -104,6 +103,33 @@ trait Node extends Traversable[Node] {
   def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitor.existsDefined(this, f)
 
   override def toString = PrettyPrinter.pretty(this)
+
+  /**
+   * Transforms the tree rooted at this node using the partial function `pre`,
+   * recursing on the subnodes and finally using the partial function `post`.
+   *
+   * The previous node is replaced by applying `pre` and `post`, respectively,
+   * if and only if these partial functions are defined there. The functions
+   * `pre` and `post` must produce nodes that are valid in the given context.
+   * For instance, they cannot replace an integer literal by a Boolean literal.
+   *
+   * @param pre       Partial function used before the recursion.
+   *                  Default: partial function with the empty domain.
+   * @param recursive Given the original node, should the children of the node
+   *                  transformed with `pre` be transformed recursively? `pre`,
+   *                  `recursive` and `post` are kept the same during each
+   *                  recursion.
+   *                  Default: recurse if and only if `pre` is not defined
+   *                  there.
+   * @param post      Partial function used after the recursion.
+   *                  Default: partial function with the empty domain.
+   *
+   * @return Transformed tree.
+   */
+  def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty)(
+    recursive: Node => Boolean = !pre.isDefinedAt(_),
+    post: PartialFunction[Node, Node] = PartialFunction.empty): this.type =
+    Transformer.transform[this.type](this, pre)(recursive, post)
 }
 
 /** A trait to have additional information for nodes. */
