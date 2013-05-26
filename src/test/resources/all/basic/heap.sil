@@ -8,18 +8,30 @@ method t1() {
 
     c := new()
 
+    assume a != null
+    set_f(a, c)
+
     inhale acc(a.f, write)
 
     assert c.f != c
+
+    //:: ExpectedError(assert.failed:assertion.false)
     assert a.f != c
 }
 
-method t2(r: Ref)
+method set_f(monitor: Ref, value: Ref)
+  requires monitor != null && value != null
 {
-    if (r != null) {
-        assert perm(r.f) == none
-    } else {
-        //:: ExpectedError(assert.failed:receiver.null)
-        assert perm(r.f) == none
-    }
+  inhale acc(monitor.f, write)
+  monitor.f := value
+  exhale acc(monitor.f, write)
+}
+
+method t2(r: Ref) {
+  if (r != null) {
+    assert perm(r.f) == none
+  } else {
+    //:: ExpectedError(assert.failed:receiver.null)
+    assert perm(r.f) == none
+  }
 }
