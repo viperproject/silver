@@ -5,17 +5,29 @@ domain Test {
     function func(a: Int): Int
 }
 
-method t1(this: Ref)
+method t1_a(this: Ref)
 {
-    //:: ExpectedError(insufficient.permission)
     //:: ExpectedError(assignment.failed:receiver.null)
     var i: Int := this.f
 }
 
-method t2(this: Ref)
+method t1_b(this: Ref)
 {
+    assume this != null
     //:: ExpectedError(insufficient.permission)
+    var i: Int := this.f
+}
+
+method t2_a(this: Ref)
+{
     //:: ExpectedError(assignment.failed:receiver.null)
+    var i: Int := func(this.f)
+}
+
+method t2_b(this: Ref)
+{
+    assume this != null
+    //:: ExpectedError(insufficient.permission)
     var i: Int := func(this.f)
 }
 
@@ -25,9 +37,15 @@ method t3(this: Ref, p2: Perm)
     var p: Perm := epsilon * p2
 }
 
-method t4(this: Ref)
+method t4_a(this: Ref)
 {
-    //:: ExpectedError(insufficient.permission)
     //:: ExpectedError(assignment.failed:receiver.null)
+    this.f := 1
+}
+
+method t4_b(this: Ref)
+{
+    assume this != null
+    //:: ExpectedError(insufficient.permission)
     this.f := 1
 }
