@@ -117,6 +117,8 @@ method t10(r: Ref) returns ()
     requires acc(r.f, write)
 {
     var j: Int := 2
+
+    //:: ExpectedError(while.failed:insufficient.permission)
     while (j < (r.f))
     {
         j := j+1
@@ -125,12 +127,13 @@ method t10(r: Ref) returns ()
 }
 
 method t11(r: Ref) returns ()
+  requires r != null
 {
     var j: Int := 2
+
     while (j < 3)
-        //:: IgnoreOthers
         //:: ExpectedError(while.failed:insufficient.permission)
-        invariant r.f == 2
+        invariant r != null && r.f == 2
     {
         j := j+1
     }
