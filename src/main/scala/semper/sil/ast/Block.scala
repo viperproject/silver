@@ -72,7 +72,10 @@ case class ConditionalBlock(stmt: Stmt, cond: Exp, var thn: Block, var els: Bloc
 }
 
 /** A loop block with an implicit conditional back edge, and one unconditional outgoing edge. */
-case class LoopBlock(var body: Block, cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], var succ: Block) extends Block {
+case class LoopBlock(var body: Block, cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], var succ: Block)
+                    (val pos: Position = NoPosition, val info: Info = NoInfo)
+      extends Block {
+
   lazy val succs = List(UnconditionalEdge(succ))
 }
 
