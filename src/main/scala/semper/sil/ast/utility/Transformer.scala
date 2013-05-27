@@ -10,92 +10,270 @@ import semper.sil.ast._
 object Transformer {
 
   /**
-   * See Exp.transform.
+   * @see semper.sil.ast.Node#transform(PartialFunction[Node, Node])(
+   *        Node => Boolean, PartialFunction[Node, Node])
    */
-  def transform(exp: Exp,
-    pre: PartialFunction[Exp, Exp] = PartialFunction.empty)(
-      recursive: Exp => Boolean = !pre.isDefinedAt(_),
-      post: PartialFunction[Exp, Exp] = PartialFunction.empty): Exp = {
-    val p = exp.pos
-    val i = exp.info
-    val beforeRecursion = pre.applyOrElse(exp, identity[Exp])
-    val afterRecursion = if (recursive(exp)) {
-      val func = (e: Exp) => transform(e, pre)(recursive, post)
-      exp match {
-        case IntLit(_) => exp
-        case BoolLit(_) => exp
-        case NullLit() => exp
-        case AbstractLocalVar(_) => exp
-        case FieldAccess(rcv, field) => FieldAccess(func(rcv), field)(p, i)
-        case PredicateAccess(rcv, predicate) => PredicateAccess(func(rcv), predicate)(p, i)
-        case Unfolding(acc, e) => Unfolding(func(acc).asInstanceOf[PredicateAccessPredicate], func(e))(p, i)
-        case Old(e) => Old(func(e))(p, i)
-        case CondExp(cond, thn, els) => CondExp(func(cond), func(thn), func(els))(p, i)
-        case Exists(v, e) => Exists(v, func(e))(p, i)
-        case Forall(v, triggers, e) =>
-          Forall(v,
-            triggers map (t => Trigger(t.exps map func)(t.pos, t.info)),
-            func(e))(p, i)
-        case InhaleExhaleExp(in, ex) => InhaleExhaleExp(func(in), func(ex))(p, i)
-        case WildcardPerm() => exp
-        case FullPerm() => exp
-        case NoPerm() => exp
-        case EpsilonPerm() => exp
-        case CurrentPerm(loc) => CurrentPerm(func(loc).asInstanceOf[LocationAccess])(p, i)
-        case FractionalPerm(left, right) => FractionalPerm(func(left), func(right))(p, i)
-        case FieldAccessPredicate(loc, perm) =>
-          FieldAccessPredicate(func(loc).asInstanceOf[FieldAccess], func(perm))(p, i)
-        case PredicateAccessPredicate(loc, perm) =>
-          PredicateAccessPredicate(func(loc).asInstanceOf[PredicateAccess], func(perm))(p, i)
-        case FuncApp(ff, args) => FuncApp(ff, args map func)(p, i)
-        case DomainFuncApp(ff, args, m) => DomainFuncApp(ff, args map func, m)(p, i)
+  def transform[A <: Node](node: A,
+    pre: PartialFunction[Node, Node] = PartialFunction.empty)(
+      recursive: Node => Boolean = !pre.isDefinedAt(_),
+      post: PartialFunction[Node, Node] = PartialFunction.empty): A = {
+    def go[B <: Node](root: B): B = {
+      transform(root, pre)(recursive, post)
+    }
 
-        case Neg(e) => Neg(func(e))(p, i)
-        case Not(e) => Not(func(e))(p, i)
+    def goTypeVariables(mapping: Map[TypeVar, Type]): Map[TypeVar, Type] = {
+      mapping.toSeq.map(pair => go(pair._1) -> go(pair._2)).toMap
+    }
 
-        case Or(l, r) => Or(func(l), func(r))(p, i)
-        case And(l, r) => And(func(l), func(r))(p, i)
-        case Implies(l, r) => Implies(func(l), func(r))(p, i)
+    def recurse(parent: Node): Node = {
+      parent match {
+        case exp: Exp =>
+          val p = exp.pos
+          val i = exp.info
+          exp match {
+            case IntLit(_) => exp
+            case BoolLit(_) => exp
+            case NullLit() => exp
+            case AbstractLocalVar(_) => exp
+            case FieldAccess(rcv, field) =>
+              FieldAccess(go(rcv), go(field))(p, i)
+            case PredicateAccess(rcv, predicate) =>
+              PredicateAccess(go(rcv), go(predicate))(p, i)
+            case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i)
+            case Old(e) => Old(go(e))(p, i)
+            case CondExp(cond, thn, els) =>
+              CondExp(go(cond), go(thn), go(els))(p, i)
+            case Exists(v, e) => Exists(v map go, go(e))(p, i)
+            case Forall(v, triggers, e) =>
+              Forall(v map go, triggers map go, go(e))(p, i)
+            case InhaleExhaleExp(in, ex) =>
+              InhaleExhaleExp(go(in), go(ex))(p, i)
+            case WildcardPerm() => exp
+            case FullPerm() => exp
+            case NoPerm() => exp
+            case EpsilonPerm() => exp
+            case CurrentPerm(loc) => CurrentPerm(go(loc))(p, i)
+            case FractionalPerm(left, right) =>
+              FractionalPerm(go(left), go(right))(p, i)
+            case FieldAccessPredicate(loc, perm) =>
+              FieldAccessPredicate(go(loc), go(perm))(p, i)
+            case PredicateAccessPredicate(loc, perm) =>
+              PredicateAccessPredicate(go(loc), go(perm))(p, i)
+            case FuncApp(ff, args) =>
+              /* Do not recurse on function. */
+              FuncApp(ff, args map go)(p, i)
+            case DomainFuncApp(ff, args, m) =>
+              /* No recursion on domain function. */
+              DomainFuncApp(ff, args map go, goTypeVariables(m))(p, i)
 
-        case Add(l, r) => Add(func(l), func(r))(p, i)
-        case Sub(l, r) => Sub(func(l), func(r))(p, i)
-        case Mul(l, r) => Mul(func(l), func(r))(p, i)
-        case Div(l, r) => Div(func(l), func(r))(p, i)
-        case Mod(l, r) => Mod(func(l), func(r))(p, i)
+            case Neg(e) => Neg(go(e))(p, i)
+            case Not(e) => Not(go(e))(p, i)
 
-        case LtCmp(l, r) => LtCmp(func(l), func(r))(p, i)
-        case LeCmp(l, r) => LeCmp(func(l), func(r))(p, i)
-        case GtCmp(l, r) => GtCmp(func(l), func(r))(p, i)
-        case GeCmp(l, r) => GeCmp(func(l), func(r))(p, i)
+            case Or(l, r) => Or(go(l), go(r))(p, i)
+            case And(l, r) => And(go(l), go(r))(p, i)
+            case Implies(l, r) => Implies(go(l), go(r))(p, i)
 
-        case EqCmp(l, r) => EqCmp(func(l), func(r))(p, i)
-        case NeCmp(l, r) => NeCmp(func(l), func(r))(p, i)
+            case Add(l, r) => Add(go(l), go(r))(p, i)
+            case Sub(l, r) => Sub(go(l), go(r))(p, i)
+            case Mul(l, r) => Mul(go(l), go(r))(p, i)
+            case Div(l, r) => Div(go(l), go(r))(p, i)
+            case Mod(l, r) => Mod(go(l), go(r))(p, i)
 
-        case PermAdd(l, r) => PermAdd(func(l), func(r))(p, i)
-        case PermSub(l, r) => PermSub(func(l), func(r))(p, i)
-        case PermMul(l, r) => PermMul(func(l), func(r))(p, i)
-        case IntPermMul(l, r) => IntPermMul(func(l), func(r))(p, i)
+            case LtCmp(l, r) => LtCmp(go(l), go(r))(p, i)
+            case LeCmp(l, r) => LeCmp(go(l), go(r))(p, i)
+            case GtCmp(l, r) => GtCmp(go(l), go(r))(p, i)
+            case GeCmp(l, r) => GeCmp(go(l), go(r))(p, i)
 
-        case PermLtCmp(l, r) => PermLtCmp(func(l), func(r))(p, i)
-        case PermLeCmp(l, r) => PermLeCmp(func(l), func(r))(p, i)
-        case PermGtCmp(l, r) => PermGtCmp(func(l), func(r))(p, i)
-        case PermGeCmp(l, r) => PermGeCmp(func(l), func(r))(p, i)
+            case EqCmp(l, r) => EqCmp(go(l), go(r))(p, i)
+            case NeCmp(l, r) => NeCmp(go(l), go(r))(p, i)
 
-        case EmptySeq(elemTyp) => exp
-        case ExplicitSeq(elems) => ExplicitSeq(elems map func)(p, i)
-        case RangeSeq(low, high) => RangeSeq(func(low), func(high))(p, i)
-        case SeqAppend(left, right) => SeqAppend(func(left), func(right))(p, i)
-        case SeqIndex(seq, idx) => SeqIndex(func(seq), func(idx))(p, i)
-        case SeqTake(seq, n) => SeqTake(func(seq), func(n))(p, i)
-        case SeqDrop(seq, n) => SeqDrop(func(seq), func(n))(p, i)
-        case SeqContains(elem, seq) => SeqContains(func(elem), func(seq))(p, i)
-        case SeqUpdate(seq, idx, elem) => SeqUpdate(func(seq), func(idx), func(elem))(p, i)
-        case SeqLength(seq) => SeqLength(func(seq))(p, i)
+            case PermAdd(l, r) => PermAdd(go(l), go(r))(p, i)
+            case PermSub(l, r) => PermSub(go(l), go(r))(p, i)
+            case PermMul(l, r) => PermMul(go(l), go(r))(p, i)
+            case IntPermMul(l, r) => IntPermMul(go(l), go(r))(p, i)
+
+            case PermLtCmp(l, r) => PermLtCmp(go(l), go(r))(p, i)
+            case PermLeCmp(l, r) => PermLeCmp(go(l), go(r))(p, i)
+            case PermGtCmp(l, r) => PermGtCmp(go(l), go(r))(p, i)
+            case PermGeCmp(l, r) => PermGeCmp(go(l), go(r))(p, i)
+
+            case EmptySeq(elemTyp) => EmptySeq(go(elemTyp))(p, i)
+            case ExplicitSeq(elems) => ExplicitSeq(elems map go)(p, i)
+            case RangeSeq(low, high) => RangeSeq(go(low), go(high))(p, i)
+            case SeqAppend(left, right) => SeqAppend(go(left), go(right))(p, i)
+            case SeqIndex(seq, idx) => SeqIndex(go(seq), go(idx))(p, i)
+            case SeqTake(seq, n) => SeqTake(go(seq), go(n))(p, i)
+            case SeqDrop(seq, n) => SeqDrop(go(seq), go(n))(p, i)
+            case SeqContains(elem, seq) => SeqContains(go(elem), go(seq))(p, i)
+            case SeqUpdate(seq, idx, elem) =>
+              SeqUpdate(go(seq), go(idx), go(elem))(p, i)
+            case SeqLength(seq) => SeqLength(go(seq))(p, i)
+          }
+
+        case program @
+          Program(domains, fields, functions, predicates, methods) =>
+          Program(domains map go, fields map go, functions map go,
+            predicates map go, methods map go)(program.pos, program.info)
+
+        case member: Member =>
+          member match {
+            case Domain(name, functions, axioms, typeVariables) =>
+              Domain(name, functions map go, axioms map go,
+                typeVariables map go)(member.pos, member.info)
+
+            case Field(name, singleType) =>
+              Field(name, go(singleType))(member.pos, member.info)
+
+            case Function(name, parameters, aType, preconditions,
+              postconditions, body) =>
+              Function(name, parameters map go, go(aType),
+                preconditions map go,
+                postconditions map go,
+                go(body))(member.pos, member.info)
+
+            case Predicate(name, parameter, body) =>
+              Predicate(name, go(parameter),
+                go(body))(member.pos, member.info)
+
+            case Method(name, parameters, results, preconditions,
+              postconditions, locals, body) =>
+              Method(name, parameters map go, results map go,
+                preconditions map go,
+                postconditions map go,
+                locals map go, go(body))(member.pos, member.info)
+          }
+
+        case domainMember: DomainMember =>
+          domainMember match {
+            case DomainAxiom(name, body) =>
+              DomainAxiom(name, go(body))(domainMember.pos,
+                domainMember.info)
+
+            case DomainFunc(name, parameters, aType, unique) =>
+              DomainFunc(name, parameters map go, go(aType),
+                unique)(domainMember.pos, domainMember.info)
+          }
+
+        case aType: Type =>
+          aType match {
+            case Bool => aType
+
+            case DomainType(domain, typeVariables) =>
+              /* Do not transform domain here. */
+              DomainType(domain, goTypeVariables(typeVariables))
+
+            case Int => aType
+            case Perm => aType
+            case Pred => aType
+            case Ref => aType
+            case SeqType(elementType) => SeqType(go(elementType))
+            case TypeVar(_) => aType
+          }
+
+        case declaration @ LocalVarDecl(name, singleType) =>
+          LocalVarDecl(name, go(singleType))(declaration.pos,
+            declaration.info)
+
+        case statement: Stmt =>
+          statement match {
+            case Assert(expression) =>
+              Assert(go(expression))(statement.pos, statement.info)
+
+            case Exhale(expression) =>
+              Exhale(go(expression))(statement.pos, statement.info)
+
+            case FieldAssign(field, value) =>
+              FieldAssign(go(field), go(value))(statement.pos, statement.info)
+
+            case Fold(predicate) =>
+              Fold(go(predicate))(statement.pos, statement.info)
+
+            case FreshReadPerm(variables, body) =>
+              FreshReadPerm(
+                variables map go, go(body))(statement.pos, statement.info)
+
+            case Goto(_) => statement
+
+            case If(condition, ifTrue, ifFalse) =>
+              If(go(condition), go(ifTrue),
+                go(ifFalse))(statement.pos, statement.info)
+
+            case Inhale(expression) =>
+              Inhale(go(expression))(statement.pos, statement.info)
+
+            case Label(_) => statement
+
+            case LocalVarAssign(variable, value) =>
+              LocalVarAssign(go(variable),
+                go(value))(statement.pos, statement.info)
+
+            case MethodCall(method, arguments, variables) =>
+              /* Do not transform called method here. */
+              MethodCall(method, arguments map go,
+                variables map go)(statement.pos, statement.info)
+
+            case NewStmt(variable) =>
+              NewStmt(go(variable))(statement.pos, statement.info)
+
+            case Seqn(statements) =>
+              Seqn(statements map go)(statement.pos, statement.info)
+
+            case Unfold(predicate) =>
+              Unfold(go(predicate))(statement.pos, statement.info)
+
+            case While(condition, invariants, locals, body) =>
+              While(go(condition), invariants map go, locals map go,
+                go(body))(statement.pos, statement.info)
+          }
+
+        case trigger @ Trigger(expressions) =>
+          Trigger(expressions map go)(trigger.pos, trigger.info)
+
+        case other => throw
+          new AssertionError("Kind of node not covered: " + other.getClass)
       }
+    }
+
+    val beforeRecursion = pre.applyOrElse(node, identity[Node])
+    val afterRecursion = if (recursive(node)) {
+      recurse(beforeRecursion)
     } else {
       beforeRecursion
     }
-    post.applyOrElse(afterRecursion, identity[Exp])
+    post.applyOrElse(afterRecursion, identity[Node]).asInstanceOf[A]
+  }
+
+  /**
+   * Recursively transform specifications in tree rooted at `node`. This can be
+   * useful to generate inhale exhale expressions.
+   */
+  def transformSpecifications[A <: Node](translate: Exp => Exp, node: A): A = {
+    def replace: PartialFunction[Node, Node] = {
+      case function @ Function(name, parameters, aType, preconditions,
+        postconditions, body) =>
+        Function(name, parameters map recurse, recurse(aType),
+          preconditions map translate, postconditions map translate,
+          recurse(body))(function.pos, function.info)
+
+      case method @ Method(name, parameters, results, preconditions,
+        postconditions, locals, body) =>
+        Method(name, parameters map recurse, results map recurse,
+          preconditions map translate, postconditions map translate,
+          locals map recurse, recurse(body))(method.pos, method.info)
+
+      case loop @ While(condition, invariants, locals, body) =>
+        While(recurse(condition), invariants map translate,
+          locals map recurse, recurse(body))(loop.pos, loop.info)
+
+      case Assert(expression) => translate(expression)
+      case Exhale(expression) => translate(expression)
+      case Inhale(expression) => translate(expression)
+    }
+
+    def recurse[B <: Node](root: B): B = {
+      transform(root, replace)()
+    }
+    recurse(node)
   }
 
   /**
@@ -145,7 +323,8 @@ object Transformer {
       case root @ NeCmp(left, TrueLit()) => Not(left)(root.pos, root.info)
       case root @ NeCmp(IntLit(left), IntLit(right)) =>
         BoolLit(left != right)(root.pos, root.info)
-      case root @ NeCmp(NullLit(), NullLit()) => FalseLit()(root.pos, root.info)
+      case root @ NeCmp(NullLit(), NullLit()) =>
+        FalseLit()(root.pos, root.info)
 
       case CondExp(TrueLit(), ifTrue, _) => ifTrue
       case CondExp(FalseLit(), _, ifFalse) => ifFalse
