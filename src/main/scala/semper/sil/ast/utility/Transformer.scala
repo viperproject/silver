@@ -229,6 +229,9 @@ object Transformer {
         case trigger @ Trigger(expressions) =>
           Trigger(expressions map go)(trigger.pos, trigger.info)
 
+        // Uninitialized subtrees are left uninitialized.
+        case null => null
+
         case other => throw
           new AssertionError("Kind of node not covered: " + other.getClass)
       }
