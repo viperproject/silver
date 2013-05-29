@@ -1,6 +1,7 @@
 var f: Ref
 var p: Perm
 
+
 method test1(this: Ref, p: Perm)
   requires this != null && acc(this.f, p)
 {
@@ -14,6 +15,7 @@ method test5(this: Ref)
   exhale acc(this.f, epsilon)
 }
 
+/* See Sil issues #4 and #5 */
 //method test6(this: Ref)
 //  requires this != null && acc(this.f, 50/100)
 //  ensures acc(this.f, 51/100 + epsilon)
