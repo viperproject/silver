@@ -34,6 +34,7 @@ method t2_b(this: Ref)
 method t3(this: Ref, p2: Perm)
 {
     //:: ExpectedError(invalid.perm.multiplication)
+    //:: MissingError(invalid.perm.multiplication, /Silicon/issue/31/)
     var p: Perm := epsilon * p2
 }
 
