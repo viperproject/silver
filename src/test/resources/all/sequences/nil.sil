@@ -3,5 +3,5 @@ method test01() {
   var bs2: Seq[Bool] := Seq()
 
   assert bs1 == bs2
-  assert |Seq()| == 0
+  assert |bs1| == 0
 }
