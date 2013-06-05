@@ -45,10 +45,6 @@ trait NameGenerator {
  * @author Bernhard Brodowsky
  */
 trait DefaultNameGenerator extends NameGenerator {
-  private var deadLockId = 0
-
-  private val idLock = new Object()
-
   val globalContext = new NameContext()
 
   /**
@@ -138,11 +134,6 @@ trait DefaultNameGenerator extends NameGenerator {
     '>' -> "greater",
     '=' -> "eq")
 
-  private def newId() = idLock.synchronized {
-    deadLockId += 1
-    deadLockId
-  }
-
   def createUniqueIdentifier(s: String) = globalContext.createUniqueIdentifier(s)
 
   def createUnique(s: String) = globalContext.createUnique(s)
@@ -156,8 +147,6 @@ trait DefaultNameGenerator extends NameGenerator {
 
     private val identCounters = collection.mutable.HashMap[String, Int]()
 
-    private val deadLockId = newId()
-
     private val contexts = this :: enclosingContexts
 
     private val lock = new Lock
@@ -165,7 +154,7 @@ trait DefaultNameGenerator extends NameGenerator {
     private def subContexts: List[NameContext] = directSubContexts ++ directSubContexts.flatMap(_.subContexts)
 
     // TODO If performance is an issue, these can be cached until the next call of createSubContext().
-    private def conflictingContexts = (contexts ++ subContexts).sortBy(_.deadLockId)
+    private def conflictingContexts = contexts ++ subContexts
 
     def createSubContext() = {
       val c = new NameContext(contexts)
@@ -175,6 +164,11 @@ trait DefaultNameGenerator extends NameGenerator {
 
     def createUnique(s: String) = {
       val cc = conflictingContexts
+      // Note that this is deadlock free because we have a total ordering on all the contexts according to the following properties.
+      // 1. Level
+      // 2. Indices of the ancestors inside the subcontext list of their parent.
+      //    If there are several, lexicographic ordering from top to bottom is used.
+      // 3. Index of the context itself inside the subcontext list of its parent.
       cc.foreach(_.lock.acquire())
       val res = if (!cc.exists(_.identCounters.contains(s))) {
         identCounters.put(s, 0)

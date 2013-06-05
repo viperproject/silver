@@ -340,6 +340,7 @@ case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Inf
 }
 
 /** Drop the last 'n' elements of the sequence 'seq'. */
+// TODO Is this description really correct? Shouldn't it drop the _first_ n elements?
 case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require(s.typ.isInstanceOf[SeqType])
   require(n isSubtype Int)
