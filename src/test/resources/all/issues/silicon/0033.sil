@@ -13,7 +13,7 @@ function size(this: Ref): Int
   ensures result >= 1
 { unfolding acc(this.valid, write) in (this.next == null ? 1 : 1 + size(this.next)) }
 
-method unroll(this: Ref)
+method unrollStatement(this: Ref)
   requires this != null
   requires acc(this.valid, write)
   requires size(this) == 2
@@ -23,4 +23,31 @@ method unroll(this: Ref)
 
   //:: UnexpectedError(assert.failed:assertion.false, /silicon/issue/33/)
   assert this.next.next == null
+}
+
+
+
+
+function size_0(this: Ref): Int
+  requires this != null
+  requires acc(this.valid, write)
+  //:: UnexpectedError(postcondition.violated:assertion.false, /silicon/issue/33/)
+  ensures result >= 1
+{
+  unfolding acc(this.valid, write) in (
+    this.next == null
+      ? 1
+      : unfolding acc(this.next.valid, write) in (this.next.next == null ? 2 : 2 + size_0(this.next.next)))
+}
+
+method unrollExpression(this: Ref)
+  requires this != null
+  requires acc(this.valid, write)
+  requires size_0(this) == 2
+{
+  //:: UnexpectedError(assert.failed:assertion.false, /silicon/issue/33/)
+  assert
+    unfolding acc(this.valid, write) in
+      unfolding acc(this.next.valid, write) in
+        this.next.next == null
 }
