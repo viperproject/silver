@@ -1,0 +1,26 @@
+var item: Int
+var next: Ref
+
+predicate valid(this: Ref) {
+     acc(this.item, write)
+  && acc(this.next, write)
+  && (this.next != null ==> acc(this.next.valid, write))
+}
+
+function size(this: Ref): Int
+  requires this != null
+  requires acc(this.valid, write)
+  ensures result >= 1
+{ unfolding acc(this.valid, write) in (this.next == null ? 1 : 1 + size(this.next)) }
+
+method unroll(this: Ref)
+  requires this != null
+  requires acc(this.valid, write)
+  requires size(this) == 2
+{
+  unfold acc(this.valid, write)
+  unfold acc(this.next.valid, write)
+
+  //:: UnexpectedError(assert.failed:assertion.false, /silicon/issue/33/)
+  assert this.next.next == null
+}
