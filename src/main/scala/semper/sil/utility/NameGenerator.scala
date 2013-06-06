@@ -186,7 +186,8 @@ trait DefaultNameGenerator extends NameGenerator {
           counter += 1
           newS = s + separator + counter.toString
         }
-        identCounters.put(newS, counter)
+        identCounters.put(s, counter)
+        identCounters.put(newS, 0)
         newS
       }
       cc.foreach(_.lock.release())
