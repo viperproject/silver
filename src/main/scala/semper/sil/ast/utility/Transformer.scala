@@ -35,10 +35,11 @@ object Transformer {
             case BoolLit(_) => exp
             case NullLit() => exp
             case AbstractLocalVar(_) => exp
-            case FieldAccess(rcv, field) =>
-              FieldAccess(go(rcv), go(field))(p, i)
+            /* No recursion on field here. */
+            case FieldAccess(rcv, field) => FieldAccess(go(rcv), field)(p, i)
+            /* No recursion on predicate here. */
             case PredicateAccess(rcv, predicate) =>
-              PredicateAccess(go(rcv), go(predicate))(p, i)
+              PredicateAccess(go(rcv), predicate)(p, i)
             case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i)
             case Old(e) => Old(go(e))(p, i)
             case CondExp(cond, thn, els) =>
@@ -60,10 +61,10 @@ object Transformer {
             case PredicateAccessPredicate(loc, perm) =>
               PredicateAccessPredicate(go(loc), go(perm))(p, i)
             case FuncApp(ff, args) =>
-              /* Do not recurse on function. */
+              /* No recursion on function here. */
               FuncApp(ff, args map go)(p, i)
             case DomainFuncApp(ff, args, m) =>
-              /* No recursion on domain function. */
+              /* No recursion on domain function here. */
               DomainFuncApp(ff, args map go, goTypeVariables(m))(p, i)
 
             case Neg(e) => Neg(go(e))(p, i)
