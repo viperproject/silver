@@ -313,11 +313,11 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     }
 
     for (f: Path <- dirContent
-         if f.toFile.canRead /* If a file is renamed while Sbt runs, AccessDeniedExceptions might be
-                              * thrown. Apparently, because the old file still exists in
-                              * target/.../test-classes, but it is somehow locked. Weird stuff.
-                              * Once the Sbt REPL is closed, the "ghost" file disappears.
-                              */
+         if Files.isReadable(f) /* If a file is renamed while Sbt runs, AccessDeniedExceptions might be
+                                 * thrown. Apparently, because the old file still exists in
+                                 * target/.../test-classes, but it is somehow locked. Weird stuff.
+                                 * Once the Sbt REPL is closed, the "ghost" file disappears.
+                                 */
          if !Files.isDirectory(f)
          if f.toString.matches(namePattern)) {
 

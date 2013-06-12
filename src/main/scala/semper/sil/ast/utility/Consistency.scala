@@ -90,7 +90,7 @@ object Consistency {
   }
 
   def checkPost(e: Exp) {
-    require(e isSubtype Bool, s"Contract $e must be boolean.")
+    require(e isSubtype Bool, s"Contract $e: ${e.typ} must be boolean.")
     e visit {
       case CurrentPerm(_) => require(false, s"Contract $e is not allowed to contain perm(.)")
     }

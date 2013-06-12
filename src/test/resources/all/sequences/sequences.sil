@@ -21,3 +21,10 @@ method t2() {
     assert a[1 := 22] == (a[1 := -1][1 := 22])
     assert a[1 := 22] == Seq(0,22,-11,22)
 }
+
+method test3() {
+  var xs: Seq[Int] := Seq(0, 1, 2, 3, 4, 5, 6, 7)
+  var bs: Seq[Bool] := Seq(true, true, false, true) ++ Seq(false, true)
+
+  assert |xs[1..][..6]| == |bs|
+}
