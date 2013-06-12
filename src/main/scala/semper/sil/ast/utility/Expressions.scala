@@ -69,46 +69,72 @@ object Expressions {
       val finalSubConds = n match {
         case And(left, _) => {
           val Seq(leftConds, rightConds) = nonTrivialSubConds
-          val guardedRightConds = if (!rightConds.isEmpty) {
-            val combinedRightCond = rightConds reduce { (a, b) => And(a, b)(p) }
-            List(Implies(left, combinedRightCond)(p))
-          } else Nil
-          leftConds ++ guardedRightConds
+          reduceAndProofObs(left, leftConds, rightConds, p)
         }
         case Implies(left, _) => {
           val Seq(leftConds, rightConds) = nonTrivialSubConds
-          val guardedRightConds = if (!rightConds.isEmpty) {
-            val combinedRightCond = rightConds reduce { (a, b) => And(a, b)(p) }
-            List(Implies(left, combinedRightCond)(p))
-          } else Nil
-          leftConds ++ guardedRightConds
+          reduceImpliesProofObs(left, leftConds, rightConds, p)
         }
         case Or(left, _) => {
           val Seq(leftConds, rightConds) = nonTrivialSubConds
-          val guardedRightConds = if (!rightConds.isEmpty) {
-            val combinedRightCond = rightConds reduce { (a, b) => And(a, b)(p) }
-            List(Implies(Not(left)(p), combinedRightCond)(p))
-          } else Nil
-          leftConds ++ guardedRightConds
+          reduceOrProofObs(left, leftConds, rightConds, p)
         }
         case CondExp(cond, _, _) => {
           val Seq(condConds, thenConds, elseConds) = nonTrivialSubConds
-          val guardedBodyConds = if (!thenConds.isEmpty || !elseConds.isEmpty) {
-            val combinedThenCond = if (!thenConds.isEmpty)
-              thenConds reduce { (a, b) => And(a, b)(p) }
-            else TrueLit()(p)
-            val combinedElseCond = if (!elseConds.isEmpty)
-              elseConds reduce { (a, b) => And(a, b)(p) }
-            else TrueLit()(p)
-            List(CondExp(cond, combinedThenCond, combinedElseCond)(p))
-          } else Nil
-          condConds ++ guardedBodyConds
+          reduceCondExpProofObs(cond, condConds, thenConds, elseConds, p)
         }
         case _ => subConds.flatten
       }
       // The condition of the current node has to be at the end because the subtrees have to be well-formed first.
       finalSubConds ++ conds
     }
+  }
+
+  /** Calculates the proof obligations for a conditional expression given the proof obligations of the subexpressions. */
+  def reduceCondExpProofObs(cond: Exp, condConds: Seq[Exp], thenConds: Seq[Exp], elseConds: Seq[Exp], p: Position): Seq[Exp] = {
+    val guardedBodyConds = if (!thenConds.isEmpty || !elseConds.isEmpty) {
+      val combinedThenCond = if (!thenConds.isEmpty)
+        thenConds reduce {
+          (a, b) => And(a, b)(p)
+        }
+      else TrueLit()(p)
+      val combinedElseCond = if (!elseConds.isEmpty)
+        elseConds reduce {
+          (a, b) => And(a, b)(p)
+        }
+      else TrueLit()(p)
+      List(CondExp(cond, combinedThenCond, combinedElseCond)(p))
+    } else Nil
+    condConds ++ guardedBodyConds
+  }
+
+  /** Calculates the proof obligations of an implication given the proof obligations of the subexpressions. */
+  def reduceImpliesProofObs(left: Exp, leftConds: Seq[Exp], rightConds: Seq[Exp], p: Position) =
+    reduceLazyBinOpProofObs(left, leftConds, rightConds, p)
+
+  /** Calculates the proof obligations of an implication given the proof obligations of the subexpressions. */
+  def reduceAndProofObs(left: Exp, leftConds: Seq[Exp], rightConds: Seq[Exp], p: Position) = {
+    // We want to make the proof obligations as weak as possible, but we cannot use access predicates as guards,
+    // so we need to remove them and make the guard weaker. This makes the proof obligations slightly too strong,
+    // but it is the best we can do.
+    val guard = left.transform({ case _: AccessPredicate => TrueLit()() })()
+    reduceLazyBinOpProofObs(guard, leftConds, rightConds, p)
+  }
+
+  /** Calculates the proof obligations of an implication given the proof obligations of the subexpressions. */
+  def reduceOrProofObs(left: Exp, leftConds: Seq[Exp], rightConds: Seq[Exp], p: Position) =
+    reduceLazyBinOpProofObs(Not(left)(p), leftConds, rightConds, p)
+
+  /** Calculates the proof obligations of a binary expression which has a second half which will only be evaluated
+    * if `evalCond` is true given the proof obligations of the subexpressions. */
+  def reduceLazyBinOpProofObs(evalCond: Exp, leftConds: Seq[Exp], rightConds: Seq[Exp], p: Position): Seq[Exp] = {
+    val guardedRightConds = if (!rightConds.isEmpty) {
+      val combinedRightCond = rightConds reduce {
+        (a, b) => And(a, b)(p)
+      }
+      List(Implies(evalCond, combinedRightCond)(p))
+    } else Nil
+    leftConds ++ guardedRightConds
   }
 
 }
