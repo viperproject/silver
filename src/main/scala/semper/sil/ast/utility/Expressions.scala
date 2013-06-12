@@ -49,21 +49,62 @@ object Expressions {
 
   def subExps(e: Exp) = e.subnodes collect { case e: Exp => e }
 
-  def proofObligations(e: Exp): Seq[Exp] = e.reduceTree[Seq[Exp]] { (n: Node, subConds: Seq[Seq[Exp]]) =>
-    val p = n match {
-      case n: Positioned => n.pos
-      case _ => NoPosition
+  def proofObligations(e: Exp): Seq[Exp] = {
+    e.reduceTree[Seq[Exp]] { (n: Node, subConds: Seq[Seq[Exp]]) =>
+      val p = n.pos
+      // Conditions for the current node.
+      val conds = n match {
+        case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, WildcardPerm()(p))(p))
+        case f: FuncApp => f.pres
+        case Div(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
+        case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
+        case _ => Nil
+      }
+      // Only use non-trivial conditions for the subnodes.
+      val nonTrivialSubConds = subConds.map { m => m.filter { _ != TrueLit()() } }
+      // Combine the conditions of the subnodes depending on what node we currently have.
+      val finalSubConds = n match {
+        case And(left, _) => {
+          val Seq(leftConds, rightConds) = nonTrivialSubConds
+          val guardedRightConds = if (!rightConds.isEmpty) {
+            val combinedRightCond = rightConds reduce { (a, b) => And(a, b)(p) }
+            List(Implies(left, combinedRightCond)(p))
+          } else rightConds
+          leftConds ++ guardedRightConds
+        }
+        case Implies(left, _) => {
+          val Seq(leftConds, rightConds) = nonTrivialSubConds
+          val guardedRightConds = if (!rightConds.isEmpty) {
+            val combinedRightCond = rightConds reduce { (a, b) => And(a, b)(p) }
+            List(Implies(left, combinedRightCond)(p))
+          } else rightConds
+          leftConds ++ guardedRightConds
+        }
+        case Or(left, _) => {
+          val Seq(leftConds, rightConds) = nonTrivialSubConds
+          val guardedRightConds = if (!rightConds.isEmpty) {
+            val combinedRightCond = rightConds reduce { (a, b) => And(a, b)(p) }
+            List(Implies(Not(left)(p), combinedRightCond)(p))
+          } else rightConds
+          leftConds ++ guardedRightConds
+        }
+        case CondExp(cond, _, _) => {
+          val Seq(condConds, thenConds, elseConds) = nonTrivialSubConds
+          val guardedThenConds = if (!thenConds.isEmpty) {
+            val combinedThenCond = thenConds reduce { (a, b) => And(a, b)(p) }
+            List(Implies(Not(left)(p), combinedThenCond)(p))
+          } else thenConds
+          val guardedElseConds = if (!elseConds.isEmpty) {
+            val combinedElseCond = elseConds reduce { (a, b) => And(a, b)(p) }
+            List(Implies(Not(left)(p), combinedElseCond)(p))
+          } else elseConds
+          condConds ++ guardedThenConds ++ guardedElseConds
+        }
+        case _ => subConds.flatten
+      }
+      // The condition of the current node has to be at the end because the subtrees have to be well-formed first.
+      finalSubConds ++ conds
     }
-    val conds = n match {
-      case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, WildcardPerm()(p))(p))
-      case f: FuncApp => f.pres
-      case Div(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
-      case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
-      case _ => Nil
-    }
-    val nonTrivialSubConds: Seq[Exp] = subConds.flatten.filter { _ != TrueLit()() }
-    // The condition has to be at the end because the subtrees have to be well-formed first.
-    nonTrivialSubConds ++ conds
   }
 
 }
