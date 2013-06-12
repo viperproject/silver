@@ -51,7 +51,10 @@ object Expressions {
 
   def proofObligations(e: Exp): Seq[Exp] = {
     e.reduceTree[Seq[Exp]] { (n: Node, subConds: Seq[Seq[Exp]]) =>
-      val p = n.pos
+      val p = n match {
+        case n: Positioned => n.pos
+        case _ => NoPosition
+      }
       // Conditions for the current node.
       val conds = n match {
         case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, WildcardPerm()(p))(p))
@@ -69,7 +72,7 @@ object Expressions {
           val guardedRightConds = if (!rightConds.isEmpty) {
             val combinedRightCond = rightConds reduce { (a, b) => And(a, b)(p) }
             List(Implies(left, combinedRightCond)(p))
-          } else rightConds
+          } else Nil
           leftConds ++ guardedRightConds
         }
         case Implies(left, _) => {
@@ -77,7 +80,7 @@ object Expressions {
           val guardedRightConds = if (!rightConds.isEmpty) {
             val combinedRightCond = rightConds reduce { (a, b) => And(a, b)(p) }
             List(Implies(left, combinedRightCond)(p))
-          } else rightConds
+          } else Nil
           leftConds ++ guardedRightConds
         }
         case Or(left, _) => {
@@ -85,20 +88,21 @@ object Expressions {
           val guardedRightConds = if (!rightConds.isEmpty) {
             val combinedRightCond = rightConds reduce { (a, b) => And(a, b)(p) }
             List(Implies(Not(left)(p), combinedRightCond)(p))
-          } else rightConds
+          } else Nil
           leftConds ++ guardedRightConds
         }
         case CondExp(cond, _, _) => {
           val Seq(condConds, thenConds, elseConds) = nonTrivialSubConds
-          val guardedThenConds = if (!thenConds.isEmpty) {
-            val combinedThenCond = thenConds reduce { (a, b) => And(a, b)(p) }
-            List(Implies(Not(left)(p), combinedThenCond)(p))
-          } else thenConds
-          val guardedElseConds = if (!elseConds.isEmpty) {
-            val combinedElseCond = elseConds reduce { (a, b) => And(a, b)(p) }
-            List(Implies(Not(left)(p), combinedElseCond)(p))
-          } else elseConds
-          condConds ++ guardedThenConds ++ guardedElseConds
+          val guardedBodyConds = if (!thenConds.isEmpty || !elseConds.isEmpty) {
+            val combinedThenCond = if (!thenConds.isEmpty)
+              thenConds reduce { (a, b) => And(a, b)(p) }
+            else TrueLit()(p)
+            val combinedElseCond = if (!elseConds.isEmpty)
+              elseConds reduce { (a, b) => And(a, b)(p) }
+            else TrueLit()(p)
+            List(CondExp(cond, combinedThenCond, combinedElseCond)(p))
+          } else Nil
+          condConds ++ guardedBodyConds
         }
         case _ => subConds.flatten
       }
