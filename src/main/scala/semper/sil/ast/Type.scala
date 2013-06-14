@@ -13,6 +13,7 @@ sealed trait Type extends Node {
   // At the moment, there is no subtyping in SIL.
   def isSubtype(other: Type): Boolean = {
     (this, other) match {
+      case (_, TypeVar(_)) => true
       case (a: DomainType, b: DomainType) =>
         a.domain == b.domain && b.typVarsMap.forall {
           case (tv, t2) =>
