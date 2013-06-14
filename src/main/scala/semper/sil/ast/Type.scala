@@ -14,10 +14,10 @@ sealed trait Type extends Node {
   def isSubtype(other: Type): Boolean = {
     (this, other) match {
       case (a: DomainType, b: DomainType) =>
-        a.domain == b.domain && a.typVarsMap.forall {
-          case (tv, t1) =>
-            b.typVarsMap.get(tv) match {
-              case Some(t2) => t1 isSubtype t2
+        a.domain == b.domain && b.typVarsMap.forall {
+          case (tv, t2) =>
+            a.typVarsMap.get(tv) match {
+              case Some(t1) => t1 isSubtype t2
               case None => false
             }
         }
