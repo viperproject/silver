@@ -149,7 +149,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case TypeVar(v) => v
       case DomainType(domain, typVarsMap) =>
         val typArgs = domain.typVars map (t => show(typVarsMap.getOrElse(t, t)))
-        domain.name <> if (typVars.isEmpty) empty else brackets(ssep(typArgs, comma <> space))
+        domain.name <> (if (typArgs.isEmpty) empty else brackets(ssep(typArgs, comma <> space)))
     }
   }
 
