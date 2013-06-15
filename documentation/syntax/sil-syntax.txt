@@ -1,9 +1,11 @@
     sil-program ::= ( domain | field | function | predicate | method )*
 
-         domain ::= "domain" ident "{"
+         domain ::= "domain" domain-name "{"
                         domain-function*
                         axiom*
                     "}"
+
+    domain-name ::= ident | ident "[" ident^,* "] // Either a name or a name followed by a list of type parameters
 
 domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
 
