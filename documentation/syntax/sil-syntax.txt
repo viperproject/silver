@@ -5,7 +5,7 @@
                         axiom*
                     "}"
 
-    domain-name ::= ident | ident "[" ident^,* "]
+    domain-name ::= ident | ident "[" ident^,* "]"
 
 domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
 
