@@ -1,6 +1,6 @@
     sil-program ::= ( domain | field | function | predicate | method )*
 
-         domain ::= "domain" "{"
+         domain ::= "domain" ident "{"
                         domain-function*
                         axiom*
                     "}"
