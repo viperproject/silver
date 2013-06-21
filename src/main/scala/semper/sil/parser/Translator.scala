@@ -370,6 +370,10 @@ case class Translator(program: PProgram) {
     }
     case PSeqType(elemType) =>
       SeqType(ttyp(elemType))
+    case PSetType(elemType) =>
+      SetType(ttyp(elemType))
+    case PMultisetType(elemType) =>
+      MultisetType(ttyp(elemType))
     case PDomainType(name, args) =>
       members.get(name.name) match {
         case Some(d) =>
