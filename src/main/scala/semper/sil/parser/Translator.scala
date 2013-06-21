@@ -327,8 +327,30 @@ case class Translator(program: PProgram) {
         SeqDrop(exp(seq), exp(n))(pos)
       case PSeqUpdate(seq, idx, elem) =>
         SeqUpdate(exp(seq), exp(idx), exp(elem))(pos)
-      case PSeqLength(seq) =>
-        SeqLength(exp(seq))(pos)
+      case PSize(s) =>
+        if (s.typ.isInstanceOf[PSeqType])
+          SeqLength(exp(s))(pos)
+        else
+          AnySetCardinality(exp(s))(pos)
+      case PContains(elem, s) =>
+        if (s.typ.isInstanceOf[PSeqType])
+          SeqContains(exp(elem), exp(s))(pos)
+        else
+          AnySetContains(exp(elem), exp(s))(pos)
+      case PEmptySet() =>
+        EmptySet(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos)
+      case PExplicitSet(elems) =>
+        ExplicitSet(elems map exp)(pos)
+      case PEmptyMultiset() =>
+        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos)
+      case PExplicitMultiset(elems) =>
+        ExplicitMultiset(elems map exp)(pos)
+      case PSubset(left, right) =>
+        AnySetSubset(exp(left), exp(right))(pos)
+      case PIntersection(left, right) =>
+        AnySetIntersection(exp(left), exp(right))(pos)
+      case PUnion(left, right) =>
+        AnySetUnion(exp(left), exp(right))(pos)
     }
   }
 

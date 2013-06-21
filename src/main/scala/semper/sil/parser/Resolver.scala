@@ -234,6 +234,10 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case PSeqType(elemType) =>
         check(elemType)
+      case PSetType(elemType) =>
+        check(elemType)
+      case PMultisetType(elemType) =>
+        check(elemType)
       case PUnkown() =>
         message(typ, "expected concrete type, but found unknown typ")
     }
@@ -248,6 +252,10 @@ case class TypeChecker(names: NameAnalyser) {
       case (PTypeVar(name), t) if t.isConcrete => Seq(name -> t)
       case (t, PTypeVar(name)) if t.isConcrete => Seq(name -> t)
       case (PSeqType(e1), PSeqType(e2)) =>
+        learn(e1, e2)
+      case (PSetType(e1), PSetType(e2)) =>
+        learn(e1, e2)
+      case (PMultisetType(e1), PMultisetType(e2)) =>
         learn(e1, e2)
       case (PDomainType(n1, m1), PDomainType(n2, m2))
         if n1 == n2 && m1.length == m2.length =>
@@ -268,6 +276,8 @@ case class TypeChecker(names: NameAnalyser) {
       case (PTypeVar(name), t) => true
       case (t, PTypeVar(name)) => true
       case (PSeqType(e1), PSeqType(e2)) => isCompatible(e1, e2)
+      case (PSetType(e1), PSetType(e2)) => isCompatible(e1, e2)
+      case (PMultisetType(e1), PMultisetType(e2)) => isCompatible(e1, e2)
       case (PDomainType(domain1, args1), PDomainType(domain2, args2))
         if domain1 == domain2 && args1.length == args2.length =>
         (args1 zip args2) forall (x => isCompatible(x._1, x._2))
@@ -342,6 +352,8 @@ case class TypeChecker(names: NameAnalyser) {
       setType(PUnkown())
     }
     def genericSeqType: PSeqType = PSeqType(PTypeVar("."))
+    def genericSetType: PSetType = PSetType(PTypeVar("."))
+    def genericMultisetType: PMultisetType = PMultisetType(PTypeVar("."))
     exp match {
       case i@PIdnUse(name) =>
         names.definition(curMember)(i) match {
@@ -670,13 +682,81 @@ case class TypeChecker(names: NameAnalyser) {
               setErrorType()
           }
         }
-      case PSeqLength(seq) =>
+      case PSize(seq) =>
         if (expected.nonEmpty && !(expected contains Int)) {
           issueError(exp, s"expected $expectedString, but found |.| which has type Int")
         } else {
-          check(seq, genericSeqType)
+          check(seq, Seq(genericSeqType, genericSetType, genericMultisetType))
           setType(Int)
         }
+      case PContains(elem, s) =>
+        if (expected.nonEmpty && !(expected contains Bool)) {
+          issueError(exp, s"expected $expectedString, but found 'contains' expression which has type Bool")
+        } else {
+          check(s, Seq(genericSeqType, genericSetType, genericMultisetType))
+          // TODO: type inference
+          check(elem, Nil)
+          setType(Bool)
+        }
+      case PEmptySet() =>
+        val typ = genericSetType
+        if (expected.size == 1) {
+          setRefinedType(typ, learn(typ, expected.head))
+        } else {
+          setType(typ)
+        }
+      case PExplicitSet(elems) =>
+        assert(elems.nonEmpty)
+        val expectedElemTyp = (expected map {
+          case PSetType(e) => Some(e)
+          case _ => None
+        }) filter (_.isDefined) map (_.get)
+        elems map (check(_, expectedElemTyp))
+        elems map (_.typ) filterNot (_.isUnknown) match {
+          case Nil =>
+            // all elements have an error type
+            setErrorType()
+          case types =>
+            for (t <- types.tail) {
+              ensure(isCompatible(t, types.head), exp,
+                s"expected the same type for all elements of the explicit set, but found ${types.head} and $t")
+            }
+            // TODO: perform type inference and propagate type down
+            setType(PSetType(types.head))
+        }
+      case PEmptyMultiset() =>
+        val typ = genericMultisetType
+        if (expected.size == 1) {
+          setRefinedType(typ, learn(typ, expected.head))
+        } else {
+          setType(typ)
+        }
+      case PExplicitMultiset(elems) =>
+        assert(elems.nonEmpty)
+        val expectedElemTyp = (expected map {
+          case PMultisetType(e) => Some(e)
+          case _ => None
+        }) filter (_.isDefined) map (_.get)
+        elems map (check(_, expectedElemTyp))
+        elems map (_.typ) filterNot (_.isUnknown) match {
+          case Nil =>
+            // all elements have an error type
+            setErrorType()
+          case types =>
+            for (t <- types.tail) {
+              ensure(isCompatible(t, types.head), exp,
+                s"expected the same type for all elements of the explicit multiset, but found ${types.head} and $t")
+            }
+            // TODO: perform type inference and propagate type down
+            setType(PMultisetType(types.head))
+        }
+      case PSubset(left, right) =>
+        val expectedSeqType = expected match {
+          case Nil => Seq(genericSeqType)
+          case _ => expected
+        }
+      case PIntersection(left, right) =>
+      case PUnion(left, right) =>
     }
   }
 
