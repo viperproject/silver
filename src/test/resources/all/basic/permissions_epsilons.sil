@@ -1,0 +1,62 @@
+//:: IgnoreFile(/Silicon/issue/31/)
+
+var f: Ref
+var p: Perm
+
+
+method test1(this: Ref, p: Perm)
+  requires this != null && acc(this.f, p)
+{
+  exhale acc(this.f, epsilon)
+}
+
+method test5(this: Ref)
+  requires this != null && acc(this.f, 99/100)
+  ensures acc(this.f, 98/100)
+{
+  exhale acc(this.f, epsilon)
+}
+
+/* See Sil issues #4 and #5 */
+//method test6(this: Ref)
+//  requires this != null && acc(this.f, 50/100)
+//  ensures acc(this.f, 51/100 + epsilon)
+//{
+//  exhale acc(this.f, 3 * write)
+//  exhale acc(this.f, 3 * epsilon)
+//  exhale acc(this.f, 2 * epsilon)
+//  inhale acc(this.f, 1/100)
+//  inhale acc(this.f, epsilon + epsilon)
+//  exhale acc(this.f, epsilon)
+//  inhale acc(this.f, epsilon * 5)
+//}
+
+method test2(this: Ref, p2: Perm) {
+  //:: ExpectedError(invalid.perm.multiplication)
+  var p: Perm := epsilon * p2
+}
+
+method test3(r: Ref, p: Perm) {
+  //:: ExpectedError(call.precondition:epsilon.as.param)
+  test3(null, epsilon)
+}
+
+predicate P(this: Ref) { acc(this.f, epsilon) }
+
+predicate Q(this: Ref) { acc(this.p, write) && acc(this.f, this.p) }
+
+method test4(r: Ref)
+  requires r != null && acc(r.P, write)
+{
+  var p: Perm
+  var b: Bool
+
+  b := unfolding acc(r.P, write) in true
+  b := unfolding acc(r.P, p) in true
+}
+
+method test7(r: Ref)
+  requires r != null && acc(r.Q, epsilon)
+{
+  var b: Bool := unfolding acc(r.Q, epsilon) in true
+}

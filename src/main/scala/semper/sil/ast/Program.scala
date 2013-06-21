@@ -1,6 +1,6 @@
 package semper.sil.ast
 
-import utility.Consistency
+import utility.{Consistency, Types}
 import org.kiama.output._
 
 /** A SIL program. */
@@ -35,10 +35,11 @@ case class Predicate(name: String, formalArg: LocalVarDecl, private var _body: E
 }
 
 /** A method declaration. */
-case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], var body: Stmt)
+case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], private var _body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted {
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
   if (_posts != null) _posts foreach Consistency.checkPost
+  if (_body != null) Consistency.checkNoArgsReassigned(formalArgs, _body)
   require(noDuplicates)
   require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
   private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
@@ -57,6 +58,11 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   def locals_=(s: Seq[LocalVarDecl]) {
     _locals = s
     require(noDuplicates)
+  }
+  def body = _body
+  def body_=(b: Stmt) {
+    Consistency.checkNoArgsReassigned(formalArgs, b)
+    _body = b
   }
 }
 
@@ -169,12 +175,17 @@ sealed trait Member extends Node with Positioned with Infoed {
 /** Common ancestor for domain members. */
 sealed trait DomainMember extends Node with Positioned with Infoed {
   require(Consistency.validUserDefinedIdentifier(name))
+
   def name: String
+
+  /** See [[semper.sil.ast.utility.Types.freeTypeVariables]]. */
+  lazy val freeTypeVariables = Types.freeTypeVariables(this)
 
   // we override the definition of hashCode/equals to avoid unbounded recursion
   override def hashCode = name.hashCode
+
   override def equals(o: Any) = o match {
-    case m: Member => name == m.name
+    case m: DomainMember => name == m.name
     case _ => false
   }
 }

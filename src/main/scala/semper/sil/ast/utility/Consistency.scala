@@ -68,6 +68,14 @@ object Consistency {
     checkNoPositiveOnly(e)
   }
 
+  /** Checks that none of the given formal arguments are reassigned inside the body. */
+  def checkNoArgsReassigned(args: Seq[LocalVarDecl], b: Stmt) {
+    val argVars = args.map(_.localVar).toSet
+    for (a@LocalVarAssign(l, _) <- b if argVars.contains(l)) {
+      require(false, s"$a is a reassignment of formal argument $l.")
+    }
+  }
+
   /** Check all properties required for a precondition. */
   def checkPre(e: Exp) {
     require(noOld(e), "Old expressions are not allowed in preconditions.")
@@ -82,7 +90,7 @@ object Consistency {
   }
 
   def checkPost(e: Exp) {
-    require(e isSubtype Bool, s"Contract $e must be boolean.")
+    require(e isSubtype Bool, s"Contract $e: ${e.typ} must be boolean.")
     e visit {
       case CurrentPerm(_) => require(false, s"Contract $e is not allowed to contain perm(.)")
     }

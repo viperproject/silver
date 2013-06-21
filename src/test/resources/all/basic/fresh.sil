@@ -37,6 +37,7 @@ method t2b(r: Ref)
         exhale acc(r.f, write - read) && acc(r.f, read)
     }
     //:: ExpectedError(assertion.false)
+    //:: MissingError(assertion.false, /Silicon/issue/30/)
     assert false
 }
 
@@ -62,5 +63,6 @@ method t5(r: Ref)
     requires acc(r.f, write)
 {
     //:: ExpectedError(call.precondition:epsilon.as.param)
+    //:: MissingError(assertion.false, /Silicon/issue/31/)
     t1b(r, epsilon)
 }

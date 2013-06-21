@@ -1,9 +1,11 @@
     sil-program ::= ( domain | field | function | predicate | method )*
 
-         domain ::= "domain" "{"
+         domain ::= "domain" domain-name "{"
                         domain-function*
                         axiom*
                     "}"
+
+    domain-name ::= ident | ident "[" ident^,* "]"
 
 domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
 
@@ -78,8 +80,8 @@ domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
                   | ident                       // local variable read
                   | "result"                    // result literal in function postconditions
                   | "acc" "(" loc-access "," exp ")"   // accessibility predicate
-                  | "forall" formal-arg "::" trigger^,* exp   // universal quantification
-                  | "exists" formal-arg "::" exp   // existential quantification
+                  | "forall" formal-arg^,* "::" trigger^,* exp   // universal quantification
+                  | "exists" formal-arg^,* "::" exp   // existential quantification
                   | "(" exp ")"
                   | "[" exp "," exp "]"         // inhale exhale expression
                   | "perm" "(" loc-access ")"   // current permission of given location

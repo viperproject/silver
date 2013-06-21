@@ -98,16 +98,24 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
       // Only register the multi file test once, not for every file it contains.
       return
     }
-    val name = testName(prefix, file)
+
+    val baseTestName = testName(prefix, file)
+    val relativeFileName = prefix + "/" + file.getName(file.getNameCount - 1)
     val testAnnotations = parseAnnotations(rawFiles)
     val files = rawFiles filter { f => !testAnnotations.isFileIgnored(f) }
     val fileName = file.getFileName.toString
     val fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."))
 
+    val tags = List(
+      Tag(relativeFileName),
+      Tag(file.toString),
+      Tag(fileName),
+      Tag(fileNameWithoutExt))
+
     // ignore test if necessary
     // TODO Make ignoring verifier dependent.
     if (files.isEmpty) {
-      ignore(name, Tag(file.toString), Tag(fileName), Tag(fileNameWithoutExt)) {}
+      ignore(baseTestName, tags: _*) {}
       return
     }
 
@@ -120,7 +128,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
     // one test per verifier
     for (verifier <- verifiers) {
-      test(name + " [" + verifier.name + "]", Tag(verifier.name), Tag(file.toString), Tag(fileName), Tag(fileNameWithoutExt)) {
+      test(baseTestName + " [" + verifier.name + "]", (Tag(verifier.name) :: tags) :_*) {
         val fe = frontend(verifier, files)
         val tPhases = fe.phases.map { p =>
           time(p.action)._2 + " (" + p.name + ")"
@@ -135,23 +143,32 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
         var additionalErrors: List[AbstractError] = Nil
         result match {
           case Success =>
+            var missingErrors: List[MissingError] = Nil
+            var expectedErrors: List[ExpectedError] = Nil
+
             // no actual errors, thus there should not be any expected ones
             testAnnotations.annotations foreach {
-              case e: ExpectedError => expectedButMissingErrors ::= e
+              case e: ExpectedError => expectedErrors ::= e
               case u: UnexpectedError => unexpectedButMissingErrors ::= u
-              case m: MissingError => // it is known that this one is missing
+              case m: MissingError => missingErrors ::= m
               case _: IgnoreOthers =>
-              case _: IgnoreFileList =>
-                sys.error("the test should not have run in the first place")
+              case _: IgnoreFileList => sys.error("the test should not have run in the first place")
               case _: IgnoreFile => () // Could be that some files of this test, but not all of them are ignored.
             }
+
+            /* Collect errors that were expected by the current verifier but are missing */
+            expectedButMissingErrors =
+              expectedErrors filterNot (expectedToBeMissing(_, missingErrors, verifier))
+
           case Failure(actualErrors) => {
             var expectedErrors = testAnnotations.errorAnnotations
+
             def sameLine(file: Path, lineNr: Int, pos: Position) = pos match {
               case p: SourcePosition => lineNr == p.line
               case p: TranslatedPosition => file == p.file && lineNr == p.line
               case _ => sys.error("Position is neither a source position nor a translated position even though we checked this before.")
             }
+
             val findError: AbstractError => Option[TestAnnotation] = (actual: AbstractError) => {
               if (!actual.pos.isInstanceOf[SourcePosition] && !actual.pos.isInstanceOf[TranslatedPosition]) None
               else expectedErrors.filter({
@@ -179,19 +196,24 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
                 additionalErrors ::= a
             })
 
+            /* Partition remaining annotations into missing error annotations and all others */
+            val missingErrors: Seq[MissingError] = expectedErrors collect {case m: MissingError => m}
+            val remainingErrors: Seq[LocatedAnnotation] = expectedErrors filterNot (missingErrors contains _)
+
             // process remaining errors that have not been matched
-            expectedErrors.foreach {
-              case e: ExpectedError => expectedButMissingErrors ::= e
+            remainingErrors.foreach {
+              case e: ExpectedError =>
+                if (!expectedToBeMissing(e, missingErrors, verifier)) expectedButMissingErrors ::= e
               case u: UnexpectedError =>
                 if (u.project.toLowerCase == verifier.name.toLowerCase) unexpectedButMissingErrors ::= u
-              case _: MissingError => // Expected to be missing
               case _: IgnoreOthers =>
+              case _: MissingError => ??? /* Should not occur because they were previously filtered out */
             }
           }
         }
 
         if (!additionalErrors.isEmpty) {
-          testErrors ::= "The following errors occured during verification, but should not have according to the test annotations:\n" +
+          testErrors ::= "The following errors occurred during verification, but should not have according to the test annotations:\n" +
             additionalErrors.reverse.map("  " + _.toString).mkString("\n")
         }
 
@@ -201,12 +223,12 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
         }
 
         if (!unexpectedButMissingErrors.isEmpty) {
-          testErrors ::= "The following errors were specified to occur erroreanously (UnexpectedError) according to the test annotations, but did not occur during verification (this might be cause by invalid test anntoations):\n" +
+          testErrors ::= "The following errors were specified to occur erroneously (UnexpectedError) according to the test annotations, but did not occur during verification (this might be cause by invalid test annotations:\n" +
             unexpectedButMissingErrors.reverse.map("  " + _.toString).mkString("\n")
         }
 
         if (!missingButPresentErrors.isEmpty) {
-          testErrors ::= "The following errors were specified to be missing erroreanously (MissingError) according to the test annotations, but did occur during verification (this might be cause by invalid test anntoations):\n" +
+          testErrors ::= "The following errors were specified to be missing erroneously (MissingError) according to the test annotations, but did occur during verification (this might be cause by invalid test annotations):\n" +
             missingButPresentErrors.reverse.map("  " + _.toString).mkString("\n")
         }
 
@@ -226,6 +248,11 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     }
   }
 
+  private def expectedToBeMissing(e: LocatedAnnotation, ms: Seq[MissingError], verifier: Verifier) =
+    ms exists (m =>
+         m.project.toLowerCase == verifier.name.toLowerCase
+      && m.sameSource(e))
+
   /** Formats a time in milliseconds. */
   def formatTime(millis: Long): String = {
     if (millis > 1000) "%.2f sec".format(millis * 1.0 / 1000)
@@ -240,28 +267,61 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     (r, formatTime(System.currentTimeMillis() - start))
   }
 
-  /** Registers all the files in a given directory as a test. */
-  def registerTestDirectory(dir: Path, prefix: String = "") {
+  /** Recursively registers all files found in the given directory as a test.
+    *
+    * The prefix is used for naming and tagging the ScalaTest test case that is eventually
+    * generated for each test file found. Subdirectories of `dir` will be appended to the
+    * initial prefix.
+    *
+    * It is thus reasonable to make the initial prefix the (relative) root test directory.
+    * For example, given the following directories and files
+    *   .../issues/test1.scala
+    *              test2.scala
+    *   .../all/basic/test1.scala
+    *                 test2.scala
+    *                 test3.scala
+    * it would be reasonable to make the calls
+    *   registerTestDirectory(path_of(".../issues"), "issues")
+    *   registerTestDirectory(path_of(".../all/basic"), "all/basic")
+    * or
+    *   registerTestDirectory(path_of(".../issues"), "issues")
+    *   registerTestDirectory(path_of(".../all"), "all")
+    * to - in both cases - get ScalaTest test cases that can be identified by
+    *   issues/test1.scala
+    *   issues/test2.scala
+    *   all/basic/test1.scala
+    *   all/basic/test2.scala
+    *   all/basic/test3.scala
+    *
+    * @param dir The directory to recursively search for files. Every file in the directory is
+    *            assumed to be a test file.
+    * @param prefix The initial prefix used for naming and tagging the resulting ScalaTest tests.
+    */
+  def registerTestDirectory(dir: Path, prefix: String) {
     assert(dir != null, "Directory must not be null")
     assert(Files.isDirectory(dir), "Path must represent a directory")
 
     val directoryStream = Files.newDirectoryStream(dir)
     val dirContent = directoryStream.toList
-
-    val newPrefix = prefix + dir.toString + "/"
     val namePattern = configMap.getOrElse("include", ".*").toString
 
     for (f: Path <- dirContent
          if Files.isDirectory(f)) {
 
+      val newPrefix = prefix + "/" + f.getName(f.getNameCount - 1)
       registerTestDirectory(f, newPrefix)
     }
 
     for (f: Path <- dirContent
+         if Files.isReadable(f) /* If a file is renamed while Sbt runs, AccessDeniedExceptions might be
+                                 * thrown. Apparently, because the old file still exists in
+                                 * target/.../test-classes, but it is somehow locked. Weird stuff.
+                                 * Once the Sbt REPL is closed, the "ghost" file disappears.
+                                 */
          if !Files.isDirectory(f)
          if f.toString.matches(namePattern)) {
 
-      registerSilTest(f, newPrefix)
+      registerSilTest(f, prefix)
     }
   }
 
@@ -273,8 +333,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
       assert(resource != null, s"Test directory $testDir couldn't be found")
 
       val path = pathFromResource(classLoader.getResource(testDir))
-
-      registerTestDirectory(path)
+      registerTestDirectory(path, testDir)
     }
 
     _testsRegistered = true
@@ -337,9 +396,10 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
         } catch {
           case e: java.nio.file.FileSystemAlreadyExistsException =>
             fs = FileSystems.getFileSystem(fileURI)
+            assert(fs.isOpen, "The reused file system is expected to still be open")
+        } finally {
+          assert(fs != null, s"Could not get hold of a file system for $fileURI (from $uriStr)")
         }
-
-        assert(fs != null, s"Could not get hold of a file system for $fileURI (from $uriStr)")
 
         fs.getPath(entryName)
 
