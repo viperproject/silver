@@ -155,6 +155,9 @@ object Expressions {
    * (each list of triggers must contain trigger sets which employ exactly
    * the same extra variables).
    */
+  def generateTrigger(exp: QuantifiedExp): Seq[(Seq[Trigger], Seq[LocalVarDecl])] = {
+    TriggerGeneration.generateTriggers(exp.variables map (_.localVar), exp.exp)
+  }
 
   /**
    * Code related to automatic trigger generation.  The code is largely based on similar

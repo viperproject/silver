@@ -257,7 +257,28 @@ object QuantifiedExp {
 }
 
 /** Universal quantification. */
-case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
+case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp {
+
+  /**
+   * Returns an identical forall quantification that has some automatically generated triggers
+   * if necessary and possible.
+   */
+  lazy val autoTrigger: Forall = {
+    if (triggers.isEmpty) {
+      val gen = Expressions.generateTrigger(this)
+      if (gen.size > 0) {
+        val (triggers, extraVariables) = gen(0)
+        Forall(variables ++ extraVariables, triggers, exp)(pos, info)
+      } else {
+        // no triggers found
+        this
+      }
+    } else {
+      // triggers already present
+      this
+    }
+  }
+}
 
 /** Existential quantification. */
 case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
