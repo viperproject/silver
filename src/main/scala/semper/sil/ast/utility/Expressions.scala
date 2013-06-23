@@ -14,15 +14,15 @@ object Expressions {
     case Unfolding(_, in) => isPure(in) /* Assuming that the first argument is pure */
     case QuantifiedExp(_, e0) => isPure(e0)
 
-    case  _: Literal
-        | _: PermExp
-        | _: FuncApp
-        | _: DomainFuncApp
-        | _: LocationAccess
-        | _: AbstractLocalVar
-        | _: SeqExp
-        | _: SetExp
-        | _: MultisetExp
+    case _: Literal
+         | _: PermExp
+         | _: FuncApp
+         | _: DomainFuncApp
+         | _: LocationAccess
+         | _: AbstractLocalVar
+         | _: SeqExp
+         | _: SetExp
+         | _: MultisetExp
     => true
   }
 
@@ -49,46 +49,53 @@ object Expressions {
     }()
   }
 
-  def subExps(e: Exp) = e.subnodes collect { case e: Exp => e }
+  def subExps(e: Exp) = e.subnodes collect {
+    case e: Exp => e
+  }
 
   def proofObligations(e: Exp): Seq[Exp] = {
-    e.reduceTree[Seq[Exp]] { (n: Node, subConds: Seq[Seq[Exp]]) =>
-      val p = n match {
-        case n: Positioned => n.pos
-        case _ => NoPosition
-      }
-      // Conditions for the current node.
-      val conds = n match {
-        case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, WildcardPerm()(p))(p))
-        case f: FuncApp => f.pres
-        case Div(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
-        case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
-        case _ => Nil
-      }
-      // Only use non-trivial conditions for the subnodes.
-      val nonTrivialSubConds = subConds.map { m => m.filter { _ != TrueLit()() } }
-      // Combine the conditions of the subnodes depending on what node we currently have.
-      val finalSubConds = n match {
-        case And(left, _) => {
-          val Seq(leftConds, rightConds) = nonTrivialSubConds
-          reduceAndProofObs(left, leftConds, rightConds, p)
+    e.reduceTree[Seq[Exp]] {
+      (n: Node, subConds: Seq[Seq[Exp]]) =>
+        val p = n match {
+          case n: Positioned => n.pos
+          case _ => NoPosition
         }
-        case Implies(left, _) => {
-          val Seq(leftConds, rightConds) = nonTrivialSubConds
-          reduceImpliesProofObs(left, leftConds, rightConds, p)
+        // Conditions for the current node.
+        val conds = n match {
+          case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, WildcardPerm()(p))(p))
+          case f: FuncApp => f.pres
+          case Div(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
+          case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
+          case _ => Nil
         }
-        case Or(left, _) => {
-          val Seq(leftConds, rightConds) = nonTrivialSubConds
-          reduceOrProofObs(left, leftConds, rightConds, p)
+        // Only use non-trivial conditions for the subnodes.
+        val nonTrivialSubConds = subConds.map {
+          m => m.filter {
+            _ != TrueLit()()
+          }
         }
-        case CondExp(cond, _, _) => {
-          val Seq(condConds, thenConds, elseConds) = nonTrivialSubConds
-          reduceCondExpProofObs(cond, condConds, thenConds, elseConds, p)
+        // Combine the conditions of the subnodes depending on what node we currently have.
+        val finalSubConds = n match {
+          case And(left, _) => {
+            val Seq(leftConds, rightConds) = nonTrivialSubConds
+            reduceAndProofObs(left, leftConds, rightConds, p)
+          }
+          case Implies(left, _) => {
+            val Seq(leftConds, rightConds) = nonTrivialSubConds
+            reduceImpliesProofObs(left, leftConds, rightConds, p)
+          }
+          case Or(left, _) => {
+            val Seq(leftConds, rightConds) = nonTrivialSubConds
+            reduceOrProofObs(left, leftConds, rightConds, p)
+          }
+          case CondExp(cond, _, _) => {
+            val Seq(condConds, thenConds, elseConds) = nonTrivialSubConds
+            reduceCondExpProofObs(cond, condConds, thenConds, elseConds, p)
+          }
+          case _ => subConds.flatten
         }
-        case _ => subConds.flatten
-      }
-      // The condition of the current node has to be at the end because the subtrees have to be well-formed first.
-      finalSubConds ++ conds
+        // The condition of the current node has to be at the end because the subtrees have to be well-formed first.
+        finalSubConds ++ conds
     }
   }
 
@@ -119,7 +126,9 @@ object Expressions {
     // We want to make the proof obligations as weak as possible, but we cannot use access predicates as guards,
     // so we need to remove them and make the guard weaker. This makes the proof obligations slightly too strong,
     // but it is the best we can do.
-    val guard = left.transform({ case _: AccessPredicate => TrueLit()() })()
+    val guard = left.transform({
+      case _: AccessPredicate => TrueLit()()
+    })()
     reduceLazyBinOpProofObs(guard, leftConds, rightConds, p)
   }
 
@@ -139,4 +148,115 @@ object Expressions {
     leftConds ++ guardedRightConds
   }
 
+  /**
+   * Generates trigger sets to cover the variables "vs", by searching the
+   * expression "toSearch". Returns a list of pairs of lists of trigger sets
+   * couple with the extra variables they require to be quantified over
+   * (each list of triggers must contain trigger sets which employ exactly
+   * the same extra variables).
+   */
+
+  /**
+   * Code related to automatic trigger generation.  The code is largely based on similar
+   * code in Chalice written by Alexander J. Summers.
+   */
+  object TriggerGeneration {
+
+    var id = 0
+
+    // This is used for searching for triggers for quantifiers around the expression "toSearch". The list "vs" gives the variables which need triggering
+    // Returns a list of function applications (the framing function) paired with two sets of variables.
+    // The first set of variables shows which of the "vs" occur (useful for deciding how to select applications for trigger sets later)
+    // The second set of variables indicated the extra boolean variables which were introduced to "hide" problematic logical/comparison operators which may not occur in triggers.
+    // e.g., if vs = [x] and toSearch = f(x, y ==> z) thn a singleton list will be returned, containing (f(x,b),{x},{b}).
+    def getFunctionAppsContaining(vs: Seq[LocalVar], toSearch: Exp): (Seq[(FuncApp, Set[LocalVar], Set[LocalVarDecl])]) = {
+      var functions: Seq[(FuncApp, Set[LocalVar], Set[LocalVarDecl])] = Seq() // accumulate candidate functions to return
+      var nestedBoundVars: Seq[LocalVar] = Seq() // count all variables bound in nested quantifiers, to avoid considering function applications mentioning these
+
+      // get all nested bound vars
+      toSearch visit {
+        case qe: QuantifiedExp =>
+          nestedBoundVars ++= (qe.variables map (_.localVar))
+      }
+
+      // get all function applications
+      toSearch visit {
+        case fapp@FuncApp(func, args) =>
+          var extraVars: Set[LocalVarDecl] = Set() // collect extra variables generated for this term
+        var containsNestedBoundVars = false // flag to rule out this term
+        // closure to generate fresh boolean LocalVar
+        val freshBoolVar: (() => Exp) = {
+          () =>
+            val newV = LocalVarDecl("b#" + id, Bool)()
+            id += 1
+            extraVars += newV
+            newV.localVar
+        }
+          // replaces problematic logical/comparison expressions with fresh boolean variables
+          val boolExprEliminator: PartialFunction[Node, Node] = {
+            case Not(e) => freshBoolVar()
+            case EqCmp(e0, e1) => freshBoolVar()
+            case Implies(e0, e1) => freshBoolVar()
+            case And(e0, e1) => freshBoolVar()
+            case Or(e0, e1) => freshBoolVar()
+            case NeCmp(e0, e1) => freshBoolVar()
+            case LtCmp(e0, e1) => freshBoolVar()
+            case LeCmp(e0, e1) => freshBoolVar()
+            case GtCmp(e0, e1) => freshBoolVar()
+            case GeCmp(e0, e1) => freshBoolVar()
+          }
+          var containedVars: Set[LocalVar] = Set()
+          val processedArgs = args map (_.transform(boolExprEliminator)()) // eliminate all boolean expressions forbidden from triggers, and replace with "extraVars"
+          // collect all the sought (vs) variables in the function application
+          processedArgs map {
+            e => e visit {
+              case v@LocalVar(s) =>
+                if (nestedBoundVars.contains(v)) (containsNestedBoundVars = true)
+                if (vs.contains(v)) (containedVars += v)
+            }
+          }
+          if (!containsNestedBoundVars && !containedVars.isEmpty) {
+            functions +:=(FuncApp(func, processedArgs)(), containedVars, extraVars)
+          }
+      }
+      functions
+    }
+
+
+    // Precondition : if vars is non-empty thn every (f,vs) pair in functs satisfies the property that vars and vs are not disjoint.
+    // Finds trigger sets by selecting entries from "functs" until all of "vars" occur, and accumulating the extra variables needed for each function term.
+    // Returns a list of the trigger sets found, paired with the extra boolean variables they use
+    def buildTriggersCovering(vars: Set[LocalVar], functs: Seq[(FuncApp, Set[LocalVar], Set[LocalVarDecl])], currentTrigger: Seq[Exp], extraVars: Set[LocalVarDecl]): Seq[(Trigger, Set[LocalVarDecl])] = {
+      if (vars.isEmpty) (Seq((Trigger(currentTrigger)(), extraVars))) // we have found a suitable trigger set
+      else (functs match {
+        case Nil => Nil // this branch didn't result in a solution
+        case ((f, vs, extra) :: rest) => {
+          val needed: Set[LocalVar] = vars.diff(vs) // variables still not triggered
+          // try adding the next element of functs, or not..
+          buildTriggersCovering(needed, (rest.filter(func => !func._2.intersect(needed).isEmpty)), currentTrigger :+ f, extraVars | extra) ++ buildTriggersCovering(vars, rest, currentTrigger, extraVars)
+        }
+      }
+        )
+    }
+
+    // Generates trigger sets to cover the variables "vs", by searching the expression "toSearch".
+    // Returns a list of pairs of lists of trigger sets couple with the extra variables they require to be quantified over (each list of triggers must contain trigger sets which employ exactly the same extra variables).
+    def generateTriggers(vs: Seq[LocalVar], toSearch: Exp): Seq[(Seq[Trigger], Seq[LocalVarDecl])] = {
+      val functionApps: (Seq[(FuncApp, Set[LocalVar], Set[LocalVarDecl])]) = getFunctionAppsContaining(vs, toSearch) // find suitable function applications
+      if (functionApps.isEmpty) List()
+      else {
+        var triggerSetsToUse: Seq[(Trigger, Set[LocalVarDecl])] = buildTriggersCovering(Set() ++ vs, functionApps, Nil, Set())
+        var groupedTriggerSets: Seq[(Seq[Trigger], Seq[LocalVarDecl])] = Seq() // group trigger sets by those which use the same sets of extra boolean variables
+
+        while (!triggerSetsToUse.isEmpty) {
+          triggerSetsToUse.partition((ts: (Trigger, Set[LocalVarDecl])) => triggerSetsToUse.head._2.equals(ts._2)) match {
+            case (sameVars, rest) =>
+              triggerSetsToUse = rest
+              groupedTriggerSets +:=((sameVars map (_._1)), sameVars.head._2.toList)
+          }
+        }
+        groupedTriggerSets
+      }
+    }
+  }
 }
