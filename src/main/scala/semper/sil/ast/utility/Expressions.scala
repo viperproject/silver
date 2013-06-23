@@ -190,7 +190,7 @@ object Expressions {
         // closure to generate fresh boolean LocalVar
         val freshBoolVar: (() => Exp) = {
           () =>
-            val newV = LocalVarDecl("b#" + id, Bool)()
+            val newV = LocalVarDecl("b__" + id, Bool)()
             id += 1
             extraVars += newV
             newV.localVar
