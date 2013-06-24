@@ -499,6 +499,16 @@ sealed trait FuncLikeApp extends Exp with Call {
   lazy val callee = func
   def typ = func.typ
 }
+object FuncLikeApp {
+  def unapply(fa: FuncLikeApp) = Some((fa.func, fa.args))
+  def apply(f: FuncLike, args: Seq[Exp], typVars: Map[TypeVar, Type]) = {
+    f match {
+      case f@Function(_, _, _, _, _, _) => FuncApp(f, args)()
+      case f@DomainFunc(_, _, _, _) => DomainFuncApp(f, args, typVars)()
+      case _ => sys.error(s"should not occur: $f (${f.getClass})")
+    }
+  }
+}
 
 /** Common superclass for domain functions with arbitrary parameters and return type, binary and unary operations are a special case. */
 sealed trait AbstractDomainFuncApp extends FuncLikeApp {
