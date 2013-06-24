@@ -19,6 +19,7 @@ method unrollStatement(this: Ref)
   requires size(this) == 2
 {
   unfold acc(this.valid, write)
+  //:: UnexpectedError(receiver.null, /carbon/issue/1/)
   unfold acc(this.next.valid, write)
 
   //:: UnexpectedError(assert.failed:assertion.false, /silicon/issue/33/)
@@ -46,6 +47,7 @@ method unrollExpression(this: Ref)
   requires size_0(this) == 2
 {
   //:: UnexpectedError(assert.failed:assertion.false, /silicon/issue/33/)
+  //:: UnexpectedError(receiver.null, /carbon/issue/1/)
   assert
     unfolding acc(this.valid, write) in
       unfolding acc(this.next.valid, write) in
