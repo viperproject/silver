@@ -118,6 +118,7 @@ method t10(r: Ref) returns ()
 {
     var j: Int := 2
 
+    //:: ExpectedError(while.failed:insufficient.permission)
     while (j < (r.f))
     {
         j := j+1
