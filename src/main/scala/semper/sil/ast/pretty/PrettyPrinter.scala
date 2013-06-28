@@ -296,6 +296,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       show(left) <+> "intersection" <+> show(right)
     case AnySetSubset(left, right) =>
       show(left) <+> "subset" <+> show(right)
+    case AnySetMinus(left, right) =>
+      show(left) <+> "setminus" <+> show(right)
     case AnySetContains(elem, s) =>
       show(elem) <+> "in" <+> show(s)
     case AnySetCardinality(s) =>

@@ -94,6 +94,7 @@ object Nodes {
           case AnySetUnion(left, right) => Seq(left, right)
           case AnySetIntersection(left, right) => Seq(left, right)
           case AnySetSubset(left, right) => Seq(left, right)
+          case AnySetMinus(left, right) => Seq(left, right)
           case AnySetContains(elem, s) => Seq(elem, s)
           case AnySetCardinality(s) => Seq(s)
         }

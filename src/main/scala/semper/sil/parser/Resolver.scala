@@ -354,6 +354,7 @@ case class TypeChecker(names: NameAnalyser) {
     def genericSeqType: PSeqType = PSeqType(PTypeVar("."))
     def genericSetType: PSetType = PSetType(PTypeVar("."))
     def genericMultisetType: PMultisetType = PMultisetType(PTypeVar("."))
+    def genericAnySetType = Seq(genericSetType, genericMultisetType)
     exp match {
       case i@PIdnUse(name) =>
         names.definition(curMember)(i) match {
@@ -447,13 +448,19 @@ case class TypeChecker(names: NameAnalyser) {
             setType(Bool)
           case "in" =>
             check(left, Nil)
-            check(right, genericSeqType)
+            check(right, genericAnySetType ++ Seq(genericSeqType))
             if (left.typ.isUnknown || right.typ.isUnknown) {
               // nothing to do, error has already been issued
-            } else if (!right.typ.isInstanceOf[PSeqType]) {
+            } else if (!right.typ.isInstanceOf[PSeqType] &&
+              !right.typ.isInstanceOf[PSetType] &&
+              !right.typ.isInstanceOf[PMultisetType]) {
               issueError(right, s"expected sequence type, but found ${right.typ}")
-            } else if (!isCompatible(left.typ, right.typ.asInstanceOf[PSeqType].elementType)) {
-              issueError(right, s"element $left with type ${left.typ} cannot be in a sequence of type ${right.typ}")
+            } else if (
+              (right.typ.isInstanceOf[PSeqType] && !isCompatible(left.typ, right.typ.asInstanceOf[PSeqType].elementType)) ||
+                (right.typ.isInstanceOf[PSetType] && !isCompatible(left.typ, right.typ.asInstanceOf[PSetType].elementType)) ||
+                (right.typ.isInstanceOf[PMultisetType] && !isCompatible(left.typ, right.typ.asInstanceOf[PMultisetType].elementType))
+                ) {
+              issueError(right, s"element $left with type ${left.typ} cannot be in a sequence/set of type ${right.typ}")
             }
             // TODO: perform type refinement and propagate down
             setType(Bool)
@@ -468,6 +475,34 @@ case class TypeChecker(names: NameAnalyser) {
               // ok
               // TODO: perform type refinement and propagate down
               setType(left.typ)
+            } else {
+              issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
+            }
+          case "union" | "intersection" | "setminus" =>
+            val newExpected = if (expected.isEmpty) genericAnySetType else expected
+            check(left, newExpected)
+            check(right, newExpected)
+            if (left.typ.isUnknown || right.typ.isUnknown) {
+              // nothing to do, error has already been issued
+              setErrorType()
+            } else if (isCompatible(left.typ, right.typ)) {
+              // ok
+              // TODO: perform type refinement and propagate down
+              setType(left.typ)
+            } else {
+              issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
+            }
+          case "subset" =>
+            val newExpected = if (expected.isEmpty) genericAnySetType else expected
+            check(left, newExpected)
+            check(right, newExpected)
+            if (left.typ.isUnknown || right.typ.isUnknown) {
+              // nothing to do, error has already been issued
+              setErrorType()
+            } else if (isCompatible(left.typ, right.typ)) {
+              // ok
+              // TODO: perform type refinement and propagate down
+              setType(Bool)
             } else {
               issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
             }
@@ -689,15 +724,6 @@ case class TypeChecker(names: NameAnalyser) {
           check(seq, Seq(genericSeqType, genericSetType, genericMultisetType))
           setType(Int)
         }
-      case PContains(elem, s) =>
-        if (expected.nonEmpty && !(expected contains Bool)) {
-          issueError(exp, s"expected $expectedString, but found 'contains' expression which has type Bool")
-        } else {
-          check(s, Seq(genericSeqType, genericSetType, genericMultisetType))
-          // TODO: type inference
-          check(elem, Nil)
-          setType(Bool)
-        }
       case PEmptySet() =>
         val typ = genericSetType
         if (expected.size == 1) {
@@ -750,13 +776,6 @@ case class TypeChecker(names: NameAnalyser) {
             // TODO: perform type inference and propagate type down
             setType(PMultisetType(types.head))
         }
-      case PSubset(left, right) =>
-        val expectedSeqType = expected match {
-          case Nil => Seq(genericSeqType)
-          case _ => expected
-        }
-      case PIntersection(left, right) =>
-      case PUnion(left, right) =>
     }
   }
 

@@ -117,6 +117,7 @@ object Transformer {
             case AnySetUnion(left, right) => AnySetUnion(go(left), go(right))(p, i)
             case AnySetIntersection(left, right) => AnySetIntersection(go(left), go(right))(p, i)
             case AnySetSubset(left, right) => AnySetSubset(go(left), go(right))(p, i)
+            case AnySetMinus(left, right) => AnySetMinus(go(left), go(right))(p, i)
             case AnySetContains(elem, s) => AnySetContains(go(elem), go(s))(p, i)
             case AnySetCardinality(s) => AnySetCardinality(go(s))(p, i)
           }

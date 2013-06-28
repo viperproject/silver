@@ -228,8 +228,16 @@ case class Translator(program: PProgram) {
           case "<==>" => EqCmp(l, r)(pos)
           case "&&" => And(l, r)(pos)
           case "||" => Or(l, r)(pos)
-          case "in" => SeqContains(l, r)(pos)
+          case "in" =>
+            if (right.typ.isInstanceOf[PSeqType])
+              SeqContains(l, r)(pos)
+            else
+              AnySetContains(l, r)(pos)
           case "++" => SeqAppend(l, r)(pos)
+          case "subset" => AnySetSubset(l, r)(pos)
+          case "intersection" => AnySetIntersection(l, r)(pos)
+          case "union" => AnySetUnion(l, r)(pos)
+          case "setminus" => AnySetMinus(l, r)(pos)
           case _ => sys.error(s"unexpected operator $op")
         }
       case PUnExp(op, pe) =>
@@ -332,25 +340,14 @@ case class Translator(program: PProgram) {
           SeqLength(exp(s))(pos)
         else
           AnySetCardinality(exp(s))(pos)
-      case PContains(elem, s) =>
-        if (s.typ.isInstanceOf[PSeqType])
-          SeqContains(exp(elem), exp(s))(pos)
-        else
-          AnySetContains(exp(elem), exp(s))(pos)
       case PEmptySet() =>
-        EmptySet(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos)
+        EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos)
       case PExplicitSet(elems) =>
         ExplicitSet(elems map exp)(pos)
       case PEmptyMultiset() =>
-        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos)
+        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos)
       case PExplicitMultiset(elems) =>
         ExplicitMultiset(elems map exp)(pos)
-      case PSubset(left, right) =>
-        AnySetSubset(exp(left), exp(right))(pos)
-      case PIntersection(left, right) =>
-        AnySetIntersection(exp(left), exp(right))(pos)
-      case PUnion(left, right) =>
-        AnySetUnion(exp(left), exp(right))(pos)
     }
   }
 

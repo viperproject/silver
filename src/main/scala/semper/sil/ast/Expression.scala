@@ -465,9 +465,19 @@ case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, v
   lazy val typ = Bool
 }
 
+/** Set difference. */
+case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+  require(left.typ == right.typ)
+  require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
+  lazy val priority = 0
+  lazy val fixity = Infix(NonAssoc)
+  lazy val op = "setminus"
+  lazy val typ = left.typ
+}
+
 /** Is the element 'elem' contained in the sequence 'seq'? */
 case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
-  require((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SeqType].elementType)) ||
+  require((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SetType].elementType)) ||
     (s.typ.isInstanceOf[MultisetType] && (elem isSubtype s.typ.asInstanceOf[MultisetType].elementType)))
   lazy val priority = 0
   lazy val fixity = Infix(NonAssoc)
