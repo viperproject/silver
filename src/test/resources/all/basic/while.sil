@@ -133,6 +133,7 @@ method t11(r: Ref) returns ()
 
     while (j < 3)
         //:: ExpectedError(while.failed:insufficient.permission)
+        //:: ExpectedError(invariant.not.established:assertion.false)
         invariant r != null && r.f == 2
     {
         j := j+1

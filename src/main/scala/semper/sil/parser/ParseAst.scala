@@ -124,6 +124,16 @@ case class PSeqType(elementType: PType) extends PType {
   override def isConcrete = elementType.isConcrete
   override def substitute(map: Map[String, PType]) = PSeqType(elementType.substitute(map))
 }
+case class PSetType(elementType: PType) extends PType {
+  override def toString = s"Set[$elementType]"
+  override def isConcrete = elementType.isConcrete
+  override def substitute(map: Map[String, PType]) = PSetType(elementType.substitute(map))
+}
+case class PMultisetType(elementType: PType) extends PType {
+  override def toString = s"Multiset[$elementType]"
+  override def isConcrete = elementType.isConcrete
+  override def substitute(map: Map[String, PType]) = PMultisetType(elementType.substitute(map))
+}
 // for resolving if something cannot be typed
 case class PUnkown() extends PType {
   override def toString = "<error type>"
@@ -172,7 +182,12 @@ case class PSeqIndex(seq: PExp, idx: PExp) extends PExp
 case class PSeqTake(seq: PExp, n: PExp) extends PExp
 case class PSeqDrop(seq: PExp, n: PExp) extends PExp
 case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends PExp
-case class PSeqLength(seq: PExp) extends PExp
+case class PSize(seq: PExp) extends PExp
+
+case class PEmptySet() extends PExp
+case class PExplicitSet(elems: Seq[PExp]) extends PExp
+case class PEmptyMultiset() extends PExp
+case class PExplicitMultiset(elems: Seq[PExp]) extends PExp
 
 // Statements
 sealed trait PStmt extends PNode {
@@ -256,6 +271,8 @@ object Nodes {
       case PPrimitiv(name) => Nil
       case PDomainType(domain, args) => Seq(domain) ++ args
       case PSeqType(elemType) => Seq(elemType)
+      case PSetType(elemType) => Seq(elemType)
+      case PMultisetType(elemType) => Seq(elemType)
       case PUnkown() => Nil
       case PBinExp(left, op, right) => Seq(left, right)
       case PUnExp(op, exp) => Seq(exp)
@@ -285,7 +302,13 @@ object Nodes {
       case PSeqTake(seq, nn) => Seq(seq, nn)
       case PSeqDrop(seq, nn) => Seq(seq, nn)
       case PSeqUpdate(seq, idx, elem) => Seq(seq, idx, elem)
-      case PSeqLength(seq) => Seq(seq)
+      case PSize(seq) => Seq(seq)
+
+      case PEmptySet() => Nil
+      case PExplicitSet(elems) => elems
+      case PEmptyMultiset() => Nil
+      case PExplicitMultiset(elems) => elems
+
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)

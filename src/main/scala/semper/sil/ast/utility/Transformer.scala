@@ -109,6 +109,17 @@ object Transformer {
             case SeqUpdate(seq, idx, elem) =>
               SeqUpdate(go(seq), go(idx), go(elem))(p, i)
             case SeqLength(seq) => SeqLength(go(seq))(p, i)
+
+            case EmptySet(elemTyp) => exp
+            case ExplicitSet(elems) => ExplicitSet(elems map go)(p, i)
+            case EmptyMultiset(elemTyp) => exp
+            case ExplicitMultiset(elems) => ExplicitMultiset(elems map go)(p, i)
+            case AnySetUnion(left, right) => AnySetUnion(go(left), go(right))(p, i)
+            case AnySetIntersection(left, right) => AnySetIntersection(go(left), go(right))(p, i)
+            case AnySetSubset(left, right) => AnySetSubset(go(left), go(right))(p, i)
+            case AnySetMinus(left, right) => AnySetMinus(go(left), go(right))(p, i)
+            case AnySetContains(elem, s) => AnySetContains(go(elem), go(s))(p, i)
+            case AnySetCardinality(s) => AnySetCardinality(go(s))(p, i)
           }
 
         case program @
@@ -168,6 +179,8 @@ object Transformer {
             case Pred => aType
             case Ref => aType
             case SeqType(elementType) => SeqType(go(elementType))
+            case SetType(elementType) => SetType(go(elementType))
+            case MultisetType(elementType) => MultisetType(go(elementType))
             case TypeVar(_) => aType
           }
 

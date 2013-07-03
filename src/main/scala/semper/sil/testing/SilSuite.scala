@@ -242,7 +242,9 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
         // if there were any errors that could not be matched up (or other problems), make the test fail
         if (!testErrors.isEmpty) {
-          fail(testErrors.mkString("\n\n") + "\n\n")
+          val n = Seq(additionalErrors.size, expectedButMissingErrors.size, unexpectedButMissingErrors.size, missingButPresentErrors.size)
+          val title = s"${n.sum} errors (${n.mkString(",")}})"
+          fail((Seq(title) ++ testErrors).mkString("\n\n") + "\n\n")
         }
       }
     }

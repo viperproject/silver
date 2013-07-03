@@ -1,9 +1,11 @@
     sil-program ::= ( domain | field | function | predicate | method )*
 
-         domain ::= "domain" "{"
+         domain ::= "domain" domain-name "{"
                         domain-function*
                         axiom*
                     "}"
+
+    domain-name ::= ident | ident "[" ident^,* "]"
 
 domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
 
@@ -24,7 +26,7 @@ domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
   postcondition ::= "ensures" exp ";"?
       invariant ::= "invariant" exp ";"?
 
-      predicate ::= "predicate" ident "{" exp "}"
+      predicate ::= "predicate" ident "(" formal-arg ")" "{" exp "}"
 
          method ::= "method" ident "(" formal-arg^,* ")" ("returns" "(" formal-arg^,* ")")?
                         precondition*
@@ -37,8 +39,8 @@ domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
                   | "assert" exp
                   | "inhale" exp
                   | "exhale" exp
-                  | "fold" loc-access
-                  | "unfold" loc-access
+                  | "fold" "acc" "(" loc-access "," exp ")"
+                  | "unfold" "acc" "(" loc-access "," exp ")"
                   | loc-access ":=" exp         // field assignment
                   | ident ":=" exp              // local variable assignment
                   | "if" "(" exp ")" "{"

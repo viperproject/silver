@@ -61,6 +61,10 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     "while", "if", "elsif", "else",
     // special fresh block
     "fresh",
+    // sequences
+    "Seq",
+    // sets and multisets
+    "Set", "Multiset", "union", "intersection", "setminus", "subset",
     // unfolding expressions
     "unfolding", "in",
     // old expression
@@ -69,8 +73,6 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     "forall", "exists",
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
-    // sequences
-    "Seq",
     // modifiers
     "unique"
   )
@@ -220,7 +222,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   // --- Types
 
   lazy val typ: PackratParser[PType] =
-    primitiveTyp | domainTyp | seqType
+    primitiveTyp | domainTyp | seqType | setType | multisetType
   lazy val domainTyp: PackratParser[PDomainType] =
     idnuse ~ ("[" ~> (repsep(typ, ",") <~ "]")) ^^ PDomainType |
       idnuse ^^ {
@@ -229,6 +231,10 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       }
   lazy val seqType: PackratParser[PType] =
     "Seq[" ~> typ <~ "]" ^^ PSeqType
+  lazy val setType: PackratParser[PType] =
+    "Set[" ~> typ <~ "]" ^^ PSetType
+  lazy val multisetType: PackratParser[PType] =
+    "Multiset[" ~> typ <~ "]" ^^ PMultisetType
   lazy val primitiveTyp: PackratParser[PType] =
     ("Int" | "Bool" | "Perm" | "Ref") ^^ PPrimitiv
 
@@ -267,6 +273,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
 
   lazy val factor: PackratParser[PExp] =
     fapp |
+      set |
       seq |
       locAcc |
       integer |
@@ -334,7 +341,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       seqTake | seqDrop | seqTakeDrop |
       seqContains | seqUpdate
   lazy val seqLength: PackratParser[PExp] =
-    "|" ~> exp <~ "|" ^^ PSeqLength
+    "|" ~> exp <~ "|" ^^ PSize
   lazy val seqTake: PackratParser[PExp] =
     exp ~ ("[.." ~> exp <~ "]") ^^ PSeqTake
   lazy val seqDrop: PackratParser[PExp] =
@@ -356,6 +363,30 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     }
   lazy val seqRange: PackratParser[PExp] =
     ("[" ~> exp <~ "..") ~ (exp <~ ")") ^^ PRangeSeq
+
+  // --- Sets
+
+  lazy val set =
+    setUnion | setIntersection | setMinus | subset |
+      explicitSet | explicitMultiset
+  lazy val setUnion: PackratParser[PExp] =
+    exp ~ "union" ~ exp ^^ PBinExp
+  lazy val setIntersection: PackratParser[PExp] =
+    exp ~ "intersection" ~ exp ^^ PBinExp
+  lazy val setMinus: PackratParser[PExp] =
+    exp ~ "setminus" ~ exp ^^ PBinExp
+  lazy val subset: PackratParser[PExp] =
+    exp ~ "subset" ~ exp ^^ PBinExp
+  lazy val explicitSet: PackratParser[PExp] =
+    "Set(" ~> repsep(exp, ",") <~ ")" ^^ {
+      case Nil => PEmptySet()
+      case elems => PExplicitSet(elems)
+    }
+  lazy val explicitMultiset: PackratParser[PExp] =
+    "Multiset(" ~> repsep(exp, ",") <~ ")" ^^ {
+      case Nil => PEmptySet()
+      case elems => PExplicitSet(elems)
+    }
 
   // --- Identifier and keywords
 

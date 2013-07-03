@@ -52,6 +52,7 @@ method t4b() returns (a: Ref, b: Ref)
 
 method t5_a(r: Ref)
      //:: ExpectedError(not.wellformed:receiver.null)
+     //:: ExpectedError(not.wellformed:insufficient.permission)
      requires r.f == 2
  {
  }
@@ -65,6 +66,7 @@ method t5_a(r: Ref)
 
 method t6_a(r: Ref)
     //:: ExpectedError(not.wellformed:receiver.null)
+    //:: ExpectedError(not.wellformed:insufficient.permission)
     ensures r.f == 2
 {
     assume false

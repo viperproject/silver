@@ -6,25 +6,25 @@ method t1() {
     var a: Ref
     var c: Ref
 
+    inhale acc(a.f, write)
+
     c := new()
+
+    assert c.f != c
 
     assume a != null
     set_f(a, c)
-
-    inhale acc(a.f, write)
-
-    assert c.f != c
 
     //:: ExpectedError(assert.failed:assertion.false)
     assert a.f != c
 }
 
 method set_f(monitor: Ref, value: Ref)
+  requires acc(monitor.f, write)
   requires monitor != null && value != null
+  ensures acc(monitor.f, write)
 {
-  inhale acc(monitor.f, write)
   monitor.f := value
-  exhale acc(monitor.f, write)
 }
 
 method t2(r: Ref) {

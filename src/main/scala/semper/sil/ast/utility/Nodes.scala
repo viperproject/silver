@@ -75,6 +75,7 @@ object Nodes {
           case FuncApp(func, args) => args
           case DomainFuncApp(func, args, m) =>
             args ++ m.keys ++ m.values
+
           case EmptySeq(elemTyp) => Seq(elemTyp)
           case ExplicitSeq(elems) => elems
           case RangeSeq(low, high) => Seq(low, high)
@@ -85,6 +86,17 @@ object Nodes {
           case SeqContains(elem, seq) => Seq(elem, seq)
           case SeqUpdate(seq, idx, elem) => Seq(seq, idx, elem)
           case SeqLength(seq) => Seq(seq)
+
+          case EmptySet(elemTyp) => Seq(elemTyp)
+          case ExplicitSet(elems) => elems
+          case EmptyMultiset(elemTyp) => Seq(elemTyp)
+          case ExplicitMultiset(elems) => elems
+          case AnySetUnion(left, right) => Seq(left, right)
+          case AnySetIntersection(left, right) => Seq(left, right)
+          case AnySetSubset(left, right) => Seq(left, right)
+          case AnySetMinus(left, right) => Seq(left, right)
+          case AnySetContains(elem, s) => Seq(elem, s)
+          case AnySetCardinality(s) => Seq(s)
         }
       case t: Type => Nil
     }

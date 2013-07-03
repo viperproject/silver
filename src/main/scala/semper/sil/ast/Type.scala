@@ -56,6 +56,18 @@ case class SeqType(elementType: Type) extends BuiltInType {
   override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
     SeqType(elementType.substitute(typVarsMap))
 }
+/** Type for sets */
+case class SetType(elementType: Type) extends BuiltInType {
+  override lazy val isConcrete = elementType.isConcrete
+  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
+    SetType(elementType.substitute(typVarsMap))
+}
+/** Type for multisets */
+case class MultisetType(elementType: Type) extends BuiltInType {
+  override lazy val isConcrete = elementType.isConcrete
+  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
+    MultisetType(elementType.substitute(typVarsMap))
+}
 
 /**
  * Type for user-defined domains.

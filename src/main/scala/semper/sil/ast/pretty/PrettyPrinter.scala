@@ -146,10 +146,12 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case Perm => "Perm"
       case Pred => "$PredicateType"
       case SeqType(elemType) => "Seq" <> "[" <> show(elemType) <> "]"
+      case SetType(elemType) => "Set" <> "[" <> show(elemType) <> "]"
+      case MultisetType(elemType) => "Multiset" <> "[" <> show(elemType) <> "]"
       case TypeVar(v) => v
       case DomainType(domain, typVarsMap) =>
         val typArgs = domain.typVars map (t => show(typVarsMap.getOrElse(t, t)))
-        domain.name <> brackets(ssep(typArgs, comma <> space))
+        domain.name <> (if (typArgs.isEmpty) empty else brackets(ssep(typArgs, comma <> space)))
     }
   }
 
@@ -258,6 +260,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       func.name <> parens(ssep(args map show, comma <> space))
     case DomainFuncApp(func, args, _) =>
       func.name <> parens(ssep(args map show, comma <> space))
+
     case EmptySeq(elemTyp) =>
       "Seq()"
     case ExplicitSeq(elems) =>
@@ -276,6 +279,30 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       show(seq) <> brackets(show(idx) <+> ":=" <+> show(elem))
     case SeqLength(seq) =>
       "|" <> show(seq) <> "|"
+    case SeqContains(elem, seq) =>
+      show(elem) <+> "in" <+> show(seq)
+
+    case EmptySet(elemTyp) =>
+      "Set()"
+    case ExplicitSet(elems) =>
+      "Set" <> parens(ssep(elems map show, comma <> space))
+    case EmptyMultiset(elemTyp) =>
+      "Multiset()"
+    case ExplicitMultiset(elems) =>
+      "Multiset" <> parens(ssep(elems map show, comma <> space))
+    case AnySetUnion(left, right) =>
+      show(left) <+> "union" <+> show(right)
+    case AnySetIntersection(left, right) =>
+      show(left) <+> "intersection" <+> show(right)
+    case AnySetSubset(left, right) =>
+      show(left) <+> "subset" <+> show(right)
+    case AnySetMinus(left, right) =>
+      show(left) <+> "setminus" <+> show(right)
+    case AnySetContains(elem, s) =>
+      show(elem) <+> "in" <+> show(s)
+    case AnySetCardinality(s) =>
+      "|" <> show(s) <> "|"
+
     case null => uninitialized
     case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)
     case _ => sys.error(s"unknown expression: ${e.getClass}")

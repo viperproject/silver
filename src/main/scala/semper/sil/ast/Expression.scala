@@ -185,7 +185,7 @@ case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVa
   override lazy val formalArgs: Seq[LocalVarDecl] = {
     callee.formalArgs map {
       fa =>
-        // substitute parameter types
+      // substitute parameter types
         LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
     }
   }
@@ -257,7 +257,28 @@ object QuantifiedExp {
 }
 
 /** Universal quantification. */
-case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
+case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp {
+
+  /**
+   * Returns an identical forall quantification that has some automatically generated triggers
+   * if necessary and possible.
+   */
+  lazy val autoTrigger: Forall = {
+    if (triggers.isEmpty) {
+      val gen = Expressions.generateTrigger(this)
+      if (gen.size > 0) {
+        val (triggers, extraVariables) = gen(0)
+        Forall(variables ++ extraVariables, triggers, exp)(pos, info)
+      } else {
+        // no triggers found
+        this
+      }
+    } else {
+      // triggers already present
+      this
+    }
+  }
+}
 
 /** Existential quantification. */
 case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
@@ -374,6 +395,104 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
   lazy val typ = Int
 }
 
+// --- Mathematical sets and multisets
+
+/**
+ * Marker trait for all set-related expressions. Does not imply that the type of the
+ * expression is `SetType`.
+ */
+sealed trait SetExp extends Exp
+
+/**
+ * Marker trait for all set-related expressions. Does not imply that the type of the
+ * expression is `MultisetType`.
+ */
+sealed trait MultisetExp extends Exp
+
+/** The empty set of a given element type. */
+case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
+  lazy val typ = SetType(elemTyp)
+}
+
+/** An explicit, non-empty set. */
+case class ExplicitSet(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
+  require(elems.length > 0)
+  require(elems.tail.forall(e => e.typ == elems.head.typ))
+  elems foreach Consistency.checkNoPositiveOnly
+  lazy val typ = SetType(elems.head.typ)
+}
+
+/** The empty multiset of a given element type. */
+case class EmptyMultiset(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends MultisetExp {
+  lazy val typ = MultisetType(elemTyp)
+}
+
+/** An explicit, non-empty multiset. */
+case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends MultisetExp {
+  require(elems.length > 0)
+  require(elems.tail.forall(e => e.typ == elems.head.typ))
+  elems foreach Consistency.checkNoPositiveOnly
+  lazy val typ = MultisetType(elems.head.typ)
+}
+
+/** Union of two sets or two multisets. */
+case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+  require(left.typ == right.typ)
+  require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
+  lazy val priority = 0
+  lazy val fixity = Infix(LeftAssoc)
+  lazy val op = "union"
+  lazy val typ = left.typ
+}
+
+/** Intersection of two sets or two multisets. */
+case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+  require(left.typ == right.typ)
+  require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
+  lazy val priority = 0
+  lazy val fixity = Infix(LeftAssoc)
+  lazy val op = "union"
+  lazy val typ = left.typ
+}
+
+/** Subset relation of two sets or two multisets. */
+case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+  require(left.typ == right.typ)
+  require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
+  lazy val priority = 0
+  lazy val fixity = Infix(NonAssoc)
+  lazy val op = "subset"
+  lazy val typ = Bool
+}
+
+/** Set difference. */
+case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+  require(left.typ == right.typ)
+  require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
+  lazy val priority = 0
+  lazy val fixity = Infix(NonAssoc)
+  lazy val op = "setminus"
+  lazy val typ = left.typ
+}
+
+/** Is the element 'elem' contained in the sequence 'seq'? */
+case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+  require((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SetType].elementType)) ||
+    (s.typ.isInstanceOf[MultisetType] && (elem isSubtype s.typ.asInstanceOf[MultisetType].elementType)))
+  lazy val priority = 0
+  lazy val fixity = Infix(NonAssoc)
+  lazy val left: PrettyExpression = elem
+  lazy val op = "in"
+  lazy val right: PrettyExpression = s
+  lazy val typ = Bool
+}
+
+/** The length of a sequence. */
+case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp {
+  require(s.typ.isInstanceOf[SetType] || s.typ.isInstanceOf[MultisetType])
+  lazy val typ = Int
+}
+
 // --- Common functionality
 
 /** Common super trait for all kinds of literals. */
@@ -389,6 +508,16 @@ sealed trait FuncLikeApp extends Exp with Call {
   def func: FuncLike
   lazy val callee = func
   def typ = func.typ
+}
+object FuncLikeApp {
+  def unapply(fa: FuncLikeApp) = Some((fa.func, fa.args))
+  def apply(f: FuncLike, args: Seq[Exp], typVars: Map[TypeVar, Type]) = {
+    f match {
+      case f@Function(_, _, _, _, _, _) => FuncApp(f, args)()
+      case f@DomainFunc(_, _, _, _) => DomainFuncApp(f, args, typVars)()
+      case _ => sys.error(s"should not occur: $f (${f.getClass})")
+    }
+  }
 }
 
 /** Common superclass for domain functions with arbitrary parameters and return type, binary and unary operations are a special case. */
