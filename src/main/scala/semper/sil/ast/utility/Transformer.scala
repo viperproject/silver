@@ -282,9 +282,14 @@ object Transformer {
         While(recurse(condition), invariants map translate,
           locals map recurse, recurse(body))(loop.pos, loop.info)
 
-      case Assert(expression) => translate(expression)
-      case Exhale(expression) => translate(expression)
-      case Inhale(expression) => translate(expression)
+      case root @ Assert(expression) =>
+        Assert(translate(expression))(root.pos, root.info)
+
+      case exhale @ Exhale(expression) =>
+        Exhale(translate(expression))(exhale.pos, exhale.info)
+
+      case inhale @ Inhale(expression) =>
+        Inhale(translate(expression))(inhale.pos, inhale.info)
     }
 
     def recurse[B <: Node](root: B): B = {
