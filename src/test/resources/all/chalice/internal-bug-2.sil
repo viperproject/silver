@@ -1,0 +1,9 @@
+  var x: Int
+  predicate inv(this: Ref) { acc(this.x, write) }
+  method koko(this: Ref)
+    requires acc(this.inv, write)
+  {
+    //:: ExpectedError(assignment.failed:insufficient.permission)
+    this.x := this.x + 1
+    assert (((unfolding acc(this.inv, write) in this.x)) == (old((unfolding acc(this.inv, write) in this.x))))
+  }

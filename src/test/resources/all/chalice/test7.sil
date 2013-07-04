@@ -1,0 +1,111 @@
+  var value: Int
+  predicate inv(this: Ref) { acc(this.value, write) }
+  function get(this: Ref): Int
+    requires acc(this.inv, write)
+  { (unfolding acc(this.inv, write) in this.value) }
+  method set(this: Ref, newval: Int)
+    requires acc(this.inv, write)
+    ensures acc(this.inv, write) && ((get(this)) == (newval))
+  {
+    unfold acc(this.inv, write)
+    this.value := newval
+    fold acc(this.inv, write)
+  }
+  method callmethod0(this: Ref)
+    requires acc(this.inv, write)
+    ensures acc(this.inv, write) && ((get(this)) == (3))
+  {
+    set(this, 3);
+  }
+  method callmethod1(this: Ref)
+    requires this != null
+  {
+    //:: ExpectedError(call.precondition:insufficient.permission)
+    set(this, 3);
+  }
+  method ifc(this: Ref)
+    requires acc(this.inv, write)
+    ensures acc(this.inv, write) && get(this) > old(get(this))
+  {
+    if (get(this) > 0) {
+      set(this, get(this) + get(this));
+    } else {
+      set(this, 2);
+    }
+  }
+  method loop0(this: Ref) returns (r: Int)
+    requires acc(this.inv, write) && get(this) > 0
+    ensures acc(this.inv, write) && ((r) == (get(this)))
+  {
+    r := 0
+    while (r < (unfolding acc(this.inv, write) in this.value))
+      invariant acc(this.inv, write) && r <= get(this)
+    {
+      r := r + 1
+    }
+  }
+  method loop1(this: Ref) returns (r: Int)
+    requires acc(this.inv, write) && get(this) > 0
+    ensures acc(this.inv, write) && ((r) == (get(this)))
+  {
+    r := 0
+    while (r < get(this))
+      invariant acc(this.inv, write) && r <= (unfolding acc(this.inv, write) in this.value)
+    {
+      r := r + 1
+    }
+  }
+  method uf0(this: Ref)
+    requires acc(this.value, write)
+  {
+    assert acc(this.value, write)
+    fold acc(this.inv, write)
+    //:: ExpectedError(assert.failed:insufficient.permission)
+    assert acc(this.value, write)
+  }
+  method uf1(this: Ref)
+    requires acc(this.value, write)
+  {
+    assert acc(this.value, write)
+    fold acc(this.inv, write)
+    assert acc(this.inv, write)
+  }
+  method uf2(this: Ref)
+    requires acc(this.inv, write)
+  {
+    assert acc(this.inv, write)
+    unfold acc(this.inv, write)
+    assert acc(this.value, write)
+  }
+  method uf3(this: Ref)
+    requires acc(this.inv, write)
+  {
+    assert acc(this.inv, write)
+    unfold acc(this.inv, write)
+    //:: ExpectedError(assert.failed:insufficient.permission)
+    assert acc(this.inv, write)
+  }
+  method badframing0(this: Ref)
+    requires this != null
+    //:: ExpectedError(application.precondition:insufficient.permission)
+    requires ((get(this)) == (2))
+  {
+  }
+  method badframing1(this: Ref)
+    requires this != null
+    //:: ExpectedError(not.wellformed:insufficient.permission)
+    requires ((this.value) == (2))
+  {
+  }
+  method badframing2(this: Ref)
+    requires this != null
+    //:: ExpectedError(application.precondition:insufficient.permission)
+    requires acc(this.value, write) && ((get(this)) == (2))
+  {
+  }
+  method badframing3(this: Ref)
+    requires this != null
+    //:: ExpectedError(not.wellformed:insufficient.permission)
+    requires acc(this.inv, write) && ((this.value) == (2))
+  {
+  }

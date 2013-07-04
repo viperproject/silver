@@ -1,0 +1,19 @@
+  var value: Int
+  predicate inv(this: Ref) { acc(this.value, write) }
+  function get(this: Ref): Int
+    requires acc(this.inv, write)
+  { (unfolding acc(this.inv, write) in this.value) }
+  method set(this: Ref, newval: Int)
+    requires acc(this.inv, write)
+    ensures acc(this.inv, write) && ((get(this)) == (newval))
+  {
+    unfold acc(this.inv, write)
+    this.value := newval
+    fold acc(this.inv, write)
+  }
+  method test(this: Ref)
+    requires acc(this.inv, write)
+  {
+    set(this, 3);
+    set(this, 4);
+  }

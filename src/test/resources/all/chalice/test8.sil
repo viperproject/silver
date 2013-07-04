@@ -1,0 +1,43 @@
+  var value: Int
+  var next: Ref
+  predicate inv(this: Ref) { acc(this.value, write) }
+  predicate tinv(this: Ref) { acc(this.value, write) && acc(this.next, write) && (((this.next) != (null)) ==> acc(this.next.tinv, write)) }
+  function get(this: Ref): Int
+    requires acc(this.tinv, write)
+  { (unfolding acc(this.tinv, write) in this.value) }
+  method fufu(this: Ref)
+    requires acc(this.value, write)
+  {
+    fold acc(this.inv, write)
+    unfold acc(this.inv, write)
+    fold acc(this.inv, write)
+    unfold acc(this.inv, write)
+  }
+  method fuf(this: Ref)
+    requires acc(this.value, write)
+  {
+    fold acc(this.inv, write)
+    unfold acc(this.inv, write)
+    fold acc(this.inv, write)
+  }
+  method uf(this: Ref)
+    requires acc(this.inv, write)
+  {
+    unfold acc(this.inv, write)
+    fold acc(this.inv, write)
+  }
+  method fu(this: Ref)
+    requires acc(this.value, write)
+  {
+    fold acc(this.inv, write)
+    unfold acc(this.inv, write)
+  }
+  method t(this: Ref)
+    requires acc(this.tinv, write) && (unfolding acc(this.tinv, write) in ((this.next) != (null)))
+    ensures acc(this.tinv, write) && (unfolding acc(this.tinv, write) in ((this.next) != (null)))
+  {
+    unfold acc(this.tinv, write)
+    unfold acc(this.next.tinv, write)
+    fold acc(this.next.tinv, write)
+    fold acc(this.tinv, write)
+  }
