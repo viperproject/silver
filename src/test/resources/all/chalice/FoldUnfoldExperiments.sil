@@ -3,27 +3,27 @@
   predicate X(this: Ref) { acc(this.x, write) }
   predicate Y(this: Ref) { acc(this.y, write) }
   function getX(this: Ref): Int
-    requires acc(this.X, write)
-  { (unfolding acc(this.X, write) in this.x) }
+    requires acc(this.X(), write)
+  { (unfolding acc(this.X(), write) in this.x) }
   function getY(this: Ref): Int
-    requires acc(this.Y, write)
-  { (unfolding acc(this.Y, write) in this.y) }
+    requires acc(this.Y(), write)
+  { (unfolding acc(this.Y(), write) in this.y) }
   method setX(this: Ref, v: Int)
-    requires acc(this.X, write)
-    ensures acc(this.X, write) && ((getX(this)) == (v))
+    requires acc(this.X(), write)
+    ensures acc(this.X(), write) && ((getX(this)) == (v))
   {
-    unfold acc(this.X, write)
+    unfold acc(this.X(), write)
     this.x := v
-    fold acc(this.X, write)
+    fold acc(this.X(), write)
   }
   method check(this: Ref)
     requires acc(this.x, write) && acc(this.y, write)
-    ensures acc(this.y, write) && ((this.y) == (2)) && acc(this.X, write) && ((getX(this)) == (3))
+    ensures acc(this.y, write) && ((this.y) == (2)) && acc(this.X(), write) && ((getX(this)) == (3))
   {
     this.x := 1
     this.y := 2
-    fold acc(this.X, write)
-    fold acc(this.Y, write)
+    fold acc(this.X(), write)
+    fold acc(this.Y(), write)
     setX(this, 3);
-    unfold acc(this.Y, write)
+    unfold acc(this.Y(), write)
   }

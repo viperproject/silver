@@ -1,24 +1,24 @@
   var value: Int
   predicate p(this: Ref) { acc(this.value, write) }
   method test(this: Ref)
-    requires acc(this.p, write) && acc(this.value, write)
+    requires acc(this.p(), write) && acc(this.value, write)
   {
-    fold acc(this.p, write)
-    fold acc(this.p, write)
+    fold acc(this.p(), write)
+    fold acc(this.p(), write)
     void(this);
     void(this);
     void2(this);
-    unfold acc(this.p, write)
+    unfold acc(this.p(), write)
     var tmp: Int := this.value
-    fold acc(this.p, write)
-    assert ((tmp) == ((unfolding acc(this.p, write) in this.value)))
+    fold acc(this.p(), write)
+    assert ((tmp) == ((unfolding acc(this.p(), write) in this.value)))
   }
   method void(this: Ref)
-    requires acc(this.p, write)
+    requires acc(this.p(), write)
   {
   }
   method void2(this: Ref)
-    requires acc(this.p, write)
-    ensures acc(this.p, write)
+    requires acc(this.p(), write)
+    ensures acc(this.p(), write)
   {
   }
