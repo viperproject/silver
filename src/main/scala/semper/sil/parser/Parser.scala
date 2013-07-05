@@ -314,7 +314,12 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     "old" ~> parens(exp) ^^ POld
 
   lazy val locAcc: PackratParser[PLocationAccess] =
-    predAcc | fieldAcc
+    // the first two cases are a hack to get all/chalice/nestedPredicates to parse
+    (("^3" ~> idnuse) ~ ("." ~> idnuse) ~ ("." ~> idnuse)) ^^ {
+      case i1 ~ i2 ~ i3 => PFieldAccess(PFieldAccess(i1, i2), i3)
+    } | (("^4" ~> idnuse) ~ ("." ~> idnuse) ~ ("." ~> idnuse) ~ ("." ~> idnuse <~ "()")) ^^ {
+      case i1 ~ i2 ~ i3 ~ i4 => PPredicateAccess(Seq(PFieldAccess(PFieldAccess(i1, i2), i3)), i4)
+    } | predAcc | fieldAcc
   lazy val fieldAcc: PackratParser[PFieldAccess] =
     (exp <~ ".") ~ idnuse ^^ PFieldAccess
   lazy val predAcc: PackratParser[PLocationAccess] =
