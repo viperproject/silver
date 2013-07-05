@@ -3,7 +3,6 @@ package semper.sil.parser
 import org.kiama.util.Positioned
 import org.kiama.attribution.Attributable
 import TypeHelper._
-import java.io.File
 import java.nio.file.Path
 
 /**
@@ -160,7 +159,9 @@ case class PBoolLit(b: Boolean) extends PExp {
 case class PNullLit() extends PExp {
   typ = Ref
 }
-case class PLocationAccess(rcv: PExp, idnuse: PIdnUse) extends PExp
+sealed trait PLocationAccess extends PExp
+case class PFieldAccess(rcv: PExp, idnuse: PIdnUse) extends PLocationAccess
+case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse) extends PLocationAccess
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
 case class PUnfolding(loc: PAccPred, exp: PExp) extends PExp
 case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp
@@ -212,7 +213,7 @@ case class PAssert(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
 case class PNewStmt(target: PIdnUse) extends PStmt
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
-case class PFieldAssign(fieldAcc: PLocationAccess, rhs: PExp) extends PStmt
+case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PStmt) extends PStmt
 case class PFreshReadPerm(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
@@ -233,7 +234,7 @@ case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFun
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with RealEntity
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with RealEntity
-case class PPredicate(idndef: PIdnDef, formalArg: PFormalArgDecl, body: PExp) extends PMember with RealEntity
+case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: PExp) extends PMember with RealEntity
 case class PAxiom(idndef: PIdnDef, exp: PExp) extends PNode with PScope
 
 /** An entity is a declaration (i.e. something that contains a PIdnDef). */
@@ -281,7 +282,8 @@ object Nodes {
       case PNullLit() => Nil
       case PPredicateType() => Nil
       case PResultLit() => Nil
-      case PLocationAccess(rcv, field) => Seq(rcv, field)
+      case PFieldAccess(rcv, field) => Seq(rcv, field)
+      case PPredicateAccess(args, pred) => args ++ Seq(pred)
       case PFunctApp(func, args) => Seq(func) ++ args
       case PUnfolding(loc, exp) => Seq(loc, exp)
       case PExists(vars, exp) => vars ++ Seq(exp)
@@ -335,8 +337,8 @@ object Nodes {
         Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ Seq(exp)
       case PDomainFunction(name, args, typ, unique) =>
         Seq(name) ++ args ++ Seq(typ)
-      case PPredicate(name, arg, body) =>
-        Seq(name, arg, body)
+      case PPredicate(name, args, body) =>
+        Seq(name) ++ args ++ Seq(body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
     }
   }

@@ -69,7 +69,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(p: PPredicate) = p match {
-    case PPredicate(name, formalArg, body) =>
+    case PPredicate(name, formalArgs, body) =>
       val p = findPredicate(name)
       p.body = exp(body)
       p
@@ -93,8 +93,8 @@ case class Translator(program: PProgram) {
         DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos)
       case PDomain(_, typVars, funcs, axioms) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.name)))(pos)
-      case PPredicate(_, formalArg, _) =>
-        Predicate(name, Seq(liftVarDecl(formalArg)), null)(pos)
+      case PPredicate(_, formalArgs, _) =>
+        Predicate(name, formalArgs map liftVarDecl, null)(pos)
       case PMethod(_, formalArgs, formalReturns, _, _, _) =>
         Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null, null)(pos)
     }
@@ -263,10 +263,10 @@ case class Translator(program: PProgram) {
         if (b) TrueLit()(pos) else FalseLit()(pos)
       case PNullLit() =>
         NullLit()(pos)
-      case p@PLocationAccess(rcv, idn) if p.typ != TypeHelper.Pred =>
+      case p@PFieldAccess(rcv, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos)
-      case p@PLocationAccess(rcv, idn) if p.typ == TypeHelper.Pred =>
-        PredicateAccess(Seq(exp(rcv)), findPredicate(idn))(pos)
+      case p@PPredicateAccess(args, idn) =>
+        PredicateAccess(args map exp, findPredicate(idn))(pos)
       case PFunctApp(func, args) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
