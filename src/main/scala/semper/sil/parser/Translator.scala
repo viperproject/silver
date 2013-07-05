@@ -94,7 +94,7 @@ case class Translator(program: PProgram) {
       case PDomain(_, typVars, funcs, axioms) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.name)))(pos)
       case PPredicate(_, formalArg, _) =>
-        Predicate(name, liftVarDecl(formalArg), null)(pos)
+        Predicate(name, Seq(liftVarDecl(formalArg)), null)(pos)
       case PMethod(_, formalArgs, formalReturns, _, _, _) =>
         Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null, null)(pos)
     }
@@ -266,7 +266,7 @@ case class Translator(program: PProgram) {
       case p@PLocationAccess(rcv, idn) if p.typ != TypeHelper.Pred =>
         FieldAccess(exp(rcv), findField(idn))(pos)
       case p@PLocationAccess(rcv, idn) if p.typ == TypeHelper.Pred =>
-        PredicateAccess(exp(rcv), findPredicate(idn))(pos)
+        PredicateAccess(Seq(exp(rcv)), findPredicate(idn))(pos)
       case PFunctApp(func, args) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)

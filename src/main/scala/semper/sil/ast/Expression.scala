@@ -211,13 +211,14 @@ case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, v
 }
 
 /** A predicate access expression. */
-case class PredicateAccess(rcv: Exp, predicate: Predicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess {
+case class PredicateAccess(args: Seq[Exp], predicate: Predicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess {
   lazy val loc = predicate
   lazy val typ = Pred
+  lazy val rcv = args(0)
 
   /** The body of the predicate with the receiver instantiated correctly. */
   lazy val predicateBody =
-    Expressions.instantiateVariables(predicate.body, Seq(predicate.formalArg), Seq(rcv))
+    Expressions.instantiateVariables(predicate.body, predicate.formalArgs, args)
 }
 
 // --- Conditional expression
