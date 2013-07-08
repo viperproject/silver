@@ -404,7 +404,7 @@ case class TypeChecker(names: NameAnalyser) {
                 if (left.typ.isUnknown || right.typ.isUnknown) {
                   setErrorType()
                 } else {
-                  setType(left.typ)
+                  setType(right.typ)
                 }
             }
           case "/" =>
