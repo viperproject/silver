@@ -55,9 +55,8 @@ trait SilFrontend extends DefaultFrontend {
     _ver = createVerifier(args.mkString(" "))
 
     // parse command line arguments
-    var opts = List("--help", "C:\\tmp\\sil\\cfg.dot")
     try {
-      _config = SilFrontendConfig(opts, verifier)
+      _config = SilFrontendConfig(args, verifier)
       config.file() // hack: force command-line option parsing
     } catch {
       case t: Exception =>
@@ -177,8 +176,12 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def doTranslate(input: TypecheckerResult): Result[Program] = {
-    // no translation needed
-    Succ(input)
+    // Filter methods according to command-line arguments.
+    val verifyMethods = if (config.methods() != ":all")
+      Seq("methods", config.methods())
+    else input.methods map (_.name)
+    val methods = input.methods filter (m => verifyMethods.contains(m.name))
+    Succ(Program(input.domains, input.fields, input.functions, input.predicates, methods)(input.pos, input.info))
   }
 
   override def mapVerificationResult(in: VerificationResult) = in
