@@ -1,0 +1,15 @@
+
+var f: Ref
+var g: Ref
+
+predicate valid(b: Bool, r1: Ref, r2: Ref) {
+    b ? (acc(r1.f, write) && (r1.f != null ==> acc(true.valid(r1.f, r2), write))) :
+        (acc(r2.f, write) && (r2.f != null ==> acc(false.valid(r1, r2.f), write)))
+}
+
+method t1(r1: Ref, r2: Ref, b: Bool)
+    requires acc(false.valid(r1, r2), write)
+{
+    unfold acc(false.valid(r1, r2), write)
+    assert (r2 != (r2.f))
+}
