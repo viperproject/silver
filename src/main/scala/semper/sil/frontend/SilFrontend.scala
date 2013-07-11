@@ -177,7 +177,7 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doTranslate(input: TypecheckerResult): Result[Program] = {
     // Filter methods according to command-line arguments.
-    val verifyMethods = if (config.methods() != ":all")
+    val verifyMethods = if (config != null && config.methods() != ":all")
       Seq("methods", config.methods())
     else input.methods map (_.name)
     val methods = input.methods filter (m => verifyMethods.contains(m.name))
