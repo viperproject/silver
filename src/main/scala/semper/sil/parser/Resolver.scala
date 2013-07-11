@@ -79,7 +79,6 @@ case class TypeChecker(names: NameAnalyser) {
   def check(p: PPredicate) {
     checkMember(p) {
       p.formalArgs map (a => check(a.typ))
-      ensure(p.formalArgs(0).typ == Ref, p.formalArgs(0), "expected Ref as the type of the first argument")
       check(p.body, Bool)
     }
   }
@@ -547,9 +546,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(idnuse, expected)
         setType(idnuse.typ)
       case p@PPredicateAccess(args, idnuse) =>
-        ensure(args.size > 0, p, "must have at least one argument to predicate")
-        check(args(0), Ref)
-        args.tail map (a => check(a, Nil))
+        args map (a => check(a, Nil))
         check(idnuse, expected)
         setType(Pred)
       case fa@PFunctApp(func, args) =>
