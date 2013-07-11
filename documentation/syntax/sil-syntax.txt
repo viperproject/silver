@@ -26,7 +26,7 @@ domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
   postcondition ::= "ensures" exp ";"?
       invariant ::= "invariant" exp ";"?
 
-      predicate ::= "predicate" ident "(" formal-arg ")" "{" exp "}"
+      predicate ::= "predicate" ident "(" formal-arg^,* ")" "{" exp "}"
 
          method ::= "method" ident "(" formal-arg^,* ")" ("returns" "(" formal-arg^,* ")")?
                         precondition*
@@ -73,7 +73,7 @@ domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
                   | exp ("\ " | "%") exp        // integer division and modulo
                   | ("+" | "-") exp             // math operators (both numerical/permission)
                   | ident "(" exp^,* ")"         // function application
-                  | loc-access                  // field read
+                  | loc-access                  // field read or predicate
                   | integer                     // integer literal
                   | "null"                      // null literal
                   | "true" | "false"            // boolean literal
@@ -115,7 +115,8 @@ domain-function ::= "unique"? "function" ident "(" formal-arg^,* ")" ":" type
 
         trigger ::= "{" exp^,* "}"               // a trigger for a quantification
 
-     loc-access ::= exp "." ident               // location access (field or predicate)
+     loc-access ::= exp "." ident               // field access
+                  | ident "(" exp^,* ")"         // predicate
 
            type ::= "Int" | "Bool" | "Perm" | "Ref"  // primitive types
                   | "Seq" "[" type "]"          // sequence type
