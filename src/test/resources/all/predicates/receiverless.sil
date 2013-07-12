@@ -6,7 +6,6 @@ predicate valid(b: Bool) {
 method t1(this: Ref, b: Bool)
     requires acc(false.valid(), write)
 {
-    //:: ExpectedError(assert.failed:assertion.false)
     assert false
 }
 
