@@ -56,7 +56,7 @@ object Nodes {
           case _: Literal => Nil
           case AbstractLocalVar(n) => Nil
           case FieldAccess(rcv, field) => Seq(rcv)
-          case PredicateAccess(rcv, predicate) => Seq(rcv)
+          case PredicateAccess(params, predicate) => params
           case Unfolding(acc, exp) => Seq(acc, exp)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)

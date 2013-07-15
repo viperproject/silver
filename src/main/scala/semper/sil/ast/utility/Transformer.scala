@@ -38,8 +38,8 @@ object Transformer {
             /* No recursion on field here. */
             case FieldAccess(rcv, field) => FieldAccess(go(rcv), field)(p, i)
             /* No recursion on predicate here. */
-            case PredicateAccess(rcv, predicate) =>
-              PredicateAccess(go(rcv), predicate)(p, i)
+            case PredicateAccess(params, predicate) =>
+              PredicateAccess(params map go, predicate)(p, i)
             case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i)
             case Old(e) => Old(go(e))(p, i)
             case CondExp(cond, thn, els) =>
@@ -143,8 +143,8 @@ object Transformer {
                 postconditions map go,
                 go(body))(member.pos, member.info)
 
-            case Predicate(name, parameter, body) =>
-              Predicate(name, go(parameter),
+            case Predicate(name, parameters, body) =>
+              Predicate(name, parameters map go,
                 go(body))(member.pos, member.info)
 
             case Method(name, parameters, results, preconditions,

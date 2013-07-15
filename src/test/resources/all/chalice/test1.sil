@@ -1,0 +1,42 @@
+  var value: Int
+  var next: Ref
+  predicate inv(this: Ref) { acc(this.value, write) && acc(this.next, write) && (((this.next) != (null)) ==> acc(this.next.inv(), write)) }
+  function get(this: Ref): Int
+    requires acc(this.inv(), write)
+  { (unfolding acc(this.inv(), write) in this.value) }
+  method foo(this: Ref)
+    requires acc(this.inv(), write) && (unfolding acc(this.inv(), write) in ((this.next) != (null)))
+    ensures acc(this.inv(), write) && (unfolding acc(this.inv(), write) in ((this.next) != (null)))
+  {
+    unfold acc(this.inv(), write)
+    this.value := 0
+    unfold acc(this.next.inv(), write)
+    this.next.value := 1
+    fold acc(this.next.inv(), write)
+    assert ((get(this.next)) == (1))
+    assert ((this.value) == (0))
+    fold acc(this.inv(), write)
+    assert ((get(this)) == (0))
+    assert (unfolding acc(this.inv(), write) in ((this.next) != (null)) && ((get(this.next)) == (1)))
+    assert (unfolding acc(this.inv(), write) in ((get(this.next)) == (1)))
+  }
+  method goo(this: Ref, a: Ref, b: Ref, c: Bool)
+    requires ((a) != (null)) && ((b) != (null)) && acc(a.inv(), write) && acc(b.inv(), write)
+  {
+    var z: Ref
+    unfold acc(a.inv(), write)
+    unfold acc(b.inv(), write)
+    a.value := 0
+    b.value := 1
+    if (c) {
+      z := a
+    } else {
+      z := b
+    }
+    fold acc(z.inv(), write)
+    assert c ==> acc(a.inv(), write) && ((get(a)) == (0))
+    assert !c ==> acc(b.inv(), write) && ((get(b)) == (1))
+    unfold acc(z.inv(), write)
+    assert ((a.value) == (0))
+    assert ((b.value) == (1))
+  }

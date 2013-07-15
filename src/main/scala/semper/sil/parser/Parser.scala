@@ -146,7 +146,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   }
 
   lazy val predicateDecl =
-    ("predicate" ~> idndef) ~ ("(" ~> formalArg <~ ")") ~ ("{" ~> (exp <~ "}")) ^^ PPredicate
+    ("predicate" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ ("{" ~> (exp <~ "}")) ^^ PPredicate
 
   lazy val domainDecl =
     ("domain" ~> idndef) ~
@@ -186,7 +186,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val localassign =
     idnuse ~ (":=" ~> exp) ^^ PVarAssign
   lazy val fieldassign =
-    locAcc ~ (":=" ~> exp) ^^ PFieldAssign
+    fieldAcc ~ (":=" ~> exp) ^^ PFieldAssign
   lazy val ifthnels =
     ("if" ~> "(" ~> exp <~ ")") ~ block ~ elsifEls ^^ {
       case cond ~ thn ~ els => PIf(cond, PSeqn(thn), els)
@@ -314,7 +314,18 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     "old" ~> parens(exp) ^^ POld
 
   lazy val locAcc: PackratParser[PLocationAccess] =
-    (exp <~ ".") ~ idnuse ^^ PLocationAccess
+    // the first two cases are a hack to get all/chalice/nestedPredicates to parse
+    (("^3" ~> idnuse) ~ ("." ~> idnuse) ~ ("." ~> idnuse)) ^^ {
+      case i1 ~ i2 ~ i3 => PFieldAccess(PFieldAccess(i1, i2), i3)
+    } | (("^4" ~> idnuse) ~ ("." ~> idnuse) ~ ("." ~> idnuse) ~ ("." ~> idnuse <~ "()")) ^^ {
+      case i1 ~ i2 ~ i3 ~ i4 => PPredicateAccess(Seq(PFieldAccess(PFieldAccess(i1, i2), i3)), i4)
+    } | predAcc | fieldAcc
+  lazy val fieldAcc: PackratParser[PFieldAccess] =
+    (exp <~ ".") ~ idnuse ^^ PFieldAccess
+  lazy val predAcc: PackratParser[PLocationAccess] =
+    (exp <~ ".") ~ idnuse ~ parens(actualArgList) ^^ {
+      case rcv ~ idn ~ args => PPredicateAccess(Seq(rcv) ++ args, idn)
+    }
 
   lazy val unfolding: PackratParser[PExp] =
     ("unfolding" ~> accessPred) ~ ("in" ~> exp) ^^ PUnfolding

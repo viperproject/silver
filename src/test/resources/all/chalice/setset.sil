@@ -1,0 +1,50 @@
+  var value: Int
+  method init(this: Ref, v: Int)
+    requires acc(this.value, write)
+    ensures acc(this.valid(), write)
+  {
+    this.value := v
+    fold acc(this.valid(), write)
+  }
+  function get(this: Ref): Int
+    requires acc(this.valid(), write)
+  { (unfolding acc(this.valid(), write) in this.value) }
+  method set(this: Ref, v: Int)
+    requires acc(this.valid(), write)
+    ensures acc(this.valid(), write) && ((get(this)) == (v))
+  {
+    unfold acc(this.valid(), write)
+    this.value := v
+    fold acc(this.valid(), write)
+  }
+  predicate valid(this: Ref) { acc(this.value, write) }
+  method main(this: Ref, x: Ref, y: Ref)
+    requires ((x) != (null)) && ((y) != (null))
+    requires acc(x.valid(), write) && acc(y.valid(), write)
+  {
+    set(x, 3);
+    set(y, 3);
+    set(x, 3);
+    set(y, 3);
+    set(x, 3);
+    set(y, 3);
+    set(x, 3);
+    unfold acc(x.valid(), write)
+    x.value := 3
+    fold acc(x.valid(), write)
+    set(y, 3);
+    set(x, 3);
+    set(y, 3);
+    unfold acc(x.valid(), write)
+    x.value := 3
+    fold acc(x.valid(), write)
+    unfold acc(x.valid(), write)
+    x.value := 3
+    fold acc(x.valid(), write)
+    set(x, 3);
+    set(y, 3);
+    set(x, 4);
+    assert ((get(y)) == (3))
+    //:: ExpectedError(assert.failed:assertion.false)
+    assert ((get(x)) == (3))
+  }

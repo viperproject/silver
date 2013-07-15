@@ -195,13 +195,11 @@ case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVa
 
 /** A common trait for expressions accessing a location. */
 sealed trait LocationAccess extends Exp {
-  require(rcv.typ isSubtype Ref)
-  def rcv: Exp
   def loc: Location
 }
 
 object LocationAccess {
-  def unapply(la: LocationAccess) = Some((la.rcv, la.loc))
+  def unapply(la: LocationAccess) = Some(la.loc)
 }
 
 /** A field access expression. */
@@ -211,13 +209,13 @@ case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, v
 }
 
 /** A predicate access expression. */
-case class PredicateAccess(rcv: Exp, predicate: Predicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess {
+case class PredicateAccess(args: Seq[Exp], predicate: Predicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess {
   lazy val loc = predicate
   lazy val typ = Pred
 
   /** The body of the predicate with the receiver instantiated correctly. */
   lazy val predicateBody =
-    Expressions.instantiateVariables(predicate.body, Seq(predicate.formalArg), Seq(rcv))
+    Expressions.instantiateVariables(predicate.body, predicate.formalArgs, args)
 }
 
 // --- Conditional expression

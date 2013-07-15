@@ -1,0 +1,32 @@
+
+var value: Int
+var next: Ref
+var f: Int
+
+function itemat(node: Ref, i: Int): Int
+    requires acc(node.valid(), wildcard) && i >= 0
+{
+    unfolding acc(node.valid(), wildcard) in ((i == 0 || node.next == null) ? node.value : itemat(node.next, i-1))
+}
+
+predicate valid(this: Ref) {
+    acc(this.next, write) &&
+    acc(this.value, write) &&
+    ((this.next != null) ==> acc(this.valid(), write))
+}
+
+method a(this: Ref)
+    requires acc(this.valid(), write) && acc(this.f, write)
+    ensures acc(this.valid(), write)
+{
+    unfold acc(this.valid(), write)
+    this.value := 1
+    fold acc(this.valid(), write)
+    void(this)
+    assert itemat(this, 0) == 1
+}
+
+method void(this: Ref)
+    requires acc(this.f, write)
+    ensures acc(this.f, write)
+{}

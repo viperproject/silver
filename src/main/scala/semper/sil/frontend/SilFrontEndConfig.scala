@@ -40,6 +40,12 @@ case class SilFrontendConfig(ars: Seq[String], verifier: Verifier) extends LazyS
     noshort = true
   )
 
+  val methods = opt[String]("methods",
+    descr = "The SIL methods that should be verified. :all means all methods.",
+    default = Some(":all"),
+    noshort = true
+  )
+
   val detailedTiming = opt[Boolean]("detailed-timing",
     descr = "Display detailed timing information",
     default = Some(false),

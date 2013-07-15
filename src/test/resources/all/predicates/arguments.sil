@@ -1,0 +1,83 @@
+
+var f: Int
+var g: Int
+var unrelatedField: Int
+
+method unrelated(this: Ref)
+    requires acc(this.unrelatedField, write)
+    ensures acc(this.unrelatedField, write)
+{}
+
+predicate valid(this: Ref, b: Bool) {
+    b ? acc(this.f, write) : acc(this.g, write)
+}
+
+method t1(this: Ref, b: Bool)
+    requires acc(this.unrelatedField, write)
+    requires acc(this.valid(b), write)
+    ensures acc(this.valid(b), write)
+{
+    unfold acc(this.valid(b), write)
+    if (b) {
+        this.f := 1
+    } else {
+        this.g := 2
+    }
+    fold acc(this.valid(b), write)
+    unrelated(this)
+}
+
+method t2(this: Ref)
+    requires acc(this.unrelatedField, write)
+    requires acc(this.f, write)
+    ensures acc(this.valid(true), write)
+{
+    fold acc(this.valid(true), write)
+    unrelated(this)
+}
+
+method t2b(this: Ref)
+    requires acc(this.f, write)
+    ensures acc(this.valid(true), write)
+{
+    //:: ExpectedError(fold.failed:insufficient.permission)
+    fold acc(this.valid(false), write)
+}
+
+method t3(this: Ref, b: Bool)
+    requires acc(this.unrelatedField, write)
+    requires acc(this.valid(b), write)
+    requires acc(this.valid(!b), write)
+    requires (unfolding acc(this.valid(false), write) in ((this.g) == 2))
+    ensures acc(this.valid(b), write)
+    ensures acc(this.valid(!b), write)
+    ensures (unfolding acc(this.valid(false), write) in ((this.g) == 2))
+{
+    unfold acc(this.valid(true), write)
+    this.f := 1
+    fold acc(this.valid(true), write)
+}
+
+method t3a(this: Ref, b: Bool)
+    requires acc(this.unrelatedField, write)
+    requires acc(this.valid(b), write)
+    requires acc(this.valid(!b), write)
+    requires (unfolding acc(this.valid(false), write) in ((this.g) == 2))
+    ensures acc(this.valid(b), write)
+    ensures acc(this.valid(!b), write)
+    ensures (unfolding acc(this.valid(false), write) in ((this.g) == 2))
+{
+    unfold acc(this.valid(true), write)
+    this.f := 1
+    fold acc(this.valid(true), write)
+    unrelated(this)
+}
+
+method t3b(this: Ref, b: Bool)
+    requires acc(this.valid(b), write)
+    requires acc(this.valid(!b), write)
+{
+    unfold acc(this.valid(true), write)
+    //:: ExpectedError(insufficient.permission)
+    this.g := 1
+}

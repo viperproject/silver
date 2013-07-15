@@ -46,17 +46,17 @@ predicate P(this: Ref) { acc(this.f, epsilon) }
 predicate Q(this: Ref) { acc(this.p, write) && acc(this.f, this.p) }
 
 method test4(r: Ref)
-  requires r != null && acc(r.P, write)
+  requires r != null && acc(r.P(), write)
 {
   var p: Perm
   var b: Bool
 
-  b := unfolding acc(r.P, write) in true
-  b := unfolding acc(r.P, p) in true
+  b := unfolding acc(r.P(), write) in true
+  b := unfolding acc(r.P(), p) in true
 }
 
 method test7(r: Ref)
-  requires r != null && acc(r.Q, epsilon)
+  requires r != null && acc(r.Q(), epsilon)
 {
-  var b: Bool := unfolding acc(r.Q, epsilon) in true
+  var b: Bool := unfolding acc(r.Q(), epsilon) in true
 }

@@ -79,8 +79,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
                 (if (locals == null) Nil else locals map ("var" <+> showVar(_))) ++
                   Seq(showStmt(body)), line)
           ) <> line)
-      case p@Predicate(name, formalArg, body) =>
-        "predicate" <+> name <> parens(showVar(formalArg)) <+>
+      case p@Predicate(name, formalArgs, body) =>
+        "predicate" <+> name <> parens(showVars(formalArgs)) <+>
           braces(nest(
             line <> show(body)
           ) <> line)
@@ -228,8 +228,9 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case AbstractLocalVar(n) => n
     case FieldAccess(rcv, field) =>
       show(rcv) <> "." <> field.name
-    case PredicateAccess(rcv, predicate) =>
-      show(rcv) <> "." <> predicate.name
+    case PredicateAccess(params, predicate) =>
+      show(params.head) <> "." <> predicate.name <>
+        parens(ssep(params.tail map show, comma <> space))
     case Unfolding(acc, exp) =>
       parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
     case Old(exp) =>

@@ -1,0 +1,18 @@
+  var value: Int
+  var next: Ref
+  predicate valid(this: Ref) { acc(this.value, write) && acc(this.next, write) && (((this.next) != (null)) ==> acc(this.next.valid(), write)) }
+  method set(this: Ref, x: Int, y: Int)
+    requires acc(this.valid(), write)
+    ensures acc(this.valid(), write)
+  {
+  }
+  method M(this: Ref, x: Ref, y: Ref)
+    requires ((x) != (null)) && ((y) != (null)) && ((x) != (y)) && acc(x.valid(), write) && acc(y.valid(), write)
+  {
+    var i: Int := (unfolding acc(x.valid(), write) in x.value)
+    var j: Int := (unfolding acc(y.valid(), write) in y.value)
+    set(y, 0, 10);
+    assert (unfolding acc(x.valid(), write) in ((i) == (x.value)))
+    //:: ExpectedError(assert.failed:assertion.false)
+    assert (unfolding acc(y.valid(), write) in ((j) == (y.value)))
+  }

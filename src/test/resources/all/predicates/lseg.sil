@@ -1,0 +1,90 @@
+
+var next: Ref
+var value: Int
+
+predicate lseg(this: Ref, end: Ref) {
+    acc(this.value, write) && acc(this.next, write) &&
+       (this.next != end ==> this.next != null && acc(this.next.lseg(end), write))
+}
+
+function get(this: Ref, i: Int, end: Ref): Int
+    requires acc(this.lseg(end), write)
+    requires 0 <= i && i < length(this, end)
+{
+    unfolding acc(this.lseg(end), write) in (i == 0 ? this.value : get(this.next, i-1, end))
+}
+
+function length(this: Ref, end: Ref): Int
+    requires acc(this.lseg(end), write)
+    ensures length(this, end) > 0
+{
+    unfolding acc(this.lseg(end), write) in (this.next == end ? 1 : 1 + length(this.next, end))
+}
+
+method init(this: Ref, val: Int)
+    requires acc(this.next, write)
+    requires acc(this.value, write)
+    ensures acc(this.lseg(null), write)
+    ensures length(this, null) == 1
+    ensures get(this, 0, null) == val
+{
+    this.next := null
+    this.value := val
+    fold acc(this.lseg(null), write)
+}
+
+method initUnitCycle(this: Ref, val: Int)
+    requires acc(this.next, write)
+    requires acc(this.value, write)
+    ensures acc(this.lseg(this), write)
+    ensures length(this, this) == 1
+    ensures get(this, 0, this) == val
+    ensures unfolding acc(this.lseg(this), write) in this.next == this
+{
+    this.next := this
+    this.value := val
+    fold acc(this.lseg(this), write)
+}
+
+method addAtEnd(this: Ref, end: Ref, val: Int)
+    requires acc(this.lseg(end), write)
+    ensures acc(this.lseg(end), write)
+    ensures length(this, end) == (old(length(this, end)) + 1)
+    ensures (forall i: Int :: (0 <= i && i < old(length(this, end))) ==> (get(this, i, end) == old(get(this, i, end))))
+    ensures get(this, length(this, end) - 1, end) == val
+{
+    var n: Ref
+    unfold acc(this.lseg(end), write)
+    if (this.next == end) {
+        n := new()
+        n.next := end
+        n.value := val
+        this.next := n
+        fold acc(n.lseg(end), write)
+    } else {
+        addAtEnd(this.next, end, val)
+    }
+    fold acc(this.lseg(end), write)
+}
+
+method t1()
+{
+    var n: Ref
+    n := new()
+    init(n, 0)
+    assert get(n, 0, null) == 0
+    addAtEnd(n, null, 1)
+    assert get(n, 0, null) == 0
+    assert get(n, 1, null) == 1
+}
+
+method t2()
+{
+    var n: Ref
+    n := new()
+    initUnitCycle(n, 0)
+    assert get(n, 0, n) == 0
+    addAtEnd(n, n, 1)
+    assert get(n, 0, n) == 0
+    assert get(n, 1, n) == 1
+}

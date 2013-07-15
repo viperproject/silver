@@ -20,7 +20,8 @@ trait VerificationError extends AbstractError with ErrorMessage {
 
 trait ErrorReason extends ErrorMessage
 
-case class PartialVerificationError(f: ErrorReason => VerificationError) {
+trait PartialVerificationError {
+  def f: ErrorReason => VerificationError
   private object DummyReason extends AbstractErrorReason {
     val id = "?"
     val readableMessage = "?"
@@ -32,6 +33,16 @@ case class PartialVerificationError(f: ErrorReason => VerificationError) {
 
   def dueTo(reason: ErrorReason) = f(reason)
   override lazy val toString = f(DummyReason).readableMessage(true)
+}
+object PartialVerificationError {
+  def apply(ff: ErrorReason => VerificationError) = {
+    new PartialVerificationError {
+      def f: (ErrorReason) => VerificationError = ff
+    }
+  }
+}
+case object NullPartialVerificationError extends PartialVerificationError {
+  def f = (x => null)
 }
 
 abstract class AbstractVerificationError extends VerificationError {

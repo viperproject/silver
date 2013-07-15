@@ -78,8 +78,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(p: PPredicate) {
     checkMember(p) {
-      check(p.formalArg.typ)
-      ensure(p.formalArg.typ == Ref, p.formalArg, "expected Ref the type of the argument")
+      p.formalArgs map (a => check(a.typ))
       check(p.body, Bool)
     }
   }
@@ -404,7 +403,7 @@ case class TypeChecker(names: NameAnalyser) {
                 if (left.typ.isUnknown || right.typ.isUnknown) {
                   setErrorType()
                 } else {
-                  setType(left.typ)
+                  setType(right.typ)
                 }
             }
           case "/" =>
@@ -542,10 +541,14 @@ case class TypeChecker(names: NameAnalyser) {
         setType(Bool)
       case PNullLit() =>
         setType(Ref)
-      case PLocationAccess(rcv, idnuse) =>
+      case PFieldAccess(rcv, idnuse) =>
         check(rcv, Ref)
         check(idnuse, expected)
         setType(idnuse.typ)
+      case p@PPredicateAccess(args, idnuse) =>
+        args map (a => check(a, Nil))
+        check(idnuse, expected)
+        setType(Pred)
       case fa@PFunctApp(func, args) =>
         names.definition(curMember)(func) match {
           case PFunction(_, formalArgs, typ, _, _, _) =>

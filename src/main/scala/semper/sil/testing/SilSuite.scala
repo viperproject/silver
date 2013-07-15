@@ -149,7 +149,8 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
             // no actual errors, thus there should not be any expected ones
             testAnnotations.annotations foreach {
               case e: ExpectedError => expectedErrors ::= e
-              case u: UnexpectedError => unexpectedButMissingErrors ::= u
+              case u: UnexpectedError =>
+                if (u.project.toLowerCase == verifier.name.toLowerCase) unexpectedButMissingErrors ::= u
               case m: MissingError => missingErrors ::= m
               case _: IgnoreOthers =>
               case _: IgnoreFileList => sys.error("the test should not have run in the first place")
