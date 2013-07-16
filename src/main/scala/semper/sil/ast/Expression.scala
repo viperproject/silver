@@ -245,7 +245,6 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 /** A common trait for quantified expressions. */
 sealed trait QuantifiedExp extends Exp {
   require(exp isSubtype Bool)
-  Consistency.checkNoPositiveOnly(exp)
   def variables: Seq[LocalVarDecl]
   def exp: Exp
   lazy val typ = Bool
