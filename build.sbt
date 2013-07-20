@@ -9,7 +9,7 @@ scalaVersion := "2.10.0"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1"
 
-libraryDependencies += "com.googlecode.kiama" % "kiama_2.10" % "1.5.0"
+libraryDependencies += "com.googlecode.kiama" % "kiama_2.10" % "1.5.1"
 
 libraryDependencies += "org.rogach" %% "scallop" % "0.8.1"
 
