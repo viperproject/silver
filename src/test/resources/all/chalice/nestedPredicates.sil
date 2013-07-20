@@ -44,14 +44,14 @@
     requires acc(this.p(), wildcard)
   {
     unfold acc(this.p(), wildcard)
+    //:: ExpectedError(assertion.false)
     assert ((this) != (this.next))
     if (((this.next) != (null))) {
       unfold acc(this.next.q(), wildcard)
+      //:: ExpectedError(assertion.false)
       assert ((this.next) != (this.next.next))
       assert ((this) != (this.next.next))
     }
-    //:: ExpectedError(assertion.false)
-    assert false
   }
   method testNestingFoldTwo(this: Ref)
     requires acc(this.next, wildcard) && acc(this.value, wildcard)
@@ -63,11 +63,12 @@
     , wildcard)
   {
     fold acc(this.next.q(), wildcard)
-    assert ((this) != (this.next))
-    assert ((this.next) != (this.next.next))
-    assert ((this) != (this.next.next))
     //:: ExpectedError(assertion.false)
-    assert false
+    assert ((this) != (this.next))
+    //:: ExpectedError(assertion.false)
+    assert ((this.next) != (this.next.next))
+    //:: ExpectedError(assertion.false)
+    assert ((this) != (this.next.next))
   }
   method testNestingFoldThree(this: Ref)
     requires acc(this.next, wildcard) && acc(this.value, wildcard)
@@ -85,21 +86,20 @@
     fold acc(this.next.q(), wildcard)
     fold acc(this.p(), wildcard)
     assert ((this) != (this.next))
+    //:: ExpectedError(assertion.false)
     assert ((this.next) != (this.next.next))
     assert ((this) != (this.next.next))
-    //:: ExpectedError(assertion.false)
-    assert false
   }
   method testNestingUnfoldingTwo(this: Ref)
     requires acc(this.p(), wildcard)
   {
+    //:: ExpectedError(assertion.false)
     assert ((this) != ((unfolding acc(this.p(), wildcard) in this.next)))
     if ((((unfolding acc(this.p(), wildcard) in this.next)) != (null))) {
+      //:: ExpectedError(assertion.false)
       assert (((unfolding acc(this.p(), wildcard) in this.next)) != ((unfolding acc(this.p(), wildcard) in (unfolding acc(this.next.q(), wildcard) in this.next.next))))
       assert ((this) != ((unfolding acc(this.p(), wildcard) in (unfolding acc(this.next.q(), wildcard) in this.next.next))))
     }
-    //:: ExpectedError(assertion.false)
-    assert false
   }
   method testNestingUnfoldingPrecondition(this: Ref, x: Ref)
     requires acc(this.valid(), wildcard) && (unfolding acc(this.valid(), wildcard) in ((this.next) == (x)))
@@ -113,6 +113,4 @@
     requires acc(this.valid(), wildcard)
     ensures acc(this.valid(), wildcard) && (unfolding acc(this.valid(), wildcard) in true)
   {
-    //:: ExpectedError(assertion.false)
-    assert false
   }
