@@ -48,18 +48,32 @@ object Consistency {
    * conjuncts or on the right side of implications or conditional expressions) only, i.e. no access predicates and
    * no InhaleExhaleExp.
    */
-  def checkNoPositiveOnly(e: Exp): Unit = e match {
-    case _: AccessPredicate | _: InhaleExhaleExp => require(false, s"$e can only appear in positive positions.")
+  def checkNoPositiveOnly(e: Exp): Unit = require(hasNoPositiveOnly(e), s"$e can only appear in positive positions.")
+  
+  /**
+   * Does this boolean expression contain no subexpressions that can appear in positive positions only?
+   * @param exceptInhaleExhale Are inhale-exhale expressions possible?
+   *                           Default: false.
+   */
+  def hasNoPositiveOnly(e: Exp, exceptInhaleExhale: Boolean = false): Boolean = e match {
+    case _: AccessPredicate => false
+    case InhaleExhaleExp(inhale, exhale) => {
+      exceptInhaleExhale && hasNoPositiveOnly(inhale, exceptInhaleExhale) && hasNoPositiveOnly(exhale, exceptInhaleExhale)
+    }
     case And(left, right) => {
-      checkNoPositiveOnly(left)
-      checkNoPositiveOnly(right)
+      hasNoPositiveOnly(left, exceptInhaleExhale)
+      hasNoPositiveOnly(right, exceptInhaleExhale)
     }
     case Implies(_, right) => {
       // The left side is checked during creation of the Implies expression.
-      checkNoPositiveOnly(right)
+      hasNoPositiveOnly(right, exceptInhaleExhale)
     }
-    case _ => // All other cases are checked during creation of the expression.
+    case _ => true // All other cases are checked during creation of the expression.
   }
+
+  /** This is like `checkNoPositiveOnly`, except that inhale-exhale expressions are fine. */
+  def checkNoPositiveOnlyExceptInhaleExhale(e: Exp): Unit =
+    require(hasNoPositiveOnly(e, true), s"$e can only appear in positive positions.")
 
   /** Check all properties required for a function body. */
   def checkFunctionBody(e: Exp) {
