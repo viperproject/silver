@@ -9,6 +9,7 @@ method t1_a(this: Ref)
 {
     //:: ExpectedError(assignment.failed:receiver.null)
     //:: ExpectedError(assignment.failed:insufficient.permission)
+    //:: MissingError(assignment.failed:insufficient.permission, /Silicon/issue/34/)
     var i: Int := this.f
 }
 
@@ -23,6 +24,7 @@ method t2_a(this: Ref)
 {
     //:: ExpectedError(assignment.failed:receiver.null)
     //:: ExpectedError(assignment.failed:insufficient.permission)
+    //:: MissingError(assignment.failed:insufficient.permission, /Silicon/issue/34/)
     var i: Int := func(this.f)
 }
 
@@ -44,6 +46,7 @@ method t4_a(this: Ref)
 {
     //:: ExpectedError(assignment.failed:receiver.null)
     //:: ExpectedError(assignment.failed:insufficient.permission)
+    //:: MissingError(assignment.failed:insufficient.permission, /Silicon/issue/34/)
     this.f := 1
 }
 

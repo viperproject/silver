@@ -6,6 +6,7 @@ function f1(r: Ref): Int
 
 //:: ExpectedError(function.not.wellformed:receiver.null)
 //:: ExpectedError(function.not.wellformed:insufficient.permission)
+//:: MissingError(function.not.wellformed:insufficient.permission, /silicon/issue/34/)
 function f3_a(r: Ref): Int
     requires ((r.f) == 2)
 { 2 }

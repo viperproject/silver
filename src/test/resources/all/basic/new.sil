@@ -89,6 +89,7 @@ method test5(n: Ref)
 
     unfold acc(n.Node_P(), wildcard)
     //:: ExpectedError(insufficient.permission)
+    //:: MissingError(insufficient.permission, /silicon/issue/34/)
     if (n.Node_n.Node_n != null) {
       assert m != (n.Node_n.Node_n)
     }
