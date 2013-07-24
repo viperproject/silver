@@ -138,7 +138,7 @@ method t8(this: Ref)
     inhale acc(this.f, wildcard) && acc(this.f, 1/4);
     inhale (n > 0)
     fresh(rd) {
-        exhale acc(this.f, (1/2) - ((1/4) - n*rd))
+        exhale acc(this.f, (1/2) - (1/4) + n*rd)
     }
     //:: ExpectedError(assert.failed:assertion.false)
     assert false
