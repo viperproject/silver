@@ -125,9 +125,11 @@ method t7(this: Ref)
     inhale acc(this.f, wildcard) && acc(this.f, 1/4);
     inhale (n > 0)
     fresh(rd) {
+        //:: UnexpectedError(exhale.failed:insufficient.permission, /silicon/issue/35/)
         exhale acc(this.f, (1/2) * (n * rd + 1/2))
     }
     //:: ExpectedError(assert.failed:assertion.false)
+    //:: MissingError(assert.failed:assertion.false, /silicon/issue/35/)
     assert false
 }
 
@@ -138,9 +140,11 @@ method t8(this: Ref)
     inhale acc(this.f, wildcard) && acc(this.f, 1/4);
     inhale (n > 0)
     fresh(rd) {
+        //:: UnexpectedError(exhale.failed:insufficient.permission, /silicon/issue/35/)
         exhale acc(this.f, (1/2) - ((1/4) - n*rd))
     }
     //:: ExpectedError(assert.failed:assertion.false)
+    //:: MissingError(assert.failed:assertion.false, /silicon/issue/35/)
     assert false
 }
 
@@ -151,8 +155,10 @@ method t9(this: Ref)
     inhale acc(this.f, wildcard) && acc(this.f, 1/4);
     inhale (n > 0)
     fresh(rd) {
+        //:: UnexpectedError(exhale.failed:insufficient.permission, /silicon/issue/35/)
         exhale acc(this.f, (1/4) - ((-100)*rd))
     }
     //:: ExpectedError(assert.failed:assertion.false)
+    //:: MissingError(assert.failed:assertion.false, /silicon/issue/35/)
     assert false
 }
