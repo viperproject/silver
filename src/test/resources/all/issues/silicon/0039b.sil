@@ -1,0 +1,51 @@
+/* class List */
+
+var List_head: Ref
+
+predicate List_valid(this: Ref) {
+	   acc(this.List_head, write)
+	&& (this.List_head != null ==> acc(this.List_head.Node_valid(), write))
+}
+
+function List_size(this: Ref): Int
+	requires acc(this.List_valid(), write)
+	ensures result >= 0
+{
+	unfolding acc(this.List_valid(), write) in (this.List_head == null ? 0 : Node_size(this.List_head))
+}
+
+method List_test(this: Ref, i: Int)
+  requires acc(this.List_valid(), write)
+  requires i >= 0 && i < List_size(this)
+  ensures acc(this.List_valid(), write)
+{
+  //:: ExpectedError(assert.failed:assertion.false)
+  assert List_size(this) == 1
+    /* Used to hold erroneously due to the inference of local evaluations and
+     * non-local branchings.
+     */
+}
+
+/* class Node */
+
+var Node_value: Int
+var Node_next: Ref
+
+predicate Node_valid(this: Ref) {
+	   acc(this.Node_value, write)
+	&& acc(this.Node_next, write)
+	&& (this.Node_next != null ==> acc(this.Node_next.Node_valid(), write))
+}
+
+function Node_val(this: Ref): Int
+  requires acc(this.Node_valid(), write)
+{
+  unfolding acc(this.Node_valid(), write) in this.Node_value
+}
+
+function Node_size(this: Ref): Int
+  requires acc(this.Node_valid(), write)
+  ensures result >= 1
+{
+  1 + unfolding acc(this.Node_valid(), write) in this.Node_next != null ? Node_size(this.Node_next) : 0
+}
