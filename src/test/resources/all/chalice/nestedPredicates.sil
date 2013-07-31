@@ -1,3 +1,5 @@
+//:: IgnoreFile(/silicon/issue/40/)
+
   var next: Ref
   var value: Int
   predicate valid(this: Ref) {
