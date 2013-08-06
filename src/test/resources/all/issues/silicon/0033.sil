@@ -36,6 +36,7 @@ method unfoldTwice(this: Ref)
   assert size(this.next) == 1
     /* Required by Silicon, the final assertions fails otherwise.
      * Alternatively, run Silicon with --unrollFunctions=2.
+     * See also Silicon issue #41.
      */
 
   unfold acc(this.next.valid(), write)
