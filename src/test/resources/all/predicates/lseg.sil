@@ -19,7 +19,7 @@ function get(this: Ref, i: Int, end: Ref): Int
 
 function length(this: Ref, end: Ref): Int
     requires acc(this.lseg(end), write)
-    ensures length(this, end) > 0
+    ensures result > 0
 {
     unfolding acc(this.lseg(end), write) in (this.next == end ? 1 : 1 + length(this.next, end))
 }
