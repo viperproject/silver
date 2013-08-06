@@ -34,7 +34,9 @@ method unfoldTwice(this: Ref)
   unfold acc(this.valid(), write)
 
   assert size(this.next) == 1
-    /* Required by Silicon, the final assertions fails otherwise */
+    /* Required by Silicon, the final assertions fails otherwise.
+     * Alternatively, run Silicon with --unrollFunctions=2.
+     */
 
   unfold acc(this.next.valid(), write)
 
