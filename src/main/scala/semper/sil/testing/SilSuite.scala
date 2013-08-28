@@ -22,7 +22,7 @@ import semper.sil.frontend.Frontend
 abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
   /** The config map passed to ScalaTest. */
-  protected var configMap: Map[String, Any] = _
+  protected var configMap: Map[String, Any] = Map[String, Any]()
 
   private var _testsRegistered = false
 
@@ -437,6 +437,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   protected override def runTests(testName: Option[String], reporter: Reporter, stopper: Stopper, filter: Filter, configMap: Map[String, Any], distributor: Option[Distributor], tracker: Tracker) {
     this.configMap = configMap
     registerTests()
+    
     super.runTests(testName, reporter, stopper, filter, configMap, distributor, tracker)
   }
 
