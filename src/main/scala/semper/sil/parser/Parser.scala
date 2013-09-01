@@ -244,7 +244,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     iteExpr
 
   lazy val iteExpr: PackratParser[PExp] =
-    ((iffExp <~ "?") ~ iteExpr ~ (":" ~> iteExpr)) ^^ PCondExp | implExp
+    ((iffExp <~ "?") ~ iteExpr ~ (":" ~> iteExpr)) ^^ PCondExp | iffExp
   lazy val iffExp: PackratParser[PExp] =
     implExp ~ "<==>" ~ iffExp ^^ PBinExp | implExp
   lazy val implExp: PackratParser[PExp] =
