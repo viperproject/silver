@@ -1,5 +1,5 @@
 /*
- * ATTENTION: Please keep this file in sync with lseg_silicon.sil!
+ * ATTENTION: Please keep this file in sync with lseg.sil!
  */
 
 var next: Ref
@@ -52,7 +52,6 @@ method initUnitCycle(this: Ref, val: Int)
 method addAtEnd(this: Ref, end: Ref, val: Int)
     requires acc(this.lseg(end), write)
     ensures acc(this.lseg(end), write) /* POST1 */
-    //:: UnexpectedError(postcondition.violated:assertion.false, /silicon/issue/41/)
     ensures length(this, end) == (old(length(this, end)) + 1) /* POST2 */
     ensures (forall i: Int :: (0 <= i && i < old(length(this, end))) ==> (get(this, i, end) == old(get(this, i, end)))) /* POST3 */
     ensures get(this, length(this, end) - 1, end) == val /* POST4 */
@@ -67,6 +66,9 @@ method addAtEnd(this: Ref, end: Ref, val: Int)
         n.value := val
         this.next := n
         fold acc(n.lseg(end), write)
+
+        assert length(n, end) == 1 /* Required by Silicon, POST2 fails otherwise */
+        assert get(n, 0, end) == val /* Required by Silicon, POST4 fails otherwise */
     } else {
         addAtEnd(this.next, end, val)
     }

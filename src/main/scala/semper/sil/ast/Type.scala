@@ -89,19 +89,23 @@ case class DomainType(domain: Domain, typVarsMap: Map[TypeVar, Type]) extends Ty
     res
   }
 
+  /** Returns this domain type but adds the type variable mappings from `newTypVarsMap` to those
+    * already existing in `this.typVarsMap`. Already existing mappings will '''not''' be overridden!
+    * For example, if the underlying domain has a type variable `A`, if `this.typVarsMap` contains
+    * `A -> Int` and if `newTypVarsMap` contains `A -> Bool`, then the result will still include
+    * the mapping `A -> Int`.
+    *
+    * @param newTypVarsMap Additional type variable mappings.
+    *
+    * @return A domain type that corresponds to this domain type plus the additional type
+    *         variable mappings.
+    */
   def substitute(newTypVarsMap: Map[TypeVar, Type]): DomainType = {
-    val map = domain.typVars flatMap {
-      t =>
-        newTypVarsMap.get(t) match {
-          case Some(v) => Seq(t -> v)
-          case None =>
-            typVarsMap.get(t) match {
-              case Some(v) => Seq(t -> v)
-              case None => Nil
-            }
-        }
-    }
-    DomainType(domain, map.toMap)
+    val unmappedTypeVars = domain.typVars filterNot typVarsMap.keys.toSet.contains
+    val additionalTypeMap = (unmappedTypeVars flatMap (t => newTypVarsMap get(t) map ((t -> _)))).toMap
+    val newTypeMap = typVarsMap ++ additionalTypeMap
+
+    DomainType(domain, newTypeMap)
   }
 }
 /** Type variables. */

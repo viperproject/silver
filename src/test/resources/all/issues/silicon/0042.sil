@@ -1,0 +1,38 @@
+var next: Ref
+
+predicate valid(list: Ref) {
+		 acc(list.next, write)
+	&& (list.next != null ==> acc(list.next.valid(), write))
+}
+
+function size(list: Ref): Int
+  requires acc(list.valid(), epsilon)
+  ensures result >= 1
+{
+	unfolding acc(list.valid(), epsilon) in (list.next == null ? 1 : 1 + size(list.next))
+}
+
+method testFails1(list: Ref) {
+  //:: ExpectedError(assert.failed:assertion.false)
+	assert list != null
+}
+
+method testFails2(list: Ref)
+ 	requires acc(list.valid(), epsilon)
+{
+  //:: ExpectedError(assert.failed:assertion.false)
+ 	assert list != null
+}
+
+method testSuccess1(list: Ref)
+	requires acc(list.next, epsilon)
+{
+	assert list != null
+}
+
+method testSuccess2(list: Ref)
+	requires acc(list.valid(), epsilon)
+{
+	unfold acc(list.valid(), epsilon)
+	assert list != null
+}
