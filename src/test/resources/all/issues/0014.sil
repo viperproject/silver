@@ -1,0 +1,3 @@
+predicate iff_test() {
+  (true <==> true)
+}
