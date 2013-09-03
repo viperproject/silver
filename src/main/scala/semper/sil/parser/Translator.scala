@@ -321,7 +321,7 @@ case class Translator(program: PProgram) {
           case _ =>
             sys.error("unexpected location")
         }
-      case PEmptySeq() =>
+      case PEmptySeq(_) =>
         EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos)
       case PExplicitSeq(elems) =>
         ExplicitSeq(elems map exp)(pos)
@@ -383,7 +383,7 @@ case class Translator(program: PProgram) {
           assert(args.length == 0)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable
       }
-    case PUnkown() =>
+    case PUnknown() =>
       sys.error("unknown type unexpected here")
     case PPredicateType() =>
       sys.error("unexpected use of internal typ")

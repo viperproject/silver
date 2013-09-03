@@ -81,7 +81,7 @@ case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with RealEn
 
 // Types
 sealed trait PType extends PNode {
-  def isUnknown: Boolean = this.isInstanceOf[PUnkown]
+  def isUnknown: Boolean = this.isInstanceOf[PUnknown]
   def isConcrete: Boolean = true
   def substitute(newTypVarsMap: Map[String, PType]): PType = this
 }
@@ -134,7 +134,7 @@ case class PMultisetType(elementType: PType) extends PType {
   override def substitute(map: Map[String, PType]) = PMultisetType(elementType.substitute(map))
 }
 // for resolving if something cannot be typed
-case class PUnkown() extends PType {
+case class PUnknown() extends PType {
   override def toString = "<error type>"
 }
 // used during resolving for predicate accesses
@@ -145,7 +145,7 @@ case class PPredicateType() extends PType {
 
 // Expressions
 sealed trait PExp extends PNode {
-  var typ: PType = PUnkown()
+  var typ: PType = PUnknown()
 }
 case class PBinExp(left: PExp, op: String, right: PExp) extends PExp
 case class PUnExp(op: String, exp: PExp) extends PExp
@@ -175,8 +175,10 @@ case class PWildcard() extends PExp
 case class PEpsilon() extends PExp
 case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 case class POld(e: PExp) extends PExp
-
-case class PEmptySeq() extends PExp
+case class PEmptySeq(t : PType) extends PExp 
+{
+  typ = (if (t.isUnknown) PUnknown() else PSeqType(t)) // type can be specified as PUnknown() if unknown
+}
 case class PExplicitSeq(elems: Seq[PExp]) extends PExp
 case class PRangeSeq(low: PExp, high: PExp) extends PExp
 case class PSeqIndex(seq: PExp, idx: PExp) extends PExp
@@ -274,7 +276,7 @@ object Nodes {
       case PSeqType(elemType) => Seq(elemType)
       case PSetType(elemType) => Seq(elemType)
       case PMultisetType(elemType) => Seq(elemType)
-      case PUnkown() => Nil
+      case PUnknown() => Nil
       case PBinExp(left, op, right) => Seq(left, right)
       case PUnExp(op, exp) => Seq(exp)
       case PIntLit(i) => Nil
@@ -297,7 +299,7 @@ object Nodes {
       case PWildcard() => Nil
       case PEpsilon() => Nil
       case PAccPred(loc, perm) => Seq(loc, perm)
-      case PEmptySeq() => Nil
+      case PEmptySeq(_) => Nil
       case PExplicitSeq(elems) => elems
       case PRangeSeq(low, high) => Seq(low, high)
       case PSeqIndex(seq, idx) => Seq(seq, idx)

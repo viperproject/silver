@@ -237,7 +237,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(elemType)
       case PMultisetType(elemType) =>
         check(elemType)
-      case PUnkown() =>
+      case PUnknown() =>
         message(typ, "expected concrete type, but found unknown typ")
     }
   }
@@ -265,13 +265,13 @@ case class TypeChecker(names: NameAnalyser) {
 
   /**
    * Are types 'a' and 'b' compatible?  Type variables are assumed to be unbound so far,
-   * and if they occur they are compatible with any type.  PUnkown is also compatible with
+   * and if they occur they are compatible with any type.  PUnknown is also compatible with
    * everything.
    */
   def isCompatible(a: PType, b: PType): Boolean = {
     (a, b) match {
-      case (PUnkown(), t) => true
-      case (t, PUnkown()) => true
+      case (PUnknown(), t) => true
+      case (t, PUnknown()) => true
       case (PTypeVar(name), t) => true
       case (t, PTypeVar(name)) => true
       case (PSeqType(e1), PSeqType(e2)) => isCompatible(e1, e2)
@@ -348,7 +348,7 @@ case class TypeChecker(names: NameAnalyser) {
      * Sets an error type for 'exp' to suppress further warnings.
      */
     def setErrorType() {
-      setType(PUnkown())
+      setType(PUnknown())
     }
     def genericSeqType: PSeqType = PSeqType(PTypeVar("."))
     def genericSetType: PSetType = PSetType(PTypeVar("."))
@@ -627,8 +627,8 @@ case class TypeChecker(names: NameAnalyser) {
         check(loc, Seq())
         check(perm, Perm)
         setType(Bool)
-      case PEmptySeq() =>
-        val typ = genericSeqType
+      case PEmptySeq(_) =>
+        val typ = (if (exp.typ.isUnknown) genericSeqType else exp.typ)
         if (expected.size == 1) {
           setRefinedType(typ, learn(typ, expected.head))
         } else {
