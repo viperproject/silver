@@ -20,7 +20,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
 /** A field declaration. */
 case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location with Typed {
-  require(typ.isConcrete)
+  require(typ.isConcrete, "Type of field " + name + ":" + typ + " must be concrete!")
 }
 
 /** A predicate declaration. */
