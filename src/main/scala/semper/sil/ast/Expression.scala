@@ -245,7 +245,6 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 /** A common trait for quantified expressions. */
 sealed trait QuantifiedExp extends Exp {
   require(exp isSubtype Bool)
-  Consistency.checkNoPositiveOnlyExceptInhaleExhale(exp)
   def variables: Seq[LocalVarDecl]
   def exp: Exp
   lazy val typ = Bool
@@ -279,7 +278,9 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 }
 
 /** Existential quantification. */
-case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp
+case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp {
+  Consistency.checkNoPositiveOnlyExceptInhaleExhale(exp)
+}
 
 /** A trigger for a universally quantified formula. */
 case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
