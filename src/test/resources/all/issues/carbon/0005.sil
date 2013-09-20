@@ -1,0 +1,7 @@
+//:: IgnoreFile(/Carbon/issue/5/)
+
+var f: Int
+
+method test(x: Ref)
+	requires acc(x.f, none)
+{}
