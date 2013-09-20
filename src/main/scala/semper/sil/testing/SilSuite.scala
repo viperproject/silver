@@ -92,17 +92,16 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
     require(file != null)
     require(verifiers != null)
 
-    // The files that belong to the same test. Not filtered for ignored tests yet.
-    val rawFiles = fileList(file)
-    if (rawFiles.head != file) {
+    // The files that belong to the same test. Files with ignore-annotations will be filtered later on.
+    var files = fileList(file)
+    if (files.head != file) {
       // Only register the multi file test once, not for every file it contains.
       return
     }
 
     val baseTestName = testName(prefix, file)
     val relativeFileName = prefix + "/" + file.getName(file.getNameCount - 1)
-    val testAnnotations = parseAnnotations(rawFiles)
-    val files = rawFiles filter { f => !testAnnotations.isFileIgnored(f) }
+    val testAnnotations = parseAnnotations(files)
     val fileName = file.getFileName.toString
     val fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."))
 
@@ -111,13 +110,6 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
       Tag(file.toString),
       Tag(fileName),
       Tag(fileNameWithoutExt))
-
-    // ignore test if necessary
-    // TODO Make ignoring verifier dependent.
-    if (files.isEmpty) {
-      ignore(baseTestName, tags: _*) {}
-      return
-    }
 
     var testErrors: List[String] = Nil
 
@@ -128,124 +120,131 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
     // one test per verifier
     for (verifier <- verifiers) {
-      test(baseTestName + " [" + verifier.name + "]", (Tag(verifier.name) :: tags) :_*) {
-        val fe = frontend(verifier, files)
-        val tPhases = fe.phases.map { p =>
-          time(p.action)._2 + " (" + p.name + ")"
-        }.mkString(", ")
-        val result = fe.result
-        assert(result != null)
+      // ignore files if necessary
+      files = files filter { f => !testAnnotations.isFileIgnored(f, verifier.name) }
 
-        // postprocessing of errors: match up expected errors with actual errors and report inconsistencies
-        var expectedButMissingErrors: List[ExpectedError] = Nil
-        var unexpectedButMissingErrors: List[UnexpectedError] = Nil
-        var missingButPresentErrors: List[MissingError] = Nil
-        var additionalErrors: List[AbstractError] = Nil
-        result match {
-          case Success =>
-            var missingErrors: List[MissingError] = Nil
-            var expectedErrors: List[ExpectedError] = Nil
+      if (files.isEmpty)
+        ignore(baseTestName, tags: _*) {}
+      else {
+        test(baseTestName + " [" + verifier.name + "]", (Tag(verifier.name) :: tags) :_*) {
+          val fe = frontend(verifier, files)
+          val tPhases = fe.phases.map { p =>
+            time(p.action)._2 + " (" + p.name + ")"
+          }.mkString(", ")
+          val result = fe.result
+          assert(result != null)
 
-            // no actual errors, thus there should not be any expected ones
-            testAnnotations.annotations foreach {
-              case e: ExpectedError => expectedErrors ::= e
-              case u: UnexpectedError =>
-                if (u.project.toLowerCase == verifier.name.toLowerCase) unexpectedButMissingErrors ::= u
-              case m: MissingError => missingErrors ::= m
-              case _: IgnoreOthers =>
-              case _: IgnoreFileList => sys.error("the test should not have run in the first place")
-              case _: IgnoreFile => () // Could be that some files of this test, but not all of them are ignored.
-            }
+          // postprocessing of errors: match up expected errors with actual errors and report inconsistencies
+          var expectedButMissingErrors: List[ExpectedError] = Nil
+          var unexpectedButMissingErrors: List[UnexpectedError] = Nil
+          var missingButPresentErrors: List[MissingError] = Nil
+          var additionalErrors: List[AbstractError] = Nil
+          result match {
+            case Success =>
+              var missingErrors: List[MissingError] = Nil
+              var expectedErrors: List[ExpectedError] = Nil
 
-            /* Collect errors that were expected by the current verifier but are missing */
-            expectedButMissingErrors =
-              expectedErrors filterNot (expectedToBeMissing(_, missingErrors, verifier))
+              // no actual errors, thus there should not be any expected ones
+              testAnnotations.annotations foreach {
+                case e: ExpectedError => expectedErrors ::= e
+                case u: UnexpectedError =>
+                  if (u.project.toLowerCase == verifier.name.toLowerCase) unexpectedButMissingErrors ::= u
+                case m: MissingError => missingErrors ::= m
+                case _: IgnoreOthers =>
+                case _: IgnoreFileList => sys.error("the test should not have run in the first place")
+                case _: IgnoreFile => () // Could be that some files of this test, but not all of them are ignored.
+              }
 
-          case Failure(actualErrors) => {
-            var expectedErrors = testAnnotations.errorAnnotations
+              /* Collect errors that were expected by the current verifier but are missing */
+              expectedButMissingErrors =
+                expectedErrors filterNot (expectedToBeMissing(_, missingErrors, verifier))
 
-            def sameLine(file: Path, lineNr: Int, pos: Position) = pos match {
-              case p: SourcePosition => lineNr == p.line
-              case p: TranslatedPosition => file == p.file && lineNr == p.line
-              case _ => sys.error("Position is neither a source position nor a translated position even though we checked this before.")
-            }
+            case Failure(actualErrors) => {
+              var expectedErrors = testAnnotations.errorAnnotations
 
-            val findError: AbstractError => Option[TestAnnotation] = (actual: AbstractError) => {
-              if (!actual.pos.isInstanceOf[SourcePosition] && !actual.pos.isInstanceOf[TranslatedPosition]) None
-              else expectedErrors.filter({
-                case ErrorAnnotation(id, file, lineNr) => id.matches(actual.fullId) && sameLine(file, lineNr, actual.pos)
-                case IgnoreOthers(file, lineNr, _) => sameLine(file, lineNr, actual.pos)
-              }) match {
-                case Nil => None
-                case l => l.find(_.isInstanceOf[ErrorAnnotation]) match {
-                  case Some(x) => {
-                    // remove the error from the list of expected errors (i.e. only match once)
-                    expectedErrors = expectedErrors.filter(y => !y.eq(x))
-                    Some(x)
+              def sameLine(file: Path, lineNr: Int, pos: Position) = pos match {
+                case p: SourcePosition => lineNr == p.line
+                case p: TranslatedPosition => file == p.file && lineNr == p.line
+                case _ => sys.error("Position is neither a source position nor a translated position even though we checked this before.")
+              }
+
+              val findError: AbstractError => Option[TestAnnotation] = (actual: AbstractError) => {
+                if (!actual.pos.isInstanceOf[SourcePosition] && !actual.pos.isInstanceOf[TranslatedPosition]) None
+                else expectedErrors.filter({
+                  case ErrorAnnotation(id, file, lineNr) => id.matches(actual.fullId) && sameLine(file, lineNr, actual.pos)
+                  case IgnoreOthers(file, lineNr, _) => sameLine(file, lineNr, actual.pos)
+                }) match {
+                  case Nil => None
+                  case l => l.find(_.isInstanceOf[ErrorAnnotation]) match {
+                    case Some(x) => {
+                      // remove the error from the list of expected errors (i.e. only match once)
+                      expectedErrors = expectedErrors.filter(y => !y.eq(x))
+                      Some(x)
+                    }
+                    case None => Some(l.head) // IgnoreOthers should not be removed
                   }
-                  case None => Some(l.head) // IgnoreOthers should not be removed
                 }
               }
-            }
 
-            // go through all actual errors and try to match them up with the expected ones
-            actualErrors foreach (a => findError(a) match {
-              case Some(m: MissingError) =>
-                if (m.project.toLowerCase == verifier.name.toLowerCase) missingButPresentErrors ::= m
-              case Some(_) => // expected this error
-              case None =>
-                additionalErrors ::= a
-            })
+              // go through all actual errors and try to match them up with the expected ones
+              actualErrors foreach (a => findError(a) match {
+                case Some(m: MissingError) =>
+                  if (m.project.toLowerCase == verifier.name.toLowerCase) missingButPresentErrors ::= m
+                case Some(_) => // expected this error
+                case None =>
+                  additionalErrors ::= a
+              })
 
-            /* Partition remaining annotations into missing error annotations and all others */
-            val missingErrors: Seq[MissingError] = expectedErrors collect {case m: MissingError => m}
-            val remainingErrors: Seq[LocatedAnnotation] = expectedErrors filterNot (missingErrors contains _)
+              /* Partition remaining annotations into missing error annotations and all others */
+              val missingErrors: Seq[MissingError] = expectedErrors collect {case m: MissingError => m}
+              val remainingErrors: Seq[LocatedAnnotation] = expectedErrors filterNot (missingErrors contains _)
 
-            // process remaining errors that have not been matched
-            remainingErrors.foreach {
-              case e: ExpectedError =>
-                if (!expectedToBeMissing(e, missingErrors, verifier)) expectedButMissingErrors ::= e
-              case u: UnexpectedError =>
-                if (u.project.toLowerCase == verifier.name.toLowerCase) unexpectedButMissingErrors ::= u
-              case _: IgnoreOthers =>
-              case _: MissingError => ??? /* Should not occur because they were previously filtered out */
+              // process remaining errors that have not been matched
+              remainingErrors.foreach {
+                case e: ExpectedError =>
+                  if (!expectedToBeMissing(e, missingErrors, verifier)) expectedButMissingErrors ::= e
+                case u: UnexpectedError =>
+                  if (u.project.toLowerCase == verifier.name.toLowerCase) unexpectedButMissingErrors ::= u
+                case _: IgnoreOthers =>
+                case _: MissingError => ??? /* Should not occur because they were previously filtered out */
+              }
             }
           }
-        }
 
-        if (!additionalErrors.isEmpty) {
-          testErrors ::= "The following errors occurred during verification, but should not have according to the test annotations:\n" +
-            additionalErrors.reverse.map("  " + _.toString).mkString("\n")
-        }
+          if (!additionalErrors.isEmpty) {
+            testErrors ::= "The following errors occurred during verification, but should not have according to the test annotations:\n" +
+              additionalErrors.reverse.map("  " + _.toString).mkString("\n")
+          }
 
-        if (!expectedButMissingErrors.isEmpty) {
-          testErrors ::= "The following errors were expected according to the test annotations, but did not occur during verification:\n" +
-            expectedButMissingErrors.reverse.map("  " + _.toString).mkString("\n")
-        }
+          if (!expectedButMissingErrors.isEmpty) {
+            testErrors ::= "The following errors were expected according to the test annotations, but did not occur during verification:\n" +
+              expectedButMissingErrors.reverse.map("  " + _.toString).mkString("\n")
+          }
 
-        if (!unexpectedButMissingErrors.isEmpty) {
-          testErrors ::= "The following errors were specified to occur erroneously (UnexpectedError) according to the test annotations, but did not occur during verification (this might be cause by invalid test annotations:\n" +
-            unexpectedButMissingErrors.reverse.map("  " + _.toString).mkString("\n")
-        }
+          if (!unexpectedButMissingErrors.isEmpty) {
+            testErrors ::= "The following errors were specified to occur erroneously (UnexpectedError) according to the test annotations, but did not occur during verification (this might be cause by invalid test annotations:\n" +
+              unexpectedButMissingErrors.reverse.map("  " + _.toString).mkString("\n")
+          }
 
-        if (!missingButPresentErrors.isEmpty) {
-          testErrors ::= "The following errors were specified to be missing erroneously (MissingError) according to the test annotations, but did occur during verification (this might be cause by invalid test annotations):\n" +
-            missingButPresentErrors.reverse.map("  " + _.toString).mkString("\n")
-        }
+          if (!missingButPresentErrors.isEmpty) {
+            testErrors ::= "The following errors were specified to be missing erroneously (MissingError) according to the test annotations, but did occur during verification (this might be cause by invalid test annotations):\n" +
+              missingButPresentErrors.reverse.map("  " + _.toString).mkString("\n")
+          }
 
-        // report some other useful information
-        info(s"Verifier used: ${verifier.name} ${verifier.version}.")
-        verifier.dependencies foreach {
-          dep =>
-            info(s"  using ${dep.name} ${dep.version} located at ${dep.location}")
-        }
-        info(s"Time required: $tPhases.")
+          // report some other useful information
+          info(s"Verifier used: ${verifier.name} ${verifier.version}.")
+          verifier.dependencies foreach {
+            dep =>
+              info(s"  using ${dep.name} ${dep.version} located at ${dep.location}")
+          }
+          info(s"Time required: $tPhases.")
 
-        // if there were any errors that could not be matched up (or other problems), make the test fail
-        if (!testErrors.isEmpty) {
-          val n = Seq(additionalErrors.size, expectedButMissingErrors.size, unexpectedButMissingErrors.size, missingButPresentErrors.size)
-          val title = s"${n.sum} errors (${n.mkString(",")}})"
-          fail((Seq(title) ++ testErrors).mkString("\n\n") + "\n\n")
+          // if there were any errors that could not be matched up (or other problems), make the test fail
+          if (!testErrors.isEmpty) {
+            val n = Seq(additionalErrors.size, expectedButMissingErrors.size, unexpectedButMissingErrors.size, missingButPresentErrors.size)
+            val title = s"${n.sum} errors (${n.mkString(",")}})"
+            fail((Seq(title) ++ testErrors).mkString("\n\n") + "\n\n")
+          }
         }
       }
     }
@@ -437,7 +436,7 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
   protected override def runTests(testName: Option[String], reporter: Reporter, stopper: Stopper, filter: Filter, configMap: Map[String, Any], distributor: Option[Distributor], tracker: Tracker) {
     this.configMap = configMap
     registerTests()
-    
+
     super.runTests(testName, reporter, stopper, filter, configMap, distributor, tracker)
   }
 
