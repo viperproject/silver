@@ -11,9 +11,9 @@ import java.nio.file.{Files, Path}
  * @author Stefan Heule
  */
 sealed case class TestAnnotations(errors: Seq[TestAnnotationParseError], annotations: Seq[TestAnnotation]) {
-  def isFileIgnored(file: Path): Boolean = annotations exists {
+  def isFileIgnored(file: Path, project: String): Boolean = annotations exists {
     case _: IgnoreFileList => true
-    case IgnoreFile(f, _, _, _) => f.toAbsolutePath == file.toAbsolutePath
+    case IgnoreFile(f, _, prj, _) => f.toAbsolutePath == file.toAbsolutePath && prj == project
     case _ => false
   }
 
