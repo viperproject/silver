@@ -2,18 +2,22 @@ package semper.sil.frontend
 
 import collection._
 import org.rogach.scallop.LazyScallopConf
-import semper.sil.verifier.{Dependency, Verifier}
-import org.rogach.scallop.exceptions.{Help, Version, ScallopException, Exit}
+import semper.sil.verifier.{Verifier}
+import org.rogach.scallop.exceptions.{Help, Version, ScallopException}
 
 /**
  * The configuration of a SIL front-end.
  *
  * @author Stefan Heule
  */
-case class SilFrontendConfig(ars: Seq[String], verifier: Verifier) extends LazyScallopConf(ars) {
+class SilFrontendConfig(args: Seq[String], private var projectName: String) extends LazyScallopConf(args) {
+  /* Attention: projectName must be an explicit field, otherwise it cannot be
+    * used in an interpolated string!
+    */
 
   /** None if there has no error occurred during command-line parsing, and an error message otherwise. */
   var error: Option[String] = None
+
   /** True if (after command-line parsing) we should exit. */
   var exit: Boolean = false
 
@@ -24,12 +28,6 @@ case class SilFrontendConfig(ars: Seq[String], verifier: Verifier) extends LazyS
 
   val dependencies = opt[Boolean]("dependencies",
     descr = "Print full information about dependencies.",
-    default = Some(false),
-    noshort = true
-  )
-
-  val noHeader = opt[Boolean]("no-header",
-    descr = "Don't display the header (includes name and version of the tool as well as its dependencies)",
     default = Some(false),
     noshort = true
   )
@@ -46,27 +44,7 @@ case class SilFrontendConfig(ars: Seq[String], verifier: Verifier) extends LazyS
     noshort = true
   )
 
-  val detailedTiming = opt[Boolean]("detailed-timing",
-    descr = "Display detailed timing information",
-    default = Some(false),
-    noshort = true
-  )
-
-  lazy val fullVersion = {
-    s"${verifier.name} ${verifier.version} ${verifier.copyright}"
-  }
-
-  banner( s"""Usage: ${verifier.name} [options] <file>
-             |
-             |Options:""".stripMargin)
-  initialize {
-    case Version =>
-      println(builder.vers.get)
-      exit = true
-    case Help(_) =>
-      exit = true
-      printHelp()
-    case ScallopException(message) =>
-      error = Some(message)
-  }
+  banner(s"""Usage: $projectName [options] <file>
+            |
+            |Options:""".stripMargin)
 }

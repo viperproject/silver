@@ -1,46 +1,51 @@
 package semper.sil.frontend
 
-import semper.sil.parser._
 import org.kiama.util.Messaging._
+import org.rogach.scallop.exceptions.{Version, Help, ScallopException}
+import java.nio.file.Paths
+import semper.sil.parser._
 import semper.sil.verifier._
-import java.io.File
 import semper.sil.verifier.CliOptionError
 import semper.sil.verifier.Failure
 import semper.sil.verifier.ParseError
 import semper.sil.ast.SourcePosition
 import semper.sil.verifier.TypecheckerError
 import semper.sil.ast.Program
-import java.nio.file.Paths
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
  * provides code to invoke the parser, parse common command-line options and print
  * error messages in a user-friendly fashion.
  *
- * Users of this trait should implement a main method that calls `SilFrontend.run`.
- * Furthermore, they must implement the method `verifier` that returns a verifier
- * for SIL.
- *
  * @author Stefan Heule
  */
 trait SilFrontend extends DefaultFrontend {
 
   /**
-   * Create the verifier.  The full command is just available for debugging
-   * purposes; the verifier-specific arguments will be passed later.
+   * Create the verifier. The full command is parsed for debugging purposes only,
+   * since the command line arguments will be passed later on via
+   * [[semper.sil.verifier.Verifier.parseCommandLine]].
    */
   def createVerifier(fullCmd: String): Verifier
 
+  /** Configures the verifier by passing it the command line arguments ''args''.
+    * Returns the verifier's effective configuration.
+    */
+  def configureVerifier(args: Seq[String]): SilFrontendConfig
+
   /** The SIL verifier to be used for verification (after it has been initialized). */
   def verifier: Verifier = _ver
-  var _ver: Verifier = null
+  protected var _ver: Verifier = null
 
   override protected type ParserResult = PProgram
   override protected type TypecheckerResult = Program
 
   /** The current configuration. */
-  var _config: SilFrontendConfig = null
+  protected var _config: SilFrontendConfig = null
   def config = _config
+
+  protected var _startTime: Long = _
+  def startTime = _startTime
 
   /**
    * Main method that parses command-line arguments, parses the input file and passes
@@ -48,50 +53,41 @@ trait SilFrontend extends DefaultFrontend {
    * shown in a user-friendly fashion.
    */
   def execute(args: Seq[String]) {
+    _startTime = System.currentTimeMillis()
 
-    val start = System.currentTimeMillis()
-
-    // create the verifier
+    /* Create the verifier */
     _ver = createVerifier(args.mkString(" "))
 
-    // parse command line arguments
-    try {
-      _config = SilFrontendConfig(args, verifier)
-      config.file() // hack: force command-line option parsing
-    } catch {
-      case t: Exception =>
-        printFinishHeaderWithTime(start)
-        printErrors(CliOptionError(t.getMessage + "."))
-        return
-      case t: Throwable =>
-        printFinishHeaderWithTime(start)
-        printErrors(CliOptionError(t.toString + "."))
-        return
-    }
+    /* Parse command line arguments and populate _config */
+    parseCommandLine(args)
 
-    // exit if there were errors during parsing of command-line options
-    if (config.error.isDefined) {
+    /* Must be executed before reading any value from _config!
+     * If parsing failed, _config.error should be defined afterwards.
+     */
+    initializeLazyScallopConfig()
+
+    /* Handle errors occurred while parsing of command-line options */
+    if (_config.error.isDefined) {
+      /* The command line arguments could not be parses. Hence, we should not
+       * try to ready any arguments-related value from _config!
+       */
+      printFallbackHeader()
+      printErrors(CliOptionError(_config.error.get + "."))
+      println()
+      _config.printHelp()
+      return
+    } else if (_config.exit) {
+      /* Parsing succeeded, but the frontend should exit immediately never the less. */
       printHeader()
-      printFinishHeader(start)
-      printErrors(CliOptionError(config.error.get + "."))
-      return
-    } else if (config.exit) {
+      printFinishHeader()
       return
     }
 
-    // forward verifier arguments
-    verifier.commandLineArgs(Nil)
-
-    // wait with setting the version, such that the verifier can use command-line arguments first to determine
-    // the versions of dependencies
-    config.version(config.fullVersion)
-
-    // print the header
     printHeader()
 
     // print dependencies if necessary
-    if (config.dependencies()) {
-      val s = (verifier.dependencies map (dep => {
+    if (_config.dependencies()) {
+      val s = (_ver.dependencies map (dep => {
         s"  ${dep.name} ${dep.version}, located at ${dep.location}."
       })).mkString("\n")
       println("The following dependencies are used:")
@@ -100,53 +96,82 @@ trait SilFrontend extends DefaultFrontend {
     }
 
     // initialize the translator
-    init(verifier)
+    init(_ver)
 
     // set the file we want to verify
-//    reset(new File(config.file()))
-    reset(Paths.get(config.file()))
+    reset(Paths.get(_config.file()))
 
     // run the parser, typechecker, and verifier
     verify()
 
     // print the result
-    printFinishHeader(start)
+    printFinishHeader()
+
     result match {
-      case Success =>
-        printSuccess()
-      case Failure(errors) =>
-        printErrors(errors: _*)
+      case Success => printSuccess()
+      case Failure(errors) => printErrors(errors: _*)
     }
   }
 
-  def printHeader() {
-    if (!config.noHeader()) {
-      println(config.fullVersion)
-      println()
+  protected def parseCommandLine(args: Seq[String]) {
+    _config = configureVerifier(args)
+  }
+
+  protected def initializeLazyScallopConfig() {
+    _config.initialize {
+      case Version =>
+        _config.exit = true
+        println(_config.builder.vers.get)
+      case Help(_) =>
+        _config.exit = true
+        _config.printHelp()
+      case ScallopException(message) =>
+        _config.exit = true
+        _config.error = Some(message)
     }
   }
 
-  def printFinishHeader(startTime: Long) {
-    if (config.noTiming()) {
-      println(s"${verifier.name} finished.")
-    } else {
-      printFinishHeaderWithTime(startTime)
+  /** Prints a header that does **not** depend on any command line argument.
+    * This method is thus safe to call even if parsing the command line
+    * arguments failed.
+    */
+  protected def printFallbackHeader() {
+    println(s"${_ver.name} ${_ver.version} ${_ver.copyright}")
+    println()
+  }
+
+  /** Prints the frontend header. May depend on command line arguments. */
+  protected def printHeader() {
+    printFallbackHeader()
+  }
+
+  /** Prints the final part of the frontend header. May depend on command line
+    * arguments.
+    */
+  protected def printFinishHeader() {
+    if (!_config.exit) {
+      if (_config.noTiming()) {
+        println(s"${_ver.name} finished.")
+      } else {
+        printFinishHeaderWithTime()
+      }
     }
   }
 
-  def printFinishHeaderWithTime(startTime: Long) {
-    val timeMs = System.currentTimeMillis() - startTime
+  protected def printFinishHeaderWithTime() {
+    val timeMs = System.currentTimeMillis() - _startTime
     val time = f"${(timeMs / 1000.0)}%.3f seconds"
-    println(s"${verifier.name} finished in $time.")
+    println(s"${_ver.name} finished in $time.")
   }
-  def printErrors(errors: AbstractError*) {
+
+  protected def printErrors(errors: AbstractError*) {
     println("The following errors were found:")
     for (e <- errors) {
       println("  " + e.readableMessage)
     }
   }
 
-  def printSuccess() {
+  protected def printSuccess() {
     println("No errors found.")
   }
 
@@ -185,5 +210,4 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def mapVerificationResult(in: VerificationResult) = in
-
 }

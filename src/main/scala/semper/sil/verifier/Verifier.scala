@@ -13,7 +13,11 @@ import semper.sil.ast.Program
   * RFC: [Malte] If we made this an abstract class, then `commandLineArgs` and `debugInfo` could
   *      be constructor arguments and we wouldn't have to impose a protocol on clients.
   *
-  * @author Stefan Heule
+  * RFC: [Malte] If we renamed method `verify` to something more generic, e.g., `handle`,
+  *      then this trait could be generalised from `Verifier` to `SilProgramHandler` or
+  *      `SilTool`.
+  *
+  *@author Stefan Heule
   */
 trait Verifier {
 
@@ -53,7 +57,7 @@ trait Verifier {
   def dependencies: Seq[Dependency]
 
   /** Set the command-line arguments to be used in this verifier. */
-  def commandLineArgs(options: Seq[String])
+  def parseCommandLine(args: Seq[String])
 
   /** Verifies a given SIL program and returns a sequence of ''verification errors''.
     *
@@ -80,7 +84,7 @@ class NoVerifier extends Verifier {
 
   val dependencies = Nil
 
-  def commandLineArgs(options: Seq[String]) {}
+  def parseCommandLine(args: Seq[String]) {}
 
   /** Is not implemented and should never be called. */
   def verify(program: Program) = ???

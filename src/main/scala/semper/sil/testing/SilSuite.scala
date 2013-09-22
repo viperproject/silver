@@ -305,7 +305,8 @@ abstract class SilSuite extends FunSuite with TestAnnotationParser {
 
     val directoryStream = Files.newDirectoryStream(dir)
     val dirContent = directoryStream.toList
-    val namePattern = configMap.getOrElse("include", ".*").toString
+//    val namePattern = configMap.getOrElse("include", ".*").toString
+    val namePattern = ".*"
 
     for (f: Path <- dirContent
          if Files.isDirectory(f)) {
