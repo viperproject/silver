@@ -11,7 +11,7 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1"
 
 libraryDependencies += "com.googlecode.kiama" % "kiama_2.10" % "1.5.1"
 
-libraryDependencies += "org.rogach" %% "scallop" % "0.8.1"
+libraryDependencies += "org.rogach" %% "scallop" % "0.9.4"
 
 libraryDependencies += "org.jgrapht" % "jgrapht-jdk1.5" % "0.7.3"
 
