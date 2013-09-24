@@ -13,7 +13,7 @@ import java.nio.file.{Files, Path}
 sealed case class TestAnnotations(errors: Seq[TestAnnotationParseError], annotations: Seq[TestAnnotation]) {
   def isFileIgnored(file: Path, project: String): Boolean = annotations exists {
     case _: IgnoreFileList => true
-    case IgnoreFile(f, _, prj, _) => f.toAbsolutePath == file.toAbsolutePath && prj == project
+    case IgnoreFile(f, _, prj, _) => f.toAbsolutePath == file.toAbsolutePath && prj.equalsIgnoreCase(project)
     case _ => false
   }
 
