@@ -53,33 +53,41 @@ case class ErrorAnnotationId(reasonId: String, errorId: Option[String]) {
 
 /** Annotations that refer to a location. */
 sealed trait LocatedAnnotation extends TestAnnotation {
-  val file: Path
-  val forLineNr: Int
+  def file: Path
+  def forLineNr: Int
 
   def sameSource(other: LocatedAnnotation) =
     Files.isSameFile(this.file, other.file) && forLineNr == other.forLineNr
 }
 
 /** Test annotations that have a location and an identifier (i.e. describe an error of some sort). */
-sealed abstract class ErrorAnnotation(val id: ErrorAnnotationId, val file: Path, val forLineNr: Int) extends LocatedAnnotation {
+sealed trait ErrorAnnotation extends LocatedAnnotation {
+  def id: ErrorAnnotationId
+
   override def toString = s"$id (${file.getFileName.toString}:$forLineNr)"
+}
+
+/** Test annotation that is specific to a certain project. Further details should be given by the referenced issue. */
+sealed trait ProjectSpecificAnnotation extends TestAnnotation {
+  def project: String
+  def issueNr: Int
 }
 
 object ErrorAnnotation {
   def unapply(e: ErrorAnnotation) = Some((e.id, e.file, e.forLineNr))
 }
 
-sealed case class ExpectedError(override val id: ErrorAnnotationId, override val file: Path, override val forLineNr: Int, annotationLineNr: Int) extends ErrorAnnotation(id, file, forLineNr)
+case class ExpectedError(id: ErrorAnnotationId, file: Path, forLineNr: Int, annotationLineNr: Int) extends ErrorAnnotation
 
-sealed case class UnexpectedError(override val id: ErrorAnnotationId, override val file: Path, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, file, forLineNr)
+case class UnexpectedError(id: ErrorAnnotationId, file: Path, forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation with ProjectSpecificAnnotation
 
-sealed case class MissingError(override val id: ErrorAnnotationId, override val file: Path, override val forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation(id, file, forLineNr)
+case class MissingError(id: ErrorAnnotationId, file: Path, forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation with ProjectSpecificAnnotation
 
-sealed case class IgnoreOthers(file: Path, forLineNr: Int, annotationLineNr: Int) extends LocatedAnnotation
+case class IgnoreOthers(file: Path, forLineNr: Int, annotationLineNr: Int) extends LocatedAnnotation
 
-sealed case class IgnoreFile(file: Path, annotationLineNr: Int, project: String, issueNr: Int) extends TestAnnotation
+case class IgnoreFile(file: Path, annotationLineNr: Int, project: String, issueNr: Int) extends ProjectSpecificAnnotation
 
-sealed case class IgnoreFileList(file: Path, annotationLineNr: Int, project: String, issueNr: Int) extends TestAnnotation
+case class IgnoreFileList(file: Path, annotationLineNr: Int, project: String, issueNr: Int) extends ProjectSpecificAnnotation
 
 case class TestAnnotationParseError(offendingLine: String, file: Path, lineNr: Int) {
   def errorMessage: String = {
