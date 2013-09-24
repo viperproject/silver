@@ -1,8 +1,21 @@
 //:: IgnoreFile(/Silicon/issue/31/)
 
-var f: Ref
+var f: Int
 var p: Perm
 
+method t3(this: Ref, p2: Perm)
+{
+    //:: ExpectedError(invalid.perm.multiplication)
+    //:: MissingError(invalid.perm.multiplication, /Silicon/issue/31/)
+    var p: Perm := epsilon * p2
+}
+
+method t5(r: Ref)
+	requires acc(r.f, write)
+{
+	//:: ExpectedError(call.precondition:epsilon.as.param)
+	t1b(r, epsilon)
+}
 
 method test1(this: Ref, p: Perm)
   requires this != null && acc(this.f, p)
@@ -59,4 +72,11 @@ method test7(r: Ref)
   requires r != null && acc(r.Q(), epsilon)
 {
   var b: Bool := unfolding acc(r.Q(), epsilon) in true
+}
+
+method t6(r: Ref)
+{
+    assert (epsilon <= write)
+    //:: ExpectedError(assert.failed:assertion.false)
+    assert (epsilon >= write)
 }

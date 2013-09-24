@@ -6,10 +6,10 @@ predicate valid(list: Ref) {
 }
 
 function size(list: Ref): Int
-  requires acc(list.valid(), epsilon)
+  requires acc(list.valid(), wildcard)
   ensures result >= 1
 {
-	unfolding acc(list.valid(), epsilon) in (list.next == null ? 1 : 1 + size(list.next))
+	unfolding acc(list.valid(), wildcard) in (list.next == null ? 1 : 1 + size(list.next))
 }
 
 method testFails1(list: Ref) {
@@ -18,21 +18,21 @@ method testFails1(list: Ref) {
 }
 
 method testFails2(list: Ref)
- 	requires acc(list.valid(), epsilon)
+ 	requires acc(list.valid(), wildcard)
 {
   //:: ExpectedError(assert.failed:assertion.false)
  	assert list != null
 }
 
 method testSuccess1(list: Ref)
-	requires acc(list.next, epsilon)
+	requires acc(list.next, wildcard)
 {
 	assert list != null
 }
 
 method testSuccess2(list: Ref)
-	requires acc(list.valid(), epsilon)
+	requires acc(list.valid(), wildcard)
 {
-	unfold acc(list.valid(), epsilon)
+	unfold acc(list.valid(), wildcard)
 	assert list != null
 }

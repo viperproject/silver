@@ -1,4 +1,3 @@
-
 var f: Int
 
 method t1(r: Ref)
@@ -57,12 +56,4 @@ method t4(r: Ref, read: Perm)
     fresh(read2) {
         t1b(r, read2)
     }
-}
-
-method t5(r: Ref)
-    requires acc(r.f, write)
-{
-    //:: ExpectedError(call.precondition:epsilon.as.param)
-    //:: MissingError(assertion.false, /Silicon/issue/31/)
-    t1b(r, epsilon)
 }

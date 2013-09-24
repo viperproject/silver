@@ -35,13 +35,6 @@ method t2_b(this: Ref)
     var i: Int := func(this.f)
 }
 
-method t3(this: Ref, p2: Perm)
-{
-    //:: ExpectedError(invalid.perm.multiplication)
-    //:: MissingError(invalid.perm.multiplication, /Silicon/issue/31/)
-    var p: Perm := epsilon * p2
-}
-
 method t4_a(this: Ref)
 {
     //:: ExpectedError(assignment.failed:receiver.null)
