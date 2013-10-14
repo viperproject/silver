@@ -133,6 +133,10 @@ case class Translator(program: PProgram) {
         Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PUnfold(e) =>
         Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
+      case PPackageWand(e) =>
+        Package(exp(e).asInstanceOf[MagicWand])(pos)
+      case PApplyWand(e) =>
+        Apply(exp(e).asInstanceOf[MagicWand])(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
       case PExhale(e) =>
@@ -225,6 +229,7 @@ case class Translator(program: PProgram) {
           case "==" => EqCmp(l, r)(pos)
           case "!=" => NeCmp(l, r)(pos)
           case "==>" => Implies(l, r)(pos)
+          case "--*" => MagicWand(l, r)(pos)
           case "<==>" => EqCmp(l, r)(pos)
           case "&&" => And(l, r)(pos)
           case "||" => Or(l, r)(pos)

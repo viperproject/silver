@@ -73,6 +73,7 @@ object Transformer {
             case Or(l, r) => Or(go(l), go(r))(p, i)
             case And(l, r) => And(go(l), go(r))(p, i)
             case Implies(l, r) => Implies(go(l), go(r))(p, i)
+            case MagicWand(l, r) => MagicWand(go(l), go(r))(p, i)
 
             case Add(l, r) => Add(go(l), go(r))(p, i)
             case Sub(l, r) => Sub(go(l), go(r))(p, i)
@@ -234,6 +235,12 @@ object Transformer {
 
             case Unfold(predicate) =>
               Unfold(go(predicate))(statement.pos, statement.info)
+
+            case Package(wand) =>
+              Package(go(wand))(statement.pos, statement.info)
+
+            case Apply(wand) =>
+              Apply(go(wand))(statement.pos, statement.info)
 
             case While(condition, invariants, locals, body) =>
               While(go(condition), invariants map go, locals map go,

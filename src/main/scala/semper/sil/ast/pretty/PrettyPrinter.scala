@@ -171,6 +171,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case FieldAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case Fold(e) => "fold" <+> show(e)
       case Unfold(e) => "unfold" <+> show(e)
+      case Package(e) => "package" <+> show(e)
+      case Apply(e) => "apply" <+> show(e)
       case Inhale(e) => "inhale" <+> show(e)
       case Exhale(e) => "exhale" <+> show(e)
       case Assert(e) => "assert" <+> show(e)

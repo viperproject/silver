@@ -352,6 +352,13 @@ case object ImpliesOp extends BoolBinOp with BoolDomainFunc {
   lazy val fixity = Infix(RightAssoc)
 }
 
+/** Separating implication/Magic Wand. */
+case object MagicWandOp extends BoolBinOp with BoolDomainFunc {
+  lazy val op = "--*"
+  lazy val priority = 4
+  lazy val fixity = Infix(RightAssoc)
+}
+
 /** Boolean negation. */
 case object NotOp extends UnOp with BoolDomainFunc {
   lazy val expTyp = Bool

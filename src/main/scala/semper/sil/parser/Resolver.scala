@@ -115,6 +115,10 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PUnfold(e) =>
         check(e, Bool)
+      case PPackageWand(e) =>
+        check(e, Bool)
+      case PApplyWand(e) =>
+        check(e, Bool)
       case PExhale(e) =>
         check(e, Bool)
       case PAssert(e) =>
@@ -441,7 +445,7 @@ case class TypeChecker(names: NameAnalyser) {
               issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
             }
             setType(Bool)
-          case "&&" | "||" | "<==>" | "==>" =>
+          case "&&" | "||" | "<==>" | "==>" |"--*" =>
             check(left, Bool)
             check(right, Bool)
             setType(Bool)

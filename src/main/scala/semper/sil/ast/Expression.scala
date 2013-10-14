@@ -64,9 +64,13 @@ case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: I
   Consistency.checkNoPositiveOnly(right)
 }
 case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(AndOp)
+
 case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(ImpliesOp) {
   Consistency.checkNoPositiveOnly(left)
 }
+
+case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
+    extends DomainBinExp(ImpliesOp)
 
 /** Boolean negation. */
 case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NotOp) {

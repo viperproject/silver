@@ -56,7 +56,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // specifications
     "requires", "ensures", "invariant",
     // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto",
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto", "package", "apply",
     // control structures
     "while", "if", "elsif", "else",
     // special fresh block
@@ -171,12 +171,16 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val stmt =
     fieldassign | localassign | fold | unfold | exhale | assert |
       inhale | ifthnels | whle | varDecl | newstmt | freshReadPerm |
-      methodCall | goto | lbl
+      methodCall | goto | lbl | packageWand | applyWand
 
   lazy val fold =
     "fold" ~> exp ^^ PFold
   lazy val unfold =
     "unfold" ~> exp ^^ PUnfold
+  lazy val packageWand =
+    "package" ~> exp ^^ PPackageWand
+  lazy val applyWand =
+    "apply" ~> exp ^^ PApplyWand
   lazy val inhale =
     ("inhale" | "assume") ~> (exp) ^^ PInhale
   lazy val exhale =
@@ -248,7 +252,9 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val iffExp: PackratParser[PExp] =
     implExp ~ "<==>" ~ iffExp ^^ PBinExp | implExp
   lazy val implExp: PackratParser[PExp] =
-    orExp ~ "==>" ~ implExp ^^ PBinExp | orExp
+    magicWandExp ~ "==>" ~ implExp ^^ PBinExp | magicWandExp
+  lazy val magicWandExp: PackratParser[PExp] =
+    orExp ~ "--*" ~ magicWandExp ^^ PBinExp | orExp
   lazy val orExp: PackratParser[PExp] =
     andExp ~ "||" ~ orExp ^^ PBinExp | andExp
   lazy val andExp: PackratParser[PExp] =

@@ -178,6 +178,22 @@ object errors {
   def UnfoldFailed(offendingNode: Unfold): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => UnfoldFailed(offendingNode, reason))
 
+  case class PackageFailed(offendingNode: Package, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "package.failed"
+    val text = s"Packaging ${offendingNode.wand} might fail."
+  }
+
+  def PackageFailed(offendingNode: Package): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => PackageFailed(offendingNode, reason))
+
+  case class ApplyFailed(offendingNode: Package, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "apply.failed"
+    val text = s"Applying ${offendingNode.wand} might fail."
+  }
+
+  def ApplyFailed(offendingNode: Package): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => ApplyFailed(offendingNode, reason))
+
   case class LoopInvariantNotPreserved(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
     val id = "invariant.not.preserved"
     val text = s"Loop invariant $offendingNode might not be preserved."
