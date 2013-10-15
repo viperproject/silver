@@ -70,7 +70,7 @@ case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 }
 
 case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
-    extends DomainBinExp(ImpliesOp)
+    extends DomainBinExp(MagicWandOp)
 
 /** Boolean negation. */
 case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NotOp) {
