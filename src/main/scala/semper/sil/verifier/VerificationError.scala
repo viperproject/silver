@@ -186,12 +186,12 @@ object errors {
   def PackageFailed(offendingNode: Package): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PackageFailed(offendingNode, reason))
 
-  case class ApplyFailed(offendingNode: Package, reason: ErrorReason) extends AbstractVerificationError {
+  case class ApplyFailed(offendingNode: Apply, reason: ErrorReason) extends AbstractVerificationError {
     val id = "apply.failed"
     val text = s"Applying ${offendingNode.wand} might fail."
   }
 
-  def ApplyFailed(offendingNode: Package): PartialVerificationError =
+  def ApplyFailed(offendingNode: Apply): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => ApplyFailed(offendingNode, reason))
 
   case class LoopInvariantNotPreserved(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
@@ -267,5 +267,10 @@ object reasons {
   case class InvalidPermMultiplication(offendingNode: PermMul) extends AbstractErrorReason {
     val id = "invalid.perm.multiplication"
     def readableMessage = s"Permission multiplication might not be possible, as an operand might contain epsilons."
+  }
+
+  case class MagicWandChunkNotFound(offendingNode: MagicWand) extends AbstractErrorReason {
+    val id = "wand.not.found"
+    def readableMessage = s"Magic wand chunk not found."
   }
 }
