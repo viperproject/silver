@@ -163,7 +163,15 @@ sealed trait PLocationAccess extends PExp
 case class PFieldAccess(rcv: PExp, idnuse: PIdnUse) extends PLocationAccess
 case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse) extends PLocationAccess
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
-case class PUnfolding(loc: PAccPred, exp: PExp) extends PExp
+
+sealed trait PUnFoldingExp extends PExp {
+  def acc: PAccPred
+  def exp: PExp
+}
+
+case class PUnfolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp
+case class PFolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp
+
 case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp
 case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
@@ -289,7 +297,7 @@ object Nodes {
       case PFieldAccess(rcv, field) => Seq(rcv, field)
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
       case PFunctApp(func, args) => Seq(func) ++ args
-      case PUnfolding(loc, exp) => Seq(loc, exp)
+      case e: PUnFoldingExp => Seq(e.acc, e.exp)
       case PExists(vars, exp) => vars ++ Seq(exp)
       case POld(exp) => Seq(exp)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)

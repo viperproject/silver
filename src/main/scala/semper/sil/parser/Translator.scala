@@ -297,6 +297,8 @@ case class Translator(program: PProgram) {
         }
       case PUnfolding(loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
+      case PFolding(loc, e) =>
+        Folding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>

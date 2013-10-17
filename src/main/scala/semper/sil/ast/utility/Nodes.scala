@@ -59,7 +59,7 @@ object Nodes {
           case AbstractLocalVar(n) => Nil
           case FieldAccess(rcv, field) => Seq(rcv)
           case PredicateAccess(params, predicate) => params
-          case Unfolding(acc, exp) => Seq(acc, exp)
+          case e: UnFoldingExp => Seq(e.acc, e.exp)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
           case Exists(v, exp) => v ++ Seq(exp)

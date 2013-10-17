@@ -65,8 +65,8 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     "Seq",
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
-    // unfolding expressions
-    "unfolding", "in",
+    // prover hint expressions
+    "unfolding", "in", "folding",
     // old expression
     "old",
     // quantification
@@ -293,7 +293,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       inhaleExhale |
       perm |
       quant |
-      unfolding |
+      unfolding | folding |
       old
 
   lazy val accessPred: PackratParser[PAccPred] =
@@ -335,6 +335,9 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
 
   lazy val unfolding: PackratParser[PExp] =
     ("unfolding" ~> accessPred) ~ ("in" ~> exp) ^^ PUnfolding
+
+  lazy val folding: PackratParser[PExp] =
+    ("folding" ~> accessPred) ~ ("in" ~> exp) ^^ PFolding
 
   lazy val integer =
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))

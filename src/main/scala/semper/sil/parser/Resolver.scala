@@ -579,11 +579,11 @@ case class TypeChecker(names: NameAnalyser) {
           case x =>
             issueError(func, s"expected function")
         }
-      case PUnfolding(PAccPred(loc, perm), e) =>
-        check(perm, Perm)
-        check(loc, Pred)
-        check(e, expected)
-        setType(e.typ)
+      case e: PUnFoldingExp =>
+        check(e.acc.perm, Perm)
+        check(e.acc.loc, Pred)
+        check(e.exp, expected)
+        setType(e.exp.typ)
       case PExists(vars, e) =>
         vars map (v => check(v.typ))
         check(e, Bool)

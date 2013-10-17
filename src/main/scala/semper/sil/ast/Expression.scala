@@ -232,9 +232,18 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
   lazy val typ = thn.typ
 }
 
-// --- Unfolding expression
+// --- Prover hint expressions
 
-case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+sealed trait UnFoldingExp extends Exp {
+  def acc: PredicateAccessPredicate
+  def exp: Exp
+}
+
+case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp {
+  lazy val typ = exp.typ
+}
+
+case class Folding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp {
   lazy val typ = exp.typ
 }
 
