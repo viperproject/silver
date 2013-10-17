@@ -180,7 +180,7 @@ object errors {
 
   case class PackageFailed(offendingNode: Package, reason: ErrorReason) extends AbstractVerificationError {
     val id = "package.failed"
-    val text = s"Packaging ${offendingNode.wand} might fail."
+    val text = s"Packaging wand might fail."
   }
 
   def PackageFailed(offendingNode: Package): PartialVerificationError =
@@ -188,7 +188,7 @@ object errors {
 
   case class ApplyFailed(offendingNode: Apply, reason: ErrorReason) extends AbstractVerificationError {
     val id = "apply.failed"
-    val text = s"Applying ${offendingNode.wand} might fail."
+    val text = s"Applying wand might fail."
   }
 
   def ApplyFailed(offendingNode: Apply): PartialVerificationError =
