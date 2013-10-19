@@ -1,12 +1,27 @@
 package semper.sil.ast.utility
 
+import org.kiama.util.Messaging
+import util.parsing.input.{Position, NoPosition}
 import semper.sil.parser.Parser
 import semper.sil.ast._
-import semper.sil.ast.TerminalBlock
-import semper.sil.ast.CurrentPerm
 
 /** An utility object for consistency checking. */
 object Consistency {
+  def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
+    val pos = suspect.pos match {
+      case rp: RealPosition =>
+        new Position {
+          val line = rp.line
+          val column = rp.column
+          val lineContents = "<none>"
+        }
+
+      case _ => NoPosition
+    }
+
+    if (!property)
+      Messaging.messages += Messaging.Record(pos, message)
+  }
 
   /** Names that are not allowed for use in programs. */
   def reservedNames: Seq[String] = Parser.reserved
@@ -48,8 +63,9 @@ object Consistency {
    * conjuncts or on the right side of implications or conditional expressions) only, i.e. no access predicates and
    * no InhaleExhaleExp.
    */
-  def checkNoPositiveOnly(e: Exp): Unit = require(hasNoPositiveOnly(e), s"$e can only appear in positive positions.")
-  
+  def checkNoPositiveOnly(e: Exp) =
+    recordIfNot(e, hasNoPositiveOnly(e), s"$e can only appear in positive positions.")
+
   /**
    * Does this boolean expression contain no subexpressions that can appear in positive positions only?
    * @param exceptInhaleExhale Are inhale-exhale expressions possible?
@@ -73,12 +89,12 @@ object Consistency {
 
   /** This is like `checkNoPositiveOnly`, except that inhale-exhale expressions are fine. */
   def checkNoPositiveOnlyExceptInhaleExhale(e: Exp): Unit =
-    require(hasNoPositiveOnly(e, true), s"$e can only appear in positive positions.")
+    recordIfNot(e, hasNoPositiveOnly(e, true), s"$e can only appear in positive positions.")
 
   /** Check all properties required for a function body. */
   def checkFunctionBody(e: Exp) {
-    require(noOld(e), "Old expressions are not allowed in functions bodies.")
-    require(noResult(e), "Result variables are not allowed in function bodies.")
+    recordIfNot(e, noOld(e), "Old expressions are not allowed in functions bodies.")
+    recordIfNot(e, noResult(e), "Result variables are not allowed in function bodies.")
     checkNoPositiveOnly(e)
   }
 
@@ -86,27 +102,27 @@ object Consistency {
   def checkNoArgsReassigned(args: Seq[LocalVarDecl], b: Stmt) {
     val argVars = args.map(_.localVar).toSet
     for (a@LocalVarAssign(l, _) <- b if argVars.contains(l)) {
-      require(false, s"$a is a reassignment of formal argument $l.")
+      recordIfNot(a, false, s"$a is a reassignment of formal argument $l.")
     }
   }
 
   /** Check all properties required for a precondition. */
   def checkPre(e: Exp) {
-    require(noOld(e), "Old expressions are not allowed in preconditions.")
-    require(noResult(e), "Result variables are not allowed in preconditions.")
+    recordIfNot(e, noOld(e), "Old expressions are not allowed in preconditions.")
+    recordIfNot(e, noResult(e), "Result variables are not allowed in preconditions.")
     checkNonPostContract(e)
   }
 
   /** Check all properties required for a contract expression that is not a postcondition (precondition, invariant, predicate) */
   def checkNonPostContract(e: Exp) {
-    require(noResult(e), "Result variables are only allowed in postconditions of functions.")
+    recordIfNot(e, noResult(e), "Result variables are only allowed in postconditions of functions.")
     checkPost(e)
   }
 
   def checkPost(e: Exp) {
-    require(e isSubtype Bool, s"Contract $e: ${e.typ} must be boolean.")
+    recordIfNot(e, e isSubtype Bool, s"Contract $e: ${e.typ} must be boolean.")
     e visit {
-      case CurrentPerm(_) => require(false, s"Contract $e is not allowed to contain perm(.)")
+      case CurrentPerm(_) => recordIfNot(e, false, s"Contract $e is not allowed to contain perm(.)")
     }
   }
 
