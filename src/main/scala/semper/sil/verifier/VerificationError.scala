@@ -225,6 +225,14 @@ object errors {
 
   def PredicateNotWellformed(offendingNode: Predicate): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PredicateNotWellformed(offendingNode, reason))
+
+  case class MagicWandNotWellformed(offendingNode: MagicWand, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "wand.not.wellformed"
+    val text = s"Magic wand might not be well-formed."
+  }
+
+  def MagicWandNotWellformed(offendingNode: MagicWand): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => MagicWandNotWellformed(offendingNode, reason))
 }
 
 object reasons {
