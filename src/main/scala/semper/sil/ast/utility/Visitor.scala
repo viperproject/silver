@@ -1,5 +1,7 @@
 package semper.sil.ast.utility
 
+import scala.collection.mutable.ListBuffer
+import scala.reflect.{ClassTag, classTag}
 import semper.sil.ast._
 
 /**
@@ -33,6 +35,19 @@ object Visitor {
     if (f.isDefinedAt(n)) f(n)
     for (sub <- n.subnodes) {
       visit(sub)(f)
+    }
+  }
+
+  /** See Node.visit. */
+  def visitWithContext[C](n: Node, c: C)(f: C => PartialFunction[Node, C]) {
+    val fWithContext = f(c)
+
+    val newContext =
+      if (fWithContext.isDefinedAt(n)) fWithContext(n)
+      else c
+
+    for (sub <- n.subnodes) {
+      visitWithContext(sub, newContext)(f)
     }
   }
 
