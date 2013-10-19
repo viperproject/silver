@@ -1,6 +1,6 @@
 package semper.sil.frontend
 
-import org.kiama.util.Messaging._
+import org.kiama.util.Messaging
 import org.rogach.scallop.exceptions.{Version, Help, ScallopException}
 import java.nio.file.Paths
 import semper.sil.parser._
@@ -8,9 +8,8 @@ import semper.sil.verifier._
 import semper.sil.verifier.CliOptionError
 import semper.sil.verifier.Failure
 import semper.sil.verifier.ParseError
-import semper.sil.ast.SourcePosition
+import semper.sil.ast.{RealPosition, SourcePosition, Program}
 import semper.sil.verifier.TypecheckerError
-import semper.sil.ast.Program
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
@@ -188,12 +187,22 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
+  /* TODO: Naming of doTypecheck and doTranslate isn't ideal.
+           doTypecheck already translated the program, whereas doTranslate doesn't actually translate
+           anything, but instead filters members.
+   */
+
   override def doTypecheck(input: ParserResult): Result[TypecheckerResult] = {
     if (Resolver(input).run) {
-      val n = Translator(input).translate
-      Succ(n)
+      Translator(input).translate match {
+        case (program, Seq()) =>
+          Succ(program)
+
+        case (_, messages) =>
+          Fail(messages map (m => TypecheckerError(m.message, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))))
+      }
     } else {
-      val errors = for (m <- sortedmessages) yield {
+      val errors = for (m <- Messaging.sortedmessages) yield {
         TypecheckerError(m.message, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))
       }
       Fail(errors)
@@ -202,11 +211,14 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doTranslate(input: TypecheckerResult): Result[Program] = {
     // Filter methods according to command-line arguments.
-    val verifyMethods = if (config != null && config.methods() != ":all")
-      Seq("methods", config.methods())
-    else input.methods map (_.name)
+    val verifyMethods =
+      if (config != null && config.methods() != ":all") Seq("methods", config.methods())
+      else input.methods map (_.name)
+
     val methods = input.methods filter (m => verifyMethods.contains(m.name))
-    Succ(Program(input.domains, input.fields, input.functions, input.predicates, methods)(input.pos, input.info))
+    val program = Program(input.domains, input.fields, input.functions, input.predicates, methods)(input.pos, input.info)
+
+    Succ(program)
   }
 
   override def mapVerificationResult(in: VerificationResult) = in

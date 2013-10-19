@@ -1,9 +1,12 @@
 package semper.sil.parser
 
+import org.kiama.attribution.Attributable
+import org.kiama.util.Messaging
+import language.implicitConversions
 import semper.sil.ast._
 import utility.Statements
-import language.implicitConversions
-import org.kiama.attribution.Attributable
+
+
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into a SIL abstract
@@ -16,17 +19,22 @@ case class Translator(program: PProgram) {
 
   val file = program.file
 
-  def translate: Program = {
+  def translate: (Program, Seq[Messaging.Record]) = {
+    assert(Messaging.messagecount == 0, "Expected previous phases to succeed, but found error messages.")
+
     program match {
       case PProgram(f, domains, fields, functions, predicates, methods) =>
         (domains ++ fields ++ functions ++ predicates ++
           methods ++ (domains flatMap (_.funcs))) map translateMemberSignature
+
         val d = domains map (translate(_))
         val f = fields map (translate(_))
         val fs = functions map (translate(_))
         val p = predicates map (translate(_))
         val m = methods map (translate(_))
-        Program(d, f, fs, p, m)(program.start)
+        val prog = Program(d, f, fs, p, m)(program.start)
+
+        (prog, Messaging.messages)
     }
   }
 
