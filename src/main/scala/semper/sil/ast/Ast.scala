@@ -72,6 +72,18 @@ trait Node extends Traversable[Node] {
   }
 
   /**
+   * Applies the function `f` to the AST node, then visits all subodes. Also carries a context
+   * down the tree that can be updated by `f`.
+   *
+   * @tparam C Context type.
+   * @param c Initial context.
+   * @param f Visitor function.
+   */
+  def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]) {
+    Visitor.visitWithContext(this, c)(f)
+  }
+
+  /**
    * Applies the function `f1` to the AST node, then visits all subnodes,
    * and finally calls `f2` to the AST node.
    */
