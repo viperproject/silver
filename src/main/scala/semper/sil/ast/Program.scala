@@ -3,16 +3,18 @@ package semper.sil.ast
 import utility.{Consistency, Types}
 import org.kiama.output._
 
-/** A SIL program. */
-// TODO consistency checks
+/**
+  * A SIL program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
                   (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
   require(
     Consistency.noDuplicates(
       (members map (_.name)) ++
-        (domains flatMap (d => (d.axioms map (_.name)) ++ (d.functions map (_.name))))
-    ), "names of members must be distinct"
-  )
+        (domains flatMap (d => (d.axioms map (_.name)) ++ (d.functions map (_.name))))),
+      "names of members must be distinct")
+
+  Consistency.checkContextDependentConsistency(this)
+
   lazy val members = domains ++ fields ++ functions ++ predicates ++ methods
 }
 

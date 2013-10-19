@@ -126,6 +126,11 @@ object Consistency {
     }
   }
 
+  /** Ghost expressions are folding, unfolding. */
+  def noGhostExpression(n: Node) = !n.existsDefined {
+    case _: UnFoldingExp =>
+  }
+
   /** Returns true iff the given expression is a valid trigger. */
   def validTrigger(e: Exp): Boolean = {
     e.isInstanceOf[FuncLikeApp] && !(e.existsDefined {
@@ -186,4 +191,32 @@ object Consistency {
         (ok, acyclic, terminals)
     }
   }
+
+  /** Checks consistency that is depends on some context. For example, that some expression
+    * Foo(...) must be pure except if it occurs inside Bar(...).
+    *
+    * @param n The starting node of the consistency check.
+    * @param c The initial context (optional).
+    */
+  def checkContextDependentConsistency(n: Node, c: Context = Context()) = n.visitWithContext(c) (c => {
+    case Package(wand) =>
+      c.copy(insidePackageStmt = true)
+
+    case MagicWand(lhs, rhs) =>
+      if (!c.insidePackageStmt) {
+        recordIfNot(lhs, noGhostExpression(lhs), "Wands may only contain ghost expressions when being packaged.")
+        recordIfNot(rhs, noGhostExpression(rhs), "Wands may only contain ghost expressions when being packaged.")
+      }
+
+      c
+
+    case e: UnFoldingExp =>
+      if (!c.insidePackageStmt)
+        recordIfNot(e, e.isPure, "(Un)Folding expressions outside of wand packaging statements must be pure.")
+
+      c
+  })
+
+  /** Context for context dependent consistency checking. */
+  case class Context(insidePackageStmt: Boolean = false)
 }
