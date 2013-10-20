@@ -126,10 +126,7 @@ object Consistency {
     }
   }
 
-  /** Ghost expressions are folding, unfolding. */
-  def noGhostExpression(n: Node) = !n.existsDefined {
-    case _: UnFoldingExp =>
-  }
+  def noGhostOperations(n: Node) = !n.existsDefined {case _: GhostOperations => }
 
   /** Returns true iff the given expression is a valid trigger. */
   def validTrigger(e: Exp): Boolean = {
@@ -204,8 +201,8 @@ object Consistency {
 
     case MagicWand(lhs, rhs) =>
       if (!c.insidePackageStmt) {
-        recordIfNot(lhs, noGhostExpression(lhs), "Wands may only contain ghost expressions when being packaged.")
-        recordIfNot(rhs, noGhostExpression(rhs), "Wands may only contain ghost expressions when being packaged.")
+        recordIfNot(lhs, noGhostOperations(lhs), "Wands may only contain ghost operations when being packaged.")
+        recordIfNot(rhs, noGhostOperations(rhs), "Wands may only contain ghost operations when being packaged.")
       }
 
       c

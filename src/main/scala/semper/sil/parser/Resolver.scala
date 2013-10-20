@@ -342,6 +342,8 @@ case class TypeChecker(names: NameAnalyser) {
     /**
      * Issue an error for the node at 'n'. Also sets an error type for 'exp' to suppress
      * further warnings.
+     *
+     * TODO: Similar to Consistency.recordIfNot. Combine!
      */
     def issueError(n: Positioned, m: String) {
       message(n, m)
@@ -583,6 +585,14 @@ case class TypeChecker(names: NameAnalyser) {
         check(e.acc.loc, Pred)
         check(e.exp, expected)
         setType(e.exp.typ)
+      case PApplying(wand, in) =>
+        wand match {
+          case _: PBinExp =>
+          case _ => issueError(wand, "magic wand expected")
+        }
+        check(wand, Bool)
+        check(in, Bool)
+        setType(in.typ)
       case PExists(vars, e) =>
         vars map (v => check(v.typ))
         check(e, Bool)

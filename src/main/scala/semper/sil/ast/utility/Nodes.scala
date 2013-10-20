@@ -60,6 +60,7 @@ object Nodes {
           case FieldAccess(rcv, field) => Seq(rcv)
           case PredicateAccess(params, predicate) => params
           case e: UnFoldingExp => Seq(e.acc, e.exp)
+          case Applying(wand, in) => Seq(wand, in)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
           case Exists(v, exp) => v ++ Seq(exp)

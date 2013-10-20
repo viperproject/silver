@@ -11,7 +11,13 @@ object Expressions {
     case InhaleExhaleExp(in, ex) => isPure(in) && isPure(ex)
     case BinExp(e0, e1) => isPure(e0) && isPure(e1)
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
-    case e: UnFoldingExp => isPure(e.exp) /* Assuming that the first argument is pure */
+
+    /* TODO: Can ghost operations be pure even if they contain access predicates, e.g.,
+     *       in the in-clause of an unfolding?
+     */
+    case e: UnFoldingExp => isPure(e.exp)
+    case Applying(wand, in) => isPure(in)
+
     case QuantifiedExp(_, e0) => isPure(e0)
 
     case _: Literal

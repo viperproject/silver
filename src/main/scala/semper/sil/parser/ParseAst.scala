@@ -172,6 +172,8 @@ sealed trait PUnFoldingExp extends PExp {
 case class PUnfolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp
 case class PFolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp
 
+case class PApplying(wand: PExp, exp: PExp) extends PExp
+
 case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp
 case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
@@ -298,6 +300,7 @@ object Nodes {
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
       case PFunctApp(func, args) => Seq(func) ++ args
       case e: PUnFoldingExp => Seq(e.acc, e.exp)
+      case PApplying(wand, in) => Seq(wand, in)
       case PExists(vars, exp) => vars ++ Seq(exp)
       case POld(exp) => Seq(exp)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)

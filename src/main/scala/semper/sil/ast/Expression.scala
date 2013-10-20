@@ -234,7 +234,9 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
 
 // --- Prover hint expressions
 
-sealed trait UnFoldingExp extends Exp {
+sealed trait GhostOperations extends Exp
+
+sealed trait UnFoldingExp extends GhostOperations {
   def acc: PredicateAccessPredicate
   def exp: Exp
 }
@@ -245,6 +247,11 @@ case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position 
 
 case class Folding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp {
   lazy val typ = exp.typ
+}
+
+case class Applying(wand: MagicWand, in: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperations {
+  assert(in.typ isSubtype Bool) /* Should be ensured by type-checker */
+  lazy val typ = Bool
 }
 
 // --- Old expression
