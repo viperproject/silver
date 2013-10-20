@@ -1,11 +1,10 @@
 package semper.sil.frontend
 
-import semper.sil.verifier.{Failure, AbstractError, VerificationResult, Verifier}
-import java.io.File
-import io.Source
-import semper.sil.ast.Program
-import io.Source
+import org.kiama.util.Messaging
 import java.nio.file.{Files, Path}
+import scala.io.Source
+import semper.sil.verifier.{Failure, AbstractError, VerificationResult, Verifier}
+import semper.sil.ast.Program
 
 /** Represents one phase of a frontend */
 case class Phase(name: String, action: () => Unit)
@@ -126,6 +125,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _verificationResult = None
     _parseResult = None
     _typecheckResult = None
+    Messaging.resetmessages()
   }
 
   protected def mapVerificationResult(in: VerificationResult): VerificationResult
