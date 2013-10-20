@@ -1,7 +1,6 @@
 package semper.sil.parser
 
-import org.kiama.util.Messaging.message
-import org.kiama.util.Messaging.messagecount
+import org.kiama.util.Messaging.{message, messagecount}
 import org.kiama.util.Positioned
 
 /**
