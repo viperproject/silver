@@ -12,7 +12,7 @@ function itemat(node: Ref, i: Int): Int
 predicate valid(this: Ref) {
     acc(this.next, write) &&
     acc(this.value, write) &&
-    ((this.next != null) ==> acc(this.valid(), write))
+    ((this.next != null) ==> acc(this.next.valid(), write))
 }
 
 method a(this: Ref)
