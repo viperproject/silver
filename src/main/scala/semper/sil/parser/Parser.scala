@@ -52,7 +52,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // null
     "null",
     // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns",
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "letass",
     // specifications
     "requires", "ensures", "invariant",
     // statements
@@ -170,7 +170,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     rep(stmt <~ opt(";"))
   lazy val stmt =
     fieldassign | localassign | fold | unfold | exhale | assert |
-      inhale | ifthnels | whle | varDecl | newstmt | freshReadPerm |
+      inhale | ifthnels | whle | varDecl | letassDecl | newstmt | freshReadPerm |
       methodCall | goto | lbl | packageWand | applyWand
 
   lazy val fold =
@@ -207,6 +207,8 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     }
   lazy val varDecl =
     ("var" ~> idndef) ~ (":" ~> typ) ~ opt(":=" ~> exp) ^^ PLocalVarDecl
+  lazy val letassDecl =
+    ("letass" ~> idndef) ~ (":=" ~> exp) ^^ PLetAss
   lazy val freshReadPerm =
     ("fresh" ~> "(" ~> repsep(idnuse, ",") <~ ")") ~ block ^^ {
       case vars ~ s => PFreshReadPerm(vars, PSeqn(s))
@@ -340,7 +342,8 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     ("folding" ~> accessPred) ~ ("in" ~> exp) ^^ PFolding
 
   lazy val applying: PackratParser[PExp] =
-    ("applying" ~> magicWandExp) ~ ("in" ~> exp) ^^ PApplying
+    /* TODO: The additional parenthesis are a hack to stop magicWandExp from matching 'in ...' as well */
+    ("applying" ~> ("(" ~> magicWandExp <~ ")")) ~ ("in" ~> exp) ^^ PApplying
 
   lazy val integer =
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))
