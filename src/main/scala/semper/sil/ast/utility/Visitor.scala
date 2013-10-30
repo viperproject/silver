@@ -20,7 +20,7 @@ object Visitor {
   }
 
   /**
-   * See Node.reduceTree.
+   * See Node.reduceWithContext.
    */
   def reduceWithContext[C, R](n: Node)(context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R): R = {
     val newContext = enter(n, context)
@@ -38,7 +38,7 @@ object Visitor {
     }
   }
 
-  /** See Node.visit. */
+  /** See Node.visitWithContext. */
   def visitWithContext[C](n: Node, c: C)(f: C => PartialFunction[Node, C]) {
     val fWithContext = f(c)
 
@@ -48,6 +48,20 @@ object Visitor {
 
     for (sub <- n.subnodes) {
       visitWithContext(sub, newContext)(f)
+    }
+  }
+
+  /** See Node.visitWithContextManually. */
+  def visitWithContextManually[C, A](n: Node, c: C)(f: C => PartialFunction[Node, A]) {
+    val fWithContext = f(c)
+    val isDefined = fWithContext.isDefinedAt(n)
+
+    if (isDefined) {
+      fWithContext(n)
+    } else {
+      for (sub <- n.subnodes) {
+        visitWithContextManually(sub, c)(f)
+      }
     }
   }
 
