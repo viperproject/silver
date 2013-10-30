@@ -22,7 +22,6 @@ object Consistency {
 
       Messaging.messages += Messaging.Record(pos, message)
     }
-    }
   }
 
   /** Names that are not allowed for use in programs. */
