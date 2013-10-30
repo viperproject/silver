@@ -8,19 +8,20 @@ import semper.sil.ast._
 /** An utility object for consistency checking. */
 object Consistency {
   def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
-    val pos = suspect.pos match {
-      case rp: RealPosition =>
-        new Position {
-          val line = rp.line
-          val column = rp.column
-          val lineContents = "<none>"
-        }
+    if (!property) {
+      val pos = suspect.pos match {
+        case rp: RealPosition =>
+          new Position {
+            val line = rp.line
+            val column = rp.column
+            val lineContents = "<none>"
+          }
 
-      case _ => NoPosition
-    }
+        case _ => NoPosition
+      }
 
-    if (!property)
       Messaging.messages += Messaging.Record(pos, message)
+    }
   }
 
   /** Names that are not allowed for use in programs. */
