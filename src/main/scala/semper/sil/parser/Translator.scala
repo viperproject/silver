@@ -316,6 +316,8 @@ case class Translator(program: PProgram) {
         Forall(vars map liftVarDecl, ts, exp(e))(pos)
       case POld(e) =>
         Old(exp(e))(pos)
+      case PPackageOld(e) =>
+        PackageOld(exp(e))(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
       case PCurPerm(loc) =>

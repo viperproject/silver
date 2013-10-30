@@ -2,6 +2,7 @@ package semper.sil.parser
 
 import org.kiama.util.Messaging.{message, messagecount}
 import org.kiama.util.Positioned
+import semper.sil.ast.MagicWandOp
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -116,8 +117,12 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PPackageWand(e) =>
         check(e, Bool)
-      case PApplyWand(e) =>
-        check(e, Bool)
+      case PApplyWand(wand) =>
+        wand match {
+          case e: PBinExp if e.op == MagicWandOp.op =>
+          case _ => message(wand, "magic wand expected")
+        }
+        check(wand, Bool)
       case PExhale(e) =>
         check(e, Bool)
       case PAssert(e) =>
@@ -587,7 +592,7 @@ case class TypeChecker(names: NameAnalyser) {
         setType(e.exp.typ)
       case PApplying(wand, in) =>
         wand match {
-          case _: PBinExp =>
+          case e: PBinExp if e.op == MagicWandOp.op =>
           case _ => issueError(wand, "magic wand expected")
         }
         check(wand, Bool)
@@ -596,13 +601,13 @@ case class TypeChecker(names: NameAnalyser) {
       case PExists(vars, e) =>
         vars map (v => check(v.typ))
         check(e, Bool)
-      case POld(e) =>
-        check(e, expected)
-        if (e.typ.isUnknown) {
+      case po: POldExp =>
+        check(po.e, expected)
+        if (po.e.typ.isUnknown) {
           setErrorType()
         } else {
           // ok
-          setType(e.typ)
+          setType(po.e.typ)
         }
       case PForall(vars, triggers, e) =>
         vars map (v => check(v.typ))

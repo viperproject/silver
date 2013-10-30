@@ -44,6 +44,7 @@ object Transformer {
             case Folding(acc, e) => Folding(go(acc), go(e))(p, i)
             case Applying(wand, in) => Applying(go(wand), go(in))(p, i)
             case Old(e) => Old(go(e))(p, i)
+            case PackageOld(e) => PackageOld(go(e))(p, i)
             case CondExp(cond, thn, els) =>
               CondExp(go(cond), go(thn), go(els))(p, i)
             case Exists(v, e) => Exists(v map go, go(e))(p, i)

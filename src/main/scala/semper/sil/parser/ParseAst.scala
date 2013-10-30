@@ -185,7 +185,11 @@ case class PFullPerm() extends PExp
 case class PWildcard() extends PExp
 case class PEpsilon() extends PExp
 case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
-case class POld(e: PExp) extends PExp
+
+sealed trait POldExp extends PExp { def e: PExp }
+case class POld(e: PExp) extends POldExp
+case class PPackageOld(e: PExp) extends POldExp
+
 case class PEmptySeq(t : PType) extends PExp
 {
   typ = (if (t.isUnknown) PUnknown() else PSeqType(t)) // type can be specified as PUnknown() if unknown
@@ -304,7 +308,7 @@ object Nodes {
       case e: PUnFoldingExp => Seq(e.acc, e.exp)
       case PApplying(wand, in) => Seq(wand, in)
       case PExists(vars, exp) => vars ++ Seq(exp)
-      case POld(exp) => Seq(exp)
+      case po: POldExp => Seq(po.e)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)

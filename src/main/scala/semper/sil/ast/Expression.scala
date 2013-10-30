@@ -254,11 +254,14 @@ case class Applying(wand: MagicWand, in: Exp)(val pos: Position = NoPosition, va
   lazy val typ = Bool
 }
 
-// --- Old expression
+// --- Old expressions
 
-case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnExp {
+sealed trait OldExp extends UnExp {
   lazy val typ = exp.typ
 }
+
+case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp
+case class PackageOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp
 
 // --- Quantifications
 

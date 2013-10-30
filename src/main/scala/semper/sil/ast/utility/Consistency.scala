@@ -8,19 +8,20 @@ import semper.sil.ast._
 /** An utility object for consistency checking. */
 object Consistency {
   def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
-    val pos = suspect.pos match {
-      case rp: RealPosition =>
-        new Position {
-          val line = rp.line
-          val column = rp.column
-          val lineContents = "<none>"
-        }
+    if (!property) {
+      val pos = suspect.pos match {
+        case rp: RealPosition =>
+          new Position {
+            val line = rp.line
+            val column = rp.column
+            val lineContents = "<none>"
+          }
 
-      case _ => NoPosition
-    }
+        case _ => NoPosition
+      }
 
-    if (!property)
       Messaging.messages += Messaging.Record(pos, message)
+    }
   }
 
   /** Names that are not allowed for use in programs. */
@@ -200,10 +201,18 @@ object Consistency {
       c.copy(insidePackageStmt = true)
 
     case MagicWand(lhs, rhs) =>
+      recordIfPackageOldOnRhsOfWand(rhs, Context(magicWandCurrentlyLeft = false))
+//      recordIfNot(rhs, sideSensitiveNoPackageOld(rhs), "Wands may contain pold-expressions on the lhs only.")
+
       if (!c.insidePackageStmt) {
         recordIfNot(lhs, noGhostOperations(lhs), "Wands may only contain ghost operations when being packaged.")
         recordIfNot(rhs, noGhostOperations(rhs), "Wands may only contain ghost operations when being packaged.")
       }
+
+      c.copy(insideWand = true)
+
+    case po: PackageOld =>
+      recordIfNot(po, c.insideWand, "pold-expressions may only occur inside wands.")
 
       c
 
@@ -214,6 +223,19 @@ object Consistency {
       c
   })
 
+  private def recordIfPackageOldOnRhsOfWand(n: Node, c: Context) {
+    n.visitWithContextManually(c) (c => {
+      case MagicWand(lhs, rhs) =>
+        recordIfPackageOldOnRhsOfWand(lhs, c.copy(magicWandCurrentlyLeft = true))
+        recordIfPackageOldOnRhsOfWand(rhs, c.copy(magicWandCurrentlyLeft = false))
+
+      case po: PackageOld =>
+        recordIfNot(po, c.magicWandCurrentlyLeft, "Wands may contain pold-expressions on the lhs only.")
+    })
+  }
+
   /** Context for context dependent consistency checking. */
-  case class Context(insidePackageStmt: Boolean = false)
+  case class Context(insidePackageStmt: Boolean = false,
+                     insideWand: Boolean = false,
+                     magicWandCurrentlyLeft: Boolean = false)
 }
