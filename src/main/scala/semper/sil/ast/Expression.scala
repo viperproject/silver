@@ -234,25 +234,19 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
 
 // --- Prover hint expressions
 
-sealed trait GhostOperations extends Exp
-
-sealed trait UnFoldingExp extends GhostOperations {
-  def acc: PredicateAccessPredicate
-  def exp: Exp
+sealed trait GhostOperation extends Exp {
+  val body: Exp
+  lazy val typ = body.typ
 }
 
-case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp {
-  lazy val typ = exp.typ
+sealed trait UnFoldingExp extends GhostOperation {
+  val acc: PredicateAccessPredicate
 }
 
-case class Folding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp {
-  lazy val typ = exp.typ
-}
-
-case class Applying(wand: MagicWand, in: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperations {
-  assert(in.typ isSubtype Bool) /* Should be ensured by type-checker */
-  lazy val typ = Bool
-}
+case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp
+case class Folding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp
+case class Applying(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
+case class Exhaling(body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
 
 // --- Old expressions
 

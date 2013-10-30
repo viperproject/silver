@@ -127,7 +127,7 @@ object Consistency {
     }
   }
 
-  def noGhostOperations(n: Node) = !n.existsDefined {case _: GhostOperations => }
+  def noGhostOperations(n: Node) = !n.existsDefined {case _: GhostOperation => }
 
   /** Returns true iff the given expression is a valid trigger. */
   def validTrigger(e: Exp): Boolean = {
