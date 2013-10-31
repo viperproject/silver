@@ -72,7 +72,7 @@ object TypeHelper {
   val Perm = PPrimitiv("Perm")
   val Ref = PPrimitiv("Ref")
   val Pred = PPredicateType()
-  val Ass = PPrimitiv("Ass")
+  val Wand = PWandType()
 }
 
 // Identifiers (uses and definitions)
@@ -83,7 +83,7 @@ trait Identifier {
 case class PIdnDef(name: String) extends PNode with Identifier
 
 case class PIdnUse(name: String) extends PExp with Identifier {
-  var letass: Option[PLetAss] = None
+  var letass: Option[PLetAss] = None /* TODO: Can we avoid using a var? */
 }
 
 // Formal arguments
@@ -143,13 +143,20 @@ case class PMultisetType(elementType: PType) extends PType {
   override def isConcrete = elementType.isConcrete
   override def substitute(map: Map[String, PType]) = PMultisetType(elementType.substitute(map))
 }
+
+sealed trait PInternalType extends PType
+
 // for resolving if something cannot be typed
-case class PUnknown() extends PType {
+case class PUnknown() extends PInternalType {
   override def toString = "<error type>"
 }
 // used during resolving for predicate accesses
-case class PPredicateType() extends PType {
+case class PPredicateType() extends PInternalType {
   override def toString = "$predicate"
+}
+
+case class PWandType() extends PInternalType {
+  override def toString = "$wand"
 }
 
 
@@ -251,6 +258,7 @@ case class PLabel(idndef: PIdnDef) extends PStmt with RealEntity
 case class PGoto(targets: PIdnUse) extends PStmt
 
 case class PLetAss(idndef: PIdnDef, exp: PExp) extends PStmt with RealEntity
+case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with RealEntity
 case class PSkip() extends PStmt
 
 // Declarations
@@ -312,6 +320,7 @@ object Nodes {
       case PBoolLit(b) => Nil
       case PNullLit() => Nil
       case PPredicateType() => Nil
+      case PWandType() => Nil
       case PResultLit() => Nil
       case PFieldAccess(rcv, field) => Seq(rcv, field)
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
@@ -375,6 +384,7 @@ object Nodes {
         Seq(name) ++ args ++ Seq(body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PLetAss(idndef, ass) => Seq(idndef, ass)
+      case PLetWand(idndef, wand) => Seq(idndef, wand)
       case _: PSkip => Nil
     }
   }

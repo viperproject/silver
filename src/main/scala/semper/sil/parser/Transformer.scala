@@ -7,8 +7,9 @@ package semper.sil.parser
   *      copying existing nodes, i.e., case classes.
  */
 object Transformer {
+  /* Attention: You most likely want to call org.kiama.attribution.Attribution.initTree on the transformed node. */
   def transform[A <: PNode](node: A,
-                           pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
+                            pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
                             recursive: PNode => Boolean = !pre.isDefinedAt(_),
                             post: PartialFunction[PNode, PNode] = PartialFunction.empty): A = {
 
@@ -18,7 +19,7 @@ object Transformer {
     }
 
     def recurse(parent: PNode): PNode = {
-      (parent match {
+      val newNode = parent match {
         case _: PIdnDef => parent
         case _: PIdnUse => parent
         case PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))
@@ -29,7 +30,7 @@ object Transformer {
         case PSetType(elementType) => PSetType(go(elementType))
         case PMultisetType(elementType) => PMultisetType(go(elementType))
         case _: PUnknown => parent
-        case  _: PPredicateType => parent
+        case  _: PPredicateType | _: PWandType => parent
 
         case PBinExp(left, op, right) => PBinExp(go(left), op, go(right))
         case PUnExp(op, exp) => PUnExp(op, go(exp))
@@ -40,9 +41,11 @@ object Transformer {
         case PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))
         case PPredicateAccess(args, idnuse) => PPredicateAccess( args map go, go(idnuse))
         case PFunctApp(func, args) => PFunctApp(go(func), args map go)
+
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
         case PFolding(acc, exp) => PFolding(go(acc), go(exp))
         case PApplying(wand, exp) => PApplying(go(wand), go(exp))
+
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map (_ map go), go(exp))
         case PCondExp(cond, thn, els) => PCondExp(go(cond), go(thn), go(els))
@@ -87,6 +90,7 @@ object Transformer {
         case PLabel(idndef) => PLabel(go(idndef))
         case PGoto(target) => PGoto(go(target))
         case PLetAss(idndef, exp) => PLetAss(go(idndef), go(exp))
+        case PLetWand(idndef, wand) => PLetWand(go(idndef), go(wand))
         case _: PSkip => parent
 
         case PProgram(file, domains, fields, functions, predicates, methods) => PProgram(file, domains map go, fields map go, functions map go, predicates map go, methods map go)
@@ -97,7 +101,11 @@ object Transformer {
         case PDomainFunction(idndef, formalArgs, typ, unique) => PDomainFunction(go(idndef), formalArgs map go, go(typ), unique)
         case PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, go(body))
         case PAxiom(idndef, exp) => PAxiom(go(idndef), go(exp))
-      }).setPos(parent)
+      }
+
+      assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
+
+      newNode.setPos(parent)
     }
 
     val beforeRecursion = pre.applyOrElse(node, identity[PNode])
@@ -107,9 +115,6 @@ object Transformer {
       beforeRecursion
     }
 
-    val result = post.applyOrElse(afterRecursion, identity[PNode]).asInstanceOf[A]
-    org.kiama.attribution.Attribution.initTree(result)
-
-    result
+    post.applyOrElse(afterRecursion, identity[PNode]).asInstanceOf[A]
   }
 }

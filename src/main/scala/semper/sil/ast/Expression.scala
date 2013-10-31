@@ -245,8 +245,11 @@ sealed trait UnFoldingExp extends GhostOperation {
 
 case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp
 case class Folding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp
-case class Applying(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
 case class Exhaling(body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
+
+case class Applying(exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
+  require(exp isSubtype Wand)
+}
 
 // --- Old expressions
 

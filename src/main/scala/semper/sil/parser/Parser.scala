@@ -52,7 +52,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // null
     "null",
     // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "letass",
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "letass", "letwand",
     // specifications
     "requires", "ensures", "invariant",
     // statements
@@ -170,7 +170,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     rep(stmt <~ opt(";"))
   lazy val stmt =
     fieldassign | localassign | fold | unfold | exhale | assert |
-      inhale | ifthnels | whle | varDecl | letassDecl | newstmt | freshReadPerm |
+      inhale | ifthnels | whle | varDecl | letassDecl | letwandDecl | newstmt | freshReadPerm |
       methodCall | goto | lbl | packageWand | applyWand
 
   lazy val fold =
@@ -209,6 +209,8 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     ("var" ~> idndef) ~ (":" ~> typ) ~ opt(":=" ~> exp) ^^ PLocalVarDecl
   lazy val letassDecl =
     ("letass" ~> idndef) ~ (":=" ~> exp) ^^ PLetAss
+  lazy val letwandDecl =
+    ("letwand" ~> idndef) ~ (":=" ~> exp) ^^ PLetWand
   lazy val freshReadPerm =
     ("fresh" ~> "(" ~> repsep(idnuse, ",") <~ ")") ~ block ^^ {
       case vars ~ s => PFreshReadPerm(vars, PSeqn(s))

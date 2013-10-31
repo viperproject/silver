@@ -12,8 +12,8 @@ case class Resolver(p: PProgram) {
   val typechecker = TypeChecker(names)
 
   /* TODO: Re-running the NameAnalyser is not efficient! It currently needs to be done to ensure that
-   *       the symbol table created by the analyzer contains information about the expanded letass
-   *       identifiers as well.
+   *       the symbol table created by the analyzer contains information about the expressions that
+   *       replaced uses of letass-identifiers.
    */
   def run: Option[PProgram] = {
     if (names.run(p)) {
@@ -31,10 +31,16 @@ case class Resolver(p: PProgram) {
 }
 
 object LetassExpander {
-  def transform(p: PProgram): PProgram = p.transform {
-    case p: PLetAss => PSkip().setPos(p)
-    case p: PIdnUse if p.letass.nonEmpty => p.letass.get.exp // TODO: Adapt position information of exp (and all subexps)
-  }()
+  def transform(p: PProgram): PProgram = {
+    val pTransformed =
+      p.transform {
+        case p: PLetAss => PSkip().setPos(p)
+        case p: PIdnUse if p.letass.nonEmpty => p.letass.get.exp // TODO: Adapt position information of exp (and all subexps)
+      }()
+
+    org.kiama.attribution.Attribution.initTree(pTransformed)
+    pTransformed
+  }
 }
 
 /**
@@ -132,13 +138,14 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnfold(e) =>
         check(e, Bool)
       case PPackageWand(e) =>
-        check(e, Bool)
+        check(e, Wand)
       case PApplyWand(wand) =>
-        wand match {
-          case e: PBinExp if e.op == MagicWandOp.op =>
-          case _ => message(wand, "magic wand expected")
-        }
-        check(wand, Bool)
+//        wand match {
+//          case e: PBinExp if e.op == MagicWandOp.op =>
+//          case _ => message(wand, "magic wand expected")
+//        }
+//        check(wand, Bool)
+        check(wand, Wand)
       case PExhale(e) =>
         check(e, Bool)
       case PAssert(e) =>
@@ -227,13 +234,15 @@ case class TypeChecker(names: NameAnalyser) {
             }
         }
         check(s)
-      case _: PSkip | _: PLetAss =>
+      case PLetAss(_, exp) => check(exp, Bool)
+      case PLetWand(_, wand) => check(wand, Wand)
+      case _: PSkip =>
     }
   }
 
   def check(typ: PType) {
     typ match {
-      case PPredicateType() =>
+      case _: PPredicateType | _: PWandType =>
         sys.error("unexpected use of internal typ")
       case PPrimitiv(_) =>
       case dt@PDomainType(domain, args) =>
@@ -295,17 +304,18 @@ case class TypeChecker(names: NameAnalyser) {
    */
   def isCompatible(a: PType, b: PType): Boolean = {
     (a, b) match {
+      case _ if a == b => true
       case (PUnknown(), t) => true
       case (t, PUnknown()) => true
       case (PTypeVar(name), t) => true
       case (t, PTypeVar(name)) => true
+      case (Bool, PWandType()) => true
       case (PSeqType(e1), PSeqType(e2)) => isCompatible(e1, e2)
       case (PSetType(e1), PSetType(e2)) => isCompatible(e1, e2)
       case (PMultisetType(e1), PMultisetType(e2)) => isCompatible(e1, e2)
       case (PDomainType(domain1, args1), PDomainType(domain2, args2))
         if domain1 == domain2 && args1.length == args2.length =>
         (args1 zip args2) forall (x => isCompatible(x._1, x._2))
-      case _ if a == b => true
       case _ => false
     }
   }
@@ -317,6 +327,7 @@ case class TypeChecker(names: NameAnalyser) {
    * The empty set can be passed for expected, if any type is fine.
    */
   def check(exp: PExp, expected: PType): Unit = check(exp, Seq(expected))
+
   def check(exp: PExp, expectedRaw: Seq[PType]): Unit = {
     val expected = expectedRaw filter ({
       case PTypeVar(_) => false
@@ -357,6 +368,7 @@ case class TypeChecker(names: NameAnalyser) {
           }
         }
         if (!found) {
+          /* XXXXXXX */ sys.error(s"expected $expectedString, but got $actual")
           message(exp, s"expected $expectedString, but got $actual")
         }
       }
@@ -371,29 +383,37 @@ case class TypeChecker(names: NameAnalyser) {
       message(n, m)
       setErrorType() // suppress further warnings
     }
+
+//    def denotesWand(e: Exp) = e match {
+//        case e: PBinExp if e.op == MagicWandOp.op => true
+//        case w: PIdnUse
+//        case _ =>
+//          issueError(wand, "magic wand expected")
+//          false
+//      }
+
     /**
      * Sets an error type for 'exp' to suppress further warnings.
      */
     def setErrorType() {
       setType(PUnknown())
     }
+
     def genericSeqType: PSeqType = PSeqType(PTypeVar("."))
     def genericSetType: PSetType = PSetType(PTypeVar("."))
     def genericMultisetType: PMultisetType = PMultisetType(PTypeVar("."))
     def genericAnySetType = Seq(genericSetType, genericMultisetType)
+
     exp match {
       case i@PIdnUse(name) =>
         names.definition(curMember)(i) match {
-          case PLocalVarDecl(_, typ, _) =>
-            setType(typ)
-          case PFormalArgDecl(_, typ) =>
-            setType(typ)
-          case PField(_, typ) =>
-            setType(typ)
-          case PPredicate(_, _, _) =>
-            setType(Pred)
-          case x =>
-            issueError(i, s"expected variable or field, but got $x")
+          case PLocalVarDecl(_, typ, _) => setType(typ)
+          case PFormalArgDecl(_, typ) => setType(typ)
+          case PField(_, typ) => setType(typ)
+          case PPredicate(_, _, _) => setType(Pred)
+          case _: PLetWand => setType(Wand)
+          case _: PLetAss => setType(Bool) /* TODO: Should only happen before letass-macros have been expanded */
+          case x => issueError(i, s"expected identifier, but got $x")
         }
       case PBinExp(left, op, right) =>
         op match {
@@ -468,10 +488,14 @@ case class TypeChecker(names: NameAnalyser) {
               issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
             }
             setType(Bool)
-          case "&&" | "||" | "<==>" | "==>" |"--*" =>
+          case "&&" | "||" | "<==>" | "==>" =>
             check(left, Bool)
             check(right, Bool)
             setType(Bool)
+          case MagicWandOp.op =>
+            check(left, Bool)
+            check(right, Bool)
+            setType(Wand)
           case "in" =>
             check(left, Nil)
             check(right, genericAnySetType ++ Seq(genericSeqType))
@@ -608,11 +632,12 @@ case class TypeChecker(names: NameAnalyser) {
         check(e.exp, expected)
         setType(e.exp.typ)
       case PApplying(wand, in) =>
-        wand match {
-          case e: PBinExp if e.op == MagicWandOp.op =>
-          case _ => issueError(wand, "magic wand expected")
-        }
-        check(wand, Bool)
+//        wand match {
+//          case e: PBinExp if e.op == MagicWandOp.op =>
+//          case _ => issueError(wand, "magic wand expected")
+//        }
+//        check(wand, Bool)
+        check(wand, Wand)
         check(in, Bool)
         setType(in.typ)
       case PExists(vars, e) =>
@@ -866,19 +891,20 @@ case class NameAnalyser() {
             message(i, s"$name already defined.")
             getMap.put(name, MultipleEntity())
           case None =>
-            i.parent match {
-              case decl: PMethod => idnMap.put(name, decl)
+            i.parent[RealEntity] match {
+              case decl: PAxiom => // nothing refers to axioms, thus do not store it
+              case decl: PDomain => if (name == decl.idndef.name) idnMap.put(name, decl)
               case decl: PLocalVarDecl => getMap.put(name, decl)
               case decl: PFormalArgDecl => getMap.put(name, decl)
-              case decl: PField => idnMap.put(name, decl)
-              case decl: PFunction => idnMap.put(name, decl)
-              case decl: PDomainFunction => idnMap.put(name, decl)
-              case decl: PAxiom => // nothing refors to axioms, thus do not store it
-              case decl: PPredicate => idnMap.put(name, decl)
-              case decl: PDomain => if (name == decl.idndef.name) idnMap.put(name, decl)
-              case decl: PLabel => idnMap.put(name, decl)
-              case decl: PLetAss => idnMap.put(name, decl)
-              case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
+              case decl: RealEntity => idnMap.put(name, decl)
+//              case decl: PMethod => idnMap.put(name, decl)
+//              case decl: PField => idnMap.put(name, decl)
+//              case decl: PFunction => idnMap.put(name, decl)
+//              case decl: PDomainFunction => idnMap.put(name, decl)
+//              case decl: PPredicate => idnMap.put(name, decl)
+//              case decl: PLabel => idnMap.put(name, decl)
+//              case decl: PLetAss => idnMap.put(name, decl)
+//              case decl: PLetWand => idnMap.put(name, decl)
             }
         }
       case _ =>

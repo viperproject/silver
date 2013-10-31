@@ -144,7 +144,7 @@ case class Translator(program: PProgram) {
       case PPackageWand(e) =>
         Package(exp(e).asInstanceOf[MagicWand])(pos)
       case PApplyWand(e) =>
-        Apply(exp(e).asInstanceOf[MagicWand])(pos)
+        Apply(exp(e))(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
       case PExhale(e) =>
@@ -172,7 +172,10 @@ case class Translator(program: PProgram) {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos)
-      case _: PLetAss | _: PSkip => sys.error("Found unexpected intermediate node")
+      case PLetWand(idndef, wand) =>
+        LocalVarAssign(LocalVar(idndef.name)(Wand, pos), exp(wand))(pos)
+      case _: PLetAss | _: PSkip =>
+        sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
   }
 
@@ -308,8 +311,8 @@ case class Translator(program: PProgram) {
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
       case PFolding(loc, e) =>
         Folding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
-      case PApplying(wand, in) =>
-        Applying(exp(wand).asInstanceOf[MagicWand], exp(in))(pos)
+      case PApplying(e, in) =>
+        Applying(exp(e), exp(in))(pos)
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>
@@ -403,6 +406,7 @@ case class Translator(program: PProgram) {
           assert(args.length == 0)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable
       }
+    case PWandType() => Wand
     case PUnknown() =>
       sys.error("unknown type unexpected here")
     case PPredicateType() =>

@@ -40,9 +40,12 @@ object Transformer {
             /* No recursion on predicate here. */
             case PredicateAccess(params, predicate) =>
               PredicateAccess(params map go, predicate)(p, i)
+
             case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i)
             case Folding(acc, e) => Folding(go(acc), go(e))(p, i)
             case Applying(wand, in) => Applying(go(wand), go(in))(p, i)
+            case Exhaling(exp) => Exhaling(go(exp))(p, i)
+
             case Old(e) => Old(go(e))(p, i)
             case PackageOld(e) => PackageOld(go(e))(p, i)
             case CondExp(cond, thn, els) =>
@@ -181,6 +184,7 @@ object Transformer {
             case Int => aType
             case Perm => aType
             case Pred => aType
+            case Wand => aType
             case Ref => aType
             case SeqType(elementType) => SeqType(go(elementType))
             case SetType(elementType) => SetType(go(elementType))
