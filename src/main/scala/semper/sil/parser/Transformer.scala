@@ -7,6 +7,7 @@ package semper.sil.parser
   *      copying existing nodes, i.e., case classes.
  */
 object Transformer {
+	/* Attention: You most likely want to call org.kiama.attribution.Attribution.initTree on the transformed node. */
   def transform[A <: PNode](node: A,
                            pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
                             recursive: PNode => Boolean = !pre.isDefinedAt(_),
@@ -18,7 +19,7 @@ object Transformer {
     }
 
     def recurse(parent: PNode): PNode = {
-      parent match {
+      val newNode = parent match {
         case _: PIdnDef => parent
         case _: PIdnUse => parent
         case PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))
@@ -41,8 +42,6 @@ object Transformer {
         case PPredicateAccess(args, idnuse) => PPredicateAccess( args map go, go(idnuse))
         case PFunctApp(func, args) => PFunctApp(go(func), args map go)
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
-        case PFolding(acc, exp) => PFolding(go(acc), go(exp))
-        case PApplying(wand, exp) => PApplying(go(wand), go(exp))
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map (_ map go), go(exp))
         case PCondExp(cond, thn, els) => PCondExp(go(cond), go(thn), go(els))
@@ -54,7 +53,6 @@ object Transformer {
         case _: PEpsilon => parent
         case PAccPred(loc, perm) => PAccPred(go(loc), go(perm))
         case POld(e) => POld(go(e))
-        case PPackageOld(e) => PPackageOld(go(e))
         case PEmptySeq(t) => PEmptySeq(go(t))
         case PExplicitSeq(elems) => PExplicitSeq(elems map go)
         case PRangeSeq(low, high) => PRangeSeq(go(low), go(high))
@@ -71,8 +69,6 @@ object Transformer {
         case PSeqn(ss) => PSeqn(ss map go)
         case PFold(e) => PFold(go(e))
         case PUnfold(e) => PUnfold(go(e))
-        case PPackageWand(e) => PPackageWand(go(e))
-        case PApplyWand(e) => PApplyWand(go(e))
         case PExhale(e) => PExhale(go(e))
         case PAssert(e) => PAssert(go(e))
         case PInhale(e) => PInhale(go(e))
@@ -86,8 +82,6 @@ object Transformer {
         case PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)
         case PLabel(idndef) => PLabel(go(idndef))
         case PGoto(target) => PGoto(go(target))
-        case PLetAss(idndef, exp) => PLetAss(go(idndef), go(exp))
-        case _: PSkip => parent
 
         case PProgram(file, domains, fields, functions, predicates, methods) => PProgram(file, domains map go, fields map go, functions map go, predicates map go, methods map go)
         case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, go(body))
@@ -98,6 +92,10 @@ object Transformer {
         case PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, go(body))
         case PAxiom(idndef, exp) => PAxiom(go(idndef), go(exp))
       }
+			
+			assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
+
+			newNode.setPos(parent)
     }
 
     val beforeRecursion = pre.applyOrElse(node, identity[PNode])
