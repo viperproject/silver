@@ -826,19 +826,11 @@ case class NameAnalyser() {
             getMap.put(name, MultipleEntity())
           case None =>
             i.parent match {
-              case decl: PMethod => idnMap.put(name, decl)
+              case decl: PAxiom => // nothing refers to axioms, thus do not store it
+              case decl: PDomain => if (name == decl.idndef.name) idnMap.put(name, decl)
               case decl: PLocalVarDecl => getMap.put(name, decl)
               case decl: PFormalArgDecl => getMap.put(name, decl)
-              case decl: PField => idnMap.put(name, decl)
-              case decl: PFunction => idnMap.put(name, decl)
-              case decl: PDomainFunction => idnMap.put(name, decl)
-              case decl: PAxiom => // nothing refors to axioms, thus do not store it
-              case decl: PPredicate => idnMap.put(name, decl)
-              case decl: PDomain =>
-                if (name == decl.idndef.name)
-                  idnMap.put(name, decl)
-              case decl: PLabel =>
-                idnMap.put(name, decl)
+              case decl: RealEntity => idnMap.put(name, decl)
               case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
             }
         }
