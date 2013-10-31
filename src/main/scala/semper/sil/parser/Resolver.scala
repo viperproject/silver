@@ -32,8 +32,8 @@ case class Resolver(p: PProgram) {
 
 object LetassExpander {
   def transform(p: PProgram): PProgram = p.transform {
-    case p: PLetAss => PSkip()
-    case p: PIdnUse if p.letass.nonEmpty => p.letass.get.exp
+    case p: PLetAss => PSkip().setPos(p)
+    case p: PIdnUse if p.letass.nonEmpty => p.letass.get.exp // TODO: Adapt position information of exp (and all subexps)
   }()
 }
 

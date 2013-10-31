@@ -18,7 +18,7 @@ object Transformer {
     }
 
     def recurse(parent: PNode): PNode = {
-      parent match {
+      (parent match {
         case _: PIdnDef => parent
         case _: PIdnUse => parent
         case PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))
@@ -97,7 +97,7 @@ object Transformer {
         case PDomainFunction(idndef, formalArgs, typ, unique) => PDomainFunction(go(idndef), formalArgs map go, go(typ), unique)
         case PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, go(body))
         case PAxiom(idndef, exp) => PAxiom(go(idndef), go(exp))
-      }
+      }).setPos(parent)
     }
 
     val beforeRecursion = pre.applyOrElse(node, identity[PNode])
@@ -106,6 +106,10 @@ object Transformer {
     } else {
       beforeRecursion
     }
-    post.applyOrElse(afterRecursion, identity[PNode]).asInstanceOf[A]
+
+    val result = post.applyOrElse(afterRecursion, identity[PNode]).asInstanceOf[A]
+    org.kiama.attribution.Attribution.initTree(result)
+
+    result
   }
 }
