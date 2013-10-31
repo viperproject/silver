@@ -59,6 +59,11 @@ sealed trait PNode extends Positioned with Attributable {
   def visitOpt(f1: PNode => Boolean, f2: PNode => Unit) {
     Visitor.visitOpt(this, f1, f2)
   }
+
+  def transform(pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
+    recursive: PNode => Boolean = !pre.isDefinedAt(_),
+    post: PartialFunction[PNode, PNode] = PartialFunction.empty): this.type =
+    Transformer.transform[this.type](this, pre)(recursive, post)
 }
 
 object TypeHelper {
@@ -74,8 +79,12 @@ object TypeHelper {
 trait Identifier {
   def name: String
 }
+
 case class PIdnDef(name: String) extends PNode with Identifier
-case class PIdnUse(name: String) extends PExp with Identifier
+
+case class PIdnUse(name: String) extends PExp with Identifier {
+  var letass: Option[PLetAss] = None
+}
 
 // Formal arguments
 case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with RealEntity
@@ -237,10 +246,12 @@ case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PStmt) extends PStmt
 case class PFreshReadPerm(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with RealEntity
-case class PLetAss(idndef: PIdnDef, exp: PExp) extends PStmt with RealEntity
 case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) extends PStmt
 case class PLabel(idndef: PIdnDef) extends PStmt with RealEntity
 case class PGoto(targets: PIdnUse) extends PStmt
+
+case class PLetAss(idndef: PIdnDef, exp: PExp) extends PStmt with RealEntity
+case class PSkip() extends PStmt
 
 // Declarations
 sealed trait PMember extends PNode with PScope {
@@ -349,7 +360,6 @@ object Nodes {
       case PIf(cond, thn, els) => Seq(cond, thn, els)
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
-      case PLetAss(idndef, ass) => Seq(idndef, ass)
       case PFreshReadPerm(vars, stmt) => vars ++ Seq(stmt)
       case PProgram(file, domains, fields, functions, predicates, methods) =>
         domains ++ fields ++ functions ++ predicates ++ methods
@@ -364,6 +374,8 @@ object Nodes {
       case PPredicate(name, args, body) =>
         Seq(name) ++ args ++ Seq(body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
+      case PLetAss(idndef, ass) => Seq(idndef, ass)
+      case _: PSkip => Nil
     }
   }
 }

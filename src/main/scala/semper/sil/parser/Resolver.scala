@@ -11,14 +11,30 @@ case class Resolver(p: PProgram) {
   val names = NameAnalyser()
   val typechecker = TypeChecker(names)
 
-  def run: Boolean = {
+  /* TODO: Re-running the NameAnalyser is not efficient! It currently needs to be done to ensure that
+   *       the symbol table created by the analyzer contains information about the expanded letass
+   *       identifiers as well.
+   */
+  def run: Option[PProgram] = {
     if (names.run(p)) {
-      if (typechecker.run(p)) {
-        return true
+      val pTransformed = LetassExpander.transform(p)
+      names.reset()
+      if (names.run(pTransformed)) {
+        if (typechecker.run(pTransformed)) {
+          return Some(pTransformed)
+        }
       }
     }
-    false
+
+    None
   }
+}
+
+object LetassExpander {
+  def transform(p: PProgram): PProgram = p.transform {
+    case p: PLetAss => PSkip()
+    case p: PIdnUse if p.letass.nonEmpty => p.letass.get.exp
+  }()
 }
 
 /**
@@ -211,6 +227,7 @@ case class TypeChecker(names: NameAnalyser) {
             }
         }
         check(s)
+      case _: PSkip | _: PLetAss =>
     }
   }
 
@@ -825,6 +842,11 @@ case class NameAnalyser() {
     }
   }
 
+  def reset() {
+    idnMap.clear()
+    memberIdnMap.clear()
+  }
+
   private val idnMap = collection.mutable.HashMap[String, Entity]()
   private val memberIdnMap = collection.mutable.HashMap[PScope, collection.mutable.HashMap[String, Entity]]()
 
@@ -853,11 +875,9 @@ case class NameAnalyser() {
               case decl: PDomainFunction => idnMap.put(name, decl)
               case decl: PAxiom => // nothing refors to axioms, thus do not store it
               case decl: PPredicate => idnMap.put(name, decl)
-              case decl: PDomain =>
-                if (name == decl.idndef.name)
-                  idnMap.put(name, decl)
-              case decl: PLabel =>
-                idnMap.put(name, decl)
+              case decl: PDomain => if (name == decl.idndef.name) idnMap.put(name, decl)
+              case decl: PLabel => idnMap.put(name, decl)
+              case decl: PLetAss => idnMap.put(name, decl)
               case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
             }
         }
@@ -867,7 +887,8 @@ case class NameAnalyser() {
         curMember = null
       case _ =>
     })
-    // check all identifier uses
+
+    /* Check all identifier uses. */
     p.visit({
       case m: PScope =>
         curMember = m
@@ -878,6 +899,7 @@ case class NameAnalyser() {
             // domain types can also be type variables, which need not be declared
             if (!i.parent.isInstanceOf[PDomainType])
               message(i, s"$name not defined.")
+          case p @ PLetAss(_, exp) => i.letass = Some(p)
           case _ =>
         }
       case _ =>
@@ -886,6 +908,7 @@ case class NameAnalyser() {
         curMember = null
       case _ =>
     })
+
     messagecount == 0
   }
 }

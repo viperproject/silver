@@ -187,24 +187,41 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
+//  protected def inlinePLetAssExp(input: ParserResult): ParserResult = {
+//    input.transformWithContext(Map[String, PExp]()) (map => {
+//      case PLetAss(id, exp) =>
+////        println("  id = " + id)
+//        val map1 = map + (id.name -> exp)
+////        println("  map = " + map1)
+//        map1
+//    }) (map => {
+//      case _: PLetAss => PSkip()
+//      case n @ PIdnUse(id) =>
+//        println("  id in map? " + id + " in " + map)
+//        map.getOrElse(id, n)
+//    })
+//  }
+
   /* TODO: Naming of doTypecheck and doTranslate isn't ideal.
            doTypecheck already translated the program, whereas doTranslate doesn't actually translate
            anything, but instead filters members.
    */
 
   override def doTypecheck(input: ParserResult): Result[TypecheckerResult] = {
-    if (Resolver(input).run) {
-      Translator(input).translate match {
-        case (program, Seq()) =>
-          Succ(program)
+    Resolver(input).run match {
+      case Some(modifiedInput) =>
+        Translator(modifiedInput).translate match {
+          case (program, Seq()) =>
+            Succ(program)
 
-        case (_, messages) =>
-          Fail(messages map (m => TypecheckerError(m.message, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))))
-      }
-    } else {
-      val errors = for (m <- Messaging.sortedmessages) yield {
-        TypecheckerError(m.message, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))
-      }
+          case (_, messages) =>
+            Fail(messages map (m => TypecheckerError(m.message, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))))
+        }
+
+      case None =>
+       val errors = for (m <- Messaging.sortedmessages) yield {
+          TypecheckerError(m.message, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))
+        }
       Fail(errors)
     }
   }
