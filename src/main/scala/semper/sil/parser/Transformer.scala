@@ -105,6 +105,7 @@ object Transformer {
 
       assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
 
+
       newNode.setPos(parent)
     }
 
