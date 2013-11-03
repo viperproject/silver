@@ -140,11 +140,6 @@ case class TypeChecker(names: NameAnalyser) {
       case PPackageWand(e) =>
         check(e, Wand)
       case PApplyWand(wand) =>
-//        wand match {
-//          case e: PBinExp if e.op == MagicWandOp.op =>
-//          case _ => message(wand, "magic wand expected")
-//        }
-//        check(wand, Bool)
         check(wand, Wand)
       case PExhale(e) =>
         check(e, Bool)
@@ -368,7 +363,6 @@ case class TypeChecker(names: NameAnalyser) {
           }
         }
         if (!found) {
-          /* XXXXXXX */ sys.error(s"expected $expectedString, but got $actual")
           message(exp, s"expected $expectedString, but got $actual")
         }
       }
@@ -383,14 +377,6 @@ case class TypeChecker(names: NameAnalyser) {
       message(n, m)
       setErrorType() // suppress further warnings
     }
-
-//    def denotesWand(e: Exp) = e match {
-//        case e: PBinExp if e.op == MagicWandOp.op => true
-//        case w: PIdnUse
-//        case _ =>
-//          issueError(wand, "magic wand expected")
-//          false
-//      }
 
     /**
      * Sets an error type for 'exp' to suppress further warnings.
@@ -632,11 +618,6 @@ case class TypeChecker(names: NameAnalyser) {
         check(e.exp, expected)
         setType(e.exp.typ)
       case PApplying(wand, in) =>
-//        wand match {
-//          case e: PBinExp if e.op == MagicWandOp.op =>
-//          case _ => issueError(wand, "magic wand expected")
-//        }
-//        check(wand, Bool)
         check(wand, Wand)
         check(in, Bool)
         setType(in.typ)
