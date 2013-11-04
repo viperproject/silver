@@ -34,8 +34,15 @@ object LetassExpander {
   def transform(p: PProgram): PProgram = {
     val pTransformed =
       p.transform {
-        case p: PLetAss => PSkip().setPos(p)
-        case p: PIdnUse if p.letass.nonEmpty => p.letass.get.exp // TODO: Adapt position information of exp (and all subexps)
+        case _: PLetAss =>
+          PSkip().setPos(p)
+
+        case iu: PIdnUse if iu.letass.nonEmpty =>
+          val e: PExp = iu.letass.get.exp // TODO: Adapt position information all subexps
+          e.start = iu.start
+          e.finish = iu.finish
+
+          e
       }()
 
     org.kiama.attribution.Attribution.initTree(pTransformed)
