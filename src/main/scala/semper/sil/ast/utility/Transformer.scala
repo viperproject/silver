@@ -48,6 +48,7 @@ object Transformer {
 
             case Old(e) => Old(go(e))(p, i)
             case PackageOld(e) => PackageOld(go(e))(p, i)
+            case ApplyOld(e) => ApplyOld(go(e))(p, i)
             case CondExp(cond, thn, els) =>
               CondExp(go(cond), go(thn), go(els))(p, i)
             case Exists(v, e) => Exists(v map go, go(e))(p, i)

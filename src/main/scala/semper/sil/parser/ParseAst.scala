@@ -205,6 +205,7 @@ case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 sealed trait POldExp extends PExp { def e: PExp }
 case class POld(e: PExp) extends POldExp
 case class PPackageOld(e: PExp) extends POldExp
+case class PApplyOld(e: PExp) extends POldExp
 
 case class PEmptySeq(t : PType) extends PExp
 {

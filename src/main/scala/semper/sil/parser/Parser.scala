@@ -68,7 +68,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // prover hint expressions
     "unfolding", "in", "folding", "applying",
     // old expression
-    "old", "pold",
+    "old", "pold", "given",
     // quantification
     "forall", "exists",
     // permission syntax
@@ -298,7 +298,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       perm |
       quant |
       unfolding | folding | applying |
-      old | pold
+      old | pold | given
 
   lazy val accessPred: PackratParser[PAccPred] =
     "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred
@@ -325,6 +325,9 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
 
   lazy val pold: PackratParser[PExp] =
     "pold" ~> parens(exp) ^^ PPackageOld
+
+  lazy val given: PackratParser[PExp] =
+    "given" ~> parens(exp) ^^ PApplyOld
 
   lazy val locAcc: PackratParser[PLocationAccess] =
     // the first two cases are a hack to get all/chalice/nestedPredicates to parse

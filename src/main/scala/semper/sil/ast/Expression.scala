@@ -259,6 +259,7 @@ sealed trait OldExp extends UnExp {
 
 case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp
 case class PackageOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp
+case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp
 
 // --- Quantifications
 

@@ -58,6 +58,7 @@ object Transformer {
         case PAccPred(loc, perm) => PAccPred(go(loc), go(perm))
         case POld(e) => POld(go(e))
         case PPackageOld(e) => PPackageOld(go(e))
+        case PApplyOld(e) => PApplyOld(go(e))
         case PEmptySeq(t) => PEmptySeq(go(t))
         case PExplicitSeq(elems) => PExplicitSeq(elems map go)
         case PRangeSeq(low, high) => PRangeSeq(go(low), go(high))
@@ -104,7 +105,6 @@ object Transformer {
       }
 
       assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
-
 
       newNode.setPos(parent)
     }
