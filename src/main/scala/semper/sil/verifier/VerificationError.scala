@@ -233,6 +233,14 @@ object errors {
 
   def MagicWandNotWellformed(offendingNode: MagicWand): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => MagicWandNotWellformed(offendingNode, reason))
+
+  case class LetWandFailed(offendingNode: LocalVarAssign, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "letwand.failed"
+    val text = s"Referencing a wand might fail."
+  }
+
+  def LetWandFailed(offendingNode: LocalVarAssign): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => LetWandFailed(offendingNode, reason))
 }
 
 object reasons {
