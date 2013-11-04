@@ -201,18 +201,22 @@ object Consistency {
       c.copy(insidePackageStmt = true)
 
     case MagicWand(lhs, rhs) =>
-      recordIfPackageOldOnRhsOfWand(rhs, Context(magicWandCurrentlyLeft = false))
-//      recordIfNot(rhs, sideSensitiveNoPackageOld(rhs), "Wands may contain pold-expressions on the lhs only.")
+      checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
 
       if (!c.insidePackageStmt) {
         recordIfNot(lhs, noGhostOperations(lhs), "Wands may only contain ghost operations when being packaged.")
         recordIfNot(rhs, noGhostOperations(rhs), "Wands may only contain ghost operations when being packaged.")
       }
 
-      c.copy(insideWand = true)
+      c.copy(insideWandStatus = InsideWandStatus.Yes)
 
     case po: PackageOld =>
-      recordIfNot(po, c.insideWand, "pold-expressions may only occur inside wands.")
+      recordIfNot(po, c.insideWandStatus.isInside, "pold-expressions may only occur inside wands.")
+
+      c
+
+    case po: ApplyOld =>
+      recordIfNot(po, c.insideWandStatus.isInside, "given-expressions may only occur inside wands.")
 
       c
 
@@ -223,19 +227,31 @@ object Consistency {
       c
   })
 
-  private def recordIfPackageOldOnRhsOfWand(n: Node, c: Context) {
+  private def checkWandRelatedOldExpressions(n: Node, c: Context) {
     n.visitWithContextManually(c) (c => {
       case MagicWand(lhs, rhs) =>
-        recordIfPackageOldOnRhsOfWand(lhs, c.copy(magicWandCurrentlyLeft = true))
-        recordIfPackageOldOnRhsOfWand(rhs, c.copy(magicWandCurrentlyLeft = false))
+        checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
+        checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
 
-      case po: PackageOld =>
-        recordIfNot(po, c.magicWandCurrentlyLeft, "Wands may contain pold-expressions on the lhs only.")
+      case po: ApplyOld =>
+        recordIfNot(po,
+                    c.insideWandStatus.isRight,
+                    "Wands may contain given-expressions on the rhs only.")
     })
+  }
+
+  class InsideWandStatus protected[InsideWandStatus](val isInside: Boolean, val isLeft: Boolean, val isRight: Boolean) {
+    assert(!(isLeft || isRight) || isInside, "Inconsistent status")
+  }
+
+  object InsideWandStatus {
+    val No = new InsideWandStatus(false, false, false)
+    val Yes = new InsideWandStatus(true, false, false)
+    val Left = new InsideWandStatus(true, true, false)
+    val Right = new InsideWandStatus(true, false, true)
   }
 
   /** Context for context dependent consistency checking. */
   case class Context(insidePackageStmt: Boolean = false,
-                     insideWand: Boolean = false,
-                     magicWandCurrentlyLeft: Boolean = false)
+                     insideWandStatus: InsideWandStatus = InsideWandStatus.No)
 }
