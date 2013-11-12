@@ -37,8 +37,14 @@ trait AbstractError {
   /** A readable message describing the error. */
   def readableMessage: String
 
-  override def toString = s"$readableMessage ($pos)"
+  /* TODO: Simply looking for pos in message is rather fragile */
+  override def toString = {
+    val msg = readableMessage
+    val posStr = pos.toString
 
+    if (msg contains posStr) s"$msg"
+    else s"$msg ($posStr)"
+  }
 }
 
 /** A parser error. */
