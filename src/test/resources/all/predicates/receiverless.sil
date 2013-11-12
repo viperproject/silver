@@ -1,26 +1,25 @@
-
 predicate valid(b: Bool) {
     b ? true : false
 }
 
 method t1(this: Ref, b: Bool)
-    requires acc(false.valid(), write)
+    requires acc(valid(false), write)
 {
     //:: ExpectedError(assert.failed:assertion.false)
     assert false
 }
 
 method t2(this: Ref, b: Bool)
-    requires acc(false.valid(), write)
+    requires acc(valid(false), write)
 {
-    unfold acc(false.valid(), write)
+    unfold acc(valid(false), write)
     assert false
 }
 
 method t3(this: Ref, b: Bool)
-    requires acc(true.valid(), write)
+    requires acc(valid(true), write)
 {
-    unfold acc(true.valid(), write)
+    unfold acc(valid(true), write)
     //:: ExpectedError(assert.failed:assertion.false)
     assert false
 }

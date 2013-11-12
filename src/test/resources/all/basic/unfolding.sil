@@ -3,25 +3,25 @@ var f: Int
 var next: Ref
 
 predicate valid(r: Ref) {
-    acc(r.f, write) && acc(r.next, write) && ((r.next != null) ==> (acc(r.next.valid(), write)))
+    acc(r.f, write) && acc(r.next, write) && ((r.next != null) ==> (acc(valid(r.next), write)))
 }
 
 method t1(r: Ref)
-    requires acc(r.valid(), write)
+    requires acc(valid(r), write)
 {
-    var i: Int := unfolding acc(r.valid(), write) in (r.f)
+    var i: Int := unfolding acc(valid(r), write) in (r.f)
 }
 
 method t2(r: Ref)
     requires r != null
 {
     //:: ExpectedError(assignment.failed:insufficient.permission)
-    var i: Int := unfolding acc(r.valid(), write) in (r.f)
+    var i: Int := unfolding acc(valid(r), write) in (r.f)
 }
 
 method t3(r: Ref)
-    requires acc(r.valid(), write)
+    requires acc(valid(r), write)
 {
     //:: ExpectedError(assignment.failed:insufficient.permission)
-    var i: Int := (unfolding acc(r.valid(), write) in (unfolding acc(r.valid(), write) in (r.f)))
+    var i: Int := (unfolding acc(valid(r), write) in (unfolding acc(valid(r), write) in (r.f)))
 }

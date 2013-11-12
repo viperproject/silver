@@ -2,14 +2,14 @@ var next: Ref
 
 predicate valid(list: Ref) {
 		 acc(list.next, write)
-	&& (list.next != null ==> acc(list.next.valid(), write))
+	&& (list.next != null ==> acc(valid(list.next), write))
 }
 
 function size(list: Ref): Int
-  requires acc(list.valid(), wildcard)
+  requires acc(valid(list), wildcard)
   ensures result >= 1
 {
-	unfolding acc(list.valid(), wildcard) in (list.next == null ? 1 : 1 + size(list.next))
+	unfolding acc(valid(list), wildcard) in (list.next == null ? 1 : 1 + size(list.next))
 }
 
 method testFails1(list: Ref) {
@@ -18,7 +18,7 @@ method testFails1(list: Ref) {
 }
 
 method testFails2(list: Ref)
- 	requires acc(list.valid(), wildcard)
+ 	requires acc(valid(list), wildcard)
 {
   //:: ExpectedError(assert.failed:assertion.false)
  	assert list != null
@@ -31,8 +31,8 @@ method testSuccess1(list: Ref)
 }
 
 method testSuccess2(list: Ref)
-	requires acc(list.valid(), wildcard)
+	requires acc(valid(list), wildcard)
 {
-	unfold acc(list.valid(), wildcard)
+	unfold acc(valid(list), wildcard)
 	assert list != null
 }

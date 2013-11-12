@@ -2,14 +2,14 @@ var next: Ref
 
 predicate valid(this: Ref) {
      acc(this.next, write)
-  && (this.next != null ==> acc(this.next.valid(), write))
+  && (this.next != null ==> acc(valid(this.next), write))
 }
 
 function at(this: Ref, i: Int): Int
   requires this != null
-  requires acc(this.valid(), write)
+  requires acc(valid(this), write)
   requires 0 <= i && i < size(this)
-{ unfolding acc(this.valid(), write) in (i == 0 ? 0 : at(this.next, i - 1)) }
+{ unfolding acc(valid(this), write) in (i == 0 ? 0 : at(this.next, i - 1)) }
   /* The invocation of 'at(this.next, i - 1)' used to fail due to the inference
    * of local evaluations and non-local branchings.
    * If
@@ -22,6 +22,6 @@ function at(this: Ref, i: Int): Int
 
 function size(this: Ref): Int
   requires this != null
-  requires acc(this.valid(), write)
+  requires acc(valid(this), write)
   ensures result >= 1
-{ unfolding acc(this.valid(), write) in (this.next == null ? 1 : 1 + size(this.next)) }
+{ unfolding acc(valid(this), write) in (this.next == null ? 1 : 1 + size(this.next)) }

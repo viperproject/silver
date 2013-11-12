@@ -71,23 +71,23 @@ var Node_n: Ref
 predicate Node_P(this: Ref) {
      acc(this.Node_v, wildcard)
   && acc(this.Node_n, wildcard)
-  && (this.Node_n != null ==> acc(this.Node_n.Node_P(), wildcard))
+  && (this.Node_n != null ==> acc(Node_P(this.Node_n), wildcard))
 }
 
 method test5(n: Ref)
-  requires n != null && acc(n.Node_P(), wildcard)
+  requires n != null && acc(Node_P(n), wildcard)
 {
   var m: Ref
 
   m := new()
   assert m != n
 
-  unfold acc(n.Node_P(), wildcard)
+  unfold acc(Node_P(n), wildcard)
   if (n.Node_n != null) {
     //:: UnexpectedError(assert.failed:assertion.false, /silicon/issue/29/)
     assert m != (n.Node_n)
 
-    unfold acc(n.Node_P(), wildcard)
+    unfold acc(Node_P(n), wildcard)
     //:: ExpectedError(insufficient.permission)
     //:: MissingError(insufficient.permission, /silicon/issue/34/)
     if (n.Node_n.Node_n != null) {

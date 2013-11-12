@@ -4,19 +4,19 @@ var next: Ref
 predicate valid(this: Ref) {
      acc(this.value, write)
   && acc(this.next, write)
-  && (((this.next) != (null)) ==> acc(this.next.valid(), write))
+  && (((this.next) != (null)) ==> acc(valid(this.next), write))
 }
 
 function length(this: Ref): Int
-  requires acc(this.valid(), write)
+  requires acc(valid(this), write)
   ensures result > 0
-{ (unfolding acc(this.valid(), write) in (((this.next) == (null)) ? 1 : 1 + length(this.next))) }
+{ (unfolding acc(valid(this), write) in (((this.next) == (null)) ? 1 : 1 + length(this.next))) }
 
 function itemAt(this: Ref, i: Int): Int
-  requires acc(this.valid(), write)
+  requires acc(valid(this), write)
   requires 0 <= i
   requires i < length(this)
-{ (unfolding acc(this.valid(), write) in (((i) == (0)) || ((this.next) == (null)) ? this.value : itemAt(this.next, i - 1))) }
+{ (unfolding acc(valid(this), write) in (((i) == (0)) || ((this.next) == (null)) ? this.value : itemAt(this.next, i - 1))) }
 
 method test1(this: Ref)
 {
@@ -26,7 +26,7 @@ method test1(this: Ref)
   x.next := x
 
   //:: ExpectedError(fold.failed:insufficient.permission)
-  fold acc(x.valid(), write)
+  fold acc(valid(x), write)
 }
 
 method test2(this: Ref)
