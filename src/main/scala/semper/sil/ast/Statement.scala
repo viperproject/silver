@@ -119,7 +119,7 @@ case class Package(wand: MagicWand)(val pos: Position = NoPosition, val info: In
 
 /** Apply a magic wand. */
 case class Apply(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
-  require(exp isSubtype Wand)
+  require(exp isSubtype Wand, s"Expected wand but found ${exp.typ} ($exp)")
 }
 
 /** A sequence of statements. */

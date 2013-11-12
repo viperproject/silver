@@ -287,6 +287,11 @@ object reasons {
 
   case class MagicWandChunkNotFound(offendingNode: MagicWand) extends AbstractErrorReason {
     val id = "wand.not.found"
-    def readableMessage = s"Magic wand chunk not found."
+    def readableMessage = s"Magic wand instance not found."
+  }
+
+  case class MagicWandChunkOutdated(offendingNode: MagicWand) extends AbstractErrorReason {
+    val id = "wand.outdated"
+    def readableMessage = s"Found magic wand instance, but package-time old expressions don't match."
   }
 }

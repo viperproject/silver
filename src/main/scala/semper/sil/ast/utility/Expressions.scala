@@ -6,6 +6,7 @@ import semper.sil.ast._
 object Expressions {
   def isPure(e: Exp): Boolean = e match {
     case _: AccessPredicate => false
+    case lv: AbstractLocalVar if lv.typ == Wand => false
 
     case UnExp(e0) => isPure(e0)
     case InhaleExhaleExp(in, ex) => isPure(in) && isPure(ex)

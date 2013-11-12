@@ -355,7 +355,8 @@ case object ImpliesOp extends BoolBinOp with BoolDomainFunc {
 }
 
 /** Separating implication/Magic Wand. */
-case object MagicWandOp extends BoolBinOp with BoolDomainFunc {
+case object MagicWandOp extends BoolBinOp with AbstractDomainFunc {
+  lazy val typ = Wand
   lazy val op = "--*"
   lazy val priority = 4
   lazy val fixity = Infix(RightAssoc)

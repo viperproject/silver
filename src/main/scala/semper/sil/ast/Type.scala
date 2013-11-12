@@ -21,7 +21,7 @@ sealed trait Type extends Node {
               case None => false
             }
         }
-      case (Bool, Wand) => true
+      case (Wand, Bool) => true
       case _ => this == other
     }
   }
