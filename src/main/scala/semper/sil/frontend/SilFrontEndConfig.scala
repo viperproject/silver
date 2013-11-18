@@ -29,19 +29,22 @@ class SilFrontendConfig(args: Seq[String], private var projectName: String) exte
   val dependencies = opt[Boolean]("dependencies",
     descr = "Print full information about dependencies.",
     default = Some(false),
-    noshort = true
+    noshort = true,
+    hidden = true
   )
 
   val noTiming = opt[Boolean]("no-timing",
     descr = "Don't display timing information",
     default = Some(false),
-    noshort = true
+    noshort = true,
+    hidden = true
   )
 
   val methods = opt[String]("methods",
     descr = "The SIL methods that should be verified. :all means all methods.",
     default = Some(":all"),
-    noshort = true
+    noshort = true,
+    hidden = true
   )
 
   banner(s"""Usage: $projectName [options] <file>
