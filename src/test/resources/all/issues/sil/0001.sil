@@ -43,4 +43,9 @@ method test(x: Ref)
 
   inhale acc(x.f, wildcard)
   inhale a > 0
+
+//  assert unfolding P(x) in true
+//  assert folding P(x) in true
+//  fold P(x)
+//  unfold P(x)
 }

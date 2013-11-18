@@ -226,9 +226,9 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       methodCall | goto | lbl | packageWand | applyWand
 
   lazy val fold =
-    "fold" ~> exp ^^ PFold
+    "fold" ~> predicateAccessPred ^^ PFold
   lazy val unfold =
-    "unfold" ~> exp ^^ PUnfold
+    "unfold" ~> predicateAccessPred ^^ PUnfold
   lazy val packageWand =
     "package" ~> exp ^^ PPackageWand
   lazy val applyWand =
@@ -366,9 +366,12 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       idnuse
 
   lazy val accessPred: PackratParser[PAccPred] =
-    "acc" ~> parens(locAcc ~ opt("," ~> exp)) ^^ {
-      case loc ~ perms => PAccPred(loc, perms.getOrElse(PFullPerm()))
-    }
+      "acc" ~> parens(locAcc ~ opt("," ~> exp)) ^^ {
+        case loc ~ perms => PAccPred(loc, perms.getOrElse(PFullPerm()))
+      }
+
+  lazy val predicateAccessPred: PackratParser[PAccPred] =
+    accessPred | predAcc ^^ {case loc => PAccPred(loc, PFullPerm())}
 
   lazy val fapp: PackratParser[PExp] =
     idnuse ~ parens(actualArgList) ^^ PFunctApp
@@ -411,10 +414,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     idnuse ~ parens(actualArgList) ^^ {case id ~ args => PPredicateAccess(args, id)}
 
   lazy val unfolding: PackratParser[PExp] =
-    ("unfolding" ~> accessPred) ~ ("in" ~> exp) ^^ PUnfolding
+    ("unfolding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PUnfolding
 
   lazy val folding: PackratParser[PExp] =
-    ("folding" ~> accessPred) ~ ("in" ~> exp) ^^ PFolding
+    ("folding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PFolding
 
   lazy val applying: PackratParser[PExp] =
     /* We must be careful here to not create ambiguities in our granmmar.
