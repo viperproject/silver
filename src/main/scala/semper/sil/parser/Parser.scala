@@ -100,7 +100,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // null
     "null",
     // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "letass", "letwand",
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "define", "wand",
     // specifications
     "requires", "ensures", "invariant",
     // statements
@@ -116,7 +116,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // prover hint expressions
     "unfolding", "in", "folding", "applying",
     // old expression
-    "old", "pold", "given",
+    "old", "now", "lhs",
     // quantification
     "forall", "exists",
     // permission syntax
@@ -260,9 +260,9 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val varDecl =
     ("var" ~> idndef) ~ (":" ~> typ) ~ opt(":=" ~> exp) ^^ PLocalVarDecl
   lazy val letassDecl =
-    ("letass" ~> idndef) ~ (":=" ~> exp) ^^ PLetAss
+    ("define" ~> idndef) ~ exp ^^ PLetAss
   lazy val letwandDecl =
-    ("letwand" ~> idndef) ~ (":=" ~> exp) ^^ PLetWand
+    ("wand" ~> idndef) ~ (":=" ~> exp) ^^ PLetWand
   lazy val freshReadPerm =
     ("fresh" ~> "(" ~> repsep(idnuse, ",") <~ ")") ~ block ^^ {
       case vars ~ s => PFreshReadPerm(vars, PSeqn(s))
@@ -397,10 +397,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "old" ~> parens(exp) ^^ POld
 
   lazy val pold: PackratParser[PExp] =
-    "pold" ~> parens(exp) ^^ PPackageOld
+    "now" ~> parens(exp) ^^ PPackageOld
 
   lazy val given: PackratParser[PExp] =
-    "given" ~> parens(exp) ^^ PApplyOld
+    "lhs" ~> parens(exp) ^^ PApplyOld
 
   lazy val locAcc: PackratParser[PLocationAccess] =
     fieldAcc | predAcc

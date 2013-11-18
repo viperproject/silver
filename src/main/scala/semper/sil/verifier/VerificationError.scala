@@ -292,6 +292,6 @@ object reasons {
 
   case class MagicWandChunkOutdated(offendingNode: MagicWand) extends AbstractErrorReason {
     val id = "wand.outdated"
-    def readableMessage = s"Found magic wand instance, but package-time old expressions don't match."
+    def readableMessage = s"Found magic wand instance, but now-expressions might not match."
   }
 }
