@@ -64,8 +64,9 @@ object Consistency {
    * conjuncts or on the right side of implications or conditional expressions) only, i.e. no access predicates and
    * no InhaleExhaleExp.
    */
-  def checkNoPositiveOnly(e: Exp) =
+  def checkNoPositiveOnly(e: Exp) = {
     recordIfNot(e, hasNoPositiveOnly(e), s"$e can only appear in positive positions.")
+  }
 
   /**
    * Does this boolean expression contain no subexpressions that can appear in positive positions only?
@@ -78,8 +79,7 @@ object Consistency {
       exceptInhaleExhale && hasNoPositiveOnly(inhale, exceptInhaleExhale) && hasNoPositiveOnly(exhale, exceptInhaleExhale)
     }
     case And(left, right) => {
-      hasNoPositiveOnly(left, exceptInhaleExhale)
-      hasNoPositiveOnly(right, exceptInhaleExhale)
+      hasNoPositiveOnly(left, exceptInhaleExhale) && hasNoPositiveOnly(right, exceptInhaleExhale)
     }
     case Implies(_, right) => {
       // The left side is checked during creation of the Implies expression.
