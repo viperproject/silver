@@ -1,0 +1,7 @@
+method variables()
+{
+  var number: Int
+  var index: Int
+  number := 1
+  index := 0 // Line 6
+}

@@ -1,12 +1,12 @@
   var value: Int
   var next: Ref
-  predicate inv(this: Ref) { acc(this.value, write) && acc(this.next, write) && (((this.next) != (null)) ==> acc(this.next.inv(), write)) }
+  predicate inv(this: Ref) { acc(this.value, write) && acc(this.next, write) && (((this.next) != (null)) ==> acc(inv(this.next), write)) }
   function get(this: Ref): Int
-    requires acc(this.inv(), write)
-  { (unfolding acc(this.inv(), write) in this.value) }
+    requires acc(inv(this), write)
+  { (unfolding acc(inv(this), write) in this.value) }
   method foo(this: Ref)
-    requires acc(this.inv(), write) && (unfolding acc(this.inv(), write) in ((this.next) != (null)))
-    ensures acc(this.inv(), write) && (unfolding acc(this.inv(), write) in ((this.next) != (null)))
+    requires acc(inv(this), write) && (unfolding acc(inv(this), write) in ((this.next) != (null)))
+    ensures acc(inv(this), write) && (unfolding acc(inv(this), write) in ((this.next) != (null)))
   {
-    assert (unfolding acc(this.inv(), write) in (unfolding acc(this.next.inv(), write) in true))
+    assert (unfolding acc(inv(this), write) in (unfolding acc(inv(this.next), write) in true))
   }

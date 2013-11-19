@@ -7,9 +7,9 @@ package semper.sil.parser
   *      copying existing nodes, i.e., case classes.
  */
 object Transformer {
-	/* Attention: You most likely want to call org.kiama.attribution.Attribution.initTree on the transformed node. */
+  /* Attention: You most likely want to call org.kiama.attribution.Attribution.initTree on the transformed node. */
   def transform[A <: PNode](node: A,
-                           pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
+                            pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
                             recursive: PNode => Boolean = !pre.isDefinedAt(_),
                             post: PartialFunction[PNode, PNode] = PartialFunction.empty): A = {
 
@@ -41,7 +41,9 @@ object Transformer {
         case PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))
         case PPredicateAccess(args, idnuse) => PPredicateAccess( args map go, go(idnuse))
         case PFunctApp(func, args) => PFunctApp(go(func), args map go)
+
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
+
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map (_ map go), go(exp))
         case PCondExp(cond, thn, els) => PCondExp(go(cond), go(thn), go(els))
@@ -92,10 +94,10 @@ object Transformer {
         case PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, go(body))
         case PAxiom(idndef, exp) => PAxiom(go(idndef), go(exp))
       }
-			
-			assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
 
-			newNode.setPos(parent)
+      assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
+
+      newNode.setPos(parent)
     }
 
     val beforeRecursion = pre.applyOrElse(node, identity[PNode])
@@ -104,6 +106,7 @@ object Transformer {
     } else {
       beforeRecursion
     }
+
     post.applyOrElse(afterRecursion, identity[PNode]).asInstanceOf[A]
   }
 }

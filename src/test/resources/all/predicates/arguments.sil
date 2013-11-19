@@ -14,73 +14,73 @@ predicate valid(this: Ref, b: Bool) {
 
 method t1(this: Ref, b: Bool)
     requires acc(this.unrelatedField, write)
-    requires acc(this.valid(b), write)
-    ensures acc(this.valid(b), write)
+    requires acc(valid(this, b), write)
+    ensures acc(valid(this, b), write)
 {
-    unfold acc(this.valid(b), write)
+    unfold acc(valid(this, b), write)
     if (b) {
         this.f := 1
     } else {
         this.g := 2
     }
-    fold acc(this.valid(b), write)
+    fold acc(valid(this, b), write)
     unrelated(this)
 }
 
 method t2(this: Ref)
     requires acc(this.unrelatedField, write)
     requires acc(this.f, write)
-    ensures acc(this.valid(true), write)
+    ensures acc(valid(this, true), write)
 {
-    fold acc(this.valid(true), write)
+    fold acc(valid(this, true), write)
     unrelated(this)
 }
 
 method t2b(this: Ref)
     requires acc(this.f, write)
-    ensures acc(this.valid(true), write)
+    ensures acc(valid(this, true), write)
 {
     //:: ExpectedError(fold.failed:insufficient.permission)
-    fold acc(this.valid(false), write)
+    fold acc(valid(this, false), write)
 }
 
 method t3(this: Ref, b: Bool)
     requires acc(this.unrelatedField, write)
-    requires acc(this.valid(b), write)
-    requires acc(this.valid(!b), write)
+    requires acc(valid(this, b), write)
+    requires acc(valid(this, !b), write)
     //:: UnexpectedError(not.wellformed:insufficient.permission, /silicon/issue/36/)
-    requires (unfolding acc(this.valid(false), write) in ((this.g) == 2))
-    ensures acc(this.valid(b), write)
-    ensures acc(this.valid(!b), write)
-    ensures (unfolding acc(this.valid(false), write) in ((this.g) == 2))
+    requires (unfolding acc(valid(this, false), write) in ((this.g) == 2))
+    ensures acc(valid(this, b), write)
+    ensures acc(valid(this, !b), write)
+    ensures (unfolding acc(valid(this, false), write) in ((this.g) == 2))
 {
-    unfold acc(this.valid(true), write)
+    unfold acc(valid(this, true), write)
     this.f := 1
-    fold acc(this.valid(true), write)
+    fold acc(valid(this, true), write)
 }
 
 method t3a(this: Ref, b: Bool)
     requires acc(this.unrelatedField, write)
-    requires acc(this.valid(b), write)
-    requires acc(this.valid(!b), write)
+    requires acc(valid(this, b), write)
+    requires acc(valid(this, !b), write)
     //:: UnexpectedError(not.wellformed:insufficient.permission, /silicon/issue/36/)
-    requires (unfolding acc(this.valid(false), write) in ((this.g) == 2))
-    ensures acc(this.valid(b), write)
-    ensures acc(this.valid(!b), write)
-    ensures (unfolding acc(this.valid(false), write) in ((this.g) == 2))
+    requires (unfolding acc(valid(this, false), write) in ((this.g) == 2))
+    ensures acc(valid(this, b), write)
+    ensures acc(valid(this, !b), write)
+    ensures (unfolding acc(valid(this, false), write) in ((this.g) == 2))
 {
-    unfold acc(this.valid(true), write)
+    unfold acc(valid(this, true), write)
     this.f := 1
-    fold acc(this.valid(true), write)
+    fold acc(valid(this, true), write)
     unrelated(this)
 }
 
 method t3b(this: Ref, b: Bool)
-    requires acc(this.valid(b), write)
-    requires acc(this.valid(!b), write)
+    requires acc(valid(this, b), write)
+    requires acc(valid(this, !b), write)
 {
     //:: UnexpectedError(unfold.failed:insufficient.permission, /silicon/issue/36/)
-    unfold acc(this.valid(true), write)
+    unfold acc(valid(this, true), write)
     //:: ExpectedError(insufficient.permission)
     //:: MissingError(insufficient.permission, /silicon/issue/36/)
     this.g := 1

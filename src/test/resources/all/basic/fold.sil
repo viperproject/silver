@@ -9,8 +9,8 @@ method t1(r: Ref) returns ()
     requires acc(r.f, write)
 {
     r.f := 0
-    fold acc(r.valid(), write)
-    unfold acc(r.valid(), write)
+    fold acc(valid(r), write)
+    unfold acc(valid(r), write)
     //:: ExpectedError(assert.failed:assertion.false)
     assert false
 }
@@ -20,7 +20,7 @@ method t2(r: Ref) returns ()
 {
     r.f := 1
     //:: ExpectedError(fold.failed:assertion.false)
-    fold acc(r.valid(), write)
+    fold acc(valid(r), write)
 }
 
 method t3(r: Ref) returns ()
@@ -28,5 +28,5 @@ method t3(r: Ref) returns ()
 {
     r.f := 1
     //:: ExpectedError(unfold.failed:insufficient.permission)
-    unfold acc(r.valid(), write)
+    unfold acc(valid(r), write)
 }

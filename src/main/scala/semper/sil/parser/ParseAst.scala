@@ -59,6 +59,11 @@ sealed trait PNode extends Positioned with Attributable {
   def visitOpt(f1: PNode => Boolean, f2: PNode => Unit) {
     Visitor.visitOpt(this, f1, f2)
   }
+
+  def transform(pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
+    recursive: PNode => Boolean = !pre.isDefinedAt(_),
+    post: PartialFunction[PNode, PNode] = PartialFunction.empty): this.type =
+    Transformer.transform[this.type](this, pre)(recursive, post)
 }
 
 object TypeHelper {
@@ -73,6 +78,7 @@ object TypeHelper {
 trait Identifier {
   def name: String
 }
+
 case class PIdnDef(name: String) extends PNode with Identifier
 case class PIdnUse(name: String) extends PExp with Identifier
 
@@ -133,15 +139,17 @@ case class PMultisetType(elementType: PType) extends PType {
   override def isConcrete = elementType.isConcrete
   override def substitute(map: Map[String, PType]) = PMultisetType(elementType.substitute(map))
 }
+
+sealed trait PInternalType extends PType
+
 // for resolving if something cannot be typed
-case class PUnknown() extends PType {
+case class PUnknown() extends PInternalType {
   override def toString = "<error type>"
 }
 // used during resolving for predicate accesses
-case class PPredicateType() extends PType {
+case class PPredicateType() extends PInternalType {
   override def toString = "$predicate"
 }
-
 
 // Expressions
 sealed trait PExp extends PNode {
@@ -163,7 +171,7 @@ sealed trait PLocationAccess extends PExp
 case class PFieldAccess(rcv: PExp, idnuse: PIdnUse) extends PLocationAccess
 case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse) extends PLocationAccess
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
-case class PUnfolding(loc: PAccPred, exp: PExp) extends PExp
+case class PUnfolding(acc: PAccPred, exp: PExp) extends PExp
 case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp
 case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
@@ -174,8 +182,11 @@ case class PFullPerm() extends PExp
 case class PWildcard() extends PExp
 case class PEpsilon() extends PExp
 case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
-case class POld(e: PExp) extends PExp
-case class PEmptySeq(t : PType) extends PExp 
+
+sealed trait POldExp extends PExp { def e: PExp }
+case class POld(e: PExp) extends POldExp
+
+case class PEmptySeq(t : PType) extends PExp
 {
   typ = (if (t.isUnknown) PUnknown() else PSeqType(t)) // type can be specified as PUnknown() if unknown
 }
@@ -287,9 +298,9 @@ object Nodes {
       case PFieldAccess(rcv, field) => Seq(rcv, field)
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
       case PFunctApp(func, args) => Seq(func) ++ args
-      case PUnfolding(loc, exp) => Seq(loc, exp)
+      case PUnfolding(acc, exp) => Seq(acc, exp)
       case PExists(vars, exp) => vars ++ Seq(exp)
-      case POld(exp) => Seq(exp)
+      case po: POldExp => Seq(po.e)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)

@@ -1,8 +1,7 @@
 package semper.sil.parser
 
-import org.kiama.util.WhitespacePositionedParserUtilities
-import java.io.File
 import java.nio.file.Path
+import org.kiama.util.WhitespacePositionedParserUtilities
 
 /**
  * A parser for the SIL language that takes a string and produces an intermediate
@@ -15,7 +14,6 @@ import java.nio.file.Path
  * in util/highlighting!
  */
 object Parser extends BaseParser {
-
   override def file = _file
   var _file: Path = null
 
@@ -31,7 +29,57 @@ object Parser extends BaseParser {
   }
 }
 
-trait BaseParser extends WhitespacePositionedParserUtilities {
+
+/* A parser intended for debugging. Extend it and make parsing rules log their invocation
+ * by changing a rule such as
+ *   lazy val foo = body
+ * to
+ *   lazy val foo = "foo" !!! body
+ *
+ * Taken from http://jim-mcbeath.blogspot.be/2011/07/debugging-scala-parser-combinators.html
+ */
+
+import scala.language.implicitConversions
+import scala.language.reflectiveCalls
+
+object DebuggingParser {
+  var depth: Int = 0
+}
+
+trait DebuggingParser extends WhitespacePositionedParserUtilities {
+  class Wrap[+T](name:String, parser: Parser[T]) extends PackratParser[T] {
+    def apply(in: Input): ParseResult[T] = {
+      val indent = " " * DebuggingParser.depth
+      DebuggingParser.depth += 1
+
+      println(s"$indent<$name> for '${in.first}' at ${in.pos}")
+      val t = parser.apply(in)
+      val fr = if (t.successful) " for " + t.get else ""
+      println(s"$indent</$name> ${t.getClass.getSimpleName} at ${t.next.pos}$fr")
+
+      DebuggingParser.depth - 1
+
+      t
+    }
+  }
+
+  implicit def toWrapped[T](name:String) = new {
+    def !!!(p: Parser[T]) = new Wrap(name,p)
+  }
+}
+
+
+/* This parser is a PackratParser and thus CAN support left recursive parsing
+ * rules with memoisation. You have to EXPLICITLY declare the return type of
+ * such rules as PackratPerser[T], though. Moreover, if sub-rules further down
+ * the line are not declared to return a PackratParser, then the memoisation
+ * won't be total and the run-time is no longer linear. Mixing different
+ * parsers is otherwise fine.
+ *
+ * See the Kiama documentation for further information, for example,
+ * http://code.google.com/p/kiama/wiki/ParserCombs.
+ */
+trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities {
 
   /** The file we are currently parsing (for creating positions later). */
   def file: Path
@@ -65,7 +113,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     "Seq",
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
-    // unfolding expressions
+    // prover hint expressions
     "unfolding", "in",
     // old expression
     "old",
@@ -74,7 +122,10 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
-    "unique"
+    "unique",
+
+    // TODO: Hacks to stop the parser from interpreting, e.g., "inhale" as "in hale"
+    "variant", "hale", "tersection"
   )
 
   lazy val parser = phrase(programDecl)
@@ -119,6 +170,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       case name ~ args ~ rets ~ pres ~ posts ~ body =>
         PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
     }
+
   lazy val methodSignature =
     ("method" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ opt("returns" ~> ("(" ~> formalArgList <~ ")"))
   lazy val pre =
@@ -174,15 +226,15 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       methodCall | goto | lbl
 
   lazy val fold =
-    "fold" ~> exp ^^ PFold
+    "fold" ~> predicateAccessPred ^^ PFold
   lazy val unfold =
-    "unfold" ~> exp ^^ PUnfold
+    "unfold" ~> predicateAccessPred ^^ PUnfold
   lazy val inhale =
-    ("inhale" | "assume") ~> (exp) ^^ PInhale
+    ("inhale" | "assume") ~> exp ^^ PInhale
   lazy val exhale =
-    "exhale" ~> (exp) ^^ PExhale
+    "exhale" ~> exp ^^ PExhale
   lazy val assert =
-    "assert" ~> (exp) ^^ PAssert
+    "assert" ~> exp ^^ PAssert
   lazy val localassign =
     idnuse ~ (":=" ~> exp) ^^ PVarAssign
   lazy val fieldassign =
@@ -242,44 +294,56 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
 
   lazy val exp: PackratParser[PExp] =
     iteExpr
-
   lazy val iteExpr: PackratParser[PExp] =
     ((iffExp <~ "?") ~ iteExpr ~ (":" ~> iteExpr)) ^^ PCondExp | iffExp
   lazy val iffExp: PackratParser[PExp] =
     implExp ~ "<==>" ~ iffExp ^^ PBinExp | implExp
   lazy val implExp: PackratParser[PExp] =
-    orExp ~ "==>" ~ implExp ^^ PBinExp | orExp
+    magicWandExp ~ "==>" ~ implExp ^^ PBinExp | magicWandExp
+
+  lazy val magicWandExp: PackratParser[PExp] =
+    realMagicWandExp | orExp
+  lazy val realMagicWandExp: PackratParser[PExp] =
+    orExp ~ "--*" ~ magicWandExp ^^ PBinExp
+
   lazy val orExp: PackratParser[PExp] =
     andExp ~ "||" ~ orExp ^^ PBinExp | andExp
   lazy val andExp: PackratParser[PExp] =
     cmpExp ~ "&&" ~ andExp ^^ PBinExp | cmpExp
 
-  lazy val cmpOp = "==" | "!=" | "<=" | ">=" | "<" | ">"
+  lazy val cmpOp = "==" | "!=" | "<=" | ">=" | "<" | ">" | "in"
   lazy val cmpExp: PackratParser[PExp] =
     sum ~ cmpOp ~ sum ^^ PBinExp | sum
 
+  lazy val sumOp = "++" | "+" | "-" | "union" | "intersection" | "setminus" | "subset"
   lazy val sum: PackratParser[PExp] =
-    sum ~ "++" ~ term ^^ PBinExp |
-      sum ~ "+" ~ term ^^ PBinExp |
-      sum ~ "-" ~ term ^^ PBinExp |
-      term
+    sum ~ sumOp ~ term ^^ PBinExp | term
 
+  lazy val termOp = "*" | "/" | "\\" | "%"
   lazy val term: PackratParser[PExp] =
-    term ~ "*" ~ factor ^^ PBinExp |
-      term ~ "/" ~ factor ^^ PBinExp |
-      term ~ "\\" ~ factor ^^ PBinExp |
-      term ~ "%" ~ factor ^^ PBinExp |
-      factor
+    term ~ termOp ~ suffixExpr ^^ PBinExp | suffixExpr
 
-  lazy val factor: PackratParser[PExp] =
-    fapp |
-      set |
-      seq |
-      locAcc |
-      integer |
-      bool |
-      nul |
-      idnuse |
+  lazy val suffixExpr: PackratParser[PExp] =
+    atom ~ rep(suffix) ^^ {case fac ~ ss => foldPExp[PExp](fac, ss)}
+
+  lazy val realSuffixExpr: PackratParser[PExp] =
+    atom ~ rep1(suffix) ^^ {case fac ~ ss => foldPExp[PExp](fac, ss)}
+
+  lazy val suffix: Parser[PExp => PExp] =
+    "." ~> idnuse ^^ (id => (e: PExp) => PFieldAccess(e, id)) |
+      "[.." ~> exp <~ "]" ^^ (n => (e: PExp) => PSeqTake(e, n)) |
+      "[" ~> exp <~ "..]" ^^ (n => (e: PExp) => PSeqDrop(e, n)) |
+      ("[" ~> exp <~ "..") ~ (exp <~ "]") ^^ {case n ~ m => (e: PExp) => PSeqDrop(PSeqTake(e, m), n)} |
+      "[" ~> exp <~ "]" ^^ (e1 => (e0: PExp) => PSeqIndex(e0, e1)) |
+      ("[" ~> exp <~ ":=") ~ (exp <~ "]") ^^ {case i ~ v => (e: PExp) => PSeqUpdate(e, i, v)}
+
+  /* Atoms must (transitively) start with a literal or an identifier, but they
+   * must not recurse with their first subrule!
+   * Most general rule should come last, which is probably idnuse.
+   */
+  lazy val atom: PackratParser[PExp] =
+    integer | bool | nul |
+      old |
       "result" ^^^ PResultLit() |
       ("-" | "!" | "+") ~ sum ^^ PUnExp |
       "(" ~> exp <~ ")" |
@@ -288,17 +352,27 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
       perm |
       quant |
       unfolding |
-      old
+      explicitSet | explicitMultiset |
+      seqTypedEmpty | seqLength | explicitSeq | seqRange |
+      fapp |
+      idnuse
 
   lazy val accessPred: PackratParser[PAccPred] =
-    "acc" ~> parens(locAcc ~ ("," ~> exp)) ^^ PAccPred
+      "acc" ~> parens(locAcc ~ opt("," ~> exp)) ^^ {
+        case loc ~ perms => PAccPred(loc, perms.getOrElse(PFullPerm()))
+      }
+
+  lazy val predicateAccessPred: PackratParser[PAccPred] =
+    accessPred | predAcc ^^ {case loc => PAccPred(loc, PFullPerm())}
 
   lazy val fapp: PackratParser[PExp] =
     idnuse ~ parens(actualArgList) ^^ PFunctApp
-  lazy val actualArgList: PackratParser[Seq[PExp]] =
-    repsep(exp, ",")
 
-  lazy val inhaleExhale: PackratParser[PExp] = ("[" ~> exp <~ ",") ~ (exp <~ "]") ^^ PInhaleExhaleExp
+  lazy val actualArgList: PackratParser[Seq[PExp]] =
+    repsep(sum, ",")
+
+  lazy val inhaleExhale: PackratParser[PExp] =
+    ("[" ~> exp <~ ",") ~ (exp <~ "]") ^^ PInhaleExhaleExp
 
   lazy val perm: PackratParser[PExp] =
     "none" ^^^ PNoPerm() | "wildcard" ^^^ PWildcard() | "write" ^^^ PFullPerm() |
@@ -307,6 +381,7 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val quant: PackratParser[PExp] =
     ("forall" ~> formalArgList <~ "::") ~ rep(trigger) ~ exp ^^ PForall |
       ("exists" ~> formalArgList <~ "::") ~ exp ^^ PExists
+
   lazy val trigger: PackratParser[Seq[PExp]] =
     "{" ~> repsep(exp, ",") <~ "}"
 
@@ -314,21 +389,18 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
     "old" ~> parens(exp) ^^ POld
 
   lazy val locAcc: PackratParser[PLocationAccess] =
-    // the first two cases are a hack to get all/chalice/nestedPredicates to parse
-    (("^3" ~> idnuse) ~ ("." ~> idnuse) ~ ("." ~> idnuse)) ^^ {
-      case i1 ~ i2 ~ i3 => PFieldAccess(PFieldAccess(i1, i2), i3)
-    } | (("^4" ~> idnuse) ~ ("." ~> idnuse) ~ ("." ~> idnuse) ~ ("." ~> idnuse <~ "()")) ^^ {
-      case i1 ~ i2 ~ i3 ~ i4 => PPredicateAccess(Seq(PFieldAccess(PFieldAccess(i1, i2), i3)), i4)
-    } | predAcc | fieldAcc
+    fieldAcc | predAcc
+
   lazy val fieldAcc: PackratParser[PFieldAccess] =
-    (exp <~ ".") ~ idnuse ^^ PFieldAccess
-  lazy val predAcc: PackratParser[PLocationAccess] =
-    (exp <~ ".") ~ idnuse ~ parens(actualArgList) ^^ {
-      case rcv ~ idn ~ args => PPredicateAccess(Seq(rcv) ++ args, idn)
-    }
+    realSuffixExpr ^? ({
+      case fa: PFieldAccess => fa
+    }, _ => "Field expected")
+
+  lazy val predAcc: PackratParser[PPredicateAccess] =
+    idnuse ~ parens(actualArgList) ^^ {case id ~ args => PPredicateAccess(args, id)}
 
   lazy val unfolding: PackratParser[PExp] =
-    ("unfolding" ~> accessPred) ~ ("in" ~> exp) ^^ PUnfolding
+    ("unfolding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PUnfolding
 
   lazy val integer =
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))
@@ -345,56 +417,29 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
   lazy val idnuse =
     ident ^^ PIdnUse
 
-  // --- Sequences
+  // --- Sequence and set atoms
 
-  lazy val seq =
-    seqTypedEmpty | seqLength | explicitSeq | seqIndex | seqRange |
-      seqTake | seqDrop | seqTakeDrop |
-      seqContains | seqUpdate
   lazy val seqTypedEmpty: PackratParser[PExp] =
     "Seq[" ~> typ <~ "]()" ^^ PEmptySeq
+
   lazy val seqLength: PackratParser[PExp] =
     "|" ~> exp <~ "|" ^^ PSize
-  lazy val seqTake: PackratParser[PExp] =
-    exp ~ ("[.." ~> exp <~ "]") ^^ PSeqTake
-  lazy val seqDrop: PackratParser[PExp] =
-    exp ~ ("[" ~> exp <~ "..]") ^^ PSeqDrop
-  lazy val seqTakeDrop: PackratParser[PExp] =
-    exp ~ ("[" ~> exp <~ "..") ~ (exp <~ "]") ^^ {
-      case s ~ drop ~ take => PSeqDrop(PSeqTake(s, take), drop)
-    }
-  lazy val seqIndex: PackratParser[PExp] =
-    (exp <~ "[") ~ (exp <~ "]") ^^ PSeqIndex
-  lazy val seqContains: PackratParser[PExp] =
-    exp ~ "in" ~ exp ^^ PBinExp
-  lazy val seqUpdate: PackratParser[PExp] =
-    exp ~ ("[" ~> exp <~ ":=") ~ (exp <~ "]") ^^ PSeqUpdate
+
   lazy val explicitSeq: PackratParser[PExp] =
     "Seq(" ~> repsep(exp, ",") <~ ")" ^^ {
       case Nil => PEmptySeq(PUnknown())
       case elems => PExplicitSeq(elems)
     }
+
   lazy val seqRange: PackratParser[PExp] =
     ("[" ~> exp <~ "..") ~ (exp <~ ")") ^^ PRangeSeq
 
-  // --- Sets
-
-  lazy val set =
-    setUnion | setIntersection | setMinus | subset |
-      explicitSet | explicitMultiset
-  lazy val setUnion: PackratParser[PExp] =
-    exp ~ "union" ~ exp ^^ PBinExp
-  lazy val setIntersection: PackratParser[PExp] =
-    exp ~ "intersection" ~ exp ^^ PBinExp
-  lazy val setMinus: PackratParser[PExp] =
-    exp ~ "setminus" ~ exp ^^ PBinExp
-  lazy val subset: PackratParser[PExp] =
-    exp ~ "subset" ~ exp ^^ PBinExp
   lazy val explicitSet: PackratParser[PExp] =
     "Set(" ~> repsep(exp, ",") <~ ")" ^^ {
       case Nil => PEmptySet()
       case elems => PExplicitSet(elems)
     }
+
   lazy val explicitMultiset: PackratParser[PExp] =
     "Multiset(" ~> repsep(exp, ",") <~ ")" ^^ {
       case Nil => PEmptySet()
@@ -415,4 +460,11 @@ trait BaseParser extends WhitespacePositionedParserUtilities {
 
   lazy val keyword =
     keywords("[^a-zA-Z0-9]".r, reserved)
+
+  private def foldPExp[E <: PExp](e: PExp, es: List[PExp => E]): E =
+    es.foldLeft(e){(t, a) =>
+      val result = a(t)
+      result.setPos(t)
+      result
+    }.asInstanceOf[E]
 }

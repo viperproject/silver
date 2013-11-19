@@ -10,13 +10,12 @@ case class Resolver(p: PProgram) {
   val names = NameAnalyser()
   val typechecker = TypeChecker(names)
 
-  def run: Boolean = {
-    if (names.run(p)) {
-      if (typechecker.run(p)) {
-        return true
-      }
-    }
-    false
+  def run: Option[PProgram] = {
+    if (names.run(p))
+      if (typechecker.run(p))
+        return Some(p)
+
+    None
   }
 }
 
@@ -207,7 +206,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(typ: PType) {
     typ match {
-      case PPredicateType() =>
+      case _: PPredicateType =>
         sys.error("unexpected use of internal typ")
       case PPrimitiv(_) =>
       case dt@PDomainType(domain, args) =>
@@ -269,6 +268,7 @@ case class TypeChecker(names: NameAnalyser) {
    */
   def isCompatible(a: PType, b: PType): Boolean = {
     (a, b) match {
+      case _ if a == b => true
       case (PUnknown(), t) => true
       case (t, PUnknown()) => true
       case (PTypeVar(name), t) => true
@@ -279,7 +279,6 @@ case class TypeChecker(names: NameAnalyser) {
       case (PDomainType(domain1, args1), PDomainType(domain2, args2))
         if domain1 == domain2 && args1.length == args2.length =>
         (args1 zip args2) forall (x => isCompatible(x._1, x._2))
-      case _ if a == b => true
       case _ => false
     }
   }
@@ -291,6 +290,7 @@ case class TypeChecker(names: NameAnalyser) {
    * The empty set can be passed for expected, if any type is fine.
    */
   def check(exp: PExp, expected: PType): Unit = check(exp, Seq(expected))
+
   def check(exp: PExp, expectedRaw: Seq[PType]): Unit = {
     val expected = expectedRaw filter ({
       case PTypeVar(_) => false
@@ -338,34 +338,34 @@ case class TypeChecker(names: NameAnalyser) {
     /**
      * Issue an error for the node at 'n'. Also sets an error type for 'exp' to suppress
      * further warnings.
+     *
+     * TODO: Similar to Consistency.recordIfNot. Combine!
      */
     def issueError(n: Positioned, m: String) {
       message(n, m)
       setErrorType() // suppress further warnings
     }
+
     /**
      * Sets an error type for 'exp' to suppress further warnings.
      */
     def setErrorType() {
       setType(PUnknown())
     }
+
     def genericSeqType: PSeqType = PSeqType(PTypeVar("."))
     def genericSetType: PSetType = PSetType(PTypeVar("."))
     def genericMultisetType: PMultisetType = PMultisetType(PTypeVar("."))
     def genericAnySetType = Seq(genericSetType, genericMultisetType)
+
     exp match {
       case i@PIdnUse(name) =>
         names.definition(curMember)(i) match {
-          case PLocalVarDecl(_, typ, _) =>
-            setType(typ)
-          case PFormalArgDecl(_, typ) =>
-            setType(typ)
-          case PField(_, typ) =>
-            setType(typ)
-          case PPredicate(_, _, _) =>
-            setType(Pred)
-          case x =>
-            issueError(i, s"expected variable or field, but got $x")
+          case PLocalVarDecl(_, typ, _) => setType(typ)
+          case PFormalArgDecl(_, typ) => setType(typ)
+          case PField(_, typ) => setType(typ)
+          case PPredicate(_, _, _) => setType(Pred)
+          case x => issueError(i, s"expected identifier, but got $x")
         }
       case PBinExp(left, op, right) =>
         op match {
@@ -574,21 +574,21 @@ case class TypeChecker(names: NameAnalyser) {
           case x =>
             issueError(func, s"expected function")
         }
-      case PUnfolding(PAccPred(loc, perm), e) =>
-        check(perm, Perm)
-        check(loc, Pred)
-        check(e, expected)
-        setType(e.typ)
+      case PUnfolding(acc, exp) =>
+        check(acc.perm, Perm)
+        check(acc.loc, Pred)
+        check(exp, expected)
+        setType(exp.typ)
       case PExists(vars, e) =>
         vars map (v => check(v.typ))
         check(e, Bool)
-      case POld(e) =>
-        check(e, expected)
-        if (e.typ.isUnknown) {
+      case po: POldExp =>
+        check(po.e, expected)
+        if (po.e.typ.isUnknown) {
           setErrorType()
         } else {
           // ok
-          setType(e.typ)
+          setType(po.e.typ)
         }
       case PForall(vars, triggers, e) =>
         vars map (v => check(v.typ))
@@ -832,6 +832,11 @@ case class NameAnalyser() {
     }
   }
 
+  def reset() {
+    idnMap.clear()
+    memberIdnMap.clear()
+  }
+
   private val idnMap = collection.mutable.HashMap[String, Entity]()
   private val memberIdnMap = collection.mutable.HashMap[PScope, collection.mutable.HashMap[String, Entity]]()
 
@@ -866,7 +871,8 @@ case class NameAnalyser() {
         curMember = null
       case _ =>
     })
-    // check all identifier uses
+
+    /* Check all identifier uses. */
     p.visit({
       case m: PScope =>
         curMember = m
@@ -885,6 +891,7 @@ case class NameAnalyser() {
         curMember = null
       case _ =>
     })
+
     messagecount == 0
   }
 }
