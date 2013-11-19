@@ -187,21 +187,6 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-//  protected def inlinePLetAssExp(input: ParserResult): ParserResult = {
-//    input.transformWithContext(Map[String, PExp]()) (map => {
-//      case PLetAss(id, exp) =>
-////        println("  id = " + id)
-//        val map1 = map + (id.name -> exp)
-////        println("  map = " + map1)
-//        map1
-//    }) (map => {
-//      case _: PLetAss => PSkip()
-//      case n @ PIdnUse(id) =>
-//        println("  id in map? " + id + " in " + map)
-//        map.getOrElse(id, n)
-//    })
-//  }
-
   /* TODO: Naming of doTypecheck and doTranslate isn't ideal.
            doTypecheck already translated the program, whereas doTranslate doesn't actually translate
            anything, but instead filters members.
