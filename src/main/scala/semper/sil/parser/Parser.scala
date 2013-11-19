@@ -163,7 +163,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     }
 
   lazy val fieldDecl =
-    ("var" ~> idndef) ~ (":" ~> typ) ^^ PField
+    ("var" ~> idndef) ~ (":" ~> typ <~ opt(";")) ^^ PField
 
   lazy val methodDecl =
     methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
