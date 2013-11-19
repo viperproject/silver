@@ -203,7 +203,7 @@ case class TypeChecker(names: NameAnalyser) {
             message(stmt, "expected a label")
         }
       case PFieldAssign(field, rhs) =>
-        names.definition(curMember)(field.idnuse) match {
+        names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
           case PField(_, typ) =>
             check(field, typ)
             check(rhs, typ)
@@ -843,15 +843,41 @@ case class TypeChecker(names: NameAnalyser) {
  */
 case class NameAnalyser() {
 
-  def definition(member: PScope)(idnuse: PIdnUse) = {
+  /** Resolves the entity to which the given identifier `idnuse` refers.
+    *
+    * If `member` is not null then the identifier will first be looked up in
+    * the scope defined by the member. If it fails (or if the member is null),
+    * the wider scope will be considered.
+    *
+    * In order to resolve name clashes, e.g., if the identifier is expected to
+    * refer to a field, but there is a local variable with the same name in the
+    * member scope that shadows the field, then the `expected` class can be
+    * provided (e.g., `PField`), with the result that the shadowing local
+    * variable will be ignored because its class (`PLocalVarDecl`) doesn't
+    * match.
+    *
+    * @param member Current scope in which to start the resolving.
+    * @param idnuse Identifier that is to be resolved.
+    * @param expected Expected class of the entity.
+    * @return Resolved entity.
+    */
+  def definition(member: PScope)(idnuse: PIdnUse, expected: Option[Class[_]] = None): RealEntity = {
     if (member == null) {
       idnMap.get(idnuse.name).get.asInstanceOf[RealEntity]
-    }
-    else {
+    } else {
       // lookup in method map first, and otherwise in the general one
-      memberIdnMap.get(member).get.getOrElse(idnuse.name,
-        idnMap.get(idnuse.name).get
-      ).asInstanceOf[RealEntity]
+      val entity =
+        memberIdnMap.get(member).get.get(idnuse.name) match {
+          case None =>
+            idnMap.get(idnuse.name).get
+          case Some(entity) =>
+            if (expected.isDefined && entity.getClass != expected)
+              idnMap.get(idnuse.name).get
+            else
+              entity
+        }
+
+      entity.asInstanceOf[RealEntity] // TODO: Why is the cast necessary? Remove if possible.
     }
   }
 
