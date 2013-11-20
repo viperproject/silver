@@ -63,8 +63,8 @@ trait DebuggingParser extends WhitespacePositionedParserUtilities {
     }
   }
 
-  implicit def toWrapped[T](name:String) = new {
-    def !!!(p: Parser[T]) = new Wrap(name,p)
+  implicit def toWrapped(name: String) = new {
+    def !!![T](p: Parser[T]) = new Wrap(name,p)
   }
 }
 
@@ -90,7 +90,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    * IMPORTANT: If you add any new keywords, please also update all syntax highlighters
    * in util/highlighting.  Also update the SIL syntax description in documentation/syntax.
    */
-  def reserved: List[String] = List(
+  val reserved = List(
     // special variables
     "result",
     // types
@@ -122,10 +122,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
-    "unique",
-
-    // TODO: Hacks to stop the parser from interpreting, e.g., "inhale" as "in hale"
-    "variant", "hale", "tersection"
+    "unique"
   )
 
   lazy val parser = phrase(programDecl)
@@ -311,7 +308,36 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val andExp: PackratParser[PExp] =
     cmpExp ~ "&&" ~ andExp ^^ PBinExp | cmpExp
 
-  lazy val cmpOp = "==" | "!=" | "<=" | ">=" | "<" | ">" | "in"
+  /* [2013-11-20 Malte]:
+   * Consider the snippet
+   *   var x: Int := 0
+   *   inhale true
+   * where it is important that the first line ends with an expression and the
+   * second line starts with "inhale".
+   * Remember that whitespaces and newlines are insignificant in SIL. The
+   * parser will matche "0", and then it will try to match a binary operator
+   * which might connect "0" with a second expression. Unfortunately, "in"
+   * is a valid binary operator, and "hale" will be matched as the second
+   * expression. This might sound odd because one might expect that a lexer
+   * tokenized the second line into the tokens "inhale" and "true", and that
+   * the parser should match whole tokens, not parts of them, part AFAIK, the
+   * combinator parser we use does not consist of separate lexer and parser
+   * phases, instead, parsing tries to consume as match as possible on a
+   * per-character bases.
+   *
+   * A solution is to explicitly constrain the in-operator s.t. it may not
+   * directly be followed by a character that is also valid in the middle of
+   * an identifier (which are assumed to coincide with characters that may
+   * occur in the middle of keywords). Notice that using "not(...)" is
+   * important, because it yields a parser that doesn't actually consume
+   * characters. This way, the parser effectively looks ahead to see if
+   * it is really the in-operator that is coming, and if so, it actually
+   * parses it.
+   */
+  lazy val cmpOp =
+    "==" | "!=" | "<=" | ">=" | "<" | ">" |
+    (not(s"in$identOtherLetter".r) ~> "in")
+
   lazy val cmpExp: PackratParser[PExp] =
     sum ~ cmpOp ~ sum ^^ PBinExp | sum
 
@@ -448,18 +474,26 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   // --- Identifier and keywords
 
-  lazy val ident =
+  /* See
+   *   http://code.google.com/p/kiama/wiki/ParserCombs#Identifiers
+   * for an explanation of "keywords(...)" and why we need it.
+   * The gist of it is, that we want to support identifiers that start with a
+   * keyword, for example "index".
+   */
+
+  val ident =
     not(keyword) ~> identifier.r |
       failure("identifier expected")
 
-  lazy val identFirstLetter = "[a-zA-Z$_]"
+  val identFirstLetter = "[a-zA-Z$_]"
 
-  lazy val identOtherLetter = "[a-zA-Z0-9$_']"
+  val identOtherLetterChars = "a-zA-Z0-9$_'"
+  val identOtherLetter = s"[$identOtherLetterChars]"
+  val identOtherLetterNeg = s"[^$identOtherLetterChars]"
 
-  lazy val identifier = identFirstLetter + identOtherLetter + "*"
+  val identifier = identFirstLetter + identOtherLetter + "*"
 
-  lazy val keyword =
-    keywords("[^a-zA-Z0-9]".r, reserved)
+  val keyword = keywords(identOtherLetterNeg.r, reserved)
 
   private def foldPExp[E <: PExp](e: PExp, es: List[PExp => E]): E =
     es.foldLeft(e){(t, a) =>
