@@ -63,8 +63,8 @@ trait DebuggingParser extends WhitespacePositionedParserUtilities {
     }
   }
 
-  implicit def toWrapped[T](name:String) = new {
-    def !!!(p: Parser[T]) = new Wrap(name,p)
+  implicit def toWrapped(name: String) = new {
+    def !!![T](p: Parser[T]) = new Wrap(name,p)
   }
 }
 
