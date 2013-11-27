@@ -1,7 +1,5 @@
 package semper.sil.ast.utility
 
-import scala.collection.mutable.ListBuffer
-import scala.reflect.{ClassTag, classTag}
 import semper.sil.ast._
 
 /**
@@ -14,53 +12,53 @@ object Visitor {
   /**
    * See Node.reduceTree.
    */
-  def reduceTree[T](n: Node)(f: (Node, Seq[T]) => T): T = {
-    val subResults = n.subnodes.map(reduceTree[T](_)(f))
+  def reduceTree[N, T](n: N, subs: N => Seq[N])(f: (N, Seq[T]) => T): T = {
+    val subResults = subs(n).map(reduceTree[N, T](_, subs)(f))
     f(n, subResults)
   }
 
   /**
    * See Node.reduceWithContext.
    */
-  def reduceWithContext[C, R](n: Node)(context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R): R = {
+  def reduceWithContext[N, C, R](n: N, subs: N => Seq[N])(context: C, enter: (N, C) => C, combine: (N, C, Seq[R]) => R): R = {
     val newContext = enter(n, context)
-    val subResults = n.subnodes.map(reduceWithContext[C, R](_)(newContext, enter, combine))
+    val subResults = subs(n).map(reduceWithContext[N, C, R](_, subs)(newContext, enter, combine))
     combine(n, context, subResults)
   }
 
   /**
    * See Node.visit.
    */
-  def visit[A](n: Node)(f: PartialFunction[Node, A]) {
+  def visit[N, A](n: N, subs: N => Seq[N])(f: PartialFunction[N, A]) {
     if (f.isDefinedAt(n)) f(n)
-    for (sub <- n.subnodes) {
-      visit(sub)(f)
+    for (sub <- subs(n)) {
+      visit(sub, subs)(f)
     }
   }
 
   /** See Node.visitWithContext. */
-  def visitWithContext[C](n: Node, c: C)(f: C => PartialFunction[Node, C]) {
+  def visitWithContext[N, C](n: N, subs: N => Seq[N], c: C)(f: C => PartialFunction[N, C]) {
     val fWithContext = f(c)
 
     val newContext =
       if (fWithContext.isDefinedAt(n)) fWithContext(n)
       else c
 
-    for (sub <- n.subnodes) {
-      visitWithContext(sub, newContext)(f)
+    for (sub <- subs(n)) {
+      visitWithContext(sub, subs, newContext)(f)
     }
   }
 
   /** See Node.visitWithContextManually. */
-  def visitWithContextManually[C, A](n: Node, c: C)(f: C => PartialFunction[Node, A]) {
+  def visitWithContextManually[N, C, A](n: N, subs: N => Seq[N], c: C)(f: C => PartialFunction[N, A]) {
     val fWithContext = f(c)
     val isDefined = fWithContext.isDefinedAt(n)
 
     if (isDefined) {
       fWithContext(n)
     } else {
-      for (sub <- n.subnodes) {
-        visitWithContextManually(sub, c)(f)
+      for (sub <- subs(n)) {
+        visitWithContextManually(sub, subs, c)(f)
       }
     }
   }
@@ -68,10 +66,10 @@ object Visitor {
   /**
    * See Node.visit.
    */
-  def visit[A](n: Node, f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
+  def visit[N, A](n: N, subs: N => Seq[N], f1: PartialFunction[N, A], f2: PartialFunction[N, A]) {
     if (f1.isDefinedAt(n)) f1(n)
-    for (sub <- n.subnodes) {
-      visit(sub, f1, f2)
+    for (sub <- subs(n)) {
+      visit(sub, subs, f1, f2)
     }
     if (f2.isDefinedAt(n)) f2(n)
   }
@@ -79,10 +77,10 @@ object Visitor {
   /**
    * See Node.visitOpt.
    */
-  def visitOpt(n: Node)(f: Node => Boolean) {
+  def visitOpt[N](n: N, subs: N => Seq[N])(f: N => Boolean) {
     if (f(n)) {
-      for (sub <- n.subnodes) {
-        visitOpt(sub)(f)
+      for (sub <- subs(n)) {
+        visitOpt(sub, subs)(f)
       }
     }
   }
@@ -90,10 +88,10 @@ object Visitor {
   /**
    * See Node.visitOpt.
    */
-  def visitOpt[A](n: Node, f1: Node => Boolean, f2: Node => A) {
+  def visitOpt[N, A](n: N, subs: N => Seq[N], f1: N => Boolean, f2: N => A) {
     if (f1(n)) {
-      for (sub <- n.subnodes) {
-        visitOpt[A](sub, f1, f2)
+      for (sub <- subs(n)) {
+        visitOpt[N, A](sub, subs, f1, f2)
       }
     }
     f2(n)
@@ -102,8 +100,8 @@ object Visitor {
   /**
    * See Node.existsDefined.
    */
-  def existsDefined[A](n: Node, f: PartialFunction[Node, A]): Boolean = {
-    n visit {
+  def existsDefined[N, A](n: N, subs: N => Seq[N], f: PartialFunction[N, A]): Boolean = {
+    visit(n, subs) {
       case e =>
         if (f.isDefinedAt(e)) return true
     }
