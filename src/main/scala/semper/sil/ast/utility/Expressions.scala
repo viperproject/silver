@@ -35,23 +35,28 @@ object Expressions {
   })
 
   /** In an expression, instantiate a list of variables with given expressions. */
-  def instantiateVariables[E <: Exp](exp: E, variables: Seq[LocalVar], values: Seq[Exp]): E = {
+  def instantiateVariables[E <: Exp]
+                          (exp: E, variables: Seq[AbstractLocalVar], values: Seq[Exp])
+                          : E = {
 
     val argNames = (variables map (_.name)).zipWithIndex
+
     def actualArg(formalArg: String): Option[Exp] = {
       argNames.find(x => x._1 == formalArg) map {
         case (_, idx) => values(idx)
       }
     }
+
     exp.transform {
-      case LocalVar(name) if actualArg(name).isDefined => actualArg(name).get
+      case AbstractLocalVar(name) if actualArg(name).isDefined => actualArg(name).get
     }()
   }
 
   /* See http://stackoverflow.com/a/4982668 for why the implicit is here. */
-  def instantiateVariables[E <: Exp](exp: E, variables: Seq[LocalVarDecl], values: Seq[Exp])
-                                    (implicit di: DummyImplicit)
-                                    : E =
+  def instantiateVariables[E <: Exp]
+                          (exp: E, variables: Seq[LocalVarDecl], values: Seq[Exp])
+                          (implicit di: DummyImplicit)
+                          : E =
 
     instantiateVariables(exp, variables map (_.localVar), values)
 
