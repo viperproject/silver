@@ -88,6 +88,9 @@ sealed trait Block {
    *
    * @param trans the partial translation function, as shown in the examples
    * @return the newly constructed, completely disjoint CFG
+   * @throws RuntimeException if a reference to a block in the old CFG cannot
+   *                          be resolved to a block that does not occur in
+   *                          the old CFG. See comment above.
    */
   def transform(trans: PartialFunction[Block, Block] = PartialFunction.empty): Block =
     ControlFlowGraph.transform(this, trans)
