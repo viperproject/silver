@@ -16,7 +16,7 @@ case class Resolver(p: PProgram) {
    *       replaced uses of letass-identifiers.
    */
   def run: Option[PProgram] = {
-    None
+    if (names.run(p)) {
       val pTransformed = LetassExpander.transform(p)
       names.reset()
       if (names.run(pTransformed)) {

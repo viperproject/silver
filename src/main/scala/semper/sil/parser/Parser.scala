@@ -539,5 +539,4 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       result.setPos(t)
       result
     }.asInstanceOf[E]
-    }.asInstanceOf[E]
 }
