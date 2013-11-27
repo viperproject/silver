@@ -38,11 +38,19 @@ method t1(r: Ref)
     assert f3(r) == 1
 }
 
-method t2(r: Ref)
-    requires acc(r.f, write)
-{
-    assert f2(r) == 2
-}
+/* [2013-11-27 Malte]
+ *   I removed this test case because in my opinion, it asserts a behaviour
+ *   that should be unspecified. Function f2 is not well-formed, thus it is
+ *   not clear why f2(r) == 2 should hold. I also wouldn't require that the
+ *   assertion should fail, I think it should be unspecified and left up to
+ *   the tool whether it accepts the assertion or not (provided, that f2 is
+ *   correctly rejected as being ill-formed).
+ */
+//method t2(r: Ref)
+//    requires acc(r.f, write)
+//{
+//    assert f2(r) == 2
+//}
 
 method t3(r: Ref)
     requires acc(r.fr, wildcard)
