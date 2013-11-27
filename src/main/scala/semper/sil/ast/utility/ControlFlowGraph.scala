@@ -103,7 +103,6 @@ object ControlFlowGraph {
      * @param fromBlock block that is part of the old CFG
      * @param toBlock block that can be resolved to a fresh block by recursively
      *                applying this mapping
-     * @return
      */
     def put(fromBlock: Block, toBlock: Block) = {
       _isResolved = false
@@ -171,16 +170,12 @@ object ControlFlowGraph {
    * @return the fresh block that is structurally equal to the given block
    */
   def shallowCopy(b: Block): Block = b match {
-    case TerminalBlock(stmt) =>
-      TerminalBlock(stmt)
-    case NormalBlock(stmt, succ) =>
-      NormalBlock(stmt, succ)
-    case ConditionalBlock(stmt, cond, thn, els) =>
-      ConditionalBlock(stmt, cond, thn, els)
-    case lb @ LoopBlock(body, cond, invs, locals, succ) =>
-      LoopBlock(body, cond, invs, locals, succ)(pos = lb.pos, info = lb.info)
-    case FreshReadPermBlock(vars, body, succ) =>
-      FreshReadPermBlock(vars, body, succ)
+    case b @ TerminalBlock(stmt) => b.copy()
+    case b @ NormalBlock(stmt, succ) => b.copy()
+    case b @ ConditionalBlock(stmt, cond, thn, els) => b.copy()
+    case b @ LoopBlock(body, cond, invs, locals, succ) =>
+      b.copy()(b.pos, b.info)
+    case b @ FreshReadPermBlock(vars, body, succ) => b.copy()
   }
 
   /**
