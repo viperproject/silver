@@ -1,0 +1,10 @@
+//:: IgnoreFile(/silicon/issue/31/)
+
+var f: Int
+
+method test(x: Ref)
+  requires acc(x.f)
+{
+  exhale acc(x.f, 3 * write)
+  exhale acc(x.f, 3 * epsilon)
+}

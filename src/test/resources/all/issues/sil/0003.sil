@@ -1,0 +1,17 @@
+var f: Int
+
+method t11(r: Ref) returns ()
+  requires r != null
+{
+    var j: Int := 2
+
+    while (j < 3)
+        //:: ExpectedError(while.failed:insufficient.permission)
+        //:: ExpectedError(invariant.not.established:assertion.false)
+        //:: MissingError(invariant.not.established:assertion.false, /Silicon/issue/34/)
+        invariant r != null
+        invariant r.f == 2
+    {
+        j := j+1
+    }
+}

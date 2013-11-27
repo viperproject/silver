@@ -1,0 +1,11 @@
+var root : Ref
+
+predicate valid1(this: Ref) {
+     acc(this.root,write)
+  && acc((this.root).root,1/2)
+}
+
+predicate valid2(this: Ref) {
+     acc(this.root,write)
+  && acc(this.root.root, 1/2)
+}

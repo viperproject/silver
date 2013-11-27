@@ -159,7 +159,6 @@ case class PWandType() extends PInternalType {
   override def toString = "$wand"
 }
 
-
 // Expressions
 sealed trait PExp extends PNode {
   var typ: PType = PUnknown()

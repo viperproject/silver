@@ -1,0 +1,17 @@
+//:: IgnoreFile(/silicon/issue/31/)
+
+var f: Ref
+var p: Perm
+
+method test6(this: Ref)
+  requires this != null && acc(this.f, 50/100)
+  ensures acc(this.f, 51/100 + epsilon)
+{
+  exhale acc(this.f, 3 * write)
+  exhale acc(this.f, 3 * epsilon)
+  exhale acc(this.f, 2 * epsilon)
+  inhale acc(this.f, 1/100)
+  inhale acc(this.f, epsilon + epsilon)
+  exhale acc(this.f, epsilon)
+  inhale acc(this.f, 5 * epsilon)
+}

@@ -50,25 +50,25 @@ trait Node extends Traversable[Node] {
   /**
    * Applies the function `f` to the node and the results of the subnodes.
    */
-  def reduceTree[A](f: (Node, Seq[A]) => A) = Visitor.reduceTree[A](this)(f)
+  def reduceTree[A](f: (Node, Seq[A]) => A) = Visitor.reduceTree[Node, A](this, Nodes.subnodes)(f)
 
   /**
    * More powerful version of reduceTree that also carries a context argument through the tree.
    */
   def reduceWithContext[C, R](context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R) = {
-    Visitor.reduceWithContext[C, R](this)(context, enter, combine)
+    Visitor.reduceWithContext[Node, C, R](this, Nodes.subnodes)(context, enter, combine)
   }
 
   /**
    * Applies the function `f` to the AST node, then visits all subnodes.
    */
-  def foreach[A](f: Node => A) = Visitor.visit(this) { case a: Node => f(a) }
+  def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
 
   /**
    * Applies the function `f` to the AST node, then visits all subnodes.
    */
   def visit[A](f: PartialFunction[Node, A]) {
-    Visitor.visit(this)(f)
+    Visitor.visit(this, Nodes.subnodes)(f)
   }
 
   /** Applies the function `f` to the AST node (if possible), then visits all subodes.
@@ -79,7 +79,7 @@ trait Node extends Traversable[Node] {
     * @param f Visitor function.
     */
   def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]) {
-    Visitor.visitWithContext(this, c)(f)
+    Visitor.visitWithContext(this, Nodes.subnodes, c)(f)
   }
 
   /** Applies the function `f` to the AST node (if possible). Subnodes are only
@@ -93,7 +93,7 @@ trait Node extends Traversable[Node] {
     * @param f Visitor function.
     */
   def visitWithContextManually[C, A](c: C)(f: C => PartialFunction[Node, A]) {
-    Visitor.visitWithContextManually(this, c)(f)
+    Visitor.visitWithContextManually(this, Nodes.subnodes, c)(f)
   }
 
   /**
@@ -101,7 +101,7 @@ trait Node extends Traversable[Node] {
    * and finally calls `f2` to the AST node.
    */
   def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
-    Visitor.visit(this, f1, f2)
+    Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
 
   /**
@@ -109,7 +109,7 @@ trait Node extends Traversable[Node] {
    * returned true.
    */
   def visitOpt(f: Node => Boolean) {
-    Visitor.visitOpt(this)(f)
+    Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
   /**
@@ -117,7 +117,7 @@ trait Node extends Traversable[Node] {
    * returned true, and finally calls `f2` to the AST node.
    */
   def visitOpt[A](f1: Node => Boolean, f2: Node => A) {
-    Visitor.visitOpt(this, f1, f2)
+    Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 
   /**
@@ -125,7 +125,7 @@ trait Node extends Traversable[Node] {
    * useful to check if the node contains a subnode of a given type, or with a
    * certain property.
    */
-  def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitor.existsDefined(this, f)
+  def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitor.existsDefined(this, Nodes.subnodes, f)
 
   override def toString = PrettyPrinter.pretty(this)
 
