@@ -170,12 +170,12 @@ object ControlFlowGraph {
    * @return the fresh block that is structurally equal to the given block
    */
   def shallowCopy(b: Block): Block = b match {
-    case b @ TerminalBlock(stmt) => b.copy()
-    case b @ NormalBlock(stmt, succ) => b.copy()
-    case b @ ConditionalBlock(stmt, cond, thn, els) => b.copy()
-    case b @ LoopBlock(body, cond, invs, locals, succ) =>
-      b.copy()(b.pos, b.info)
-    case b @ FreshReadPermBlock(vars, body, succ) => b.copy()
+    case b: TerminalBlock => b.copy()
+    case b: NormalBlock => b.copy()
+    case b: ConditionalBlock => b.copy()
+    case b: LoopBlock => b.copy()(b.pos, b.info)
+    case b: FreshReadPermBlock => b.copy()
+    case _ => sys.error("unexpected block")
   }
 
   /**
