@@ -34,7 +34,7 @@ sealed trait Block {
    *
    * Possible transformations include:
    *
-   * 1. Replace blocks, e.g. to use different AST nodes like conditions
+   * 1. Replace blocks, for example to use different AST nodes like conditions
    *    or to use a different type of block.
    *    Example: Simplify all ConditionalBlocks whose condition is true.
    *
