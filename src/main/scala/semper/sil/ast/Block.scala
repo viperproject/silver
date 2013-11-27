@@ -38,7 +38,7 @@ sealed trait Block {
    *    or to use a different type of block.
    *    Example: Simplify all ConditionalBlocks whose condition is true.
    *
-   *    block.transform({
+   *    cfg.transform({
    *      case ConditionalBlock(stmt, TrueLit(), thn, els) =>
    *        NormalBlock(stmt, thn)
    *    })
@@ -55,7 +55,7 @@ sealed trait Block {
    *
    * 2. Remove certain blocks
    *    val blockToRemove: NormalBlock = ...
-   *    block.transform({
+   *    cfg.transform({
    *      case b @ NormalBlock(stmt, succ) if b == blockToRemove =>
    *        succ
    *    })
@@ -69,7 +69,7 @@ sealed trait Block {
    *    the easiest way to do so is to prepend a NormalBlock to the body.
    *
    *    val newStmt: Stmt = ...
-   *    block.transform({
+   *    cfg.transform({
    *      case lb @ LoopBlock(body, cond, invs, locals, succ) =>
    *        LoopBlock(NormalBlock(stmt, body), cond, invs, locals, succ)
    *    })
