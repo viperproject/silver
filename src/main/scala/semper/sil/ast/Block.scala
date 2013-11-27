@@ -35,7 +35,7 @@ sealed trait Block {
    * Possible transformations include:
    *
    * 1. Replace blocks, e.g. to use different AST nodes like conditions
-   *    or using a different type of block.
+   *    or to use a different type of block.
    *    Example: Simplify all ConditionalBlocks whose condition is true.
    *
    *    block.transform({
@@ -47,7 +47,7 @@ sealed trait Block {
    *    will point to the newly created NormalBlock in the new CFG.
    *
    *    Note that the newly created NormalBlock refers to the block `thn`
-   *    in the old CFG. This references will be resolved to whatever the
+   *    in the old CFG. This reference will be resolved to whatever the
    *    block `thn` is translated to.
    *
    *    If the block `els` is not referenced by any other blocks, its
