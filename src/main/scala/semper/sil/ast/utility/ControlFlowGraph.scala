@@ -6,6 +6,7 @@ import semper.sil.ast.TerminalBlock
 import semper.sil.ast.ConditionalBlock
 import semper.sil.ast.FreshReadPermBlock
 import semper.sil.ast.LoopBlock
+import scala.collection.mutable
 
 /** A utility object for control flow graphs. */
 object ControlFlowGraph {
@@ -20,14 +21,202 @@ object ControlFlowGraph {
 
     while (!worklist.isEmpty) {
       val b = worklist.dequeue()
+      // Call f(b) before collecting the successors of b,
+      // thereby allowing f to modify the successors first
+      f(b)
       val succsAndBody = (b.succs map (_.dest)) ++ (b match {
         case LoopBlock(body, _, _, _, _) => Seq(body)
+        case FreshReadPermBlock(_, body, _) => Seq(body)
         case _ => Nil
       })
-      worklist.enqueue((succsAndBody filterNot (visited contains _)): _*)
+      worklist.enqueue(succsAndBody filterNot visited.contains: _*)
       visited ++= succsAndBody
-      f(b)
     }
+  }
+
+  /**
+   * @see semper.sil.ast.Block#transform(PartialFunction[Block, Block])
+   */
+  def transform(
+      block: Block,
+      trans: PartialFunction[Block, Block] = PartialFunction.empty): Block = {
+
+    // Maps old blocks to new blocks
+    val map = new BlockMapping()
+
+    // Apply the translation function to all blocks for which it is defined,
+    // and shallowly copy all other blocks
+    bfs(block)(block => {
+      map.put(block,
+        if (trans.isDefinedAt(block)) trans(block)
+        else shallowCopy(block))
+    })
+
+    // Try to resolve the mapping such that it only maps to fresh blocks
+    // that are not part of the original CFG
+    map.resolve()
+
+    // Use the mapping to update all block references in the new CFG
+    bfs(map(block)) {
+      case TerminalBlock(_) =>
+      case nb @ NormalBlock(_, succ) =>
+        nb.succ = map(succ)
+      case cb @ ConditionalBlock(_, _, thn, els) =>
+        cb.thn = map(thn)
+        cb.els = map(els)
+      case lb @ LoopBlock(body, _, _, _, succ) =>
+        lb.body = map(body)
+        lb.succ = map(succ)
+      case frpb @ FreshReadPermBlock(_, body, succ) =>
+        frpb.body = map(body)
+        frpb.succ = map(succ)
+      case _ =>
+        sys.error("unexpected block")
+    }
+
+    // Return the new start block
+    map(block)
+  }
+
+  /**
+   * Maps blocks of the old CFG to blocks in the new CFG.
+   *
+   * When a block in the new CFG has a reference to a block in the old CFG,
+   * this mapping will be used to update the reference.
+   */
+  class BlockMapping {
+    private val map = mutable.HashMap[Block, Block]()
+
+    private var _isResolved = true
+
+    /**
+     * Returns true if no original block (keys of the mapping)
+     * occurs as a value in the map.
+     */
+    def isResolved: Boolean = _isResolved
+
+    /**
+     * Register that any reference to old block `fromBlock` should be replaced
+     * by `toBLock`, or whatever `toBlock` resolves to if `toBlock` is
+     * an old block itself,
+     *
+     * @param fromBlock block that is part of the old CFG
+     * @param toBlock block that can be resolved to a fresh block by recursively
+     *                applying this mapping
+     * @return
+     */
+    def put(fromBlock: Block, toBlock: Block) = {
+      _isResolved = false
+      map += (fromBlock -> toBlock)
+    } ensuring (!isResolved)
+
+    /**
+     * Get the block that should replace any reference to `fromBlock`.
+     *
+     * @param fromBlock the block reference to be updated
+     * @return `fromBlock` itself if `fromBlock` is not part of the old CFG
+     */
+    def apply(fromBlock: Block): Block = {
+      require(isResolved)
+      // It's also possible that some block references point to entirely fresh blocks
+      // (no corresponding old blocks). In such cases, just stick to what we've found.
+      map.getOrElse(fromBlock, fromBlock)
+    }
+
+    /**
+     * Resolves the mapping, such that no block of the old CFG
+     * (keys of the mapping) occurs as a value in the mapping.
+     *
+     * If a block of the old CFG occurs as a value, this function
+     * recursively looks that block up in the mapping itself, until it
+     * reaches a block that is not part of the old CFG.
+     *
+     * @throws RuntimeException if there is a cycle in the mapping (e.g. an
+     *                          old block that maps to itself).
+     */
+    def resolve(): Unit = {
+      map.transform {
+        case (fromBlock, toBlock) =>
+          var resolvedToBlock = toBlock
+          var seenBlocks = Set.empty[Block]
+          while (isOriginalBlock(resolvedToBlock) && !seenBlocks.contains(resolvedToBlock)) {
+            seenBlocks = seenBlocks + resolvedToBlock
+            resolvedToBlock = map(resolvedToBlock)
+          }
+          if (isOriginalBlock(resolvedToBlock))
+            sys.error("cannot resolve block mapping with cycles")
+          resolvedToBlock
+      }
+      _isResolved = true
+    } ensuring isResolved
+
+    private def isOriginalBlock(b: Block) = map.contains(b)
+  }
+
+  /**
+   * Collects all blocks in a CFG reachable from a given Block in BFS order.
+   * @param b the block to start the search from
+   * @return the list of all reachable blocks
+   */
+  def collectBlocks(b: Block): Seq[Block] = {
+    var result = List.empty[Block]
+    bfs(b)(b => result = b :: result)
+    result.reverse
+  }
+
+  /**
+   * Shallowly copies a block, i.e., without copying referenced blocks and
+   * also without copying any associated AST nodes (they are immutable anyway).
+   * @param b the block to copy shallowly
+   * @return the fresh block that is structurally equal to the given block
+   */
+  def shallowCopy(b: Block): Block = b match {
+    case TerminalBlock(stmt) =>
+      TerminalBlock(stmt)
+    case NormalBlock(stmt, succ) =>
+      NormalBlock(stmt, succ)
+    case ConditionalBlock(stmt, cond, thn, els) =>
+      ConditionalBlock(stmt, cond, thn, els)
+    case lb @ LoopBlock(body, cond, invs, locals, succ) =>
+      LoopBlock(body, cond, invs, locals, succ)(pos = lb.pos, info = lb.info)
+    case FreshReadPermBlock(vars, body, succ) =>
+      FreshReadPermBlock(vars, body, succ)
+  }
+
+  /**
+   * Checks two blocks for shallow equality, i.e. by only considering AST nodes,
+   * but not referenced blocks.
+   * @param b1 the first block to compare
+   * @param b2 the other block to compare
+   * @return true iff the blocks are shallowly equal
+   */
+  def shallowEq(b1: Block, b2: Block): Boolean = (b1, b2) match {
+    case (TerminalBlock(stmt1), TerminalBlock(stmt2)) =>
+      stmt1 == stmt2
+    case (NormalBlock(stmt1, _), NormalBlock(stmt2, _)) =>
+      stmt1 == stmt2
+    case (ConditionalBlock(stmt1, cond1, _, _), ConditionalBlock(stmt2, cond2, _, _)) =>
+      stmt1 == stmt2 && cond1 == cond2
+    case (LoopBlock(_, cond1, invs1, locals1, _), LoopBlock(_, cond2, invs2, locals2, _)) =>
+      cond1 == cond2 && invs1 == invs2 && locals1 == locals2
+    case (FreshReadPermBlock(vars1, _, _), FreshReadPermBlock(vars2, _, _)) =>
+      vars1 == vars2
+    case (_, _) => false
+  }
+
+  /**
+   * Checks two whole CFGs for structural equality, also considering all included AST nodes.
+   * @param b1 the first CFG to compare
+   * @param b2 the second CFG to compare
+   * @return true iff the two CFGs are structurally equal
+   */
+  def eq(b1: Block, b2: Block): Boolean = {
+    val blocks1 = collectBlocks(b1)
+    val blocks2 = collectBlocks(b2)
+    if (blocks1.size == blocks2.size)
+      blocks1.zip(blocks2).forall { case (b, o) => shallowEq(b, o) }
+    else
+      false
   }
 
   /**
