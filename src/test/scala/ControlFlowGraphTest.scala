@@ -4,8 +4,10 @@ import org.scalatest.{BeforeAndAfter, FunSuite}
 import semper.sil.ast._
 import semper.sil.ast.utility.ControlFlowGraph
 import java.lang.RuntimeException
+import java.nio.file.FileSystems
+import org.scalatest.matchers.ShouldMatchers
 
-class ControlFlowGraphTest extends FunSuite with BeforeAndAfter {
+class ControlFlowGraphTest extends FunSuite with BeforeAndAfter with ShouldMatchers {
   // Some AST nodes that are useful to construct test CFGs
   val emptyStmt = Seqn(Seq.empty)()
   val nonEmptyStmt = Assert(TrueLit()())()
@@ -141,5 +143,21 @@ class ControlFlowGraphTest extends FunSuite with BeforeAndAfter {
         case LoopBlock(body, FalseLit(), invs, locals, succ) => succ
       }), ConditionalBlock(condBlock.stmt, condBlock.cond, condBlock.thn, exitBlock))
     }
+  }
+
+  test("Shallow Copy") {
+    // LoopBlock has a second argument list. Assert that it is copied as well.
+    val dummyPath = FileSystems.getDefault.getPath("foo.scala")
+    val loopBlock = LoopBlock(
+      body = TerminalBlock(emptyStmt),
+      cond = trueLit,
+      invs = Seq.empty,
+      locals = Seq.empty,
+      succ = TerminalBlock(emptyStmt))(
+      pos = SourcePosition(dummyPath, 21, 42))
+
+    val loopBlockCopy = loopBlock.copyShallow().asInstanceOf[LoopBlock]
+    loopBlockCopy.body should equal (loopBlock.body)
+    loopBlockCopy.pos should equal (loopBlock.pos)
   }
 }
