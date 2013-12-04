@@ -175,7 +175,6 @@ object ControlFlowGraph {
     case b: ConditionalBlock => b.copy()
     case b: LoopBlock => b.copy()(b.pos, b.info)
     case b: FreshReadPermBlock => b.copy()
-    case _ => sys.error("unexpected block")
   }
 
   /**
