@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/8/)
+
 var Cell_x: Int
 
 function Cell_get(this: Ref): Int
