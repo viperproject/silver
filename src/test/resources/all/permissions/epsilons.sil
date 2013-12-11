@@ -65,9 +65,10 @@ method test4(r: Ref)
   var b: Bool
 
   b := unfolding acc(P(r), write) in true
+  //:: ExpectedError(assignment.failed:non.positive.permission)
+  //:: ExpectedError(assignment.failed:insufficient.permission)
   b := unfolding acc(P(r), p) in true
 }
-
 
 /* See Sil issue #30 */
 // method test4Q(r: Ref)
