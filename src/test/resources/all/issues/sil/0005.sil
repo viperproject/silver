@@ -7,6 +7,7 @@ method test6(this: Ref)
   requires this != null && acc(this.f, 50/100)
   ensures acc(this.f, 51/100 + epsilon)
 {
+  //:: ExpectedError(exhale.failed:insufficient.permission)
   exhale acc(this.f, 3 * write)
   exhale acc(this.f, 3 * epsilon)
   exhale acc(this.f, 2 * epsilon)
