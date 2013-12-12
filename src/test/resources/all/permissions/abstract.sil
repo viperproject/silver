@@ -10,7 +10,7 @@ method t1(this: Ref)
     fresh(rd) {
         exhale acc(this.f, 2*rd)
     }
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -23,7 +23,7 @@ method t2(this: Ref)
     fresh(rd) {
         exhale acc(this.f, n*rd)
     }
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -36,7 +36,7 @@ method t3(this: Ref)
     fresh(rd) {
         exhale acc(this.f, n*rd + 3*rd)
     }
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -49,7 +49,7 @@ method t3b(this: Ref)
     fresh(rd) {
         exhale acc(this.f, n*rd) && acc(this.f, 3*rd)
     }
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -62,7 +62,7 @@ method t3c(this: Ref)
     fresh(rd) {
         exhale acc(this.f, 3*rd) && acc(this.f, n*rd)
     }
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -75,7 +75,7 @@ method t4(this: Ref)
     fresh(rd) {
         exhale acc(this.f, rd+rd)
     }
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -88,7 +88,7 @@ method t4b(this: Ref)
     fresh(rd) {
         exhale acc(this.f, rd) && acc(this.f, rd)
     }
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -101,7 +101,7 @@ method t5(this: Ref)
     fresh(rd) {
         exhale acc(this.f, n*(rd + rd))
     }
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -114,7 +114,7 @@ method t6(this: Ref)
     fresh(rd) {
         exhale acc(this.f, (1/4) * rd)
     }
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -125,11 +125,11 @@ method t7(this: Ref)
     inhale acc(this.f, wildcard) && acc(this.f, 1/4);
     inhale (n > 0)
     fresh(rd) {
-        //:: UnexpectedError(exhale.failed:insufficient.permission, /silicon/issue/35/)
+        //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/35/)
         exhale acc(this.f, (1/2) * (n * rd + 1/2))
     }
-    //:: ExpectedError(assert.failed:assertion.false)
-    //:: MissingError(assert.failed:assertion.false, /silicon/issue/35/)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/35/)
     assert false
 }
 
@@ -140,11 +140,11 @@ method t8(this: Ref)
     inhale acc(this.f, wildcard) && acc(this.f, 1/4);
     inhale (n > 0)
     fresh(rd) {
-        //:: UnexpectedError(exhale.failed:insufficient.permission, /silicon/issue/35/)
+        //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/35/)
         exhale acc(this.f, (1/2) - (1/4) + n*rd)
     }
-    //:: ExpectedError(assert.failed:assertion.false)
-    //:: MissingError(assert.failed:assertion.false, /silicon/issue/35/)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/35/)
     assert false
 }
 
@@ -155,10 +155,10 @@ method t9(this: Ref)
     inhale acc(this.f, wildcard) && acc(this.f, 1/4);
     inhale (n > 0)
     fresh(rd) {
-        //:: UnexpectedError(exhale.failed:insufficient.permission, /silicon/issue/35/)
+        //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/35/)
         exhale acc(this.f, (1/4) - ((-100)*rd))
     }
-    //:: ExpectedError(assert.failed:assertion.false)
-    //:: MissingError(assert.failed:assertion.false, /silicon/issue/35/)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/35/)
     assert false
 }

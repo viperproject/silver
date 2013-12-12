@@ -4,14 +4,14 @@ function f1(r: Ref): Int
     requires acc(r.f, wildcard)
 { r.f }
 
-//:: ExpectedError(function.not.wellformed:receiver.null)
-//:: ExpectedError(function.not.wellformed:insufficient.permission)
-//:: MissingError(function.not.wellformed:insufficient.permission, /silicon/issue/34/)
+//:: ExpectedOutput(function.not.wellformed:receiver.null)
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
+//:: MissingOutput(function.not.wellformed:insufficient.permission, /silicon/issue/34/)
 function f3_a(r: Ref): Int
     requires ((r.f) == 2)
 { 2 }
 
-//:: ExpectedError(function.not.wellformed:insufficient.permission)
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function f3_b(r: Ref): Int
     requires r != null
     requires ((r.f) == 2)
@@ -22,7 +22,7 @@ function f4(r: Ref): Int
     requires (r.f) == 2
 { 2 }
 
-//:: ExpectedError(function.not.wellformed:insufficient.permission)
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function f5(r: Ref): Int
     requires r != null
 {
@@ -32,7 +32,7 @@ function f5(r: Ref): Int
 function f6(r: Ref): Int
     requires r != null
 {
-    //:: ExpectedError(application.precondition:insufficient.permission)
+    //:: ExpectedOutput(application.precondition:insufficient.permission)
     f4(r)
 }
 
@@ -42,6 +42,6 @@ method t1(r: Ref)
     r.f := 1
     assert f1(r) == 1;
 
-    //:: ExpectedError(application.precondition:assertion.false)
+    //:: ExpectedOutput(application.precondition:assertion.false)
     assert f4(r) > 0;
 }

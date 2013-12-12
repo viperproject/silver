@@ -13,14 +13,14 @@ function size(list: Ref): Int
 }
 
 method testFails1(list: Ref) {
-  //:: ExpectedError(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
 	assert list != null
 }
 
 method testFails2(list: Ref)
  	requires acc(valid(list), wildcard)
 {
-  //:: ExpectedError(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
  	assert list != null
 }
 

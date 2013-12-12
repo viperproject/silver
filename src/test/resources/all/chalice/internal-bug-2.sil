@@ -5,9 +5,9 @@ predicate inv(this: Ref) { acc(this.x, write) }
 method koko(this: Ref)
   requires acc(inv(this), write)
 {
-  //:: ExpectedError(assignment.failed:insufficient.permission)
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
   //:: IgnoreOthers
-  //:: MissingError(assignment.failed:insufficient.permission, /silicon/issue/34/)
+  //:: MissingOutput(assignment.failed:insufficient.permission, /silicon/issue/34/)
   this.x := this.x + 1
 
   assert (((unfolding acc(inv(this), write) in this.x)) == (old((unfolding acc(inv(this), write) in this.x))))

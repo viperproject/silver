@@ -45,6 +45,6 @@
     set(y, 3);
     set(x, 4);
     assert ((get(y)) == (3))
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert ((get(x)) == (3))
   }

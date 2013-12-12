@@ -1,14 +1,14 @@
 method test01(x: Int, y: Int, z: Int)
   requires (z == x || z == y)
 {
-  //:: ExpectedError(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert z == y
 }
 
 method test02(x: Int, y: Int, z: Int)
   requires (z == x || z == y)
 {
-  //:: ExpectedError(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert z == x
 }
 

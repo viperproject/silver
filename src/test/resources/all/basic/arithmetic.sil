@@ -12,20 +12,20 @@ method t1() returns ()
 method t2() {
     var i: Int
     i := 1 \ 2
-    //:: ExpectedError(assignment.failed:division.by.zero)
+    //:: ExpectedOutput(assignment.failed:division.by.zero)
     i := 1 \ 0
 }
 
 method t3() {
     var i: Int
     i := 1 % 2
-    //:: ExpectedError(assignment.failed:division.by.zero)
+    //:: ExpectedOutput(assignment.failed:division.by.zero)
     i := 1 % 0
 }
 
 method t4() {
     var i: Perm
     i := 1 / 2
-    //:: ExpectedError(assignment.failed:division.by.zero)
+    //:: ExpectedOutput(assignment.failed:division.by.zero)
     i := 1 / 0
 }

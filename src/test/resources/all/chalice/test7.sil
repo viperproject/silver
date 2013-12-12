@@ -20,7 +20,7 @@
   method callmethod1(this: Ref)
     requires this != null
   {
-    //:: ExpectedError(call.precondition:insufficient.permission)
+    //:: ExpectedOutput(call.precondition:insufficient.permission)
     set(this, 3);
   }
   method ifc(this: Ref)
@@ -60,7 +60,7 @@
   {
     assert acc(this.value, write)
     fold acc(inv(this), write)
-    //:: ExpectedError(assert.failed:insufficient.permission)
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
     assert acc(this.value, write)
   }
   method uf1(this: Ref)
@@ -82,30 +82,30 @@
   {
     assert acc(inv(this), write)
     unfold acc(inv(this), write)
-    //:: ExpectedError(assert.failed:insufficient.permission)
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
     assert acc(inv(this), write)
   }
   method badframing0(this: Ref)
     requires this != null
-    //:: ExpectedError(application.precondition:insufficient.permission)
+    //:: ExpectedOutput(application.precondition:insufficient.permission)
     requires ((get(this)) == (2))
   {
   }
   method badframing1(this: Ref)
     requires this != null
-    //:: ExpectedError(not.wellformed:insufficient.permission)
+    //:: ExpectedOutput(not.wellformed:insufficient.permission)
     requires ((this.value) == (2))
   {
   }
   method badframing2(this: Ref)
     requires this != null
-    //:: ExpectedError(application.precondition:insufficient.permission)
+    //:: ExpectedOutput(application.precondition:insufficient.permission)
     requires acc(this.value, write) && ((get(this)) == (2))
   {
   }
   method badframing3(this: Ref)
     requires this != null
-    //:: ExpectedError(not.wellformed:insufficient.permission)
+    //:: ExpectedOutput(not.wellformed:insufficient.permission)
     requires acc(inv(this), write) && ((this.value) == (2))
   {
   }

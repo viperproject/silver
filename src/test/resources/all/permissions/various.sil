@@ -7,21 +7,21 @@ method t1(r: Ref) returns ()
 }
 
 method t1b() {
-    //:: ExpectedError(call.precondition:receiver.null)
+    //:: ExpectedOutput(call.precondition:receiver.null)
     t1(null)
 }
 
 method t1c(r: Ref)
     requires r != null
 {
-    //:: ExpectedError(call.precondition:insufficient.permission)
+    //:: ExpectedOutput(call.precondition:insufficient.permission)
     t1(r)
 }
 
 method t2(r: Ref, p: Perm) returns ()
     requires acc(r.f, p)
 {
-    //:: ExpectedError(call.precondition:non.positive.permission)
+    //:: ExpectedOutput(call.precondition:non.positive.permission)
     t2(r, none)
 }
 
@@ -30,7 +30,7 @@ method t3(r: Ref) returns ()
 {
     t3(r)
     t3(r)
-    //:: ExpectedError(call.precondition:insufficient.permission)
+    //:: ExpectedOutput(call.precondition:insufficient.permission)
     t2(r, write)
 }
 
@@ -42,7 +42,7 @@ method t4(r: Ref) returns ()
     assert acc(r.f, write)
     exhale acc(r.f, write)
     assert (perm(r.f) == none)
-    //:: ExpectedError(assert.failed:insufficient.permission)
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
     assert acc(r.f, write)
 }
 
@@ -54,7 +54,7 @@ method t5(r: Ref) returns ()
     assert acc(r.f, wildcard)
     assert acc(r.f, wildcard)
     exhale acc(r.f, perm(r.f))
-    //:: ExpectedError(assert.failed:insufficient.permission)
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
     assert acc(r.f, wildcard)
 }
 
@@ -68,6 +68,6 @@ method t7(r: Ref)
 {
     assert (1/3 == ((2-1)/3))
     assert (write > (1/10000))
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert (write < (1/10000))
 }

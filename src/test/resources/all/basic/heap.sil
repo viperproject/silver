@@ -15,7 +15,7 @@ method t1() {
     assume a != null
     set_f(a, c)
 
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert a.f != c
 }
 
@@ -31,7 +31,7 @@ method t2(r: Ref) {
   if (r != null) {
     assert perm(r.f) == none
   } else {
-    //:: ExpectedError(assert.failed:receiver.null)
+    //:: ExpectedOutput(assert.failed:receiver.null)
     assert perm(r.f) == none
   }
 }

@@ -22,7 +22,7 @@ method unfoldOnce(this: Ref)
 
   assert this.next == null
 
-  //:: ExpectedError(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert this.next != null
 }
 

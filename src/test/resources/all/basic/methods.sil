@@ -3,7 +3,7 @@ var f: Int
 
 method t1() {
     var n: Int
-    //:: ExpectedError(call.precondition:assertion.false)
+    //:: ExpectedOutput(call.precondition:assertion.false)
     n := t3(-1)
 }
 
@@ -11,7 +11,7 @@ method t2() {
     var n: Int := -10
     n := t3(1)
     assert n > 0
-    //:: ExpectedError(assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -31,7 +31,7 @@ method t4() {
     a, b := t4b()
     c := new()
     assert a != c
-    //:: ExpectedError(assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert a != b
 }
 
@@ -42,7 +42,7 @@ method t4c() {
 
     c := new()
     a, b := t4b()
-    //:: ExpectedError(assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert a != c
 }
 
@@ -51,24 +51,24 @@ method t4b() returns (a: Ref, b: Ref)
 }
 
 method t5_a(r: Ref)
-     //:: ExpectedError(not.wellformed:receiver.null)
-     //:: ExpectedError(not.wellformed:insufficient.permission)
-     //:: MissingError(not.wellformed:insufficient.permission, /silicon/issue/34/)
+     //:: ExpectedOutput(not.wellformed:receiver.null)
+     //:: ExpectedOutput(not.wellformed:insufficient.permission)
+     //:: MissingOutput(not.wellformed:insufficient.permission, /silicon/issue/34/)
      requires r.f == 2
  {
  }
 
  method t5_b(r: Ref)
     requires r != null
-     //:: ExpectedError(not.wellformed:insufficient.permission)
+     //:: ExpectedOutput(not.wellformed:insufficient.permission)
      requires r.f == 2
  {
  }
 
 method t6_a(r: Ref)
-    //:: ExpectedError(not.wellformed:receiver.null)
-    //:: ExpectedError(not.wellformed:insufficient.permission)
-    //:: MissingError(not.wellformed:insufficient.permission, /silicon/issue/34/)
+    //:: ExpectedOutput(not.wellformed:receiver.null)
+    //:: ExpectedOutput(not.wellformed:insufficient.permission)
+    //:: MissingOutput(not.wellformed:insufficient.permission, /silicon/issue/34/)
     ensures r.f == 2
 {
     assume false
@@ -76,7 +76,7 @@ method t6_a(r: Ref)
 
 method t6_b(r: Ref)
     ensures r != null
-    //:: ExpectedError(not.wellformed:insufficient.permission)
+    //:: ExpectedOutput(not.wellformed:insufficient.permission)
     ensures r.f == 2
 {
     assume false
@@ -97,7 +97,7 @@ method t8(r: Ref)
     r.f := 2
     exhale acc(r.f, write)
     inhale acc(r.f, write)
-    //:: ExpectedError(assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert (r.f) == 2
 }
 
@@ -107,7 +107,7 @@ method t9(r: Ref)
 {
     r.f := 2
     t8(r)
-    //:: ExpectedError(assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert (r.f) == 2
 }
 
@@ -120,7 +120,7 @@ method t10(r: Ref, o: Ref)
     assert o != r
     t9(o)
     assert (r.f) == 2
-    //:: ExpectedError(assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert (o.f) == 2
 }
 

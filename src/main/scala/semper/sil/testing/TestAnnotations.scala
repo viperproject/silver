@@ -10,43 +10,69 @@ import java.nio.file.{Files, Path}
  *
  * @author Stefan Heule
  */
-sealed case class TestAnnotations(errors: Seq[TestAnnotationParseError], annotations: Seq[TestAnnotation]) {
+sealed case class TestAnnotations(
+    errors: Seq[TestAnnotationParseError],
+    annotations: Seq[TestAnnotation]) {
+
   def isFileIgnored(file: Path, project: String): Boolean = annotations exists {
     case _: IgnoreFileList => true
-    case IgnoreFile(f, _, prj, _) => f.toAbsolutePath == file.toAbsolutePath && prj.equalsIgnoreCase(project)
+    case IgnoreFile(f, _, prj, _) =>
+      f.toAbsolutePath == file.toAbsolutePath && prj.equalsIgnoreCase(project)
     case _ => false
   }
 
   def hasErrors: Boolean = errors.size > 0
 
   /** Returns all the annotations without IgnoreFile and IgnoreFileList. */
-  def errorAnnotations: Seq[LocatedAnnotation] = {
+  def outputAnnotations: Seq[LocatedAnnotation] = {
     annotations collect {
       case x: LocatedAnnotation => x
     }
   }
+
+  /**
+   * Returns all test annotations except those that are specific
+   * to a different project than the given one.
+   *
+   * @param project the name of the project
+   * @return the filtered test annotations
+   */
+  def filterByProject(project: String): TestAnnotations =
+    copy(annotations = annotations filter {
+      case a: ProjectSpecificAnnotation => a.project.equalsIgnoreCase(project)
+      case _ => true
+    })
+
+  /**
+   * Filters the annotations such that it only contains only those output
+   * annotations whose key ID starts with the given prefix.
+   */
+  def filterByKeyIdPrefix(keyIdPrefix: String): TestAnnotations =
+    copy(annotations = annotations filter {
+      case OutputAnnotation(id, _, _) => id.keyId.startsWith(keyIdPrefix)
+    })
 }
 
 /** A trait for test annotations. */
 sealed trait TestAnnotation
 
-case class ErrorAnnotationId(reasonId: String, errorId: Option[String]) {
+case class OutputAnnotationId(keyId: String, valueId: Option[String]) {
   override def toString = {
-    errorId match {
-      case None => reasonId
-      case Some(i) => s"$i:$reasonId"
+    valueId match {
+      case None => keyId
+      case Some(i) => s"$keyId:$i"
     }
   }
 
   def matches(id: String): Boolean = {
     val ids = id.split(":")
     if (ids.size == 1) {
-      return errorId == None && reasonId == id
+      return keyId == id && valueId.isEmpty
     }
     assert(ids.size == 2, s"Expected full ID, but got $id.")
-    errorId match {
-      case None => reasonId == ids(1)
-      case Some(s) => s == ids(0) && reasonId == ids(1)
+    valueId match {
+      case None => keyId == ids(0)
+      case Some(s) => keyId == ids(0) && s == ids(1)
     }
   }
 }
@@ -60,38 +86,64 @@ sealed trait LocatedAnnotation extends TestAnnotation {
     Files.isSameFile(this.file, other.file) && forLineNr == other.forLineNr
 }
 
-/** Test annotations that have a location and an identifier (i.e. describe an error of some sort). */
-sealed trait ErrorAnnotation extends LocatedAnnotation {
-  def id: ErrorAnnotationId
+/**
+ * Test annotations that have a location and an identifier
+ * (i.e. describe an output of some sort).
+ */
+sealed trait OutputAnnotation extends LocatedAnnotation {
+  def id: OutputAnnotationId
 
   override def toString = s"$id (${file.getFileName.toString}:$forLineNr)"
 }
 
-/** Test annotation that is specific to a certain project. Further details should be given by the referenced issue. */
+/**
+ * Test annotation that is specific to a certain project.
+ * Further details should be given by the referenced issue.
+ */
 sealed trait ProjectSpecificAnnotation extends TestAnnotation {
   def project: String
   def issueNr: Int
 }
 
-object ErrorAnnotation {
-  def unapply(e: ErrorAnnotation) = Some((e.id, e.file, e.forLineNr))
+object OutputAnnotation {
+  def unapply(e: OutputAnnotation) = Some((e.id, e.file, e.forLineNr))
 }
 
-case class ExpectedError(id: ErrorAnnotationId, file: Path, forLineNr: Int, annotationLineNr: Int) extends ErrorAnnotation
+case class ExpectedOutput(
+    id: OutputAnnotationId,
+    file: Path,
+    forLineNr: Int,
+    annotationLineNr: Int) extends OutputAnnotation
 
-case class UnexpectedError(id: ErrorAnnotationId, file: Path, forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation with ProjectSpecificAnnotation
+case class UnexpectedOutput(
+    id: OutputAnnotationId,
+    file: Path,
+    forLineNr: Int,
+    annotationLineNr: Int,
+    project: String,
+    issueNr: Int) extends OutputAnnotation with ProjectSpecificAnnotation
 
-case class MissingError(id: ErrorAnnotationId, file: Path, forLineNr: Int, annotationLineNr: Int, project: String, issueNr: Int) extends ErrorAnnotation with ProjectSpecificAnnotation
+case class MissingOutput(
+    id: OutputAnnotationId,
+    file: Path,
+    forLineNr: Int,
+    annotationLineNr: Int,
+    project: String,
+    issueNr: Int) extends OutputAnnotation with ProjectSpecificAnnotation
 
-case class IgnoreOthers(file: Path, forLineNr: Int, annotationLineNr: Int) extends LocatedAnnotation
+case class IgnoreOthers(
+    file: Path,
+    forLineNr: Int,
+    annotationLineNr: Int) extends LocatedAnnotation
 
-case class IgnoreFile(file: Path, annotationLineNr: Int, project: String, issueNr: Int) extends ProjectSpecificAnnotation
+case class IgnoreFile(
+    file: Path,
+    annotationLineNr: Int,
+    project: String,
+    issueNr: Int) extends ProjectSpecificAnnotation
 
-case class IgnoreFileList(file: Path, annotationLineNr: Int, project: String, issueNr: Int) extends ProjectSpecificAnnotation
-
-case class TestAnnotationParseError(offendingLine: String, file: Path, lineNr: Int) {
-  def errorMessage: String = {
-    s"Line ${lineNr} in ${file.toString} looks like a test annotation (it starts with '//::'), but it was not " +
-      s"possible to parse it correctly.  The line is : '$offendingLine'."
-  }
-}
+case class IgnoreFileList(
+    file: Path,
+    annotationLineNr: Int,
+    project: String,
+    issueNr: Int) extends ProjectSpecificAnnotation

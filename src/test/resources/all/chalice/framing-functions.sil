@@ -16,6 +16,6 @@
     var j: Int := itemAt(y, 0)
     set(y, 0, 10);
     assert ((i) == (itemAt(x, 0)))
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert ((j) == (itemAt(y, 0)))
   }

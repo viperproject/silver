@@ -5,15 +5,15 @@ var p: Perm
 
 method t3(this: Ref, p2: Perm)
 {
-    //:: ExpectedError(invalid.perm.multiplication)
-    //:: MissingError(invalid.perm.multiplication, /Silicon/issue/31/)
+    //:: ExpectedOutput(invalid.perm.multiplication)
+    //:: MissingOutput(invalid.perm.multiplication, /Silicon/issue/31/)
     var p: Perm := epsilon * p2
 }
 
 method t5(r: Ref)
 	requires acc(r.f, write)
 {
-	//:: ExpectedError(call.precondition:epsilon.as.param)
+	//:: ExpectedOutput(call.precondition:epsilon.as.param)
 	t3(r, epsilon)
 }
 
@@ -45,12 +45,12 @@ method test5(this: Ref)
 //}
 
 method test2(this: Ref, p2: Perm) {
-  //:: ExpectedError(invalid.perm.multiplication)
+  //:: ExpectedOutput(invalid.perm.multiplication)
   var p: Perm := epsilon * p2
 }
 
 method test3(r: Ref, p: Perm) {
-  //:: ExpectedError(call.precondition:epsilon.as.param)
+  //:: ExpectedOutput(call.precondition:epsilon.as.param)
   test3(null, epsilon)
 }
 
@@ -65,8 +65,8 @@ method test4(r: Ref)
   var b: Bool
 
   b := unfolding acc(P(r), write) in true
-  //:: ExpectedError(assignment.failed:non.positive.permission)
-  //:: ExpectedError(assignment.failed:insufficient.permission)
+  //:: ExpectedOutput(assignment.failed:non.positive.permission)
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
   b := unfolding acc(P(r), p) in true
 }
 
@@ -92,6 +92,6 @@ method test4(r: Ref)
 method t6(r: Ref)
 {
     assert (epsilon <= write)
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert (epsilon >= write)
 }

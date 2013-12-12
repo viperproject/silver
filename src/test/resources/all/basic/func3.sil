@@ -11,7 +11,7 @@ function f1(r: Ref): Int
 
 function f2(r: Ref): Int
     requires acc(r.f, wildcard)
-    //:: ExpectedError(postcondition.violated:assertion.false)
+    //:: ExpectedOutput(postcondition.violated:assertion.false)
     ensures result == 2
 {
     r.f
@@ -34,7 +34,7 @@ method t1(r: Ref)
 {
     r.f := 2
     assert f3(r) == 2
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert f3(r) == 1
 }
 

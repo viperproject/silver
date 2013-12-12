@@ -7,9 +7,9 @@ method t11(r: Ref) returns ()
 
     while (j < 3)
         invariant r != null
-        //:: ExpectedError(while.failed:insufficient.permission)
-        //:: ExpectedError(invariant.not.established:assertion.false)
-        //:: MissingError(invariant.not.established:assertion.false, /Silicon/issue/34/)
+        //:: ExpectedOutput(while.failed:insufficient.permission)
+        //:: ExpectedOutput(invariant.not.established:assertion.false)
+        //:: MissingOutput(invariant.not.established:assertion.false, /Silicon/issue/34/)
         invariant r.f == 2
     {
         j := j+1
