@@ -43,7 +43,7 @@
   predicate p(this: Ref) { acc(this.next, wildcard) && acc(this.value, wildcard) && (((this.next) != (null)) ==> acc(q(this.next), wildcard)) }
   predicate q(this: Ref) { acc(this.next, wildcard) && acc(this.value, wildcard) && (((this.next) != (null)) ==> acc(p(this.next), wildcard)) }
   method testNestingUnfoldTwo(this: Ref)
-    requires acc(this.p(), wildcard)
+    requires acc(p(this), wildcard)
   {
     unfold acc(p(this), wildcard)
     //:: ExpectedError(assertion.false)
@@ -78,7 +78,7 @@
     requires acc(p(this.next.next), wildcard)
   {
     fold acc(q(this.next), wildcard)
-    fold acc(this.p(), wildcard)
+    fold acc(p(this), wildcard)
     assert ((this) != (this.next))
     //:: ExpectedError(assertion.false)
     assert ((this.next) != (this.next.next))
@@ -88,7 +88,7 @@
     requires acc(p(this), wildcard)
   {
     //:: ExpectedError(assertion.false)
-    assert ((this) != ((unfolding acc(this.p(), wildcard) in this.next)))
+    assert ((this) != ((unfolding acc(p(this), wildcard) in this.next)))
     if ((((unfolding acc(p(this), wildcard) in this.next)) != (null))) {
       //:: ExpectedError(assertion.false)
       assert (((unfolding acc(p(this), wildcard) in this.next)) != ((unfolding acc(p(this), wildcard) in (unfolding acc(q(this.next), wildcard) in this.next.next))))

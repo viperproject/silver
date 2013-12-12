@@ -381,7 +381,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val atom: PackratParser[PExp] =
     integer | bool | nul |
       old | pold | given |
-      "result" ^^^ PResultLit() |
+      "result" ^^ (_ => PResultLit()) |
       ("-" | "!" | "+") ~ sum ^^ PUnExp |
       "(" ~> exp <~ ")" |
       accessPred |
@@ -412,8 +412,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     ("[" ~> exp <~ ",") ~ (exp <~ "]") ^^ PInhaleExhaleExp
 
   lazy val perm: PackratParser[PExp] =
-    "none" ^^^ PNoPerm() | "wildcard" ^^^ PWildcard() | "write" ^^^ PFullPerm() |
-      "epsilon" ^^^ PEpsilon() | "perm" ~> parens(locAcc) ^^ PCurPerm
+    "none" ^^ (_ => PNoPerm()) |
+      "wildcard" ^^ (_ => PWildcard()) |
+      "write" ^^ (_ => PFullPerm()) |
+      "epsilon" ^^ (_ => PEpsilon()) |
+      "perm" ~> parens(locAcc) ^^ PCurPerm
 
   lazy val quant: PackratParser[PExp] =
     ("forall" ~> formalArgList <~ "::") ~ rep(trigger) ~ exp ^^ PForall |
@@ -470,10 +473,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))
 
   lazy val bool =
-    "true" ^^^ PBoolLit(b = true) | "false" ^^^ PBoolLit(b = false)
+    "true" ^^ (_ => PBoolLit(b = true)) |
+      "false" ^^ (_ => PBoolLit(b = false))
 
   lazy val nul =
-    "null" ^^^ PNullLit()
+    "null" ^^ (_ => PNullLit())
 
   lazy val idndef =
     ident ^^ PIdnDef

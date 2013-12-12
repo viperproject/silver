@@ -14,7 +14,7 @@ method t5(r: Ref)
 	requires acc(r.f, write)
 {
 	//:: ExpectedError(call.precondition:epsilon.as.param)
-	t1b(r, epsilon)
+	t3(r, epsilon)
 }
 
 method test1(this: Ref, p: Perm)
@@ -65,14 +65,29 @@ method test4(r: Ref)
   var b: Bool
 
   b := unfolding acc(P(r), write) in true
+  //:: ExpectedError(assignment.failed:non.positive.permission)
+  //:: ExpectedError(assignment.failed:insufficient.permission)
   b := unfolding acc(P(r), p) in true
 }
 
-method test7(r: Ref)
-  requires r != null && acc(Q(r), epsilon)
-{
-  var b: Bool := unfolding acc(Q(r), epsilon) in true
-}
+/* See Sil issue #30 */
+// method test4Q(r: Ref)
+//  requires r != null && acc(Q(r), write)
+//{
+//  var p: Perm
+//  var b: Bool
+//
+//  b := unfolding acc(Q(r), write) in true
+//  b := unfolding acc(Q(r), p) in true
+//}
+//
+//
+//method test7(r: Ref)
+//  requires r != null && acc(Q(r), epsilon)
+//{
+//  var b: Bool :=  unfolding acc(Q(r), epsilon) in true
+//}
+
 
 method t6(r: Ref)
 {

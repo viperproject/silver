@@ -154,6 +154,15 @@ case class LoopBlock(var body: Block, cond: Exp, invs: Seq[Exp], locals: Seq[Loc
                     (val pos: Position = NoPosition, val info: Info = NoInfo)
       extends Block {
 
+  /* Note: It is the responsibility of the user of LoopBlock to ensure that the srcAst
+   * can actually be used instead of computing it from the LoopBlock (via Block.toAst).
+   * For example, the srcAst might not be in sync with the LoopBlock anymore if the
+   * body or the invariant of the block is changed after the block has been created
+   * from the srcAst.
+   */
+  private[ast] var srcAst: Option[While] = None
+  override lazy val toAst = srcAst.getOrElse(super.toAst)
+
   def succs = List(UnconditionalEdge(succ))
 }
 

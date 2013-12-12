@@ -1,17 +1,39 @@
 var f: Int
 
 method t11(r: Ref) returns ()
-  requires r != null
+  requires r != null && true
 {
     var j: Int := 2
 
+    //:: ExpectedError(while.failed:insufficient.permission)
     while (j < 3)
-        //:: ExpectedError(while.failed:insufficient.permission)
+        invariant r != null
         //:: ExpectedError(invariant.not.established:assertion.false)
         //:: MissingError(invariant.not.established:assertion.false, /Silicon/issue/34/)
-        invariant r != null
         invariant r.f == 2
     {
         j := j+1
     }
+}
+
+method t1(r: Ref)
+  requires acc(r.f)
+{
+  while (true)
+    invariant true
+    //:: ExpectedError(invariant.not.preserved:insufficient.permission)
+    invariant acc(r.f)
+  {
+    exhale acc(r.f)
+  }
+}
+
+method t2(r: Ref)
+  requires r != null
+{
+  while (true)
+    invariant true
+    //:: ExpectedError(invariant.not.established:insufficient.permission)
+    invariant acc(r.f)
+  {}
 }

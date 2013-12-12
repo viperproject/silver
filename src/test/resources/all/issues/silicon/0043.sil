@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/6/)
+
 method checkGcd(left: Int, right: Int)
   requires left >= 0 && right >= 0
   ensures right == 0 || (left % right >= 0)

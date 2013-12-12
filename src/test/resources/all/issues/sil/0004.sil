@@ -5,6 +5,7 @@ var f: Int
 method test(x: Ref)
   requires acc(x.f)
 {
+  //:: ExpectedError(exhale.failed:insufficient.permission)
   exhale acc(x.f, 3 * write)
   exhale acc(x.f, 3 * epsilon)
 }
