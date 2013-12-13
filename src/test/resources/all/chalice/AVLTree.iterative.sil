@@ -1,4 +1,5 @@
-	var root1 : Ref
+//:: IgnoreFile(/silicon/issue/51/)
+var root1 : Ref
 
 	predicate valid1(this: Ref) {
 		   acc(this.root1,write)
