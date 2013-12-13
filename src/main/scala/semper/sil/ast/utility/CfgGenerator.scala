@@ -165,7 +165,9 @@ object CfgGenerator {
         var b: Block = null
         tb match {
           case loop: TmpLoopBlock =>
-            b = LoopBlock(null, loop.loop.cond, loop.loop.invs, loop.loop.locals, null)(loop.loop.pos, loop.loop.info)
+            var lb = LoopBlock(null, loop.loop.cond, loop.loop.invs, loop.loop.locals, null)(loop.loop.pos, loop.loop.info)
+            lb.srcAst = Some(loop.loop)
+            b = lb
           case tmpFRP: TmpFreshReadPermBlock =>
             b = FreshReadPermBlock(tmpFRP.frp.vars, null, null)
           case vb: VarBlock if vb.edges.size == 0 =>
