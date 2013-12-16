@@ -8,6 +8,6 @@ domain Test {
 method test() {
     assert u1() != u2()
 
-    //:: ExpectedError(assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert c() != u1()
 }

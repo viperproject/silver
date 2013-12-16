@@ -15,13 +15,13 @@ method t1(r: Ref)
 method t2(r: Ref)
     requires r != null
 {
-    //:: ExpectedError(assignment.failed:insufficient.permission)
+    //:: ExpectedOutput(assignment.failed:insufficient.permission)
     var i: Int := unfolding acc(valid(r), write) in (r.f)
 }
 
 method t3(r: Ref)
     requires acc(valid(r), write)
 {
-    //:: ExpectedError(assignment.failed:insufficient.permission)
+    //:: ExpectedOutput(assignment.failed:insufficient.permission)
     var i: Int := (unfolding acc(valid(r), write) in (unfolding acc(valid(r), write) in (r.f)))
 }

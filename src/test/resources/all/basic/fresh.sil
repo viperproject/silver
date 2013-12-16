@@ -24,7 +24,7 @@ method t2(r: Ref)
     fresh(read) {
         exhale acc(r.f, read) && acc(r.f, write - read)
     }
-    //:: ExpectedError(assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -35,8 +35,8 @@ method t2b(r: Ref)
     fresh(read) {
         exhale acc(r.f, write - read) && acc(r.f, read)
     }
-    //:: ExpectedError(assertion.false)
-    //:: MissingError(assertion.false, /Silicon/issue/30/)
+    //:: ExpectedOutput(assertion.false)
+    //:: MissingOutput(assertion.false, /Silicon/issue/30/)
     assert false
 }
 

@@ -35,7 +35,7 @@ method t2(a: Ref, b: Ref) returns ()
     l2 := new()
     exhale a != l1
     exhale l1 != l2
-    //:: ExpectedError(assertion.false)
+    //:: ExpectedOutput(exhale.failed:assertion.false)
     exhale a != b
 }
 
@@ -46,7 +46,7 @@ method t3(a: Ref, b: Ref) returns ()
         if (b != null) {
             exhale a != b
         }
-        //:: ExpectedError(assertion.false)
+        //:: ExpectedOutput(exhale.failed:assertion.false)
         exhale a != b
     }
 }
@@ -84,12 +84,12 @@ method test5(n: Ref)
 
   unfold acc(Node_P(n), wildcard)
   if (n.Node_n != null) {
-    //:: UnexpectedError(assert.failed:assertion.false, /silicon/issue/29/)
+    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/29/)
     assert m != (n.Node_n)
 
     unfold acc(Node_P(n), wildcard)
-    //:: ExpectedError(insufficient.permission)
-    //:: MissingError(insufficient.permission, /silicon/issue/34/)
+    //:: ExpectedOutput(insufficient.permission)
+    //:: MissingOutput(insufficient.permission, /silicon/issue/34/)
     if (n.Node_n.Node_n != null) {
       assert m != (n.Node_n.Node_n)
     }

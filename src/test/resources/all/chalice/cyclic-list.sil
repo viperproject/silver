@@ -25,7 +25,7 @@ method test1(this: Ref)
   x := new()
   x.next := x
 
-  //:: ExpectedError(fold.failed:insufficient.permission)
+  //:: ExpectedOutput(fold.failed:insufficient.permission)
   fold acc(valid(x), write)
 }
 
@@ -36,7 +36,7 @@ method test2(this: Ref)
   x := new()
   x.next := x
 
-  //:: ExpectedError(application.precondition:insufficient.permission)
+  //:: ExpectedOutput(application.precondition:insufficient.permission)
   //:: IgnoreOthers
   assert ((length(x)) == (length(x.next) + 1))
 }

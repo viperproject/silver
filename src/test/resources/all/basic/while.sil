@@ -19,7 +19,7 @@ method t2(n: Int) returns ()
     var i: Int := 0
 
     while (i < n)
-        //:: ExpectedError(invariant.not.preserved:assertion.false)
+        //:: ExpectedOutput(invariant.not.preserved:assertion.false)
         invariant i < n
     {
         i := i+1
@@ -32,7 +32,7 @@ method t3(n: Int) returns ()
     var i: Int := 2
 
     while (i < n)
-        //:: ExpectedError(invariant.not.established:assertion.false)
+        //:: ExpectedOutput(invariant.not.established:assertion.false)
         invariant i <= n
     {
         i := i+1
@@ -45,7 +45,7 @@ method t4(n: Int, r: Ref) returns ()
 {
     var i: Int := 2
 
-    //:: ExpectedError(while.failed:insufficient.permission)
+    //:: ExpectedOutput(while.failed:insufficient.permission)
     while (i < (r.f))
     {
         i := i+1
@@ -67,7 +67,7 @@ method t5(n: Int, r: Ref) returns ()
 
 method t6(r: Ref) returns ()
 {
-    //:: ExpectedError(while.failed:receiver.null)
+    //:: ExpectedOutput(while.failed:receiver.null)
     while (perm(r.f) == none)
     {
     }
@@ -81,7 +81,7 @@ method t7(r: Ref) returns ()
     while (true)
     {
         assert i == 1
-        //:: ExpectedError(assertion.false)
+        //:: ExpectedOutput(assert.failed:assertion.false)
         assert j == 2
         j := j+1
     }
@@ -97,7 +97,7 @@ method t8(r: Ref) returns ()
     }
 
     assert j >= 10
-    //:: ExpectedError(assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
 
@@ -118,7 +118,7 @@ method t10(r: Ref) returns ()
 {
     var j: Int := 2
 
-    //:: ExpectedError(while.failed:insufficient.permission)
+    //:: ExpectedOutput(while.failed:insufficient.permission)
     while (j < (r.f))
     {
         j := j+1
@@ -131,10 +131,10 @@ method t11(r: Ref) returns ()
 {
     var j: Int := 2
 
-    //:: ExpectedError(while.failed:insufficient.permission)
+    //:: ExpectedOutput(while.failed:insufficient.permission)
     while (j < 3)
-        //:: ExpectedError(invariant.not.established:assertion.false)
-        //:: MissingError(invariant.not.established:assertion.false, /Silicon/issue/34/)
+        //:: ExpectedOutput(invariant.not.established:assertion.false)
+        //:: MissingOutput(invariant.not.established:assertion.false, /Silicon/issue/34/)
         invariant r != null && r.f == 2
     {
         j := j+1

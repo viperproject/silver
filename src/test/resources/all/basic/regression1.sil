@@ -46,7 +46,7 @@ method Simple_test2(rd: Perm, this: Ref, x: Int) returns (vresult: Int)
   requires rd > none
   requires this != null
   requires x > 0
-  //:: ExpectedError(postcondition.violated:assertion.false)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
   ensures vresult == (x * x)
 {
   vresult := x
@@ -59,7 +59,7 @@ method Simple_test(rd: Perm, this: Ref) returns (vresult: Ref)
   var tmpRd: Perm
   var dummy: Int
   fresh(tmpRd) {
-    //:: ExpectedError(call.precondition:assertion.false)
+    //:: ExpectedOutput(call.precondition:assertion.false)
     dummy := Simple_test2(tmpRd, this, -5)
   }
   vresult := unit()

@@ -19,7 +19,7 @@ method List_test(this: Ref, i: Int)
   requires i >= 0 && i < List_size(this)
   ensures acc(List_valid(this), write)
 {
-  //:: ExpectedError(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert List_size(this) == 1
     /* Used to hold erroneously due to the inference of local evaluations and
      * non-local branchings.

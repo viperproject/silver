@@ -13,6 +13,6 @@
     var j: Int := (unfolding acc(valid(y), write) in y.value)
     set(y, 0, 10);
     assert (unfolding acc(valid(x), write) in ((i) == (x.value)))
-    //:: ExpectedError(assert.failed:assertion.false)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert (unfolding acc(valid(y), write) in ((j) == (y.value)))
   }

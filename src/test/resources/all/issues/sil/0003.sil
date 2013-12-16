@@ -5,11 +5,11 @@ method t11(r: Ref) returns ()
 {
     var j: Int := 2
 
-    //:: ExpectedError(while.failed:insufficient.permission)
+    //:: ExpectedOutput(while.failed:insufficient.permission)
     while (j < 3)
         invariant r != null
-        //:: ExpectedError(invariant.not.established:assertion.false)
-        //:: MissingError(invariant.not.established:assertion.false, /Silicon/issue/34/)
+        //:: ExpectedOutput(invariant.not.established:assertion.false)
+        //:: MissingOutput(invariant.not.established:assertion.false, /Silicon/issue/34/)
         invariant r.f == 2
     {
         j := j+1
@@ -21,7 +21,7 @@ method t1(r: Ref)
 {
   while (true)
     invariant true
-    //:: ExpectedError(invariant.not.preserved:insufficient.permission)
+    //:: ExpectedOutput(invariant.not.preserved:insufficient.permission)
     invariant acc(r.f)
   {
     exhale acc(r.f)
@@ -33,7 +33,7 @@ method t2(r: Ref)
 {
   while (true)
     invariant true
-    //:: ExpectedError(invariant.not.established:insufficient.permission)
+    //:: ExpectedOutput(invariant.not.established:insufficient.permission)
     invariant acc(r.f)
   {}
 }

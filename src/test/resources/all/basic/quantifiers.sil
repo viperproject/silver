@@ -25,7 +25,7 @@ method forallCellGet10(c: Ref) returns (d: Ref)
 
 method fail10ForallCellGet10(c: Ref) returns (d: Ref)
 	requires c != null
-	//:: ExpectedError(application.precondition:insufficient.permission)
+	//:: ExpectedOutput(application.precondition:insufficient.permission)
 	requires forall i: Int :: (0 <= i && i < Cell_get(c)) ==> (Cell_get(c) > i)
 {}
 
@@ -36,7 +36,7 @@ method fail20ForallCellGet10(c: Ref) returns (d: Ref)
 	requires forall i1: Int :: (0 <= i1 && i1 < Cell_get(c)) ==> (Cell_get(c) >= i1)
 	ensures c != null
 	ensures acc(c.Cell_x, write)
-	//:: ExpectedError(postcondition.violated:assertion.false)
+	//:: ExpectedOutput(postcondition.violated:assertion.false)
 	ensures forall i2: Int :: (0 <= i2 && i2 < Cell_get(c)) ==> (Cell_get(c) <= i2)
 {}
 
@@ -48,7 +48,7 @@ method succeedsRange10(a: Int)
 
 method failsRange10(a: Int)
 {
-  //:: ExpectedError(application.precondition:assertion.false)
+  //:: ExpectedOutput(application.precondition:assertion.false)
   assert forall i: Int :: (-1 <= i && i < a) ==> (reqIGt0(i) == i)
 }
 
@@ -57,7 +57,7 @@ method succeedsExplicit10(a: Int)
 
 method failsExplicit10(a: Int)
 {
-  //:: ExpectedError(application.precondition:assertion.false)
+  //:: ExpectedOutput(application.precondition:assertion.false)
   assert (forall i: Int :: (i in Seq(-2,2,4,6,8)) ==> (reqIGt0(i) < (i*i)))
 }
 
@@ -82,7 +82,7 @@ method succeeds1(a: Int)
 }
 
 method existsFails() {
-  //:: ExpectedError(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
 	assert exists i: Int :: ((i in Seq(0)) && true)
     /* 2013-08-05 Malte: Fails, probably due to a triggering problem of Z3.
      *            Should hold otherwise.
@@ -112,7 +112,7 @@ method test1(A: Seq[Int]) {
 	assume forall v1: Int ::
 		(0 <= v1 && v1 < 3 && f2(v1)) ==> (exists j1: Int :: 0 <= j1 && j1 < 3 && j1 == v1)
 
-  //:: ExpectedError(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
 	assert forall v2: Int ::
 		(0 <= v2 && v2 < 3 && f2(v2)) ==> (exists j2: Int :: 0 <= j2 && j2 < 3 && j2 == v2) /* @Error 410 */
     /* 2013-08-05 Malte: Fails, probably due to a triggering problem of Z3.
@@ -146,7 +146,7 @@ method test4(A: Seq[Int]) {
 
 	assume f2(0) ==> (exists j1: Int :: 0 <= j1 && j1 < 3 && j1 > 0)
 
-	//:: ExpectedError(assert.failed:assertion.false)
+	//:: ExpectedOutput(assert.failed:assertion.false)
 	assert f2(0) ==> (exists j2: Int :: 0 <= j2 && j2 < 3 && j2 > 0)
     /* 2013-08-05 Malte: Fails, probably due to a triggering problem of Z3.
      *            Should hold otherwise.

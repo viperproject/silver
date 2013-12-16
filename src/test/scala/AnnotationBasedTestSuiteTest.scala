@@ -1,0 +1,118 @@
+package semper.sil
+
+import org.scalatest.{BeforeAndAfter, FunSuite}
+import org.scalatest.matchers.ShouldMatchers
+import semper.sil.testing._
+import java.nio.file.{FileSystems, Path}
+import semper.sil.testing.OutputAnnotationId
+import semper.sil.testing.ExpectedOutput
+import scala.collection.immutable.Nil
+
+object TestFixtures {
+  val dummyFile = FileSystems.getDefault.getPath("foo.scala")
+  val otherFile = FileSystems.getDefault.getPath("bar.scala")
+
+  val actualFoo1 = DummyOutput(dummyFile, 1, "foo")
+  val actualFoo2 = DummyOutput(dummyFile, 2, "foo")
+
+  val expectedFoo1 = ExpectedOutput(OutputAnnotationId("foo", None), dummyFile, 1, 1)
+  val unexpectedFoo1Carbon = UnexpectedOutput(OutputAnnotationId("foo", None), dummyFile, 1, 1, "carbon", 123)
+  val missingFoo1Silicon = MissingOutput(OutputAnnotationId("foo", None), otherFile, 1, 1, "silicon", 123)
+  val ignoreSiliconDummyFile = IgnoreFile(dummyFile, 1, "silicon", 12)
+
+  val parseError = TestAnnotationParseError("some line", dummyFile, 1)
+}
+
+/** Dummy output that is not file-specific. */
+case class DummyOutput(file: Path, lineNr: Int, fullId: String) extends AbstractOutput {
+  def isSameLine(file: Path, lineNr: Int) =
+    file == this.file && lineNr == this.lineNr
+  override def toString = s"$lineNr:$fullId"
+}
+
+/** Tests [[semper.sil.testing.OutputMatcher]]. */
+class OutputMatcherTest extends FunSuite with BeforeAndAfter with ShouldMatchers {
+  import TestFixtures._
+
+  test("expected output") {
+    OutputMatcher(Seq(actualFoo1), Seq(expectedFoo1)).errors should be (Nil)
+
+    OutputMatcher(Seq(), Seq(expectedFoo1)).errors should be
+      Seq(TestExpectedButMissingOutputError(expectedFoo1))
+
+    OutputMatcher(Seq(actualFoo2), Seq(expectedFoo1)).errors.toSet should be
+      Set(TestExpectedButMissingOutputError(expectedFoo1), TestAdditionalOutputError(actualFoo2))
+  }
+
+  test("unexpected output") {
+    OutputMatcher(Seq(actualFoo1), Seq(unexpectedFoo1Carbon)).errors should be
+      Nil
+
+    OutputMatcher(Seq(), Seq(unexpectedFoo1Carbon)).errors should be
+      Seq(TestUnexpectedButMissingOutputError(unexpectedFoo1Carbon))
+
+    OutputMatcher(Seq(actualFoo2), Seq(unexpectedFoo1Carbon)).errors.toSet should be
+      Set(TestUnexpectedButMissingOutputError(unexpectedFoo1Carbon), TestAdditionalOutputError(actualFoo2))
+  }
+
+  test("missing output") {
+    OutputMatcher(Seq(actualFoo1), Seq(missingFoo1Silicon)).errors should be
+      Seq(TestMissingButPresentOutputError(missingFoo1Silicon, actualFoo1))
+  }
+
+  test("additional output") {
+    OutputMatcher(Seq(actualFoo1), Seq()).errors should be
+      Seq(TestAdditionalOutputError(actualFoo2))
+  }
+}
+
+/** Tests [[semper.sil.testing.TestAnnotations]]. */
+class TestAnnotationsTest extends FunSuite with BeforeAndAfter with ShouldMatchers {
+  import TestFixtures._
+
+  val annotations = TestAnnotations(
+    errors = Seq(parseError),
+    annotations = Seq(expectedFoo1, unexpectedFoo1Carbon, missingFoo1Silicon))
+
+  test("filtering by project") {
+    val newAnnotations = annotations.filterByProject("Carbon")
+    newAnnotations.errors should be (annotations.errors)
+    newAnnotations.annotations should be (Seq(expectedFoo1, unexpectedFoo1Carbon))
+  }
+
+  test("has errors") {
+    annotations.hasErrors should be (true)
+    TestAnnotations(errors = Nil, annotations = Nil).hasErrors should be (false)
+  }
+
+  test("is file ignored") {
+    val a = TestAnnotations(Nil, Seq(ignoreSiliconDummyFile))
+    a.isFileIgnored(dummyFile, "Silicon") should be (true)
+    a.isFileIgnored(dummyFile, "Carbon") should be (false)
+    a.isFileIgnored(otherFile, "Silicon") should be (false)
+  }
+
+  test("output annotations") {
+    val a = TestAnnotations(Nil, Seq(ignoreSiliconDummyFile, expectedFoo1))
+    a.outputAnnotations should be (Seq(expectedFoo1))
+  }
+}
+
+/** Tests [[semper.sil.testing.OutputAnnotationId]]. */
+class OutputAnnotationIdTest extends FunSuite with BeforeAndAfter with ShouldMatchers {
+  val foo = OutputAnnotationId("foo", None)
+  val fooBar = OutputAnnotationId("foo", Some("bar"))
+
+  test("toString") {
+    foo.toString should be ("foo")
+    fooBar.toString should be ("foo:bar")
+  }
+
+  test("matches") {
+    foo.matches("foo") should be (true)
+    foo.matches("foo:some-detail") should be (true)
+    fooBar.matches("foo") should be (false)
+    fooBar.matches("foo:bar") should be (true)
+    fooBar.matches("foo:baz") should be (false)
+  }
+}
