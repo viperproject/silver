@@ -1,0 +1,17 @@
+var f: Int
+
+method foo1(x: Ref)
+  requires true
+  //:: ExpectedOutput(application.precondition:receiver.null)
+  ensures bar(x)
+{}
+
+method foo2(x: Ref)
+  requires true
+  //:: ExpectedOutput(application.precondition:receiver.null)
+  ensures bar(x)
+{}
+
+function bar(x: Ref): Bool
+  requires acc(x.f)
+{ true }
