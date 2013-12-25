@@ -1,14 +1,8 @@
 var f: Int
 
-method foo1(x: Ref)
-  requires true
-  //:: ExpectedOutput(application.precondition:receiver.null)
-  ensures bar(x)
-{}
-
-method foo2(x: Ref)
-  requires true
-  //:: ExpectedOutput(application.precondition:receiver.null)
+method foo(x: Ref)
+  requires x != null
+  //:: ExpectedOutput(application.precondition:insufficient.permission)
   ensures bar(x)
 {}
 
