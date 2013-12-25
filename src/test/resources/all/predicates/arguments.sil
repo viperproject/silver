@@ -81,7 +81,7 @@ method t3b(this: Ref, b: Bool)
 {
     //:: UnexpectedOutput(unfold.failed:insufficient.permission, /silicon/issue/36/)
     unfold acc(valid(this, true), write)
-    //:: ExpectedOutput(insufficient.permission)
-    //:: MissingOutput(insufficient.permission, /silicon/issue/36/)
+    //:: ExpectedOutput(assignment.failed:insufficient.permission)
+    //:: MissingOutput(assignment.failed:insufficient.permission, /silicon/issue/36/)
     this.g := 1
 }

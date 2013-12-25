@@ -5,8 +5,8 @@ var p: Perm
 
 method t3(this: Ref, p2: Perm)
 {
-    //:: ExpectedOutput(invalid.perm.multiplication)
-    //:: MissingOutput(invalid.perm.multiplication, /Silicon/issue/31/)
+    //:: ExpectedOutput(assignment.failed:invalid.perm.multiplication)
+    //:: MissingOutput(assignment.failed:invalid.perm.multiplication, /Silicon/issue/31/)
     var p: Perm := epsilon * p2
 }
 
@@ -45,7 +45,7 @@ method test5(this: Ref)
 //}
 
 method test2(this: Ref, p2: Perm) {
-  //:: ExpectedOutput(invalid.perm.multiplication)
+  //:: ExpectedOutput(assignment.failed:invalid.perm.multiplication)
   var p: Perm := epsilon * p2
 }
 

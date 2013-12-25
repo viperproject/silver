@@ -35,8 +35,8 @@ method t2b(r: Ref)
     fresh(read) {
         exhale acc(r.f, write - read) && acc(r.f, read)
     }
-    //:: ExpectedOutput(assertion.false)
-    //:: MissingOutput(assertion.false, /Silicon/issue/30/)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/30/)
     assert false
 }
 
