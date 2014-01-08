@@ -240,13 +240,13 @@ object CfgGenerator {
                       } else {
                         tmpFRP.body = succ
                       }
-                    case vb: VarBlock if vb.edges.size == 1 =>
-                      vb.edges(0) = UncondEdge(succ)
-                    case vb: VarBlock if vb.edges.size == 2 =>
-                      if (vb.edges(0).dest == vb) {
-                        vb.edges(0) = CondEdge(succ, vb.edges(0).asInstanceOf[CondEdge].cond)
+                    case predVb: VarBlock if predVb.edges.size == 1 =>
+                      predVb.edges(0) = UncondEdge(succ)
+                    case predVb: VarBlock if predVb.edges.size == 2 =>
+                      if (predVb.edges(0).dest == vb) {
+                        predVb.edges(0) = CondEdge(succ, predVb.edges(0).asInstanceOf[CondEdge].cond)
                       } else {
-                        vb.edges(1) = CondEdge(succ, vb.edges(1).asInstanceOf[CondEdge].cond)
+                        predVb.edges(1) = CondEdge(succ, predVb.edges(1).asInstanceOf[CondEdge].cond)
                       }
                     case _ =>
                       sys.error("unexpected block")
@@ -401,8 +401,14 @@ object CfgGenerator {
   class Phase1(ast: Stmt) {
     /** The extended statements used in phase one. */
     val nodes: ListBuffer[ExtendedStmt] = ListBuffer()
-    /** A mapping of Labels to indices into `nodes`. */
+
+    /** A mapping of Labels to indices into `nodes`.
+      * While `nodes` and `lblmap` are populated, the indices in `lblmap` can
+      * point past the end of `nodes`, because they point to a block that
+      * will be added to `nodes` by the computation still to come.
+      */
     val lblmap: collection.mutable.Map[Lbl, Int] = collection.mutable.Map()
+
     /** The extended statements that are leaders (indices into `nodes`). */
     val leaders: ListBuffer[Int] = ListBuffer()
 
