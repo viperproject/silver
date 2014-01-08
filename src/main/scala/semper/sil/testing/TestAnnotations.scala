@@ -44,12 +44,13 @@ sealed case class TestAnnotations(
     })
 
   /**
-   * Filters the annotations such that it only contains only those output
-   * annotations whose key ID starts with the given prefix.
+   * Returns all test annotations except those output annotations
+   * whose key id does not start with the given key id prefix.
    */
   def filterByKeyIdPrefix(keyIdPrefix: String): TestAnnotations =
     copy(annotations = annotations filter {
       case OutputAnnotation(id, _, _) => id.keyId.startsWith(keyIdPrefix)
+      case _ => true
     })
 }
 

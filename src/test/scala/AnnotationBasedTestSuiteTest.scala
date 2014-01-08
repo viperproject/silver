@@ -80,6 +80,20 @@ class TestAnnotationsTest extends FunSuite with BeforeAndAfter with ShouldMatche
     newAnnotations.annotations should be (Seq(expectedFoo1, unexpectedFoo1Carbon))
   }
 
+  test("filtering by key id prefix") {
+    val annotations = TestAnnotations(
+      errors = Seq(parseError),
+      annotations = Seq(expectedFoo1, ignoreSiliconDummyFile))
+
+    var newAnnotations = annotations.filterByKeyIdPrefix("foo")
+    newAnnotations.errors should be (annotations.errors)
+    newAnnotations.annotations should be (Seq(expectedFoo1, ignoreSiliconDummyFile))
+
+    newAnnotations = annotations.filterByKeyIdPrefix("something.else")
+    newAnnotations.errors should be (annotations.errors)
+    newAnnotations.annotations should be (Seq(ignoreSiliconDummyFile))
+  }
+
   test("has errors") {
     annotations.hasErrors should be (true)
     TestAnnotations(errors = Nil, annotations = Nil).hasErrors should be (false)
