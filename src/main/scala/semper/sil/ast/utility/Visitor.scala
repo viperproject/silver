@@ -4,8 +4,6 @@ import semper.sil.ast._
 
 /**
  * An implementation for visitors of the SIL AST.
- *
- * @author Stefan Heule
  */
 object Visitor {
 
@@ -24,6 +22,18 @@ object Visitor {
     val newContext = enter(n, context)
     val subResults = subs(n).map(reduceWithContext[N, C, R](_, subs)(newContext, enter, combine))
     combine(n, context, subResults)
+  }
+  
+  /** A generalisation of Scala's collect, which applies not just to the list of nodes ns, but also to all those transitively traversed via `subs`.
+    *
+    * @tparam N Node type.
+    * @tparam V Resulting value type.
+    * @param ns List of original nodes.
+    * @param subs Function to retrieve subnodes.
+    * @param f Partial function to compute desired values.
+  */
+  def deepCollect[N, V](ns: Seq[N], subs: N => Seq[N])(f: PartialFunction[N,V]) : Seq[V] = {
+    ns.map((node:N) => reduceTree(node, subs)((n:N,vs:Seq[Seq[V]]) => (if (f.isDefinedAt(n)) (Seq(f(n)) ++ vs.flatten) else vs.flatten))).flatten
   }
 
   /**
@@ -107,4 +117,5 @@ object Visitor {
     }
     false
   }
+  
 }

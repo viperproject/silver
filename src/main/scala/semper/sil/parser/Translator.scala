@@ -4,6 +4,7 @@ import org.kiama.attribution.Attributable
 import org.kiama.util.Messaging
 import language.implicitConversions
 import semper.sil.ast._
+import semper.sil.ast.utility.{Visitor => UtilityVisitor}
 import utility.Statements
 
 
@@ -41,9 +42,7 @@ case class Translator(program: PProgram) {
   private def translate(m: PMethod): Method = m match {
     case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
       val m = findMethod(name)
-      val plocals = body.childStmts collect {
-        case l: PLocalVarDecl => l
-      }
+      val plocals = UtilityVisitor.deepCollect(body.childStmts, Nodes.subnodes)({ case l: PLocalVarDecl => l })
       val locals = plocals map {
         case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p.start)
       }
