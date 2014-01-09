@@ -1,0 +1,2 @@
+method checkGcd(left: Int, right: Int)
+{ assert right == 0 || (left % right >= 0) }

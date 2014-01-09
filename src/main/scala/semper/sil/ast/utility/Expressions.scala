@@ -25,6 +25,10 @@ object Expressions {
          | _: MultisetExp
     => true
   }
+  
+  def purify(e: Exp): Exp = e.transform({
+      case _: AccessPredicate => TrueLit()()
+    })()
 
   def whenInhaling(e: Exp) = e.transform()(post = {
     case InhaleExhaleExp(in, _) => in
@@ -137,9 +141,7 @@ object Expressions {
     // We want to make the proof obligations as weak as possible, but we cannot use access predicates as guards,
     // so we need to remove them and make the guard weaker. This makes the proof obligations slightly too strong,
     // but it is the best we can do.
-    val guard = left.transform({
-      case _: AccessPredicate => TrueLit()()
-    })()
+    val guard = purify(left)
     reduceLazyBinOpProofObs(guard, leftConds, rightConds, p)
   }
 
