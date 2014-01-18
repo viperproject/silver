@@ -881,20 +881,25 @@ case class NameAnalyser() {
     /* Check all identifier uses. */
     p.visit({
       case m: PScope =>
+        scopeStack.push(curMember)
         curMember = m
+        println("new scope")
+        println(curMember)
       case i@PIdnUse(name) =>
         // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
+        println("look up " + name)
         getMap.getOrElse(name, idnMap.getOrElse(name, UnknownEntity())) match {
           case UnknownEntity() =>
             // domain types can also be type variables, which need not be declared
             if (!i.parent.isInstanceOf[PDomainType])
+              println("could not find " + name)
               message(i, s"$name not defined.")
           case _ =>
         }
       case _ =>
     }, {
       case m: PScope =>
-        curMember = null
+        curMember = scopeStack.pop()
       case _ =>
     })
 
