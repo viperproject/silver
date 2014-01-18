@@ -173,7 +173,7 @@ case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse) extends PLocationA
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
 case class PUnfolding(acc: PAccPred, exp: PExp) extends PExp
 case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp
-case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp
+case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp with PScope
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
 case class PInhaleExhaleExp(in: PExp, ex: PExp) extends PExp
 case class PCurPerm(loc: PLocationAccess) extends PExp

@@ -2,6 +2,7 @@ package semper.sil.parser
 
 import org.kiama.util.Messaging.{message, messagecount}
 import org.kiama.util.Positioned
+import scala.collection.mutable
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -590,10 +591,13 @@ case class TypeChecker(names: NameAnalyser) {
           // ok
           setType(po.e.typ)
         }
-      case PForall(vars, triggers, e) =>
+      case f@ PForall(vars, triggers, e) =>
+        val oldCurMember = curMember
+        curMember = f
         vars map (v => check(v.typ))
         triggers.flatten map (x => check(x, Nil))
         check(e, Bool)
+        curMember = oldCurMember
       case PCondExp(cond, thn, els) =>
         check(cond, Bool)
         check(thn, Nil)
@@ -843,10 +847,12 @@ case class NameAnalyser() {
   def run(p: PProgram): Boolean = {
     var curMember: PScope = null
     def getMap = if (curMember == null) idnMap else memberIdnMap.get(curMember).get
+    val scopeStack = mutable.Stack[PScope]()
     // find all declarations
     p.visit({
       case m: PScope =>
-        memberIdnMap.put(m, collection.mutable.HashMap[String, Entity]())
+        memberIdnMap.put(m, memberIdnMap.getOrElse(curMember, collection.mutable.HashMap[String, Entity]()).clone)
+        scopeStack.push(curMember)
         curMember = m
       case i@PIdnDef(name) =>
         getMap.get(name) match {
@@ -868,7 +874,7 @@ case class NameAnalyser() {
       case _ =>
     }, {
       case _: PScope =>
-        curMember = null
+        curMember = scopeStack.pop()
       case _ =>
     })
 
