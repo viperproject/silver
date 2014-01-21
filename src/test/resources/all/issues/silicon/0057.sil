@@ -1,0 +1,15 @@
+var f:Int
+
+method m(o:Ref)
+requires acc(o.f, write)
+ensures acc(o.f, write)
+ensures o.f == old(o.f)
+{
+    var i:Int := 0
+    while(i < 5)
+    invariant acc(o.f, write)
+    {
+        i := i+1
+	o.f := 5
+    }
+}
