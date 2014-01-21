@@ -1,5 +1,3 @@
-//:: IgnoreFile(/carbon/issue/1/)
-
 domain Natural {
   function zero(): Natural
   
