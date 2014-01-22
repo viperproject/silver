@@ -492,7 +492,7 @@ case class TypeChecker(names: NameAnalyser) {
               issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
             }
           case "subset" =>
-            val newExpected = if (expected.isEmpty) genericAnySetType else expected
+            val newExpected = genericAnySetType
             check(left, newExpected)
             check(right, newExpected)
             if (left.typ.isUnknown || right.typ.isUnknown) {
