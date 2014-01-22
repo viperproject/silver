@@ -8,7 +8,7 @@ import semper.sil.verifier._
 import semper.sil.verifier.CliOptionError
 import semper.sil.verifier.Failure
 import semper.sil.verifier.ParseError
-import semper.sil.ast.{RealPosition, SourcePosition, Program}
+import semper.sil.ast.{SourcePosition, Program}
 import semper.sil.verifier.TypecheckerError
 
 /**
