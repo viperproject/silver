@@ -315,7 +315,7 @@ case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Inf
  * Marker trait for all sequence-related expressions. Does not imply that the type of the
  * expression is `SeqType`.
  */
-sealed trait SeqExp extends Exp
+sealed trait SeqExp extends Exp with PossibleTrigger
 
 /** The empty sequence of a given element type. */
 case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
@@ -400,13 +400,13 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
  * Marker trait for all set-related expressions. Does not imply that the type of the
  * expression is `SetType`.
  */
-sealed trait SetExp extends Exp
+sealed trait SetExp extends Exp with PossibleTrigger
 
 /**
  * Marker trait for all set-related expressions. Does not imply that the type of the
  * expression is `MultisetType`.
  */
-sealed trait MultisetExp extends Exp
+sealed trait MultisetExp extends Exp with PossibleTrigger
 
 /** The empty set of a given element type. */
 case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
@@ -502,8 +502,15 @@ sealed trait Literal extends Exp
  */
 sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominator: BigInt) extends PermExp
 
+/** 
+ * Used to label expression nodes as potentially valid trigger terms for quantifiers. 
+ * Use ForbiddenTrigger to declare exceptions (terms which may not be used, despite being a PossibleTrigger)
+ */
+sealed trait PossibleTrigger extends Exp 
+sealed trait ForbiddenTrigger extends Exp
+
 /** Common ancestor of Domain Function applications and Function applications. */
-sealed trait FuncLikeApp extends Exp with Call {
+sealed trait FuncLikeApp extends Exp with Call with PossibleTrigger {
   def func: FuncLike
   lazy val callee = func
   def typ = func.typ
