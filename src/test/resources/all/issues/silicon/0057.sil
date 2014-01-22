@@ -1,3 +1,4 @@
+//:: IgnoreFile(/Silicon/issue/57/)
 var f:Int
 
 method m(o:Ref)

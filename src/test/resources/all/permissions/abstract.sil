@@ -1,3 +1,4 @@
+//:: IgnoreFile(/Silicon/issue/35/)
 
 var f: Int
 
@@ -169,12 +170,10 @@ method t10(this: Ref, b:Bool)
     var rd2: Perm
     inhale acc(this.f, 1/4);
     fresh(rd,rd2) {
-        //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/35/)
         exhale acc(this.f, 2*(b ? (3*rd) : rd2))
         
         exhale acc(this.f, wildcard)
     }
-    //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/35/)
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
