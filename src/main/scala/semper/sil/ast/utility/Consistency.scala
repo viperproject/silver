@@ -129,17 +129,7 @@ object Consistency {
 
   /** Returns true iff the given expression is a valid trigger. */
   def validTrigger(e: Exp): Boolean = {
-    e.isInstanceOf[PossibleTrigger] && !e.isInstanceOf[ForbiddenTrigger]
-    //!(e.existsDefined {
-    //  case _: LtCmp =>
-    //  case _: LeCmp =>
-    //  case _: GtCmp =>
-    //  case _: GeCmp =>
-    //  case _: PermLtCmp =>
-    //  case _: PermLeCmp =>
-    //  case _: PermGtCmp =>
-    //  case _: PermGeCmp =>
-    //})
+    e.isInstanceOf[PossibleTrigger] && !(e.existsDefined { case _:ForbiddenInTrigger => })
   }
 
   /**

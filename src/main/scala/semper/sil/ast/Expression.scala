@@ -55,7 +55,7 @@ case class IntLit(i: BigInt)(val pos: Position = NoPosition, val info: Info = No
   lazy val typ = Int
 }
 
-/** Integer negation. */
+/** Integer negation. */ // (AS) What does this mean? TODO: check and refactor to unary minus
 case class Neg(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NegOp)
 
 // Boolean expressions
@@ -159,7 +159,7 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 // --- Function application (domain and normal)
 
 /** Function application. */
-case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp {
+case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp with PossibleTrigger {
   args foreach Consistency.checkNoPositiveOnly
 
   /**
@@ -179,7 +179,7 @@ case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPositio
 }
 
 /** User-defined domain function application. */
-case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFuncApp {
+case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFuncApp with PossibleTrigger {
   args foreach Consistency.checkNoPositiveOnly
   override lazy val typ = super.typ.substitute(typVarMap)
   override lazy val formalArgs: Seq[LocalVarDecl] = {
@@ -504,13 +504,13 @@ sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominato
 
 /** 
  * Used to label expression nodes as potentially valid trigger terms for quantifiers. 
- * Use ForbiddenTrigger to declare exceptions (terms which may not be used, despite being a PossibleTrigger)
+ * Use ForbiddenInTrigger to declare terms which may not be used in triggers.
  */
 sealed trait PossibleTrigger extends Exp 
-sealed trait ForbiddenTrigger extends Exp
+sealed trait ForbiddenInTrigger extends Exp
 
 /** Common ancestor of Domain Function applications and Function applications. */
-sealed trait FuncLikeApp extends Exp with Call with PossibleTrigger {
+sealed trait FuncLikeApp extends Exp with Call {
   def func: FuncLike
   lazy val callee = func
   def typ = func.typ
@@ -545,7 +545,7 @@ sealed abstract class EqualityCmp(val op: String) extends BinExp with PrettyBina
 }
 
 /** Expressions with a unary or binary operator. */
-sealed trait DomainOpExp extends AbstractDomainFuncApp {
+sealed trait DomainOpExp extends AbstractDomainFuncApp with ForbiddenInTrigger { // ForbiddenInTrigger: seems likely that all such operators will not be allowed if/when translated to Z3. But if we need something more fine-grained, we can push this further down the hierarchy.
   def func: Op
   def op = func.op
   def fixity = func.fixity

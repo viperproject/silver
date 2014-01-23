@@ -205,27 +205,28 @@ object Expressions {
             case _ =>
           }
           var extraVars: Seq[LocalVarDecl] = Seq() // collect extra variables generated for this term
-        var containsNestedBoundVars = false // flag to rule out this term
-        // closure to generate fresh boolean LocalVar
-        val freshBoolVar: (() => Exp) = {
-          () =>
-            val newV = LocalVarDecl("b__" + id, Bool)()
-            id += 1
-            extraVars +:= newV
-            newV.localVar
-        }
+          var containsNestedBoundVars = false // flag to rule out this term
+          // closure to generate fresh boolean LocalVar
+          val freshBoolVar: (() => Exp) = {
+            () =>
+              val newV = LocalVarDecl("b__" + id, Bool)()
+              id += 1
+              extraVars +:= newV
+              newV.localVar
+          }
           // replaces problematic logical/comparison expressions with fresh boolean variables
           val boolExprEliminator: PartialFunction[Node, Node] = {
-            case Not(e) => freshBoolVar()
-            case EqCmp(e0, e1) => freshBoolVar()
-            case Implies(e0, e1) => freshBoolVar()
-            case And(e0, e1) => freshBoolVar()
-            case Or(e0, e1) => freshBoolVar()
-            case NeCmp(e0, e1) => freshBoolVar()
-            case LtCmp(e0, e1) => freshBoolVar()
-            case LeCmp(e0, e1) => freshBoolVar()
-            case GtCmp(e0, e1) => freshBoolVar()
-            case GeCmp(e0, e1) => freshBoolVar()
+            case _:ForbiddenInTrigger => freshBoolVar()
+            //case Not(e) => freshBoolVar()
+            //case EqCmp(e0, e1) => freshBoolVar()
+            //case Implies(e0, e1) => freshBoolVar()
+            //case And(e0, e1) => freshBoolVar()
+            //case Or(e0, e1) => freshBoolVar()
+            //case NeCmp(e0, e1) => freshBoolVar()
+            //case LtCmp(e0, e1) => freshBoolVar()
+            //case LeCmp(e0, e1) => freshBoolVar()
+            //case GtCmp(e0, e1) => freshBoolVar()
+            //case GeCmp(e0, e1) => freshBoolVar()
           }
           var containedVars: Seq[LocalVar] = Seq()
           val processedArgs = args map (_.transform(boolExprEliminator)()) // eliminate all boolean expressions forbidden from triggers, and replace with "extraVars"
