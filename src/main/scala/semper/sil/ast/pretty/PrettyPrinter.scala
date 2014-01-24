@@ -229,8 +229,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case FieldAccess(rcv, field) =>
       show(rcv) <> "." <> field.name
     case PredicateAccess(params, predicate) =>
-      show(params.head) <> "." <> predicate.name <>
-        parens(ssep(params.tail map show, comma <> space))
+      predicate.name <> parens(ssep(params map show, comma <> space))
     case Unfolding(acc, exp) =>
       parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
     case Old(exp) =>
