@@ -12,6 +12,8 @@ import org.kiama.util.WhitespacePositionedParserUtilities
  * IMPORTANT: If you change or extend the syntax, please also update the synatx
  * description in documentation/syntax as well as the syntax highlighting definitions
  * in util/highlighting!
+ *
+ * IMPORTANT: Also keep the parser in sync with the pretty printer!
  */
 object Parser extends BaseParser {
   override def file = _file
