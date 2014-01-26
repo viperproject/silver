@@ -1,4 +1,3 @@
-//:: IgnoreFile(/silicon/issue/51/)
 var root1 : Ref
 
 	predicate valid1(this: Ref) {
@@ -49,6 +48,7 @@ var root1 : Ref
 			{
 				unfold acc(valid(n),write);
 				unfold acc(validRest(n),write);
+
 				if (n.key==k){
 					b := true;
 					fold acc(validRest(n),write);
@@ -88,6 +88,7 @@ var root1 : Ref
 					}
 				}
 
+        assert true; /* TODO: Triggers a heap compression in Silicon. See Silicon issue #16 */
 			}
 						end := false;
 						while (!end)
@@ -119,6 +120,8 @@ var root1 : Ref
 								fold acc(valid(r),write);
 								n:=r;
 							}
+
+							assert true; /* TODO: Triggers a heap compression in Silicon. See Silicon issue #16 */
 						}
 						assert unfolding acc(udParentValid(n),write) in n==(this.root1);
 						assert acc(n.root,4/10);

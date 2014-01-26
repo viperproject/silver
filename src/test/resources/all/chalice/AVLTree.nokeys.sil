@@ -1,4 +1,3 @@
-//:: IgnoreFile(/silicon/issue/52/)
 var root : Ref
 
 	predicate headvalid(this:Ref){
