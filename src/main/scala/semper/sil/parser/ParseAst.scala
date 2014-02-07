@@ -72,6 +72,7 @@ object TypeHelper {
   val Perm = PPrimitiv("Perm")
   val Ref = PPrimitiv("Ref")
   val Pred = PPredicateType()
+  val Wand = PWandType()
 }
 
 // Identifiers (uses and definitions)
@@ -80,7 +81,10 @@ trait Identifier {
 }
 
 case class PIdnDef(name: String) extends PNode with Identifier
-case class PIdnUse(name: String) extends PExp with Identifier
+
+case class PIdnUse(name: String) extends PExp with Identifier {
+  var letass: Option[PLetAss] = None /* TODO: Can we avoid using a var? */
+}
 
 // Formal arguments
 case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with RealEntity
@@ -151,6 +155,10 @@ case class PPredicateType() extends PInternalType {
   override def toString = "$predicate"
 }
 
+case class PWandType() extends PInternalType {
+  override def toString = "$wand"
+}
+
 // Expressions
 sealed trait PExp extends PNode {
   var typ: PType = PUnknown()
@@ -171,7 +179,17 @@ sealed trait PLocationAccess extends PExp
 case class PFieldAccess(rcv: PExp, idnuse: PIdnUse) extends PLocationAccess
 case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse) extends PLocationAccess
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
-case class PUnfolding(acc: PAccPred, exp: PExp) extends PExp
+
+sealed trait PUnFoldingExp extends PExp {
+  def acc: PAccPred
+  def exp: PExp
+}
+
+case class PUnfolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp
+case class PFolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp
+
+case class PApplying(wand: PExp, exp: PExp) extends PExp
+
 case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp
 case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp with PScope
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
@@ -185,6 +203,8 @@ case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 
 sealed trait POldExp extends PExp { def e: PExp }
 case class POld(e: PExp) extends POldExp
+case class PPackageOld(e: PExp) extends POldExp
+case class PApplyOld(e: PExp) extends POldExp
 
 case class PEmptySeq(t : PType) extends PExp
 {
@@ -221,6 +241,8 @@ sealed trait PStmt extends PNode {
 case class PSeqn(ss: Seq[PStmt]) extends PStmt
 case class PFold(e: PExp) extends PStmt
 case class PUnfold(e: PExp) extends PStmt
+case class PPackageWand(e: PExp) extends PStmt
+case class PApplyWand(e: PExp) extends PStmt
 case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
@@ -234,6 +256,10 @@ case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extend
 case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) extends PStmt
 case class PLabel(idndef: PIdnDef) extends PStmt with RealEntity
 case class PGoto(targets: PIdnUse) extends PStmt
+
+case class PLetAss(idndef: PIdnDef, exp: PExp) extends PStmt with RealEntity
+case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with RealEntity
+case class PSkip() extends PStmt
 
 // Declarations
 sealed trait PMember extends PNode with PScope {
@@ -294,11 +320,13 @@ object Nodes {
       case PBoolLit(b) => Nil
       case PNullLit() => Nil
       case PPredicateType() => Nil
+      case PWandType() => Nil
       case PResultLit() => Nil
       case PFieldAccess(rcv, field) => Seq(rcv, field)
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
       case PFunctApp(func, args) => Seq(func) ++ args
-      case PUnfolding(acc, exp) => Seq(acc, exp)
+      case e: PUnFoldingExp => Seq(e.acc, e.exp)
+      case PApplying(wand, in) => Seq(wand, in)
       case PExists(vars, exp) => vars ++ Seq(exp)
       case po: POldExp => Seq(po.e)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
@@ -327,6 +355,8 @@ object Nodes {
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)
+      case PPackageWand(exp) => Seq(exp)
+      case PApplyWand(exp) => Seq(exp)
       case PExhale(exp) => Seq(exp)
       case PAssert(exp) => Seq(exp)
       case PInhale(exp) => Seq(exp)
@@ -353,6 +383,9 @@ object Nodes {
       case PPredicate(name, args, body) =>
         Seq(name) ++ args ++ Seq(body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
+      case PLetAss(idndef, ass) => Seq(idndef, ass)
+      case PLetWand(idndef, wand) => Seq(idndef, wand)
+      case _: PSkip => Nil
     }
   }
 }

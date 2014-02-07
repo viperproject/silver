@@ -456,6 +456,7 @@ object CfgGenerator {
         case _: LocalVarAssign | _: FieldAssign |
              _: Inhale | _: Exhale |
              _: Fold | _: Unfold |
+             _: Package | _: Apply |
              _: MethodCall | _: FreshReadPerm |
              _: NewStmt | _: Assert =>
           // regular, non-control statements

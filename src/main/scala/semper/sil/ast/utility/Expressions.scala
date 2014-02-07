@@ -6,12 +6,13 @@ import semper.sil.ast._
 object Expressions {
   def isPure(e: Exp): Boolean = e match {
     case _: AccessPredicate => false
+    case lv: AbstractLocalVar if lv.typ == Wand => false
 
     case UnExp(e0) => isPure(e0)
     case InhaleExhaleExp(in, ex) => isPure(in) && isPure(ex)
     case BinExp(e0, e1) => isPure(e0) && isPure(e1)
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
-    case Unfolding(_, in) => isPure(in) /* Assuming that the first argument is pure */
+    case gop: GhostOperation => isPure(gop.body)
     case QuantifiedExp(_, e0) => isPure(e0)
 
     case _: Literal

@@ -40,8 +40,15 @@ object Transformer {
             /* No recursion on predicate here. */
             case PredicateAccess(params, predicate) =>
               PredicateAccess(params map go, predicate)(p, i)
+
             case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i)
+            case Folding(acc, e) => Folding(go(acc), go(e))(p, i)
+            case Applying(wand, in) => Applying(go(wand), go(in))(p, i)
+            case Exhaling(exp) => Exhaling(go(exp))(p, i)
+
             case Old(e) => Old(go(e))(p, i)
+            case PackageOld(e) => PackageOld(go(e))(p, i)
+            case ApplyOld(e) => ApplyOld(go(e))(p, i)
             case CondExp(cond, thn, els) =>
               CondExp(go(cond), go(thn), go(els))(p, i)
             case Exists(v, e) => Exists(v map go, go(e))(p, i)
@@ -73,6 +80,7 @@ object Transformer {
             case Or(l, r) => Or(go(l), go(r))(p, i)
             case And(l, r) => And(go(l), go(r))(p, i)
             case Implies(l, r) => Implies(go(l), go(r))(p, i)
+            case MagicWand(l, r) => MagicWand(go(l), go(r))(p, i)
 
             case Add(l, r) => Add(go(l), go(r))(p, i)
             case Sub(l, r) => Sub(go(l), go(r))(p, i)
@@ -177,6 +185,7 @@ object Transformer {
             case Int => aType
             case Perm => aType
             case Pred => aType
+            case Wand => aType
             case Ref => aType
             case SeqType(elementType) => SeqType(go(elementType))
             case SetType(elementType) => SetType(go(elementType))
@@ -234,6 +243,12 @@ object Transformer {
 
             case Unfold(predicate) =>
               Unfold(go(predicate))(statement.pos, statement.info)
+
+            case Package(wand) =>
+              Package(go(wand))(statement.pos, statement.info)
+
+            case Apply(wand) =>
+              Apply(go(wand))(statement.pos, statement.info)
 
             case While(condition, invariants, locals, body) =>
               While(go(condition), invariants map go, locals map go,
