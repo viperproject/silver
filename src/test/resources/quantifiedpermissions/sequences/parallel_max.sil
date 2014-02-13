@@ -1,3 +1,4 @@
+//:: IgnoreFile(/silicon/issue/68/)
 // Yannis: I used an unknown read permission instead of wildcard.  It doesn't seem to work: a Scala match exception is thrown.  Please look at it
   // note: the same thing happens if I use fresh
 // Korbinian(2/3/2014): Yep, I corrected that. I was indeed an implementation error.
