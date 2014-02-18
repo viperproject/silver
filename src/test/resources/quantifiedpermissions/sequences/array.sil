@@ -12,7 +12,7 @@ ensures forall k:Int :: k in [0..i) ==> acc(this.array[k].value, write)
 }
 
 method set(this:Ref, i:Int, val:Int)
-requires acc(this.array, wildcard)  // Yannis: changed permission to wildcard
+requires acc(this.array, wildcard)
 requires 0 <= i && i < |this.array|
 requires acc(this.array[i].value, write)
 ensures acc(this.array, wildcard)
@@ -26,7 +26,7 @@ ensures this.array[i].value == val
 function get(this:Ref, i:Int):Int
 requires acc(this.array, wildcard)
 requires 0 <= i && i < |this.array|
-requires acc(this.array[i].value, wildcard)  // Yannis: changed the spec into a more elegant one.  Still works
+requires acc(this.array[i].value, wildcard)
 {
     this.array[i].value
 }
