@@ -3,7 +3,7 @@ package semper.sil.ast
 import java.io.File
 import java.nio.file.Path
 
-/** A trait describing the position of occurance of an AST node. */
+/** A trait describing the position of occurrence of an AST node. */
 sealed trait Position
 
 /** Describes ''no location'' for cases where a `Position` is expected, but not available. */
