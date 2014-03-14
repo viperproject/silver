@@ -1,3 +1,4 @@
+//:: IgnoreFile(/Carbon/issue/13/)
 
 domain List[T] {
     function nil(): List[T]
