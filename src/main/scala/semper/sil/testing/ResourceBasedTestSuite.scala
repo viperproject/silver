@@ -84,7 +84,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
 
     val directoryStream = Files.newDirectoryStream(dir)
     val dirContent = directoryStream.toList
-    val namePattern = configMap.getOrElse("includeTests", ".*\\.sil").toString
+    val includeFilesPattern = configMap.getOrElse("includeFiles", ".*\\.sil").toString
 
     for (f: Path <- dirContent
          if Files.isDirectory(f)) {
@@ -100,7 +100,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
         // Once the SBT REPL is closed, the "ghost" file disappears.
         if Files.isReadable(f)
         if !Files.isDirectory(f)
-        if f.toString.matches(namePattern)) {
+        if f.toString.matches(includeFilesPattern)) {
 
       val testInput = buildTestInput(f, prefix)
 
