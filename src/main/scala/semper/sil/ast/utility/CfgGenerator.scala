@@ -439,14 +439,16 @@ object CfgGenerator {
           val afterLoop = Lbl("afterLoop", generated = true)
           nodes += Loop(afterLoop, w)
           run(body)
-          // The 'afterTarget' label generated for an if block at the end
-          // of this loop's body will refer to the following empty statement
+          // Allow labels in the loop body to point to the end of the body,
+          // for instance the 'afterTarget' label of an if statement.
           nodes += EmptyStmt()
           lblmap += afterLoop -> nextNode
         case frp @ FreshReadPerm(vars, body) =>
           val afterFRP = Lbl("afterFRP", generated = true)
           nodes += FreshReadPermES(afterFRP, frp)
           run(body)
+          // Allow labels in the body to target the end of the body.
+          nodes += EmptyStmt()
           lblmap += afterFRP -> nextNode
         case Seqn(ss) =>
           nodes += EmptyStmt()
