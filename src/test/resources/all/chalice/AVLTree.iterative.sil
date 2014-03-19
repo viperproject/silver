@@ -67,8 +67,6 @@ var root1 : Ref
 							p.leftDown := true;
 							fold acc(leftOpen(p),write);
 							fold acc(udValid(p),write);
-							assert p.right!=(p.left);
-							assert n.parent.left==n;
 							fold acc(udParentValid(n),write);
 						}
 					}else{
@@ -87,8 +85,6 @@ var root1 : Ref
 						}
 					}
 				}
-
-        assert true; /* TODO: Triggers a heap compression in Silicon. See Silicon issue #16 */
 			}
 						end := false;
 						while (!end)
@@ -120,13 +116,8 @@ var root1 : Ref
 								fold acc(valid(r),write);
 								n:=r;
 							}
-
-							assert true; /* TODO: Triggers a heap compression in Silicon. See Silicon issue #16 */
 						}
-						assert unfolding acc(udParentValid(n),write) in n==(this.root1);
-						assert acc(n.root,4/10);
 						unfold acc(udParentValid(n),write);
-						assert acc(n.root,1/2);
 						fold acc(valid1(this),write);
 
 		}
@@ -145,7 +136,7 @@ var root1 : Ref
 
 	 var leftDown : Bool
 	 var root : Ref
-	
+
 	predicate valid(this: Ref){
 		   acc(validRest(this),write)
 		&& acc(leftValid(this),write)
@@ -179,21 +170,21 @@ var root1 : Ref
 		&& (this.left!=null ==> acc(this.left.root,1/2))
 		&& (this.left!=null ==> this.left.root == (this.root))
 	}
-	
+
 	predicate leftOpen(this: Ref){
 		   acc(this.left  ,1/4)
 		&& acc(this.root,1/10)
 		&& (this.left!=null ==> acc(this.left.parent,1/2))
 		&& (this.left!=null ==> this.left.parent==this)
 	}
-	
+
 	predicate rightOpen(this: Ref){
 		   acc(this.right  ,1/4)
 		&& acc(this.root,1/10)
 		&& (this.right!=null ==> acc(this.right.parent,1/2))
 		&& (this.right!=null ==> this.right.parent==this)
 	}
-	
+
 	predicate udParentValid(this: Ref) {
 		   acc(this.parent,1/2)
 		&& acc(this.root,1/10)
