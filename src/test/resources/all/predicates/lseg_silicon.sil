@@ -67,8 +67,8 @@ method addAtEnd(this: Ref, end: Ref, val: Int)
         this.next := n
         fold acc(lseg(n, end), write)
 
-        assert length(n, end) == 1 /* Required by Silicon, POST2 fails otherwise */
-        assert get(n, 0, end) == val /* Required by Silicon, POST4 fails otherwise */
+        assert length(n, end) == 1 /* TODO: Required by Silicon, POST2 fails otherwise */
+        assert get(n, 0, end) == val /* TODO: Required by Silicon, POST4 fails otherwise */
     } else {
         addAtEnd(this.next, end, val)
     }
