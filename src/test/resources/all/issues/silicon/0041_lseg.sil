@@ -1,6 +1,4 @@
-/*
- * ATTENTION: Please keep this file in sync with lseg.sil!
- */
+/* This is a copy of predicates/lseg.sil with additional assertions required by Silicon */
 
 var next: Ref
 var value: Int

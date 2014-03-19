@@ -394,12 +394,15 @@ var root : Ref
 		ensures this.right!=null ==> acc(valid(this.right),write);
 		ensures this.right!=null ==> acc(this.right.height,rd);
 		ensures bf == ((this.left==null?0:this.left.height)-(this.right==null?0:this.right.height));
-    //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/75/)
-		ensures bf>0 ==> this.left !=null;
+		ensures bf>0 ==> this.left !=null; /* POST1 */
 	{
 		var lh : Int := (this.left ==null ? 0 : this.left .height );
 		var rh : Int := (this.right==null ? 0 : this.right.height );
 		bf := lh-rh;
+
+		/* TODO: The following two asserts are required by Silicon, POST1 otherwise fails */
+		assert this.right!=null ==> unfolding acc(valid(this.right),write) in this.right.height>0;
+		assert this.left !=null ==> unfolding acc(valid(this.left),write) in this.left .height>0;
 	}
 
 	method close(this:Ref)
@@ -435,7 +438,10 @@ var root : Ref
 		this.height := ( (( this.left==null ? 0 : this.left.height )>( this.right==null ? 0 : this.right.height )) ? ( this.left==null ? 0 : this.left.height )+1 : ( this.right==null ? 0 : this.right.height )+1);
 		this.balanceFactor := ( this.left==null ? 0 : this.left.height )-( this.right==null ? 0 : this.right.height );
 
-    //:: UnexpectedOutput(fold.failed:assertion.false, /silicon/issue/75/)
+    /* TODO: The following two asserts are required by Silicon, the fold afterwards otherwise fails */
+		assert this.left !=null ==> unfolding acc(valid(this.left),write) in this.left .height>0;
+		assert this.right!=null ==> unfolding acc(valid(this.right),write) in this.right.height>0;
+
 		fold acc(valid(this),write);
 	}
 
