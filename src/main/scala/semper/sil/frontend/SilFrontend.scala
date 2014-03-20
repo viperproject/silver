@@ -135,7 +135,8 @@ trait SilFrontend extends DefaultFrontend {
     * arguments failed.
     */
   protected def printFallbackHeader() {
-    println(s"${_ver.name} ${_ver.version} ${_ver.copyright}")
+    println(s"${_ver.name} ${_ver.version}")
+    println(s"${_ver.copyright}")
     println()
   }
 
