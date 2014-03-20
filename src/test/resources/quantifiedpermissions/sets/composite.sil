@@ -1,0 +1,120 @@
+domain Visit {
+  function visit(rf: Ref): Bool
+}
+
+// class "Node"
+var value: Int
+var left: Ref
+var right: Ref
+var parent: Ref
+var parentStruct: Ref
+
+// class "Composite"
+var all: Set[Ref]
+
+predicate inv(this: Ref)
+{
+        acc(this.all, write) && !(null in (this.all))
+     && (forall m: Ref :: m in (this.all) ==> acc(m.parent, wildcard))
+     && (forall o: Ref :: o in (this.all) ==> acc(o.parentStruct, wildcard))
+     && (forall q: Ref :: q in (this.all) ==> acc(q.left, 1/2))
+	 && (forall t: Ref :: t in (this.all) && t.left != null && visit(t) ==> t.left in this.all)
+     && (forall s: Ref :: (s in (this.all) && s.left == null) ==> acc(s.left, 1/2))
+     && (forall v: Ref :: v in (this.all) ==> acc(v.right, 1/2))
+	 && (forall t1: Ref :: t1 in (this.all) && t1.right != null && visit(t1) ==> t1.right in this.all)
+     && (forall y: Ref :: (y in (this.all) && y.right == null) ==> acc(y.right, 1/2))
+     && (forall x: Ref :: x in (this.all) ==> acc(x.value, write))
+     && forall y: Ref :: y in this.all && visit(y) ==> y.value == ((y.left==null ? 0 : y.left.value) + (y.right==null ? 0 : y.right.value))  + 1
+}
+
+function getAllNodes(this: Ref) : Set[Ref]
+  requires acc(inv(this), wildcard)
+{
+ unfolding acc(inv(this), wildcard) in this.all
+}
+
+function getLeft(this: Ref) : Ref
+  requires this != null && acc(this.parentStruct, wildcard) && acc(inv(this.parentStruct), wildcard) && this in getAllNodes(this.parentStruct)
+{
+ unfolding acc(inv(this.parentStruct), wildcard) in this.left
+}
+
+function getRight(this: Ref) : Ref
+  requires this != null && acc(this.parentStruct, wildcard) && acc(inv(this.parentStruct), wildcard) && this in getAllNodes(this.parentStruct)
+{
+ unfolding acc(inv(this.parentStruct), wildcard) in this.right
+}
+
+function getParent(this: Ref) : Ref
+  requires this != null && acc(this.parentStruct, wildcard) && acc(inv(this.parentStruct), wildcard) && this in getAllNodes(this.parentStruct)
+{
+ unfolding acc(inv(this.parentStruct), wildcard) in this.parent
+}
+
+method initSingle(this: Ref)
+  requires acc(this.value, write) && acc(this.left, write) && acc(this.right, write) && acc(this.parent, write) && acc(this.parentStruct, write)
+  requires this.left==null && this.right==null && this.parent==null && this.parentStruct==null
+  ensures acc(this.parentStruct, wildcard) && this.parentStruct!=null
+  ensures acc(inv(this.parentStruct), write) && getAllNodes(this.parentStruct) == Set(this)
+  ensures getLeft(this)==null && getRight(this)==null && getParent(this)==null
+{
+  this.value := 1
+  var p: Ref
+  p := new()
+  this.parentStruct := p
+  this.parentStruct.all := Set(this)
+  this.left := null
+  this.right := null
+  this.parent := null
+
+  //:: UnexpectedOutput(fold.failed:insufficient.permission, /silicon/issue/78/)
+  fold acc(inv(this.parentStruct), write)
+}
+
+method initAndInsert(this: Ref, newParent: Ref, isLeft: Bool)
+  requires acc(this.value, write) && acc(this.left, write) && acc(this.right, write) && acc(this.parent, write) && acc(this.parentStruct, write)
+  requires this.left==null && this.right==null && this.parent==null && this.parentStruct==null
+  requires newParent != null && acc(newParent.parentStruct, wildcard) && acc(inv(newParent.parentStruct, write)) && !(this in getAllNodes(newParent.parentStruct)) && newParent in getAllNodes(newParent.parentStruct)
+  requires isLeft ? getLeft(newParent)==null : getRight(newParent)==null
+
+
+/*  ensures acc(this.parentStruct, wildcard)
+  ensures acc(inv(newParent.parentStruct), write) && getAllNodes(newParent.parentStruct) == Set(this) union old(getAllNodes(newParent.parentStruct))
+  ensures unfolding inv(newParent.parentStruct, write) in this.parent == newParent && this.left==null && this.right==null
+  ensures unfolding inv(newParent.parentStruct, write) in isLeft ? newParent.left == this : newParent.right == this*/
+{
+  this.value := 1
+  this.parent := newParent
+  unfold acc(inv(newParent.parentStruct), write)
+  
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
+  assert isLeft ? newParent.left == null : newParent.right == null
+  
+  if (isLeft) { newParent.left := this } else { newParent.right := this }
+  
+  this.parentStruct := newParent.parentStruct
+  this.parentStruct.all := this.parentStruct.all union Set(this)
+  fixInvariant(newParent, this.parentStruct)
+}
+
+method fixInvariant(this: Ref, composite: Ref)
+/*  requires this != null && composite != null && acc(composite.all, write) && this in composite.all
+  requires !(null in (composite.all))
+     && (forall m1: Ref :: m1 in (composite.all) ==> acc(m1.parent, wildcard))
+     && (forall o1: Ref :: o1 in (composite.all) ==> acc(o1.parentStruct, wildcard))
+     && (forall q1: Ref :: q1 in (composite.all) ==> acc(q1.left, 1/2))
+     && (forall r1: Ref :: (r1 in (composite.all) && r1.left != null) ==> (r1.left in (this.all)))
+     && (forall t1: Ref :: (t1 in (composite.all) && t1.left != null) ==> ((t1.left.parent)==composite))
+     && (forall s1: Ref :: (s1 in (composite.all) && s1.left == null) ==> acc(s1.left, 1/2))
+     && (forall v1: Ref :: v1 in (composite.all) ==> acc(v1.right, 1/2))
+     && (forall w1: Ref :: (w1 in (composite.all) && w1.right != null) ==> (w1.right in (this.all)))
+     && (forall x1: Ref :: (x1 in (composite.all) && x1.right != null) ==> ((x1.right.parent)==composite))
+     && (forall y1: Ref :: (y1 in (composite.all) && y1.right == null) ==> acc(y1.right, 1/2))
+     && (forall x1: Ref :: x1 in (composite.all) ==> acc(x1.value, write))
+     && forall y1: Ref :: y1 in composite.all && this != y1 ==> y1.value == ((y1.left==null ? 0 : y1.left.value) + (y1.right==null ? 0 : y1.right.value)) + 1
+	 && this.value == ((this.left==null ? 0 : this.left.value) + (this.right==null ? 0 : this.right.value))
+  ensures acc(inv(composite, write)) && getAllNodes(composite) == old(getAllNodes(composite))*/
+{
+  assume false
+}
+
