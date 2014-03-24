@@ -1,36 +1,60 @@
 var f: Int
 
-method qsort(s: Seq[Ref], start: Int, end: Int)
+method qsort(s: Seq[Ref], start: Int, end: Int) returns (permutation: Seq[Int])
   requires 0 <= start && start <= end && end <= |s|
   requires forall i: Int :: i in [start..end) ==> acc(s[i].f, write)
   ensures forall i1: Int :: i1 in [start..end) ==> acc(s[i1].f, write)
-    // sorting spec omitted
+  
+  //sorting specs
+  ensures forall i2: Int :: i2 in [start..end-1) ==> s[i2].f <= s[i2].f
+  
+  // permutation specs
+  // ensures |permutation| == end && forall i3, i4: Int :: i3 in [start..end) && i4 in [start..end) && i3 != i4 ==> permutation[i3] != permutation[i4] && permutation[i3] in [start..end)
+  //ensures forall i5: Int :: i5 in [start..end) ==> s[i5].f <= old(s[permutation[i5]].f)
 {
   var storeIndex: Int
   var index: Int
   var aux: Int
+  var pL: Seq[Int]
+  var pR: Seq[Int]
+  
+  inhale |permutation| == start
   
   if (start < end-1) {
     storeIndex := start
     index := start
     while (index < end - 1)
-      invariant forall i3: Int :: i3 in [start..end) ==> acc(s[i3].f, write)
+      invariant forall i6: Int :: i6 in [start..end) ==> acc(s[i6].f, write)
       invariant start <= storeIndex && storeIndex <= index
       invariant start <= index && index < end
-        // sorting spec omitted
+        
+      //sorting specs
+      invariant forall i7: Int :: i7 in [start..storeIndex) ==> s[i7].f <= s[end-1].f
+	  invariant forall i8: Int :: i8 in [storeIndex..index) ==> s[i8].f > s[end-1].f
+      invariant |permutation| == index && forall i9: Int :: forall i10: Int :: i9 in [start..index) && i10 in [start..index) && i9 != i10 ==> permutation[i9] != permutation[i10]
+	  invariant forall i11: Int :: i11 in [start..index) ==> start <= permutation[i11] && permutation[i11] < index
+      //ensures forall i5: Int :: i5 in [start..end) ==> s[i5].f <= old(s[permutation[i5]].f)
     {
       if (s[index].f <= s[end-1].f) {
         aux := s[storeIndex].f
         s[storeIndex].f := s[index].f
         s[index].f := aux
         storeIndex := storeIndex + 1
+		permutation := permutation ++ Seq(storeIndex)
+		permutation[storeIndex] := index   // not parsing!
       }
+	  else {
+	    // this assertion serves as a lemma
+	    assert forall i70: Int :: i70 in [start..storeIndex) ==> s[i70].f <= s[end-1].f
+		permutation := permutation ++ [index]
+	  }
       index := index + 1
     }
+	
     aux := s[storeIndex].f
     s[storeIndex].f := s[end-1].f
     s[end-1].f := aux
-    qsort(s, start, storeIndex)
-    qsort(s, storeIndex+1, end)
+    pL := qsort(s, start, storeIndex)
+    pR := qsort(s, storeIndex+1, end)
   }
 }  
