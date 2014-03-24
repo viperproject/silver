@@ -16,7 +16,8 @@ ensures acc(inv(this), write)
 	assume t in this.n
 	var a:Int := t.f
 	fold acc(inv(this), write)
-	//unfold acc(inv(this), write)
-	//assert a == t.f
-	
+	unfold acc(inv(this), write)
+	//:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
+	assert a == t.f
+	fold acc(inv(this), write)
 }
