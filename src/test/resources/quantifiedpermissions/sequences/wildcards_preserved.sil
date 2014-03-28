@@ -1,5 +1,3 @@
-// Yannis: are wildcard permissions preserved correctly?
-
 var f:Int
 
 method foo (S:Seq[Ref])
@@ -7,9 +5,9 @@ method foo (S:Seq[Ref])
   ensures forall i:Int :: i in [0..|S|)  ==> acc(S[i].f, wildcard)
 {
   if(|S| > 1) { exhale acc(S[0].f, wildcard) }
-  //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  exhale forall i1:Int :: i1 in [0..|S|-2)  ==> acc(S[i1].f, wildcard) // Yannis: fails here already!
-  // Korbinian(2/3/14): Why shouldn't it?
+  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/81/)
+  exhale forall i1:Int :: i1 in [0..|S|-2)  ==> acc(S[i1].f, wildcard)
+  
   exhale forall i2:Int :: i2 in [0..|S|)  ==> acc(S[i2].f, wildcard)
 }
   
