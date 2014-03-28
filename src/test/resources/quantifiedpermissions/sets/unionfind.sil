@@ -2,7 +2,24 @@
 var struct: Ref
 var parent: Ref
 
-/* add to structure */
+function valid(this:Ref) : Bool
+  requires acc(this.struct, wildcard)
+  requires acc(inv(this.struct), wildcard)
+{
+  unfolding acc(inv(this.struct), wildcard) in this in this.struct.nodes
+}
+
+function find(this:Ref) : Ref
+  requires acc(this.struct, wildcard)
+  requires acc(inv(this.struct), wildcard)
+  requires valid(this)
+  ensures result != null && result in allNodes(this.struct)
+{
+    (unfolding acc(inv(this.struct), wildcard) in (this == this.parent)) ? this : (unfolding acc(inv(this.struct), wildcard) in find(this.parent))
+}
+
+// missing: proof that find terminates
+
 method add(this: Ref, struct: Ref)
   requires acc(this.struct, write)
   requires acc(this.parent, write)
@@ -27,23 +44,25 @@ method add(this: Ref, struct: Ref)
 	assert unfolding acc(inv(struct), write) in this.parent == this
 }
 
-function valid(this:Ref) : Bool
-  requires acc(this.struct, wildcard)
-  requires acc(inv(this.struct), wildcard)
+method lemma0(p: Ref, q: Ref)
+  requires acc(q.struct, wildcard) && acc(inv(q.struct), wildcard) && valid(q) && p == find(q)
+  ensures acc(q.struct, wildcard)
+  ensures acc(p.struct, wildcard)
+  ensures p.struct == q.struct
+  ensures acc(inv(p.struct), wildcard)
 {
-  unfolding acc(inv(this.struct), wildcard) in (this in (this.struct.nodes))
+  if (p!=q) {
+    unfold acc(inv(q.struct), wildcard)
+    assert valid(q.parent)
+    assert find(q.parent) == find(q)
+    lemma0(p, q.parent)
+    fold acc(inv(p.struct), wildcard)
+  }
 }
 
-function find(this:Ref) : Ref
-  requires acc(this.struct, wildcard)
-  requires acc(inv(this.struct), wildcard)
-  requires valid(this)
-  ensures result != null
-{
-    (unfolding acc(inv(this.struct), wildcard) in (this == this.parent)) ? this : (unfolding acc(inv(this.struct), wildcard) in find(this.parent))
-}
+// prove termination of lemma0
 
-method unionn(this: Ref, other: Ref)
+/*method unionn(this: Ref, other: Ref)
   requires acc(this.struct, wildcard)
   requires acc(inv(this.struct), write)
   requires valid(this)
@@ -63,18 +82,18 @@ method unionn(this: Ref, other: Ref)
 	var other1:Ref := find(other)
 	if(other1 != this1)
 	{
-/*	  This branch does not yet verify
-
-      // lemma missing to complete the verification
-	  inhale acc(this1.struct, wildcard) && this1.struct == this.struct && this1 in allNodes(this.struct)
+      assert this1 in allNodes(this.struct)
+      
+	  // lemma missing to complete the verification
+	  //inhale acc(this1.struct, wildcard) && this1.struct == this.struct
+      lemma0(this1, this)
 	  
 	  unfold acc(inv(this1.struct), write)
 	  this1.parent := other1
 	  
-	  // verification fails here
-	  fold acc(inv(this1.struct), write) */
+	  fold acc(inv(this1.struct), write)
 	}
-}
+}*/
 
 // class UnionFind
 var nodes: Set[Ref]
@@ -85,7 +104,7 @@ predicate inv(this: Ref)
     (forall o : Ref :: o in (this.nodes) ==> acc(o.struct, wildcard)) &&
     (forall p : Ref :: p in (this.nodes) ==> p.struct == this)  &&
     (forall n : Ref :: n in (this.nodes) ==> acc(n.parent, write)) &&
-    (forall q : Ref :: q in (this.nodes) ==> (q.parent != null) && (q.parent in (this.nodes)))
+    (forall q : Ref :: q in (this.nodes) ==> q.parent in this.nodes)
 }
 
 function allNodes(this:Ref): Set[Ref]
@@ -93,3 +112,6 @@ function allNodes(this:Ref): Set[Ref]
 {
     unfolding acc(inv(this), wildcard) in this.nodes
 }
+
+
+// add client
