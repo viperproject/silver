@@ -2,71 +2,76 @@
 var parent: Ref
 
 function find(struct: Ref, this:Ref) : Ref
-  requires struct != null && this != null && acc(inv(struct), wildcard) && this in allNodes(struct)
-  ensures result != null && result in allNodes(struct)
+  requires acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
+  requires this in struct.nodes
+  ensures result != null && result in struct.nodes
 {
-  unfolding acc(inv(struct), wildcard) in this == this.parent ? this : find(struct, this.parent)
+  this == this.parent ? this : find(struct, this.parent)
 }
 
 // todo: proof that find terminates
 
 method add(struct: Ref, this: Ref)
   requires acc(this.parent, write) && this.parent == null
-  requires struct != null && acc(inv(struct), write)
-  ensures acc(inv(struct), write)
-  ensures allNodes(struct) == old(allNodes(struct)) union Set(this)
+  requires acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
+  ensures acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
+  ensures struct.nodes == old(struct.nodes) union Set(this)
   ensures this == find(struct, this)
-  ensures forall o: Ref :: o in old(allNodes(struct)) ==> find(struct, o) == old(find(struct, o))
+  ensures forall o: Ref :: o in old(struct.nodes) ==> find(struct, o) == old(find(struct, o))
 {
-    unfold acc(inv(struct), write)
     this.parent := this
     struct.nodes := struct.nodes union Set(this)
-    fold acc(inv(struct), write)
-	
-	//: : UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
-	assert unfolding acc(inv(struct), write) in this.parent == this
-    // todo: this failed assertion is probably the reason why the postconditions for find do not verify
 }
 
 method unionn(struct: Ref, this: Ref, other: Ref)
-  requires struct != null && acc(inv(struct), write)
-  requires this != null && this in allNodes(struct)
-  requires other != null && other in allNodes(struct)
-  ensures acc(inv(struct), write)
-  ensures allNodes(struct) == old(allNodes(struct))
-  ensures forall p: Ref, q: Ref :: p in allNodes(struct) && q in allNodes(struct) && old(find(struct, p) == find(struct, q)) ==> find(struct, p) == find(struct, q)
-  ensures forall p: Ref, q: Ref :: p in allNodes(struct) && q in allNodes(struct) && old(find(struct, p) == find(struct, this)) && old(find(struct, q) == find(struct, other)) ==> find(struct, p) == find(struct, q)
+  requires acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
+  requires this != null && this in struct.nodes && other != null && other in struct.nodes
+  ensures acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
+  ensures struct.nodes == old(struct.nodes)
+  ensures forall p: Ref, q: Ref :: p in struct.nodes && q in struct.nodes && old(find(struct, p) == find(struct, q)) ==> find(struct, p) == find(struct, q)
+  ensures forall p: Ref, q: Ref :: p in struct.nodes && q in struct.nodes && old(find(struct, p) == find(struct, this)) && old(find(struct, q) == find(struct, other)) ==> find(struct, p) == find(struct, q)
   ensures forall p: Ref, q: Ref ::
-    p in allNodes(struct) && q in allNodes(struct) && old(find(struct, p) != find(struct, this)) && old(find(struct, q) != find(struct, other)) && old(find(struct, p) == find(struct, q)) ==> find(struct, p) == find(struct, q)
+    p in struct.nodes && q in struct.nodes && old(find(struct, p) != find(struct, this)) && old(find(struct, q) != find(struct, other)) && old(find(struct, p) == find(struct, q)) ==> find(struct, p) == find(struct, q)
 {
 	var this1:Ref := find(struct, this)
 	var other1:Ref := find(struct, other)
 	if(other1 != this1)
-	{     
-	  unfold acc(inv(struct), write)
+	{
+      var p0: Ref
+      inhale p0 in struct.nodes && find(struct, p0) == this1  /* LEMMA 0 ASSUMPTION */
+      var p1: Ref
+      inhale p1 in struct.nodes && find(struct, p1) != this1  /* LEMMA 1 ASSUMPTION */
+      
 	  this1.parent := other1
-	  fold acc(inv(struct), write)
+      
+      /* LEMMA 0 PROOF */
+      var q0:Ref := p0
+      while (q0 != this1)
+        invariant old(find(struct, q0) == find(struct, p0))
+      {
+        q0 := q0.parent
+      }
+      assert find(struct, p0) == find(struct, this1)
+      assert find(struct, p0) == other1  /* LEMMA 0 CONCLUSION */
+      //todo: prove loop termination
+            
+      /* LEMMA 1 PROOF */
+      var q1:Ref := p1
+      while (q1 != old(find(struct, p1)))
+        invariant old(find(struct, q1) == find(struct, p1))
+      {
+        q1 := q1.parent
+      }
+      assert find(struct, p1) == old(find(struct, p1))  /* LEMMA 1 CONCLUSION */
+      //todo: prove loop termination
       
       // todo: lemmas to prove
-      inhale forall p: Ref :: p in allNodes(struct) && old(find(struct, p)) == this1 ==> find(struct, p) == other1
-      inhale forall p: Ref :: p in allNodes(struct) && old(find(struct, p)) != this1 ==> find(struct, p) == old(find(struct, p))
+      inhale forall p: Ref :: p in struct.nodes && old(find(struct, p)) == this1 ==> find(struct, p) == other1  // LEMMA 0
+      inhale forall p: Ref :: p in struct.nodes && old(find(struct, p)) != this1 ==> find(struct, p) == old(find(struct, p))  // LEMMA 1
 	}
 }
 
 // class UnionFind
 var nodes: Set[Ref]
-
-predicate inv(this: Ref)
-{
-    acc(this.nodes, write) && !(null in this.nodes) &&
-    (forall n : Ref :: n in this.nodes ==> acc(n.parent, write)) &&
-    (forall q : Ref :: q in this.nodes ==> q.parent in this.nodes)
-}
-
-function allNodes(this:Ref): Set[Ref]
-  requires acc(inv(this), wildcard)
-{
-    unfolding acc(inv(this), wildcard) in this.nodes
-}
 
 // todo: add client
