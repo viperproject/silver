@@ -28,25 +28,6 @@ method add(struct: Ref, this: Ref)
     // todo: this failed assertion is probably the reason why the postconditions for find do not verify
 }
 
-/*method lemma0(p: Ref, q: Ref)
-  requires acc(q.struct, wildcard) && acc(inv(q.struct), wildcard) && valid(q) && p == find(q)
-  ensures acc(q.struct, wildcard)
-  ensures acc(p.struct, wildcard)
-  ensures p.struct == q.struct
-  ensures acc(inv(p.struct), wildcard)
-{
-  if (p!=q) {
-    unfold acc(inv(q.struct), wildcard)
-    assert valid(q.parent)
-    assert find(q.parent) == find(q)
-    lemma0(p, q.parent)
-    fold acc(inv(p.struct), wildcard)
-  }
-}
-
-// prove termination of lemma0
-*/
-
 method unionn(struct: Ref, this: Ref, other: Ref)
   requires struct != null && acc(inv(struct), write)
   requires this != null && this in allNodes(struct)
