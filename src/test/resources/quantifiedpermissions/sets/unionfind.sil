@@ -1,9 +1,14 @@
 // class Node
 var parent: Ref
 
+function wf_node(struct: Ref, node: Ref) : Bool
+  requires acc(struct.nodes, wildcard) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write))
+{
+  node in struct.nodes && node.parent != null && wf_node(struct, node.parent)
+}
+
 function find(struct: Ref, this:Ref) : Ref
-  requires acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
-  requires this in struct.nodes
+  requires acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && wf_node(struct, this) && (forall q : Ref :: q in struct.nodes ==> wf_node(struct, q))
   ensures result != null && result in struct.nodes
 {
   this == this.parent ? this : find(struct, this.parent)
@@ -13,20 +18,22 @@ function find(struct: Ref, this:Ref) : Ref
 
 method add(struct: Ref, this: Ref)
   requires acc(this.parent, write) && this.parent == null
-  requires acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
-  ensures acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
+  requires acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> wf_node(struct, q))
+  ensures acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> wf_node(struct, q))
   ensures struct.nodes == old(struct.nodes) union Set(this)
   ensures this == find(struct, this)
   ensures forall o: Ref :: o in old(struct.nodes) ==> find(struct, o) == old(find(struct, o))
 {
     this.parent := this
     struct.nodes := struct.nodes union Set(this)
+    assert wf_node(struct, this)
+    assert forall o: Ref :: o in struct.nodes ==> wf_node(struct, o)
 }
 
 method unionn(struct: Ref, this: Ref, other: Ref)
-  requires acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
+  requires acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> wf_node(struct, q))
   requires this != null && this in struct.nodes && other != null && other in struct.nodes
-  ensures acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> q.parent in struct.nodes)
+  ensures acc(struct.nodes, write) && !(null in struct.nodes) && (forall n : Ref :: n in struct.nodes ==> acc(n.parent, write)) && (forall q : Ref :: q in struct.nodes ==> wf_node(struct, q))
   ensures struct.nodes == old(struct.nodes)
   ensures forall p: Ref, q: Ref :: p in struct.nodes && q in struct.nodes && old(find(struct, p) == find(struct, q)) ==> find(struct, p) == find(struct, q)
   ensures forall p: Ref, q: Ref :: p in struct.nodes && q in struct.nodes && old(find(struct, p) == find(struct, this)) && old(find(struct, q) == find(struct, other)) ==> find(struct, p) == find(struct, q)
@@ -37,14 +44,15 @@ method unionn(struct: Ref, this: Ref, other: Ref)
 	var other1:Ref := find(struct, other)
 	if(other1 != this1)
 	{
-      var p0: Ref
-      inhale p0 in struct.nodes && find(struct, p0) == this1  /* LEMMA 0 ASSUMPTION */
+      /*var p0: Ref
+      inhale p0 in struct.nodes && find(struct, p0) == this1  LEMMA 0 ASSUMPTION
       var p1: Ref
-      inhale p1 in struct.nodes && find(struct, p1) != this1  /* LEMMA 1 ASSUMPTION */
+      inhale p1 in struct.nodes && find(struct, p1) != this1  LEMMA 1 ASSUMPTION
+      */
       
 	  this1.parent := other1
       
-      /* LEMMA 0 PROOF */
+      /*LEMMA 0 PROOF
       var q0:Ref := p0
       while (q0 != this1)
         invariant old(find(struct, q0) == find(struct, p0))
@@ -52,18 +60,19 @@ method unionn(struct: Ref, this: Ref, other: Ref)
         q0 := q0.parent
       }
       assert find(struct, p0) == find(struct, this1)
-      assert find(struct, p0) == other1  /* LEMMA 0 CONCLUSION */
+      assert find(struct, p0) == other1  LEMMA 0 CONCLUSION
       //todo: prove loop termination
             
-      /* LEMMA 1 PROOF */
+      LEMMA 1 PROOF
       var q1:Ref := p1
       while (q1 != old(find(struct, p1)))
         invariant old(find(struct, q1) == find(struct, p1))
       {
         q1 := q1.parent
       }
-      assert find(struct, p1) == old(find(struct, p1))  /* LEMMA 1 CONCLUSION */
+      assert find(struct, p1) == old(find(struct, p1))  LEMMA 1 CONCLUSION
       //todo: prove loop termination
+      */
       
       // todo: lemmas to prove
       inhale forall p: Ref :: p in struct.nodes && old(find(struct, p)) == this1 ==> find(struct, p) == other1  // LEMMA 0
