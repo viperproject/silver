@@ -30,6 +30,11 @@ abstract class ResourceBasedTestSuite extends FunSuite {
   def testDirectories: Seq[String]
 
   /**
+   * @return The default filename pattern for tests
+   */
+  val defaultTestPattern: String = ".*\\.sil"
+
+  /**
    * Registers a test based on the test input.
    * To be implemented by subclasses.
    * @param input the test input as built in `buildTestInput`
@@ -84,7 +89,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
 
     val directoryStream = Files.newDirectoryStream(dir)
     val dirContent = directoryStream.toList
-    val includeFilesPattern = configMap.getOrElse("includeFiles", ".*\\.sil").toString
+    val includeFilesPattern = configMap.getOrElse("includeFiles", defaultTestPattern).toString
 
     for (f: Path <- dirContent
          if Files.isDirectory(f)) {
