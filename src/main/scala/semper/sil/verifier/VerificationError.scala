@@ -1,7 +1,6 @@
 package semper.sil.verifier
 
 import semper.sil.ast._
-import semper.sil.verifier.reasons.InsufficientPermission
 
 trait ErrorMessage {
   type PositionedNode = Node with Positioned
@@ -213,9 +212,10 @@ object errors {
 
 object reasons {
   type PositionedNode = Node with Positioned
-  case class FeatureUnsupported(offendingNode: PositionedNode) extends AbstractErrorReason {
+
+  case class FeatureUnsupported(offendingNode: PositionedNode, explanation: String) extends AbstractErrorReason {
     val id = "feature.unsupported"
-    def readableMessage = s"$offendingNode is not supported."
+    def readableMessage = s"$offendingNode is not supported. $explanation"
   }
 
   case class AssertionFalse(offendingNode: Exp) extends AbstractErrorReason {
