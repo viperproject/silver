@@ -86,12 +86,17 @@ method initAndInsert(this: Ref, newParent: Ref, isLeft: Bool)
   this.value := 1
   this.parent := newParent
   unfold acc(inv(newParent.parentStruct), write)
-  
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
+
+  // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
   assert isLeft ? newParent.left == null : newParent.right == null
-  
-  if (isLeft) { newParent.left := this } else { newParent.right := this }
-  
+
+  if (isLeft) {
+    //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/issue/78/)
+    newParent.left := this
+  } else {
+    newParent.right := this
+  }
+
   this.parentStruct := newParent.parentStruct
   this.parentStruct.all := this.parentStruct.all union Set(this)
   fixInvariant(newParent)

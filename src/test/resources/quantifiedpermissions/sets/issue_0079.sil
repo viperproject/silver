@@ -16,6 +16,16 @@ method foo(this: Ref)
   requires getField(this) == 5
 {
   unfold acc(inv(this.col), write)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
+  // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
   assert this.fld == 5
+}
+
+method test(x: Ref, xs: Set[Ref])
+  requires forall y: Ref :: y in xs ==> acc(y.fld)
+  requires x in xs
+  requires x.fld == 0
+{
+  fold inv(xs)
+  unfold inv(xs)
+  assert x.fld == 0
 }
