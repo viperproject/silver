@@ -1,23 +1,26 @@
-var n:Set[Ref]
+var n: Set[Ref]
+var f: Int
 
-var f:Int
-
-predicate inv(this:Ref) {
-	acc(this.n, write) &&
-	forall x : Ref :: x in this.n ==> acc(x.f, write) 
+predicate inv(this: Ref) {
+	acc(this.n) && forall x: Ref :: x in this.n ==> acc(x.f)
 }
 
-method m1(this:Ref)
-requires acc(inv(this), write)
-ensures acc(inv(this), write)
+method m1(this: Ref)
+  requires acc(inv(this))
+  ensures acc(inv(this))
 {
-	unfold acc(inv(this), write)
-	var t:Ref
+	unfold acc(inv(this))
+
+	var t: Ref
 	assume t in this.n
-	var a:Int := t.f
-	fold acc(inv(this), write)
-	unfold acc(inv(this), write)
+
+	var a: Int := t.f
+
+	fold acc(inv(this))
+	unfold acc(inv(this))
+
 	// :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
 	assert a == t.f
-	fold acc(inv(this), write)
+
+	fold acc(inv(this))
 }
