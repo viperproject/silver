@@ -1,4 +1,3 @@
-
 package semper.sil.verifier
 
 import semper.sil.ast.Program
@@ -17,7 +16,12 @@ import semper.sil.ast.Program
   *      then this trait could be generalised from `Verifier` to `SilProgramHandler` or
   *      `SilTool`.
   *
-  *@author Stefan Heule
+  * RFC: [Malte] In order to facilitate creating verifier instances by reflection, e.g.,
+  *      by a frontend that has an option such as "--backend semper.silicon.Silicon",
+  *      telling it to run the specified backend, we should prescribe a standard
+  *      constructor, e.g., Verifier().
+  *
+  * @author Stefan Heule
   */
 trait Verifier {
 
