@@ -12,8 +12,8 @@ trait ErrorMessage {
 
 trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
-  def readableMessage(full: Boolean): String
-  override def readableMessage = readableMessage(false)
+  def readableMessage(withId: Boolean, withPosition: Boolean): String
+  override def readableMessage = readableMessage(false, true)
   def fullId = s"$id:${reason.id}"
 }
 
@@ -21,6 +21,7 @@ trait ErrorReason extends ErrorMessage
 
 trait PartialVerificationError {
   def f: ErrorReason => VerificationError
+
   private object DummyReason extends AbstractErrorReason {
     val id = "?"
     val readableMessage = "?"
@@ -31,8 +32,10 @@ trait PartialVerificationError {
   }
 
   def dueTo(reason: ErrorReason) = f(reason)
-  override lazy val toString = f(DummyReason).readableMessage(true)
+
+  override lazy val toString = f(DummyReason).readableMessage(true, true)
 }
+
 object PartialVerificationError {
   def apply(ff: ErrorReason => VerificationError) = {
     new PartialVerificationError {
@@ -40,8 +43,9 @@ object PartialVerificationError {
     }
   }
 }
+
 case object NullPartialVerificationError extends PartialVerificationError {
-  def f = (x => null)
+  def f = x => null
 }
 
 abstract class AbstractVerificationError extends VerificationError {
@@ -49,12 +53,14 @@ abstract class AbstractVerificationError extends VerificationError {
 
   def pos = offendingNode.pos
 
-  def readableMessage(full: Boolean = true) = {
-    val id = if (full) s" [$fullId]" else ""
-    s"$id $text ${reason.readableMessage} ($pos)"
+  def readableMessage(withId: Boolean, withPosition: Boolean) = {
+    val idStr = if (withId) s"[$fullId] " else ""
+    val posStr = if (withPosition) s" ($pos)" else ""
+
+    s"$idStr$text ${reason.readableMessage}$posStr"
   }
 
-  override def toString = readableMessage(true)
+  override def toString = readableMessage(true, true)
 }
 
 abstract class AbstractErrorReason extends ErrorReason {
