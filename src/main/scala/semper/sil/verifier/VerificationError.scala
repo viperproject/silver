@@ -12,7 +12,7 @@ trait ErrorMessage {
 
 trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
-  def readableMessage(withId: Boolean, withPosition: Boolean): String
+  def readableMessage(withId: Boolean = false, withPosition: Boolean = true): String
   override def readableMessage = readableMessage(false, true)
   def fullId = s"$id:${reason.id}"
 }
