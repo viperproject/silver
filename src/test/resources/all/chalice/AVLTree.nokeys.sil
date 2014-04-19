@@ -394,12 +394,17 @@ var root : Ref
 		ensures this.right!=null ==> acc(valid(this.right),write);
 		ensures this.right!=null ==> acc(this.right.height,rd);
 		ensures bf == ((this.left==null?0:this.left.height)-(this.right==null?0:this.right.height));
-    //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/75/)
 		ensures bf>0 ==> this.left !=null;
 	{
 		var lh : Int := (this.left ==null ? 0 : this.left .height );
 		var rh : Int := (this.right==null ? 0 : this.right.height );
 		bf := lh-rh;
+		
+		// this is needed to know that this.right.height > 0
+		if(this.right != null) {
+		  unfold valid(this.right);
+		  fold valid(this.right);
+		}
 	}
 
 	method close(this:Ref)
@@ -435,7 +440,17 @@ var root : Ref
 		this.height := ( (( this.left==null ? 0 : this.left.height )>( this.right==null ? 0 : this.right.height )) ? ( this.left==null ? 0 : this.left.height )+1 : ( this.right==null ? 0 : this.right.height )+1);
 		this.balanceFactor := ( this.left==null ? 0 : this.left.height )-( this.right==null ? 0 : this.right.height );
 
-    //:: UnexpectedOutput(fold.failed:assertion.false, /silicon/issue/75/)
+    
+    		// this is needed to know that this.right.height > 0
+    		if(this.right != null) {
+    		  unfold valid(this.right);
+    		  fold valid(this.right);
+		}
+		// this is needed to know that this.left.height > 0
+		if(this.left != null) {
+		  unfold valid(this.left);
+		  fold valid(this.left);
+		}		
 		fold acc(valid(this),write);
 	}
 
@@ -464,6 +479,7 @@ var root : Ref
 			lbf := getBalanceFactor(this.left,rd);
 		}
 		if (lbf<0){
+			//:: UnexpectedOutput(call.precondition:assertion.false, /carbon/issue/14/)
 			r := rebalanceRL(this);
 		}else{//lbf>=0
 			r := rebalanceRR(this);
@@ -484,7 +500,7 @@ var root : Ref
 		requires this.right!=null ==> acc(this.right.height       ,1/2)
 		requires this.right!=null ==> acc(this.right.balanceFactor,1/2)
 		requires this.left.height-(this.right==null?0:this.right.height)==2;
-		requires this.left.balanceFactor==-1;
+		requires unfolding valid(this.left) in this.left.balanceFactor==-1;
 		ensures r != null && acc(valid(r),write);
 		ensures acc(r.height       ,1/2);
 		ensures acc(r.balanceFactor,1/2);
@@ -557,6 +573,7 @@ var root : Ref
 			rbf := getBalanceFactor(this.right,rd);
 		}
 		if (rbf>0){
+			//:: UnexpectedOutput(call.precondition:assertion.false, /carbon/issue/14/)
 			r := rebalanceLR(this);
 		}else{//rbf<=0
 			r := rebalanceLL(this);
@@ -577,7 +594,7 @@ var root : Ref
 		requires acc(this.right.height       ,1/2);
 		requires acc(this.right.balanceFactor,1/2);
 		requires (this.left==null?0:this.left.height)-(this.right.height)==-2;
-		requires this.right.balanceFactor==1;
+		requires unfolding valid(this.right) in this.right.balanceFactor==1;
 		ensures r != null && acc(valid(r),write);
 		ensures acc(r.height       ,1/2);
 		ensures acc(r.balanceFactor,1/2);
