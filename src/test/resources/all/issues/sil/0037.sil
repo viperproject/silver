@@ -1,0 +1,9 @@
+method issue() {
+	var dummy: Int
+	while (true) {
+		if (true) {
+			dummy := 0
+		}
+	}
+	assert (false)
+}

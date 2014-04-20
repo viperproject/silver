@@ -155,6 +155,9 @@ trait Node extends Traversable[Node] {
     recursive: Node => Boolean = !pre.isDefinedAt(_),
     post: PartialFunction[Node, Node] = PartialFunction.empty): this.type =
     Transformer.transform[this.type](this, pre)(recursive, post)
+
+  def replace(original: Node, replacement: Node) =
+    this.transform{case `original` => replacement}()
 }
 
 /** A trait to have additional information for nodes. */

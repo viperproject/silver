@@ -1,6 +1,6 @@
 method m(x:Int, y:Int) {
   if(x > y) {
-    // assert true
+    // assert 1 < 2
   } else {
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
