@@ -72,3 +72,14 @@ case class DependencyNotFoundError(message: String) extends AbstractError {
   def fullId = "dependencynotfound.error"
   def readableMessage = s"Dependency not found: $message"
 }
+
+/* RFC: [Malte] If we want to be more fine-grained, for example, by having a
+ *      timeout per method/member, or even per proof obligation, then we should
+ *      consider subclassing AbstractVerificationError, or use an Internal error
+ *      in combination with a TimeoutReason.
+ */
+case class TimeoutOccurred(n: Long, units: String) extends AbstractError {
+  def pos = NoPosition
+  def fullId = "timeout.error"
+  def readableMessage = s"Timeout occurred after $n $units"
+}
