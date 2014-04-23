@@ -256,6 +256,13 @@ object reasons {
     def readableMessage = s"$offendingNode is not supported. $explanation"
   }
 
+  case class UnexpectedNode(offendingNode: PositionedNode, explanation: String, stackTrace: Seq[StackTraceElement])
+      extends AbstractErrorReason {
+
+    val id = "unexpected.node"
+    def readableMessage = s"$offendingNode occurred unexpectedly. $explanation"
+  }
+
   case class AssertionFalse(offendingNode: Exp) extends AbstractErrorReason {
     val id = "assertion.false"
     def readableMessage = s"Assertion $offendingNode might not hold."

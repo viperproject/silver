@@ -479,7 +479,6 @@ var root : Ref
 			lbf := getBalanceFactor(this.left,rd);
 		}
 		if (lbf<0){
-			//:: UnexpectedOutput(call.precondition:assertion.false, /carbon/issue/14/)
 			r := rebalanceRL(this);
 		}else{//lbf>=0
 			r := rebalanceRR(this);
@@ -573,7 +572,6 @@ var root : Ref
 			rbf := getBalanceFactor(this.right,rd);
 		}
 		if (rbf>0){
-			//:: UnexpectedOutput(call.precondition:assertion.false, /carbon/issue/14/)
 			r := rebalanceLR(this);
 		}else{//rbf<=0
 			r := rebalanceLL(this);
