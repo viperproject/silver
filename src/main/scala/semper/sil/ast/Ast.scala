@@ -127,6 +127,11 @@ trait Node extends Traversable[Node] {
    */
   def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitor.existsDefined(this, Nodes.subnodes, f)
 
+  /** 
+   * Checks whether the parameter is a subnode of this node
+   */
+  def hasSubterm(toFind : Node): Boolean = {val self = this; this.existsDefined{ case found if found==toFind && found!=self => }}
+  
   override def toString = PrettyPrinter.pretty(this)
 
   /**
