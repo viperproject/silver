@@ -13,7 +13,7 @@ function Contents(this: Ref): Seq[Int]
     requires acc(Valid(this), wildcard)
   {
     unfolding acc(Valid(this), wildcard) in 
-     |this.data| == 0 ? Seq(0)[1..] 
+     |this.data| == 0 ? Seq[Int]()
                   : (this.first + this.len <= |this.data| ? this.data[this.first..this.first+this.len] 
                                            : this.data[this.first..] ++ this.data[..this.first+this.len-|this.data|])
   }
@@ -28,7 +28,7 @@ function Capacity(this: Ref): Int
     requires 0 <= n;
     requires acc(this.data, write) && acc(this.first, write) && acc(this.len, write);
     ensures acc(Valid(this), write);
-    ensures Contents(this) == Seq(0)[1..] && Capacity(this) == n;
+    ensures Contents(this) == Seq[Int]() && Capacity(this) == n;
   {
     // simulate creating an array of length n
     var i: Int;
@@ -48,7 +48,7 @@ function Capacity(this: Ref): Int
 method Clear(this: Ref)
     requires acc(Valid(this), write);
     ensures acc(Valid(this), write);
-    ensures Contents(this) == Seq(0)[1..] && Capacity(this) == old(Capacity(this));
+    ensures Contents(this) == Seq[Int]() && Capacity(this) == old(Capacity(this));
   {
     unfold acc(Valid(this), write);
     this.len := 0;
@@ -57,7 +57,7 @@ method Clear(this: Ref)
 
 method Head(this: Ref) returns (x: Int)
     requires acc(Valid(this), wildcard);
-    requires Contents(this) != Seq(0)[1..];
+    requires Contents(this) != Seq[Int]();
     ensures acc(Valid(this), wildcard);
     ensures Contents(this) == old(Contents(this)) && x == Contents(this)[0];
     ensures Capacity(this) == old(Capacity(this));
@@ -69,7 +69,7 @@ method Head(this: Ref) returns (x: Int)
   
   function HeadF(this: Ref): Int
     requires acc(Valid(this), wildcard);
-    requires Contents(this) != Seq(0)[1..];
+    requires Contents(this) != Seq[Int]();
     ensures result == Contents(this)[0];
   {
     unfolding acc(Valid(this), wildcard) in this.data[this.first]
