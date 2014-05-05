@@ -1,5 +1,5 @@
-  var x: Int
-  var y: Int
+  field x: Int
+  field y: Int
 
   predicate X(this: Ref) { acc(this.x, write) }
 

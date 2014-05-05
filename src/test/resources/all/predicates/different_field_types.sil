@@ -1,7 +1,7 @@
 /* These tests are intended to test Silicon's internal concept of 'snapshots'. */
 
-var f: Int
-var g: Bool
+field f: Int
+field g: Bool
 
 method test1(x: Ref, b: Bool)
   requires b ? acc(x.f) : acc(x.g)

@@ -3,14 +3,14 @@ domain Visit {
 }
 
 // class "Node"
-var value: Int
-var left: Ref
-var right: Ref
-var parent: Ref
-var parentStruct: Ref
+field value: Int
+field left: Ref
+field right: Ref
+field parent: Ref
+field parentStruct: Ref
 
 // class "Composite"
-var all: Set[Ref]
+field all: Set[Ref]
 
 predicate inv(this: Ref)
 {

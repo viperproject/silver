@@ -1,6 +1,6 @@
 
-var all: Set[Ref]
-var f: Int
+field all: Set[Ref]
+field f: Int
 
 method m1(this:Ref, x:Ref, y:Ref)
   requires acc(this.all, write) && x in (this.all) && y in (this.all) && x!=y && !(null in (this.all))

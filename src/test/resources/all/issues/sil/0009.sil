@@ -1,4 +1,4 @@
-var b: Bool
+field b: Bool
 
 predicate P(this: Ref) { acc(this.b, write) }
 

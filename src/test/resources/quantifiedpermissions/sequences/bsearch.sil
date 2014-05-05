@@ -1,4 +1,4 @@
-var f:Int
+field f:Int
 
 method bfind (S: Seq[Ref], x:Int, p: Perm) returns (index:Int)
   requires p > none && p < write
@@ -19,8 +19,8 @@ method bfind (S: Seq[Ref], x:Int, p: Perm) returns (index:Int)
         // split
         var k:Int
         inhale 0<k && k<|S|-1
-		
-		if (S[k].f < x) { 
+
+		if (S[k].f < x) {
 		  //:: UnexpectedOutput(call.precondition:insufficient.permission, /silicon/issue/60/)
 		  index := bfind(S[0..k], x, p)
 		}
@@ -47,7 +47,7 @@ method bfind1(S: Seq[Ref], start: Int, end: Int, x:Int, p: Perm) returns (index:
         // split
         var k:Int
         inhale start<k && k<end-1
-		
+
 		if (S[k].f < x) {
 		  //:: UnexpectedOutput(call.precondition:assertion.false, /silicon/issue/76/)
 		  index := bfind1(S, start, k, x, p)

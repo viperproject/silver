@@ -1,4 +1,4 @@
-var f: Int
+field f: Int
 
 method a(S:Seq[Ref], a:Int)
 requires 0 <= a && a < |S|

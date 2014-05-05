@@ -1,6 +1,6 @@
-var data: Seq[Int];  // the storage
-var first: Int;      // index of the first element in the queue
-var len: Int;        // number of elements in the queue
+field data: Seq[Int];  // the storage
+field first: Int;      // index of the first element in the queue
+field len: Int;        // number of elements in the queue
 
 predicate Valid(this: Ref) {
     acc(this.data, write) && acc(this.first, write) && acc(this.len, write) &&
@@ -12,12 +12,12 @@ predicate Valid(this: Ref) {
 function Contents(this: Ref): Seq[Int]
     requires acc(Valid(this), wildcard)
   {
-    unfolding acc(Valid(this), wildcard) in 
+    unfolding acc(Valid(this), wildcard) in
      |this.data| == 0 ? Seq[Int]()
-                  : (this.first + this.len <= |this.data| ? this.data[this.first..this.first+this.len] 
+                  : (this.first + this.len <= |this.data| ? this.data[this.first..this.first+this.len]
                                            : this.data[this.first..] ++ this.data[..this.first+this.len-|this.data|])
   }
-  
+
 function Capacity(this: Ref): Int
     requires acc(Valid(this), wildcard)
   {
@@ -44,7 +44,7 @@ function Capacity(this: Ref): Int
     this.len := 0;
     fold acc(Valid(this), write);
   }
-  
+
 method Clear(this: Ref)
     requires acc(Valid(this), write);
     ensures acc(Valid(this), write);
@@ -66,14 +66,14 @@ method Head(this: Ref) returns (x: Int)
     x := this.data[this.first];
     fold acc(Valid(this), wildcard);
   }
-  
+
   function HeadF(this: Ref): Int
     requires acc(Valid(this), wildcard);
     requires Contents(this) != Seq[Int]();
     ensures result == Contents(this)[0];
   {
     unfolding acc(Valid(this), wildcard) in this.data[this.first]
-  }  
+  }
 
     method Push(this: Ref, x: Int)
     requires acc(Valid(this), write);
@@ -116,7 +116,7 @@ method Head(this: Ref) returns (x: Int)
     this.len := this.len - 1;
     fold acc(Valid(this), write);
   }
-  
+
   method TestHarness(x: Int, y: Int, z: Int)
   {
     var b: Ref;

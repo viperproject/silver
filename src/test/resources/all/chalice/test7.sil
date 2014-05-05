@@ -1,4 +1,4 @@
-  var value: Int
+  field value: Int
   predicate inv(this: Ref) { acc(this.value, write) }
   function get(this: Ref): Int
     requires acc(inv(this), write)

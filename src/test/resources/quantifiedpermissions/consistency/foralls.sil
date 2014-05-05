@@ -1,4 +1,4 @@
-var f: Int
+field f: Int
 
 method test01(xs: Set[Ref], ys: Seq[Ref])
   requires forall x: Ref :: x in xs ==> acc(x.f)

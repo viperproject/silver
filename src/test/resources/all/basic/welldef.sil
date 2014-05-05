@@ -1,5 +1,5 @@
 
-var f: Int
+field f: Int
 
 domain Test {
     function func(a: Int): Int

@@ -1,7 +1,7 @@
 /* This is a copy of predicates/lseg.sil with additional assertions required by Silicon */
 
-var next: Ref
-var value: Int
+field next: Ref
+field value: Int
 
 predicate lseg(this: Ref, end: Ref) {
     acc(this.value, write) && acc(this.next, write) &&

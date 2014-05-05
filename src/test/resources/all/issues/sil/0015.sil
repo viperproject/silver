@@ -1,5 +1,5 @@
-var b: Bool
-var f: Int
+field b: Bool
+field f: Int
 
 method test(x: Ref)
   requires acc(x.b)

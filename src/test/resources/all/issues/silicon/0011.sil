@@ -1,7 +1,7 @@
-var b: Bool
-var c: Ref
-var d: Ref
-var f: Int
+field b: Bool
+field c: Ref
+field d: Ref
+field f: Int
 
 method succeeds1(k: Perm, x: Ref) returns (r: Bool)
   requires acc(x.c, k) && acc(x.d, k) && acc(x.b, k)

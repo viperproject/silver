@@ -1,5 +1,5 @@
 
-var f: Int
+field f: Int
 
 method t1(n: Int) returns ()
     requires n > 0

@@ -1,5 +1,5 @@
 
-var test: Bool
+field test: Bool
 
 method t1(b: Bool, d: Int, r: Ref) returns ()
     requires b && acc(r.test, write)

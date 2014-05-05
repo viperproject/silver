@@ -1,7 +1,7 @@
 
-var value: Int
-var next: Ref
-var f: Int
+field value: Int
+field next: Ref
+field f: Int
 
 function itemat(node: Ref, i: Int): Int
     requires acc(valid(node), wildcard) && i >= 0

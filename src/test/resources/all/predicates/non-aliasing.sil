@@ -1,7 +1,7 @@
 //:: IgnoreFile(/silicon/issue/40/)
 
-var f: Ref
-var g: Ref
+field f: Ref
+field g: Ref
 
 predicate valid(b: Bool, r1: Ref, r2: Ref) {
   b ? (acc(r1.f, write) && (r1.f != null ==> acc(valid(true, r1.f, r2), write)))

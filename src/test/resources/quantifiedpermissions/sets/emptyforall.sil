@@ -1,7 +1,7 @@
-var nodes:Set[Ref]
-var f:Int
+field nodes:Set[Ref]
+field f:Int
 
-method m(this:Ref) 
+method m(this:Ref)
 requires acc(this.nodes, write)
 requires	forall x:Ref :: (x in (this.nodes)) ==> acc(x.f, write)
 ensures acc(this.nodes, write)

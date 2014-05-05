@@ -1,5 +1,5 @@
-  var value: Int
-  var next: Ref
+  field value: Int
+  field next: Ref
   predicate inv(this: Ref) { acc(this.value, write) && acc(this.next, write) && (((this.next) != (null)) ==> acc(inv(this.next), write)) }
   function get(this: Ref): Int
     requires acc(inv(this), write)

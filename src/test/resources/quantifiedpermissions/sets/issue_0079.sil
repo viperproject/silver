@@ -1,5 +1,5 @@
-var fld: Int
-var col: Set[Ref]
+field fld: Int
+field col: Set[Ref]
 
 predicate inv(collection: Set[Ref]) {
   forall x: Ref :: x in collection ==> acc(x.fld)

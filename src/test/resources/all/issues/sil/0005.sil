@@ -1,7 +1,7 @@
 //:: IgnoreFile(/silicon/issue/31/)
 
-var f: Ref
-var p: Perm
+field f: Ref
+field p: Perm
 
 method test6(this: Ref)
   requires this != null && acc(this.f, 50/100)

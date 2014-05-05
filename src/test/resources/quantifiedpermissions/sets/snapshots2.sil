@@ -1,7 +1,7 @@
-var f:Int
+field f:Int
 
 predicate inv(x:Ref) {
-	acc(x.f, write) 
+	acc(x.f, write)
 }
 
 method m1(this:Ref)

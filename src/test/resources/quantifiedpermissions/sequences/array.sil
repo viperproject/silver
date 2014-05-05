@@ -1,6 +1,6 @@
-var value: Int
+field value: Int
 
-var array: Seq[Ref]
+field array: Seq[Ref]
 
 method init(this:Ref, i:Int)
 requires acc(this.array, write)

@@ -1,5 +1,5 @@
 // class Node
-var parent: Ref
+field parent: Ref
 
 function find(struct: Ref, this:Ref) : Ref
   requires struct != null && this != null
@@ -76,7 +76,7 @@ method unionn(struct: Ref, this: Ref, other: Ref)
 }
 
 // class UnionFind
-var nodes: Set[Ref]
+field nodes: Set[Ref]
 
 predicate inv(this: Ref)
 {

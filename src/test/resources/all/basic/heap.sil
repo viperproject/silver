@@ -1,5 +1,5 @@
 
-var f: Ref
+field f: Ref
 
 // test aliasing of heap values with other objects
 method t1() {

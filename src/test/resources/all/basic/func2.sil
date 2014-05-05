@@ -1,4 +1,4 @@
-var f: Int
+field f: Int
 
 function f1(r: Ref): Int
     requires acc(r.f, wildcard)

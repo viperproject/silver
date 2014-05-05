@@ -1,4 +1,4 @@
-var f: Int
+field f: Int
 
 method test(x: Ref, b: Bool)
 	requires acc(x.f, b ? (1/5) : none)

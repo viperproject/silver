@@ -1,7 +1,7 @@
 /* Various expressions used while fixing bugs in the parser */
 
-var f: Ref
-var g: Int
+field f: Ref
+field g: Int
 
 function sq(i: Int): Int {i * i}
 
@@ -45,7 +45,7 @@ method test(x: Ref)
   inhale a > 0
 }
 
-var n: Int
+field n: Int
 
 method foo(x: Ref) returns (n: Int)
   requires acc(x.n)
@@ -55,7 +55,7 @@ method foo(x: Ref) returns (n: Int)
   x.n := n + 1
 }
 
-var Node_n: Ref
+field Node_n: Ref
 
 method test2(this: Ref)
   requires this != null && acc(this.Node_n, write)

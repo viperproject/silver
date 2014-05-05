@@ -7,53 +7,53 @@ domain GlobalKPermission {
   }
 }
 
-var old$methodPermission: Perm
+field old$methodPermission: Perm
 
-var joinable$: Bool
+field joinable$: Bool
 
-var Wand_readonly_for_writeonlylemma$: Int
+field Wand_readonly_for_writeonlylemma$: Int
 
-var Wand_readonly_for_writeonlyin_1$: Ref
+field Wand_readonly_for_writeonlyin_1$: Ref
 
-var Wand_readonly_for_writeonlyout_1$: Ref
+field Wand_readonly_for_writeonlyout_1$: Ref
 
-var Wand_readonly_for_writeonlythis_1$: Ref
+field Wand_readonly_for_writeonlythis_1$: Ref
 
-var WandDemox$: Int
+field WandDemox$: Int
 
-var old$Wand_readonly_for_writeonlyapply$0: Ref
+field old$Wand_readonly_for_writeonlyapply$0: Ref
 
-var par$Wand_readonly_for_writeonlyapply$this$_3: Ref
+field par$Wand_readonly_for_writeonlyapply$this$_3: Ref
 
-var par$Wand_readonly_for_writeonlyapply$k$: Perm
+field par$Wand_readonly_for_writeonlyapply$k$: Perm
 
-var par$Wand_readonly_for_writeonlyWand_readonly_for_writeonly_init$this$_5: Ref
+field par$Wand_readonly_for_writeonlyWand_readonly_for_writeonly_init$this$_5: Ref
 
-var par$Wand_readonly_for_writeonlyWand_readonly_for_writeonly_init$k$_1: Perm
+field par$Wand_readonly_for_writeonlyWand_readonly_for_writeonly_init$k$_1: Perm
 
-var par$WandDemoWandDemo_init$this$_10: Ref
+field par$WandDemoWandDemo_init$this$_10: Ref
 
-var par$WandDemoWandDemo_init$k$_2: Perm
+field par$WandDemoWandDemo_init$k$_2: Perm
 
-var par$WandDemoWand_readonly_for_writeonly_lemma_1$this$_11: Ref
+field par$WandDemoWand_readonly_for_writeonly_lemma_1$this$_11: Ref
 
-var par$WandDemoWand_readonly_for_writeonly_lemma_1$k$_3: Perm
+field par$WandDemoWand_readonly_for_writeonly_lemma_1$k$_3: Perm
 
-var par$WandDemoWand_readonly_for_writeonly_lemma_1$__this_1: Ref
+field par$WandDemoWand_readonly_for_writeonly_lemma_1$__this_1: Ref
 
-var par$WandDemoWand_readonly_for_writeonly_lemma_1$__in_1: Ref
+field par$WandDemoWand_readonly_for_writeonly_lemma_1$__in_1: Ref
 
-var par$WandDemoWand_readonly_for_writeonly_lemma_1$__out_1: Ref
+field par$WandDemoWand_readonly_for_writeonly_lemma_1$__out_1: Ref
 
-var par$WandDemoset_val$this$_12: Ref
+field par$WandDemoset_val$this$_12: Ref
 
-var par$WandDemoset_val$k$_4: Perm
+field par$WandDemoset_val$k$_4: Perm
 
-var par$WandDemoset_val$__v: Int
+field par$WandDemoset_val$__v: Int
 
-var par$WandDemodemo$this$_13: Ref
+field par$WandDemodemo$this$_13: Ref
 
-var par$WandDemodemo$k$_5: Perm
+field par$WandDemodemo$k$_5: Perm
 
 function Wand_readonly_for_writeonlyget_in_1$(this$_1: Ref): Ref
   requires this$_1 != null

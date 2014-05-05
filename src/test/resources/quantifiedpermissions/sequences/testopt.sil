@@ -1,4 +1,4 @@
-var f:Int
+field f:Int
 
 method m(s:Seq[Ref], t:Seq[Ref])
 requires forall i:Int :: i in [0..|s|) ==> acc(s[i].f, write)

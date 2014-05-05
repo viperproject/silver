@@ -1,7 +1,7 @@
 //:: IgnoreFile(/silicon/issue/40/)
 
-  var next: Ref
-  var value: Int
+  field next: Ref
+  field value: Int
   predicate valid(this: Ref) {
     acc(this.next, wildcard) &&
     acc(this.value, wildcard) &&

@@ -1,4 +1,4 @@
-  var n: Ref
+  field n: Ref
   predicate P(this: Ref) { acc(this.n, write) && (((this.n) != (null)) ==> acc(P(this.n), write)) }
   function length(this: Ref): Int
     requires acc(P(this), write)

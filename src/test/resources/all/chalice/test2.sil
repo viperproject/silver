@@ -1,7 +1,7 @@
-  var x: Int
-  var y: Int
-  var z: Int
-  var w: Int
+  field x: Int
+  field y: Int
+  field z: Int
+  field w: Int
   predicate X(this: Ref) { acc(this.x, write) }
   predicate Y(this: Ref) { acc(this.y, write) }
   predicate Z(this: Ref) { acc(this.z, write) }

@@ -1,4 +1,4 @@
-var root : Ref
+field root : Ref
 
 	predicate headvalid(this:Ref){
 		   acc(this.root,write)
@@ -64,11 +64,11 @@ var root : Ref
 
 // new class
 
-	var key    : Int
-	var height : Int
-	var left  : Ref
-	var right : Ref
-        var balanceFactor : Int
+	field key    : Int
+	field height : Int
+	field left  : Ref
+	field right : Ref
+        field balanceFactor : Int
 
 	predicate valid(this:Ref){
 		   acc(this.key   ,write)

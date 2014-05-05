@@ -1,6 +1,6 @@
 
-var f: Int
-var next: Ref
+field f: Int
+field next: Ref
 
 predicate valid(r: Ref) {
     acc(r.f, write) && acc(r.next, write) && ((r.next != null) ==> (acc(valid(r.next), write)))

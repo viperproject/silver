@@ -1,5 +1,5 @@
 
-var f: Int
+field f: Int
 
 method t1(r: Ref)
     requires [acc(r.f, write), true]
