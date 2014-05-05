@@ -102,7 +102,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // null
     "null",
     // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns",
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field",
     // specifications
     "requires", "ensures", "invariant",
     // statements
@@ -162,7 +162,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     }
 
   lazy val fieldDecl =
-    ("var" ~> idndef) ~ (":" ~> typ <~ opt(";")) ^^ PField
+    ("field" ~> idndef) ~ (":" ~> typ <~ opt(";")) ^^ PField
 
   lazy val methodDecl =
     methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {

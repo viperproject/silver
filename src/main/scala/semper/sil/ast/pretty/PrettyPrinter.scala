@@ -62,7 +62,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   def showMember(m: Member): Doc = {
     val memberDoc = m match {
       case f@Field(name, typ) =>
-        "var" <+> name <> ":" <+> show(typ)
+        "field" <+> name <> ":" <+> show(typ)
       case m@Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
         "method" <+> name <> parens(showVars(formalArgs)) <> {
           if (formalReturns.isEmpty) empty
