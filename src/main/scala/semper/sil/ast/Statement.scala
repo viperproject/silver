@@ -32,7 +32,7 @@ sealed trait Stmt extends Node with Infoed with Positioned {
 }
 
 /** A statement that creates a new object and assigns it to a local variable. */
-case class NewStmt(lhs: LocalVar)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class NewStmt(lhs: LocalVar, fields: Seq[Field])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
   require(Ref isSubtype lhs)
 }
 

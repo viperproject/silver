@@ -263,7 +263,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       case vars ~ s => PConstraining(vars, PSeqn(s))
     }
   lazy val newstmt =
-    idnuse <~ (":=" ~ "new" ~ "()") ^^ PNewStmt
+    idnuse ~ (":=" ~> "new" ~> "(" ~> starOrFields <~ ")") ^^ PNewStmt
+  lazy val starOrFields = (
+      "*" ^^ (_ => None)
+    | repsep(idnuse, ",") ^^ (fields => Some(fields)))
   lazy val lbl =
     idndef <~ ":" ^^ PLabel
   lazy val goto =

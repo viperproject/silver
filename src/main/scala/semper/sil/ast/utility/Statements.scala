@@ -66,7 +66,7 @@ object Statements {
       case MethodCall(_, _, targets) => writtenTo = writtenTo ++ targets
       case Fresh(vars) => writtenTo = writtenTo ++ vars
       case Constraining(_, body) => writtenTo = writtenTo ++ (writtenVars(body) intersect s.undeclLocalVars)
-      case NewStmt(lhs) => writtenTo = lhs +: writtenTo
+      case NewStmt(target, _) => writtenTo = target +: writtenTo
       case While(_, _, locals, body) => writtenTo = writtenTo ++ (writtenVars(body) intersect s.undeclLocalVars)
     }
 

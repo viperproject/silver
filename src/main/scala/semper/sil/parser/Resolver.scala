@@ -136,8 +136,15 @@ case class TypeChecker(names: NameAnalyser) {
           case _ =>
             message(stmt, "expected variable as lhs")
         }
-      case PNewStmt(idnuse) =>
-        expectAndCheckVariables(idnuse :: Nil, _ => Ref, "expected variable as lhs")
+      case PNewStmt(target, fields) =>
+        expectAndCheckVariables(target :: Nil, _ => Ref, "expected variable as lhs")
+        fields map (_.map (field =>
+          names.definition(curMember)(field, Some(PField.getClass)) match {
+            case PField(_, typ) =>
+              check(field, typ)
+            case _ =>
+              message(stmt, "expected a field as lhs")
+          }))
       case PMethodCall(targets, method, args) =>
         names.definition(curMember)(method) match {
           case PMethod(_, formalArgs, formalTargets, _, _, _) =>

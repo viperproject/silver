@@ -74,7 +74,7 @@ object Transformer {
         case PExhale(e) => PExhale(go(e))
         case PAssert(e) => PAssert(go(e))
         case PInhale(e) => PInhale(go(e))
-        case PNewStmt(target) => PNewStmt(go(target))
+        case PNewStmt(target, fields) => PNewStmt(go(target), fields map (_.map (go)))
         case PVarAssign(idnuse, rhs) => PVarAssign(go(idnuse), go(rhs))
         case PFieldAssign(fieldAcc, rhs) => PFieldAssign(go(fieldAcc), go(rhs))
         case PIf(cond, thn, els) => PIf(go(cond), go(thn), go(els))

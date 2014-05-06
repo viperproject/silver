@@ -229,8 +229,8 @@ object Transformer {
               MethodCall(method, arguments map go,
                 variables map go)(statement.pos, statement.info)
 
-            case NewStmt(variable) =>
-              NewStmt(go(variable))(statement.pos, statement.info)
+            case NewStmt(target, fields) =>
+              NewStmt(go(target), fields map go)(statement.pos, statement.info)
 
             case Seqn(statements) =>
               Seqn(statements map go)(statement.pos, statement.info)

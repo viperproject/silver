@@ -148,8 +148,15 @@ case class Translator(program: PProgram) {
         Exhale(exp(e))(pos)
       case PAssert(e) =>
         Assert(exp(e))(pos)
-      case PNewStmt(idnuse) =>
-        NewStmt(exp(idnuse).asInstanceOf[LocalVar])(pos)
+      case PNewStmt(target, fieldsOpt) =>
+        val fields = fieldsOpt match {
+          case None => program.fields map (translate(_))
+            /* Slightly redundant since we already translated the fields when we
+             * translated the PProgram at the beginning of this class.
+             */
+          case Some(pfields) => pfields map findField
+        }
+        NewStmt(exp(target).asInstanceOf[LocalVar], fields)(pos)
       case PMethodCall(targets, method, args) =>
         val ts = (targets map exp).asInstanceOf[Seq[LocalVar]]
         MethodCall(findMethod(method), args map exp, ts)(pos)

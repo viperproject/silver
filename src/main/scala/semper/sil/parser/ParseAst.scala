@@ -186,9 +186,8 @@ case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 sealed trait POldExp extends PExp { def e: PExp }
 case class POld(e: PExp) extends POldExp
 
-case class PEmptySeq(t : PType) extends PExp
-{
-  typ = (if (t.isUnknown) PUnknown() else PSeqType(t)) // type can be specified as PUnknown() if unknown
+case class PEmptySeq(t : PType) extends PExp {
+  typ = if (t.isUnknown) PUnknown() else PSeqType(t) // type can be specified as PUnknown() if unknown
 }
 case class PExplicitSeq(elems: Seq[PExp]) extends PExp
 case class PRangeSeq(low: PExp, high: PExp) extends PExp
@@ -224,7 +223,7 @@ case class PUnfold(e: PExp) extends PStmt
 case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
-case class PNewStmt(target: PIdnUse) extends PStmt
+case class PNewStmt(target: PIdnUse, Fields: Option[Seq[PIdnUse]]) extends PStmt
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
 case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
@@ -331,7 +330,7 @@ object Nodes {
       case PExhale(exp) => Seq(exp)
       case PAssert(exp) => Seq(exp)
       case PInhale(exp) => Seq(exp)
-      case PNewStmt(idnuse) => Seq(idnuse)
+      case PNewStmt(target, fields) => Seq(target) ++ fields.getOrElse(Seq())
       case PMethodCall(targets, method, args) => targets ++ Seq(method) ++ args
       case PLabel(name) => Seq(name)
       case PGoto(label) => Seq(label)
