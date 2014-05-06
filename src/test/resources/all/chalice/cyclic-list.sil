@@ -22,7 +22,7 @@ method test1(this: Ref)
 {
   var x: Ref
 
-  x := new()
+  x := new(value, next)
   x.next := x
 
   //:: ExpectedOutput(fold.failed:insufficient.permission)
@@ -33,7 +33,7 @@ method test2(this: Ref)
 {
   var x: Ref
 
-  x := new()
+  x := new(value, next)
   x.next := x
 
   //:: ExpectedOutput(application.precondition:insufficient.permission)

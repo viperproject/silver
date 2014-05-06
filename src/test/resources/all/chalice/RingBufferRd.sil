@@ -120,7 +120,7 @@ method Head(this: Ref) returns (x: Int)
   method TestHarness(x: Int, y: Int, z: Int)
   {
     var b: Ref;
-    b := new();
+    b := new(*);
     Create(b, 2);
     Push(b, x);
     Push(b, y);

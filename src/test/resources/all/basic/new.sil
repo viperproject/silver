@@ -95,3 +95,14 @@ method test5(n: Ref)
     }
   }
 }
+
+/* Test starred version of 'new' */
+
+method test6() {
+  var m: Ref
+  m := new(*)
+
+  exhale acc(m.Node_v)
+  exhale acc(m.Node_n)
+  exhale acc(m.value)
+}

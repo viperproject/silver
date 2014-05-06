@@ -1,5 +1,4 @@
 field value: Int
-
 field array: Seq[Ref]
 
 method init(this:Ref, i:Int)
@@ -34,7 +33,7 @@ requires acc(this.array[i].value, wildcard)
 method caller()
 {
     var mutableArray:Ref
-    mutableArray := new()
+    mutableArray := new(array)
     init(mutableArray, 5)
     set(mutableArray, 0, 2)
     assert get(mutableArray, 0) == 2

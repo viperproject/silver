@@ -175,7 +175,7 @@ method WandDemoWand_readonly_for_writeonly_lemma_1$(this$_11: Ref, k$_3: Perm, _
   this_1 := __this_1
   in_1 := __in_1
   out_1 := __out_1
-  n$_3 := new()
+  n$_3 := new(*)
   __flatten_1 := n$_3
   fresh newK$_1
   constraining(newK$_1) {
@@ -237,7 +237,7 @@ method WandDemodemo$(this$_13: Ref, k$_5: Perm)
   var newK$_3: Perm
   var newK$_4: Perm
   var set_call_wand$: Ref
-  n$_5 := new()
+  n$_5 := new(*)
   __flatten_4 := n$_5
   fresh newK$_2
   constraining(newK$_2) {

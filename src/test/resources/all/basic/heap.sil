@@ -8,7 +8,7 @@ method t1() {
 
     inhale acc(a.f, write)
 
-    c := new()
+    c := new(f)
 
     assert c.f != c
 

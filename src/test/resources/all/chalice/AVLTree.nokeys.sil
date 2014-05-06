@@ -22,7 +22,7 @@ field root : Ref
 	        var n : Ref
 		unfold acc(headvalid(this),write);
 		if (this.root==null){
-			n := new()
+			n := new(*)
 		        init(n,k)
 			this.root := n;
 		}else{
@@ -68,7 +68,7 @@ field root : Ref
 	field height : Int
 	field left  : Ref
 	field right : Ref
-        field balanceFactor : Int
+  field balanceFactor : Int
 
 	predicate valid(this:Ref){
 		   acc(this.key   ,write)
@@ -134,7 +134,7 @@ field root : Ref
 			if (k<(this.key)){ // insert this.left
 
 				if (this.left==null){
-					nl := new();
+					nl := new(*);
 					init(nl,k);
 				}else{
 					nl := insert(this.left,k);
@@ -153,7 +153,7 @@ field root : Ref
 				}
 			}else{ // k>this.key -- insert this.right
 				if (this.right==null){
-					nr := new();
+					nr := new(*);
 					init(nr,k);
 				}else{
 					nr := insert(this.right,k);

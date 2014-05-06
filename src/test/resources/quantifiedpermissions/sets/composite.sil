@@ -60,7 +60,7 @@ method initSingle(this: Ref)
 {
   this.value := 1
   var p: Ref
-  p := new()
+  p := new(*)
   this.parentStruct := p
   this.parentStruct.all := Set(this)
   this.left := null
