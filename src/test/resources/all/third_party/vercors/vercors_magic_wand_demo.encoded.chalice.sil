@@ -177,7 +177,8 @@ method WandDemoWand_readonly_for_writeonly_lemma_1$(this$_11: Ref, k$_3: Perm, _
   out_1 := __out_1
   n$_3 := new()
   __flatten_1 := n$_3
-  fresh(newK$_1) {
+  fresh newK$_1
+  constraining(newK$_1) {
     Wand_readonly_for_writeonlyWand_readonly_for_writeonly_init$(__flatten_1, newK$_1)
   }
   wand$ := __flatten_1
@@ -211,7 +212,8 @@ method WandDemoset_val$(this$_12: Ref, k$_4: Perm, __v: Int) returns (wand$: Ref
   unfold acc(WandDemowriteonly$(this$_12), write)
   this$_12.WandDemox$ := v
   fold acc(WandDemoreadonly$(this$_12), write)
-  fresh(newK$) {
+  fresh newK$
+  constraining(newK$) {
     __flatten_3 := WandDemoWand_readonly_for_writeonly_lemma_1$(this$_12, newK$, this$_12, this$_12, this$_12)
   }
   wand$ := __flatten_3
@@ -237,7 +239,8 @@ method WandDemodemo$(this$_13: Ref, k$_5: Perm)
   var set_call_wand$: Ref
   n$_5 := new()
   __flatten_4 := n$_5
-  fresh(newK$_2) {
+  fresh newK$_2
+  constraining(newK$_2) {
     WandDemoWandDemo_init$(__flatten_4, newK$_2)
   }
   d := __flatten_4
@@ -245,7 +248,8 @@ method WandDemodemo$(this$_13: Ref, k$_5: Perm)
   while (true)
     invariant acc(WandDemowriteonly$(d), write)
   {
-    fresh(newK$_3) {
+    fresh newK$_3
+    constraining(newK$_3) {
       set_call_wand$ := WandDemoset_val$(d, newK$_3, i)
     }
     wand$ := set_call_wand$
@@ -254,7 +258,8 @@ method WandDemodemo$(this$_13: Ref, k$_5: Perm)
     __flatten_14 := WandDemoget$(d)
     __flatten_7 := __flatten_14
     i := __flatten_6 + __flatten_7
-    fresh(newK$_4) {
+    fresh newK$_4
+    constraining(newK$_4) {
       Wand_readonly_for_writeonlyapply$(wand$, newK$_4)
     }
   }

@@ -120,10 +120,10 @@ class ControlFlowGraphTest extends FunSuite with BeforeAndAfter with ShouldMatch
     val loopBlockBody = NormalBlock(nonEmptyStmt, TerminalBlock(emptyStmt))
     val loopBlock = LoopBlock(loopBlockBody, falseLit, Seq.empty, Seq.empty, exitBlock)()
 
-    val frpBlockBody = TerminalBlock(emptyStmt)
-    val frpBlock = FreshReadPermBlock(Seq.empty, frpBlockBody, exitBlock)
+    val constrainingBlockBody = TerminalBlock(emptyStmt)
+    val constrainingBlock = ConstrainingBlock(Seq.empty, constrainingBlockBody, exitBlock)
 
-    val condBlock = ConditionalBlock(emptyStmt, trueLit, frpBlock, loopBlock)
+    val condBlock = ConditionalBlock(emptyStmt, trueLit, constrainingBlock, loopBlock)
     val cfg = condBlock
 
     test("Nop Transformation") {
@@ -135,7 +135,7 @@ class ControlFlowGraphTest extends FunSuite with BeforeAndAfter with ShouldMatch
     test("ConditionalBlock Simplification") {
       assertEqAndDisjoint(cfg.transform({
         case ConditionalBlock(stmt, TrueLit(), thn, els) => NormalBlock(stmt, thn)
-      }), NormalBlock(condBlock.stmt, frpBlock))
+      }), NormalBlock(condBlock.stmt, constrainingBlock))
     }
 
     test("LoopBlock Simplification") {

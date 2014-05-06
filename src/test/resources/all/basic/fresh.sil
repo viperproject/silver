@@ -4,7 +4,8 @@ method t1(r: Ref)
     requires acc(r.f, write)
 {
     var read: Perm
-    fresh(read) {
+    fresh read
+    constraining(read) {
         t1b(r, read)
     }
     assert (perm(r.f) == write)
@@ -21,7 +22,8 @@ method t2(r: Ref)
     requires acc(r.f, write)
 {
     var read: Perm
-    fresh(read) {
+    fresh read
+    constraining(read) {
         exhale acc(r.f, read) && acc(r.f, write - read)
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
@@ -32,7 +34,8 @@ method t2b(r: Ref)
     requires acc(r.f, write)
 {
     var read: Perm
-    fresh(read) {
+    fresh read
+    constraining(read) {
         exhale acc(r.f, write - read) && acc(r.f, read)
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
@@ -44,7 +47,8 @@ method t3(r: Ref)
     requires acc(r.f, wildcard)
 {
     var read: Perm
-    fresh(read) {
+    fresh read
+    constraining(read) {
         t1b(r, read)
     }
 }
@@ -53,7 +57,8 @@ method t4(r: Ref, read: Perm)
     requires acc(r.f, read)
 {
     var read2: Perm
-    fresh(read2) {
+    fresh read2
+    constraining(read2) {
         t1b(r, read2)
     }
 }

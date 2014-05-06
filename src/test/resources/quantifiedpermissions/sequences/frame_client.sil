@@ -19,7 +19,8 @@ method goo() {
   foo(S, 0, |S|, 1/2)
   assert x == S[2].f
 
-  fresh(k) {
+  fresh k
+  constraining(k) {
     foo(S, 0, |S|, k)
   }
   assert x == S[2].f
