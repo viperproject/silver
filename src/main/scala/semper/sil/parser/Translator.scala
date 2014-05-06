@@ -121,7 +121,9 @@ case class Translator(program: PProgram) {
     val pos = s.start
     s match {
       case PVarAssign(idnuse, PFunctApp(func, args)) if members.get(func.name).get.isInstanceOf[Method] =>
-        // this is a method call that got parsed in a slightly confusing way
+        /* This is a method call that got parsed in a slightly confusing way.
+         * TODO: Get rid of this case! There is a matching case in the resolver.
+         */
         val call = PMethodCall(Seq(idnuse), func, args)
         call.setStart(s.start)
         stmt(call)
@@ -157,8 +159,9 @@ case class Translator(program: PProgram) {
         Goto(label.name)(pos)
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn), stmt(els))(pos)
-      case PFreshReadPerm(vars, ss) =>
-        FreshReadPerm(vars map (v => LocalVar(v.name)(ttyp(v.typ), v.start)), stmt(ss))(pos)
+      case PFresh(vars) => Fresh(vars map (v => LocalVar(v.name)(ttyp(v.typ), v.start)))(pos)
+      case PConstraining(vars, ss) =>
+        Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v.start)), stmt(ss))(pos)
       case PWhile(cond, invs, body) =>
         val plocals = body.childStmts collect {
           case l: PLocalVarDecl => l
@@ -383,9 +386,9 @@ case class Translator(program: PProgram) {
         case Some(d) =>
           val domain = d.asInstanceOf[Domain]
           val typVarMapping = domain.typVars zip (args map ttyp)
-          DomainType(domain, (typVarMapping.filter {
+          DomainType(domain, typVarMapping.filter {
             case (tv, tt) => !tt.isInstanceOf[TypeVar]
-          }).toMap)
+          }.toMap)
         case None =>
           assert(args.length == 0)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable

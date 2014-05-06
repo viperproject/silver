@@ -166,7 +166,7 @@ case class LoopBlock(var body: Block, cond: Exp, invs: Seq[Exp], locals: Seq[Loc
   def succs = List(UnconditionalEdge(succ))
 }
 
-/** Corresponds to the `FreshReadPerm` statement, that is, the `vars` can be constrained inside the `body`. */
-case class FreshReadPermBlock(vars: Seq[LocalVar], var body: Block, var succ: Block) extends Block {
+/** Corresponds to the `Constraining` statement, that is, the `vars` can be constrained inside the `body`. */
+case class ConstrainingBlock(vars: Seq[LocalVar], var body: Block, var succ: Block) extends Block {
   def succs = List(UnconditionalEdge(succ))
 }

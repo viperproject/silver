@@ -121,7 +121,9 @@ case class TypeChecker(names: NameAnalyser) {
       case PInhale(e) =>
         check(e, Bool)
       case PVarAssign(idnuse, PFunctApp(func, args)) if names.definition(curMember)(func).isInstanceOf[PMethod] =>
-        // this is a method call that got parsed in a slightly confusing way
+        /* This is a method call that got parsed in a slightly confusing way.
+         * TODO: Get rid of this case! There is a matching case in the translator.
+         */
         check(PMethodCall(Seq(idnuse), func, args))
       case PVarAssign(idnuse, rhs) =>
         names.definition(curMember)(idnuse) match {
@@ -135,14 +137,7 @@ case class TypeChecker(names: NameAnalyser) {
             message(stmt, "expected variable as lhs")
         }
       case PNewStmt(idnuse) =>
-        names.definition(curMember)(idnuse) match {
-          case PLocalVarDecl(_, typ, _) =>
-            check(idnuse, Ref)
-          case PFormalArgDecl(_, typ) =>
-            check(idnuse, Ref)
-          case _ =>
-            message(stmt, "expected variable as lhs")
-        }
+        expectAndCheckVariables(idnuse :: Nil, _ => Ref, "expected variable as lhs")
       case PMethodCall(targets, method, args) =>
         names.definition(curMember)(method) match {
           case PMethod(_, formalArgs, formalTargets, _, _, _) =>
@@ -189,19 +184,21 @@ case class TypeChecker(names: NameAnalyser) {
           case Some(i) => check(i, typ)
           case None =>
         }
-      case PFreshReadPerm(vars, s) =>
-        vars map {
-          v =>
-            names.definition(curMember)(v) match {
-              case PLocalVarDecl(_, typ, _) =>
-                check(v, Perm)
-              case PFormalArgDecl(_, typ) =>
-                check(v, Perm)
-              case _ =>
-                message(v, "expected variable in fresh read permission block")
-            }
-        }
+      case PFresh(vars) =>
+        expectAndCheckVariables(vars, _ => Perm, "expected variable in fresh read permission block")
+      case PConstraining(vars, s) =>
+        expectAndCheckVariables(vars, _ => Perm, "expected variable in fresh read permission block")
         check(s)
+    }
+  }
+
+  def expectAndCheckVariables(vars: Seq[PIdnUse], expectedType: PExp => PType, errorMessage: String) {
+    vars map { v =>
+      names.definition(curMember)(v) match {
+        case _: PLocalVarDecl => check(v, expectedType(v))
+        case _: PFormalArgDecl => check(v, expectedType(v))
+        case _ => message(v, errorMessage)
+      }
     }
   }
 
@@ -293,10 +290,10 @@ case class TypeChecker(names: NameAnalyser) {
   def check(exp: PExp, expected: PType): Unit = check(exp, Seq(expected))
 
   def check(exp: PExp, expectedRaw: Seq[PType]): Unit = {
-    val expected = expectedRaw filter ({
+    val expected = expectedRaw filter {
       case PTypeVar(_) => false
       case _ => true
-    })
+    }
     def setRefinedType(actual: PType, inferred: Seq[(String, PType)]) {
       val t = actual.substitute(inferred.toMap)
       check(t)
@@ -631,7 +628,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(perm, Perm)
         setType(Bool)
       case PEmptySeq(_) =>
-        val typ = (if (exp.typ.isUnknown) genericSeqType else exp.typ)
+        val typ = if (exp.typ.isUnknown) genericSeqType else exp.typ
         if (expected.size == 1) {
           setRefinedType(typ, learn(typ, expected.head))
         } else {
@@ -663,7 +660,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PSeqIndex(seq, idx) =>
         val expectedSeqType = expected match {
           case Nil => Seq(genericSeqType)
-          case _ => expected map (PSeqType(_))
+          case _ => expected map PSeqType
         }
         check(seq, expectedSeqType)
         check(idx, Int)
@@ -851,7 +848,7 @@ case class NameAnalyser() {
     // find all declarations
     p.visit({
       case m: PScope =>
-        memberIdnMap.put(m, memberIdnMap.getOrElse(curMember, collection.mutable.HashMap[String, Entity]()).clone)
+        memberIdnMap.put(m, memberIdnMap.getOrElse(curMember, collection.mutable.HashMap[String, Entity]()).clone())
         scopeStack.push(curMember)
         curMember = m
       case i@PIdnDef(name) =>

@@ -174,8 +174,10 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case Inhale(e) => "inhale" <+> show(e)
       case Exhale(e) => "exhale" <+> show(e)
       case Assert(e) => "assert" <+> show(e)
-      case FreshReadPerm(vars, body) =>
-        "fresh" <> parens(ssep(vars map show, comma <> space)) <+> showBlock(body)
+      case Fresh(vars) =>
+        "fresh" <+> ssep(vars map show, comma <> space)
+      case Constraining(vars, body) =>
+        "constraining" <> parens(ssep(vars map show, comma <> space)) <+> showBlock(body)
       case MethodCall(m, args, targets) =>
         val call = m.name <> parens(ssep(args map show, comma <> space))
         targets match {
@@ -205,7 +207,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   def showElse(els: Stmt): PrettyPrinter.Doc = els match {
     case Seqn(Seq()) => empty
     case Seqn(Seq(s)) => showElse(s)
-    case If(cond, thn, els) => empty <+> "elsif" <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
+    case If(cond1, thn1, els1) => empty <+> "elsif" <+> parens(show(cond1)) <+> showBlock(thn1) <> showElse(els1)
     case _ => empty <+> "else" <+> showBlock(els)
   }
 

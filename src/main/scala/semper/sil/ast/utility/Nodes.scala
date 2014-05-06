@@ -46,7 +46,8 @@ object Nodes {
           case If(cond, thn, els) => Seq(cond, thn, els)
           case Label(name) => Nil
           case Goto(target) => Nil
-          case FreshReadPerm(vars, body) => vars ++ Seq(body)
+          case Fresh(vars) => vars
+          case Constraining(vars, body) => vars ++ Seq(body)
         }
       case vd: LocalVarDecl => Nil
       case e: Exp =>

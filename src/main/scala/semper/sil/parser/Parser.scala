@@ -110,7 +110,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // control structures
     "while", "if", "elsif", "else",
     // special fresh block
-    "fresh",
+    "fresh", "constraining",
     // sequences
     "Seq",
     // sets and multisets
@@ -221,7 +221,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     rep(stmt <~ opt(";"))
   lazy val stmt =
     fieldassign | localassign | fold | unfold | exhale | assert |
-      inhale | ifthnels | whle | varDecl | newstmt | freshReadPerm |
+      inhale | ifthnels | whle | varDecl | newstmt | fresh | constrainingBlock |
       methodCall | goto | lbl
 
   lazy val fold =
@@ -254,9 +254,13 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     }
   lazy val varDecl =
     ("var" ~> idndef) ~ (":" ~> typ) ~ opt(":=" ~> exp) ^^ PLocalVarDecl
-  lazy val freshReadPerm =
-    ("fresh" ~> "(" ~> repsep(idnuse, ",") <~ ")") ~ block ^^ {
-      case vars ~ s => PFreshReadPerm(vars, PSeqn(s))
+  lazy val fresh =
+    "fresh" ~> repsep(idnuse, ",") ^^ {
+      case vars => PFresh(vars)
+    }
+  lazy val constrainingBlock =
+    ("constraining" ~> "(" ~> repsep(idnuse, ",") <~ ")") ~ block ^^ {
+      case vars ~ s => PConstraining(vars, PSeqn(s))
     }
   lazy val newstmt =
     idnuse <~ (":=" ~ "new" ~ "()") ^^ PNewStmt

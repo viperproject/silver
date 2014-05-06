@@ -140,10 +140,20 @@ case class Label(name: String)(val pos: Position = NoPosition, val info: Info = 
  */
 case class Goto(target: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
 
-/**
- * A special block that is annotated with a list of permission-typed variables.  At the start of the
- * block, these variables should each be havoced, their values should be assumed to be strictly
- * between 0 and 1, and within the block, they can have additional assumptions introduced.
- */
-case class FreshReadPerm(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo)
-    extends Stmt
+/** A fresh statement assigns a fresh, dedicated symbolic permission values to
+  * each of the passed variables.
+  */
+case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+  require(vars forall (_ isSubtype Perm))
+}
+
+/** A constraining-block takes a sequence of permission-typed variables,
+  * each of which is marked as constrainable while executing the statements
+  * in the body of the block. Potentially constraining statements are, e.g.,
+  * exhale-statements.
+  */
+case class Constraining(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo)
+    extends Stmt {
+
+  require(vars forall (_ isSubtype Perm))
+}

@@ -202,8 +202,11 @@ object Transformer {
             case Fold(predicate) =>
               Fold(go(predicate))(statement.pos, statement.info)
 
-            case FreshReadPerm(variables, body) =>
-              FreshReadPerm(
+            case Fresh(variables) =>
+              Fresh(variables map go)(statement.pos, statement.info)
+
+            case Constraining(variables, body) =>
+              Constraining(
                 variables map go, go(body))(statement.pos, statement.info)
 
             case Goto(_) => statement
