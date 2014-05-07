@@ -589,12 +589,12 @@ case class TypeChecker(names: NameAnalyser) {
          */
         rcv match {
           case p: PIdnUse =>
-            val msg = "expected local variable"
-            acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(p), msg)()
+            acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(p), "expected local variable")()
           case _ =>
+            /* More complicated expressions should be ok if of type Ref, which is checked next */
         }
         check(rcv, Ref)
-        check(idnuse, expected)
+        acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")((_, _) => check(idnuse, expected))
         setType(idnuse.typ)
       case p@PPredicateAccess(args, idnuse) =>
         args map (a => check(a, Nil))

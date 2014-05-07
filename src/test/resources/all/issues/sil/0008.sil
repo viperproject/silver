@@ -45,14 +45,14 @@ method test(x: Ref)
   inhale a > 0
 }
 
-field n: Int
+field integer: Int
 
 method foo(x: Ref) returns (n: Int)
-  requires acc(x.n)
-  ensures acc(x.n) && n < x.n
+  requires acc(x.integer)
+  ensures acc(x.integer) && n < x.integer
 {
-  n := x.n
-  x.n := n + 1
+  n := x.integer
+  x.integer := n + 1
 }
 
 field Node_n: Ref
