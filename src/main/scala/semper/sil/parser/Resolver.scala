@@ -254,24 +254,31 @@ case class TypeChecker(names: NameAnalyser) {
       case PPrimitiv(_) =>
       case dt@PDomainType(domain, args) =>
         args map check
+
+        /* TODO: [Malte] This looks scary. Does anybody really understand what's going on here?
+         *       My assumption is, that an exception is thrown if 'domain' cannot be looked up.
+         *       This leaves x to be null, which is then interpreted as 'domain' denoting a
+         *       domain variable. I guess this can be exploided to use type variables that
+         *       haven't been declared or are not in scope.
+         */
         var x: Any = null
         try {
           x = names.definition(curMember)(domain)
         } catch {
           case _: Throwable =>
         }
+
         x match {
           case d@PDomain(name, typVars, _, _) =>
             ensure(args.length == typVars.length, typ, "wrong number of type arguments")
             dt._isTypeVar = Some(false)
+          case null if args.length == 0 =>
+            // this must be a type variable, then
+            dt._isTypeVar = Some(true)
           case _ =>
-            if (args.length == 0) {
-              // this must be a type variable, then
-              dt._isTypeVar = Some(true)
-            } else {
-              message(typ, "expected domain")
-            }
+            message(typ, "expected domain")
         }
+
       case PSeqType(elemType) =>
         check(elemType)
       case PSetType(elemType) =>
