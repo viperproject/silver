@@ -258,8 +258,8 @@ case class TypeChecker(names: NameAnalyser) {
         /* TODO: [Malte] This looks scary. Does anybody really understand what's going on here?
          *       My assumption is, that an exception is thrown if 'domain' cannot be looked up.
          *       This leaves x to be null, which is then interpreted as 'domain' denoting a
-         *       domain variable. I guess this can be exploided to use type variables that
-         *       haven't been declared or are not in scope.
+         *       domain variable. This can be exploited to use type variables that
+         *       haven't been declared or are not in scope. See issue #11.
          */
         var x: Any = null
         try {
