@@ -185,6 +185,7 @@ case class Translator(program: PProgram) {
     val pos = pexp.start
     pexp match {
       case PIdnUse(name) =>
+        /* TODO: See issue #24 */
         LocalVar(name)(ttyp(pexp.typ), pos)
       case PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
