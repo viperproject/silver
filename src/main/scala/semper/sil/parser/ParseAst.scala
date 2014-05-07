@@ -251,7 +251,9 @@ case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PTyp
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with TypedEntity
 case class PAxiom(idndef: PIdnDef, exp: PExp) extends PNode with PScope
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with TypedEntity
-case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: PExp) extends PMember with RealEntity
+case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: PExp) extends PMember with TypedEntity {
+  val typ = PPredicateType()
+}
 
 /** An entity is a declaration (i.e. something that contains a PIdnDef). */
 sealed trait Entity

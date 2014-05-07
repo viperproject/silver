@@ -74,7 +74,11 @@ method initSingle(this: Ref)
 method initAndInsert(this: Ref, newParent: Ref, isLeft: Bool)
   requires acc(this.value, write) && acc(this.left, write) && acc(this.right, write) && acc(this.parent, write) && acc(this.parentStruct, write)
   requires this.left==null && this.right==null && this.parent==null && this.parentStruct==null
-  requires newParent != null && acc(newParent.parentStruct, wildcard) && acc(inv(newParent.parentStruct, write)) && !(this in getAllNodes(newParent.parentStruct)) && newParent in getAllNodes(newParent.parentStruct)
+  requires newParent != null
+  requires acc(newParent.parentStruct, wildcard)
+  requires acc(inv(newParent.parentStruct), write)
+  requires !(this in getAllNodes(newParent.parentStruct))
+  requires newParent in getAllNodes(newParent.parentStruct)
   requires isLeft ? getLeft(newParent)==null : getRight(newParent)==null
 
 

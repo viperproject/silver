@@ -226,6 +226,7 @@ case class TypeChecker(names: NameAnalyser) {
     * @tparam T2 Another accepted subtype of `TypedEntity`
     *
     * TODO: Generalise the method to take ClassTags T1, ..., TN.
+    * TODO: If only a single T is taken, let handle be (PIdnUse, T) => Unit
     */
   def acceptAndCheckTypedEntity[T1 : ClassTag, T2 : ClassTag]
                                (idnUses: Seq[PIdnUse], errorMessage: String)
@@ -597,8 +598,15 @@ case class TypeChecker(names: NameAnalyser) {
         acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")((_, _) => check(idnuse, expected))
         setType(idnuse.typ)
       case p@PPredicateAccess(args, idnuse) =>
-        args map (a => check(a, Nil))
-        check(idnuse, expected)
+        acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
+          val predicate = _predicate.asInstanceOf[PPredicate]
+          check(idnuse, expected)
+          /* Check that the predicate is used with 1. the correct number of arguments,
+           * and 2. with the correct types of arguments.
+           */
+          if (args.length != predicate.formalArgs.length) issueError(idnuse, "predicate arity doesn't match")
+          args zip predicate.formalArgs map {case (aarg, farg) => check(aarg, farg.typ)}
+        }
         setType(Pred)
       case fa@PFunctApp(func, args) =>
         names.definition(curMember)(func) match {
@@ -624,7 +632,7 @@ case class TypeChecker(names: NameAnalyser) {
             }
             setRefinedType(typ, inferred)
           case x =>
-            issueError(func, s"expected function")
+            issueError(func, "expected function")
         }
       case PUnfolding(acc, body) =>
         check(acc.perm, Perm)
