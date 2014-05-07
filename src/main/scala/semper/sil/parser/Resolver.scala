@@ -1,8 +1,9 @@
 package semper.sil.parser
 
+import scala.collection.mutable
+import scala.reflect._
 import org.kiama.util.Messaging.{message, messagecount}
 import org.kiama.util.Positioned
-import scala.collection.mutable
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -137,7 +138,8 @@ case class TypeChecker(names: NameAnalyser) {
             message(stmt, "expected variable as lhs")
         }
       case PNewStmt(target, fields) =>
-        expectAndCheckVariables(target :: Nil, _ => Ref, "expected variable as lhs")
+        val msg = "expected variable as lhs"
+        acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(target), msg){(v, _) => check(v, Ref)}
         fields map (_.map (field =>
           names.definition(curMember)(field, Some(PField.getClass)) match {
             case PField(_, typ) =>
@@ -192,19 +194,54 @@ case class TypeChecker(names: NameAnalyser) {
           case None =>
         }
       case PFresh(vars) =>
-        expectAndCheckVariables(vars, _ => Perm, "expected variable in fresh read permission block")
+        val msg = "expected variable in fresh read permission block"
+        acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
       case PConstraining(vars, s) =>
-        expectAndCheckVariables(vars, _ => Perm, "expected variable in fresh read permission block")
+        val msg = "expected variable in fresh read permission block"
+        acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
         check(s)
     }
   }
 
-  def expectAndCheckVariables(vars: Seq[PIdnUse], expectedType: PExp => PType, errorMessage: String) {
-    vars map { v =>
-      names.definition(curMember)(v) match {
-        case _: PLocalVarDecl => check(v, expectedType(v))
-        case _: PFormalArgDecl => check(v, expectedType(v))
-        case _ => message(v, errorMessage)
+
+  /** This handy method checks if all passed `idnUses` refer to specific
+    * subtypes `TypedEntity`s when looked up in the current scope/lookup table.
+    * For each element in `idnUses`, if it refers an appropriate subtype, then
+    * `handle` is applied to the current element of `idnUses` and to the
+    * `TypedEntity` it refers to.
+    *
+    * If only a single subtype of `TypedEntity` is acceptable, pass `Nothing`
+    * as the second type argument.
+    *
+    * Caution is advised, however, since the method checks various
+    * type-relations only at runtime.
+    *
+    * @param idnUses Identifier usages to check
+    * @param errorMessage Error message in case one of the identifiers usages
+    *                     does not refer to an appropriate subtype of
+    *                     `TypedEntity`
+    * @param handle Handle pairs of current identifier usage and referenced
+    *               `TypedEntity`
+    * @tparam T1 An accepted subtype of `TypedEntity`
+    * @tparam T2 Another accepted subtype of `TypedEntity`
+    *
+    * TODO: Generalise the method to take ClassTags T1, ..., TN.
+    */
+  def acceptAndCheckTypedEntity[T1 : ClassTag, T2 : ClassTag]
+                               (idnUses: Seq[PIdnUse], errorMessage: String)
+                               (handle: (PIdnUse, TypedEntity) => Unit = (_, _) => ()) {
+
+    /* TODO: Ensure that the ClassTags denote subtypes of TypedEntity */
+    val acceptedClasses = Seq[Class[_]](classTag[T1].runtimeClass, classTag[T2].runtimeClass)
+
+    idnUses.foreach { use =>
+      val decl = names.definition(curMember)(use)
+
+      acceptedClasses.find(_.isInstance(decl)) match {
+        case Some(_) =>
+          handle(use, decl.asInstanceOf[TypedEntity])
+        case None =>
+          message(use, errorMessage)
       }
     }
   }
@@ -546,6 +583,16 @@ case class TypeChecker(names: NameAnalyser) {
       case PNullLit() =>
         setType(Ref)
       case PFieldAccess(rcv, idnuse) =>
+        /* For a field access of the type rcv.fld we have to ensure that the
+         * receiver denotes a local variable. Just checking that it is of type
+         * Ref is not sufficient, since it could also denote a Ref-typed field.
+         */
+        rcv match {
+          case p: PIdnUse =>
+            val msg = "expected local variable"
+            acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(p), msg)()
+          case _ =>
+        }
         check(rcv, Ref)
         check(idnuse, expected)
         setType(idnuse.typ)
@@ -579,10 +626,10 @@ case class TypeChecker(names: NameAnalyser) {
           case x =>
             issueError(func, s"expected function")
         }
-      case PUnfolding(acc, exp) =>
+      case PUnfolding(acc, body) =>
         check(acc.perm, Perm)
         check(acc.loc, Pred)
-        check(exp, expected)
+        check(body, expected)
         setType(exp.typ)
       case PExists(vars, e) =>
         vars map (v => check(v.typ))
@@ -829,11 +876,11 @@ case class NameAnalyser() {
         memberIdnMap.get(member).get.get(idnuse.name) match {
           case None =>
             idnMap.get(idnuse.name).get
-          case Some(entity) =>
-            if (expected.isDefined && entity.getClass != expected)
+          case Some(foundEntity) =>
+            if (expected.isDefined && foundEntity.getClass != expected)
               idnMap.get(idnuse.name).get
             else
-              entity
+              foundEntity
         }
 
       entity.asInstanceOf[RealEntity] // TODO: Why is the cast necessary? Remove if possible.

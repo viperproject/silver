@@ -83,7 +83,7 @@ case class PIdnDef(name: String) extends PNode with Identifier
 case class PIdnUse(name: String) extends PExp with Identifier
 
 // Formal arguments
-case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with RealEntity
+case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with TypedEntity
 
 // Types
 sealed trait PType extends PNode {
@@ -167,7 +167,9 @@ case class PBoolLit(b: Boolean) extends PExp {
 case class PNullLit() extends PExp {
   typ = Ref
 }
-sealed trait PLocationAccess extends PExp
+sealed trait PLocationAccess extends PExp {
+  def idnuse: PIdnUse
+}
 case class PFieldAccess(rcv: PExp, idnuse: PIdnUse) extends PLocationAccess
 case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse) extends PLocationAccess
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
@@ -230,7 +232,7 @@ case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PStmt) extends PStmt
 case class PFresh(vars: Seq[PIdnUse]) extends PStmt
 case class PConstraining(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
-case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with RealEntity
+case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with TypedEntity
 case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) extends PStmt
 case class PLabel(idndef: PIdnDef) extends PStmt with RealEntity
 case class PGoto(targets: PIdnUse) extends PStmt
@@ -241,18 +243,22 @@ sealed trait PMember extends PNode with PScope {
 }
 // a member (like method or axiom) that is its own name scope
 sealed trait PScope
+
 case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with RealEntity
 case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with RealEntity
-case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with RealEntity
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with RealEntity
-case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: PExp) extends PMember with RealEntity
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with TypedEntity
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with TypedEntity
 case class PAxiom(idndef: PIdnDef, exp: PExp) extends PNode with PScope
+case class PField(idndef: PIdnDef, typ: PType) extends PMember with TypedEntity
+case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: PExp) extends PMember with RealEntity
 
 /** An entity is a declaration (i.e. something that contains a PIdnDef). */
 sealed trait Entity
 sealed trait RealEntity extends Entity
+sealed trait TypedEntity extends RealEntity {
+  def typ: PType
+}
 abstract class ErrorEntity(name: String) extends Entity
 
 /**

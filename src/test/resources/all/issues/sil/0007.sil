@@ -1,0 +1,21 @@
+field item: Int
+field next: Ref
+
+predicate valid(this: Ref) {
+     acc(this.item, write)
+  && acc(this.next, write)
+  //:: ExpectedOutput(typechecker.error)
+  && (this.next != null ==> acc(next.valid, write))
+}
+
+method test()
+  //:: ExpectedOutput(typechecker.error)
+  requires acc(valid.item)
+{}
+
+function fun(): Int { 0 }
+
+method test()
+  //:: ExpectedOutput(typechecker.error)
+  requires acc(fun.item)
+{}

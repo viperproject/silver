@@ -1,7 +1,7 @@
 package semper.sil.testing
 
 import java.nio.file.{Files, Path}
-import io.Source
+import scala.io.Source
 
 /**
  * A parser for test annotations.  For an explanation of possible annotations and their syntax see
