@@ -230,7 +230,7 @@ case class TypeChecker(names: NameAnalyser) {
     */
   def acceptAndCheckTypedEntity[T1 : ClassTag, T2 : ClassTag]
                                (idnUses: Seq[PIdnUse], errorMessage: String)
-                               (handle: (PIdnUse, TypedEntity) => Unit = (_, _) => ()) {
+                               (handle: (PIdnUse, PTypedEntity) => Unit = (_, _) => ()) {
 
     /* TODO: Ensure that the ClassTags denote subtypes of TypedEntity */
     val acceptedClasses = Seq[Class[_]](classTag[T1].runtimeClass, classTag[T2].runtimeClass)
@@ -240,7 +240,7 @@ case class TypeChecker(names: NameAnalyser) {
 
       acceptedClasses.find(_.isInstance(decl)) match {
         case Some(_) =>
-          handle(use, decl.asInstanceOf[TypedEntity])
+          handle(use, decl.asInstanceOf[PTypedEntity])
         case None =>
           message(use, errorMessage)
       }
@@ -408,14 +408,19 @@ case class TypeChecker(names: NameAnalyser) {
     def genericMultisetType: PMultisetType = PMultisetType(PTypeVar("."))
     def genericAnySetType = Seq(genericSetType, genericMultisetType)
 
+    def setPIdnUseTypeAndEntity(piu: PIdnUse, typ: PType, entity: PRealEntity) {
+      setType(typ)
+      piu.decl = entity
+    }
+
     exp match {
-      case i@PIdnUse(name) =>
-        names.definition(curMember)(i) match {
-          case PLocalVarDecl(_, typ, _) => setType(typ)
-          case PFormalArgDecl(_, typ) => setType(typ)
-          case PField(_, typ) => setType(typ)
-          case PPredicate(_, _, _) => setType(Pred)
-          case x => issueError(i, s"expected identifier, but got $x")
+      case piu @ PIdnUse(name) =>
+        names.definition(curMember)(piu) match {
+          case decl @ PLocalVarDecl(_, typ, _) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case decl @ PFormalArgDecl(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case decl @ PField(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case decl @ PPredicate(_, _, _) => setPIdnUseTypeAndEntity(piu, Pred, decl)
+          case x => issueError(piu, s"expected identifier, but got $x")
         }
       case PBinExp(left, op, right) =>
         op match {
@@ -882,9 +887,9 @@ case class NameAnalyser() {
     * @param expected Expected class of the entity.
     * @return Resolved entity.
     */
-  def definition(member: PScope)(idnuse: PIdnUse, expected: Option[Class[_]] = None): RealEntity = {
+  def definition(member: PScope)(idnuse: PIdnUse, expected: Option[Class[_]] = None): PRealEntity = {
     if (member == null) {
-      idnMap.get(idnuse.name).get.asInstanceOf[RealEntity]
+      idnMap.get(idnuse.name).get.asInstanceOf[PRealEntity]
     } else {
       // lookup in method map first, and otherwise in the general one
       val entity =
@@ -898,7 +903,7 @@ case class NameAnalyser() {
               foundEntity
         }
 
-      entity.asInstanceOf[RealEntity] // TODO: Why is the cast necessary? Remove if possible.
+      entity.asInstanceOf[PRealEntity] // TODO: Why is the cast necessary? Remove if possible.
     }
   }
 
@@ -907,8 +912,8 @@ case class NameAnalyser() {
     memberIdnMap.clear()
   }
 
-  private val idnMap = collection.mutable.HashMap[String, Entity]()
-  private val memberIdnMap = collection.mutable.HashMap[PScope, collection.mutable.HashMap[String, Entity]]()
+  private val idnMap = collection.mutable.HashMap[String, PEntity]()
+  private val memberIdnMap = collection.mutable.HashMap[PScope, collection.mutable.HashMap[String, PEntity]]()
 
   def run(p: PProgram): Boolean = {
     var curMember: PScope = null
@@ -917,23 +922,23 @@ case class NameAnalyser() {
     // find all declarations
     p.visit({
       case m: PScope =>
-        memberIdnMap.put(m, memberIdnMap.getOrElse(curMember, collection.mutable.HashMap[String, Entity]()).clone())
+        memberIdnMap.put(m, memberIdnMap.getOrElse(curMember, collection.mutable.HashMap[String, PEntity]()).clone())
         scopeStack.push(curMember)
         curMember = m
       case i@PIdnDef(name) =>
         getMap.get(name) match {
-          case Some(MultipleEntity()) =>
+          case Some(PMultipleEntity()) =>
             message(i, s"$name already defined.")
           case Some(e) =>
             message(i, s"$name already defined.")
-            getMap.put(name, MultipleEntity())
+            getMap.put(name, PMultipleEntity())
           case None =>
             i.parent match {
               case decl: PAxiom => // nothing refers to axioms, thus do not store it
               case decl: PDomain => if (name == decl.idndef.name) idnMap.put(name, decl)
               case decl: PLocalVarDecl => getMap.put(name, decl)
               case decl: PFormalArgDecl => getMap.put(name, decl)
-              case decl: RealEntity => idnMap.put(name, decl)
+              case decl: PRealEntity => idnMap.put(name, decl)
               case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
             }
         }
@@ -951,8 +956,8 @@ case class NameAnalyser() {
         curMember = m
       case i@PIdnUse(name) =>
         // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
-        getMap.getOrElse(name, idnMap.getOrElse(name, UnknownEntity())) match {
-          case UnknownEntity() =>
+        getMap.getOrElse(name, idnMap.getOrElse(name, PUnknownEntity())) match {
+          case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
             if (!i.parent.isInstanceOf[PDomainType])
               message(i, s"$name not defined.")

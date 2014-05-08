@@ -7,20 +7,22 @@ import semper.sil.ast._
 import semper.sil.ast.utility.{Visitor => UtilityVisitor}
 import utility.Statements
 
-
-
 /**
- * Takes an abstract syntax tree after parsing is done and translates it into a SIL abstract
- * syntax tree.
+ * Takes an abstract syntax tree after parsing is done and translates it into
+ * a SIL abstract syntax tree.
  *
- * Note that the translator assumes that the tree is well-formed (it typechecks and follows all the rules
- * of a valid SIL program).  No checks are performed, and the code might crash if the input is malformed.
+ * [2014-05-08 Malte] The current architecture of the resolver makes it hard
+ * to detect all malformed ASTs. It is, for example, hard to detect that an
+ * expression "f > 0", where f is an int-typed field, is malformed.
+ * The translator can thus not assume that the input tree is completely
+ * wellformed, and in cases where a malformed tree is detected, it does not
+ * return a tree, but instead, records error messages using Kiama's
+ * Messaging feature.
  */
 case class Translator(program: PProgram) {
-
   val file = program.file
 
-  def translate: (Program, Seq[Messaging.Record]) = {
+  def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     assert(Messaging.messagecount == 0, "Expected previous phases to succeed, but found error messages.")
 
     program match {
@@ -35,7 +37,8 @@ case class Translator(program: PProgram) {
         val m = methods map (translate(_))
         val prog = Program(d, f, fs, p, m)(program.start)
 
-        (prog, Messaging.messages)
+        if (Messaging.messagecount == 0) Some(prog)
+        else None
     }
   }
 
@@ -109,12 +112,12 @@ case class Translator(program: PProgram) {
   }
 
   // helper methods that can be called if one knows what 'id' refers to
-  private def findDomain(id: Identifier) = members.get(id.name).get.asInstanceOf[Domain]
-  private def findField(id: Identifier) = members.get(id.name).get.asInstanceOf[Field]
-  private def findFunction(id: Identifier) = members.get(id.name).get.asInstanceOf[Function]
-  private def findDomainFunction(id: Identifier) = members.get(id.name).get.asInstanceOf[DomainFunc]
-  private def findPredicate(id: Identifier) = members.get(id.name).get.asInstanceOf[Predicate]
-  private def findMethod(id: Identifier) = members.get(id.name).get.asInstanceOf[Method]
+  private def findDomain(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Domain]
+  private def findField(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Field]
+  private def findFunction(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Function]
+  private def findDomainFunction(id: PIdentifier) = members.get(id.name).get.asInstanceOf[DomainFunc]
+  private def findPredicate(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Predicate]
+  private def findMethod(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Method]
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */
   private def stmt(s: PStmt): Stmt = {
@@ -184,9 +187,15 @@ case class Translator(program: PProgram) {
   private def exp(pexp: PExp): Exp = {
     val pos = pexp.start
     pexp match {
-      case PIdnUse(name) =>
-        /* TODO: See issue #24 */
-        LocalVar(name)(ttyp(pexp.typ), pos)
+      case piu @ PIdnUse(name) =>
+        piu.decl match {
+          case _: PLocalVarDecl | _: PFormalArgDecl =>
+            LocalVar(name)(ttyp(pexp.typ), pos)
+          case other =>
+            val message = s"expected local variable, but found ${PRealEntity.descriptiveName(other)}"
+            Messaging.message(piu, message)
+            DummyExp(ttyp(pexp.typ))
+        }
       case PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
         op match {
@@ -194,13 +203,13 @@ case class Translator(program: PProgram) {
             r.typ match {
               case Int => Add(l, r)(pos)
               case Perm => PermAdd(l, r)(pos)
-              case _ => sys.error("should oocur in type-checked program")
+              case _ => sys.error("should not occur in type-checked program")
             }
           case "-" =>
             r.typ match {
               case Int => Sub(l, r)(pos)
               case Perm => PermSub(l, r)(pos)
-              case _ => sys.error("should oocur in type-checked program")
+              case _ => sys.error("should not occur in type-checked program")
             }
           case "*" =>
             r.typ match {
@@ -209,9 +218,9 @@ case class Translator(program: PProgram) {
                 l.typ match {
                   case Int => IntPermMul(l, r)(pos)
                   case Perm => PermMul(l, r)(pos)
-                  case _ => sys.error("should occur in type-checked program")
+                  case _ => sys.error("should not occur in type-checked program")
                 }
-              case _ => sys.error("should occur in type-checked program")
+              case _ => sys.error("should not occur in type-checked program")
             }
           case "/" => FractionalPerm(l, r)(pos)
           case "\\" => Div(l, r)(pos)
@@ -406,4 +415,6 @@ case class Translator(program: PProgram) {
     case PPredicateType() =>
       sys.error("unexpected use of internal typ")
   }
+
+  private def DummyExp(typ: Type) = LocalVar("dummy")(typ, NoPosition)
 }
