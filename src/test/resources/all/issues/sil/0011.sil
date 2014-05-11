@@ -1,0 +1,47 @@
+domain List[T] {
+  //:: ExpectedOutput(typechecker.error)
+  function nil(): List[X] /* X has not been declared! */
+
+  function cons(x: T, xs: List[T]): List[T]
+}
+
+
+
+domain Domain2[A] {
+  function d2fun1(a: A): A
+}
+
+domain Any {}
+
+method test3()
+  requires forall a: Any :: d2fun1(a) == a
+{}
+
+
+
+
+domain Natural {
+  function zero(): Natural
+
+  function successor(n: Natural): Natural
+}
+
+domain List[A] {
+  function nil(t: A): List[A]
+
+  function cons(e: A, l: List[A]): List[A]
+
+  function take(n: Natural, l: List[A]): List[A]
+
+  axiom takeSuccessorCons {
+    /* y should have same type A as elements of ys. */
+    forall x: Natural, y: Natural, ys: List[A] ::
+      take(successor(x), cons(y, ys)) == cons(y, take(x, ys))
+  }
+}
+
+/* Many axioms omitted. */
+
+method property()
+  ensures forall xs: List[Any] :: exists t: Any :: take(zero(), xs) == nil(t)
+{ }

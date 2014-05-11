@@ -1,0 +1,11 @@
+field f : Int
+
+method test1()
+  //:: ExpectedOutput(typechecker.error)
+  requires f > 0
+{}
+
+method test2(this: Ref)
+  //:: ExpectedOutput(typechecker.error)
+  requires acc(this.f) && f > 0
+{}
