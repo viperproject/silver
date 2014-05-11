@@ -82,7 +82,7 @@ trait PIdentifier {
 case class PIdnDef(name: String) extends PNode with PIdentifier
 
 case class PIdnUse(name: String) extends PExp with PIdentifier {
-  var decl: PRealEntity = null /* TODO: Still needed ???????????? */
+  var decl: PRealEntity = null
     /* Should be set during resolving. Intended to preserve information
      * that is needed by the translator.
      */
