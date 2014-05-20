@@ -38,11 +38,13 @@ method Cm(this: Ref)
 method Dm(this: Ref)
   requires this != null && acc(this.p) && acc(this.s) && this.s == Set(this) && this.p == null
 {
+  //:: UnexpectedOutput(fold.failed:insufficient.permission, /silicon/issue/79/)
   fold D(this)
 }
 
 method Dmm(this: Ref)
   requires this != null && acc(this.p) && acc(this.s) && this.s == Set(this) && this.p == null
 {
+  //:: UnexpectedOutput(assert.failed:insufficient.permission, /silicon/issue/79/)
   assert acc(this.s) && (forall x: Ref :: x in this.s ==> acc(x.p, 1/2)) && (forall x: Ref :: x in this.s && x.p==null ==> acc(x.p, 1/2))
 }
