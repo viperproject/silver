@@ -387,8 +387,9 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       perm |
       quant |
       unfolding |
-      explicitSet | explicitMultiset |
-      seqTypedEmpty | seqLength | explicitSeq | seqRange |
+      setTypedEmpty | explicitSetNonEmpty |
+      explicitMultisetNonEmpty | multiSetTypedEmpty |
+      seqTypedEmpty | seqLength | explicitSeqNonEmpty | seqRange |
       fapp |
       idnuse
 
@@ -458,31 +459,36 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   // --- Sequence and set atoms
 
-  lazy val seqTypedEmpty: PackratParser[PExp] =
-    "Seq[" ~> typ <~ "]()" ^^ PEmptySeq
-
   lazy val seqLength: PackratParser[PExp] =
     "|" ~> exp <~ "|" ^^ PSize
 
-  lazy val explicitSeq: PackratParser[PExp] =
-    "Seq(" ~> repsep(exp, ",") <~ ")" ^^ {
-      case Nil => PEmptySeq(PUnknown())
+  lazy val seqTypedEmpty: PackratParser[PExp] =
+    "Seq[" ~> typ <~ "]()" ^^ PEmptySeq
+
+  lazy val explicitSeqNonEmpty: PackratParser[PExp] =
+    "Seq(" ~> rep1sep(exp, ",") <~ ")" ^^ {
+//      case Nil => PEmptySeq(PUnknown())
       case elems => PExplicitSeq(elems)
     }
 
   lazy val seqRange: PackratParser[PExp] =
     ("[" ~> exp <~ "..") ~ (exp <~ ")") ^^ PRangeSeq
 
-  lazy val explicitSet: PackratParser[PExp] =
-    "Set(" ~> repsep(exp, ",") <~ ")" ^^ {
-      case Nil => PEmptySet()
+  lazy val setTypedEmpty: PackratParser[PExp] =
+    "Set[" ~> typ <~ "]()" ^^ PEmptySet
+
+  lazy val explicitSetNonEmpty: PackratParser[PExp] =
+    "Set(" ~> rep1sep(exp, ",") <~ ")" ^^ {
+//      case Nil => PEmptySet()
       case elems => PExplicitSet(elems)
     }
 
-  lazy val explicitMultiset: PackratParser[PExp] =
-    "Multiset(" ~> repsep(exp, ",") <~ ")" ^^ {
-      case Nil => PEmptySet()
-      case elems => PExplicitSet(elems)
+  lazy val multiSetTypedEmpty: PackratParser[PExp] =
+    "Multiset[" ~> typ <~ "]()" ^^ PEmptyMultiset
+
+  lazy val explicitMultisetNonEmpty: PackratParser[PExp] =
+    "Multiset(" ~> rep1sep(exp, ",") <~ ")" ^^ {
+      case elems => PExplicitMultiset(elems)
     }
 
   // --- Identifier and keywords

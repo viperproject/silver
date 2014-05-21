@@ -63,9 +63,11 @@ object Transformer {
         case PSeqDrop(seq, n) => PSeqDrop(go(seq), go(n))
         case PSeqUpdate(seq, idx, elem) => PSeqUpdate(go(seq), go(idx), go(elem))
         case PSize(seq) => PSize(go(seq))
-        case _: PEmptySet => parent
+        case PEmptySet(t) => PEmptySet(go(t))
+          //        case _: PEmptySet => parent
         case PExplicitSet(elems) => PExplicitSet(elems map go)
-        case _: PEmptyMultiset => parent
+        case PEmptyMultiset(t) => PEmptyMultiset(go(t))
+//        case _: PEmptyMultiset => parent
         case PExplicitMultiset(elems) => PExplicitMultiset(elems map go)
 
         case PSeqn(ss) => PSeqn(ss map go)

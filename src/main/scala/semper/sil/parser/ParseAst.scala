@@ -225,11 +225,17 @@ case class PSeqDrop(seq: PExp, n: PExp) extends PExp
 case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends PExp
 case class PSize(seq: PExp) extends PExp
 
-case class PEmptySet() extends PExp
-case class PExplicitSet(elems: Seq[PExp]) extends PExp
-case class PEmptyMultiset() extends PExp
-case class PExplicitMultiset(elems: Seq[PExp]) extends PExp
+case class PEmptySet(t : PType) extends PExp{
+  typ = PSetType(t)
+}
 
+case class PExplicitSet(elems: Seq[PExp]) extends PExp
+case class PEmptyMultiset(t : PType) extends PExp
+{
+  typ = PMultisetType(t)
+}
+
+case class PExplicitMultiset(elems: Seq[PExp]) extends PExp
 // Statements
 sealed trait PStmt extends PNode {
   /**
@@ -377,9 +383,9 @@ object Nodes {
       case PSeqUpdate(seq, idx, elem) => Seq(seq, idx, elem)
       case PSize(seq) => Seq(seq)
 
-      case PEmptySet() => Nil
+      case PEmptySet(t) => Seq(t)
       case PExplicitSet(elems) => elems
-      case PEmptyMultiset() => Nil
+      case PEmptyMultiset(t) => Seq(t)
       case PExplicitMultiset(elems) => elems
 
       case PSeqn(ss) => ss

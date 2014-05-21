@@ -368,12 +368,12 @@ case class Translator(program: PProgram) {
           SeqLength(exp(s))(pos)
         else
           AnySetCardinality(exp(s))(pos)
-      case PEmptySet() =>
+      case PEmptySet(_) =>
         EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos)
       case PExplicitSet(elems) =>
         ExplicitSet(elems map exp)(pos)
-      case PEmptyMultiset() =>
-        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos)
+      case PEmptyMultiset(_) =>
+        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType))(pos)
       case PExplicitMultiset(elems) =>
         ExplicitMultiset(elems map exp)(pos)
     }
