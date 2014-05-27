@@ -28,34 +28,34 @@ predicate inv(this: Ref, except: Set[Ref])
 }
 
 function getAllNodes(this: Ref) : Set[Ref]
-  requires acc(inv(this, Set()), wildcard)
+  requires acc(inv(this, Set[Ref]()), wildcard)
 {
- unfolding acc(inv(this, Set()), wildcard) in this.all
+ unfolding acc(inv(this, Set[Ref]()), wildcard) in this.all
 }
 
 function getLeft(this: Ref) : Ref
-  requires this != null && acc(this.parentStruct, wildcard) && acc(inv(this.parentStruct, Set()), wildcard) && this in getAllNodes(this.parentStruct) && visit(this)
+  requires this != null && acc(this.parentStruct, wildcard) && acc(inv(this.parentStruct, Set[Ref]()), wildcard) && this in getAllNodes(this.parentStruct) && visit(this)
 {
- unfolding acc(inv(this.parentStruct, Set()), wildcard) in this.left
+ unfolding acc(inv(this.parentStruct, Set[Ref]()), wildcard) in this.left
 }
 
 function getRight(this: Ref) : Ref
-  requires this != null && acc(this.parentStruct, wildcard) && acc(inv(this.parentStruct, Set()), wildcard) && this in getAllNodes(this.parentStruct) && visit(this)
+  requires this != null && acc(this.parentStruct, wildcard) && acc(inv(this.parentStruct, Set[Ref]()), wildcard) && this in getAllNodes(this.parentStruct) && visit(this)
 {
- unfolding acc(inv(this.parentStruct, Set()), wildcard) in this.right
+ unfolding acc(inv(this.parentStruct, Set[Ref]()), wildcard) in this.right
 }
 
 function getParent(this: Ref) : Ref
-  requires this != null && acc(this.parentStruct, wildcard) && acc(inv(this.parentStruct, Set()), wildcard) && this in getAllNodes(this.parentStruct) && visit(this)
+  requires this != null && acc(this.parentStruct, wildcard) && acc(inv(this.parentStruct, Set[Ref]()), wildcard) && this in getAllNodes(this.parentStruct) && visit(this)
 {
- unfolding acc(inv(this.parentStruct, Set()), wildcard) in this.parent
+ unfolding acc(inv(this.parentStruct, Set[Ref]()), wildcard) in this.parent
 }
 
 method initSingle(this: Ref)
   requires acc(this.value, write) && acc(this.left, write) && acc(this.right, write) && acc(this.parent, write) && acc(this.parentStruct, write)
   requires this.left==null && this.right==null && this.parent==null && this.parentStruct==null
   ensures acc(this.parentStruct, wildcard) && this.parentStruct!=null
-  ensures acc(inv(this.parentStruct, Set()), write) && getAllNodes(this.parentStruct) == Set(this)
+  ensures acc(inv(this.parentStruct, Set[Ref]()), write) && getAllNodes(this.parentStruct) == Set(this)
   ensures visit(this) && getLeft(this)==null && getRight(this)==null && getParent(this)==null
 {
   this.value := 1
@@ -69,7 +69,7 @@ method initSingle(this: Ref)
   inhale visit(this)
   
   //:: UnexpectedOutput(fold.failed:insufficient.permission, /silicon/issue/78/)
-  fold acc(inv(this.parentStruct, Set()), write)
+  fold acc(inv(this.parentStruct, Set[Ref]()), write)
 }
 
 method initAndInsert(this: Ref, newParent: Ref, isLeft: Bool)
@@ -77,7 +77,7 @@ method initAndInsert(this: Ref, newParent: Ref, isLeft: Bool)
   requires this.left==null && this.right==null && this.parent==null && this.parentStruct==null
   requires newParent != null && visit(newParent)
   requires acc(newParent.parentStruct, wildcard)
-  requires acc(inv(newParent.parentStruct, Set()), write)
+  requires acc(inv(newParent.parentStruct, Set[Ref]()), write)
   requires !(this in getAllNodes(newParent.parentStruct))
   requires newParent in getAllNodes(newParent.parentStruct)
   requires isLeft ? getLeft(newParent)==null : getRight(newParent)==null
@@ -89,7 +89,7 @@ method initAndInsert(this: Ref, newParent: Ref, isLeft: Bool)
 {
   this.value := 1
   this.parent := newParent
-  unfold acc(inv(newParent.parentStruct, Set()), write)
+  unfold acc(inv(newParent.parentStruct, Set[Ref]()), write)
 
   // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
   assert isLeft ? newParent.left == null : newParent.right == null
