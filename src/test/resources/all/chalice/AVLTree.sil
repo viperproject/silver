@@ -696,6 +696,7 @@ method AVLTreeNoderemove$(this$_10: Ref, k$_6: Perm, k: Int) returns (r: Ref)
       r.AVLTreeNoderight$ := nr
       fresh newK$_42
       constraining(newK$_42) {
+        //:: UnexpectedOutput(call.precondition:assertion.false, /silicon/issue/90/)
         AVLTreeNodeclose$(r, newK$_42)
       }
     }
@@ -821,6 +822,7 @@ method AVLTreeNodepruneMax$(this$_11: Ref, k$_7: Perm) returns (r: Ref, m: Ref)
     if (bf == 2) {
       fresh newK$_33
       constraining(newK$_33) {
+        //:: UnexpectedOutput(call.precondition:assertion.false, /silicon/issue/90/)
         r := AVLTreeNoderebalanceLeft$(this$_11, newK$_33)
       }
     } else {
@@ -896,6 +898,7 @@ method AVLTreeNodepruneMin$(this$_12: Ref, k$_8: Perm) returns (r: Ref, m: Ref)
     if (bf == 0 - 2) {
       fresh newK$_56
       constraining(newK$_56) {
+        //:: UnexpectedOutput(call.precondition:assertion.false, /silicon/issue/90/)
         r := AVLTreeNoderebalanceRight$(this$_12, newK$_56)
       }
       assert (r != null) ==> (r.AVLTreeNodeheight$ == old(this$_12.AVLTreeNodeheight$)) || (r.AVLTreeNodeheight$ == old(this$_12.AVLTreeNodeheight$) - 1)
