@@ -47,6 +47,8 @@ abstract class ResourceBasedTestSuite extends FunSuite {
    */
   def buildTestInput(file: Path, prefix: String): InputType
 
+  val defaultTestPattern: String = ".*\\.sil"
+
   /**
    * Recursively registers all files found in the given directory as a test.
    *
@@ -84,7 +86,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
 
     val directoryStream = Files.newDirectoryStream(dir)
     val dirContent = directoryStream.toList
-    val includeFilesPattern = configMap.getOrElse("includeFiles", ".*\\.sil").toString
+    val includeFilesPattern = configMap.getOrElse("includeFiles", defaultTestPattern).toString
 
     for (f: Path <- dirContent
          if Files.isDirectory(f)) {
