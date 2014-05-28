@@ -1,24 +1,71 @@
 package semper.sil.testing
 
 import java.nio.file._
+import collection.mutable
+import org.scalatest.BeforeAndAfterAll
 import semper.sil.verifier._
 import semper.sil.ast.{TranslatedPosition, SourcePosition}
 import semper.sil.frontend.Frontend
 
-/**
- * A test suite for verification toolchains that use SIL.
- *
- * @author Stefan Heule
- */
-abstract class SilSuite extends AnnotationBasedTestSuite {
+/** A test suite for verification toolchains that use SIL. */
+abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll {
   /** The list of verifiers to be used. */
   def verifiers: Seq[Verifier]
 
   /** The frontend to be used. */
   def frontend(verifier: Verifier, files: Seq[Path]): Frontend
 
+  /** Populated by splitting the (key, values) in `configMap` (which is
+    * expected to be non-null) into (prefix, actual key, value) triples such
+    * that each prefix maps to a map from actual keys to values. A colon (':')
+    * is used as the split point for splitting a key into (prefix, actual key)
+    * pairs. If not prefix (colon) is given, `defaultKeyPrefix` is used as the
+    * prefix. Each key in `configMap` may have at least one colon.
+    */
+  lazy val prefixSpecificConfigMap: Map[String, Map[String, Any]] =
+    splitConfigMap(configMap)
+
+  /** Invoked by ScalaTest before any test of the current suite is run.
+    * Starts all verifiers specified by `verifiers`.
+    */
+  override def beforeAll() {
+    verifiers foreach (_.start())
+  }
+
+  /** Invoked by ScalaTest after all tests of the current suite have been run.
+    * Stops all verifiers specified by `verifiers`.
+    */
+  override def afterAll() {
+    verifiers foreach (_.stop())
+  }
+
   def systemsUnderTest: Seq[SystemUnderTest] =
    verifiers.map(VerifierUnderTest)
+
+  val defaultKeyPrefix = ""
+
+  /** See description of `prefixSpecificConfigMap`.
+    *
+    * @param configMap The config map built by ScalaTest.
+    * @return A map mapping key prefixes to (key, value) pairs.
+    */
+  protected def splitConfigMap(configMap: Map[String, Any]): Map[String, Map[String, Any]] = {
+    val prefixSpecificConfigMap = mutable.HashMap[String, mutable.HashMap[String, Any]]()
+
+    configMap foreach {
+      case (potentialKey, value) =>
+        val (prefix, key) =
+          potentialKey.split(':') match {
+            case Array(_key) => (defaultKeyPrefix, _key)
+            case Array(_prefix, _key) => (_prefix, _key)
+            case _ => sys.error(s"Unexpected key $potentialKey in config map $configMap. Keys are expected to contain at most one colon (':').")
+          }
+
+        prefixSpecificConfigMap.getOrElseUpdate(prefix, mutable.HashMap()).update(key, value)
+    }
+
+    prefixSpecificConfigMap.mapValues(_.toMap).toMap
+  }
 
   private case class VerifierUnderTest(verifier: Verifier)
     extends SystemUnderTest with TimingUtils {

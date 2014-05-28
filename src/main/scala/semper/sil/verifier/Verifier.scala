@@ -1,6 +1,7 @@
 package semper.sil.verifier
 
 import semper.sil.ast.Program
+import semper.sil.components.LifetimeComponent
 
 /** An abstract class for verifiers of SIL programs.
   *
@@ -20,10 +21,8 @@ import semper.sil.ast.Program
   *      by a frontend that has an option such as "--backend semper.silicon.Silicon",
   *      telling it to run the specified backend, we should prescribe a standard
   *      constructor, e.g., Verifier().
-  *
-  * @author Stefan Heule
   */
-trait Verifier {
+trait Verifier extends LifetimeComponent {
 
   /** The name of this verifier (all-lowercase, to be used to uniquely identify this verifier). */
   def name: String
@@ -60,43 +59,57 @@ trait Verifier {
    */
   def dependencies: Seq[Dependency]
 
-  /** Set the command-line arguments to be used in this verifier. */
+  /** Set the command-line arguments to be used in this verifier.
+    * Is expected to be called before `start`.
+    */
   def parseCommandLine(args: Seq[String])
 
+  /** Starts the verifier. Afterwards, a series of calls to `verify` is expected,
+    * finally followed by a call to `stop`.
+    * Is expected to be preceded by a call to `parseCommandLine`.
+    */
+  def start()
+
   /** Verifies a given SIL program and returns a sequence of ''verification errors''.
+    * Is expected to be preceded by a call to `start`.
     *
     * @param program The program to be verified.
     * @return The verification result.
     */
   def verify(program: Program): VerificationResult
+
+  /** Stops the verifier. The behaviour of subsequent calls to `start` or `verify`
+    * is unspecified.
+    */
+  def stop()
 }
 
 /**
  * Empty verifier that can be used as a placeholder for tests if the verification never actually gets called.
  */
 class NoVerifier extends Verifier {
-
   val name = "noverifier"
-
   val version = "0.0.0"
-
   val buildVersion = ""
-
   val copyright = ""
-
-  def debugInfo(info: Seq[(String, Any)]) {}
-
   val dependencies = Nil
 
+  def debugInfo(info: Seq[(String, Any)]) {}
   def parseCommandLine(args: Seq[String]) {}
+
+  /** Is not implemented and should never be called. */
+  def start() = ???
 
   /** Is not implemented and should never be called. */
   def verify(program: Program) = ???
 
+  /** Is not implemented and should never be called. */
+  def stop() = ???
 }
 
 /** A description of a dependency of a verifier. */
 trait Dependency {
+
   /** The name of the dependency. */
   def name: String
 

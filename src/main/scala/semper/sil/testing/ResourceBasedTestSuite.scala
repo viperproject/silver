@@ -5,16 +5,14 @@ import java.net.{URI, URL}
 import java.nio.file._
 import scala.collection.JavaConversions._
 
-/**
- * A test suite for end-to-end toolchain testing that operates on source files
- * in resource directories.
- *
- * This abstract class is agnostic w.r.t. to the kind of testing performed
- * on the test input. It just locates the test files and builds the test input.
- * Subclasses need to implement the actual testing logic in `registerTest`.
- *
- * @author Stefan Heule
- */
+/** A test suite for end-to-end toolchain testing that operates on source files
+  * in resource directories.
+  *
+  * This abstract class is agnostic w.r.t. to the kind of testing performed
+  * on the test input. It just locates the test files and builds the test input.
+  * Subclasses need to implement the actual testing logic in `registerTest`.
+  *
+  */
 abstract class ResourceBasedTestSuite extends FunSuite {
   // Subclasses can extend the test input with further information
   // such as annotations

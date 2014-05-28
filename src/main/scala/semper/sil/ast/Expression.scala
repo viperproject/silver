@@ -162,6 +162,9 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp with PossibleTrigger {
   args foreach Consistency.checkNoPositiveOnly
 
+  def getArgs = args
+  def withArgs(newArgs: Seq[Exp]) = FuncApp(func, newArgs)(pos,info)
+
   /**
    * The precondition of this function application (i.e., the precondition of the function with
    * the arguments instantiated correctly).
@@ -189,6 +192,8 @@ case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVa
         LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
     }
   }
+  def getArgs = args
+  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(func,newArgs,typVarMap)(pos,info)
 }
 
 // --- Field and predicate accesses
@@ -268,11 +273,13 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
         Forall(variables ++ extraVariables, triggers, exp)(pos, info)
       } else {
         // no triggers found
+        println("Warning: no triggers found for :\n" ++ this.toString)
         this
       }
     } else {
       // triggers already present
       this
+
     }
   }
 }
@@ -320,6 +327,8 @@ sealed trait SeqExp extends Exp with PossibleTrigger
 /** The empty sequence of a given element type. */
 case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   lazy val typ = SeqType(elemTyp)
+  def getArgs = Seq()
+  def withArgs(newArgs: Seq[Exp]) = this
 }
 
 /** An explicit, non-emtpy sequence. */
@@ -328,12 +337,26 @@ case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info
   require(elems.tail.forall(e => e.typ == elems.head.typ))
   elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = SeqType(elems.head.typ)
+  lazy val desugared : SeqExp = {
+    elems match {
+      case Nil => sys.error("did not expect empty sequence")
+      case a :: Nil => this
+      case a :: as => // desugar into singleton sequences and appends
+        as.foldLeft[SeqExp](ExplicitSeq(Seq(a))(pos,info)) {
+          (bs:SeqExp, b:Exp) => SeqAppend(ExplicitSeq(Seq(b))(pos,info),bs)(pos, info)
+        }
+    }
+  }
+  def getArgs = elems
+  def withArgs(newArgs: Seq[Exp]) = ExplicitSeq(newArgs)(pos,info)
 }
 
 /** A range of integers from 'low' to 'high', not including 'high', but including 'low'. */
 case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require((low isSubtype Int) && (high isSubtype Int))
   lazy val typ = SeqType(Int)
+  def getArgs = Seq(low,high)
+  def withArgs(newArgs: Seq[Exp]) = RangeSeq(newArgs(0),newArgs(1))(pos,info)
 }
 
 /** Appending two sequences of the same type. */
@@ -343,6 +366,9 @@ case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
   lazy val fixity = Infix(LeftAssoc)
   lazy val op = "++"
   lazy val typ = left.typ
+  def getArgs = Seq(left,right)
+  def withArgs(newArgs: Seq[Exp]) = SeqAppend(newArgs(0),newArgs(1))(pos,info)
+
 }
 
 /** Access to an element of a sequence at a given index position (starting at 0). */
@@ -350,6 +376,8 @@ case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: 
   require(s.typ.isInstanceOf[SeqType])
   require(idx isSubtype Int)
   lazy val typ = s.typ.asInstanceOf[SeqType].elementType
+  def getArgs = Seq(s,idx)
+  def withArgs(newArgs: Seq[Exp]) = SeqIndex(newArgs(0),newArgs(1))(pos,info)
 }
 
 /** Take the first 'n' elements of the sequence 'seq'. */
@@ -357,14 +385,19 @@ case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Inf
   require(s.typ.isInstanceOf[SeqType])
   require(n isSubtype Int)
   lazy val typ = s.typ
+  def getArgs = Seq(s,n)
+  def withArgs(newArgs: Seq[Exp]) = SeqTake(newArgs(0),newArgs(1))(pos,info)
+
 }
 
-/** Drop the last 'n' elements of the sequence 'seq'. */
-// TODO Is this description really correct? Shouldn't it drop the _first_ n elements?
+/** Drop the first 'n' elements of the sequence 'seq'. */
 case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require(s.typ.isInstanceOf[SeqType])
   require(n isSubtype Int)
   lazy val typ = s.typ
+  def getArgs = Seq(s,n)
+  def withArgs(newArgs: Seq[Exp]) = SeqDrop(newArgs(0),newArgs(1))(pos,info)
+
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
@@ -377,6 +410,8 @@ case class SeqContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val in
   lazy val op = "in"
   lazy val right: PrettyExpression = s
   lazy val typ = Bool
+  def getArgs = Seq(elem,s)
+  def withArgs(newArgs: Seq[Exp]) = SeqContains(newArgs(0),newArgs(1))(pos,info)
 }
 
 /** The same sequence as 'seq', but with the element at index 'idx' replaced with 'elem'. */
@@ -386,12 +421,18 @@ case class SeqUpdate(s: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition
   require(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)
   Consistency.checkNoPositiveOnly(elem)
   lazy val typ = s.typ
+  def getArgs = Seq(s,idx,elem)
+  def withArgs(newArgs: Seq[Exp]) = SeqUpdate(newArgs(0),newArgs(1),newArgs(2))(pos,info)
+
 }
 
 /** The length of a sequence. */
 case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require(s.typ.isInstanceOf[SeqType])
   lazy val typ = Int
+  def getArgs = Seq(s)
+  def withArgs(newArgs: Seq[Exp]) = SeqLength(newArgs(0))(pos,info)
+
 }
 
 // --- Mathematical sets and multisets
@@ -411,6 +452,8 @@ sealed trait MultisetExp extends Exp with PossibleTrigger
 /** The empty set of a given element type. */
 case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
   lazy val typ = SetType(elemTyp)
+  def getArgs = Seq()
+  def withArgs(newArgs: Seq[Exp]) = this
 }
 
 /** An explicit, non-empty set. */
@@ -419,11 +462,17 @@ case class ExplicitSet(elems: Seq[Exp])(val pos: Position = NoPosition, val info
   require(elems.tail.forall(e => e.typ == elems.head.typ))
   elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = SetType(elems.head.typ)
+  def getArgs = elems
+  def withArgs(newArgs: Seq[Exp]) = ExplicitSet(newArgs)(pos,info)
+
 }
 
 /** The empty multiset of a given element type. */
 case class EmptyMultiset(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends MultisetExp {
   lazy val typ = MultisetType(elemTyp)
+  def getArgs = Seq()
+  def withArgs(newArgs: Seq[Exp]) = this
+
 }
 
 /** An explicit, non-empty multiset. */
@@ -432,6 +481,9 @@ case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val
   require(elems.tail.forall(e => e.typ == elems.head.typ))
   elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = MultisetType(elems.head.typ)
+  def getArgs = elems
+  def withArgs(newArgs: Seq[Exp]) = ExplicitMultiset(newArgs)(pos,info)
+
 }
 
 /** Union of two sets or two multisets. */
@@ -442,6 +494,9 @@ case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   lazy val fixity = Infix(LeftAssoc)
   lazy val op = "union"
   lazy val typ = left.typ
+  def getArgs = Seq(left,right)
+  def withArgs(newArgs: Seq[Exp]) = AnySetUnion(newArgs(0),newArgs(1))(pos,info)
+
 }
 
 /** Intersection of two sets or two multisets. */
@@ -452,6 +507,8 @@ case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosit
   lazy val fixity = Infix(LeftAssoc)
   lazy val op = "union"
   lazy val typ = left.typ
+  def getArgs = Seq(left,right)
+  def withArgs(newArgs: Seq[Exp]) = AnySetIntersection(newArgs(0),newArgs(1))(pos,info)
 }
 
 /** Subset relation of two sets or two multisets. */
@@ -462,6 +519,9 @@ case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, v
   lazy val fixity = Infix(NonAssoc)
   lazy val op = "subset"
   lazy val typ = Bool
+  def getArgs = Seq(left,right)
+  def withArgs(newArgs: Seq[Exp]) = AnySetSubset(newArgs(0),newArgs(1))(pos,info)
+
 }
 
 /** Set difference. */
@@ -472,6 +532,8 @@ case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   lazy val fixity = Infix(NonAssoc)
   lazy val op = "setminus"
   lazy val typ = left.typ
+  def getArgs = Seq(left,right)
+  def withArgs(newArgs: Seq[Exp]) = AnySetMinus(newArgs(0),newArgs(1))(pos,info)
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
@@ -484,12 +546,17 @@ case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val
   lazy val op = "in"
   lazy val right: PrettyExpression = s
   lazy val typ = Bool
+  def getArgs = Seq(elem,s)
+  def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs(0),newArgs(1))(pos,info)
+
 }
 
 /** The length of a sequence. */
 case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp {
   require(s.typ.isInstanceOf[SetType] || s.typ.isInstanceOf[MultisetType])
   lazy val typ = Int
+  def getArgs = Seq(s)
+  def withArgs(newArgs: Seq[Exp]) = AnySetCardinality(newArgs(0))(pos,info)
 }
 
 // --- Common functionality
@@ -506,7 +573,11 @@ sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominato
  * Used to label expression nodes as potentially valid trigger terms for quantifiers. 
  * Use ForbiddenInTrigger to declare terms which may not be used in triggers.
  */
-sealed trait PossibleTrigger extends Exp 
+sealed trait PossibleTrigger extends Exp {
+  def getArgs : Seq[Exp]
+  def withArgs(args : Seq[Exp]) : PossibleTrigger
+}
+
 sealed trait ForbiddenInTrigger extends Exp
 
 /** Common ancestor of Domain Function applications and Function applications. */

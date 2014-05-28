@@ -4,8 +4,6 @@ import semper.sil.ast._
 
 /**
  * An implementation for transformers of the SIL AST.
- *
- * @author Stefan Heule
  */
 object Transformer {
 
@@ -199,8 +197,8 @@ object Transformer {
             case FieldAssign(field, value) =>
               FieldAssign(go(field), go(value))(statement.pos, statement.info)
 
-            case Fold(predicate) =>
-              Fold(go(predicate))(statement.pos, statement.info)
+            case Fold(accessPredicate) =>
+              Fold(go(accessPredicate))(statement.pos, statement.info)
 
             case Fresh(variables) =>
               Fresh(variables map go)(statement.pos, statement.info)
@@ -304,7 +302,7 @@ object Transformer {
   /**
    * Simplify `expression`, in particular by making use of literals. For
    * example, `!true` is replaced by `false`. Division and modulo with divisor
-   * 0 are not treated. Nonterminating expression due to endless recursion
+   * 0 are not treated. Note that an expression with non-terminating evaluation due to endless recursion
    * might be transformed to terminating expression.
    */
   def simplify(expression: Exp): Exp = {
