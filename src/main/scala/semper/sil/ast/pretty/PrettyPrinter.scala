@@ -281,9 +281,9 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case SeqUpdate(seq, idx, elem) =>
       show(seq) <> brackets(show(idx) <+> ":=" <+> show(elem))
     case SeqLength(seq) =>
-      "|" <> show(seq) <> "|"
+      surround(show(seq),verticalbar)
     case SeqContains(elem, seq) =>
-      show(elem) <+> "in" <+> show(seq)
+      parens(show(elem) <+> "in" <+> show(seq))
 
     case EmptySet(elemTyp) =>
       "Set[" + show(elemTyp) + "]()"
@@ -302,9 +302,9 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case AnySetMinus(left, right) =>
       show(left) <+> "setminus" <+> show(right)
     case AnySetContains(elem, s) =>
-      show(elem) <+> "in" <+> show(s)
+      parens(show(elem) <+> "in" <+> show(s))
     case AnySetCardinality(s) =>
-      "|" <> show(s) <> "|"
+      surround(show(s),verticalbar)
 
     case null => uninitialized
     case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)
