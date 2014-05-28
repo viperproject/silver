@@ -632,6 +632,7 @@ method AVLTreeNoderemove$(this$_10: Ref, k$_6: Perm, k: Int) returns (r: Ref)
   ensures (r != null) ==> acc(r.AVLTreeNodekeys$, 50 / 100)
   ensures (r != null) ==> acc(r.AVLTreeNodeheight$, 50 / 100)
   ensures (r != null) ==> acc(r.AVLTreeNodebalanceFactor$, 50 / 100)
+    //:: UnexpectedOutput(postcondition.violated:assertion.false, /carbon/issue/18/)
   ensures (r != null) ==> !(k in r.AVLTreeNodekeys$)
   ensures (r != null) ==> (forall i: Int :: true && i in old(this$_10.AVLTreeNodekeys$) ==> i in r.AVLTreeNodekeys$ || (i == k))
   ensures (r != null) ==> (forall i: Int :: true && i in r.AVLTreeNodekeys$ ==> i in old(this$_10.AVLTreeNodekeys$) && (i != k))
@@ -697,6 +698,7 @@ method AVLTreeNoderemove$(this$_10: Ref, k$_6: Perm, k: Int) returns (r: Ref)
       fresh newK$_42
       constraining(newK$_42) {
         //:: UnexpectedOutput(call.precondition:assertion.false, /silicon/issue/90/)
+        //:: UnexpectedOutput(call.precondition:assertion.false, /carbon/issue/18/)
         AVLTreeNodeclose$(r, newK$_42)
       }
     }
@@ -823,15 +825,18 @@ method AVLTreeNodepruneMax$(this$_11: Ref, k$_7: Perm) returns (r: Ref, m: Ref)
       fresh newK$_33
       constraining(newK$_33) {
         //:: UnexpectedOutput(call.precondition:assertion.false, /silicon/issue/90/)
+        //:: UnexpectedOutput(call.precondition:assertion.false, /carbon/issue/18/)
         r := AVLTreeNoderebalanceLeft$(this$_11, newK$_33)
       }
     } else {
       fresh newK$_34
       constraining(newK$_34) {
+        //:: UnexpectedOutput(call.precondition:assertion.false, /carbon/issue/18/)
         AVLTreeNodeclose$(this$_11, newK$_34)
       }
       r := this$_11
     }
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/18/)
     assert (r != null) ==> (forall k: Int :: true && k in r.AVLTreeNodekeys$ ==> (k < m.AVLTreeNodekeys$[0]))
   }
 }
@@ -899,17 +904,20 @@ method AVLTreeNodepruneMin$(this$_12: Ref, k$_8: Perm) returns (r: Ref, m: Ref)
       fresh newK$_56
       constraining(newK$_56) {
         //:: UnexpectedOutput(call.precondition:assertion.false, /silicon/issue/90/)
+        //:: UnexpectedOutput(call.precondition:assertion.false, /carbon/issue/18/)
         r := AVLTreeNoderebalanceRight$(this$_12, newK$_56)
       }
       assert (r != null) ==> (r.AVLTreeNodeheight$ == old(this$_12.AVLTreeNodeheight$)) || (r.AVLTreeNodeheight$ == old(this$_12.AVLTreeNodeheight$) - 1)
     } else {
       fresh newK$_57
       constraining(newK$_57) {
+        //:: UnexpectedOutput(call.precondition:assertion.false, /carbon/issue/18/)
         AVLTreeNodeclose$(this$_12, newK$_57)
       }
       r := this$_12
       assert (r != null) ==> (r.AVLTreeNodeheight$ == old(this$_12.AVLTreeNodeheight$)) || (r.AVLTreeNodeheight$ == old(this$_12.AVLTreeNodeheight$) - 1)
     }
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/18/)
     assert (r != null) ==> (forall k: Int :: true && k in r.AVLTreeNodekeys$ ==> (m.AVLTreeNodekeys$[0] < k))
   }
 }
