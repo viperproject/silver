@@ -803,13 +803,14 @@ case class TypeChecker(names: NameAnalyser) {
           check(seq, Seq(genericSeqType, genericSetType, genericMultisetType))
           setType(Int)
         }
-      case PEmptySet() =>
-        val typ = genericSetType
-        if (expected.size == 1) {
+      case PEmptySet(t) =>
+//        val typ = genericSetType
+/*        if (expected.size == 1) {
           setRefinedType(typ, learn(typ, expected.head))
         } else {
           setType(typ)
-        }
+    }                 */ //inference
+        setType(PSetType(t))
       case PExplicitSet(elems) =>
         assert(elems.nonEmpty)
         val expectedElemTyp = (expected map {
@@ -829,13 +830,14 @@ case class TypeChecker(names: NameAnalyser) {
             // TODO: perform type inference and propagate type down
             setType(PSetType(types.head))
         }
-      case PEmptyMultiset() =>
-        val typ = genericMultisetType
+      case PEmptyMultiset(t) =>
+/*        val typ = genericMultisetType
         if (expected.size == 1) {
           setRefinedType(typ, learn(typ, expected.head))
         } else {
           setType(typ)
-        }
+        }*/
+        setType(PMultisetType(t))
       case PExplicitMultiset(elems) =>
         assert(elems.nonEmpty)
         val expectedElemTyp = (expected map {

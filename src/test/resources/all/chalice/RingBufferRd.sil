@@ -33,7 +33,7 @@ function Capacity(this: Ref): Int
     // simulate creating an array of length n
     var i: Int;
     i := n;
-    this.data := Seq();
+    this.data := Seq[Int]();
     while(0 < i)
       invariant acc(this.data, write) && 0 <= i && |this.data| == n - i;
     {

@@ -288,11 +288,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
         case name => PDomainType(name, Nil)
       }
   lazy val seqType: PackratParser[PType] =
-    "Seq[" ~> typ <~ "]" ^^ PSeqType
+    "Seq" ~ "[" ~> typ <~ "]" ^^ PSeqType
   lazy val setType: PackratParser[PType] =
-    "Set[" ~> typ <~ "]" ^^ PSetType
+    "Set" ~ "[" ~> typ <~ "]" ^^ PSetType
   lazy val multisetType: PackratParser[PType] =
-    "Multiset[" ~> typ <~ "]" ^^ PMultisetType
+    "Multiset" ~ "[" ~> typ <~ "]" ^^ PMultisetType
   lazy val primitiveTyp: PackratParser[PType] =
     ("Int" | "Bool" | "Perm" | "Ref") ^^ PPrimitiv
 
@@ -387,8 +387,9 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       perm |
       quant |
       unfolding |
-      explicitSet | explicitMultiset |
-      seqTypedEmpty | seqLength | explicitSeq | seqRange |
+      setTypedEmpty | explicitSetNonEmpty |
+      explicitMultisetNonEmpty | multiSetTypedEmpty |
+      seqTypedEmpty | seqLength | explicitSeqNonEmpty | seqRange |
       fapp |
       idnuse
 
@@ -458,31 +459,37 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   // --- Sequence and set atoms
 
-  lazy val seqTypedEmpty: PackratParser[PExp] =
-    "Seq[" ~> typ <~ "]()" ^^ PEmptySeq
-
   lazy val seqLength: PackratParser[PExp] =
     "|" ~> exp <~ "|" ^^ PSize
 
-  lazy val explicitSeq: PackratParser[PExp] =
-    "Seq(" ~> repsep(exp, ",") <~ ")" ^^ {
-      case Nil => PEmptySeq(PUnknown())
+  lazy val seqTypedEmpty: PackratParser[PExp] =
+    "Seq[" ~> typ <~ "]()" ^^ PEmptySeq
+
+  lazy val explicitSeqNonEmpty: PackratParser[PExp] =
+    "Seq(" ~> rep1sep(exp, ",") <~ ")" ^^ {
+//      case Nil => PEmptySeq(PUnknown())
       case elems => PExplicitSeq(elems)
     }
 
   lazy val seqRange: PackratParser[PExp] =
     ("[" ~> exp <~ "..") ~ (exp <~ ")") ^^ PRangeSeq
 
-  lazy val explicitSet: PackratParser[PExp] =
-    "Set(" ~> repsep(exp, ",") <~ ")" ^^ {
-      case Nil => PEmptySet()
-      case elems => PExplicitSet(elems)
-    }
+  lazy val setTypedEmpty: PackratParser[PExp] =
+    "Set" ~ "[" ~> typ <~ "]" ~ "(" ~ ")" ^^ PEmptySet
 
-  lazy val explicitMultiset: PackratParser[PExp] =
-    "Multiset(" ~> repsep(exp, ",") <~ ")" ^^ {
-      case Nil => PEmptySet()
-      case elems => PExplicitSet(elems)
+  lazy val explicitSetNonEmpty: PackratParser[PExp] =
+    "Set" /*~ opt("[" ~> typ <~ "]")*/ ~ "(" ~> rep1sep(exp, ",") <~ ")" ^^ PExplicitSet
+/*      {
+      case (None,s) => PExplicitSet(s)
+      case (Some(t),s) => { val p = PExplicitSet(s,t);}
+    }*/
+
+  lazy val multiSetTypedEmpty: PackratParser[PExp] =
+    "Multiset" ~ "[" ~> typ <~ "]" ~ "("~")" ^^ PEmptyMultiset
+
+  lazy val explicitMultisetNonEmpty: PackratParser[PExp] =
+    "Multiset" ~ "(" ~> rep1sep(exp, ",") <~ ")" ^^ {
+      case elems => PExplicitMultiset(elems)
     }
 
   // --- Identifier and keywords

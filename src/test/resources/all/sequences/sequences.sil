@@ -1,6 +1,6 @@
 
 method t1(x: Int, xs: Seq[Int]) {
-    var n: Seq[Int] := Seq()
+    var n: Seq[Int] := Seq[Int]()
     assert |n| == 0
     assert n != Seq(x)
     assert |Seq(1)| == 1

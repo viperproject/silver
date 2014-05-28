@@ -1,6 +1,6 @@
 
 method t1(x: Int, xs: Set[Int]) {
-    var n: Set[Int] := Set()
+    var n: Set[Int] := Set[Int]()
     assert |n| == 0
     assert n != Set(x)
     assert |Set(1)| == 1
