@@ -197,8 +197,8 @@ object Transformer {
             case FieldAssign(field, value) =>
               FieldAssign(go(field), go(value))(statement.pos, statement.info)
 
-            case Fold(predicate) =>
-              Fold(go(predicate))(statement.pos, statement.info)
+            case Fold(accessPredicate) =>
+              Fold(go(accessPredicate))(statement.pos, statement.info)
 
             case Fresh(variables) =>
               Fresh(variables map go)(statement.pos, statement.info)
