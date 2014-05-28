@@ -308,6 +308,7 @@ object PRealEntity {
         case _: PLocalVarDecl => "local variable"
         case _: PMethod => "method"
         case _: PPredicate => "predicate"
+        case _: PTypeVarDecl => "type variable"
       }
 
     s"$entityName ${entity.idndef.name}"
