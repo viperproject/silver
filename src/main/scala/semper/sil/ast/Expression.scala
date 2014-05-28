@@ -273,7 +273,6 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
         Forall(variables ++ extraVariables, triggers, exp)(pos, info)
       } else {
         // no triggers found
-        println("Warning: no triggers found for :\n" ++ this.toString)
         this
       }
     } else {
@@ -569,8 +568,8 @@ sealed trait Literal extends Exp
  */
 sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominator: BigInt) extends PermExp
 
-/** 
- * Used to label expression nodes as potentially valid trigger terms for quantifiers. 
+/**
+ * Used to label expression nodes as potentially valid trigger terms for quantifiers.
  * Use ForbiddenInTrigger to declare terms which may not be used in triggers.
  */
 sealed trait PossibleTrigger extends Exp {
