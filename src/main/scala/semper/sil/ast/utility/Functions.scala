@@ -29,8 +29,8 @@ object Functions {
     }
     def process(f: Function, e: Exp) {
       e visit {
-        case FuncApp(f2, args) =>
-          g.addEdge(f, f2)
+        case FuncApp(f2name, args) =>
+          g.addEdge(f, p.findFunction(f2name))
       }
     }
     for (f <- p.functions) {

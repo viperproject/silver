@@ -70,7 +70,8 @@ object Expressions {
     case e: Exp => e
   }
 
-  def proofObligations(e: Exp): Seq[Exp] = {
+  // note: dependency on program for looking up function preconditions
+  def proofObligations(e: Exp): (Program => Seq[Exp]) = ((prog:Program) => {
     e.reduceTree[Seq[Exp]] {
       (n: Node, subConds: Seq[Seq[Exp]]) =>
         val p = n match {
@@ -80,7 +81,7 @@ object Expressions {
         // Conditions for the current node.
         val conds = n match {
           case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, WildcardPerm()(p))(p))
-          case f: FuncApp => f.pres
+          case f: FuncApp => prog.findFunction(f.funcname).pres
           case Div(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
           case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
           case _ => Nil
@@ -114,7 +115,7 @@ object Expressions {
         // The condition of the current node has to be at the end because the subtrees have to be well-formed first.
         finalSubConds ++ conds
     }
-  }
+  })
 
   /** Calculates the proof obligations for a conditional expression given the proof obligations of the subexpressions. */
   def reduceCondExpProofObs(cond: Exp, condConds: Seq[Exp], thenConds: Seq[Exp], elseConds: Seq[Exp], p: Position): Seq[Exp] = {

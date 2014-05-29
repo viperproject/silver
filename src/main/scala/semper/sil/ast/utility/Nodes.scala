@@ -40,7 +40,7 @@ object Nodes {
           case Inhale(e) => Seq(e)
           case Exhale(e) => Seq(e)
           case Assert(e) => Seq(e)
-          case MethodCall(m, args, targets) => args ++ targets
+          case MethodCall(mname, args, targets) => args ++ targets
           case Seqn(ss) => ss
           case While(cond, invs, locals, body) => Seq(cond) ++ invs ++ locals ++ Seq(body)
           case If(cond, thn, els) => Seq(cond, thn, els)
@@ -57,7 +57,7 @@ object Nodes {
           case _: Literal => Nil
           case AbstractLocalVar(n) => Nil
           case FieldAccess(rcv, field) => Seq(rcv)
-          case PredicateAccess(params, predicate) => params
+          case PredicateAccess(params, _) => params
           case Unfolding(acc, exp) => Seq(acc, exp)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
@@ -73,7 +73,7 @@ object Nodes {
           case AccessPredicate(loc, perm) => Seq(loc, perm)
           case BinExp(left, right) => Seq(left, right)
           case UnExp(exp) => Seq(exp)
-          case FuncApp(func, args) => args
+          case FuncApp(_, args) => args
           case DomainFuncApp(func, args, m) =>
             args ++ m.keys ++ m.values
 

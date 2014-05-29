@@ -14,6 +14,42 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     ), "names of members must be distinct"
   )
   lazy val members = domains ++ fields ++ functions ++ predicates ++ methods
+
+  def findField(name:String) : Field = {
+    this.fields.find(_.name == name) match {
+      case Some(m) => m
+      case None => sys.error("Field name " + name + " not found in program.")
+    }
+  }
+
+  def findMethod(name:String) : Method = {
+    this.methods.find(_.name == name) match {
+      case Some(m) => m
+      case None => sys.error("Method name " + name + " not found in program.")
+    }
+  }
+
+  def findFunction(name:String) : Function = {
+    this.functions.find(_.name == name) match {
+      case Some(m) => m
+      case None => sys.error("Function name " + name + " not found in program.")
+    }
+  }
+
+  def findPredicate(name:String) : Predicate = {
+    this.predicates.find(_.name == name) match {
+      case Some(m) => m
+      case None => sys.error("Predicate name " + name + " not found in program.")
+    }
+  }
+
+  def findDomain(name:String) : Domain = {
+    this.domains.find(_.name == name) match {
+      case Some(m) => m
+      case None => sys.error("Domain name " + name + " not found in program.")
+    }
+  }
+
 }
 
 // --- Program members
@@ -101,7 +137,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
    * Is this function recursive?
    */
   def isRecursive: Boolean = exp existsDefined {
-    case FuncApp(func, _) if name == func.name =>
+    case FuncApp(funcname, _) if name == funcname =>
   }
 
 }

@@ -105,7 +105,7 @@ object errors {
 
   case class PreconditionInCallFalse(offendingNode: MethodCall, reason: ErrorReason) extends AbstractVerificationError {
     val id = "call.precondition"
-    val text = s"The precondition of method ${offendingNode.method.name} might not hold."
+    val text = s"The precondition of method ${offendingNode.methodName} might not hold."
   }
 
   def PreconditionInCallFalse(offendingNode: MethodCall): PartialVerificationError =
@@ -113,7 +113,7 @@ object errors {
 
   case class PreconditionInAppFalse(offendingNode: FuncApp, reason: ErrorReason) extends AbstractVerificationError {
     val id = "application.precondition"
-    val text = s"Precondition of function ${offendingNode.func.name} might not hold."
+    val text = s"Precondition of function ${offendingNode.funcname} might not hold."
   }
 
   def PreconditionInAppFalse(offendingNode: FuncApp): PartialVerificationError =
