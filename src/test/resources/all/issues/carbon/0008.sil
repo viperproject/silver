@@ -11,6 +11,5 @@ method succeedsRange10(a: Int)
 method succeedsExplicit10(a: Int)
 { 
   assert forall i: Int :: (i in Seq(2,4,6,8)) ==> (reqIGt0(i*i) > i);
-  //:: ExpectedOutput(application.precondition:assertion.false)
   assert forall i: Int :: (i in Seq(-2,2,4,6,8)) ==> (reqIGt0(i*i) > i);
 }
