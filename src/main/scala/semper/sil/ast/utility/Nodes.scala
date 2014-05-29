@@ -74,7 +74,7 @@ object Nodes {
           case BinExp(left, right) => Seq(left, right)
           case UnExp(exp) => Seq(exp)
           case FuncApp(_, args) => args
-          case DomainFuncApp(func, args, m) =>
+          case DomainFuncApp(_, args, m) =>
             args ++ m.keys ++ m.values
 
           case EmptySeq(elemTyp) => Seq(elemTyp)

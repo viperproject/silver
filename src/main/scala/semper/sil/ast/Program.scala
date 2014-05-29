@@ -17,7 +17,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   def findField(name:String) : Field = {
     this.fields.find(_.name == name) match {
-      case Some(m) => m
+      case Some(f) => f
       case None => sys.error("Field name " + name + " not found in program.")
     }
   }
@@ -31,25 +31,32 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   def findFunction(name:String) : Function = {
     this.functions.find(_.name == name) match {
-      case Some(m) => m
+      case Some(f) => f
       case None => sys.error("Function name " + name + " not found in program.")
     }
   }
 
   def findPredicate(name:String) : Predicate = {
     this.predicates.find(_.name == name) match {
-      case Some(m) => m
+      case Some(p) => p
       case None => sys.error("Predicate name " + name + " not found in program.")
     }
   }
 
   def findDomain(name:String) : Domain = {
     this.domains.find(_.name == name) match {
-      case Some(m) => m
+      case Some(d) => d
       case None => sys.error("Domain name " + name + " not found in program.")
     }
   }
 
+  def findDomainFunction(name:String) : DomainFunc = {
+    this.domains.flatMap(_.functions).find(_.name == name) match {
+      case Some(f) => f
+      case None => sys.error("Domain function " + name + " not found in program.")
+    }
+
+  }
 }
 
 // --- Program members

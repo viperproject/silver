@@ -59,8 +59,8 @@ object Transformer {
               PredicateAccessPredicate(go(loc), go(perm))(p, i)
             case fa@FuncApp(fname, args) =>
               FuncApp(fname, args map go)(p, i, fa.typ, fa.formalArgs)
-            case DomainFuncApp(fname, args, m) =>
-              DomainFuncApp(fname, args map go, goTypeVariables(m))(p, i)
+            case dfa@DomainFuncApp(fname, args, m) =>
+              DomainFuncApp(fname, args map go, goTypeVariables(m))(p, i, dfa.typ, dfa.formalArgs)
 
             case Neg(e) => Neg(go(e))(p, i)
             case Not(e) => Not(go(e))(p, i)
@@ -165,9 +165,8 @@ object Transformer {
           aType match {
             case Bool => aType
 
-            case DomainType(domain, typeVariables) =>
-              /* Do not transform domain here. */
-              DomainType(domain, goTypeVariables(typeVariables))
+            case dt@DomainType(domainName, typeVariables) =>
+              DomainType(domainName, goTypeVariables(typeVariables))(dt.getDomainTypeVars)
 
             case Int => aType
             case Perm => aType

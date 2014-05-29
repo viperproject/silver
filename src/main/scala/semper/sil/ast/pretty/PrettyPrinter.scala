@@ -149,9 +149,9 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case SetType(elemType) => "Set" <> "[" <> show(elemType) <> "]"
       case MultisetType(elemType) => "Multiset" <> "[" <> show(elemType) <> "]"
       case TypeVar(v) => v
-      case DomainType(domain, typVarsMap) =>
-        val typArgs = domain.typVars map (t => show(typVarsMap.getOrElse(t, t)))
-        domain.name <> (if (typArgs.isEmpty) empty else brackets(ssep(typArgs, comma <> space)))
+      case dt@DomainType(domainName, typVarsMap) =>
+        val typArgs = dt.getDomainTypeVars map (t => show(typVarsMap.getOrElse(t, t)))
+        domainName <> (if (typArgs.isEmpty) empty else brackets(ssep(typArgs, comma <> space)))
     }
   }
 
@@ -261,8 +261,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       "acc" <> parens(show(loc) <> "," <+> show(perm))
     case FuncApp(funcname, args) =>
       funcname <> parens(ssep(args map show, comma <> space))
-    case DomainFuncApp(func, args, _) =>
-      func.name <> parens(ssep(args map show, comma <> space))
+    case DomainFuncApp(funcname, args, _) =>
+      funcname <> parens(ssep(args map show, comma <> space))
 
     case EmptySeq(elemTyp) =>
       "Seq[" + show(elemTyp) + "]()"

@@ -14,7 +14,7 @@ object Types {
     */
   def typeVariables(typ: Type): Set[TypeVar] = typ match {
     case t: TypeVar => Set(t)
-    case DomainType(domain, typeVarsMap) => (domain.typVars filterNot typeVarsMap.contains) toSet
+    case dt@DomainType(domain, typeVarsMap) => (dt.getDomainTypeVars filterNot typeVarsMap.contains) toSet
     case _ => Set()
   }
 
