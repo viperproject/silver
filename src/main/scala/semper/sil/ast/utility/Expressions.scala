@@ -198,22 +198,23 @@ object Expressions {
           nestedBoundVars ++= (qe.variables map (_.localVar))
       }
 
+     // toSearch.reduceTree[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]((t:Node,results:Seq[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]) => results.flatten)
       // get all function applications
-      toSearch visit {
+      toSearch.reduceTree[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]((t: Node, results: Seq[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]) => t match {
         case t: PossibleTrigger =>
           var extraVars: Seq[LocalVarDecl] = Seq() // collect extra variables generated for this term
-          var containsNestedBoundVars = false // flag to rule out this term
-          // closure to generate fresh LocalVar to replace problematic expressions which may not occur in triggers
-          val freshVar: (Type => Exp) = {
-            ty =>
-              val newV = LocalVarDecl("fresh__" + id, ty)()
-              id += 1
-              extraVars +:= newV
-              newV.localVar
-          }
+        var containsNestedBoundVars = false // flag to rule out this term
+        // closure to generate fresh LocalVar to replace problematic expressions which may not occur in triggers
+        val freshVar: (Type => Exp) = {
+          ty =>
+            val newV = LocalVarDecl("fresh__" + id, ty)()
+            id += 1
+            extraVars +:= newV
+            newV.localVar
+        }
           // replaces problematic logical/comparison expressions with fresh boolean variables
           val boolExprEliminator: PartialFunction[Node, Node] = {
-            case e:ForbiddenInTrigger => freshVar(e.typ)
+            case e: ForbiddenInTrigger => freshVar(e.typ)
           }
           var containedVars: Seq[LocalVar] = Seq()
           val processedArgs = t.getArgs map (_.transform(boolExprEliminator)()) // eliminate all boolean expressions forbidden from triggers, and replace with "extraVars"
@@ -225,11 +226,13 @@ object Expressions {
                 if (vs.contains(v)) containedVars +:= v
             }
           }
-          if (!containsNestedBoundVars && !containedVars.isEmpty) {
-            seedTerms +:= (t.withArgs(processedArgs), containedVars, extraVars)
-          }
+          if (!containsNestedBoundVars && !containedVars.isEmpty)
+            results.flatten ++ Seq((t.withArgs(processedArgs), containedVars, extraVars))
+          else
+            results.flatten
+        case _ => results.flatten
       }
-      seedTerms
+      )
     }
 
 
