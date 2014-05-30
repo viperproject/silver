@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/18/)
 domain GlobalKPermission {
   
   unique function globalK$(): Perm
