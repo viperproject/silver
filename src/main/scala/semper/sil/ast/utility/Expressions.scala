@@ -189,7 +189,6 @@ object Expressions {
     // The second set of variables indicated the extra boolean variables which were introduced to "hide" problematic logical/comparison operators which may not occur in triggers.
     // e.g., if vs = [x] and toSearch = f(x, y ==> z) thn a singleton list will be returned, containing (f(x,b),{x},{b}).
     def getFunctionAppsContaining(vs: Seq[LocalVar], toSearch: Exp): (Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]) = {
-      var seedTerms: Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])] = Seq() // accumulate candidate functions to return
       var nestedBoundVars: Seq[LocalVar] = Seq() // count all variables bound in nested quantifiers, to avoid considering function applications mentioning these
 
       // get all nested bound vars
@@ -230,23 +229,23 @@ object Expressions {
             results.flatten ++ Seq((t.withArgs(processedArgs), containedVars, extraVars))
           else
             results.flatten
+        case Old(_) => results.flatten map {case (pt, vars, extras) => (OldTrigger(pt)(pt.pos,pt.info),vars,extras)}
         case _ => results.flatten
       }
       )
     }
 
-
     // Precondition : if vars is non-empty then every (f,vs) pair in functs satisfies the property that vars and vs are not disjoint.
     // Finds trigger sets by selecting entries from "functs" until all of "vars" occur, and accumulating the extra variables needed for each function term.
     // Returns a list of the trigger sets found, paired with the extra boolean variables they use
-    def buildTriggersCovering(vars: Seq[LocalVar], functs: Seq[(Exp, Seq[LocalVar], Seq[LocalVarDecl])], currentTrigger: Seq[Exp], extraVars: Seq[LocalVarDecl]): Seq[(Trigger, Seq[LocalVarDecl])] = {
+    def buildTriggersCovering(vars: Seq[LocalVar], functs: Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])], currentTrigger: Seq[Exp], extraVars: Seq[LocalVarDecl]): Seq[(Trigger, Seq[LocalVarDecl])] = {
       if (vars.isEmpty) Seq((Trigger(currentTrigger)(), extraVars)) // we have found a suitable trigger set
       else functs match {
         case Nil => Nil // this branch didn't result in a solution
         case ((f, vs, extra) :: rest) => {
           val needed: Seq[LocalVar] = vars.diff(vs) // variables still not triggered
           // try adding the next element of functs, or not..
-          buildTriggersCovering(needed, rest.filter(func => !func._2.intersect(needed).isEmpty), currentTrigger :+ f, (extraVars ++ extra).distinct) ++ buildTriggersCovering(vars, rest, currentTrigger, extraVars)
+          buildTriggersCovering(needed, rest.filter(func => !func._2.intersect(needed).isEmpty), currentTrigger :+ f.asExp, (extraVars ++ extra).distinct) ++ buildTriggersCovering(vars, rest, currentTrigger, extraVars)
         }
       }
     }
@@ -254,7 +253,7 @@ object Expressions {
     // Generates trigger sets to cover the variables "vs", by searching the expression "toSearch".
     // Returns a list of pairs of lists of trigger sets couple with the extra variables they require to be quantified over (each list of triggers must contain trigger sets which employ exactly the same extra variables).
     def generateTriggers(vs: Seq[LocalVar], toSearch: Exp): Seq[(Seq[Trigger], Seq[LocalVarDecl])] = {
-      val functionApps: (Seq[(Exp, Seq[LocalVar], Seq[LocalVarDecl])]) = getFunctionAppsContaining(vs, toSearch) // find suitable function applications
+      val functionApps: (Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]) = getFunctionAppsContaining(vs, toSearch) // find suitable function applications
       if (functionApps.isEmpty) Seq()
       else {
         val candidates: Seq[(Trigger, Seq[LocalVarDecl])] = buildTriggersCovering(vs, functionApps, Nil, Seq())

@@ -166,6 +166,7 @@ case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos,info,typ,formalArgs)
+  def asExp = this
 }
 // allows a FuncApp to be created directly from a Function node (but only stores its name)
 object FuncApp {
@@ -180,6 +181,7 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
   def func = (p:Program) => p.findDomainFunction(funcname)
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs)
+  def asExp = this
 }
 object DomainFuncApp {
   def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo) : DomainFuncApp = DomainFuncApp(func.name,args,typVarMap)(pos,info,func.typ.substitute(typVarMap),func.formalArgs map {
@@ -321,7 +323,9 @@ case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Inf
  * Marker trait for all sequence-related expressions. Does not imply that the type of the
  * expression is `SeqType`.
  */
-sealed trait SeqExp extends Exp with PossibleTrigger
+sealed trait SeqExp extends Exp with PossibleTrigger {
+  override def asExp = this
+}
 
 /** The empty sequence of a given element type. */
 case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
@@ -440,13 +444,17 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
  * Marker trait for all set-related expressions. Does not imply that the type of the
  * expression is `SetType`.
  */
-sealed trait SetExp extends Exp with PossibleTrigger
+sealed trait SetExp extends Exp with PossibleTrigger {
+  override def asExp:Exp = this
+}
 
 /**
  * Marker trait for all set-related expressions. Does not imply that the type of the
  * expression is `MultisetType`.
  */
-sealed trait MultisetExp extends Exp with PossibleTrigger
+sealed trait MultisetExp extends Exp with PossibleTrigger {
+  override def asExp:Exp = this
+}
 
 /** The empty set of a given element type. */
 case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
@@ -495,7 +503,6 @@ case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
   def withArgs(newArgs: Seq[Exp]) = AnySetUnion(newArgs(0),newArgs(1))(pos,info)
-
 }
 
 /** Intersection of two sets or two multisets. */
@@ -520,7 +527,6 @@ case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, v
   lazy val typ = Bool
   def getArgs = Seq(left,right)
   def withArgs(newArgs: Seq[Exp]) = AnySetSubset(newArgs(0),newArgs(1))(pos,info)
-
 }
 
 /** Set difference. */
@@ -547,7 +553,6 @@ case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val
   lazy val typ = Bool
   def getArgs = Seq(elem,s)
   def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs(0),newArgs(1))(pos,info)
-
 }
 
 /** The length of a sequence. */
@@ -572,9 +577,25 @@ sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominato
  * Used to label expression nodes as potentially valid trigger terms for quantifiers.
  * Use ForbiddenInTrigger to declare terms which may not be used in triggers.
  */
-sealed trait PossibleTrigger extends Exp {
+sealed trait PossibleTrigger {
   def getArgs : Seq[Exp]
   def withArgs(args : Seq[Exp]) : PossibleTrigger
+  def asExp : Exp
+  def pos : Position
+  def info : Info
+}
+
+// Representation for a trigger term to be evaluated in the "old" heap
+case class OldTrigger(nested: PossibleTrigger)(override val pos: Position = NoPosition, override val info:Info = NoInfo) extends PossibleTrigger {
+  def getArgs = nested.getArgs
+  def withArgs(args : Seq[Exp]) = OldTrigger(nested.withArgs(args))(pos,info)
+  def asExp = Old(nested.asExp)(pos,info)
+}
+object OldTrigger { // creates an instance, recording the pos and info of the old expression
+  def apply(oldExp : Old) : OldTrigger = {
+    val nested = if (oldExp.exp.isInstanceOf[PossibleTrigger]) oldExp.exp.asInstanceOf[PossibleTrigger] else sys.error("Internal Error: tried to create invalid trigger node from : " + oldExp)
+    OldTrigger(nested)(oldExp.pos, oldExp.info)
+  }
 }
 
 sealed trait ForbiddenInTrigger extends Exp
