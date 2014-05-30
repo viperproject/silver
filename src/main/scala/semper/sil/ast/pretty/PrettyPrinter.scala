@@ -265,7 +265,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       func.name <> parens(ssep(args map show, comma <> space))
 
     case EmptySeq(elemTyp) =>
-      "Seq[" + show(elemTyp) + "]()"
+      "Seq[" <> showType(elemTyp) <> "]()"
     case ExplicitSeq(elems) =>
       "Seq" <> parens(ssep(elems map show, comma <> space))
     case RangeSeq(low, high) =>
@@ -286,11 +286,11 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       parens(show(elem) <+> "in" <+> show(seq))
 
     case EmptySet(elemTyp) =>
-      "Set[" + show(elemTyp) + "]()"
+      "Set[" <> showType(elemTyp) <> "]()"
     case ExplicitSet(elems) =>
       "Set" <> parens(ssep(elems map show, comma <> space))
     case EmptyMultiset(elemTyp) =>
-      "Multiset[" + show(elemTyp) + "]()"
+      "Multiset[" <> showType(elemTyp) <> "]()"
     case ExplicitMultiset(elems) =>
       "Multiset" <> parens(ssep(elems map show, comma <> space))
     case AnySetUnion(left, right) =>
