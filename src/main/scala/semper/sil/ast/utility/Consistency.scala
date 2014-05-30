@@ -129,7 +129,11 @@ object Consistency {
 
   /** Returns true iff the given expression is a valid trigger. */
   def validTrigger(e: Exp): Boolean = {
-    e.isInstanceOf[PossibleTrigger] && !(e.existsDefined { case _:ForbiddenInTrigger => })
+    e match {
+      case Old(nested) => validTrigger(nested) // case corresponds to OldTrigger node
+      case e : PossibleTrigger => !(e.existsDefined { case _:ForbiddenInTrigger => })
+      case _ => false
+    }
   }
 
   /**

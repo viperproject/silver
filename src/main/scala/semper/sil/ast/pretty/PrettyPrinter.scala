@@ -149,9 +149,9 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case SetType(elemType) => "Set" <> "[" <> show(elemType) <> "]"
       case MultisetType(elemType) => "Multiset" <> "[" <> show(elemType) <> "]"
       case TypeVar(v) => v
-      case DomainType(domain, typVarsMap) =>
-        val typArgs = domain.typVars map (t => show(typVarsMap.getOrElse(t, t)))
-        domain.name <> (if (typArgs.isEmpty) empty else brackets(ssep(typArgs, comma <> space)))
+      case dt@DomainType(domainName, typVarsMap) =>
+        val typArgs = dt.getDomainTypeVars map (t => show(typVarsMap.getOrElse(t, t)))
+        domainName <> (if (typArgs.isEmpty) empty else brackets(ssep(typArgs, comma <> space)))
     }
   }
 
@@ -179,8 +179,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         "fresh" <+> ssep(vars map show, comma <> space)
       case Constraining(vars, body) =>
         "constraining" <> parens(ssep(vars map show, comma <> space)) <+> showBlock(body)
-      case MethodCall(m, args, targets) =>
-        val call = m.name <> parens(ssep(args map show, comma <> space))
+      case MethodCall(mname, args, targets) =>
+        val call = mname <> parens(ssep(args map show, comma <> space))
         targets match {
           case Nil => call
           case _ => ssep(targets map show, comma <> space) <+> ":=" <+> call
@@ -231,8 +231,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case AbstractLocalVar(n) => n
     case FieldAccess(rcv, field) =>
       show(rcv) <> "." <> field.name
-    case PredicateAccess(params, predicate) =>
-      predicate.name <> parens(ssep(params map show, comma <> space))
+    case PredicateAccess(params, predicateName) =>
+      predicateName <> parens(ssep(params map show, comma <> space))
     case Unfolding(acc, exp) =>
       parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
     case Old(exp) =>
@@ -259,10 +259,10 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       "perm" <> parens(show(loc))
     case AccessPredicate(loc, perm) =>
       "acc" <> parens(show(loc) <> "," <+> show(perm))
-    case FuncApp(func, args) =>
-      func.name <> parens(ssep(args map show, comma <> space))
-    case DomainFuncApp(func, args, _) =>
-      func.name <> parens(ssep(args map show, comma <> space))
+    case FuncApp(funcname, args) =>
+      funcname <> parens(ssep(args map show, comma <> space))
+    case DomainFuncApp(funcname, args, _) =>
+      funcname <> parens(ssep(args map show, comma <> space))
 
     case EmptySeq(elemTyp) =>
       "Seq[" <> showType(elemTyp) <> "]()"

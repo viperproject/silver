@@ -33,11 +33,10 @@ object Transformer {
             case BoolLit(_) => exp
             case NullLit() => exp
             case AbstractLocalVar(_) => exp
-            /* No recursion on field here. */
-            case FieldAccess(rcv, field) => FieldAccess(go(rcv), field)(p, i)
-            /* No recursion on predicate here. */
-            case PredicateAccess(params, predicate) =>
-              PredicateAccess(params map go, predicate)(p, i)
+            // AS: added recursion on field: this was previously missing (as for all "shared" nodes in AST). But this could lead to the type of the field not being transformed consistently with its declaration (if the whole program is transformed)
+            case FieldAccess(rcv, field) => FieldAccess(go(rcv), go(field))(p, i)
+            case PredicateAccess(params, predicateName) =>
+              PredicateAccess(params map go, predicateName)(p, i)
             case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i)
             case Old(e) => Old(go(e))(p, i)
             case CondExp(cond, thn, els) =>
@@ -58,12 +57,10 @@ object Transformer {
               FieldAccessPredicate(go(loc), go(perm))(p, i)
             case PredicateAccessPredicate(loc, perm) =>
               PredicateAccessPredicate(go(loc), go(perm))(p, i)
-            case FuncApp(ff, args) =>
-              /* No recursion on function here. */
-              FuncApp(ff, args map go)(p, i)
-            case DomainFuncApp(ff, args, m) =>
-              /* No recursion on domain function here. */
-              DomainFuncApp(ff, args map go, goTypeVariables(m))(p, i)
+            case fa@FuncApp(fname, args) =>
+              FuncApp(fname, args map go)(p, i, fa.typ, fa.formalArgs)
+            case dfa@DomainFuncApp(fname, args, m) =>
+              DomainFuncApp(fname, args map go, goTypeVariables(m))(p, i, dfa.typ, dfa.formalArgs)
 
             case Neg(e) => Neg(go(e))(p, i)
             case Not(e) => Not(go(e))(p, i)
@@ -168,9 +165,8 @@ object Transformer {
           aType match {
             case Bool => aType
 
-            case DomainType(domain, typeVariables) =>
-              /* Do not transform domain here. */
-              DomainType(domain, goTypeVariables(typeVariables))
+            case dt@DomainType(domainName, typeVariables) =>
+              DomainType(domainName, goTypeVariables(typeVariables))(dt.getDomainTypeVars)
 
             case Int => aType
             case Perm => aType
@@ -222,9 +218,8 @@ object Transformer {
               LocalVarAssign(go(variable),
                 go(value))(statement.pos, statement.info)
 
-            case MethodCall(method, arguments, variables) =>
-              /* Do not transform called method here. */
-              MethodCall(method, arguments map go,
+            case MethodCall(methodname, arguments, variables) =>
+              MethodCall(methodname, arguments map go,
                 variables map go)(statement.pos, statement.info)
 
             case NewStmt(target, fields) =>

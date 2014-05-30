@@ -23,11 +23,12 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
   /** Returns the subexpressions of this expression */
   lazy val subExps = Expressions.subExps(this)
 
+  // AS: experimenting with removing this code...
   /**
    * Returns a conjunction of all proof obligations in this expression, e.g. rcv != null for all field accesses rcv.f,
    * we have permissions for all field accesses, the preconditions of all used functions are fulfilled etc.
    */
-  lazy val proofObligations = Expressions.proofObligations(this)
+ // lazy val proofObligations = Expressions.proofObligations(this)
 
 }
 
@@ -159,68 +160,69 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 // --- Function application (domain and normal)
 
 /** Function application. */
-case class FuncApp(func: Function, args: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends FuncLikeApp with PossibleTrigger {
+case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl]) extends FuncLikeApp with PossibleTrigger {
   args foreach Consistency.checkNoPositiveOnly
 
+  def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = FuncApp(func, newArgs)(pos,info)
-
-  /**
-   * The precondition of this function application (i.e., the precondition of the function with
-   * the arguments instantiated correctly).
-   */
-  lazy val pres = {
-    func.pres map (e => Expressions.instantiateVariables(e, func.formalArgs, args))
-  }
-  /**
-   * The postcondition of this function application (i.e., the postcondition of the function with
-   * the arguments instantiated correctly).
-   */
-  lazy val posts = {
-    func.posts map (e => Expressions.instantiateVariables(e, func.formalArgs, args))
-  }
+  def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos,info,typ,formalArgs)
+  def asExp = this
+}
+// allows a FuncApp to be created directly from a Function node (but only stores its name)
+object FuncApp {
+  def apply(func: Function, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo) : FuncApp = FuncApp(func.name, args)(pos,info,func.typ,func.formalArgs)
 }
 
 /** User-defined domain function application. */
-case class DomainFuncApp(func: DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFuncApp with PossibleTrigger {
+case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl]) extends AbstractDomainFuncApp with PossibleTrigger {
   args foreach Consistency.checkNoPositiveOnly
-  override lazy val typ = super.typ.substitute(typVarMap)
-  override lazy val formalArgs: Seq[LocalVarDecl] = {
-    callee.formalArgs map {
-      fa =>
-      // substitute parameter types
-        LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
-    }
-  }
+  def typ = typPassed
+  def formalArgs = formalArgsPassed
+  def func = (p:Program) => p.findDomainFunction(funcname)
   def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(func,newArgs,typVarMap)(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs)
+  def asExp = this
+}
+object DomainFuncApp {
+  def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo) : DomainFuncApp = DomainFuncApp(func.name,args,typVarMap)(pos,info,func.typ.substitute(typVarMap),func.formalArgs map {
+    fa =>
+      // substitute parameter types
+      LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
+  })
 }
 
 // --- Field and predicate accesses
 
 /** A common trait for expressions accessing a location. */
 sealed trait LocationAccess extends Exp {
-  def loc: Location
+  def loc(p : Program): Location
 }
 
 object LocationAccess {
-  def unapply(la: LocationAccess) = Some(la.loc)
+  def unapply(la: LocationAccess) = Some((p:Program) => la.loc(p))
 }
+
 
 /** A field access expression. */
 case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess with Lhs {
-  lazy val loc = field
+  def loc(p : Program) = field
   lazy val typ = field.typ
 }
 
-/** A predicate access expression. */
-case class PredicateAccess(args: Seq[Exp], predicate: Predicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess {
-  lazy val loc = predicate
+/** A predicate access expression. See also companion object below for an alternative creation signature */
+case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Position, val info: Info) extends LocationAccess {
+  def loc(p:Program) = p.findPredicate(predicateName)
   lazy val typ = Pred
 
-  /** The body of the predicate with the receiver instantiated correctly. */
-  lazy val predicateBody =
+  /** The body of the predicate with the arguments instantiated correctly. */
+  def predicateBody(program : Program) = {
+    val predicate = program.findPredicate(predicateName)
     Expressions.instantiateVariables(predicate.body, predicate.formalArgs, args)
+  }
+}
+// allows PredicateAccess to be created from a predicate directly, in which case only the name is kept
+object PredicateAccess {
+  def apply(args: Seq[Exp], predicate:Predicate)(pos: Position = NoPosition, info: Info = NoInfo) : PredicateAccess = PredicateAccess(args, predicate.name)(pos, info)
 }
 
 // --- Conditional expression
@@ -273,7 +275,6 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
         Forall(variables ++ extraVariables, triggers, exp)(pos, info)
       } else {
         // no triggers found
-        println("Warning: no triggers found for :\n" ++ this.toString)
         this
       }
     } else {
@@ -322,7 +323,9 @@ case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Inf
  * Marker trait for all sequence-related expressions. Does not imply that the type of the
  * expression is `SeqType`.
  */
-sealed trait SeqExp extends Exp with PossibleTrigger
+sealed trait SeqExp extends Exp with PossibleTrigger {
+  override def asExp = this
+}
 
 /** The empty sequence of a given element type. */
 case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
@@ -331,7 +334,7 @@ case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Inf
   def withArgs(newArgs: Seq[Exp]) = this
 }
 
-/** An explicit, non-emtpy sequence. */
+/** An explicit, non-empty sequence. */
 case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
   require(elems.length > 0)
   require(elems.tail.forall(e => e.typ == elems.head.typ))
@@ -343,7 +346,7 @@ case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info
       case a :: Nil => this
       case a :: as => // desugar into singleton sequences and appends
         as.foldLeft[SeqExp](ExplicitSeq(Seq(a))(pos,info)) {
-          (bs:SeqExp, b:Exp) => SeqAppend(ExplicitSeq(Seq(b))(pos,info),bs)(pos, info)
+          (bs:SeqExp, b:Exp) => SeqAppend(bs,ExplicitSeq(Seq(b))(pos,info))(pos, info)
         }
     }
   }
@@ -441,13 +444,17 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
  * Marker trait for all set-related expressions. Does not imply that the type of the
  * expression is `SetType`.
  */
-sealed trait SetExp extends Exp with PossibleTrigger
+sealed trait SetExp extends Exp with PossibleTrigger {
+  override def asExp:Exp = this
+}
 
 /**
  * Marker trait for all set-related expressions. Does not imply that the type of the
  * expression is `MultisetType`.
  */
-sealed trait MultisetExp extends Exp with PossibleTrigger
+sealed trait MultisetExp extends Exp with PossibleTrigger {
+  override def asExp:Exp = this
+}
 
 /** The empty set of a given element type. */
 case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
@@ -496,7 +503,6 @@ case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
   def withArgs(newArgs: Seq[Exp]) = AnySetUnion(newArgs(0),newArgs(1))(pos,info)
-
 }
 
 /** Intersection of two sets or two multisets. */
@@ -521,7 +527,6 @@ case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, v
   lazy val typ = Bool
   def getArgs = Seq(left,right)
   def withArgs(newArgs: Seq[Exp]) = AnySetSubset(newArgs(0),newArgs(1))(pos,info)
-
 }
 
 /** Set difference. */
@@ -548,7 +553,6 @@ case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val
   lazy val typ = Bool
   def getArgs = Seq(elem,s)
   def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs(0),newArgs(1))(pos,info)
-
 }
 
 /** The length of a sequence. */
@@ -569,25 +573,41 @@ sealed trait Literal extends Exp
  */
 sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominator: BigInt) extends PermExp
 
-/** 
- * Used to label expression nodes as potentially valid trigger terms for quantifiers. 
+/**
+ * Used to label expression nodes as potentially valid trigger terms for quantifiers.
  * Use ForbiddenInTrigger to declare terms which may not be used in triggers.
  */
-sealed trait PossibleTrigger extends Exp {
+sealed trait PossibleTrigger {
   def getArgs : Seq[Exp]
   def withArgs(args : Seq[Exp]) : PossibleTrigger
+  def asExp : Exp
+  def pos : Position
+  def info : Info
+}
+
+// Representation for a trigger term to be evaluated in the "old" heap
+case class OldTrigger(nested: PossibleTrigger)(override val pos: Position = NoPosition, override val info:Info = NoInfo) extends PossibleTrigger {
+  def getArgs = nested.getArgs
+  def withArgs(args : Seq[Exp]) = OldTrigger(nested.withArgs(args))(pos,info)
+  def asExp = Old(nested.asExp)(pos,info)
+}
+object OldTrigger { // creates an instance, recording the pos and info of the old expression
+  def apply(oldExp : Old) : OldTrigger = {
+    val nested = if (oldExp.exp.isInstanceOf[PossibleTrigger]) oldExp.exp.asInstanceOf[PossibleTrigger] else sys.error("Internal Error: tried to create invalid trigger node from : " + oldExp)
+    OldTrigger(nested)(oldExp.pos, oldExp.info)
+  }
 }
 
 sealed trait ForbiddenInTrigger extends Exp
 
 /** Common ancestor of Domain Function applications and Function applications. */
 sealed trait FuncLikeApp extends Exp with Call {
-  def func: FuncLike
-  lazy val callee = func
-  def typ = func.typ
+  def func: Program => FuncLike
+  def callee = funcname
+  def funcname: String
 }
 object FuncLikeApp {
-  def unapply(fa: FuncLikeApp) = Some((fa.func, fa.args))
+  def unapply(fa: FuncLikeApp) = Some((fa.funcname, fa.args))
   def apply(f: FuncLike, args: Seq[Exp], typVars: Map[TypeVar, Type]) = {
     f match {
       case f@Function(_, _, _, _, _, _) => FuncApp(f, args)()
@@ -599,7 +619,7 @@ object FuncLikeApp {
 
 /** Common superclass for domain functions with arbitrary parameters and return type, binary and unary operations are a special case. */
 sealed trait AbstractDomainFuncApp extends FuncLikeApp {
-  def func: AbstractDomainFunc
+  def func: Program => AbstractDomainFunc
 }
 
 /**
@@ -617,10 +637,7 @@ sealed abstract class EqualityCmp(val op: String) extends BinExp with PrettyBina
 
 /** Expressions with a unary or binary operator. */
 sealed trait DomainOpExp extends AbstractDomainFuncApp with ForbiddenInTrigger { // ForbiddenInTrigger: seems likely that all such operators will not be allowed if/when translated to Z3. But if we need something more fine-grained, we can push this further down the hierarchy.
-  def func: Op
-  def op = func.op
-  def fixity = func.fixity
-  def priority = func.priority
+  def func: Program => Op
 }
 
 /** Binary expressions of any kind (whether or not they belong to a domain). */
@@ -643,13 +660,30 @@ object UnExp {
 }
 
 /** Common superclass for binary expressions that belong to a domain (and thus have a domain operator). */
-sealed abstract class DomainBinExp(val func: BinOp) extends BinExp with DomainOpExp
+sealed abstract class DomainBinExp(val funct: BinOp) extends BinExp with DomainOpExp
+{
+  def func = (p:Program) => funct
+  def funcname = funct.name
+  def formalArgs = funct.formalArgs
+  def op = funct.op
+  def fixity = funct.fixity
+  def priority = funct.priority
+  def typ = funct.typ
+}
 object DomainBinExp {
-  def unapply(e: DomainBinExp) = Some((e.left, e.func, e.right))
+  def unapply(e: DomainBinExp) = Some((e.left, e.funct, e.right))
 }
 
 /** Common superclass for unary expressions that belong to a domain (and thus have a domain operator). */
-sealed abstract class DomainUnExp(val func: UnOp) extends PrettyUnaryExpression with DomainOpExp with UnExp
+sealed abstract class DomainUnExp(val funct: UnOp) extends PrettyUnaryExpression with DomainOpExp with UnExp {
+  def func = (p:Program) => funct
+  def funcname = funct.name
+  def typ = funct.typ
+  def formalArgs = funct.formalArgs
+  def op = funct.op
+  def fixity = funct.fixity
+  def priority = funct.priority
+}
 
 /** Expressions which can appear on the left hand side of an assignment */
 sealed trait Lhs extends Exp

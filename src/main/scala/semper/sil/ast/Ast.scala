@@ -71,7 +71,7 @@ trait Node extends Traversable[Node] {
     Visitor.visit(this, Nodes.subnodes)(f)
   }
 
-  /** Applies the function `f` to the AST node (if possible), then visits all subodes.
+  /** Applies the function `f` to the AST node (if possible), then visits all subnodes.
     * Also carries a context down the tree that can be updated by `f`.
     *
     * @tparam C Context type.
@@ -84,7 +84,7 @@ trait Node extends Traversable[Node] {
 
   /** Applies the function `f` to the AST node (if possible). Subnodes are only
     * visited if `f` is not applicable. If subnodes need to be visited when `f` is
-    * visible then `f` has to descend manually.
+    * applicable then `f` has to descend manually.
     * Also carries a context down the tree that can be updated by `f`.
     *
     * @tparam C Context type.

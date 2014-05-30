@@ -70,7 +70,8 @@ object Expressions {
     case e: Exp => e
   }
 
-  def proofObligations(e: Exp): Seq[Exp] = {
+  // note: dependency on program for looking up function preconditions
+  def proofObligations(e: Exp): (Program => Seq[Exp]) = ((prog:Program) => {
     e.reduceTree[Seq[Exp]] {
       (n: Node, subConds: Seq[Seq[Exp]]) =>
         val p = n match {
@@ -80,7 +81,7 @@ object Expressions {
         // Conditions for the current node.
         val conds = n match {
           case f@FieldAccess(rcv, _) => List(NeCmp(rcv, NullLit()(p))(p), FieldAccessPredicate(f, WildcardPerm()(p))(p))
-          case f: FuncApp => f.pres
+          case f: FuncApp => prog.findFunction(f.funcname).pres
           case Div(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
           case Mod(_, q) => List(NeCmp(q, IntLit(0)(p))(p))
           case _ => Nil
@@ -114,7 +115,7 @@ object Expressions {
         // The condition of the current node has to be at the end because the subtrees have to be well-formed first.
         finalSubConds ++ conds
     }
-  }
+  })
 
   /** Calculates the proof obligations for a conditional expression given the proof obligations of the subexpressions. */
   def reduceCondExpProofObs(cond: Exp, condConds: Seq[Exp], thenConds: Seq[Exp], elseConds: Seq[Exp], p: Position): Seq[Exp] = {
@@ -188,7 +189,6 @@ object Expressions {
     // The second set of variables indicated the extra boolean variables which were introduced to "hide" problematic logical/comparison operators which may not occur in triggers.
     // e.g., if vs = [x] and toSearch = f(x, y ==> z) thn a singleton list will be returned, containing (f(x,b),{x},{b}).
     def getFunctionAppsContaining(vs: Seq[LocalVar], toSearch: Exp): (Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]) = {
-      var seedTerms: Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])] = Seq() // accumulate candidate functions to return
       var nestedBoundVars: Seq[LocalVar] = Seq() // count all variables bound in nested quantifiers, to avoid considering function applications mentioning these
 
       // get all nested bound vars
@@ -197,22 +197,23 @@ object Expressions {
           nestedBoundVars ++= (qe.variables map (_.localVar))
       }
 
+     // toSearch.reduceTree[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]((t:Node,results:Seq[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]) => results.flatten)
       // get all function applications
-      toSearch visit {
+      toSearch.reduceTree[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]((t: Node, results: Seq[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]) => t match {
         case t: PossibleTrigger =>
           var extraVars: Seq[LocalVarDecl] = Seq() // collect extra variables generated for this term
-          var containsNestedBoundVars = false // flag to rule out this term
-          // closure to generate fresh LocalVar to replace problematic expressions which may not occur in triggers
-          val freshVar: (Type => Exp) = {
-            ty =>
-              val newV = LocalVarDecl("fresh__" + id, ty)()
-              id += 1
-              extraVars +:= newV
-              newV.localVar
-          }
+        var containsNestedBoundVars = false // flag to rule out this term
+        // closure to generate fresh LocalVar to replace problematic expressions which may not occur in triggers
+        val freshVar: (Type => Exp) = {
+          ty =>
+            val newV = LocalVarDecl("fresh__" + id, ty)()
+            id += 1
+            extraVars +:= newV
+            newV.localVar
+        }
           // replaces problematic logical/comparison expressions with fresh boolean variables
           val boolExprEliminator: PartialFunction[Node, Node] = {
-            case e:ForbiddenInTrigger => freshVar(e.typ)
+            case e: ForbiddenInTrigger => freshVar(e.typ)
           }
           var containedVars: Seq[LocalVar] = Seq()
           val processedArgs = t.getArgs map (_.transform(boolExprEliminator)()) // eliminate all boolean expressions forbidden from triggers, and replace with "extraVars"
@@ -224,25 +225,27 @@ object Expressions {
                 if (vs.contains(v)) containedVars +:= v
             }
           }
-          if (!containsNestedBoundVars && !containedVars.isEmpty) {
-            seedTerms +:= (t.withArgs(processedArgs), containedVars, extraVars)
-          }
+          if (!containsNestedBoundVars && !containedVars.isEmpty)
+            results.flatten ++ Seq((t.withArgs(processedArgs), containedVars, extraVars))
+          else
+            results.flatten
+        case Old(_) => results.flatten map {case (pt, vars, extras) => (OldTrigger(pt)(pt.pos,pt.info),vars,extras)}
+        case _ => results.flatten
       }
-      seedTerms
+      )
     }
-
 
     // Precondition : if vars is non-empty then every (f,vs) pair in functs satisfies the property that vars and vs are not disjoint.
     // Finds trigger sets by selecting entries from "functs" until all of "vars" occur, and accumulating the extra variables needed for each function term.
     // Returns a list of the trigger sets found, paired with the extra boolean variables they use
-    def buildTriggersCovering(vars: Seq[LocalVar], functs: Seq[(Exp, Seq[LocalVar], Seq[LocalVarDecl])], currentTrigger: Seq[Exp], extraVars: Seq[LocalVarDecl]): Seq[(Trigger, Seq[LocalVarDecl])] = {
+    def buildTriggersCovering(vars: Seq[LocalVar], functs: Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])], currentTrigger: Seq[Exp], extraVars: Seq[LocalVarDecl]): Seq[(Trigger, Seq[LocalVarDecl])] = {
       if (vars.isEmpty) Seq((Trigger(currentTrigger)(), extraVars)) // we have found a suitable trigger set
       else functs match {
         case Nil => Nil // this branch didn't result in a solution
         case ((f, vs, extra) :: rest) => {
           val needed: Seq[LocalVar] = vars.diff(vs) // variables still not triggered
           // try adding the next element of functs, or not..
-          buildTriggersCovering(needed, rest.filter(func => !func._2.intersect(needed).isEmpty), currentTrigger :+ f, (extraVars ++ extra).distinct) ++ buildTriggersCovering(vars, rest, currentTrigger, extraVars)
+          buildTriggersCovering(needed, rest.filter(func => !func._2.intersect(needed).isEmpty), currentTrigger :+ f.asExp, (extraVars ++ extra).distinct) ++ buildTriggersCovering(vars, rest, currentTrigger, extraVars)
         }
       }
     }
@@ -250,7 +253,7 @@ object Expressions {
     // Generates trigger sets to cover the variables "vs", by searching the expression "toSearch".
     // Returns a list of pairs of lists of trigger sets couple with the extra variables they require to be quantified over (each list of triggers must contain trigger sets which employ exactly the same extra variables).
     def generateTriggers(vs: Seq[LocalVar], toSearch: Exp): Seq[(Seq[Trigger], Seq[LocalVarDecl])] = {
-      val functionApps: (Seq[(Exp, Seq[LocalVar], Seq[LocalVarDecl])]) = getFunctionAppsContaining(vs, toSearch) // find suitable function applications
+      val functionApps: (Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]) = getFunctionAppsContaining(vs, toSearch) // find suitable function applications
       if (functionApps.isEmpty) Seq()
       else {
         val candidates: Seq[(Trigger, Seq[LocalVarDecl])] = buildTriggersCovering(vs, functionApps, Nil, Seq())
