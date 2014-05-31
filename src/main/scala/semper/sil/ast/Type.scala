@@ -75,8 +75,12 @@ case class MultisetType(elementType: Type) extends BuiltInType {
  * @param typVarsMap Maps type parameters to (possibly concrete) types. May not map all type
  *                   parameters, may even be empty.
  */
-case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])(domainTypVars : Seq[TypeVar]) extends Type {
+case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
+                      (val domainTypVars: Seq[TypeVar])
+    extends Type {
+
   require(typVarsMap.values.forall(t => !t.isInstanceOf[TypeVar]))
+
   lazy val isConcrete: Boolean = {
     var res = true
     // all type variables need to be gone
@@ -86,10 +90,11 @@ case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])(domai
         case Some(t) => if (!t.isConcrete) res = false
       }
     }
+
     res
   }
 
-  def getDomainTypeVars = domainTypVars
+//  def getDomainTypeVars = domainTypVars
 
   /** Returns this domain type but adds the type variable mappings from `newTypVarsMap` to those
     * already existing in `this.typVarsMap`. Already existing mappings will '''not''' be overridden!
@@ -104,7 +109,7 @@ case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])(domai
     */
   def substitute(newTypVarsMap: Map[TypeVar, Type]): DomainType = {
     val unmappedTypeVars = domainTypVars filterNot typVarsMap.keys.toSet.contains
-    val additionalTypeMap = (unmappedTypeVars flatMap (t => newTypVarsMap get(t) map ((t -> _)))).toMap
+    val additionalTypeMap = (unmappedTypeVars flatMap (t => newTypVarsMap get t map (t -> _))).toMap
     val newTypeMap = typVarsMap ++ additionalTypeMap
 
     DomainType(domainName, newTypeMap)(domainTypVars)
@@ -112,7 +117,8 @@ case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])(domai
 }
 
 object DomainType{
-  def apply(domain:Domain, typVarsMap: Map[TypeVar, Type]) : DomainType = DomainType(domain.name, typVarsMap)(domain.typVars)
+  def apply(domain: Domain, typVarsMap: Map[TypeVar, Type]): DomainType =
+    DomainType(domain.name, typVarsMap)(domain.typVars)
 }
 /** Type variables. */
 case class TypeVar(name: String) extends Type {
