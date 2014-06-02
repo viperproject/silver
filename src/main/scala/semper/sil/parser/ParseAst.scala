@@ -82,14 +82,13 @@ trait PIdentifier {
 
 case class PIdnDef(name: String) extends PNode with PIdentifier
 
-case class PIdnUse(name: String) extends PExp with Identifier {
+case class PIdnUse(name: String) extends PExp with PIdentifier {
   var letass: Option[PLetAss] = None /* TODO: Can we avoid using a var? */
-  
+
   var decl: PRealEntity = null
     /* Should be set during resolving. Intended to preserve information
      * that is needed by the translator.
      */
-
 }
 
 // Formal arguments
@@ -292,8 +291,8 @@ case class PLabel(idndef: PIdnDef) extends PStmt with PRealEntity
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PRealEntity
 
-case class PLetAss(idndef: PIdnDef, exp: PExp) extends PStmt with RealEntity
-case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with RealEntity
+case class PLetAss(idndef: PIdnDef, exp: PExp) extends PStmt with PRealEntity
+case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PRealEntity
 case class PSkip() extends PStmt
 
 // Declarations
@@ -335,6 +334,8 @@ object PRealEntity {
         case _: PMethod => "method"
         case _: PPredicate => "predicate"
         case _: PTypeVarDecl => "type variable"
+        case _: PLetAss => "assertion macro"
+        case _: PLetWand => "wand reference"
       }
 
     s"$entityName ${entity.idndef.name}"
