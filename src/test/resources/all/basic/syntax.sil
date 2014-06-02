@@ -23,6 +23,7 @@ function f(x:Int) : Int
 }
 
 method m(this : Ref)
+    requires acc(this.g)
 {
     var s : Seq[Int]
     s := Seq[Int]()
