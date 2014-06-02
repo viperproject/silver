@@ -1,0 +1,5 @@
+predicate P(x: Ref) { true }
+
+//:: ExpectedOutput(typechecker.error)
+method test(p: P) { /* Using P as if it were a type */
+}

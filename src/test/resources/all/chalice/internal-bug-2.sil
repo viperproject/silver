@@ -1,4 +1,4 @@
-var x: Int
+field x: Int
 
 predicate inv(this: Ref) { acc(this.x, write) }
 

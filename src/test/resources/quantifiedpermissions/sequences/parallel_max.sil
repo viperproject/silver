@@ -1,10 +1,10 @@
 //:: IgnoreFile(/Silicon/issue/71/)
 
 // class Cell
-var value:Int
+field value:Int
 
 // class ArrayOfInt
-var array:Seq[Ref] // containing Cell(s)
+field array:Seq[Ref] // containing Cell(s)
 
 method parallel_max(a:Ref, start:Int, end:Int, kperm: Perm) returns (mx: Int, pos: Int)
   requires a != null

@@ -1,4 +1,4 @@
-var next: Ref
+field next: Ref
 
 predicate valid(this: Ref) {
      acc(this.next, write)

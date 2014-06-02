@@ -1,4 +1,4 @@
-var root1 : Ref
+field root1 : Ref
 
 	predicate valid1(this: Ref) {
 		   acc(this.root1,write)
@@ -129,13 +129,13 @@ var root1 : Ref
 // next class
 
 
-	var key    : Int
-	var left   : Ref
-	var right  : Ref
-	var parent : Ref
+	field key    : Int
+	field left   : Ref
+	field right  : Ref
+	field parent : Ref
 
-	 var leftDown : Bool
-	 var root : Ref
+	 field leftDown : Bool
+	 field root : Ref
 
 	predicate valid(this: Ref){
 		   acc(validRest(this),write)

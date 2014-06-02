@@ -1,7 +1,7 @@
 //:: IgnoreFile(/Silicon/issue/31/)
 
-var f: Int
-var p: Perm
+field f: Int
+field p: Perm
 
 method t3(this: Ref, p2: Perm)
 {

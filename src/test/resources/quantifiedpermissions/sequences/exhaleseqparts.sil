@@ -1,7 +1,7 @@
 
-var f:Int
+field f:Int
 
-var s:Seq[Ref]
+field s:Seq[Ref]
 
 method m(S:Seq[Ref], start:Int, end:Int)
 requires start >= 0

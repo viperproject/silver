@@ -1,5 +1,5 @@
-  var value: Int
-  var next: Ref
+  field value: Int
+  field next: Ref
   predicate valid(this: Ref) { acc(this.value, write) && acc(this.next, write) && (((this.next) != (null)) ==> acc(valid(this.next), write)) }
   method set(this: Ref, x: Int, y: Int)
     requires acc(valid(this), write)

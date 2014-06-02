@@ -32,7 +32,7 @@ object Nodes {
         }
       case s: Stmt =>
         s match {
-          case NewStmt(lhs) => Seq(lhs)
+          case NewStmt(target, fields) => Seq(target) ++ fields
           case LocalVarAssign(lhs, rhs) => Seq(lhs, rhs)
           case FieldAssign(lhs, rhs) => Seq(lhs, rhs)
           case Fold(e) => Seq(e)
@@ -42,13 +42,14 @@ object Nodes {
           case Inhale(e) => Seq(e)
           case Exhale(e) => Seq(e)
           case Assert(e) => Seq(e)
-          case MethodCall(m, args, targets) => args ++ targets
+          case MethodCall(mname, args, targets) => args ++ targets
           case Seqn(ss) => ss
           case While(cond, invs, locals, body) => Seq(cond) ++ invs ++ locals ++ Seq(body)
           case If(cond, thn, els) => Seq(cond, thn, els)
           case Label(name) => Nil
           case Goto(target) => Nil
-          case FreshReadPerm(vars, body) => vars ++ Seq(body)
+          case Fresh(vars) => vars
+          case Constraining(vars, body) => vars ++ Seq(body)
         }
       case vd: LocalVarDecl => Nil
       case e: Exp =>
@@ -58,7 +59,7 @@ object Nodes {
           case _: Literal => Nil
           case AbstractLocalVar(n) => Nil
           case FieldAccess(rcv, field) => Seq(rcv)
-          case PredicateAccess(params, predicate) => params
+          case PredicateAccess(params, _) => params
           case e: UnFoldingExp => Seq(e.acc, e.body)
           case Applying(wand, in) => Seq(wand, in)
           case Exhaling(exp) => Seq(exp)
@@ -76,8 +77,8 @@ object Nodes {
           case AccessPredicate(loc, perm) => Seq(loc, perm)
           case BinExp(left, right) => Seq(left, right)
           case UnExp(exp) => Seq(exp)
-          case FuncApp(func, args) => args
-          case DomainFuncApp(func, args, m) =>
+          case FuncApp(_, args) => args
+          case DomainFuncApp(_, args, m) =>
             args ++ m.keys ++ m.values
 
           case EmptySeq(elemTyp) => Seq(elemTyp)

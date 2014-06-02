@@ -1,19 +1,6 @@
 package semper.sil.ast.utility
 
-import semper.sil.ast.While
-import semper.sil.ast.FreshReadPerm
-import semper.sil.ast.Block
-import semper.sil.ast.Stmt
-import semper.sil.ast.TerminalBlock
-import semper.sil.ast.NormalBlock
-import semper.sil.ast.LoopBlock
-import semper.sil.ast.FreshReadPermBlock
-import semper.sil.ast.FreshReadPermBlock
-import semper.sil.ast.Seqn
-import semper.sil.ast.ConditionalBlock
-import semper.sil.ast.Goto
-import semper.sil.ast.Label
-import semper.sil.ast.If
+import semper.sil.ast._
 import semper.sil.utility.SilNameGenerator
 
 object AstGenerator {
@@ -35,20 +22,19 @@ object AstGenerator {
       } else {
         val loops1 = knownSurroundingLoops + (block -> surroundingLoop)
         block match {
-          case ConditionalBlock(_, _, thn, els) => {
+          case ConditionalBlock(_, _, thn, els) =>
             val loops2 = calculateSurroundingLoops(els, surroundingLoop, loops1)
             calculateSurroundingLoops(thn, surroundingLoop, loops2)
-          }
-          case NormalBlock(_, succ) => calculateSurroundingLoops(succ, surroundingLoop, loops1)
-          case TerminalBlock(_) => loops1
-          case b @ LoopBlock(body, _, _, _, succ) => {
+          case NormalBlock(_, succ) =>
+            calculateSurroundingLoops(succ, surroundingLoop, loops1)
+          case TerminalBlock(_) =>
+            loops1
+          case b @ LoopBlock(body, _, _, _, succ) =>
             val loops2 = calculateSurroundingLoops(succ, surroundingLoop, loops1)
             calculateSurroundingLoops(body, Some(b), loops2)
-          }
-          case frp @ FreshReadPermBlock(_, body, _) => {
+          case ConstrainingBlock(_, body, _) =>
             /* [Malte] Tried to follow what happens in case of a ConditionalBlock. */
             calculateSurroundingLoops(body, surroundingLoop, loops1)
-          }
         }
       }
     }
@@ -98,7 +84,7 @@ object AstGenerator {
         case b: ConditionalBlock => b :: extractBranches(b, previousBlocks).continuation
         case b: TerminalBlock => List(b)
         case b @ LoopBlock(body, _, _, _, succ) => b :: continuation(succ, surroundingLoop, previousBlocks + b)
-        case frp @ FreshReadPermBlock(_, _, succ) => frp :: continuation(succ, surroundingLoop, previousBlocks + frp)
+        case b @ ConstrainingBlock(_, _, succ) => b :: continuation(succ, surroundingLoop, previousBlocks + b)
         case b @ NormalBlock(_, succ) => b :: continuation(succ, surroundingLoop, previousBlocks + b)
       }
     }
@@ -127,16 +113,14 @@ object AstGenerator {
     /** Translates a list of blocks. */
     private def translateList(blocks: List[Block]): List[Stmt] = blocks match {
       case Nil => Nil
-      case (b @ NormalBlock(stmt, succ)) :: Nil if (surroundingLoops(b) != surroundingLoops(succ)) => {
+      case (b @ NormalBlock(stmt, succ)) :: Nil if surroundingLoops(b) != surroundingLoops(succ) =>
         // Goto at the end of the continuation
         val stmts = translate(b)
         stmts :+ Goto(label(succ))()
-      }
-      case block :: rest => {
+      case block :: rest =>
         val stmts = translate(block)
         val restStmts = translateList(rest)
         stmts ++ restStmts
-      }
     }
 
     /** Translates a block into a list of statements. */
@@ -145,22 +129,20 @@ object AstGenerator {
       val translated = block match {
         case TerminalBlock(stmt) => List(stmt)
         case NormalBlock(stmt, _) => List(stmt)
-        case b @ ConditionalBlock(stmt, cond, thn, els) => {
-          val BranchInformation(thn, els, continuation) = extractBranches(b)
+        case b @ ConditionalBlock(stmt, cond, thn, els) =>
+          val BranchInformation(thn, els, _) = extractBranches(b)
           val translatedThen = translateList(thn)
           val translatedElse = translateList(els)
           val translatedIf = If(cond, statementize(translatedThen), statementize(translatedElse))()
           List(stmt, translatedIf)
-        }
-        case b @ LoopBlock(body, cond, invs, locals, succ) => {
+        case b @ LoopBlock(body, cond, invs, locals, succ) =>
           val translatedBody = translateList(continuation(body, Some(b)))
           val translatedLoop = While(cond, invs, locals, statementize(translatedBody))()
           List(translatedLoop)
-        }
-        case frp @ FreshReadPermBlock(vars, body, _) =>
+        case ConstrainingBlock(vars, body, _) =>
           val translatedBody = translateList(continuation(body, None))
-          val translatedFRP = FreshReadPerm(vars, statementize(translatedBody))()
-          List(translatedFRP)
+          val translatedConstraining = Constraining(vars, statementize(translatedBody))()
+          List(translatedConstraining)
       }
       if (labels contains block) {
         Label(labels(block))() :: translated

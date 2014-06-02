@@ -1,4 +1,4 @@
-var f:Int
+field f:Int
 
 // The following precondition should be rejected, as non-self-framing
 method foo(s: Seq[Ref])

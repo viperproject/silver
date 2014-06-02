@@ -1,12 +1,7 @@
 package semper.sil.ast.utility
 
-import semper.sil.ast._
-import semper.sil.ast.NormalBlock
-import semper.sil.ast.TerminalBlock
-import semper.sil.ast.ConditionalBlock
-import semper.sil.ast.FreshReadPermBlock
-import semper.sil.ast.LoopBlock
 import scala.collection.mutable
+import semper.sil.ast._
 
 /** A utility object for control flow graphs. */
 object ControlFlowGraph {
@@ -26,7 +21,7 @@ object ControlFlowGraph {
       f(b)
       val succsAndBody = (b.succs map (_.dest)) ++ (b match {
         case LoopBlock(body, _, _, _, _) => Seq(body)
-        case FreshReadPermBlock(_, body, _) => Seq(body)
+        case ConstrainingBlock(_, body, _) => Seq(body)
         case _ => Nil
       })
       worklist.enqueue(succsAndBody filterNot visited.contains: _*)
@@ -67,9 +62,9 @@ object ControlFlowGraph {
       case lb @ LoopBlock(body, _, _, _, succ) =>
         lb.body = map(body)
         lb.succ = map(succ)
-      case frpb @ FreshReadPermBlock(_, body, succ) =>
-        frpb.body = map(body)
-        frpb.succ = map(succ)
+      case cb @ ConstrainingBlock(_, body, succ) =>
+        cb.body = map(body)
+        cb.succ = map(succ)
       case _ =>
         sys.error("unexpected block")
     }
@@ -174,7 +169,7 @@ object ControlFlowGraph {
     case b: NormalBlock => b.copy()
     case b: ConditionalBlock => b.copy()
     case b: LoopBlock => b.copy()(b.pos, b.info)
-    case b: FreshReadPermBlock => b.copy()
+    case b: ConstrainingBlock => b.copy()
   }
 
   /**
@@ -193,7 +188,7 @@ object ControlFlowGraph {
       stmt1 == stmt2 && cond1 == cond2
     case (LoopBlock(_, cond1, invs1, locals1, _), LoopBlock(_, cond2, invs2, locals2, _)) =>
       cond1 == cond2 && invs1 == invs2 && locals1 == locals2
-    case (FreshReadPermBlock(vars1, _, _), FreshReadPermBlock(vars2, _, _)) =>
+    case (ConstrainingBlock(vars1, _, _), ConstrainingBlock(vars2, _, _)) =>
       vars1 == vars2
     case (_, _) => false
   }
@@ -225,7 +220,7 @@ object ControlFlowGraph {
     def label(b: Block) = {
       val r = b match {
         case LoopBlock(_, cond, _, _, _) => s"while ($cond)"
-        case FreshReadPermBlock(vars, _, _) => s"freshReadPerms ($vars)"
+        case ConstrainingBlock(vars, _, _) => s"constraining ($vars)"
         case TerminalBlock(stmt) => stmt.toString
         case NormalBlock(stmt, _) => stmt.toString
         case ConditionalBlock(stmt, cond, _, _) =>
@@ -249,7 +244,7 @@ object ControlFlowGraph {
           case LoopBlock(body, _, _, _, succ) =>
             edges.append(s"    ${name(b)} -> ${name(body)} " + "[label=\"body\"];\n")
             edges.append(s"    ${name(b)} -> ${name(succ)} " + "[label=\"endLoop\"];\n")
-          case FreshReadPermBlock(_, body, succ) =>
+          case ConstrainingBlock(_, body, succ) =>
             edges.append(s"    ${name(b)} -> ${name(body)} " + "[label=\"body\"];\n")
             edges.append(s"    ${name(b)} -> ${name(succ)} " + "[label=\"succ\"];\n")
           case TerminalBlock(stmt) =>
@@ -285,7 +280,7 @@ object ControlFlowGraph {
     val writtenTo = b match {
       case lb: LoopBlock => writtenVars(lb.body)
       case cb: ConditionalBlock => cb.stmt.writtenVars ++ writtenVars(cb.thn) ++ writtenVars(cb.els)
-      case frpb: FreshReadPermBlock => writtenVars(frpb.body) ++ frpb.vars
+      case cb: ConstrainingBlock => writtenVars(cb.body) ++ cb.vars
       case sb: StatementBlock => sb.stmt.writtenVars
     }
 

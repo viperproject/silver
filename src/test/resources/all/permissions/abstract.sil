@@ -1,6 +1,6 @@
 //:: IgnoreFile(/Silicon/issue/35/)
 
-var f: Int
+field f: Int
 
 method t1(this: Ref)
 {
@@ -8,7 +8,8 @@ method t1(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard)
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         exhale acc(this.f, 2*rd)
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
@@ -21,7 +22,8 @@ method t2(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard)
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         exhale acc(this.f, n*rd)
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
@@ -34,7 +36,8 @@ method t3(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard)
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         exhale acc(this.f, n*rd + 3*rd)
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
@@ -47,7 +50,8 @@ method t3b(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard)
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         exhale acc(this.f, n*rd) && acc(this.f, 3*rd)
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
@@ -60,7 +64,8 @@ method t3c(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard)
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         exhale acc(this.f, 3*rd) && acc(this.f, n*rd)
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
@@ -73,7 +78,8 @@ method t4(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard)
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         exhale acc(this.f, rd+rd)
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
@@ -86,7 +92,8 @@ method t4b(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard)
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         exhale acc(this.f, rd) && acc(this.f, rd)
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
@@ -99,7 +106,8 @@ method t5(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard)
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         exhale acc(this.f, n*(rd + rd))
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
@@ -112,7 +120,8 @@ method t6(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard) && acc(this.f, 1/4);
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         exhale acc(this.f, (1/4) * rd)
     }
     //:: ExpectedOutput(assert.failed:assertion.false)
@@ -125,7 +134,8 @@ method t7(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard) && acc(this.f, 1/4);
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/35/)
         exhale acc(this.f, (1/2) * (n * rd + 1/2))
     }
@@ -140,7 +150,8 @@ method t8(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard) && acc(this.f, 1/4);
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/35/)
         exhale acc(this.f, (1/2) - (1/4) + n*rd)
     }
@@ -155,7 +166,8 @@ method t9(this: Ref)
     var n: Int
     inhale acc(this.f, wildcard) && acc(this.f, 1/4);
     inhale (n > 0)
-    fresh(rd) {
+    fresh rd
+    constraining(rd) {
         //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/35/)
         exhale acc(this.f, (1/4) - ((-100)*rd))
     }
@@ -169,9 +181,10 @@ method t10(this: Ref, b:Bool)
     var rd: Perm
     var rd2: Perm
     inhale acc(this.f, 1/4);
-    fresh(rd,rd2) {
+    fresh rd,rd2
+    constraining(rd,rd2) {
         exhale acc(this.f, 2*(b ? (3*rd) : rd2))
-        
+
         exhale acc(this.f, wildcard)
     }
     //:: ExpectedOutput(assert.failed:assertion.false)

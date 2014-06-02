@@ -1,4 +1,4 @@
-var f:Int
+field f:Int
 
 method foo(S: Seq[Ref], start: Int, end: Int, p: Perm)
   requires 0 <= start && start <= end && end <= |S|
@@ -12,24 +12,25 @@ method goo() {
   var S: Seq[Ref]
   var x: Int
   var k: Perm
-  
+
   inhale |S| > 3 && (forall i2:Int :: i2 in [0..|S|) ==> acc(S[i2].f, write))
-  
+
   x := S[2].f
   foo(S, 0, |S|, 1/2)
   assert x == S[2].f
 
-  fresh(k) {
+  fresh k
+  constraining(k) {
     foo(S, 0, |S|, k)
   }
   assert x == S[2].f
-  
+
   foo(S, 0, 1, write)
   assert x == S[2].f
-  
+
   foo(S, 0, |S|, write)
   assert |S| > 3 && (forall i3:Int :: i3 in [0..|S|) ==> acc(S[i3].f, write))
-  
+
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert x == S[2].f
 }

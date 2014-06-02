@@ -1,5 +1,5 @@
-var f: Int
-var b: Bool
+field f: Int
+field b: Bool
 
 predicate P(this: Ref) {
      acc(this.b, write)

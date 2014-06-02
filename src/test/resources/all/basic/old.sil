@@ -1,5 +1,5 @@
 
-var f: Int
+field f: Int
 
 method t1(this: Ref) returns ()
     requires acc(this.f, write)

@@ -1,4 +1,4 @@
-var f: Int
+field f: Int
 
 method m(S: Set[Ref], b:Ref)
 requires (forall s:Ref :: s in S ==> acc(s.f, write))

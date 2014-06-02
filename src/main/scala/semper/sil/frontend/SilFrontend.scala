@@ -197,11 +197,11 @@ trait SilFrontend extends DefaultFrontend {
     Resolver(input).run match {
       case Some(modifiedInput) =>
         Translator(modifiedInput).translate match {
-          case (program, Seq()) =>
+          case Some(program) =>
             Succ(program)
 
-          case (_, messages) =>
-            Fail(messages map (m => TypecheckerError(m.message, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))))
+          case None =>
+            Fail(Messaging.messages map (m => TypecheckerError(m.message, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))))
         }
 
       case None =>

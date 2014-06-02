@@ -1,5 +1,5 @@
-var f: Int
-var g: Set[Ref]
+field f: Int
+field g: Set[Ref]
 
 method m(this:Ref, b:Ref) returns (i:Int)
 requires acc(this.g, write)

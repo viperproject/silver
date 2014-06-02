@@ -24,7 +24,7 @@ method t1(this: Ref, a: Int, b: Bool, g: Ref) returns (c: Bool, d: Int)
     }
 }
 
-var value: Int
+field value: Int
 
 // test aliasing information of newly created objects
 method t2(a: Ref, b: Ref) returns ()
@@ -65,8 +65,8 @@ method t4(a: Ref, b: Ref) returns ()
  * "hidden" in predicates.
  */
 
-var Node_v: Int
-var Node_n: Ref
+field Node_v: Int
+field Node_n: Ref
 
 predicate Node_P(this: Ref) {
      acc(this.Node_v, wildcard)
@@ -94,4 +94,15 @@ method test5(n: Ref)
       assert m != (n.Node_n.Node_n)
     }
   }
+}
+
+/* Test starred version of 'new' */
+
+method test6() {
+  var m: Ref
+  m := new(*)
+
+  exhale acc(m.Node_v)
+  exhale acc(m.Node_n)
+  exhale acc(m.value)
 }

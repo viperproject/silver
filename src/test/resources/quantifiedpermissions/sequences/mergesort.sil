@@ -1,8 +1,8 @@
 // class Cell
-var value:Int
+field value:Int
 
 // class ArrayOfInt
-var array:Seq[Ref] // containing Cell(s)
+field array:Seq[Ref] // containing Cell(s)
 
 method parallel_mergesort(a:Ref, b:Ref, start:Int, end:Int)
 requires acc(a.array, write)

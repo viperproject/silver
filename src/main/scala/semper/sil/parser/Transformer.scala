@@ -67,9 +67,11 @@ object Transformer {
         case PSeqDrop(seq, n) => PSeqDrop(go(seq), go(n))
         case PSeqUpdate(seq, idx, elem) => PSeqUpdate(go(seq), go(idx), go(elem))
         case PSize(seq) => PSize(go(seq))
-        case _: PEmptySet => parent
+        case PEmptySet(t) => PEmptySet(go(t))
+          //        case _: PEmptySet => parent
         case PExplicitSet(elems) => PExplicitSet(elems map go)
-        case _: PEmptyMultiset => parent
+        case PEmptyMultiset(t) => PEmptyMultiset(go(t))
+//        case _: PEmptyMultiset => parent
         case PExplicitMultiset(elems) => PExplicitMultiset(elems map go)
 
         case PSeqn(ss) => PSeqn(ss map go)
@@ -80,12 +82,13 @@ object Transformer {
         case PExhale(e) => PExhale(go(e))
         case PAssert(e) => PAssert(go(e))
         case PInhale(e) => PInhale(go(e))
-        case PNewStmt(target) => PNewStmt(go(target))
+        case PNewStmt(target, fields) => PNewStmt(go(target), fields map (_.map (go)))
         case PVarAssign(idnuse, rhs) => PVarAssign(go(idnuse), go(rhs))
         case PFieldAssign(fieldAcc, rhs) => PFieldAssign(go(fieldAcc), go(rhs))
         case PIf(cond, thn, els) => PIf(go(cond), go(thn), go(els))
         case PWhile(cond, invs, body) => PWhile(go(cond), invs  map go, go(body))
-        case PFreshReadPerm(vars, stmt) => PFreshReadPerm(vars map go, go(stmt))
+        case PFresh(vars) => PFresh(vars map go)
+        case PConstraining(vars, stmt) => PConstraining(vars map go, go(stmt))
         case PLocalVarDecl(idndef, typ, init) => PLocalVarDecl(go(idndef), go(typ), init map go)
         case PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)
         case PLabel(idndef) => PLabel(go(idndef))

@@ -1,4 +1,4 @@
-var f: Int
+field f: Int
 
 method test01(this: Ref)
   requires acc(this.f, write) && this.f == 0

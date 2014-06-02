@@ -90,11 +90,9 @@ case class OutputMatcher(
     // Go through all actual outputs and try to match them up
     // with the expected ones
     actualOutputs foreach (a => findOutput(a) match {
-      case Some(m: MissingOutput) =>
-        errors ::= TestMissingButPresentOutputError(m, a)
+      case Some(m: MissingOutput) => errors ::= TestMissingButPresentOutputError(m, a)
       case Some(_) => // expected this error
-      case None =>
-        errors ::= TestAdditionalOutputError(a)
+      case None => errors ::= TestAdditionalOutputError(a)
     })
 
     def findOutput(actual: AbstractOutput): Option[TestAnnotation] = {

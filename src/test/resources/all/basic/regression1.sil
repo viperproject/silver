@@ -58,7 +58,8 @@ method Simple_test(rd: Perm, this: Ref) returns (vresult: Ref)
 {
   var tmpRd: Perm
   var dummy: Int
-  fresh(tmpRd) {
+  fresh tmpRd
+  constraining(tmpRd) {
     //:: ExpectedOutput(call.precondition:assertion.false)
     dummy := Simple_test2(tmpRd, this, -5)
   }

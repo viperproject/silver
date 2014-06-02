@@ -1,5 +1,5 @@
 
-var f: Int
+field f: Int
 
 function f1(): Int { 1 }
 function f2(): Int

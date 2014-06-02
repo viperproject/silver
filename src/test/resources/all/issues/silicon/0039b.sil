@@ -1,6 +1,6 @@
 /* class List */
 
-var List_head: Ref
+field List_head: Ref
 
 predicate List_valid(this: Ref) {
 	   acc(this.List_head, write)
@@ -28,8 +28,8 @@ method List_test(this: Ref, i: Int)
 
 /* class Node */
 
-var Node_value: Int
-var Node_next: Ref
+field Node_value: Int
+field Node_next: Ref
 
 predicate Node_valid(this: Ref) {
 	   acc(this.Node_value, write)

@@ -1,5 +1,5 @@
 
-var f: Int
+field f: Int
 
 predicate valid(r: Ref) {
     acc(r.f, write) && ((r.f) == 0)

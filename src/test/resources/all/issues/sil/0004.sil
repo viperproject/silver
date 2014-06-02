@@ -1,6 +1,6 @@
 //:: IgnoreFile(/silicon/issue/31/)
 
-var f: Int
+field f: Int
 
 method test(x: Ref)
   requires acc(x.f)

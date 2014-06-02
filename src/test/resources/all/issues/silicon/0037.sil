@@ -6,11 +6,11 @@ domain Natural {
 
 domain List[A] {
   function nil(t: A): List[A]
-  
+
   function cons(e: A, l: List[A]): List[A]
   
   function drop(n: Natural, l: List[A]): List[A]
-  
+
   axiom equalNilNil {
     forall l: Natural, r: Natural :: nil(l) == nil(r)
   }
@@ -27,11 +27,11 @@ domain List[A] {
     forall x: Natural, xs: List[Natural], y: Natural, ys: List[Natural] ::
       (cons(x, xs) == cons(y, ys)) == ((x == y) && (xs == ys))
   }
-  
+
   axiom dropZeroList {
     forall xs: List[A] :: drop(zero(), xs) == xs
   }
-  
+
   axiom dropSuccessorNil {
     forall n: Natural, t: A :: drop(successor(n), nil(t)) == nil(t)
   }
@@ -44,7 +44,6 @@ domain List[A] {
 
 domain Any {
 }
-
 
 method property11()
   ensures forall xs: List[Any] :: drop(zero(), xs) == xs

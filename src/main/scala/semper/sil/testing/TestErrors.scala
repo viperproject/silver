@@ -61,21 +61,25 @@ case class TestAnnotationParseError(
 }
 
 case class TestAdditionalOutputError(output: AbstractOutput)
-  extends TestError(TestErrorType.AdditionalOutput) {
+    extends TestError(TestErrorType.AdditionalOutput) {
+
   def message = output.toString
 }
 
 case class TestExpectedButMissingOutputError(expectedOutput: ExpectedOutput)
-  extends TestError(TestErrorType.ExpectedButMissingOutput) {
+    extends TestError(TestErrorType.ExpectedButMissingOutput) {
+
   def message = expectedOutput.toString
 }
 
 case class TestUnexpectedButMissingOutputError(unexpectedOutput: UnexpectedOutput)
-  extends TestError(TestErrorType.UnexpectedButMissingOutput) {
+    extends TestError(TestErrorType.UnexpectedButMissingOutput) {
+
   def message = unexpectedOutput.toString
 }
 
 case class TestMissingButPresentOutputError(missingOutput: MissingOutput, output: AbstractOutput)
-  extends TestError(TestErrorType.MissingButPresentOutputs) {
-    def message = output.toString
+    extends TestError(TestErrorType.MissingButPresentOutputs) {
+
+  def message = output.toString
 }

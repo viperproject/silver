@@ -4,8 +4,8 @@
     x := a
     y := b
   }
-  var F: Int
-  var G: Int
+  field F: Int
+  field G: Int
   method n(this: Ref)
     requires acc(this.F, write) && acc(this.G, write)
     ensures acc(this.F, write) && acc(this.G, write)

@@ -1,4 +1,4 @@
-var Cell_x: Int
+field Cell_x: Int
 
 function Cell_get(this: Ref): Int
 	requires acc(this.Cell_x, write)

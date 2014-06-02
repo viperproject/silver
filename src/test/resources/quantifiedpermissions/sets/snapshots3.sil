@@ -1,5 +1,5 @@
-var n: Set[Ref]
-var f: Int
+field n: Set[Ref]
+field f: Int
 
 predicate inv(this: Ref) {
 	acc(this.n) && forall x: Ref :: x in this.n ==> acc(x.f)

@@ -76,18 +76,24 @@ object TypeHelper {
 }
 
 // Identifiers (uses and definitions)
-trait Identifier {
+trait PIdentifier {
   def name: String
 }
 
-case class PIdnDef(name: String) extends PNode with Identifier
+case class PIdnDef(name: String) extends PNode with PIdentifier
 
 case class PIdnUse(name: String) extends PExp with Identifier {
   var letass: Option[PLetAss] = None /* TODO: Can we avoid using a var? */
+  
+  var decl: PRealEntity = null
+    /* Should be set during resolving. Intended to preserve information
+     * that is needed by the translator.
+     */
+
 }
 
 // Formal arguments
-case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with RealEntity
+case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with PTypedEntity
 
 // Types
 sealed trait PType extends PNode {
@@ -95,39 +101,59 @@ sealed trait PType extends PNode {
   def isConcrete: Boolean = true
   def substitute(newTypVarsMap: Map[String, PType]): PType = this
 }
+
 case class PPrimitiv(name: String) extends PType {
   override def toString = name
 }
+
 case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
-  // this class is also used to represent type variables, as they cannot syntactically
-  // distinguished from domain types without generic arguments.  For type variables, we have
-  // args.length = 0
-  def isTypeVar = _isTypeVar.getOrElse(sys.error(s"type has not been checked yet, call check($this) first"))
-  var _isTypeVar: Option[Boolean] = None
+  var kind: PDomainTypeKinds.Kind = PDomainTypeKinds.Unresolved
+
+  /* This class is also used to represent type variables, as they cannot
+   * syntactically distinguished from domain types without generic arguments.
+   * For type variables, we have args.length = 0
+   */
+  def isTypeVar = kind == PDomainTypeKinds.TypeVar
+
+  def isUndeclared = kind == PDomainTypeKinds.Undeclared
+
   override def isConcrete: Boolean = {
-    args.forall(_.isConcrete) && args.size > 0 && !isTypeVar
+    args.forall(_.isConcrete) && !isTypeVar
   }
+
   override def substitute(newTypVarsMap: Map[String, PType]): PType = {
     if (isTypeVar && newTypVarsMap.isDefinedAt(domain.name)) {
       return newTypVarsMap.get(domain.name).get
     }
+
     val newArgs = args map {
-      case PTypeVar(name) if newTypVarsMap.isDefinedAt(name) =>
-        newTypVarsMap.get(name).get
+      case PTypeVar(name) if newTypVarsMap.isDefinedAt(name) => newTypVarsMap.get(name).get
       case t => t
     }
+
     PDomainType(domain, newArgs)
   }
+
   override def toString = domain.name + (if (args.isEmpty) "" else s"[${args.mkString(", ")}]")
 }
+
+object PDomainTypeKinds {
+  trait Kind
+  case object Unresolved extends Kind
+  case object Domain extends Kind
+  case object TypeVar extends Kind
+  case object Undeclared extends Kind
+}
+
 object PTypeVar {
   def unapply(p: PDomainType) = if (p.isTypeVar) Some(p.domain.name) else None
   def apply(name: String) = {
     val t = PDomainType(PIdnUse(name), Nil)
-    t._isTypeVar = Some(true)
+    t.kind = PDomainTypeKinds.TypeVar
     t
   }
 }
+
 case class PSeqType(elementType: PType) extends PType {
   override def toString = s"Seq[$elementType]"
   override def isConcrete = elementType.isConcrete
@@ -175,7 +201,9 @@ case class PBoolLit(b: Boolean) extends PExp {
 case class PNullLit() extends PExp {
   typ = Ref
 }
-sealed trait PLocationAccess extends PExp
+sealed trait PLocationAccess extends PExp {
+  def idnuse: PIdnUse
+}
 case class PFieldAccess(rcv: PExp, idnuse: PIdnUse) extends PLocationAccess
 case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse) extends PLocationAccess
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
@@ -206,9 +234,8 @@ case class POld(e: PExp) extends POldExp
 case class PPackageOld(e: PExp) extends POldExp
 case class PApplyOld(e: PExp) extends POldExp
 
-case class PEmptySeq(t : PType) extends PExp
-{
-  typ = (if (t.isUnknown) PUnknown() else PSeqType(t)) // type can be specified as PUnknown() if unknown
+case class PEmptySeq(t : PType) extends PExp {
+  typ = if (t.isUnknown) PUnknown() else PSeqType(t) // type can be specified as PUnknown() if unknown
 }
 case class PExplicitSeq(elems: Seq[PExp]) extends PExp
 case class PRangeSeq(low: PExp, high: PExp) extends PExp
@@ -218,11 +245,17 @@ case class PSeqDrop(seq: PExp, n: PExp) extends PExp
 case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends PExp
 case class PSize(seq: PExp) extends PExp
 
-case class PEmptySet() extends PExp
-case class PExplicitSet(elems: Seq[PExp]) extends PExp
-case class PEmptyMultiset() extends PExp
-case class PExplicitMultiset(elems: Seq[PExp]) extends PExp
+case class PEmptySet(t : PType) extends PExp{
+  typ = PSetType(t)
+}
 
+case class PExplicitSet(elems: Seq[PExp]) extends PExp
+case class PEmptyMultiset(t : PType) extends PExp
+{
+  typ = PMultisetType(t)
+}
+
+case class PExplicitMultiset(elems: Seq[PExp]) extends PExp
 // Statements
 sealed trait PStmt extends PNode {
   /**
@@ -246,16 +279,18 @@ case class PApplyWand(e: PExp) extends PStmt
 case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
-case class PNewStmt(target: PIdnUse) extends PStmt
+case class PNewStmt(target: PIdnUse, Fields: Option[Seq[PIdnUse]]) extends PStmt
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
 case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PStmt) extends PStmt
-case class PFreshReadPerm(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
-case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with RealEntity
+case class PFresh(vars: Seq[PIdnUse]) extends PStmt
+case class PConstraining(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
+case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with PTypedEntity
 case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) extends PStmt
-case class PLabel(idndef: PIdnDef) extends PStmt with RealEntity
+case class PLabel(idndef: PIdnDef) extends PStmt with PRealEntity
 case class PGoto(targets: PIdnUse) extends PStmt
+case class PTypeVarDecl(idndef: PIdnDef) extends PRealEntity
 
 case class PLetAss(idndef: PIdnDef, exp: PExp) extends PStmt with RealEntity
 case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with RealEntity
@@ -266,31 +301,61 @@ sealed trait PMember extends PNode with PScope {
   def idndef: PIdnDef
 }
 // a member (like method or axiom) that is its own name scope
-sealed trait PScope
+sealed trait PScope extends PNode
+
 case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
-case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with RealEntity
-case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with RealEntity
-case class PField(idndef: PIdnDef, typ: PType) extends PMember with RealEntity
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with RealEntity
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with RealEntity
-case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: PExp) extends PMember with RealEntity
-case class PAxiom(idndef: PIdnDef, exp: PExp) extends PNode with PScope
+case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PRealEntity
+case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PRealEntity
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with PTypedEntity
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with PTypedEntity
+case class PAxiom(idndef: PIdnDef, exp: PExp) extends PScope
+case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedEntity
+case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: PExp) extends PMember with PTypedEntity {
+  val typ = PPredicateType()
+}
 
 /** An entity is a declaration (i.e. something that contains a PIdnDef). */
-sealed trait Entity
-sealed trait RealEntity extends Entity
-abstract class ErrorEntity(name: String) extends Entity
+sealed trait PEntity
+
+sealed trait PRealEntity extends PEntity {
+  def idndef: PIdnDef
+}
+
+object PRealEntity {
+  def descriptiveName(entity: PRealEntity) = {
+    val entityName =
+      entity match {
+        case _: PDomain => "domain"
+        case _: PDomainFunction => "domain function"
+        case _: PField => "field"
+        case _: PFormalArgDecl => "formal argument"
+        case _: PFunction => "function"
+        case _: PLabel => "label"
+        case _: PLocalVarDecl => "local variable"
+        case _: PMethod => "method"
+        case _: PPredicate => "predicate"
+        case _: PTypeVarDecl => "type variable"
+      }
+
+    s"$entityName ${entity.idndef.name}"
+  }
+}
+
+sealed trait PTypedEntity extends PRealEntity {
+  def typ: PType
+}
+abstract class PErrorEntity(name: String) extends PEntity
 
 /**
  * A entity represented by names for whom we have seen more than one
  * declaration so we are unsure what is being represented.
  */
-case class MultipleEntity() extends ErrorEntity("multiple")
+case class PMultipleEntity() extends PErrorEntity("multiple")
 
 /**
  * An unknown entity, represented by names whose declarations are missing.
  */
-case class UnknownEntity() extends ErrorEntity("unknown")
+case class PUnknownEntity() extends PErrorEntity("unknown")
 
 
 /**
@@ -347,9 +412,9 @@ object Nodes {
       case PSeqUpdate(seq, idx, elem) => Seq(seq, idx, elem)
       case PSize(seq) => Seq(seq)
 
-      case PEmptySet() => Nil
+      case PEmptySet(t) => Seq(t)
       case PExplicitSet(elems) => elems
-      case PEmptyMultiset() => Nil
+      case PEmptyMultiset(t) => Seq(t)
       case PExplicitMultiset(elems) => elems
 
       case PSeqn(ss) => ss
@@ -360,7 +425,7 @@ object Nodes {
       case PExhale(exp) => Seq(exp)
       case PAssert(exp) => Seq(exp)
       case PInhale(exp) => Seq(exp)
-      case PNewStmt(idnuse) => Seq(idnuse)
+      case PNewStmt(target, fields) => Seq(target) ++ fields.getOrElse(Seq())
       case PMethodCall(targets, method, args) => targets ++ Seq(method) ++ args
       case PLabel(name) => Seq(name)
       case PGoto(label) => Seq(label)
@@ -369,7 +434,8 @@ object Nodes {
       case PIf(cond, thn, els) => Seq(cond, thn, els)
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
-      case PFreshReadPerm(vars, stmt) => vars ++ Seq(stmt)
+      case PFresh(vars) => vars
+      case PConstraining(vars, stmt) => vars ++ Seq(stmt)
       case PProgram(file, domains, fields, functions, predicates, methods) =>
         domains ++ fields ++ functions ++ predicates ++ methods
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms

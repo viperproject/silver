@@ -1,4 +1,4 @@
-var root : Ref
+field root : Ref
 
 	predicate headvalid(this:Ref){
 		   acc(this.root,write)
@@ -22,7 +22,7 @@ var root : Ref
 	        var n : Ref
 		unfold acc(headvalid(this),write);
 		if (this.root==null){
-			n := new()
+			n := new(*)
 		        init(n,k)
 			this.root := n;
 		}else{
@@ -64,11 +64,11 @@ var root : Ref
 
 // new class
 
-	var key    : Int
-	var height : Int
-	var left  : Ref
-	var right : Ref
-        var balanceFactor : Int
+	field key    : Int
+	field height : Int
+	field left  : Ref
+	field right : Ref
+        field balanceFactor : Int
 
 	predicate valid(this:Ref){
 		   acc(this.key   ,write)
@@ -134,14 +134,15 @@ var root : Ref
 			if (k<(this.key)){ // insert this.left
 
 				if (this.left==null){
-					nl := new();
+					nl := new(*);
 					init(nl,k);
 				}else{
 					nl := insert(this.left,k);
 				}
 				this.left := nl;
-				fresh(rd) {
-				bf := getBalanceFactorI(this,rd);
+				fresh rd
+				constraining(rd) {
+          bf := getBalanceFactorI(this,rd);
 				}
 
 				if (bf==2){ //rebalance
@@ -152,14 +153,15 @@ var root : Ref
 				}
 			}else{ // k>this.key -- insert this.right
 				if (this.right==null){
-					nr := new();
+					nr := new(*);
 					init(nr,k);
 				}else{
 					nr := insert(this.right,k);
 				}
 				this.right := nr;
 
-				fresh(rd) {
+				fresh rd
+				constraining(rd) {
 				bf := getBalanceFactorI(this,rd);
 				}
 				if (bf==-2){ //rebalance
@@ -198,7 +200,8 @@ var root : Ref
 				nl := this.left;
 				nr := this.right;
 
-				fresh(rd) {
+				fresh rd
+				constraining(rd) {
 					bf := getBalanceFactorI(this,rd);
 				}
 				if (bf > 0 ){ // this.left larger - prune leftmax
@@ -217,7 +220,8 @@ var root : Ref
 					nl := remove(this.left,k);
 					this.left := nl;
 
-					fresh(rd) {
+					fresh rd
+					constraining(rd) {
 						bf := getBalanceFactorI(this,rd);
 					}
 
@@ -236,7 +240,8 @@ var root : Ref
 					nr := remove(this.right,k);
 					this.right := nr;
 
-					fresh(rd) {
+					fresh rd
+					constraining(rd) {
 						bf := getBalanceFactorI(this,rd);
 					}
 					if (bf==2){ // rebalance
@@ -282,7 +287,8 @@ var root : Ref
 		}else{
 			nr,m := pruneMax(this.right);
 			this.right := nr;
-			fresh(rd) {
+			fresh rd
+			constraining(rd) {
 				bf := getBalanceFactorI(this,rd);
 			}
 			if (bf == 2){
@@ -323,7 +329,8 @@ var root : Ref
 		}else{
 			nl,m := pruneMin(this.left);
 			this.left := nl;
-			fresh(rd) {
+			fresh rd
+			constraining(rd) {
 				bf := getBalanceFactorI(this,rd);
 			}
 			if (bf == -2){
@@ -466,7 +473,8 @@ var root : Ref
 	{
 		var lbf : Int;
 		var rd : Perm;
-		fresh(rd) {
+		fresh rd
+		constraining(rd) {
 			lbf := getBalanceFactor(this.left,rd);
 		}
 		if (lbf<0){
@@ -559,7 +567,8 @@ var root : Ref
 	{
 		var rbf : Int;
 		var rd : Perm;
-		fresh(rd) {
+		fresh rd
+		constraining(rd) {
 			rbf := getBalanceFactor(this.right,rd);
 		}
 		if (rbf>0){

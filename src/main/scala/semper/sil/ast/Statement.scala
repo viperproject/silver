@@ -32,7 +32,7 @@ sealed trait Stmt extends Node with Infoed with Positioned {
 }
 
 /** A statement that creates a new object and assigns it to a local variable. */
-case class NewStmt(lhs: LocalVar)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class NewStmt(lhs: LocalVar, fields: Seq[Field])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
   require(Ref isSubtype lhs)
 }
 
@@ -57,35 +57,28 @@ case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPositio
 /** An assignment to a field variable. */
 case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign
 
-/** A method/function/domain function call. */
+/** A method/function/domain function call. - AS: this comment is misleading - the trait is currently not used for method calls below */
 trait Call {
-  require(Consistency.areAssignable(args, formalArgs), s"$args vs $formalArgs for $callee")
-  def callee: Callable
+  require(Consistency.areAssignable(args, formalArgs), s"$args vs $formalArgs for callee: $callee")
+  def callee: String
   def args: Seq[Exp]
-  def formalArgs: Seq[LocalVarDecl] = callee.formalArgs
+  def formalArgs: Seq[LocalVarDecl] // formal arguments of the call, for type checking
 }
 
 /** A method call. */
-case class MethodCall(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
-  require(Consistency.areAssignable(method.formalReturns, targets))
-  require(Consistency.noDuplicates(targets))
-  args foreach Consistency.checkNoPositiveOnly
-  lazy val callee = method
-  /**
-   * The precondition of this method call (i.e., the precondition of the method with
-   * the arguments instantiated correctly).
-   */
-  lazy val pres = {
-    method.pres map (e => Expressions.instantiateVariables(e, method.formalArgs, args))
-  }
-  /**
-   * The postcondition of this method call (i.e., the postcondition of the method with
-   * the arguments instantiated correctly).
-   */
-  lazy val posts = {
-    method.posts map (e => Expressions.instantiateVariables(e, method.formalArgs ++ method.formalReturns, args ++ targets))
-  }
+case class MethodCall private[ast](methodName: String, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position, val info: Info) extends Stmt {
+  // no checks - consistency checks are made below in companion object
 }
+
+  object MethodCall {
+    def apply(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(pos: Position = NoPosition, info: Info = NoInfo) : MethodCall = {
+      require(Consistency.areAssignable(method.formalReturns, targets))
+      require(Consistency.noDuplicates(targets))
+      args foreach Consistency.checkNoPositiveOnly
+      MethodCall(method.name, args, targets)(pos,info)
+    }
+  }
+
 
 /** An exhale statement. */
 case class Exhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
@@ -150,10 +143,20 @@ case class Label(name: String)(val pos: Position = NoPosition, val info: Info = 
  */
 case class Goto(target: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
 
-/**
- * A special block that is annotated with a list of permission-typed variables.  At the start of the
- * block, these variables should each be havoced, their values should be assumed to be strictly
- * between 0 and 1, and within the block, they can have additional assumptions introduced.
- */
-case class FreshReadPerm(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo)
-    extends Stmt
+/** A fresh statement assigns a fresh, dedicated symbolic permission values to
+  * each of the passed variables.
+  */
+case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+  require(vars forall (_ isSubtype Perm))
+}
+
+/** A constraining-block takes a sequence of permission-typed variables,
+  * each of which is marked as constrainable while executing the statements
+  * in the body of the block. Potentially constraining statements are, e.g.,
+  * exhale-statements.
+  */
+case class Constraining(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo)
+    extends Stmt {
+
+  require(vars forall (_ isSubtype Perm))
+}

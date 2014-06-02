@@ -1,25 +1,7 @@
 package semper.sil.ast.utility
 
-import semper.sil.ast._
 import collection.mutable.ListBuffer
-import scala.Int
-import semper.sil.ast.Unfold
-import semper.sil.ast.Label
-import semper.sil.ast.TerminalBlock
-import semper.sil.ast.Seqn
-import semper.sil.ast.ConditionalBlock
-import semper.sil.ast.Not
-import semper.sil.ast.While
-import semper.sil.ast.NormalBlock
-import semper.sil.ast.Fold
-import semper.sil.ast.Exhale
-import semper.sil.ast.Inhale
-import semper.sil.ast.Goto
-import semper.sil.ast.FieldAssign
-import semper.sil.ast.LoopBlock
-import semper.sil.ast.FreshReadPermBlock
-import semper.sil.ast.LocalVarAssign
-import semper.sil.ast.If
+import semper.sil.ast._
 
 /**
  * An object that can take an AST and translate it into the corresponding CFG.
@@ -83,7 +65,7 @@ object CfgGenerator {
     override def toString = s"TmpLoopBlock(${loop.cond}, $edge)"
     def succs = if (edge == null) Nil else List(edge.dest)
   }
-  class TmpFreshReadPermBlock(val frp: FreshReadPerm, private var _body: TmpBlock) extends TmpBlock {
+  class TmpConstrainingBlock(val constraining: Constraining, private var _body: TmpBlock) extends TmpBlock {
     body.pred += this
     def body = _body
     var edge: TmpEdge = null
@@ -96,7 +78,7 @@ object CfgGenerator {
       _body = b
       b.pred += this
     }
-    override def toString = s"TmpFreshReadPermBlock(${frp.vars}, $edge)"
+    override def toString = s"TmpConstrainingBlock(${constraining.vars}, $edge)"
     def succs = if (edge == null) Nil else List(edge.dest)
   }
   trait TmpEdge {
@@ -117,10 +99,10 @@ object CfgGenerator {
       val tb = worklist.dequeue()
       val succsAndBody = tb.succs ++ (tb match {
         case l: TmpLoopBlock => Seq(l.body)
-        case tmpFRP: TmpFreshReadPermBlock => Seq(tmpFRP.body)
+        case tmpCB: TmpConstrainingBlock => Seq(tmpCB.body)
         case _ => Nil
       })
-      worklist.enqueue((succsAndBody filterNot (visited contains _)): _*)
+      worklist.enqueue(succsAndBody filterNot visited.contains : _*)
       visited ++= succsAndBody
       f(tb)
     }
@@ -148,7 +130,7 @@ object CfgGenerator {
   case class Jump(lbl: Lbl) extends ExtendedStmt
   case class CondJump(thn: Lbl, els: Lbl, cond: Exp) extends ExtendedStmt
   case class Loop(after: Lbl, loop: While) extends ExtendedStmt
-  case class FreshReadPermES(after: Lbl, frp: FreshReadPerm) extends ExtendedStmt
+  case class ConstrainingES(after: Lbl, constraining: Constraining) extends ExtendedStmt
   case class EmptyStmt() extends ExtendedStmt
 
   /**
@@ -165,11 +147,11 @@ object CfgGenerator {
         var b: Block = null
         tb match {
           case loop: TmpLoopBlock =>
-            var lb = LoopBlock(null, loop.loop.cond, loop.loop.invs, loop.loop.locals, null)(loop.loop.pos, loop.loop.info)
+            val lb = LoopBlock(null, loop.loop.cond, loop.loop.invs, loop.loop.locals, null)(loop.loop.pos, loop.loop.info)
             lb.srcAst = Some(loop.loop)
             b = lb
-          case tmpFRP: TmpFreshReadPermBlock =>
-            b = FreshReadPermBlock(tmpFRP.frp.vars, null, null)
+          case tmpCB: TmpConstrainingBlock =>
+            b = ConstrainingBlock(tmpCB.constraining.vars, null, null)
           case vb: VarBlock if vb.edges.size == 0 =>
             b = TerminalBlock(vb.stmt)
           case vb: VarBlock if vb.edges.size == 1 =>
@@ -191,10 +173,10 @@ object CfgGenerator {
             val lb = b.asInstanceOf[LoopBlock]
             lb.body = b2b(loop.body)
             lb.succ = b2b(loop.edge.dest)
-          case tmpFRP: TmpFreshReadPermBlock =>
-            val frpb = b.asInstanceOf[FreshReadPermBlock]
-            frpb.body = b2b(tmpFRP.body)
-            frpb.succ = b2b(tmpFRP.edge.dest)
+          case tmpCB: TmpConstrainingBlock =>
+            val cb = b.asInstanceOf[ConstrainingBlock]
+            cb.body = b2b(tmpCB.body)
+            cb.succ = b2b(tmpCB.edge.dest)
           case vb: VarBlock if vb.edges.size == 0 => // nothing to do, no successors
           case vb: VarBlock if vb.edges.size == 1 =>
             b.asInstanceOf[NormalBlock].succ = b2b(vb.edges(0).dest)
@@ -217,49 +199,45 @@ object CfgGenerator {
 
     // find and remove empty blocks
     bfs(start) {
-      tb =>
-      // only consider VarBlocks with exactly one successor that are empty
-        tb match {
-          case vb: VarBlock if vb.stmt.children.size == 0 =>
-            vb.edges match {
-              case ListBuffer(UncondEdge(succ)) =>
-                // go through all predecessors and relink them to 'succ', and update the predecessors of 'succ'
-                succ.pred -= vb
-                for (pred <- vb.pred) {
-                  succ.pred += pred
-                  pred match {
-                    case loop: TmpLoopBlock =>
-                      if (loop.edge.dest == vb) {
-                        loop.edge = UncondEdge(succ)
-                      } else {
-                        loop.body = succ
-                      }
-                    case tmpFRP: TmpFreshReadPermBlock =>
-                      if (tmpFRP.edge.dest == vb) {
-                        tmpFRP.edge = UncondEdge(succ)
-                      } else {
-                        tmpFRP.body = succ
-                      }
-                    case predVb: VarBlock if predVb.edges.size == 1 =>
-                      predVb.edges(0) = UncondEdge(succ)
-                    case predVb: VarBlock if predVb.edges.size == 2 =>
-                      if (predVb.edges(0).dest == vb) {
-                        predVb.edges(0) = CondEdge(succ, predVb.edges(0).asInstanceOf[CondEdge].cond)
-                      } else {
-                        predVb.edges(1) = CondEdge(succ, predVb.edges(1).asInstanceOf[CondEdge].cond)
-                      }
-                    case _ =>
-                      sys.error("unexpected block")
+      case vb: VarBlock if vb.stmt.children.size == 0 =>
+        vb.edges match {
+          case ListBuffer(UncondEdge(succ)) =>
+            // go through all predecessors and relink them to 'succ', and update the predecessors of 'succ'
+            succ.pred -= vb
+            for (pred <- vb.pred) {
+              succ.pred += pred
+              pred match {
+                case loop: TmpLoopBlock =>
+                  if (loop.edge.dest == vb) {
+                    loop.edge = UncondEdge(succ)
+                  } else {
+                    loop.body = succ
                   }
-                }
-                if (vb.pred.size == 0) {
-                  assert(vb == start)
-                  start == succ
-                }
-              case _ =>
+                case tmpCB: TmpConstrainingBlock =>
+                  if (tmpCB.edge.dest == vb) {
+                    tmpCB.edge = UncondEdge(succ)
+                  } else {
+                    tmpCB.body = succ
+                  }
+                case predVb: VarBlock if predVb.edges.size == 1 =>
+                  predVb.edges(0) = UncondEdge(succ)
+                case predVb: VarBlock if predVb.edges.size == 2 =>
+                  if (predVb.edges(0).dest == vb) {
+                    predVb.edges(0) = CondEdge(succ, predVb.edges(0).asInstanceOf[CondEdge].cond)
+                  } else {
+                    predVb.edges(1) = CondEdge(succ, predVb.edges(1).asInstanceOf[CondEdge].cond)
+                  }
+                case _ =>
+                  sys.error("unexpected block")
+              }
+            }
+            if (vb.pred.size == 0) {
+              assert(vb == start)
+              start == succ
             }
           case _ =>
         }
+      case _ =>
     }
   }
 
@@ -346,7 +324,7 @@ object CfgGenerator {
             cur = new VarBlock()
             loop += UncondEdge(cur)
             b = loop
-          case FreshReadPermES(after, frp) =>
+          case ConstrainingES(after, constraining) =>
             val oldCur = cur
             val body = new VarBlock()
             cur = body
@@ -360,11 +338,11 @@ object CfgGenerator {
             i = lblToIdx(after) - 1
 
             // create the frp block
-            val tmpFRP = new TmpFreshReadPermBlock(frp, body)
-            oldCur += UncondEdge(tmpFRP)
+            val tmpCB = new TmpConstrainingBlock(constraining, body)
+            oldCur += UncondEdge(tmpCB)
             cur = new VarBlock()
-            tmpFRP += UncondEdge(cur)
-            b = tmpFRP
+            tmpCB += UncondEdge(cur)
+            b = tmpCB
           case EmptyStmt() =>
             // skip it, and only deal with leader stuff
             if (n.isLeader) {
@@ -443,13 +421,13 @@ object CfgGenerator {
           // for instance the 'afterTarget' label of an if statement.
           nodes += EmptyStmt()
           lblmap += afterLoop -> nextNode
-        case frp @ FreshReadPerm(vars, body) =>
-          val afterFRP = Lbl("afterFRP", generated = true)
-          nodes += FreshReadPermES(afterFRP, frp)
+        case constraining @ Constraining(vars, body) =>
+          val afterConstraining = Lbl("afterConstraining", generated = true)
+          nodes += ConstrainingES(afterConstraining, constraining)
           run(body)
           // Allow labels in the body to target the end of the body.
           nodes += EmptyStmt()
-          lblmap += afterFRP -> nextNode
+          lblmap += afterConstraining -> nextNode
         case Seqn(ss) =>
           nodes += EmptyStmt()
           for (s <- ss) run(s)
@@ -462,7 +440,7 @@ object CfgGenerator {
              _: Inhale | _: Exhale |
              _: Fold | _: Unfold |
              _: Package | _: Apply |
-             _: MethodCall | _: FreshReadPerm |
+             _: MethodCall | _: Fresh |
              _: NewStmt | _: Assert =>
           // regular, non-control statements
           nodes += RegularStmt(s)

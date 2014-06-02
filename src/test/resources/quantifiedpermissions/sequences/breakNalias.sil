@@ -1,5 +1,5 @@
 // breaking permissions
-var f: Int
+field f: Int
 
 // this test case checks the power of the axioms for count (including the axioms for the empty and the single element sequence)
 method m(s: Seq[Ref])

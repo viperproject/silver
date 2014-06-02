@@ -1,4 +1,4 @@
-var f: Int
+field f: Int
 
 method deAlias(x: Ref, y: Ref, k: Perm)
   requires acc(x.f, k) && acc(y.f, k)

@@ -1,1 +1,1 @@
-var keys : Seq[Int]
+field keys : Seq[Int]

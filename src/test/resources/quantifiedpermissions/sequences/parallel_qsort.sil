@@ -1,4 +1,4 @@
-var f: Int
+field f: Int
 
 method qsort(s: Seq[Ref], start: Int, end: Int)
   requires 0 <= start && start <= end && end <= |s|
@@ -9,7 +9,7 @@ method qsort(s: Seq[Ref], start: Int, end: Int)
   var storeIndex: Int
   var index: Int
   var aux: Int
-  
+
   if (start < end-1) {
     storeIndex := start
     index := start
@@ -30,7 +30,17 @@ method qsort(s: Seq[Ref], start: Int, end: Int)
     aux := s[storeIndex].f
     s[storeIndex].f := s[end-1].f
     s[end-1].f := aux
-    qsort(s, start, storeIndex)
-    qsort(s, storeIndex+1, end)
+	
+	// fork qsort(s, start, storeIndex)
+    exhale 0 <= start && start <= storeIndex && storeIndex <= |s|
+    exhale forall i: Int :: i in [start..storeIndex) ==> acc(s[i].f, write)
+	
+    // fork qsort(s, storeIndex+1, end)
+    exhale 0 <= storeIndex+1 && storeIndex+1 <= end && end <= |s|
+    exhale forall i: Int :: i in [storeIndex+1..end) ==> acc(s[i].f, write)
+	
+	// joins
+	inhale forall i1: Int :: i1 in [start..storeIndex) ==> acc(s[i1].f, write)
+	inhale forall i1: Int :: i1 in [storeIndex+1..end) ==> acc(s[i1].f, write)
   }
-}  
+}

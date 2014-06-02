@@ -7,20 +7,22 @@ import semper.sil.ast._
 import semper.sil.ast.utility.{Visitor => UtilityVisitor}
 import utility.Statements
 
-
-
 /**
- * Takes an abstract syntax tree after parsing is done and translates it into a SIL abstract
- * syntax tree.
+ * Takes an abstract syntax tree after parsing is done and translates it into
+ * a SIL abstract syntax tree.
  *
- * Note that the translator assumes that the tree is well-formed (it typechecks and follows all the rules
- * of a valid SIL program).  No checks are performed, and the code might crash if the input is malformed.
+ * [2014-05-08 Malte] The current architecture of the resolver makes it hard
+ * to detect all malformed ASTs. It is, for example, hard to detect that an
+ * expression "f > 0", where f is an int-typed field, is malformed.
+ * The translator can thus not assume that the input tree is completely
+ * wellformed, and in cases where a malformed tree is detected, it does not
+ * return a tree, but instead, records error messages using Kiama's
+ * Messaging feature.
  */
 case class Translator(program: PProgram) {
-
   val file = program.file
 
-  def translate: (Program, Seq[Messaging.Record]) = {
+  def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     assert(Messaging.messagecount == 0, "Expected previous phases to succeed, but found error messages.")
 
     program match {
@@ -35,7 +37,8 @@ case class Translator(program: PProgram) {
         val m = methods map (translate(_))
         val prog = Program(d, f, fs, p, m)(program.start)
 
-        (prog, Messaging.messages)
+        if (Messaging.messagecount == 0) Some(prog)
+        else None
     }
   }
 
@@ -109,19 +112,21 @@ case class Translator(program: PProgram) {
   }
 
   // helper methods that can be called if one knows what 'id' refers to
-  private def findDomain(id: Identifier) = members.get(id.name).get.asInstanceOf[Domain]
-  private def findField(id: Identifier) = members.get(id.name).get.asInstanceOf[Field]
-  private def findFunction(id: Identifier) = members.get(id.name).get.asInstanceOf[Function]
-  private def findDomainFunction(id: Identifier) = members.get(id.name).get.asInstanceOf[DomainFunc]
-  private def findPredicate(id: Identifier) = members.get(id.name).get.asInstanceOf[Predicate]
-  private def findMethod(id: Identifier) = members.get(id.name).get.asInstanceOf[Method]
+  private def findDomain(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Domain]
+  private def findField(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Field]
+  private def findFunction(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Function]
+  private def findDomainFunction(id: PIdentifier) = members.get(id.name).get.asInstanceOf[DomainFunc]
+  private def findPredicate(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Predicate]
+  private def findMethod(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Method]
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */
   private def stmt(s: PStmt): Stmt = {
     val pos = s.start
     s match {
       case PVarAssign(idnuse, PFunctApp(func, args)) if members.get(func.name).get.isInstanceOf[Method] =>
-        // this is a method call that got parsed in a slightly confusing way
+        /* This is a method call that got parsed in a slightly confusing way.
+         * TODO: Get rid of this case! There is a matching case in the resolver.
+         */
         val call = PMethodCall(Seq(idnuse), func, args)
         call.setStart(s.start)
         stmt(call)
@@ -150,8 +155,15 @@ case class Translator(program: PProgram) {
         Exhale(exp(e))(pos)
       case PAssert(e) =>
         Assert(exp(e))(pos)
-      case PNewStmt(idnuse) =>
-        NewStmt(exp(idnuse).asInstanceOf[LocalVar])(pos)
+      case PNewStmt(target, fieldsOpt) =>
+        val fields = fieldsOpt match {
+          case None => program.fields map (translate(_))
+            /* Slightly redundant since we already translated the fields when we
+             * translated the PProgram at the beginning of this class.
+             */
+          case Some(pfields) => pfields map findField
+        }
+        NewStmt(exp(target).asInstanceOf[LocalVar], fields)(pos)
       case PMethodCall(targets, method, args) =>
         val ts = (targets map exp).asInstanceOf[Seq[LocalVar]]
         MethodCall(findMethod(method), args map exp, ts)(pos)
@@ -161,8 +173,9 @@ case class Translator(program: PProgram) {
         Goto(label.name)(pos)
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn), stmt(els))(pos)
-      case PFreshReadPerm(vars, ss) =>
-        FreshReadPerm(vars map (v => LocalVar(v.name)(ttyp(v.typ), v.start)), stmt(ss))(pos)
+      case PFresh(vars) => Fresh(vars map (v => LocalVar(v.name)(ttyp(v.typ), v.start)))(pos)
+      case PConstraining(vars, ss) =>
+        Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v.start)), stmt(ss))(pos)
       case PWhile(cond, invs, body) =>
         val plocals = body.childStmts collect {
           case l: PLocalVarDecl => l
@@ -182,8 +195,16 @@ case class Translator(program: PProgram) {
   private def exp(pexp: PExp): Exp = {
     val pos = pexp.start
     pexp match {
-      case PIdnUse(name) =>
-        LocalVar(name)(ttyp(pexp.typ), pos)
+      case piu @ PIdnUse(name) =>
+        piu.decl match {
+          case _: PLocalVarDecl | _: PFormalArgDecl => LocalVar(name)(ttyp(pexp.typ), pos)
+          case pf: PField =>
+            /* A malformed AST where a field is dereferenced without a receiver */
+            Messaging.message(piu, s"expected expression but found field $name")
+            LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
+          case _ =>
+            sys.error("should not occur in type-checked program")
+        }
       case PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
         op match {
@@ -191,13 +212,13 @@ case class Translator(program: PProgram) {
             r.typ match {
               case Int => Add(l, r)(pos)
               case Perm => PermAdd(l, r)(pos)
-              case _ => sys.error("should oocur in type-checked program")
+              case _ => sys.error("should not occur in type-checked program")
             }
           case "-" =>
             r.typ match {
               case Int => Sub(l, r)(pos)
               case Perm => PermSub(l, r)(pos)
-              case _ => sys.error("should oocur in type-checked program")
+              case _ => sys.error("should not occur in type-checked program")
             }
           case "*" =>
             r.typ match {
@@ -206,9 +227,9 @@ case class Translator(program: PProgram) {
                 l.typ match {
                   case Int => IntPermMul(l, r)(pos)
                   case Perm => PermMul(l, r)(pos)
-                  case _ => sys.error("should occur in type-checked program")
+                  case _ => sys.error("should not occur in type-checked program")
                 }
-              case _ => sys.error("should occur in type-checked program")
+              case _ => sys.error("should not occur in type-checked program")
             }
           case "/" => FractionalPerm(l, r)(pos)
           case "\\" => Div(l, r)(pos)
@@ -364,12 +385,12 @@ case class Translator(program: PProgram) {
           SeqLength(exp(s))(pos)
         else
           AnySetCardinality(exp(s))(pos)
-      case PEmptySet() =>
+      case PEmptySet(_) =>
         EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos)
       case PExplicitSet(elems) =>
         ExplicitSet(elems map exp)(pos)
-      case PEmptyMultiset() =>
-        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos)
+      case PEmptyMultiset(_) =>
+        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType))(pos)
       case PExplicitMultiset(elems) =>
         ExplicitMultiset(elems map exp)(pos)
     }
@@ -400,9 +421,9 @@ case class Translator(program: PProgram) {
         case Some(d) =>
           val domain = d.asInstanceOf[Domain]
           val typVarMapping = domain.typVars zip (args map ttyp)
-          DomainType(domain, (typVarMapping.filter {
+          DomainType(domain, typVarMapping.filter {
             case (tv, tt) => !tt.isInstanceOf[TypeVar]
-          }).toMap)
+          }.toMap)
         case None =>
           assert(args.length == 0)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable

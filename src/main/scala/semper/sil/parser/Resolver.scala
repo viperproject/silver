@@ -1,9 +1,10 @@
 package semper.sil.parser
 
+import scala.collection.mutable
+import scala.reflect._
 import org.kiama.util.Messaging.{message, messagecount}
 import org.kiama.util.Positioned
 import semper.sil.ast.MagicWandOp
-import scala.collection.mutable
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -66,18 +67,16 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(p: PProgram) {
-    // first, check all types to make sure we know what PDomainType's are actually
-    // domain types, and which are type variables.
-    p visit {
-      case t: PType =>
-        check(t)
-    }
-    // now check all program parts
     p.domains map check
     p.fields map check
     p.functions map check
     p.predicates map check
     p.methods map check
+
+    /* Report any domain type that couldn't be resolved */
+    p visit {
+      case dt: PDomainType if dt.isUndeclared => message(dt, s"found undeclared type ${dt.domain.name}")
+    }
   }
 
   def checkMember(m: PScope)(fcheck: => Unit) {
@@ -156,7 +155,9 @@ case class TypeChecker(names: NameAnalyser) {
       case PInhale(e) =>
         check(e, Bool)
       case PVarAssign(idnuse, PFunctApp(func, args)) if names.definition(curMember)(func).isInstanceOf[PMethod] =>
-        // this is a method call that got parsed in a slightly confusing way
+        /* This is a method call that got parsed in a slightly confusing way.
+         * TODO: Get rid of this case! There is a matching case in the translator.
+         */
         check(PMethodCall(Seq(idnuse), func, args))
       case PVarAssign(idnuse, rhs) =>
         names.definition(curMember)(idnuse) match {
@@ -169,15 +170,16 @@ case class TypeChecker(names: NameAnalyser) {
           case _ =>
             message(stmt, "expected variable as lhs")
         }
-      case PNewStmt(idnuse) =>
-        names.definition(curMember)(idnuse) match {
-          case PLocalVarDecl(_, typ, _) =>
-            check(idnuse, Ref)
-          case PFormalArgDecl(_, typ) =>
-            check(idnuse, Ref)
-          case _ =>
-            message(stmt, "expected variable as lhs")
-        }
+      case PNewStmt(target, fields) =>
+        val msg = "expected variable as lhs"
+        acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(target), msg){(v, _) => check(v, Ref)}
+        fields map (_.map (field =>
+          names.definition(curMember)(field, Some(PField.getClass)) match {
+            case PField(_, typ) =>
+              check(field, typ)
+            case _ =>
+              message(stmt, "expected a field as lhs")
+          }))
       case PMethodCall(targets, method, args) =>
         names.definition(curMember)(method) match {
           case PMethod(_, formalArgs, formalTargets, _, _, _) =>
@@ -220,26 +222,65 @@ case class TypeChecker(names: NameAnalyser) {
         invs map (check(_, Bool))
         check(body)
       case PLocalVarDecl(idndef, typ, init) =>
+        check(typ)
         init match {
           case Some(i) => check(i, typ)
           case None =>
         }
-      case PFreshReadPerm(vars, s) =>
-        vars map {
-          v =>
-            names.definition(curMember)(v) match {
-              case PLocalVarDecl(_, typ, _) =>
-                check(v, Perm)
-              case PFormalArgDecl(_, typ) =>
-                check(v, Perm)
-              case _ =>
-                message(v, "expected variable in fresh read permission block")
-            }
-        }
+      case PFresh(vars) =>
+        val msg = "expected variable in fresh read permission block"
+        acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
+      case PConstraining(vars, s) =>
+        val msg = "expected variable in fresh read permission block"
+        acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
         check(s)
       case PLetAss(_, exp) => check(exp, Bool)
       case PLetWand(_, wand) => check(wand, Wand)
       case _: PSkip =>
+    }
+  }
+
+
+  /** This handy method checks if all passed `idnUses` refer to specific
+    * subtypes `TypedEntity`s when looked up in the current scope/lookup table.
+    * For each element in `idnUses`, if it refers an appropriate subtype, then
+    * `handle` is applied to the current element of `idnUses` and to the
+    * `TypedEntity` it refers to.
+    *
+    * If only a single subtype of `TypedEntity` is acceptable, pass `Nothing`
+    * as the second type argument.
+    *
+    * Caution is advised, however, since the method checks various
+    * type-relations only at runtime.
+    *
+    * @param idnUses Identifier usages to check
+    * @param errorMessage Error message in case one of the identifiers usages
+    *                     does not refer to an appropriate subtype of
+    *                     `TypedEntity`
+    * @param handle Handle pairs of current identifier usage and referenced
+    *               `TypedEntity`
+    * @tparam T1 An accepted subtype of `TypedEntity`
+    * @tparam T2 Another accepted subtype of `TypedEntity`
+    *
+    * TODO: Generalise the method to take ClassTags T1, ..., TN.
+    * TODO: If only a single T is taken, let handle be (PIdnUse, T) => Unit
+    */
+  def acceptAndCheckTypedEntity[T1 : ClassTag, T2 : ClassTag]
+                               (idnUses: Seq[PIdnUse], errorMessage: String)
+                               (handle: (PIdnUse, PTypedEntity) => Unit = (_, _) => ()) {
+
+    /* TODO: Ensure that the ClassTags denote subtypes of TypedEntity */
+    val acceptedClasses = Seq[Class[_]](classTag[T1].runtimeClass, classTag[T2].runtimeClass)
+
+    idnUses.foreach { use =>
+      val decl = names.definition(curMember)(use)
+
+      acceptedClasses.find(_.isInstance(decl)) match {
+        case Some(_) =>
+          handle(use, decl.asInstanceOf[PTypedEntity])
+        case None =>
+          message(use, errorMessage)
+      }
     }
   }
 
@@ -250,24 +291,25 @@ case class TypeChecker(names: NameAnalyser) {
       case PPrimitiv(_) =>
       case dt@PDomainType(domain, args) =>
         args map check
+
         var x: Any = null
+
         try {
           x = names.definition(curMember)(domain)
         } catch {
           case _: Throwable =>
         }
+
         x match {
           case d@PDomain(name, typVars, _, _) =>
             ensure(args.length == typVars.length, typ, "wrong number of type arguments")
-            dt._isTypeVar = Some(false)
-          case _ =>
-            if (args.length == 0) {
-              // this must be a type variable, then
-              dt._isTypeVar = Some(true)
-            } else {
-              message(typ, "expected domain")
-            }
+            dt.kind = PDomainTypeKinds.Domain
+          case PTypeVarDecl(typeVar) =>
+            dt.kind = PDomainTypeKinds.TypeVar
+          case other =>
+            dt.kind = PDomainTypeKinds.Undeclared
         }
+
       case PSeqType(elemType) =>
         check(elemType)
       case PSetType(elemType) =>
@@ -275,7 +317,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PMultisetType(elemType) =>
         check(elemType)
       case PUnknown() =>
-        message(typ, "expected concrete type, but found unknown typ")
+        message(typ, "expected concrete type, but found unknown type")
     }
   }
 
@@ -284,6 +326,10 @@ case class TypeChecker(names: NameAnalyser) {
    * type variables.  Returns a mapping of type variables to types.
    */
   def learn(a: PType, b: PType): Seq[(String, PType)] = {
+    @inline
+    def multiLearn(as: Seq[PType], bs: Seq[PType]) =
+      (0 until as.length) flatMap (i => learn(as(i), bs(i)))
+
     (a, b) match {
       case (PTypeVar(name), t) if t.isConcrete => Seq(name -> t)
       case (t, PTypeVar(name)) if t.isConcrete => Seq(name -> t)
@@ -293,25 +339,31 @@ case class TypeChecker(names: NameAnalyser) {
         learn(e1, e2)
       case (PMultisetType(e1), PMultisetType(e2)) =>
         learn(e1, e2)
-      case (PDomainType(n1, m1), PDomainType(n2, m2))
-        if n1 == n2 && m1.length == m2.length =>
-        (m1 zip m2) flatMap (x => learn(x._1, x._2))
+      case (dt1 @ PDomainType(n1, m1), dt2 @ PDomainType(n2, m2)) if m1.length == m2.length =>
+        if (n1 == n2)
+          multiLearn(m1, m2)
+        else if (dt1.isTypeVar && dt2.isConcrete)
+          (dt1.domain.name -> dt2) +: multiLearn(m1, m2)
+        else if (dt2.isTypeVar && dt1.isConcrete)
+          (dt2.domain.name -> dt1) +: multiLearn(m1, m2)
+        else
+          Nil
       case _ => Nil
     }
   }
 
   /**
    * Are types 'a' and 'b' compatible?  Type variables are assumed to be unbound so far,
-   * and if they occur they are compatible with any type.  PUnknown is also compatible with
-   * everything.
+   * and if they occur they are compatible with any type. PUnknown is also compatible with
+   * everything, as are undeclared PDomainTypes.
    */
   def isCompatible(a: PType, b: PType): Boolean = {
     (a, b) match {
       case _ if a == b => true
-      case (PUnknown(), t) => true
-      case (t, PUnknown()) => true
-      case (PTypeVar(name), t) => true
-      case (t, PTypeVar(name)) => true
+      case (PUnknown(), _) | (_, PUnknown()) => true
+      case (dt: PDomainType, _) if dt.isUndeclared => true
+      case (_, dt: PDomainType) if dt.isUndeclared => true
+      case (PTypeVar(_), _) | (_, PTypeVar(_)) => true
       case (Bool, PWandType()) => true
       case (PSeqType(e1), PSeqType(e2)) => isCompatible(e1, e2)
       case (PSetType(e1), PSetType(e2)) => isCompatible(e1, e2)
@@ -332,10 +384,10 @@ case class TypeChecker(names: NameAnalyser) {
   def check(exp: PExp, expected: PType): Unit = check(exp, Seq(expected))
 
   def check(exp: PExp, expectedRaw: Seq[PType]): Unit = {
-    val expected = expectedRaw filter ({
+    val expected = expectedRaw filter {
       case PTypeVar(_) => false
       case _ => true
-    })
+    }
     def setRefinedType(actual: PType, inferred: Seq[(String, PType)]) {
       val t = actual.substitute(inferred.toMap)
       check(t)
@@ -398,16 +450,21 @@ case class TypeChecker(names: NameAnalyser) {
     def genericMultisetType: PMultisetType = PMultisetType(PTypeVar("."))
     def genericAnySetType = Seq(genericSetType, genericMultisetType)
 
+    def setPIdnUseTypeAndEntity(piu: PIdnUse, typ: PType, entity: PRealEntity) {
+      setType(typ)
+      piu.decl = entity
+    }
+
     exp match {
-      case i@PIdnUse(name) =>
-        names.definition(curMember)(i) match {
-          case PLocalVarDecl(_, typ, _) => setType(typ)
-          case PFormalArgDecl(_, typ) => setType(typ)
-          case PField(_, typ) => setType(typ)
-          case PPredicate(_, _, _) => setType(Pred)
+      case piu @ PIdnUse(name) =>
+        names.definition(curMember)(piu) match {
+          case decl @ PLocalVarDecl(_, typ, _) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case decl @ PFormalArgDecl(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case decl @ PField(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
+          case decl @ PPredicate(_, _, _) => setPIdnUseTypeAndEntity(piu, Pred, decl)
           case _: PLetWand => setType(Wand)
           case _: PLetAss => setType(Bool) /* TODO: Should only happen before letass-macros have been expanded */
-          case x => issueError(i, s"expected identifier, but got $x")
+          case x => issueError(piu, s"expected identifier, but got $x")
         }
       case PBinExp(left, op, right) =>
         op match {
@@ -587,12 +644,29 @@ case class TypeChecker(names: NameAnalyser) {
       case PNullLit() =>
         setType(Ref)
       case PFieldAccess(rcv, idnuse) =>
+        /* For a field access of the type rcv.fld we have to ensure that the
+         * receiver denotes a local variable. Just checking that it is of type
+         * Ref is not sufficient, since it could also denote a Ref-typed field.
+         */
+        rcv match {
+          case p: PIdnUse =>
+            acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(p), "expected local variable")()
+          case _ =>
+            /* More complicated expressions should be ok if of type Ref, which is checked next */
+        }
         check(rcv, Ref)
-        check(idnuse, expected)
+        acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")((_, _) => check(idnuse, expected))
         setType(idnuse.typ)
       case p@PPredicateAccess(args, idnuse) =>
-        args map (a => check(a, Nil))
-        check(idnuse, expected)
+        acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
+          val predicate = _predicate.asInstanceOf[PPredicate]
+          check(idnuse, expected)
+          /* Check that the predicate is used with 1. the correct number of arguments,
+           * and 2. with the correct types of arguments.
+           */
+          if (args.length != predicate.formalArgs.length) issueError(idnuse, "predicate arity doesn't match")
+          args zip predicate.formalArgs map {case (aarg, farg) => check(aarg, farg.typ)}
+        }
         setType(Pred)
       case fa@PFunctApp(func, args) =>
         names.definition(curMember)(func) match {
@@ -609,7 +683,6 @@ case class TypeChecker(names: NameAnalyser) {
             (formalArgs zip args) foreach {
               case (formal, actual) =>
                 check(actual, formal.typ)
-                // infer type information based on arguments
                 inferred ++= learn(actual.typ, formal.typ)
             }
             // also infer type information based on the context (expected type)
@@ -618,7 +691,7 @@ case class TypeChecker(names: NameAnalyser) {
             }
             setRefinedType(typ, inferred)
           case x =>
-            issueError(func, s"expected function")
+            issueError(func, "expected function")
         }
       case e: PUnFoldingExp =>
         check(e.acc.perm, Perm)
@@ -680,7 +753,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(perm, Perm)
         setType(Bool)
       case PEmptySeq(_) =>
-        val typ = (if (exp.typ.isUnknown) genericSeqType else exp.typ)
+        val typ = if (exp.typ.isUnknown) genericSeqType else exp.typ
         if (expected.size == 1) {
           setRefinedType(typ, learn(typ, expected.head))
         } else {
@@ -712,7 +785,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PSeqIndex(seq, idx) =>
         val expectedSeqType = expected match {
           case Nil => Seq(genericSeqType)
-          case _ => expected map (PSeqType(_))
+          case _ => expected map PSeqType
         }
         check(seq, expectedSeqType)
         check(idx, Int)
@@ -779,13 +852,14 @@ case class TypeChecker(names: NameAnalyser) {
           check(seq, Seq(genericSeqType, genericSetType, genericMultisetType))
           setType(Int)
         }
-      case PEmptySet() =>
-        val typ = genericSetType
-        if (expected.size == 1) {
+      case PEmptySet(t) =>
+//        val typ = genericSetType
+/*        if (expected.size == 1) {
           setRefinedType(typ, learn(typ, expected.head))
         } else {
           setType(typ)
-        }
+    }                 */ //inference
+        setType(PSetType(t))
       case PExplicitSet(elems) =>
         assert(elems.nonEmpty)
         val expectedElemTyp = (expected map {
@@ -805,13 +879,14 @@ case class TypeChecker(names: NameAnalyser) {
             // TODO: perform type inference and propagate type down
             setType(PSetType(types.head))
         }
-      case PEmptyMultiset() =>
-        val typ = genericMultisetType
+      case PEmptyMultiset(t) =>
+/*        val typ = genericMultisetType
         if (expected.size == 1) {
           setRefinedType(typ, learn(typ, expected.head))
         } else {
           setType(typ)
-        }
+        }*/
+        setType(PMultisetType(t))
       case PExplicitMultiset(elems) =>
         assert(elems.nonEmpty)
         val expectedElemTyp = (expected map {
@@ -865,23 +940,23 @@ case class NameAnalyser() {
     * @param expected Expected class of the entity.
     * @return Resolved entity.
     */
-  def definition(member: PScope)(idnuse: PIdnUse, expected: Option[Class[_]] = None): RealEntity = {
+  def definition(member: PScope)(idnuse: PIdnUse, expected: Option[Class[_]] = None): PRealEntity = {
     if (member == null) {
-      idnMap.get(idnuse.name).get.asInstanceOf[RealEntity]
+      idnMap.get(idnuse.name).get.asInstanceOf[PRealEntity]
     } else {
       // lookup in method map first, and otherwise in the general one
       val entity =
         memberIdnMap.get(member).get.get(idnuse.name) match {
           case None =>
             idnMap.get(idnuse.name).get
-          case Some(entity) =>
-            if (expected.isDefined && entity.getClass != expected)
+          case Some(foundEntity) =>
+            if (expected.isDefined && foundEntity.getClass != expected)
               idnMap.get(idnuse.name).get
             else
-              entity
+              foundEntity
         }
 
-      entity.asInstanceOf[RealEntity] // TODO: Why is the cast necessary? Remove if possible.
+      entity.asInstanceOf[PRealEntity] // TODO: Why is the cast necessary? Remove if possible.
     }
   }
 
@@ -890,33 +965,41 @@ case class NameAnalyser() {
     memberIdnMap.clear()
   }
 
-  private val idnMap = collection.mutable.HashMap[String, Entity]()
-  private val memberIdnMap = collection.mutable.HashMap[PScope, collection.mutable.HashMap[String, Entity]]()
+  private val idnMap = collection.mutable.HashMap[String, PEntity]()
+  private val memberIdnMap = collection.mutable.HashMap[PScope, collection.mutable.HashMap[String, PEntity]]()
 
   def run(p: PProgram): Boolean = {
     var curMember: PScope = null
     def getMap = if (curMember == null) idnMap else memberIdnMap.get(curMember).get
     val scopeStack = mutable.Stack[PScope]()
+
     // find all declarations
     p.visit({
       case m: PScope =>
-        memberIdnMap.put(m, memberIdnMap.getOrElse(curMember, collection.mutable.HashMap[String, Entity]()).clone)
+        memberIdnMap.put(m, memberIdnMap.getOrElse(curMember, collection.mutable.HashMap[String, PEntity]()).clone())
         scopeStack.push(curMember)
         curMember = m
       case i@PIdnDef(name) =>
         getMap.get(name) match {
-          case Some(MultipleEntity()) =>
+          case Some(PMultipleEntity()) =>
             message(i, s"$name already defined.")
           case Some(e) =>
             message(i, s"$name already defined.")
-            getMap.put(name, MultipleEntity())
+            getMap.put(name, PMultipleEntity())
           case None =>
             i.parent match {
               case decl: PAxiom => // nothing refers to axioms, thus do not store it
-              case decl: PDomain => if (name == decl.idndef.name) idnMap.put(name, decl)
+              case decl: PDomain =>
+                if (name == decl.idndef.name) {
+                  idnMap.put(name, decl)
+                } else if (decl.typVars.contains(i)) {
+                  getMap.put(i.name, PTypeVarDecl(i))
+                } else {
+                  message(i, s"unexpected use of $name")
+                }
               case decl: PLocalVarDecl => getMap.put(name, decl)
               case decl: PFormalArgDecl => getMap.put(name, decl)
-              case decl: RealEntity => idnMap.put(name, decl)
+              case decl: PRealEntity => idnMap.put(name, decl)
               case _ => sys.error(s"unexpected parent of identifier: ${i.parent}")
             }
         }
@@ -934,8 +1017,8 @@ case class NameAnalyser() {
         curMember = m
       case i@PIdnUse(name) =>
         // look up in both maps (if we are not in a method currently, we look in the same map twice, but that is ok)
-        getMap.getOrElse(name, idnMap.getOrElse(name, UnknownEntity())) match {
-          case UnknownEntity() =>
+        getMap.getOrElse(name, idnMap.getOrElse(name, PUnknownEntity())) match {
+          case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
             if (!i.parent.isInstanceOf[PDomainType])
               message(i, s"$name not defined.")

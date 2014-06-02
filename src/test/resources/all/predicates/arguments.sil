@@ -1,7 +1,7 @@
 
-var f: Int
-var g: Int
-var unrelatedField: Int
+field f: Int
+field g: Int
+field unrelatedField: Int
 
 method unrelated(this: Ref)
     requires acc(this.unrelatedField, write)

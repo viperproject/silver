@@ -1,7 +1,7 @@
 //:: IgnoreFile(/silicon/issue/84/)
 
-var all: Set[Ref]
-var f: Ref
+field all: Set[Ref]
+field f: Ref
 
 predicate inv(this: Ref) { acc(this.f, 1/2) }
 
@@ -11,9 +11,9 @@ method m(S: Set[Ref])
 {
   var b: Ref
   var v: Ref
-  
+
   inhale b in S
   unfold acc(inv(b), write)
   v := b.f
   fold acc(inv(b), write)
-}  
+}

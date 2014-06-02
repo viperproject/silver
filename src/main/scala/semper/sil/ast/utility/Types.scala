@@ -14,7 +14,7 @@ object Types {
     */
   def typeVariables(typ: Type): Set[TypeVar] = typ match {
     case t: TypeVar => Set(t)
-    case DomainType(domain, typeVarsMap) => (domain.typVars filterNot typeVarsMap.contains) toSet
+    case dt@DomainType(domain, typeVarsMap) => (dt.domainTypVars filterNot typeVarsMap.contains).toSet
     case _ => Set()
   }
 
@@ -47,5 +47,19 @@ object Types {
   def freeTypeVariables(domainMember: DomainMember): Set[TypeVar] = domainMember match {
     case df: DomainFunc => freeTypeVariables(df)
     case da: DomainAxiom => freeTypeVariables(da)
+  }
+
+  /** Returns a list of transitive "subtypes" of the given `typ`. For example, type
+    * constituents of `Seq[Seq[Int]]` are `Seq[Int]` and `Int`.
+    *
+    * @param typ A type whose type constituents are to be returned.
+    * @return The list of transitive type constituents of `typ`.
+    */
+  def typeConstituents(typ: Type): List[Type] = typ match {
+    case Int | Bool | Perm | Ref | Pred | _: TypeVar => Nil
+    case dt: DomainType => dt.domainTypVars.map(_.substitute(dt.typVarsMap)).toList
+    case SeqType(elementType) => elementType :: typeConstituents(elementType)
+    case SetType(elementType) => elementType :: typeConstituents(elementType)
+    case MultisetType(elementType) => elementType :: typeConstituents(elementType)
   }
 }

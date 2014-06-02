@@ -64,8 +64,9 @@ object Statements {
     s visit {
       case LocalVarAssign(lhs, _) => writtenTo = lhs +: writtenTo
       case MethodCall(_, _, targets) => writtenTo = writtenTo ++ targets
-      case FreshReadPerm(vars, _) => writtenTo = writtenTo ++ vars
-      case NewStmt(lhs) => writtenTo = lhs +: writtenTo
+      case Fresh(vars) => writtenTo = writtenTo ++ vars
+      case Constraining(_, body) => writtenTo = writtenTo ++ (writtenVars(body) intersect s.undeclLocalVars)
+      case NewStmt(target, _) => writtenTo = target +: writtenTo
       case While(_, _, locals, body) => writtenTo = writtenTo ++ (writtenVars(body) intersect s.undeclLocalVars)
     }
 
