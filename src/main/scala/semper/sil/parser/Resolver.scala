@@ -462,8 +462,8 @@ case class TypeChecker(names: NameAnalyser) {
           case decl @ PFormalArgDecl(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PField(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PPredicate(_, _, _) => setPIdnUseTypeAndEntity(piu, Pred, decl)
-          case _: PLetWand => setType(Wand)
-          case _: PLetAss => setType(Bool) /* TODO: Should only happen before letass-macros have been expanded */
+          case decl: PLetWand => setPIdnUseTypeAndEntity(piu, Wand, decl)
+          case decl: PLetAss => setPIdnUseTypeAndEntity(piu, Bool, decl) /* TODO: Should only happen before letass-macros have been expanded */
           case x => issueError(piu, s"expected identifier, but got $x")
         }
       case PBinExp(left, op, right) =>

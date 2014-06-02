@@ -202,7 +202,10 @@ case class Translator(program: PProgram) {
             /* A malformed AST where a field is dereferenced without a receiver */
             Messaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
-          case _ =>
+          case _: PLetWand =>
+            /* TODO: We might want to differentiate between magic wand references and regular local variables. */
+            LocalVar(name)(ttyp(pexp.typ), pos)
+          case other =>
             sys.error("should not occur in type-checked program")
         }
       case PBinExp(left, op, right) =>
