@@ -1,5 +1,5 @@
 
-/*
+
 field f: Int
 
 domain Bag[T]
@@ -14,6 +14,13 @@ domain Bag[T]
 
 }
 
+method m()
+{
+    var s : Seq[Int]
+    s := Seq[Int]()
+}
+
+/*
 
 method m2()
 {

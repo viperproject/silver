@@ -181,8 +181,13 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
       _state = TranslatorState.Verified
       return
     }
+//    _verifier.get.start()
+
     _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
     assert(_verificationResult != null)
+
+//    _verifier.get.stop()
+
     _state = TranslatorState.Verified
   }
 
