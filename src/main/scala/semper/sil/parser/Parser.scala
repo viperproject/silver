@@ -466,7 +466,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
      * when 'magicWandExp' is used instead of the more specific
      * 'realMagicWandExp | idnuse', then the following problem can occur:
      * Consider an expression such as "applying w in A". The parser
-     * will interpret "w in A" as a set-cointains expression, which is
+     * will interpret "w in A" as a set-contains expression, which is
      * fine according to our rules. The outer applying-rule will the fail.
      * I suspect that NOT using a memoising packrat parser would help
      * here, because the failing applying-rule should backtrack enough
