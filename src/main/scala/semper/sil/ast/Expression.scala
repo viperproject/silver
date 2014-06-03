@@ -65,9 +65,13 @@ case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: I
   Consistency.checkNoPositiveOnly(right)
 }
 case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(AndOp)
+
 case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(ImpliesOp) {
   Consistency.checkNoPositiveOnly(left)
 }
+
+case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
+    extends DomainBinExp(MagicWandOp)
 
 /** Boolean negation. */
 case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NotOp) {
@@ -237,17 +241,34 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
   lazy val typ = thn.typ
 }
 
-// --- Unfolding expression
+// --- Prover hint expressions
 
-case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+sealed trait GhostOperation extends Exp {
+  val body: Exp
+  lazy val typ = body.typ
+}
+
+sealed trait UnFoldingExp extends GhostOperation {
+  val acc: PredicateAccessPredicate
+}
+
+case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp
+case class Folding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp
+case class Exhaling(body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
+
+case class Applying(exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
+  require(exp isSubtype Wand)
+}
+
+// --- Old expressions
+
+sealed trait OldExp extends UnExp {
   lazy val typ = exp.typ
 }
 
-// --- Old expression
-
-case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnExp {
-  lazy val typ = exp.typ
-}
+case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp
+case class PackageOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp
+case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp
 
 // --- Quantifications
 

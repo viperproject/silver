@@ -4,6 +4,7 @@ import scala.collection.mutable
 import scala.reflect._
 import org.kiama.util.Messaging.{message, messagecount}
 import org.kiama.util.Positioned
+import semper.sil.ast.MagicWandOp
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -12,12 +13,42 @@ case class Resolver(p: PProgram) {
   val names = NameAnalyser()
   val typechecker = TypeChecker(names)
 
+  /* TODO: Re-running the NameAnalyser is not efficient! It currently needs to be done to ensure that
+   *       the symbol table created by the analyzer contains information about the expressions that
+   *       replaced uses of letass-identifiers.
+   */
   def run: Option[PProgram] = {
-    if (names.run(p))
-      if (typechecker.run(p))
-        return Some(p)
+    if (names.run(p)) {
+      val pTransformed = LetassExpander.transform(p)
+      names.reset()
+      if (names.run(pTransformed)) {
+        if (typechecker.run(pTransformed)) {
+          return Some(pTransformed)
+        }
+      }
+    }
 
     None
+  }
+}
+
+object LetassExpander {
+  def transform(p: PProgram): PProgram = {
+    val pTransformed =
+      p.transform {
+        case _: PLetAss =>
+          PSkip().setPos(p)
+
+        case iu: PIdnUse if iu.letass.nonEmpty =>
+          val e: PExp = iu.letass.get.exp // TODO: Adapt position information all subexps
+          e.start = iu.start
+          e.finish = iu.finish
+
+          e
+      }()
+
+    org.kiama.attribution.Attribution.initTree(pTransformed)
+    pTransformed
   }
 }
 
@@ -113,6 +144,10 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PUnfold(e) =>
         check(e, Bool)
+      case PPackageWand(e) =>
+        check(e, Wand)
+      case PApplyWand(wand) =>
+        check(wand, Wand)
       case PExhale(e) =>
         check(e, Bool)
       case PAssert(e) =>
@@ -199,6 +234,9 @@ case class TypeChecker(names: NameAnalyser) {
         val msg = "expected variable in fresh read permission block"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
         check(s)
+      case PLetAss(_, exp) => check(exp, Bool)
+      case PLetWand(_, wand) => check(wand, Wand)
+      case _: PSkip =>
     }
   }
 
@@ -248,7 +286,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(typ: PType) {
     typ match {
-      case _: PPredicateType =>
+      case _: PPredicateType | _: PWandType =>
         sys.error("unexpected use of internal typ")
       case PPrimitiv(_) =>
       case dt@PDomainType(domain, args) =>
@@ -326,6 +364,7 @@ case class TypeChecker(names: NameAnalyser) {
       case (dt: PDomainType, _) if dt.isUndeclared => true
       case (_, dt: PDomainType) if dt.isUndeclared => true
       case (PTypeVar(_), _) | (_, PTypeVar(_)) => true
+      case (Bool, PWandType()) => true
       case (PSeqType(e1), PSeqType(e2)) => isCompatible(e1, e2)
       case (PSetType(e1), PSetType(e2)) => isCompatible(e1, e2)
       case (PMultisetType(e1), PMultisetType(e2)) => isCompatible(e1, e2)
@@ -423,6 +462,8 @@ case class TypeChecker(names: NameAnalyser) {
           case decl @ PFormalArgDecl(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PField(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PPredicate(_, _, _) => setPIdnUseTypeAndEntity(piu, Pred, decl)
+          case decl: PLetWand => setPIdnUseTypeAndEntity(piu, Wand, decl)
+          case decl: PLetAss => setPIdnUseTypeAndEntity(piu, Bool, decl) /* TODO: Should only happen before letass-macros have been expanded */
           case x => issueError(piu, s"expected identifier, but got $x")
         }
       case PBinExp(left, op, right) =>
@@ -502,6 +543,10 @@ case class TypeChecker(names: NameAnalyser) {
             check(left, Bool)
             check(right, Bool)
             setType(Bool)
+          case MagicWandOp.op =>
+            check(left, Bool)
+            check(right, Bool)
+            setType(Wand)
           case "in" =>
             check(left, Nil)
             check(right, genericAnySetType ++ Seq(genericSeqType))
@@ -648,11 +693,15 @@ case class TypeChecker(names: NameAnalyser) {
           case x =>
             issueError(func, "expected function")
         }
-      case PUnfolding(acc, body) =>
-        check(acc.perm, Perm)
-        check(acc.loc, Pred)
-        check(body, expected)
-        setType(exp.typ)
+      case e: PUnFoldingExp =>
+        check(e.acc.perm, Perm)
+        check(e.acc.loc, Pred)
+        check(e.exp, expected)
+        setType(e.exp.typ)
+      case PApplying(wand, in) =>
+        check(wand, Wand)
+        check(in, Bool)
+        setType(in.typ)
       case PExists(vars, e) =>
         vars map (v => check(v.typ))
         check(e, Bool)
@@ -973,6 +1022,7 @@ case class NameAnalyser() {
             // domain types can also be type variables, which need not be declared
             if (!i.parent.isInstanceOf[PDomainType])
               message(i, s"$name not defined.")
+          case p @ PLetAss(_, exp) => i.letass = Some(p)
           case _ =>
         }
       case _ =>
