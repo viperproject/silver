@@ -192,16 +192,16 @@ object Consistency {
     * @param c The initial context (optional).
     */
   def checkContextDependentConsistency(n: Node, c: Context = Context()) = n.visitWithContext(c) (c => {
-    case Package(wand) =>
-      c.copy(insidePackageStmt = true)
+    case _: Package =>
+      c.copy(insidePackageStmt = true, inExhalePosition = true)
 
     case MagicWand(lhs, rhs) =>
       checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
 
-      if (!c.insidePackageStmt) {
-        recordIfNot(lhs, noGhostOperations(lhs), "Wands may only contain ghost operations when being packaged.")
-        recordIfNot(rhs, noGhostOperations(rhs), "Wands may only contain ghost operations when being packaged.")
-      }
+      recordIfNot(lhs, noGhostOperations(lhs), "Ghost operations may not occur on the left of wands.")
+
+      if (!c.insidePackageStmt)
+        recordIfNot(rhs, noGhostOperations(rhs), "Ghost operations may only occur inside wands when these are packaged.")
 
       c.copy(insideWandStatus = InsideWandStatus.Yes)
 
@@ -216,10 +216,13 @@ object Consistency {
       c
 
     case e: UnFoldingExp =>
-      if (!c.insidePackageStmt)
-        recordIfNot(e, e.isPure, "(Un)Folding expressions outside of wand packaging statements must be pure.")
+      if (!e.isPure)
+        recordIfNot(e, c.inExhalePosition, "Impure (un)folding expressions may only occur in exhale positions")
 
       c
+
+    case _: Exhale | _: Assert =>
+      c.copy(inExhalePosition = true)
   })
 
   private def checkWandRelatedOldExpressions(n: Node, c: Context) {
@@ -248,5 +251,6 @@ object Consistency {
 
   /** Context for context dependent consistency checking. */
   case class Context(insidePackageStmt: Boolean = false,
-                     insideWandStatus: InsideWandStatus = InsideWandStatus.No)
+                     insideWandStatus: InsideWandStatus = InsideWandStatus.No,
+                     inExhalePosition: Boolean = false)
 }

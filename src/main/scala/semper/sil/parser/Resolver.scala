@@ -145,9 +145,9 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnfold(e) =>
         check(e, Bool)
       case PPackageWand(e) =>
-        check(e, Wand)
-      case PApplyWand(wand) =>
-        check(wand, Wand)
+        checkMagicWand(e, allowWandRefs = false)
+      case PApplyWand(e) =>
+        checkMagicWand(e, allowWandRefs = true)
       case PExhale(e) =>
         check(e, Bool)
       case PAssert(e) =>
@@ -240,6 +240,14 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
+  def checkMagicWand(e: PExp, allowWandRefs: Boolean) = e match {
+    case _: PIdnUse if allowWandRefs =>
+      check(e, Wand)
+    case PBinExp(_, MagicWandOp.op, _) =>
+      check(e, Wand)
+    case _ =>
+      message(e, "expected magic wand")
+  }
 
   /** This handy method checks if all passed `idnUses` refer to specific
     * subtypes `TypedEntity`s when looked up in the current scope/lookup table.
