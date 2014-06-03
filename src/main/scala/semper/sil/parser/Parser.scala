@@ -416,7 +416,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     idnuse ~ parens(actualArgList) ^^ PFunctApp
 
   lazy val actualArgList: PackratParser[Seq[PExp]] =
-    repsep(sum, ",")
+    repsep(exp, ",")
 
   lazy val inhaleExhale: PackratParser[PExp] =
     ("[" ~> exp <~ ",") ~ (exp <~ "]") ^^ PInhaleExhaleExp

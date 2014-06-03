@@ -1,19 +1,39 @@
 
-/*
-field f: Int
+
+field g: Int
 
 domain Bag[T]
 {
-    function singleton(t:T) : Bag[T]
+/*    function singleton(t:T) : Bag[T]
 
     function size(b:Bag[T]) : Int
 
     function flatten(b:Bag[Bag[T]]):Bag[T]
 
     axiom singletonSize { forall t:T :: size(singleton(t))==1 }
-
+  */
+    function df(x:Int) : Int
+    function dR() : Ref
+//    axiom ax {df(dR().g)==0}
 }
 
+function f(x:Int) : Int
+{
+    x
+}
+
+method m(this : Ref)
+    requires acc(this.g)
+{
+    var s : Seq[Int]
+    s := Seq[Int]()
+    var y : Int
+    var b : Bag[Int]
+    y := f(this.g)
+    y := df(this.g)
+}
+
+/*
 
 method m2()
 {
