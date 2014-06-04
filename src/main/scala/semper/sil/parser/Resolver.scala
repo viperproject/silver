@@ -706,8 +706,12 @@ case class TypeChecker(names: NameAnalyser) {
         check(e.acc.loc, Pred)
         check(e.exp, expected)
         setType(e.exp.typ)
+      case PPackaging(wand, in) =>
+        checkMagicWand(wand, allowWandRefs = false)
+        check(in, Bool)
+        setType(in.typ)
       case PApplying(wand, in) =>
-        check(wand, Wand)
+        checkMagicWand(wand, allowWandRefs = true)
         check(in, Bool)
         setType(in.typ)
       case PExists(vars, e) =>

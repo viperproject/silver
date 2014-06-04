@@ -107,7 +107,7 @@ case class Unfold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition,
 
 /** Package a magic wand. */
 case class Package(wand: MagicWand)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
-  require(wand isSubtype Bool)
+  require(wand isSubtype Wand, s"Expected wand but found ${wand.typ} ($wand)")
 }
 
 /** Apply a magic wand. */

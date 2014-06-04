@@ -336,6 +336,8 @@ case class Translator(program: PProgram) {
         Folding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
       case PApplying(e, in) =>
         Applying(exp(e), exp(in))(pos)
+      case PPackaging(e, in) =>
+        Packaging(exp(e).asInstanceOf[MagicWand], exp(in))(pos)
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>

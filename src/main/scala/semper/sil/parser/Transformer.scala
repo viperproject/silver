@@ -45,6 +45,7 @@ object Transformer {
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
         case PFolding(acc, exp) => PFolding(go(acc), go(exp))
         case PApplying(wand, exp) => PApplying(go(wand), go(exp))
+        case PPackaging(wand, exp) => PPackaging(go(wand), go(exp))
 
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map (_ map go), go(exp))

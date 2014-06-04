@@ -257,7 +257,11 @@ case class Folding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position =
 case class Exhaling(body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
 
 case class Applying(exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
-  require(exp isSubtype Wand)
+  require(exp isSubtype Wand, s"Expected wand but found ${exp.typ} ($exp)")
+}
+
+case class Packaging(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
+  require(wand isSubtype Wand, s"Expected wand but found ${wand.typ} ($wand)")
 }
 
 // --- Old expressions

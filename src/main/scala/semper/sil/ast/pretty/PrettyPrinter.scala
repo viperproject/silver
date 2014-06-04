@@ -240,6 +240,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
     case Folding(acc, exp) =>
       parens("folding" <+> show(acc) <+> "in" <+> show(exp))
+    case Packaging(wand, in) =>
+      parens("packaging" <+> show(wand) <+> "in" <+> show(in))
     case Applying(wand, in) =>
       parens("applying" <+> show(wand) <+> "in" <+> show(in))
     case Exhaling(exp) =>

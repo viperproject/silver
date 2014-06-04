@@ -216,6 +216,7 @@ case class PUnfolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp
 case class PFolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp
 
 case class PApplying(wand: PExp, exp: PExp) extends PExp
+case class PPackaging(wand: PExp, exp: PExp) extends PExp
 
 case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp
 case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp with PScope
@@ -393,6 +394,7 @@ object Nodes {
       case PFunctApp(func, args) => Seq(func) ++ args
       case e: PUnFoldingExp => Seq(e.acc, e.exp)
       case PApplying(wand, in) => Seq(wand, in)
+      case PPackaging(wand, in) => Seq(wand, in)
       case PExists(vars, exp) => vars ++ Seq(exp)
       case po: POldExp => Seq(po.e)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)

@@ -116,7 +116,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
     // prover hint expressions
-    "unfolding", "in", "folding", "applying",
+    "unfolding", "in", "folding", "applying", "packaging",
     // old expression
     "old", "now", "lhs",
     // quantification
@@ -397,7 +397,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       inhaleExhale |
       perm |
       quant |
-      unfolding | folding | applying |
+      unfolding | folding | applying | packaging |
       setTypedEmpty | explicitSetNonEmpty |
       explicitMultisetNonEmpty | multiSetTypedEmpty |
       seqTypedEmpty | seqLength | explicitSeqNonEmpty | seqRange |
@@ -462,7 +462,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     ("folding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PFolding
 
   lazy val applying: PackratParser[PExp] =
-    /* We must be careful here to not create ambiguities in our granmmar.
+    /* We must be careful here to not create ambiguities in our grammar.
      * when 'magicWandExp' is used instead of the more specific
      * 'realMagicWandExp | idnuse', then the following problem can occur:
      * Consider an expression such as "applying w in A". The parser
@@ -478,6 +478,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
      * significantly slower.
      */
     ("applying" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PApplying
+
+  lazy val packaging: PackratParser[PExp] =
+    /* See comment on applying */
+    ("packaging" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PPackaging
 
   lazy val integer =
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))

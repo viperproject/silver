@@ -192,7 +192,7 @@ object Consistency {
     * @param c The initial context (optional).
     */
   def checkContextDependentConsistency(n: Node, c: Context = Context()) = n.visitWithContext(c) (c => {
-    case _: Package =>
+    case _: Package | _: Packaging =>
       c.copy(insidePackageStmt = true, inExhalePosition = true)
 
     case MagicWand(lhs, rhs) =>

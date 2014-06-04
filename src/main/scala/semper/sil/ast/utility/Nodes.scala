@@ -57,11 +57,12 @@ object Nodes {
         // might also be necessary to update the PrettyPrinter.toParenDoc method.
         e match {
           case _: Literal => Nil
-          case AbstractLocalVar(n) => Nil
+          case _: AbstractLocalVar => Nil
           case FieldAccess(rcv, field) => Seq(rcv)
           case PredicateAccess(params, _) => params
           case e: UnFoldingExp => Seq(e.acc, e.body)
           case Applying(wand, in) => Seq(wand, in)
+          case Packaging(wand, in) => Seq(wand, in)
           case Exhaling(exp) => Seq(exp)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
