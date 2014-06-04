@@ -1029,7 +1029,7 @@ case class NameAnalyser() {
           case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
             if (!i.parent.isInstanceOf[PDomainType])
-              message(i, s"$name not defined.")
+              message(i, s"identifier $name not defined.")
           case p @ PLetAss(_, exp) => i.letass = Some(p)
           case _ =>
         }
