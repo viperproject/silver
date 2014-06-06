@@ -1,3 +1,11 @@
+//:: IgnoreFile(/silicon/issue/92/)
+
+/* TODO:
+ *   This test case also uses unfolding-expressions containing access
+ *   predicates in their bodies, which have semantics that are difficult to
+ *   support, and moreover, probably not worth being supported. We decided to
+ *   to disallow them by adding corresponding consistency checks.
+ */
 
 field f: Int
 field next: Ref
@@ -36,13 +44,13 @@ method t4(r: Ref)
     requires acc(deeper(r))
 {
     // note: this fails because the unfolding inside the predicate body is only evaluated in a temporary state - this doesn't grant extra permissions in the unfoldee's state. But perhaps it should.
-    //:: ExpectedOutput(assignment.failed:insufficient.permission)    
+    //:: ExpectedOutput(assignment.failed:insufficient.permission)
     var i: Int := unfolding acc(deeper(r), write) in ((r.next == null) ? 0 : r.next.f)
 }
 
 method t5(r: Ref)
     requires acc(deeper(r))
-{   
+{
     var i: Int := unfolding acc(deeper(r), write) in ((r.next == null) ? 0 : (unfolding deeper(r.next) in r.next.f))
 }
 
@@ -60,21 +68,21 @@ predicate strange(r:Ref) {
 
 method t7(r: Ref)
     requires acc(strange(r))
-{   
+{
    //:: ExpectedOutput(assert.failed:assertion.false)
-   assert false   
+   assert false
 }
 
 method t8(r: Ref)
     requires acc(strange(r))
-{   
+{
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert unfolding strange(r) in false
 }
 
 method t9(r:Ref)
     requires acc(strange(r))
-{   
+{
   unfold strange(r)
   assert r.next == null // because otherwise, the predicate instance would be infinite..
 }
@@ -87,7 +95,7 @@ method t10(r:Ref, i:Int) // test unfolding in loop invariant
   unfold valid(r)
   r.f := 3
   fold valid(r)
-  while(j > 0) 
+  while(j > 0)
     invariant acc(valid(r)) && unfolding valid(r) in (r.f > 2)
   {
     j := j - 1

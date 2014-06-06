@@ -9,7 +9,10 @@ import semper.sil.frontend.Frontend
 
 /** A test suite for verification toolchains that use SIL. */
 abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll {
-  /** The list of verifiers to be used. */
+
+  /** The list of verifiers to be used. Should be overridden by a lazy val
+    * if the verifiers need to access the config map provided by ScalaTest.
+    */
   def verifiers: Seq[Verifier]
 
   /** The frontend to be used. */
@@ -27,8 +30,11 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
 
   /** Invoked by ScalaTest before any test of the current suite is run.
     * Starts all verifiers specified by `verifiers`.
+    *
+    * @param configMap The config map provided by ScalaTest.
     */
-  override def beforeAll() {
+  override def beforeAll(configMap: Map[String, Any]) {
+    this.configMap = configMap
     verifiers foreach (_.start())
   }
 
@@ -46,7 +52,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
 
   /** See description of `prefixSpecificConfigMap`.
     *
-    * @param configMap The config map built by ScalaTest.
+    * @param configMap The config map provided by ScalaTest.
     * @return A map mapping key prefixes to (key, value) pairs.
     */
   protected def splitConfigMap(configMap: Map[String, Any]): Map[String, Map[String, Any]] = {
