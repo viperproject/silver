@@ -67,8 +67,7 @@ method initSingle(this: Ref)
   this.right := null
   this.parent := null
   inhale visit(this)
-  
-  //:: UnexpectedOutput(fold.failed:insufficient.permission, /silicon/issue/78/)
+
   fold acc(inv(this.parentStruct, Set[Ref]()), write)
 }
 
@@ -93,7 +92,7 @@ method initAndInsert(this: Ref, newParent: Ref, isLeft: Bool)
 
   // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
   assert isLeft ? newParent.left == null : newParent.right == null
-  
+
   assert acc(newParent.left, 1/2) //&& (isLeft ==> acc(newParent.left, 1/2))
 
   if (isLeft) {
