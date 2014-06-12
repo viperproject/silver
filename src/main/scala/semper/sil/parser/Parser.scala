@@ -102,11 +102,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // null
     "null",
     // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field",
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "wand",
     // specifications
     "requires", "ensures", "invariant",
     // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto",
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto", "package", "apply",
     // control structures
     "while", "if", "elsif", "else",
     // special fresh block
@@ -116,15 +116,18 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
     // prover hint expressions
-    "unfolding", "in",
+    "unfolding", "in", "folding", "applying", "packaging",
     // old expression
-    "old",
+    "old", "now", "lhs",
     // quantification
     "forall", "exists",
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
-    "unique"
+    "unique",
+
+    // TODO: Hacks to stop the parser from interpreting, e.g., "inhale" as "in hale"
+    "variant", "hale", "tersection"
   )
 
   lazy val parser = phrase(programDecl)
@@ -221,13 +224,17 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     rep(stmt <~ opt(";"))
   lazy val stmt =
     fieldassign | localassign | fold | unfold | exhale | assert |
-      inhale | ifthnels | whle | varDecl | newstmt | fresh | constrainingBlock |
-      methodCall | goto | lbl
+      inhale | ifthnels | whle | varDecl | letassDecl | letwandDecl | newstmt | fresh | constrainingBlock |
+      methodCall | goto | lbl | packageWand | applyWand
 
   lazy val fold =
     "fold" ~> predicateAccessPred ^^ PFold
   lazy val unfold =
     "unfold" ~> predicateAccessPred ^^ PUnfold
+  lazy val packageWand =
+    "package" ~> exp ^^ PPackageWand
+  lazy val applyWand =
+    "apply" ~> magicWandExp ^^ PApplyWand
   lazy val inhale =
     ("inhale" | "assume") ~> exp ^^ PInhale
   lazy val exhale =
@@ -254,6 +261,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     }
   lazy val varDecl =
     ("var" ~> idndef) ~ (":" ~> typ) ~ opt(":=" ~> exp) ^^ PLocalVarDecl
+  lazy val letassDecl =
+    ("define" ~> idndef) ~ exp ^^ PLetAss
+  lazy val letwandDecl =
+    ("wand" ~> idndef) ~ (":=" ~> exp) ^^ PLetWand
   lazy val fresh =
     "fresh" ~> repsep(idnuse, ",") ^^ {
       case vars => PFresh(vars)
@@ -378,7 +389,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    */
   lazy val atom: PackratParser[PExp] =
     integer | bool | nul |
-      old |
+      old | pold | given |
       "result" ^^ (_ => PResultLit()) |
       ("-" | "!" | "+") ~ sum ^^ PUnExp |
       "(" ~> exp <~ ")" |
@@ -386,7 +397,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       inhaleExhale |
       perm |
       quant |
-      unfolding |
+      unfolding | folding | applying | packaging |
       setTypedEmpty | explicitSetNonEmpty |
       explicitMultisetNonEmpty | multiSetTypedEmpty |
       seqTypedEmpty | seqLength | explicitSeqNonEmpty | seqRange |
@@ -427,6 +438,12 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val old: PackratParser[PExp] =
     "old" ~> parens(exp) ^^ POld
 
+  lazy val pold: PackratParser[PExp] =
+    "now" ~> parens(exp) ^^ PPackageOld
+
+  lazy val given: PackratParser[PExp] =
+    "lhs" ~> parens(exp) ^^ PApplyOld
+
   lazy val locAcc: PackratParser[PLocationAccess] =
     fieldAcc | predAcc
 
@@ -440,6 +457,31 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   lazy val unfolding: PackratParser[PExp] =
     ("unfolding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PUnfolding
+
+  lazy val folding: PackratParser[PExp] =
+    ("folding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PFolding
+
+  lazy val applying: PackratParser[PExp] =
+    /* We must be careful here to not create ambiguities in our grammar.
+     * when 'magicWandExp' is used instead of the more specific
+     * 'realMagicWandExp | idnuse', then the following problem can occur:
+     * Consider an expression such as "applying w in A". The parser
+     * will interpret "w in A" as a set-contains expression, which is
+     * fine according to our rules. The outer applying-rule will the fail.
+     * I suspect that NOT using a memoising packrat parser would help
+     * here, because the failing applying-rule should backtrack enough
+     * to reparse "w in A", but this time as desired, not as a
+     * set-contains expression. This is just an assumption, however,
+     * and implementing would mean that we have to rewrite the
+     * left-recursive parsing rules (are these only sum and term?).
+     * Moreover, not using a memoising parser might make the parser
+     * significantly slower.
+     */
+    ("applying" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PApplying
+
+  lazy val packaging: PackratParser[PExp] =
+    /* See comment on applying */
+    ("packaging" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PPackaging
 
   lazy val integer =
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))

@@ -127,6 +127,8 @@ object Consistency {
     }
   }
 
+  def noGhostOperations(n: Node) = !n.existsDefined {case _: GhostOperation => }
+
   /** Returns true iff the given expression is a valid trigger. */
   def validTrigger(e: Exp): Boolean = {
     e match {
@@ -182,4 +184,73 @@ object Consistency {
         (ok, acyclic, terminals)
     }
   }
+
+  /** Checks consistency that is depends on some context. For example, that some expression
+    * Foo(...) must be pure except if it occurs inside Bar(...).
+    *
+    * @param n The starting node of the consistency check.
+    * @param c The initial context (optional).
+    */
+  def checkContextDependentConsistency(n: Node, c: Context = Context()) = n.visitWithContext(c) (c => {
+    case _: Package | _: Packaging =>
+      c.copy(insidePackageStmt = true, inExhalePosition = true)
+
+    case MagicWand(lhs, rhs) =>
+      checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
+
+      recordIfNot(lhs, noGhostOperations(lhs), "Ghost operations may not occur on the left of wands.")
+
+      if (!c.insidePackageStmt)
+        recordIfNot(rhs, noGhostOperations(rhs), "Ghost operations may only occur inside wands when these are packaged.")
+
+      c.copy(insideWandStatus = InsideWandStatus.Yes)
+
+    case po: PackageOld =>
+      recordIfNot(po, c.insideWandStatus.isInside, "pold-expressions may only occur inside wands.")
+
+      c
+
+    case po: ApplyOld =>
+      recordIfNot(po, c.insideWandStatus.isInside, "given-expressions may only occur inside wands.")
+
+      c
+
+    case e: UnFoldingExp =>
+      if (!e.isPure)
+        recordIfNot(e, c.inExhalePosition, "Impure (un)folding expressions may only occur in exhale positions")
+
+      c
+
+    case _: Exhale | _: Assert =>
+      c.copy(inExhalePosition = true)
+  })
+
+  private def checkWandRelatedOldExpressions(n: Node, c: Context) {
+    n.visitWithContextManually(c) (c => {
+      case MagicWand(lhs, rhs) =>
+        checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
+        checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
+
+      case po: ApplyOld =>
+        recordIfNot(po,
+                    c.insideWandStatus.isRight,
+                    "Wands may contain given-expressions on the rhs only.")
+    })
+  }
+
+  class InsideWandStatus protected[InsideWandStatus](val isInside: Boolean, val isLeft: Boolean, val isRight: Boolean) {
+    assert(!(isLeft || isRight) || isInside, "Inconsistent status")
+  }
+
+  object InsideWandStatus {
+    val No = new InsideWandStatus(false, false, false)
+    val Yes = new InsideWandStatus(true, false, false)
+    val Left = new InsideWandStatus(true, true, false)
+    val Right = new InsideWandStatus(true, false, true)
+  }
+
+  /** Context for context dependent consistency checking. */
+  case class Context(insidePackageStmt: Boolean = false,
+                     insideWandStatus: InsideWandStatus = InsideWandStatus.No,
+                     inExhalePosition: Boolean = false)
 }
