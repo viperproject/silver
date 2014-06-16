@@ -1,10 +1,31 @@
-method m()
+domain D1[T]
 {
-    var b1 : Bool
-    var b2 : Bool
+   function f1(x:D1[T]) : D2[T]
+   function make(x:T) : D1[T]
+//   function make2(x:T) : D1[D1[T]]
+   function break2(x:D1[D1[T]]) : D1[T]
+   function f1b(x:D1[T]) : Int
+}
+domain D2[T]
+{
+   function f2(x:D2[T]) : T
+   function f2b(x:D2[T]) : Int
 
-    assert (b1 <==> b2) || (b1==b1)
-    assert ! ((b1==b2) == (b1!=b2))
+   axiom ax2a {forall x : D1[T] :: f1b(x) >=0 ==> f2b(f1(x))>0}
+   axiom ax2b {forall x : D1[T] :: f2b(f1(x))>0 ==> f1b(x)==0}
+}
+
+method m1()
+{
+   var x : Int;
+   var d1x : D1[Int]
+   assert f1b(d1x) >= 0 ==> f1b(d1x) == 0
+}
+
+method m2()
+{
+   var d11x : D1[D1[Int]]
+   d11x := make(make(1))
 }
 
 /*
@@ -13,6 +34,7 @@ field f: Int
 domain Bag[T]
 {
     function singleton(t:T) : Bag[T]
+    function empty() : Bag[T]
 
     function size(b:Bag[T]) : Int
 
@@ -25,10 +47,16 @@ domain Bag[T]
 
 method m2()
 {
-    assert size(singleton(singleton(1)))==1;
+    assert size(singleton(singleton(1)))==1
+    var i : Int
+
+//    var b : Bag[Boolean] //Bag[Bag[Boolean]]
+//    b := singleton(empty())
 }
 
+*/
 
+/*
 domain D3[T]
 {
     function fD3(t:T) : D3[T]

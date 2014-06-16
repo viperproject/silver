@@ -246,6 +246,7 @@ case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position 
 // --- Old expression
 
 case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnExp {
+  require(exp.isPure)
   lazy val typ = exp.typ
 }
 
