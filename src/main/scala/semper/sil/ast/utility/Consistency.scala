@@ -192,16 +192,28 @@ object Consistency {
     * @param c The initial context (optional).
     */
   def checkContextDependentConsistency(n: Node, c: Context = Context()) = n.visitWithContext(c) (c => {
-    case _: Package | _: Packaging =>
-      c.copy(insidePackageStmt = true, inExhalePosition = true)
+    case _: Package =>
+      c.copy(insidePackageStmt = true)
 
-    case MagicWand(lhs, rhs) =>
+    case p: Packaging =>
+      recordIfNot(p, c.insideWandStatus.isInside, "Packaging-expressions may only occur inside wands.")
+
+      c.copy(insidePackageStmt = true)
+
+    case a: Applying =>
+      recordIfNot(a, c.insideWandStatus.isInside, "Applying-expressions may only occur inside wands.")
+
+      c
+
+    case mw @ MagicWand(lhs, rhs) =>
       checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
 
       recordIfNot(lhs, noGhostOperations(lhs), "Ghost operations may not occur on the left of wands.")
 
       if (!c.insidePackageStmt)
         recordIfNot(rhs, noGhostOperations(rhs), "Ghost operations may only occur inside wands when these are packaged.")
+
+      checkIfValidChainOfGhostOperations(rhs, mw)
 
       c.copy(insideWandStatus = InsideWandStatus.Yes)
 
@@ -216,13 +228,9 @@ object Consistency {
       c
 
     case e: UnFoldingExp =>
-      if (!e.isPure)
-        recordIfNot(e, c.inExhalePosition, "Impure (un)folding expressions may only occur in exhale positions")
+      recordIfNot(e, c.insideWandStatus.isInside || e.isPure, "(Un)folding expressions outside of wands must be pure.")
 
       c
-
-    case _: Exhale | _: Assert =>
-      c.copy(inExhalePosition = true)
   })
 
   private def checkWandRelatedOldExpressions(n: Node, c: Context) {
@@ -238,6 +246,23 @@ object Consistency {
     })
   }
 
+  private def checkIfValidChainOfGhostOperations(n: Node, root: MagicWand): Unit = n match {
+    case gop: GhostOperation =>
+      checkIfValidChainOfGhostOperations(gop.body, root)
+
+    case _ =>
+      val invalid =
+        !n.existsDefined {
+          case unf: UnFoldingExp if !unf.isPure =>
+          case gop: GhostOperation =>
+        }
+
+      recordIfNot(root, invalid,   "Magic wand has unsupported shape. "
+                                 + "Its RHS must be of the shape 'GOp1 in GOp2 in ... in A', where the GOps are "
+                                 + "(impure) ghost operations, and where the final in-clause assertion A may"
+                                 + "only contain pure (un)folding expressions.")
+  }
+
   class InsideWandStatus protected[InsideWandStatus](val isInside: Boolean, val isLeft: Boolean, val isRight: Boolean) {
     assert(!(isLeft || isRight) || isInside, "Inconsistent status")
   }
@@ -251,6 +276,5 @@ object Consistency {
 
   /** Context for context dependent consistency checking. */
   case class Context(insidePackageStmt: Boolean = false,
-                     insideWandStatus: InsideWandStatus = InsideWandStatus.No,
-                     inExhalePosition: Boolean = false)
+                     insideWandStatus: InsideWandStatus = InsideWandStatus.No)
 }
