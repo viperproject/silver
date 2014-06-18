@@ -8,14 +8,14 @@ predicate valid(this: Ref) {
   && (this.next != null ==> acc(next.valid, write))
 }
 
-method test()
+method test1()
   //:: ExpectedOutput(typechecker.error)
   requires acc(valid.item)
 {}
 
 function fun(): Int { 0 }
 
-method test()
+method test2()
   //:: ExpectedOutput(typechecker.error)
   requires acc(fun.item)
 {}

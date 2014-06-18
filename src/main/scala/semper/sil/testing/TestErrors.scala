@@ -63,7 +63,7 @@ case class TestAnnotationParseError(
 case class TestAdditionalOutputError(output: AbstractOutput)
     extends TestError(TestErrorType.AdditionalOutput) {
 
-  def message = output.toString
+  def message = "[" +output.fullId + "] " + output.toString
 }
 
 case class TestExpectedButMissingOutputError(expectedOutput: ExpectedOutput)

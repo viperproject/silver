@@ -1,8 +1,8 @@
-domain List[T] {
+domain List1[T] {
   //:: ExpectedOutput(typechecker.error)
-  function nil(): List[X] /* X has not been declared! */
+  function nil1(): List[X] /* X has not been declared! */
 
-  function cons(x: T, xs: List[T]): List[T]
+  function cons1(x: T, xs: List1[T]): List1[T]
 }
 
 

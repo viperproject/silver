@@ -65,7 +65,7 @@ object Consistency {
    * no InhaleExhaleExp.
    */
   def checkNoPositiveOnly(e: Exp) = {
-    recordIfNot(e, hasNoPositiveOnly(e), s"$e can only appear in positive positions.")
+    recordIfNot(e, hasNoPositiveOnly(e), s"$e is non pure and appears where only pure expressions are allowed.")
   }
 
   /**
@@ -90,7 +90,7 @@ object Consistency {
 
   /** This is like `checkNoPositiveOnly`, except that inhale-exhale expressions are fine. */
   def checkNoPositiveOnlyExceptInhaleExhale(e: Exp): Unit =
-    recordIfNot(e, hasNoPositiveOnly(e, true), s"$e can only appear in positive positions.")
+    recordIfNot(e, hasNoPositiveOnly(e, true), s"$e is non pure and appears where only pure expressions are allowed.")
 
   /** Check all properties required for a function body. */
   def checkFunctionBody(e: Exp) {

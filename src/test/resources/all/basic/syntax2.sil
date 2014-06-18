@@ -3,7 +3,7 @@ domain D1[T]
    function f1(x:D1[T]) : D2[T]
    function make(x:T) : D1[T]
 //   function make2(x:T) : D1[D1[T]]
-   function break2(x:D1[D1[T]]) : D1[T]
+//   function break2(x:D1[D1[T]]) : D1[T]
    function f1b(x:D1[T]) : Int
 }
 domain D2[T]

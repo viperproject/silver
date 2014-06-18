@@ -161,8 +161,8 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
 /** Function application. */
 case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl]) extends FuncLikeApp with PossibleTrigger {
-//  args foreach Consistency.checkNoPositiveOnly
-  args foreach (_.isPure)
+  args foreach Consistency.checkNoPositiveOnly
+//  args foreach (_.isPure)
 
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
@@ -176,8 +176,8 @@ object FuncApp {
 
 /** User-defined domain function application. */
 case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl]) extends AbstractDomainFuncApp with PossibleTrigger {
-//  args foreach Consistency.checkNoPositiveOnly
-  args foreach (_.isPure)
+  args foreach Consistency.checkNoPositiveOnly
+//  args foreach (_.isPure)
   def typ = typPassed
   def formalArgs = formalArgsPassed
   def func = (p:Program) => p.findDomainFunction(funcname)
@@ -246,7 +246,8 @@ case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position 
 // --- Old expression
 
 case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnExp {
-  require(exp.isPure)
+  Consistency.checkNoPositiveOnly(exp)
+  //require(exp.isPure)
   lazy val typ = exp.typ
 }
 

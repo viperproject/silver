@@ -123,7 +123,7 @@ case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stm
 
 /** A label (that can be the target of a goto). */
 case class Label(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
-  require(Consistency.validUserDefinedIdentifier(name))
+  Consistency.validUserDefinedIdentifier(name)
 }
 
 /**

@@ -102,7 +102,7 @@ case class Translator(program: PProgram) {
       case PDomainFunction(_, args, typ, unique) =>
         DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos)
       case PDomain(_, typVars, funcs, axioms) =>
-        Domain(name, null, null, typVars map (t => TypeVar(t.name)))(pos)
+        Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)))(pos)
       case PPredicate(_, formalArgs, _) =>
         Predicate(name, formalArgs map liftVarDecl, null)(pos)
       case PMethod(_, formalArgs, formalReturns, _, _, _) =>

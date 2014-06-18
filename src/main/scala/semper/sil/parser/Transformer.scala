@@ -23,7 +23,7 @@ object Transformer {
         case _: PIdnDef => parent
         case _: PIdnUse => parent
         case PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))
-
+        case PTypeVarDecl(idndef) => PTypeVarDecl(go(idndef))
         case _: PPrimitiv => parent
         case PDomainType(domain, args) => PDomainType(go(domain), args map go)
         case PSeqType(elementType) => PSeqType(go(elementType))

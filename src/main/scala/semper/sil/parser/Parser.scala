@@ -201,12 +201,15 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   lazy val domainDecl =
     ("domain" ~> idndef) ~
-      opt("[" ~> repsep(idndef, ",") <~ "]") ~
+      opt("[" ~> repsep(domainTypeVarDecl, ",") <~ "]") ~
       ("{" ~> rep(domainFunctionDecl)) ~
       (rep(axiomDecl) <~ "}") ^^ {
       case name ~ typparams ~ funcs ~ axioms =>
         PDomain(name, typparams.getOrElse(Nil), funcs, axioms)
     }
+
+  lazy val domainTypeVarDecl =
+    idndef ^^ PTypeVarDecl
 
   lazy val axiomDecl =
     ("axiom" ~> idndef) ~ ("{" ~> (exp <~ "}")) <~ opt(";") ^^ PAxiom

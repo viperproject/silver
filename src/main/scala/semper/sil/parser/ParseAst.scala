@@ -82,14 +82,14 @@ trait PIdentifier {
 case class PIdnDef(name: String) extends PNode with PIdentifier
 
 case class PIdnUse(name: String) extends PExp with PIdentifier {
-  var decl: PRealEntity = null
+  var decl: PDeclaration = null
     /* Should be set during resolving. Intended to preserve information
      * that is needed by the translator.
      */
 }
 
 // Formal arguments
-case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with PTypedEntity
+case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with PTypedDeclaration with PLocalDeclaration
 
 // Types
 sealed trait PType extends PNode {
@@ -264,39 +264,27 @@ case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PStmt) extends PStmt
 case class PFresh(vars: Seq[PIdnUse]) extends PStmt
 case class PConstraining(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
-case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with PTypedEntity
+case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with PTypedDeclaration with PLocalDeclaration
 case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) extends PStmt
-case class PLabel(idndef: PIdnDef) extends PStmt with PRealEntity
+case class PLabel(idndef: PIdnDef) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
-case class PTypeVarDecl(idndef: PIdnDef) extends PRealEntity
+case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 
-// Declarations
-sealed trait PMember extends PNode with PScope {
-  def idndef: PIdnDef
-}
-// a member (like method or axiom) that is its own name scope
 sealed trait PScope extends PNode
 
-case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
-case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PRealEntity
-case class PDomain(idndef: PIdnDef, typVars: Seq[PIdnDef], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PRealEntity
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with PTypedEntity
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with PTypedEntity
-case class PAxiom(idndef: PIdnDef, exp: PExp) extends PScope
-case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedEntity
-case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: PExp) extends PMember with PTypedEntity {
-  val typ = PPredicateType()
-}
-
-/** An entity is a declaration (i.e. something that contains a PIdnDef). */
+// Declarations
+/** An entity is a declaration (named) or an error node */
 sealed trait PEntity
 
-sealed trait PRealEntity extends PEntity {
+sealed trait PDeclaration extends PNode with PEntity {
   def idndef: PIdnDef
 }
 
-object PRealEntity {
-  def descriptiveName(entity: PRealEntity) = {
+sealed trait PGlobalDeclaration extends PDeclaration
+sealed trait PLocalDeclaration extends PDeclaration
+
+object PDeclaration {
+  def descriptiveName(entity: PDeclaration) = {
     val entityName =
       entity match {
         case _: PDomain => "domain"
@@ -309,16 +297,35 @@ object PRealEntity {
         case _: PMethod => "method"
         case _: PPredicate => "predicate"
         case _: PTypeVarDecl => "type variable"
+        case _: PAxiom => "axiom"
       }
 
     s"$entityName ${entity.idndef.name}"
   }
 }
 
-sealed trait PTypedEntity extends PRealEntity {
+sealed trait PTypedDeclaration extends PDeclaration {
   def typ: PType
 }
 abstract class PErrorEntity(name: String) extends PEntity
+
+
+// a member (like method or axiom) that is its own name scope
+sealed trait PMember extends PDeclaration with PScope {
+//  def idndef: PIdnDef
+}
+
+case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
+case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
+case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with PGlobalDeclaration with PTypedDeclaration
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with PGlobalDeclaration with PTypedDeclaration
+case class PAxiom(idndef: PIdnDef, exp: PExp) extends PScope with PGlobalDeclaration //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
+case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
+case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: PExp) extends PMember with PTypedDeclaration with PGlobalDeclaration{
+  val typ = PPredicateType()
+}
+
 
 /**
  * A entity represented by names for whom we have seen more than one
@@ -419,6 +426,7 @@ object Nodes {
       case PPredicate(name, args, body) =>
         Seq(name) ++ args ++ Seq(body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
+      case PTypeVarDecl(name) => Seq(name)
     }
   }
 }

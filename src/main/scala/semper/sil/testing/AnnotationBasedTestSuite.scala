@@ -46,7 +46,7 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
         val title = s"${errors.size} errors"
         val body = errors.groupBy(_.errorType).map({
           case (typ, es) =>
-            TestErrorType.message(typ) + ":\n" + es.map("  " + _).mkString("\n")
+            TestErrorType.message(typ) + ":\n" + es.map("  " + _.message).mkString("\n")
         }).mkString("\n\n")
         fail(title + "\n\n" + body + "\n\n")
       }
