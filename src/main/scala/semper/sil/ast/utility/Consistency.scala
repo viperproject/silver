@@ -127,7 +127,10 @@ object Consistency {
     }
   }
 
-  def noGhostOperations(n: Node) = !n.existsDefined {case _: GhostOperation => }
+  def noGhostOperations(n: Node) = !n.existsDefined {
+    case u: Unfolding if !u.isPure =>
+    case gop: GhostOperation if !gop.isInstanceOf[Unfolding] =>
+  }
 
   /** Returns true iff the given expression is a valid trigger. */
   def validTrigger(e: Exp): Boolean = {
@@ -251,16 +254,16 @@ object Consistency {
       checkIfValidChainOfGhostOperations(gop.body, root)
 
     case _ =>
-      val invalid =
-        !n.existsDefined {
-          case unf: UnFoldingExp if !unf.isPure =>
-          case gop: GhostOperation =>
-        }
+//      val invalid =
+//        !n.existsDefined {
+//          case unf: Unfolding if !unf.isPure =>
+//          case gop: GhostOperation if !gop.isInstanceOf[Unfolding] =>
+//        }
 
-      recordIfNot(root, invalid,   "Magic wand has unsupported shape. "
+      recordIfNot(root, noGhostOperations(n), "Magic wand has unsupported shape. "
                                  + "Its RHS must be of the shape 'GOp1 in GOp2 in ... in A', where the GOps are "
                                  + "(impure) ghost operations, and where the final in-clause assertion A may"
-                                 + "only contain pure (un)folding expressions.")
+                                 + "only contain pure unfolding expressions.")
   }
 
   class InsideWandStatus protected[InsideWandStatus](val isInside: Boolean, val isLeft: Boolean, val isRight: Boolean) {
