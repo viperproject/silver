@@ -1,0 +1,10 @@
+//:: IgnoreFile(/silicon/issue/62/)
+
+field f:Int
+
+method m(S:Seq[Ref], a:Int, b:Int)
+requires forall i:Int :: i in [0..|S|) ==> acc(S[i].f, write)
+requires a >= 0 && a < b && b < |S|
+{
+    assert(S[a] != S[b])
+}

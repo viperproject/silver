@@ -1,0 +1,29 @@
+//:: IgnoreFile(/silicon/issue/60/)
+
+field f: Int
+
+method find_var (S:Seq[Ref], x:Int) returns (index:Int)
+  requires forall i:Int :: i in [0..|S|)  ==> acc(S[i].f, write)
+  ensures forall j:Int :: j in [0..|S|) ==> acc(S[j].f, write)
+  ensures 0 <= index && index <= |S|
+  ensures 0 <= index && index < |S| ==> S[index].f==x
+{
+    if(|S| == 0) {
+        index := 0
+    }
+    elsif (|S|==1) {
+        index := x == S[0].f ? 0 : 1
+    }
+    else {
+        // split
+        var k:Int
+        inhale 0<k && k<|S|-1
+        var f1:Int
+        var f2:Int
+        // fails!!
+        f1 := find_var (S[..k],x)  
+        f2 := find_var (S[k..],x)
+        if (f1 != k) { index := f1 }
+        else { index := k+f2 }
+    }
+}

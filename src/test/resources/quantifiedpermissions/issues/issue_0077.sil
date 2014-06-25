@@ -1,0 +1,11 @@
+//:: IgnoreFile(/silicon/issue/77/)
+
+field f: Int
+
+method foo(S: Seq[Ref], start: Int, end: Int, p: Perm)
+  requires 0 <= start && start <= end && end <= |S|
+  requires (forall i:Int :: i in [start..end) ==> acc(S[i].f, p))
+     // Postcondition of foo might not hold. Receiver of S[i1].f might be null
+  ensures (forall i1:Int :: i1 in [start..end) ==> acc(S[i1].f, p))
+{
+}
