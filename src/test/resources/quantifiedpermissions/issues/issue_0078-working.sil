@@ -1,34 +1,26 @@
 //:: IgnoreFile(/silicon/issue/78/)
 
-field p: Ref
-field s: Set[Ref]
-
-/*method Dmm(this: Ref)
-  requires this != null && acc(this.p) && acc(this.s) && this in this.s && this.p == null
-{
-  exhale    acc(this.s)
-         && (forall x: Ref :: x in this.s ==> acc(x.p, 1/2))
-         && (forall x: Ref :: x in this.s && x.p == null ==> acc(x.p, 1/2))
-}*/
-
 field left: Ref
 field all: Set[Ref]
 
-predicate inv(this: Ref) {
+/*predicate inv(this: Ref) {
      acc(this.all)
   && (forall q: Ref :: q in (this.all) ==> acc(q.left, 1/2))
   && (forall s: Ref :: (s in (this.all) && s.left == null) ==> acc(s.left, 1/2))
 }
 
-/*method foo() {
+method foo() {
   var x: Ref
   var t: Ref
 
-  inhale acc(x.left) && x.left == null
-  inhale acc(t.all) && t.all == Set(x)
+  inhale acc(x.left, 1/2)
+  inhale acc(x.left, 1/4) && acc(x.left, 1/4)
+  x.left := null
+  exhale acc(x.left, 1/4) && acc(x.left, 1/4)
+  exhale acc(x.left, 1/2)
 
   fold acc(inv(t))
-}*/
+}
 
 method goo() {
   var x: Ref
@@ -38,4 +30,15 @@ method goo() {
   unfold acc(inv(t))
   inhale x in t.all && x.left == null
   exhale acc(x.left)  
+}*/
+
+method doo() {
+  var x: Set[Ref]
+  var y: Ref
+  var z: Ref
+  
+  inhale x == Set(y, z) && y != null && z != null
+  inhale forall w: Ref :: w in x ==> acc(w.left, 1/2)
+  
+  assert y.left == z.left
 }
