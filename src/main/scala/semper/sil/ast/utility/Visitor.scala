@@ -1,3 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package semper.sil.ast.utility
 
 import semper.sil.ast._
@@ -23,7 +35,7 @@ object Visitor {
     val subResults = subs(n).map(reduceWithContext[N, C, R](_, subs)(newContext, enter, combine))
     combine(n, context, subResults)
   }
-  
+
   /** A generalisation of Scala's collect, which applies not just to the list of nodes ns, but also to all those transitively traversed via `subs`.
     *
     * @tparam N Node type.
@@ -117,5 +129,5 @@ object Visitor {
     }
     false
   }
-  
+
 }

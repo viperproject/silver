@@ -1,3 +1,21 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package semper.sil.ast
 
 import pretty.PrettyPrinter
@@ -127,11 +145,11 @@ trait Node extends Traversable[Node] {
    */
   def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitor.existsDefined(this, Nodes.subnodes, f)
 
-  /** 
+  /**
    * Checks whether the parameter is a subnode of this node
    */
   def hasSubterm(toFind : Node): Boolean = {val self = this; this.existsDefined{ case found if found==toFind && found!=self => }}
-  
+
   override def toString = PrettyPrinter.pretty(this)
 
   /**

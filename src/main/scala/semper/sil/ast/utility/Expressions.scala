@@ -1,3 +1,15 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package semper.sil.ast.utility
 
 import semper.sil.ast._
@@ -25,7 +37,7 @@ object Expressions {
          | _: MultisetExp
     => true
   }
-  
+
   def purify(e: Exp): Exp = e.transform({
       case _: AccessPredicate => TrueLit()()
     })()
@@ -257,22 +269,22 @@ object Expressions {
       if (functionApps.isEmpty) Seq()
       else {
         val candidates: Seq[(Trigger, Seq[LocalVarDecl])] = buildTriggersCovering(vs, functionApps, Nil, Seq())
-        
+
         // filter out any trigger sets with redundant terms (e.g., {g(x),f(g(x))}) - entire set is dropped, since the version without redundancy will also be found (e.g. {f(g(x))})
         val filteredCandidates: Seq[(Trigger, Seq[LocalVarDecl])] = candidates.filter(_._1 match { case Trigger(exps) => (!exps.exists(t1 => exps.exists(t2 => t1.hasSubterm(t2)))) } )
 
         // now remove any trigger sets which are "subsumed" by another trigger set (in the sense that they define a strictly weaker criterion).
         // The criterion used here is that a set is weaker than another iff every term in the first set is a strict subterm of some term in the second set.
         // Note that it may be that this criterion could be generalised (using some unification to spot e.g. that f(g(x),g(y)) is stricter than f(x,y), but this is not done here.
-        var triggerSetsToUse: Seq[(Trigger, Seq[LocalVarDecl])] = filteredCandidates.filter(trig => trig._1 match { case Trigger(exps) => 
-          !filteredCandidates.exists(other => other!=trig && (other._1 match { case Trigger(other_exps) => 
+        var triggerSetsToUse: Seq[(Trigger, Seq[LocalVarDecl])] = filteredCandidates.filter(trig => trig._1 match { case Trigger(exps) =>
+          !filteredCandidates.exists(other => other!=trig && (other._1 match { case Trigger(other_exps) =>
             exps.forall(exp => other_exps.exists(_.hasSubterm(exp)))
-          })) 
+          }))
         })
-        
+
         // Finally, group trigger sets by those which use the same sets of extra boolean variables
-        var groupedTriggerSets: Seq[(Seq[Trigger], Seq[LocalVarDecl])] = Seq() 
-        
+        var groupedTriggerSets: Seq[(Seq[Trigger], Seq[LocalVarDecl])] = Seq()
+
         while (!triggerSetsToUse.isEmpty) {
           triggerSetsToUse.partition((ts: (Trigger, Seq[LocalVarDecl])) => triggerSetsToUse.head._2.equals(ts._2)) match {
             case (sameVars, rest) =>
@@ -283,18 +295,18 @@ object Expressions {
         groupedTriggerSets
       }
     }
-    
+
     def filterTriggers(vs: Seq[LocalVar], triggersToFilter: Seq[(Trigger, Seq[LocalVarDecl])], filteredTriggers: Seq[(Trigger, Seq[LocalVarDecl])]) : Seq[(Trigger, Seq[LocalVarDecl])] =
-      
+
       triggersToFilter match {
         case Nil => filteredTriggers
         case ((triggerSet, extraVars) :: rest) => {
           if(filteredTriggers.exists(_ => true)) filteredTriggers else filteredTriggers
         }
       }
-      
-    
-      
-      
+
+
+
+
   }
 }
