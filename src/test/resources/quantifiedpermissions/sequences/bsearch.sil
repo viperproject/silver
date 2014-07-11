@@ -1,3 +1,5 @@
+//:: IgnoreFile(/silicon/issue/103/)
+
 field f:Int
 
 method bfind (S: Seq[Ref], x:Int, p: Perm) returns (index:Int)
