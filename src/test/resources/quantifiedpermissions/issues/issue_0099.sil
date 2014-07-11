@@ -1,0 +1,30 @@
+field Integer_value: Int
+
+method repro(s:Seq[Ref])
+{
+  inhale (forall x: Int :: x in [0..|s|) ==> acc(s[x].Integer_value))
+  inhale (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].Integer_value == 0))
+  assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].Integer_value == 0)) //fails
+}
+
+method reprotwo(s:Seq[Ref])
+{
+  inhale (forall x: Ref :: x in s ==> acc(x.Integer_value))
+  inhale (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].Integer_value == 0))
+  assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].Integer_value == 0)) //fails
+}
+
+method reprothree(s:Seq[Ref])
+{
+  inhale (forall x: Ref :: x in s ==> acc(x.Integer_value))
+  inhale (forall x: Ref :: x in s ==> (x.Integer_value == 0))
+  assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].Integer_value == 0)) //fails
+}
+
+method reprofour(s:Seq[Ref])
+{
+  inhale (forall x: Ref :: x in s ==> acc(x.Integer_value))
+  inhale (forall x: Ref :: x in s ==> (x.Integer_value == 0))
+  assert (forall x: Ref :: x in s ==> (x.Integer_value == 0))
+  assert |s|>0 ==> s[0].Integer_value == 0 //fails
+}
