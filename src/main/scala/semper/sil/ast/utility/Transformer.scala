@@ -42,7 +42,6 @@ object Transformer {
             case Folding(acc, e) => Folding(go(acc), go(e))(p, i)
             case Applying(wand, in) => Applying(go(wand), go(in))(p, i)
             case Packaging(wand, in) => Packaging(go(wand), go(in))(p, i)
-            case Exhaling(e) => Exhaling(go(e))(p, i)
 
             case Old(e) => Old(go(e))(p, i)
             case PackageOld(e) => PackageOld(go(e))(p, i)
