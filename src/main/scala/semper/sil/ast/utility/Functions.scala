@@ -20,8 +20,6 @@ import org.jgrapht.traverse.TopologicalOrderIterator
 
 /**
  * Utility methods for functions.
- *
- * @author Stefan Heule
  */
 object Functions {
 

@@ -13,8 +13,6 @@ import java.nio.file.{Files, Path}
  *
  * @param errors The errors encountered during parsing.
  * @param annotations The test annotations found.
- *
- * @author Stefan Heule
  */
 sealed case class TestAnnotations(
     errors: Seq[TestAnnotationParseError],

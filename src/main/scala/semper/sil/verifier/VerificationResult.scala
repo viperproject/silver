@@ -9,8 +9,7 @@ package semper.sil.verifier
 import semper.sil.ast._
 
 /** Describes the outcome of a verification attempt of a SIL program.
-  *
-  * @author Stefan Heule
+
   */
 sealed trait VerificationResult
 

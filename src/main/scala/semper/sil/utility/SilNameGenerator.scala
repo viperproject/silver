@@ -11,8 +11,6 @@ import semper.sil.ast.utility.Consistency
 
 /**
  * A name generator for SIL.
- *
- * @author Stefan Heule
  */
 class SilNameGenerator extends DefaultNameGenerator {
 

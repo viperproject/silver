@@ -12,8 +12,6 @@ import scala.io.Source
 /**
  * A parser for test annotations.  For an explanation of possible annotations and their syntax see
  * [[https://bitbucket.org/semperproject/sil/wiki/End-to-End%20Testing%20of%20Verifiers%20Based%20on%20SIL the description on the wiki]].
- *
- * @author Stefan Heule
  */
 trait TestAnnotationParser {
 

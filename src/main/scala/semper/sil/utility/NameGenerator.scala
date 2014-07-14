@@ -12,8 +12,6 @@ import scala.concurrent.Lock
 
 /**
  * Interface for a class that can generate unique names.
- *
- * @author Bernhard Brodowsky
  */
 trait NameGenerator {
 
@@ -47,8 +45,6 @@ trait NameGenerator {
 
 /**
  * Default Implementation for the name generator.
- *
- * @author Bernhard Brodowsky
  */
 trait DefaultNameGenerator extends NameGenerator {
   val globalContext = new NameContext()

@@ -10,8 +10,6 @@ import java.util.regex.Pattern
 
 /**
  * A simple collection of utility methods for dealing with paths and environment variables.
- *
- * @author Stefan Heule
  */
 object Paths {
 

@@ -17,8 +17,7 @@ case class Phase(name: String, action: () => Unit)
 
 /** A translator for some programming language that produces a SIL program (which then in turn can be verified using a
   * SIL verifier).
-  *
-  * @author Stefan Heule
+
   */
 trait Frontend {
 

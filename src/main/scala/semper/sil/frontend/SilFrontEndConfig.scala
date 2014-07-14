@@ -13,8 +13,6 @@ import org.rogach.scallop.exceptions.{Help, Version, ScallopException}
 
 /**
  * The configuration of a SIL front-end.
- *
- * @author Stefan Heule
  */
 class SilFrontendConfig(args: Seq[String], private var projectName: String) extends LazyScallopConf(args) {
   /* Attention: projectName must be an explicit field, otherwise it cannot be

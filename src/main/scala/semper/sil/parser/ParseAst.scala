@@ -14,8 +14,6 @@ import java.nio.file.Path
 /**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual SIL abstract syntax tree.
- *
- * @author Stefan Heule
  */
 sealed trait PNode extends Positioned with Attributable {
   /**
@@ -347,8 +345,6 @@ case class PUnknownEntity() extends PErrorEntity("unknown")
 
 /**
  * Utility methods for parser parserAST nodes.
- *
- * @author Stefan Heule
  */
 object Nodes {
 
@@ -439,8 +435,6 @@ object Nodes {
 
 /**
  * An implementation for visitors of the SIL AST.
- *
- * @author Stefan Heule
  */
 object Visitor {
 

@@ -21,8 +21,6 @@ import semper.sil.verifier.TypecheckerError
  * Common functionality to implement a command-line verifier for SIL.  This trait
  * provides code to invoke the parser, parse common command-line options and print
  * error messages in a user-friendly fashion.
- *
- * @author Stefan Heule
  */
 trait SilFrontend extends DefaultFrontend {
 
