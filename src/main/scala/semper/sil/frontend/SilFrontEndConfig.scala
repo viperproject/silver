@@ -27,6 +27,11 @@ class SilFrontendConfig(args: Seq[String], private var projectName: String) exte
   /** True if (after command-line parsing) we should exit. */
   var exit: Boolean = false
 
+  /** Should be true after `LazyScallopConf.initialize` has been called,
+    * i.e., it should be set to true by the closure passed to `LazyScallopConf.initialize`.
+    */
+  var initialized: Boolean = false
+
   val file = trailArg[String]("file", "The file to verify.", (x: String) => {
     val f = new java.io.File(x)
     f.canRead

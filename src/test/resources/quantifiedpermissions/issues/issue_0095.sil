@@ -1,9 +1,7 @@
-//:: IgnoreFile(/silicon/issue/95/)
-
 field next: Ref
 
 predicate Valid(nodes: Set[Ref]) {
-  (forall n:Ref :: n in nodes ==> acc(n.next)) 
+  (forall n: Ref :: n in nodes ==> acc(n.next))
 }
 
 method Bug(nodes: Set[Ref], rd: Perm)
