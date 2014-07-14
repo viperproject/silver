@@ -326,6 +326,7 @@ object AbstractLocalVar {
 /** A normal local variable. */
 case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar with Lhs {
   require(Consistency.validUserDefinedIdentifier(name))
+  require(typ != null)
 }
 
 /** A special local variable for the result of a function. */
