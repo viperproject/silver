@@ -1,5 +1,6 @@
-field f : Ref
+//:: IgnoreFile(/silicon/issue/105/)
 
+field f : Ref
 
 method allocTest(x: Ref) {
   var y: Ref
