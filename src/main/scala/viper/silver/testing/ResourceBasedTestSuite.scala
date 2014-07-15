@@ -51,7 +51,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
    */
   def buildTestInput(file: Path, prefix: String): InputType
 
-  val defaultTestPattern: String = ".*\\.silver"
+  val defaultTestPattern: String = ".*\\.sil"
 
   /**
    * Recursively registers all files found in the given directory as a test.
