@@ -4,11 +4,11 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper.sil
+package viper.silver
 
 import org.scalatest.{BeforeAndAfter, FunSuite}
-import semper.sil.ast._
-import semper.sil.ast.utility.ControlFlowGraph
+import viper.silver.ast._
+import viper.silver.ast.utility.ControlFlowGraph
 import java.lang.RuntimeException
 import java.nio.file.FileSystems
 import org.scalatest.matchers.ShouldMatchers

@@ -4,7 +4,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper.sil
+package viper.silver
 
 import scala.language.implicitConversions
 import org.scalatest.FunSuite

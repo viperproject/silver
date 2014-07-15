@@ -4,14 +4,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package semper.sil
+package viper.silver
 
 import org.scalatest.{BeforeAndAfter, FunSuite}
 import org.scalatest.matchers.ShouldMatchers
-import semper.sil.testing._
+import viper.silver.testing._
 import java.nio.file.{FileSystems, Path}
-import semper.sil.testing.OutputAnnotationId
-import semper.sil.testing.ExpectedOutput
+import viper.silver.testing.OutputAnnotationId
+import viper.silver.testing.ExpectedOutput
 import scala.collection.immutable.Nil
 
 object TestFixtures {
@@ -36,7 +36,7 @@ case class DummyOutput(file: Path, lineNr: Int, fullId: String) extends Abstract
   override def toString = s"$lineNr:$fullId"
 }
 
-/** Tests [[semper.sil.testing.OutputMatcher]]. */
+/** Tests [[viper.silver.testing.OutputMatcher]]. */
 class OutputMatcherTest extends FunSuite with BeforeAndAfter with ShouldMatchers {
   import TestFixtures._
 
@@ -72,7 +72,7 @@ class OutputMatcherTest extends FunSuite with BeforeAndAfter with ShouldMatchers
   }
 }
 
-/** Tests [[semper.sil.testing.TestAnnotations]]. */
+/** Tests [[viper.silver.testing.TestAnnotations]]. */
 class TestAnnotationsTest extends FunSuite with BeforeAndAfter with ShouldMatchers {
   import TestFixtures._
 
@@ -118,7 +118,7 @@ class TestAnnotationsTest extends FunSuite with BeforeAndAfter with ShouldMatche
   }
 }
 
-/** Tests [[semper.sil.testing.OutputAnnotationId]]. */
+/** Tests [[viper.silver.testing.OutputAnnotationId]]. */
 class OutputAnnotationIdTest extends FunSuite with BeforeAndAfter with ShouldMatchers {
   val foo = OutputAnnotationId("foo", None)
   val fooBar = OutputAnnotationId("foo", Some("bar"))
