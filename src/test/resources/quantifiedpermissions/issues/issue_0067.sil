@@ -1,0 +1,13 @@
+//:: IgnoreFile(/silicon/issue/67/)
+
+field k:Perm
+field f:Int
+
+method m(S:Set[Ref], a:Ref)
+requires forall s:Ref :: s in S ==> acc(s.k, write)
+requires forall s:Ref :: s in S ==> s.k > none
+requires forall s:Ref :: s in S && s != null ==> acc(s.f, s.k)
+requires a in S
+{
+    exhale acc(a.f, a.k)
+}

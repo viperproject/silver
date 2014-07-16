@@ -1,0 +1,5 @@
+method test(x: Set[Int], y: Set[Int]) returns (z: Set[Int]) {
+  z := x union y
+//:: ExpectedOutput(typechecker.error)
+  z := x ++ y
+}

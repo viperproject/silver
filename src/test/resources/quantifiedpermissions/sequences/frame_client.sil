@@ -1,9 +1,10 @@
+//:: IgnoreFile(/silicon/issue/107/)
+
 field f:Int
 
 method foo(S: Seq[Ref], start: Int, end: Int, p: Perm)
   requires 0 <= start && start <= end && end <= |S|
   requires (forall i:Int :: i in [start..end) ==> acc(S[i].f, p))
-    //:: UnexpectedOutput(postcondition.violated:receiver.null, /silicon/issue/77/)
   ensures (forall i1:Int :: i1 in [start..end) ==> acc(S[i1].f, p))
 {
 }

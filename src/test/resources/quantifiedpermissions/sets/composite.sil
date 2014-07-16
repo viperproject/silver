@@ -1,3 +1,5 @@
+//:: IgnoreFile(/silicon/issue/78/)
+
 domain Visit {
   function visit(rf: Ref): Bool
 }
@@ -89,13 +91,19 @@ method initAndInsert(this: Ref, newParent: Ref, isLeft: Bool)
   this.value := 1
   this.parent := newParent
   unfold acc(inv(newParent.parentStruct, Set[Ref]()), write)
+  
+  //inhale visit(newParent)
 
-  // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
   assert isLeft ? newParent.left == null : newParent.right == null
-
-  assert acc(newParent.left, 1/2) //&& (isLeft ==> acc(newParent.left, 1/2))
+  assert (forall q: Ref :: q in (newParent.parentStruct.all) ==> acc(q.left, 1/2)) && (forall s: Ref :: (s in (newParent.parentStruct.all) && s.left == null) ==> acc(s.left, 1/2))
+  assert newParent in newParent.parentStruct.all
+  assert acc(newParent.left, 1/2) && (isLeft ==> acc(newParent.left, 1/2))
 
   if (isLeft) {
+    assert acc(newParent.left, 1/2) && (isLeft ==> acc(newParent.left, 1/2))
+	assert isLeft
+	assert acc(newParent.left)
+	
     //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/issue/78/)
     newParent.left := this
   } else {

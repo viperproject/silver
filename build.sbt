@@ -1,7 +1,7 @@
 
-name := "sil"
+name := "silver"
 
-organization  := "semper"
+organization  := "viper"
 
 version := "0.1-SNAPSHOT"
 
