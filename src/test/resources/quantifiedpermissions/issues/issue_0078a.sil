@@ -1,0 +1,45 @@
+/* The problem was a "typo" in the original implementation of
+ * DefaultConsumer/ast.Forall, with the effect that the pre-consume heap σ.h
+ * was used in a place where the consume heap h should be used.
+ */
+
+field p: Ref
+field s: Set[Ref]
+
+method Dmm(this: Ref)
+  requires this != null && acc(this.p) && acc(this.s) && this in this.s && this.p == null
+{
+  //:: UnexpectedOutput(exhale.failed:receiver.null, /silicon/issue/102/)
+  exhale    acc(this.s)
+         && (forall x: Ref :: x in this.s ==> acc(x.p, 1/2))
+         && (forall x: Ref :: x in this.s && x.p == null ==> acc(x.p, 1/2))
+}
+
+field left: Ref
+field all: Set[Ref]
+
+predicate inv(this: Ref) {
+     acc(this.all)
+  && (forall q: Ref :: q in (this.all) ==> acc(q.left, 1/2))
+  && (forall s: Ref :: (s in (this.all) && s.left == null) ==> acc(s.left, 1/2))
+}
+
+method foo() {
+  var x: Ref
+  var t: Ref
+
+  inhale acc(x.left) && x.left == null
+  inhale acc(t.all) && t.all == Set(x)
+
+  fold acc(inv(t))
+}
+
+method goo() {
+  var x: Ref
+  var t: Ref
+
+  inhale acc(inv(t))
+  unfold acc(inv(t))
+  inhale x in t.all && x.left == null
+  exhale acc(x.left)
+}

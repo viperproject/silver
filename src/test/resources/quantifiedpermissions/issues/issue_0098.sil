@@ -1,12 +1,13 @@
-//:: IgnoreFile(/silicon/issue/98/)
-
 field f: Int
 
 method foo() {
   var s: Set[Ref]
   var a: Ref
   var b: Ref
+
   inhale s == Set(a, b) && a!=null && b!=null
   inhale forall x: Ref :: x in s ==> acc(x.f)
+
+  //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/98/)
   assert a.f == b.f
 }

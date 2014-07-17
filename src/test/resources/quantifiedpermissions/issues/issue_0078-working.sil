@@ -1,5 +1,3 @@
-//:: IgnoreFile(/silicon/issue/78/)
-
 field left: Ref
 field all: Set[Ref]
 
@@ -29,16 +27,16 @@ method goo() {
   inhale acc(inv(t))
   unfold acc(inv(t))
   inhale x in t.all && x.left == null
-  exhale acc(x.left)  
+  exhale acc(x.left)
 }*/
 
 method doo() {
   var x: Set[Ref]
   var y: Ref
   var z: Ref
-  
+
   inhale x == Set(y, z) && y != null && z != null
   inhale forall w: Ref :: w in x ==> acc(w.left, 1/2)
-  
+
   assert y.left == z.left
 }

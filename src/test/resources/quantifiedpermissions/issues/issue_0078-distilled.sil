@@ -1,5 +1,3 @@
-//:: IgnoreFile(/silicon/issue/78/)
-
 field left: Ref
 field all: Set[Ref]
 
@@ -16,5 +14,5 @@ method goo() {
   inhale acc(inv(t))
   unfold acc(inv(t))
   inhale x in t.all && x.left == null
-  exhale acc(x.left)  
+  exhale acc(x.left)
 }

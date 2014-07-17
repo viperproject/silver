@@ -1,33 +1,30 @@
-//:: IgnoreFile(/silicon/issue/96/)
-  // serious performance problem!  removed from the suite, until issue #96 is resolved
-
 field f: Int
 
 method m() {
   var s: Seq[Ref]
   var p: Perm
   var k: Int
-  
+
   inhale 0 <= k && k < |s|
-  
+
   p := wildcard
-  
+
   inhale forall i:Int :: i in [0..|s|) ==> acc(s[i].f, wildcard)
   exhale forall i:Int :: i in [0..k) ==> acc(s[i].f, wildcard)
   exhale forall i:Int :: i in [k..|s|) ==> acc(s[i].f, wildcard)
-  
+
   inhale forall i:Int :: i in [0..|s|) ==> acc(s[i].f, wildcard)
   exhale forall i:Int :: i in [0..k) ==> acc(s[i].f, wildcard)
   exhale forall i:Int :: i in [k..|s|) ==> acc(s[i].f, wildcard)
-  
+
   inhale forall i:Int :: i in [0..|s|) ==> acc(s[i].f, wildcard)
   exhale forall i:Int :: i in [0..k) ==> acc(s[i].f, wildcard)
   exhale forall i:Int :: i in [k..|s|) ==> acc(s[i].f, wildcard)
-  
+
   inhale forall i:Int :: i in [0..|s|) ==> acc(s[i].f, wildcard)
   exhale forall i:Int :: i in [0..k) ==> acc(s[i].f, wildcard)
   exhale forall i:Int :: i in [k..|s|) ==> acc(s[i].f, wildcard)
-  
+
   inhale forall i:Int :: i in [0..|s|) ==> acc(s[i].f, wildcard)
   exhale forall i:Int :: i in [0..k) ==> acc(s[i].f, wildcard)
   exhale forall i:Int :: i in [k..|s|) ==> acc(s[i].f, wildcard)
