@@ -1,5 +1,5 @@
 
-name := "silver"
+name := "silver-magic-wands"
 
 organization  := "viper"
 
