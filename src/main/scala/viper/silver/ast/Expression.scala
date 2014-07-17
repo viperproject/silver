@@ -13,7 +13,7 @@
 package viper.silver.ast
 
 import org.kiama.output._
-import viper.silver.ast.utility.{ Expressions, Consistency }
+import viper.silver.ast.utility.{Expressions, Consistency}
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
