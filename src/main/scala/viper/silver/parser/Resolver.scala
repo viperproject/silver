@@ -10,7 +10,7 @@ import scala.collection.mutable
 import scala.reflect._
 import org.kiama.util.Messaging.{message, messagecount}
 import org.kiama.util.Positioned
-import semper.sil.ast.MagicWandOp
+import viper.silver.ast.MagicWandOp
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.

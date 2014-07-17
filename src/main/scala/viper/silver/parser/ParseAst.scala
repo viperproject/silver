@@ -296,8 +296,8 @@ case class PLabel(idndef: PIdnDef) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 
-case class PLetAss(idndef: PIdnDef, exp: PExp) extends PStmt with PRealEntity
-case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PRealEntity
+case class PLetAss(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
+case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
 sealed trait PScope extends PNode
