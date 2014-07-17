@@ -1,5 +1,3 @@
-//:: IgnoreFile(/Silicon/issue/71/)
-
 // class Cell
 field value:Int
 

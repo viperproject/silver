@@ -1,5 +1,3 @@
-//:: IgnoreFile(/silicon/issue/106/)
-
 // class Cell
 field value:Int
 
@@ -24,11 +22,11 @@ method parallel_mergesort(a:Ref, b:Ref, start:Int, end:Int)
 	var t1B: Seq[Ref]
 	var t2A: Seq[Ref]
 	var t2B: Seq[Ref]
-	
+
     if(end-start > 1)
     {
         middle := start + (end-start)\2
-		
+
 		// fork t1 := parallel_mergesort(a,b, start, middle)
 		t1A := a.array
 		t1B := b.array
@@ -37,7 +35,7 @@ method parallel_mergesort(a:Ref, b:Ref, start:Int, end:Int)
         exhale start >= 0 && middle <= |a.array| && |a.array| == |b.array|
         exhale forall i:Int :: i in [start..middle) ==> acc(a.array[i].value, write)
         exhale forall i:Int :: i in [start..middle) ==> acc(b.array[i].value, write)
-		
+
 		// fork t2 := parallel_mergesort(a,b, middle, end)
 		t2A := a.array
 		t2B := b.array
@@ -46,7 +44,7 @@ method parallel_mergesort(a:Ref, b:Ref, start:Int, end:Int)
         exhale middle >= 0 && end <= |a.array| && |a.array| == |b.array|
         exhale forall i:Int :: i in [middle..end) ==> acc(a.array[i].value, write)
         exhale forall i:Int :: i in [middle..end) ==> acc(b.array[i].value, write)
-		
+
 		// join t1
 		inhale acc(a.array, wildcard)
         inhale acc(b.array, wildcard)
@@ -54,7 +52,7 @@ method parallel_mergesort(a:Ref, b:Ref, start:Int, end:Int)
         inhale forall i:Int :: i in [start..middle) ==> acc(b.array[i].value, write)
         inhale a.array == t1A
         inhale b.array == t1B
-		
+
 		//join t2
 	    inhale acc(a.array, wildcard)
         inhale acc(b.array, wildcard)
@@ -62,7 +60,7 @@ method parallel_mergesort(a:Ref, b:Ref, start:Int, end:Int)
         inhale forall i:Int :: i in [middle..end) ==> acc(b.array[i].value, write)
         inhale a.array == t2A
         inhale b.array == t2B
-		
+
         merge(a,b,start,middle,end)
     }
 }
