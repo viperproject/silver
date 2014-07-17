@@ -103,14 +103,12 @@ class NoVerifier extends Verifier {
   def debugInfo(info: Seq[(String, Any)]) {}
   def parseCommandLine(args: Seq[String]) {}
 
-  /** Is not implemented and should never be called. */
-  def start() = ???
+  def start() = {}
 
   /** Is not implemented and should never be called. */
   def verify(program: Program) = ???
 
-  /** Is not implemented and should never be called. */
-  def stop() = ???
+  def stop() = {}
 }
 
 /** A description of a dependency of a verifier. */
