@@ -21,7 +21,7 @@ sealed case class TestAnnotations(
   def isFileIgnored(file: Path, project: String): Boolean = annotations exists {
     case _: IgnoreFileList => true
     case IgnoreFile(f, _, prj, _) =>
-      f.toAbsolutePath == file.toAbsolutePath && prj.equalsIgnoreCase(project)
+      f.toAbsolutePath == file.toAbsolutePath && projectNameMatches(prj, project) //prj.equalsIgnoreCase(project)
     case _ => false
   }
 
@@ -34,6 +34,48 @@ sealed case class TestAnnotations(
     }
   }
 
+  /* [2014-07-14 Malte]
+   *   ProjectSpecificAnnotations include a project name, e.g., Silicon,
+   *   and this case should return true iff the name of the current
+   *   project under testing matches the project name that is part of the
+   *   annotation. This ensures that, e.g., UnexpectedOutput-annotations
+   *   are only "expected" when the corresponding project is tested.
+   *
+   *   Having different forks of a project unfortunately complicates the
+   *   name comparison because the forks might have different names.
+   *   E.g., assume that there is a fork if Silicon called Silicon-Foo.
+   *   While the fork is being developed it gets its own test cases,
+   *   which are specific to this fork and not intended for its upstream.
+   *   These tests may have project-specific annotations, which include
+   *   the fork's project name, i.e., "Silicon-Wands".
+   *   All tests coming from of the upstream, however, still include the
+   *   original project name ("Silicon"), which doesn't match the fork's
+   *   name, with the consequence that all upstream tests with project-
+   *   specific annotations fails.
+   *
+   *   To account for forks with different names, the name comparison
+   *   (which used to be a.project.equalsIgnoreCase(project)) has been
+   *   changed s.t. it ignores the string preceding/following the project
+   *   name IF it is separated by a hyphen.
+   *
+   *   Examples:
+   *
+   *   Let "silicon" be the project name included in an annotation.
+   *   The following project names will/won't match:
+   *      will:  silicon, Silicon, silicon-Wands, magic-wands-silicon-2
+   *      won't: sil, sil-wands
+   *
+   *   Let "sil" be the project name included in an annotation:
+   *      will:  sil, sil-wands
+   *      won't: silicon, Silicon, silicon-Wands, magic-wands-silicon-2
+   *
+   *   Let "silicon-wands" be the project name included in an annotation:
+   *     will:  silicon-Wands
+   *     won't: silicon, sil, Silicon, magic-wands-silicon-2, sil-wands
+   */
+  def projectNameMatches(annotationProject: String, currentProject: String): Boolean =
+    currentProject.matches(s"(?i)(.*?-)?$annotationProject(-.*?)?")
+
   /**
    * Returns all test annotations except those that are specific
    * to a different project than the given one.
@@ -43,7 +85,7 @@ sealed case class TestAnnotations(
    */
   def filterByProject(project: String): TestAnnotations =
     copy(annotations = annotations filter {
-      case a: ProjectSpecificAnnotation => a.project.equalsIgnoreCase(project)
+      case a: ProjectSpecificAnnotation => projectNameMatches(a.project, project)
       case _ => true
     })
 
