@@ -17,7 +17,10 @@ import viper.silver.ast._
 /** Utility methods for expressions. */
 object Expressions {
   def isPure(e: Exp): Boolean = e match {
-    case _: AccessPredicate => false
+    case   _: AccessPredicate
+         | _: MagicWand
+         => false
+
     case lv: AbstractLocalVar if lv.typ == Wand => false
 
     case UnExp(e0) => isPure(e0)
