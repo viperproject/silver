@@ -34,6 +34,8 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
 
   /** Registers a given test input for a given system under test. */
   def registerTest(input: AnnotatedTestInput, system: SystemUnderTest) = {
+    info(input.name)
+
     test(input.name, input.tags :_*) {
       // Error for parse failures of test annotations
       val parserErrors = input.annotations.errors
