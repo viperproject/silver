@@ -582,7 +582,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   private def substituteDefines[N <: PMember](defines: Seq[PDefine], pnode: N): N = {
     def lookupOrElse(piu: PIdnUse, els: PExp) =
-      defines.find(_.idndef.name == piu.name).fold[PExp](piu) _
+      defines.find(_.idndef.name == piu.name).fold[PExp](els) _
 
     pnode.transform {
       case piu: PIdnUse =>
