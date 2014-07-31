@@ -19,42 +19,14 @@ case class Resolver(p: PProgram) {
   val names = NameAnalyser()
   val typechecker = TypeChecker(names)
 
-  /* TODO: Re-running the NameAnalyser is not efficient! It currently needs to be done to ensure that
-   *       the symbol table created by the analyzer contains information about the expressions that
-   *       replaced uses of letass-identifiers.
-   */
   def run: Option[PProgram] = {
     if (names.run(p)) {
-      val pTransformed = LetassExpander.transform(p)
-      names.reset()
-      if (names.run(pTransformed)) {
-        if (typechecker.run(pTransformed)) {
-          return Some(pTransformed)
-        }
+      if (typechecker.run(p)) {
+        return Some(p)
       }
     }
 
     None
-  }
-}
-
-object LetassExpander {
-  def transform(p: PProgram): PProgram = {
-    val pTransformed =
-      p.transform {
-        case _: PLetAss =>
-          PSkip().setPos(p)
-
-        case iu: PIdnUse if iu.letass.nonEmpty =>
-          val e: PExp = iu.letass.get.exp // TODO: Adapt position information all subexps
-          e.start = iu.start
-          e.finish = iu.finish
-
-          e
-      }()
-
-    org.kiama.attribution.Attribution.initTree(pTransformed)
-    pTransformed
   }
 }
 
@@ -240,7 +212,9 @@ case class TypeChecker(names: NameAnalyser) {
         val msg = "expected variable in fresh read permission block"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
         check(s)
-      case PLetAss(_, exp) => check(exp, Bool)
+      case _: PDefine =>
+        /* Should have been removed right after parsing */
+        sys.error(s"Unexpected node $stmt found")
       case PLetWand(_, wand) => check(wand, Wand)
       case _: PSkip =>
     }
@@ -477,7 +451,6 @@ case class TypeChecker(names: NameAnalyser) {
           case decl @ PField(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PPredicate(_, _, _) => setPIdnUseTypeAndEntity(piu, Pred, decl)
           case decl: PLetWand => setPIdnUseTypeAndEntity(piu, Wand, decl)
-          case decl: PLetAss => setPIdnUseTypeAndEntity(piu, Bool, decl) /* TODO: Should only happen before letass-macros have been expanded */
           case x => issueError(piu, s"expected identifier, but got $x")
         }
       case PBinExp(left, op, right) =>
@@ -1125,7 +1098,6 @@ case class NameAnalyser() {
             // domain types can also be type variables, which need not be declared
             if (!i.parent.isInstanceOf[PDomainType])
               message(i, s"identifier $name not defined.")
-          case p @ PLetAss(_, exp) => i.letass = Some(p)
           case _ =>
         }
       case _ =>

@@ -100,7 +100,7 @@ object Transformer {
         case PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)
         case PLabel(idndef) => PLabel(go(idndef))
         case PGoto(target) => PGoto(go(target))
-        case PLetAss(idndef, exp) => PLetAss(go(idndef), go(exp))
+        case PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))
         case PLetWand(idndef, wand) => PLetWand(go(idndef), go(wand))
         case _: PSkip => parent
 

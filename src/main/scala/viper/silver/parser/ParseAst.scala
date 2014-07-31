@@ -33,6 +33,9 @@ sealed trait PNode extends Positioned with Attributable {
     Visitor.reduce[C, R](this)(context, enter, combine)
   }
 
+  def deepCollect[V](f: PartialFunction[PNode,V]) : Seq[V] =
+    Visitor.deepCollect[PNode, V](this :: Nil, Nodes.subnodes)(f)
+
   /**
    * Applies the function `f` to the AST node, then visits all subnodes.
    */
@@ -87,8 +90,6 @@ trait PIdentifier {
 case class PIdnDef(name: String) extends PNode with PIdentifier
 
 case class PIdnUse(name: String) extends PExp with PIdentifier {
-  var letass: Option[PLetAss] = None /* TODO: Can we avoid using a var? */
-
   var decl: PDeclaration = null
     /* Should be set during resolving. Intended to preserve information
      * that is needed by the translator.
@@ -296,7 +297,7 @@ case class PLabel(idndef: PIdnDef) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 
-case class PLetAss(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
+case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) extends PStmt with PLocalDeclaration
 case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
@@ -328,7 +329,7 @@ object PDeclaration {
         case _: PPredicate => "predicate"
         case _: PTypeVarDecl => "type variable"
         case _: PAxiom => "axiom"
-        case _: PLetAss => "assertion macro"
+        case _: PDefine => "syntactic macro"
         case _: PLetWand => "wand reference"
       }
 
@@ -462,7 +463,7 @@ object Nodes {
         Seq(name) ++ args ++ Seq(body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
-      case PLetAss(idndef, ass) => Seq(idndef, ass)
+      case PDefine(idndef, optArgs, exp) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(exp)
       case PLetWand(idndef, wand) => Seq(idndef, wand)
       case _: PSkip => Nil
     }
@@ -533,5 +534,14 @@ object Visitor {
       }
     }
     f2(n)
+  }
+
+  def reduceTree[N, T](n: N, subs: N => Seq[N])(f: (N, Seq[T]) => T): T = {
+    val subResults = subs(n).map(reduceTree[N, T](_, subs)(f))
+    f(n, subResults)
+  }
+
+  def deepCollect[N, V](ns: Seq[N], subs: N => Seq[N])(f: PartialFunction[N,V]) : Seq[V] = {
+    ns.map((node:N) => reduceTree(node, subs)((n:N,vs:Seq[Seq[V]]) => if (f.isDefinedAt(n)) Seq(f(n)) ++ vs.flatten else vs.flatten)).flatten
   }
 }

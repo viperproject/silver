@@ -192,7 +192,7 @@ case class Translator(program: PProgram) {
         While(exp(cond), invs map exp, locals, stmt(body))(pos)
       case PLetWand(idndef, wand) =>
         LocalVarAssign(LocalVar(idndef.name)(Wand, pos), exp(wand))(pos)
-      case _: PLetAss | _: PSkip =>
+      case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
   }

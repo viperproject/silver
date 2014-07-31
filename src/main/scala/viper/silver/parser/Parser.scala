@@ -150,23 +150,30 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   // --- Declarations
 
   lazy val programDecl =
-    rep(domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
+    rep(defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
       case decls =>
-        val domains = decls collect {
-          case d: PDomain => d
-        }
-        val fields = decls collect {
-          case d: PField => d
-        }
-        val functions = decls collect {
-          case d: PFunction => d
-        }
-        val predicates = decls collect {
-          case d: PPredicate => d
-        }
+        val globalDefines = decls.collect{case d: PDefine => d}
+        val fields = decls collect { case d: PField => d }
+
         val methods = decls collect {
-          case d: PMethod => d
+          case meth: PMethod =>
+            val localDefines = meth.deepCollect {case n: PDefine => n}
+
+            val methWithoutDefines =
+              if (localDefines.isEmpty)
+                meth
+              else
+                meth.transform {
+                  case la: PDefine => PSkip().setPos(la)
+                }()
+
+            substituteDefines(localDefines ++ globalDefines, methWithoutDefines)
         }
+
+        val domains = decls collect { case d: PDomain => substituteDefines(globalDefines, d) }
+        val functions = decls collect { case d: PFunction => substituteDefines(globalDefines, d) }
+        val predicates = decls collect { case d: PPredicate => substituteDefines(globalDefines, d) }
+
         PProgram(file, domains, fields, functions, predicates, methods)
     }
 
@@ -233,7 +240,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     rep(stmt <~ opt(";"))
   lazy val stmt =
     fieldassign | localassign | fold | unfold | exhale | assert |
-      inhale | ifthnels | whle | varDecl | letassDecl | letwandDecl | newstmt | fresh | constrainingBlock |
+      inhale | ifthnels | whle | varDecl | defineDecl | letwandDecl | newstmt | fresh | constrainingBlock |
       methodCall | goto | lbl | packageWand | applyWand
 
   lazy val fold =
@@ -270,8 +277,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     }
   lazy val varDecl =
     ("var" ~> idndef) ~ (":" ~> typ) ~ opt(":=" ~> exp) ^^ PLocalVarDecl
-  lazy val letassDecl =
-    ("define" ~> idndef) ~ exp ^^ PLetAss
+  lazy val defineDecl =
+    ("define" ~> idndef) ~ opt("(" ~> repsep(idndef, ",") <~ ")") ~ exp ^^ PDefine
   lazy val letwandDecl =
     ("wand" ~> idndef) ~ (":=" ~> exp) ^^ PLetWand
   lazy val fresh =
@@ -552,10 +559,6 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    * keyword, for example "index".
    */
 
-  val ident =
-    not(keyword) ~> identifier.r |
-      failure("identifier expected")
-
   val identFirstLetter = "[a-zA-Z$_]"
 
   val identOtherLetterChars = "a-zA-Z0-9$_'"
@@ -566,10 +569,38 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   val keyword = keywords(identOtherLetterNeg.r, reserved)
 
+  val ident =
+    not(keyword) ~> identifier.r |
+      failure("identifier expected")
+
   private def foldPExp[E <: PExp](e: PExp, es: List[PExp => E]): E =
     es.foldLeft(e){(t, a) =>
       val result = a(t)
       result.setPos(t)
       result
     }.asInstanceOf[E]
+
+  private def substituteDefines[N <: PMember](defines: Seq[PDefine], pnode: N): N = {
+    def lookupOrElse(piu: PIdnUse, els: PExp) =
+      defines.find(_.idndef.name == piu.name).fold[PExp](piu) _
+
+    pnode.transform {
+      case piu: PIdnUse =>
+        lookupOrElse(piu, piu)(_.exp)
+
+      case fapp: PFunctApp =>
+        lookupOrElse(fapp.func, fapp)(define => define.args match {
+          case None => fapp
+          case Some(args) if fapp.args.length != args.length => fapp
+          case Some(args) =>
+            define.exp.transform {
+              case piu: PIdnUse =>
+                args.indexWhere(_.name == piu.name) match {
+                  case -1 => piu
+                  case i => fapp.args(i)
+                }
+            }() : PExp /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
+        })
+    }()
+  }
 }
