@@ -12,7 +12,6 @@
 
 package viper.silver.ast.utility
 
-import scala.collection.immutable.ListSet
 import viper.silver.ast._
 
 /** Utility methods for AST nodes. */
