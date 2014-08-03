@@ -83,7 +83,48 @@ case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 }
 
 case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
-    extends DomainBinExp(MagicWandOp)
+    extends DomainBinExp(MagicWandOp) {
+
+  /** Erases all ghost operations such as unfolding from this wand.
+    * For example (let A, B and C be free of ghost operations, let P be a predicates,
+    * and let W be a wand):
+    *
+    *     A && unfolding P in B && applying W in C
+    *
+    * will be transformed into
+    *
+    *     A && B && C
+    *
+    * @return The ghost-operations-free version of this wand.
+    */
+  def withoutGhostOperations: MagicWand = {
+    /* We use the post-transformer instead of the pre-transformer in order to
+     * perform bottom-up transformation. With a top-down transformer we could
+     * not simply replace ghost operations with their bodies, because these
+     * can contain ghost operations themselves, to which the transformer
+     * would not be applied (per se).
+     */
+
+    /* False if we already encountered a ghost operation (that was not a pure
+     * unfolding). If so, then unfolding expressions are considered as impure
+     * ghost operations, and therefore replaced by their bodies.
+     * This is necessary to correctly handle expressions such as
+     *   acc(P(l)) --* unfolding P(l) in folding Q(l) in true
+     * where the outer unfolding must be erased although its body is pure
+     * by the time we reach the unfolding (since we transform bottom-up).
+     */
+    var keepUnfolding = true
+
+    this.transform()(post = {
+      case u: Unfolding if !u.isPure || !keepUnfolding =>
+        u.body
+
+      case gop: GhostOperation if !gop.isInstanceOf[Unfolding] =>
+        keepUnfolding = false
+        gop.body
+    })
+  }
+}
 
 /** Boolean negation. */
 case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NotOp) {
