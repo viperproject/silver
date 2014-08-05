@@ -181,6 +181,9 @@ trait Node extends Traversable[Node] {
 
   def replace(original: Node, replacement: Node) =
     this.transform{case `original` => replacement}()
+
+  def deepCollect[A](f: PartialFunction[Node, A]) : Seq[A] =
+    Visitor.deepCollect[Node, A](Seq(this), Nodes.subnodes)(f)
 }
 
 /** A trait to have additional information for nodes. */
