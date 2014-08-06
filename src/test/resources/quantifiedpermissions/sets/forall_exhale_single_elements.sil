@@ -16,9 +16,13 @@ method t4(x: Ref, y: Ref)
   requires acc(x.f)
   requires acc(y.f)
 {
+  assert x != y
+
   exhale forall z: Ref :: z in Set(y) ==> acc(z.f)
-//  assert acc(x.f)
-assert true
+  assert acc(x.f)
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert acc(y.f)
 }
 
 //method t2(x: Ref, y: Ref)
