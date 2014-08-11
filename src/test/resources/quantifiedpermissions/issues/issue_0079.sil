@@ -16,7 +16,6 @@ method foo(this: Ref)
   requires getField(this) == 5
 {
   unfold acc(inv(this.col))
-  // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/79/)
   assert this.fld == 5
 }
 
