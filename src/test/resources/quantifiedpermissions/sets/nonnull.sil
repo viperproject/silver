@@ -22,3 +22,18 @@ method test03(xs: Set[Ref], x: Ref)
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/61/)
   assert x == null
 }
+
+method test04(xs: Set[Ref], x: Ref)
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  requires x in xs
+{
+  assert x != null
+}
+
+method test05(xs: Set[Ref], ys: Set[Ref], x: Ref, y: Ref)
+  requires forall z: Ref :: z in (xs union ys) ==> acc(z.f)
+  requires x in xs && y in ys
+{
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/61/)
+  assert x != null && y != null
+}
