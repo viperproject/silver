@@ -1,0 +1,10 @@
+field f: Ref
+field g: Int
+
+method test01(S: Set[Ref])
+  requires forall s: Ref :: s in S ==> acc(s.f, 1/2)
+  requires forall s: Ref :: s in S ==> acc(s.f.g, 1/2)
+
+  ensures  forall s: Ref :: s in S ==> acc(s.f, 1/2)
+  ensures  forall s: Ref :: s in S ==> acc(s.f.g, 1/2)
+{}
