@@ -35,6 +35,8 @@ case class TypeChecker(names: NameAnalyser) {
   import TypeHelper._
 
   var curMember: PScope = null
+  var curFunction: PFunction = null
+  var resultAllowed : Boolean = false
 
   def run(p: PProgram): Boolean = {
     check(p)
@@ -71,14 +73,20 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(f: PFunction) {
     checkMember(f) {
+      assert(curFunction==null)
+      curFunction=f
       check(f.typ)
       f.formalArgs map (a => check(a.typ))
       check(f.typ)
       f.pres map (check(_, Bool))
+      resultAllowed=true
       f.posts map (check(_, Bool))
-      check(f.exp, f.typ)
+      check(f.exp, f.typ) //result in the function body gets the error message somewhere else
+      resultAllowed=false
+      curFunction=null
     }
   }
+
 
   def check(p: PPredicate) {
     checkMember(p) {
@@ -597,13 +605,12 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case PIntLit(i) =>
         setType(Int)
+
       case r@PResultLit() =>
-        curMember match {
-          case PFunction(_, _, typ, _, _, _) =>
-            setType(typ)
-          case _ =>
-            issueError(r, "'result' can only be used in functions")
-        }
+        if (resultAllowed)
+          setType(curFunction.typ)
+        else
+          issueError(r, "'result' can only be used in function postconditions")
       case PBoolLit(b) =>
         setType(Bool)
       case PNullLit() =>
@@ -952,7 +959,16 @@ case class NameAnalyser() {
               case Some(e: PDeclaration) =>
                 message(e, "Duplicate identifier \"" + e.idndef.name + "\" : at " + e.idndef.start + " and at " + d.idndef.start)
               case Some(e:PErrorEntity) =>
-              case None => getMap(d).put(d.idndef.name, d)
+              case None => {
+                globalDeclarationMap.get(d.idndef.name) match {
+                  case Some(e: PDeclaration) =>
+                    message(e, "Identifier shadowing \"" + e.idndef.name + "\" : at " + e.idndef.start + " and at " + d.idndef.start)
+                  case Some(e:PErrorEntity) =>
+                  case None =>
+                    getMap(d).put(d.idndef.name, d)
+                }
+              }
+//              case None => getMap(d).put(d.idndef.name, d)
             }
           case _ =>
         }

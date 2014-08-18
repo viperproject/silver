@@ -31,7 +31,7 @@ method succeeds2(k: Perm, x: Ref) returns (r: Bool)
   ensures x.b ==> x.c.f == x.d.f
 {}
 
-method fails0(k: Perm, b: Bool, x: Ref)
+method fails0(k: Perm, b1: Bool, x: Ref)
   requires acc(x.f, 1/2) && acc(x.f, 1/2)
   ensures acc(x.f)
   //:: ExpectedOutput(postcondition.violated:insufficient.permission)
