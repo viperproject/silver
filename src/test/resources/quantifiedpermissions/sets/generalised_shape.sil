@@ -1,0 +1,53 @@
+field f: Int
+field g: Ref
+
+predicate P(xs: Set[Ref], ys: Set[Ref], x1: Ref, x2: Ref) {
+     (forall x: Ref :: x in xs && !(y in ys) ==> acc(x.f))
+  && (forall x: Ref :: x in xs && !(y in ys) && x.f != 0 ==> acc(x.g))
+  && (forall x: Ref :: x in xs && !(y in ys) && x.f != 0 && !(x.g in xs) ==> acc(x.g.f))
+}
+
+method test01(xs: Set[Ref], ys: Set[Ref], x1: Ref, x2: Ref)
+  requires acc(P(xs, ys, x1, x2))
+{
+  unfold acc(P(xs, ys, x1, x2))
+  assume x in xs
+
+  var a: Int := x.f // fail
+}
+
+method test02(xs: Set[Ref], ys: Set[Ref], x1: Ref, x2: Ref)
+  requires acc(P(xs, ys, x1, x2))
+{
+  unfold acc(P(xs, ys, x1, x2))
+  assume x in xs && !(x in ys)
+  var a: Int := x.f
+
+  var b: Ref := x.g // fail
+}
+
+method test03(xs: Set[Ref], ys: Set[Ref], x1: Ref, x2: Ref)
+  requires acc(P(xs, ys, x1, x2))
+{
+  unfold acc(P(xs, ys, x1, x2))
+
+  assume x in xs && !(x in ys)
+  var a: Int := x.f
+  assume a != 0
+  var b: Ref := x.g
+
+  a := a.f // fail
+}
+
+method test04(xs: Set[Ref], ys: Set[Ref], x1: Ref, x2: Ref)
+  requires acc(P(xs, ys, x1, x2))
+{
+  unfold acc(P(xs, ys, x1, x2))
+
+  assume x in xs && !(x in ys)
+  var a: Int := x.f
+  assume a != 0
+  var b: Ref := x.g
+  assume !(b in xs)
+  a := a.f
+}
