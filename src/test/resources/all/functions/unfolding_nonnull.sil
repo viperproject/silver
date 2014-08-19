@@ -1,5 +1,3 @@
-//:: IgnoreFile(/silicon/issue/0/)
-
 field f: Int
 field g: Int
 
@@ -28,5 +26,7 @@ method test7(x: Ref, y: Ref)
   requires acc(FF(x, y)) && fun4(x, y) == 1
 {
   assert x != null
+  
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/112/)
   assert y != null
 }
