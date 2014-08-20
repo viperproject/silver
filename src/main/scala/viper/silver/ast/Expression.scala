@@ -473,6 +473,14 @@ sealed trait MultisetExp extends Exp with PossibleTrigger {
   override def asExp:Exp = this
 }
 
+/**
+ * Marker traits for all expressions that correspond to operations on sets or multisets.
+ * Does not imply that the type of the expression is `SetType` or `MultisetType`.
+ */
+sealed trait AnySetExp extends SetExp with MultisetExp
+sealed trait AnySetUnExp extends AnySetExp with UnExp
+sealed trait AnySetBinExp extends AnySetExp with PrettyBinaryExpression with BinExp
+
 /** The empty set of a given element type. */
 case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
   lazy val typ = SetType(elemTyp)
@@ -511,7 +519,7 @@ case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val
 }
 
 /** Union of two sets or two multisets. */
-case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 0
@@ -523,7 +531,7 @@ case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, va
 }
 
 /** Intersection of two sets or two multisets. */
-case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 0
@@ -535,7 +543,7 @@ case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosit
 }
 
 /** Subset relation of two sets or two multisets. */
-case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 0
@@ -547,7 +555,7 @@ case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, v
 }
 
 /** Set difference. */
-case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 0
@@ -559,22 +567,23 @@ case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, va
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
-case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SetType].elementType)) ||
     (s.typ.isInstanceOf[MultisetType] && (elem isSubtype s.typ.asInstanceOf[MultisetType].elementType)))
   lazy val priority = 0
   lazy val fixity = Infix(NonAssoc)
-  lazy val left: PrettyExpression = elem
+  lazy val left = elem
   lazy val op = "in"
-  lazy val right: PrettyExpression = s
+  lazy val right = s
   lazy val typ = Bool
   def getArgs = Seq(elem,s)
   def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs(0),newArgs(1))(pos,info)
 }
 
 /** The length of a sequence. */
-case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp {
+case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetUnExp {
   require(s.typ.isInstanceOf[SetType] || s.typ.isInstanceOf[MultisetType])
+  val exp = s
   lazy val typ = Int
   def getArgs = Seq(s)
   def withArgs(newArgs: Seq[Exp]) = AnySetCardinality(newArgs(0))(pos,info)
@@ -610,8 +619,12 @@ case class OldTrigger(nested: PossibleTrigger)(override val pos: Position = NoPo
 }
 object OldTrigger { // creates an instance, recording the pos and info of the old expression
   def apply(oldExp : Old) : OldTrigger = {
-    val nested = if (oldExp.exp.isInstanceOf[PossibleTrigger]) oldExp.exp.asInstanceOf[PossibleTrigger] else sys.error("Internal Error: tried to create invalid trigger node from : " + oldExp)
-    OldTrigger(nested)(oldExp.pos, oldExp.info)
+    val exp = oldExp.exp match {
+      case trigger: PossibleTrigger => trigger
+      case _ => sys.error("Internal Error: tried to create invalid trigger node from : " + oldExp)
+    }
+
+    OldTrigger(exp)(oldExp.pos, oldExp.info)
   }
 }
 
