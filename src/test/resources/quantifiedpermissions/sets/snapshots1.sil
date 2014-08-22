@@ -27,6 +27,9 @@ method test4(xs: Set[Ref], x: Ref, y: Ref)
   var yf: Int := fun1(xs, y)
   x.f := xf + 1
 
+  // TODO: Currently fails because quantified permissions haven't yet been integrated
+  //       into function axiomatisation functionality
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issues/000/)
   assert fun1(xs, x) == xf + 1
   assert fun1(xs, y) == yf
 

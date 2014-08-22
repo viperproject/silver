@@ -1,0 +1,7 @@
+function fun1(j: Int): Int { 10 }
+
+method test01()
+{
+//  assert forall j: Int :: fun1(j) > 0  // verifies
+  assert forall j: Int :: false ? true : (fun1(j) > 0)  // fails
+}
