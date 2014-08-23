@@ -43,19 +43,34 @@ method test13(x1: Ref)
   ensures forall x: Ref :: x in Set(x1) ==> acc(x.g.f)
 {}
 
-method test08(xs: Set[Ref])
-  requires forall x: Ref :: x in xs ==> acc(x.g)
-  requires forall x: Ref :: x in xs ==> acc(x.g.f, wildcard)
-{ test09(xs) }
+method test08(x1: Ref, x2: Ref)
+  requires acc(x1.g) && acc(x1.g.f)
+  requires acc(x2.g) && acc(x2.g.f)
+  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g)
+  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f)
+{}
 
-method test09(xs: Set[Ref])
-  requires forall x: Ref :: x in xs ==> acc(x.g, 2/3)
-  requires forall x: Ref :: x in xs ==> acc(x.g.f, wildcard)
-{ test10(xs) }
+method test09(x1: Ref, x2: Ref)
+  requires acc(x1.g) && acc(x1.g.f, 2/3)
+  requires acc(x2.g) && acc(x2.g.f, 2/3)
+  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g, 2/3)
+  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, 2/3)
+{}
 
-method test10(xs: Set[Ref])
-  requires forall x: Ref :: x in xs ==> acc(x.g, wildcard)
-  requires forall x: Ref :: x in xs ==> acc(x.g.f, wildcard)
+method test10(x1: Ref, x2: Ref)
+  requires acc(x1.g) && acc(x1.g.f, wildcard)
+  requires acc(x2.g) && acc(x2.g.f, wildcard)
+  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g, wildcard)
+  //:: ExpectedOutput(postcondition.violated:receiver.not.injective)
+  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, wildcard)
+{}
+
+method test15(x1: Ref, x2: Ref)
+  requires acc(x1.g) && acc(x1.g.f, 2/3)
+  requires acc(x2.g) && acc(x2.g.f, 2/3)
+  ensures forall x: Ref :: x in Set(x1, x2) ==> acc(x.g, wildcard)
+  ensures x1.g != x2.g /* TODO: Should not be necessary */
+  ensures forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, wildcard)
 {}
 
 /* TODO: Takes about 15s (on my laptop). Investigate why, maybe the trigger can be improved. */
