@@ -1,7 +1,21 @@
+field f: Int
+
 function fun1(j: Int): Int { 10 }
 
-method test01()
+predicate P(x: Ref, b: Bool) { b ==> acc(x.f) }
+
+method test01(x: Ref, b: Bool, c: Bool)
+  requires acc(P(x, c))
 {
-//  assert forall j: Int :: fun1(j) > 0  // verifies
-  assert forall j: Int :: false ? true : (fun1(j) > 0)  // fails
+  assert forall j: Int :: fun1(j) > 0
+  assert forall j: Int :: false ? true : fun1(j) > 0
+  assert forall j: Int :: b ? fun1(j) > 5 : fun1(j) > 0
+
+  assert forall j: Int :: true ==> fun1(j) > 0
+  assert forall j: Int :: b ==> fun1(j) > 0
+
+  assert forall j: Int :: unfolding acc(P(x, c)) in fun1(j) > 0
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
 }
