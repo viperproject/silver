@@ -271,4 +271,9 @@ object reasons {
     val id = "invalid.perm.multiplication"
     def readableMessage = s"Permission multiplication might not be possible, as an operand might contain epsilons."
   }
+
+  case class ReceiverNotInjective(offendingNode: LocationAccess) extends AbstractErrorReason {
+    val id = "receiver.not.injective"
+    def readableMessage = s"Receiver of $offendingNode might not be injective."
+  }
 }
