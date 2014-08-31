@@ -1,0 +1,17 @@
+field x: Int
+
+predicate p(this: Ref) { acc(this.x, 1/2) }
+
+method m(this: Ref)
+  requires acc(p(this)) && acc(this.x, 1/2)
+{
+  var c: Int
+  var d: Int
+
+  c := unfolding acc(p(this)) in this.x
+  exhale acc(this.x, 1/2)
+  d := unfolding acc(p(this)) in this.x
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/119/)
+  assert c == d
+}
