@@ -62,3 +62,18 @@ method t4(r: Ref, read: Perm)
         t1b(r, read2)
     }
 }
+
+method Eval(s: Ref, p: Perm)
+  requires acc(s.f, p)
+{}
+
+method caller() {
+  var s: Ref
+  s := new(f)
+  var p: Perm
+  fresh p
+  Eval(s,p)
+
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  Eval(s,p)
+}
