@@ -21,7 +21,8 @@ method test01(y: Ref) {
   var z: Ref
   z := new()
   assert NN(z)    // TODO: Triggers Q2, which (currently) isn't triggered when
-  assert z.f == 0 //       asserting z.f == 0.
+  assert z.f == 0 //       asserting z.f == 0. See unbounded.smt2 (in Silicon's
+                  //       repo in docs/logs/).
 
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
