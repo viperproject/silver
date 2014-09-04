@@ -37,7 +37,7 @@ method test4(xs: Set[Ref], x: Ref, y: Ref)
 
   assert fun1(xs, x) == xf + 1
 
-  //:: ExpectedOutput(assert.failed:assertion.false)
+  // :: ExpectedOutput(assert.failed:assertion.false)
   assert fun1(xs, y) == yf
 }
 
