@@ -1,0 +1,9 @@
+field S: Set[Ref]
+field f: Ref
+
+//:: UnexpectedOutput(predicate.not.wellformed:receiver.null, /silicon/issue/121/)
+predicate p(this:Ref) {
+    acc(this.S) && this in this.S
+ && (forall x: Ref :: x in this.S ==> acc(x.f, 1/2))
+ && (forall y: Ref :: y in this.S && y.f != null ==> y.f in this.S)
+}
