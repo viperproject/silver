@@ -3,10 +3,9 @@
 field next: Ref
 
 method Bug(nodes: Seq[Ref]) returns ()
-  requires  1 < |nodes| && !(null in nodes) &&
-  (forall i: Int :: i in [0..|nodes|) ==> acc(nodes[i].next)) &&
-  (forall i: Int :: i in [0..|nodes| - 1) ==> nodes[i].next == nodes[i+1]);
-
+  requires  1 < |nodes| && !(null in nodes)
+  requires forall i: Int :: i in [0..|nodes|) ==> acc(nodes[i].next)
+  requires forall i: Int :: i in [0..|nodes| - 1) ==> nodes[i].next == nodes[i+1]
 {
-  assert nodes[0].next == nodes[1];  // fails
+  assert nodes[0].next == nodes[1]
 }

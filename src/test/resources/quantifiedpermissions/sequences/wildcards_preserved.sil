@@ -1,12 +1,15 @@
-field f:Int
+field f: Int
 
-method foo (S:Seq[Ref])
-  requires forall i:Int :: i in [0..|S|)  ==> acc(S[i].f, wildcard)
-  ensures forall i:Int :: i in [0..|S|)  ==> acc(S[i].f, wildcard)
+method test01(S: Seq[Ref])
+  requires forall i: Int :: i in [0..|S|)  ==> acc(S[i].f, wildcard)
+  ensures  forall i: Int :: i in [0..|S|)  ==> acc(S[i].f, wildcard)
 {
-  if(|S| > 1) { exhale acc(S[0].f, wildcard) }
-  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/81/)
-  exhale forall i1:Int :: i1 in [0..|S|-2)  ==> acc(S[i1].f, wildcard)
+  if (|S| > 1) {
+    exhale acc(S[0].f, wildcard)
+  }
 
-  exhale forall i2:Int :: i2 in [0..|S|)  ==> acc(S[i2].f, wildcard)
+  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/81/)
+  exhale forall i1: Int :: i1 in [0..|S|-2)  ==> acc(S[i1].f, wildcard)
+
+  exhale forall i2: Int :: i2 in [0..|S|)  ==> acc(S[i2].f, wildcard)
 }
