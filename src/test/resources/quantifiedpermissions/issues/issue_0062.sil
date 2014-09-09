@@ -11,7 +11,7 @@ method test02(xs: Set[Ref], x: Ref, y: Ref, z: Ref)
   requires x in xs && y in xs && z in xs
   requires forall q: Ref :: q in xs ==> acc(q.f)
 {
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issues/62/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/62/)
   assert x != y
 }
 
