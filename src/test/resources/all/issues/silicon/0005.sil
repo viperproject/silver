@@ -1,0 +1,17 @@
+function trigF(x: Int, y: Int): Bool
+  requires acc(P())
+{ true }
+
+function trigG(x: Int, b: Bool): Bool
+  requires acc(P())
+{ b }
+
+predicate P() { true }
+
+method test(flag: Bool)
+  requires acc(P())
+  requires forall a: Int, b: Int :: true ==> trigG(a, flag) && trigF(a, b)
+  ensures  acc(P())
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/5/)
+  ensures forall a: Int, b: Int :: true ==> trigG(a, flag) && trigF(a, b)
+{}

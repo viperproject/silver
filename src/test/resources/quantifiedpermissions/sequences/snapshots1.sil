@@ -9,14 +9,14 @@ method test1(xs: Seq[Ref])
   requires 5 < |xs|
   requires forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
 {
-  var a: Int := fun1(xs)  
+  var a: Int := fun1(xs)
   assert a == fun1(xs)
-  
-  //xs[0].f := 0 /* Comment and final assertion a == b succeeds */
-  
-  var b: Int := fun1(xs)  
+
+  xs[0].f := 0
+
+  var b: Int := fun1(xs)
   assert b == fun1(xs)
-  
+
   assert a == b
 }
 
@@ -31,16 +31,16 @@ function fun2(xs: Seq[Ref]): Int
 method test2(xs: Seq[Ref])
   requires acc(P(xs))
 {
-  var a: Int := fun2(xs)  
+  var a: Int := fun2(xs)
   assert a == fun2(xs)
-  
+
   unfold acc(P(xs))
   fold acc(P(xs))
-  
-  var b: Int := fun2(xs)  
+
+  var b: Int := fun2(xs)
   assert b == fun2(xs)
-  
-  assert a == b /* Fails unexpectedly */
+
+  assert a == b
 }
 
 method test3(xs: Seq[Ref])
@@ -48,15 +48,15 @@ method test3(xs: Seq[Ref])
   requires forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f)
 {
   fold acc(P(xs))
-  
-  var a: Int := fun2(xs)  
+
+  var a: Int := fun2(xs)
   assert a == fun2(xs)
-  
+
   unfold acc(P(xs))
   fold acc(P(xs))
-  
-  var b: Int := fun2(xs)  
+
+  var b: Int := fun2(xs)
   assert b == fun2(xs)
-  
-  assert a == b /* Fails unexpectedly */
+
+  assert a == b
 }

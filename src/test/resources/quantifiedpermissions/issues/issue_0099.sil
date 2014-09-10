@@ -7,9 +7,18 @@ method repro(s:Seq[Ref])
   assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].Integer_value == 0))
 }
 
+method test01(s:Seq[Ref])
+{
+  inhale forall x: Ref :: x in s ==> acc(x.Integer_value)
+  assert forall x: Ref :: x in s ==> x != null
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/64/)
+  assert forall i: Int :: 0 <= i && i < |s| ==> s[i] != null
+}
+
 method reprotwo(s:Seq[Ref])
 {
   inhale (forall x: Ref :: x in s ==> acc(x.Integer_value))
+  //:: UnexpectedOutput(inhale.failed:receiver.null, /silicon/issue/64/)
   inhale (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].Integer_value == 0))
   assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].Integer_value == 0))
 }
@@ -18,7 +27,8 @@ method reprothree(s:Seq[Ref])
 {
   inhale (forall x: Ref :: x in s ==> acc(x.Integer_value))
   inhale (forall x: Ref :: x in s ==> (x.Integer_value == 0))
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/99/)
+  // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/99/)
+  //:: UnexpectedOutput(assert.failed:receiver.null, /silicon/issue/64/)
   assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].Integer_value == 0))
 }
 
@@ -27,6 +37,20 @@ method reprofour(s:Seq[Ref])
   inhale (forall x: Ref :: x in s ==> acc(x.Integer_value))
   inhale (forall x: Ref :: x in s ==> (x.Integer_value == 0))
   assert (forall x: Ref :: x in s ==> (x.Integer_value == 0))
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/99/)
+  // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/99/)
+  //:: UnexpectedOutput(assert.failed:receiver.null, /silicon/issue/64/)
   assert |s|>0 ==> s[0].Integer_value == 0
+}
+
+method silly(input: Seq[Ref], gsize: Int)
+  requires |input| == gsize
+  requires forall tid: Int :: tid in [0..gsize) ==> acc(input[tid].Integer_value)
+{
+  exhale forall k: Int :: k in [0..gsize) ==> acc(input[k].Integer_value)
+    /* The exhale appears to add assumptions about gsize, without it the
+     * subsequent assert fails.
+     */
+
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/99/)
+  assert gsize > 0
 }
