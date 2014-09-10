@@ -7,7 +7,7 @@ method t3(this: Ref, p2: Perm)
 {
     //:: ExpectedOutput(assignment.failed:invalid.perm.multiplication)
     //:: MissingOutput(assignment.failed:invalid.perm.multiplication, /Silicon/issue/31/)
-    var p: Perm := epsilon * p2
+    var p1: Perm := epsilon * p2
 }
 
 method t5(r: Ref)
@@ -17,8 +17,8 @@ method t5(r: Ref)
 	t3(r, epsilon)
 }
 
-method test1(this: Ref, p: Perm)
-  requires this != null && acc(this.f, p)
+method test1(this: Ref, p1: Perm)
+  requires this != null && acc(this.f, p1)
 {
   exhale acc(this.f, epsilon)
 }
@@ -46,10 +46,10 @@ method test5(this: Ref)
 
 method test2(this: Ref, p2: Perm) {
   //:: ExpectedOutput(assignment.failed:invalid.perm.multiplication)
-  var p: Perm := epsilon * p2
+  var p1: Perm := epsilon * p2
 }
 
-method test3(r: Ref, p: Perm) {
+method test3(r: Ref, p1: Perm) {
   //:: ExpectedOutput(call.precondition:epsilon.as.param)
   test3(null, epsilon)
 }
@@ -61,13 +61,13 @@ predicate Q(this: Ref) { acc(this.p, write) && acc(this.f, this.p) }
 method test4(r: Ref)
   requires r != null && acc(P(r), write)
 {
-  var p: Perm
+  var p1: Perm
   var b: Bool
 
   b := unfolding acc(P(r), write) in true
   //:: ExpectedOutput(assignment.failed:non.positive.permission)
   //:: ExpectedOutput(assignment.failed:insufficient.permission)
-  b := unfolding acc(P(r), p) in true
+  b := unfolding acc(P(r), p1) in true
 }
 
 /* See Sil issue #30 */

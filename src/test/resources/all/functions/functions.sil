@@ -39,14 +39,17 @@ function fun5(x: Ref): Int
 
 
 //:: ExpectedOutput(function.not.wellformed:receiver.null)
-//:: IgnoreOthers
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
+//:: MissingOutput(function.not.wellformed:insufficient.permission, /silicon/issue/34/)
 function err1(x: Ref): Int
   requires acc(x.h.f)
 { 0 }
 
 function err2(x: Ref): Int
   requires acc(x.f)
+  //:: ExpectedOutput(application.precondition:receiver.null)
   //:: ExpectedOutput(application.precondition:insufficient.permission)
+  //:: MissingOutput(application.precondition:insufficient.permission, /silicon/issue/34/)
   requires err1(x) == 0
 { 0 }
 
