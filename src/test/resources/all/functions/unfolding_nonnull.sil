@@ -11,6 +11,7 @@ function fun3(x: Ref): Int
 method test6(x: Ref)
   requires acc(F(x)) && fun3(x) == 1
 {
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/026/)
   assert x != null
 }
 
@@ -25,8 +26,10 @@ function fun4(x: Ref, y: Ref): Int
 method test7(x: Ref, y: Ref)
   requires acc(FF(x, y)) && fun4(x, y) == 1
 {
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/026/)
   assert x != null
   
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/112/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/026/)
   assert y != null
 }
