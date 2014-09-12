@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/27/)
+// Note: Carbon rejects the file, but it would be better if Silver did so
 field f: Ref
 
 method test01(x: Ref, y: Ref)

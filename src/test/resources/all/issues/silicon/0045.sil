@@ -264,7 +264,7 @@ domain List[A] {
   }
 
   axiom takeZeroList {
-    forall l: List[A], t: A :: take(zero(), l) == nil(t)
+    forall l: List[A] :: exists t: A :: take(zero(), l) == nil(t) // AS: edited - this was a forall t:A, but no trigger for nil(t) is typically available
   }
 
   axiom takeNaturalNil {
@@ -431,9 +431,9 @@ domain Any {
  * (The example originally didn't terminate in Silicon, see issue #45)
  */
 method property01()
+//:: IgnoreOthers
   ensures [forall n: Natural, xs: List[Natural] ::
     concatenate(take(n, xs), drop(n, xs)) == xs,
-      //:: IgnoreOthers
       (forall t_0: Natural :: forall n_3: Natural ::
         concatenate(take(n_3, nil(t_0)), drop(n_3, nil(t_0))) == nil(t_0)) &&
           forall l_0: List[Natural] ::
