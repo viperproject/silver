@@ -18,6 +18,24 @@ method test1(xs: Set[Ref], x: Ref)
   assert a == b
 }
 
+method test5(xs: Set[Ref], x: Ref, y: Ref)
+  requires x in xs && y in xs
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  requires x != y // TODO: Should not be necessary, see issue 62
+{
+  var yf: Int := y.f
+  x.f := 1
+
+  assert y.f == yf
+
+  y.f := yf + 1
+
+  exhale forall z: Ref :: z in xs ==> acc(z.f)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
 method test4(xs: Set[Ref], x: Ref, y: Ref)
   requires x in xs && y in xs
   requires forall z: Ref :: z in xs ==> acc(z.f)
