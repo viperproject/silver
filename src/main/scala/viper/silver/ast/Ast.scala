@@ -179,7 +179,7 @@ trait Node extends Traversable[Node] {
     post: PartialFunction[Node, Node] = PartialFunction.empty): this.type =
     Transformer.transform[this.type](this, pre)(recursive, post)
 
-  def replace(original: Node, replacement: Node) =
+  def replace(original: Node, replacement: Node): this.type =
     this.transform{case `original` => replacement}()
 
   def deepCollect[A](f: PartialFunction[Node, A]) : Seq[A] =
