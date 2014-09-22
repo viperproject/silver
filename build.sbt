@@ -5,7 +5,7 @@ organization  := "viper"
 
 version := "0.1-SNAPSHOT"
 
-scalaVersion := "2.10.3"
+scalaVersion := "2.10.4"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1"
 
