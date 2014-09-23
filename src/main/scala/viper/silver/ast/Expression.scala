@@ -598,18 +598,16 @@ sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominato
  * Use ForbiddenInTrigger to declare terms which may not be used in triggers.
  */
 sealed trait PossibleTrigger extends GenericTriggerGenerator.PossibleTrigger[Exp, PossibleTrigger] {
-//  def getArgs : Seq[Exp]
-//  def withArgs(args : Seq[Exp]) : PossibleTrigger
-//  def asManifestation : Exp
   def pos : Position
   def info : Info
 }
 
-sealed trait WrappingTrigger extends PossibleTrigger with GenericTriggerGenerator.WrappingTrigger[Exp, PossibleTrigger, WrappingTrigger]
+sealed trait WrappingTrigger extends PossibleTrigger
+    with GenericTriggerGenerator.WrappingTrigger[Exp, PossibleTrigger, WrappingTrigger]
 
 // Representation for a trigger term to be evaluated in the "old" heap
 case class OldTrigger(wrappee: PossibleTrigger)(val pos: Position = NoPosition, val info: Info = NoInfo)
-    extends WrappingTrigger /*with GenericTriggerGenerator.GOldTrigger*/ {
+    extends WrappingTrigger {
 
   def getArgs = wrappee.getArgs
   def withArgs(args : Seq[Exp]) = OldTrigger(wrappee.withArgs(args))(pos,info)

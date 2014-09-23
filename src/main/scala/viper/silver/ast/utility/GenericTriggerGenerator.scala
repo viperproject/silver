@@ -147,7 +147,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
       deepCollect(toSearch){ case qe: QuantifiedExp => quantifiedVariables(qe)}.flatten
 
     /* Get all function applications */
-    reduceTree[Seq[(PossibleTrigger, Seq[Var], Seq[Var])]](toSearch)((node: Node, results: Seq[Seq[(PossibleTrigger, Seq[Var], Seq[Var])]]) => node match {
+    reduceTree(toSearch)((node: Node, results: Seq[Seq[(PossibleTrigger, Seq[Var], Seq[Var])]]) => node match {
       case WrappingGNode(f) =>
         results.flatten map {case (pt, vars, extras) => (f(pt)/*(pt.pos,pt.info)*/, vars, extras)}
 
@@ -190,9 +190,6 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
           results.flatten ++ Seq((possibleTrigger.withArgs(processedArgs), containedVars, extraVars))
         else
           results.flatten
-
-//        case _: Old =>
-//          results.flatten map {case (pt, vars, extras) => (GOldTrigger(pt)/*(pt.pos,pt.info)*/, vars, extras)}
 
         case _ => results.flatten
     })
