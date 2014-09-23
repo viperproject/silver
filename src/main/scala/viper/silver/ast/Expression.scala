@@ -4,16 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
 package viper.silver.ast
 
 import org.kiama.output._
-import viper.silver.ast.utility.{ Expressions, Consistency }
+import utility.{GenericTriggerGenerator, Expressions, Consistency}
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
@@ -179,7 +173,7 @@ case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos,info,typ,formalArgs)
-  def asExp = this
+  def asManifestation = this
 }
 // allows a FuncApp to be created directly from a Function node (but only stores its name)
 object FuncApp {
@@ -195,7 +189,7 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
   def func = (p:Program) => p.findDomainFunction(funcname)
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs)
-  def asExp = this
+  def asManifestation = this
 }
 object DomainFuncApp {
   def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo) : DomainFuncApp = DomainFuncApp(func.name,args,typVarMap)(pos,info,func.typ.substitute(typVarMap),func.formalArgs map {
@@ -341,7 +335,7 @@ case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Inf
  * expression is `SeqType`.
  */
 sealed trait SeqExp extends Exp with PossibleTrigger {
-  override def asExp = this
+  override def asManifestation = this
 }
 
 /** The empty sequence of a given element type. */
@@ -462,7 +456,7 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
  * expression is `SetType`.
  */
 sealed trait SetExp extends Exp with PossibleTrigger {
-  override def asExp:Exp = this
+  override def asManifestation:Exp = this
 }
 
 /**
@@ -470,7 +464,7 @@ sealed trait SetExp extends Exp with PossibleTrigger {
  * expression is `MultisetType`.
  */
 sealed trait MultisetExp extends Exp with PossibleTrigger {
-  override def asExp:Exp = this
+  override def asManifestation:Exp = this
 }
 
 /**
@@ -603,19 +597,23 @@ sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominato
  * Used to label expression nodes as potentially valid trigger terms for quantifiers.
  * Use ForbiddenInTrigger to declare terms which may not be used in triggers.
  */
-sealed trait PossibleTrigger {
-  def getArgs : Seq[Exp]
-  def withArgs(args : Seq[Exp]) : PossibleTrigger
-  def asExp : Exp
+sealed trait PossibleTrigger extends GenericTriggerGenerator.PossibleTrigger[Exp, PossibleTrigger] {
+//  def getArgs : Seq[Exp]
+//  def withArgs(args : Seq[Exp]) : PossibleTrigger
+//  def asManifestation : Exp
   def pos : Position
   def info : Info
 }
 
+sealed trait WrappingTrigger extends PossibleTrigger with GenericTriggerGenerator.WrappingTrigger[Exp, PossibleTrigger, WrappingTrigger]
+
 // Representation for a trigger term to be evaluated in the "old" heap
-case class OldTrigger(nested: PossibleTrigger)(override val pos: Position = NoPosition, override val info:Info = NoInfo) extends PossibleTrigger {
-  def getArgs = nested.getArgs
-  def withArgs(args : Seq[Exp]) = OldTrigger(nested.withArgs(args))(pos,info)
-  def asExp = Old(nested.asExp)(pos,info)
+case class OldTrigger(wrappee: PossibleTrigger)(val pos: Position = NoPosition, val info: Info = NoInfo)
+    extends WrappingTrigger /*with GenericTriggerGenerator.GOldTrigger*/ {
+
+  def getArgs = wrappee.getArgs
+  def withArgs(args : Seq[Exp]) = OldTrigger(wrappee.withArgs(args))(pos,info)
+  def asManifestation = Old(wrappee.asManifestation)(pos,info)
 }
 object OldTrigger { // creates an instance, recording the pos and info of the old expression
   def apply(oldExp : Old) : OldTrigger = {
@@ -628,7 +626,7 @@ object OldTrigger { // creates an instance, recording the pos and info of the ol
   }
 }
 
-sealed trait ForbiddenInTrigger extends Exp
+sealed trait ForbiddenInTrigger extends Exp with GenericTriggerGenerator.ForbiddenInTrigger[Type]
 
 /** Common ancestor of Domain Function applications and Function applications. */
 sealed trait FuncLikeApp extends Exp with Call {

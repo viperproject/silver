@@ -4,22 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
 package viper.silver.ast
 
 import pretty.PrettyPrinter
-import utility.{ Nodes, Transformer, Visitor }
+import utility.{Visitor, Nodes, Transformer}
 
 /*
 
@@ -57,133 +45,76 @@ Some design choices:
  * - Trigger
  */
 trait Node extends Traversable[Node] {
-  /**
-   * Returns a list of all direct sub-nodes of this node. The type of nodes is
-   * included in this list only for declarations (but not for expressions, for instance).
-   * Furthermore, pointers to declarations are not included (e.g., the `field` of a field
-   * write is not included in the result).
-   */
+  /** Returns a list of all direct sub-nodes of this node. The type of nodes is
+    * included in this list only for declarations (but not for expressions, for instance).
+    * Furthermore, pointers to declarations are not included (e.g., the `field` of a field
+    * write is not included in the result).
+    */
   def subnodes = Nodes.subnodes(this)
 
-  /**
-   * Applies the function `f` to the node and the results of the subnodes.
-   */
-  def reduceTree[A](f: (Node, Seq[A]) => A) = Visitor.reduceTree[Node, A](this, Nodes.subnodes)(f)
+  /** @see [[Visitor.reduceTree()]] */
+  def reduceTree[A](f: (Node, Seq[A]) => A) = Visitor.reduceTree(this, Nodes.subnodes)(f)
 
-  /**
-   * More powerful version of reduceTree that also carries a context argument through the tree.
-   */
+  /** @see [[Visitor.reduceWithContext()]] */
   def reduceWithContext[C, R](context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R) = {
-    Visitor.reduceWithContext[Node, C, R](this, Nodes.subnodes)(context, enter, combine)
+    Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
 
-  /**
-   * Applies the function `f` to the AST node, then visits all subnodes.
-   */
+  /** Applies the function `f` to the AST node, then visits all subnodes. */
   def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
 
-  /**
-   * Applies the function `f` to the AST node, then visits all subnodes.
-   */
+  /** @see [[Visitor.visit()]] */
   def visit[A](f: PartialFunction[Node, A]) {
     Visitor.visit(this, Nodes.subnodes)(f)
   }
 
-  /** Applies the function `f` to the AST node (if possible), then visits all subnodes.
-    * Also carries a context down the tree that can be updated by `f`.
-    *
-    * @tparam C Context type.
-    * @param c Initial context.
-    * @param f Visitor function.
-    */
+  /** @see [[Visitor.visitWithContext()]] */
   def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]) {
     Visitor.visitWithContext(this, Nodes.subnodes, c)(f)
   }
 
-  /** Applies the function `f` to the AST node (if possible). Subnodes are only
-    * visited if `f` is not applicable. If subnodes need to be visited when `f` is
-    * applicable then `f` has to descend manually.
-    * Also carries a context down the tree that can be updated by `f`.
-    *
-    * @tparam C Context type.
-    * @tparam A Return type of the visitor function (irrelevant since return value is discarded).
-    * @param c Initial context.
-    * @param f Visitor function.
-    */
+  /** @see [[Visitor.visitWithContextManually()]] */
   def visitWithContextManually[C, A](c: C)(f: C => PartialFunction[Node, A]) {
     Visitor.visitWithContextManually(this, Nodes.subnodes, c)(f)
   }
 
-  /**
-   * Applies the function `f1` to the AST node, then visits all subnodes,
-   * and finally calls `f2` to the AST node.
-   */
+  //** @see [[Visitor.visit()]] */
   def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
     Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
 
-  /**
-   * Applies the function `f` to the AST node, then visits all subnodes if `f`
-   * returned true.
-   */
+  /** @see [[Visitor.visitOpt()]] */
   def visitOpt(f: Node => Boolean) {
     Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
-  /**
-   * Applies the function `f1` to the AST node, then visits all subnodes if `f1`
-   * returned true, and finally calls `f2` to the AST node.
-   */
+  /** @see [[Visitor.visitOpt()]] */
   def visitOpt[A](f1: Node => Boolean, f2: Node => A) {
     Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 
-  /**
-   * Checks whether the partial function is defined for any of the subnodes.  This is
-   * useful to check if the node contains a subnode of a given type, or with a
-   * certain property.
-   */
-  def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitor.existsDefined(this, Nodes.subnodes, f)
+  /** @see [[Visitor.existsDefined()]] */
+  def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitor.existsDefined(this, Nodes.subnodes)(f)
 
-  /**
-   * Checks whether the parameter is a subnode of this node
-   */
-  def hasSubterm(toFind : Node): Boolean = {val self = this; this.existsDefined{ case found if found==toFind && found!=self => }}
+  /** @see [[Visitor.hasSubnode()]] */
+  def hasSubnode(toFind: Node): Boolean = Visitor.hasSubnode(this, toFind, Nodes.subnodes)
 
   override def toString = PrettyPrinter.pretty(this)
 
-  /**
-   * Transforms the tree rooted at this node using the partial function `pre`,
-   * recursing on the subnodes and finally using the partial function `post`.
-   *
-   * The previous node is replaced by applying `pre` and `post`, respectively,
-   * if and only if these partial functions are defined there. The functions
-   * `pre` and `post` must produce nodes that are valid in the given context.
-   * For instance, they cannot replace an integer literal by a Boolean literal.
-   *
-   * @param pre       Partial function used before the recursion.
-   *                  Default: partial function with the empty domain.
-   * @param recursive Given the original node, should the children of the node
-   *                  transformed with `pre` be transformed recursively? `pre`,
-   *                  `recursive` and `post` are kept the same during each
-   *                  recursion.
-   *                  Default: recurse if and only if `pre` is not defined
-   *                  there.
-   * @param post      Partial function used after the recursion.
-   *                  Default: partial function with the empty domain.
-   *
-   * @return Transformed tree.
-   */
-  def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty)(
-    recursive: Node => Boolean = !pre.isDefinedAt(_),
-    post: PartialFunction[Node, Node] = PartialFunction.empty): this.type =
+  /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
+  def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty)
+               (recursive: Node => Boolean = !pre.isDefinedAt(_),
+                post: PartialFunction[Node, Node] = PartialFunction.empty)
+               : this.type =
+
     Transformer.transform[this.type](this, pre)(recursive, post)
 
   def replace(original: Node, replacement: Node): this.type =
     this.transform{case `original` => replacement}()
 
+  /** @see [[Visitor.deepCollect()]] */
   def deepCollect[A](f: PartialFunction[Node, A]) : Seq[A] =
-    Visitor.deepCollect[Node, A](Seq(this), Nodes.subnodes)(f)
+    Visitor.deepCollect(Seq(this), Nodes.subnodes)(f)
 }
 
 /** A trait to have additional information for nodes. */
