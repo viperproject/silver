@@ -3,7 +3,6 @@ field Integer_value: Int
 method repro(s:Seq[Ref])
 {
   inhale (forall x: Int :: x in [0..|s|) ==> acc(s[x].Integer_value))
-  //:: UnexpectedOutput(inhale.failed:receiver.null, /silicon/issue/64/)
   inhale (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].Integer_value == 0))
   assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].Integer_value == 0))
 }
