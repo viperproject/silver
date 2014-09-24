@@ -1,53 +1,58 @@
 field f: Int
 
-method test06(s: Seq[Ref], a: Int, b: Int, n: Int)
-  requires 0 <= a && 0 <= b && 0 <= n
-  requires a + n * b <= |s|
+method test01(s: Seq[Ref], a: Int, b: Int, n: Int)
+  requires 0 <= a && 0 < b && 0 < n
+  requires a + n * b < |s|
 {
-  var j: Int := 0
+  var j: Int
 
-  inhale 0 <= j && j <= n
+  inhale 0 <= j && j < n
   inhale forall i: Int :: i in [0..n) ==> acc(s[a + i*b].f)
     /* Yields the non-null axiom
-        (assert (forall ((i Int)) (!
-          (implies
-            ($Seq.in ($Seq.rng 0 n) i)
-            (not (= ($Seq.at s (+ a (* i b))) $Ref.null)))
-          :pattern (($Seq.in ($Seq.rng 0 n) i))
-        )))
+
+         forall i: Int
+             {i in [0..n)}
+           i in [0..n) ==> s[a+i*b] != null
+
+       The trigger only contains (i in [0..n)) but not (s[a+i*b]) because the
+       latter contains a arithmetic expression, which Z3 doesn't allow in
+       triggers.
+       Introducing a second quantified variable j to replace a+i*b with isn't
+       straight-forward because one needs to preserve the relatonship between
+       i and j. Moreover, s[j] on its own wouldn't be a valid trigger because
+       it wouldn't cover all quantified variables.
      */
 
   /* TODO: Fails because ($Seq.at s (+ a (* i b))) doesn't trigger above axiom */
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/000/)
   assert s[a + j*b] != null
 }
 
-method test07(s: Seq[Ref], a: Int, b: Int, n: Int)
-  requires 0 <= a && 0 < b && 0 <= n
-  requires a + n * b <= |s|
-{
-  var j: Int := 0
-  inhale 0 <= j && j < n
-  inhale j % b == a
+function exp(a: Int, i: Int, b: Int): Int {
+  a + i*b
+}
 
-  inhale forall i: Int :: i in [0..|s|) && i % b == a ==> acc(s[i].f)
+method test04(s: Seq[Ref], a: Int, b: Int, n: Int)
+  requires 0 <= a && 0 < b && 0 < n
+  requires a + n * b < |s|
+{
+  var j: Int
+
+  inhale 0 <= j && j < n
+  inhale forall i: Int :: i in [0..n) ==> acc(s[exp(a, i, b)].f)
     /* Yields the non-null axiom
-        (assert (forall ((i Int)) (!
-          (implies
-            (and
-              ($Seq.in ($Seq.rng 0 ($Seq.len s)) i)
-              (= (mod i b) a)
-            )
-            (not (= ($Seq.at s i) $Ref.null)))
-          :pattern (($Seq.in ($Seq.rng 0 ($Seq.len s)) i))
-          :pattern (($Seq.at s i))
-        )))
+
+         forall i: Int
+             {i in [0..n)}
+             {s[exp(a, i, b)]}
+           i in [0..n) ==> s[exp(a, i, b)] != null
      */
 
-  /* Verifies because the axiom is triggered */
-  assert s[a + j*b] != null
+  /* Using exp(a, j, b) will trigger above axiom */
+  assert s[exp(a, j, b)] != null
 }
 
-method test08(s: Seq[Ref], a: Int, b: Int)
+method test02(s: Seq[Ref], a: Int, b: Int)
   requires 0 <= a && 0 < b
   requires forall i: Int :: i in [a..|s|) && (i - a) % b == 0 ==> acc(s[i].f)
 {
@@ -58,40 +63,34 @@ method test08(s: Seq[Ref], a: Int, b: Int)
     invariant (j - a) % b == 0
     invariant forall i: Int :: i in [a..|s|) && (i - a) % b == 0 ==> acc(s[i].f)
   {
-    assert j in [a..|s|)
-    assert (j - a) % b == 0
+    assert j in [a..|s|)      /* Can be proven */
+    assert (j - a) % b == 0   /* Can be proven */
 
     s[j].f := j
     j := j + b
 
-    assume (j - a) % b == 0 // Cannot be proven, but is correct
+    assume (j - a) % b == 0 /* Cannot be proven, but is correct */
   }
 }
 
-//method test09(s: Seq[Ref], a: Int, b: Int, n: Int)
-//  requires 0 <= a && 0 < b && 0 <= n
-//  requires a < b
-//  requires a + n * b < |s|
-//  requires forall i: Int :: i in [0..|s|) && i % b == a ==> acc(s[i].f)
-//{
-//  var j: Int := a
-////  inhale a < b
-//
-////  while (j < n)
-//////    invariant 0 <= j && j <= n
-//////    invariant forall i: Int :: i in [0..n) ==> acc(s[a + i*b].f)
-//////    invariant forall i: Int :: i in [0..j) ==> s[a + i*b].f == j
-////  {
-//    inhale forall i: Int :: i in [0..|s|) && i % b == a ==> acc(s[i].f)
-////    inhale forall i: Int :: i in [0..j) ==> s[a + i*b].f == j
-//    assert j in [0..|s|)
-//    assert j % b == a
-//
-//    s[j].f := j
-//    j := j + b
-////
-////    exhale 0 <= j && j <= n
-////    exhale forall i: Int :: i in [0..n) ==> acc(s[a + i*b].f)
-////    exhale forall i: Int :: i in [0..j) ==> s[a + i*b].f == j
-////  }
-//}
+method test03(s: Seq[Ref], a: Int, b: Int)
+  requires 0 <= a && 0 < b
+  requires forall i: Int :: i in [a..|s|) && (i - a) % b == 0 ==> acc(s[i].f)
+{
+  var j: Int := 0
+  assert j*b % b == 0
+
+  while (a+j*b < |s|)
+    invariant 0 <= j
+    invariant j*b % b == 0
+    invariant forall i: Int :: i in [a..|s|) && (i - a) % b == 0 ==> acc(s[i].f)
+  {
+    assert a+j*b in [a..|s|) /* Can be proven */
+    assert j*b % b == 0      /* Can be proven */
+
+    s[a+j*b].f := j
+    j := j + 1
+
+    assume j*b % b == 0 /* Cannot be proven, but is correct */
+  }
+}
