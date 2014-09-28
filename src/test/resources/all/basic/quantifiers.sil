@@ -79,14 +79,6 @@ method succeeds1(a: Int)
 	// assert exists i in [0..a] :: g(i) >= 0
 }
 
-method existsFails() {
-  //:: ExpectedOutput(assert.failed:assertion.false)
-	assert exists i: Int :: ((i in Seq(0)) && true)
-    /* 2013-08-05 Malte: Fails, probably due to a triggering problem of Z3.
-     *            Should hold otherwise.
-     */
-}
-
 method succeeds2(a: Int)
 	requires a > 0
 {
