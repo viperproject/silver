@@ -214,7 +214,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
       Seq((Trigger(currentTrigger), extraVars))
     else functs match {
       case Nil => Nil /* This branch didn't result in a solution */
-      case ((f, vs, extra) :: rest) =>
+      case ((f, vs, extra) +: rest) =>
         val needed: Seq[Var] = vars.diff(vs) /* Variables still not triggered */
 
         /* Try adding the next element of functs */
