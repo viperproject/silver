@@ -118,6 +118,35 @@ object Visitor {
   def hasSubnode[N](parent: N, toFind: N, subs: N => Seq[N]): Boolean =
     this.existsDefined(parent, subs){ case found if found == toFind && found != parent => }
 
+  /** A generalisation of Scala's collect, which applies not just to the list
+    * of nodes ns, but also to all those transitively traversed via `subs`.
+    *
+    * @tparam N Node type.
+    * @tparam R Resulting value type.
+    * @param ns List of original nodes.
+    * @param f Partial function to compute desired values.
+    */
+  def deepCollect[N, R](ns: Seq[N], subs: N => Seq[N])(f: PartialFunction[N, R]): Seq[R] = {
+    ns.flatMap((node: N) =>
+      reduceTree(node, subs)((n: N, vs: Seq[Seq[R]]) =>
+        if (f.isDefinedAt(n)) Seq(f(n)) ++ vs.flatten else vs.flatten))
+  }
+
+  /** Finds the first node where `f` applies and returns the result of that
+    * application (if exists).
+    */
+  def find[N, R](n: N, subs: N => Seq[N])(f: PartialFunction[N, R]): Option[R] = {
+    var result: Option[R] = None
+    val fLifted = f.lift /* See ScalaDoc comments for applyOrElse for why using lift is usually more efficient */
+
+    visit(n, subs) { case n1 =>
+      result = fLifted(n1)
+      if (result.nonEmpty) return result
+    }
+
+    None
+  }
+
   /* Reduce a tree to a value */
 
   /** Applies the function `f` to the node and the results of the subnodes. */
@@ -139,19 +168,5 @@ object Visitor {
     val subResults = subs(n).map(reduceWithContext(_, subs)(newContext, enter, combine))
 
     combine(n, context, subResults)
-  }
-
-  /** A generalisation of Scala's collect, which applies not just to the list
-    * of nodes ns, but also to all those transitively traversed via `subs`.
-    *
-    * @tparam N Node type.
-    * @tparam R Resulting value type.
-    * @param ns List of original nodes.
-    * @param f Partial function to compute desired values.
-    */
-  def deepCollect[N, R](ns: Seq[N], subs: N => Seq[N])(f: PartialFunction[N, R]) : Seq[R] = {
-    ns.flatMap((node: N) =>
-      reduceTree(node, subs)((n: N, vs: Seq[Seq[R]]) =>
-        if (f.isDefinedAt(n)) Seq(f(n)) ++ vs.flatten else vs.flatten))
   }
 }
