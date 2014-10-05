@@ -12,6 +12,5 @@ method m(this: Ref)
   exhale acc(this.x, 1/2)
   d := unfolding acc(p(this)) in this.x
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/119/)
   assert c == d
 }
