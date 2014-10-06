@@ -1,4 +1,4 @@
-addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.5.2")
+addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.6.0")
 
 resolvers += Resolver.url("artifactory", url("http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases"))(Resolver.ivyStylePatterns)
 
