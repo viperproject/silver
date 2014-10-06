@@ -246,6 +246,8 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
 // --- Unfolding expression
 
 case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+  Consistency.checkNoPositiveOnlyExceptInhaleExhale(exp)
+
   lazy val typ = exp.typ
 }
 
