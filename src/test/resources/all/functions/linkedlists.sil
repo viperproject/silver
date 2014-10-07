@@ -35,6 +35,11 @@ function elems(xs: Ref): Seq[Int]
   requires acc(list(xs))
 { unfolding acc(list(xs)) in Seq(xs.val) ++ (xs.next == null ? Seq[Int]() : elems(xs.next)) }
 
+function get(xs: Ref, index: Int): Int
+  requires acc(list(xs))
+  requires 0 <= index && index < length(xs)
+{ unfolding acc(list(xs)) in index == 0 ? xs.val : get(xs.next, index - 1) }
+
 method prepend(xs: Ref, y: Int) returns (ys: Ref)
   requires acc(list(xs))
   ensures acc(list(ys))
@@ -127,11 +132,25 @@ method insert(xs: Ref, y: Int) returns (ys: Ref, i: Int)
 /* At some point, Silicon had a small bug in the handling of disjunction, as used
  * in the body of ascending(xs). Hence this test.
  */
-method test(xs: Ref)
+method test01(xs: Ref)
   requires acc(list(xs)) && ascending(xs)
 {
   unfold acc(list(xs))
   assume xs.next != null
 
   assert ascending(xs.next)
+}
+
+/* Modelled after a Chalice2Silver test case, uncovered a problem in Silicon */
+method test02(xs: Ref, x: Int, ys: Ref)
+  requires ys != null
+  requires acc(list(ys))
+  requires acc(xs.val) && acc(xs.next)
+{
+  xs.val := x
+  xs.next := ys
+  
+  fold acc(list(xs))
+  
+  assert forall i: Int :: i in [1..length(xs)) ==> get(xs, i) == unfolding acc(list(xs), write) in get(ys, i - 1)
 }
