@@ -1,3 +1,5 @@
+/* Provided by Stefan Blom of U Twente. */
+
 field ar: Seq[Ref]
 
 field Integer_value: Int
@@ -22,7 +24,9 @@ method main_main(this: Ref, tcount: Int, tid: Int)
   inhale acc(this.ar[tid].Integer_value, 1 / 4)
 
   // assert acc(this.ar[tid].Integer_value, 3/4);
-     /* Was necessary to trigger a heap compression. */
+     /* Was necessary to trigger a heap compression.
+      * See Silicon issue 119
+      */
 
   exhale acc(this.ar[tid].Integer_value, 1/2)
   inhale acc(this.ar[tid].Integer_value, 1 / 4)
