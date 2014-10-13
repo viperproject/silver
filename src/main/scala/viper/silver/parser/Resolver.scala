@@ -174,7 +174,7 @@ case class TypeChecker(names: NameAnalyser) {
               }
             }
           case _ =>
-            message(stmt, "expected a label")
+            message(stmt, "expected a method")
         }
       case PLabel(name) =>
       // nothing to check
@@ -670,9 +670,22 @@ case class TypeChecker(names: NameAnalyser) {
         check(acc.loc, Pred)
         check(body, expected)
         setType(exp.typ)
-      case PExists(vars, e) =>
+      case f@ PExists(vars, e) =>
+        val oldCurMember = curMember
+        curMember = f
         vars map (v => check(v.typ))
+//        triggers.flatten map (x => check(x, Nil))
         check(e, Bool)
+        curMember = oldCurMember
+//        vars map (v => check(v.typ))
+//        check(e, Bool)
+      case f@ PForall(vars, triggers, e) =>
+        val oldCurMember = curMember
+        curMember = f
+        vars map (v => check(v.typ))
+        triggers.flatten map (x => check(x, Nil))
+        check(e, Bool)
+        curMember = oldCurMember
       case po: POldExp =>
         check(po.e, expected)
         if (po.e.typ.isUnknown) {
@@ -684,13 +697,6 @@ case class TypeChecker(names: NameAnalyser) {
             // ok
             setType(po.e.typ)
         }
-      case f@ PForall(vars, triggers, e) =>
-        val oldCurMember = curMember
-        curMember = f
-        vars map (v => check(v.typ))
-        triggers.flatten map (x => check(x, Nil))
-        check(e, Bool)
-        curMember = oldCurMember
       case PCondExp(cond, thn, els) =>
         check(cond, Bool)
         check(thn, Nil)
