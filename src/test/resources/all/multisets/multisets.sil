@@ -48,7 +48,7 @@ method test04b(B: Multiset[Int], n: Int, x: Int, y: Int)
   requires x != y
 {
   var B1: Multiset[Int] := B setminus Multiset(x)
-//  assert y in B1
+  //  assert y in B1
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/109/)
   assert |B1| == n - 1
   //:: ExpectedOutput(assert.failed:assertion.false)
@@ -64,14 +64,20 @@ method test05(B: Multiset[Int], n: Int, x: Int)
   assert |B1| == 2*n
 }
 
-method test06(B: Multiset[Int], n: Int, x: Int)
+method test06(B: Multiset[Int], n: Int, x: Int, b:Bool)
   requires |B| == n
 {
   var B1: Multiset[Int] := B intersection B
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/108/)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/28/)
-  assert |B1| == n
-  assert B1 == B
+  if(b) {
+    // NOTE: cardinality for multisets has no strong axioms, but equality can be used
+    assert B1 == B
+    assert |B1| == n
+  } else {
+    // NOTE: cardinality for multisets has no strong axioms
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert |B1| == n  
+    assert B1 == B
+  }
 }
 
 method test07(B: Multiset[Int], n: Int, x: Int, y: Int)
@@ -88,7 +94,7 @@ method test08(B: Multiset[Int], n: Int, x: Int, y: Int)
 {
   var B1: Multiset[Int] := B intersection Multiset(x, y)
   assert x in B1 <==> x in B
-  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/28/)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/108/)
+  // NOTE: cardinality for multisets has no strong axioms
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert |B1| <= 2
 }
