@@ -22,7 +22,6 @@ method test03(B: Multiset[Int], n: Int, x: Int, y: Int)
   var B1: Multiset[Int] := B setminus Multiset[Int]()
   assert x in B1
   assert y in B1
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/107/)
   assert |B1| == n
 }
 
@@ -36,7 +35,6 @@ method test04a(B: Multiset[Int], n: Int, x: Int, y: Int)
   assert y in B1
   assert |B1| == n - 1
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/109/)
   assert x in B1
 }
 
@@ -48,11 +46,9 @@ method test04b(B: Multiset[Int], n: Int, x: Int, y: Int)
   requires x != y
 {
   var B1: Multiset[Int] := B setminus Multiset(x)
-  //  assert y in B1
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/109/)
   assert |B1| == n - 1
+
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/109/)
   assert x in B1
 }
 
@@ -75,7 +71,7 @@ method test06(B: Multiset[Int], n: Int, x: Int, b:Bool)
   } else {
     // NOTE: cardinality for multisets has no strong axioms
     //:: ExpectedOutput(assert.failed:assertion.false)
-    assert |B1| == n  
+    assert |B1| == n
     assert B1 == B
   }
 }
