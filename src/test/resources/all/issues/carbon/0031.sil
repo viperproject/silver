@@ -15,8 +15,7 @@ method lemma(x: Ref, k: Perm)
   requires x != null
   requires acc(list(x), k)
   ensures  acc(list(x), k)
-  ensures  fun(x) > 0 // Precondition of function fun might not hold.
-                      // There might be insufficient permission to access list(x)
+  ensures  fun(x) > 0 
 {
   var k1: Perm
   
