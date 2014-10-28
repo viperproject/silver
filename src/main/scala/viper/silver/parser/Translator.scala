@@ -231,9 +231,9 @@ case class Translator(program: PProgram) {
           case "/" =>
           {
             assert(r.typ==Int)
-            l match {
-              case lp : PermExp => PermDiv(lp, r)(pos)
-              case _            => assert (l.typ==Int); FractionalPerm(l, r)(pos)
+            l.typ match {
+              case Perm => PermDiv(l, r)(pos)
+              case Int  => assert (l.typ==Int); FractionalPerm(l, r)(pos)
             }
           }
           case "\\" => Div(l, r)(pos)

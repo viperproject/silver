@@ -152,8 +152,9 @@ case class FractionalPerm(left: Exp, right: Exp)(val pos: Position = NoPosition,
   require(right.typ==Int)
 }
 
-case class PermDiv(left: PermExp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(DivOp) with PermExp
+case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermDivOp) with PermExp
 {
+  require(left.typ==Perm)
   require(right.typ==Int)
 }
 /** The permission currently held for a given location. */
