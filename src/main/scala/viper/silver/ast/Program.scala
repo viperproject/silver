@@ -357,6 +357,10 @@ case object IntPermMulOp extends ProdOp("*") with BinOp with PermDomainFunc {
   lazy val leftTyp = Int
   lazy val rightTyp = Perm
 }
+case object PermDivOp extends ProdOp("/") with BinOp with PermDomainFunc {
+  lazy val leftTyp = Perm
+  lazy val rightTyp = Int
+}
 case object FracOp extends ProdOp("/") with BinOp with PermDomainFunc {
   lazy val leftTyp = Int
   lazy val rightTyp = Int

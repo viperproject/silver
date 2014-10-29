@@ -78,6 +78,8 @@ object Transformer {
             case CurrentPerm(loc) => CurrentPerm(go(loc))(p, i)
             case FractionalPerm(left, right) =>
               FractionalPerm(go(left), go(right))(p, i)
+            case PermDiv(left, right) =>
+              PermDiv(go(left), go(right))(p, i)
             case FieldAccessPredicate(loc, perm) =>
               FieldAccessPredicate(go(loc), go(perm))(p, i)
             case PredicateAccessPredicate(loc, perm) =>

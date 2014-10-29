@@ -147,7 +147,16 @@ case class EpsilonPerm()(val pos: Position = NoPosition, val info: Info = NoInfo
 
 /** A concrete fraction as permission amount. */
 case class FractionalPerm(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(FracOp) with PermExp
+{
+  require(left.typ==Int)
+  require(right.typ==Int)
+}
 
+case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermDivOp) with PermExp
+{
+  require(left.typ==Perm)
+  require(right.typ==Int)
+}
 /** The permission currently held for a given location. */
 case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 

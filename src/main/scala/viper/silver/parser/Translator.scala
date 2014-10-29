@@ -228,7 +228,15 @@ case class Translator(program: PProgram) {
                 }
               case _ => sys.error("should not occur in type-checked program")
             }
-          case "/" => FractionalPerm(l, r)(pos)
+          case "/" =>
+          {
+            assert(r.typ==Int)
+            l.typ match {
+              case Perm => PermDiv(l, r)(pos)
+              case Int  => assert (l.typ==Int); FractionalPerm(l, r)(pos)
+              case _    => sys.error("should not occur in type-checked program")
+            }
+          }
           case "\\" => Div(l, r)(pos)
           case "%" => Mod(l, r)(pos)
           case "<" =>

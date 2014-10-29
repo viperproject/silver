@@ -478,7 +478,7 @@ case class TypeChecker(names: NameAnalyser) {
                 }
             }
           case "/" =>
-            check(left, Int)
+            check(left, Seq(Int,Perm))
             check(right, Int)
             setType(Perm)
           case "\\" =>
