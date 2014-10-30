@@ -1,8 +1,0 @@
-field f:Int
-
-method m(S:Set[Ref],b:Ref)
-requires forall s:Ref :: s in S ==> acc(s.f, write)
-requires forall s:Ref :: (s in S && s.f > 0) ==> s.f > 5
-{
-
-}

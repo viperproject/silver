@@ -88,3 +88,9 @@ case class TimeoutOccurred(n: Long, units: String) extends AbstractError {
   def fullId = "timeout.error"
   def readableMessage = s"Timeout occurred after $n $units"
 }
+
+case class AbortedExceptionally(cause: Throwable) extends AbstractError {
+  def pos = NoPosition
+  def fullId = "exceptional.error"
+  def readableMessage = s"Verification aborted exceptionally"
+}

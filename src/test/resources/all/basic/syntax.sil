@@ -33,6 +33,17 @@ method m(this : Ref)
     y := df(this.g)
 }
 
+  //:: ExpectedOutput(typechecker.error)
+method m54(this:Ref)  returns (this:Ref)
+{    
+    this := this
+}
+
+method m55(this:Ref)  returns (res:Ref)
+{
+    res := this
+}
+
 /*
 
 method m2()

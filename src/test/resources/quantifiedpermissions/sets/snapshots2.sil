@@ -1,17 +1,88 @@
-field f:Int
+field f: Int
 
-predicate inv(x:Ref) {
-	acc(x.f, write)
+function fun(xs: Set[Ref], x: Ref, n: Int): Int
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  requires x in xs
+  requires n >= 0
+{ n == 0 ? x.f : fun(xs, x, n - 1) }
+
+method test01(xs: Set[Ref], x: Ref, n: Int)
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  requires x in xs
+  requires n >= 0
+{
+  var v: Int := fun(xs, x, n)
+  assert v == fun(xs, x, n)
 }
 
-method m1(this:Ref)
-requires acc(inv(this), write)
-ensures acc(inv(this), write)
+method test02(xs: Set[Ref], x: Ref, y: Ref, n: Int)
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  requires x in xs && y in xs
+  requires x != y
+  requires n >= 0
 {
-	unfold acc(inv(this), write)
-	var a:Int := this.f
-	fold acc(inv(this), write)
-	unfold acc(inv(this), write)
-	assert a == this.f
-	fold acc(inv(this), write)
+  var v: Int := fun(xs, x, n)
+  y.f := 0
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert v == fun(xs, x, n)
+}
+
+method test05(xs: Set[Ref], x: Ref, y: Ref, n: Int)
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  requires x in xs && y in xs
+  requires x != y
+  requires n >= 0
+{
+  var v: Int := fun(xs, x, n)
+  y.f := y.f
+  assert v == fun(xs, x, n)
+}
+
+method test06(xs: Set[Ref], x: Ref, y: Ref, n: Int)
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  requires x in xs && y in xs
+  requires x != y
+  requires n >= 0
+{
+  var v: Int := fun(xs, x, n)
+  var yf: Int := y.f
+  y.f := 0
+  y.f := yf
+  assert v == fun(xs, x, n)
+}
+
+method test07(xs: Set[Ref], x: Ref, y: Ref, n: Int)
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  requires x in xs && y in xs
+  requires x != y
+  requires n >= 0
+{
+  var v: Int := fun(xs, x, n)
+  y.f := 0
+  y.f := old(y.f)
+  assert v == fun(xs, x, n)
+}
+
+method test03(xs: Set[Ref], x: Ref, y: Ref, n: Int)
+  requires forall z: Ref :: z in xs ==> acc(z.f)
+  requires x in xs && y in xs
+  requires x != y
+  requires n >= 0
+{
+  var v: Int := fun(xs, x, 0)
+  y.f := 0
+  assert v == fun(xs, x, 0)
+}
+
+method test04(xs: Set[Ref], ys: Set[Ref], x: Ref, y: Ref, n: Int)
+  requires forall z: Ref :: z in (xs union ys) ==> acc(z.f)
+  requires x in xs && y in ys
+  requires !(x in ys) && !(y in xs)
+  requires x != null && y != null // TODO: Should not be necessary, see Silicon issue 61
+  requires n >= 0
+{
+  var v: Int := fun(xs, x, n)
+  y.f := 0
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/111/)
+  assert v == fun(xs, x, n)
 }

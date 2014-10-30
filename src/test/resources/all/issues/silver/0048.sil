@@ -1,0 +1,3 @@
+  //:: ExpectedOutput(typechecker.error)
+method Bug() {}
+method Bug() {}

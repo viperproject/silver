@@ -1,7 +1,7 @@
 field f: Int
 
 method foo2(s: Seq[Ref])
-  requires |s| > 3 && acc(s[0].f, write) && acc(s[1].f, write) && acc(s[2].f, write)
+  requires |s| > 3 && acc(s[0].f) && acc(s[1].f) && acc(s[2].f)
 
   //:: UnexpectedOutput(not.wellformed:insufficient.permission, /silicon/issue/72/)
   requires forall i: Int :: i in [0..2) ==> s[i].f == 0
@@ -10,3 +10,10 @@ method foo2(s: Seq[Ref])
        * [0..1).
        */
 {}
+
+//method foo2korbinian(s: Seq[Ref])
+//  requires |s| > 2
+//  requires forall i: Int :: i in [0..1) ==> acc(s[i].f)
+//  requires forall i: Int :: i in [1..2) ==> acc(s[i].f)
+//  requires forall i: Int :: i in [0..2) ==> s[i].f == 0
+//{}

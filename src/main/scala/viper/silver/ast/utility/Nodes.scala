@@ -107,12 +107,6 @@ object Nodes {
           case ExplicitSet(elems) => elems
           case EmptyMultiset(elemTyp) => Seq(elemTyp)
           case ExplicitMultiset(elems) => elems
-          case AnySetUnion(left, right) => Seq(left, right)
-          case AnySetIntersection(left, right) => Seq(left, right)
-          case AnySetSubset(left, right) => Seq(left, right)
-          case AnySetMinus(left, right) => Seq(left, right)
-          case AnySetContains(elem, s) => Seq(elem, s)
-          case AnySetCardinality(s) => Seq(s)
         }
       case t: Type => Nil
     }

@@ -31,7 +31,6 @@ method parallel_max(a:Ref, start:Int, end:Int, kperm: Perm) returns (mx: Int, po
       middle := start + (end-start)\2
       fresh kperm1
 
-      //:: UnexpectedOutput(call.precondition:insufficient.permission, /silicon/issue/70/)
 		  constraining(kperm1) { ml,posl := parallel_max(a, start, middle, kperm1) }
 
       fresh kperm2

@@ -4,12 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
 package viper.silver.ast.utility
 
 import viper.silver.ast._
@@ -190,128 +184,24 @@ object Expressions {
    */
   def generateTrigger(exp: QuantifiedExp): Seq[(Seq[Trigger], Seq[LocalVarDecl])] = {
     TriggerGeneration.generateTriggers(exp.variables map (_.localVar), exp.exp)
+                     .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)()))}
   }
 
-  /**
-   * Code related to automatic trigger generation.  The code is largely based on similar
-   * code in Chalice written by Alexander J. Summers.
-   */
-  object TriggerGeneration {
+  object TriggerGeneration extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp, PossibleTrigger,
+                                                           ForbiddenInTrigger, Old, WrappingTrigger, Trigger] {
 
-    var id = 0
+    protected def hasSubnode(root: Node, child: Node) = root.hasSubnode(child)
+    protected def visit[A](root: Node)(f: PartialFunction[Node, A]) = root.visit(f)
+    protected def deepCollect[A](root: Node)(f: PartialFunction[Node, A]) = root.deepCollect(f)
+    protected def reduceTree[A](root: Node)(f: (Node, Seq[A]) => A) = root.reduceTree(f)
+    protected def transform[N <: Node](root: N)(f: PartialFunction[Node, Node]) = root.transform(f)()
+    protected def quantifiedVariables(q: QuantifiedExp) = q.variables map (_.localVar)
+    protected def exps(t: Trigger) = t.exps
 
-    // This is used for searching for triggers for quantifiers around the expression "toSearch". The list "vs" gives the variables which need triggering
-    // Returns a list of function applications (the framing function) paired with two sets of variables.
-    // The first set of variables shows which of the "vs" occur (useful for deciding how to select applications for trigger sets later)
-    // The second set of variables indicated the extra boolean variables which were introduced to "hide" problematic logical/comparison operators which may not occur in triggers.
-    // e.g., if vs = [x] and toSearch = f(x, y ==> z) thn a singleton list will be returned, containing (f(x,b),{x},{b}).
-    def getFunctionAppsContaining(vs: Seq[LocalVar], toSearch: Exp): (Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]) = {
-      var nestedBoundVars: Seq[LocalVar] = Seq() // count all variables bound in nested quantifiers, to avoid considering function applications mentioning these
+    protected def Trigger(exps: Seq[Exp]) = viper.silver.ast.Trigger(exps)()
+    protected def Var(id: String, typ: Type) = LocalVar(id)(typ)
 
-      // get all nested bound vars
-      toSearch visit {
-        case qe: QuantifiedExp =>
-          nestedBoundVars ++= (qe.variables map (_.localVar))
-      }
-
-     // toSearch.reduceTree[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]((t:Node,results:Seq[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]) => results.flatten)
-      // get all function applications
-      toSearch.reduceTree[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]((t: Node, results: Seq[Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]]) => t match {
-        case t: PossibleTrigger =>
-          var extraVars: Seq[LocalVarDecl] = Seq() // collect extra variables generated for this term
-        var containsNestedBoundVars = false // flag to rule out this term
-        // closure to generate fresh LocalVar to replace problematic expressions which may not occur in triggers
-        val freshVar: (Type => Exp) = {
-          ty =>
-            val newV = LocalVarDecl("fresh__" + id, ty)()
-            id += 1
-            extraVars +:= newV
-            newV.localVar
-        }
-          // replaces problematic logical/comparison expressions with fresh boolean variables
-          val boolExprEliminator: PartialFunction[Node, Node] = {
-            case e: ForbiddenInTrigger => freshVar(e.typ)
-          }
-          var containedVars: Seq[LocalVar] = Seq()
-          val processedArgs = t.getArgs map (_.transform(boolExprEliminator)()) // eliminate all boolean expressions forbidden from triggers, and replace with "extraVars"
-          // collect all the sought (vs) variables in the function application
-          processedArgs map {
-            e => e visit {
-              case v@LocalVar(s) =>
-                if (nestedBoundVars.contains(v)) containsNestedBoundVars = true
-                if (vs.contains(v)) containedVars +:= v
-            }
-          }
-          if (!containsNestedBoundVars && !containedVars.isEmpty)
-            results.flatten ++ Seq((t.withArgs(processedArgs), containedVars, extraVars))
-          else
-            results.flatten
-        case Old(_) => results.flatten map {case (pt, vars, extras) => (OldTrigger(pt)(pt.pos,pt.info),vars,extras)}
-        case _ => results.flatten
-      }
-      )
-    }
-
-    // Precondition : if vars is non-empty then every (f,vs) pair in functs satisfies the property that vars and vs are not disjoint.
-    // Finds trigger sets by selecting entries from "functs" until all of "vars" occur, and accumulating the extra variables needed for each function term.
-    // Returns a list of the trigger sets found, paired with the extra boolean variables they use
-    def buildTriggersCovering(vars: Seq[LocalVar], functs: Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])], currentTrigger: Seq[Exp], extraVars: Seq[LocalVarDecl]): Seq[(Trigger, Seq[LocalVarDecl])] = {
-      if (vars.isEmpty) Seq((Trigger(currentTrigger)(), extraVars)) // we have found a suitable trigger set
-      else functs match {
-        case Nil => Nil // this branch didn't result in a solution
-        case ((f, vs, extra) :: rest) => {
-          val needed: Seq[LocalVar] = vars.diff(vs) // variables still not triggered
-          // try adding the next element of functs, or not..
-          buildTriggersCovering(needed, rest.filter(func => !func._2.intersect(needed).isEmpty), currentTrigger :+ f.asExp, (extraVars ++ extra).distinct) ++ buildTriggersCovering(vars, rest, currentTrigger, extraVars)
-        }
-      }
-    }
-
-    // Generates trigger sets to cover the variables "vs", by searching the expression "toSearch".
-    // Returns a list of pairs of lists of trigger sets couple with the extra variables they require to be quantified over (each list of triggers must contain trigger sets which employ exactly the same extra variables).
-    def generateTriggers(vs: Seq[LocalVar], toSearch: Exp): Seq[(Seq[Trigger], Seq[LocalVarDecl])] = {
-      val functionApps: (Seq[(PossibleTrigger, Seq[LocalVar], Seq[LocalVarDecl])]) = getFunctionAppsContaining(vs, toSearch) // find suitable function applications
-      if (functionApps.isEmpty) Seq()
-      else {
-        val candidates: Seq[(Trigger, Seq[LocalVarDecl])] = buildTriggersCovering(vs, functionApps, Nil, Seq())
-
-        // filter out any trigger sets with redundant terms (e.g., {g(x),f(g(x))}) - entire set is dropped, since the version without redundancy will also be found (e.g. {f(g(x))})
-        val filteredCandidates: Seq[(Trigger, Seq[LocalVarDecl])] = candidates.filter(_._1 match { case Trigger(exps) => (!exps.exists(t1 => exps.exists(t2 => t1.hasSubterm(t2)))) } )
-
-        // now remove any trigger sets which are "subsumed" by another trigger set (in the sense that they define a strictly weaker criterion).
-        // The criterion used here is that a set is weaker than another iff every term in the first set is a strict subterm of some term in the second set.
-        // Note that it may be that this criterion could be generalised (using some unification to spot e.g. that f(g(x),g(y)) is stricter than f(x,y), but this is not done here.
-        var triggerSetsToUse: Seq[(Trigger, Seq[LocalVarDecl])] = filteredCandidates.filter(trig => trig._1 match { case Trigger(exps) =>
-          !filteredCandidates.exists(other => other!=trig && (other._1 match { case Trigger(other_exps) =>
-            exps.forall(exp => other_exps.exists(_.hasSubterm(exp)))
-          }))
-        })
-
-        // Finally, group trigger sets by those which use the same sets of extra boolean variables
-        var groupedTriggerSets: Seq[(Seq[Trigger], Seq[LocalVarDecl])] = Seq()
-
-        while (!triggerSetsToUse.isEmpty) {
-          triggerSetsToUse.partition((ts: (Trigger, Seq[LocalVarDecl])) => triggerSetsToUse.head._2.equals(ts._2)) match {
-            case (sameVars, rest) =>
-              triggerSetsToUse = rest
-              groupedTriggerSets +:=(sameVars map (_._1), sameVars.head._2.toList)
-          }
-        }
-        groupedTriggerSets
-      }
-    }
-
-    def filterTriggers(vs: Seq[LocalVar], triggersToFilter: Seq[(Trigger, Seq[LocalVarDecl])], filteredTriggers: Seq[(Trigger, Seq[LocalVarDecl])]) : Seq[(Trigger, Seq[LocalVarDecl])] =
-
-      triggersToFilter match {
-        case Nil => filteredTriggers
-        case ((triggerSet, extraVars) :: rest) => {
-          if(filteredTriggers.exists(_ => true)) filteredTriggers else filteredTriggers
-        }
-      }
-
-
-
-
+    protected val wrapperMap: Map[Class[_], PossibleTrigger => WrappingTrigger] = Map(
+      classOf[Old] -> (pt => OldTrigger(pt)(pt.pos,pt.info)))
   }
 }

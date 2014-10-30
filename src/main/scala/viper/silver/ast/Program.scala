@@ -4,12 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
 package viper.silver.ast
 
 import utility.{Consistency, Types}
@@ -364,6 +358,10 @@ case object PermMulOp extends ProdOp("*") with PermBinOp with PermDomainFunc
 case object IntPermMulOp extends ProdOp("*") with BinOp with PermDomainFunc {
   lazy val leftTyp = Int
   lazy val rightTyp = Perm
+}
+case object PermDivOp extends ProdOp("/") with BinOp with PermDomainFunc {
+  lazy val leftTyp = Perm
+  lazy val rightTyp = Int
 }
 case object FracOp extends ProdOp("/") with BinOp with PermDomainFunc {
   lazy val leftTyp = Int

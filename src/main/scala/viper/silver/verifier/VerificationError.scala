@@ -318,4 +318,9 @@ object reasons {
     val id = "wand.outdated"
     def readableMessage = s"Found magic wand instance, but now-expressions might not match."
   }
+
+  case class ReceiverNotInjective(offendingNode: LocationAccess) extends AbstractErrorReason {
+    val id = "receiver.not.injective"
+    def readableMessage = s"Receiver of $offendingNode might not be injective."
+  }
 }

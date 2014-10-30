@@ -1,3 +1,10 @@
+/* 2014-09-09 Malte:
+ *   These tests are no longer really useful, because what they were meant to
+ *   test has significantly changed over the last months. In particular, we
+ *   no longer support sequences with duplicates, and we also removed the use
+ *   if multiset-count from the encoding of quantified permissions.
+ */
+
 // breaking permissions
 field f: Int
 
@@ -7,8 +14,8 @@ method m(s: Seq[Ref])
   requires |s|>4 && forall i:Int :: i in [0..4) ==> acc(s[i].f, 25 / 100)
   requires s[0] == s[1] && s[1] == s[2] && s[2] == s[3]
 {
-//:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/issue/73/)
-  s[0].f := 4
+  assert false
+  // s[0].f := 4
 }
 
 // this one is very hard
@@ -16,6 +23,7 @@ method n(s: Seq[Ref])
   requires |s| > 4
   requires s[0] == s[1] && s[1] == s[2] && s[2] == s[3]
   requires acc(s[0].f, write)
+  //:: ExpectedOutput(postcondition.violated:receiver.not.injective)
   ensures forall i1:Int :: i1 in [0..4) ==> acc(s[i1].f, 25 / 100)
 {
 }
@@ -27,4 +35,5 @@ method n1(s: Seq[Ref])
   requires forall i2:Int :: i2 in [0..2) ==> acc(s[i2].f, 50 / 100)
   ensures forall i3:Int :: i3 in [0..4) ==> acc(s[i3].f, 25 / 100)
 {
+  assert false
 }

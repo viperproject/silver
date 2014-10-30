@@ -35,3 +35,13 @@ method t2(r: Ref) {
     assert perm(r.f) == none
   }
 }
+
+method t3(r:Ref) returns (res:Ref)
+    requires r!=null
+    requires acc(r.f)
+    requires r.f!=null
+    requires acc(r.f.f)
+{
+    res := r.f.f
+}
+

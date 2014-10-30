@@ -8,6 +8,7 @@ package viper.silver.parser
 
 import org.kiama.util.Positioned
 import org.kiama.attribution.Attributable
+import viper.silver.ast.utility.Visitor
 import TypeHelper._
 import java.nio.file.Path
 
@@ -16,61 +17,48 @@ import java.nio.file.Path
  * with the actual SIL abstract syntax tree.
  */
 sealed trait PNode extends Positioned with Attributable {
-  /**
-   * Returns a list of all direct sub-nodes of this node.
-   */
+  /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
 
-  /**
-   * Applies the function `f` to the node and the results of the subnodes.
-   */
-  def reduce[T](f: (PNode, Seq[T]) => T) = Visitor.reduce[T](this)(f)
+  /** @see [[Visitor.reduceTree()]] */
+  def reduceTree[T](f: (PNode, Seq[T]) => T) = Visitor.reduceTree(this, Nodes.subnodes)(f)
 
-  /**
-   * More powerful version of reduceTree that also carries a context argument through the tree.
-   */
-  def reduce[C, R](context: C, enter: (PNode, C) => C, combine: (PNode, C, Seq[R]) => R) = {
-    Visitor.reduce[C, R](this)(context, enter, combine)
+  /** @see [[Visitor.reduceWithContext()]] */
+  def reduceWithContext[C, R](context: C, enter: (PNode, C) => C, combine: (PNode, C, Seq[R]) => R) = {
+    Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
 
-  def deepCollect[V](f: PartialFunction[PNode,V]) : Seq[V] =
-    Visitor.deepCollect[PNode, V](this :: Nil, Nodes.subnodes)(f)
-
-  /**
-   * Applies the function `f` to the AST node, then visits all subnodes.
-   */
+  /** @see [[Visitor.visit()]] */
   def visit(f: PartialFunction[PNode, Unit]) {
-    Visitor.visit(this)(f)
+    Visitor.visit(this, Nodes.subnodes)(f)
   }
 
-  /**
-   * Applies the function `f1` to the AST node, then visits all subnodes,
-   * and finally calls `f2` to the AST node.
-   */
+  /** @see [[Visitor.visit()]] */
   def visit(f1: PartialFunction[PNode, Unit], f2: PartialFunction[PNode, Unit]) {
-    Visitor.visit(this, f1, f2)
+    Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
 
-  /**
-   * Applies the function `f` to the AST node, then visits all subnodes if `f`
-   * returned true.
-   */
+  /** @see [[Visitor.visitOpt()]] */
   def visitOpt(f: PNode => Boolean) {
-    Visitor.visitOpt(this)(f)
+    Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
-  /**
-   * Applies the function `f1` to the AST node, then visits all subnodes if `f1`
-   * returned true, and finally calls `f2` to the AST node.
-   */
+  /** @see [[Visitor.visitOpt()]] */
   def visitOpt(f1: PNode => Boolean, f2: PNode => Unit) {
-    Visitor.visitOpt(this, f1, f2)
+    Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 
-  def transform(pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
-    recursive: PNode => Boolean = !pre.isDefinedAt(_),
-    post: PartialFunction[PNode, PNode] = PartialFunction.empty): this.type =
+  /** @see [[Transformer.transform()]]  */
+  def transform(pre: PartialFunction[PNode, PNode] = PartialFunction.empty)
+               (recursive: PNode => Boolean = !pre.isDefinedAt(_),
+                post: PartialFunction[PNode, PNode] = PartialFunction.empty)
+               : this.type =
+
     Transformer.transform[this.type](this, pre)(recursive, post)
+
+  /** @see [[Visitor.deepCollect()]] */
+  def deepCollect[A](f: PartialFunction[PNode, A]) : Seq[A] =
+    Visitor.deepCollect(Seq(this), Nodes.subnodes)(f)
 }
 
 object TypeHelper {
@@ -223,7 +211,7 @@ case class PFolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp
 case class PApplying(wand: PExp, exp: PExp) extends PExp
 case class PPackaging(wand: PExp, exp: PExp) extends PExp
 
-case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp
+case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp with PScope
 case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp with PScope
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
 case class PInhaleExhaleExp(in: PExp, ex: PExp) extends PExp
@@ -467,81 +455,5 @@ object Nodes {
       case PLetWand(idndef, wand) => Seq(idndef, wand)
       case _: PSkip => Nil
     }
-  }
-}
-
-/**
- * An implementation for visitors of the SIL AST.
- */
-object Visitor {
-
-  /**
-   * See Node.reduceTree.
-   */
-  def reduce[T](n: PNode)(f: (PNode, Seq[T]) => T): T = {
-    val subResults = n.subnodes.map(reduce[T](_)(f))
-    f(n, subResults)
-  }
-
-  /**
-   * See Node.reduceTree.
-   */
-  def reduce[C, R](n: PNode)(context: C, enter: (PNode, C) => C, combine: (PNode, C, Seq[R]) => R): R = {
-    val newContext = enter(n, context)
-    val subResults = n.subnodes.map(reduce[C, R](_)(newContext, enter, combine))
-    combine(n, context, subResults)
-  }
-
-  /**
-   * See Node.visit.
-   */
-  def visit(n: PNode)(f: PartialFunction[PNode, Unit]) {
-    if (f.isDefinedAt(n)) f(n)
-    for (sub <- n.subnodes) {
-      visit(sub)(f)
-    }
-  }
-
-  /**
-   * See Node.visit.
-   */
-  def visit(n: PNode, f1: PartialFunction[PNode, Unit], f2: PartialFunction[PNode, Unit]) {
-    if (f1.isDefinedAt(n)) f1(n)
-    for (sub <- n.subnodes) {
-      visit(sub, f1, f2)
-    }
-    if (f2.isDefinedAt(n)) f2(n)
-  }
-
-  /**
-   * See Node.visitOpt.
-   */
-  def visitOpt(n: PNode)(f: PNode => Boolean) {
-    if (f(n)) {
-      for (sub <- n.subnodes) {
-        visitOpt(sub)(f)
-      }
-    }
-  }
-
-  /**
-   * See Node.visitOpt.
-   */
-  def visitOpt(n: PNode, f1: PNode => Boolean, f2: PNode => Unit) {
-    if (f1(n)) {
-      for (sub <- n.subnodes) {
-        visitOpt(sub, f1, f2)
-      }
-    }
-    f2(n)
-  }
-
-  def reduceTree[N, T](n: N, subs: N => Seq[N])(f: (N, Seq[T]) => T): T = {
-    val subResults = subs(n).map(reduceTree[N, T](_, subs)(f))
-    f(n, subResults)
-  }
-
-  def deepCollect[N, V](ns: Seq[N], subs: N => Seq[N])(f: PartialFunction[N,V]) : Seq[V] = {
-    ns.map((node:N) => reduceTree(node, subs)((n:N,vs:Seq[Seq[V]]) => if (f.isDefinedAt(n)) Seq(f(n)) ++ vs.flatten else vs.flatten)).flatten
   }
 }

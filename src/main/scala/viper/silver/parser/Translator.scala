@@ -6,12 +6,11 @@
 
 package viper.silver.parser
 
+import language.implicitConversions
 import org.kiama.attribution.Attributable
 import org.kiama.util.Messaging
-import language.implicitConversions
 import viper.silver.ast._
-import viper.silver.ast.utility.{Visitor => UtilityVisitor}
-import utility.Statements
+import viper.silver.ast.utility.{Visitor, Statements}
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -51,7 +50,7 @@ case class Translator(program: PProgram) {
   private def translate(m: PMethod): Method = m match {
     case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
       val m = findMethod(name)
-      val plocals = UtilityVisitor.deepCollect(body.childStmts, Nodes.subnodes)({ case l: PLocalVarDecl => l })
+      val plocals = Visitor.deepCollect(body.childStmts, Nodes.subnodes)({ case l: PLocalVarDecl => l })
       val locals = plocals map {
         case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p.start)
       }
@@ -240,7 +239,15 @@ case class Translator(program: PProgram) {
                 }
               case _ => sys.error("should not occur in type-checked program")
             }
-          case "/" => FractionalPerm(l, r)(pos)
+          case "/" =>
+          {
+            assert(r.typ==Int)
+            l.typ match {
+              case Perm => PermDiv(l, r)(pos)
+              case Int  => assert (l.typ==Int); FractionalPerm(l, r)(pos)
+              case _    => sys.error("should not occur in type-checked program")
+            }
+          }
           case "\\" => Div(l, r)(pos)
           case "%" => Mod(l, r)(pos)
           case "<" =>

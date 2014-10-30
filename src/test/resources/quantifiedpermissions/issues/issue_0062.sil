@@ -1,10 +1,21 @@
-//:: IgnoreFile(/silicon/issue/62/)
-
 field f:Int
 
-method m(S:Seq[Ref], a:Int, b:Int)
-requires forall i:Int :: i in [0..|S|) ==> acc(S[i].f, write)
-requires a >= 0 && a < b && b < |S|
+method test01(xs: Set[Ref], x: Ref, y: Ref, z: Ref)
+  requires x in xs && y in xs && z in xs
+  requires acc(x.f) && acc(y.f)
 {
-    assert(S[a] != S[b])
+  assert x != y
 }
+
+method test02(xs: Set[Ref], x: Ref, y: Ref, z: Ref)
+  requires x in xs && y in xs && z in xs
+  requires forall q: Ref :: q in xs ==> acc(q.f)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert x != y
+}
+
+method m(S:Seq[Ref], a:Int, b:Int)
+  requires forall i:Int :: i in [0..|S|) ==> acc(S[i].f)
+  requires a >= 0 && a < b && b < |S|
+{ assert(S[a] != S[b]) }

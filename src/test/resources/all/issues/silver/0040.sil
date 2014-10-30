@@ -6,5 +6,5 @@ method Main() {
 
   //:: ExpectedOutput(typechecker.error)
   var count: Int := og.ghost0
-    /* The type checker should now report "expected field" */
+  /* The type checker should now report "expected field" */
 }

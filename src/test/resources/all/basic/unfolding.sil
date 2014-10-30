@@ -1,12 +1,3 @@
-//:: IgnoreFile(/silicon/issue/92/)
-
-/* TODO:
- *   This test case also uses unfolding-expressions containing access
- *   predicates in their bodies, which have semantics that are difficult to
- *   support, and moreover, probably not worth being supported. We decided to
- *   to disallow them by adding corresponding consistency checks.
- */
-
 field f: Int
 field next: Ref
 
@@ -36,7 +27,9 @@ method t3(r: Ref)
 
 
 predicate deeper(r:Ref) {
-  acc(r.f) && acc(r.next) && ((r.next != null) ==> acc(deeper(r.next)) && (unfolding deeper(r.next) in (acc(r.next.f) && acc(r.next.next))))
+     acc(r.f)
+  && acc(r.next)
+  && ((r.next != null) ==> acc(deeper(r.next)) && (unfolding deeper(r.next) in true))
 }
 
 
@@ -61,9 +54,16 @@ method t6(r: Ref)
     var i: Int := unfolding acc(deeper(r), write) in ((r.next == null) ? 0 : ((r.next.next == null) ? 0 : r.next.next.f))
 }
 
-// this was originally a mistake: it is a version of the "deeper" predicate which contains itself. A verifier may be able to find out that an instance of this predicate cannot be held..
+/* This was originally a mistake: it is a version of the "deeper" predicate which
+ * contains itself. A verifier may be able to find out that an instance of this
+ * predicate cannot be held ...
+ */
 predicate strange(r:Ref) {
-  acc(r.f) && acc(r.next) && ((r.next != null) ==> acc(strange(r)) && (unfolding deeper(r) in (acc(r.next.f) && acc(r.next.next))))
+     acc(r.f)
+  && acc(r.next)
+  && (r.next != null
+        ==>
+     acc(r.next.f) && acc(r.next.next) && acc(strange(r)) && unfolding strange(r) in true)
 }
 
 method t7(r: Ref)
@@ -84,6 +84,8 @@ method t9(r:Ref)
     requires acc(strange(r))
 {
   unfold strange(r)
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/16/)
   assert r.next == null // because otherwise, the predicate instance would be infinite..
 }
 

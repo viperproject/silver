@@ -110,11 +110,35 @@ abstract class ResourceBasedTestSuite extends FunSuite {
 
       val testInput = buildTestInput(f, prefix)
 
-      // The files that belong to the same test.
-      if (testInput.files.head == f) {
-        // Only register the multi file test once, not for every file it contains.
+      if (   testInput.files.head == f /* Only register multi file tests once, not for every contained file */
+          && isTestToBeIncluded(testInput)) /* Include tests based on arguments passed to test runner */ {
+
         registerTest(testInput)
       }
+    }
+  }
+
+  /** Decides if a test input is to be included based on (command-line) arguments
+    * passed to the test runner. That is, tests can be explicitly included by
+    * passing `-n SomeTag`, respectively, excluded by passing `-l SomeTag` when
+    * invoking the test runner. See ScalaTest's user guide for more information.
+    *
+    * Note that tests marked to be ignored are considered to be included. The
+    * reason for this is that they will be ignored (i.e., not executed) by
+    * ScalaTest later on anyway, in which case a corresponding message will be
+    * logged that might be of interest to the user.
+    *
+    * @param testInput A test input
+    * @return True iff the test is to be included
+    */
+  protected def isTestToBeIncluded(testInput: InputType): Boolean = {
+    this.optFilter match {
+      case None => false
+
+      case Some(filter) =>
+        val tags = Map(testInput.name -> testInput.tags.map(_.name).toSet)
+        val (filterTest, _ /*ignoreTest*/) = filter(testInput.name, tags)
+        !filterTest /*&& !ignoreTest*/
     }
   }
 
@@ -232,14 +256,20 @@ abstract class ResourceBasedTestSuite extends FunSuite {
   /** The config map passed to ScalaTest. */
   protected var configMap: Map[String, Any] = Map[String, Any]()
 
+  /** The filter passed to one of the `run`-methods. */
+  protected var optFilter: Option[Filter] = None
+
   protected override def runTest(
       testName: String,
       reporter: Reporter,
       stopper: Stopper,
       configMap: Map[String, Any],
       tracker: Tracker) {
+
     this.configMap = configMap
+
     registerTests()
+
     super.runTest(testName, reporter, stopper, configMap, tracker)
   }
 
@@ -251,7 +281,10 @@ abstract class ResourceBasedTestSuite extends FunSuite {
       configMap: Map[String, Any],
       distributor: Option[Distributor],
       tracker: Tracker) {
+
     this.configMap = configMap
+    this.optFilter = Some(filter)
+
     registerTests()
 
     super.runTests(testName, reporter, stopper, filter, configMap, distributor, tracker)
@@ -265,8 +298,12 @@ abstract class ResourceBasedTestSuite extends FunSuite {
       configMap: Map[String, Any],
       distributor: Option[Distributor],
       tracker: Tracker) {
+
     this.configMap = configMap
+    this.optFilter = Some(filter)
+
     registerTests()
+
     super.run(testName, reporter, stopper, filter, configMap, distributor, tracker)
   }
 }

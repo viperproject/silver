@@ -4,16 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
 package viper.silver.ast
 
 import org.kiama.output._
-import viper.silver.ast.utility.{Expressions, Consistency}
+import utility.{GenericTriggerGenerator, Expressions, Consistency}
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
@@ -198,7 +192,16 @@ case class EpsilonPerm()(val pos: Position = NoPosition, val info: Info = NoInfo
 
 /** A concrete fraction as permission amount. */
 case class FractionalPerm(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(FracOp) with PermExp
+{
+  require(left.typ==Int)
+  require(right.typ==Int)
+}
 
+case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermDivOp) with PermExp
+{
+  require(left.typ==Perm)
+  require(right.typ==Int)
+}
 /** The permission currently held for a given location. */
 case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 
@@ -224,7 +227,7 @@ case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos,info,typ,formalArgs)
-  def asExp = this
+  def asManifestation = this
 }
 // allows a FuncApp to be created directly from a Function node (but only stores its name)
 object FuncApp {
@@ -240,7 +243,7 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
   def func = (p:Program) => p.findDomainFunction(funcname)
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs)
-  def asExp = this
+  def asManifestation = this
 }
 object DomainFuncApp {
   def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo) : DomainFuncApp = DomainFuncApp(func.name,args,typVarMap)(pos,info,func.typ.substitute(typVarMap),func.formalArgs map {
@@ -404,7 +407,7 @@ case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Inf
  * expression is `SeqType`.
  */
 sealed trait SeqExp extends Exp with PossibleTrigger {
-  override def asExp = this
+  override def asManifestation = this
 }
 
 /** The empty sequence of a given element type. */
@@ -525,7 +528,7 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
  * expression is `SetType`.
  */
 sealed trait SetExp extends Exp with PossibleTrigger {
-  override def asExp:Exp = this
+  override def asManifestation:Exp = this
 }
 
 /**
@@ -533,8 +536,16 @@ sealed trait SetExp extends Exp with PossibleTrigger {
  * expression is `MultisetType`.
  */
 sealed trait MultisetExp extends Exp with PossibleTrigger {
-  override def asExp:Exp = this
+  override def asManifestation:Exp = this
 }
+
+/**
+ * Marker traits for all expressions that correspond to operations on sets or multisets.
+ * Does not imply that the type of the expression is `SetType` or `MultisetType`.
+ */
+sealed trait AnySetExp extends SetExp with MultisetExp
+sealed trait AnySetUnExp extends AnySetExp with UnExp
+sealed trait AnySetBinExp extends AnySetExp with PrettyBinaryExpression with BinExp
 
 /** The empty set of a given element type. */
 case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
@@ -574,7 +585,7 @@ case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val
 }
 
 /** Union of two sets or two multisets. */
-case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 0
@@ -586,7 +597,7 @@ case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, va
 }
 
 /** Intersection of two sets or two multisets. */
-case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 0
@@ -598,7 +609,7 @@ case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosit
 }
 
 /** Subset relation of two sets or two multisets. */
-case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 0
@@ -610,7 +621,7 @@ case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, v
 }
 
 /** Set difference. */
-case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 0
@@ -622,22 +633,23 @@ case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, va
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
-case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp with PrettyBinaryExpression {
+case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SetType].elementType)) ||
     (s.typ.isInstanceOf[MultisetType] && (elem isSubtype s.typ.asInstanceOf[MultisetType].elementType)))
   lazy val priority = 0
   lazy val fixity = Infix(NonAssoc)
-  lazy val left: PrettyExpression = elem
+  lazy val left = elem
   lazy val op = "in"
-  lazy val right: PrettyExpression = s
+  lazy val right = s
   lazy val typ = Bool
   def getArgs = Seq(elem,s)
   def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs(0),newArgs(1))(pos,info)
 }
 
 /** The length of a sequence. */
-case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp with MultisetExp {
+case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetUnExp {
   require(s.typ.isInstanceOf[SetType] || s.typ.isInstanceOf[MultisetType])
+  val exp = s
   lazy val typ = Int
   def getArgs = Seq(s)
   def withArgs(newArgs: Seq[Exp]) = AnySetCardinality(newArgs(0))(pos,info)
@@ -657,28 +669,34 @@ sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominato
  * Used to label expression nodes as potentially valid trigger terms for quantifiers.
  * Use ForbiddenInTrigger to declare terms which may not be used in triggers.
  */
-sealed trait PossibleTrigger {
-  def getArgs : Seq[Exp]
-  def withArgs(args : Seq[Exp]) : PossibleTrigger
-  def asExp : Exp
+sealed trait PossibleTrigger extends GenericTriggerGenerator.PossibleTrigger[Exp, PossibleTrigger] {
   def pos : Position
   def info : Info
 }
 
+sealed trait WrappingTrigger extends PossibleTrigger
+    with GenericTriggerGenerator.WrappingTrigger[Exp, PossibleTrigger, WrappingTrigger]
+
 // Representation for a trigger term to be evaluated in the "old" heap
-case class OldTrigger(nested: PossibleTrigger)(override val pos: Position = NoPosition, override val info:Info = NoInfo) extends PossibleTrigger {
-  def getArgs = nested.getArgs
-  def withArgs(args : Seq[Exp]) = OldTrigger(nested.withArgs(args))(pos,info)
-  def asExp = Old(nested.asExp)(pos,info)
+case class OldTrigger(wrappee: PossibleTrigger)(val pos: Position = NoPosition, val info: Info = NoInfo)
+    extends WrappingTrigger {
+
+  def getArgs = wrappee.getArgs
+  def withArgs(args : Seq[Exp]) = OldTrigger(wrappee.withArgs(args))(pos,info)
+  def asManifestation = Old(wrappee.asManifestation)(pos,info)
 }
 object OldTrigger { // creates an instance, recording the pos and info of the old expression
   def apply(oldExp : Old) : OldTrigger = {
-    val nested = if (oldExp.exp.isInstanceOf[PossibleTrigger]) oldExp.exp.asInstanceOf[PossibleTrigger] else sys.error("Internal Error: tried to create invalid trigger node from : " + oldExp)
-    OldTrigger(nested)(oldExp.pos, oldExp.info)
+    val exp = oldExp.exp match {
+      case trigger: PossibleTrigger => trigger
+      case _ => sys.error("Internal Error: tried to create invalid trigger node from : " + oldExp)
+    }
+
+    OldTrigger(exp)(oldExp.pos, oldExp.info)
   }
 }
 
-sealed trait ForbiddenInTrigger extends Exp
+sealed trait ForbiddenInTrigger extends Exp with GenericTriggerGenerator.ForbiddenInTrigger[Type]
 
 /** Common ancestor of Domain Function applications and Function applications. */
 sealed trait FuncLikeApp extends Exp with Call {
