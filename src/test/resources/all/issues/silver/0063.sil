@@ -1,8 +1,15 @@
 field f: Int
 
 method split(p: Perm, i:Int) returns (q: Perm) {
-  q := p/i  
-  q := i/i
+  q := i/2
+
+  if (i > 0) {
+      q := i/i
+  }
+  
+  q := p/i 
+  //:: ExpectedOutput(assignment.failed:division.by.zero)
+  
 //  q := p\2 // expected Int, but got Perm  AND  expected Perm, but got Int
 
 //  q := p \/ 2 // Parse error: Failure: identifier expected
