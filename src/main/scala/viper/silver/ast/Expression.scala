@@ -91,7 +91,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
     *
     * @return The ghost-operations-free version of this wand.
     */
-  def withoutGhostOperations: MagicWand = {
+  lazy val withoutGhostOperations: MagicWand = {
     /* We use the post-transformer instead of the pre-transformer in order to
      * perform bottom-up transformation. With a top-down transformer we could
      * not simply replace ghost operations with their bodies, because these
@@ -117,6 +117,48 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
         keepUnfolding = false
         gop.body
     })
+  }
+
+  lazy val subexpressionsToEvaluate: Seq[Exp] = {
+    this.deepCollect {
+      case v: LocalVar => v
+      case pold: PackageOld => pold
+    }
+  }
+
+  def structurallyMatches(other: MagicWand): Boolean = {
+    val ignoreExps1 = this.subexpressionsToEvaluate
+    val ignoreExps2 = other.subexpressionsToEvaluate
+
+    def eq(e1: Exp, e2: Exp): Boolean = (e1, e2) match {
+      case (And(e11, e12), And(e21, e22)) => eq(e11, e21) && eq(e12, e22)
+      case (Or(e11, e12), Or(e21, e22)) => eq(e11, e21) && eq(e12, e22)
+      case (Implies(e11, e12), Implies(e21, e22)) => eq(e11, e21) && eq(e12, e22)
+      case (CondExp(e11, e12, e13), CondExp(e21, e22, e23)) => eq(e11, e21) && eq(e12, e22) && eq(e13, e23)
+
+      case (FieldAccessPredicate(FieldAccess(e11, f1), e12),
+            FieldAccessPredicate(FieldAccess(e21, f2), e22)) if f1 == f2 =>
+
+        eq(e11, e21) && eq(e12, e22)
+
+      case (PredicateAccessPredicate(PredicateAccess(es11, p1), e12),
+            PredicateAccessPredicate(PredicateAccess(es21, p2), e22)) if p1 == p2 =>
+
+        es11.zip(es21).forall{case (e11i, e21i) => eq(e11i, e21i)} && eq(e12, e22)
+
+      case (`e1`, `e1`) => true
+      case _ =>
+//        println(s"e1 = $e1, e2 = $e2")
+//        println(s"ignoreExps1 = $ignoreExps1")
+//        println(s"ignoreExps2 = $ignoreExps2")
+        val idx1 = ignoreExps1.indexOf(e1)
+//        println(s"idx1 = $idx1")
+//        println(ignoreExps2(idx1))
+//        println(ignoreExps2(idx1) == e2)
+        idx1 >= 0 && ignoreExps2(idx1) == e2
+    }
+
+    eq(this.left, other.left) && eq(this.right, other.right)
   }
 }
 
