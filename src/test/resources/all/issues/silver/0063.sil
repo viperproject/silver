@@ -3,20 +3,12 @@ field f: Int
 method split(p: Perm, i: Int) returns (q: Perm)
   requires p > none && i > 0
 {
-  q := i/2
-
-  if (i > 0) {
   q := p/i
   assert q > none
 
-      q := i/i
+  q := i/i
   assert q == write
 }
-  }
-  
-  q := p/i 
-  //:: ExpectedOutput(assignment.failed:division.by.zero)
-  
 
 method test01(i: Int) returns (q: Perm) {
   //:: ExpectedOutput(assignment.failed:division.by.zero)
@@ -54,6 +46,3 @@ method test05(p: Perm, i: Int, r: Ref) returns (q: Perm)
   assert q > none
 }
 
-//method test06(p: Perm) returns (q: Perm) {
-//  q := p\2 // expected Int, but got Perm  AND  expected Perm, but got Int
-//}
