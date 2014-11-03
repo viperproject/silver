@@ -79,6 +79,9 @@ case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
     extends DomainBinExp(MagicWandOp) {
 
+  Consistency.checkNoImpureConditionals(left, "magic wands")
+  Consistency.checkNoImpureConditionals(right, "magic wands")
+
   /** Erases all ghost operations such as unfolding from this wand.
     * For example (let A, B and C be free of ghost operations, let P be a predicates,
     * and let W be a wand):

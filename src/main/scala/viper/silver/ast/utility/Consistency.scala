@@ -30,6 +30,10 @@ object Consistency {
     }
   }
 
+  @inline
+  def recordIf(suspect: Positioned, property: Boolean, message: String) =
+    recordIfNot(suspect, !property, message)
+
   /** Names that are not allowed for use in programs. */
   def reservedNames: Seq[String] = Parser.reserved
 
@@ -194,6 +198,15 @@ object Consistency {
     }
   }
 
+  def checkNoImpureConditionals(e: Exp, nodeNamePlural: String) = {
+    val containsImpureConditionals = e.existsDefined {
+      case c: Implies if !c.isPure =>
+      case c: CondExp if !c.isPure =>
+    }
+
+    recordIf(e, containsImpureConditionals, s"Conditionals inside $nodeNamePlural must be pure.")
+  }
+  
   /** Checks consistency that is depends on some context. For example, that some expression
     * Foo(...) must be pure except if it occurs inside Bar(...).
     *
