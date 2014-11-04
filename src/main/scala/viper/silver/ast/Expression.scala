@@ -7,12 +7,12 @@
 package viper.silver.ast
 
 import org.kiama.output._
-import utility.{GenericTriggerGenerator, Expressions, Consistency}
+import utility.{Nodes, GenericTriggerGenerator, Expressions, Consistency}
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
-
   lazy val isPure = Expressions.isPure(this)
+  def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
 
   /**
    * Returns a representation of this expression as it looks when it is used as a proof obligation, i.e. all
@@ -79,9 +79,6 @@ case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
     extends DomainBinExp(MagicWandOp) {
 
-  Consistency.checkNoImpureConditionals(left, "magic wands")
-  Consistency.checkNoImpureConditionals(right, "magic wands")
-
   /** Erases all ghost operations such as unfolding from this wand.
     * For example (let A, B and C be free of ghost operations, let P be a predicates,
     * and let W be a wand):
@@ -122,43 +119,83 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
     })
   }
 
-  lazy val subexpressionsToEvaluate: Seq[Exp] = {
-    this.deepCollect {
-      case v: LocalVar => v
+  def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
+    this.shallowCollect {
       case pold: PackageOld => pold
+      case e: Exp if !e.isHeapDependent(p) => e
+//      case v: LocalVar => v
+//      case pold: PackageOld => pold
+//      case e:    Exp if e.isPure
+//              && !e.existsDefined{case }
     }
   }
 
-  def structurallyMatches(other: MagicWand): Boolean = {
-    val ignoreExps1 = this.subexpressionsToEvaluate
-    val ignoreExps2 = other.subexpressionsToEvaluate
+  def structurallyMatches(other: MagicWand, p: Program): Boolean = {
+    val ignoreExps1 = this.subexpressionsToEvaluate(p)
+    val ignoreExps2 = other.subexpressionsToEvaluate(p)
 
-    def eq(e1: Exp, e2: Exp): Boolean = (e1, e2) match {
-      case (And(e11, e12), And(e21, e22)) => eq(e11, e21) && eq(e12, e22)
-      case (Or(e11, e12), Or(e21, e22)) => eq(e11, e21) && eq(e12, e22)
-      case (Implies(e11, e12), Implies(e21, e22)) => eq(e11, e21) && eq(e12, e22)
-      case (CondExp(e11, e12, e13), CondExp(e21, e22, e23)) => eq(e11, e21) && eq(e12, e22) && eq(e13, e23)
+//    println(s"\nignoreExps1 = $ignoreExps1")
+//    println(s"ignoreExps2 = $ignoreExps2")
 
-      case (FieldAccessPredicate(FieldAccess(e11, f1), e12),
-            FieldAccessPredicate(FieldAccess(e21, f2), e22)) if f1 == f2 =>
-
-        eq(e11, e21) && eq(e12, e22)
-
-      case (PredicateAccessPredicate(PredicateAccess(es11, p1), e12),
-            PredicateAccessPredicate(PredicateAccess(es21, p2), e22)) if p1 == p2 =>
-
-        es11.zip(es21).forall{case (e11i, e21i) => eq(e11i, e21i)} && eq(e12, e22)
-
+    /* It would suffice to define eq for Exps instead Nodes, but
+     * Nodes.children returns a Seq[Nodes]. */
+    def eq(e1: Node, e2: Node): Boolean = (e1, e2) match {
       case (`e1`, `e1`) => true
       case _ =>
+//        println(s"\ne1 = $e1, e2 = $e2")
+        val idx1 = ignoreExps1.indexOf(e1)
+//        println(s"idx1 = $idx1")
+
+        if (idx1 >= 0) {
+//          println(ignoreExps2(idx1))
+//          println(ignoreExps2(idx1) == e2)
+
+          ignoreExps2(idx1) == e2
+        } else {
+          val b0 = e1.getClass == e2.getClass
+
+          val (subnodes1, otherChildren1) = Nodes.children(e1)
+          val (subnodes2, otherChildren2) = Nodes.children(e2)
+
+//          println(s"subnodes1 = ${subnodes1.toList}\notherChildren1 = $otherChildren1")
+//          println(s"subnodes2 = ${subnodes2.toList}\notherChildren2 = $otherChildren2")
+
+          val b1 = subnodes1.zip(subnodes2).forall { case (e1i, e2i) => eq(e1i, e2i)}
+          val b2 = otherChildren1 == otherChildren2
+
+//          println(s"b0 = $b0, b1 = $b1, b2 = $b2")
+
+          (   b0
+           && b1
+           && b2)
+        }
+//      case (And(e11, e12), And(e21, e22)) => eq(e11, e21) && eq(e12, e22)
+//      case (Or(e11, e12), Or(e21, e22)) => eq(e11, e21) && eq(e12, e22)
+//      case (Implies(e11, e12), Implies(e21, e22)) => eq(e11, e21) && eq(e12, e22)
+//      case (CondExp(e11, e12, e13), CondExp(e21, e22, e23)) => eq(e11, e21) && eq(e12, e22) && eq(e13, e23)
+//
+//      case (FieldAccessPredicate(FieldAccess(e11, f1), e12),
+//            FieldAccessPredicate(FieldAccess(e21, f2), e22)) if f1 == f2 =>
+//
+//        eq(e11, e21) && eq(e12, e22)
+//
+//      case (PredicateAccessPredicate(PredicateAccess(es11, p1), e12),
+//            PredicateAccessPredicate(PredicateAccess(es21, p2), e22)) if p1 == p2 =>
+//
+//        es11.zip(es21).forall{case (e11i, e21i) => eq(e11i, e21i)} && eq(e12, e22)
+
+
+//      case _ =>
 //        println(s"e1 = $e1, e2 = $e2")
 //        println(s"ignoreExps1 = $ignoreExps1")
 //        println(s"ignoreExps2 = $ignoreExps2")
-        val idx1 = ignoreExps1.indexOf(e1)
+//        val idx1 = ignoreExps1.indexOf(e1)
 //        println(s"idx1 = $idx1")
-//        println(ignoreExps2(idx1))
-//        println(ignoreExps2(idx1) == e2)
-        idx1 >= 0 && ignoreExps2(idx1) == e2
+//        if (idx1 >= 0) {
+//          println(ignoreExps2(idx1))
+//          println(ignoreExps2(idx1) == e2)
+//        }
+//        idx1 >= 0 && ignoreExps2(idx1) == e2
     }
 
     eq(this.left, other.left) && eq(this.right, other.right)

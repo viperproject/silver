@@ -198,15 +198,35 @@ object Consistency {
     }
   }
 
-  def checkNoImpureConditionals(e: Exp, nodeNamePlural: String) = {
-    val containsImpureConditionals = e.existsDefined {
-      case c: Implies if !c.isPure =>
-      case c: CondExp if !c.isPure =>
+  def checkNoImpureConditionals(wand: MagicWand, program: Program) = {
+    var expsToVisit = wand.left :: wand.right :: Nil
+    var visitedMembers = List[Member]()
+    var conditionals = List[Exp]()
+    var continue = true
+    var ok = true
+
+    while (ok && expsToVisit.nonEmpty) {
+      var newExpsToVisit = List[Exp]()
+
+      expsToVisit.foreach(_.visit {
+        case c: Implies if !c.isPure => ok = false
+        case c: CondExp if !c.isPure => ok = false
+
+        case e: UnFoldingExp =>
+          val predicate = e.acc.loc.loc(program)
+
+          if (!visitedMembers.contains(predicate)) {
+            newExpsToVisit ::= predicate.body
+            visitedMembers ::= predicate
+          }
+      })
+
+      expsToVisit = newExpsToVisit
     }
 
-    recordIf(e, containsImpureConditionals, s"Conditionals inside $nodeNamePlural must be pure.")
+    recordIfNot(wand, ok, s"Conditionals transitively reachable from a magic wand must be pure (see issue 16).")
   }
-  
+
   /** Checks consistency that is depends on some context. For example, that some expression
     * Foo(...) must be pure except if it occurs inside Bar(...).
     *

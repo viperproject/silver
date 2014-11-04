@@ -59,6 +59,10 @@ sealed trait PNode extends Positioned with Attributable {
   /** @see [[Visitor.deepCollect()]] */
   def deepCollect[A](f: PartialFunction[PNode, A]) : Seq[A] =
     Visitor.deepCollect(Seq(this), Nodes.subnodes)(f)
+
+  /** @see [[Visitor.shallowCollect()]] */
+  def shallowCollect[R](f: PartialFunction[PNode, R]): Seq[R] =
+    Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
 }
 
 object TypeHelper {

@@ -115,6 +115,15 @@ object Nodes {
       case _ => subnodesWithType
     }
   }
+
+  def children(node: Node): (Seq[Node], Seq[Any]) = {
+    val relevantChildren = node match {
+      case p: Product => p.productIterator.toSeq
+    }
+
+    relevantChildren.partition(_.isInstanceOf[Node])
+                    .asInstanceOf[(Seq[Node], Seq[Any])]
+  }
 }
 
 

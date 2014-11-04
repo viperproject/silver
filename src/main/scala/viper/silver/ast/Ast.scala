@@ -115,6 +115,10 @@ trait Node extends Traversable[Node] {
   /** @see [[Visitor.deepCollect()]] */
   def deepCollect[A](f: PartialFunction[Node, A]) : Seq[A] =
     Visitor.deepCollect(Seq(this), Nodes.subnodes)(f)
+
+  /** @see [[Visitor.shallowCollect()]] */
+  def shallowCollect[R](f: PartialFunction[Node, R]): Seq[R] =
+    Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
 }
 
 /** A trait to have additional information for nodes. */
