@@ -45,11 +45,8 @@ Some design choices:
  * - Trigger
  */
 trait Node extends Traversable[Node] {
-  /** Returns a list of all direct sub-nodes of this node. The type of nodes is
-    * included in this list only for declarations (but not for expressions, for instance).
-    * Furthermore, pointers to declarations are not included (e.g., the `field` of a field
-    * write is not included in the result).
-    */
+
+  /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
 
   /** @see [[Visitor.reduceTree()]] */

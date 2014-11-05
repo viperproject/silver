@@ -163,18 +163,17 @@ object Visitor {
      * the code less elegant and slightly harder to read.
      *
      * The code below is conceptually equivalent to
-     *
+     *   ns.flatMap((node: N) =>
+     *     if (f.isDefinedAt(node)) Seq(f(node))
+     *     else shallowCollect(subs(node), subs)(f))
      */
 
-//    def shallowCollect(ns: Seq[N], subs: N => Seq[N])(f: Function[N, Option[R]]): Seq[R] = {
-//      ns.flatMap((node: N) =>
-//        f(node).fold(shallowCollect(subs(node), subs)(f))(_ :: Nil))
-//    }
-//
-//    shallowCollect(ns, subs)(f.lift)
-
+    def shallowCollect(ns: Seq[N], subs: N => Seq[N])(f: Function[N, Option[R]]): Seq[R] = {
     ns.flatMap((node: N) =>
-      if (f.isDefinedAt(node)) Seq(f(node)) else shallowCollect(subs(node), subs)(f))
+        f(node).fold(shallowCollect(subs(node), subs)(f))(_ :: Nil))
+    }
+
+    shallowCollect(ns, subs)(f.lift)
   }
 
   /** Finds the first node where `f` applies and returns the result of that

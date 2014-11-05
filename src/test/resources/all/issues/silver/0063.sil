@@ -46,6 +46,3 @@ method test05(p: Perm, i: Int, r: Ref) returns (q: Perm)
   assert q > none
 }
 
-//method test06(p: Perm) returns (q: Perm) {
-//  q := p\2 // expected Int, but got Perm  AND  expected Perm, but got Int
-//}
