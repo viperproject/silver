@@ -125,15 +125,6 @@ object Nodes {
     }
   }
 
-  def children(node: Node): (Seq[Node], Seq[Any]) = {
-    val relevantChildren = node match {
-      case p: Product => p.productIterator.toSeq
-    }
-
-    relevantChildren.partition(_.isInstanceOf[Node])
-                    .asInstanceOf[(Seq[Node], Seq[Any])]
-  }
-
   /** Returns a pair `(xs, ys)` of sequences, where `xs` are the subnodes
     * returned by [[Nodes.subnodes()]], and where `ys` are all other relevant
     * children of the given `node`.
