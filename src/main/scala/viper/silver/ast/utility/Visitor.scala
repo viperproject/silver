@@ -121,6 +121,14 @@ object Visitor {
   /** A generalisation of Scala's collect, which applies not just to the list
     * of nodes ns, but also to all those transitively traversed via `subs`.
     *
+    * Subnodes of nodes for which `f` is defined are traversed as well. More
+    * precisely, children of a given `parent` a traversed before `f` is applied
+    * to the parent itself.
+    * For example, if `f` is defined for `A(_)` and for `B()`, and if `f` is
+    * used to perform a deep collect over the structure `X(B(), Y(), A(B()))`,
+    * then the result will be the sequence `[B(), A(B()), B()]`, where the
+    * second `B()` in the sequence is the one that is nested inside `A(B())`.
+    *
     * @tparam N Node type.
     * @tparam R Resulting value type.
     * @param ns List of original nodes.
@@ -130,6 +138,42 @@ object Visitor {
     ns.flatMap((node: N) =>
       reduceTree(node, subs)((n: N, vs: Seq[Seq[R]]) =>
         if (f.isDefinedAt(n)) Seq(f(n)) ++ vs.flatten else vs.flatten))
+  }
+
+  /** Similar to `deepCollect`, but each node from `ns` is traversed top to
+    * bottom, and the children of a parent are only visited if `f` is *not*
+    * defined for the parent.
+    *
+    * For example, if `f` is defined for `A(_)` and for `B()`, and if `f` is
+    * used to perform a shallow collect over the structure `X(B(), Y(), A(B()))`,
+    * then the result will be the sequence `[B(), A(B())]` (in contrast to the
+    * sequence returned by `deepCollect`).
+    *
+    * @tparam N Node type.
+    * @tparam R Resulting value type.
+    * @param ns List of original nodes.
+    * @param subs Returns the children of a given node.
+    * @param f Partial function to compute desired values.
+    * @return List of collected nodes.
+    */
+  def shallowCollect[N, R](ns: Seq[N], subs: N => Seq[N])(f: PartialFunction[N, R]): Seq[R] = {
+    /* The pattern `if (f isDefinedAt n) f(n) else default(n)` is inefficient,
+     * see the ScalaDoc comments for PartialFunction. Instead, one should use
+     * applyOrElse (and methods implemented on top of it). However, this makes
+     * the code less elegant and slightly harder to read.
+     *
+     * The code below is conceptually equivalent to
+     *   ns.flatMap((node: N) =>
+     *     if (f.isDefinedAt(node)) Seq(f(node))
+     *     else shallowCollect(subs(node), subs)(f))
+     */
+
+    def shallowCollect(ns: Seq[N], subs: N => Seq[N])(f: Function[N, Option[R]]): Seq[R] = {
+    ns.flatMap((node: N) =>
+        f(node).fold(shallowCollect(subs(node), subs)(f))(_ :: Nil))
+    }
+
+    shallowCollect(ns, subs)(f.lift)
   }
 
   /** Finds the first node where `f` applies and returns the result of that

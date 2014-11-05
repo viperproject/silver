@@ -18,8 +18,17 @@ import viper.silver.ast._
 /** Utility methods for AST nodes. */
 object Nodes {
 
-  /**
-   * See Node.subnodes.
+  /** Returns a list of all direct sub-nodes of this node. The type of nodes is
+    * included in this list only for declarations (but not for expressions, for
+    * instance).
+    *
+    * Furthermore, pointers to declarations are not included either (e.g., the
+    * `field` (which is of type `Node`) of a `FieldAccess`), and neither are
+    * non-`Node` children (e.g., the `predicateName` (a `String`) of a
+    * `PredicateAccess`).
+    *
+    * As a consequence, it is not sufficient to compare the subnodes of two
+    * nodes for equality if one has to compare those two nodes for equality.
    */
   def subnodes(n: Node): Seq[Node] = {
     val subnodesWithType = n match {
@@ -112,8 +121,40 @@ object Nodes {
       case _ => subnodesWithType
     }
   }
+
+  /** Returns a pair `(xs, ys)` of sequences, where `xs` are the subnodes
+    * returned by [[Nodes.subnodes()]], and where `ys` are all other relevant
+    * children of the given `node`.
+    *
+    * "Relevant" is best described by the following use-case for `children`:
+    * Assume a verification in process, and two `FieldAccess` nodes, e.g.,
+    * `FieldAccess(e1, f1)` and `FieldAccess(e2, f2)`, where `e1` and `e2` are
+    * expressions denoting the receivers, and where `f1` and `f2` denote
+    * fields.
+    * The task is to compare both nodes for semantic equality, i.e.,
+    * they are equal if (i) the values of `e1` and `e2` are semantically
+    * equivalent (in some state, say, the current one), and if `f1` and `f2`
+    * denote the same field, i.e., if they are equivalent in the sense of
+    * object equality.
+    * This type of equality can be implemented by using the verifier to decide
+    * equality between the subnodes (`xs` from above), and object equality to
+    * decide equality between the other relevant children (`ys` from above).
+    *
+    * In order to support this use-case, `ys` thus neither includes positional
+    * information, nor comments or other meta-data.
+    *
+    * @param node
+    * @return
+    */
+  def children(node: Node): (Seq[Node], Seq[Any]) = {
+    /* This match is only exhaustive if all concrete instances of `Node` extend
+     * `Product`, which, for example, is the case for case classes.
+     */
+    val relevantChildren = node match {
+      case p: Product => p.productIterator.toSeq
+    }
+
+    relevantChildren.partition(_.isInstanceOf[Node])
+                    .asInstanceOf[(Seq[Node], Seq[Any])]
+  }
 }
-
-
-
-
