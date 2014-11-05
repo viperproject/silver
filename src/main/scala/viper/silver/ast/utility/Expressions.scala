@@ -32,6 +32,13 @@ object Expressions {
     => true
   }
 
+  def isHeapDependent(e: Exp, p: Program): Boolean = e existsDefined {
+    case   _: AccessPredicate
+         | _: LocationAccess =>
+
+    case fapp: FuncApp if fapp.func(p).pres.exists(isHeapDependent(_, p)) =>
+  }
+
   def purify(e: Exp): Exp = e.transform({
       case _: AccessPredicate => TrueLit()()
     })()
@@ -48,7 +55,6 @@ object Expressions {
   def instantiateVariables[E <: Exp]
                           (exp: E, variables: Seq[AbstractLocalVar], values: Seq[Exp])
                           : E = {
-
 
     val argNames = (variables map (_.name)).zipWithIndex
 
