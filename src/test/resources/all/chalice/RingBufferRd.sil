@@ -1,5 +1,3 @@
-//:: IgnoreFile(/Carbon/issue/34/)
-
 field data: Seq[Int];  // the storage
 field first: Int;      // index of the first element in the queue
 field len: Int;        // number of elements in the queue
