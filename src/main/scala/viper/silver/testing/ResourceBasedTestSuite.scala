@@ -133,7 +133,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
     */
   protected def isTestToBeIncluded(testInput: InputType): Boolean = {
     this.optFilter match {
-      case None => false
+      case None => true
 
       case Some(filter) =>
         val tags = Map(testInput.name -> testInput.tags.map(_.name).toSet)
