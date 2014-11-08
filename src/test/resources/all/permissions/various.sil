@@ -21,7 +21,6 @@ method t1c(r: Ref)
 method t2(r: Ref, p: Perm) returns ()
     requires acc(r.f, p)
 {
-    //:: ExpectedOutput(call.precondition:non.positive.permission)
     t2(r, none)
 }
 

@@ -40,6 +40,7 @@ method test04(p: Perm, i: Int) returns (q: Perm)
 }
 
 method test05(p: Perm, i: Int, r: Ref) returns (q: Perm)
+  requires p > none
   requires i > 0 && acc(r.f, p)
 {
   q := p/i

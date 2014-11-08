@@ -4,6 +4,7 @@ field d: Ref
 field f: Int
 
 method succeeds1(k: Perm, x: Ref) returns (r: Bool)
+  requires k > none
   requires acc(x.c, k) && acc(x.d, k) && acc(x.b, k)
   requires x.c != null && x.d != null
   requires x.b <==> x.c == x.d
@@ -21,6 +22,7 @@ method succeeds1(k: Perm, x: Ref) returns (r: Bool)
 }
 
 method succeeds2(k: Perm, x: Ref) returns (r: Bool)
+  requires k > none
   requires acc(x.c, k) && acc(x.d, k) && acc(x.b, k)
   requires x.c != null && x.d != null
   requires x.b <==> x.c == x.d
@@ -39,6 +41,7 @@ method fails0(k: Perm, b1: Bool, x: Ref)
 {}
 
 method fails1(k: Perm, x: Ref) returns (r: Bool)
+  requires k > none
   requires acc(x.c, k) && acc(x.d, k) && acc(x.b, k)
   requires x.c != null && x.d != null
   requires x.b <==> x.c == x.d
@@ -58,6 +61,7 @@ method fails1(k: Perm, x: Ref) returns (r: Bool)
 }
 
 method fails2(k: Perm, x: Ref) returns (r: Bool)
+  requires k > none
   requires acc(x.c, k) && acc(x.d, k) && acc(x.b, k)
   requires x.c != null && x.d != null
   requires acc(x.c.f, k) && acc(x.d.f)
