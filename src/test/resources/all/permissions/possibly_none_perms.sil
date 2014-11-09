@@ -4,7 +4,6 @@ method test01(x: Ref, b: Bool)
   requires acc(x.f, b ? write : none)
 {
   //:: ExpectedOutput(assignment.failed:insufficient.permission)
-  //:: MissingOutput(assignment.failed:insufficient.permission, /Carbon/issue/35/)
   var a: Int := x.f
 }
 
@@ -13,13 +12,11 @@ method test02(x: Ref, b1: Bool, b2: Bool)
 {
   var a1: Int := x.f
 
-  //:: UnexpectedOutput(exhale.failed:non.positive.permission, /Carbon/issue/35/)
   exhale acc(x.f, b1 ? 1/5 : none)
   inhale acc(x.f, 1/5)
   assert true
   var a2: Int := x.f
 
-  //:: UnexpectedOutput(exhale.failed:non.positive.permission, /Carbon/issue/35/)
   exhale acc(x.f, b2 ? 1/5 : none)
   inhale acc(x.f, 1/5)
   assert true
@@ -36,7 +33,6 @@ method test03(x: Ref, b: Bool)
   requires acc(x.f, b ? write : none)
 {
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  //:: MissingOutput(assignment.failed:insufficient.permission, /Carbon/issue/35/)
   exhale acc(x.f, wildcard)
 }
 
@@ -59,7 +55,6 @@ method test05(x: Ref, b: Bool)
   fresh k
   constraining(k) {
     //:: ExpectedOutput(exhale.failed:insufficient.permission)
-    //:: MissingOutput(assignment.failed:insufficient.permission, /Carbon/issue/35/)
     exhale acc(x.f, k)
   }
 
