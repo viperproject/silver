@@ -4,7 +4,6 @@ method test01(x: Ref, b: Bool)
   requires acc(x.f, b ? write : none)
 {
   //:: ExpectedOutput(assignment.failed:insufficient.permission)
-  //:: MissingOutput(assignment.failed:insufficient.permission, /silicon-quantified-permissions-fork/issue/126/)
   var a: Int := x.f
 }
 
@@ -13,7 +12,6 @@ method test02(x: Ref, b1: Bool, b2: Bool)
 {
   var a1: Int := x.f
 
-  //:: UnexpectedOutput(exhale.failed:non.positive.permission, /silicon-quantified-permissions-fork/issue/126/)
   exhale acc(x.f, b1 ? 1/5 : none)
   inhale acc(x.f, 1/5)
   assert true
@@ -28,7 +26,6 @@ method test02(x: Ref, b1: Bool, b2: Bool)
   assert !b2 ==> a2 == a3
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assignment.failed:insufficient.permission, /silicon-quantified-permissions-fork/issue/126/)
   assert a1 == a3 || a1 == a2 || a2 == a3
 }
 
@@ -36,7 +33,6 @@ method test03(x: Ref, b: Bool)
   requires acc(x.f, b ? write : none)
 {
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  //:: MissingOutput(assignment.failed:insufficient.permission, /silicon-quantified-permissions-fork/issue/126/)
   exhale acc(x.f, wildcard)
 }
 
@@ -59,7 +55,6 @@ method test05(x: Ref, b: Bool)
   fresh k
   constraining(k) {
     //:: ExpectedOutput(exhale.failed:insufficient.permission)
-    //:: MissingOutput(assignment.failed:insufficient.permission, /silicon-quantified-permissions-fork/issue/126/)
     exhale acc(x.f, k)
   }
 
