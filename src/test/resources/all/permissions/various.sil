@@ -21,7 +21,7 @@ method t1c(r: Ref)
 method t2(r: Ref, p: Perm) returns ()
     requires acc(r.f, p)
 {
-    //:: ExpectedOutput(call.precondition:non.positive.permission)
+    //:: UnexpectedOutput(call.precondition:non.positive.permission, /silicon-quantified-permissions-fork/issue/126/)
     t2(r, none)
 }
 

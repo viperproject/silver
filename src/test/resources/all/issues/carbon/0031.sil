@@ -13,6 +13,7 @@ predicate list(x: Ref) {
 
 method lemma(x: Ref, k: Perm)
   requires x != null
+  requires k > none
   requires acc(list(x), k)
   ensures  acc(list(x), k)
   ensures  fun(x) > 0 

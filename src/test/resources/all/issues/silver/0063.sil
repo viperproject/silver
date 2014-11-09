@@ -40,12 +40,10 @@ method test04(p: Perm, i: Int) returns (q: Perm)
 }
 
 method test05(p: Perm, i: Int, r: Ref) returns (q: Perm)
+  requires p > none
   requires i > 0 && acc(r.f, p)
 {
   q := p/i
   assert q > none
 }
 
-//method test06(p: Perm) returns (q: Perm) {
-//  q := p\2 // expected Int, but got Perm  AND  expected Perm, but got Int
-//}

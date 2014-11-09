@@ -1,4 +1,6 @@
 //:: IgnoreFile(/Silicon/issue/31/)
+//:: IgnoreFile(/Carbon/issue/33/)
+
 
 field f: Int
 field p: Perm
