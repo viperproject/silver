@@ -262,6 +262,11 @@ object reasons {
     def readableMessage = s"Fraction $offendingNode might be negative."
   }
 
+  case class NonPositivePermission(offendingNode: Exp) extends AbstractErrorReason {
+    val id = "non.positive.permission"
+    def readableMessage = s"Fraction $offendingNode might not be positive. WARNING: this error message is deprecated - verifiers should check for negative amounts rather than non-positive amounts"
+  }
+
   case class InsufficientPermission(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "insufficient.permission"
     def readableMessage = s"There might be insufficient permission to access $offendingNode."
