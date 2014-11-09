@@ -14,14 +14,14 @@ method test02(x: Ref, b1: Bool, b2: Bool)
 {
   var a1: Int := x.f
 
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /Carbon/issue/35/)
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon-quantified-permissions-fork/issue/126/)
+  //:: UnexpectedOutput(exhale.failed:non.positive.permission, /Carbon/issue/35/)
+  //:: UnexpectedOutput(exhale.failed:non.positive.permission, /silicon-quantified-permissions-fork/issue/126/)
   exhale acc(x.f, b1 ? 1/5 : none)
   inhale acc(x.f, 1/5)
   assert true
   var a2: Int := x.f
 
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /Carbon/issue/35/)
+  //:: UnexpectedOutput(exhale.failed:non.positive.permission, /Carbon/issue/35/)
   exhale acc(x.f, b2 ? 1/5 : none)
   inhale acc(x.f, 1/5)
   assert true
