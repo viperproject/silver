@@ -5,16 +5,17 @@ predicate Valid(nodes: Set[Ref]) {
 }
 
 method Bug(nodes: Set[Ref], rd: Perm)
-  requires acc(Valid(nodes), rd);
+  requires rd > none
+  requires acc(Valid(nodes), rd)
 {
-  unfold acc(Valid(nodes), rd);
-  fold acc(Valid(nodes), rd);
+  unfold acc(Valid(nodes), rd)
+  fold acc(Valid(nodes), rd)
 }
 
 method NoBug(nodes: Set[Ref], rd: Perm)
-  requires acc(Valid(nodes), rd);
-  requires rd == write;
+  requires acc(Valid(nodes), rd)
+  requires rd == write
 {
-  unfold acc(Valid(nodes), rd);
-  fold acc(Valid(nodes), rd);
+  unfold acc(Valid(nodes), rd)
+  fold acc(Valid(nodes), rd)
 }

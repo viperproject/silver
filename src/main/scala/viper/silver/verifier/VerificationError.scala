@@ -257,9 +257,9 @@ object reasons {
     def readableMessage = s"Divisor $offendingNode might be zero."
   }
 
-  case class NonPositivePermission(offendingNode: Exp) extends AbstractErrorReason {
-    val id = "non.positive.permission"
-    def readableMessage = s"Fraction $offendingNode might not be positive."
+  case class NegativePermission(offendingNode: Exp) extends AbstractErrorReason {
+    val id = "negative.permission"
+    def readableMessage = s"Fraction $offendingNode might be negative."
   }
 
   case class InsufficientPermission(offendingNode: LocationAccess) extends AbstractErrorReason {

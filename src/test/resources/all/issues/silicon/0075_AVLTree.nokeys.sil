@@ -368,6 +368,7 @@ field root : Ref
 	}
 
 	method getBalanceFactor(this:Ref, rd:Perm) returns ( bf : Int )
+	  requires rd > none
 		requires acc(valid(this),write);
 		requires acc(this.balanceFactor,rd);
 
@@ -388,6 +389,7 @@ field root : Ref
 
 	//////////////////////////////////////////////////////////
 	method getBalanceFactorI(this:Ref, rd:Perm) returns ( bf : Int )
+	  requires rd > none
 		requires acc(this.left,rd);
 		requires this.left!=null ==> acc(valid(this.left),write);
 		requires this.left!=null ==> acc(this.left.height,rd);

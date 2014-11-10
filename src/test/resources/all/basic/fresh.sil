@@ -12,6 +12,7 @@ method t1(r: Ref)
 }
 
 method t1b(r: Ref, p: Perm)
+    requires p > none
     requires acc(r.f, p)
     ensures acc(r.f, p)
 {
@@ -55,6 +56,7 @@ method t3(r: Ref)
 
 method t4(r: Ref, read: Perm)
     requires acc(r.f, read)
+    requires read > none
 {
     var read2: Perm
     fresh read2
