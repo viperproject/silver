@@ -152,10 +152,17 @@ object Nodes {
   def children(node: Node): (Seq[Node], Seq[Any]) = {
     /* This match is only exhaustive if all concrete instances of `Node` extend
      * `Product`, which, for example, is the case for case classes.
+     *
+     * Elements of the productIterator that are `Traversable`s but not `Node`s
+     * themselves are effectively flattened (cannot call `t.flatten` directly
+     * because of a missing implicit).
      */
-    val relevantChildren = node match {
-      case p: Product => p.productIterator.toSeq
-    }
+    val relevantChildren = (node match {
+      case p: Product => p.productIterator.flatMap {
+        case t: Traversable[_] if !t.isInstanceOf[Node] => t
+        case other => other :: Nil
+      }
+    }).toSeq
 
     relevantChildren.partition(_.isInstanceOf[Node])
                     .asInstanceOf[(Seq[Node], Seq[Any])]
