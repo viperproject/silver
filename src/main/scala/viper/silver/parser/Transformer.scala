@@ -102,6 +102,8 @@ object Transformer {
         case PGoto(target) => PGoto(go(target))
         case PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))
         case PLetWand(idndef, wand) => PLetWand(go(idndef), go(wand))
+        case PLet(exp, nestedScope) => PLet(go(exp), go(nestedScope))
+        case PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))
         case _: PSkip => parent
 
         case PProgram(file, domains, fields, functions, predicates, methods) => PProgram(file, domains map go, fields map go, functions map go, predicates map go, methods map go)

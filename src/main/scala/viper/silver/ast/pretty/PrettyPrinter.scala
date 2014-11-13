@@ -262,6 +262,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       "pold" <> parens(show(exp))
     case ApplyOld(exp) =>
       "given" <> parens(show(exp))
+    case Let(v, exp, body) =>
+      parens("let" <+> show(v) <+> "==" <+> show(exp) <+> "in" <+> show(body))
     case CondExp(cond, thn, els) =>
       parens(show(cond) <+> "?" <+> show(thn) <+> ":" <+> show(els))
     case Exists(v, exp) =>

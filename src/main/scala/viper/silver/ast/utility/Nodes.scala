@@ -85,6 +85,7 @@ object Nodes {
           case Packaging(wand, in) => Seq(wand, in)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
+          case Let(v, exp, body) => Seq(v, exp, body)
           case Exists(v, exp) => v ++ Seq(exp)
           case Forall(v, triggers, exp) => v ++ triggers ++ Seq(exp)
           case InhaleExhaleExp(in, ex) => Seq(in, ex)

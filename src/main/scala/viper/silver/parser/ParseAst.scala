@@ -88,8 +88,15 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
      */
 }
 
-// Formal arguments
-case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with PTypedDeclaration with PLocalDeclaration
+//case class PLocalVar
+
+/* Formal arguments.
+ * [2014-11-13 Malte] Changed typ to be a var, so that it can be updated
+ * during type-checking. The use-case are let-expressions, where requiring an
+ * explicit type in the binding of the variable, i.e., "let x: T = e1 in e2",
+ * would be rather cumbersome.
+ */
+case class PFormalArgDecl(idndef: PIdnDef, var typ: PType) extends PNode with PTypedDeclaration with PLocalDeclaration
 
 // Types
 sealed trait PType extends PNode {
@@ -231,6 +238,19 @@ case class POld(e: PExp) extends POldExp
 case class PPackageOld(e: PExp) extends POldExp
 case class PApplyOld(e: PExp) extends POldExp
 
+/* Let-expressions `let x == e1 in e2` are represented by the nested structure
+ * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but
+ * `PLet` isn't) in order to work with the current architecture of the resolver.
+ *
+ * More precisely, `NameAnalyser.run` visits a given program to ensure that all
+ * used symbol are actually declared. While traversing the program, it
+ * pushes/pops `PScope`s to/from the stack. If let-expressions were represented
+ * by a flat `PLet(x, e1, e2) <: PScope`, then the let-bound variable `x` would
+ * already be in scope while checking `e1`, which wouldn't be correct.
+ */
+case class PLet(exp: PExp, nestedScope: PLetNestedScope) extends PExp
+case class PLetNestedScope(variable: PFormalArgDecl, body: PExp) extends PExp with PScope
+
 case class PEmptySeq(t : PType) extends PExp {
   typ = if (t.isUnknown) PUnknown() else PSeqType(t) // type can be specified as PUnknown() if unknown
 }
@@ -293,7 +313,22 @@ case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) exten
 case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
-sealed trait PScope extends PNode
+sealed trait PScope extends PNode {
+  val scopeId = PScope.uniqueId()
+}
+
+object PScope {
+  type Id = Long
+
+  private[this] var counter: Id = 0L
+
+  private def uniqueId() = {
+    val id = counter
+    counter = counter + 1
+
+    id
+  }
+}
 
 // Declarations
 /** An entity is a declaration (named) or an error node */
@@ -305,29 +340,6 @@ sealed trait PDeclaration extends PNode with PEntity {
 
 sealed trait PGlobalDeclaration extends PDeclaration
 sealed trait PLocalDeclaration extends PDeclaration
-
-object PDeclaration {
-  def descriptiveName(entity: PDeclaration) = {
-    val entityName =
-      entity match {
-        case _: PDomain => "domain"
-        case _: PDomainFunction => "domain function"
-        case _: PField => "field"
-        case _: PFormalArgDecl => "formal argument"
-        case _: PFunction => "function"
-        case _: PLabel => "label"
-        case _: PLocalVarDecl => "local variable"
-        case _: PMethod => "method"
-        case _: PPredicate => "predicate"
-        case _: PTypeVarDecl => "type variable"
-        case _: PAxiom => "axiom"
-        case _: PDefine => "syntactic macro"
-        case _: PLetWand => "wand reference"
-      }
-
-    s"$entityName ${entity.idndef.name}"
-  }
-}
 
 sealed trait PTypedDeclaration extends PDeclaration {
   def typ: PType
@@ -399,6 +411,8 @@ object Nodes {
       case PPackaging(wand, in) => Seq(wand, in)
       case PExists(vars, exp) => vars ++ Seq(exp)
       case po: POldExp => Seq(po.e)
+      case PLet(exp, nestedScope) => Seq(exp, nestedScope)
+      case PLetNestedScope(variable, body) => Seq(variable, body)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)

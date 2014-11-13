@@ -378,6 +378,15 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 case class PackageOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
 case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
 
+// --- Other expressions
+
+case class Let(bindings: Seq[(LocalVarDecl, Exp)]/*variable: LocalVarDecl, exp: Exp*/, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+//  require(exp.typ isSubtype variable.typ,
+//          s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}")
+
+  val typ = body.typ
+}
+
 // --- Quantifications
 
 /** A common trait for quantified expressions. */

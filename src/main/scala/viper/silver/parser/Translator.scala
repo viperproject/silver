@@ -151,7 +151,7 @@ case class Translator(program: PProgram) {
       case PUnfold(e) =>
         Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PPackageWand(e) =>
-        Package(exp(e).asInstanceOf[MagicWand])(pos)
+        Package(exp(e))(pos)
       case PApplyWand(e) =>
         Apply(exp(e))(pos)
       case PInhale(e) =>
@@ -351,6 +351,10 @@ case class Translator(program: PProgram) {
         Applying(exp(e), exp(in))(pos)
       case PPackaging(e, in) =>
         Packaging(exp(e).asInstanceOf[MagicWand], exp(in))(pos)
+      case PLet(exp1, PLetNestedScope(variable, body)) =>
+        Let(liftVarDecl(variable), exp(exp1), exp(body))(pos)
+      case _: PLetNestedScope =>
+        sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>

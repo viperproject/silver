@@ -231,6 +231,8 @@ case class TypeChecker(names: NameAnalyser) {
   def checkMagicWand(e: PExp, allowWandRefs: Boolean) = e match {
     case _: PIdnUse if allowWandRefs =>
       check(e, Wand)
+    case let: PLet =>
+      check(let, Wand)
     case PBinExp(_, MagicWandOp.op, _) =>
       check(e, Wand)
     case _ =>
@@ -677,7 +679,7 @@ case class TypeChecker(names: NameAnalyser) {
             setType(typ)
           case PDomainFunction(_, formalArgs, typ, unique) =>
             ensure(formalArgs.size == args.size, fa, "wrong number of arguments")
-            val inferred = collection.mutable.ListBuffer[(String, PType)]()
+            val inferred = mutable.ListBuffer[(String, PType)]()
             (formalArgs zip args) foreach {
               case (formal, actual) =>
                 check(actual, formal.typ)
@@ -704,15 +706,23 @@ case class TypeChecker(names: NameAnalyser) {
         checkMagicWand(wand, allowWandRefs = true)
         check(in, expected)
         setType(in.typ)
+//      case let @ PLet(v, exp1, body) =>
+      case PLet(exp1, nestedScope @ PLetNestedScope(variable, body)) =>
+        check(exp1, Nil)
+        val oldCurMember = curMember
+        curMember = nestedScope
+        variable.typ = exp1.typ
+        check(body, expected)
+        setType(body.typ)
+        curMember = oldCurMember
+      case _: PLetNestedScope =>
+        issueError(exp, "expected node")
       case f@ PExists(vars, e) =>
         val oldCurMember = curMember
         curMember = f
         vars map (v => check(v.typ))
-//        triggers.flatten map (x => check(x, Nil))
         check(e, Bool)
         curMember = oldCurMember
-//        vars map (v => check(v.typ))
-//        check(e, Bool)
       case f@ PForall(vars, triggers, e) =>
         val oldCurMember = curMember
         curMember = f
@@ -957,7 +967,7 @@ case class NameAnalyser() {
     } else {
       // lookup in method map first, and otherwise in the general one
       val entity =
-        localDeclarationMaps.get(member).get.get(idnuse.name) match {
+        localDeclarationMaps.get(member.scopeId).get.get(idnuse.name) match {
           case None =>
             globalDeclarationMap.get(idnuse.name).get
           case Some(foundEntity) =>
@@ -976,18 +986,27 @@ case class NameAnalyser() {
     localDeclarationMaps.clear()
   }
 
-  private val globalDeclarationMap = collection.mutable.HashMap[String, PEntity]()
-  private val localDeclarationMaps = collection.mutable.HashMap[PScope, collection.mutable.HashMap[String, PEntity]]()
+  private val globalDeclarationMap = mutable.HashMap[String, PEntity]()
+
+  /* [2014-11-13 Malte] Changed localDeclarationMaps to be a map from PScope.Id
+   * instead of from PScope directly. This was necessary in order to support
+   * changing PScopes during type-checking, e.g., when changing the type of a
+   * variable bound by a let-expression. This change (potentially) affects the
+   * hashcode of the let-expression (which is a PScope), which in turn affects
+   * localDeclarationMaps because such that the value stored for scope cannot
+   * be retrieved anymore.
+   */
+  private val localDeclarationMaps = mutable.HashMap[PScope.Id, mutable.HashMap[String, PEntity]]()
 
   def run(p: PProgram): Boolean = {
     var curMember: PScope = null
-    def getMap(d:PNode) : collection.mutable.HashMap[String, PEntity] =
+    def getMap(d:PNode) : mutable.HashMap[String, PEntity] =
       d match {
         case d: PGlobalDeclaration => globalDeclarationMap
         case _ => getCurrentMap
       }
-    def getCurrentMap: collection.mutable.HashMap[String, PEntity] =
-      if (curMember == null) globalDeclarationMap else localDeclarationMaps.get(curMember).get
+    def getCurrentMap: mutable.HashMap[String, PEntity] =
+      if (curMember == null) globalDeclarationMap else localDeclarationMaps.get(curMember.scopeId).get
 
     val scopeStack = mutable.Stack[PScope]()
 
@@ -999,7 +1018,7 @@ case class NameAnalyser() {
               case Some(e: PDeclaration) =>
                 message(e, "Duplicate identifier \"" + e.idndef.name + "\" : at " + e.idndef.start + " and at " + d.idndef.start)
               case Some(e:PErrorEntity) =>
-              case None => {
+              case None =>
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
                     message(e, "Identifier shadowing \"" + e.idndef.name + "\" : at " + e.idndef.start + " and at " + d.idndef.start)
@@ -1007,20 +1026,25 @@ case class NameAnalyser() {
                   case None =>
                     getMap(d).put(d.idndef.name, d)
                 }
-              }
-//              case None => getMap(d).put(d.idndef.name, d)
             }
           case _ =>
         }
 
         n match {
           case s: PScope =>
-            localDeclarationMaps.put(s, localDeclarationMaps.getOrElse(curMember, collection.mutable.HashMap[String, PEntity]()).clone())
+            val localDeclarations =
+              if (curMember == null)
+                mutable.HashMap[String, PEntity]()
+              else
+                localDeclarationMaps.getOrElse(curMember.scopeId, mutable.HashMap[String, PEntity]()).clone()
+
+            localDeclarationMaps.put(s.scopeId, localDeclarations)
             scopeStack.push(curMember)
             curMember = s
           case _ =>
         }
       }
+
       def isDefinedAt(n:PNode) = {
         n match {
           case d: PDeclaration => true
@@ -1048,65 +1072,6 @@ case class NameAnalyser() {
 
     // find all declarations
     p.visit( nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
-
-/*          ,
-        }
-        match n {
-          case s : PScope=>
-            localDeclarationMaps.put(m, localDeclarationMaps.getOrElse(curMember, collection.mutable.HashMap[String, PEntity]()).clone())
-            scopeStack.push(curMember)
-            curMember = m
-        }
-      }*/
-      /*
-      case d: PDomain =>
-        assert(curMember==null)
-        d.idndef.name
-        localDeclarationMaps.put(d, localDeclarationMaps.getOrElse(curMember, collection.mutable.HashMap[String, PEntity]()).clone())
-        scopeStack.push(curMember)
-
-      case m: PScope =>
-        localDeclarationMaps.put(m, localDeclarationMaps.getOrElse(curMember, collection.mutable.HashMap[String, PEntity]()).clone())
-        scopeStack.push(curMember)
-        curMember = m
-      case i@PIdnDef(name) =>
-
-        map.get(name) match {
-//          case Some(e:PMultipleEntity) =>
-//            message(i, s"parser.duplicate.identifier $name : at " + i.parent.asInstanceOf[PNode].start)
-          case Some(e:PRealEntity) =>
-            message(i, s"parser.duplicate.identifier $name : at " + e.idndef.start + " and at " + i.parent.asInstanceOf[PNode].start)
-//            getMap.put(name, PMultipleEntity())
-          case None =>
-            i.parent match {
-              case decl: PAxiom => map.put(name, decl) //=> // nothing refers to axioms(yet), but here for unique names
-              case decl: PDomain =>
-                if (name == decl.idndef.name) {
-                  globalDeclarationMap.get(name) match {
-                    case Some(e:PRealEntity) => message(i, s"parser.duplicate.identifier $name : at " + e.idndef.start + " and at " + decl.start)
-                    case Some(e:PMultipleEntity) => message(i, s"parser.duplicate.identifier $name : at " + decl.start)
-                    case None => globalDeclarationMap.put(name, decl)
-                  }
-                } else if (decl.typVars.contains(i)) {
-                  getMap.put(i.name, PTypeVarDecl(i))
-                } else {
-                  message(i, s"unexpected use of $name")
-                }
-              case decl: PLocalVarDecl => getMap.put(name, decl)
-              case decl: PFormalArgDecl => getMap.put(name, decl)
-              case decl: PRealEntity =>
-              {
-                globalDeclarationMap.get(name) match {
-                  case Some(e:PRealEntity) => message(i, s"parser.duplicate.identifier $name : at " + e.idndef.start + " and at " + decl.idndef.start)
-                  case Some(e:PMultipleEntity) => message(i, s"parser.duplicate.identifier $name : at " + decl.idndef.start)
-                  case None => globalDeclarationMap.put(name, decl)
-                }
-              }
-              case _ => sys.error(s"parser.internal.error unexpected parent of identifier: ${i.parent}")
-            }
-        }
-      case _ =>
-    }*/
 
     /* Check all identifier uses. */
     p.visit({

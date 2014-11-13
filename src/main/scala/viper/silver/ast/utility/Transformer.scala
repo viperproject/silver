@@ -73,6 +73,7 @@ object Transformer {
             case ApplyOld(e) => ApplyOld(go(e))(p, i)
             case CondExp(cond, thn, els) =>
               CondExp(go(cond), go(thn), go(els))(p, i)
+            case Let(v, exp1, body) => Let(go(v), go(exp1), go(body))(p, i)
             case Exists(v, e) => Exists(v map go, go(e))(p, i)
             case Forall(v, triggers, e) =>
               Forall(v map go, triggers map go, go(e))(p, i)
