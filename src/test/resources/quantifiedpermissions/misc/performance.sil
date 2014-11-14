@@ -1,3 +1,5 @@
+//:: IgnoreFile(/silicon/issue/128/)
+
 field f: Int
 
 method init(xs: Seq[Ref])
