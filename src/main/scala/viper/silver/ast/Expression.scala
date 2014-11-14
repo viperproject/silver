@@ -380,9 +380,9 @@ case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = N
 
 // --- Other expressions
 
-case class Let(bindings: Seq[(LocalVarDecl, Exp)]/*variable: LocalVarDecl, exp: Exp*/, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
-//  require(exp.typ isSubtype variable.typ,
-//          s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}")
+case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+  require(exp.typ isSubtype variable.typ,
+          s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}")
 
   val typ = body.typ
 }

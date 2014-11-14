@@ -24,6 +24,7 @@ object Expressions {
     case unf: Unfolding => isPure(unf.body)
     case gop: GhostOperation => false
     case QuantifiedExp(_, e0) => isPure(e0)
+    case Let(_, _, body) => isPure(body)
 
     case _: Literal
          | _: PermExp
