@@ -231,8 +231,6 @@ case class TypeChecker(names: NameAnalyser) {
   def checkMagicWand(e: PExp, allowWandRefs: Boolean) = e match {
     case _: PIdnUse if allowWandRefs =>
       check(e, Wand)
-    case let: PLet =>
-      check(let, Wand)
     case PBinExp(_, MagicWandOp.op, _) =>
       check(e, Wand)
     case _ =>

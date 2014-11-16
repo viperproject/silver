@@ -235,7 +235,6 @@ case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 
 sealed trait POldExp extends PExp { def e: PExp }
 case class POld(e: PExp) extends POldExp
-case class PPackageOld(e: PExp) extends POldExp
 case class PApplyOld(e: PExp) extends POldExp
 
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
@@ -291,7 +290,7 @@ sealed trait PStmt extends PNode {
 case class PSeqn(ss: Seq[PStmt]) extends PStmt
 case class PFold(e: PExp) extends PStmt
 case class PUnfold(e: PExp) extends PStmt
-case class PPackageWand(e: PExp) extends PStmt
+case class PPackageWand(wand: PExp) extends PStmt
 case class PApplyWand(e: PExp) extends PStmt
 case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt

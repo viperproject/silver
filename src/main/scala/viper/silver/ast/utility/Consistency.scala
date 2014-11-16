@@ -259,11 +259,6 @@ object Consistency {
 
       c.copy(insideWandStatus = InsideWandStatus.Yes)
 
-    case po: PackageOld =>
-      recordIfNot(po, c.insideWandStatus.isInside, "pold-expressions may only occur inside wands.")
-
-      c
-
     case po: ApplyOld =>
       recordIfNot(po, c.insideWandStatus.isInside, "given-expressions may only occur inside wands.")
 
@@ -289,19 +284,13 @@ object Consistency {
   }
 
   private def checkIfValidChainOfGhostOperations(n: Node, root: MagicWand): Unit = n match {
-    case gop: GhostOperation =>
-      checkIfValidChainOfGhostOperations(gop.body, root)
+    case gop: GhostOperation => checkIfValidChainOfGhostOperations(gop.body, root)
+    case let: Let => checkIfValidChainOfGhostOperations(let.body, root)
 
     case _ =>
-//      val invalid =
-//        !n.existsDefined {
-//          case unf: Unfolding if !unf.isPure =>
-//          case gop: GhostOperation if !gop.isInstanceOf[Unfolding] =>
-//        }
-
       recordIfNot(root, noGhostOperations(n), "Magic wand has unsupported shape. "
                                  + "Its RHS must be of the shape 'GOp1 in GOp2 in ... in A', where the GOps are "
-                                 + "(impure) ghost operations, and where the final in-clause assertion A may"
+                                 + "(impure) ghost operations, and where the final in-clause assertion A may "
                                  + "only contain pure unfolding expressions.")
   }
 

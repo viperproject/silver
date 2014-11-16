@@ -116,12 +116,14 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
       case gop: GhostOperation if !gop.isInstanceOf[Unfolding] =>
         keepUnfolding = false
         gop.body
+
+      case let: Let => let.body
     })
   }
 
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
     this.shallowCollect {
-      case pold: PackageOld => pold
+      case old: Old => old
       case e: Exp if !e.isHeapDependent(p) => e
     }
   }
@@ -375,7 +377,6 @@ sealed trait OldExp extends UnExp {
 }
 
 case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
-case class PackageOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
 case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
 
 // --- Other expressions

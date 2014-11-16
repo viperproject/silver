@@ -64,7 +64,6 @@ object Transformer {
         case _: PEpsilon => parent
         case PAccPred(loc, perm) => PAccPred(go(loc), go(perm))
         case POld(e) => POld(go(e))
-        case PPackageOld(e) => PPackageOld(go(e))
         case PApplyOld(e) => PApplyOld(go(e))
         case PEmptySeq(t) => PEmptySeq(go(t))
         case PExplicitSeq(elems) => PExplicitSeq(elems map go)

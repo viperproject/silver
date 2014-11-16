@@ -151,7 +151,7 @@ case class Translator(program: PProgram) {
       case PUnfold(e) =>
         Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PPackageWand(e) =>
-        Package(exp(e))(pos)
+        Package(exp(e).asInstanceOf[MagicWand])(pos)
       case PApplyWand(e) =>
         Apply(exp(e))(pos)
       case PInhale(e) =>
@@ -362,8 +362,6 @@ case class Translator(program: PProgram) {
         Forall(vars map liftVarDecl, ts, exp(e))(pos)
       case POld(e) =>
         Old(exp(e))(pos)
-      case PPackageOld(e) =>
-        PackageOld(exp(e))(pos)
       case PApplyOld(e) =>
         ApplyOld(exp(e))(pos)
       case PCondExp(cond, thn, els) =>

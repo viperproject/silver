@@ -124,7 +124,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // prover hint expressions
     "unfolding", "in", "folding", "applying", "packaging",
     // old expression
-    "old", "now", "lhs",
+    "old", "lhs",
     // other expressions
     "let",
     // quantification
@@ -250,7 +250,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val unfold =
     "unfold" ~> predicateAccessPred ^^ PUnfold
   lazy val packageWand =
-    "package" ~> exp ^^ PPackageWand
+    "package" ~> magicWandExp ^^ PPackageWand
   lazy val applyWand =
     "apply" ~> magicWandExp ^^ PApplyWand
   lazy val inhale =
@@ -336,9 +336,13 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val implExp: PackratParser[PExp] =
     magicWandExp ~ "==>" ~ implExp ^^ PBinExp | magicWandExp
 
+  /* Magic wands can be
+   *  - wand literals, e.g., 'true --* true'
+   *  - wand chunk terms, e.g, 'w', where 'wand w := ...'
+   */
   lazy val magicWandExp: PackratParser[PExp] =
     realMagicWandExp | orExp
-  lazy val realMagicWandExp: PackratParser[PExp] =
+  lazy val realMagicWandExp: PackratParser[PBinExp] =
     orExp ~ "--*" ~ magicWandExp ^^ PBinExp
 
   lazy val orExp: PackratParser[PExp] =
@@ -407,7 +411,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    */
   lazy val atom: PackratParser[PExp] =
     integer | bool | nul |
-      old | pold | given |
+      old | applyOld |
       "result" ^^ (_ => PResultLit()) |
       ("-" | "!" | "+") ~ sum ^^ PUnExp |
       "(" ~> exp <~ ")" |
@@ -457,10 +461,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val old: PackratParser[PExp] =
     "old" ~> parens(exp) ^^ POld
 
-  lazy val pold: PackratParser[PExp] =
-    "now" ~> parens(exp) ^^ PPackageOld
-
-  lazy val given: PackratParser[PExp] =
+  lazy val applyOld: PackratParser[PExp] =
     "lhs" ~> parens(exp) ^^ PApplyOld
 
   lazy val locAcc: PackratParser[PLocationAccess] =

@@ -69,7 +69,6 @@ object Transformer {
             case Packaging(wand, in) => Packaging(go(wand), go(in))(p, i)
 
             case Old(e) => Old(go(e))(p, i)
-            case PackageOld(e) => PackageOld(go(e))(p, i)
             case ApplyOld(e) => ApplyOld(go(e))(p, i)
             case CondExp(cond, thn, els) =>
               CondExp(go(cond), go(thn), go(els))(p, i)
