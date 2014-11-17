@@ -108,11 +108,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // null
     "null",
     // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "wand",
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field",
     // specifications
     "requires", "ensures", "invariant",
     // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto", "package", "apply",
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto",
     // control structures
     "while", "if", "elsif", "else",
     // special fresh block
@@ -122,20 +122,15 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
     // prover hint expressions
-    "unfolding", "in", "folding", "applying", "packaging",
+    "unfolding", "in",
     // old expression
-    "old", "lhs",
-    // other expressions
-    "let",
+    "old",
     // quantification
     "forall", "exists",
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
-    "unique",
-
-    // TODO: Hacks to stop the parser from interpreting, e.g., "inhale" as "in hale"
-    "variant", "hale", "tersection"
+    "unique"
   )
 
   lazy val parser = phrase(programDecl)
@@ -152,30 +147,23 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   // --- Declarations
 
   lazy val programDecl =
-    rep(defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
+    rep(domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
       case decls =>
-        val globalDefines = decls.collect{case d: PDefine => d}
-        val fields = decls collect { case d: PField => d }
-
-        val methods = decls collect {
-          case meth: PMethod =>
-            val localDefines = meth.deepCollect {case n: PDefine => n}
-
-            val methWithoutDefines =
-              if (localDefines.isEmpty)
-                meth
-              else
-                meth.transform {
-                  case la: PDefine => PSkip().setPos(la)
-                }()
-
-            substituteDefines(localDefines ++ globalDefines, methWithoutDefines)
+        val domains = decls collect {
+          case d: PDomain => d
         }
-
-        val domains = decls collect { case d: PDomain => substituteDefines(globalDefines, d) }
-        val functions = decls collect { case d: PFunction => substituteDefines(globalDefines, d) }
-        val predicates = decls collect { case d: PPredicate => substituteDefines(globalDefines, d) }
-
+        val fields = decls collect {
+          case d: PField => d
+        }
+        val functions = decls collect {
+          case d: PFunction => d
+        }
+        val predicates = decls collect {
+          case d: PPredicate => d
+        }
+        val methods = decls collect {
+          case d: PMethod => d
+        }
         PProgram(file, domains, fields, functions, predicates, methods)
     }
 
@@ -242,17 +230,13 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     rep(stmt <~ opt(";"))
   lazy val stmt =
     fieldassign | localassign | fold | unfold | exhale | assert |
-      inhale | ifthnels | whle | varDecl | defineDecl | letwandDecl | newstmt | fresh | constrainingBlock |
-      methodCall | goto | lbl | packageWand | applyWand
+      inhale | ifthnels | whle | varDecl | newstmt | fresh | constrainingBlock |
+      methodCall | goto | lbl
 
   lazy val fold =
     "fold" ~> predicateAccessPred ^^ PFold
   lazy val unfold =
     "unfold" ~> predicateAccessPred ^^ PUnfold
-  lazy val packageWand =
-    "package" ~> magicWandExp ^^ PPackageWand
-  lazy val applyWand =
-    "apply" ~> magicWandExp ^^ PApplyWand
   lazy val inhale =
     ("inhale" | "assume") ~> exp ^^ PInhale
   lazy val exhale =
@@ -279,10 +263,6 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     }
   lazy val varDecl =
     ("var" ~> idndef) ~ (":" ~> typ) ~ opt(":=" ~> exp) ^^ PLocalVarDecl
-  lazy val defineDecl =
-    ("define" ~> idndef) ~ opt("(" ~> repsep(idndef, ",") <~ ")") ~ exp ^^ PDefine
-  lazy val letwandDecl =
-    ("wand" ~> idndef) ~ (":=" ~> exp) ^^ PLetWand
   lazy val fresh =
     "fresh" ~> repsep(idnuse, ",") ^^ {
       case vars => PFresh(vars)
@@ -336,13 +316,9 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val implExp: PackratParser[PExp] =
     magicWandExp ~ "==>" ~ implExp ^^ PBinExp | magicWandExp
 
-  /* Magic wands can be
-   *  - wand literals, e.g., 'true --* true'
-   *  - wand chunk terms, e.g, 'w', where 'wand w := ...'
-   */
   lazy val magicWandExp: PackratParser[PExp] =
     realMagicWandExp | orExp
-  lazy val realMagicWandExp: PackratParser[PBinExp] =
+  lazy val realMagicWandExp: PackratParser[PExp] =
     orExp ~ "--*" ~ magicWandExp ^^ PBinExp
 
   lazy val orExp: PackratParser[PExp] =
@@ -411,16 +387,15 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    */
   lazy val atom: PackratParser[PExp] =
     integer | bool | nul |
-      old | applyOld |
+      old |
       "result" ^^ (_ => PResultLit()) |
       ("-" | "!" | "+") ~ sum ^^ PUnExp |
       "(" ~> exp <~ ")" |
       accessPred |
       inhaleExhale |
       perm |
-      let |
       quant |
-      unfolding | folding | applying | packaging |
+      unfolding |
       setTypedEmpty | explicitSetNonEmpty |
       explicitMultisetNonEmpty | multiSetTypedEmpty |
       seqTypedEmpty | seqLength | explicitSeqNonEmpty | seqRange |
@@ -461,9 +436,6 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val old: PackratParser[PExp] =
     "old" ~> parens(exp) ^^ POld
 
-  lazy val applyOld: PackratParser[PExp] =
-    "lhs" ~> parens(exp) ^^ PApplyOld
-
   lazy val locAcc: PackratParser[PLocationAccess] =
     fieldAcc | predAcc
 
@@ -477,43 +449,6 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   lazy val unfolding: PackratParser[PExp] =
     ("unfolding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PUnfolding
-
-  lazy val folding: PackratParser[PExp] =
-    ("folding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PFolding
-
-  lazy val applying: PackratParser[PExp] =
-    /* We must be careful here to not create ambiguities in our grammar.
-     * when 'magicWandExp' is used instead of the more specific
-     * 'realMagicWandExp | idnuse', then the following problem can occur:
-     * Consider an expression such as "applying w in A". The parser
-     * will interpret "w in A" as a set-contains expression, which is
-     * fine according to our rules. The outer applying-rule will the fail.
-     * I suspect that NOT using a memoising packrat parser would help
-     * here, because the failing applying-rule should backtrack enough
-     * to reparse "w in A", but this time as desired, not as a
-     * set-contains expression. This is just an assumption, however,
-     * and implementing would mean that we have to rewrite the
-     * left-recursive parsing rules (are these only sum and term?).
-     * Moreover, not using a memoising parser might make the parser
-     * significantly slower.
-     */
-    ("applying" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PApplying
-
-  lazy val packaging: PackratParser[PExp] =
-    /* See comment on applying */
-    ("packaging" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PPackaging
-
-  lazy val let: PackratParser[PExp] =
-    ("let" ~> idndef <~ "==") ~ ("(" ~> exp <~ ")") ~ ("in" ~> exp) ^^ { case id ~ exp1 ~ exp2 =>
-      /* Type unresolvedType is expected to be replaced with the type of exp1
-       * after the latter has been resolved
-       * */
-      val unresolvedType = PUnknown().setPos(id)
-      val formalArgDecl = PFormalArgDecl(id, unresolvedType).setPos(id)
-      val nestedScope = PLetNestedScope(formalArgDecl, exp2).setPos(exp2)
-
-      PLet(exp1, nestedScope)
-    }
 
   lazy val integer =
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))
@@ -575,6 +510,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    * keyword, for example "index".
    */
 
+  val ident =
+    not(keyword) ~> identifier.r |
+      failure("identifier expected")
+
   val identFirstLetter = "[a-zA-Z$_]"
 
   val identOtherLetterChars = "a-zA-Z0-9$_'"
@@ -585,38 +524,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   val keyword = keywords(identOtherLetterNeg.r, reserved)
 
-  val ident =
-    not(keyword) ~> identifier.r |
-      failure("identifier expected")
-
   private def foldPExp[E <: PExp](e: PExp, es: List[PExp => E]): E =
     es.foldLeft(e){(t, a) =>
       val result = a(t)
       result.setPos(t)
       result
     }.asInstanceOf[E]
-
-  private def substituteDefines[N <: PMember](defines: Seq[PDefine], pnode: N): N = {
-    def lookupOrElse(piu: PIdnUse, els: PExp) =
-      defines.find(_.idndef.name == piu.name).fold[PExp](els) _
-
-    pnode.transform {
-      case piu: PIdnUse =>
-        lookupOrElse(piu, piu)(_.exp)
-
-      case fapp: PFunctApp =>
-        lookupOrElse(fapp.func, fapp)(define => define.args match {
-          case None => fapp
-          case Some(args) if fapp.args.length != args.length => fapp
-          case Some(args) =>
-            define.exp.transform {
-              case piu: PIdnUse =>
-                args.indexWhere(_.name == piu.name) match {
-                  case -1 => piu
-                  case i => fapp.args(i)
-                }
-            }() : PExp /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
-        })
-    }()
-  }
 }

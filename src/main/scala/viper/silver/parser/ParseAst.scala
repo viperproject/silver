@@ -71,7 +71,6 @@ object TypeHelper {
   val Perm = PPrimitiv("Perm")
   val Ref = PPrimitiv("Ref")
   val Pred = PPredicateType()
-  val Wand = PWandType()
 }
 
 // Identifiers (uses and definitions)
@@ -88,15 +87,8 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
      */
 }
 
-//case class PLocalVar
-
-/* Formal arguments.
- * [2014-11-13 Malte] Changed typ to be a var, so that it can be updated
- * during type-checking. The use-case are let-expressions, where requiring an
- * explicit type in the binding of the variable, i.e., "let x: T = e1 in e2",
- * would be rather cumbersome.
- */
-case class PFormalArgDecl(idndef: PIdnDef, var typ: PType) extends PNode with PTypedDeclaration with PLocalDeclaration
+// Formal arguments
+case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with PTypedDeclaration with PLocalDeclaration
 
 // Types
 sealed trait PType extends PNode {
@@ -184,10 +176,6 @@ case class PPredicateType() extends PInternalType {
   override def toString = "$predicate"
 }
 
-case class PWandType() extends PInternalType {
-  override def toString = "$wand"
-}
-
 // Expressions
 sealed trait PExp extends PNode {
   var typ: PType = PUnknown()
@@ -210,18 +198,7 @@ sealed trait PLocationAccess extends PExp {
 case class PFieldAccess(rcv: PExp, idnuse: PIdnUse) extends PLocationAccess
 case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse) extends PLocationAccess
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
-
-sealed trait PUnFoldingExp extends PExp {
-  def acc: PAccPred
-  def exp: PExp
-}
-
-case class PUnfolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp
-case class PFolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp
-
-case class PApplying(wand: PExp, exp: PExp) extends PExp
-case class PPackaging(wand: PExp, exp: PExp) extends PExp
-
+case class PUnfolding(acc: PAccPred, exp: PExp) extends PExp
 case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp with PScope
 case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp with PScope
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
@@ -235,20 +212,6 @@ case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 
 sealed trait POldExp extends PExp { def e: PExp }
 case class POld(e: PExp) extends POldExp
-case class PApplyOld(e: PExp) extends POldExp
-
-/* Let-expressions `let x == e1 in e2` are represented by the nested structure
- * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but
- * `PLet` isn't) in order to work with the current architecture of the resolver.
- *
- * More precisely, `NameAnalyser.run` visits a given program to ensure that all
- * used symbol are actually declared. While traversing the program, it
- * pushes/pops `PScope`s to/from the stack. If let-expressions were represented
- * by a flat `PLet(x, e1, e2) <: PScope`, then the let-bound variable `x` would
- * already be in scope while checking `e1`, which wouldn't be correct.
- */
-case class PLet(exp: PExp, nestedScope: PLetNestedScope) extends PExp
-case class PLetNestedScope(variable: PFormalArgDecl, body: PExp) extends PExp with PScope
 
 case class PEmptySeq(t : PType) extends PExp {
   typ = if (t.isUnknown) PUnknown() else PSeqType(t) // type can be specified as PUnknown() if unknown
@@ -290,8 +253,6 @@ sealed trait PStmt extends PNode {
 case class PSeqn(ss: Seq[PStmt]) extends PStmt
 case class PFold(e: PExp) extends PStmt
 case class PUnfold(e: PExp) extends PStmt
-case class PPackageWand(wand: PExp) extends PStmt
-case class PApplyWand(e: PExp) extends PStmt
 case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
@@ -308,26 +269,7 @@ case class PLabel(idndef: PIdnDef) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 
-case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) extends PStmt with PLocalDeclaration
-case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
-case class PSkip() extends PStmt
-
-sealed trait PScope extends PNode {
-  val scopeId = PScope.uniqueId()
-}
-
-object PScope {
-  type Id = Long
-
-  private[this] var counter: Id = 0L
-
-  private def uniqueId() = {
-    val id = counter
-    counter = counter + 1
-
-    id
-  }
-}
+sealed trait PScope extends PNode
 
 // Declarations
 /** An entity is a declaration (named) or an error node */
@@ -339,6 +281,27 @@ sealed trait PDeclaration extends PNode with PEntity {
 
 sealed trait PGlobalDeclaration extends PDeclaration
 sealed trait PLocalDeclaration extends PDeclaration
+
+object PDeclaration {
+  def descriptiveName(entity: PDeclaration) = {
+    val entityName =
+      entity match {
+        case _: PDomain => "domain"
+        case _: PDomainFunction => "domain function"
+        case _: PField => "field"
+        case _: PFormalArgDecl => "formal argument"
+        case _: PFunction => "function"
+        case _: PLabel => "label"
+        case _: PLocalVarDecl => "local variable"
+        case _: PMethod => "method"
+        case _: PPredicate => "predicate"
+        case _: PTypeVarDecl => "type variable"
+        case _: PAxiom => "axiom"
+      }
+
+    s"$entityName ${entity.idndef.name}"
+  }
+}
 
 sealed trait PTypedDeclaration extends PDeclaration {
   def typ: PType
@@ -400,18 +363,13 @@ object Nodes {
       case PBoolLit(b) => Nil
       case PNullLit() => Nil
       case PPredicateType() => Nil
-      case PWandType() => Nil
       case PResultLit() => Nil
       case PFieldAccess(rcv, field) => Seq(rcv, field)
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
       case PFunctApp(func, args) => Seq(func) ++ args
-      case e: PUnFoldingExp => Seq(e.acc, e.exp)
-      case PApplying(wand, in) => Seq(wand, in)
-      case PPackaging(wand, in) => Seq(wand, in)
+      case PUnfolding(acc, exp) => Seq(acc, exp)
       case PExists(vars, exp) => vars ++ Seq(exp)
       case po: POldExp => Seq(po.e)
-      case PLet(exp, nestedScope) => Seq(exp, nestedScope)
-      case PLetNestedScope(variable, body) => Seq(variable, body)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)
@@ -438,8 +396,6 @@ object Nodes {
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)
-      case PPackageWand(exp) => Seq(exp)
-      case PApplyWand(exp) => Seq(exp)
       case PExhale(exp) => Seq(exp)
       case PAssert(exp) => Seq(exp)
       case PInhale(exp) => Seq(exp)
@@ -468,9 +424,6 @@ object Nodes {
         Seq(name) ++ args ++ Seq(body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
-      case PDefine(idndef, optArgs, exp) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(exp)
-      case PLetWand(idndef, wand) => Seq(idndef, wand)
-      case _: PSkip => Nil
     }
   }
 }

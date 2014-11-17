@@ -12,6 +12,7 @@
 
 package viper.silver.ast.utility
 
+import scala.collection.immutable.ListSet
 import viper.silver.ast._
 
 /** Utility methods for AST nodes. */
@@ -57,8 +58,6 @@ object Nodes {
           case FieldAssign(lhs, rhs) => Seq(lhs, rhs)
           case Fold(e) => Seq(e)
           case Unfold(e) => Seq(e)
-          case Package(e) => Seq(e)
-          case Apply(e) => Seq(e)
           case Inhale(e) => Seq(e)
           case Exhale(e) => Seq(e)
           case Assert(e) => Seq(e)
@@ -77,15 +76,12 @@ object Nodes {
         // might also be necessary to update the PrettyPrinter.toParenDoc method.
         e match {
           case _: Literal => Nil
-          case _: AbstractLocalVar => Nil
+          case AbstractLocalVar(n) => Nil
           case FieldAccess(rcv, field) => Seq(rcv)
           case PredicateAccess(params, _) => params
-          case e: UnFoldingExp => Seq(e.acc, e.body)
-          case Applying(wand, in) => Seq(wand, in)
-          case Packaging(wand, in) => Seq(wand, in)
+          case Unfolding(acc, exp) => Seq(acc, exp)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
-          case Let(v, exp, body) => Seq(v, exp, body)
           case Exists(v, exp) => v ++ Seq(exp)
           case Forall(v, triggers, exp) => v ++ triggers ++ Seq(exp)
           case InhaleExhaleExp(in, ex) => Seq(in, ex)
@@ -153,17 +149,10 @@ object Nodes {
   def children(node: Node): (Seq[Node], Seq[Any]) = {
     /* This match is only exhaustive if all concrete instances of `Node` extend
      * `Product`, which, for example, is the case for case classes.
-     *
-     * Elements of the productIterator that are `Traversable`s but not `Node`s
-     * themselves are effectively flattened (cannot call `t.flatten` directly
-     * because of a missing implicit).
      */
-    val relevantChildren = (node match {
-      case p: Product => p.productIterator.flatMap {
-        case t: Traversable[_] if !t.isInstanceOf[Node] => t
-        case other => other :: Nil
-      }
-    }).toSeq
+    val relevantChildren = node match {
+      case p: Product => p.productIterator.toSeq
+    }
 
     relevantChildren.partition(_.isInstanceOf[Node])
                     .asInstanceOf[(Seq[Node], Seq[Any])]

@@ -145,15 +145,11 @@ case class Translator(program: PProgram) {
         // there are no declarations in the SIL AST; rather they are part of the method signature
         Statements.EmptyStmt
       case PSeqn(ss) =>
-        Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt)(pos)
+        Seqn(ss map stmt)(pos)
       case PFold(e) =>
         Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PUnfold(e) =>
         Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
-      case PPackageWand(e) =>
-        Package(exp(e).asInstanceOf[MagicWand])(pos)
-      case PApplyWand(e) =>
-        Apply(exp(e))(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
       case PExhale(e) =>
@@ -189,10 +185,6 @@ case class Translator(program: PProgram) {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos)
-      case PLetWand(idndef, wand) =>
-        LocalVarAssign(LocalVar(idndef.name)(Wand, pos), exp(wand))(pos)
-      case _: PDefine | _: PSkip =>
-        sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
   }
 
@@ -207,10 +199,7 @@ case class Translator(program: PProgram) {
             /* A malformed AST where a field is dereferenced without a receiver */
             Messaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
-          case _: PLetWand =>
-            /* TODO: We might want to differentiate between magic wand references and regular local variables. */
-            LocalVar(name)(ttyp(pexp.typ), pos)
-          case other =>
+          case _ =>
             sys.error("should not occur in type-checked program")
         }
       case PBinExp(left, op, right) =>
@@ -277,7 +266,6 @@ case class Translator(program: PProgram) {
           case "==" => EqCmp(l, r)(pos)
           case "!=" => NeCmp(l, r)(pos)
           case "==>" => Implies(l, r)(pos)
-          case "--*" => MagicWand(l, r)(pos)
           case "<==>" => EqCmp(l, r)(pos)
           case "&&" => And(l, r)(pos)
           case "||" => Or(l, r)(pos)
@@ -345,16 +333,6 @@ case class Translator(program: PProgram) {
         }
       case PUnfolding(loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
-      case PFolding(loc, e) =>
-        Folding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
-      case PApplying(e, in) =>
-        Applying(exp(e), exp(in))(pos)
-      case PPackaging(e, in) =>
-        Packaging(exp(e).asInstanceOf[MagicWand], exp(in))(pos)
-      case PLet(exp1, PLetNestedScope(variable, body)) =>
-        Let(liftVarDecl(variable), exp(exp1), exp(body))(pos)
-      case _: PLetNestedScope =>
-        sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>
@@ -362,8 +340,6 @@ case class Translator(program: PProgram) {
         Forall(vars map liftVarDecl, ts, exp(e))(pos)
       case POld(e) =>
         Old(exp(e))(pos)
-      case PApplyOld(e) =>
-        ApplyOld(exp(e))(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
       case PCurPerm(loc) =>
@@ -448,7 +424,6 @@ case class Translator(program: PProgram) {
           assert(args.length == 0)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable
       }
-    case PWandType() => Wand
     case PUnknown() =>
       sys.error("unknown type unexpected here")
     case PPredicateType() =>

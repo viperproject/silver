@@ -22,7 +22,7 @@ sealed trait Type extends Node {
    */
   def substitute(typVarsMap: Map[TypeVar, Type]): Type
 
-  // At the moment, there is no user-defined subtyping in SIL.
+  // At the moment, there is no subtyping in SIL.
   def isSubtype(other: Type): Boolean = {
     (this, other) match {
       case (a: DomainType, b: DomainType) =>
@@ -33,7 +33,6 @@ sealed trait Type extends Node {
               case None => false
             }
         }
-      case (Wand, Bool) => true
       case _ => this == other
     }
   }
@@ -61,11 +60,8 @@ case object Bool extends BuiltInType
 case object Perm extends BuiltInType
 /** Type for references. */
 case object Ref extends BuiltInType
-sealed trait InternalType extends BuiltInType
-/** Type for predicates. */
-case object Pred extends InternalType
-/** Type for letwand-declared variables. */
-case object Wand extends InternalType
+/** Type for predicates (only used internally). */
+case object Pred extends BuiltInType
 /** Type for sequences */
 case class SeqType(elementType: Type) extends BuiltInType {
   override lazy val isConcrete = elementType.isConcrete
