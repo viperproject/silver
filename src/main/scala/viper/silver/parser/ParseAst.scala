@@ -6,17 +6,28 @@
 
 package viper.silver.parser
 
-import org.kiama.util.Positioned
+import org.kiama.util.Positions
+import scala.util.parsing.input.Position
 import org.kiama.attribution.Attributable
 import viper.silver.ast.utility.Visitor
 import TypeHelper._
 import java.nio.file.Path
 
 /**
+ * This is a trait to ease interfacing with the changed Kiama interface - it no-longer provides Positioned as a trait, but rather a global Positions object..
+ */
+
+trait KiamaPositioned {
+  def start = Positions.getStart(this)
+  def setStart(p:Position) = Positions.setStart(this,p)
+  def setPos(a:Any) : this.type = Positions.dupPos(a,this)
+}
+
+/**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual SIL abstract syntax tree.
  */
-sealed trait PNode extends Positioned with Attributable {
+sealed trait PNode extends KiamaPositioned with Attributable {
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
 

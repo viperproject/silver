@@ -8,7 +8,7 @@ package viper.silver.testing
 
 import java.nio.file._
 import collection.mutable
-import org.scalatest.BeforeAndAfterAll
+import org.scalatest.{ConfigMap, BeforeAndAfterAll}
 import viper.silver.verifier._
 import viper.silver.ast.{TranslatedPosition, SourcePosition}
 import viper.silver.frontend.Frontend
@@ -39,7 +39,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
     *
     * @param configMap The config map provided by ScalaTest.
     */
-  override def beforeAll(configMap: Map[String, Any]) {
+  override def beforeAll(configMap: ConfigMap) {
     this.configMap = configMap
     verifiers foreach (_.start())
   }

@@ -198,19 +198,20 @@ trait SilFrontend extends DefaultFrontend {
    */
 
   override def doTypecheck(input: ParserResult): Result[TypecheckerResult] = {
-    Resolver(input).run match {
+    val r = Resolver(input)
+    r.run match {
       case Some(modifiedInput) =>
         Translator(modifiedInput).translate match {
           case Some(program) =>
             Succ(program)
 
           case None =>
-            Fail(Messaging.messages map (m => TypecheckerError(m.message, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))))
+            Fail(Messaging.sortmessages(r.messages) map (m => TypecheckerError(m.label, SourcePosition(_inputFile.get, m.pos.line, m.pos.column)))) // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
         }
 
       case None =>
-       val errors = for (m <- Messaging.sortedmessages) yield {
-          TypecheckerError(m.message, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))
+       val errors = for (m <- Messaging.sortmessages(r.messages)) yield {
+          TypecheckerError(m.label, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))
         }
       Fail(errors)
     }

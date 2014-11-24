@@ -11,6 +11,7 @@ import java.nio.file.{Files, Path}
 import scala.io.Source
 import viper.silver.verifier.{Failure, AbstractError, VerificationResult, Verifier}
 import viper.silver.ast.Program
+import viper.silver.ast.utility.Consistency
 
 /** Represents one phase of a frontend */
 case class Phase(name: String, action: () => Unit)
@@ -130,7 +131,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _verificationResult = None
     _parseResult = None
     _typecheckResult = None
-    Messaging.resetmessages()
+    Consistency.resetMessages
   }
 
   protected def mapVerificationResult(in: VerificationResult): VerificationResult

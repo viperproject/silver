@@ -27,8 +27,11 @@ import viper.silver.ast.utility.{Visitor, Statements}
 case class Translator(program: PProgram) {
   val file = program.file
 
+  /** Records error messages */
+  var messages : Messaging.Messages = Nil
+
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
-    assert(Messaging.messagecount == 0, "Expected previous phases to succeed, but found error messages.")
+    // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
     program match {
       case PProgram(f, domains, fields, functions, predicates, methods) =>
@@ -42,7 +45,7 @@ case class Translator(program: PProgram) {
         val m = methods map (translate(_))
         val prog = Program(d, f, fs, p, m)(program.start)
 
-        if (Messaging.messagecount == 0) Some(prog)
+        if (messages.size == 0) Some(prog)
         else None
     }
   }

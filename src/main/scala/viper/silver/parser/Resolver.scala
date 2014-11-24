@@ -8,8 +8,7 @@ package viper.silver.parser
 
 import scala.collection.mutable
 import scala.reflect._
-import org.kiama.util.Messaging.{message, messagecount}
-import org.kiama.util.Positioned
+import org.kiama.util.Messaging
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -25,6 +24,8 @@ case class Resolver(p: PProgram) {
 
     None
   }
+
+  def messages = names.messages ++ typechecker.messages
 }
 
 /**
@@ -38,9 +39,12 @@ case class TypeChecker(names: NameAnalyser) {
   var curFunction: PFunction = null
   var resultAllowed : Boolean = false
 
+  /** to record error messages */
+  var messages : Messaging.Messages = Nil
+
   def run(p: PProgram): Boolean = {
     check(p)
-    messagecount == 0
+    messages.size == 0
   }
 
   def check(p: PProgram) {
@@ -52,7 +56,7 @@ case class TypeChecker(names: NameAnalyser) {
 
     /* Report any domain type that couldn't be resolved */
     p visit {
-      case dt: PDomainType if dt.isUndeclared => message(dt, s"found undeclared type ${dt.domain.name}")
+      case dt: PDomainType if dt.isUndeclared => messages ++= Messaging.message(dt, s"found undeclared type ${dt.domain.name}")
     }
   }
 
@@ -147,7 +151,7 @@ case class TypeChecker(names: NameAnalyser) {
             check(idnuse, typ)
             check(rhs, typ)
           case _ =>
-            message(stmt, "expected variable as lhs")
+            messages ++= Messaging.message(stmt, "expected variable as lhs")
         }
       case PNewStmt(target, fields) =>
         val msg = "expected variable as lhs"
@@ -157,16 +161,16 @@ case class TypeChecker(names: NameAnalyser) {
             case PField(_, typ) =>
               check(field, typ)
             case _ =>
-              message(stmt, "expected a field as lhs")
+              messages ++= Messaging.message(stmt, "expected a field as lhs")
           }))
       case PMethodCall(targets, method, args) =>
         names.definition(curMember)(method) match {
           case PMethod(_, formalArgs, formalTargets, _, _, _) =>
             if (formalArgs.length != args.length) {
-              message(stmt, "wrong number of arguments")
+              messages ++= Messaging.message(stmt, "wrong number of arguments")
             } else {
               if (formalTargets.length != targets.length) {
-                message(stmt, "wrong number of targets")
+                messages ++= Messaging.message(stmt, "wrong number of targets")
               } else {
                 for ((formal, actual) <- (formalArgs zip args) ++ (formalTargets zip targets)) {
                   check(actual, formal.typ)
@@ -174,7 +178,7 @@ case class TypeChecker(names: NameAnalyser) {
               }
             }
           case _ =>
-            message(stmt, "expected a method")
+            messages ++= Messaging.message(stmt, "expected a method")
         }
       case PLabel(name) =>
       // nothing to check
@@ -182,7 +186,7 @@ case class TypeChecker(names: NameAnalyser) {
         names.definition(curMember)(label) match {
           case PLabel(_) =>
           case _ =>
-            message(stmt, "expected a label")
+            messages ++= Messaging.message(stmt, "expected a label")
         }
       case PFieldAssign(field, rhs) =>
         names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
@@ -190,7 +194,7 @@ case class TypeChecker(names: NameAnalyser) {
             check(field, typ)
             check(rhs, typ)
           case _ =>
-            message(stmt, "expected a field as lhs")
+            messages ++= Messaging.message(stmt, "expected a field as lhs")
         }
       case PIf(cond, thn, els) =>
         check(cond, Bool)
@@ -255,7 +259,7 @@ case class TypeChecker(names: NameAnalyser) {
         case Some(_) =>
           handle(use, decl.asInstanceOf[PTypedDeclaration])
         case None =>
-          message(use, errorMessage)
+          messages ++= Messaging.message(use, errorMessage)
       }
     }
   }
@@ -293,7 +297,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PMultisetType(elemType) =>
         check(elemType)
       case PUnknown() =>
-        message(typ, "expected concrete type, but found unknown type")
+        messages ++= Messaging.message(typ, "expected concrete type, but found unknown type")
     }
   }
 
@@ -398,7 +402,7 @@ case class TypeChecker(names: NameAnalyser) {
           }
         }
         if (!found) {
-          message(exp, s"expected $expectedString, but got $actual")
+          messages ++= Messaging.message(exp, s"expected $expectedString, but got $actual")
         }
       }
     }
@@ -408,8 +412,8 @@ case class TypeChecker(names: NameAnalyser) {
      *
      * TODO: Similar to Consistency.recordIfNot. Combine!
      */
-    def issueError(n: Positioned, m: String) {
-      message(n, m)
+    def issueError(n: KiamaPositioned, m: String) {
+      messages ++= Messaging.message(n, m)
       setErrorType() // suppress further warnings
     }
 
@@ -889,8 +893,8 @@ case class TypeChecker(names: NameAnalyser) {
   /**
    * If b is false, report an error for node.
    */
-  def ensure(b: Boolean, node: Positioned, msg: String) {
-    if (!b) message(node, msg)
+  def ensure(b: Boolean, node: KiamaPositioned, msg: String) {
+    if (!b) messages ++= Messaging.message(node, msg)
   }
 }
 
@@ -898,6 +902,10 @@ case class TypeChecker(names: NameAnalyser) {
  * Resolves identifiers to their declaration.
  */
 case class NameAnalyser() {
+
+  /** To record error messages */
+  var messages : Messaging.Messages = Nil
+
 
   /** Resolves the entity to which the given identifier `idnuse` refers.
     *
@@ -963,12 +971,12 @@ case class NameAnalyser() {
           case d: PDeclaration =>
             getMap(d).get(d.idndef.name) match {
               case Some(e: PDeclaration) =>
-                message(e, "Duplicate identifier \"" + e.idndef.name + "\" : at " + e.idndef.start + " and at " + d.idndef.start)
+                messages ++= Messaging.message(e, "Duplicate identifier \"" + e.idndef.name + "\" : at " + e.idndef.start + " and at " + d.idndef.start)
               case Some(e:PErrorEntity) =>
               case None => {
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
-                    message(e, "Identifier shadowing \"" + e.idndef.name + "\" : at " + e.idndef.start + " and at " + d.idndef.start)
+                    messages ++= Messaging.message(e, "Identifier shadowing \"" + e.idndef.name + "\" : at " + e.idndef.start + " and at " + d.idndef.start)
                   case Some(e:PErrorEntity) =>
                   case None =>
                     getMap(d).put(d.idndef.name, d)
@@ -1085,7 +1093,7 @@ case class NameAnalyser() {
           case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
             if (!i.parent.isInstanceOf[PDomainType])
-              message(i, s"identifier $name not defined.")
+              messages ++= Messaging.message(i, s"identifier $name not defined.")
           case _ =>
         }
       case _ =>
@@ -1095,6 +1103,6 @@ case class NameAnalyser() {
       case _ =>
     })
 
-    messagecount == 0
+    messages.size == 0
   }
 }
