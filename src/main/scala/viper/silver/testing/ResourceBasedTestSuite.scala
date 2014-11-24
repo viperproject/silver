@@ -292,6 +292,6 @@ abstract class ResourceBasedTestSuite extends FunSuite {
 
     registerTests()
 
-    super.run(testName, args.reporter, args.stopper, args.filter, configMap, args.distributor, args.tracker)
+    super.run(testName, args)
   }
 }
