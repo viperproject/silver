@@ -25,7 +25,7 @@ case class Resolver(p: PProgram) {
     None
   }
 
-  def messages = names.messages ++ typechecker.messages
+  def messages = names.messages ++ typechecker.messages // ++ Consistency.messages // shouldn't be needed - Consistency errors should be generated only in later phases.
 }
 
 /**
@@ -1092,8 +1092,9 @@ case class NameAnalyser() {
         getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
           case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
-            if (!i.parent.isInstanceOf[PDomainType])
+            if (!i.parent.isInstanceOf[PDomainType]) {
               messages ++= Messaging.message(i, s"identifier $name not defined.")
+            }
           case _ =>
         }
       case _ =>
@@ -1103,6 +1104,6 @@ case class NameAnalyser() {
       case _ =>
     })
 
-    messages.size == 0
+    messages.isEmpty
   }
 }

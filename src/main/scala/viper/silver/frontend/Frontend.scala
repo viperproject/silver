@@ -11,7 +11,6 @@ import java.nio.file.{Files, Path}
 import scala.io.Source
 import viper.silver.verifier.{Failure, AbstractError, VerificationResult, Verifier}
 import viper.silver.ast.Program
-import viper.silver.ast.utility.Consistency
 
 /** Represents one phase of a frontend */
 case class Phase(name: String, action: () => Unit)
@@ -30,6 +29,12 @@ trait Frontend {
    * using the same verifier.
    */
   def reset(input: Seq[Path])
+
+  /**
+   * Reset any messages recorded internally (errors from previous program translations, etc.)
+   */
+  def resetMessages ()
+
 
   /**
    * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then
@@ -131,7 +136,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _verificationResult = None
     _parseResult = None
     _typecheckResult = None
-    Consistency.resetMessages
+    resetMessages()
   }
 
   protected def mapVerificationResult(in: VerificationResult): VerificationResult

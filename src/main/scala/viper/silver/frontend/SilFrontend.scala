@@ -51,6 +51,10 @@ trait SilFrontend extends DefaultFrontend {
   protected var _startTime: Long = _
   def startTime = _startTime
 
+  def resetMessages() {
+    Consistency.resetMessages
+  }
+
   /**
    * Main method that parses command-line arguments, parses the input file and passes
    * the SIL program to the verifier.  The resulting error messages (if any) will be
