@@ -16,6 +16,7 @@ import viper.silver.verifier.Failure
 import viper.silver.verifier.ParseError
 import viper.silver.ast.{SourcePosition, Program}
 import viper.silver.verifier.TypecheckerError
+import viper.silver.ast.utility.Consistency
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
@@ -205,8 +206,8 @@ trait SilFrontend extends DefaultFrontend {
           case Some(program) =>
             Succ(program)
 
-          case None =>
-            Fail(Messaging.sortmessages(r.messages) map (m => TypecheckerError(m.label, SourcePosition(_inputFile.get, m.pos.line, m.pos.column)))) // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
+          case None => // then these are translation messages
+            Fail(Messaging.sortmessages(Consistency.messages) map (m => TypecheckerError(m.label, SourcePosition(_inputFile.get, m.pos.line, m.pos.column)))) // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
         }
 
       case None =>

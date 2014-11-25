@@ -11,6 +11,7 @@ import org.kiama.attribution.Attributable
 import org.kiama.util.Messaging
 import viper.silver.ast._
 import viper.silver.ast.utility.{Visitor, Statements}
+import viper.silver.ast.utility.Consistency
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -27,9 +28,6 @@ import viper.silver.ast.utility.{Visitor, Statements}
 case class Translator(program: PProgram) {
   val file = program.file
 
-  /** Records error messages */
-  var messages : Messaging.Messages = Nil
-
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
@@ -45,7 +43,7 @@ case class Translator(program: PProgram) {
         val m = methods map (translate(_))
         val prog = Program(d, f, fs, p, m)(program.start)
 
-        if (messages.size == 0) Some(prog)
+        if (Consistency.messages.size == 0) Some(prog) // all error messages generated during translation should be Consistency messages
         else None
     }
   }

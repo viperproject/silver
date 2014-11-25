@@ -152,7 +152,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _state = TranslatorState.Parsed
   }
 
-  override def typecheck() {
+  override def typecheck() { // typecheck and translate (if successful)
     if (state >= TranslatorState.Typechecked || !_errors.isEmpty) return
     parse()
     if (!_errors.isEmpty) {

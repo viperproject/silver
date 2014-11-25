@@ -935,7 +935,7 @@ case class NameAnalyser() {
           case None =>
             globalDeclarationMap.get(idnuse.name).get
           case Some(foundEntity) =>
-            if (expected.isDefined && foundEntity.getClass != expected)
+            if (expected.isDefined && foundEntity.getClass != expected.get)
               globalDeclarationMap.get(idnuse.name).get
             else
               foundEntity
