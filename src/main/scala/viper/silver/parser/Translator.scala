@@ -198,7 +198,7 @@ case class Translator(program: PProgram) {
           case _: PLocalVarDecl | _: PFormalArgDecl => LocalVar(name)(ttyp(pexp.typ), pos)
           case pf: PField =>
             /* A malformed AST where a field is dereferenced without a receiver */
-            Messaging.message(piu, s"expected expression but found field $name")
+            Consistency.messages ++= Messaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
           case _ =>
             sys.error("should not occur in type-checked program")
