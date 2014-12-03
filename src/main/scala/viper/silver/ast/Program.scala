@@ -20,7 +20,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       "names of members must be distinct")
 
   Consistency.checkContextDependentConsistency(this)
-  visit { case wand: MagicWand => Consistency.checkNoImpureConditionals(wand, this) }
+//  visit { case wand: MagicWand => Consistency.checkNoImpureConditionals(wand, this) }
 
   lazy val members = domains ++ fields ++ functions ++ predicates ++ methods
 
