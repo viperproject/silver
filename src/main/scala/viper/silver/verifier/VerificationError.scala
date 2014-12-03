@@ -252,10 +252,23 @@ object errors {
 
   def LetWandFailed(offendingNode: LocalVarAssign): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LetWandFailed(offendingNode, reason))
+
+  case class HeuristicsFailed(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "heuristics.failed"
+    val text = "Applying heuristics failed."
+  }
+
+  def HeuristicsFailed(offendingNode: PositionedNode): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => HeuristicsFailed(offendingNode, reason))
 }
 
 object reasons {
   type PositionedNode = Node with Positioned
+
+  case class InternalReason(offendingNode: PositionedNode, explanation: String) extends AbstractErrorReason {
+    val id = "internal"
+    val readableMessage = explanation
+  }
 
   case class FeatureUnsupported(offendingNode: PositionedNode, explanation: String) extends AbstractErrorReason {
     val id = "feature.unsupported"
