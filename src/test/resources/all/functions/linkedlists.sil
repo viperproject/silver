@@ -43,6 +43,7 @@ function get(xs: Ref, index: Int): Int
 method prepend(xs: Ref, y: Int) returns (ys: Ref)
   requires acc(list(xs))
   ensures acc(list(ys))
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/130/)
   ensures length(ys) == old(length(xs)) + 1
   ensures elems(ys) == Seq(y) ++ old(elems(xs))
   ensures old(y <= head(xs) && ascending(xs)) ==> ascending(ys)
@@ -90,6 +91,7 @@ method insert(xs: Ref, y: Int) returns (ys: Ref, i: Int)
   requires acc(list(xs))
   ensures acc(list(ys))
   ensures 0 <= i && i <= old(length(xs))
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/130/)
   ensures length(ys) == old(length(xs)) + 1
   ensures elems(ys) == old(elems(xs))[0..i] ++ Seq(y) ++ old(elems(xs))[i..]
   ensures old(ascending(xs)) ==> ascending(ys)
