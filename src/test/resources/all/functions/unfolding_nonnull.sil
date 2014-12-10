@@ -12,6 +12,7 @@ method test6(x: Ref)
   requires acc(F(x)) && fun3(x) == 1
 {
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/026/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/112/)
   assert x != null
 }
 
@@ -27,9 +28,10 @@ method test7(x: Ref, y: Ref)
   requires acc(FF(x, y)) && fun4(x, y) == 1
 {
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/026/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/112/)
   assert x != null
   
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/112/)
+  // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/112/)
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/026/)
   assert y != null
 }
