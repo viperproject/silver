@@ -99,8 +99,8 @@ object Transformer {
         case PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)
         case PLabel(idndef) => PLabel(go(idndef))
         case PGoto(target) => PGoto(go(target))
-        case PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))
         case PLetWand(idndef, wand) => PLetWand(go(idndef), go(wand))
+        case PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))
         case PLet(exp, nestedScope) => PLet(go(exp), go(nestedScope))
         case PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))
         case _: PSkip => parent

@@ -218,10 +218,10 @@ case class TypeChecker(names: NameAnalyser) {
         val msg = "expected variable in fresh read permission block"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
         check(s)
+      case PLetWand(_, wand) => check(wand, Wand)
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
-      case PLetWand(_, wand) => check(wand, Wand)
       case _: PSkip =>
     }
   }
@@ -702,7 +702,6 @@ case class TypeChecker(names: NameAnalyser) {
         checkMagicWand(wand, allowWandRefs = true)
         check(in, expected)
         setType(in.typ)
-//      case let @ PLet(v, exp1, body) =>
       case PLet(exp1, nestedScope @ PLetNestedScope(variable, body)) =>
         check(exp1, Nil)
         val oldCurMember = curMember

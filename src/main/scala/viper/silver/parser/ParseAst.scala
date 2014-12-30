@@ -250,6 +250,19 @@ case class PApplyOld(e: PExp) extends POldExp
 case class PLet(exp: PExp, nestedScope: PLetNestedScope) extends PExp
 case class PLetNestedScope(variable: PFormalArgDecl, body: PExp) extends PExp with PScope
 
+/* Let-expressions `let x == e1 in e2` are represented by the nested structure
+ * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but
+ * `PLet` isn't) in order to work with the current architecture of the resolver.
+ *
+ * More precisely, `NameAnalyser.run` visits a given program to ensure that all
+ * used symbol are actually declared. While traversing the program, it
+ * pushes/pops `PScope`s to/from the stack. If let-expressions were represented
+ * by a flat `PLet(x, e1, e2) <: PScope`, then the let-bound variable `x` would
+ * already be in scope while checking `e1`, which wouldn't be correct.
+ */
+case class PLet(exp: PExp, nestedScope: PLetNestedScope) extends PExp
+case class PLetNestedScope(variable: PFormalArgDecl, body: PExp) extends PExp with PScope
+
 case class PEmptySeq(t : PType) extends PExp {
   typ = if (t.isUnknown) PUnknown() else PSeqType(t) // type can be specified as PUnknown() if unknown
 }
@@ -308,8 +321,8 @@ case class PLabel(idndef: PIdnDef) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 
-case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) extends PStmt with PLocalDeclaration
 case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
+case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
 sealed trait PScope extends PNode {
@@ -327,6 +340,7 @@ object PScope {
 
     id
   }
+}
 }
 
 // Declarations
@@ -468,8 +482,8 @@ object Nodes {
         Seq(name) ++ args ++ Seq(body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
-      case PDefine(idndef, optArgs, exp) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(exp)
       case PLetWand(idndef, wand) => Seq(idndef, wand)
+      case PDefine(idndef, optArgs, exp) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(exp)
       case _: PSkip => Nil
     }
   }
