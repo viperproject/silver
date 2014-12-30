@@ -96,7 +96,7 @@ trait Node extends Traversable[Node] {
   /** @see [[Visitor.hasSubnode()]] */
   def hasSubnode(toFind: Node): Boolean = Visitor.hasSubnode(this, toFind, Nodes.subnodes)
 
-  override def toString = PrettyPrinter.pretty(this)
+  override def toString() = PrettyPrinter.pretty(this)
 
   /** @see [[viper.silver.ast.utility.Transformer.transform()]] */
   def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty)
