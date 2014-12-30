@@ -250,19 +250,6 @@ case class PApplyOld(e: PExp) extends POldExp
 case class PLet(exp: PExp, nestedScope: PLetNestedScope) extends PExp
 case class PLetNestedScope(variable: PFormalArgDecl, body: PExp) extends PExp with PScope
 
-/* Let-expressions `let x == e1 in e2` are represented by the nested structure
- * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but
- * `PLet` isn't) in order to work with the current architecture of the resolver.
- *
- * More precisely, `NameAnalyser.run` visits a given program to ensure that all
- * used symbol are actually declared. While traversing the program, it
- * pushes/pops `PScope`s to/from the stack. If let-expressions were represented
- * by a flat `PLet(x, e1, e2) <: PScope`, then the let-bound variable `x` would
- * already be in scope while checking `e1`, which wouldn't be correct.
- */
-case class PLet(exp: PExp, nestedScope: PLetNestedScope) extends PExp
-case class PLetNestedScope(variable: PFormalArgDecl, body: PExp) extends PExp with PScope
-
 case class PEmptySeq(t : PType) extends PExp {
   typ = if (t.isUnknown) PUnknown() else PSeqType(t) // type can be specified as PUnknown() if unknown
 }
@@ -274,13 +261,12 @@ case class PSeqDrop(seq: PExp, n: PExp) extends PExp
 case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends PExp
 case class PSize(seq: PExp) extends PExp
 
-case class PEmptySet(t : PType) extends PExp{
+case class PEmptySet(t : PType) extends PExp {
   typ = PSetType(t)
 }
 
 case class PExplicitSet(elems: Seq[PExp]) extends PExp
-case class PEmptyMultiset(t : PType) extends PExp
-{
+case class PEmptyMultiset(t : PType) extends PExp {
   typ = PMultisetType(t)
 }
 
@@ -340,7 +326,6 @@ object PScope {
 
     id
   }
-}
 }
 
 // Declarations
