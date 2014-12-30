@@ -14,7 +14,7 @@ package viper.silver.ast
 
 import utility.Types
 
-/** SIL typs. */
+/** Silver typs. */
 sealed trait Type extends Node {
   /**
    * Takes a mapping of type variables to types and substitutes all
@@ -22,7 +22,7 @@ sealed trait Type extends Node {
    */
   def substitute(typVarsMap: Map[TypeVar, Type]): Type
 
-  // At the moment, there is no subtyping in SIL.
+  // At the moment, there is no user-defined subtyping in Silver.
   def isSubtype(other: Type): Boolean = {
     (this, other) match {
       case (a: DomainType, b: DomainType) =>
@@ -47,7 +47,7 @@ sealed trait Type extends Node {
   lazy val typeVariables = Types.typeVariables(this)
 }
 
-/** Trait for typs build into SIL. */
+/** Trait for typs build into Silver. */
 sealed trait BuiltInType extends Type {
   lazy val isConcrete = true
   def substitute(typVarsMap: Map[TypeVar, Type]): Type = this

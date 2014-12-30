@@ -269,6 +269,9 @@ case class PLabel(idndef: PIdnDef) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 
+case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) extends PStmt with PLocalDeclaration
+case class PSkip() extends PStmt
+
 sealed trait PScope extends PNode
 
 // Declarations
@@ -281,27 +284,6 @@ sealed trait PDeclaration extends PNode with PEntity {
 
 sealed trait PGlobalDeclaration extends PDeclaration
 sealed trait PLocalDeclaration extends PDeclaration
-
-object PDeclaration {
-  def descriptiveName(entity: PDeclaration) = {
-    val entityName =
-      entity match {
-        case _: PDomain => "domain"
-        case _: PDomainFunction => "domain function"
-        case _: PField => "field"
-        case _: PFormalArgDecl => "formal argument"
-        case _: PFunction => "function"
-        case _: PLabel => "label"
-        case _: PLocalVarDecl => "local variable"
-        case _: PMethod => "method"
-        case _: PPredicate => "predicate"
-        case _: PTypeVarDecl => "type variable"
-        case _: PAxiom => "axiom"
-      }
-
-    s"$entityName ${entity.idndef.name}"
-  }
-}
 
 sealed trait PTypedDeclaration extends PDeclaration {
   def typ: PType
@@ -424,6 +406,8 @@ object Nodes {
         Seq(name) ++ args ++ Seq(body)
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
+      case PDefine(idndef, optArgs, exp) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(exp)
+      case _: PSkip => Nil
     }
   }
 }

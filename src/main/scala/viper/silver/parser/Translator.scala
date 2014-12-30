@@ -145,7 +145,7 @@ case class Translator(program: PProgram) {
         // there are no declarations in the SIL AST; rather they are part of the method signature
         Statements.EmptyStmt
       case PSeqn(ss) =>
-        Seqn(ss map stmt)(pos)
+        Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt)(pos)
       case PFold(e) =>
         Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PUnfold(e) =>
@@ -185,6 +185,8 @@ case class Translator(program: PProgram) {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos)
+      case _: PDefine | _: PSkip =>
+        sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
   }
 

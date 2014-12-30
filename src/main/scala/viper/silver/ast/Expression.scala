@@ -13,6 +13,7 @@ import utility.{GenericTriggerGenerator, Expressions, Consistency}
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
 
   lazy val isPure = Expressions.isPure(this)
+  def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
 
   /**
    * Returns a representation of this expression as it looks when it is used as a proof obligation, i.e. all
