@@ -322,7 +322,7 @@ object reasons {
     def readableMessage = s"Magic wand instance not found."
   }
 
-  case class NamedMagicWandChunkNotFound(offendingNode: LocalVar) extends AbstractErrorReason {
+  case class NamedMagicWandChunkNotFound(offendingNode: AbstractLocalVar) extends AbstractErrorReason {
     val id = "wand.not.found"
     def readableMessage = s"Magic wand instance not found."
   }
