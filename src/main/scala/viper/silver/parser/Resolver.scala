@@ -20,11 +20,9 @@ case class Resolver(p: PProgram) {
   val typechecker = TypeChecker(names)
 
   def run: Option[PProgram] = {
-    if (names.run(p)) {
-      if (typechecker.run(p)) {
+    if (names.run(p))
+      if (typechecker.run(p))
         return Some(p)
-      }
-    }
 
     None
   }
