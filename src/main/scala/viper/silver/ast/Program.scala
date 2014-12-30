@@ -9,8 +9,7 @@ package viper.silver.ast
 import utility.{Consistency, Types}
 import org.kiama.output._
 
-/** A SIL program. */
-// TODO consistency checks
+/** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
                   (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
   require(

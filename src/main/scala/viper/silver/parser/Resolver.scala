@@ -674,6 +674,16 @@ case class TypeChecker(names: NameAnalyser) {
         check(acc.loc, Pred)
         check(body, expected)
         setType(exp.typ)
+      case PLet(exp1, nestedScope @ PLetNestedScope(variable, body)) =>
+        check(exp1, Nil)
+        val oldCurMember = curMember
+        curMember = nestedScope
+        variable.typ = exp1.typ
+        check(body, expected)
+        setType(body.typ)
+        curMember = oldCurMember
+      case _: PLetNestedScope =>
+        issueError(exp, "expected node")
       case f@ PExists(vars, e) =>
         val oldCurMember = curMember
         curMember = f
@@ -924,7 +934,7 @@ case class NameAnalyser() {
     } else {
       // lookup in method map first, and otherwise in the general one
       val entity =
-        localDeclarationMaps.get(member).get.get(idnuse.name) match {
+        localDeclarationMaps.get(member.scopeId).get.get(idnuse.name) match {
           case None =>
             globalDeclarationMap.get(idnuse.name).get
           case Some(foundEntity) =>
@@ -943,8 +953,17 @@ case class NameAnalyser() {
     localDeclarationMaps.clear()
   }
 
-  private val globalDeclarationMap = collection.mutable.HashMap[String, PEntity]()
-  private val localDeclarationMaps = collection.mutable.HashMap[PScope, collection.mutable.HashMap[String, PEntity]]()
+  private val globalDeclarationMap = mutable.HashMap[String, PEntity]()
+
+  /* [2014-11-13 Malte] Changed localDeclarationMaps to be a map from PScope.Id
+   * instead of from PScope directly. This was necessary in order to support
+   * changing PScopes during type-checking, e.g., when changing the type of a
+   * variable bound by a let-expression. This change (potentially) affects the
+   * hashcode of the let-expression (which is a PScope), which in turn affects
+   * localDeclarationMaps because such that the value stored for scope cannot
+   * be retrieved anymore.
+   */
+  private val localDeclarationMaps = mutable.HashMap[PScope.Id, mutable.HashMap[String, PEntity]]()
 
   def run(p: PProgram): Boolean = {
     var curMember: PScope = null
@@ -954,7 +973,7 @@ case class NameAnalyser() {
         case _ => getCurrentMap
       }
     def getCurrentMap: mutable.HashMap[String, PEntity] =
-      if (curMember == null) globalDeclarationMap else localDeclarationMaps.get(curMember).get
+      if (curMember == null) globalDeclarationMap else localDeclarationMaps.get(curMember.scopeId).get
 
     val scopeStack = mutable.Stack[PScope]()
 
@@ -980,12 +999,19 @@ case class NameAnalyser() {
 
         n match {
           case s: PScope =>
-            localDeclarationMaps.put(s, localDeclarationMaps.getOrElse(curMember, collection.mutable.HashMap[String, PEntity]()).clone())
+            val localDeclarations =
+              if (curMember == null)
+                mutable.HashMap[String, PEntity]()
+              else
+                localDeclarationMaps.getOrElse(curMember.scopeId, mutable.HashMap[String, PEntity]()).clone()
+
+            localDeclarationMaps.put(s.scopeId, localDeclarations)
             scopeStack.push(curMember)
             curMember = s
           case _ =>
         }
       }
+
       def isDefinedAt(n:PNode) = {
         n match {
           case d: PDeclaration => true

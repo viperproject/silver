@@ -398,6 +398,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       accessPred |
       inhaleExhale |
       perm |
+      let |
       quant |
       unfolding |
       setTypedEmpty | explicitSetNonEmpty |
@@ -453,6 +454,18 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   lazy val unfolding: PackratParser[PExp] =
     ("unfolding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PUnfolding
+
+  lazy val let: PackratParser[PExp] =
+    ("let" ~> idndef <~ "==") ~ ("(" ~> exp <~ ")") ~ ("in" ~> exp) ^^ { case id ~ exp1 ~ exp2 =>
+      /* Type unresolvedType is expected to be replaced with the type of exp1
+       * after the latter has been resolved
+       * */
+      val unresolvedType = PUnknown().setPos(id)
+      val formalArgDecl = PFormalArgDecl(id, unresolvedType).setPos(id)
+      val nestedScope = PLetNestedScope(formalArgDecl, exp2).setPos(exp2)
+
+      PLet(exp1, nestedScope)
+    }
 
   lazy val integer =
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))

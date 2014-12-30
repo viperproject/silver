@@ -201,7 +201,7 @@ case class Translator(program: PProgram) {
             /* A malformed AST where a field is dereferenced without a receiver */
             Messaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
-          case _ =>
+          case other =>
             sys.error("should not occur in type-checked program")
         }
       case PBinExp(left, op, right) =>
@@ -231,14 +231,12 @@ case class Translator(program: PProgram) {
               case _ => sys.error("should not occur in type-checked program")
             }
           case "/" =>
-          {
             assert(r.typ==Int)
             l.typ match {
               case Perm => PermDiv(l, r)(pos)
               case Int  => assert (l.typ==Int); FractionalPerm(l, r)(pos)
               case _    => sys.error("should not occur in type-checked program")
             }
-          }
           case "\\" => Div(l, r)(pos)
           case "%" => Mod(l, r)(pos)
           case "<" =>
@@ -335,6 +333,10 @@ case class Translator(program: PProgram) {
         }
       case PUnfolding(loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
+      case PLet(exp1, PLetNestedScope(variable, body)) =>
+        Let(liftVarDecl(variable), exp(exp1), exp(body))(pos)
+      case _: PLetNestedScope =>
+        sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>
