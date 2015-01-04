@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/37/)
+
 field f: Ref
 field g: Int
 
