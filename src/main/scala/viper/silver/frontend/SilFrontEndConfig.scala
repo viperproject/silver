@@ -30,10 +30,10 @@ class SilFrontendConfig(args: Seq[String], private var projectName: String) exte
     */
   var initialized: Boolean = false
 
-  val file = trailArg[String]("file", "The file to verify.", (x: String) => {
+  val file = trailArg[String]("file", "The file to verify.")/*, (x: String) => {
     val f = new java.io.File(x)
     f.canRead
-  })
+  })*/
 
   val dependencies = opt[Boolean]("dependencies",
     descr = "Print full information about dependencies.",
@@ -55,6 +55,25 @@ class SilFrontendConfig(args: Seq[String], private var projectName: String) exte
     noshort = true,
     hidden = true
   )
+
+  val ignoreFile = opt[Boolean]("ignoreFile",
+    descr = "Ignore the file (in particular, don't check that it can actually be read).",
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
+  validateOpt(file, ignoreFile) {
+    case (_, Some(true)) => Right(Unit)
+    case (Some(path), _) =>
+      if (new java.io.File(path).canRead) Right(Unit)
+      else Left(s"Cannot read $path")
+    case (optFile, optIgnoreFile) =>
+      /* Since the file is a trailing argument and thus mandatory, this case
+       * (in which optFile == None) should never occur.
+       */
+      sys.error(s"Unexpected combination of $optFile and $optIgnoreFile")
+  }
 
   banner(s"""Usage: $projectName [options] <file>
             |
