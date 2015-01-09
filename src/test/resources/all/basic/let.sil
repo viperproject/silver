@@ -14,12 +14,22 @@ method test01(x: Int) {
 
 predicate P(x: Ref) { acc(x.g) && x.g == 1 }
 
-function fun(x: Ref): Int
+function fun01(x: Ref): Int
   requires acc(P(x), wildcard)
   ensures result > 0
 { unfolding acc(P(x), wildcard) in x.g }
 
 method test02(x: Ref) {
   inhale acc(P(x))
-  assert let y == (fun(x)) in y*y+y > 0
+  assert let y == (fun01(x)) in y*y+y > 0
+}
+
+function fun02(x: Ref): Int
+  requires acc(x.g)
+{ let y == (x.g) in y + x.g }
+
+method test03(x: Ref)
+  requires acc(x.g)
+{
+  assert fun02(x) == 2 * x.g
 }
