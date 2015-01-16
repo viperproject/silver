@@ -123,6 +123,17 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
     }
   }
 
+  /** Returns the first group of trigger sets (together with newly introduced
+    * variables) returned by `generateTriggers`, or `(Nil, Nil)` if the latter
+    * didn't return any group.
+    *
+    * @param vs Variables to cover by the trigger sets.
+    * @param toSearch Expression to generate triggers for.
+    * @return A pair of trigger sets and additional variables.
+    */
+  def chooseTriggers(vs: Seq[Var], toSearch: Exp): (Seq[Trigger], Seq[Var]) =
+    generateTriggers(vs, toSearch).headOption.getOrElse((Nil, Nil))
+
   /* This is used for searching for triggers for quantifiers around the
    * expression "toSearch". The list "vs" gives the variables which need
    * triggering.
