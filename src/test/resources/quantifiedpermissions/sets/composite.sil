@@ -1,4 +1,4 @@
-//:: IgnoreFile(/silicon/issue/121/)
+/* Previously was IgnoreFile(/silicon/issue/121/) */
 
 domain Visit {
   function visit(rf: Ref): Bool
@@ -101,8 +101,14 @@ method initAndInsert(this: Ref, newParent: Ref, isLeft: Bool)
   inhale visit(newParent)
 
   if (isLeft) {
-//  cannot prove that  newParent.left == null
-	//assert newParent.left == null && acc(newParent.left, 1/2) && (newParent.left == null ==> acc(newParent.left, 1/2))   succeeds if  newParent.left == null is known
+    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/122/)
+    assert newParent.left == null
+      /* This should follow from
+       *   isLeft && getLeft(newParent) == null
+       * and in turn it should imply
+       *   acc(newParent.left, write)
+       * However, issue 122 currently prevents the first deduction.
+       */
 
     newParent.left := this
   } else {
