@@ -79,7 +79,7 @@ case class Translator(program: PProgram) {
       val f = findFunction(name)
       f.pres = pres map exp
       f.posts = posts map exp
-      f.exp = exp(body)
+      f.body = exp(body)
       f
   }
 
