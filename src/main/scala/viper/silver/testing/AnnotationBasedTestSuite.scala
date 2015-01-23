@@ -50,7 +50,7 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
 
       // If there were any outputs that could not be matched up
       // (or other problems), make the test fail
-      if (!errors.isEmpty) {
+      if (errors.nonEmpty) {
         val title = s"${errors.size} errors"
         val body = errors.groupBy(_.errorType).map({
           case (typ, es) =>

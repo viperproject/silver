@@ -303,11 +303,10 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
       val gen = Expressions.generateTrigger(this)
       if (gen.size > 0) {
         gen.find(pair => pair._2.isEmpty) match {
-          case Some((triggers,_)) => Forall(variables, triggers, exp)(pos,info)
-          case None => {
+          case Some((newTriggers, _)) => Forall(variables, newTriggers, exp)(pos,info)
+          case None =>
             val (triggers, extraVariables) = gen(0) // somewhat arbitrarily take the first choice
             Forall(variables ++ extraVariables, triggers, exp)(pos, info)
-          }
         }
       } else {
         // no triggers found
