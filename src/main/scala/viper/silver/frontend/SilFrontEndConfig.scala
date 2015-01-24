@@ -8,8 +8,6 @@ package viper.silver.frontend
 
 import collection._
 import org.rogach.scallop.LazyScallopConf
-import viper.silver.verifier.{Verifier}
-import org.rogach.scallop.exceptions.{Help, Version, ScallopException}
 
 /**
  * The configuration of a SIL front-end.
@@ -58,6 +56,15 @@ class SilFrontendConfig(args: Seq[String], private var projectName: String) exte
 
   val ignoreFile = opt[Boolean]("ignoreFile",
     descr = "Ignore the file (in particular, don't check that it can actually be read).",
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
+  val sublimeErrorMode = opt[Boolean]("sublimeErrorMode",
+    descr = (  "Report errors in the format '<file>,<line>:<col>: <message>', and write"
+             + "errors in the format '<file>,<line>:<col>,<line>:<col>,<message>' to"
+             + "a file silver.errors."), /* TODO: Make file name configurable */
     default = Some(false),
     noshort = true,
     hidden = true

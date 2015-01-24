@@ -16,7 +16,7 @@ object Consistency {
   def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
     if (!property) {
       val pos = suspect.pos match {
-        case rp: RealPosition =>
+        case rp: AbstractSourcePosition =>
           new Position {
             val line = rp.line
             val column = rp.column
