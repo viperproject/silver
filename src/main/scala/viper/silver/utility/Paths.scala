@@ -6,8 +6,6 @@
 
 package viper.silver.utility
 
-import java.util.regex.Pattern
-
 /**
  * A simple collection of utility methods for dealing with paths and environment variables.
  */
