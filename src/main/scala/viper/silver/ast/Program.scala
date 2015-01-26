@@ -132,9 +132,9 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
     s foreach Consistency.checkPost
     _posts = s
   }
-  def exp = _exp
+  def body = _exp
   /* TODO: [Malte] I suggest to rename 'exp' to 'body' since the latter is more descriptive. */
-  def exp_=(e: Exp) {
+  def body_=(e: Exp) {
     require(e isSubtype typ)
     Consistency.checkFunctionBody(e)
     _exp = e
@@ -148,7 +148,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   /**
    * Is this function recursive?
    */
-  def isRecursive: Boolean = exp existsDefined {
+  def isRecursive: Boolean = body existsDefined {
     case FuncApp(funcname, _) if name == funcname =>
   }
 

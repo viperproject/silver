@@ -66,14 +66,20 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
 
   private var nextUniqueId = 0
 
-  /* Generates trigger sets to cover the variables "vs", by searching the
-   * expression "toSearch".
+  def generateTriggers(vs: Seq[Var], toSearch: Exp): Option[(Seq[Trigger], Seq[Var])] =
+    generateTriggerGroups(vs: Seq[Var], toSearch: Exp).headOption
+
+  def generateFirstTriggers(vs: Seq[Var], toSearch: Seq[Exp]): Option[(Seq[Trigger], Seq[Var])] =
+    toSearch.toStream.flatMap(generateTriggers(vs, _)).headOption
+
+  /* Generates groups of trigger sets to cover the variables `vs`, by searching
+   * the expression `toSearch`.
    *
    * Returns a list of pairs of lists of trigger sets couple with the extra
    * variables they require to be quantified over (each list of triggers must
    * contain trigger sets which employ exactly the same extra variables).
    */
-  def generateTriggers(vs: Seq[Var], toSearch: Exp): Seq[(Seq[Trigger], Seq[Var])] = {
+  def generateTriggerGroups(vs: Seq[Var], toSearch: Exp): Seq[(Seq[Trigger], Seq[Var])] = {
     /* Find suitable function applications */
     val functionApps: (Seq[(PossibleTrigger, Seq[Var], Seq[Var])]) =
       getFunctionAppsContaining(vs, toSearch)
@@ -122,17 +128,6 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
       groupedTriggerSets
     }
   }
-
-  /** Returns the first group of trigger sets (together with newly introduced
-    * variables) returned by `generateTriggers`, or `(Nil, Nil)` if the latter
-    * didn't return any group.
-    *
-    * @param vs Variables to cover by the trigger sets.
-    * @param toSearch Expression to generate triggers for.
-    * @return A pair of trigger sets and additional variables.
-    */
-  def chooseTriggers(vs: Seq[Var], toSearch: Exp): (Seq[Trigger], Seq[Var]) =
-    generateTriggers(vs, toSearch).headOption.getOrElse((Nil, Nil))
 
   /* This is used for searching for triggers for quantifiers around the
    * expression "toSearch". The list "vs" gives the variables which need
