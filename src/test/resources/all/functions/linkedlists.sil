@@ -66,6 +66,7 @@ method prepend(xs: Ref, y: Int) returns (ys: Ref)
 method append(xs: Ref, y: Int)
   requires acc(list(xs)) && xs != null
   ensures acc(list(xs)) && xs != null
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/130/)
   ensures length(xs) == old(length(xs)) + 1
   ensures elems(xs) == old(elems(xs)) ++ Seq(y)
   ensures head(xs) == old(head(xs)) // (2)
