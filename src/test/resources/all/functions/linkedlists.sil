@@ -51,7 +51,6 @@ function get(xs: Ref, index: Int): Int
 method prepend(xs: Ref, y: Int) returns (ys: Ref)
   requires acc(list(xs)) && xs != null
   ensures acc(list(ys)) && ys != null
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/130/)
   ensures length(ys) == old(length(xs)) + 1 // (1)
   ensures elems(ys) == Seq(y) ++ old(elems(xs))
   ensures head(ys) == y // (2)
