@@ -413,11 +413,10 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
       val gen = Expressions.generateTrigger(this)
       if (gen.size > 0) {
         gen.find(pair => pair._2.isEmpty) match {
-          case Some((triggers,_)) => Forall(variables, triggers, exp)(pos,info)
-          case None => {
+          case Some((newTriggers, _)) => Forall(variables, newTriggers, exp)(pos,info)
+          case None =>
             val (triggers, extraVariables) = gen(0) // somewhat arbitrarily take the first choice
             Forall(variables ++ extraVariables, triggers, exp)(pos, info)
-          }
         }
       } else {
         // no triggers found
@@ -452,6 +451,14 @@ sealed trait AbstractLocalVar extends Exp {
 object AbstractLocalVar {
   def unapply(l: AbstractLocalVar) = Some(l.name)
 }
+
+/* TODO: [2015-01-24 Malte]
+ *       Why are pos and info part of the first argument list of the constructors of
+ *       LocalVar and Result? In all (?) other cases, they are part of the second
+ *       list of arguments.
+ *       Note: Changing this likely break all tools that (de)construct Silver ASTs.
+ *       The entailed changes should be trivial to make, though.
+ */
 
 /** A normal local variable. */
 case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar with Lhs {

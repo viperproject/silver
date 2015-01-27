@@ -1,4 +1,4 @@
-//:: IgnoreFile(/silicon/issue/128/)
+// :: IgnoreFile(/silicon/issue/128/)
 
 field f: Int
 

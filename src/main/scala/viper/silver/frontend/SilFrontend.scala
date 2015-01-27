@@ -6,15 +6,16 @@
 
 package viper.silver.frontend
 
+import java.io.File
+import java.nio.file.{Path, Paths}
 import org.kiama.util.Messaging
 import org.rogach.scallop.exceptions.{Version, Help, ScallopException}
-import java.nio.file.Paths
 import viper.silver.parser._
 import viper.silver.verifier._
 import viper.silver.verifier.CliOptionError
 import viper.silver.verifier.Failure
 import viper.silver.verifier.ParseError
-import viper.silver.ast.{SourcePosition, Program}
+import viper.silver.ast.{Position, HasLineColumn, AbstractSourcePosition, SourcePosition, Program}
 import viper.silver.verifier.TypecheckerError
 
 /**
@@ -164,15 +165,71 @@ trait SilFrontend extends DefaultFrontend {
 
   protected def printFinishHeaderWithTime() {
     val timeMs = System.currentTimeMillis() - _startTime
-    val time = f"${(timeMs / 1000.0)}%.3f seconds"
+    val time = f"${timeMs / 1000.0}%.3f seconds"
     println(s"${_ver.name} finished in $time.")
   }
 
   protected def printErrors(errors: AbstractError*) {
     println("The following errors were found:")
-    for (e <- errors) {
-      println("  " + e.readableMessage)
+
+    if (config.sublimeErrorMode()) {
+      val (consoleStrings, fileStrings) = errors.map(createSublimeErrorRepresentation).unzip
+      viper.silver.utility.Common.toFile(fileStrings.mkString("\n"), new File("silver.errors"))
+      consoleStrings.foreach(e => println(s"  $e"))
+    } else {
+      errors.foreach(e => println(s"  ${e.readableMessage}"))
     }
+
+//    for (e <- errors) {
+//      val str =
+//        if (config.sublimeErrorMode()) {
+//          createMachineFriendlyErrorRepresentation(e)
+//        } else
+//          e.readableMessage
+//
+//      println(s"  $str")
+//    }
+  }
+
+  protected def createSublimeErrorRepresentation(e: AbstractError): (String, String) = {
+    @inline
+    def extractMessage(e: AbstractError) = {
+      /* TODO: Disassembling readableMessage is just a fragile hack because AbstractError
+       *       does not provide the "raw" error message.
+       */
+      e.readableMessage
+        .replace(s"(${e.pos.toString})", "")
+        .trim
+    }
+
+    var fileOpt: Option[Path] = None
+    var startOpt: Option[HasLineColumn] = None
+    var endOpt: Option[HasLineColumn] = None
+
+    e.pos match {
+      case abs: AbstractSourcePosition =>
+        fileOpt = Some(abs.file)
+        startOpt = Some(abs.start)
+        endOpt = abs.end
+
+      case hlc: HasLineColumn =>
+        startOpt = Some(hlc)
+
+      case _: Position => /* Position gives us nothing to work with */
+    }
+
+    @inline
+    def toStr(hlc: HasLineColumn) = s"${hlc.line}:${hlc.column}"
+
+    val messageStr = extractMessage(e)
+    val fileStr = fileOpt.map(_.toString).getOrElse("<unknown file>")
+    val startStr = startOpt.map(toStr).getOrElse("<unknown start line>:<unknown start column>")
+    val endStr = endOpt.map(toStr).getOrElse("<unknown end line>:<unknown end column>")
+
+    val consoleErrorStr = s"$fileStr,$startStr: $messageStr"
+    val fileErrorStr = s"$fileStr,$startStr,$endStr,$messageStr"
+
+    (consoleErrorStr, fileErrorStr)
   }
 
   protected def printSuccess() {
