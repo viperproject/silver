@@ -289,7 +289,7 @@ case class Translator(program: PProgram) {
         val e = exp(pe)
         op match {
           case "+" => e
-          case "-" => Neg(e)(pos)
+          case "-" => Minus(e)(pos)
           case "!" => Not(e)(pos)
         }
       case PInhaleExhaleExp(in, ex) =>
