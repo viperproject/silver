@@ -132,7 +132,9 @@ object Visitor {
     * @tparam N Node type.
     * @tparam R Resulting value type.
     * @param ns List of original nodes.
+    * @param subs Returns the children of a given node.
     * @param f Partial function to compute desired values.
+    * @return List of collected nodes.
     */
   def deepCollect[N, R](ns: Seq[N], subs: N => Seq[N])(f: PartialFunction[N, R]): Seq[R] = {
     ns.flatMap((node: N) =>

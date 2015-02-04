@@ -62,8 +62,8 @@ case class IntLit(i: BigInt)(val pos: Position = NoPosition, val info: Info = No
   lazy val typ = Int
 }
 
-/** Integer negation. */ // (AS) What does this mean? TODO: check and refactor to unary minus
-case class Neg(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NegOp)
+/** Integer unary minus. */
+case class Minus(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NegOp)
 
 // Boolean expressions
 case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(OrOp) {

@@ -96,7 +96,7 @@ object Transformer {
             case dfa@DomainFuncApp(fname, args, m) =>
               DomainFuncApp(fname, args map go, goTypeVariables(m))(p, i, dfa.typ, dfa.formalArgs)
 
-            case Neg(e) => Neg(go(e))(p, i)
+            case Minus(e) => Minus(go(e))(p, i)
             case Not(e) => Not(go(e))(p, i)
 
             case Or(l, r) => Or(go(l), go(r))(p, i)
@@ -409,8 +409,8 @@ object Transformer {
       case root @ Exists(_, BoolLit(literal)) =>
         BoolLit(literal)(root.pos, root.info)
 
-      case root @ Neg(IntLit(literal)) => IntLit(-literal)(root.pos, root.info)
-      case Neg(Neg(single)) => single
+      case root @ Minus(IntLit(literal)) => IntLit(-literal)(root.pos, root.info)
+      case Minus(Minus(single)) => single
 
       case root @ GeCmp(IntLit(left), IntLit(right)) =>
         BoolLit(left >= right)(root.pos, root.info)

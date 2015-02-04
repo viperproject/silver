@@ -51,7 +51,10 @@ case class Translator(program: PProgram) {
   private def translate(m: PMethod): Method = m match {
     case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
       val m = findMethod(name)
-      val plocals = Visitor.deepCollect(body.childStmts, Nodes.subnodes)({ case l: PLocalVarDecl => l })
+      val plocals = Visitor.shallowCollect(body.childStmts, Nodes.subnodes)({
+        case l: PLocalVarDecl => Some(l)
+        case w: PWhile => None
+      }).flatten // only collect declarations at top-level, not from nested loop bodies
       val locals = plocals map {
         case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
       }
@@ -183,7 +186,7 @@ case class Translator(program: PProgram) {
       case PConstraining(vars, ss) =>
         Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss))(pos)
       case PWhile(cond, invs, body) =>
-        val plocals = body.childStmts collect {
+        val plocals = body.childStmts collect { // Note: this won't collect declarations from nested loops
           case l: PLocalVarDecl => l
         }
         val locals = plocals map {
@@ -296,7 +299,7 @@ case class Translator(program: PProgram) {
         val e = exp(pe)
         op match {
           case "+" => e
-          case "-" => Neg(e)(pos)
+          case "-" => Minus(e)(pos)
           case "!" => Not(e)(pos)
         }
       case PInhaleExhaleExp(in, ex) =>
