@@ -138,3 +138,29 @@ method test04(x: Ref, n: Int) {
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert v2 == fun04(x, n, 4)
 }
+
+function fun07(xs: Seq[Ref], j: Int): Int
+  requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
+  ensures result >= 0
+{
+    j < 0     ? fun07(xs, j + 1)
+  : |xs| <= j ? fun07(xs, j - 1)
+  :             xs[j].f * xs[j].f
+}
+
+function fun08(xs: Seq[Ref], i: Int): Int
+  requires forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].f)
+  requires 0 <= i && i < |xs|
+  ensures result > xs[i].f
+{ xs[i].f + 1 }
+
+method test07(xs: Seq[Ref]) {
+  inhale forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
+  inhale |xs| > 3
+
+  assert fun07(xs, -10) >= 0
+  assert fun08(xs, 2) > xs[2].f
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert fun07(xs, -10) > 0
+}
