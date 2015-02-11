@@ -10,6 +10,5 @@ method test01(xs: Set[Ref], y: Ref) {
   inhale y in xs
   inhale fun01(xs, y) == 0
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/122/)
   assert y.f == 0
 }

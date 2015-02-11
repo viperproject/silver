@@ -58,6 +58,8 @@ method initSingle(this: Ref)
   requires this.left==null && this.right==null && this.parent==null && this.parentStruct==null
   ensures acc(this.parentStruct, wildcard) && this.parentStruct!=null
   ensures acc(inv(this.parentStruct, Set[Ref]())) && getAllNodes(this.parentStruct) == Set(this)
+  // Previously referenced /silicon/issue/122/
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/132/)
   ensures visit(this) && getLeft(this)==null && getRight(this)==null && getParent(this)==null
 {
   this.value := 1

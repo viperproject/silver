@@ -1,5 +1,3 @@
-// :: IgnoreFile(/silicon/issue/122/)
-
 // class Node
 field parent: Ref
 
@@ -7,7 +5,6 @@ function find(struct: Ref, this:Ref) : Ref
   requires struct != null && this != null
   requires acc(inv(struct), wildcard)
   requires this in allNodes(struct)
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/122/)
   ensures result != null
   ensures result in allNodes(struct)
 {
@@ -22,7 +19,11 @@ method add(struct: Ref, this: Ref)
   ensures acc(inv(struct), write)
   ensures allNodes(struct) == old(allNodes(struct)) union Set(this)
   ensures this == find(struct, this)
-  //:: UnexpectedOutput(application.precondition:assertion.false, /silicon/issue/122/)
+  // Previously marked as /silicon/issue/122/
+  // Trying to ensure
+  //   ensures forall o: Ref :: o in old(allNodes(struct)) ==> o != null
+  // makes the example not terminate (with Z3 using up insane amounts of memory).
+  //:: UnexpectedOutput(application.precondition:assertion.false, /silicon/issue/133/)
   ensures forall o: Ref :: o in old(allNodes(struct)) ==> find(struct, o) == old(find(struct, o))
 {
     unfold acc(inv(struct), write)
@@ -79,7 +80,9 @@ method unionn(struct: Ref, this: Ref, other: Ref)
   requires other != null && other in allNodes(struct)
   ensures acc(inv(struct), write)
   ensures allNodes(struct) == old(allNodes(struct))
-  //:: UnexpectedOutput(application.precondition:assertion.false, /silicon/issue/122/)
+  // Previously marked as /silicon/issue/122/
+  // The cause of the failing precondition is probably the same as above.
+  //:: UnexpectedOutput(application.precondition:assertion.false, /silicon/issue/133/)
   ensures forall p: Ref, q: Ref :: p in allNodes(struct) && q in allNodes(struct) && old(find(struct, p) == find(struct, q)) ==> find(struct, p) == find(struct, q)
   ensures forall p: Ref, q: Ref :: p in allNodes(struct) && q in allNodes(struct) && old(find(struct, p) == find(struct, this)) && old(find(struct, q) == find(struct, other)) ==> find(struct, p) == find(struct, q)
   ensures forall p: Ref, q: Ref ::
