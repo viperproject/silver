@@ -32,16 +32,16 @@ case class Translator(program: PProgram) {
     assert(Messaging.messagecount == 0, "Expected previous phases to succeed, but found error messages.")
 
     program match {
-      case PProgram(f, domains, fields, functions, predicates, methods) =>
-        (domains ++ fields ++ functions ++ predicates ++
-          methods ++ (domains flatMap (_.funcs))) map translateMemberSignature
+      case PProgram(_, pdomains, pfields, pfunctions, ppredicates, pmethods) =>
+        (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
+            pmethods ++ (pdomains flatMap (_.funcs))) map translateMemberSignature
 
-        val d = domains map (translate(_))
-        val f = fields map (translate(_))
-        val fs = functions map (translate(_))
-        val p = predicates map (translate(_))
-        val m = methods map (translate(_))
-        val prog = Program(d, f, fs, p, m)(program)
+        val domain = pdomains map (translate(_))
+        val fields = pfields map (translate(_))
+        val functions = pfunctions map (translate(_))
+        val predicates = ppredicates map (translate(_))
+        val methods = pmethods map (translate(_))
+        val prog = Program(domain, fields, functions, predicates, methods)(program)
 
         if (Messaging.messagecount == 0) Some(prog)
         else None
