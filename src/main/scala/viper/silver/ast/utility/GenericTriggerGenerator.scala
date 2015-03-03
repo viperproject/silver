@@ -70,6 +70,12 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
     generateTriggerGroups(vs: Seq[Var], toSearch: Exp).headOption
 
   def generateFirstTriggers(vs: Seq[Var], toSearch: Seq[Exp]): Option[(Seq[Trigger], Seq[Var])] =
+    /* TODO: It would be better to increase the set of terms from which triggers
+     * can be computed. That is, if toSearch = [e1, e2, ..., en], then
+     * generateTriggers(e1) should be tried first, then generateTriggers(e1, e2),
+     * etc. This is, because it could be that only the combination of multiple
+     * ei's provides enough terms to cover all quantified variables.
+     */
     toSearch.toStream.flatMap(generateTriggers(vs, _)).headOption
 
   /* Generates groups of trigger sets to cover the variables `vs`, by searching
