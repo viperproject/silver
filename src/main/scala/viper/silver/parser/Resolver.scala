@@ -81,7 +81,7 @@ case class TypeChecker(names: NameAnalyser) {
       f.pres map (check(_, Bool))
       resultAllowed=true
       f.posts map (check(_, Bool))
-      check(f.exp, f.typ) //result in the function body gets the error message somewhere else
+      f.body.map(check(_, f.typ)) //result in the function body gets the error message somewhere else
       resultAllowed=false
       curFunction=null
     }
@@ -91,7 +91,7 @@ case class TypeChecker(names: NameAnalyser) {
   def check(p: PPredicate) {
     checkMember(p) {
       p.formalArgs map (a => check(a.typ))
-      check(p.body, Bool)
+      p.body.map(check(_, Bool))
     }
   }
 
@@ -124,8 +124,10 @@ case class TypeChecker(names: NameAnalyser) {
       case PSeqn(ss) =>
         ss map check
       case PFold(e) =>
+        acceptNonAbstactPredicateAccess(e, "abstract predicates cannot be folded")
         check(e, Bool)
       case PUnfold(e) =>
+        acceptNonAbstactPredicateAccess(e, "abstract predicates cannot be unfolded")
         check(e, Bool)
       case PExhale(e) =>
         check(e, Bool)
@@ -220,6 +222,16 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
+  def acceptNonAbstactPredicateAccess(exp: PExp, messageIfAbstractPredicate: String) {
+    exp match {
+      case PAccPred(PPredicateAccess(_, idnuse), _) =>
+        acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
+          val predicate = _predicate.asInstanceOf[PPredicate]
+          if (predicate.body.isEmpty) message(idnuse, messageIfAbstractPredicate)
+        }
+      case _ => message(exp, "expected predicate access")
+    }
+  }
 
   /** This handy method checks if all passed `idnUses` refer to specific
     * subtypes `TypedEntity`s when looked up in the current scope/lookup table.
@@ -672,6 +684,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnfolding(acc, body) =>
         check(acc.perm, Perm)
         check(acc.loc, Pred)
+        acceptNonAbstactPredicateAccess(acc, "abstract predicates cannot be unfolded")
         check(body, expected)
         setType(exp.typ)
       case PLet(exp1, nestedScope @ PLetNestedScope(variable, body)) =>

@@ -164,11 +164,11 @@ object Transformer {
               Function(name, parameters map go, go(aType),
                 preconditions map go,
                 postconditions map go,
-                go(body))(member.pos, member.info)
+                body map go)(member.pos, member.info)
 
             case Predicate(name, parameters, body) =>
               Predicate(name, parameters map go,
-                go(body))(member.pos, member.info)
+                body map go)(member.pos, member.info)
 
             case Method(name, parameters, results, preconditions,
               postconditions, locals, body) =>
@@ -294,7 +294,7 @@ object Transformer {
         postconditions, body) =>
         Function(name, parameters map recurse, recurse(aType),
           preconditions map translate, postconditions map translate,
-          recurse(body))(function.pos, function.info)
+          body map recurse)(function.pos, function.info)
 
       case method @ Method(name, parameters, results, preconditions,
         postconditions, locals, body) =>

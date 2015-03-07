@@ -334,11 +334,11 @@ sealed trait PMember extends PDeclaration with PScope {
 case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with PGlobalDeclaration with PTypedDeclaration
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PMember with PGlobalDeclaration with PTypedDeclaration
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with PGlobalDeclaration with PTypedDeclaration
 case class PAxiom(idndef: PIdnDef, exp: PExp) extends PScope with PGlobalDeclaration //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
-case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: PExp) extends PMember with PTypedDeclaration with PGlobalDeclaration{
+case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
   val typ = PPredicateType()
 }
 
@@ -435,12 +435,12 @@ object Nodes {
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ Seq(body)
-      case PFunction(name, args, typ, pres, posts, exp) =>
-        Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ Seq(exp)
+      case PFunction(name, args, typ, pres, posts, body) =>
+        Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ body
       case PDomainFunction(name, args, typ, unique) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, args, body) =>
-        Seq(name) ++ args ++ Seq(body)
+        Seq(name) ++ args ++ body
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
       case PDefine(idndef, optArgs, exp) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(exp)

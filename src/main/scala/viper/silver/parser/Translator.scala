@@ -83,14 +83,14 @@ case class Translator(program: PProgram) {
       val f = findFunction(name)
       f.pres = pres map exp
       f.posts = posts map exp
-      f.body = exp(body)
+      f.body = body map exp
       f
   }
 
   private def translate(p: PPredicate) = p match {
     case PPredicate(name, formalArgs, body) =>
       val p = findPredicate(name)
-      p.body = exp(body)
+      p.body = body map exp
       p
   }
 

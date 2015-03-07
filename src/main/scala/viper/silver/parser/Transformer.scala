@@ -102,9 +102,9 @@ object Transformer {
         case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, go(body))
         case PDomain(idndef, typVars, funcs, axioms) => PDomain(go(idndef), typVars map go, funcs map go, axioms map go)
         case PField(idndef, typ) => PField(go(idndef), go(typ))
-        case PFunction(idndef, formalArgs, typ, pres, posts, exp) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, go(exp))
+        case PFunction(idndef, formalArgs, typ, pres, posts, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, body map go)
         case PDomainFunction(idndef, formalArgs, typ, unique) => PDomainFunction(go(idndef), formalArgs map go, go(typ), unique)
-        case PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, go(body))
+        case PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, body map go)
         case PAxiom(idndef, exp) => PAxiom(go(idndef), go(exp))
       }
 

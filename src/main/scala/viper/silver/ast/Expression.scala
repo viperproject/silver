@@ -235,7 +235,7 @@ case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Posit
   /** The body of the predicate with the arguments instantiated correctly. */
   def predicateBody(program : Program) = {
     val predicate = program.findPredicate(predicateName)
-    Expressions.instantiateVariables(predicate.body, predicate.formalArgs, args)
+    predicate.body map (Expressions.instantiateVariables(_, predicate.formalArgs, args))
   }
 }
 // allows PredicateAccess to be created from a predicate directly, in which case only the name is kept

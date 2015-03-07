@@ -45,7 +45,7 @@ object Functions {
       }
     }
     for (f <- p.functions) {
-      process(f, f.body)
+      f.body map (process(f, _))
       f.pres map (process(f, _))
       f.posts map (process(f, _))
     }
@@ -171,7 +171,9 @@ object Functions {
         args.map ((n) => recordCallsAndUnfoldings (n, ufs) )
       }
     }
-      recordCallsAndUnfoldings (f.body, Seq())
-      result
+
+    f.body map (recordCallsAndUnfoldings(_, Seq()))
+
+    result
   }
 }
