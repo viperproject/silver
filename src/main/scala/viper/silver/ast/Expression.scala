@@ -322,7 +322,7 @@ object QuantifiedPermissionSupporter {
 
 /** Universal quantification. */
 case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp {
-  require(Consistency.supportedQuantifier(this), s"This form of quantified permission is not supported: { ${this.mkString(", ")} } .")
+  require(Consistency.supportedQuantifier(this), s"This form of quantified permission is not supported: { ${this.toString} } .")
   /**
    * Returns an identical forall quantification that has some automatically generated triggers
    * if necessary and possible.
