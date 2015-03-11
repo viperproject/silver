@@ -142,6 +142,13 @@ object Consistency {
     }
   }
 
+  /** Returns true iff the given QuantifiedExp is either pure, or of the shape of quantified permissions allowed (see QuantifiedPermissionSupporter)*/
+  def supportedQuantifier(q: QuantifiedExp) : Boolean = q match {
+    case QuantifiedPermissionSupporter.ForallRefPerm(_, _, _, _, _, _, _) =>
+      true
+    case _ => q.isPure
+  }
+
   /**
    * Is the control flow graph starting at `start` well-formed.  That is, does it have the following
    * properties:

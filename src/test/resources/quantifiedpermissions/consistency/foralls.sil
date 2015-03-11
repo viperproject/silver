@@ -5,11 +5,12 @@ method test01(xs: Set[Ref], ys: Seq[Ref])
   requires forall i: Int :: i in [0..|ys|) ==> acc(ys[i].f)
 {}
 
-method test02(xs: Set[Ref], r: Ref)
-  //:: ExpectedOutput(internal:feature.unsupported)
-  requires forall x: Ref :: x in xs ==> acc(r.f, wildcard)
-    /* Currently rejected because the quantified variable is not used in the receiver expression */
-{}
+// NOTE: commented-out, since testing framework currently does not support requirement failures. See also issue_0080.sil
+//method test02(xs: Set[Ref], r: Ref)
+//  //:: ExpectedOutput(internal:feature.unsupported)
+//  requires forall x: Ref :: x in xs ==> acc(r.f, wildcard)
+//    /* Currently rejected because the quantified variable is not used in the receiver expression */
+//{}
 
 method test03(xs: Seq[Ref])
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
