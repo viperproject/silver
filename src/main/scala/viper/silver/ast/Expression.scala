@@ -287,13 +287,42 @@ sealed trait QuantifiedExp extends Exp {
   def exp: Exp
   lazy val typ = Bool
 }
+
 object QuantifiedExp {
-  def unapply(q: QuantifiedExp) = Some(q.variables, q.exp)
+  def unapply(q: QuantifiedExp): Option[(Seq[LocalVarDecl], Exp)] = Some(q.variables, q.exp)
 }
+
+object QuantifiedPermissionSupporter {
+  object ForallRefPerm {
+    def unapply(n: Forall): Option[(LocalVar, /* Quantified variable */
+      Exp, /* Condition */
+      Exp, /* Receiver e of acc(e.f, p) */
+      Field, /* Field f of acc(e.f, p) */
+      Exp, /* Permissions p of acc(e.f, p) */
+      Forall, /* AST node of the forall (for error reporting) */
+      FieldAccess)] = /* AST node for e.f (for error reporting) */
+
+      n match {
+        case forall@Forall(Seq(lvd@LocalVarDecl(_, _ /*ast.types.Ref*/)),
+        triggers,
+        Implies(condition, FieldAccessPredicate(fa@FieldAccess(rcvr, f), gain)))
+          if rcvr.exists(_ == lvd.localVar)
+            && triggers.isEmpty =>
+
+          Some((lvd.localVar, condition, rcvr, f, gain, forall, fa))
+
+        case _ => None
+      }
+    }
+
+  }
+/* Unsupported expressions, features or cases */
+
+
 
 /** Universal quantification. */
 case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp {
-
+  require(Consistency.supportedQuantifier(this), s"This form of quantified permission is not supported: { ${this.toString} } .")
   /**
    * Returns an identical forall quantification that has some automatically generated triggers
    * if necessary and possible.
@@ -341,14 +370,6 @@ sealed trait AbstractLocalVar extends Exp {
 object AbstractLocalVar {
   def unapply(l: AbstractLocalVar) = Some(l.name)
 }
-
-/* TODO: [2015-01-24 Malte]
- *       Why are pos and info part of the first argument list of the constructors of
- *       LocalVar and Result? In all (?) other cases, they are part of the second
- *       list of arguments.
- *       Note: Changing this likely break all tools that (de)construct Silver ASTs.
- *       The entailed changes should be trivial to make, though.
- */
 
 /** A normal local variable. */
 case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar with Lhs {
