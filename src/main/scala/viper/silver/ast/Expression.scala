@@ -294,7 +294,7 @@ object QuantifiedExp {
 
 object QuantifiedPermissionSupporter {
   object ForallRefPerm {
-    def unapply(n: Forall): Option[(LocalVar, /* Quantified variable */
+    def unapply(n: Forall): Option[(LocalVarDecl, /* Quantified variable */
       Exp, /* Condition */
       Exp, /* Receiver e of acc(e.f, p) */
       Field, /* Field f of acc(e.f, p) */
@@ -309,7 +309,7 @@ object QuantifiedPermissionSupporter {
           if rcvr.exists(_ == lvd.localVar)
             && triggers.isEmpty =>
 
-          Some((lvd.localVar, condition, rcvr, f, gain, forall, fa))
+          Some((lvd, condition, rcvr, f, gain, forall, fa))
 
         case _ => None
       }
