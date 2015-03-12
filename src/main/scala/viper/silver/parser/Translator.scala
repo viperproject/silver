@@ -9,6 +9,7 @@ package viper.silver.parser
 import language.implicitConversions
 import org.kiama.attribution.Attributable
 import org.kiama.util.Messaging
+import org.kiama.util.{Positioned => KiamaPositioned}
 import viper.silver.ast._
 import viper.silver.ast.utility.{Visitor, Statements}
 
@@ -31,16 +32,16 @@ case class Translator(program: PProgram) {
     assert(Messaging.messagecount == 0, "Expected previous phases to succeed, but found error messages.")
 
     program match {
-      case PProgram(f, domains, fields, functions, predicates, methods) =>
-        (domains ++ fields ++ functions ++ predicates ++
-          methods ++ (domains flatMap (_.funcs))) map translateMemberSignature
+      case PProgram(_, pdomains, pfields, pfunctions, ppredicates, pmethods) =>
+        (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
+            pmethods ++ (pdomains flatMap (_.funcs))) map translateMemberSignature
 
-        val d = domains map (translate(_))
-        val f = fields map (translate(_))
-        val fs = functions map (translate(_))
-        val p = predicates map (translate(_))
-        val m = methods map (translate(_))
-        val prog = Program(d, f, fs, p, m)(program.start)
+        val domain = pdomains map (translate(_))
+        val fields = pfields map (translate(_))
+        val functions = pfunctions map (translate(_))
+        val predicates = ppredicates map (translate(_))
+        val methods = pmethods map (translate(_))
+        val prog = Program(domain, fields, functions, predicates, methods)(program)
 
         if (Messaging.messagecount == 0) Some(prog)
         else None
@@ -50,9 +51,12 @@ case class Translator(program: PProgram) {
   private def translate(m: PMethod): Method = m match {
     case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
       val m = findMethod(name)
-      val plocals = Visitor.deepCollect(body.childStmts, Nodes.subnodes)({ case l: PLocalVarDecl => l })
+      val plocals = Visitor.shallowCollect(body.childStmts, Nodes.subnodes)({
+        case l: PLocalVarDecl => Some(l)
+        case w: PWhile => None
+      }).flatten // only collect declarations at top-level, not from nested loop bodies
       val locals = plocals map {
-        case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p.start)
+        case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
       }
       m.locals = locals
       m.pres = pres map exp
@@ -71,7 +75,7 @@ case class Translator(program: PProgram) {
 
   private def translate(a: PAxiom): DomainAxiom = a match {
     case PAxiom(name, e) =>
-      DomainAxiom(name.name, exp(e))(a.start)
+      DomainAxiom(name.name, exp(e))(a)
   }
 
   private def translate(f: PFunction) = f match {
@@ -79,14 +83,14 @@ case class Translator(program: PProgram) {
       val f = findFunction(name)
       f.pres = pres map exp
       f.posts = posts map exp
-      f.exp = exp(body)
+      f.body = body map exp
       f
   }
 
   private def translate(p: PPredicate) = p match {
     case PPredicate(name, formalArgs, body) =>
       val p = findPredicate(name)
-      p.body = exp(body)
+      p.body = body map exp
       p
   }
 
@@ -97,7 +101,7 @@ case class Translator(program: PProgram) {
    * Translate the signature of a member, so that it can be looked up later.
    */
   private def translateMemberSignature(p: PMember) {
-    val pos = p.start
+    val pos = p
     val name = p.idndef.name
     val t = p match {
       case PField(_, typ) =>
@@ -126,7 +130,7 @@ case class Translator(program: PProgram) {
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */
   private def stmt(s: PStmt): Stmt = {
-    val pos = s.start
+    val pos = s
     s match {
       case PVarAssign(idnuse, PFunctApp(func, args)) if members.get(func.name).get.isInstanceOf[Method] =>
         /* This is a method call that got parsed in a slightly confusing way.
@@ -138,14 +142,14 @@ case class Translator(program: PProgram) {
       case PVarAssign(idnuse, rhs) =>
         LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos), exp(rhs))(pos)
       case PFieldAssign(field, rhs) =>
-        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field.start), exp(rhs))(pos)
+        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos)
       case PLocalVarDecl(idndef, t, Some(init)) =>
         LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos), exp(init))(pos)
       case PLocalVarDecl(_, _, None) =>
         // there are no declarations in the SIL AST; rather they are part of the method signature
         Statements.EmptyStmt
       case PSeqn(ss) =>
-        Seqn(ss map stmt)(pos)
+        Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt)(pos)
       case PFold(e) =>
         Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PUnfold(e) =>
@@ -174,23 +178,25 @@ case class Translator(program: PProgram) {
         Goto(label.name)(pos)
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn), stmt(els))(pos)
-      case PFresh(vars) => Fresh(vars map (v => LocalVar(v.name)(ttyp(v.typ), v.start)))(pos)
+      case PFresh(vars) => Fresh(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)))(pos)
       case PConstraining(vars, ss) =>
-        Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v.start)), stmt(ss))(pos)
+        Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss))(pos)
       case PWhile(cond, invs, body) =>
-        val plocals = body.childStmts collect {
+        val plocals = body.childStmts collect { // Note: this won't collect declarations from nested loops
           case l: PLocalVarDecl => l
         }
         val locals = plocals map {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos)
+      case _: PDefine | _: PSkip =>
+        sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
   }
 
   /** Takes a `PExp` and turns it into an `Exp`. */
   private def exp(pexp: PExp): Exp = {
-    val pos = pexp.start
+    val pos = pexp
     pexp match {
       case piu @ PIdnUse(name) =>
         piu.decl match {
@@ -199,7 +205,7 @@ case class Translator(program: PProgram) {
             /* A malformed AST where a field is dereferenced without a receiver */
             Messaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
-          case _ =>
+          case other =>
             sys.error("should not occur in type-checked program")
         }
       case PBinExp(left, op, right) =>
@@ -229,14 +235,12 @@ case class Translator(program: PProgram) {
               case _ => sys.error("should not occur in type-checked program")
             }
           case "/" =>
-          {
             assert(r.typ==Int)
             l.typ match {
               case Perm => PermDiv(l, r)(pos)
               case Int  => assert (l.typ==Int); FractionalPerm(l, r)(pos)
               case _    => sys.error("should not occur in type-checked program")
             }
-          }
           case "\\" => Div(l, r)(pos)
           case "%" => Mod(l, r)(pos)
           case "<" =>
@@ -285,7 +289,7 @@ case class Translator(program: PProgram) {
         val e = exp(pe)
         op match {
           case "+" => e
-          case "-" => Neg(e)(pos)
+          case "-" => Minus(e)(pos)
           case "!" => Not(e)(pos)
         }
       case PInhaleExhaleExp(in, ex) =>
@@ -333,10 +337,14 @@ case class Translator(program: PProgram) {
         }
       case PUnfolding(loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
+      case PLet(exp1, PLetNestedScope(variable, body)) =>
+        Let(liftVarDecl(variable), exp(exp1), exp(body))(pos)
+      case _: PLetNestedScope =>
+        sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>
-        val ts = triggers map (exps => Trigger(exps map exp)(exps(0).start))
+        val ts = triggers map (exps => Trigger(exps map exp)(exps(0)))
         Forall(vars map liftVarDecl, ts, exp(e))(pos)
       case POld(e) =>
         Old(exp(e))(pos)
@@ -392,11 +400,20 @@ case class Translator(program: PProgram) {
     }
   }
 
-  /** Takes a `scala.util.parsing.input.Position` and turns it into a `SourcePosition`. */
-  implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition = SourcePosition(file, pos.line, pos.column)
+//  /** Takes a `scala.util.parsing.input.Position` and turns it into a `SourcePosition`. */
+//  implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition =
+//    SourcePosition(file, pos.line, pos.column)
+
+  /** Takes a [[org.kiama.util.Positioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
+  implicit def liftPos(pos: KiamaPositioned): SourcePosition = {
+    val start = LineColumnPosition(pos.start.line, pos.start.column)
+    val end = LineColumnPosition(pos.finish.line, pos.finish.column)
+    SourcePosition(file, start, end)
+  }
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
-  private def liftVarDecl(formal: PFormalArgDecl) = LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.start)
+  private def liftVarDecl(formal: PFormalArgDecl) =
+    LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal)
 
   /** Takes a `PType` and turns it into a `Type`. */
   private def ttyp(t: PType): Type = t match {

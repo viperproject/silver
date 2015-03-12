@@ -84,11 +84,13 @@ object DefaultTestInput {
       val fileName = file.getFileName.toString
       val fileNameWithoutExt = fileName.substring(0, fileName.lastIndexOf("."))
 
+      val prefixes = relativeFileName.split("[/\\\\]").dropRight(1).inits.map(p => Tag(p.mkString("","/","/")))
+
       List(
         Tag(relativeFileName),
         Tag(file.toString),
         Tag(fileName),
-        Tag(fileNameWithoutExt))
+        Tag(fileNameWithoutExt)) ++ prefixes
     }
 
     DefaultTestInput(name, prefix, files, tags)

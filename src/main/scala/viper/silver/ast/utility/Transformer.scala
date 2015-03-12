@@ -66,6 +66,7 @@ object Transformer {
             case Old(e) => Old(go(e))(p, i)
             case CondExp(cond, thn, els) =>
               CondExp(go(cond), go(thn), go(els))(p, i)
+            case Let(v, exp1, body) => Let(go(v), go(exp1), go(body))(p, i)
             case Exists(v, e) => Exists(v map go, go(e))(p, i)
             case Forall(v, triggers, e) =>
               Forall(v map go, triggers map go, go(e))(p, i)
@@ -89,7 +90,7 @@ object Transformer {
             case dfa@DomainFuncApp(fname, args, m) =>
               DomainFuncApp(fname, args map go, goTypeVariables(m))(p, i, dfa.typ, dfa.formalArgs)
 
-            case Neg(e) => Neg(go(e))(p, i)
+            case Minus(e) => Minus(go(e))(p, i)
             case Not(e) => Not(go(e))(p, i)
 
             case Or(l, r) => Or(go(l), go(r))(p, i)
@@ -163,11 +164,11 @@ object Transformer {
               Function(name, parameters map go, go(aType),
                 preconditions map go,
                 postconditions map go,
-                go(body))(member.pos, member.info)
+                body map go)(member.pos, member.info)
 
             case Predicate(name, parameters, body) =>
               Predicate(name, parameters map go,
-                go(body))(member.pos, member.info)
+                body map go)(member.pos, member.info)
 
             case Method(name, parameters, results, preconditions,
               postconditions, locals, body) =>
@@ -293,7 +294,7 @@ object Transformer {
         postconditions, body) =>
         Function(name, parameters map recurse, recurse(aType),
           preconditions map translate, postconditions map translate,
-          recurse(body))(function.pos, function.info)
+          body map recurse)(function.pos, function.info)
 
       case method @ Method(name, parameters, results, preconditions,
         postconditions, locals, body) =>
@@ -394,8 +395,8 @@ object Transformer {
       case root @ Exists(_, BoolLit(literal)) =>
         BoolLit(literal)(root.pos, root.info)
 
-      case root @ Neg(IntLit(literal)) => IntLit(-literal)(root.pos, root.info)
-      case Neg(Neg(single)) => single
+      case root @ Minus(IntLit(literal)) => IntLit(-literal)(root.pos, root.info)
+      case Minus(Minus(single)) => single
 
       case root @ GeCmp(IntLit(left), IntLit(right)) =>
         BoolLit(left >= right)(root.pos, root.info)

@@ -66,14 +66,33 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
 
   private var nextUniqueId = 0
 
-  /* Generates trigger sets to cover the variables "vs", by searching the
-   * expression "toSearch".
+  def generateTriggers(vs: Seq[Var], toSearch: Exp): Option[(Seq[Trigger], Seq[Var])] =
+    generateTriggerGroups(vs: Seq[Var], toSearch: Exp).headOption
+
+  def generateFirstTriggers(vs: Seq[Var], toSearch: Seq[Exp]): Option[(Seq[Trigger], Seq[Var])] =
+    /* TODO: It would be better to increase the set of terms from which triggers
+     * can be computed. That is, if toSearch = [e1, e2, ..., en], then
+     * generateTriggers(e1) should be tried first, then generateTriggers(e1, e2),
+     * etc. This is, because it could be that only the combination of multiple
+     * ei's provides enough terms to cover all quantified variables.
+     */
+    toSearch.toStream.flatMap(generateTriggers(vs, _)).headOption
+
+  def generateStrictestTrigger(vs: Seq[Var], toSearch: Exp): Option[(Seq[Trigger], Seq[Var])] =
+    generateTriggerGroups(vs: Seq[Var], toSearch: Exp).headOption.map{ case (triggerSets, vars) =>
+      val triggerExps = triggerSets.foldLeft(Set[Exp]())((acc, trigger) => acc ++ exps(trigger))
+
+      (Trigger(triggerExps.toSeq) :: Nil, vars)
+    }
+
+  /* Generates groups of trigger sets to cover the variables `vs`, by searching
+   * the expression `toSearch`.
    *
    * Returns a list of pairs of lists of trigger sets couple with the extra
    * variables they require to be quantified over (each list of triggers must
    * contain trigger sets which employ exactly the same extra variables).
    */
-  def generateTriggers(vs: Seq[Var], toSearch: Exp): Seq[(Seq[Trigger], Seq[Var])] = {
+  def generateTriggerGroups(vs: Seq[Var], toSearch: Exp): Seq[(Seq[Trigger], Seq[Var])] = {
     /* Find suitable function applications */
     val functionApps: (Seq[(PossibleTrigger, Seq[Var], Seq[Var])]) =
       getFunctionAppsContaining(vs, toSearch)

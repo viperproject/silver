@@ -87,8 +87,15 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
      */
 }
 
-// Formal arguments
-case class PFormalArgDecl(idndef: PIdnDef, typ: PType) extends PNode with PTypedDeclaration with PLocalDeclaration
+//case class PLocalVar
+
+/* Formal arguments.
+ * [2014-11-13 Malte] Changed typ to be a var, so that it can be updated
+ * during type-checking. The use-case are let-expressions, where requiring an
+ * explicit type in the binding of the variable, i.e., "let x: T = e1 in e2",
+ * would be rather cumbersome.
+ */
+case class PFormalArgDecl(idndef: PIdnDef, var typ: PType) extends PNode with PTypedDeclaration with PLocalDeclaration
 
 // Types
 sealed trait PType extends PNode {
@@ -213,6 +220,19 @@ case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 sealed trait POldExp extends PExp { def e: PExp }
 case class POld(e: PExp) extends POldExp
 
+/* Let-expressions `let x == e1 in e2` are represented by the nested structure
+ * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but
+ * `PLet` isn't) in order to work with the current architecture of the resolver.
+ *
+ * More precisely, `NameAnalyser.run` visits a given program to ensure that all
+ * used symbol are actually declared. While traversing the program, it
+ * pushes/pops `PScope`s to/from the stack. If let-expressions were represented
+ * by a flat `PLet(x, e1, e2) <: PScope`, then the let-bound variable `x` would
+ * already be in scope while checking `e1`, which wouldn't be correct.
+ */
+case class PLet(exp: PExp, nestedScope: PLetNestedScope) extends PExp
+case class PLetNestedScope(variable: PFormalArgDecl, body: PExp) extends PExp with PScope
+
 case class PEmptySeq(t : PType) extends PExp {
   typ = if (t.isUnknown) PUnknown() else PSeqType(t) // type can be specified as PUnknown() if unknown
 }
@@ -269,7 +289,25 @@ case class PLabel(idndef: PIdnDef) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 
-sealed trait PScope extends PNode
+case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) extends PStmt with PLocalDeclaration
+case class PSkip() extends PStmt
+
+sealed trait PScope extends PNode {
+  val scopeId = PScope.uniqueId()
+}
+
+object PScope {
+  type Id = Long
+
+  private[this] var counter: Id = 0L
+
+  private def uniqueId() = {
+    val id = counter
+    counter = counter + 1
+
+    id
+  }
+}
 
 // Declarations
 /** An entity is a declaration (named) or an error node */
@@ -281,27 +319,6 @@ sealed trait PDeclaration extends PNode with PEntity {
 
 sealed trait PGlobalDeclaration extends PDeclaration
 sealed trait PLocalDeclaration extends PDeclaration
-
-object PDeclaration {
-  def descriptiveName(entity: PDeclaration) = {
-    val entityName =
-      entity match {
-        case _: PDomain => "domain"
-        case _: PDomainFunction => "domain function"
-        case _: PField => "field"
-        case _: PFormalArgDecl => "formal argument"
-        case _: PFunction => "function"
-        case _: PLabel => "label"
-        case _: PLocalVarDecl => "local variable"
-        case _: PMethod => "method"
-        case _: PPredicate => "predicate"
-        case _: PTypeVarDecl => "type variable"
-        case _: PAxiom => "axiom"
-      }
-
-    s"$entityName ${entity.idndef.name}"
-  }
-}
 
 sealed trait PTypedDeclaration extends PDeclaration {
   def typ: PType
@@ -317,11 +334,11 @@ sealed trait PMember extends PDeclaration with PScope {
 case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], exp: PExp) extends PMember with PGlobalDeclaration with PTypedDeclaration
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PMember with PGlobalDeclaration with PTypedDeclaration
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with PGlobalDeclaration with PTypedDeclaration
 case class PAxiom(idndef: PIdnDef, exp: PExp) extends PScope with PGlobalDeclaration //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
-case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: PExp) extends PMember with PTypedDeclaration with PGlobalDeclaration{
+case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
   val typ = PPredicateType()
 }
 
@@ -370,6 +387,8 @@ object Nodes {
       case PUnfolding(acc, exp) => Seq(acc, exp)
       case PExists(vars, exp) => vars ++ Seq(exp)
       case po: POldExp => Seq(po.e)
+      case PLet(exp, nestedScope) => Seq(exp, nestedScope)
+      case PLetNestedScope(variable, body) => Seq(variable, body)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)
@@ -416,14 +435,16 @@ object Nodes {
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ Seq(body)
-      case PFunction(name, args, typ, pres, posts, exp) =>
-        Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ Seq(exp)
+      case PFunction(name, args, typ, pres, posts, body) =>
+        Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ body
       case PDomainFunction(name, args, typ, unique) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, args, body) =>
-        Seq(name) ++ args ++ Seq(body)
+        Seq(name) ++ args ++ body
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
+      case PDefine(idndef, optArgs, exp) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(exp)
+      case _: PSkip => Nil
     }
   }
 }

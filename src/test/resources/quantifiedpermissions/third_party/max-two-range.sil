@@ -49,7 +49,7 @@ method main_main(this: Ref, tcount: Int, gsize: Int, tid: Int, gid: Int, lid: In
     k := 0
     assert this.dst[tid].Integer_value >= this.src[offset].Integer_value
     assert this.dst[tid].Integer_value >= this.src[offset + 0].Integer_value
-    assert (forall i: Int :: (0 <= i) && (i < k) ==> (this.dst[tid].Integer_value >= this.src[offset + i].Integer_value)) 
+    assert (forall i: Int :: (0 <= i) && (i < k) ==> (this.dst[tid].Integer_value >= this.src[offset + i].Integer_value))
     while (k < half)
       invariant 0 <= tid
       invariant tid < tcount
@@ -68,7 +68,7 @@ method main_main(this: Ref, tcount: Int, gsize: Int, tid: Int, gid: Int, lid: In
       invariant (__last_barrier == 1) ==> ((tid == 0) ==> acc(this.dst[0].Integer_value, write)) && ((tid == 0) ==> acc(this.dst[1].Integer_value, write))
       invariant (__last_barrier == 0) ==> acc(this.dst[tid].Integer_value, write)
       invariant (0 <= k) && (k <= half)
-      invariant (forall i: Int :: (0 <= i) && (i < k) ==> (this.dst[tid].Integer_value >= this.src[offset + i].Integer_value)) 
+      invariant (forall i: Int :: (0 <= i) && (i < k) ==> (this.dst[tid].Integer_value >= this.src[offset + i].Integer_value))
     {
       inhale false
       assert (0 <= offset + k) && (offset + k < gsize)

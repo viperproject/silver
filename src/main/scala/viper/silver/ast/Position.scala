@@ -12,8 +12,8 @@
 
 package viper.silver.ast
 
-import java.io.File
 import java.nio.file.Path
+import viper.silver.utility.Common.StructuralEquality
 
 /** A trait describing the position of occurrence of an AST node. */
 sealed trait Position
@@ -23,23 +23,58 @@ case object NoPosition extends Position {
   override def toString = "<no position>"
 }
 
-/** An actual position that has a line and column. */
-trait RealPosition {
-  def file: Path
+/** A position that references a line and a column. */
+trait HasLineColumn extends Position {
   def line: Int
   def column: Int
-  override def toString = s"${if(file==null || file.getFileName==null) "" else file.getFileName.toString},$line:$column"
-}
-object RealPosition {
-  def unapply(pos: RealPosition) = Some(pos.line, pos.column)
 }
 
-/** Describes a location in a file by line and column number. */
-case class SourcePosition(file: Path, line: Int, column: Int) extends Position with RealPosition
+case class LineColumnPosition(line: Int, column: Int) extends HasLineColumn
 
-/** Refers to a location in a source language that has been translated to SIL. */
-case class TranslatedPosition(pos: RealPosition) extends Position with RealPosition {
-  val line = pos.line
-  val column = pos.column
+/** Represents a source code position by referencing a file, a line and a column.
+  * Optionally, an additional end position can be specified.
+  */
+trait AbstractSourcePosition extends HasLineColumn {
+  def file: Path
+  def start: HasLineColumn
+  def end: Option[HasLineColumn]
+
+  lazy val line = start.line
+  lazy val column = start.column
+
+  override def toString =
+    s"${if(file==null || file.getFileName==null) "" else file.getFileName.toString},$line:$column"
+}
+
+object AbstractSourcePosition {
+  def unapply(pos: AbstractSourcePosition) = Some(pos.line, pos.column)
+}
+
+/** An implementation of [[AbstractSourcePosition]].
+  *
+  * @param file Source file.
+  * @param start Start position in the source file.
+  * @param end Optional end position in the source file.
+  */
+class SourcePosition(val file: Path, val start: HasLineColumn, val end: Option[HasLineColumn])
+    extends AbstractSourcePosition with StructuralEquality {
+
+  protected val equalityDefiningMembers = file :: start :: end :: Nil
+}
+
+object SourcePosition {
+  def apply(file: Path, line: Int, column: Int) =
+    new SourcePosition(file, LineColumnPosition(line, column), None)
+
+  def apply(file: Path, start: HasLineColumn, end: HasLineColumn) =
+    new SourcePosition(file, start, Some(end))
+
+  def unapply(sp: SourcePosition) = Some((sp.file, sp.start, sp.end))
+}
+
+/** Refers to a position in a source language that has been translated to Silver. */
+case class TranslatedPosition(pos: AbstractSourcePosition) extends AbstractSourcePosition {
   val file = pos.file
+  val start = pos.start
+  val end = pos.end
 }

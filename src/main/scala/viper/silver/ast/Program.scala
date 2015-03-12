@@ -9,8 +9,7 @@ package viper.silver.ast
 import utility.{Consistency, Types}
 import org.kiama.output._
 
-/** A SIL program. */
-// TODO consistency checks
+/** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
                   (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
   require(
@@ -73,13 +72,14 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 }
 
 /** A predicate declaration. */
-case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
-  if (body != null) Consistency.checkNonPostContract(body)
+case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
+  if (body != null) body map Consistency.checkNonPostContract
   def body = _body
-  def body_=(b: Exp) {
-    Consistency.checkNonPostContract(b)
+  def body_=(b: Option[Exp]) {
+    b map Consistency.checkNonPostContract
     _body = b
   }
+  def isAbstract = body.isEmpty
 }
 
 /** A method declaration. */
@@ -115,13 +115,13 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 }
 
 /** A function declaration */
-case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _exp: Exp)
+case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _body: Option[Exp])
                    (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with FuncLike with Contracted {
   require(_posts == null || (_posts forall Consistency.noOld))
-  require(_exp == null || (_exp isSubtype typ))
+  require(_body == null || (_body map (_ isSubtype typ) getOrElse true))
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
   if (_posts != null) _posts foreach Consistency.checkPost
-  if (_exp != null) Consistency.checkFunctionBody(_exp)
+  if (_body != null) _body map Consistency.checkFunctionBody
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
     s foreach Consistency.checkNonPostContract
@@ -133,12 +133,11 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
     s foreach Consistency.checkPost
     _posts = s
   }
-  def exp = _exp
-  /* TODO: [Malte] I suggest to rename 'exp' to 'body' since the latter is more descriptive. */
-  def exp_=(e: Exp) {
-    require(e isSubtype typ)
-    Consistency.checkFunctionBody(e)
-    _exp = e
+  def body = _body
+  def body_=(b: Option[Exp]) {
+    require(b map (_ isSubtype typ) getOrElse true)
+    b map Consistency.checkFunctionBody
+    _body = b
   }
 
   /**
@@ -149,10 +148,11 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   /**
    * Is this function recursive?
    */
-  def isRecursive: Boolean = exp existsDefined {
+  def isRecursive: Boolean = body exists (_ existsDefined {
     case FuncApp(funcname, _) if name == funcname =>
-  }
+  })
 
+  def isAbstract = body.isEmpty
 }
 
 
@@ -166,10 +166,9 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
   require(Consistency.validUserDefinedIdentifier(name))
 
   /**
-   * Returns a local variable of the same name and type as this declaration, without position or
-   * information.
+   * Returns a local variable with equivalent information
    */
-  lazy val localVar = LocalVar(name)(typ)
+  lazy val localVar = LocalVar(name)(typ, pos, info)
 }
 
 

@@ -6,15 +6,17 @@
 
 package viper.silver.frontend
 
+import java.io.File
+import java.nio.file.{Path, Paths}
+import org.apache.commons.io.FilenameUtils
 import org.kiama.util.Messaging
 import org.rogach.scallop.exceptions.{Version, Help, ScallopException}
-import java.nio.file.Paths
 import viper.silver.parser._
 import viper.silver.verifier._
 import viper.silver.verifier.CliOptionError
 import viper.silver.verifier.Failure
 import viper.silver.verifier.ParseError
-import viper.silver.ast.{SourcePosition, Program}
+import viper.silver.ast.{Position, HasLineColumn, AbstractSourcePosition, SourcePosition, Program}
 import viper.silver.verifier.TypecheckerError
 
 /**
@@ -164,14 +166,22 @@ trait SilFrontend extends DefaultFrontend {
 
   protected def printFinishHeaderWithTime() {
     val timeMs = System.currentTimeMillis() - _startTime
-    val time = f"${(timeMs / 1000.0)}%.3f seconds"
+    val time = f"${timeMs / 1000.0}%.3f seconds"
     println(s"${_ver.name} finished in $time.")
   }
 
   protected def printErrors(errors: AbstractError*) {
-    println("The following errors were found:")
-    for (e <- errors) {
-      println("  " + e.readableMessage)
+    if (config.ideMode()) {
+      val ideModeErrors = errors.map(e => new IdeModeErrorRepresentation(e))
+
+      println(s"The following errors were found in ${ideModeErrors.head.shortFileStr}:")
+
+      viper.silver.utility.Common.toFile(ideModeErrors.map(_.fileErrorStr).mkString("\n"), new File("silver.errors"))
+      ideModeErrors.foreach(e => println(s"  ${e.consoleErrorStr}"))
+    } else {
+      println("The following errors were found:")
+
+      errors.foreach(e => println(s"  ${e.readableMessage}"))
     }
   }
 
@@ -229,4 +239,46 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def mapVerificationResult(in: VerificationResult) = in
+
+  private class IdeModeErrorRepresentation(val error: AbstractError) {
+    private var fileOpt: Option[Path] = None
+    private var startOpt: Option[HasLineColumn] = None
+    private var endOpt: Option[HasLineColumn] = None
+
+    /* Get the relevant error information from the error (if available) */
+    error.pos match {
+      case abs: AbstractSourcePosition =>
+        fileOpt = Some(abs.file)
+        startOpt = Some(abs.start)
+        endOpt = abs.end
+
+      case hlc: HasLineColumn =>
+        startOpt = Some(hlc)
+
+      case _: Position => /* Position gives us nothing to work with */
+    }
+
+    lazy val messageStr = extractMessage(error)
+    lazy val longFileStr = fileOpt.map(_.toString).getOrElse("<unknown file>")
+    lazy val shortFileStr = fileOpt.map(f => FilenameUtils.getName(f.toString)).getOrElse("<unknown file>")
+    lazy val startStr = startOpt.map(toStr).getOrElse("<unknown start line>:<unknown start column>")
+    lazy val endStr = endOpt.map(toStr).getOrElse("<unknown end line>:<unknown end column>")
+
+    //lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
+    lazy val consoleErrorStr = s"$startStr: $messageStr"
+    lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
+
+    @inline
+    private def extractMessage(error: AbstractError) = {
+      /* TODO: Disassembling readableMessage is just a fragile hack because AbstractError
+       *       does not provide the "raw" error message.
+       */
+      error.readableMessage
+           .replace(s"(${error.pos.toString})", "")
+           .trim
+    }
+
+    @inline
+    private def toStr(hlc: HasLineColumn) = s"${hlc.line}:${hlc.column}"
+  }
 }

@@ -13,5 +13,15 @@ method test(flag: Bool)
   requires forall a: Int, b: Int :: true ==> trigG(a, flag) && trigF(a, b)
   ensures  acc(P())
   //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/5/)
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /carbon/issue/39/)
   ensures forall a: Int, b: Int :: true ==> trigG(a, flag) && trigF(a, b)
+{}
+
+// see http://stackoverflow.com/questions/28149863/why-is-e-matching-for-conjunctions-sensitive-to-order-case-splitting-strategy for difference
+
+method test2(flag: Bool)
+  requires acc(P())
+  requires forall a: Int, b: Int :: true ==> trigG(a, flag) && trigF(a, b)
+  ensures  acc(P())
+  ensures forall a: Int, b: Int :: true ==> (trigF(a,b) ==> trigG(a, flag)) && trigF(a, b)
 {}

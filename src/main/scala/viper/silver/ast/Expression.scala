@@ -13,6 +13,7 @@ import utility.{GenericTriggerGenerator, Expressions, Consistency}
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
 
   lazy val isPure = Expressions.isPure(this)
+  def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
 
   /**
    * Returns a representation of this expression as it looks when it is used as a proof obligation, i.e. all
@@ -62,8 +63,8 @@ case class IntLit(i: BigInt)(val pos: Position = NoPosition, val info: Info = No
   lazy val typ = Int
 }
 
-/** Integer negation. */ // (AS) What does this mean? TODO: check and refactor to unary minus
-case class Neg(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NegOp)
+/** Integer unary minus. */
+case class Minus(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NegOp)
 
 // Boolean expressions
 case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(OrOp) {
@@ -234,7 +235,7 @@ case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Posit
   /** The body of the predicate with the arguments instantiated correctly. */
   def predicateBody(program : Program) = {
     val predicate = program.findPredicate(predicateName)
-    Expressions.instantiateVariables(predicate.body, predicate.formalArgs, args)
+    predicate.body map (Expressions.instantiateVariables(_, predicate.formalArgs, args))
   }
 }
 // allows PredicateAccess to be created from a predicate directly, in which case only the name is kept
@@ -268,6 +269,15 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
   lazy val typ = exp.typ
 }
 
+// --- Other expressions
+
+case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+  require(exp.typ isSubtype variable.typ,
+          s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}")
+
+  val typ = body.typ
+}
+
 // --- Quantifications
 
 /** A common trait for quantified expressions. */
@@ -277,13 +287,42 @@ sealed trait QuantifiedExp extends Exp {
   def exp: Exp
   lazy val typ = Bool
 }
+
 object QuantifiedExp {
-  def unapply(q: QuantifiedExp) = Some(q.variables, q.exp)
+  def unapply(q: QuantifiedExp): Option[(Seq[LocalVarDecl], Exp)] = Some(q.variables, q.exp)
 }
+
+object QuantifiedPermissionSupporter {
+  object ForallRefPerm {
+    def unapply(n: Forall): Option[(LocalVarDecl, /* Quantified variable */
+      Exp, /* Condition */
+      Exp, /* Receiver e of acc(e.f, p) */
+      Field, /* Field f of acc(e.f, p) */
+      Exp, /* Permissions p of acc(e.f, p) */
+      Forall, /* AST node of the forall (for error reporting) */
+      FieldAccess)] = /* AST node for e.f (for error reporting) */
+
+      n match {
+        case forall@Forall(Seq(lvd@LocalVarDecl(_, _ /*ast.types.Ref*/)),
+        triggers,
+        Implies(condition, FieldAccessPredicate(fa@FieldAccess(rcvr, f), gain)))
+          if rcvr.exists(_ == lvd.localVar)
+            && triggers.isEmpty =>
+
+          Some((lvd, condition, rcvr, f, gain, forall, fa))
+
+        case _ => None
+      }
+    }
+
+  }
+/* Unsupported expressions, features or cases */
+
+
 
 /** Universal quantification. */
 case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp {
-
+  require(Consistency.supportedQuantifier(this), s"This form of quantified permission is not supported: { ${this.toString} } .")
   /**
    * Returns an identical forall quantification that has some automatically generated triggers
    * if necessary and possible.
@@ -292,8 +331,12 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
     if (triggers.isEmpty) {
       val gen = Expressions.generateTrigger(this)
       if (gen.size > 0) {
-        val (triggers, extraVariables) = gen(0)
-        Forall(variables ++ extraVariables, triggers, exp)(pos, info)
+        gen.find(pair => pair._2.isEmpty) match {
+          case Some((newTriggers, _)) => Forall(variables, newTriggers, exp)(pos,info)
+          case None =>
+            val (triggers, extraVariables) = gen(0) // somewhat arbitrarily take the first choice
+            Forall(variables ++ extraVariables, triggers, exp)(pos, info)
+        }
       } else {
         // no triggers found
         this

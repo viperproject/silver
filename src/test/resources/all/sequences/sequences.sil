@@ -28,3 +28,18 @@ method test3() {
 
   assert |xs[1..][..6]| == |bs|
 }
+
+method test4(s:Seq[Int], i : Int, j:Int) 
+  requires 0 <= i
+  requires i <= j
+{
+  assert s == s[..i] ++ s[i..]
+  assert s == s[..i] ++ s[i..j] ++ s[j..]
+}
+
+method test5(s:Seq[Int], i : Int, j:Int) 
+{
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/129/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/36/)
+  assert s == s[..i] ++ s[i..]
+}

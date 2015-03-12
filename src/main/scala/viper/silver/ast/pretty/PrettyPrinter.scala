@@ -92,11 +92,11 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
                   Seq(showStmt(body)), line)
           ) <> line)
       case p@Predicate(name, formalArgs, body) =>
-        "predicate" <+> name <> parens(showVars(formalArgs)) <+>
-          braces(nest(
-            line <> show(body)
-          ) <> line)
-      case p@Function(name, formalArgs, typ, pres, posts, exp) =>
+        "predicate" <+> name <> parens(showVars(formalArgs)) <+> (body match {
+          case None => empty
+          case Some(exp) => braces(nest(line <> show(exp)) <> line)
+        })
+      case p@Function(name, formalArgs, typ, pres, posts, optBody) =>
         "function" <+> name <> parens(showVars(formalArgs)) <>
           ":" <+> show(typ) <>
           nest(
@@ -104,9 +104,10 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
             showContracts("ensures", posts)
           ) <>
           line <>
-          braces(nest(
-            line <> show(exp)
-          ) <> line)
+          (optBody match {
+            case None => empty
+            case Some(exp) => braces(nest(line <> show(exp)) <> line)
+          })
       case d: Domain =>
         showDomain(d)
     }
@@ -249,6 +250,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
     case Old(exp) =>
       "old" <> parens(show(exp))
+    case Let(v, exp, body) =>
+      parens("let" <+> show(v) <+> "==" <+> show(exp) <+> "in" <+> show(body))
     case CondExp(cond, thn, els) =>
       parens(show(cond) <+> "?" <+> show(thn) <+> ":" <+> show(els))
     case Exists(v, exp) =>

@@ -12,7 +12,6 @@
 
 package viper.silver.ast.utility
 
-import scala.collection.immutable.ListSet
 import viper.silver.ast._
 
 /** Utility methods for AST nodes. */
@@ -31,18 +30,18 @@ object Nodes {
     * nodes for equality if one has to compare those two nodes for equality.
    */
   def subnodes(n: Node): Seq[Node] = {
-    val subnodesWithType = n match {
+    val subnodesWithType: Seq[Node] = n match {
       case Trigger(exps) => exps
       case Program(domains, fields, functions, predicates, methods) =>
         domains ++ fields ++ functions ++ predicates ++ methods
       case m: Member =>
         m match {
           case Field(name, typ) => Nil
-          case Function(name, formalArgs, typ, pres, posts, exp) =>
-            formalArgs ++ pres ++ posts ++ Seq(exp)
+          case Function(name, formalArgs, typ, pres, posts, body) =>
+            formalArgs ++ pres ++ posts ++ body
           case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ locals ++ Seq(body)
-          case Predicate(name, formalArg, body) => Seq(body)
+          case Predicate(name, formalArg, body) => body.toSeq
           case Domain(name, functions, axioms, typVars) =>
             functions ++ axioms ++ typVars
         }
@@ -76,12 +75,13 @@ object Nodes {
         // might also be necessary to update the PrettyPrinter.toParenDoc method.
         e match {
           case _: Literal => Nil
-          case AbstractLocalVar(n) => Nil
+          case _: AbstractLocalVar => Nil
           case FieldAccess(rcv, field) => Seq(rcv)
           case PredicateAccess(params, _) => params
           case Unfolding(acc, exp) => Seq(acc, exp)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
+          case Let(v, exp, body) => Seq(v, exp, body)
           case Exists(v, exp) => v ++ Seq(exp)
           case Forall(v, triggers, exp) => v ++ triggers ++ Seq(exp)
           case InhaleExhaleExp(in, ex) => Seq(in, ex)
@@ -149,10 +149,17 @@ object Nodes {
   def children(node: Node): (Seq[Node], Seq[Any]) = {
     /* This match is only exhaustive if all concrete instances of `Node` extend
      * `Product`, which, for example, is the case for case classes.
+     *
+     * Elements of the productIterator that are `Traversable`s but not `Node`s
+     * themselves are effectively flattened (cannot call `t.flatten` directly
+     * because of a missing implicit).
      */
-    val relevantChildren = node match {
-      case p: Product => p.productIterator.toSeq
+    val relevantChildren = (node match {
+      case p: Product => p.productIterator.flatMap {
+        case t: Traversable[_] if !t.isInstanceOf[Node] => t
+        case other => other :: Nil
     }
+    }).toSeq
 
     relevantChildren.partition(_.isInstanceOf[Node])
                     .asInstanceOf[(Seq[Node], Seq[Any])]
