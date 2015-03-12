@@ -166,10 +166,9 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
   require(Consistency.validUserDefinedIdentifier(name))
 
   /**
-   * Returns a local variable of the same name and type as this declaration, without position or
-   * information.
+   * Returns a local variable with equivalent information
    */
-  lazy val localVar = LocalVar(name)(typ)
+  lazy val localVar = LocalVar(name)(typ, pos, info)
 }
 
 
