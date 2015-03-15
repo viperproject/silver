@@ -61,7 +61,7 @@ class SilFrontendConfig(args: Seq[String], private var projectName: String) exte
     hidden = true
   )
 
-  val sublimeErrorMode = opt[Boolean]("sublimeErrorMode",
+  val ideMode = opt[Boolean]("ideMode",
     descr = (  "Report errors in the format '<file>,<line>:<col>: <message>', and write"
              + "errors in the format '<file>,<line>:<col>,<line>:<col>,<message>' to"
              + "a file silver.errors."), /* TODO: Make file name configurable */

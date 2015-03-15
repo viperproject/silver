@@ -1,5 +1,3 @@
-// :: IgnoreFile(/silicon/issue/128/)
-
 /* Provided by Stefan Blom of U Twente. */
 
 field src: Seq[Ref]

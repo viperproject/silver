@@ -16,7 +16,6 @@ method foo(this: Ref)
   requires getField(this) == 5
 {
   unfold acc(inv(this.col))
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/122/)
   assert this.fld == 5
 }
 
@@ -41,6 +40,5 @@ method test01(xs: Set[Ref], y: Ref)
   requires getField01(xs, y) == 5
 {
   unfold acc(inv(xs))
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/122/)
   assert y.fld == 5
 }

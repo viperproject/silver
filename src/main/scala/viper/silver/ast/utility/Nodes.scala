@@ -30,18 +30,18 @@ object Nodes {
     * nodes for equality if one has to compare those two nodes for equality.
    */
   def subnodes(n: Node): Seq[Node] = {
-    val subnodesWithType = n match {
+    val subnodesWithType: Seq[Node] = n match {
       case Trigger(exps) => exps
       case Program(domains, fields, functions, predicates, methods) =>
         domains ++ fields ++ functions ++ predicates ++ methods
       case m: Member =>
         m match {
           case Field(name, typ) => Nil
-          case Function(name, formalArgs, typ, pres, posts, exp) =>
-            formalArgs ++ pres ++ posts ++ Seq(exp)
+          case Function(name, formalArgs, typ, pres, posts, body) =>
+            formalArgs ++ pres ++ posts ++ body
           case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ locals ++ Seq(body)
-          case Predicate(name, formalArg, body) => Seq(body)
+          case Predicate(name, formalArg, body) => body.toSeq
           case Domain(name, functions, axioms, typVars) =>
             functions ++ axioms ++ typVars
         }

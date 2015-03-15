@@ -82,7 +82,7 @@ case class TypeChecker(names: NameAnalyser) {
       f.pres map (check(_, Bool))
       resultAllowed=true
       f.posts map (check(_, Bool))
-      check(f.exp, f.typ) //result in the function body gets the error message somewhere else
+      f.body.map(check(_, f.typ)) //result in the function body gets the error message somewhere else
       resultAllowed=false
       curFunction=null
     }
@@ -92,7 +92,7 @@ case class TypeChecker(names: NameAnalyser) {
   def check(p: PPredicate) {
     checkMember(p) {
       p.formalArgs map (a => check(a.typ))
-      check(p.body, Bool)
+      p.body.map(check(_, Bool))
     }
   }
 
@@ -125,8 +125,10 @@ case class TypeChecker(names: NameAnalyser) {
       case PSeqn(ss) =>
         ss map check
       case PFold(e) =>
+        acceptNonAbstactPredicateAccess(e, "abstract predicates cannot be folded")
         check(e, Bool)
       case PUnfold(e) =>
+        acceptNonAbstactPredicateAccess(e, "abstract predicates cannot be unfolded")
         check(e, Bool)
       case PPackageWand(e) =>
         checkMagicWand(e, allowWandRefs = false)
@@ -223,6 +225,17 @@ case class TypeChecker(names: NameAnalyser) {
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
       case _: PSkip =>
+    }
+  }
+
+  def acceptNonAbstactPredicateAccess(exp: PExp, messageIfAbstractPredicate: String) {
+    exp match {
+      case PAccPred(PPredicateAccess(_, idnuse), _) =>
+        acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
+          val predicate = _predicate.asInstanceOf[PPredicate]
+          if (predicate.body.isEmpty) message(idnuse, messageIfAbstractPredicate)
+        }
+      case _ => message(exp, "expected predicate access")
     }
   }
 
@@ -692,6 +705,7 @@ case class TypeChecker(names: NameAnalyser) {
       case e: PUnFoldingExp =>
         check(e.acc.perm, Perm)
         check(e.acc.loc, Pred)
+        acceptNonAbstactPredicateAccess(e.acc, "abstract predicates cannot be (un)folded")
         check(e.exp, expected)
         setType(e.exp.typ)
       case PPackaging(wand, in) =>

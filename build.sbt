@@ -17,6 +17,8 @@ libraryDependencies += "org.jgrapht" % "jgrapht-core" % "0.9.0"
 
 libraryDependencies += "org.jgrapht" % "jgrapht-ext" % "0.9.0"
 
+libraryDependencies += "commons-io" % "commons-io" % "2.4"
+
 scalacOptions += "-deprecation"
 
 scalacOptions += "-feature"

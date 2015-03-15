@@ -203,7 +203,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     idndef ~ (":" ~> typ) ^^ PFormalArgDecl
 
   lazy val functionDecl =
-    functionSignature ~ rep(pre) ~ rep(post) ~ ("{" ~> (exp <~ "}")) ^^ PFunction
+    functionSignature ~ rep(pre) ~ rep(post) ~ opt("{" ~> (exp <~ "}")) ^^ PFunction
   lazy val functionSignature =
     ("function" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ (":" ~> typ)
 
@@ -215,7 +215,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   }
 
   lazy val predicateDecl =
-    ("predicate" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ ("{" ~> (exp <~ "}")) ^^ PPredicate
+    ("predicate" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ opt("{" ~> (exp <~ "}")) ^^ PPredicate
 
   lazy val domainDecl =
     ("domain" ~> idndef) ~

@@ -1,3 +1,5 @@
+//:: IgnoreFile(/Silicon/issue/35/)
+
 field f:Int
 
 method m(xs: Seq[Ref], a: Int, b: Int)
