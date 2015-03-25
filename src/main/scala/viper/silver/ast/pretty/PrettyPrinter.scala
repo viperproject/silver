@@ -67,7 +67,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
 
   def showDomainFunc(f: DomainFunc) = {
     val DomainFunc(name, formalArgs, typ, _) = f
-    "function" <+> name <> parens(showVars(formalArgs)) <> ":" <+> show(typ)
+    "function" <+> name <> showAttributes(f.getAttributes) <> parens(showVars(formalArgs)) <> ":" <+> show(typ)
   }
 
   /** Show a program member. */
@@ -76,7 +76,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case f@Field(name, typ) =>
         "field" <+> name <> ":" <+> show(typ)
       case m@Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
-        "method" <+> name <> parens(showVars(formalArgs)) <> {
+        "method" <+> name <> showAttributes(m.getAttributes) <> parens(showVars(formalArgs)) <> {
           if (formalReturns.isEmpty) empty
           else empty <+> "returns" <+> parens(showVars(formalReturns))
         } <>
@@ -97,7 +97,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           case Some(exp) => braces(nest(line <> show(exp)) <> line)
         })
       case p@Function(name, formalArgs, typ, pres, posts, optBody) =>
-        "function" <+> name <> parens(showVars(formalArgs)) <>
+        "function" <+> name <> showAttributes(p.getAttributes)  <> parens(showVars(formalArgs)) <>
           ":" <+> show(typ) <>
           nest(
             showContracts("requires", pres) <>
@@ -215,6 +215,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         "goto" <+> target
       case null => uninitialized
     }
+    showAttributes(stmt.getAttributes)
     showComment(stmt) <> stmtDoc
   }
 
@@ -223,6 +224,15 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case Seqn(Seq(s)) => showElse(s)
     case If(cond1, thn1, els1) => empty <+> "elsif" <+> parens(show(cond1)) <+> showBlock(thn1) <> showElse(els1)
     case _ => empty <+> "else" <+> showBlock(els)
+  }
+
+  def showAttributes(l : List[Attribute]) = l match {
+    case Nil => "" <> ""
+    case xs => "{" <> ssep(xs map showAttribute, comma <> " ") <> "}"
+  }
+
+  def showAttribute(a : Attribute) = {
+    colon <> a.`type` <+> a.exp.toString()
   }
 
   /** Outputs the comments attached to `n` if there is at least one. */

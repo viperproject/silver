@@ -107,6 +107,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "true", "false",
     // null
     "null",
+    // statement attribute types
+    "verified-under",
     // declaration keywords
     "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define",
     // specifications
@@ -179,12 +181,16 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   lazy val methodDecl =
     methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
-      case name ~ args ~ rets ~ pres ~ posts ~ body =>
-        PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
+      case name ~ attr~ args ~ rets ~ pres ~ posts ~ body => {
+        val pm = PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
+        if (attr.isDefined) pm.setAttributes(attr.get)
+        pm
+      }
     }
 
   lazy val methodSignature =
-    ("method" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ opt("returns" ~> ("(" ~> formalArgList <~ ")"))
+    ("method" ~> idndef) ~ opt(methattribList) ~ ("(" ~> formalArgList <~ ")") ~ opt("returns" ~> ("(" ~> formalArgList <~ ")"))
+
   lazy val pre =
     "requires" ~> exp <~ opt(";")
   lazy val post =
@@ -198,14 +204,25 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     idndef ~ (":" ~> typ) ^^ PFormalArgDecl
 
   lazy val functionDecl =
-    functionSignature ~ rep(pre) ~ rep(post) ~ opt("{" ~> (exp <~ "}")) ^^ PFunction
+    functionSignature ~ rep(pre) ~ rep(post) ~ opt("{" ~> (exp <~ "}")) ^^ {
+      case name ~ attr ~ args ~ typ ~pre ~ post ~ exp => {
+        val pf = PFunction(name, args, typ, pre, post, exp)
+        if (attr.isDefined) pf.setAttributes(attr.get)
+        pf
+      }
+    }
+
   lazy val functionSignature =
-    ("function" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ (":" ~> typ)
+    ("function" ~> idndef) ~ opt(funattribList)~ ("(" ~> formalArgList <~ ")") ~ (":" ~> typ)
 
   lazy val domainFunctionDecl = opt("unique") ~ (functionSignature <~ opt(";")) ^^ {
     case unique ~ fdecl =>
       fdecl match {
-        case name ~ formalArgs ~ t => PDomainFunction(name, formalArgs, t, unique.isDefined)
+        case name ~ attr ~ formalArgs ~ t => {
+          val pdf = PDomainFunction(name, formalArgs, t, unique.isDefined)
+          if (attr.isDefined) pdf.setAttributes(attr.get)
+          pdf
+        }
       }
   }
 
@@ -235,10 +252,34 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "{" ~> (stmts <~ "}")
   lazy val stmts =
     rep(stmt <~ opt(";"))
+
+  lazy val attribType =
+    "verified-under" |
+      ident
+
+  lazy val attrib =
+    ":" ~> attribType ~ exp ^^ PAttribute
+
+  lazy val stmtattribList =
+    "{" ~> repsep(attrib, ",") <~ "}"
+
+  lazy val methattribList =
+    "{" ~> repsep(attrib, ",") <~ "}"
+
+  lazy val funattribList =
+    "{" ~> repsep(attrib, ",") <~ "}"
+
   lazy val stmt =
+    (
     fieldassign | localassign | fold | unfold | exhale | assert |
       inhale | ifthnels | whle | varDecl |defineDecl | newstmt | fresh | constrainingBlock |
       methodCall | goto | lbl
+      ) ~ opt(stmtattribList) ^^ {
+      case basicStmt ~ attr => {
+        if (attr.isDefined) basicStmt.setAttributes(attr.get)
+        basicStmt
+      }
+    }
 
   lazy val fold =
     "fold" ~> predicateAccessPred ^^ PFold

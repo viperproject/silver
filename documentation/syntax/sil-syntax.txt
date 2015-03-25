@@ -9,6 +9,13 @@ sil-program ::=
 		method
 	)*
 
+attribute ::=
+    ":" attributeType exp
+
+attributeType ::==
+    "verified-under" |
+    ident
+
 domain ::=
 	"domain" domain-name "{"
 		domain-function*
@@ -19,8 +26,11 @@ domain-name ::=
 	ident |
 	ident "[" ident^,* "]"  //e.g. Seq[T]
 
+fun-attributes ::=
+    "{" attribute^,* "}"
+
 domain-function ::=
-	["unique"] "function" ident function-signature
+	["unique"] "function" ident [fun-attributes] function-signature
 
 function-signature ::=
 	 formal-args ":" type
@@ -32,7 +42,7 @@ field ::=
 	"field" ident ":" type
 
 function ::=
-	"function" ident function-signature
+	"function" ident [fun-attributes] function-signature
 		precondition*
 		postcondition*
 	"{" exp "}"
@@ -49,8 +59,11 @@ invariant ::=
 predicate ::=
 	"predicate" ident formal-args "{" exp "}"
 
+meth-attributes ::=
+    "{" attribute^,* "}"
+
 method ::=
-	"method" ident formal-args [formal-returns]
+	"method" ident [meth-attributes] formal-args [formal-returns]
 			precondition*  postcondition*
 		block
 
@@ -63,36 +76,41 @@ formal-arg ::=
 formal-returns ::=
 	"returns" formal-args
 
-// Statements		
+// Statements
+stmt-attributes ::=
+    "{" attribute^,* "}"
+
 block ::=
 	"{" stmt "}"
 
 stmt ::=
-	"var" ident  ":" type [":=" exp] // local variable
-	                                 // declaration with an
-																	 // optional initial value
-	ident         ":=" exp | // local variable assignment
-	field-access  ":=" exp | // field assignment
-	ident         ":=" "new(*)" | // object creation
-                                // (all fields)
-	ident         ":=" "new(" ident^,* ")" | // obj. creation 
-                                    // (specified fields)
-	
-	"assert" exp |
-	"assume" exp |
-	"inhale" exp |
-	"exhale" exp |
-	"fold"   acc-exp |
-	"unfold" acc-exp |
-	
-	"goto" ident    |           // goto statement
-	ident ":"       |           // a goto label
-	
-	if-statement    |
-	while-statement |
-	call-statement  |	
-	fresh-block
-		
+    (
+    	"var" ident  ":" type [":=" exp] // local variable
+    	                                 // declaration with an
+    																	 // optional initial value
+    	ident         ":=" exp | // local variable assignment
+    	field-access  ":=" exp | // field assignment
+    	ident         ":=" "new(*)" | // object creation
+                                    // (all fields)
+    	ident         ":=" "new(" ident^,* ")" | // obj. creation
+                                        // (specified fields)
+
+    	"assert" exp |
+    	"assume" exp |
+    	"inhale" exp |
+    	"exhale" exp |
+    	"fold"   acc-exp |
+    	"unfold" acc-exp |
+
+    	"goto" ident    |           // goto statement
+    	ident ":"       |           // a goto label
+
+    	if-statement    |
+    	while-statement |
+    	call-statement  |
+	    fresh-block
+	) [stmt-attributes]
+
 if-statement ::=
 	"if" "(" exp ")"
 		statement-block
@@ -102,7 +120,7 @@ if-statement ::=
 	["else"
 		statement-block
 	]             // optional else branch
-	
+
 while-statement ::=
 	"while" "(" exp ")"
 			invariant*
@@ -110,11 +128,11 @@ while-statement ::=
 
 call-statement ::= // method call [with return target]
 	[ident^,* :=] ident "(" exp^,* ")"
-	
-fresh-statement ::=	
+
+fresh-statement ::=
 	"fresh" ident^,*
-	
-constraining-block ::=	
+
+constraining-block ::=
 	"constraining" "(" ident^,* ")"
 		block
 

@@ -71,6 +71,7 @@ object TypeHelper {
   val Perm = PPrimitiv("Perm")
   val Ref = PPrimitiv("Ref")
   val Pred = PPredicateType()
+  val Pexhl = PExhalableType()
 }
 
 // Identifiers (uses and definitions)
@@ -254,9 +255,17 @@ case class PEmptyMultiset(t : PType) extends PExp
   typ = PMultisetType(t)
 }
 
+sealed trait PAttributing extends PNode{
+  private var attributes : List[PAttribute] = Nil
+  
+  def setAttributes = (l : List[PAttribute]) => attributes = l
+  def addAttribute = (a: PAttribute) => attributes = a :: attributes
+  def getAttributes : List[PAttribute] = attributes
+}
+
 case class PExplicitMultiset(elems: Seq[PExp]) extends PExp
 // Statements
-sealed trait PStmt extends PNode {
+sealed trait PStmt extends PNode with PAttributing {
   /**
    * Returns a list of all actual statements contained in this statement.  That
    * is, all statements except `Seqn`, including statements in the body of loops, etc.
@@ -291,6 +300,8 @@ case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 
 case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
+
+case class PAttribute(`type`: String, e: PExp) extends PStmt
 
 sealed trait PScope extends PNode {
   val scopeId = PScope.uniqueId()
@@ -332,10 +343,10 @@ sealed trait PMember extends PDeclaration with PScope {
 }
 
 case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
-case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
+case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration with PAttributing
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PMember with PGlobalDeclaration with PTypedDeclaration
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with PGlobalDeclaration with PTypedDeclaration
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PMember with PGlobalDeclaration with PTypedDeclaration with PAttributing
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with PGlobalDeclaration with PTypedDeclaration with PAttributing
 case class PAxiom(idndef: PIdnDef, exp: PExp) extends PScope with PGlobalDeclaration //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
 case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
@@ -445,6 +456,8 @@ object Nodes {
       case PTypeVarDecl(name) => Seq(name)
       case PDefine(idndef, optArgs, exp) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(exp)
       case _: PSkip => Nil
+
+      case PAttribute(_,exp) => Seq(exp)
     }
   }
 }

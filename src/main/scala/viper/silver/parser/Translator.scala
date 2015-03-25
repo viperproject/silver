@@ -48,7 +48,7 @@ case class Translator(program: PProgram) {
     }
   }
 
-  private def translate(m: PMethod): Method = m match {
+  private def translate(pm: PMethod): Method = pm match {
     case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
       val m = findMethod(name)
       val plocals = Visitor.shallowCollect(body.childStmts, Nodes.subnodes)({
@@ -62,6 +62,7 @@ case class Translator(program: PProgram) {
       m.pres = pres map exp
       m.posts = posts map exp
       m.body = stmt(body)
+      m.setAttributes(translate(pm.getAttributes))
       m
   }
 
@@ -78,12 +79,13 @@ case class Translator(program: PProgram) {
       DomainAxiom(name.name, exp(e))(a)
   }
 
-  private def translate(f: PFunction) = f match {
+  private def translate(pf: PFunction):Function = pf match {
     case PFunction(name, formalArgs, typ, pres, posts, body) =>
       val f = findFunction(name)
       f.pres = pres map exp
       f.posts = posts map exp
       f.body = body map exp
+      f.setAttributes(translate(pf.getAttributes))
       f
   }
 
@@ -96,6 +98,15 @@ case class Translator(program: PProgram) {
 
   private def translate(f: PField) = findField(f.idndef)
 
+  private def translate(l:List[PAttribute]) :List[Attribute] = l map ((a:PAttribute) => translate(a))
+
+  private def translate(a:PAttribute) = a match{
+    case null => null
+    case PAttribute(t, null) => Attribute(t, null)
+    case PAttribute(t, e) => Attribute(t, exp(e))
+
+  }
+
   private val members = collection.mutable.HashMap[String, Node]()
   /**
    * Translate the signature of a member, so that it can be looked up later.
@@ -106,16 +117,22 @@ case class Translator(program: PProgram) {
     val t = p match {
       case PField(_, typ) =>
         Field(name, ttyp(typ))(pos)
-      case PFunction(_, formalArgs, typ, _, _, _) =>
-        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
-      case PDomainFunction(_, args, typ, unique) =>
-        DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos)
+      case pf@PFunction(_, formalArgs, typ, _, _, _) =>
+        val f = Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
+        f.setAttributes(translate(pf.getAttributes))
+        f
+      case pdf@PDomainFunction(_, args, typ, unique) =>
+        val df = DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos)
+        df.setAttributes(translate(pdf.getAttributes))
+        df
       case PDomain(_, typVars, funcs, axioms) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)))(pos)
       case PPredicate(_, formalArgs, _) =>
         Predicate(name, formalArgs map liftVarDecl, null)(pos)
-      case PMethod(_, formalArgs, formalReturns, _, _, _) =>
-        Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null, null)(pos)
+      case pm@PMethod(_, formalArgs, formalReturns, _, _, _) =>
+        val m = Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null, null)(pos)
+        m.setAttributes(translate(pm.getAttributes))
+        m
     }
     members.put(p.idndef.name, t)
   }
@@ -140,55 +157,91 @@ case class Translator(program: PProgram) {
         call.setStart(s.start)
         stmt(call)
       case PVarAssign(idnuse, rhs) =>
-        LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos), exp(rhs))(pos)
+        val ret = LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos), exp(rhs))(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PFieldAssign(field, rhs) =>
-        FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos)
+        val ret = FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PLocalVarDecl(idndef, t, Some(init)) =>
-        LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos), exp(init))(pos)
+        val ret = LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos), exp(init))(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PLocalVarDecl(_, _, None) =>
         // there are no declarations in the SIL AST; rather they are part of the method signature
         Statements.EmptyStmt
       case PSeqn(ss) =>
-        Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt)(pos)
+        val ret = Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt)(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PFold(e) =>
-        Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
+        val ret = Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PUnfold(e) =>
-        Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
+        val ret = Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PInhale(e) =>
-        Inhale(exp(e))(pos)
+        val ret = Inhale(exp(e))(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PExhale(e) =>
-        Exhale(exp(e))(pos)
+        val ret = Exhale(exp(e))(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PAssert(e) =>
-        Assert(exp(e))(pos)
+        val ret = Assert(exp(e))(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PNewStmt(target, fieldsOpt) =>
         val fields = fieldsOpt match {
           case None => program.fields map (translate(_))
-            /* Slightly redundant since we already translated the fields when we
+          /* Slightly redundant since we already translated the fields when we
              * translated the PProgram at the beginning of this class.
              */
           case Some(pfields) => pfields map findField
         }
-        NewStmt(exp(target).asInstanceOf[LocalVar], fields)(pos)
+        val ret = NewStmt(exp(target).asInstanceOf[LocalVar], fields)(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PMethodCall(targets, method, args) =>
         val ts = (targets map exp).asInstanceOf[Seq[LocalVar]]
-        MethodCall(findMethod(method), args map exp, ts)(pos)
+        val ret = MethodCall(findMethod(method), args map exp, ts)(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PLabel(name) =>
-        Label(name.name)(pos)
+        val ret = Label(name.name)(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PGoto(label) =>
-        Goto(label.name)(pos)
+        val ret = Goto(label.name)(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PIf(cond, thn, els) =>
-        If(exp(cond), stmt(thn), stmt(els))(pos)
-      case PFresh(vars) => Fresh(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)))(pos)
+        val ret = If(exp(cond), stmt(thn), stmt(els))(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
+      case PFresh(vars) =>
+        val ret = Fresh(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)))(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PConstraining(vars, ss) =>
-        Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss))(pos)
+        val ret = Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss))(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case PWhile(cond, invs, body) =>
-        val plocals = body.childStmts collect { // Note: this won't collect declarations from nested loops
+        val plocals = body.childStmts collect {
+          // Note: this won't collect declarations from nested loops
           case l: PLocalVarDecl => l
         }
         val locals = plocals map {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }
-        While(exp(cond), invs map exp, locals, stmt(body))(pos)
+        val ret = While(exp(cond), invs map exp, locals, stmt(body))(pos)
+        ret.setAttributes(translate(s.getAttributes))
+        ret
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }

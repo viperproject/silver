@@ -66,6 +66,16 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
 // --- Program members
 
+case class Attribute(`type`:String, exp:Exp) extends Node
+
+trait Attributing extends Node{
+  private var attributes : List[Attribute] = Nil
+
+  def setAttributes = (l : List[Attribute]) => attributes = l
+  def addAttribute = (a: Attribute) => attributes = a :: attributes
+  def getAttributes : List[Attribute] = attributes
+}
+
 /** A field declaration. */
 case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location with Typed {
   require(typ.isConcrete, "Type of field " + name + ":" + typ + " must be concrete!")
@@ -199,7 +209,7 @@ case class DomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, v
 
 /** Domain function which is not a binary or unary operator. */
 case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
-                     (val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFunc with DomainMember {
+                     (val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFunc with DomainMember with Attributing {
   require(!unique || formalArgs.isEmpty, "Only constants, i.e. nullary domain functions can be unique.")
 }
 
@@ -207,7 +217,7 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
 // --- Common functionality
 
 /** Common ancestor for members of a program. */
-sealed trait Member extends Node with Positioned with Infoed {
+sealed trait Member extends Node with Positioned with Infoed with Attributing {
   require(Consistency.validUserDefinedIdentifier(name))
   def name: String
 

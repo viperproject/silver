@@ -17,7 +17,7 @@ import viper.silver.ast.utility.{Expressions, Consistency, Statements, CfgGenera
 // --- Statements
 
 /** A common trait for statements. */
-sealed trait Stmt extends Node with Infoed with Positioned {
+sealed trait Stmt extends Node with Infoed with Positioned with Attributing {
   require(Consistency.noResult(this), "Result variables are only allowed in postconditions of functions.")
 
   /**
