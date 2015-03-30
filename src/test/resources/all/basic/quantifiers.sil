@@ -38,6 +38,16 @@ method fail20ForallCellGet10(c: Ref) returns (d: Ref)
 	ensures forall i2: Int :: (0 <= i2 && i2 < Cell_get(c)) ==> (Cell_get(c) <= i2)
 {}
 
+method noQuantifiedPermissionsPre(s: Set[Ref])
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  requires forall r:Ref :: (r in s && r != null ==> r.Cell_x > 0)
+  {}
+
+method noQuantifiedPermissionsPost(s: Set[Ref])
+  //:: ExpectedOutput(application.precondition:insufficient.permission)
+  ensures forall r:Ref :: (r in s && r != null ==> Cell_get(r) >= Cell_get(r))
+  {}
+
 method succeedsRange10(a: Int)
 	requires a > 1
 {
