@@ -71,7 +71,6 @@ object TypeHelper {
   val Perm = PPrimitiv("Perm")
   val Ref = PPrimitiv("Ref")
   val Pred = PPredicateType()
-  val Pexhl = PExhalableType()
 }
 
 // Identifiers (uses and definitions)

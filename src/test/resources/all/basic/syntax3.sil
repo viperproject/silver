@@ -1,0 +1,143 @@
+//basically a copy of syntax.sil but with attributes thrown in to verify acceptance
+
+field g: Int
+
+domain Bag[T]
+{
+/*  function singleton(t:T) : Bag[T]
+
+    function size{:testing true}(b:Bag[T]) : Int
+    function flatten{:test1 true,:test2 false}(b:Bag[Bag[T]]):Bag[T]
+
+    axiom singletonSize { forall t:T :: size(singleton(t))==1 }
+  */
+    function df{:whatever 22}(x:Int) : Int
+    function dR{:moreAttributes 12*91}() : Ref
+//    axiom ax {df(dR().g)==0}
+}
+
+function f{:entity 389900291734, :dependency 87057340134, :testing true && !false, :valuable false && false}(x:Int) : Int
+{
+    x
+}
+
+method m(this : Ref)
+    requires acc(this.g)
+{
+    var s : Seq[Int] {:comment 000100}
+    s := Seq[Int]() {:comment  001000}
+    var y : Int
+    var b : Bag[Int]
+    y := f(this.g) {:callee f}
+    y := df(this.g) {:ref y}
+}
+
+  //:: ExpectedOutput(typechecker.error)
+method m54(this:Ref)  returns (this:Ref)
+{    
+    this := this {:this this}
+}
+
+method m55(this:Ref)  returns (res:Ref)
+{
+    res := this
+}
+
+/*
+
+method m2()
+{
+    assert size(singleton(singleton(1)))==1;{:verified-under false}
+	assert size(singleton(singleton(1)))==1{:verified-under false};
+    assert size(singleton(singleton(1)))==1 {:verified-under false} //with comments
+}
+
+
+domain D3[T]
+{
+    function fD3{:no-error true}(t:T) : D3[T]
+    function iD3(d3t : D3[T]) : Int
+
+    axiom ax { forall t : T :: iD3(fD4(fD3(t)))==0 }
+}
+domain D4[S]
+{
+    function fD4(t:S) : D3[S]
+}
+  
+
+  
+domain D {
+//    function f(x:D): D //TODO
+    function f0(x:D): D //TODO
+    function f1(x:D): Int
+    function f2(x:D): Int
+
+    function makeD() : D
+}
+
+domain D1[T] {
+    function makeD1() : D1[T]
+    function makeD1b(t:T) : D1[T]
+
+    function l(t:T) : D1[T]
+    function lll(t:T) : D1[D1[D]]
+}
+domain D2[T,S] {
+    function makeD2(t:T,s:S) : D2[S,T]
+
+    function f3(x:D1[D1[D]]) : D2[D1[D],Int]
+
+    function l0(t:D1[T]) : D1[T]
+    function l1(t:D1[D2[D,D]]) : D1[T]
+//    function l1(t:D1[D1[T]]) : D1[S]
+//    axiom injectiveness1 { forall x : D,y : Int  :: ( x!=x ==> f1(y)>0)} //f(x)==f(y) ) }
+    function g(x:D1[D1[D],D]) : D2[D1[D]]
+}
+
+method m(x:D)
+{
+    var y : Int
+//    y := x
+
+    var s : Set[Int]; {:something 1234567890}
+    var sD : Set[D];{:something 1234567890}
+
+    var b : Bool;{:something 1234567890}
+
+    var lv : D1[Int];{:something 1234567890}
+
+    var lD3 : D3[Int];{:something 1234567890}
+
+    var b1 : Bag[Int];{:something 1234567890}
+
+    var d1 : D1[Int];{:something 1234567890}
+
+    assert size(singleton(singleton(1)))==1; {:something 1234567890}
+//    var lD4 : D4[Int];
+
+    s := Set[Int](); {:something 1234567890}
+//    s := Set[Int]();
+    s := Set(5);{:something 1234567890}
+//    s := Set[Int](5);
+  //  s := Set(x);
+//    b := Set(x)==Set(y);
+    sD := Set(x);{:something 1234567890}
+//    s := Set[Int](x);
+//    s := Multiset(5);
+//    s := Seq(5);
+    var setInt : Set[Int];{:something 1234567890}
+    var seqInt : Seq[Int];{:something 1234567890}
+    var multisetInt : Multiset[Int];{:something 1234567890}
+
+//    setInt := Set();
+    setInt := Set[Int]();{:something 1234567890}
+    setInt := Set(1);{:something 1234567890}
+//    seqInt := Seq();
+    seqInt := Seq[Int]();{:something 1234567890}
+    seqInt := Seq(1);{:something 1234567890}
+//    multisetInt := Multiset();{:something 1234567890}
+    multisetInt := Multiset[Int]();{:something 1234567890}
+    multisetInt := Multiset(1);{:something 1234567890}
+}
+*/
