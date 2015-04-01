@@ -114,6 +114,15 @@ sealed trait Block {
    */
   def copyShallow(): Block =
     ControlFlowGraph.shallowCopy(this)
+
+  /**
+   * For keeping track of the AST's attributes, in particular when converting to/from a CFG.
+   */
+  private var attributes : List[Attribute] = Nil
+  def setAttributes = (l : List[Attribute]) => attributes = l
+  def addAttribute = (a: Attribute) => attributes = a :: attributes
+  def getAttributes : List[Attribute] = attributes
+
 }
 
 object Block {
