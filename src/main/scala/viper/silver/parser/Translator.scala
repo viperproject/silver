@@ -103,8 +103,11 @@ case class Translator(program: PProgram) {
   private def translate(a:PAttribute) = a match{
     case null => null
     case PAttribute(t, null) => Attribute(t, null)
-    case PAttribute(t, e) => Attribute(t, exp(e))
-
+    case PAttribute(t, pe) =>
+      val e = exp(pe)
+      if(t.equals("partially-verified") && !e.isPure)
+        Messaging.message(pe, "expected pure but is not.")
+      Attribute(t, e)
   }
 
   private val members = collection.mutable.HashMap[String, Node]()

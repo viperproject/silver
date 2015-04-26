@@ -65,6 +65,7 @@ case class TypeChecker(names: NameAnalyser) {
   def check(m: PMethod) {
     checkMember(m) {
       (m.formalArgs ++ m.formalReturns) map (a => check(a.typ))
+      m.getAttributes map (a => check(a))
       m.pres map (check(_, Bool))
       m.posts map (check(_, Bool))
       check(m.body)
@@ -76,6 +77,7 @@ case class TypeChecker(names: NameAnalyser) {
       assert(curFunction==null)
       curFunction=f
       check(f.typ)
+      f.getAttributes map (a => check(a))
       f.formalArgs map (a => check(a.typ))
       check(f.typ)
       f.pres map (check(_, Bool))
@@ -120,6 +122,9 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(stmt: PStmt) {
+
+    stmt.getAttributes map (a => check(a))
+
     stmt match {
       case PSeqn(ss) =>
         ss map check
@@ -219,6 +224,15 @@ case class TypeChecker(names: NameAnalyser) {
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
       case _: PSkip =>
+      case PAttribute(t,e) => t match {
+        case "partially-verified" =>
+          check(e, Bool)
+        case "entity" =>
+          check(e,Int)
+        case "dependency" =>
+          check(e,Int)
+        case _ =>
+      }
     }
   }
 
