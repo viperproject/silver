@@ -10,11 +10,14 @@ sil-program ::=
 	)*
 
 attribute ::=
-    ":" attributeType exp
+    "@" attributeKey "(" attributeValue^,* ")"
 
-attributeType ::==
-    "verified-under" |
+attributeKey ::==
+    "verified-if" | "entity" | "dependency" |
     ident
+
+attributeValue ::==
+    exp | ident
 
 domain ::=
 	"domain" domain-name "{"
@@ -27,10 +30,10 @@ domain-name ::=
 	ident "[" ident^,* "]"  //e.g. Seq[T]
 
 fun-attributes ::=
-    "{" attribute^,* "}"
+    attribute*
 
 domain-function ::=
-	["unique"] "function" ident [fun-attributes] function-signature
+	["unique"] [fun-attributes] "function" ident  function-signature
 
 function-signature ::=
 	 formal-args ":" type
@@ -42,7 +45,7 @@ field ::=
 	"field" ident ":" type
 
 function ::=
-	"function" ident [fun-attributes] function-signature
+	[fun-attributes] "function" ident function-signature
 		precondition*
 		postcondition*
 	"{" exp "}"
@@ -60,10 +63,10 @@ predicate ::=
 	"predicate" ident formal-args "{" exp "}"
 
 meth-attributes ::=
-    "{" attribute^,* "}"
+    attribute*
 
 method ::=
-	"method" ident [meth-attributes] formal-args [formal-returns]
+	[meth-attributes] "method" ident formal-args [formal-returns]
 			precondition*  postcondition*
 		block
 
@@ -78,7 +81,7 @@ formal-returns ::=
 
 // Statements
 stmt-attributes ::=
-    "{" attribute^,* "}"
+    attribute*
 
 block ::=
 	"{" stmt "}"
