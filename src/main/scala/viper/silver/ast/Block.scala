@@ -15,6 +15,8 @@ package viper.silver.ast
 import utility.ControlFlowGraph
 import utility.AstGenerator
 
+import scala.collection.immutable.HashMap
+
 /** A common trait for basic blocks. */
 sealed trait Block {
   def succs: Seq[Edge]
@@ -118,10 +120,13 @@ sealed trait Block {
   /**
    * For keeping track of the AST's attributes, in particular when converting to/from a CFG.
    */
-  private var attributes : List[Attribute] = Nil
-  def setAttributes = (l : List[Attribute]) => attributes = l
-  def addAttribute = (a: Attribute) => attributes = a :: attributes
-  def getAttributes : List[Attribute] = attributes
+
+  private var attributes : HashMap[String, List[Object]] = new HashMap[String, List[Object]]()
+
+  def setAttributes(l : List[Attribute]) = l.foreach(addAttribute)
+  def setAttributes(m : HashMap[String, List[Object]]) = attributes = m
+  def addAttribute(a: Attribute) = attributes += (a.key -> (attributes(a.key) ++ a.values))
+  def getAttributes : HashMap[String,List[Object]] = attributes
 
 }
 

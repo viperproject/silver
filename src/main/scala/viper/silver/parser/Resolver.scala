@@ -6,10 +6,13 @@
 
 package viper.silver.parser
 
+import scala.collection.immutable.HashMap
 import scala.collection.mutable
 import scala.reflect._
 import org.kiama.util.Messaging.{message, messagecount}
 import org.kiama.util.Positioned
+
+import scala.util.parsing.input.Positional
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -65,7 +68,7 @@ case class TypeChecker(names: NameAnalyser) {
   def check(m: PMethod) {
     checkMember(m) {
       (m.formalArgs ++ m.formalReturns) map (a => check(a.typ))
-      m.getAttributes map (a => check(a))
+      checkAttributes(m,m.getAttributes)
       m.pres map (check(_, Bool))
       m.posts map (check(_, Bool))
       check(m.body)
@@ -77,7 +80,7 @@ case class TypeChecker(names: NameAnalyser) {
       assert(curFunction==null)
       curFunction=f
       check(f.typ)
-      f.getAttributes map (a => check(a))
+      checkAttributes(f,f.getAttributes)
       f.formalArgs map (a => check(a.typ))
       check(f.typ)
       f.pres map (check(_, Bool))
@@ -118,12 +121,44 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(f: PDomainFunction) {
     check(f.typ)
+    checkAttributes(f,f.getAttributes)
     f.formalArgs map (a => check(a.typ))
+  }
+
+  def checkAttributes(n: PNode, m:HashMap[String, List[Object]]): Unit ={
+    val error : String = "attribute with key \"%s\" requires %s"
+
+    m.foreach[Unit]((t: (String, List[Object])) => t match{
+      case (k:String, os:List[Object]) => k match{
+        case t@"verified-if" =>os.headOption match{
+          case None => message(n, error.format(t, "a value"))
+          case Some(o) => o match{
+            case e : PExp => check(e,Bool)
+            case _ => message(n, error.format(t, "a boolean expression as value"))
+          }
+        }
+        case t@"entity" => os.headOption match{
+          case None => message(n, error.format(t,"a value"))
+          case Some(o) => o match {
+            case e: PExp => check(e,Int)
+            case _ => message(n, error.format(t,"an integer expression as value"))
+          }
+        }
+        case t@"dependency" =>os.headOption match{
+          case None => message(n, error.format(t,"a value"))
+          case Some(o) => o match {
+            case e: PExp => check(e,Int)
+            case _ => message(n, error.format(t,"an integer expression as value"))
+          }
+        }
+        case _ =>
+      }
+    })
   }
 
   def check(stmt: PStmt) {
 
-    stmt.getAttributes map (a => check(a))
+    checkAttributes(stmt, stmt.getAttributes)
 
     stmt match {
       case PSeqn(ss) =>
@@ -224,15 +259,7 @@ case class TypeChecker(names: NameAnalyser) {
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
       case _: PSkip =>
-      case PAttribute(t,e) => t match {
-        case "partially-verified" =>
-          check(e, Bool)
-        case "entity" =>
-          check(e,Int)
-        case "dependency" =>
-          check(e,Int)
-        case _ =>
-      }
+      case _ : PAttribute => sys.error(s"Unexpected node PAttribute found")
     }
   }
 

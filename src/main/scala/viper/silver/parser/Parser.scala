@@ -181,15 +181,14 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   lazy val methodDecl =
     methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
-      case name ~ attr~ args ~ rets ~ pres ~ posts ~ body => {
+      case attr ~ name ~ args ~ rets ~ pres ~ posts ~ body =>
         val pm = PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
         if (attr.isDefined) pm.setAttributes(attr.get)
         pm
-      }
     }
 
   lazy val methodSignature =
-    ("method" ~> idndef) ~ opt(methattribList) ~ ("(" ~> formalArgList <~ ")") ~ opt("returns" ~> ("(" ~> formalArgList <~ ")"))
+    opt(attribList) ~ ("method" ~> idndef) ~  ("(" ~> formalArgList <~ ")") ~ opt("returns" ~> ("(" ~> formalArgList <~ ")"))
 
   lazy val pre =
     "requires" ~> exp <~ opt(";")
@@ -205,24 +204,22 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   lazy val functionDecl =
     functionSignature ~ rep(pre) ~ rep(post) ~ opt("{" ~> (exp <~ "}")) ^^ {
-      case name ~ attr ~ args ~ typ ~pre ~ post ~ exp => {
+      case attr ~ name ~ args ~ typ ~pre ~ post ~ exp =>
         val pf = PFunction(name, args, typ, pre, post, exp)
         if (attr.isDefined) pf.setAttributes(attr.get)
         pf
-      }
     }
 
   lazy val functionSignature =
-    ("function" ~> idndef) ~ opt(funattribList)~ ("(" ~> formalArgList <~ ")") ~ (":" ~> typ)
+    opt(attribList) ~ ("function" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ (":" ~> typ)
 
   lazy val domainFunctionDecl = opt("unique") ~ (functionSignature <~ opt(";")) ^^ {
     case unique ~ fdecl =>
       fdecl match {
-        case name ~ attr ~ formalArgs ~ t => {
+        case attr ~ name ~ formalArgs ~ t =>
           val pdf = PDomainFunction(name, formalArgs, t, unique.isDefined)
           if (attr.isDefined) pdf.setAttributes(attr.get)
           pdf
-        }
       }
   }
 
@@ -254,27 +251,24 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     rep(stmt <~ opt(";"))
 
   lazy val attribType =
-    "verified-under" |
+    "verified-if" | "entity" | "dependency" |
       ident
 
-  lazy val attrib =
-    ":" ~> attribType ~ exp ^^ PAttribute
+  lazy val aKey = ident
+  lazy val aValue = ident | exp
+  lazy val aValues = repsep(aValue, ",")
 
-  lazy val stmtattribList =
-    "{" ~> repsep(attrib, ",") <~ "}"
+  lazy val attribute =
+    ("@" ~> aKey) ~ ("(" ~> aValues <~ ")") ^^ PAttribute
 
-  lazy val methattribList =
-    "{" ~> repsep(attrib, ",") <~ "}"
-
-  lazy val funattribList =
-    "{" ~> repsep(attrib, ",") <~ "}"
+  lazy val attribList = rep(attribute)
 
   lazy val stmt =
     (
     fieldassign | localassign | fold | unfold | exhale | assert |
       inhale | ifthnels | whle | varDecl |defineDecl | newstmt | fresh | constrainingBlock |
       methodCall | goto | lbl
-      ) ~ opt(stmtattribList) ^^ {
+      ) ~ opt(attribList) ^^ {
       case basicStmt ~ attr => {
         if (attr.isDefined) basicStmt.setAttributes(attr.get)
         basicStmt

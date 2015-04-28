@@ -9,6 +9,8 @@ package viper.silver.ast
 import utility.{Consistency, Types}
 import org.kiama.output._
 
+import scala.collection.immutable.HashMap
+
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
                   (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
@@ -66,14 +68,18 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
 // --- Program members
 
-case class Attribute(`type`:String, exp:Exp) extends Node
+case class Attribute(key: String, values: List[Object]) extends Node
 
 trait Attributing extends Node{
-  private var attributes : List[Attribute] = Nil
+  private var attributes : HashMap[String, List[Object]] = new HashMap[String, List[Object]]()
 
-  def setAttributes = (l : List[Attribute]) => attributes = l
-  def addAttribute = (a: Attribute) => attributes = a :: attributes
-  def getAttributes : List[Attribute] = attributes
+  def setAttributes(l : List[Attribute]) = l.foreach(addAttribute)
+
+  def setAttributes(m : HashMap[String, List[Object]]) = attributes = m
+
+  def addAttribute(a: Attribute) = attributes += (a.key -> (attributes(a.key) ++ a.values))
+
+  def getAttributes : HashMap[String,List[Object]] = attributes
 }
 
 /** A field declaration. */
