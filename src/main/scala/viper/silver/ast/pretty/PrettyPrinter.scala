@@ -69,7 +69,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
 
   def showDomainFunc(f: DomainFunc) = {
     val DomainFunc(name, formalArgs, typ, _) = f
-    showAttributes(f.getAttributes) <> "function" <+> name <> parens(showVars(formalArgs)) <> ":" <+> show(typ)
+    showAttributes(f.attributes) <> "function" <+> name <> parens(showVars(formalArgs)) <> ":" <+> show(typ)
   }
 
   /** Show a program member. */
@@ -78,7 +78,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case f@Field(name, typ) =>
         "field" <+> name <> ":" <+> show(typ)
       case m@Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
-        showAttributes(m.getAttributes) <> "method" <+> name <> parens(showVars(formalArgs)) <> {
+        showAttributes(m.attributes) <> "method" <+> name <> parens(showVars(formalArgs)) <> {
           if (formalReturns.isEmpty) empty
           else empty <+> "returns" <+> parens(showVars(formalReturns))
         } <>
@@ -99,7 +99,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           case Some(exp) => braces(nest(line <> show(exp)) <> line)
         })
       case p@Function(name, formalArgs, typ, pres, posts, optBody) =>
-        showAttributes(p.getAttributes)  <> "function" <+> name <> parens(showVars(formalArgs)) <>
+        showAttributes(p.attributes)  <> "function" <+> name <> parens(showVars(formalArgs)) <>
           ":" <+> show(typ) <>
           nest(
             showContracts("requires", pres) <>
@@ -217,7 +217,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         "goto" <+> target
       case null => uninitialized
     }
-    showStmtAttributes(stmt.getAttributes)
+    showStmtAttributes(stmt.attributes)
     showComment(stmt) <> stmtDoc
   }
 
@@ -228,32 +228,16 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case _ => empty <+> "else" <+> showBlock(els)
   }
 
-  def showAttributes(m : HashMap[String, List[Object]]) = {
-    var ret = "" <> ""
-    m.foreach[Unit]((t:(_,_)) => t match{
-      case (k:String, os:List[Object]) =>
-        ret = ret <> "@" <> k <> parens(ssep(
-          (for(o <- os) yield o match{
-            case _ => o.toString <> ""
-          }).toSeq
-          , comma <> space)) <> linebreak
-
-    })
-    ret
+  def show(a:Attribute) = a match{
+    case _ => a.pretty <> ""
   }
 
-  def showStmtAttributes(m : HashMap[String, List[Object]]) = {
-    var ret = "" <> ""
-    m.foreach[Unit]((t:(_,_)) => t match{
-      case (k:String, os:List[Object]) =>
-        ret = ret <> "@" <> k <> parens(ssep(
-        (for(o <- os) yield o match{
-          case _ => o.toString <> ""
-        }).toSeq
-        , comma <> space)) <> space
+  def showAttributes(atts : Seq[Attribute]) = {
+    ssep(atts map show, linebreak)
+  }
 
-    })
-    ret
+  def showStmtAttributes(atts : Seq[Attribute]) = {
+    ssep(atts map show, space)
   }
 
   /** Outputs the comments attached to `n` if there is at least one. */

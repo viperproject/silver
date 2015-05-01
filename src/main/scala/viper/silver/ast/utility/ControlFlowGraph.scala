@@ -177,11 +177,11 @@ object ControlFlowGraph {
    * @return the fresh block that is structurally equal to the given block
    */
   def shallowCopy(b: Block): Block = b match {
-    case b: TerminalBlock => b.copy()
-    case b: NormalBlock => b.copy()
-    case b: ConditionalBlock => b.copy()
-    case b: LoopBlock => b.copy()(b.pos, b.info)
-    case b: ConstrainingBlock => b.copy()
+    case b: TerminalBlock => b.copy()(attributes = b.attributes)
+    case b: NormalBlock => b.copy()(attributes = b.attributes)
+    case b: ConditionalBlock => b.copy()(attributes = b.attributes)
+    case b: LoopBlock => b.copy()(b.pos, b.info, b.attributes)
+    case b: ConstrainingBlock => b.copy()(attributes = b.attributes)
   }
 
   /**

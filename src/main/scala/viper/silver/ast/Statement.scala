@@ -44,7 +44,7 @@ sealed trait Stmt extends Node with Infoed with Positioned with Attributing {
 }
 
 /** A statement that creates a new object and assigns it to a local variable. */
-case class NewStmt(lhs: LocalVar, fields: Seq[Field])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class NewStmt(lhs: LocalVar, fields: Seq[Field])(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Stmt {
   require(Ref isSubtype lhs)
 }
 
@@ -64,10 +64,10 @@ object AbstractAssign {
 }
 
 /** An assignment to a local variable. */
-case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign
+case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends AbstractAssign
 
 /** An assignment to a field variable. */
-case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractAssign
+case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends AbstractAssign
 
 /** A method/function/domain function call. - AS: this comment is misleading - the trait is currently not used for method calls below */
 trait Call {
@@ -78,63 +78,63 @@ trait Call {
 }
 
 /** A method call. */
-case class MethodCall private[ast](methodName: String, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position, val info: Info) extends Stmt {
+case class MethodCall private[ast](methodName: String, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position, val info: Info, val attributes : Seq[Attribute]) extends Stmt {
   // no checks - consistency checks are made below in companion object
 }
 
   object MethodCall {
-    def apply(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(pos: Position = NoPosition, info: Info = NoInfo) : MethodCall = {
+    def apply(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(pos: Position = NoPosition, info: Info = NoInfo, attributes: Seq[Attribute] = Nil) : MethodCall = {
       require(Consistency.areAssignable(method.formalReturns, targets))
       require(Consistency.noDuplicates(targets))
       args foreach Consistency.checkNoPositiveOnly
-      MethodCall(method.name, args, targets)(pos,info)
+      MethodCall(method.name, args, targets)(pos,info, attributes)
     }
   }
 
 
 /** An exhale statement. */
-case class Exhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class Exhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Stmt {
   require(exp isSubtype Bool)
 }
 
 /** An inhale statement. */
-case class Inhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class Inhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Stmt {
   require(exp isSubtype Bool)
 }
 
 /** An assert statement. */
-case class Assert(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class Assert(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Stmt {
   require(exp isSubtype Bool)
 }
 
 /** An fold statement. */
-case class Fold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class Fold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Stmt {
   require(acc isSubtype Bool)
 }
 
 /** An unfold statement. */
-case class Unfold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class Unfold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Stmt {
   require(acc isSubtype Bool)
 }
 
 /** A sequence of statements. */
-case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
+case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Stmt
 
 /** An if control statement. */
-case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Stmt {
   Consistency.checkNoPositiveOnly(cond)
 }
 
 /** A while loop. */
 case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)
-                (val pos: Position = NoPosition, val info: Info = NoInfo)
+                (val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil)
       extends Stmt {
   Consistency.checkNoPositiveOnly(cond)
   invs map Consistency.checkNonPostContract
 }
 
 /** A label (that can be the target of a goto). */
-case class Label(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class Label(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Stmt {
   Consistency.validUserDefinedIdentifier(name)
 }
 
@@ -143,12 +143,12 @@ case class Label(name: String)(val pos: Position = NoPosition, val info: Info = 
  * a loop but might leave one or several loops.  This ensures that the only back edges in the
  * control flow graph are due to while loops.
  */
-case class Goto(target: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
+case class Goto(target: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Stmt
 
 /** A fresh statement assigns a fresh, dedicated symbolic permission values to
   * each of the passed variables.
   */
-case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Stmt {
   require(vars forall (_ isSubtype Perm))
 }
 
@@ -157,7 +157,7 @@ case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: 
   * in the body of the block. Potentially constraining statements are, e.g.,
   * exhale-statements.
   */
-case class Constraining(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo)
+case class Constraining(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil)
     extends Stmt {
 
   require(vars forall (_ isSubtype Perm))

@@ -9,8 +9,6 @@ package viper.silver.ast
 import utility.{Consistency, Types}
 import org.kiama.output._
 
-import scala.collection.immutable.HashMap
-
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
                   (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
@@ -68,27 +66,13 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
 // --- Program members
 
-case class Attribute(key: String, values: List[Object]) extends Node
-
-trait Attributing extends Node{
-  private var attributes : HashMap[String, List[Object]] = new HashMap[String, List[Object]]()
-
-  def setAttributes(l : List[Attribute]) = l.foreach(addAttribute)
-
-  def setAttributes(m : HashMap[String, List[Object]]) = attributes = m
-
-  def addAttribute(a: Attribute) = attributes += (a.key -> (attributes(a.key) ++ a.values))
-
-  def getAttributes : HashMap[String,List[Object]] = attributes
-}
-
 /** A field declaration. */
-case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location with Typed {
+case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Location with Typed {
   require(typ.isConcrete, "Type of field " + name + ":" + typ + " must be concrete!")
 }
 
 /** A predicate declaration. */
-case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
+case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Location {
   if (body != null) body map Consistency.checkNonPostContract
   def body = _body
   def body_=(b: Option[Exp]) {
@@ -100,7 +84,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _b
 
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], private var _body: Stmt)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted {
+                 (val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Member with Callable with Contracted {
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
   if (_posts != null) _posts foreach Consistency.checkPost
   if (_body != null) Consistency.checkNoArgsReassigned(formalArgs, _body)
@@ -132,7 +116,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 
 /** A function declaration */
 case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _body: Option[Exp])
-                   (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with FuncLike with Contracted {
+                   (val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Member with FuncLike with Contracted {
   require(_posts == null || (_posts forall Consistency.noOld))
   require(_body == null || (_body map (_ isSubtype typ) getOrElse true))
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
@@ -192,7 +176,7 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
 
 /** A user-defined domain. */
 case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Positioned with Infoed {
+                 (val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends Member with Positioned with Infoed {
   require(Consistency.validUserDefinedIdentifier(name))
   def functions = _functions
   def functions_=(fs: Seq[DomainFunc]) {
@@ -215,7 +199,7 @@ case class DomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, v
 
 /** Domain function which is not a binary or unary operator. */
 case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
-                     (val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFunc with DomainMember with Attributing {
+                     (val pos: Position = NoPosition, val info: Info = NoInfo, val attributes : Seq[Attribute] = Nil) extends AbstractDomainFunc with DomainMember with Attributing {
   require(!unique || formalArgs.isEmpty, "Only constants, i.e. nullary domain functions can be unique.")
 }
 

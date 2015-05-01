@@ -38,12 +38,11 @@ object CfgGenerator {
     val p3 = new Phase3(p2)
     val p4 = new Phase4(p3)
     val b = p4.result
-    b.setAttributes(ast.getAttributes)
     b
   }
 
   // temporary CFG blocks (mutable to allow incremental creation)
-  trait TmpBlock {
+  trait TmpBlock extends Attributing {
     var pred: ListBuffer[TmpBlock] = ListBuffer()
 
     def succs: Seq[TmpBlock]
@@ -52,7 +51,7 @@ object CfgGenerator {
       e.dest.pred += this
     }
   }
-  class VarBlock extends TmpBlock {
+  class VarBlock()(val attributes : Seq[Attribute] = Nil) extends TmpBlock {
     var stmts: ListBuffer[Stmt] = ListBuffer()
     var edges: ListBuffer[TmpEdge] = ListBuffer()
     override def +=(e: TmpEdge) {
@@ -63,7 +62,7 @@ object CfgGenerator {
     override def toString = s"VarBlock(${stmts.mkString(";\n  ")}, ${edges.mkString("[", ",", "]")})"
     def succs = (edges map (_.dest)).toSeq
   }
-  class TmpLoopBlock(val loop: While, private var _body: TmpBlock) extends TmpBlock {
+  class TmpLoopBlock(val loop: While, private var _body: TmpBlock)(val attributes : Seq[Attribute]=Nil) extends TmpBlock {
     body.pred += this
     def body = _body
     var edge: TmpEdge = null
@@ -79,7 +78,7 @@ object CfgGenerator {
     override def toString = s"TmpLoopBlock(${loop.cond}, $edge)"
     def succs = if (edge == null) Nil else List(edge.dest)
   }
-  class TmpConstrainingBlock(val constraining: Constraining, private var _body: TmpBlock) extends TmpBlock {
+  class TmpConstrainingBlock(val constraining: Constraining, private var _body: TmpBlock)(val attributes : Seq[Attribute] = Nil) extends TmpBlock {
     body.pred += this
     def body = _body
     var edge: TmpEdge = null
@@ -140,12 +139,12 @@ object CfgGenerator {
   sealed trait ExtendedStmt {
     var isLeader = false
   }
-  case class RegularStmt(stmt: Stmt) extends ExtendedStmt
-  case class Jump(lbl: Lbl) extends ExtendedStmt
-  case class CondJump(thn: Lbl, els: Lbl, cond: Exp) extends ExtendedStmt
-  case class Loop(after: Lbl, loop: While) extends ExtendedStmt
-  case class ConstrainingES(after: Lbl, constraining: Constraining) extends ExtendedStmt
-  case class EmptyStmt() extends ExtendedStmt
+  case class RegularStmt(stmt: Stmt)(val attributes : Seq[Attribute] = Nil) extends ExtendedStmt
+  case class Jump(lbl: Lbl)(val attributes : Seq[Attribute] = Nil) extends ExtendedStmt
+  case class CondJump(thn: Lbl, els: Lbl, cond: Exp)(val attributes : Seq[Attribute] = Nil) extends ExtendedStmt
+  case class Loop(after: Lbl, loop: While)(val attributes : Seq[Attribute] = Nil) extends ExtendedStmt
+  case class ConstrainingES(after: Lbl, constraining: Constraining)(val attributes : Seq[Attribute] = Nil) extends ExtendedStmt
+  case class EmptyStmt()(val attributes : Seq[Attribute] = Nil) extends ExtendedStmt
 
   /**
    * Convert the temporary CFG to the final one.
@@ -161,17 +160,17 @@ object CfgGenerator {
         var b: Block = null
         tb match {
           case loop: TmpLoopBlock =>
-            val lb = LoopBlock(null, loop.loop.cond, loop.loop.invs, loop.loop.locals, null)(loop.loop.pos, loop.loop.info)
+            val lb = LoopBlock(null, loop.loop.cond, loop.loop.invs, loop.loop.locals, null)(loop.loop.pos, loop.loop.info, attributes = loop.attributes)
             lb.srcAst = Some(loop.loop)
             b = lb
           case tmpCB: TmpConstrainingBlock =>
-            b = ConstrainingBlock(tmpCB.constraining.vars, null, null)
+            b = ConstrainingBlock(tmpCB.constraining.vars, null, null)(attributes = tmpCB.attributes)
           case vb: VarBlock if vb.edges.size == 0 =>
-            b = TerminalBlock(vb.stmt)
+            b = TerminalBlock(vb.stmt)(attributes = vb.attributes)
           case vb: VarBlock if vb.edges.size == 1 =>
-            b = NormalBlock(vb.stmt, null)
+            b = NormalBlock(vb.stmt, null)(attributes = vb.attributes)
           case vb: VarBlock if vb.edges.size == 2 =>
-            b = ConditionalBlock(vb.stmt, vb.edges(0).asInstanceOf[CondEdge].cond, null, null)
+            b = ConditionalBlock(vb.stmt, vb.edges(0).asInstanceOf[CondEdge].cond, null, null)(attributes = vb.attributes)
           case _ =>
             sys.error("unexpected block")
         }
@@ -259,7 +258,7 @@ object CfgGenerator {
    * Create a temporary CFG from the node list of phase 1.  The CFG might contain empty blocks.
    */
   class Phase2(p1: Phase1) {
-    val start = new VarBlock()
+    val start = new VarBlock()()
     var cur = start
     var nodes = p1.nodes.toSeq
     val allNodes = nodes
@@ -292,20 +291,20 @@ object CfgGenerator {
         var b: TmpBlock = null
         val n = nodes(i)
         n match {
-          case Jump(lbl) =>
+          case j@Jump(lbl) =>
             if (n.isLeader) {
-              val newCur = new VarBlock()
+              val newCur = new VarBlock()(j.attributes)
               cur += UncondEdge(newCur)
               cur = newCur
               b = cur
             }
             // finish current block and add a missing edge
             val c = cur
-            missingEdges += ((resolveLbl(lbl), (t: TmpBlock) => c += UncondEdge(t)))
-            cur = new VarBlock()
-          case CondJump(thn, els, cond) =>
+            missingEdges += ((resolveLbl(lbl ), (t: TmpBlock) => c += UncondEdge(t)))
+            cur = new VarBlock()()
+          case cj@CondJump(thn, els, cond) =>
             if (n.isLeader) {
-              val newCur = new VarBlock()
+              val newCur = new VarBlock()(cj.attributes)
               cur += UncondEdge(newCur)
               cur = newCur
               b = cur
@@ -315,13 +314,13 @@ object CfgGenerator {
             val c = cur
             missingEdges += ((resolveLbl(thn), (t: TmpBlock) => c += CondEdge(t, cond)))
             missingEdges += ((resolveLbl(els), (t: TmpBlock) => c += CondEdge(t, notCond)))
-            cur = new VarBlock()
-          case Loop(after, l) =>
+            cur = new VarBlock()()
+          case l0@Loop(after, l) =>
             // handle loop body: start with a new block, and a different
             // set of nodes (the ones in the loop body), but use the same
             // missingEdges
             val oldCur = cur
-            val body = new VarBlock()
+            val body = new VarBlock()()
             cur = body
             val oldNodes = nodes
             val oldOffset = offset
@@ -333,14 +332,14 @@ object CfgGenerator {
             i = lblToIdx(after) - 1
 
             // create the loop block
-            val loop = new TmpLoopBlock(l, body)
+            val loop = new TmpLoopBlock(l, body)(l0.attributes)
             oldCur += UncondEdge(loop)
-            cur = new VarBlock()
+            cur = new VarBlock()()
             loop += UncondEdge(cur)
             b = loop
-          case ConstrainingES(after, constraining) =>
+          case ces@ConstrainingES(after, constraining) =>
             val oldCur = cur
-            val body = new VarBlock()
+            val body = new VarBlock()()
             cur = body
             val oldNodes = nodes
             val oldOffset = offset
@@ -352,22 +351,22 @@ object CfgGenerator {
             i = lblToIdx(after) - 1
 
             // create the frp block
-            val tmpCB = new TmpConstrainingBlock(constraining, body)
+            val tmpCB = new TmpConstrainingBlock(constraining, body)(ces.attributes)
             oldCur += UncondEdge(tmpCB)
-            cur = new VarBlock()
+            cur = new VarBlock()()
             tmpCB += UncondEdge(cur)
             b = tmpCB
-          case EmptyStmt() =>
+          case e@EmptyStmt() =>
             // skip it, and only deal with leader stuff
             if (n.isLeader) {
-              val newCur = new VarBlock()
+              val newCur = new VarBlock()(e.attributes)
               cur += UncondEdge(newCur)
               cur = newCur
               b = cur
             }
-          case RegularStmt(s) =>
+          case r@RegularStmt(s) =>
             if (n.isLeader) {
-              val newCur = new VarBlock()
+              val newCur = new VarBlock()(r.attributes)
               cur += UncondEdge(newCur)
               cur = newCur
               b = cur
@@ -406,7 +405,7 @@ object CfgGenerator {
 
     run(ast)
     // in case anything points to the 'next' node.
-    nodes += EmptyStmt()
+    nodes += EmptyStmt()()
     setLeader()
 
     /**
@@ -416,47 +415,47 @@ object CfgGenerator {
      */
     private def run(s: Stmt) {
       s match {
-        case If(cond, thn, els) =>
+        case i@If(cond, thn, els) =>
           val thnTarget = Lbl("then", generated = true)
           val elsTarget = Lbl("else", generated = true)
           val afterTarget = Lbl("afterIf", generated = true)
-          nodes += CondJump(thnTarget, elsTarget, cond)
+          nodes += CondJump(thnTarget, elsTarget, cond)(i.attributes)
           lblmap += thnTarget -> nextNode
           run(thn)
-          nodes += Jump(afterTarget)
+          nodes += Jump(afterTarget)()
           lblmap += elsTarget -> nextNode
           run(els)
           lblmap += afterTarget -> nextNode
         case w@While(cond, inv, locals, body) =>
           val afterLoop = Lbl("afterLoop", generated = true)
-          nodes += Loop(afterLoop, w)
+          nodes += Loop(afterLoop, w)(w.attributes)
           run(body)
           // Allow labels in the loop body to point to the end of the body,
           // for instance the 'afterTarget' label of an if statement.
-          nodes += EmptyStmt()
+          nodes += EmptyStmt()()
           lblmap += afterLoop -> nextNode
         case constraining @ Constraining(vars, body) =>
           val afterConstraining = Lbl("afterConstraining", generated = true)
-          nodes += ConstrainingES(afterConstraining, constraining)
+          nodes += ConstrainingES(afterConstraining, constraining)(constraining.attributes)
           run(body)
           // Allow labels in the body to target the end of the body.
-          nodes += EmptyStmt()
+          nodes += EmptyStmt()()
           lblmap += afterConstraining -> nextNode
         case Seqn(ss) =>
-          nodes += EmptyStmt()
+          nodes += EmptyStmt()()
           for (s <- ss) run(s)
-        case Goto(target) =>
-          nodes += Jump(Lbl(target))
-        case Label(name) =>
+        case g@Goto(target) =>
+          nodes += Jump(Lbl(target))(g.attributes)
+        case l@Label(name) =>
           lblmap += Lbl(name) -> nextNode
-          nodes += EmptyStmt()
-        case _: LocalVarAssign | _: FieldAssign |
+          nodes += EmptyStmt()()
+        case n@(_: LocalVarAssign | _: FieldAssign |
              _: Inhale | _: Exhale |
              _: Fold | _: Unfold |
              _: MethodCall | _: Fresh |
-             _: NewStmt | _: Assert =>
+             _: NewStmt | _: Assert) =>
           // regular, non-control statements
-          nodes += RegularStmt(s)
+          nodes += RegularStmt(s)(n.attributes)
       }
     }
 

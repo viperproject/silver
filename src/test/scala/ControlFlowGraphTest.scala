@@ -37,12 +37,12 @@ class ControlFlowGraphTest extends FunSuite with BeforeAndAfter with ShouldMatch
   {
     // Tests that operate on a simple CFG:
     // NormalBlock(assert true) -> NormalBlock() -> TerminalBlock()
-    val end = TerminalBlock(emptyStmt)
-    val middle = NormalBlock(emptyStmt, end)
-    val begin = NormalBlock(nonEmptyStmt, middle)
+    val end = TerminalBlock(emptyStmt)()
+    val middle = NormalBlock(emptyStmt, end)()
+    val begin = NormalBlock(nonEmptyStmt, middle)()
 
-    val differentEnd = TerminalBlock(nonEmptyStmt)
-    val differentMiddle = NormalBlock(nonEmptyStmt, differentEnd)
+    val differentEnd = TerminalBlock(nonEmptyStmt)()
+    val differentMiddle = NormalBlock(nonEmptyStmt, differentEnd)()
 
     test("Block Removal in Linear CFG") {
       // Remove the first block
@@ -53,17 +53,17 @@ class ControlFlowGraphTest extends FunSuite with BeforeAndAfter with ShouldMatch
       // Remove the middle block
       assertEqAndDisjoint(begin transform {
         case b @ NormalBlock(stmt, succ) if b == middle => succ
-      }, NormalBlock(begin.stmt, TerminalBlock(end.stmt)))
+      }, NormalBlock(begin.stmt, TerminalBlock(end.stmt)())())
 
       // Remove the terminal block (turning the middle block into a terminal block)
       assertEqAndDisjoint(begin transform {
-        case b @ NormalBlock(stmt, succ) if b == middle => TerminalBlock(stmt)
-      }, NormalBlock(begin.stmt, TerminalBlock(middle.stmt)))
+        case b @ NormalBlock(stmt, succ) if b == middle => TerminalBlock(stmt)()
+      }, NormalBlock(begin.stmt, TerminalBlock(middle.stmt)())())
 
       // Remove all but the terminal block
       assertEqAndDisjoint(begin transform {
         case b @ NormalBlock(stmt, succ) => end
-      }, TerminalBlock(end.stmt))
+      }, TerminalBlock(end.stmt)())
     }
 
     test("Transformation with Cycles (Invalid)") {
@@ -84,21 +84,21 @@ class ControlFlowGraphTest extends FunSuite with BeforeAndAfter with ShouldMatch
     }
 
     test("Shallow Equality of Blocks") {
-      assert(ControlFlowGraph.shallowEq(end, TerminalBlock(end.stmt)))
-      assert(ControlFlowGraph.shallowEq(middle, NormalBlock(middle.stmt, differentEnd)))
-      assert(ControlFlowGraph.shallowEq(begin, NormalBlock(begin.stmt, differentMiddle)))
+      assert(ControlFlowGraph.shallowEq(end, TerminalBlock(end.stmt)()))
+      assert(ControlFlowGraph.shallowEq(middle, NormalBlock(middle.stmt, differentEnd)()))
+      assert(ControlFlowGraph.shallowEq(begin, NormalBlock(begin.stmt, differentMiddle)()))
 
       assert(!ControlFlowGraph.shallowEq(end, differentEnd))
       assert(!ControlFlowGraph.shallowEq(middle, differentMiddle))
     }
 
     test("Equality of CFGs") {
-      assert(ControlFlowGraph.eq(end, TerminalBlock(end.stmt)))
-      assert(ControlFlowGraph.eq(middle, NormalBlock(middle.stmt, TerminalBlock(end.stmt))))
+      assert(ControlFlowGraph.eq(end, TerminalBlock(end.stmt)()))
+      assert(ControlFlowGraph.eq(middle, NormalBlock(middle.stmt, TerminalBlock(end.stmt)())()))
 
       assert(!ControlFlowGraph.eq(end, differentEnd))
       assert(!ControlFlowGraph.eq(middle, differentMiddle))
-      assert(!ControlFlowGraph.eq(middle, NormalBlock(middle.stmt, differentEnd)))
+      assert(!ControlFlowGraph.eq(middle, NormalBlock(middle.stmt, differentEnd)()))
     }
 
     test("Collect Blocks") {
@@ -121,15 +121,15 @@ class ControlFlowGraphTest extends FunSuite with BeforeAndAfter with ShouldMatch
     //  - LoopBlock(false) with body: NormalBlock -> TerminalBlock
     //
     // The FreshReadPermBlock and LoopBlock have the same TerminalBlock as successor
-    val exitBlock = TerminalBlock(emptyStmt)
+    val exitBlock = TerminalBlock(emptyStmt)()
 
-    val loopBlockBody = NormalBlock(nonEmptyStmt, TerminalBlock(emptyStmt))
+    val loopBlockBody = NormalBlock(nonEmptyStmt, TerminalBlock(emptyStmt)())()
     val loopBlock = LoopBlock(loopBlockBody, falseLit, Seq.empty, Seq.empty, exitBlock)()
 
-    val constrainingBlockBody = TerminalBlock(emptyStmt)
-    val constrainingBlock = ConstrainingBlock(Seq.empty, constrainingBlockBody, exitBlock)
+    val constrainingBlockBody = TerminalBlock(emptyStmt)()
+    val constrainingBlock = ConstrainingBlock(Seq.empty, constrainingBlockBody, exitBlock)()
 
-    val condBlock = ConditionalBlock(emptyStmt, trueLit, constrainingBlock, loopBlock)
+    val condBlock = ConditionalBlock(emptyStmt, trueLit, constrainingBlock, loopBlock)()
     val cfg = condBlock
 
     test("Nop Transformation") {
@@ -140,14 +140,14 @@ class ControlFlowGraphTest extends FunSuite with BeforeAndAfter with ShouldMatch
 
     test("ConditionalBlock Simplification") {
       assertEqAndDisjoint(cfg.transform({
-        case ConditionalBlock(stmt, TrueLit(), thn, els) => NormalBlock(stmt, thn)
-      }), NormalBlock(condBlock.stmt, constrainingBlock))
+        case ConditionalBlock(stmt, TrueLit(), thn, els) => NormalBlock(stmt, thn)()
+      }), NormalBlock(condBlock.stmt, constrainingBlock)())
     }
 
     test("LoopBlock Simplification") {
       assertEqAndDisjoint(cfg.transform({
         case LoopBlock(body, FalseLit(), invs, locals, succ) => succ
-      }), ConditionalBlock(condBlock.stmt, condBlock.cond, condBlock.thn, exitBlock))
+      }), ConditionalBlock(condBlock.stmt, condBlock.cond, condBlock.thn, exitBlock)())
     }
   }
 
@@ -155,11 +155,11 @@ class ControlFlowGraphTest extends FunSuite with BeforeAndAfter with ShouldMatch
     // LoopBlock has a second argument list. Assert that it is copied as well.
     val dummyPath = FileSystems.getDefault.getPath("foo.scala")
     val loopBlock = LoopBlock(
-      body = TerminalBlock(emptyStmt),
+      body = TerminalBlock(emptyStmt)(),
       cond = trueLit,
       invs = Seq.empty,
       locals = Seq.empty,
-      succ = TerminalBlock(emptyStmt))(
+      succ = TerminalBlock(emptyStmt)())(
       pos = SourcePosition(dummyPath, 21, 42))
 
     val loopBlockCopy = loopBlock.copyShallow().asInstanceOf[LoopBlock]

@@ -48,6 +48,20 @@ object Transformer {
       mapping.toSeq.map(pair => go(pair._1) -> go(pair._2)).toMap
     }
 
+    def handle(a:Attribute):Attribute = a match{
+      case ValuedAttribute(k, vs) => ValuedAttribute(k, vs map handle2)
+      case _ => a
+    }
+
+    def handle2(a:AttributeValue): AttributeValue = a match{
+      case AnyValue(v:AnyRef) => v match{
+        case n:Node => AnyValue(go(n))
+        case _ => a
+      }
+      case ExpValue(e) => ExpValue(go(e))
+      case _  => a
+    }
+
     def recurse(parent: Node): Node = {
       parent match {
         case exp: Exp =>
@@ -159,23 +173,23 @@ object Transformer {
             case Field(name, singleType) =>
               Field(name, go(singleType))(member.pos, member.info)
 
-            case Function(name, parameters, aType, preconditions,
+            case f@Function(name, parameters, aType, preconditions,
               postconditions, body) =>
               Function(name, parameters map go, go(aType),
                 preconditions map go,
                 postconditions map go,
-                body map go)(member.pos, member.info)
+                body map go)(member.pos, member.info, f.attributes map handle)
 
             case Predicate(name, parameters, body) =>
               Predicate(name, parameters map go,
                 body map go)(member.pos, member.info)
 
-            case Method(name, parameters, results, preconditions,
+            case m@Method(name, parameters, results, preconditions,
               postconditions, locals, body) =>
               Method(name, parameters map go, results map go,
                 preconditions map go,
                 postconditions map go,
-                locals map go, go(body))(member.pos, member.info)
+                locals map go, go(body))(member.pos, member.info, m.attributes map handle)
           }
 
         case domainMember: DomainMember =>
@@ -184,9 +198,9 @@ object Transformer {
               DomainAxiom(name, go(body))(domainMember.pos,
                 domainMember.info)
 
-            case DomainFunc(name, parameters, aType, unique) =>
+            case df@DomainFunc(name, parameters, aType, unique) =>
               DomainFunc(name, parameters map go, go(aType),
-                unique)(domainMember.pos, domainMember.info)
+                unique)(domainMember.pos, domainMember.info, df.attributes map handle)
           }
 
         case aType: Type =>
@@ -213,55 +227,55 @@ object Transformer {
         case statement: Stmt =>
           statement match {
             case Assert(expression) =>
-              Assert(go(expression))(statement.pos, statement.info)
+              Assert(go(expression))(statement.pos, statement.info, statement.attributes map handle)
 
             case Exhale(expression) =>
               Exhale(go(expression))(statement.pos, statement.info)
 
             case FieldAssign(field, value) =>
-              FieldAssign(go(field), go(value))(statement.pos, statement.info)
+              FieldAssign(go(field), go(value))(statement.pos, statement.info, statement.attributes map handle)
 
             case Fold(accessPredicate) =>
-              Fold(go(accessPredicate))(statement.pos, statement.info)
+              Fold(go(accessPredicate))(statement.pos, statement.info, statement.attributes map handle)
 
             case Fresh(variables) =>
-              Fresh(variables map go)(statement.pos, statement.info)
+              Fresh(variables map go)(statement.pos, statement.info, statement.attributes map handle)
 
             case Constraining(variables, body) =>
               Constraining(
-                variables map go, go(body))(statement.pos, statement.info)
+                variables map go, go(body))(statement.pos, statement.info, statement.attributes map handle)
 
             case Goto(_) => statement
 
             case If(condition, ifTrue, ifFalse) =>
               If(go(condition), go(ifTrue),
-                go(ifFalse))(statement.pos, statement.info)
+                go(ifFalse))(statement.pos, statement.info, statement.attributes map handle)
 
             case Inhale(expression) =>
-              Inhale(go(expression))(statement.pos, statement.info)
+              Inhale(go(expression))(statement.pos, statement.info, statement.attributes map handle)
 
             case Label(_) => statement
 
             case LocalVarAssign(variable, value) =>
               LocalVarAssign(go(variable),
-                go(value))(statement.pos, statement.info)
+                go(value))(statement.pos, statement.info, statement.attributes map handle)
 
             case MethodCall(methodname, arguments, variables) =>
               MethodCall(methodname, arguments map go,
-                variables map go)(statement.pos, statement.info)
+                variables map go)(statement.pos, statement.info, statement.attributes map handle)
 
             case NewStmt(target, fields) =>
-              NewStmt(go(target), fields map go)(statement.pos, statement.info)
+              NewStmt(go(target), fields map go)(statement.pos, statement.info, statement.attributes map handle)
 
             case Seqn(statements) =>
-              Seqn(statements map go)(statement.pos, statement.info)
+              Seqn(statements map go)(statement.pos, statement.info, statement.attributes map handle)
 
             case Unfold(predicate) =>
-              Unfold(go(predicate))(statement.pos, statement.info)
+              Unfold(go(predicate))(statement.pos, statement.info, statement.attributes map handle)
 
             case While(condition, invariants, locals, body) =>
               While(go(condition), invariants map go, locals map go,
-                go(body))(statement.pos, statement.info)
+                go(body))(statement.pos, statement.info, statement.attributes map handle)
           }
 
         case trigger @ Trigger(expressions) =>
@@ -294,26 +308,26 @@ object Transformer {
         postconditions, body) =>
         Function(name, parameters map recurse, recurse(aType),
           preconditions map translate, postconditions map translate,
-          body map recurse)(function.pos, function.info)
+          body map recurse)(function.pos, function.info, function.attributes)
 
       case method @ Method(name, parameters, results, preconditions,
         postconditions, locals, body) =>
         Method(name, parameters map recurse, results map recurse,
           preconditions map translate, postconditions map translate,
-          locals map recurse, recurse(body))(method.pos, method.info)
+          locals map recurse, recurse(body))(method.pos, method.info,method.attributes)
 
       case loop @ While(condition, invariants, locals, body) =>
         While(recurse(condition), invariants map translate,
-          locals map recurse, recurse(body))(loop.pos, loop.info)
+          locals map recurse, recurse(body))(loop.pos, loop.info,loop.attributes)
 
       case root @ Assert(expression) =>
-        Assert(translate(expression))(root.pos, root.info)
+        Assert(translate(expression))(root.pos, root.info, root.attributes)
 
       case exhale @ Exhale(expression) =>
-        Exhale(translate(expression))(exhale.pos, exhale.info)
+        Exhale(translate(expression))(exhale.pos, exhale.info, exhale.attributes)
 
       case inhale @ Inhale(expression) =>
-        Inhale(translate(expression))(inhale.pos, inhale.info)
+        Inhale(translate(expression))(inhale.pos, inhale.info, inhale.attributes)
     }
 
     def recurse[B <: Node](root: B): B = {

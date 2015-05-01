@@ -148,3 +148,30 @@ trait Typed {
   def isSubtype(other: Type) = typ isSubtype other
   def isSubtype(other: Typed) = typ isSubtype other.typ
 }
+
+/** A trait for nodes that have attributes */
+trait AttributeValue{
+  def value : AnyRef
+  def pretty = value.toString
+}
+case class AnyValue(value:AnyRef) extends AttributeValue
+case class StringValue(value : String) extends AttributeValue
+case class ExpValue(value:Exp) extends AttributeValue
+
+trait Attribute {
+  val key: String
+  def pretty = "@" + key + "()"
+}
+
+case class OrdinaryAttribute(key:String) extends Attribute
+case class ValuedAttribute(key:String, values : Seq[AttributeValue]) extends Attribute{
+  override def pretty = "@" + key + "(" + (values map (_.pretty)).mkString(",") + ")"
+}
+case class VerifiedIf (cond : Exp) extends Attribute{
+  val key = "verified-if"
+  if(cond.isPure) throw new IllegalArgumentException(s"Attribute $key requires pure condition.")
+}
+
+trait Attributing{
+  def attributes : Seq[Attribute]
+}

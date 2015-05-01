@@ -108,7 +108,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // null
     "null",
     // statement attribute types
-    "verified-under",
+    "verified-if",
     // declaration keywords
     "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define",
     // specifications
@@ -183,7 +183,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
       case attr ~ name ~ args ~ rets ~ pres ~ posts ~ body =>
         val pm = PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
-        if (attr.isDefined) pm.setAttributes(attr.get)
+        pm.setAttributes(attr.toSeq.flatten)
         pm
     }
 
@@ -206,7 +206,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     functionSignature ~ rep(pre) ~ rep(post) ~ opt("{" ~> (exp <~ "}")) ^^ {
       case attr ~ name ~ args ~ typ ~pre ~ post ~ exp =>
         val pf = PFunction(name, args, typ, pre, post, exp)
-        if (attr.isDefined) pf.setAttributes(attr.get)
+        pf.setAttributes(attr.toSeq.flatten)
         pf
     }
 
@@ -218,7 +218,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       fdecl match {
         case attr ~ name ~ formalArgs ~ t =>
           val pdf = PDomainFunction(name, formalArgs, t, unique.isDefined)
-          if (attr.isDefined) pdf.setAttributes(attr.get)
+          pdf.setAttributes(attr.toSeq.flatten)
           pdf
       }
   }
@@ -250,12 +250,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val stmts =
     rep(stmt <~ opt(";"))
 
-  lazy val attribType =
-    "verified-if" | "entity" | "dependency" |
-      ident
-
-  lazy val aKey = ident
-  lazy val aValue = ident | exp
+  lazy val aKey = "verified-if" | "entity" | "dependency" | ident
+  lazy val aValue = ident ^^PStringValue | exp ^^ PExpValue
   lazy val aValues = repsep(aValue, ",")
 
   lazy val attribute =
@@ -270,7 +266,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       methodCall | goto | lbl
       ) ~ opt(attribList) ^^ {
       case basicStmt ~ attr => {
-        if (attr.isDefined) basicStmt.setAttributes(attr.get)
+        basicStmt.setAttributes(attr.toSeq.flatten)
         basicStmt
       }
     }

@@ -68,7 +68,7 @@ case class TypeChecker(names: NameAnalyser) {
   def check(m: PMethod) {
     checkMember(m) {
       (m.formalArgs ++ m.formalReturns) map (a => check(a.typ))
-      checkAttributes(m,m.getAttributes)
+      m.getAttributes foreach check
       m.pres map (check(_, Bool))
       m.posts map (check(_, Bool))
       check(m.body)
@@ -80,7 +80,7 @@ case class TypeChecker(names: NameAnalyser) {
       assert(curFunction==null)
       curFunction=f
       check(f.typ)
-      checkAttributes(f,f.getAttributes)
+      f.getAttributes foreach check
       f.formalArgs map (a => check(a.typ))
       check(f.typ)
       f.pres map (check(_, Bool))
@@ -121,44 +121,23 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(f: PDomainFunction) {
     check(f.typ)
-    checkAttributes(f,f.getAttributes)
+    f.getAttributes foreach check
     f.formalArgs map (a => check(a.typ))
   }
 
-  def checkAttributes(n: PNode, m:HashMap[String, List[Object]]): Unit ={
-    val error : String = "attribute with key \"%s\" requires %s"
 
-    m.foreach[Unit]((t: (String, List[Object])) => t match{
-      case (k:String, os:List[Object]) => k match{
-        case t@"verified-if" =>os.headOption match{
-          case None => message(n, error.format(t, "a value"))
-          case Some(o) => o match{
-            case e : PExp => check(e,Bool)
-            case _ => message(n, error.format(t, "a boolean expression as value"))
-          }
-        }
-        case t@"entity" => os.headOption match{
-          case None => message(n, error.format(t,"a value"))
-          case Some(o) => o match {
-            case e: PExp => check(e,Int)
-            case _ => message(n, error.format(t,"an integer expression as value"))
-          }
-        }
-        case t@"dependency" =>os.headOption match{
-          case None => message(n, error.format(t,"a value"))
-          case Some(o) => o match {
-            case e: PExp => check(e,Int)
-            case _ => message(n, error.format(t,"an integer expression as value"))
-          }
-        }
-        case _ =>
-      }
-    })
+  def check(a : PAttribute): Unit ={
+    a.values foreach check
+  }
+
+  def check(v : PAttributeValue): Unit = v match{
+    case PExpValue(e) =>
+    case _ =>
   }
 
   def check(stmt: PStmt) {
 
-    checkAttributes(stmt, stmt.getAttributes)
+    stmt.getAttributes foreach check
 
     stmt match {
       case PSeqn(ss) =>

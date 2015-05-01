@@ -21,7 +21,17 @@ object Transformer {
 
     @inline
     def go[B <: PNode](root: B): B = {
-      transform(root, pre)(recursive, post)
+      val t = transform(root, pre)(recursive, post)
+
+      root match{
+        case r : PAttributing => {
+          val at = t.asInstanceOf[PAttributing]
+          at.setAttributes(r.getAttributes map go)
+        }
+        case _ =>
+      }
+
+      t
     }
 
     def recurse(parent: PNode): PNode = {
@@ -106,7 +116,11 @@ object Transformer {
         case PDomainFunction(idndef, formalArgs, typ, unique) => PDomainFunction(go(idndef), formalArgs map go, go(typ), unique)
         case PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, body map go)
         case PAxiom(idndef, exp) => PAxiom(go(idndef), go(exp))
-        case _ : PAttribute =>  parent //should not happen
+
+        case PAttribute(key, vs) => PAttribute(key, vs map ((v:PAttributeValue) => v match{
+          case PExpValue(pe) => PExpValue(go(pe))
+          case _ => v
+        }))
       }
 
       assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")

@@ -12,7 +12,7 @@ import viper.silver.ast.utility.Visitor
 import TypeHelper._
 import java.nio.file.Path
 
-import scala.collection.immutable.HashMap
+//import scala.collection.immutable.HashMap
 
 /**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
@@ -257,14 +257,20 @@ case class PEmptyMultiset(t : PType) extends PExp
 }
 
 sealed trait PAttributing extends PNode{
-  private var attributes : HashMap[String, List[Object]] = new HashMap[String, List[Object]]()
-  
+  private var attributes = Map[String, List[PAttributeValue]]()
+
   def setAttributes(l : List[PAttribute]) = l.foreach(addAttribute)
-
+  def setAttributes(s : Seq[PAttribute]) = s.foreach(addAttribute)
   def addAttribute(a: PAttribute) = attributes += (a.key -> (attributes(a.key) ++ a.values))
-
-  def getAttributes : HashMap[String,List[Object]] = attributes
+  def getAttributes = attributes.collect{case (k:String, vs:List[PAttributeValue]) => PAttribute(k,vs)}.toSeq
 }
+
+sealed trait PAttributeValue{
+  def value : AnyRef
+}
+case class PAnyValue(value:AnyRef) extends PAttributeValue
+case class PStringValue(value:String) extends PAttributeValue
+case class PExpValue(value:PExp) extends PAttributeValue
 
 case class PExplicitMultiset(elems: Seq[PExp]) extends PExp
 // Statements
@@ -304,7 +310,7 @@ case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
-case class PAttribute(key: String, values: List[Object]) extends PStmt
+case class PAttribute(key: String, values: List[PAttributeValue]) extends PStmt
 
 sealed trait PScope extends PNode {
   val scopeId = PScope.uniqueId()

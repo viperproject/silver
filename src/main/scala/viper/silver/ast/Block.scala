@@ -18,7 +18,7 @@ import utility.AstGenerator
 import scala.collection.immutable.HashMap
 
 /** A common trait for basic blocks. */
-sealed trait Block {
+sealed trait Block extends Attributing{
   def succs: Seq[Edge]
   final override def equals(o: Any) = o match {
     case o: AnyRef => this eq o
@@ -120,13 +120,7 @@ sealed trait Block {
   /**
    * For keeping track of the AST's attributes, in particular when converting to/from a CFG.
    */
-
-  private var attributes : HashMap[String, List[Object]] = new HashMap[String, List[Object]]()
-
-  def setAttributes(l : List[Attribute]) = l.foreach(addAttribute)
-  def setAttributes(m : HashMap[String, List[Object]]) = attributes = m
-  def addAttribute(a: Attribute) = attributes += (a.key -> (attributes(a.key) ++ a.values))
-  def getAttributes : HashMap[String,List[Object]] = attributes
+  val attributes : Seq[Attribute]
 
 }
 
@@ -158,12 +152,12 @@ case class ConditionalEdge(dest: Block, cond: Exp) extends Edge
 case class UnconditionalEdge(dest: Block) extends Edge
 
 /** A basic block without outgoing edges. */
-case class TerminalBlock(stmt: Stmt) extends StatementBlock {
+case class TerminalBlock(stmt: Stmt)(val attributes:Seq[Attribute] = Nil) extends StatementBlock {
   lazy val succs = Nil
 }
 
 /** A basic block with one outgoing edges. */
-case class NormalBlock(stmt: Stmt, var succ: Block) extends StatementBlock {
+case class NormalBlock(stmt: Stmt, var succ: Block)(val attributes:Seq[Attribute] = Nil) extends StatementBlock {
   // Do not use `lazy val` because `succ` could potentially be modified
   // during construction of the CFG. Using `def` mitigates the danger of
   // returning stale data.
@@ -171,13 +165,13 @@ case class NormalBlock(stmt: Stmt, var succ: Block) extends StatementBlock {
 }
 
 /** A basic block with two outgoing edges that are conditional. */
-case class ConditionalBlock(stmt: Stmt, cond: Exp, var thn: Block, var els: Block) extends StatementBlock {
+case class ConditionalBlock(stmt: Stmt, cond: Exp, var thn: Block, var els: Block)(val attributes:Seq[Attribute] = Nil) extends StatementBlock {
   def succs = List(ConditionalEdge(thn, cond), ConditionalEdge(els, Not(cond)(NoPosition)))
 }
 
 /** A loop block with an implicit conditional back edge, and one unconditional outgoing edge. */
 case class LoopBlock(var body: Block, cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], var succ: Block)
-                    (val pos: Position = NoPosition, val info: Info = NoInfo)
+                    (val pos: Position = NoPosition, val info: Info = NoInfo, val attributes:Seq[Attribute] = Nil)
       extends Block {
 
   /* Note: It is the responsibility of the user of LoopBlock to ensure that the srcAst
@@ -193,6 +187,6 @@ case class LoopBlock(var body: Block, cond: Exp, invs: Seq[Exp], locals: Seq[Loc
 }
 
 /** Corresponds to the `Constraining` statement, that is, the `vars` can be constrained inside the `body`. */
-case class ConstrainingBlock(vars: Seq[LocalVar], var body: Block, var succ: Block) extends Block {
+case class ConstrainingBlock(vars: Seq[LocalVar], var body: Block, var succ: Block)(val attributes:Seq[Attribute] = Nil) extends Block {
   def succs = List(UnconditionalEdge(succ))
 }
