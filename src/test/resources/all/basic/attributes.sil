@@ -1,11 +1,17 @@
 field f: Int
 
 @something(1,2,true)
-function foo1(x:Int) :Int{
-    x @noValues()
+@verified-if(true)
+@somethingElse(42)
+function foo(x:Int) :Int{
+    x //@noValues()
 }
 
 @verified-if(false)
-method bar1() :Int{
-    f=foo1(f) @giveMe(5)
-}
+@hakuma(matata)
+method bar1(this:Ref) returns (x:Int)
+    requires(acc(this.f))
+    {
+        this.f := foo(this.f) @giveMe(5)@waitForIt()
+        x := this.f @calculated(x)
+    }

@@ -257,7 +257,7 @@ case class PEmptyMultiset(t : PType) extends PExp
 }
 
 sealed trait PAttributing extends PNode{
-  private var attributes = Map[String, List[PAttributeValue]]()
+  private var attributes = Map[String, List[PAttributeValue]]().withDefaultValue(Nil)
 
   def setAttributes(l : List[PAttribute]) = l.foreach(addAttribute)
   def setAttributes(s : Seq[PAttribute]) = s.foreach(addAttribute)
