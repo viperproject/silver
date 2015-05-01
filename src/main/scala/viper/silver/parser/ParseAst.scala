@@ -466,12 +466,10 @@ object Nodes {
       case PDefine(idndef, optArgs, exp) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(exp)
       case _: PSkip => Nil
 
-      case PAttribute(_,l) => (
-          for{
-            o <- l
-            if o.isInstanceOf[PNode]
-          } yield o.asInstanceOf[PNode]
-        ).toSeq
+      case PAttribute(_,l) => l.collect{
+        case PAnyValue(v:PNode) => v
+        case PExpValue(e:PExp) => e
+      }
     }
   }
 }
