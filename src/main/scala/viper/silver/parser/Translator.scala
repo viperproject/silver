@@ -98,11 +98,12 @@ case class Translator(program: PProgram) {
   private def translate(f: PField) = findField(f.idndef)
 
   private val getAttrConstructor = scala.collection.mutable.HashMap[String, (Seq[PAttributeValue]) => Option[Attribute]](
-    "verified-if" -> ((vs:Seq[PAttributeValue]) => Some(VerifiedIf(exp(vs.head.value.asInstanceOf[PExp])))), //TODO: I don't like having to use asInstanceOf[]. Better solution?
+    "verified-if" -> ((vs:Seq[PAttributeValue]) => Some(VerifiedIf(exp(vs.head.value.asInstanceOf[PExp])))),
+    //TODO: I don't like having to use asInstanceOf[]. Better solution?
     "test1" -> ((_:Seq[PAttributeValue]) => Some(VerifiedIf(null))),
     "test2" -> ((_:Seq[PAttributeValue]) => Some(OrdinaryAttribute("Test"))),
     "" -> ((_:Seq[PAttributeValue]) => sys.error("unexpected empty attribute key"))
-  )
+  ).withDefaultValue((_:Seq[PAttributeValue]) => None:Option[Attribute])
 
   def addAttributeConstructor(key:String, f:Seq[PAttributeValue] => Option[Attribute]) = getAttrConstructor += (key -> f)
 
