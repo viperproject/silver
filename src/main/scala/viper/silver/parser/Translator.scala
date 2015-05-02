@@ -12,7 +12,7 @@ import org.kiama.util.Messaging
 import org.kiama.util.{Positioned => KiamaPositioned}
 import viper.silver.ast._
 import viper.silver.ast.utility.{Visitor, Statements}
-import scala.collection.immutable.HashMap
+import scala.collection.immutable.{HashSet, HashMap}
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -97,9 +97,18 @@ case class Translator(program: PProgram) {
 
   private def translate(f: PField) = findField(f.idndef)
 
+  private val predefinedAttributes = HashSet[String](
+    "verified-if",
+    ""
+  )
+
+  def isPredefinedAttribute(s:String) = predefinedAttributes.contains(s)
+
   private val getAttrConstructor = scala.collection.mutable.HashMap[String, (Seq[PAttributeValue]) => Option[Attribute]](
-    "verified-if" -> ((vs:Seq[PAttributeValue]) => Some(VerifiedIf(exp(vs.head.value.asInstanceOf[PExp])))),
-    //TODO: I don't like having to use asInstanceOf[]. Better solution?
+    "verified-if" -> ((vs:Seq[PAttributeValue]) => vs match{
+      case Seq(a:PExpValue) => Some (VerifiedIf(exp(a.value)))
+      case _ => None
+    }),
     "" -> ((_:Seq[PAttributeValue]) => sys.error("unexpected empty attribute key"))
   ).withDefaultValue((_:Seq[PAttributeValue]) => None:Option[Attribute])
 
@@ -107,9 +116,15 @@ case class Translator(program: PProgram) {
 
   def translate(pa:PAttribute): Attribute = getAttrConstructor(pa.key)(pa.values) match {
     case Some(a:Attribute) => a
-    case None => pa.values match{
-      case Nil => OrdinaryAttribute(pa.key)
-      case vs => ValuedAttribute(pa.key, pa.values map (translate(_)))
+    case None => {
+      if(isPredefinedAttribute(pa.key)) pa.key match{
+        case "verified-if" => Messaging.message(pa,"Attribute \"verified-if\" requires exactly one pure boolean expression as value")
+        case _ =>
+      }
+      pa.values match {
+        case Nil => OrdinaryAttribute(pa.key)
+        case vs => ValuedAttribute(pa.key, pa.values map (translate(_)))
+      }
     }
   }
 
