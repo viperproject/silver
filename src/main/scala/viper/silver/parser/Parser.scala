@@ -107,8 +107,6 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "true", "false",
     // null
     "null",
-    // statement attribute types
-    "verified-if",
     // declaration keywords
     "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define",
     // specifications
@@ -250,7 +248,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val stmts =
     rep(stmt <~ opt(";"))
 
-  lazy val aKey = "verified-if" | "entity" | "dependency" | ident
+  lazy val aKey = ident
   lazy val aValue = ident ^^PStringValue | exp ^^ PExpValue
   lazy val aValues = repsep(aValue, ",")
 

@@ -13,7 +13,6 @@ attribute ::=
     "@" attributeKey "(" attributeValue^,* ")"
 
 attributeKey ::==
-    "verified-if" | "entity" | "dependency" |
     ident
 
 attributeValue ::==

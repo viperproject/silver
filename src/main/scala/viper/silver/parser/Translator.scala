@@ -98,17 +98,12 @@ case class Translator(program: PProgram) {
   private def translate(f: PField) = findField(f.idndef)
 
   private val predefinedAttributes = HashSet[String](
-    "verified-if",
     ""
   )
 
   def isPredefinedAttribute(s:String) = predefinedAttributes.contains(s)
 
   private val getAttrConstructor = scala.collection.mutable.HashMap[String, (Seq[PAttributeValue]) => Option[Attribute]](
-    "verified-if" -> ((vs:Seq[PAttributeValue]) => vs match{
-      case Seq(a:PExpValue) => Some (VerifiedIf(exp(a.value)))
-      case _ => None
-    }),
     "" -> ((_:Seq[PAttributeValue]) => sys.error("unexpected empty attribute key"))
   ).withDefaultValue((_:Seq[PAttributeValue]) => None:Option[Attribute])
 
@@ -118,7 +113,6 @@ case class Translator(program: PProgram) {
     case Some(a:Attribute) => a
     case None => {
       if(isPredefinedAttribute(pa.key)) pa.key match{
-        case "verified-if" => Messaging.message(pa,"Attribute \"verified-if\" requires exactly one pure boolean expression as value")
         case _ =>
       }
       pa.values match {

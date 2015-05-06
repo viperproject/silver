@@ -167,10 +167,6 @@ case class OrdinaryAttribute(key:String) extends Attribute
 case class ValuedAttribute(key:String, values : Seq[AttributeValue]) extends Attribute{
   override def pretty = "@" + key + "(" + (values map (_.pretty)).mkString(",") + ")"
 }
-case class VerifiedIf (cond : Exp) extends Attribute{
-  val key = "verified-if"
-  if(cond.isPure) throw new IllegalArgumentException(s"Attribute $key requires pure condition.")
-}
 
 trait Attributing{
   def attributes : Seq[Attribute]
