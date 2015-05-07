@@ -154,7 +154,6 @@ trait AttributeValue{
   def value : AnyRef
   def pretty = value.toString
 }
-case class AnyValue(value:AnyRef) extends AttributeValue
 case class StringValue(value : String) extends AttributeValue
 case class ExpValue(value:Exp) extends AttributeValue
 

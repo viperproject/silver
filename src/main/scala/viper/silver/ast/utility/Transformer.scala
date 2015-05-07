@@ -54,10 +54,6 @@ object Transformer {
     }
 
     def handle2(a:AttributeValue): AttributeValue = a match{
-      case AnyValue(v:AnyRef) => v match{
-        case n:Node => AnyValue(go(n))
-        case _ => a
-      }
       case ExpValue(e) => ExpValue(go(e))
       case _  => a
     }

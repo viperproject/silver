@@ -126,11 +126,6 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(v : PAttributeValue): Unit = v match{
-    case PAnyValue(v) => v match{
-      case e:PExp => check(e, Nil)
-      case s:PStmt => check(s)
-      case _ =>
-    }
     case PExpValue(e) => check(e,Nil)
     case _ =>
   }

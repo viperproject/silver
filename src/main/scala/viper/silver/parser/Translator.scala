@@ -123,7 +123,6 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(v : PAttributeValue) : AttributeValue = v match{
-    case v:PAnyValue => AnyValue(v.value)
     case v:PStringValue => StringValue(v.value)
     case v:PExpValue => ExpValue(exp(v.value))
     case _ => sys.error("unexpected attribute value parsed")

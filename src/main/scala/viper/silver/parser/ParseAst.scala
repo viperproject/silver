@@ -268,7 +268,6 @@ sealed trait PAttributing extends PNode{
 sealed trait PAttributeValue{
   def value : AnyRef
 }
-case class PAnyValue(value:AnyRef) extends PAttributeValue
 case class PStringValue(value:String) extends PAttributeValue
 case class PExpValue(value:PExp) extends PAttributeValue
 
@@ -467,7 +466,6 @@ object Nodes {
       case _: PSkip => Nil
 
       case PAttribute(_,l) => l.collect{
-        case PAnyValue(v:PNode) => v
         case PExpValue(e:PExp) => e
       }
     }
