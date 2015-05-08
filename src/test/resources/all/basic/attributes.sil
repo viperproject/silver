@@ -1,13 +1,11 @@
 field f: Int
 
 @something(1,2,true)
-@verified-if(true)
 @somethingElse(42)
 function foo(x:Int) :Int{
-    x //@noValues()
+    x //@noValues() //currently not supported
 }
 
-@verified-if(false)
 @hakuma(matata)
 method bar1(this:Ref) returns (x:Int)
     requires(acc(this.f))
@@ -15,3 +13,34 @@ method bar1(this:Ref) returns (x:Int)
         this.f := foo(this.f) @giveMe(5)@waitForIt()
         x := this.f @calculated(x)
     }
+
+method baz(i:Int) returns (r:Int){
+    r := i
+    var b : Bool := false
+    while(false){
+        b := true
+    }@loopAttribute(whatever1) @loopAttribute(whatever2)
+    @loopAttribute(value1, value2, value3)
+
+    if(b){
+        r := r + 1
+    }@ifAttribute(1234)
+
+    if(b){
+        //do nothing
+    }else{
+        //still do nothing
+    }@ifElseAttribute(value)@what(ever,you,need,2)
+}
+
+domain C[T]{
+
+    @what(ever)
+    function get() : T
+}
+
+method stmts() returns(r : Bool){
+    var c : C[Int]@hello(world);
+    r := 3 < 5 ? true : false @testedfor(5);
+    r := (5 < 3 ? r : true) @testedfor(5,3);
+}
