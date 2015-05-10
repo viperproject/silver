@@ -262,7 +262,11 @@ sealed trait PAttributing extends PNode{
   def setAttributes(l : List[PAttribute]) = l.foreach(addAttribute)
   def setAttributes(s : Seq[PAttribute]) = s.foreach(addAttribute)
   def addAttribute(a: PAttribute) = attributes += (a.key -> (attributes(a.key) ++ a.values))
-  def getAttributes = attributes.collect{case (k:String, vs:List[PAttributeValue]) => PAttribute(k,vs)}.toSeq
+  def getAttributes = attributes.collect{case (k:String, vs:List[PAttributeValue]) => {
+    val p = PAttribute(k,vs)
+    p.setPos(this)
+    p
+  }}.toSeq
 }
 
 sealed trait PAttributeValue{
