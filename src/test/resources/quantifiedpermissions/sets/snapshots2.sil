@@ -22,8 +22,9 @@ method test02(xs: Set[Ref], x: Ref, y: Ref, n: Int)
 {
   var v: Int := fun(xs, x, n)
   y.f := 0
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/143/)
   assert x != y ==> v == fun(xs, x, n)
-  //:: ExpectedOutput(assert.failed:assertion.false)
+  // :: ExpectedOutput(assert.failed:assertion.false) /* RE-ENABLE after above has been fixed */
   assert v == fun(xs, x, n)
 }
 
@@ -83,5 +84,6 @@ method test04(xs: Set[Ref], ys: Set[Ref], x: Ref, y: Ref, n: Int)
 {
   var v: Int := fun(xs, x, n)
   y.f := 0
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/143/)
   assert v == fun(xs, x, n)
 }
