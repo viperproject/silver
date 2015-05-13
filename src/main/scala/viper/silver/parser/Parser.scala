@@ -249,7 +249,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     rep(stmt <~ opt(";"))
 
   lazy val aKey = ident
-  lazy val aValue = ident ^^PStringValue | exp ^^ PExpValue
+  lazy val aValue = ("\"" ~>ident <~ "\"") ^^PStringValue | exp ^^ PExpValue
   lazy val aValues = repsep(aValue, ",")
 
   lazy val attribute =

@@ -125,10 +125,10 @@ case class TypeChecker(names: NameAnalyser) {
     f.formalArgs map (a => check(a.typ))
   }
 
-  def check(v : PAttributeValue): Unit = v match{
+  def check(v : PAttributeValue): Unit = {/*println(v);*/v match{
     case PExpValue(e) => check(e,Nil)
     case _ =>
-  }
+  }}
 
   def check(stmt: PStmt) {
 

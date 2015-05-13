@@ -19,8 +19,8 @@ method baz(i:Int) returns (r:Int){
     var b : Bool := false
     while(false){
         b := true
-    }@loopAttribute(whatever1) @loopAttribute(whatever2)
-    @loopAttribute(value1, value2, value3)
+    }@loopAttribute("whatever",1) @loopAttribute("whatever",2)
+    @loopAttribute("value1", "value2", "value3")
 
     if(b){
         r := r + 1
@@ -30,17 +30,17 @@ method baz(i:Int) returns (r:Int){
         //do nothing
     }else{
         //still do nothing
-    }@ifElseAttribute(value)@what(ever,you,need,2)
+    }@ifElseAttribute("value")@what("ever","you","need",2)
 }
 
 domain C[T]{
 
-    @what(ever)
+    @what("ever")
     function get() : T
 }
 
 method stmts() returns(r : Bool){
-    var c : C[Int]@hello(world);
+    var c : C[Int]@hello("world");
     r := 3 < 5 ? true : false @testedfor(5);
     r := (5 < 3 ? r : true) @testedfor(5,3);
 }
