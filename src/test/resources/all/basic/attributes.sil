@@ -6,7 +6,7 @@ function foo(x:Int) :Int{
     x //@noValues() //currently not supported
 }
 
-@hakuma(matata)
+@hakuma("matata")
 method bar1(this:Ref) returns (x:Int)
     requires(acc(this.f))
     {
