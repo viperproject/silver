@@ -125,7 +125,11 @@ case class TypeChecker(names: NameAnalyser) {
     f.formalArgs map (a => check(a.typ))
   }
 
-  def check(v : PAttributeValue): Unit = {/*println(v);*/v match{
+  def check(a:PAttribute): Unit ={
+    a.values foreach check
+  }
+
+  def check(v : PAttributeValue): Unit = {v match{
     case PExpValue(e) => check(e,Nil)
     case _ =>
   }}
@@ -233,7 +237,6 @@ case class TypeChecker(names: NameAnalyser) {
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
       case _: PSkip =>
-      case a : PAttribute => a.values foreach check
     }
   }
 

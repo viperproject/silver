@@ -44,3 +44,9 @@ method stmts() returns(r : Bool){
     r := 3 < 5 ? true : false @testedfor(5);
     r := (5 < 3 ? r : true) @testedfor(5,3);
 }
+
+method pidnuse() returns (r:Bool){
+    var b:Bool := true;
+    r := b
+    var a :Int := 1 @lookAt(b)@name("b")
+}

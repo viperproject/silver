@@ -313,7 +313,7 @@ case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
-case class PAttribute(key: String, values: List[PAttributeValue]) extends PStmt
+case class PAttribute(key: String, values: List[PAttributeValue]) extends PNode
 
 sealed trait PScope extends PNode {
   val scopeId = PScope.uniqueId()
