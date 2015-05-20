@@ -51,6 +51,12 @@ method pidnuse() returns (r:Bool){
     var a :Int := 1 @lookAt(b)@name("b")
 }
 
+method specialChars() returns (r:Bool){
+    r := true && false @hyphen-ated("t-r-u-e")
+    r := true @under_scored("o_r n_o_t")
+    r := false @garbage("13487841p4t58zasdukjnsadjypä¨üä!£àèé`?=)*+&%/()=}{][~´¢|¬§°#@¦") //strings may contain anything but "
+}
+
 method constraints() returns ()
     requires true @constraintAttribute()
     ensures true @inWords("true")

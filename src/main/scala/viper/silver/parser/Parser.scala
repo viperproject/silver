@@ -261,9 +261,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val stmts =
     rep(stmt <~ opt(";"))
 
-  lazy val aKey = ident
+  lazy val aKey = aIdent
   lazy val stringConstant = ("\"" ~> stringValue <~ "\"")
-  lazy val stringValue = s"[$identOtherLetterChars]*".r
   lazy val aValue = stringConstant ^^PStringValue | exp ^^ PExpValue
   lazy val aValues = repsep(aValue, ",")
 
@@ -584,6 +583,14 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   val ident =
     not(keyword) ~> identifier.r |
       failure("identifier expected")
+
+  val attribOtherLetterChars = "a-zA-z0-9-"
+  val attribOtherLetter = s"[$attribOtherLetterChars]"
+  val attribIdentifier = identFirstLetter + attribOtherLetter + "*"
+
+  val aIdent = attribIdentifier.r | failure("attribute identifier expected")
+
+  val stringValue = "[^\"]*".r
 
   private def foldPExp[E <: PExp](e: PExp, es: List[PExp => E]): E =
     es.foldLeft(e){(t, a) =>
