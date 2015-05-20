@@ -150,7 +150,7 @@ trait Typed {
 }
 
 /** A trait for nodes that have attributes */
-trait AttributeValue{
+sealed trait AttributeValue{
   def value : AnyRef
   def pretty = value.toString
 }

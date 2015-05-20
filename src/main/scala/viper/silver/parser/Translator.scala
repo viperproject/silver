@@ -235,14 +235,15 @@ case class Translator(program: PProgram) {
   /** Takes a `PExp` and turns it into an `Exp`. */
   def exp(pexp: PExp): Exp = {
     val pos = pexp
+    val attrs = pexp.getAttributes map ((a:PAttribute) => translate(a))
     pexp match {
       case piu @ PIdnUse(name) =>
         piu.decl match {
-          case _: PLocalVarDecl | _: PFormalArgDecl => LocalVar(name)(ttyp(pexp.typ), pos)
+          case _: PLocalVarDecl | _: PFormalArgDecl => LocalVar(name)(ttyp(pexp.typ), pos,attributes = attrs)
           case pf: PField =>
             /* A malformed AST where a field is dereferenced without a receiver */
             Messaging.message(piu, s"expected expression but found field $name")
-            LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
+            LocalVar(pf.idndef.name)(ttyp(pf.typ), pos,attributes = attrs)
           case other =>
             sys.error("should not occur in type-checked program")
         }
@@ -251,23 +252,23 @@ case class Translator(program: PProgram) {
         op match {
           case "+" =>
             r.typ match {
-              case Int => Add(l, r)(pos)
-              case Perm => PermAdd(l, r)(pos)
+              case Int => Add(l, r)(pos,attributes = attrs)
+              case Perm => PermAdd(l, r)(pos,attributes = attrs)
               case _ => sys.error("should not occur in type-checked program")
             }
           case "-" =>
             r.typ match {
-              case Int => Sub(l, r)(pos)
-              case Perm => PermSub(l, r)(pos)
+              case Int => Sub(l, r)(pos,attributes = attrs)
+              case Perm => PermSub(l, r)(pos,attributes = attrs)
               case _ => sys.error("should not occur in type-checked program")
             }
           case "*" =>
             r.typ match {
-              case Int => Mul(l, r)(pos)
+              case Int => Mul(l, r)(pos,attributes = attrs)
               case Perm =>
                 l.typ match {
-                  case Int => IntPermMul(l, r)(pos)
-                  case Perm => PermMul(l, r)(pos)
+                  case Int => IntPermMul(l, r)(pos,attributes = attrs)
+                  case Perm => PermMul(l, r)(pos,attributes = attrs)
                   case _ => sys.error("should not occur in type-checked program")
                 }
               case _ => sys.error("should not occur in type-checked program")
@@ -275,65 +276,65 @@ case class Translator(program: PProgram) {
           case "/" =>
             assert(r.typ==Int)
             l.typ match {
-              case Perm => PermDiv(l, r)(pos)
-              case Int  => assert (l.typ==Int); FractionalPerm(l, r)(pos)
+              case Perm => PermDiv(l, r)(pos,attributes = attrs)
+              case Int  => assert (l.typ==Int); FractionalPerm(l, r)(pos,attributes = attrs)
               case _    => sys.error("should not occur in type-checked program")
             }
-          case "\\" => Div(l, r)(pos)
-          case "%" => Mod(l, r)(pos)
+          case "\\" => Div(l, r)(pos,attributes = attrs)
+          case "%" => Mod(l, r)(pos,attributes = attrs)
           case "<" =>
             l.typ match {
-              case Int => LtCmp(l, r)(pos)
-              case Perm => PermLtCmp(l, r)(pos)
+              case Int => LtCmp(l, r)(pos,attributes = attrs)
+              case Perm => PermLtCmp(l, r)(pos,attributes = attrs)
               case _ => sys.error("unexpected type")
             }
           case "<=" =>
             l.typ match {
-              case Int => LeCmp(l, r)(pos)
-              case Perm => PermLeCmp(l, r)(pos)
+              case Int => LeCmp(l, r)(pos,attributes = attrs)
+              case Perm => PermLeCmp(l, r)(pos,attributes = attrs)
               case _ => sys.error("unexpected type")
             }
           case ">" =>
             l.typ match {
-              case Int => GtCmp(l, r)(pos)
-              case Perm => PermGtCmp(l, r)(pos)
+              case Int => GtCmp(l, r)(pos,attributes = attrs)
+              case Perm => PermGtCmp(l, r)(pos,attributes = attrs)
               case _ => sys.error("unexpected type")
             }
           case ">=" =>
             l.typ match {
-              case Int => GeCmp(l, r)(pos)
-              case Perm => PermGeCmp(l, r)(pos)
+              case Int => GeCmp(l, r)(pos,attributes = attrs)
+              case Perm => PermGeCmp(l, r)(pos,attributes = attrs)
               case _ => sys.error("unexpected type")
             }
-          case "==" => EqCmp(l, r)(pos)
-          case "!=" => NeCmp(l, r)(pos)
-          case "==>" => Implies(l, r)(pos)
-          case "<==>" => EqCmp(l, r)(pos)
-          case "&&" => And(l, r)(pos)
-          case "||" => Or(l, r)(pos)
+          case "==" => EqCmp(l, r)(pos,attributes = attrs)
+          case "!=" => NeCmp(l, r)(pos,attributes = attrs)
+          case "==>" => Implies(l, r)(pos,attributes = attrs)
+          case "<==>" => EqCmp(l, r)(pos,attributes = attrs)
+          case "&&" => And(l, r)(pos,attributes = attrs)
+          case "||" => Or(l, r)(pos,attributes = attrs)
           case "in" =>
             if (right.typ.isInstanceOf[PSeqType])
               SeqContains(l, r)(pos)
             else
-              AnySetContains(l, r)(pos)
-          case "++" => SeqAppend(l, r)(pos)
-          case "subset" => AnySetSubset(l, r)(pos)
-          case "intersection" => AnySetIntersection(l, r)(pos)
-          case "union" => AnySetUnion(l, r)(pos)
-          case "setminus" => AnySetMinus(l, r)(pos)
+              AnySetContains(l, r)(pos,attributes = attrs)
+          case "++" => SeqAppend(l, r)(pos,attributes = attrs)
+          case "subset" => AnySetSubset(l, r)(pos,attributes = attrs)
+          case "intersection" => AnySetIntersection(l, r)(pos,attributes = attrs)
+          case "union" => AnySetUnion(l, r)(pos,attributes = attrs)
+          case "setminus" => AnySetMinus(l, r)(pos,attributes = attrs)
           case _ => sys.error(s"unexpected operator $op")
         }
       case PUnExp(op, pe) =>
         val e = exp(pe)
         op match {
           case "+" => e
-          case "-" => Minus(e)(pos)
-          case "!" => Not(e)(pos)
+          case "-" => Minus(e)(pos,attributes = attrs)
+          case "!" => Not(e)(pos,attributes = attrs)
         }
       case PInhaleExhaleExp(in, ex) =>
-        InhaleExhaleExp(exp(in), exp(ex))(pos)
+        InhaleExhaleExp(exp(in), exp(ex))(pos,attributes = attrs)
       case PIntLit(i) =>
-        IntLit(i)(pos)
+        IntLit(i)(pos,attributes = attrs)
       case p@PResultLit() =>
         // find function
         var par: Attributable = p.parent
@@ -341,18 +342,18 @@ case class Translator(program: PProgram) {
           if (par == null) sys.error("cannot use 'result' outside of function")
           par = par.parent
         }
-        Result()(ttyp(par.asInstanceOf[PFunction].typ), pos)
+        Result()(ttyp(par.asInstanceOf[PFunction].typ), pos,attributes = attrs)
       case PBoolLit(b) =>
-        if (b) TrueLit()(pos) else FalseLit()(pos)
+        if (b) TrueLit()(pos,attributes = attrs) else FalseLit()(pos,attributes = attrs)
       case PNullLit() =>
-        NullLit()(pos)
+        NullLit()(pos,attributes = attrs)
       case p@PFieldAccess(rcv, idn) =>
-        FieldAccess(exp(rcv), findField(idn))(pos)
+        FieldAccess(exp(rcv), findField(idn))(pos,attributes = attrs)
       case p@PPredicateAccess(args, idn) =>
-        PredicateAccess(args map exp, findPredicate(idn))(pos)
+        PredicateAccess(args map exp, findPredicate(idn))(pos, NoInfo,attributes = attrs)
       case PFunctApp(func, args) =>
         members.get(func.name).get match {
-          case f: Function => FuncApp(f, args map exp)(pos)
+          case f: Function => FuncApp(f, args map exp)(pos,NoInfo,attributes = attrs)
           case f @ DomainFunc(name, formalArgs, typ, _) =>
             val actualArgs = args map exp
             val translatedTyp = ttyp(pexp.typ)
@@ -370,71 +371,71 @@ case class Translator(program: PProgram) {
             val map = learn(typ, translatedTyp) ++
               ((formalArgs map (_.typ)) zip (actualArgs map (_.typ)) flatMap (x => learn(x._1, x._2)))
 
-            DomainFuncApp(f, actualArgs, map.toMap)(pos)
+            DomainFuncApp(f, actualArgs, map.toMap)(pos,NoInfo,attributes = attrs)
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>
-        Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
+        Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos,attributes = attrs)
       case PLet(exp1, PLetNestedScope(variable, body)) =>
-        Let(liftVarDecl(variable), exp(exp1), exp(body))(pos)
+        Let(liftVarDecl(variable), exp(exp1), exp(body))(pos,attributes = attrs)
       case _: PLetNestedScope =>
         sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
       case PExists(vars, e) =>
-        Exists(vars map liftVarDecl, exp(e))(pos)
+        Exists(vars map liftVarDecl, exp(e))(pos,attributes = attrs)
       case PForall(vars, triggers, e) =>
         val ts = triggers map (exps => Trigger(exps map exp)(exps(0)))
-        Forall(vars map liftVarDecl, ts, exp(e))(pos)
+        Forall(vars map liftVarDecl, ts, exp(e))(pos,attributes = attrs)
       case POld(e) =>
-        Old(exp(e))(pos)
+        Old(exp(e))(pos,attributes = attrs)
       case PCondExp(cond, thn, els) =>
-        CondExp(exp(cond), exp(thn), exp(els))(pos)
+        CondExp(exp(cond), exp(thn), exp(els))(pos,attributes = attrs)
       case PCurPerm(loc) =>
-        CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos)
+        CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos,attributes = attrs)
       case PNoPerm() =>
-        NoPerm()(pos)
+        NoPerm()(pos,attributes = attrs)
       case PFullPerm() =>
-        FullPerm()(pos)
+        FullPerm()(pos,attributes = attrs)
       case PWildcard() =>
-        WildcardPerm()(pos)
+        WildcardPerm()(pos,attributes = attrs)
       case PEpsilon() =>
-        EpsilonPerm()(pos)
+        EpsilonPerm()(pos,attributes = attrs)
       case PAccPred(loc, perm) =>
         val p = exp(perm)
         exp(loc) match {
           case loc@FieldAccess(rcv, field) =>
-            FieldAccessPredicate(loc, p)(pos)
+            FieldAccessPredicate(loc, p)(pos,attributes = attrs)
           case loc@PredicateAccess(rcv, pred) =>
-            PredicateAccessPredicate(loc, p)(pos)
+            PredicateAccessPredicate(loc, p)(pos,attributes = attrs)
           case _ =>
             sys.error("unexpected location")
         }
       case PEmptySeq(_) =>
-        EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos)
+        EmptySeq(ttyp(pexp.typ.asInstanceOf[PSeqType].elementType))(pos,attributes = attrs)
       case PExplicitSeq(elems) =>
-        ExplicitSeq(elems map exp)(pos)
+        ExplicitSeq(elems map exp)(pos,attributes = attrs)
       case PRangeSeq(low, high) =>
-        RangeSeq(exp(low), exp(high))(pos)
+        RangeSeq(exp(low), exp(high))(pos,attributes = attrs)
       case PSeqIndex(seq, idx) =>
-        SeqIndex(exp(seq), exp(idx))(pos)
+        SeqIndex(exp(seq), exp(idx))(pos,attributes = attrs)
       case PSeqTake(seq, n) =>
-        SeqTake(exp(seq), exp(n))(pos)
+        SeqTake(exp(seq), exp(n))(pos,attributes = attrs)
       case PSeqDrop(seq, n) =>
-        SeqDrop(exp(seq), exp(n))(pos)
+        SeqDrop(exp(seq), exp(n))(pos,attributes = attrs)
       case PSeqUpdate(seq, idx, elem) =>
-        SeqUpdate(exp(seq), exp(idx), exp(elem))(pos)
+        SeqUpdate(exp(seq), exp(idx), exp(elem))(pos,attributes = attrs)
       case PSize(s) =>
         if (s.typ.isInstanceOf[PSeqType])
-          SeqLength(exp(s))(pos)
+          SeqLength(exp(s))(pos,attributes = attrs)
         else
-          AnySetCardinality(exp(s))(pos)
+          AnySetCardinality(exp(s))(pos,attributes = attrs)
       case PEmptySet(_) =>
-        EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos)
+        EmptySet(ttyp(pexp.typ.asInstanceOf[PSetType].elementType))(pos,attributes = attrs)
       case PExplicitSet(elems) =>
-        ExplicitSet(elems map exp)(pos)
+        ExplicitSet(elems map exp)(pos,attributes = attrs)
       case PEmptyMultiset(_) =>
-        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType))(pos)
+        EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType))(pos,attributes = attrs)
       case PExplicitMultiset(elems) =>
-        ExplicitMultiset(elems map exp)(pos)
+        ExplicitMultiset(elems map exp)(pos,attributes = attrs)
     }
   }
 
@@ -484,8 +485,4 @@ case class Translator(program: PProgram) {
     case PPredicateType() =>
       sys.error("unexpected use of internal typ")
   }
-}
-
-object AttributeTranslator{
-
 }

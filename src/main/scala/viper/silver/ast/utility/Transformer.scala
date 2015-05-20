@@ -63,96 +63,97 @@ object Transformer {
         case exp: Exp =>
           val p = exp.pos
           val i = exp.info
+          val as = exp.attributes
           exp match {
             case IntLit(_) => exp
             case BoolLit(_) => exp
             case NullLit() => exp
             case AbstractLocalVar(_) => exp
             // AS: added recursion on field: this was previously missing (as for all "shared" nodes in AST). But this could lead to the type of the field not being transformed consistently with its declaration (if the whole program is transformed)
-            case FieldAccess(rcv, field) => FieldAccess(go(rcv), go(field))(p, i)
+            case FieldAccess(rcv, field) => FieldAccess(go(rcv), go(field))(p, i, attributes = as map handle)
             case PredicateAccess(params, predicateName) =>
-              PredicateAccess(params map go, predicateName)(p, i)
-            case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i)
-            case Old(e) => Old(go(e))(p, i)
+              PredicateAccess(params map go, predicateName)(p, i, attributes = as map handle)
+            case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i, attributes = as map handle)
+            case Old(e) => Old(go(e))(p, i, attributes = as map handle)
             case CondExp(cond, thn, els) =>
-              CondExp(go(cond), go(thn), go(els))(p, i)
-            case Let(v, exp1, body) => Let(go(v), go(exp1), go(body))(p, i)
-            case Exists(v, e) => Exists(v map go, go(e))(p, i)
+              CondExp(go(cond), go(thn), go(els))(p, i, attributes = as map handle)
+            case Let(v, exp1, body) => Let(go(v), go(exp1), go(body))(p, i, attributes = as map handle)
+            case Exists(v, e) => Exists(v map go, go(e))(p, i, attributes = as map handle)
             case Forall(v, triggers, e) =>
-              Forall(v map go, triggers map go, go(e))(p, i)
+              Forall(v map go, triggers map go, go(e))(p, i, attributes = as map handle)
             case InhaleExhaleExp(in, ex) =>
-              InhaleExhaleExp(go(in), go(ex))(p, i)
+              InhaleExhaleExp(go(in), go(ex))(p, i, attributes = as map handle)
             case WildcardPerm() => exp
             case FullPerm() => exp
             case NoPerm() => exp
             case EpsilonPerm() => exp
-            case CurrentPerm(loc) => CurrentPerm(go(loc))(p, i)
+            case CurrentPerm(loc) => CurrentPerm(go(loc))(p, i, attributes = as map handle)
             case FractionalPerm(left, right) =>
-              FractionalPerm(go(left), go(right))(p, i)
+              FractionalPerm(go(left), go(right))(p, i, attributes = as map handle)
             case PermDiv(left, right) =>
-              PermDiv(go(left), go(right))(p, i)
+              PermDiv(go(left), go(right))(p, i, attributes = as map handle)
             case FieldAccessPredicate(loc, perm) =>
-              FieldAccessPredicate(go(loc), go(perm))(p, i)
+              FieldAccessPredicate(go(loc), go(perm))(p, i, attributes = as map handle)
             case PredicateAccessPredicate(loc, perm) =>
-              PredicateAccessPredicate(go(loc), go(perm))(p, i)
+              PredicateAccessPredicate(go(loc), go(perm))(p, i, attributes = as map handle)
             case fa@FuncApp(fname, args) =>
-              FuncApp(fname, args map go)(p, i, fa.typ, fa.formalArgs)
+              FuncApp(fname, args map go)(p, i, fa.typ, fa.formalArgs, attributes = as map handle)
             case dfa@DomainFuncApp(fname, args, m) =>
-              DomainFuncApp(fname, args map go, goTypeVariables(m))(p, i, dfa.typ, dfa.formalArgs)
+              DomainFuncApp(fname, args map go, goTypeVariables(m))(p, i, dfa.typ, dfa.formalArgs, attributes = as map handle)
 
-            case Minus(e) => Minus(go(e))(p, i)
-            case Not(e) => Not(go(e))(p, i)
+            case Minus(e) => Minus(go(e))(p, i, attributes = as map handle)
+            case Not(e) => Not(go(e))(p, i, attributes = as map handle)
 
-            case Or(l, r) => Or(go(l), go(r))(p, i)
-            case And(l, r) => And(go(l), go(r))(p, i)
-            case Implies(l, r) => Implies(go(l), go(r))(p, i)
+            case Or(l, r) => Or(go(l), go(r))(p, i, attributes = as map handle)
+            case And(l, r) => And(go(l), go(r))(p, i, attributes = as map handle)
+            case Implies(l, r) => Implies(go(l), go(r))(p, i, attributes = as map handle)
 
-            case Add(l, r) => Add(go(l), go(r))(p, i)
-            case Sub(l, r) => Sub(go(l), go(r))(p, i)
-            case Mul(l, r) => Mul(go(l), go(r))(p, i)
-            case Div(l, r) => Div(go(l), go(r))(p, i)
-            case Mod(l, r) => Mod(go(l), go(r))(p, i)
+            case Add(l, r) => Add(go(l), go(r))(p, i, attributes = as map handle)
+            case Sub(l, r) => Sub(go(l), go(r))(p, i, attributes = as map handle)
+            case Mul(l, r) => Mul(go(l), go(r))(p, i, attributes = as map handle)
+            case Div(l, r) => Div(go(l), go(r))(p, i, attributes = as map handle)
+            case Mod(l, r) => Mod(go(l), go(r))(p, i, attributes = as map handle)
 
-            case LtCmp(l, r) => LtCmp(go(l), go(r))(p, i)
-            case LeCmp(l, r) => LeCmp(go(l), go(r))(p, i)
-            case GtCmp(l, r) => GtCmp(go(l), go(r))(p, i)
-            case GeCmp(l, r) => GeCmp(go(l), go(r))(p, i)
+            case LtCmp(l, r) => LtCmp(go(l), go(r))(p, i, attributes = as map handle)
+            case LeCmp(l, r) => LeCmp(go(l), go(r))(p, i, attributes = as map handle)
+            case GtCmp(l, r) => GtCmp(go(l), go(r))(p, i, attributes = as map handle)
+            case GeCmp(l, r) => GeCmp(go(l), go(r))(p, i, attributes = as map handle)
 
-            case EqCmp(l, r) => EqCmp(go(l), go(r))(p, i)
-            case NeCmp(l, r) => NeCmp(go(l), go(r))(p, i)
+            case EqCmp(l, r) => EqCmp(go(l), go(r))(p, i, attributes = as map handle)
+            case NeCmp(l, r) => NeCmp(go(l), go(r))(p, i, attributes = as map handle)
 
-            case PermAdd(l, r) => PermAdd(go(l), go(r))(p, i)
-            case PermSub(l, r) => PermSub(go(l), go(r))(p, i)
-            case PermMul(l, r) => PermMul(go(l), go(r))(p, i)
-            case IntPermMul(l, r) => IntPermMul(go(l), go(r))(p, i)
+            case PermAdd(l, r) => PermAdd(go(l), go(r))(p, i, attributes = as map handle)
+            case PermSub(l, r) => PermSub(go(l), go(r))(p, i, attributes = as map handle)
+            case PermMul(l, r) => PermMul(go(l), go(r))(p, i, attributes = as map handle)
+            case IntPermMul(l, r) => IntPermMul(go(l), go(r))(p, i, attributes = as map handle)
 
-            case PermLtCmp(l, r) => PermLtCmp(go(l), go(r))(p, i)
-            case PermLeCmp(l, r) => PermLeCmp(go(l), go(r))(p, i)
-            case PermGtCmp(l, r) => PermGtCmp(go(l), go(r))(p, i)
-            case PermGeCmp(l, r) => PermGeCmp(go(l), go(r))(p, i)
+            case PermLtCmp(l, r) => PermLtCmp(go(l), go(r))(p, i, attributes = as map handle)
+            case PermLeCmp(l, r) => PermLeCmp(go(l), go(r))(p, i, attributes = as map handle)
+            case PermGtCmp(l, r) => PermGtCmp(go(l), go(r))(p, i, attributes = as map handle)
+            case PermGeCmp(l, r) => PermGeCmp(go(l), go(r))(p, i, attributes = as map handle)
 
-            case EmptySeq(elemTyp) => EmptySeq(go(elemTyp))(p, i)
-            case ExplicitSeq(elems) => ExplicitSeq(elems map go)(p, i)
-            case RangeSeq(low, high) => RangeSeq(go(low), go(high))(p, i)
-            case SeqAppend(left, right) => SeqAppend(go(left), go(right))(p, i)
-            case SeqIndex(seq, idx) => SeqIndex(go(seq), go(idx))(p, i)
-            case SeqTake(seq, n) => SeqTake(go(seq), go(n))(p, i)
-            case SeqDrop(seq, n) => SeqDrop(go(seq), go(n))(p, i)
-            case SeqContains(elem, seq) => SeqContains(go(elem), go(seq))(p, i)
+            case EmptySeq(elemTyp) => EmptySeq(go(elemTyp))(p, i, attributes = as map handle)
+            case ExplicitSeq(elems) => ExplicitSeq(elems map go)(p, i, attributes = as map handle)
+            case RangeSeq(low, high) => RangeSeq(go(low), go(high))(p, i, attributes = as map handle)
+            case SeqAppend(left, right) => SeqAppend(go(left), go(right))(p, i, attributes = as map handle)
+            case SeqIndex(seq, idx) => SeqIndex(go(seq), go(idx))(p, i, attributes = as map handle)
+            case SeqTake(seq, n) => SeqTake(go(seq), go(n))(p, i, attributes = as map handle)
+            case SeqDrop(seq, n) => SeqDrop(go(seq), go(n))(p, i, attributes = as map handle)
+            case SeqContains(elem, seq) => SeqContains(go(elem), go(seq))(p, i, attributes = as map handle)
             case SeqUpdate(seq, idx, elem) =>
-              SeqUpdate(go(seq), go(idx), go(elem))(p, i)
-            case SeqLength(seq) => SeqLength(go(seq))(p, i)
+              SeqUpdate(go(seq), go(idx), go(elem))(p, i, attributes = as map handle)
+            case SeqLength(seq) => SeqLength(go(seq))(p, i, attributes = as map handle)
 
             case EmptySet(elemTyp) => exp
-            case ExplicitSet(elems) => ExplicitSet(elems map go)(p, i)
+            case ExplicitSet(elems) => ExplicitSet(elems map go)(p, i, attributes = as map handle)
             case EmptyMultiset(elemTyp) => exp
-            case ExplicitMultiset(elems) => ExplicitMultiset(elems map go)(p, i)
-            case AnySetUnion(left, right) => AnySetUnion(go(left), go(right))(p, i)
-            case AnySetIntersection(left, right) => AnySetIntersection(go(left), go(right))(p, i)
-            case AnySetSubset(left, right) => AnySetSubset(go(left), go(right))(p, i)
-            case AnySetMinus(left, right) => AnySetMinus(go(left), go(right))(p, i)
-            case AnySetContains(elem, s) => AnySetContains(go(elem), go(s))(p, i)
-            case AnySetCardinality(s) => AnySetCardinality(go(s))(p, i)
+            case ExplicitMultiset(elems) => ExplicitMultiset(elems map go)(p, i, attributes = as map handle)
+            case AnySetUnion(left, right) => AnySetUnion(go(left), go(right))(p, i, attributes = as map handle)
+            case AnySetIntersection(left, right) => AnySetIntersection(go(left), go(right))(p, i, attributes = as map handle)
+            case AnySetSubset(left, right) => AnySetSubset(go(left), go(right))(p, i, attributes = as map handle)
+            case AnySetMinus(left, right) => AnySetMinus(go(left), go(right))(p, i, attributes = as map handle)
+            case AnySetContains(elem, s) => AnySetContains(go(elem), go(s))(p, i, attributes = as map handle)
+            case AnySetCardinality(s) => AnySetCardinality(go(s))(p, i, attributes = as map handle)
           }
 
         case program @

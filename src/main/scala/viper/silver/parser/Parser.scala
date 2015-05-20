@@ -189,11 +189,24 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     opt(attribList) ~ ("method" ~> idndef) ~  ("(" ~> formalArgList <~ ")") ~ opt("returns" ~> ("(" ~> formalArgList <~ ")"))
 
   lazy val pre =
-    "requires" ~> exp <~ opt(";")
+    ("requires" ~> exp <~ opt(";"))~(opt(attribList) <~opt(";")) ^^{
+      case e ~ attr =>
+        e.setAttributes(attr.toSeq.flatten)
+        e
+    }
   lazy val post =
-    "ensures" ~> exp <~ opt(";")
+    ("ensures" ~> exp <~ opt(";"))~(opt(attribList) <~opt(";")) ^^{
+      case e ~ attr =>
+        e.setAttributes(attr.toSeq.flatten)
+        e
+    }
+
   lazy val inv =
-    "invariant" ~> exp <~ opt(";")
+    ("invariant" ~> exp <~ opt(";"))~(opt(attribList) <~opt(";")) ^^{
+      case e ~ attr =>
+        e.setAttributes(attr.toSeq.flatten)
+        e
+    }
 
   lazy val formalArgList =
     repsep(formalArg, ",")
@@ -249,7 +262,9 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     rep(stmt <~ opt(";"))
 
   lazy val aKey = ident
-  lazy val aValue = ("\"" ~>ident <~ "\"") ^^PStringValue | exp ^^ PExpValue
+  lazy val stringConstant = ("\"" ~> stringValue <~ "\"")
+  lazy val stringValue = s"[$identOtherLetterChars]*".r
+  lazy val aValue = stringConstant ^^PStringValue | exp ^^ PExpValue
   lazy val aValues = repsep(aValue, ",")
 
   lazy val attribute =

@@ -33,7 +33,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
 
   /** Show any AST node. */
   def show(n: Node): Doc = n match {
-    case exp: Exp => toParenDoc(exp)
+    case exp: Exp => toParenDoc(exp) <> showExpAttributes(exp.attributes)
     case stmt: Stmt => showStmt(stmt)
     case typ: Type => showType(typ)
     case p: Program => showProgram(p)
@@ -217,8 +217,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         "goto" <+> target
       case null => uninitialized
     }
-    showStmtAttributes(stmt.attributes)
-    showComment(stmt) <> stmtDoc
+    showComment(stmt) <> stmtDoc <> showStmtAttributes(stmt.attributes)
   }
 
   def showElse(els: Stmt): PrettyPrinter.Doc = els match {
@@ -228,12 +227,15 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case _ => empty <+> "else" <+> showBlock(els)
   }
 
-  def show(a:Attribute) = a match{
-    case _ => a.pretty <> ""
-  }
+  def show(a:Attribute) =
+    a.pretty <> ""
 
   def showAttributes(atts : Seq[Attribute]) = {
     ssep(atts map show, linebreak)
+  }
+
+  def showExpAttributes(atts : Seq[Attribute]) = {
+    ssep(atts map show, space)
   }
 
   def showStmtAttributes(atts : Seq[Attribute]) = {

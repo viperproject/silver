@@ -241,6 +241,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def acceptNonAbstactPredicateAccess(exp: PExp, messageIfAbstractPredicate: String) {
+    exp.getAttributes foreach check
     exp match {
       case PAccPred(PPredicateAccess(_, idnuse), _) =>
         acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
@@ -393,6 +394,8 @@ case class TypeChecker(names: NameAnalyser) {
   def check(exp: PExp, expected: PType): Unit = check(exp, Seq(expected))
 
   def check(exp: PExp, expectedRaw: Seq[PType]): Unit = {
+    exp.getAttributes foreach check
+
     val expected = expectedRaw filter {
       case PTypeVar(_) => false
       case _ => true

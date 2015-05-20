@@ -50,3 +50,14 @@ method pidnuse() returns (r:Bool){
     r := b
     var a :Int := 1 @lookAt(b)@name("b")
 }
+
+method constraints() returns ()
+    requires true @constraintAttribute()
+    ensures true @inWords("true")
+    {
+        while(true)
+            invariant(true)@invariantAttribute("hello")
+            {
+
+        }
+    }

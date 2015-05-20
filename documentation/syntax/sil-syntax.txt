@@ -18,6 +18,19 @@ attributeKey ::==
 attributeValue ::==
     exp | ident
 
+
+fun-attributes ::=
+    attribute*
+
+meth-attributes ::=
+    attribute*
+
+exp-attributes ::=
+    attribute*
+
+stmt-attributes ::=
+    attribute*
+
 domain ::=
 	"domain" domain-name "{"
 		domain-function*
@@ -27,9 +40,6 @@ domain ::=
 domain-name ::=
 	ident |
 	ident "[" ident^,* "]"  //e.g. Seq[T]
-
-fun-attributes ::=
-    attribute*
 
 domain-function ::=
 	["unique"] [fun-attributes] "function" ident  function-signature
@@ -50,19 +60,16 @@ function ::=
 	"{" exp "}"
 
 precondition ::=
-	"requires" exp
+	"requires" exp [exp-attributes]
 
 postcondition ::=
-	"ensures" exp
+	"ensures" exp [exp-attributes]
 
 invariant ::=
-	"invariant" exp
+	"invariant" exp [exp-attributes]
 
 predicate ::=
 	"predicate" ident formal-args "{" exp "}"
-
-meth-attributes ::=
-    attribute*
 
 method ::=
 	[meth-attributes] "method" ident formal-args [formal-returns]
@@ -79,8 +86,6 @@ formal-returns ::=
 	"returns" formal-args
 
 // Statements
-stmt-attributes ::=
-    attribute*
 
 block ::=
 	"{" stmt "}"

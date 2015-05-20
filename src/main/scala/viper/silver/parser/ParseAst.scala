@@ -186,7 +186,7 @@ case class PPredicateType() extends PInternalType {
 }
 
 // Expressions
-sealed trait PExp extends PNode {
+sealed trait PExp extends PNode with PAttributing {
   var typ: PType = PUnknown()
 }
 case class PBinExp(left: PExp, op: String, right: PExp) extends PExp
