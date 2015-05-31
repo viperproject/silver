@@ -37,8 +37,7 @@ object CfgGenerator {
     val p2 = new Phase2(p1)
     val p3 = new Phase3(p2)
     val p4 = new Phase4(p3)
-    val b = p4.result
-    b
+    p4.result
   }
 
   // temporary CFG blocks (mutable to allow incremental creation)

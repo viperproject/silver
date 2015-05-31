@@ -12,8 +12,6 @@ import viper.silver.ast.utility.Visitor
 import TypeHelper._
 import java.nio.file.Path
 
-//import scala.collection.immutable.HashMap
-
 /**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual SIL abstract syntax tree.

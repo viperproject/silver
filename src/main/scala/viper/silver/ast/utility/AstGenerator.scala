@@ -17,10 +17,7 @@ import viper.silver.utility.SilNameGenerator
 
 object AstGenerator {
 
-  def toAst(block: Block) = {
-    val s = AstGeneratorContext(block).toAst
-    s
-  }
+  def toAst(block: Block) = AstGeneratorContext(block).toAst
 
   case class AstGeneratorContext(block: Block) {
 

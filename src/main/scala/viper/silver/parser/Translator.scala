@@ -12,7 +12,7 @@ import org.kiama.util.Messaging
 import org.kiama.util.{Positioned => KiamaPositioned}
 import viper.silver.ast._
 import viper.silver.ast.utility.{Visitor, Statements}
-import scala.collection.immutable.{HashSet, HashMap}
+import scala.collection.immutable.HashSet
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
