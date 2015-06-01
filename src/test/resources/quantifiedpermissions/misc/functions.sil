@@ -56,7 +56,20 @@ predicate P02(xs: Seq[Ref], n: Int) {
   && (forall j: Int :: 3 <= j && j < n ==> acc(xs[j].f))
 }
 
-method test06(xs: Seq[Ref], n: Int) {
+method test06a(xs: Seq[Ref], n: Int) {
+  inhale |xs| == n && 6 < n
+  inhale (forall j: Int :: 0 <= j && j < 3 ==> acc(xs[j].f))
+  inhale (forall j: Int :: 3 <= j && j < n ==> acc(xs[j].f))
+
+  var v1: Int := xs[2].f
+
+  fold acc(P02(xs, n))
+  unfold acc(P02(xs, n))
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test06b(xs: Seq[Ref], n: Int) {
   inhale acc(P02(xs, n))
   inhale 6 < n
 

@@ -64,11 +64,20 @@ class SilFrontendConfig(args: Seq[String], private var projectName: String) exte
   val ideMode = opt[Boolean]("ideMode",
     descr = (  "Report errors in the format '<file>,<line>:<col>: <message>', and write"
              + "errors in the format '<file>,<line>:<col>,<line>:<col>,<message>' to"
-             + "a file silver.errors."), /* TODO: Make file name configurable */
+             + "a file (see option ideModeErrorFile)."),
     default = Some(false),
     noshort = true,
     hidden = true
   )
+
+  val ideModeErrorFile = opt[String]("ideModeErrorFile",
+    descr = "File to which errors should be written",
+    default = Some("errors.log"),
+    noshort = true,
+    hidden = true
+  )
+
+  dependsOnAll(ideModeErrorFile, ideMode :: Nil)
 
   validateOpt(file, ignoreFile) {
     case (_, Some(true)) => Right(Unit)
