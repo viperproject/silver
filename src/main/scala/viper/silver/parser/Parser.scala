@@ -164,11 +164,17 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
                   case la: PDefine => PSkip().setPos(la)
                 }()
 
-            substituteDefines(localDefines ++ globalDefines, methWithoutDefines)
+            val res = substituteDefines(localDefines ++ globalDefines, methWithoutDefines)
+            res.setAttributes(meth.getAttributes)
+            res
         }
 
         val domains = decls collect { case d: PDomain => substituteDefines(globalDefines, d) }
-        val functions = decls collect { case d: PFunction => substituteDefines(globalDefines, d) }
+        val functions = decls collect { case d: PFunction =>
+          val res = substituteDefines(globalDefines, d)
+          res.setAttributes(d.getAttributes)
+          res
+        }
         val predicates = decls collect { case d: PPredicate => substituteDefines(globalDefines, d) }
 
         PProgram(file, domains, fields, functions, predicates, methods)
