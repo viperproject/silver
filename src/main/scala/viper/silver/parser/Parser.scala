@@ -175,7 +175,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
           res.setAttributes(d.getAttributes)
           res
         }
-        val predicates = decls collect { case d: PPredicate => substituteDefines(globalDefines, d) }
+        val predicates = decls collect { case d: PPredicate =>
+          val res = substituteDefines(globalDefines, d)
+        res.setAttributes(d.getAttributes)
+        res}
 
         PProgram(file, domains, fields, functions, predicates, methods)
     }
@@ -241,7 +244,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   }
 
   lazy val predicateDecl =
-    ("predicate" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ opt("{" ~> (exp <~ "}")) ^^ PPredicate
+    opt(attribList) ~ ("predicate" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ opt("{" ~> (exp <~ "}")) ^^ {
+      case attr ~ name ~ formalArgs ~ body =>
+        val pp = PPredicate(name,formalArgs,body)
+        pp.setAttributes(attr.toSeq.flatten)
+    }
 
   lazy val domainDecl =
     ("domain" ~> idndef) ~

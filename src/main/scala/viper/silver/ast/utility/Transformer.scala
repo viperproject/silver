@@ -177,9 +177,9 @@ object Transformer {
                 postconditions map go,
                 body map go)(member.pos, member.info, f.attributes map handle)
 
-            case Predicate(name, parameters, body) =>
+            case p@Predicate(name, parameters, body) =>
               Predicate(name, parameters map go,
-                body map go)(member.pos, member.info)
+                body map go)(member.pos, member.info,p.attributes map handle)
 
             case m@Method(name, parameters, results, preconditions,
               postconditions, locals, body) =>

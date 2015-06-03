@@ -146,8 +146,8 @@ case class Translator(program: PProgram) {
         df
       case PDomain(_, typVars, funcs, axioms) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)))(pos)
-      case PPredicate(_, formalArgs, _) =>
-        Predicate(name, formalArgs map liftVarDecl, null)(pos)
+      case pp@PPredicate(_, formalArgs, _) =>
+        Predicate(name, formalArgs map liftVarDecl, null)(pos,attributes = pp.getAttributes.map((pa:PAttribute) => translate(pa)))
       case pm@PMethod(_, formalArgs, formalReturns, _, _, _) =>
         val m = Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null, null)(pos, attributes = pm.getAttributes.map((pa:PAttribute) => translate(pa)))
         m

@@ -1,5 +1,11 @@
 field f: Int
 
+@hello("world")
+predicate isPositive(x:Ref)
+	{
+	acc(x.f) && x.f > 0
+}
+
 @something(1,2,true)
 @somethingElse(42)
 function foo(x:Int) :Int{

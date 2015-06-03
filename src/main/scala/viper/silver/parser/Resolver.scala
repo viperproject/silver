@@ -97,6 +97,7 @@ case class TypeChecker(names: NameAnalyser) {
     checkMember(p) {
       p.formalArgs map (a => check(a.typ))
       p.body.map(check(_, Bool))
+      p.getAttributes foreach check
     }
   }
 
