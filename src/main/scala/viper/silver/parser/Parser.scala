@@ -248,6 +248,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       case attr ~ name ~ formalArgs ~ body =>
         val pp = PPredicate(name,formalArgs,body)
         pp.setAttributes(attr.toSeq.flatten)
+        pp
     }
 
   lazy val domainDecl =
