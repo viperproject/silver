@@ -1,4 +1,6 @@
 /* Previously was IgnoreFile(/silicon/issue/121/) */
+//:: IgnoreFile(/silicon/issue/132/)
+  /* Currently, Z3 doesn't terminate and consumes (nearly) all available memory. Looks like a matching loop. */
 
 domain Visit {
   function visit(rf: Ref): Bool
