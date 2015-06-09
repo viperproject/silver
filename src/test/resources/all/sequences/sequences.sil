@@ -4,6 +4,8 @@ method t1(x: Int, xs: Seq[Int]) {
     assert |n| == 0
     assert n != Seq(x)
     assert |Seq(1)| == 1
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert |Seq(0)| == 0
 }
 
 method t2() {
@@ -20,6 +22,11 @@ method t2() {
 
     assert a[1 := 22] == (a[1 := -1][1 := 22])
     assert a[1 := 22] == Seq(0,22,-11,22)
+    assert |a[1 := 22]| == 4
+    assert a[1 := 22][1] == 22
+    assert a[1 := 22][2] == -11
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert a[1 := 22][0] == 22
 }
 
 method test3() {
@@ -27,6 +34,8 @@ method test3() {
   var bs: Seq[Bool] := Seq(true, true, false, true) ++ Seq(false, true)
 
   assert |xs[1..][..6]| == |bs|
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert |xs[1..]| == |xs|
 }
 
 method test4(s:Seq[Int], i : Int, j:Int) 
@@ -35,6 +44,9 @@ method test4(s:Seq[Int], i : Int, j:Int)
 {
   assert s == s[..i] ++ s[i..]
   assert s == s[..i] ++ s[i..j] ++ s[j..]
+  assert (s[..i] ++ s[i..j]) ++ s[j..] == s[..i] ++ (s[i..j] ++ s[j..])
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert |s[j..]| == |s| - j
 }
 
 method test5(s:Seq[Int], i : Int, j:Int) 
@@ -49,4 +61,6 @@ method test6() {
   assert Seq(3,4,5,6)[1] == 4
   assert Seq(3,4,5,6)[2] == 5
   assert Seq(3,4,5,6)[3] == 6
+    //:: ExpectedOutput(assert.failed:assertion.false)
+  assert Seq(3,4,5,6)[3] == 5
 }
