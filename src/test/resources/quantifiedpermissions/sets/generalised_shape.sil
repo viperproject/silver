@@ -43,20 +43,6 @@ method test13(x1: Ref)
   ensures forall x: Ref :: x in Set(x1) ==> acc(x.g.f)
 {}
 
-method test08(x1: Ref, x2: Ref)
-  requires acc(x1.g) && acc(x1.g.f)
-  requires acc(x2.g) && acc(x2.g.f)
-  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g)
-  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f)
-{}
-
-method test09(x1: Ref, x2: Ref)
-  requires acc(x1.g) && acc(x1.g.f, 2/3)
-  requires acc(x2.g) && acc(x2.g.f, 2/3)
-  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g, 2/3)
-  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, 2/3)
-{}
-
 method test10(x1: Ref, x2: Ref)
   requires acc(x1.g) && acc(x1.g.f, wildcard)
   requires acc(x2.g) && acc(x2.g.f, wildcard)
@@ -73,19 +59,18 @@ method test15(x1: Ref, x2: Ref)
   ensures forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, wildcard)
 {}
 
-/* TODO: Takes about 15s (on my laptop). Investigate why, maybe the trigger can be improved. */
-//method test11(x1: Ref, x2: Ref, x3: Ref, x4: Ref, x5: Ref, x6: Ref)
-//  requires acc(x1.g) && acc(x1.g.f)
-//  requires acc(x2.g) && acc(x2.g.f)
-//  requires acc(x3.g) && acc(x3.g.f)
-//  requires acc(x4.g) && acc(x4.g.f)
-//  requires acc(x5.g) && acc(x5.g.f)
-//  requires acc(x6.g) && acc(x6.g.f)
-//{
-//  test08(Set(x1, x6))
-//  test09(Set(x2, x5))
-//  test10(Set(x3, x4))
-//}
+method test11(x1: Ref, x2: Ref, x3: Ref, x4: Ref, x5: Ref, x6: Ref)
+  requires acc(x1.g) && acc(x1.g.f)
+  requires acc(x2.g) && acc(x2.g.f)
+  requires acc(x3.g) && acc(x3.g.f)
+  requires acc(x4.g) && acc(x4.g.f)
+  requires acc(x5.g) && acc(x5.g.f)
+  requires acc(x6.g) && acc(x6.g.f)
+{
+  test10(x1, x6)
+  test10(x2, x5)
+  test10(x3, x4)
+}
 
 method test06(xs: Set[Ref], y1: Ref, y2: Ref, y3: Ref)
   requires forall x: Ref :: x in xs ==> acc(x.g)
