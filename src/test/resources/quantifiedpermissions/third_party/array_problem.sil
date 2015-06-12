@@ -28,6 +28,5 @@ method main(this:Ref)
   this.ar[3].val:=false
 
   assume count(this.ar,|this.ar|)==3
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/143/)
   assert count(this.ar,|this.ar|)==3
 }
