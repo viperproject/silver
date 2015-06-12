@@ -227,7 +227,7 @@ object Transformer {
               Assert(go(expression))(statement.pos, statement.info, statement.attributes map handle)
 
             case Exhale(expression) =>
-              Exhale(go(expression))(statement.pos, statement.info)
+              Exhale(go(expression))(statement.pos, statement.info, statement.attributes map handle)
 
             case FieldAssign(field, value) =>
               FieldAssign(go(field), go(value))(statement.pos, statement.info, statement.attributes map handle)
