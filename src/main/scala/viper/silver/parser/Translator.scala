@@ -173,6 +173,7 @@ case class Translator(program: PProgram) {
          * TODO: Get rid of this case! There is a matching case in the resolver.
          */
         val call = PMethodCall(Seq(idnuse), func, args)
+        call.setAttributes(s.getAttributes)
         call.setStart(s.start)
         stmt(call)
       case PVarAssign(idnuse, rhs) =>
