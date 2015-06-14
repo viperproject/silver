@@ -48,6 +48,7 @@ object Expressions {
 
   def purify(e: Exp): Exp = e.transform({
       case _: AccessPredicate => TrueLit()()
+      case _: MagicWand => TrueLit()()
     })()
 
   def whenInhaling(e: Exp) = e.transform()(post = {
