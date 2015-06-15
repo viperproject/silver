@@ -80,12 +80,14 @@ sealed case class TestAnnotations(
    * Returns all test annotations except those that are specific
    * to a different project than the given one.
    *
-   * @param project the name of the project
+   * @param projectInfo project names
    * @return the filtered test annotations
    */
-  def filterByProject(project: String): TestAnnotations =
+  def filterByProject(projectInfo: ProjectInfo): TestAnnotations =
     copy(annotations = annotations filter {
-      case a: ProjectSpecificAnnotation => projectNameMatches(a.project, project)
+      case a: ProjectSpecificAnnotation => {
+        projectInfo.projectNames.exists(projectNameMatches(a.project, _))
+      }
       case _ => true
     })
 
