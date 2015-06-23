@@ -90,7 +90,6 @@ function fun06(xs: Seq[Ref], n: Int, i: Int): Int
   unfolding acc(P02(xs, n)) in xs[i].f
 }
 
-/* TODO: Slow (about 30s) */
 method test05(xs: Seq[Ref], n: Int, i: Int) {
   inhale acc(P02(xs, n))
   inhale 6 < n
@@ -130,24 +129,23 @@ function fun04(x: Ref, n: Int, i: Int): Int
   unfolding acc(P01(x, n)) in x.ss[i].f
 }
 
-/* TODO: Slow (about 80s), twice as slow with commented lines included */
 method test04(x: Ref, n: Int) {
   inhale acc(P01(x, n))
   inhale 6 < n
 
   unfold acc(P01(x, n))
-//  var v1: Int := x.ss[2].f
+  var v1: Int := x.ss[2].f
   var v2: Int := x.ss[4].f
   fold acc(P01(x, n))
 
-//  assert v1 == fun04(x, n, 2)
+  assert v1 == fun04(x, n, 2)
   assert v2 == fun04(x, n, 4)
 
   unfold acc(P01(x, n))
   x.ss[4].f := 0
   fold acc(P01(x, n))
 
-//  assert v1 == fun04(x, n, 2)
+  assert v1 == fun04(x, n, 2)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert v2 == fun04(x, n, 4)
 }

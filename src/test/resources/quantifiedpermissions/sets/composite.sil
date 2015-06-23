@@ -1,4 +1,12 @@
-/* Previously was IgnoreFile(/silicon/issue/121/) */
+/* Initially, IgnoreFile(/silicon/issue/74/) */
+/* Afterwards, IgnoreFile(/silicon/issue/121/) */
+/* Afterwards, IgnoreFile(/silicon/issue/132/) */
+
+//:: IgnoreFile(/silicon/issue/74/)
+  /* [2015-06-08 Malte] Currently, Z3 doesn't terminate and consumes (nearly)
+   * all available memory. Looks like a matching loop, culprits could be the
+   * assertions marked with [ML?].
+   */
 
 domain Visit {
   function visit(rf: Ref): Bool
@@ -20,10 +28,10 @@ predicate inv(this: Ref, except: Set[Ref])
   && (forall m: Ref :: m in (this.all) ==> acc(m.parent, wildcard))
   && (forall o: Ref :: o in (this.all) ==> acc(o.parentStruct, wildcard))
   && (forall q: Ref :: q in (this.all) ==> acc(q.left, 1/2))
-  && (forall t: Ref :: t in (this.all) && t.left != null && visit(t) ==> t.left in this.all)
+  && (forall t: Ref :: t in (this.all) && t.left != null && visit(t) ==> t.left in this.all) /* [ML?] */
   && (forall s: Ref :: (s in (this.all) && s.left == null) ==> acc(s.left, 1/2))
   && (forall v: Ref :: v in (this.all) ==> acc(v.right, 1/2))
-  && (forall t1: Ref :: t1 in (this.all) && t1.right != null && visit(t1) ==> t1.right in this.all)
+  && (forall t1: Ref :: t1 in (this.all) && t1.right != null && visit(t1) ==> t1.right in this.all) /* [ML?] */
   && (forall y: Ref :: (y in (this.all) && y.right == null) ==> acc(y.right, 1/2))
   && (forall x: Ref :: x in (this.all) ==> acc(x.value))
   && forall y: Ref :: y in this.all setminus except && visit(y) ==> y.value == ((y.left==null ? 0 : y.left.value) + (y.right==null ? 0 : y.right.value))  + 1
