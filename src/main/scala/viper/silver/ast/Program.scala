@@ -10,6 +10,7 @@ import sun.org.mozilla.javascript.internal.ast.AstNode
 import utility.{Consistency, Types}
 import org.kiama.output._
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /** A Silver program. */
@@ -23,42 +24,42 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   )
   lazy val members = domains ++ fields ++ functions ++ predicates ++ methods
 
-  def findField(name:String) : Field = {
+  def findField(name: String): Field = {
     this.fields.find(_.name == name) match {
       case Some(f) => f
       case None => sys.error("Field name " + name + " not found in program.")
     }
   }
 
-  def findMethod(name:String) : Method = {
+  def findMethod(name: String): Method = {
     this.methods.find(_.name == name) match {
       case Some(m) => m
       case None => sys.error("Method name " + name + " not found in program.")
     }
   }
 
-  def findFunction(name:String) : Function = {
+  def findFunction(name: String): Function = {
     this.functions.find(_.name == name) match {
       case Some(f) => f
       case None => sys.error("Function name " + name + " not found in program.")
     }
   }
 
-  def findPredicate(name:String) : Predicate = {
+  def findPredicate(name: String): Predicate = {
     this.predicates.find(_.name == name) match {
       case Some(p) => p
       case None => sys.error("Predicate name " + name + " not found in program.")
     }
   }
 
-  def findDomain(name:String) : Domain = {
+  def findDomain(name: String): Domain = {
     this.domains.find(_.name == name) match {
       case Some(d) => d
       case None => sys.error("Domain name " + name + " not found in program.")
     }
   }
 
-  def findDomainFunction(name:String) : DomainFunc = {
+  def findDomainFunction(name: String): DomainFunc = {
     this.domains.flatMap(_.functions).find(_.name == name) match {
       case Some(f) => f
       case None => sys.error("Domain function " + name + " not found in program.")
@@ -66,120 +67,71 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   }
 
+  case class DomainArg(val domain: Domain, val i: Int)
+
+  /*
+  case class GroundType(val t : Type) extends TypeCoordinate
+  {}
   //Necessary type instance finder
-  class TypeInstance(val domain : Domain,val arguments : Seq[TypeInstance]) {
-    override def toString = domain.name + (if (arguments.isEmpty) "" else  arguments.mkString("[",",","]"));
+    class GroundTypeInstance(val domain : Domain,val arguments : Seq[GroundTypeInstance]) extends GroundType {
+      override def toString = domain.name + (if (arguments.isEmpty) "" else arguments.mkString("[", ",", "]"));
+    }
+  */
+
+
+  abstract class GroundTypeInstance()
+
+  case class TypeInstance(val domain: Domain, val arguments: Seq[GroundTypeInstance]) extends GroundTypeInstance
+
+  case class AtomicTypeInstance(val t: Type) extends GroundTypeInstance
+
+  //class GroundCollectionType : GroundType
+  case class DomainParameter(val d: Domain, val tv: TypeVar) {
+    assert(d.typVars contains tv)
   }
-  def findNecessaryTypeInstances : Map[Domain,Set[TypeInstance]] =
-  {
-    var result = new scala.collection.immutable.ListMap[Domain,Set[TypeInstance]]()
 
-    var rawTypeInstances = new scala.collection.mutable.HashSet[DomainType]()
+  case class DomainParameterDependency(val domainParameter: DomainParameter, depth: Int)
 
-    val groundTypeInstances =
-    members.flatMap(getGroundTypeInstances)
-//      domains.flatMap(getGroundTypeInstances(_)) ++
-      //fields.flatMap(getTypeInstances(_)) ++
-//    functions.flatMap
 
-//    domains ++ fields ++ functions ++ predicates ++ methods
+  def findNecessaryTypeInstances(): Map[Domain, et[GroundTypeInstance]] = {
+    val result = new scala.collection.immutable.ListMap[Domain, Set[GroundTypeInstance]]()
+
+
+    val g = domains.flatMap { d => getDomainDependencies(d) }.groupBy(_._1).map(t => t._1 -> Set(t._2.map(tt => Pair(tt._2, tt._3)))).toMap
+
+    val sccs = getSCCs(g)
+
 
     return result
   }
 
-  private def getGroundTypeInstances(m:Member) : Set[Type] =
-    m match {
-      case d : Domain => getGroundTypeInstances(d)
-      case f : Field => getGroundTypeInstances(f)
-      case f : Function => getGroundTypeInstances(f)
-      case p : Predicate => getGroundTypeInstances(p)
-      case m : Method => getGroundTypeInstances(m)
-    }
-
-  private def getGroundTypeInstances(f : Field): Set[Type] = closure(Set(f.typ))
-  private def getGroundTypeInstances(f : Function): Set[Type] =
-    closure(
-      getGroundTypeInstances(f.body) ++
-      getGroundTypeInstances(f.pres) ++
-      getGroundTypeInstances(f.posts) ++
-      getGroundTypeInstances(f.result) ++
-      getGroundTypeInstances(f.formalArgs) ++
-      Set(f.typ)
-    )
-
-  private def getGroundTypeInstances(p : Predicate): Set[Type] =
-    closure(
-      getGroundTypeInstances(p.body) ++
-      getGroundTypeInstances(p.formalArgs)
-    )
-
-  private def getGroundTypeInstances(m : Method ): Set[Type] =
-    closure(
-      getGroundTypeInstances(m.formalArgs) ++
-        getGroundTypeInstances(m.formalReturns) ++
-        getGroundTypeInstances(m.locals) ++
-        getGroundTypeInstances(m.pres) ++
-        getGroundTypeInstances(m.posts) ++
-        getGroundTypeInstances(m.body)
-    )
-
-  private def getGroundTypeInstances(s:Stmt) : Set[Type] =
-    s match {
-      case ns : NewStmt => getGroundTypeInstances(ns.lhs) ++ getGroundTypeInstances(ns.fields)
-      case aa : AbstractAssign => getGroundTypeInstances(aa.lhs) ++ getGroundTypeInstances(aa.rhs)
-      case mc : MethodCall => getGroundTypeInstances(mc.args) ++ getGroundTypeInstances(mc.targets)
-      case ex : Exhale => getGroundTypeInstances(ex.exp)
-      case in : Inhale => getGroundTypeInstances(in.exp)
-      case as : Assert => getGroundTypeInstances(as.exp)
-      case fd : Fold => getGroundTypeInstances(fd.acc)
-      case uf : Unfold => getGroundTypeInstances(uf.acc)
-      case Label => Set()
-      case Goto => Set()
-      case f : Fresh => getGroundTypeInstances(f.vars)
-        ...
-
-    }
-
-  private def getGroundTypeInstances(vs:Seq[LocalVarDecl]) : Set[Type] =
-    (vs.flatMap(getGroundTypeInstances(_))).toSet
-  private def getGroundTypeInstances(v:LocalVarDecl) : Set[Type] =
-    Set(v.typ)
-
-  private def getGroundTypeInstances(f:DomainFunc) : Set[Type] = {Set()}
-  private def getGroundTypeInstances(es:Seq[Exp]) : Set[Type] =
-    (es.flatMap(getGroundTypeInstances(_))).toSet
-
-  private def getGroundTypeInstances(eo:Option[Exp]) : Set[Type] =
-  eo match {
-    case Some(e) => getGroundTypeInstances(e)
-    case None => Set()
-  }
-
-  private def getGroundTypeInstances(e:Exp) : Set[Type] =
-    getTypeInstances(e) filter ((x)=>x.isConcrete)
-
-  private def getTypeInstances(e : Exp): Set[Type] =
+  def getSCCS[N, L](m: Map[N, Set[Pair[L, N]]]): Set[List[N]] =
   {
-    e.subExps.aggregate(Set(e.typ))((s,se)=>s++getTypeInstances(se),(s1,s2)=>s1++s2)
+    val r = new scala.collection.mutable.Set[List[N]]()
   }
 
-  private def closure(s:Set[Type]) : Set[Type] = s.aggregate(Set[Type]())((s,t)=>s++closure(t),(s1,s2)=>s1++s2)
-  private def closure(t:Type) : Set[Type] =
-    Set(t) ++ (t match {
-      case SeqType(t2) => Set(t2)
-      case SetType(t2) => Set(t2)
-      case MultisetType(t2) => Set(t2)
-      case t2: BuiltInType => Set()
-      case t2: DomainType => t2.domainTypVars.flatMap((t3:TypeVar)=>closure(t2.typVarsMap.getOrElse(t3,t3))).toSet
-      case TypeVar(_) => Set(t)
-    })
+  def getDomainDependencies(d:Domain) : Seq[Tuple3[DomainParameter,Int,DomainParameter]] =
+  {
+    getDomainTypeInstances(d).flatMap {
+      case d2t : DomainType
+        if !d2t.isConcrete => d2t.typVarsMap.flatMap {
+        case Pair(tv2,tv:TypeVar) =>
+          Seq(Tuple3(DomainParameter(d,tv),0,DomainParameter(findDomain(d2t.domainName),tv2)))
+        case Pair(tv2,d3:DomainType) => d3.typeVariables.map{
+          case tv =>
+            Tuple3(DomainParameter(d,tv),1,DomainParameter(findDomain(d2t.domainName),tv2))
+          }
+      }
 
-//    (e.typ Set[DomainType]()}
-  private def getTypeInstances(d:Domain) : Set[Type] =
-      d.axioms   .aggregate(Set[DomainType]())((s,a)=>s++getGroundTypeInstances(a.exp),(s1,s2)=>s1++s2) ++
-      d.functions.aggregate(Set[DomainType]())((s,f)=>s++getGroundTypeInstances(f),(s1,s2)=>s1++s2)
+      }
+
+  }
+  def getDomainTypeInstances(d:Domain) : Seq[Type] =
+    d.deepCollect {
+      case t: Type => t
+    }
+
 }//class Program
-
 
 
 // --- Program members
