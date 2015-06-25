@@ -1,0 +1,45 @@
+// oldC2SCases/unfolding_old_heap.chalice 
+domain GlobalKPermission {
+
+  unique function globalK$(): Perm
+
+  axiom globalKReadOnly {
+    (globalK$() > none) && (write > globalK$())
+  }
+}
+
+field old$methodPermission: Perm
+
+field joinable$: Bool
+
+field Testx$: Int
+
+field old$Testfail10$0: Int
+
+field par$Testfail10$this$_2: Ref
+
+field par$Testfail10$k$: Perm
+
+predicate Test$MonitorInvariant(this$: Ref) {
+  true
+}
+
+predicate TestP$(this$_1: Ref) {
+  acc(this$_1.Testx$, write)
+}
+
+method Testfail10$(this$_2: Ref, k$: Perm)
+  requires this$_2 != null
+  requires k$ > none
+  requires write > k$
+  requires acc(TestP$(this$_2), write)
+  ensures acc(TestP$(this$_2), write)
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/53/)
+  ensures (unfolding acc(TestP$(this$_2), write) in this$_2.Testx$ == old(this$_2.Testx$))
+{
+  var n$: Ref
+  var a$: Ref
+  var b$: Ref
+  var c$: Ref
+}
