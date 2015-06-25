@@ -10,6 +10,7 @@ import sun.org.mozilla.javascript.internal.ast.AstNode
 import utility.{Consistency, Types}
 import org.kiama.output._
 
+import scala.collection.immutable.HashSet
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
@@ -22,6 +23,9 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
         (domains flatMap (d => (d.axioms map (_.name)) ++ (d.functions map (_.name))))
     ), "names of members must be distinct"
   )
+
+  val groundTypeInstances = findNecessaryTypeInstances()
+
   lazy val members = domains ++ fields ++ functions ++ predicates ++ methods
 
   def findField(name: String): Field = {
@@ -67,65 +71,111 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   }
 
-  case class DomainArg(val domain: Domain, val i: Int)
-
-  /*
-  case class GroundType(val t : Type) extends TypeCoordinate
-  {}
-  //Necessary type instance finder
-    class GroundTypeInstance(val domain : Domain,val arguments : Seq[GroundTypeInstance]) extends GroundType {
-      override def toString = domain.name + (if (arguments.isEmpty) "" else arguments.mkString("[", ",", "]"));
-    }
-  */
-
+  case class DomainArg(domain: Domain, i: Int)
 
   abstract class GroundTypeInstance()
 
-  case class TypeInstance(val domain: Domain, val arguments: Seq[GroundTypeInstance]) extends GroundTypeInstance
+  case class TypeInstance(domain: Domain, arguments: Seq[GroundTypeInstance]) extends GroundTypeInstance
 
-  case class AtomicTypeInstance(val t: Type) extends GroundTypeInstance
+  case class AtomicTypeInstance(t: Type) extends GroundTypeInstance
 
   //class GroundCollectionType : GroundType
-  case class DomainParameter(val d: Domain, val tv: TypeVar) {
+  case class DomainParameter(d: Domain, tv: TypeVar) {
     assert(d.typVars contains tv)
   }
 
-  case class DomainParameterDependency(val domainParameter: DomainParameter, depth: Int)
+  case class DomainParameterDependency( domainParameter: DomainParameter, depth: Int)
 
 
-  def findNecessaryTypeInstances(): Map[Domain, et[GroundTypeInstance]] = {
+  def findNecessaryTypeInstances(): Map[Domain, Set[GroundTypeInstance]] = {
     val result = new scala.collection.immutable.ListMap[Domain, Set[GroundTypeInstance]]()
 
-
-    val g = domains.flatMap { d => getDomainDependencies(d) }.groupBy(_._1).map(t => t._1 -> Set(t._2.map(tt => Pair(tt._2, tt._3)))).toMap
+    val g = domains.flatMap { getDomainDependencies(_) }.
+      groupBy(_._1).
+      map(t => t._1 -> t._2.groupBy(_._3).map(tt => Pair(tt._1, tt._2.map(_._2).toSet))
+    )
 
     val sccs = getSCCs(g)
+    var cyclicSCCs = sccs.filter{scc=>scc.exists(dp1=>g(dp1).exists(e=>(scc contains e._1) && e._2.exists{case dt:DomainType => true case _=>false}))}
+    if (cyclicSCCs.nonEmpty)
+      println("Potential type cycles found")
 
-
-    return result
+    println("Calculating ground type instances")
+    result
   }
 
-  def getSCCS[N, L](m: Map[N, Set[Pair[L, N]]]): Set[List[N]] =
+  case class TarjanNode[N](n:N,var es:Array[TarjanNode[N]],var index:Int,var lowIndex:Int)
+  class TarjanAR[N](val nodes:Map[N,TarjanNode[N]])
   {
-    val r = new scala.collection.mutable.Set[List[N]]()
+    val r = new scala.collection.mutable.ListBuffer[Set[N]]()
+    var index : Int = 0
+    val stack = new scala.collection.mutable.Stack[N]()
+    val set = new scala.collection.mutable.HashSet[N]()
   }
 
-  def getDomainDependencies(d:Domain) : Seq[Tuple3[DomainParameter,Int,DomainParameter]] =
+
+  def getSCCs[N, L](g: Map[N, Map[N, L]]): List[Set[N]] = {
+    val tNodes = g.map { e => e._1 -> TarjanNode(e._1, null, -1, 0) }
+    tNodes.values.foreach(n=>{n.es=g(n.n).keys.map(tNodes(_)).toArray})
+    val ar = new TarjanAR[N](tNodes)
+    for (n <- tNodes.values) {
+      if (n.index == -1) {
+        sccr(ar,n)
+      }
+    }
+    ar.r.toList
+  }
+
+  def sccr[N](ar:TarjanAR[N],n: TarjanNode[N]) :Unit =
   {
+    n.index = ar.index
+    n.lowIndex = ar.index
+    ar.index+=1
+    // Set the depth index for v to the smallest unused index
+    ar.stack.push(n.n)
+    ar.set += n.n
+
+    for (sn <- n.es)
+    {
+      if (sn.index== -1)
+      {
+        sccr(ar,sn)
+        if (sn.lowIndex < n.lowIndex)
+          n.lowIndex = sn.lowIndex
+      }else if (ar.set contains sn.n){
+          if (sn.index < n.lowIndex)
+            n.lowIndex = sn.index
+      }
+    }
+    if (n.index==n.lowIndex)
+    {
+      assert (ar.set.nonEmpty)
+      assert (ar.set contains n.n)
+      var ns = new HashSet[N]
+      var u = ar.stack.top
+      do{
+        u = ar.stack.pop()
+        ar.set.remove(u)
+        ns += u
+      } while ( u!=n.n)
+      ar.r += ns
+    }
+  }
+
+  def getDomainDependencies(d:Domain) : Seq[Tuple3[DomainParameter,Type,DomainParameter]] =
     getDomainTypeInstances(d).flatMap {
       case d2t : DomainType
         if !d2t.isConcrete => d2t.typVarsMap.flatMap {
         case Pair(tv2,tv:TypeVar) =>
-          Seq(Tuple3(DomainParameter(d,tv),0,DomainParameter(findDomain(d2t.domainName),tv2)))
+          Seq(Tuple3(DomainParameter(d,tv),tv2,DomainParameter(findDomain(d2t.domainName),tv2)))
         case Pair(tv2,d3:DomainType) => d3.typeVariables.map{
           case tv =>
-            Tuple3(DomainParameter(d,tv),1,DomainParameter(findDomain(d2t.domainName),tv2))
+            Tuple3(DomainParameter(d,tv),tv2,DomainParameter(findDomain(d2t.domainName),tv2))
           }
       }
+      case _ => Seq()
 
       }
-
-  }
   def getDomainTypeInstances(d:Domain) : Seq[Type] =
     d.deepCollect {
       case t: Type => t
