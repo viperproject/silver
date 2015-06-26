@@ -63,22 +63,32 @@ case object Ref extends BuiltInType
 /** Type for predicates (only used internally). */
 case object Pred extends BuiltInType
 /** Type for sequences */
-case class SeqType(elementType: Type) extends BuiltInType {
+
+sealed trait CollectionType extends BuiltInType {
+  val elementType : Type
   override lazy val isConcrete = elementType.isConcrete
+  def make(et:Type) : CollectionType
   override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
-    SeqType(elementType.substitute(typVarsMap))
+    make(elementType.substitute(typVarsMap))
+}
+case class SeqType(override val elementType: Type) extends CollectionType{
+  def make(et:Type) : SeqType = SeqType(et)
+//  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
+//    SeqType(elementType.substitute(typVarsMap))
 }
 /** Type for sets */
-case class SetType(elementType: Type) extends BuiltInType {
-  override lazy val isConcrete = elementType.isConcrete
-  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
-    SetType(elementType.substitute(typVarsMap))
+case class SetType(override val  elementType: Type) extends CollectionType{
+//  override lazy val isConcrete = elementType.isConcrete
+  def make(et:Type) : SetType = SetType(et)
+//  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
+//    SetType(elementType.substitute(typVarsMap))
 }
 /** Type for multisets */
-case class MultisetType(elementType: Type) extends BuiltInType {
-  override lazy val isConcrete = elementType.isConcrete
-  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
-    MultisetType(elementType.substitute(typVarsMap))
+case class MultisetType(override val  elementType: Type) extends CollectionType{
+//  override lazy val isConcrete = elementType.isConcrete
+  def make(et:Type) : MultisetType = MultisetType(et)
+//  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
+//    MultisetType(elementType.substitute(typVarsMap))
 }
 
 /**
@@ -91,7 +101,8 @@ case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
                       (val domainTypVars: Seq[TypeVar])
     extends Type {
 
-  require(typVarsMap.values.forall(t => !t.isInstanceOf[TypeVar]))
+  require (domainTypVars.toSet == typVarsMap.keys.toSet) 
+  //  require(typVarsMap.values.forall(t => !t.isInstanceOf[TypeVar]))
 
   lazy val isConcrete: Boolean = {
     var res = true
@@ -120,10 +131,13 @@ case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
     *         variable mappings.
     */
   def substitute(newTypVarsMap: Map[TypeVar, Type]): DomainType = {
-    val unmappedTypeVars = domainTypVars filterNot typVarsMap.keys.toSet.contains
+/*    val unmappedTypeVars = domainTypVars filterNot typVarsMap.keys.toSet.contains
     val additionalTypeMap = (unmappedTypeVars flatMap (t => newTypVarsMap get t map (t -> _))).toMap
     val newTypeMap = typVarsMap ++ additionalTypeMap
+  */
 
+    assert (this.typVarsMap.keys.toSet equals this.domainTypVars.toSet)
+    val newTypeMap = typVarsMap.map(kv=>kv._1 -> kv._2.substitute(newTypVarsMap))
     DomainType(domainName, newTypeMap)(domainTypVars)
   }
 }
@@ -142,4 +156,6 @@ case class TypeVar(name: String) extends Type {
       case None => this
     }
   }
+
+  //def !=(other: TypeVar) = name != other
 }

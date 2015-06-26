@@ -6,7 +6,7 @@
 
 package viper.silver.ast
 
-import sun.org.mozilla.javascript.internal.ast.AstNode
+//import sun.org.mozilla.javascript.internal.ast.AstNode
 import utility.{Consistency, Types}
 import org.kiama.output._
 
@@ -82,6 +82,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   //class GroundCollectionType : GroundType
   case class DomainParameter(d: Domain, tv: TypeVar) {
     assert(d.typVars contains tv)
+    override def toString : String = d.name + "[" + tv.name + "]"
   }
 
   case class DomainParameterDependency( domainParameter: DomainParameter, depth: Int)
@@ -90,20 +91,128 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   def findNecessaryTypeInstances(): Map[Domain, Set[GroundTypeInstance]] = {
     val result = new scala.collection.immutable.ListMap[Domain, Set[GroundTypeInstance]]()
 
-    val g = domains.flatMap { getDomainDependencies(_) }.
-      groupBy(_._1).
-      map(t => t._1 -> t._2.groupBy(_._3).map(tt => Pair(tt._1, tt._2.map(_._2).toSet))
+    println("Calculating instance graph")
+    println("  Domains:")
+    domains.foreach(
+      d=>{
+        println("    " + d.name + "[" + d.typVars.mkString(",") + "]")
+        getDomainTypeInstances(d).foreach(
+          t => println("      " + t.toString())
+        )
+      }
+    )
+
+    println("  Dependency edges:")
+      domains.flatMap{getDomainDependencies(_)}.foreach(
+        e => println("    " + e.s.toString + " -> " +e.t.toString)
+      )
+
+    val g = domains.flatMap { getDomainDependencies(_) }. //
+      groupBy(_.s).
+      map(t => t._1 -> t._2.groupBy(_.t).map(tt => Pair(tt._1, tt._2.map(_.l).toSet))
+    )
+
+    g.foreach(
+      n=>n._2.foreach(
+        n2 => println("   " + n._1.toString + " -[" + n2._2.mkString("{",",","}") + "]-> " + n2._1.toString)
+      )
     )
 
     val sccs = getSCCs(g)
     var cyclicSCCs = sccs.filter{scc=>scc.exists(dp1=>g(dp1).exists(e=>(scc contains e._1) && e._2.exists{case dt:DomainType => true case _=>false}))}
-    if (cyclicSCCs.nonEmpty)
-      println("Potential type cycles found")
+    if (cyclicSCCs.nonEmpty) {
+      println("Potential type cycles found in:")
+      cyclicSCCs.foreach {
+        scc => println(scc.mkString("{",",","}"))
+      }
+    }
 
-    println("Calculating ground type instances")
+    
+    val allDirectGroundTypes = deepCollect({
+      case t : Type if t.isConcrete => t
+    })
+    
+    val allDirectGroundInstances = allDirectGroundTypes.filter { case dt : DomainType  => true case _ => false }
+    
+    val todo = new collection.mutable.Queue[TypeCoordinate]()
+    val done = new collection.mutable.HashSet[TypeCoordinate]()
+    
+    allDirectGroundTypes.foreach(
+      gt=>{
+        val tc = makeTypeCoordinate(gt)
+        if (done add tc)
+          todo.enqueue(tc)
+      }
+    )
+    
+    while (todo.nonEmpty)
+    {
+      val tc = todo.dequeue()
+      assert (done contains tc)
+      println("   Adding type coordinate <" + tc.toString() + ">")
+      for (tc2 <- getTCSTCs(tc))
+          if (done add tc2)
+            todo.enqueue(tc2)
+    }
+      
+    println("Calculating ground type instances done")
     result
   }
 
+  def getTCSTCs(tc:TypeCoordinate) : Set[TypeCoordinate] =       
+    tc match{
+        case at : AtomicTypeCoordinate => Set()
+        case ditc : DomainInstanceTypeCoordinate =>
+          (getTypes(findDomain(ditc.dn)).map(tt=>makeTypeCoordinate(tt.substitute(ditc.dt.typVarsMap))) ++ ditc.args)
+        case ctc : CollectionTypeCoordinate =>
+          Set(makeTypeCoordinate(ctc.et))
+    }
+
+  def getTypes(d:Domain) : Set[Type] = d.deepCollect{case t : Type => t}.toSet
+  
+  def makeTypeCoordinate(t:Type) : TypeCoordinate = 
+    t match {
+    case ct  : CollectionType => CollectionTypeCoordinate(CollectionClass.getCC(ct),ct.elementType)
+    case bit : BuiltInType    => AtomicTypeCoordinate(bit)
+    case dt  : DomainType     => new DomainInstanceTypeCoordinate(
+        dt.domainName,
+        dt.domainTypVars.map(tv=>makeTypeCoordinate(dt.typVarsMap(tv))).toSeq
+        )(dt)
+    case tv:TypeVar => throw new Exception("Internal error in type system - unexpected non-ground type <" + t.toString() + ">")
+  }
+  sealed abstract class TypeCoordinate(val t : Type){
+    require(t.isConcrete)
+    override def toString = t.toString()
+  }
+  
+  class CollectionClass
+  object CollectionClass extends Enumeration{
+    type CollectionClass = Value
+    val Seq,Set,MultiSet = Value
+    
+    def makeCT(cc : CollectionClass,et:Type) = cc match{
+      case Set => SetType(et)
+      case Seq => SeqType(et)
+      case MultiSet => MultisetType(et)
+    }
+    
+    def getCC(ct : CollectionType) : CollectionClass.Value =
+    {
+      ct match {
+        case SetType(_) => Set
+        case MultisetType(_) => MultiSet
+        case SeqType(_) => Seq
+      }
+    }
+    
+  }
+  
+   
+  case class AtomicTypeCoordinate(bit : BuiltInType) extends TypeCoordinate(bit)
+  case class CollectionTypeCoordinate(cc : CollectionClass.Value, et : Type) extends TypeCoordinate(CollectionClass.makeCT(cc, et))
+  case class DomainInstanceTypeCoordinate(dn : String,args:Seq[TypeCoordinate])(val dt:DomainType) extends TypeCoordinate(dt)
+ 
+  
   case class TarjanNode[N](n:N,var es:Array[TarjanNode[N]],var index:Int,var lowIndex:Int)
   class TarjanAR[N](val nodes:Map[N,TarjanNode[N]])
   {
@@ -112,8 +221,6 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     val stack = new scala.collection.mutable.Stack[N]()
     val set = new scala.collection.mutable.HashSet[N]()
   }
-
-
   def getSCCs[N, L](g: Map[N, Map[N, L]]): List[Set[N]] = {
     val tNodes = g.map { e => e._1 -> TarjanNode(e._1, null, -1, 0) }
     tNodes.values.foreach(n=>{n.es=g(n.n).keys.map(tNodes(_)).toArray})
@@ -125,7 +232,6 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }
     ar.r.toList
   }
-
   def sccr[N](ar:TarjanAR[N],n: TarjanNode[N]) :Unit =
   {
     n.index = ar.index
@@ -162,24 +268,88 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }
   }
 
-  def getDomainDependencies(d:Domain) : Seq[Tuple3[DomainParameter,Type,DomainParameter]] =
-    getDomainTypeInstances(d).flatMap {
-      case d2t : DomainType
-        if !d2t.isConcrete => d2t.typVarsMap.flatMap {
-        case Pair(tv2,tv:TypeVar) =>
-          Seq(Tuple3(DomainParameter(d,tv),tv2,DomainParameter(findDomain(d2t.domainName),tv2)))
-        case Pair(tv2,d3:DomainType) => d3.typeVariables.map{
-          case tv =>
-            Tuple3(DomainParameter(d,tv),tv2,DomainParameter(findDomain(d2t.domainName),tv2))
-          }
+  case class DPEdge(s: DomainParameter,l:Type,t:DomainParameter )
+
+  def getDomainDependencies(d:Domain) : Set[DPEdge] =
+  getDomainTypeInstances(d).flatMap{
+    case dt2 : DomainType => dt2.typVarsMap.flatMap{
+      case (tv2:TypeVar,tv:TypeVar) => Seq(DPEdge(DomainParameter(d,tv), tv, DomainParameter(findDomain(dt2.domainName),tv2)))
+      case (tv2:TypeVar,dt3:DomainType) => getTVs(dt3).flatMap{
+        tv=>Seq(DPEdge(DomainParameter(d, tv), dt3, DomainParameter(findDomain(dt2.domainName), tv2)))
       }
       case _ => Seq()
-
+    }
+    case _ => Seq()
+  }
+/*    val r = new ListBuffer[DPEdge]()
+    println("=2:" + d.name )
+    for (t <- getDomainTypeInstances(d)) {
+      println("==3:" + d.name + " : " + t.toString())
+      t match {
+        case dt2: DomainType => {
+          println("===4: " + dt2.domainName + "[" + dt2.typVarsMap.mkString(",") + "]")
+          for (kv <- dt2.typVarsMap) {
+            println("====5: " + kv.toString())
+            kv._2 match {
+              case tv: TypeVar => {
+                r += DPEdge(DomainParameter(d, tv), kv._2, DomainParameter(findDomain(dt2.domainName), kv._1))
+                println("++++++ " + r.last.toString)
+              }
+              case dt3: DomainType => {
+                println("=====6: " + dt3.toString())
+//                for (kv3 <- dt3.typVarsMap) {
+  //                println("******7: " + kv3._2)
+                  val s = getTVs(dt3) //deepCollect{case tv : TypeVar => tv}
+                  for (tv <- s){ //kv3._2.typeVariables) {
+                    println("======7:  " + tv.name)
+                    r += DPEdge(DomainParameter(d, tv), kv._2, DomainParameter(findDomain(dt2.domainName), kv._1))
+                    println("++++++ " + r.last.toString)
+                  }
+//                }
+              }
+              case _ => {}
+            }
+          }
+        }
+        case _ => {}
       }
-  def getDomainTypeInstances(d:Domain) : Seq[Type] =
+    }
+    r.toSet
+  }
+  */
+  def getTVs(t:Type) : Set[TypeVar] =
+    t match {
+      case tv : TypeVar => Set(tv)
+      case dt : DomainType =>
+        ((dt.domainTypVars.toSet -- dt.typVarsMap.keys) ++ dt.typVarsMap.values.flatMap(getTVs(_)))
+      case ct : CollectionType => getTVs(ct.elementType)
+      case _ => Set()
+    }
+
+
+
+
+/*    getDomainTypeInstances(d).flatMap {
+      case d2t: DomainType =>
+        //  if !d2t.isConcrete =>
+        d2t.typVarsMap.flatMap {
+          case ((tv2 : TypeVar,t3:Type)) => t3 match {
+                  case tv : TypeVar =>
+                    Seq(DPEdge(DomainParameter(d, tv), tv2, DomainParameter(findDomain(d2t.domainName), tv2)))
+                case d3: DomainType => d3.typeVariables.map {
+                  case tv =>
+                    DPEdge(DomainParameter(d, tv), tv2, DomainParameter(findDomain(d2t.domainName), tv2))
+                }
+          }
+          case _ => Seq()
+      }
+      case _ => Seq()
+      }
+  */
+  def getDomainTypeInstances(d:Domain) : Set[Type] =
     d.deepCollect {
       case t: Type => t
-    }
+    }.toSet
 
 }//class Program
 
