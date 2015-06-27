@@ -414,7 +414,7 @@ case class TypeChecker(names: NameAnalyser) {
           }
         }
         if (!found) {
-          message(exp, s"expected $expectedString, but got $actual")
+          message(exp, s"expected type $expectedString, but got $actual at the expression at ${exp.start}-${exp.finish}")
         }
       }
     }
