@@ -129,19 +129,31 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
     
     val allDirectGroundTypes = deepCollect({
-      case t : Type if t.isConcrete => t
-    })
+      case t : Type if t.isConcrete => downClosure(t) 
+    }).flatten
     
     val allDirectGroundInstances = allDirectGroundTypes.filter { case dt : DomainType  => true case _ => false }
     
     val todo = new collection.mutable.Queue[TypeCoordinate]()
     val done = new collection.mutable.HashSet[TypeCoordinate]()
     
+    val tcLuggage = new collection.mutable.HashMap[TypeCoordinate,Map[TypeVar,Int]]()
+    
+    val rimTCs = new collection.mutable.HashSet[TypeCoordinate]
+    
+    val baseTCs = new collection.mutable.HashSet[TypeCoordinate]()
     allDirectGroundTypes.foreach(
       gt=>{
         val tc = makeTypeCoordinate(gt)
+        baseTCs += tc
         if (done add tc)
+        {
           todo.enqueue(tc)
+          tcLuggage(tc)= gt match{
+            case dt:DomainType => dt.domainTypVars.map{v => (v->0)}.toMap
+            case _ => Map()
+          }
+        }
       }
     )
     
@@ -149,24 +161,106 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     {
       val tc = todo.dequeue()
       assert (done contains tc)
+      assert (tcLuggage contains  tc)
+/*      if (!(baseTCs contains tc))
+        if (!(tcLuggage.keySet contains tc))
+          tcLuggage(tc)=tc match { 
+          case ditc : DomainInstanceTypeCoordinate => ditc.dt.domainTypVars.map(tv=>tv->0) .toMap
+          case _ => collection.immutable.Map[TypeVar,Int]()
+          }
+  */    
       println("   Adding type coordinate <" + tc.toString() + ">")
-      for (tc2 <- getTCSTCs(tc))
-          if (done add tc2)
-            todo.enqueue(tc2)
+      val ntcs = new collection.mutable.HashSet[TypeCoordinate]()
+      tc match{
+          case ctc : CollectionTypeCoordinate => {
+            val tc2 = makeTypeCoordinate(ctc.et)
+            ntcs += tc2
+            tcLuggage(tc2)=Map()}
+          case at : AtomicTypeCoordinate => {}
+          case ditc : DomainInstanceTypeCoordinate =>{
+            assert (ditc.args.forall { tc => done contains tc })
+
+            val domain = findDomain(ditc.dn)
+            val tv2tcMap = ditc.dt.typVarsMap.map{case (tv:TypeVar,t:Type)=>tv->makeTypeCoordinate(t)}.toMap
+            val types = getTypes(domain)
+            types.foreach( 
+                t=>{
+                  val tc2 = makeTypeCoordinate(t.substitute(ditc.dt.typVarsMap))
+                  
+                  if (!(done contains tc2))
+                  {
+                    val tc2InflationMap = 
+                      (t match {
+                        case dt2:DomainType => {
+                          dt2.typVarsMap.map {
+                              case (tv2 : TypeVar,t2 : Type) => (tv2->(getFTVDepths(t2).map{case (ftv:TypeVar,d:Int) => d+tcLuggage(tc)(ftv)}.max))
+                          }
+                        }
+                        case _ => Seq()
+                      }
+                      ).toMap
+                      
+                      if (tc2InflationMap.values.forall(v=>v<=1))
+                      {
+                        if (!tcLuggage.contains(tc2))
+                          tcLuggage(tc2) = tc2InflationMap
+                        else
+                          tcLuggage(tc2) = 
+                            tcLuggage(tc2) ++ tc2InflationMap.map { case (tv,d) => tv -> (d + tcLuggage(tc2).getOrElse(tv,0)) }
+                            
+                          assert (tcLuggage contains tc2)
+                          ntcs += tc2
+//                          done add tc2
+//                          todo.enqueue(tc2)
+                        
+                      }else{
+                        println("At domain \"" + tc + "\" skipped creating \"" + tc2 + "\"")
+                      }
+                      
+                  }
+                }
+              )
+          }
+      }
+      ntcs.foreach { 
+        tc2 =>{ 
+          assert (tcLuggage contains tc2)
+          done add tc2
+          todo.enqueue(tc2)
+          }
+        }
+
     }
       
     println("Calculating ground type instances done")
     result
   }
-
-  def getTCSTCs(tc:TypeCoordinate) : Set[TypeCoordinate] =       
-    tc match{
-        case at : AtomicTypeCoordinate => Set()
-        case ditc : DomainInstanceTypeCoordinate =>
-          (getTypes(findDomain(ditc.dn)).map(tt=>makeTypeCoordinate(tt.substitute(ditc.dt.typVarsMap))) ++ ditc.args)
-        case ctc : CollectionTypeCoordinate =>
-          Set(makeTypeCoordinate(ctc.et))
-    }
+  
+  def getFTVDepths(t : Type) : Map[TypeVar,Int] = (
+     t match{
+       case dt : DomainType => 
+         dt.typVarsMap.flatMap{
+           case (tv:TypeVar,t:Type) => getFTVDepths(t).map{ case (tv2:TypeVar,d:Int)=>(tv2->d.+(1))}
+         }.toMap
+       case ct : CollectionType => getFTVDepths(ct.elementType).map{ case (tv2:TypeVar,d:Int)=>  (tv2->d.+(1)) }
+       case tv : TypeVar => Map(tv->0)
+       case at : BuiltInType => Map()
+     }
+  )
+  
+  
+  def down1Types(t:Type) : Set[Type] = (
+      t match {
+        case dt : DomainType => dt.typVarsMap.values.toSet
+        case ct : CollectionType => Set(ct.elementType)
+        case bt : BuiltInType => Set()
+        case tv : TypeVar => Set()
+      }
+  )
+  
+  def downClosure(t:Type) : Set[Type] = 
+    Set(t) ++ down1Types(t).flatMap(downClosure(_))
+  
 
   def getTypes(d:Domain) : Set[Type] = d.deepCollect{case t : Type => t}.toSet
   
