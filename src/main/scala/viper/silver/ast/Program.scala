@@ -88,10 +88,9 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   case class DomainParameterDependency( domainParameter: DomainParameter, depth: Int)
 
 
-  def findNecessaryTypeInstances(): Map[Domain, Set[GroundTypeInstance]] = {
-    val result = new scala.collection.immutable.ListMap[Domain, Set[GroundTypeInstance]]()
+  def findNecessaryTypeInstances(): Set[Type] = {
 
-    println("Calculating instance graph")
+/*    println("Calculating instance graph")
     println("  Domains:")
     domains.foreach(
       d=>{
@@ -106,27 +105,30 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       domains.flatMap{getDomainDependencies(_)}.foreach(
         e => println("    " + e.s.toString + " -> " +e.t.toString)
       )
-
-    val g = domains.flatMap { getDomainDependencies(_) }. //
+*/
+  
+    /*sccs
+    val g = domains.flatMap { getDomainDependencies(_) }.
       groupBy(_.s).
       map(t => t._1 -> t._2.groupBy(_.t).map(tt => Pair(tt._1, tt._2.map(_.l).toSet))
     )
+    val sccs = getSCCs(g)
+    val cyclicSCCs = sccs.filter{scc=>scc.exists(dp1=>g(dp1).exists(e=>(scc contains e._1) && e._2.exists{case dt:DomainType => true case _=>false}))}
+*/
 
-    g.foreach(
+/*    g.foreach(
       n=>n._2.foreach(
         n2 => println("   " + n._1.toString + " -[" + n2._2.mkString("{",",","}") + "]-> " + n2._1.toString)
       )
     )
-
-    val sccs = getSCCs(g)
-    var cyclicSCCs = sccs.filter{scc=>scc.exists(dp1=>g(dp1).exists(e=>(scc contains e._1) && e._2.exists{case dt:DomainType => true case _=>false}))}
-    if (cyclicSCCs.nonEmpty) {
+*/
+/*    if (cyclicSCCs.nonEmpty) {
       println("Potential type cycles found in:")
       cyclicSCCs.foreach {
         scc => println(scc.mkString("{",",","}"))
       }
     }
-
+*/
     
     val allDirectGroundTypes = deepCollect({
       case t : Type if t.isConcrete => downClosure(t) 
@@ -162,18 +164,11 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       val tc = todo.dequeue()
       assert (done contains tc)
       assert (tcLuggage contains  tc)
-/*      if (!(baseTCs contains tc))
-        if (!(tcLuggage.keySet contains tc))
-          tcLuggage(tc)=tc match { 
-          case ditc : DomainInstanceTypeCoordinate => ditc.dt.domainTypVars.map(tv=>tv->0) .toMap
-          case _ => collection.immutable.Map[TypeVar,Int]()
-          }
-  */    
       println("   Adding type coordinate <" + tc.toString() + ">")
       val ntcs = new collection.mutable.HashSet[TypeCoordinate]()
       tc match{
           case ctc : CollectionTypeCoordinate => {
-            val tc2 = makeTypeCoordinate(ctc.et)
+            val tc2 = ctc.etc
             ntcs += tc2
             tcLuggage(tc2)=Map()}
           case at : AtomicTypeCoordinate => {}
@@ -186,14 +181,14 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
             types.foreach( 
                 t=>{
                   val tc2 = makeTypeCoordinate(t.substitute(ditc.dt.typVarsMap))
-                  
+
                   if (!(done contains tc2))
                   {
                     val tc2InflationMap = 
                       (t match {
                         case dt2:DomainType => {
                           dt2.typVarsMap.map {
-                              case (tv2 : TypeVar,t2 : Type) => (tv2->(getFTVDepths(t2).map{case (ftv:TypeVar,d:Int) => d+tcLuggage(tc)(ftv)}.max))
+                              case (tv2 : TypeVar,t2 : Type) => (tv2->((getFTVDepths(t2).map{case (ftv:TypeVar,d:Int) => d+tcLuggage(tc)(ftv)}++Seq(0)).max))
                           }
                         }
                         case _ => Seq()
@@ -210,8 +205,6 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
                             
                           assert (tcLuggage contains tc2)
                           ntcs += tc2
-//                          done add tc2
-//                          todo.enqueue(tc2)
                         
                       }else{
                         println("At domain \"" + tc + "\" skipped creating \"" + tc2 + "\"")
@@ -232,8 +225,13 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
     }
       
-    println("Calculating ground type instances done")
-    result
+    println("Calculating ground type instances done - total " + done.size)
+    
+    val result = done.map(_.t).toSet
+
+    println("Calculating ground type instances result done - total " + result.size)
+    
+    return result
   }
   
   def getFTVDepths(t : Type) : Map[TypeVar,Int] = (
@@ -262,11 +260,11 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     Set(t) ++ down1Types(t).flatMap(downClosure(_))
   
 
-  def getTypes(d:Domain) : Set[Type] = d.deepCollect{case t : Type => t}.toSet
+  def getTypes(d:Domain) : Set[Type] = d.deepCollect{case t : Type => downClosure(t)}.flatten.toSet
   
   def makeTypeCoordinate(t:Type) : TypeCoordinate = 
     t match {
-    case ct  : CollectionType => CollectionTypeCoordinate(CollectionClass.getCC(ct),ct.elementType)
+    case ct  : CollectionType => CollectionTypeCoordinate(CollectionClass.getCC(ct),makeTypeCoordinate(ct.elementType))
     case bit : BuiltInType    => AtomicTypeCoordinate(bit)
     case dt  : DomainType     => new DomainInstanceTypeCoordinate(
         dt.domainName,
@@ -277,6 +275,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   sealed abstract class TypeCoordinate(val t : Type){
     require(t.isConcrete)
     override def toString = t.toString()
+    def down : Set[TypeCoordinate]
   }
   
   class CollectionClass
@@ -302,9 +301,15 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   }
   
    
-  case class AtomicTypeCoordinate(bit : BuiltInType) extends TypeCoordinate(bit)
-  case class CollectionTypeCoordinate(cc : CollectionClass.Value, et : Type) extends TypeCoordinate(CollectionClass.makeCT(cc, et))
-  case class DomainInstanceTypeCoordinate(dn : String,args:Seq[TypeCoordinate])(val dt:DomainType) extends TypeCoordinate(dt)
+  case class AtomicTypeCoordinate(bit : BuiltInType) extends TypeCoordinate(bit){
+    override def down : Set[TypeCoordinate] = Set(this)
+  }
+  case class CollectionTypeCoordinate(cc : CollectionClass.Value, etc : TypeCoordinate) extends TypeCoordinate(CollectionClass.makeCT(cc, etc.t)){
+    override def down : Set[TypeCoordinate] = Set(this) ++ etc.down
+  }
+  case class DomainInstanceTypeCoordinate(dn : String,args:Seq[TypeCoordinate])(val dt:DomainType) extends TypeCoordinate(dt){
+    override def down : Set[TypeCoordinate] = Set(this) ++ args.flatMap(_.down)
+  }
  
   
   case class TarjanNode[N](n:N,var es:Array[TarjanNode[N]],var index:Int,var lowIndex:Int)
