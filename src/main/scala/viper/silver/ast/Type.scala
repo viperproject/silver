@@ -49,19 +49,22 @@ sealed trait Type extends Node {
 
 /** Trait for types built into Silver. */
 sealed trait BuiltInType extends Type {
+}
+
+sealed trait AtomicType extends BuiltInType{
   lazy val isConcrete = true
   def substitute(typVarsMap: Map[TypeVar, Type]): Type = this
 }
 /** Type for integers. */
-case object Int extends BuiltInType
+case object Int extends AtomicType
 /** Type for booleans. */
-case object Bool extends BuiltInType
+case object Bool extends AtomicType
 /** Type for permissions. */
-case object Perm extends BuiltInType
+case object Perm extends AtomicType
 /** Type for references. */
-case object Ref extends BuiltInType
+case object Ref extends AtomicType
 /** Type for predicates (only used internally). */
-case object Pred extends BuiltInType
+case object Pred extends AtomicType
 /** Type for sequences */
 
 sealed trait CollectionType extends BuiltInType {

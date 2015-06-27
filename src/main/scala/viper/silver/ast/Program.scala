@@ -164,7 +164,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       val tc = todo.dequeue()
       assert (done contains tc)
       assert (tcLuggage contains  tc)
-      println("   Adding type coordinate <" + tc.toString() + ">")
+//      println("   Adding type coordinate <" + tc.toString() + ">")
       val ntcs = new collection.mutable.HashSet[TypeCoordinate]()
       tc match{
           case ctc : CollectionTypeCoordinate => {
@@ -207,7 +207,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
                           ntcs += tc2
                         
                       }else{
-                        println("At domain \"" + tc + "\" skipped creating \"" + tc2 + "\"")
+//                        println("At domain \"" + tc + "\" skipped creating \"" + tc2 + "\"")
                       }
                       
                   }
@@ -225,11 +225,11 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
     }
       
-    println("Calculating ground type instances done - total " + done.size)
+//    println("Calculating ground type instances done - total " + done.size)
     
     val result = done.map(_.t).toSet
 
-    println("Calculating ground type instances result done - total " + result.size)
+//    println("Calculating ground type instances result done - total " + result.size)
     
     return result
   }
@@ -380,42 +380,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }
     case _ => Seq()
   }
-/*    val r = new ListBuffer[DPEdge]()
-    println("=2:" + d.name )
-    for (t <- getDomainTypeInstances(d)) {
-      println("==3:" + d.name + " : " + t.toString())
-      t match {
-        case dt2: DomainType => {
-          println("===4: " + dt2.domainName + "[" + dt2.typVarsMap.mkString(",") + "]")
-          for (kv <- dt2.typVarsMap) {
-            println("====5: " + kv.toString())
-            kv._2 match {
-              case tv: TypeVar => {
-                r += DPEdge(DomainParameter(d, tv), kv._2, DomainParameter(findDomain(dt2.domainName), kv._1))
-                println("++++++ " + r.last.toString)
-              }
-              case dt3: DomainType => {
-                println("=====6: " + dt3.toString())
-//                for (kv3 <- dt3.typVarsMap) {
-  //                println("******7: " + kv3._2)
-                  val s = getTVs(dt3) //deepCollect{case tv : TypeVar => tv}
-                  for (tv <- s){ //kv3._2.typeVariables) {
-                    println("======7:  " + tv.name)
-                    r += DPEdge(DomainParameter(d, tv), kv._2, DomainParameter(findDomain(dt2.domainName), kv._1))
-                    println("++++++ " + r.last.toString)
-                  }
-//                }
-              }
-              case _ => {}
-            }
-          }
-        }
-        case _ => {}
-      }
-    }
-    r.toSet
-  }
-  */
+
   def getTVs(t:Type) : Set[TypeVar] =
     t match {
       case tv : TypeVar => Set(tv)
@@ -428,23 +393,6 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
 
 
-/*    getDomainTypeInstances(d).flatMap {
-      case d2t: DomainType =>
-        //  if !d2t.isConcrete =>
-        d2t.typVarsMap.flatMap {
-          case ((tv2 : TypeVar,t3:Type)) => t3 match {
-                  case tv : TypeVar =>
-                    Seq(DPEdge(DomainParameter(d, tv), tv2, DomainParameter(findDomain(d2t.domainName), tv2)))
-                case d3: DomainType => d3.typeVariables.map {
-                  case tv =>
-                    DPEdge(DomainParameter(d, tv), tv2, DomainParameter(findDomain(d2t.domainName), tv2))
-                }
-          }
-          case _ => Seq()
-      }
-      case _ => Seq()
-      }
-  */
   def getDomainTypeInstances(d:Domain) : Set[Type] =
     d.deepCollect {
       case t: Type => t
