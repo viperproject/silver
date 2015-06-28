@@ -70,6 +70,8 @@ object Transformer {
             case Exists(v, e) => Exists(v map go, go(e))(p, i)
             case Forall(v, triggers, e) =>
               Forall(v map go, triggers map go, go(e))(p, i)
+            case ForallReferences(v, fields, e) =>
+              ForallReferences(go(v), fields map go, go(e))(p,i)
             case InhaleExhaleExp(in, ex) =>
               InhaleExhaleExp(go(in), go(ex))(p, i)
             case WildcardPerm() => exp

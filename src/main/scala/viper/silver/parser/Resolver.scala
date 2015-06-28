@@ -721,6 +721,18 @@ case class TypeChecker(names: NameAnalyser) {
             // ok
             setType(po.e.typ)
         }
+
+      case f@ PForallReferences(v,fields, e) =>
+        val oldCurMember = curMember
+        curMember = f
+        check(f.variable.typ)
+        if(! isCompatible(f.variable.typ,Ref)){
+          val t = f.variable
+          message(v, s"expected $Ref, but got $t")
+        }
+        check(e, Bool)
+        curMember = oldCurMember
+
       case PCondExp(cond, thn, els) =>
         check(cond, Bool)
         check(thn, Nil)
