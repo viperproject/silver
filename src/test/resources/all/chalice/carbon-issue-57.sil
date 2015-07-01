@@ -90,8 +90,7 @@ method NodetestNestingUnfold$(this$_2: Ref, k$: Perm)
   var b$: Ref
   var c$: Ref
   unfold acc(Nodevalid$(this$_2), write)
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /Carbon/issue/57/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/154/)
   assert this$_2 != this$_2.Nodenext$
   if (this$_2.Nodenext$ != null) {
     unfold acc(Nodevalid$(this$_2.Nodenext$), write)
@@ -111,8 +110,7 @@ method NodetestNestingFold$(this$_3: Ref, k$_1: Perm)
   var b$_1: Ref
   var c$_1: Ref
   fold acc(Nodevalid$(this$_3.Nodenext$), write)
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /Carbon/issue/57/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/154/)
   assert this$_3.Nodenext$ != this$_3.Nodenext$.Nodenext$
   fold acc(Nodevalid$(this$_3), write)
   assert this$_3 != this$_3.Nodenext$
@@ -129,8 +127,7 @@ method NodetestNestingUnfolding$(this$_4: Ref, k$_2: Perm)
   var a$_2: Ref
   var b$_2: Ref
   var c$_2: Ref
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /Carbon/issue/57/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/154/)
   assert this$_4 != (unfolding acc(Nodevalid$(this$_4), write) in this$_4.Nodenext$)
   if ((unfolding acc(Nodevalid$(this$_4), write) in this$_4.Nodenext$) != null) {
     assert (unfolding acc(Nodevalid$(this$_4), write) in this$_4.Nodenext$) != (unfolding acc(Nodevalid$(this$_4), write) in (unfolding acc(Nodevalid$(this$_4.Nodenext$), write) in this$_4.Nodenext$.Nodenext$))
@@ -156,9 +153,6 @@ method NodetestNestingUnfoldTwo$(this$_7: Ref, k$_3: Perm)
     //:: ExpectedOutput(assert.failed:assertion.false)
     //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
     assert this$_7.Nodenext$ != this$_7.Nodenext$.Nodenext$
-    //:: ExpectedOutput(assert.failed:assertion.false)
-    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
-    //:: MissingOutput(assert.failed:assertion.false, /Carbon/issue/57/)
     assert this$_7 != this$_7.Nodenext$.Nodenext$
   }
 }
@@ -196,15 +190,11 @@ method NodetestNestingFoldThree$(this$_9: Ref, k$_5: Perm)
   var c$_5: Ref
   fold acc(Nodeq$(this$_9.Nodenext$), write)
   fold acc(Nodep$(this$_9), write)
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /Carbon/issue/57/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/154/)
   assert this$_9 != this$_9.Nodenext$
   //:: ExpectedOutput(assert.failed:assertion.false)
   //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
   assert this$_9.Nodenext$ != this$_9.Nodenext$.Nodenext$
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
-  //:: MissingOutput(assert.failed:assertion.false, /Carbon/issue/57/)
   assert this$_9 != this$_9.Nodenext$.Nodenext$
 }
 
@@ -224,9 +214,6 @@ method NodetestNestingUnfoldingTwo$(this$_10: Ref, k$_6: Perm)
     //:: ExpectedOutput(assert.failed:assertion.false)
     //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
     assert (unfolding acc(Nodep$(this$_10), write) in this$_10.Nodenext$) != (unfolding acc(Nodep$(this$_10), write) in (unfolding acc(Nodeq$(this$_10.Nodenext$), write) in this$_10.Nodenext$.Nodenext$))
-    //:: ExpectedOutput(assert.failed:assertion.false)
-    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
-    //:: MissingOutput(assert.failed:assertion.false, /Carbon/issue/57/)
     assert this$_10 != (unfolding acc(Nodep$(this$_10), write) in (unfolding acc(Nodeq$(this$_10.Nodenext$), write) in this$_10.Nodenext$.Nodenext$))
   }
 }
@@ -241,8 +228,7 @@ method NodetestNestingUnfoldingPrecondition$(this$_11: Ref, k$_7: Perm, x: Ref)
   var a$_7: Ref
   var b$_7: Ref
   var c$_7: Ref
-  //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /Carbon/issue/57/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/154/)
   assert this$_11 != x
 }
 
