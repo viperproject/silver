@@ -56,7 +56,6 @@ method TestBug(this$_3: Ref, k$_1: Perm)
   requires acc(this$_3.Testtk$, write) && (this$_3.Testtk$ != null) && acc(this$_3.Testtk$.joinable$, write) && this$_3.Testtk$.joinable$
 {
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(inhale.failed:insufficient.permission, /Silicon/issue/157/)
   assert false
 }
 
@@ -81,7 +80,6 @@ method TestjoinTk$(this$_3: Ref, k$_1: Perm)
   var c$_1: Ref
   assert this$_3.Testtk$.joinable$
   //:: ExpectedOutput(inhale.failed:insufficient.permission)
-  //:: MissingOutput(inhale.failed:insufficient.permission, /Silicon/issue/157/)
   inhale true && acc(TestV$(this$_3.Testtk$.par$Testfoo$this$_2), write)
   this$_3.Testtk$.joinable$ := false
   assert acc(TestV$(this$_3), write)
