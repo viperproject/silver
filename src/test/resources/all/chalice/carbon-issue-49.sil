@@ -48,6 +48,5 @@ method Cellb3$(this$_4: Ref, k$: Perm)
   fold acc(Cellread2$(this$_4), write)
   fold acc(Cellread2$(this$_4), write)
   //:: ExpectedOutput(fold.failed:insufficient.permission)
-  //:: MissingOutput(fold.failed:insufficient.permission, /Carbon/issue/49/)
   fold acc(Cellwrite1$(this$_4), write)
 }
