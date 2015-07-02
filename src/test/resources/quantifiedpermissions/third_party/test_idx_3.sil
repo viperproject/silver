@@ -14,3 +14,12 @@ method test2c(N: Int, M: Int, src: Seq[Ref],dst: Seq[Ref])
   requires (forall i: Int :: (i in [0..M * N)) ==> acc(src[i].val, 1 / 2))
   requires (forall i: Int :: (i in [0..M)) ==> (forall j: Int :: (j in [0..N)) ==> src[idx(M,N,i,j)].val == i ) ) /* Used to crash */
 {}
+
+function idx_abs(M: Int, N: Int,i:Int,j:Int):Int
+  ensures 0 <= result && result < N*M
+
+method test2d(N: Int, M: Int, src: Seq[Ref],dst: Seq[Ref])
+  requires M > 0 && N > 0 && |src| == N * M && |dst| == N * M
+  requires (forall i: Int :: (i in [0..M * N)) ==> acc(src[i].val, 1 / 2))
+  requires (forall i: Int :: (i in [0..M)) ==> (forall j: Int :: (j in [0..N)) ==> src[idx_abs(M,N,i,j)].val == i ) ) /* Used to crash */
+{}

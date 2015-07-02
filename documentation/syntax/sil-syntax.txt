@@ -203,7 +203,7 @@ set-op-exp ::=
 seq-op-exp ::=
 	exp "[" exp "]"          |  // sequence lookup
 	exp "[" ".." exp "]"     |  // take n first elements
-	exp "[" exp ".." "]"     |  // drop n last elements
+	exp "[" exp ".." "]"     |  // drop n first elements
 	exp "[" exp ".." exp "]" |  // take and drop
 	exp "[" exp ":=" exp "]" |  // update sequence at
 	
