@@ -64,10 +64,10 @@ case object Bool extends AtomicType
 case object Perm extends AtomicType
 /** Type for references. */
 case object Ref extends AtomicType
-sealed trait InternalType extends BuiltInType
+/** Type for predicates (only used internally). */
 case object Pred extends AtomicType
 /** Type for letwand-declared variables. */
-case object Wand extends InternalType
+case object Wand extends AtomicType
 /** Type for sequences */
 
 sealed trait CollectionType extends BuiltInType {
@@ -107,7 +107,7 @@ case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
                       (val domainTypVars: Seq[TypeVar])
     extends Type {
 
-  require (domainTypVars.toSet == typVarsMap.keys.toSet) 
+  require (domainTypVars.toSet == typVarsMap.keys.toSet)
   //  require(typVarsMap.values.forall(t => !t.isInstanceOf[TypeVar]))
 
   lazy val isConcrete: Boolean = {
