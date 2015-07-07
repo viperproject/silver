@@ -1,0 +1,59 @@
+// chaliceSuite/regressions/workitem-10199.chalice
+domain GlobalKPermission {
+
+  unique function globalK$(): Perm
+
+  axiom globalKReadOnly {
+    (globalK$() > none) && (write > globalK$())
+  }
+}
+
+field old$methodPermission: Perm
+
+field joinable$: Bool
+
+field Testz$: Int
+
+field par$TestuseZZ$this$_3: Ref
+
+field par$TestuseZZ$k$: Perm
+
+predicate Test$MonitorInvariant(this$: Ref) {
+  true
+}
+
+predicate TestZ$(this$_1: Ref) {
+  acc(this$_1.Testz$, write)
+}
+
+predicate TestZZ$(this$_2: Ref) {
+  acc(TestZ$(this$_2), write)
+}
+
+method TestuseZZ$(this$_3: Ref, k$: Perm)
+  requires this$_3 != null
+  requires k$ > none
+  requires write > k$
+  requires acc(TestZZ$(this$_3), write)
+{
+  var n$: Ref
+  var a$: Ref
+  var b$: Ref
+  var c$: Ref
+  assert acc(TestZZ$(this$_3), 100 / 100)
+  unfold acc(TestZZ$(this$_3), 40 / 100)
+  assert acc(TestZZ$(this$_3), 60 / 100)
+  assert acc(TestZ$(this$_3), 40 / 100)
+  unfold acc(TestZ$(this$_3), 20 / 100)
+  assert acc(TestZZ$(this$_3), 60 / 100)
+  assert acc(TestZ$(this$_3), 20 / 100)
+  assert acc(this$_3.Testz$, 20 / 100)
+  fold acc(TestZ$(this$_3), 10 / 100)
+  assert acc(TestZZ$(this$_3), 60 / 100)
+  assert acc(TestZ$(this$_3), 30 / 100)
+  //:: UnexpectedOutput(assert.failed:insufficient.permission, /Carbon/issue/60/)
+  assert acc(this$_3.Testz$, 10 / 100)
+  fold acc(TestZZ$(this$_3), 30 / 100)
+  assert acc(TestZZ$(this$_3), 90 / 100)
+  assert acc(this$_3.Testz$, 10 / 100)
+}

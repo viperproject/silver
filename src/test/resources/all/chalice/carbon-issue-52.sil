@@ -1,0 +1,39 @@
+// oldC2SCases/fields_consumptions.chalice
+domain GlobalKPermission {
+
+  unique function globalK$(): Perm
+
+  axiom globalKReadOnly {
+    (globalK$() > none) && (write > globalK$())
+  }
+}
+
+field old$methodPermission: Perm
+
+field joinable$: Bool
+
+field Test01x$: Int
+
+field par$Test01mm$this$_1: Ref
+
+field par$Test01mm$k$: Perm
+
+predicate Test01$MonitorInvariant(this$: Ref) {
+  true
+}
+
+method Test01mm$(this$_1: Ref, k$: Perm)
+  requires this$_1 != null
+  requires k$ > none
+  requires write > k$
+  requires acc(this$_1.Test01x$, write)
+	//:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/52/)
+  ensures this$_1.Test01x$ == 1
+{
+  var n$: Ref
+  var a$: Ref
+  var b$: Ref
+  var c$: Ref
+  this$_1.Test01x$ := 1
+}
