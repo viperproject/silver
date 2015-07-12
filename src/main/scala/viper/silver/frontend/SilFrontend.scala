@@ -176,7 +176,9 @@ trait SilFrontend extends DefaultFrontend {
 
       println(s"The following errors were found in ${ideModeErrors.head.shortFileStr}:")
 
-      viper.silver.utility.Common.toFile(ideModeErrors.map(_.fileErrorStr).mkString("\n"), new File("silver.errors"))
+      viper.silver.utility.Common.toFile(ideModeErrors.map(_.fileErrorStr).mkString("\n"),
+                                         new File(config.ideModeErrorFile()))
+
       ideModeErrors.foreach(e => println(s"  ${e.consoleErrorStr}"))
     } else {
       println("The following errors were found:")
