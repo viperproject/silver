@@ -245,11 +245,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val unfold =
     "unfold" ~> predicateAccessPred ^^ PUnfold
   lazy val inhale =
-    ("inhale" | "assume") ~> exp ^^ PInhale
+    ((not(s"inhale$identOtherLetter".r) ~> "inhale") | (not(s"assume$identOtherLetter".r) ~> "assume")) ~> exp ^^ PInhale
   lazy val exhale =
-    "exhale" ~> exp ^^ PExhale
+    (not(s"exhale$identOtherLetter".r) ~> "exhale") ~> exp ^^ PExhale
   lazy val assert =
-    "assert" ~> exp ^^ PAssert
+    (not(s"assert$identOtherLetter".r) ~> "assert") ~> exp ^^ PAssert
   lazy val localassign =
     idnuse ~ (":=" ~> exp) ^^ PVarAssign
   lazy val fieldassign =
@@ -363,7 +363,14 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val cmpExp: PackratParser[PExp] =
     sum ~ cmpOp ~ sum ^^ PBinExp | sum
 
-  lazy val sumOp = "++" | "+" | "-" | "union" | "intersection" | "setminus" | "subset"
+  lazy val sumOp =
+    "++" |
+    "+" |
+    "-" |
+    (not(s"union$identOtherLetter".r) ~> "union") |
+    (not(s"intersection$identOtherLetter".r) ~> "intersection") |
+    (not(s"setminus$identOtherLetter".r) ~> "setminus") |
+    (not(s"subset$identOtherLetter".r) ~> "subset")
   lazy val sum: PackratParser[PExp] =
     sum ~ sumOp ~ term ^^ PBinExp | term
 
@@ -392,7 +399,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val atom: PackratParser[PExp] =
     integer | bool | nul |
       old |
-      "result" ^^ (_ => PResultLit()) |
+      (not(s"result$identOtherLetter".r) ~> "result") ^^ (_ => PResultLit()) |
       ("-" | "!" | "+") ~ sum ^^ PUnExp |
       "(" ~> exp <~ ")" |
       accessPred |
@@ -425,11 +432,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     ("[" ~> exp <~ ",") ~ (exp <~ "]") ^^ PInhaleExhaleExp
 
   lazy val perm: PackratParser[PExp] =
-    "none" ^^ (_ => PNoPerm()) |
-      "wildcard" ^^ (_ => PWildcard()) |
-      "write" ^^ (_ => PFullPerm()) |
-      "epsilon" ^^ (_ => PEpsilon()) |
-      "perm" ~> parens(locAcc) ^^ PCurPerm
+    (not(s"none$identOtherLetter".r) ~> "none") ^^ (_ => PNoPerm()) |
+    (not(s"wildcard$identOtherLetter".r) ~> "wildcard") ^^ (_ => PWildcard()) |
+    (not(s"write$identOtherLetter".r) ~> "write") ^^ (_ => PFullPerm()) |
+    (not(s"epsilon$identOtherLetter".r) ~> "epsilon") ^^ (_ => PEpsilon()) |
+    "perm" ~> parens(locAcc) ^^ PCurPerm
 
   lazy val quant: PackratParser[PExp] =
     ("forall" ~> formalArgList <~ "::") ~ rep(trigger) ~ exp ^^ PForall |
@@ -471,11 +478,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))
 
   lazy val bool =
-    "true" ^^ (_ => PBoolLit(b = true)) |
-      "false" ^^ (_ => PBoolLit(b = false))
+    (not(s"true$identOtherLetter".r) ~> "true") ^^ (_ => PBoolLit(b = true)) |
+    (not(s"false$identOtherLetter".r) ~> "false") ^^ (_ => PBoolLit(b = false))
 
   lazy val nul =
-    "null" ^^ (_ => PNullLit())
+    (not(s"null$identOtherLetter".r) ~> "null") ^^ (_ => PNullLit())
 
   lazy val idndef =
     ident ^^ PIdnDef
