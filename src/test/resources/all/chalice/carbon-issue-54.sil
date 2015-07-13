@@ -1,0 +1,46 @@
+// oldC2SCases/scaling.chalice
+domain GlobalKPermission {
+
+  unique function globalK$(): Perm
+
+  axiom globalKReadOnly {
+    (globalK$() > none) && (write > globalK$())
+  }
+}
+
+field old$methodPermission: Perm
+
+field joinable$: Bool
+
+field Test02f$: Int
+
+field par$Test02test04$this$_2: Ref
+
+field par$Test02test04$k$: Perm
+
+predicate Test02$MonitorInvariant(this$: Ref) {
+  true
+}
+
+predicate Test02V$(this$_1: Ref) {
+  acc(this$_1.Test02f$, write)
+}
+
+method Test02test04$(this$_2: Ref, k$: Perm)
+  requires this$_2 != null
+  requires k$ > none
+  requires write > k$
+  requires acc(Test02V$(this$_2), write)
+  ensures acc(Test02V$(this$_2), write)
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
+  //:: MissingOutput(postcondition.violated:insufficient.permission, /Carbon/issue/54/)
+  ensures acc(this$_2.Test02f$, wildcard)
+{
+  var n$: Ref
+  var a$: Ref
+  var b$: Ref
+  var c$: Ref
+  unfold acc(Test02V$(this$_2), 20 / 100)
+  unfold acc(Test02V$(this$_2), 30 / 100)
+  fold acc(Test02V$(this$_2), 50 / 100)
+}
