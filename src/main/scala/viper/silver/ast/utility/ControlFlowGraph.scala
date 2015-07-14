@@ -239,7 +239,8 @@ object ControlFlowGraph {
           if (stmt.toString == "") s"if ($cond)"
           else s"$stmt\n\nif ($cond)"
       }
-      r.replaceAll("\\n", "\\\\l")
+      val rr = "|" + r + "|@" + b.attributes
+      rr.replaceAll("\\n", "\\\\l")
     }
 
     bfs(block) {

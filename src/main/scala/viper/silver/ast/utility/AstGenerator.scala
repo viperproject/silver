@@ -12,6 +12,8 @@
 
 package viper.silver.ast.utility
 
+import java.nio.file.{StandardOpenOption, Files, Paths}
+
 import viper.silver.ast._
 import viper.silver.utility.SilNameGenerator
 
@@ -64,7 +66,8 @@ object AstGenerator {
         val elseContinuation = continuation(block.els, surroundingLoops(block), previousBlocks + block)
         val (revContinuationPairs, revBranches) = thenContinuation.reverse.zip(elseContinuation.reverse).span(a => a._1 eq a._2)
         val revContinuation = revContinuationPairs.unzip._1
-        val (revThen, revElse) = revBranches.unzip
+        val revThen = thenContinuation.reverse.drop(revContinuation.size)
+        val revElse = elseContinuation.reverse.drop(revContinuation.size)
         val branchInfo = BranchInformation(revThen.reverse, revElse.reverse, revContinuation.reverse)
         branchesCache.put(block, branchInfo)
         branchInfo
@@ -165,4 +168,40 @@ object AstGenerator {
 
   }
 
+}
+
+object Debugger {
+  var count = -1
+  val pathToOutput = "..\\silver\\src\\test\\resources\\all\\_debug\\"
+  val logFileName = "_astGen.log"
+
+  def println(s:String):Unit = {
+    val path = Paths.get(pathToOutput + logFileName)
+    try{
+      Files.createDirectories(path.getParent)
+      Files.write(path, s.getBytes,
+        StandardOpenOption.CREATE,
+        StandardOpenOption.APPEND)
+    }catch{
+      case _:Exception => println("log write failed")
+    }
+  }
+
+  def print(b:Block):Unit = this.print(b.toDot)
+
+  def print(s:String):Unit = {
+    count = count + 1
+
+    try{
+      val filename = f"debugCFG[$count%06d].dot"
+      val path = Paths.get(pathToOutput + filename)
+
+      Files.createDirectories(path.getParent)
+      Files.write(path, s.getBytes,
+        StandardOpenOption.CREATE,
+        StandardOpenOption.TRUNCATE_EXISTING)
+    }catch{
+      case _:Exception => println("failed to write")
+    }
+  }
 }
