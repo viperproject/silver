@@ -1,0 +1,78 @@
+// chaliceSuite/examples/producer-consumer.chalice
+domain GlobalKPermission {
+
+  unique function globalK$(): Perm
+
+  axiom globalKReadOnly {
+    (globalK$() > none) && (write > globalK$())
+  }
+}
+
+field joinable$: Bool
+
+field Consumerbuffer$: Ref
+
+field par$Producerrun$k$_2: Perm
+
+predicate Producervalid$(this$_5: Ref) {
+  true
+}
+
+predicate Consumervalid$(this$_9: Ref) {
+  true
+}
+
+method Programmain$(this$_1: Ref, k$: Perm)
+  requires this$_1 != null
+{
+  var producer: Ref
+  var newK$_1: Perm
+  var tkP: Ref
+  var consumer: Ref
+  producer := new(joinable$)
+  Producerinit$(producer)
+  fresh newK$_1
+  constraining(newK$_1) {
+    tkP := new(joinable$, par$Producerrun$k$_2)
+    tkP.joinable$ := true
+    tkP.par$Producerrun$k$_2 := newK$_1
+    exhale acc(Producervalid$(producer), write)
+  }
+  //assert tkP.joinable$ – Uncommenting this line, makes the code to verify.
+  consumer := new(joinable$, Consumerbuffer$)
+  Consumerinit$(consumer)
+  exhale acc(Consumervalid$(consumer), write)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/61/)
+  assert tkP.joinable$
+}
+
+method Producerinit$(this$_3: Ref)
+  requires this$_3 != null
+  ensures acc(Producervalid$(this$_3), write)
+{
+  fold acc(Producervalid$(this$_3), write)
+}
+
+/*
+method Producerrun$(this$_4: Ref, k$_2: Perm)
+  requires this$_4 != null
+  requires acc(Producervalid$(this$_4), write)
+{
+}
+*/
+
+method Consumerinit$(this$_7: Ref)
+  requires this$_7 != null
+  requires acc(this$_7.Consumerbuffer$, write)
+  ensures acc(Consumervalid$(this$_7), write)
+{
+  fold acc(Consumervalid$(this$_7), write)
+}
+
+/*
+method Consumerrun$(this$_8: Ref, k$_4: Perm)
+  requires this$_8 != null
+  requires acc(Consumervalid$(this$_8), write)
+{
+}
+*/
