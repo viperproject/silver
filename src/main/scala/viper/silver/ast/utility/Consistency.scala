@@ -7,8 +7,9 @@
 package viper.silver.ast.utility
 
 import org.kiama.util.Messaging
+import scala.collection.mutable
 import util.parsing.input.{Position, NoPosition}
-import viper.silver.parser.Parser
+import viper.silver.parser.{PIdnUse, Parser}
 import viper.silver.ast._
 
 /** An utility object for consistency checking. */
@@ -123,7 +124,7 @@ object Consistency {
   /** Check all properties required for a contract expression that is not a postcondition (precondition, invariant, predicate) */
   def checkNonPostContract(e: Exp) {
     recordIfNot(e, noResult(e), "Result variables are only allowed in postconditions of functions.")
-    checkPost(e)
+   // checkPost(e)//TODO: disable check of perm expressions in spec
   }
 
   def checkPost(e: Exp) {
@@ -194,5 +195,29 @@ object Consistency {
         }
         (ok, acyclic, terminals)
     }
+  }
+
+  def fieldOrPredicate(p : Positioned) : Boolean = p match {
+    case Predicate(_,_,_) => true
+    case Field(_,_) => true
+    case _ => false
+  }
+
+  //check only for predicates (everything else yields true)
+  def oneRefParam(p : Positioned) : Boolean = p match {
+    case p : Predicate => p.formalArgs.size == 1 && p.formalArgs.head.typ == Ref
+    case _ => true
+  }
+
+  //check all properties that need to be satisfied by the arguments of forallrefs expressions
+  def checkForallRefsArguments(arg : Node) {
+
+    val positioned : Positioned = arg match {
+      case p : Positioned => p
+      case _ => sys.error("Can only handle positioned arguments!")
+    }
+
+    recordIfNot(positioned, fieldOrPredicate(positioned), "Can only use fields and predicates in 'forallrefs' expressions")
+    recordIfNot(positioned, oneRefParam(positioned), "Can only use predicates with one Ref parameter in 'forallrefs' expressions")
   }
 }
