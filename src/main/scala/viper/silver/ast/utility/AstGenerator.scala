@@ -170,7 +170,7 @@ object AstGenerator {
 
 }
 
-object Debugger {
+object CFGDebugger {
   var count = -1
   val pathToOutput = "..\\silver\\src\\test\\resources\\all\\_debug\\"
   val logFileName = "_astGen.log"
