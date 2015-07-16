@@ -11,7 +11,9 @@ import org.kiama.attribution.Attributable
 import org.kiama.util.Messaging
 import org.kiama.util.{Positioned => KiamaPositioned}
 import viper.silver.ast._
-import viper.silver.ast.utility.{Visitor, Statements}
+import viper.silver.ast.utility.{Consistency, Visitor, Statements}
+
+import scala.collection.mutable
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -346,6 +348,25 @@ case class Translator(program: PProgram) {
       case PForall(vars, triggers, e) =>
         val ts = triggers map (exps => Trigger(exps map exp)(exps(0)))
         Forall(vars map liftVarDecl, ts, exp(e))(pos)
+      case f@PForallReferences(v, args, e) =>
+
+        //val args = fields map findField
+
+        //check that the arguments contain only fields and predicates
+        args.foreach(a => Consistency.checkForallRefsArguments(members.get(a.name).get))
+
+        val argAccess = mutable.Buffer[Location]()
+        for (a <- args) {
+
+          //we are either dealing with predicates, or fields!
+          members.get(a.name).get match {
+            case f : Field => argAccess += f
+            case p : Predicate =>  argAccess += p
+            case _ => sys.error("Internal Error: Can only handle fields and predicates in forallrefs")
+          }
+        }
+
+        ForallReferences(liftVarDecl(f.variable), argAccess.toList, exp(e))(pos)
       case POld(e) =>
         Old(exp(e))(pos)
       case PCondExp(cond, thn, els) =>

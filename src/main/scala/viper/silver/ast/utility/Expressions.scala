@@ -20,6 +20,7 @@ object Expressions {
     case Unfolding(_, in) => isPure(in) /* Assuming that the first argument is pure */
     case QuantifiedExp(_, e0) => isPure(e0)
     case Let(_, _, body) => isPure(body)
+    case _:ForallReferences => false
 
     case _: Literal
          | _: PermExp

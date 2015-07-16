@@ -354,6 +354,16 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
   Consistency.checkNoPositiveOnlyExceptInhaleExhale(exp)
 }
 
+
+/** Quantification over heap chunks with positive permission in any of the listed fields */
+case class ForallReferences(variable: LocalVarDecl, accessList: Seq[Location], exp: Exp)
+                           (val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+  require(exp isSubtype Bool)
+  //TODO: make type of Seq more specific
+  lazy val typ = Bool
+}
+
+
 /** A trigger for a universally quantified formula. */
 case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
   require(exps forall Consistency.validTrigger, s"The trigger { ${exps.mkString(", ")} } is not valid.")

@@ -126,7 +126,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // old expression
     "old",
     // quantification
-    "forall", "exists",
+    "forall", "exists", "forallrefs",
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
@@ -431,7 +431,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       "epsilon" ^^ (_ => PEpsilon()) |
       "perm" ~> parens(locAcc) ^^ PCurPerm
 
+  private def mkForallReferences(fields: Seq[PIdnUse], v: PIdnDef, exp: PExp) : PForallReferences
+  = PForallReferences(PFormalArgDecl(v,PPrimitiv("Ref")),fields,exp)
   lazy val quant: PackratParser[PExp] =
+    ("forallrefs" ~> "[" ~> repsep(idnuse,",") <~ "]") ~ idndef ~ ("::" ~> exp) ^^ (mkForallReferences _) |
     ("forall" ~> formalArgList <~ "::") ~ rep(trigger) ~ exp ^^ PForall |
       ("exists" ~> formalArgList <~ "::") ~ exp ^^ PExists
 

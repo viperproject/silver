@@ -84,6 +84,7 @@ object Nodes {
           case Let(v, exp, body) => Seq(v, exp, body)
           case Exists(v, exp) => v ++ Seq(exp)
           case Forall(v, triggers, exp) => v ++ triggers ++ Seq(exp)
+          case ForallReferences(v, fields, exp) => v +: fields :+ exp
           case InhaleExhaleExp(in, ex) => Seq(in, ex)
           case WildcardPerm() => Nil
           case FullPerm() => Nil

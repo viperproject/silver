@@ -52,6 +52,7 @@ object Transformer {
 
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map (_ map go), go(exp))
+        case PForallReferences(v, fields, exp) => PForallReferences(go(v),fields map go, go(exp))
         case PCondExp(cond, thn, els) => PCondExp(go(cond), go(thn), go(els))
         case PInhaleExhaleExp(in, ex) => PInhaleExhaleExp(go(in), go(ex))
         case PCurPerm(loc) => PCurPerm(go(loc))

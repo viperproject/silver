@@ -137,6 +137,9 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   /** Show a variable name with the type of the variable (e.g. to be used in formal argument lists). */
   def showVar(v: LocalVarDecl): Doc = v.name <> ":" <+> showType(v.typ)
 
+  /** Show field name */
+  private def showLocation(loc: Location): PrettyPrinter.Doc = loc.name
+
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Doc = {
     d match {
@@ -260,6 +263,11 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       parens("forall" <+> showVars(v) <+> "::" <>
         (if (triggers.isEmpty) empty else space <> ssep(triggers map show, space)) <+>
         show(exp))
+    case ForallReferences(v, fields, exp) =>
+      parens("forallrefs"
+        <+> brackets(ssep(fields map showLocation ,comma <> space))
+        <+> v.name <+> "::" <+> show(exp))
+
     case InhaleExhaleExp(in, ex) =>
       brackets(show(in) <> comma <+> show(ex))
     case WildcardPerm() =>
