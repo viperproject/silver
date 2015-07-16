@@ -455,9 +455,9 @@ case class Translator(program: PProgram) {
         case Some(d) =>
           val domain = d.asInstanceOf[Domain]
           val typVarMapping = domain.typVars zip (args map ttyp)
-          DomainType(domain, typVarMapping.filter {
-            case (tv, tt) => !tt.isInstanceOf[TypeVar]
-          }.toMap)
+          DomainType(domain, typVarMapping /*.filter {
+            case (tv, tt) => tv!=tt //!tt.isInstanceOf[TypeVar]
+          }*/.toMap)
         case None =>
           assert(args.length == 0)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable

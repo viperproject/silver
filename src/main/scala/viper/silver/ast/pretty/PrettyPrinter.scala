@@ -107,6 +107,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           (optBody match {
             case None => empty
             case Some(exp) => braces(nest(line <> show(exp)) <> line)
+            case _ => uninitialized
           })
       case d: Domain =>
         showDomain(d)

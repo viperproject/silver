@@ -15,7 +15,7 @@ method test01(s: Seq[Ref], a: Int, b: Int, n: Int)
            i in [0..n) ==> s[a+i*b] != null
 
        The trigger only contains (i in [0..n)) but not (s[a+i*b]) because the
-       latter contains a arithmetic expression, which Z3 doesn't allow in
+       latter contains an arithmetic expression, which Z3 doesn't allow in
        triggers.
        Introducing a second quantified variable j to replace a+i*b with isn't
        straight-forward because one needs to preserve the relatonship between
@@ -24,7 +24,7 @@ method test01(s: Seq[Ref], a: Int, b: Int, n: Int)
      */
 
   /* TODO: Fails because ($Seq.at s (+ a (* i b))) doesn't trigger above axiom */
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/000/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/61/)
   assert s[a + j*b] != null
 }
 

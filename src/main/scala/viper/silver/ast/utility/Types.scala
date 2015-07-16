@@ -25,11 +25,18 @@ object Types {
     * @return The set of type variables that occur inside {}
     */
   def typeVariables(typ: Type): Set[TypeVar] = typ match {
+    case t : TypeVar => Set(t)
+    case dt@DomainType(domain,typeVarsMap) => (typeVarsMap.values.flatMap(typeVariables(_))/* ++ (dt.domainTypVars.toSet -- typeVarsMap.keys )*/).toSet
+    case ct : CollectionType => typeVariables(ct.elementType)
+    case _ => Set()
+  }
+/*
+  typ match {
     case t: TypeVar => Set(t)
     case dt@DomainType(domain, typeVarsMap) => (dt.domainTypVars filterNot typeVarsMap.contains).toSet
     case _ => Set()
   }
-
+  */
   /** Lifts [[viper.silver.ast.utility.Types.typeVariables]] to a set of types. */
   def typeVariables(types: Set[Type]): Set[TypeVar] = types flatMap typeVariables
 

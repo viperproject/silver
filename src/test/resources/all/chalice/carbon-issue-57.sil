@@ -1,0 +1,248 @@
+// chaliceSuite/general-tests/nestedPredicates.chalice
+domain GlobalKPermission {
+
+  unique function globalK$(): Perm
+
+  axiom globalKReadOnly {
+    (globalK$() > none) && (write > globalK$())
+  }
+}
+
+field old$methodPermission: Perm
+
+field joinable$: Bool
+
+field Nodenext$: Ref
+
+field Nodevalue$: Int
+
+field par$NodetestNestingUnfold$this$_2: Ref
+
+field par$NodetestNestingUnfold$k$: Perm
+
+field par$NodetestNestingFold$this$_3: Ref
+
+field par$NodetestNestingFold$k$_1: Perm
+
+field par$NodetestNestingUnfolding$this$_4: Ref
+
+field par$NodetestNestingUnfolding$k$_2: Perm
+
+field par$NodetestNestingUnfoldTwo$this$_7: Ref
+
+field par$NodetestNestingUnfoldTwo$k$_3: Perm
+
+field par$NodetestNestingFoldTwo$this$_8: Ref
+
+field par$NodetestNestingFoldTwo$k$_4: Perm
+
+field par$NodetestNestingFoldThree$this$_9: Ref
+
+field par$NodetestNestingFoldThree$k$_5: Perm
+
+field par$NodetestNestingUnfoldingTwo$this$_10: Ref
+
+field par$NodetestNestingUnfoldingTwo$k$_6: Perm
+
+field par$NodetestNestingUnfoldingPrecondition$this$_11: Ref
+
+field par$NodetestNestingUnfoldingPrecondition$k$_7: Perm
+
+field par$NodetestNestingUnfoldingPrecondition$x: Ref
+
+field par$NodetestNestingUnfoldingPostcondition$this$_13: Ref
+
+field par$NodetestNestingUnfoldingPostcondition$k$_8: Perm
+
+field par$NodetestNestingUnfoldingPostcondition$x: Ref
+
+function NodegetNext$(this$_12: Ref): Ref
+  requires this$_12 != null
+  requires acc(Nodevalid$(this$_12), wildcard)
+{
+  (unfolding acc(Nodevalid$(this$_12), wildcard) in this$_12.Nodenext$)
+}
+
+predicate Node$MonitorInvariant(this$: Ref) {
+  true
+}
+
+predicate Nodevalid$(this$_1: Ref) {
+  acc(this$_1.Nodenext$, wildcard) && acc(this$_1.Nodevalue$, wildcard) && ((this$_1.Nodenext$ != null) ==> acc(Nodevalid$(this$_1.Nodenext$), write))
+}
+
+predicate Nodep$(this$_5: Ref) {
+  acc(this$_5.Nodenext$, wildcard) && acc(this$_5.Nodevalue$, wildcard) && ((this$_5.Nodenext$ != null) ==> acc(Nodeq$(this$_5.Nodenext$), write))
+}
+
+predicate Nodeq$(this$_6: Ref) {
+  acc(this$_6.Nodenext$, wildcard) && acc(this$_6.Nodevalue$, wildcard) && ((this$_6.Nodenext$ != null) ==> acc(Nodep$(this$_6.Nodenext$), write))
+}
+
+method NodetestNestingUnfold$(this$_2: Ref, k$: Perm)
+  requires this$_2 != null
+  requires k$ > none
+  requires write > k$
+  requires acc(Nodevalid$(this$_2), write)
+{
+  var n$: Ref
+  var a$: Ref
+  var b$: Ref
+  var c$: Ref
+  unfold acc(Nodevalid$(this$_2), write)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/154/)
+  assert this$_2 != this$_2.Nodenext$
+  if (this$_2.Nodenext$ != null) {
+    unfold acc(Nodevalid$(this$_2.Nodenext$), write)
+    assert this$_2.Nodenext$ != this$_2.Nodenext$.Nodenext$
+    assert this$_2 != this$_2.Nodenext$.Nodenext$
+  }
+}
+
+method NodetestNestingFold$(this$_3: Ref, k$_1: Perm)
+  requires this$_3 != null
+  requires k$_1 > none
+  requires write > k$_1
+  requires acc(this$_3.Nodenext$, wildcard) && acc(this$_3.Nodevalue$, wildcard) && acc(this$_3.Nodenext$.Nodenext$, wildcard) && acc(this$_3.Nodenext$.Nodevalue$, wildcard) && (this$_3.Nodenext$ != null) && (this$_3.Nodenext$.Nodenext$ != null) && acc(Nodevalid$(this$_3.Nodenext$.Nodenext$), write)
+{
+  var n$_1: Ref
+  var a$_1: Ref
+  var b$_1: Ref
+  var c$_1: Ref
+  fold acc(Nodevalid$(this$_3.Nodenext$), write)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/154/)
+  assert this$_3.Nodenext$ != this$_3.Nodenext$.Nodenext$
+  fold acc(Nodevalid$(this$_3), write)
+  assert this$_3 != this$_3.Nodenext$
+  assert this$_3 != this$_3.Nodenext$.Nodenext$
+}
+
+method NodetestNestingUnfolding$(this$_4: Ref, k$_2: Perm)
+  requires this$_4 != null
+  requires k$_2 > none
+  requires write > k$_2
+  requires acc(Nodevalid$(this$_4), write)
+{
+  var n$_2: Ref
+  var a$_2: Ref
+  var b$_2: Ref
+  var c$_2: Ref
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/154/)
+  assert this$_4 != (unfolding acc(Nodevalid$(this$_4), write) in this$_4.Nodenext$)
+  if ((unfolding acc(Nodevalid$(this$_4), write) in this$_4.Nodenext$) != null) {
+    assert (unfolding acc(Nodevalid$(this$_4), write) in this$_4.Nodenext$) != (unfolding acc(Nodevalid$(this$_4), write) in (unfolding acc(Nodevalid$(this$_4.Nodenext$), write) in this$_4.Nodenext$.Nodenext$))
+    assert this$_4 != (unfolding acc(Nodevalid$(this$_4), write) in (unfolding acc(Nodevalid$(this$_4.Nodenext$), write) in this$_4.Nodenext$.Nodenext$))
+  }
+}
+
+method NodetestNestingUnfoldTwo$(this$_7: Ref, k$_3: Perm)
+  requires this$_7 != null
+  requires k$_3 > none
+  requires write > k$_3
+  requires acc(Nodep$(this$_7), write)
+{
+  var n$_3: Ref
+  var a$_3: Ref
+  var b$_3: Ref
+  var c$_3: Ref
+  unfold acc(Nodep$(this$_7), write)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert this$_7 != this$_7.Nodenext$
+  if (this$_7.Nodenext$ != null) {
+    unfold acc(Nodeq$(this$_7.Nodenext$), write)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
+    assert this$_7.Nodenext$ != this$_7.Nodenext$.Nodenext$
+    assert this$_7 != this$_7.Nodenext$.Nodenext$
+  }
+}
+
+method NodetestNestingFoldTwo$(this$_8: Ref, k$_4: Perm)
+  requires this$_8 != null
+  requires k$_4 > none
+  requires write > k$_4
+  requires acc(this$_8.Nodenext$, wildcard) && acc(this$_8.Nodevalue$, wildcard) && acc(this$_8.Nodenext$.Nodenext$, wildcard) && acc(this$_8.Nodenext$.Nodevalue$, wildcard) && (this$_8.Nodenext$ != null) && (this$_8.Nodenext$.Nodenext$ != null) && acc(Nodep$(this$_8.Nodenext$.Nodenext$), write)
+{
+  var n$_4: Ref
+  var a$_4: Ref
+  var b$_4: Ref
+  var c$_4: Ref
+  fold acc(Nodeq$(this$_8.Nodenext$), write)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert this$_8 != this$_8.Nodenext$
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
+  assert this$_8.Nodenext$ != this$_8.Nodenext$.Nodenext$
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
+  assert this$_8 != this$_8.Nodenext$.Nodenext$
+}
+
+method NodetestNestingFoldThree$(this$_9: Ref, k$_5: Perm)
+  requires this$_9 != null
+  requires k$_5 > none
+  requires write > k$_5
+  requires acc(this$_9.Nodenext$, wildcard) && acc(this$_9.Nodevalue$, wildcard) && acc(this$_9.Nodenext$.Nodenext$, wildcard) && acc(this$_9.Nodenext$.Nodevalue$, wildcard) && (this$_9.Nodenext$ != null) && (this$_9.Nodenext$.Nodenext$ != null) && acc(Nodep$(this$_9.Nodenext$.Nodenext$), write)
+{
+  var n$_5: Ref
+  var a$_5: Ref
+  var b$_5: Ref
+  var c$_5: Ref
+  fold acc(Nodeq$(this$_9.Nodenext$), write)
+  fold acc(Nodep$(this$_9), write)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/154/)
+  assert this$_9 != this$_9.Nodenext$
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
+  assert this$_9.Nodenext$ != this$_9.Nodenext$.Nodenext$
+  assert this$_9 != this$_9.Nodenext$.Nodenext$
+}
+
+method NodetestNestingUnfoldingTwo$(this$_10: Ref, k$_6: Perm)
+  requires this$_10 != null
+  requires k$_6 > none
+  requires write > k$_6
+  requires acc(Nodep$(this$_10), write)
+{
+  var n$_6: Ref
+  var a$_6: Ref
+  var b$_6: Ref
+  var c$_6: Ref
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert this$_10 != (unfolding acc(Nodep$(this$_10), write) in this$_10.Nodenext$)
+  if ((unfolding acc(Nodep$(this$_10), write) in this$_10.Nodenext$) != null) {
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/34/)
+    assert (unfolding acc(Nodep$(this$_10), write) in this$_10.Nodenext$) != (unfolding acc(Nodep$(this$_10), write) in (unfolding acc(Nodeq$(this$_10.Nodenext$), write) in this$_10.Nodenext$.Nodenext$))
+    assert this$_10 != (unfolding acc(Nodep$(this$_10), write) in (unfolding acc(Nodeq$(this$_10.Nodenext$), write) in this$_10.Nodenext$.Nodenext$))
+  }
+}
+
+method NodetestNestingUnfoldingPrecondition$(this$_11: Ref, k$_7: Perm, x: Ref)
+  requires this$_11 != null
+  requires k$_7 > none
+  requires write > k$_7
+  requires acc(Nodevalid$(this$_11), write) && (unfolding acc(Nodevalid$(this$_11), write) in this$_11.Nodenext$ == x)
+{
+  var n$_7: Ref
+  var a$_7: Ref
+  var b$_7: Ref
+  var c$_7: Ref
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/154/)
+  assert this$_11 != x
+}
+
+method NodetestNestingUnfoldingPostcondition$(this$_13: Ref, k$_8: Perm, x: Ref)
+  requires this$_13 != null
+  requires k$_8 > none
+  requires write > k$_8
+  requires acc(Nodevalid$(this$_13), write)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures acc(Nodevalid$(this$_13), write) && (unfolding acc(Nodevalid$(this$_13), write) in true) && (this$_13 != NodegetNext$(this$_13))
+{
+  var n$_8: Ref
+  var a$_8: Ref
+  var b$_8: Ref
+  var c$_8: Ref
+
+}
