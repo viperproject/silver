@@ -264,9 +264,9 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         (if (triggers.isEmpty) empty else space <> ssep(triggers map show, space)) <+>
         show(exp))
     case ForallReferences(v, fields, exp) =>
-      parens("forall-refs"
+      parens("forallrefs"
         <+> brackets(ssep(fields map showLocation ,comma <> space))
-        <+> showVar(v) <+> "::" <+> show(exp))
+        <+> v.name <+> "::" <+> show(exp))
 
     case InhaleExhaleExp(in, ex) =>
       brackets(show(in) <> comma <+> show(ex))
