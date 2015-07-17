@@ -555,7 +555,7 @@ method AVLTreeNodeinsert$(this$_9: Ref, k$_5: Perm, k: Int) returns (r: Ref)
     constraining(newK$_4) {
       AVLTreeNodeclose$(r, newK$_4)
     }
-  } elsif (k < this$_9.AVLTreeNodekey$) {
+  } elseif (k < this$_9.AVLTreeNodekey$) {
     if (this$_9.AVLTreeNodeleft$ == null) {
       n$_5 := new(old$methodPermission, joinable$, AVLTreeroot$, AVLTreekeys$, AVLTreeNodekey$, AVLTreeNodeheight$, AVLTreeNodeleft$, AVLTreeNoderight$, AVLTreeNodekeys$, AVLTreeNodebalanceFactor$, par$AVLTreeinit$this$_2, par$AVLTreeinit$k$, old$AVLTreeinsert$0, old$AVLTreeinsert$1, par$AVLTreeinsert$this$_3, par$AVLTreeinsert$k$_1, par$AVLTreeinsert$k, old$AVLTreeremove$0, old$AVLTreeremove$1, par$AVLTreeremove$this$_4, par$AVLTreeremove$k$_2, par$AVLTreeremove$k, par$AVLTreehas$this$_5, par$AVLTreehas$k$_3, par$AVLTreehas$k, par$AVLTreeNodeinit$this$_8, par$AVLTreeNodeinit$k$_4, par$AVLTreeNodeinit$k, old$AVLTreeNodeinsert$0, old$AVLTreeNodeinsert$1, old$AVLTreeNodeinsert$2, old$AVLTreeNodeinsert$3, old$AVLTreeNodeinsert$4, old$AVLTreeNodeinsert$5, old$AVLTreeNodeinsert$6, old$AVLTreeNodeinsert$7, old$AVLTreeNodeinsert$8, old$AVLTreeNodeinsert$9, par$AVLTreeNodeinsert$this$_9, par$AVLTreeNodeinsert$k$_5, par$AVLTreeNodeinsert$k, old$AVLTreeNoderemove$0, old$AVLTreeNoderemove$1, old$AVLTreeNoderemove$2, old$AVLTreeNoderemove$3, old$AVLTreeNoderemove$4, old$AVLTreeNoderemove$5, old$AVLTreeNoderemove$6, old$AVLTreeNoderemove$7, old$AVLTreeNoderemove$8, old$AVLTreeNoderemove$9, old$AVLTreeNoderemove$10, old$AVLTreeNoderemove$11, old$AVLTreeNoderemove$12, old$AVLTreeNoderemove$13, par$AVLTreeNoderemove$this$_10, par$AVLTreeNoderemove$k$_6, par$AVLTreeNoderemove$k, old$AVLTreeNodepruneMax$0, old$AVLTreeNodepruneMax$1, old$AVLTreeNodepruneMax$2, old$AVLTreeNodepruneMax$3, old$AVLTreeNodepruneMax$4, old$AVLTreeNodepruneMax$5, old$AVLTreeNodepruneMax$6, old$AVLTreeNodepruneMax$7, par$AVLTreeNodepruneMax$this$_11, par$AVLTreeNodepruneMax$k$_7, old$AVLTreeNodepruneMin$0, old$AVLTreeNodepruneMin$1, old$AVLTreeNodepruneMin$2, old$AVLTreeNodepruneMin$3, old$AVLTreeNodepruneMin$4, old$AVLTreeNodepruneMin$5, old$AVLTreeNodepruneMin$6, old$AVLTreeNodepruneMin$7, par$AVLTreeNodepruneMin$this$_12, par$AVLTreeNodepruneMin$k$_8, par$AVLTreeNodehas$this$_13, par$AVLTreeNodehas$k$_9, par$AVLTreeNodehas$k, par$AVLTreeNodegetBalanceFactor$this$_14, par$AVLTreeNodegetBalanceFactor$k$_10, par$AVLTreeNodegetBalanceFactorI$this$_15, par$AVLTreeNodegetBalanceFactorI$k$_11, old$AVLTreeNodeclose$0, old$AVLTreeNodeclose$1, old$AVLTreeNodeclose$2, old$AVLTreeNodeclose$3, old$AVLTreeNodeclose$4, old$AVLTreeNodeclose$5, old$AVLTreeNodeclose$6, old$AVLTreeNodeclose$7, old$AVLTreeNodeclose$8, old$AVLTreeNodeclose$9, old$AVLTreeNodeclose$10, old$AVLTreeNodeclose$11, old$AVLTreeNodeclose$12, old$AVLTreeNodeclose$13, old$AVLTreeNodeclose$14, old$AVLTreeNodeclose$15, old$AVLTreeNodeclose$16, par$AVLTreeNodeclose$this$_16, par$AVLTreeNodeclose$k$_12, old$AVLTreeNoderebalanceLeft$0, old$AVLTreeNoderebalanceLeft$1, old$AVLTreeNoderebalanceLeft$2, old$AVLTreeNoderebalanceLeft$3, old$AVLTreeNoderebalanceLeft$4, old$AVLTreeNoderebalanceLeft$5, par$AVLTreeNoderebalanceLeft$this$_17, par$AVLTreeNoderebalanceLeft$k$_13, old$AVLTreeNoderebalanceRL$0, old$AVLTreeNoderebalanceRL$1, old$AVLTreeNoderebalanceRL$2, old$AVLTreeNoderebalanceRL$3, old$AVLTreeNoderebalanceRL$4, par$AVLTreeNoderebalanceRL$this$_18, par$AVLTreeNoderebalanceRL$k$_14, old$AVLTreeNoderebalanceRR$0, old$AVLTreeNoderebalanceRR$1, old$AVLTreeNoderebalanceRR$2, old$AVLTreeNoderebalanceRR$3, old$AVLTreeNoderebalanceRR$4, old$AVLTreeNoderebalanceRR$5, par$AVLTreeNoderebalanceRR$this$_19, par$AVLTreeNoderebalanceRR$k$_15, old$AVLTreeNoderebalanceRight$0, old$AVLTreeNoderebalanceRight$1, old$AVLTreeNoderebalanceRight$2, old$AVLTreeNoderebalanceRight$3, old$AVLTreeNoderebalanceRight$4, old$AVLTreeNoderebalanceRight$5, par$AVLTreeNoderebalanceRight$this$_20, par$AVLTreeNoderebalanceRight$k$_16, old$AVLTreeNoderebalanceLR$0, old$AVLTreeNoderebalanceLR$1, old$AVLTreeNoderebalanceLR$2, old$AVLTreeNoderebalanceLR$3, old$AVLTreeNoderebalanceLR$4, par$AVLTreeNoderebalanceLR$this$_21, par$AVLTreeNoderebalanceLR$k$_17, old$AVLTreeNoderebalanceLL$0, old$AVLTreeNoderebalanceLL$1, old$AVLTreeNoderebalanceLL$2, old$AVLTreeNoderebalanceLL$3, old$AVLTreeNoderebalanceLL$4, old$AVLTreeNoderebalanceLL$5, par$AVLTreeNoderebalanceLL$this$_22, par$AVLTreeNoderebalanceLL$k$_18)
       nl := n$_5
@@ -704,7 +704,7 @@ method AVLTreeNoderemove$(this$_10: Ref, k$_6: Perm, k: Int) returns (r: Ref)
         AVLTreeNodeclose$(r, newK$_42)
       }
     }
-  } elsif (k < this$_10.AVLTreeNodekey$) {
+  } elseif (k < this$_10.AVLTreeNodekey$) {
     if (this$_10.AVLTreeNodeleft$ != null) {
       fresh newK$_43
       constraining(newK$_43) {
@@ -734,7 +734,7 @@ method AVLTreeNoderemove$(this$_10: Ref, k$_6: Perm, k: Int) returns (r: Ref)
         AVLTreeNodeclose$(r, newK$_47)
       }
     }
-  } elsif (this$_10.AVLTreeNoderight$ != null) {
+  } elseif (this$_10.AVLTreeNoderight$ != null) {
     fresh newK$_48
     constraining(newK$_48) {
       nr := AVLTreeNoderemove$(this$_10.AVLTreeNoderight$, newK$_48, k)
@@ -944,7 +944,7 @@ method AVLTreeNodehas$(this$_13: Ref, k$_9: Perm, k: Int) returns (b: Bool)
   if (k == this$_13.AVLTreeNodekey$) {
     b := true
     assert Seq(this$_13.AVLTreeNodekey$)[0] == k
-  } elsif (k < this$_13.AVLTreeNodekey$) {
+  } elseif (k < this$_13.AVLTreeNodekey$) {
     if (this$_13.AVLTreeNodeleft$ != null) {
       fresh newK$_28
       constraining(newK$_28) {
@@ -953,7 +953,7 @@ method AVLTreeNodehas$(this$_13: Ref, k$_9: Perm, k: Int) returns (b: Bool)
     } else {
       b := false
     }
-  } elsif (this$_13.AVLTreeNoderight$ != null) {
+  } elseif (this$_13.AVLTreeNoderight$ != null) {
     fresh newK$_29
     constraining(newK$_29) {
       b := AVLTreeNodehas$(this$_13.AVLTreeNoderight$, newK$_29, k)

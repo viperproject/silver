@@ -118,7 +118,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // statements
     "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto",
     // control structures
-    "while", "if", "elsif", "else",
+    "while", "if", "elseif", "else",
     // special fresh block
     "fresh", "constraining",
     // sequences
@@ -264,7 +264,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     }
   lazy val elsifEls: PackratParser[PStmt] = elsif | els
   lazy val elsif: PackratParser[PStmt] =
-    ("elsif" ~> "(" ~> exp <~ ")") ~ block ~ elsifEls ^^ {
+    ("elseif" ~> "(" ~> exp <~ ")") ~ block ~ elsifEls ^^ {
       case cond ~ thn ~ els => PIf(cond, PSeqn(thn), els)
     }
   lazy val els: PackratParser[PStmt] = opt("else" ~> block) ^^ { block => PSeqn(block.getOrElse(Nil)) }
