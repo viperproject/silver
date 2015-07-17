@@ -289,13 +289,26 @@ object ControlFlowGraph {
    * @return The set of written variables.
    */
   def writtenVars(b: Block): Seq[LocalVar] = {
+
+    /**
+     * If we are already inside other block, then we also need to visit successor blocks.
+     */
+    def writtenVars(b: Block): Seq[LocalVar] = {
+      val writtenTo = b match {
+        case tb: TerminalBlock => tb.stmt.writtenVars
+        case lb: LoopBlock => writtenVars(lb.body) ++ writtenVars(lb.succ)
+        case cb: ConditionalBlock => cb.stmt.writtenVars ++ writtenVars(cb.thn) ++ writtenVars(cb.els)
+        case cb: ConstrainingBlock => writtenVars(cb.body) ++ cb.vars ++ writtenVars(cb.succ)
+        case nb: NormalBlock => nb.stmt.writtenVars ++ writtenVars(nb.succ)
+      }
+      writtenTo.distinct
+    }
     val writtenTo = b match {
       case lb: LoopBlock => writtenVars(lb.body)
       case cb: ConditionalBlock => cb.stmt.writtenVars ++ writtenVars(cb.thn) ++ writtenVars(cb.els)
       case cb: ConstrainingBlock => writtenVars(cb.body) ++ cb.vars
       case sb: StatementBlock => sb.stmt.writtenVars
     }
-
     writtenTo.distinct
   }
 }
