@@ -1,0 +1,12 @@
+method test()
+{
+  var k: Perm
+  constraining (k) {
+    assert k > none
+  }
+}
+method test2()
+{
+  constraining () {
+  }
+}
