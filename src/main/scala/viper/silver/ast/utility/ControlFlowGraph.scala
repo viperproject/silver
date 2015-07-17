@@ -285,30 +285,34 @@ object ControlFlowGraph {
 
   /**
    * Computes the set of variables that are written to, but not declared, in the given block.
-   * @param b A block whose set of written variables is to be computed.
+   * @param block A block whose set of written variables is to be computed.
+   * @param considerSuccessor True if not only the block should be searched, but also its successors.
    * @return The set of written variables.
    */
-  def writtenVars(b: Block): Seq[LocalVar] = {
+  def writtenVars(block: Block, considerSuccessor: Boolean = false): Seq[LocalVar] = {
 
-    /**
-     * If we are already inside other block, then we also need to visit successor blocks.
-     */
-    def writtenVars(b: Block): Seq[LocalVar] = {
-      val writtenTo = b match {
-        case tb: TerminalBlock => tb.stmt.writtenVars
-        case lb: LoopBlock => writtenVars(lb.body) ++ writtenVars(lb.succ)
-        case cb: ConditionalBlock => cb.stmt.writtenVars ++ writtenVars(cb.thn) ++ writtenVars(cb.els)
-        case cb: ConstrainingBlock => writtenVars(cb.body) ++ cb.vars ++ writtenVars(cb.succ)
-        case nb: NormalBlock => nb.stmt.writtenVars ++ writtenVars(nb.succ)
-      }
-      writtenTo.distinct
+    def successorVars(successorBlock: Block): Seq[LocalVar] = {
+      if (considerSuccessor)
+        writtenVars(successorBlock, true)
+      else
+        Nil
     }
-    val writtenTo = b match {
-      case lb: LoopBlock => writtenVars(lb.body)
-      case cb: ConditionalBlock => cb.stmt.writtenVars ++ writtenVars(cb.thn) ++ writtenVars(cb.els)
-      case cb: ConstrainingBlock => writtenVars(cb.body) ++ cb.vars
-      case sb: StatementBlock => sb.stmt.writtenVars
+
+    def innerVars(innerBlock: Block) = writtenVars(innerBlock, true)
+
+    val writtenTo = block match {
+      case tb: TerminalBlock =>
+        tb.stmt.writtenVars
+      case lb: LoopBlock =>
+        innerVars(lb.body) ++ successorVars(lb.succ)
+      case cb: ConditionalBlock =>
+        cb.stmt.writtenVars ++ innerVars(cb.thn) ++ innerVars(cb.els)
+      case cb: ConstrainingBlock =>
+        innerVars(cb.body) ++ cb.vars ++ successorVars(cb.succ)
+      case nb: NormalBlock =>
+        nb.stmt.writtenVars ++ successorVars(nb.succ)
     }
+
     writtenTo.distinct
   }
 }
