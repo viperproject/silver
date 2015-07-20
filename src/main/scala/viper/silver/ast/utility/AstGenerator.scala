@@ -44,9 +44,10 @@ object AstGenerator {
           case b @ LoopBlock(body, _, _, _, succ) =>
             val loops2 = calculateSurroundingLoops(succ, surroundingLoop, loops1)
             calculateSurroundingLoops(body, Some(b), loops2)
-          case ConstrainingBlock(_, body, _) =>
+          case ConstrainingBlock(_, body, succ) =>
             /* [Malte] Tried to follow what happens in case of a ConditionalBlock. */
-            calculateSurroundingLoops(body, surroundingLoop, loops1)
+            val loops2 = calculateSurroundingLoops(body, surroundingLoop, loops1)
+            calculateSurroundingLoops(succ,surroundingLoop,loops2)
         }
       }
     }
