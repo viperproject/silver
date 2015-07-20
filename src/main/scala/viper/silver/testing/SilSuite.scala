@@ -24,6 +24,9 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
   /** The frontend to be used. */
   def frontend(verifier: Verifier, files: Seq[Path]): Frontend
 
+  /** The list of projects under the test. */
+  def projectInfo: ProjectInfo = new ProjectInfo(List("Silver"))
+
   /** Populated by splitting the (key, values) in `configMap` (which is
     * expected to be non-null) into (prefix, actual key, value) triples such
     * that each prefix maps to a map from actual keys to values. A colon (':')
@@ -82,7 +85,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
   private case class VerifierUnderTest(verifier: Verifier)
     extends SystemUnderTest with TimingUtils {
 
-    val projectName: String = verifier.name
+    val projectInfo: ProjectInfo = SilSuite.this.projectInfo.update(verifier.name)
 
     def run(input: AnnotatedTestInput): Seq[AbstractOutput] = {
       val fe = frontend(verifier, input.files)

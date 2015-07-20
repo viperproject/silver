@@ -92,6 +92,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   /** The file we are currently parsing (for creating positions later). */
   def file: Path
 
+  /** A helper method for wrapping keywords so that identifiers that have a keyword as their
+    *  prefix are parsed correctly.*/
+  private def keyword(identifier: String) = (not(s"${identifier}${identOtherLetter}".r) ~> identifier)
+
   /**
    * All keywords of SIL.
    *
@@ -114,7 +118,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // statements
     "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto", "package", "apply",
     // control structures
-    "while", "if", "elsif", "else",
+    "while", "if", "elseif", "else",
     // special fresh block
     "fresh", "constraining",
     // sequences
@@ -254,11 +258,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val applyWand =
     "apply" ~> magicWandExp ^^ PApplyWand
   lazy val inhale =
-    ("inhale" | "assume") ~> exp ^^ PInhale
+    (keyword("inhale") | keyword("assume")) ~> exp ^^ PInhale
   lazy val exhale =
-    "exhale" ~> exp ^^ PExhale
+    keyword("exhale") ~> exp ^^ PExhale
   lazy val assert =
-    "assert" ~> exp ^^ PAssert
+    keyword("assert") ~> exp ^^ PAssert
   lazy val localassign =
     idnuse ~ (":=" ~> exp) ^^ PVarAssign
   lazy val fieldassign =
@@ -269,7 +273,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     }
   lazy val elsifEls: PackratParser[PStmt] = elsif | els
   lazy val elsif: PackratParser[PStmt] =
-    ("elsif" ~> "(" ~> exp <~ ")") ~ block ~ elsifEls ^^ {
+    ("elseif" ~> "(" ~> exp <~ ")") ~ block ~ elsifEls ^^ {
       case cond ~ thn ~ els => PIf(cond, PSeqn(thn), els)
     }
   lazy val els: PackratParser[PStmt] = opt("else" ~> block) ^^ { block => PSeqn(block.getOrElse(Nil)) }
@@ -376,14 +380,19 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    * it is really the in-operator that is coming, and if so, it actually
    * parses it.
    */
-  lazy val cmpOp =
-    "==" | "!=" | "<=" | ">=" | "<" | ">" |
-    (not(s"in$identOtherLetter".r) ~> "in")
+  lazy val cmpOp = "==" | "!=" | "<=" | ">=" | "<" | ">" | keyword("in")
 
   lazy val cmpExp: PackratParser[PExp] =
     sum ~ cmpOp ~ sum ^^ PBinExp | sum
 
-  lazy val sumOp = "++" | "+" | "-" | "union" | "intersection" | "setminus" | "subset"
+  lazy val sumOp =
+    "++" |
+    "+" |
+    "-" |
+    keyword("union") |
+    keyword("intersection") |
+    keyword("setminus") |
+    keyword("subset")
   lazy val sum: PackratParser[PExp] =
     sum ~ sumOp ~ term ^^ PBinExp | term
 
@@ -412,7 +421,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val atom: PackratParser[PExp] =
     integer | bool | nul |
       old | applyOld |
-      "result" ^^ (_ => PResultLit()) |
+      keyword("result") ^^ (_ => PResultLit()) |
       ("-" | "!" | "+") ~ sum ^^ PUnExp |
       "(" ~> exp <~ ")" |
       accessPred |
@@ -445,11 +454,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     ("[" ~> exp <~ ",") ~ (exp <~ "]") ^^ PInhaleExhaleExp
 
   lazy val perm: PackratParser[PExp] =
-    "none" ^^ (_ => PNoPerm()) |
-      "wildcard" ^^ (_ => PWildcard()) |
-      "write" ^^ (_ => PFullPerm()) |
-      "epsilon" ^^ (_ => PEpsilon()) |
-      "perm" ~> parens(locAcc) ^^ PCurPerm
+    keyword("none") ^^ (_ => PNoPerm()) |
+    keyword("wildcard") ^^ (_ => PWildcard()) |
+    keyword("write") ^^ (_ => PFullPerm()) |
+    keyword("epsilon") ^^ (_ => PEpsilon()) |
+    "perm" ~> parens(locAcc) ^^ PCurPerm
 
   lazy val quant: PackratParser[PExp] =
     ("forall" ~> formalArgList <~ "::") ~ rep(trigger) ~ exp ^^ PForall |
@@ -519,11 +528,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "[0-9]+".r ^^ (s => PIntLit(BigInt(s)))
 
   lazy val bool =
-    "true" ^^ (_ => PBoolLit(b = true)) |
-      "false" ^^ (_ => PBoolLit(b = false))
+    keyword("true") ^^ (_ => PBoolLit(b = true)) |
+    keyword("false") ^^ (_ => PBoolLit(b = false))
 
   lazy val nul =
-    "null" ^^ (_ => PNullLit())
+    keyword("null") ^^ (_ => PNullLit())
 
   lazy val idndef =
     ident ^^ PIdnDef

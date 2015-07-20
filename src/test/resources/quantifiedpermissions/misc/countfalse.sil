@@ -53,14 +53,16 @@ field val: Bool;
 
 domain Array {
   function loc(a: Array, i: Int): Ref
-   function length(a: Array): Int
+  function length(a: Array): Int
+  function first(r: Ref): Array
+  function second(r: Ref): Int
 
-   axiom all_diff {
-     forall a1: Array, a2: Array, i: Int, j: Int :: {loc(a1, i), loc(a2, j)}
-       (a1 != a2 || i != j) ==> loc(a1, i) != loc(a2, j)
-   }
+  axiom all_diff {
+    forall a: Array, i: Int :: {loc(a, i)}
+      first(loc(a, i)) == a && second(loc(a, i)) == i
+  }
 
-   axiom length_nonneg {
-     forall a: Array :: length(a) >= 0
-   }
+  axiom length_nonneg {
+    forall a: Array :: length(a) >= 0
+  }
 }
