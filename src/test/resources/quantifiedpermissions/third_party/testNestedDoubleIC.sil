@@ -1,0 +1,117 @@
+field Ref__Integer_value: Int
+
+function sum_list(i: Int, hi: Int, ar: Seq[Int]): Int
+  requires (0 <= i) && (i <= hi)
+  requires hi <= |ar|
+{
+  (i < hi ? ar[i] + sum_list(i + 1, hi, ar) : 0)
+}
+
+function sum_array(i: Int, lo: Int, hi: Int, ar: Seq[Ref]): Int
+  requires (0 <= lo) && (lo <= i) && (i <= hi)
+  requires (forall k: Int :: (k in [lo..hi)) ==> acc(ar[k].Ref__Integer_value, wildcard))
+{
+  (i < hi ? ar[i].Ref__Integer_value + sum_array(i + 1, lo, hi, ar) : 0)
+}
+
+function sum_square(i: Int, lo: Int, hi: Int, step: Int, min: Int, max: Int, ar: Seq[Ref]): Int
+  requires (0 <= lo) && (lo <= hi) && (hi <= step) && (step > 0)
+  requires (0 <= min) && (min <= i) && (i <= max)
+  requires (forall k: Int :: (min <= k) && (k < max) && (lo <= k % step) && (k % step < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
+{
+  (i < max ? ((lo <= i % step) && (i % step < hi) ? ar[i].Ref__Integer_value : 0) + sum_square(i + 1, lo, hi, step, min, max, ar) : 0)
+}
+
+function count_square(i: Int, lo: Int, hi: Int, step: Int, min: Int, max: Int, ar: Seq[Ref], v: Int): Int
+  requires (0 <= lo) && (lo <= hi) && (hi <= step) && (step > 0)
+  requires (0 <= min) && (min <= i) && (i <= max)
+  requires (forall k: Int :: (min <= k) && (k < max) && (lo <= k % step) && (k % step < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
+{
+  (i < max ? ((lo <= i % step) && (i % step < hi) && (ar[i].Ref__Integer_value == v) ? 1 : 0) + count_square(i + 1, lo, hi, step, min, max, ar, v) : 0)
+}
+
+function count_list(i: Int, hi: Int, ar: Seq[Int], v: Int): Int
+  requires (0 <= i) && (i <= hi)
+  requires hi <= |ar|
+{
+  (i < hi ? (ar[i] == v ? 1 : 0) + count_list(i + 1, hi, ar, v) : 0)
+}
+
+function count_array(i: Int, hi: Int, ar: Seq[Ref], v: Int): Int
+  requires (0 <= i) && (i <= hi)
+  requires (forall k: Int :: (k in [0..hi)) ==> acc(ar[k].Ref__Integer_value, wildcard))
+{
+  (i < hi ? (ar[i].Ref__Integer_value == v ? 1 : 0) + count_array(i + 1, hi, ar, v) : 0)
+}
+
+method Ref__loop_main_20(diz: Ref, ar: Seq[Ref], N: Int, M: Int)
+  requires diz != null
+  requires (0 < M) ==> (M * N == |ar|)
+  requires (forall k: Int :: (k in [0..M * N)) ==> acc(ar[k].Ref__Integer_value, write))
+  ensures (forall k: Int :: (k in [0..M * N)) ==> acc(ar[k].Ref__Integer_value, write))
+  ensures (forall k: Int :: (k in [0..M * N)) ==> (ar[k].Ref__Integer_value == 0))
+{
+  inhale false
+}
+
+method Ref__loop_main_79(diz: Ref, ar: Seq[Ref], i: Int, N: Int, M: Int)
+  requires diz != null
+  requires (0 < N) ==> (i in [0..M)) && (M * N == |ar|)
+  requires (forall j: Int :: (j in [i * N..(i + 1) * N)) ==> acc(ar[j].Ref__Integer_value, write))
+  ensures (0 < N) ==> (i in [0..M)) && (M * N == |ar|)
+  ensures (forall j: Int :: (j in [i * N..(i + 1) * N)) ==> acc(ar[j].Ref__Integer_value, write))
+  ensures (forall j: Int :: (j in [i * N..(i + 1) * N)) ==> (ar[j].Ref__Integer_value == 0))
+{
+  inhale false
+}
+
+method Ref__loop_body_79(diz: Ref, ar: Seq[Ref], j: Int, i: Int, N: Int, M: Int)
+  requires diz != null
+  requires (j in [0..N))
+  requires (i in [0..M)) && (M * N == |ar|)
+  requires acc(ar[i * N + j].Ref__Integer_value, write)
+  ensures (j in [0..N))
+  ensures (i in [0..M)) && (M * N == |ar|)
+  ensures acc(ar[i * N + j].Ref__Integer_value, write)
+  ensures ar[i * N + j].Ref__Integer_value == 0
+{
+  var __flatten_3: Ref
+  __flatten_3 := ar[i * N + j]
+  __flatten_3.Ref__Integer_value := 0
+}
+
+method Ref__loop_body_20(diz: Ref, ar: Seq[Ref], i: Int, N: Int, M: Int)
+  requires diz != null
+  requires (i in [0..M))
+  requires M * N == |ar|
+  requires (forall k: Int :: (k in [i * N..(i + 1) * N)) ==> acc(ar[k].Ref__Integer_value, write))
+  ensures (i in [0..M))
+  ensures (forall k: Int :: (k in [i * N..(i + 1) * N)) ==> acc(ar[k].Ref__Integer_value, write))
+  ensures (forall k: Int :: (k in [i * N..(i + 1) * N)) ==> (ar[k].Ref__Integer_value == 0))
+{
+  Ref__loop_main_79(diz, ar, i, N, M)
+}
+
+method Ref__zero_array(diz: Ref, ar: Seq[Ref], M: Int, N: Int)
+  requires diz != null
+  requires M > 0
+  requires N > 0
+  requires M * N == |ar|
+  requires (forall k: Int :: (k in [0..|ar|)) ==> acc(ar[k].Ref__Integer_value, write))
+  ensures (forall k: Int :: (k in [0..|ar|)) ==> acc(ar[k].Ref__Integer_value, write))
+  ensures (forall k: Int :: (k in [0..|ar|)) ==> (ar[k].Ref__Integer_value == 0))
+{
+  Ref__loop_main_20(diz, ar, N, M)
+}
+
+method Ref__Ref() returns (sys__result: Ref)
+  ensures sys__result != null
+{
+  var diz: Ref
+  var __flatten_6: Ref
+  __flatten_6 := new(Ref__Integer_value)
+  diz := __flatten_6
+  sys__result := diz
+  assert sys__result != null
+  inhale false
+}

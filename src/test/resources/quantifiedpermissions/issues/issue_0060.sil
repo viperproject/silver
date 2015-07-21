@@ -8,7 +8,7 @@ method find_var (S: Seq[Ref], x: Int) returns (index: Int)
 {
   if (|S| == 0) {
     index := 0
-  } elsif (|S| == 1) {
+  } elseif (|S| == 1) {
     index := x == S[0].f ? 0 : 1
   } else {
     // split
