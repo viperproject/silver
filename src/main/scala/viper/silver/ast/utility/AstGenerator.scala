@@ -12,8 +12,6 @@
 
 package viper.silver.ast.utility
 
-import java.nio.file.{StandardOpenOption, Files, Paths}
-
 import viper.silver.ast._
 import viper.silver.utility.SilNameGenerator
 
@@ -65,10 +63,11 @@ object AstGenerator {
       } else {
         val thenContinuation = continuation(block.thn, surroundingLoops(block), previousBlocks + block)
         val elseContinuation = continuation(block.els, surroundingLoops(block), previousBlocks + block)
-        val (revContinuationPairs, revBranches) = thenContinuation.reverse.zip(elseContinuation.reverse).span(a => a._1 eq a._2)
-        val revContinuation = revContinuationPairs.unzip._1
-        val revThen = thenContinuation.reverse.drop(revContinuation.size)
-        val revElse = elseContinuation.reverse.drop(revContinuation.size)
+        val revThnCont = thenContinuation.reverse
+        val revElsCont = elseContinuation.reverse
+        val revContinuation = revThnCont.zip(revElsCont).takeWhile(a => a._1 eq a._2).unzip._1
+        val revThen = revThnCont.drop(revContinuation.size)
+        val revElse = revElsCont.drop(revContinuation.size)
         val branchInfo = BranchInformation(revThen.reverse, revElse.reverse, revContinuation.reverse)
         branchesCache.put(block, branchInfo)
         branchInfo
@@ -86,7 +85,7 @@ object AstGenerator {
     }
 
     /** Returns the list of one node and all successors in the AST without gotos or loop bodies and overjumping
-     * branches of conditionals. */
+      * branches of conditionals. */
     private def continuation(block: Block, surroundingLoop: Option[LoopBlock], previousBlocks: Set[Block] = Set()): List[Block] = {
       if (usedBlocks.contains(block) || previousBlocks.contains(block)) {
         sys.error("Backward gotos are not allowed.")
@@ -149,19 +148,19 @@ object AstGenerator {
           val BranchInformation(thn, els, _) = extractBranches(b)
           val translatedThen = translateList(thn)
           val translatedElse = translateList(els)
-          val translatedIf = If(cond, statementize(translatedThen), statementize(translatedElse))(attributes = block.attributes)
+          val translatedIf = If(cond, statementize(translatedThen), statementize(translatedElse))()
           List(stmt, translatedIf)
         case b @ LoopBlock(body, cond, invs, locals, succ) =>
           val translatedBody = translateList(continuation(body, Some(b)))
-          val translatedLoop = While(cond, invs, locals, statementize(translatedBody))(attributes = block.attributes)
+          val translatedLoop = While(cond, invs, locals, statementize(translatedBody))()
           List(translatedLoop)
         case ConstrainingBlock(vars, body, _) =>
           val translatedBody = translateList(continuation(body, None))
-          val translatedConstraining = Constraining(vars, statementize(translatedBody))(attributes = block.attributes)
+          val translatedConstraining = Constraining(vars, statementize(translatedBody))()
           List(translatedConstraining)
       }
       if (labels contains block) {
-        Label(labels(block))(attributes = block.attributes) :: translated
+        Label(labels(block))() :: translated
       } else {
         translated
       }
@@ -169,40 +168,4 @@ object AstGenerator {
 
   }
 
-}
-
-object CFGDebugger {
-  var count = -1
-  val pathToOutput = "..\\silver\\src\\test\\resources\\all\\_debug\\"
-  val logFileName = "_astGen.log"
-
-  def println(s:String):Unit = {
-    val path = Paths.get(pathToOutput + logFileName)
-    try{
-      Files.createDirectories(path.getParent)
-      Files.write(path, s.getBytes,
-        StandardOpenOption.CREATE,
-        StandardOpenOption.APPEND)
-    }catch{
-      case _:Exception => println("log write failed")
-    }
-  }
-
-  def print(b:Block):Unit = this.print(b.toDot)
-
-  def print(s:String):Unit = {
-    count = count + 1
-
-    try{
-      val filename = f"debugCFG[$count%06d].dot"
-      val path = Paths.get(pathToOutput + filename)
-
-      Files.createDirectories(path.getParent)
-      Files.write(path, s.getBytes,
-        StandardOpenOption.CREATE,
-        StandardOpenOption.TRUNCATE_EXISTING)
-    }catch{
-      case _:Exception => println("failed to write")
-    }
-  }
 }
