@@ -1,0 +1,43 @@
+field Cellx$: Int
+
+method Cellvoid$(this$_2: Ref, k$_1: Perm)
+  requires this$_2 != null
+  requires k$_1 > none
+  requires write > k$_1
+  requires acc(this$_2.Cellx$, k$_1)
+  ensures acc(this$_2.Cellx$, k$_1)
+{
+}
+
+method Celltest1$(this$_4: Ref, k$_3: Perm)
+  requires this$_4 != null
+  requires k$_3 > none
+  requires write > k$_3
+  requires acc(this$_4.Cellx$, k$_3) && (this$_4.Cellx$ == 1)
+  ensures acc(this$_4.Cellx$, k$_3) && (this$_4.Cellx$ == 1)
+{
+  var n$_3: Ref
+  var a$_3: Ref
+  var b$_3: Ref
+  var c$_3: Ref
+  var i: Int
+  var newK$_3: Perm
+  var newK$_4: Perm
+  i := 0
+  fresh newK$_3
+  constraining(newK$_3) {
+    while (i < 1000)
+      invariant write > newK$_3
+      invariant newK$_3 > none
+      invariant acc(this$_4.Cellx$, newK$_3)
+    {
+      fresh newK$_4
+      constraining(newK$_4) {
+        Cellvoid$(this$_4, newK$_4)
+      }
+      i := i + 1
+    }
+  }
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}

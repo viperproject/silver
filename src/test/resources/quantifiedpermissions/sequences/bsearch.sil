@@ -14,7 +14,7 @@ method bfind (S: Seq[Ref], x: Int, p: Perm) returns (index: Int)
 {
   if(|S| == 0) {
     index := -1
-  } elsif (|S|==1) {
+  } elseif (|S|==1) {
     index := x == S[0].f ? 0 : -1
   } else {
     // split
@@ -47,7 +47,7 @@ method bfind1(S: Seq[Ref], start: Int, end: Int, x:Int, p: Perm) returns (index:
     if(start == end) {
         index := -1
     }
-    elsif (start == end-1) {
+    elseif (start == end-1) {
         index := x == S[start].f ? start : -1
     }
     else {
