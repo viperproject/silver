@@ -1,0 +1,11 @@
+//:: IgnoreFile(/Carbon/issue/63/)
+// oldC2SCases/LinkedList-NoFunctions.chalice
+predicate LinkedListvalid$(this$_1: Ref) {
+  true
+}
+
+method LinkedListSearch$(this$_2: Ref) returns (k$: Perm, i: Int)
+{
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale (unfolding acc(LinkedListvalid$(this$_2), write) in i <= 5) && (unfolding acc(LinkedListvalid$(this$_2), write) in i <= 5)
+}
