@@ -124,14 +124,11 @@ object Consistency {
   /** Check all properties required for a contract expression that is not a postcondition (precondition, invariant, predicate) */
   def checkNonPostContract(e: Exp) {
     recordIfNot(e, noResult(e), "Result variables are only allowed in postconditions of functions.")
-   // checkPost(e)//TODO: disable check of perm expressions in spec
+    checkPost(e)
   }
 
   def checkPost(e: Exp) {
     recordIfNot(e, e isSubtype Bool, s"Contract $e: ${e.typ} must be boolean.")
-    e visit {
-      case CurrentPerm(_) => recordIfNot(e, false, s"Contract $e is not allowed to contain perm(.)")
-    }
   }
 
   /** Returns true iff the given expression is a valid trigger. */

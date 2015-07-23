@@ -423,7 +423,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _b
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], private var _body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted {
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
-  //if (_posts != null) _posts foreach Consistency.checkPost //TODO: remove check here, right?
+  if (_posts != null) _posts foreach Consistency.checkPost
   if (_body != null) Consistency.checkNoArgsReassigned(formalArgs, _body)
   require(noDuplicates)
   require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
@@ -436,7 +436,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   def posts = _posts
   def posts_=(s: Seq[Exp]) {
     require(s forall Consistency.noResult)
-    //s foreach Consistency.checkPost //TODO: disable check of perm expressions in spec
+    s foreach Consistency.checkPost
     _posts = s
   }
   def locals = _locals
@@ -457,7 +457,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   require(_posts == null || (_posts forall Consistency.noOld))
   require(_body == null || (_body map (_ isSubtype typ) getOrElse true))
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
-  //if (_posts != null) _posts foreach Consistency.checkPost //TODO: disable check of perm expressions in spec
+  if (_posts != null) _posts foreach Consistency.checkPost
   if (_body != null) _body map Consistency.checkFunctionBody
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
@@ -467,7 +467,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   def posts = _posts
   def posts_=(s: Seq[Exp]) {
     require(s forall Consistency.noOld)
-//    s foreach Consistency.checkPost //TODO: disable check of perm expressions in spec
+    s foreach Consistency.checkPost
     _posts = s
   }
   def body = _body
@@ -587,7 +587,7 @@ sealed trait FuncLike extends Callable with Typed
 /** A member with a contract. */
 sealed trait Contracted extends Member {
   if (pres != null) pres map Consistency.checkNonPostContract
-  //if (posts != null) posts map Consistency.checkPost //TODO: disable check of perm expressions in spec
+  if (posts != null) posts map Consistency.checkPost
   def pres: Seq[Exp]
   def posts: Seq[Exp]
 }
