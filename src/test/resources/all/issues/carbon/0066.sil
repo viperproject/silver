@@ -11,3 +11,8 @@ method test2(this: Ref)
 {
   inhale acc(this.x) && this.x == 1
 }
+
+method test3(this: Ref)
+{
+  inhale [acc(this.x), true] && [this.x == 1, true]
+}
