@@ -1,0 +1,53 @@
+field x: Int
+
+method t1(this: Ref)
+{
+  //:: UnexpectedOutput(inhale.failed:receiver.null, /Carbon/issue/66/)
+  //:: UnexpectedOutput(inhale.failed:insufficient.permission, /Carbon/issue/66/)
+  inhale [acc(this.x) && this.x == 1, true]
+  assert this.x == 1
+  exhale [acc(this.x) && this.x == 1, true]
+  assert this.x == 1
+  exhale [true, this.x == 1]
+  exhale [true, acc(this.x)]
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  //:: MissingOutput(assert.failed:insufficient.permission, /Carbon/issue/66/)
+  assert this.x == 1
+}
+
+method exhaleTrue1(this: Ref)
+  //:: UnexpectedOutput(not.wellformed:receiver.null, /Carbon/issue/66/)
+  //:: UnexpectedOutput(not.wellformed:insufficient.permission, /Carbon/issue/66/)
+  ensures [acc(this.x) && this.x == 1, true]
+{
+}
+
+method exhaleTrue2(this: Ref)
+  ensures [acc(this.x), true] && [this.x == 1, true]
+{
+}
+
+method exhaleTrue3(this: Ref)
+  ensures [acc(this.x), true]
+  ensures [this.x == 1, true]
+{
+}
+
+method exhaleExpression1(this: Ref)
+  requires acc(this.x) && this.x == 1
+  ensures [true, acc(this.x) && this.x == 1]
+{
+}
+
+method exhaleExpression2(this: Ref)
+  requires acc(this.x) && this.x == 1
+  ensures [true, acc(this.x)] && [true, this.x == 1]
+{
+}
+
+method exhaleExpression3(this: Ref)
+  requires acc(this.x) && this.x == 1
+  ensures [true, acc(this.x)]
+  ensures [true, this.x == 1]
+{
+}
