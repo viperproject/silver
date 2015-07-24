@@ -15,6 +15,46 @@ method t1(this: Ref)
   assert this.x == 1
 }
 
+method inhaleTrue1(this: Ref)
+  //:: UnexpectedOutput(not.wellformed:receiver.null, /Carbon/issue/66/)
+  //:: UnexpectedOutput(not.wellformed:insufficient.permission, /Carbon/issue/66/)
+  requires [true, acc(this.x) && this.x == 1]
+{
+}
+
+method inhaleTrue2(this: Ref)
+  //:: UnexpectedOutput(not.wellformed:receiver.null, /Carbon/issue/66/)
+  //:: UnexpectedOutput(not.wellformed:insufficient.permission, /Carbon/issue/66/)
+  requires [true, acc(this.x)] && [true, this.x == 1]
+{
+}
+
+method inhaleTrue3(this: Ref)
+  requires [true, acc(this.x)]
+  //:: UnexpectedOutput(not.wellformed:receiver.null, /Carbon/issue/66/)
+  //:: UnexpectedOutput(not.wellformed:insufficient.permission, /Carbon/issue/66/)
+  requires [true, this.x == 1]
+{
+}
+
+method inhaleExpression1(this: Ref)
+  //:: UnexpectedOutput(not.wellformed:receiver.null, /Carbon/issue/66/)
+  //:: UnexpectedOutput(not.wellformed:insufficient.permission, /Carbon/issue/66/)
+  requires [acc(this.x) && this.x == 1, true]
+{
+}
+
+method inhaleExpression2(this: Ref)
+  requires [acc(this.x), true] && [this.x == 1, true]
+{
+}
+
+method inhaleExpression3(this: Ref)
+  requires [acc(this.x), true]
+  requires [this.x == 1, true]
+{
+}
+
 method exhaleTrue1(this: Ref)
   //:: UnexpectedOutput(not.wellformed:receiver.null, /Carbon/issue/66/)
   //:: UnexpectedOutput(not.wellformed:insufficient.permission, /Carbon/issue/66/)
