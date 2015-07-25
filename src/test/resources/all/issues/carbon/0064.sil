@@ -1,20 +1,20 @@
-function Nodesize$(this$_2: Ref): Int
-  requires this$_2 != null
-  requires acc(Nodevalid$(this$_2), wildcard)
+function Nodesize(this: Ref): Int
+  requires this != null
+  requires acc(Nodevalid(this), wildcard)
   ensures result > 0
 {
   1
 }
 
-predicate Nodevalid$(this$_3: Ref) {
+predicate Nodevalid(this: Ref) {
   true
 }
 
-method Nodeinit$(this$_1: Ref, v: Int) returns (k$: Perm)
-  requires this$_1 != null
+method Nodeinit(this: Ref, v: Int) returns (k: Perm)
+  requires this != null
   //:: UnexpectedOutput(application.precondition:insufficient.permission, /Carbon/issue/64/)
-  ensures [(acc(Nodevalid$(this$_1), write) && (Nodesize$(this$_1) == 1)), true]
-  //ensures (acc(Nodevalid$(this$_1), write) && (Nodesize$(this$_1) == 1))
+  ensures [(acc(Nodevalid(this), write) && (Nodesize(this) == 1)), true]
+  //ensures (acc(Nodevalid(this), write) && (Nodesize(this) == 1))
 {
-  fold acc(Nodevalid$(this$_1), write)
+  fold acc(Nodevalid(this), write)
 }
