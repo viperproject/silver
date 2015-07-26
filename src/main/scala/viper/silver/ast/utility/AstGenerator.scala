@@ -148,15 +148,15 @@ object AstGenerator {
           val BranchInformation(thn, els, _) = extractBranches(b)
           val translatedThen = translateList(thn)
           val translatedElse = translateList(els)
-          val translatedIf = If(cond, statementize(translatedThen), statementize(translatedElse))()
+          val translatedIf = If(cond, statementize(translatedThen), statementize(translatedElse))(attributes = b.attributes)
           List(stmt, translatedIf)
         case b @ LoopBlock(body, cond, invs, locals, succ) =>
           val translatedBody = translateList(continuation(body, Some(b)))
-          val translatedLoop = While(cond, invs, locals, statementize(translatedBody))()
+          val translatedLoop = While(cond, invs, locals, statementize(translatedBody))(attributes = b.attributes)
           List(translatedLoop)
-        case ConstrainingBlock(vars, body, _) =>
+        case b@ConstrainingBlock(vars, body, _) =>
           val translatedBody = translateList(continuation(body, None))
-          val translatedConstraining = Constraining(vars, statementize(translatedBody))()
+          val translatedConstraining = Constraining(vars, statementize(translatedBody))(attributes = b.attributes)
           List(translatedConstraining)
       }
       if (labels contains block) {
