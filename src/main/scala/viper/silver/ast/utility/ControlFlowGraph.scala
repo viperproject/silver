@@ -239,7 +239,11 @@ object ControlFlowGraph {
           if (stmt.toString == "") s"if ($cond)"
           else s"$stmt\n\nif ($cond)"
       }
-      val rr = "|" + r + "|@" + b.attributes
+      val rr = r + (b match{
+        case _:LoopBlock | _:ConstrainingBlock | _:ConditionalBlock => s"@${b.attributes}"
+        case _:TerminalBlock | _:NormalBlock => ""
+        case _ => sys.error("unexpected block in toDot")
+      })
       rr.replaceAll("\\n", "\\\\l")
     }
 
