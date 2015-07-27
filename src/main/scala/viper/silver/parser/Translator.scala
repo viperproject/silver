@@ -97,7 +97,7 @@ case class Translator(program: PProgram) {
 
   private def translate(f: PField) = findField(f.idndef)
 
-  private val predefinedAttributes = HashSet[String](
+  private val predefinedAttributes = scala.collection.mutable.HashSet[String](
     ""
   )
 
@@ -107,13 +107,23 @@ case class Translator(program: PProgram) {
     "" -> ((_:Seq[PAttributeValue]) => sys.error("unexpected empty attribute key"))
   ).withDefaultValue((_:Seq[PAttributeValue]) => None:Option[Attribute])
 
-  def addAttributeConstructor(key:String, f:Seq[PAttributeValue] => Option[Attribute]) = getAttrConstructor += (key -> f)
+  def addAttributeConstructor(key:String, f:Seq[PAttributeValue] => Option[Attribute]) = {
+    predefinedAttributes += key
+    getAttrConstructor += (key -> f)
+  }
 
   def translate(pa:PAttribute): Attribute = getAttrConstructor(pa.key)(pa.values) match {
-    case Some(a:Attribute) => a
+    case Some(e@ValuedAttribute("-error", Seq(StringValue(msg)))) => {
+      Messaging.message(pa,msg);
+      e
+    }
+    case Some(a:Attribute) =>
+      a
     case None => {
       if(isPredefinedAttribute(pa.key)) pa.key match{
-        case _ =>
+        case "verified-if" =>
+          Messaging.message(pa, "Value for attribute \"verified-if\" must be pure\n")
+        case _ => Messaging.message(pa,"There was an issue with translating the attribute with key " + pa.key)
       }
       pa.values match {
         case Nil => OrdinaryAttribute(pa.key)
