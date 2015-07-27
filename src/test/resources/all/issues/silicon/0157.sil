@@ -49,19 +49,19 @@ method test06(x: Ref)
 
 /* Code submitted alongside the issue */
 
-field Testtk$: Ref
-field joinable$: Bool
+field Testtk: Ref
+field joinable: Bool
 
-method TestBug(this$_3: Ref, k$_1: Perm)
-  requires acc(this$_3.Testtk$, write) && (this$_3.Testtk$ != null) && acc(this$_3.Testtk$.joinable$, write) && this$_3.Testtk$.joinable$
+method TestBug(this: Ref, k$_1: Perm)
+  requires acc(this.Testtk, write) && (this.Testtk != null) && acc(this.Testtk.joinable, write) && this.Testtk.joinable
 {
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
 
-method TestBug1(this$_3: Ref, k$_1: Perm)
-  requires acc(this$_3.Testtk$, write) && (this$_3.Testtk$ != null)
-  requires acc(this$_3.Testtk$.joinable$, write) && this$_3.Testtk$.joinable$
+method TestBug1(this: Ref, k$_1: Perm)
+  requires acc(this.Testtk, write) && (this.Testtk != null)
+  requires acc(this.Testtk.joinable, write) && this.Testtk.joinable
 {
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false

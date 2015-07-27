@@ -225,7 +225,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   def showElse(els: Stmt): PrettyPrinter.Doc = els match {
     case Seqn(Seq()) => empty
     case Seqn(Seq(s)) => showElse(s)
-    case If(cond1, thn1, els1) => empty <+> "elsif" <+> parens(show(cond1)) <+> showBlock(thn1) <> showElse(els1)
+    case If(cond1, thn1, els1) => empty <+> "elseif" <+> parens(show(cond1)) <+> showBlock(thn1) <> showElse(els1)
     case _ => empty <+> "else" <+> showBlock(els)
   }
 
