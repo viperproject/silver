@@ -1,0 +1,6 @@
+//:: IgnoreFile(/Carbon/issue/65/)
+method aa4()
+{
+  // Should be equivalent to assert true && true.
+  assert [false, true] && [false, true]
+}

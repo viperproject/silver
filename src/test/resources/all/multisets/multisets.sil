@@ -1,4 +1,3 @@
-//:: IgnoreFile(/silicon/issue/158/)
 method test01() {
   var B1: Multiset[Int]
   var B2: Multiset[Int]
