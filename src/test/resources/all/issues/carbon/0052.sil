@@ -1,0 +1,10 @@
+field x: Int
+
+method f(this: Ref)
+  requires acc(this.x)
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/52/)
+  ensures this.x == 1
+{
+  this.x := 1
+}
