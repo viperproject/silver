@@ -1,0 +1,33 @@
+field x: Int
+
+//:: UnexpectedOutput(function.not.wellformed:insufficient.permission, /Carbon/issue/68/)
+//:: UnexpectedOutput(function.not.wellformed:insufficient.permission, /Silicon/issue/161/)
+function pre(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/68/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/161/)
+  requires this != null && this.x == 0
+{
+  1
+}
+
+//:: UnexpectedOutput(function.not.wellformed:insufficient.permission, /Silicon/issue/161/)
+function post(this: Ref): Int
+  requires this != null
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/161/)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  //:: MissingOutput(postcondition.violated:assertion.false, /Carbon/issue/69/)
+  //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
+  //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/162/)
+  ensures this.x == 0
+{
+  1
+}
+
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
+function body(this: Ref): Int
+  requires this != null
+{
+  this.x
+}
