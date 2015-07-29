@@ -6,7 +6,6 @@
 
 package viper.silver.parser
 
-import scala.collection.immutable.HashMap
 import scala.collection.mutable
 import scala.reflect._
 import org.kiama.util.Messaging.{message, messagecount}

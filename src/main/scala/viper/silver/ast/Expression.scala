@@ -205,7 +205,7 @@ object DomainFuncApp {
   def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position, info: Info, attributes: Seq[Attribute]) : DomainFuncApp = DomainFuncApp(func.name,args,typVarMap)(pos,info,func.typ.substitute(typVarMap),func.formalArgs map {
     fa =>
       // substitute parameter types
-      LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
+      LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos,attributes=Nil)
   },
   attributes)
 }

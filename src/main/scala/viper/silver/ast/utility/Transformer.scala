@@ -219,7 +219,7 @@ object Transformer {
 
         case declaration @ LocalVarDecl(name, singleType) =>
           LocalVarDecl(name, go(singleType))(declaration.pos,
-            declaration.info)
+            declaration.info,declaration.attributes)
 
         case statement: Stmt =>
           statement match {

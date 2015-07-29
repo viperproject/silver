@@ -12,7 +12,6 @@ import org.kiama.util.Messaging
 import org.kiama.util.{Positioned => KiamaPositioned}
 import viper.silver.ast._
 import viper.silver.ast.utility.{Visitor, Statements}
-import scala.collection.immutable.HashSet
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -57,7 +56,8 @@ case class Translator(program: PProgram) {
         case w: PWhile => None
       }).flatten // only collect declarations at top-level, not from nested loop bodies
       val locals = plocals map {
-        case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
+        case p@PLocalVarDecl(idndef, t, _) =>
+          LocalVarDecl(idndef.name, ttyp(t))(p,attributes = p.getAttributes.map(translate(_)))
       }
       m.locals = locals
       m.pres = pres map exp
@@ -187,11 +187,11 @@ case class Translator(program: PProgram) {
         call.setStart(s.start)
         stmt(call)
       case PVarAssign(idnuse, rhs) =>
-        LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos), exp(rhs))(pos, attributes = atts)
+        LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos,attributes=idnuse.decl.getAttributes.map(translate(_))), exp(rhs))(pos, attributes = atts)
       case PFieldAssign(field, rhs) =>
         FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos, attributes = atts)
       case PLocalVarDecl(idndef, t, Some(init)) =>
-        LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos), exp(init))(pos, attributes = atts)
+        LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos,attributes=atts), exp(init))(pos, attributes = atts)
       case PLocalVarDecl(_, _, None) =>
         // there are no declarations in the SIL AST; rather they are part of the method signature
         Statements.EmptyStmt
@@ -210,7 +210,7 @@ case class Translator(program: PProgram) {
       case PNewStmt(target, fieldsOpt) =>
         val fields = fieldsOpt match {
           case None => program.fields map (translate(_))
-          /* Slightly redundant since we already translated the fields when we
+            /* Slightly redundant since we already translated the fields when we
              * translated the PProgram at the beginning of this class.
              */
           case Some(pfields) => pfields map findField
@@ -226,16 +226,16 @@ case class Translator(program: PProgram) {
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn), stmt(els))(pos, attributes = atts)
       case PFresh(vars) =>
-        Fresh(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)))(pos, attributes = atts)
+        Fresh(vars map (v => LocalVar(v.name)(ttyp(v.typ), v,attributes=v.decl.getAttributes.map(translate(_)))))(pos, attributes = atts)
       case PConstraining(vars, ss) =>
-        Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss))(pos, attributes = atts)
+        Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v,attributes=v.decl.getAttributes.map(translate(_)))), stmt(ss))(pos, attributes = atts)
       case PWhile(cond, invs, body) =>
         val plocals = body.childStmts collect {
           // Note: this won't collect declarations from nested loops
           case l: PLocalVarDecl => l
         }
         val locals = plocals map {
-          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
+          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos,attributes = p.getAttributes.map(translate(_)))
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos, attributes = atts)
       case _: PDefine | _: PSkip =>
@@ -463,7 +463,7 @@ case class Translator(program: PProgram) {
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
   private def liftVarDecl(formal: PFormalArgDecl) =
-    LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal)
+    LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal,attributes=Nil)
 
   /** Takes a `PType` and turns it into a `Type`. */
   private def ttyp(t: PType): Type = t match {

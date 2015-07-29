@@ -427,7 +427,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   if (_body != null) Consistency.checkNoArgsReassigned(formalArgs, _body)
   require(noDuplicates)
   require((formalArgs ++ formalReturns) forall (_.typ.isConcrete))
-  private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
+  private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool,attributes=Nil)))
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
     s foreach Consistency.checkNonPostContract
@@ -499,13 +499,13 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
  * Local variable declaration.  Note that these are not statements in the AST, but
  * rather occur as part of a method, loop, function, etc.
  */
-case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed with Typed {
+case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val attributes:Seq[Attribute]=Nil) extends Node with Positioned with Infoed with Typed with Attributing {
   require(Consistency.validUserDefinedIdentifier(name))
 
   /**
    * Returns a local variable with equivalent information
    */
-  lazy val localVar = LocalVar(name)(typ, pos, info)
+  lazy val localVar = LocalVar(name)(typ, pos, info,attributes)
 }
 
 
@@ -630,7 +630,7 @@ sealed trait PermDomainFunc extends AbstractDomainFunc {
 
 /** Domain functions that represent built-in binary operators */
 sealed trait BinOp extends Op {
-  lazy val formalArgs = List(LocalVarDecl("left", leftTyp)(), LocalVarDecl("right", rightTyp)())
+  lazy val formalArgs = List(LocalVarDecl("left", leftTyp)(attributes=Nil), LocalVarDecl("right", rightTyp)(attributes=Nil))
   def leftTyp: Type
   def rightTyp: Type
 }
@@ -660,7 +660,7 @@ sealed trait PermBinOp extends BinOp {
 
 /** Domain functions that represent built-in unary operators */
 sealed trait UnOp extends Op {
-  lazy val formalArgs = List(LocalVarDecl("exp", expTyp)())
+  lazy val formalArgs = List(LocalVarDecl("exp", expTyp)(attributes=Nil))
   def expTyp: Type
 }
 

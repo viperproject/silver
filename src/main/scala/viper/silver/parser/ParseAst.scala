@@ -334,7 +334,7 @@ object PScope {
 /** An entity is a declaration (named) or an error node */
 sealed trait PEntity
 
-sealed trait PDeclaration extends PNode with PEntity {
+sealed trait PDeclaration extends PNode with PEntity with PAttributing {
   def idndef: PIdnDef
 }
 

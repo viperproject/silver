@@ -182,7 +182,7 @@ object Expressions {
    */
   def generateTrigger(exp: QuantifiedExp): Seq[(Seq[Trigger], Seq[LocalVarDecl])] = {
     TriggerGeneration.generateTriggerGroups(exp.variables map (_.localVar), exp.exp)
-                     .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)()))}
+                     .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)(attributes=v.attributes)))}
   }
 
   /** Returns the first group of trigger sets (together with newly introduced
@@ -195,7 +195,7 @@ object Expressions {
     */
   def potentialTriggers(vs: Seq[LocalVar], exp: Exp): Option[(Seq[Trigger], Seq[LocalVarDecl])] =
     TriggerGeneration.generateTriggerGroups(vs, exp)
-        .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)()))}
+        .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)(attributes=v.attributes)))}
         .headOption
 
   object TriggerGeneration extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp, PossibleTrigger,
@@ -210,7 +210,7 @@ object Expressions {
     protected def exps(t: Trigger) = t.exps
 
     protected def Trigger(exps: Seq[Exp]) = viper.silver.ast.Trigger(exps)()
-    protected def Var(id: String, typ: Type) = LocalVar(id)(typ)
+    protected def Var(id: String, typ: Type) = LocalVar(id)(typ,attributes=Nil)
 
     protected val wrapperMap: Map[Class[_], PossibleTrigger => WrappingTrigger] = Map(
       classOf[Old] -> (pt => OldTrigger(pt)(pt.pos,pt.info)))
