@@ -1,0 +1,8 @@
+field x: Int
+
+method test(this: Ref)
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(žalias:grybas, /Silver/issue/92/)
+  assert true
+}
