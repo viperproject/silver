@@ -121,8 +121,6 @@ case class Translator(program: PProgram) {
       a
     case None => {
       if(isPredefinedAttribute(pa.key)) pa.key match{
-        case "verified-if" =>
-          Messaging.message(pa, "Value for attribute \"verified-if\" must be pure\n")
         case _ => Messaging.message(pa,"There was an issue with translating the attribute with key " + pa.key)
       }
       OrdinaryAttribute(pa.key, pa.values map (translate(_)))
