@@ -49,11 +49,11 @@ object Transformer {
     }
 
     def handle(a:Attribute):Attribute = a match{
-      case ValuedAttribute(k, vs) => ValuedAttribute(k, vs map handle2)
+      case ValuedAttribute(k, vs) => ValuedAttribute(k, vs map handleAttributeValue)
       case _ => a
     }
 
-    def handle2(a:AttributeValue): AttributeValue = a match{
+    def handleAttributeValue(a:AttributeValue): AttributeValue = a match{
       case ExpValue(e) => ExpValue(go(e))
       case _  => a
     }
