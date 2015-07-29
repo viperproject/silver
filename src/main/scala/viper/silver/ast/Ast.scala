@@ -162,8 +162,7 @@ trait Attribute {
   def pretty = "@" + key + "()"
 }
 
-case class OrdinaryAttribute(key:String) extends Attribute
-case class ValuedAttribute(key:String, values : Seq[AttributeValue]) extends Attribute{
+case class OrdinaryAttribute(key:String, values : Seq[AttributeValue]=Nil) extends Attribute{
   override def pretty = "@" + key + "(" + (values map (_.pretty)).mkString(",") + ")"
 }
 

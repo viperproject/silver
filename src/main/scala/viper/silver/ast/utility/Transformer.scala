@@ -49,7 +49,7 @@ object Transformer {
     }
 
     def handle(a:Attribute):Attribute = a match{
-      case ValuedAttribute(k, vs) => ValuedAttribute(k, vs map handleAttributeValue)
+      case OrdinaryAttribute(k, vs) => OrdinaryAttribute(k, vs map handleAttributeValue)
       case _ => a
     }
 

@@ -113,7 +113,7 @@ case class Translator(program: PProgram) {
   }
 
   def translate(pa:PAttribute): Attribute = getAttrConstructor(pa.key)(pa.values) match {
-    case Some(e@ValuedAttribute("-error", Seq(StringValue(msg)))) => {
+    case Some(e@OrdinaryAttribute("-error", Seq(StringValue(msg)))) => {
       Messaging.message(pa,msg);
       e
     }
@@ -125,10 +125,7 @@ case class Translator(program: PProgram) {
           Messaging.message(pa, "Value for attribute \"verified-if\" must be pure\n")
         case _ => Messaging.message(pa,"There was an issue with translating the attribute with key " + pa.key)
       }
-      pa.values match {
-        case Nil => OrdinaryAttribute(pa.key)
-        case vs => ValuedAttribute(pa.key, pa.values map (translate(_)))
-      }
+      OrdinaryAttribute(pa.key, pa.values map (translate(_)))
     }
   }
 
