@@ -12,7 +12,6 @@ predicate Nodevalid(this: Ref) {
 
 method Nodeinit(this: Ref, v: Int) returns (k: Perm)
   requires this != null
-  //:: UnexpectedOutput(application.precondition:insufficient.permission, /Carbon/issue/64/)
   ensures [(acc(Nodevalid(this), write) && (Nodesize(this) == 1)), true]
   //ensures (acc(Nodevalid(this), write) && (Nodesize(this) == 1))
 {
