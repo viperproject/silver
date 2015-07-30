@@ -1,4 +1,3 @@
-//:: IgnoreFile(/Carbon/issue/65/)
 method aa1()
 {
   // Should be equivalent to assert true.
