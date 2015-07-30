@@ -36,6 +36,5 @@ method Lalakoko$(this$_2: Ref, k$: Perm)
   var a$: Ref
   var b$: Ref
   var c$: Ref
-  //:: UnexpectedOutput(assert.failed:insufficient.permission, /Carbon/issue/59/)
   assert (unfolding acc(Lalainv$(this$_2), write) in this$_2.Lalax$) == old((unfolding acc(Lalainv$(this$_2), write) in this$_2.Lalax$))
 }
