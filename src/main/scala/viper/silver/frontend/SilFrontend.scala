@@ -16,7 +16,7 @@ import viper.silver.verifier._
 import viper.silver.verifier.CliOptionError
 import viper.silver.verifier.Failure
 import viper.silver.verifier.ParseError
-import viper.silver.ast.{Position, HasLineColumn, AbstractSourcePosition, SourcePosition, Program}
+import viper.silver.ast._
 import viper.silver.verifier.TypecheckerError
 
 /**
@@ -25,6 +25,19 @@ import viper.silver.verifier.TypecheckerError
  * error messages in a user-friendly fashion.
  */
 trait SilFrontend extends DefaultFrontend {
+
+  protected var _userDefinedAttributes:Seq[(String,Seq[AttributeValue] => Option[Attribute])] = Nil
+  def userDefinedAttributes = _userDefinedAttributes
+  def defineAttribute(key:String,constructor:Seq[AttributeValue] => Option[Attribute]) = _userDefinedAttributes +:= (key,constructor)
+  def defineAttribute(definition:(String,Seq[AttributeValue] => Option[Attribute])) = _userDefinedAttributes +:= definition
+  def defineAttributes(attributeDefinitions:Seq[(String,Seq[AttributeValue] => Option[Attribute])]) = _userDefinedAttributes ++= attributeDefinitions
+
+  override def reset(input: Path) = reset(input,Nil)
+  def reset(input: Path,newUserAttributes:Seq[(String,Seq[AttributeValue] => Option[Attribute])]): Unit = {
+    _userDefinedAttributes = Nil
+    defineAttributes(newUserAttributes)
+    super.reset(input)
+  }
 
   /**
    * Create the verifier. The full command is parsed for debugging purposes only,
@@ -212,7 +225,7 @@ trait SilFrontend extends DefaultFrontend {
   override def doTypecheck(input: ParserResult): Result[TypecheckerResult] = {
     Resolver(input).run match {
       case Some(modifiedInput) =>
-        Translator(modifiedInput).translate match {
+        Translator(modifiedInput,_userDefinedAttributes).translate match {
           case Some(program) =>
             Succ(program)
 

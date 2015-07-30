@@ -165,6 +165,17 @@ trait Attribute {
 case class OrdinaryAttribute(key:String, values : Seq[AttributeValue]=Nil) extends Attribute{
   override def pretty = "@" + key + "(" + (values map (_.pretty)).mkString(",") + ")"
 }
+class ErrorAttribute(override val values:Seq[StringValue]) extends OrdinaryAttribute("-error",values){
+  override val key = "-error"
+}
+object ErrorAttribute{
+  def create(vals:Seq[StringValue]):ErrorAttribute = new ErrorAttribute(vals)
+  def apply(msg:String):ErrorAttribute = apply(Seq(msg))
+  def apply(msgs:Seq[String]):ErrorAttribute = create(msgs.map(StringValue))
+  def unapply(ea:ErrorAttribute) =
+    if(ea == null) None
+    else Some(ea.values)
+}
 
 trait Attributing{
   def attributes : Seq[Attribute]

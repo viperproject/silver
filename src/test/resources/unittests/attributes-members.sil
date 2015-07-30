@@ -1,0 +1,13 @@
+field f:Int
+
+@debug("meth attr1")
+@dummy("meth attr2")
+method test01() {}
+
+@debug("func attr1")
+@dummy("func attr2")
+function test02(a:Int):Int{a}
+
+@debug("pred attr1")
+@dummy("pred attr2")
+predicate test03(i:Int){true}

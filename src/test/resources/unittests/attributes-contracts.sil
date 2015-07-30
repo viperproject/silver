@@ -1,0 +1,11 @@
+method test01()
+    requires true @dummy("precond attribute")
+    ensures false @dummy("postcond attribute")
+    {
+        var b:Bool := true
+        while(b)
+            invariant(b || !b)@dummy("invar attribute")
+            {
+            b := false
+        }@dummy("loop attribute")
+    }

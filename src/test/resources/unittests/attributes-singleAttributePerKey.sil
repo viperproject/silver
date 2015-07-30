@@ -1,0 +1,11 @@
+@debug("this")
+@debug("is")
+@debug("translated")
+@debug("into")
+@debug("a")
+@debug("single")
+@debug("attribute")
+@debug("with")
+@debug(10)
+@debug("attribute values")
+method test01(){}

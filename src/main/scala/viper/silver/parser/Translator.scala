@@ -25,8 +25,27 @@ import viper.silver.ast.utility.{Visitor, Statements}
  * return a tree, but instead, records error messages using Kiama's
  * Messaging feature.
  */
-case class Translator(program: PProgram) {
+case class Translator(program: PProgram,additionalAttributes:Seq[(String,Seq[AttributeValue] => Option[Attribute])]=Nil) {
   val file = program.file
+
+  private val predefinedAttributes = scala.collection.mutable.HashSet[String](
+    "debug",
+    ""
+  )
+
+  def isPredefinedAttribute(s:String) = predefinedAttributes.contains(s)
+
+  private val getAttrConstructor = scala.collection.mutable.HashMap[String, (Seq[AttributeValue]) => Option[Attribute]](
+    "debug" -> ((vs:Seq[AttributeValue]) => Some(OrdinaryAttribute("debug",vs))),
+    "" -> ((_:Seq[AttributeValue]) => sys.error("unexpected empty attribute key"))
+  ).withDefaultValue((_:Seq[AttributeValue]) => None:Option[Attribute])
+
+  def addAttributeConstructor(key:String, f:Seq[AttributeValue] => Option[Attribute]) = {
+    predefinedAttributes += key
+    getAttrConstructor += (key -> f)
+  }
+
+  additionalAttributes.foreach{case (key,constructor) => addAttributeConstructor(key,constructor)}
 
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     assert(Messaging.messagecount == 0, "Expected previous phases to succeed, but found error messages.")
@@ -97,34 +116,25 @@ case class Translator(program: PProgram) {
 
   private def translate(f: PField) = findField(f.idndef)
 
-  private val predefinedAttributes = scala.collection.mutable.HashSet[String](
-    ""
-  )
-
-  def isPredefinedAttribute(s:String) = predefinedAttributes.contains(s)
-
-  private val getAttrConstructor = scala.collection.mutable.HashMap[String, (Seq[PAttributeValue]) => Option[Attribute]](
-    "" -> ((_:Seq[PAttributeValue]) => sys.error("unexpected empty attribute key"))
-  ).withDefaultValue((_:Seq[PAttributeValue]) => None:Option[Attribute])
-
-  def addAttributeConstructor(key:String, f:Seq[PAttributeValue] => Option[Attribute]) = {
-    predefinedAttributes += key
-    getAttrConstructor += (key -> f)
-  }
-
-  def translate(pa:PAttribute): Attribute = getAttrConstructor(pa.key)(pa.values) match {
-    case Some(e@OrdinaryAttribute("-error", Seq(StringValue(msg)))) => {
-      Messaging.message(pa,msg);
+  def translate(pa:PAttribute): Attribute = getAttrConstructor(pa.key)(pa.values.map(translate(_))) match {
+    case Some(e@ErrorAttribute(msgs:Seq[StringValue])) =>
+      val customErrors = msgs.map(_.value).mkString(";")
+      val error = s"attribute ${pa.key} could not be translated and failed with custom ${if(msgs.size > 1) s"errors:{$customErrors}" else s"error: $customErrors"}"
+      Messaging.message(pa,error)
       e
-    }
     case Some(a:Attribute) =>
       a
-    case None => {
-      if(isPredefinedAttribute(pa.key)) pa.key match{
-        case _ => Messaging.message(pa,"There was an issue with translating the attribute with key " + pa.key)
+    case None =>
+      if(isPredefinedAttribute(pa.key)){
+        val msg = s"attribute ${pa.key} could not be translated"
+        Messaging.message(pa,msg)
+        ErrorAttribute(msg)
       }
-      OrdinaryAttribute(pa.key, pa.values map (translate(_)))
-    }
+      else{
+        val msg = s"unknown attribute ${pa.key}"
+        Messaging.message(pa,msg)
+        ErrorAttribute(msg)
+      }
   }
 
   private def translate(v : PAttributeValue) : AttributeValue = v match{

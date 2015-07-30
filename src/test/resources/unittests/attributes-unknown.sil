@@ -1,0 +1,4 @@
+field f:Int
+
+@fooAttribute()
+method test01() {}
