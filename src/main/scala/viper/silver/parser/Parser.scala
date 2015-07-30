@@ -169,19 +169,19 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
                 }()
 
             val res = substituteDefines(localDefines ++ globalDefines, methWithoutDefines)
-            res.setAttributes(meth.getAttributes)
+            res.setAttributes(meth.getAttributes,parsing=true)
             res
         }
 
         val domains = decls collect { case d: PDomain => substituteDefines(globalDefines, d) }
         val functions = decls collect { case d: PFunction =>
           val res = substituteDefines(globalDefines, d)
-          res.setAttributes(d.getAttributes)
+          res.setAttributes(d.getAttributes,parsing=true)
           res
         }
         val predicates = decls collect { case d: PPredicate =>
           val res = substituteDefines(globalDefines, d)
-        res.setAttributes(d.getAttributes)
+        res.setAttributes(d.getAttributes,parsing=true)
         res}
 
         PProgram(file, domains, fields, functions, predicates, methods)
@@ -194,7 +194,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
       case attr ~ name ~ args ~ rets ~ pres ~ posts ~ body =>
         val pm = PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
-        pm.setAttributes(attr.toSeq.flatten)
+        pm.setAttributes(attr.toSeq.flatten,parsing=true)
         pm
     }
 
@@ -204,20 +204,20 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val pre =
     ("requires" ~> exp <~ opt(";"))~(opt(attribList) <~opt(";")) ^^{
       case e ~ attr =>
-        e.setAttributes(attr.toSeq.flatten)
+        e.setAttributes(attr.toSeq.flatten,parsing=true)
         e
     }
   lazy val post =
     ("ensures" ~> exp <~ opt(";"))~(opt(attribList) <~opt(";")) ^^{
       case e ~ attr =>
-        e.setAttributes(attr.toSeq.flatten)
+        e.setAttributes(attr.toSeq.flatten,parsing=true)
         e
     }
 
   lazy val inv =
     ("invariant" ~> exp <~ opt(";"))~(opt(attribList) <~opt(";")) ^^{
       case e ~ attr =>
-        e.setAttributes(attr.toSeq.flatten)
+        e.setAttributes(attr.toSeq.flatten,parsing=true)
         e
     }
 
@@ -230,7 +230,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     functionSignature ~ rep(pre) ~ rep(post) ~ opt("{" ~> (exp <~ "}")) ^^ {
       case attr ~ name ~ args ~ typ ~pre ~ post ~ exp =>
         val pf = PFunction(name, args, typ, pre, post, exp)
-        pf.setAttributes(attr.toSeq.flatten)
+        pf.setAttributes(attr.toSeq.flatten,parsing=true)
         pf
     }
 
@@ -242,7 +242,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       fdecl match {
         case attr ~ name ~ formalArgs ~ t =>
           val pdf = PDomainFunction(name, formalArgs, t, unique.isDefined)
-          pdf.setAttributes(attr.toSeq.flatten)
+          pdf.setAttributes(attr.toSeq.flatten,parsing=true)
           pdf
       }
   }
@@ -251,7 +251,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     opt(attribList) ~ ("predicate" ~> idndef) ~ ("(" ~> formalArgList <~ ")") ~ opt("{" ~> (exp <~ "}")) ^^ {
       case attr ~ name ~ formalArgs ~ body =>
         val pp = PPredicate(name,formalArgs,body)
-        pp.setAttributes(attr.toSeq.flatten)
+        pp.setAttributes(attr.toSeq.flatten,parsing=true)
         pp
     }
 
@@ -296,7 +296,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       methodCall | goto | lbl
       ) ~ opt(attribList) ^^ {
       case basicStmt ~ attr => {
-        basicStmt.setAttributes(attr.toSeq.flatten)
+        basicStmt.setAttributes(attr.toSeq.flatten,parsing=true)
         basicStmt
       }
     }
