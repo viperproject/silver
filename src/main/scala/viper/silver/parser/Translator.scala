@@ -75,8 +75,8 @@ case class Translator(program: PProgram,additionalAttributes:Seq[(String,Seq[Att
         case w: PWhile => None
       }).flatten // only collect declarations at top-level, not from nested loop bodies
       val locals = plocals map {
-        case p@PLocalVarDecl(idndef, t, _) =>
-          LocalVarDecl(idndef.name, ttyp(t))(p,attributes = p.getAttributes.map(translate(_)))
+        case p@PLocalVarDecl(idndef, t, None) =>  LocalVarDecl(idndef.name, ttyp(t))(p,attributes = p.getAttributes.map(translate(_)))
+        case p@PLocalVarDecl(idndef, t, Some(init)) =>  LocalVarDecl(idndef.name, ttyp(t))(p,attributes = Nil)
       }
       m.locals = locals
       m.pres = pres map exp
@@ -192,11 +192,15 @@ case class Translator(program: PProgram,additionalAttributes:Seq[(String,Seq[Att
         call.setStart(s.start)
         stmt(call)
       case PVarAssign(idnuse, rhs) =>
-        LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos,attributes=idnuse.decl.getAttributes.map(translate(_))), exp(rhs))(pos, attributes = atts)
+        idnuse.decl match{
+          case PLocalVarDecl(_,_,Some(init)) => LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos,attributes=Nil), exp(rhs))(pos, attributes = atts)
+          case _ => LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos,attributes=idnuse.decl.getAttributes.map(translate(_))), exp(rhs))(pos, attributes = atts)
+        }
+
       case PFieldAssign(field, rhs) =>
         FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos, attributes = atts)
       case PLocalVarDecl(idndef, t, Some(init)) =>
-        LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos,attributes=atts), exp(init))(pos, attributes = atts)
+        LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos,attributes=Nil), exp(init))(pos, attributes = atts)
       case PLocalVarDecl(_, _, None) =>
         // there are no declarations in the SIL AST; rather they are part of the method signature
         Statements.EmptyStmt
@@ -240,7 +244,8 @@ case class Translator(program: PProgram,additionalAttributes:Seq[(String,Seq[Att
           case l: PLocalVarDecl => l
         }
         val locals = plocals map {
-          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos,attributes = p.getAttributes.map(translate(_)))
+          case p@PLocalVarDecl(idndef, t, None) => LocalVarDecl(idndef.name, ttyp(t))(pos,attributes = p.getAttributes.map(translate(_)))
+          case PLocalVarDecl(idndef,t,Some(init)) => LocalVarDecl(idndef.name, ttyp(t))(pos,attributes = Nil)
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos, attributes = atts)
       case _: PDefine | _: PSkip =>
@@ -255,7 +260,8 @@ case class Translator(program: PProgram,additionalAttributes:Seq[(String,Seq[Att
     pexp match {
       case piu @ PIdnUse(name) =>
         piu.decl match {
-          case _: PLocalVarDecl | _: PFormalArgDecl => LocalVar(name)(ttyp(pexp.typ), pos,attributes = attrs)
+          case _@PLocalVarDecl(_,_,None) | _: PFormalArgDecl => LocalVar(name)(ttyp(pexp.typ), pos,attributes = attrs)
+          case _@PLocalVarDecl(_,_,Some(init)) => LocalVar(name)(ttyp(pexp.typ), pos,attributes = Nil)
           case pf: PField =>
             /* A malformed AST where a field is dereferenced without a receiver */
             Messaging.message(piu, s"expected expression but found field $name")
@@ -468,7 +474,7 @@ case class Translator(program: PProgram,additionalAttributes:Seq[(String,Seq[Att
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
   private def liftVarDecl(formal: PFormalArgDecl) =
-    LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal,attributes=Nil)
+    LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal,attributes=formal.getAttributes.map(translate(_)))
 
   /** Takes a `PType` and turns it into a `Type`. */
   private def ttyp(t: PType): Type = t match {

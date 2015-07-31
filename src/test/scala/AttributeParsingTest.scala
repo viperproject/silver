@@ -145,8 +145,8 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
         val m = p.findMethod("test01")
         m.locals match{
           case Seq(lvd@LocalVarDecl(b,Bool))=> lvd.attributes match{
-            case List(DummyAttribute("boolean attribute")) =>
-            case atts => fail(s"attribute mismatch, expected local b to have List(DummyAttribute(boolean attribute)) but found " + atts)
+            case Nil =>
+            case atts => fail(s"attribute mismatch, expected local b to have no attributes but found " + atts)
           }
         }
         m.body match{
@@ -165,9 +165,10 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
                   case List(DummyAttribute("boolean attribute")) =>
                   case atts => fail(s"attribute mismatch, expected rhs of initial assign to b to have List(DummyAttribute(boolean attribute)) but has $atts")
                 }
+
                 lv.attributes match {
-                  case List(DummyAttribute("boolean attribute")) =>
-                  case atts => fail(s"attribute mismatch, expected local var of b to have List(DummyAttribute(boolean attribute)) but has $atts")
+                  case Nil =>
+                  case atts => fail(s"attribute mismatch, expected local var of b to have no attributes but has $atts")
                 }
               case _ => fail(s"expected assgnToB to be assignment to b but is $assignToB of ${assignToB.getClass}")
             }
@@ -190,8 +191,8 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
                   case lva@LocalVarAssign(lv@LocalVar(b),rhs) =>
                     assert(rhs.attributes.isEmpty,s"expected rhs of assign to b to have no attributes but has ${rhs.attributes}")
                     lv.attributes match {
-                      case List(DummyAttribute("boolean attribute")) =>
-                      case atts => fail(s"attribute mismatch, expected local var of b to have List(DummyAttribute(boolean attribute)) but has $atts")
+                      case Nil =>
+                      case atts => fail(s"attribute mismatch, expected local var of b to have no attributes but has $atts")
                     }
                     lva.attributes match{
                       case List(DummyAttribute("boolean assign")) =>

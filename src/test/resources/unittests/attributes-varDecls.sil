@@ -1,5 +1,5 @@
 method test01(){
-    var b:Bool := true @dummy("boolean attribute") //note: for now, this is attached to both, the var and the assignment
+    var b:Bool := true @dummy("boolean attribute") //note: for now, this only attached to the assignment but not to the var b
     while(b){
         var c:Int @dummy("int attribute")
         c := 1 @dummy("integer assign")
