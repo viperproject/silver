@@ -29,14 +29,12 @@ case class Translator(program: PProgram,additionalAttributes:Seq[(String,Seq[Att
   val file = program.file
 
   private val predefinedAttributes = scala.collection.mutable.HashSet[String](
-    "debug",
     ""
   )
 
   def isPredefinedAttribute(s:String) = predefinedAttributes.contains(s)
 
   private val getAttrConstructor = scala.collection.mutable.HashMap[String, (Seq[AttributeValue]) => Option[Attribute]](
-    "debug" -> ((vs:Seq[AttributeValue]) => Some(OrdinaryAttribute("debug",vs))),
     "" -> ((_:Seq[AttributeValue]) => sys.error("unexpected empty attribute key"))
   ).withDefaultValue((_:Seq[AttributeValue]) => None:Option[Attribute])
 

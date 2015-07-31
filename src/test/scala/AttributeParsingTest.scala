@@ -16,6 +16,8 @@ import viper.silver.frontend.{TranslatorState, SilFrontend}
 import viper.silver.verifier.{AbstractError, ParseError, Failure, Success}
 
 trait DummyAttributes{
+  val debugAttribute = ("debug",(vs:Seq[AttributeValue]) => Some(OrdinaryAttribute("debug",vs)))
+
   case class DummyAttribute(arg:String) extends ast.Attribute{
     val key = "dummy"
   }
@@ -80,7 +82,7 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
   test("member attributes  (with user-defined attributes)"){
     val silverFile = path("attributes-members")
 
-    frontend.translate(silverFile,attributeDefs = Seq(dummyAttribute)) match{
+    frontend.translate(silverFile,attributeDefs = Seq(debugAttribute,dummyAttribute)) match{
       case (Some(p),_) =>
         p.findMethod("test01").attributes match{
           case List(OrdinaryAttribute("debug",List(StringValue("meth attr1"))),DummyAttribute("meth attr2")) =>
@@ -214,7 +216,7 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
   test("one attribute per key"){
     val silverFile = path("attributes-singleAttributePerKey")
 
-    frontend.translate(silverFile) match{
+    frontend.translate(silverFile,Seq(debugAttribute)) match{
       case (Some(p),_) =>
         p.findMethod("test01").attributes match{
           case List(
