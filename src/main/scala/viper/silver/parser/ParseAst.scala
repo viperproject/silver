@@ -255,7 +255,7 @@ case class PEmptyMultiset(t : PType) extends PExp
 }
 
 sealed trait PAttributing extends PNode{
-  private var attributes = Map[String, List[PAttributeValue]]().withDefaultValue(Nil)
+  private var attributes = Map[String, Seq[PAttributeValue]]().withDefaultValue(Nil)
 
   def setAttributes(s : Seq[PAttribute],parsing:Boolean=false) = {
     if(!parsing) attributes = attributes.empty.withDefaultValue(Nil)
@@ -263,7 +263,7 @@ sealed trait PAttributing extends PNode{
   }
 
   def addAttribute(a: PAttribute) = attributes += (a.key -> (attributes(a.key) ++ a.values))
-  def getAttributes = attributes.collect{case (k:String, vs:List[PAttributeValue]) => {
+  def getAttributes = attributes.collect{case (k:String, vs:Seq[PAttributeValue]) => {
     val p = PAttribute(k,vs)
     p.setPos(this)
     p
@@ -314,7 +314,7 @@ case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
-case class PAttribute(key: String, values: List[PAttributeValue]) extends PNode
+case class PAttribute(key: String, values: Seq[PAttributeValue]) extends PNode
 
 sealed trait PScope extends PNode {
   val scopeId = PScope.uniqueId()

@@ -47,7 +47,7 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
   val frontend = new DummyFrontend
   def path(filename:String) = Paths.get(getClass.getResource(s"/unittests/$filename.sil").toURI)
 
-  def pretty(errors:Seq[AbstractError]) = s"List(${errors.map(e => s"${e.getClass}: $e").mkString(",")})"
+  def pretty(errors:Seq[AbstractError]) = s"Seq(${errors.map(e => s"${e.getClass}: $e").mkString(",")})"
 
   def fail(expected:String,actual:String):Nothing = fail(s"translation expected $expected, but $actual")
 
@@ -72,7 +72,7 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
       case (None,errors) =>
         errors match{
           case Seq(verifier.TypecheckerError(msg,pos:HasLineColumn)) =>
-            assert(msg.equals("attribute dummy could not be translated and failed with custom error: expected single string value but have:List()"))
+            assert(msg.equals("attribute dummy could not be translated and failed with custom error: expected single string value but have:List()"),s"unrelated error: $msg")
             assert(pos.line == 1 && pos.column == 1, s"Expected a typechecker error at 1:1, but got one at $pos")
           case _ => fail(s"expected single error but found ${pretty(errors)}")
         }
@@ -85,16 +85,16 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
     frontend.translate(silverFile,attributeDefs = Seq(debugAttribute,dummyAttribute)) match{
       case (Some(p),_) =>
         p.findMethod("test01").attributes match{
-          case List(OrdinaryAttribute("debug",List(StringValue("meth attr1"))),DummyAttribute("meth attr2")) =>
-          case atts => fail("method attributes mismatch, expected List(OrdinaryAttribute(debug,List(StringValue(meth attr1))),DummyAttribute(meth attr2)) but found " + atts)
+          case Seq(OrdinaryAttribute("debug",Seq(StringValue("meth attr1"))),DummyAttribute("meth attr2")) =>
+          case atts => fail("method attributes mismatch, expected Seq(OrdinaryAttribute(debug,Seq(StringValue(meth attr1))),DummyAttribute(meth attr2)) but found " + atts)
         }
         p.findFunction("test02").attributes match{
-          case List(OrdinaryAttribute("debug",List(StringValue("func attr1"))),DummyAttribute("func attr2")) =>
-          case atts => fail("function attributes mismatch, expected List(OrdinaryAttribute(debug,List(StringValue(func attr1))),DummyAttribute(func attr2)) but found " + atts)
+          case Seq(OrdinaryAttribute("debug",Seq(StringValue("func attr1"))),DummyAttribute("func attr2")) =>
+          case atts => fail("function attributes mismatch, expected Seq(OrdinaryAttribute(debug,Seq(StringValue(func attr1))),DummyAttribute(func attr2)) but found " + atts)
         }
         p.findPredicate("test03").attributes match{
-          case List(OrdinaryAttribute("debug",List(StringValue("pred attr1"))),DummyAttribute("pred attr2")) =>
-          case atts => fail("predicate attributes mismatch, expected List(OrdinaryAttribute(debug,List(StringValue(pred attr1))),DummyAttribute(pred attr2)) but found " + atts)
+          case Seq(OrdinaryAttribute("debug",Seq(StringValue("pred attr1"))),DummyAttribute("pred attr2")) =>
+          case atts => fail("predicate attributes mismatch, expected Seq(OrdinaryAttribute(debug,Seq(StringValue(pred attr1))),DummyAttribute(pred attr2)) but found " + atts)
         }
       case (None,errors) =>
         fail(expected="to succeed",actual="but found " + pretty(errors))
@@ -108,30 +108,30 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
         val m = p.findMethod("test01")
         m.pres match{
           case Seq(pre) => pre.attributes match{
-            case List(DummyAttribute("precond attribute")) =>
-            case atts => fail(s"attribute mismatch, expected List(DummyAttribute(precond attribute)) but have $atts")
+            case Seq(DummyAttribute("precond attribute")) =>
+            case atts => fail(s"attribute mismatch, expected Seq(DummyAttribute(precond attribute)) but have $atts")
           }
           case _ => fail(s"expected single precondition but found ${m.pres}")
         }
         m.posts match{
           case Seq(post) => post.attributes match{
-            case List(DummyAttribute("postcond attribute")) =>
-            case atts => fail(s"attribute mismatch, expected List(DummyAttribute(postcond attribute)) but have $atts")
+            case Seq(DummyAttribute("postcond attribute")) =>
+            case atts => fail(s"attribute mismatch, expected Seq(DummyAttribute(postcond attribute)) but have $atts")
           }
           case _ => fail(s"expected single postcondition but found ${m.posts}")
         }
         m.body match{
           case Seqn(Seq(_,w:ast.While)) =>
             w.attributes match{
-              case List(DummyAttribute("loop attribute")) =>
+              case Seq(DummyAttribute("loop attribute")) =>
                 w.invs match{
                   case Seq(inv) => inv.attributes match{
-                    case List(DummyAttribute("invar attribute")) =>
-                    case atts => fail(s"expected invariant to have attributes List(DummyAttribute(invar attribute)) but found $atts")
+                    case Seq(DummyAttribute("invar attribute")) =>
+                    case atts => fail(s"expected invariant to have attributes Seq(DummyAttribute(invar attribute)) but found $atts")
                   }
                   case invs => fail(s"expected single invariant but found $invs")
                 }
-              case atts => fail(s"attribute mismatch, expected While-Node to have List(DummyAttribute(loop attribute)) but have $atts")
+              case atts => fail(s"attribute mismatch, expected While-Node to have Seq(DummyAttribute(loop attribute)) but have $atts")
             }
           case b => fail(s"expected body ast.Seqn(Seq(b:=true;ast.While)) but have " + b)
         }
@@ -155,8 +155,8 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
           case ast.Seqn(Seq(assignToB,w@ast.While(_,_,locals,loopBody))) =>
             locals match {
               case Seq(lvd@LocalVarDecl(c,Int)) => lvd.attributes match{
-                case List(DummyAttribute("int attribute")) =>
-                case atts => fail(s"attribute mismatch, expected local c to have List(DummyAttribute(integer attribute)) but found $atts")
+                case Seq(DummyAttribute("int attribute")) =>
+                case atts => fail(s"attribute mismatch, expected local c to have Seq(DummyAttribute(integer attribute)) but found $atts")
               }
               case _ => fail(s"expected single loop local c:Int but found $locals")
             }
@@ -164,8 +164,8 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
               case lva@LocalVarAssign(lv@LocalVar(b), rhs) =>
                 assert(rhs.attributes.isEmpty, s"expected rhs of assign to b to have no attributes but has ${rhs.attributes}")
                 lva.attributes match {
-                  case List(DummyAttribute("boolean attribute")) =>
-                  case atts => fail(s"attribute mismatch, expected rhs of initial assign to b to have List(DummyAttribute(boolean attribute)) but has $atts")
+                  case Seq(DummyAttribute("boolean attribute")) =>
+                  case atts => fail(s"attribute mismatch, expected rhs of initial assign to b to have Seq(DummyAttribute(boolean attribute)) but has $atts")
                 }
 
                 lv.attributes match {
@@ -180,12 +180,12 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
                   case lva@LocalVarAssign(lv@LocalVar(c),rhs) =>
                     assert(rhs.attributes.isEmpty,s"expected rhs of assign to c to have no attributes but has ${rhs.attributes}")
                     lv.attributes match {
-                      case List(DummyAttribute("int attribute")) =>
-                      case atts => fail(s"attribute mismatch, expected local var of c to have List(DummyAttribute(int attribute)) but has $atts")
+                      case Seq(DummyAttribute("int attribute")) =>
+                      case atts => fail(s"attribute mismatch, expected local var of c to have Seq(DummyAttribute(int attribute)) but has $atts")
                     }
                     lva.attributes match{
-                      case List(DummyAttribute("integer assign")) =>
-                      case atts => fail(s"attribute mismatch, expected assignment to c to have List(DummyAttribute(integer assign)) but has $atts")
+                      case Seq(DummyAttribute("integer assign")) =>
+                      case atts => fail(s"attribute mismatch, expected assignment to c to have Seq(DummyAttribute(integer assign)) but has $atts")
                     }
                   case _ => fail(s"expected assgnToC to be assignment to c but is $assignToC of ${assignToC.getClass}")
                 }
@@ -197,8 +197,8 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
                       case atts => fail(s"attribute mismatch, expected local var of b to have no attributes but has $atts")
                     }
                     lva.attributes match{
-                      case List(DummyAttribute("boolean assign")) =>
-                      case atts => fail(s"attribute mismatch, expected 2nd assignment to b to have List(DummyAttribute(boolean assign)) but has $atts")
+                      case Seq(DummyAttribute("boolean assign")) =>
+                      case atts => fail(s"attribute mismatch, expected 2nd assignment to b to have Seq(DummyAttribute(boolean assign)) but has $atts")
                     }
                   case _ => fail(s"expected assgnToB to be assignment to b but is $sndAssignToB of ${sndAssignToB.getClass}")
                 }
@@ -219,9 +219,9 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
     frontend.translate(silverFile,Seq(debugAttribute)) match{
       case (Some(p),_) =>
         p.findMethod("test01").attributes match{
-          case List(
+          case Seq(
                     OrdinaryAttribute("debug",
-                              List(
+                              Seq(
                               StringValue("this"),
                               StringValue("is"),
                               StringValue("translated"),
@@ -241,6 +241,15 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
             fail(s"attribute mismatch, expected all annotations to merge into a single attribute but found $actual")
         }
       case (None,errors) => fail(expected="to succeed",actual = "but found " + pretty(errors))
+    }
+  }
+
+  test("parsing"){
+    val silverFile = path("attributes-parsing")
+
+    frontend.translate(silverFile,Seq(dummyAttribute,debugAttribute)) match{
+      case (Some(p),_) =>
+      case (None,errors) => fail(s"translation expected to succeed but found " + pretty(errors))
     }
   }
 }

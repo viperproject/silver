@@ -1,0 +1,82 @@
+field f: Int
+
+@dummy("hello world")
+predicate isPositive(x:Ref)
+	{
+	acc(x.f) && x.f > 0
+}
+
+@debug(1,2,true)
+@dummy("42")
+function foo(x:Int) :Int{
+
+    x
+
+}
+
+
+@debug("hakuna","matata")
+method bar1(this:Ref) returns (x:Int)
+
+    requires(acc(this.f))@dummy("hi")
+
+    {
+
+        this.f := foo(this.f) @debug(5)@debug()
+
+        x := this.f @debug(x)
+    }
+
+method baz(i:Int) returns (r:Int){
+    r := i
+    var b : Bool := false @debug()
+    while(false){
+        b := true@debug()
+    }@debug("whatever",1) @debug("whatever",2)
+    @debug("value1", "value2", "value3")
+
+    if(b){
+        r := r + 1
+    }@debug(1234)
+
+    if(b){
+        //do nothing
+    }else{
+        //still do nothing
+    }@dummy("value")@debug("ever","you","need",2)
+}
+
+domain C[T]{
+
+    @dummy("ever")
+    function get() : T
+}
+
+method stmts() returns(r : Bool){
+    var c : C[Int]@dummy("hello world");
+    r := 3 < 5 ? true : false @debug(5);
+    r := (5 < 3 ? r : true) @debug(5,3);
+}
+
+method pidnuse() returns (r:Bool){
+    var b:Bool := true@debug();
+    r := b@dummy("")
+    var a :Int := 1 @debug(b)@dummy("b")
+}
+
+method specialChars() returns (r:Bool){
+    r := true && false @dummy("t-r-u-e")
+    r := true @dummy("o_r n_o_t")
+    r := false @dummy("13487841p4t58zasdukjnsadjypä¨üä!£àèé`?=)*+&%/()=}{][~´¢|¬§°#@¦") //strings may contain anything but "
+}
+
+method constraints() returns ()
+    requires true @debug()
+    ensures true @dummy("true")
+    {
+        while(true)
+            invariant(true)@dummy("hello")
+            {
+
+        }
+    }
