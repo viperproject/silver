@@ -165,8 +165,9 @@ trait Attribute {
 case class OrdinaryAttribute(key:String, values : Seq[AttributeValue]=Nil) extends Attribute{
   override def pretty = "@" + key + "(" + (values map (_.pretty)).mkString(",") + ")"
 }
-class ErrorAttribute(override val values:Seq[StringValue]) extends OrdinaryAttribute("-error",values){
+class ErrorAttribute(override val values:Seq[StringValue]) extends OrdinaryAttribute("-error",values) with viper.silver.utility.Common.StructuralEquality{
   override val key = "-error"
+  override protected val equalityDefiningMembers: Seq[Any] = key :: values :: Nil
 }
 object ErrorAttribute{
   def create(vals:Seq[StringValue]):ErrorAttribute = new ErrorAttribute(vals)
