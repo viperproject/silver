@@ -164,7 +164,6 @@ method t1(this: Ref)
   requires [acc(this.x), true]
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/67/)
   requires [true, this != null && this.x == 0]
 {
 }
@@ -192,7 +191,6 @@ method t3(this: Ref)
   ensures [acc(this.x), true]
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/67/)
   ensures [true, this != null && this.x == 0]
 {
   inhale acc(this.x) && this.x == 0
