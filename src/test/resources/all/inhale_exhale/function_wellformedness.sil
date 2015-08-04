@@ -5,19 +5,19 @@ field x: Int
 Sanity checks.
 */
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function s0(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires this != null && this.x == 0
 {
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function s0Abstract(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires this != null && this.x == 0
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function s1(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/162/)
   //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
@@ -26,8 +26,8 @@ function s1(this: Ref): Int
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function s1Abstract(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   ensures this != null && this.x == 0
 
 //:: ExpectedOutput(function.not.wellformed:insufficient.permission)
@@ -41,45 +41,45 @@ function s2(this: Ref): Int
 Inhale.
 */
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function i0(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires [this != null && this.x == 0, true]
 {
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function i0Abstract(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires [this != null && this.x == 0, true]
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function i1(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   ensures [this != null && this.x == 0, true]
 {
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function i1Abstract(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   ensures [this != null && this.x == 0, true]
 
 /*
 Exhale.
 */
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function e0(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires [true, this != null && this.x == 0]
 {
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function e0Abstract(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires [true, this != null && this.x == 0]
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function e1(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/162/)
   //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
@@ -88,27 +88,27 @@ function e1(this: Ref): Int
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function e1Abstract(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   ensures [true, this != null && this.x == 0]
 
 /*
 Both.
 */
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function ie0(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires [this != null && this.x == 0, this != null && this.x == 0]
 {
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function ie0Abstract(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires [this != null && this.x == 0, this != null && this.x == 0]
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function ie1(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/162/)
   //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
@@ -117,8 +117,8 @@ function ie1(this: Ref): Int
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function ie1Abstract(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   ensures [this != null && this.x == 0, this != null && this.x == 0]
 
 /*
@@ -131,17 +131,17 @@ More interesting combinations.
     2.   true && this != null && this.x == 0 <-- should give an error
     Precondition verified with function body: acc(this.x) && true
 */
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function t1(this: Ref): Int
   requires [acc(this.x), true]
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires [true, this != null && this.x == 0]
 {
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function t1Abstract(this: Ref): Int
   requires [acc(this.x), true]
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires [true, this != null && this.x == 0]
 
 /*
@@ -150,17 +150,17 @@ function t1Abstract(this: Ref): Int
     2.   acc(this.x) && true
     Precondition verified with function body: true && this != null && this.x == 0
 */
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function t2(this: Ref): Int
   requires [true, acc(this.x)]
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires [this != null && this.x == 0, true]
 {
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function t2Abstract(this: Ref): Int
   requires [true, acc(this.x)]
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires [this != null && this.x == 0, true]
 
 /*
@@ -190,18 +190,18 @@ function t3Abstract(this: Ref): Int
     4.  true && this != null && this.x == 0 <-- should give an error
     Postcondition verified with function body: this != null && this.x == 0
 */
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function t4(this: Ref): Int
   requires [true, acc(this.x) && this.x == 0]
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   ensures [true, this != null && this.x == 0]
 {
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function t4Abstract(this: Ref): Int
   requires [true, acc(this.x) && this.x == 0]
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   ensures [true, this != null && this.x == 0]
 
 /*
@@ -212,17 +212,17 @@ function t4Abstract(this: Ref): Int
     4.  true && true
     Postcondition verified with function body: true
 */
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function t5(this: Ref): Int
   requires [true, acc(this.x)]
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   ensures [this != null && this.x == 0, true]
 {
   0
 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function t5Abstract(this: Ref): Int
   requires [true, acc(this.x)]
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
   ensures [this != null && this.x == 0, true]
 
 /*

@@ -1,6 +1,5 @@
 field x: Int
 
-//:: UnexpectedOutput(function.not.wellformed:insufficient.permission, /Silicon/issue/161/)
 function postFunction(this: Ref): Int
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)

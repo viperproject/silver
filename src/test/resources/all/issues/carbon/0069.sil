@@ -1,12 +1,10 @@
 field x: Int
 
-//:: UnexpectedOutput(function.not.wellformed:insufficient.permission, /Silicon/issue/161/)
 function postFunction(this: Ref): Int
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   //:: MissingOutput(postcondition.violated:assertion.false, /Carbon/issue/69/)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/161/)
   //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/162/)
   ensures this.x == 0
@@ -18,7 +16,7 @@ method postMethod(this: Ref)
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
-  //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/161/)
+  //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
   ensures this.x == 0
 {
 }
