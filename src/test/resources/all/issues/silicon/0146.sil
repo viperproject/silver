@@ -12,6 +12,5 @@ method test00(xs: Seq[Int], n: Int) {
         && 0 <= j && j < i
     ==> xs[idx00(i, j, j+1, n)] == i + j
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/146/)
   assert xs[idx00(5, 2, 3, n)] == 7
 }
