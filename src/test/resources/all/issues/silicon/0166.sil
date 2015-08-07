@@ -1,6 +1,5 @@
 method Quantifiersforall10(x: Int)
   requires (forall i: Int :: (i in [0..10)) ==> (x > i))
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /Silicon/issue/166/)
   ensures  (forall i: Int :: (i in [0..10)) ==> (x > i))
 {
 }
