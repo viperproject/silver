@@ -10,17 +10,7 @@ domain GlobalKPermission {
 
 field old$methodPermission: Perm
 
-field joinable$: Bool
-
 field Cellx$: Int
-
-field par$Cellb3$this$_4: Ref
-
-field par$Cellb3$k$: Perm
-
-predicate Cell$MonitorInvariant(this$: Ref) {
-  true
-}
 
 predicate Cellwrite1$(this$_1: Ref) {
   acc(this$_1.Cellx$, write)
@@ -34,19 +24,13 @@ predicate Cellread2$(this$_3: Ref) {
   acc(this$_3.Cellx$, wildcard)
 }
 
-method Cellb3$(this$_4: Ref, k$: Perm)
-  requires this$_4 != null
-  requires k$ > none
-  requires write > k$
-  requires acc(Cellread1$(this$_4), write)
+method Cellb3$(this: Ref, k$: Perm)
+  requires this != null
+  requires acc(Cellread1$(this), write)
 {
-  var n$: Ref
-  var a$: Ref
-  var b$: Ref
-  var c$: Ref
-  unfold acc(Cellread1$(this$_4), write)
-  fold acc(Cellread2$(this$_4), write)
-  fold acc(Cellread2$(this$_4), write)
+  unfold acc(Cellread1$(this), write)
+  fold acc(Cellread2$(this), write)
+  fold acc(Cellread2$(this), write)
   //:: ExpectedOutput(fold.failed:insufficient.permission)
-  fold acc(Cellwrite1$(this$_4), write)
+  fold acc(Cellwrite1$(this), write)
 }

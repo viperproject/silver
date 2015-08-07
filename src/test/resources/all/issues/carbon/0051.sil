@@ -1,36 +1,7 @@
 // oldC2SCases/linked_list.chalice
-domain GlobalKPermission {
-
-  unique function globalK$(): Perm
-
-  axiom globalKReadOnly {
-    (globalK$() > none) && (write > globalK$())
-  }
-}
-
-field old$methodPermission: Perm
-
-field joinable$: Bool
-
 field Listvalue$: Int
 
 field Listnext$: Ref
-
-field old$Listappend$0: Int
-
-field old$Listappend$1: Int
-
-field old$Listappend$2: Int
-
-field par$Listappend$this$_4: Ref
-
-field par$Listappend$k$: Perm
-
-field par$Listappend$newval: Int
-
-field par$Listlemma_len_positive$this$_5: Ref
-
-field par$Listlemma_len_positive$k$_1: Perm
 
 function Listlen$(this$_2: Ref): Int
   requires this$_2 != null
@@ -46,10 +17,6 @@ function Listget$(this$_3: Ref, index: Int): Int
   requires index < Listlen$(this$_3)
 {
   (unfolding acc(Listinv$(this$_3), wildcard) in (index == 0 ? this$_3.Listvalue$ : Listget$(this$_3.Listnext$, index - 1)))
-}
-
-predicate List$MonitorInvariant(this$: Ref) {
-  true
 }
 
 predicate Listinv$(this$_1: Ref) {
@@ -70,18 +37,13 @@ method Listappend$(this$_4: Ref, k$: Perm, newval: Int)
   ensures (forall i: Int :: true && (i in [0..old(Listlen$(this$_4)))) ==> (Listget$(this$_4, i) == old(Listget$(this$_4, i))))
 {
   var n$: Ref
-  var a$: Ref
-  var b$: Ref
-  var c$: Ref
   var n: Ref
   var newK$: Perm
   var newK$_1: Perm
   unfold acc(Listinv$(this$_4), write)
   if (this$_4.Listnext$ == null) {
-    n$ := new(old$methodPermission, joinable$, Listvalue$, Listnext$, old$Listappend$0, old$Listappend$1, old$Listappend$2, par$Listappend$this$_4, par$Listappend$k$, par$Listappend$newval, par$Listlemma_len_positive$this$_5, par$Listlemma_len_positive$k$_1)
+    n$ := new(Listvalue$, Listnext$)
     n$.Listnext$ := null
-    n$.par$Listappend$this$_4 := null
-    n$.par$Listlemma_len_positive$this$_5 := null
     n := n$
     n.Listvalue$ := newval
     n.Listnext$ := null
@@ -110,9 +72,6 @@ method Listlemma_len_positive$(this$_5: Ref, k$_1: Perm)
   ensures Listlen$(this$_5) > 0
 {
   var n$_1: Ref
-  var a$_1: Ref
-  var b$_1: Ref
-  var c$_1: Ref
   var newK$_2: Perm
   unfold acc(Listinv$(this$_5), k$_1)
   if (this$_5.Listnext$ != null) {

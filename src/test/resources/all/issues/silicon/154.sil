@@ -1,13 +1,4 @@
 // chaliceSuite/general-tests/nestedPredicates.chalice
-domain GlobalKPermission {
-
-  unique function globalK$(): Perm
-
-  axiom globalKReadOnly {
-    (globalK$() > none) && (write > globalK$())
-  }
-}
-
 field old$methodPermission: Perm
 
 field joinable$: Bool
