@@ -6,6 +6,8 @@
 
 package viper.silver.ast.utility
 
+import scala.reflect.ClassTag
+
 import viper.silver.ast._
 
 /** Utility methods for expressions. */
@@ -51,6 +53,10 @@ object Expressions {
   def whenExhaling(e: Exp) = e.transform()(post = {
     case InhaleExhaleExp(_, ex) => ex
   })
+
+  def contains[T <: Node : ClassTag](expressions: Seq[Exp]) = {
+    expressions.exists(_.contains[T])
+  }
 
   /** In an expression, instantiate a list of variables with given expressions. */
   def instantiateVariables[E <: Exp]
