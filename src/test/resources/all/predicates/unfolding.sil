@@ -17,7 +17,6 @@ method fail10(this: Ref)
 method success10(this: Ref)
   requires acc(P(this), write)
   ensures acc(P(this), write)
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /Carbon/issue/59/)
   ensures unfolding P(this) in this.x == old(unfolding P(this) in this.x)
 {
 }
@@ -45,7 +44,6 @@ method success5(this: Ref)
   requires this != null
   requires acc(P(this), write)
   ensures acc(P(this), write)
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /Carbon/issue/59/)
   ensures (unfolding acc(P(this), write) in this.x == old((unfolding acc(P(this), write) in this.x)) + 1)
 {
   unfold acc(P(this), write)
@@ -69,7 +67,6 @@ method fail1(this: Ref)
   ensures acc(P(this), write)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/59/)
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /Carbon/issue/59/)
   ensures (unfolding acc(P(this), write) in this.x == old((unfolding acc(P(this), write) in this.x)))
 {
   fold acc(P(this), write)
