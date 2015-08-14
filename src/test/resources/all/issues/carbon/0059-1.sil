@@ -9,7 +9,6 @@ method Testsuccess10(this: Ref)
   requires this != null
   requires acc(P(this), write)
   ensures acc(P(this), write)
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /Carbon/issue/59/)
   ensures (unfolding acc(P(this), write) in this.x == old((unfolding acc(P(this), write) in this.x)))
 {
 }
