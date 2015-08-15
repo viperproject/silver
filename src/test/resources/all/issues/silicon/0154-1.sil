@@ -130,7 +130,7 @@ method NodetestNestingUnfoldingPrecondition$(this: Ref, x: Ref)
 method NodetestNestingUnfoldingPostcondition$(this: Ref, x: Ref)
   requires this != null
   requires acc(Nodevalid$(this), write)
-  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /Silicon/issue/154/)
   ensures acc(Nodevalid$(this), write) && (unfolding acc(Nodevalid$(this), write) in true) && (this != NodegetNext$(this))
 {
 }
