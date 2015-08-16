@@ -50,7 +50,8 @@ object CfgGenerator {
       e.dest.pred += this
     }
   }
-  class VarBlock()(var attributes : Seq[Attribute] = Nil) extends TmpBlock {
+  class VarBlock()(var attributes : Seq[Attribute] = Nil, lockAttributes:Boolean = false) extends TmpBlock {
+    var attributesLocked = lockAttributes
     var stmts: ListBuffer[Stmt] = ListBuffer()
     var edges: ListBuffer[TmpEdge] = ListBuffer()
     override def +=(e: TmpEdge) {
@@ -60,7 +61,11 @@ object CfgGenerator {
     def stmt = if (stmts.size == 1) stmts(0) else Seqn(stmts)(NoPosition)
     override def toString = s"VarBlock(${stmts.mkString(";\n  ")}, ${edges.mkString("[", ",", "]")})"
     def succs = (edges map (_.dest)).toSeq
-    def addAttributes(atts:Seq[Attribute]): Unit = attributes = attributes ++ atts.filterNot(attributes.contains)
+    def addAttributes(atts:Seq[Attribute]): Unit = if(!attributesLocked){attributes = attributes ++ atts.filterNot(attributes.contains)}
+    def overrideAttributes(atts:Seq[Attribute]) = {
+      attributes = atts
+      attributesLocked = true
+    }
   }
   class TmpLoopBlock(val loop: While, private var _body: TmpBlock)(val attributes : Seq[Attribute]=Nil) extends TmpBlock {
     body.pred += this
@@ -305,14 +310,14 @@ object CfgGenerator {
             cur = new VarBlock()()
           case cj@CondJump(thn, els, cond) =>
             if (n.isLeader) {
-              val newCur = new VarBlock()(cj.attributes)
+              val newCur = new VarBlock()(cj.attributes,lockAttributes=true)
               cur += UncondEdge(newCur)
               cur = newCur
               b = cur
             }
             // finish current block and add two missing edges
             val notCond = Not(cond)(NoPosition)
-            cur.addAttributes(cj.attributes)
+            cur.overrideAttributes(cj.attributes)
             val c = cur
             missingEdges += ((resolveLbl(thn), (t: TmpBlock) => c += CondEdge(t, cond)))
             missingEdges += ((resolveLbl(els), (t: TmpBlock) => c += CondEdge(t, notCond)))

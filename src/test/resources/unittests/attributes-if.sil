@@ -1,0 +1,38 @@
+method test01(b:Bool) returns (r:Int){
+    r := 1 @dummy("stmt1")
+    r := 2 @dummy("stmt2")
+    if(b){
+        r := 3 @dummy("stmt3")
+    }@dummy("if")
+}
+
+method test02(b:Bool) returns (r:Int){
+    r := 1 @dummy("stmt1")
+    r := 2 @dummy("stmt2")
+    if(b){
+        r := 3 @dummy("stmt3")
+    }
+    else{
+        r := 4 @dummy("stmt4")
+    }@dummy("if")
+    r := 5 @dummy("stmt5")
+}
+
+method test03(b:Bool) returns (r:Int){
+     if(b){
+         r := 1 @dummy("stmt1")
+     }@dummy("if")
+     r := 2 @dummy("stmt2")
+}
+
+method test04(a:Bool, b:Bool) returns (r:Int){
+    if(b){
+        r := 1 @dummy("stmt1")
+    }
+    elseif(a){
+        r := 2 @dummy("stmt2")
+    }
+    else{
+        r := 3 @dummy("stmt3")
+    }@dummy("if")
+}

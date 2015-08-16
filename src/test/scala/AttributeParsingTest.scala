@@ -8,7 +8,6 @@ package viper.silver
 
 import java.nio.file.{Path, Paths}
 
-import com.sun.org.apache.xalan.internal.xsltc.compiler.util.BooleanType
 import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FunSuite
 import viper.silver.ast._
@@ -20,6 +19,7 @@ trait DummyAttributes{
 
   case class DummyAttribute(arg:String) extends ast.Attribute{
     val key = "dummy"
+    override def pretty = s"@dummy($arg)"
   }
 
   val key1 = "dummy"
@@ -250,6 +250,113 @@ class AttributeParsingTest extends FunSuite with ShouldMatchers with DummyAttrib
     frontend.translate(silverFile,Seq(dummyAttribute,debugAttribute)) match{
       case (Some(p),_) =>
       case (None,errors) => fail(s"translation expected to succeed but found " + pretty(errors))
+    }
+  }
+
+  test("if-attributes"){
+    val silverFile = path("attributes-if")
+    frontend.translate(silverFile,Seq(dummyAttribute)) match{
+      case (Some(p),_) =>
+        val t1 = p.findMethod("test01")
+        ifTest1(t1.body,1)
+        ifTest1(t1.body.toCfg.toAst,2)
+        ifTest1(t1.body.toCfg.toAst.toCfg.toAst,3)
+
+        val t2 = p.findMethod("test02")
+        ifTest2(t2.body,1)
+        ifTest2(t2.body.toCfg.toAst,2)
+        ifTest2(t2.body.toCfg.toAst.toCfg.toAst,3)
+
+        val t3 = p.findMethod("test03")
+        ifTest3(t3.body,1)
+        ifTest3(t3.body.toCfg.toAst,2)
+        ifTest3(t3.body.toCfg.toAst.toCfg.toAst,3)
+
+        val t4 = p.findMethod("test04")
+        ifTest4(t4.body,1)
+        ifTest4(t4.body.toCfg.toAst,2)
+        ifTest4(t4.body.toCfg.toAst.toCfg.toAst,3)
+
+      case (none,errors) => fail(s"translation expected to succeed but found ${pretty(errors)}")
+    }
+  }
+
+  private def check(stmt:ast.Stmt,run:Int,expectations:Seq[ast.Attribute]) ={
+    def f = fail(s"stmt attribute mismatch on run $run: expected $expectations but found " + stmt.attributes)
+
+    if(expectations.size != stmt.attributes.size) f
+    expectations.zip(stmt.attributes).foreach{case (e,a) => if(e != a) f}
+  }
+
+  private def ifTest1(stmt:ast.Stmt,run:Int):Unit ={
+    stmt match{
+      case Seqn(Seq(stmt1:ast.LocalVarAssign,stmt2:ast.LocalVarAssign,ifStmt@ast.If(_,Seqn(Seq(stmt3:ast.LocalVarAssign)),Seqn(Seq())))) =>
+        check(stmt1,run,Seq(DummyAttribute("stmt1")))
+        check(stmt2,run,Seq(DummyAttribute("stmt2")))
+        check(ifStmt,run,Seq(DummyAttribute("if")))
+        check(stmt3,run,Seq(DummyAttribute("stmt3")))
+      case Seqn(Seq(Seqn(Seq(stmt1:ast.LocalVarAssign,stmt2:ast.LocalVarAssign)),ite@ast.If(cond,stmt3:LocalVarAssign,els),Seqn(Seq()))) =>
+        //.toCfg.toAst will remove the Seqn wrapping stmt3 when parsed
+        ifTest1(Seqn(scala.collection.immutable.Seq(stmt1,stmt2,ast.If(cond,Seqn(Seq(stmt3))(),els)(ite.pos,ite.info,ite.attributes)))(),run)
+      case Seqn(ss) =>
+        fail(s"Seqn(ss) on run $run, ss has ${ss.size} elements: {\n" + ss.map(s => s.toString() + "of " + s.getClass).mkString("\n|*|\n") + "}")
+      case _ =>
+        fail(s"unexpected body for t1 on run $run:\nbody is of ${stmt.getClass}\n$stmt")
+    }
+  }
+
+  private def ifTest2(stmt:ast.Stmt,run:Int):Unit ={
+    stmt match{
+      case Seqn(Seq(stmt1:ast.LocalVarAssign,stmt2:ast.LocalVarAssign,ifStmt@ast.If(_,Seqn(Seq(stmt3:ast.LocalVarAssign)),Seqn(Seq(stmt4:ast.LocalVarAssign))),stmt5:LocalVarAssign)) =>
+        check(stmt1,run,Seq(DummyAttribute("stmt1")))
+        check(stmt2,run,Seq(DummyAttribute("stmt2")))
+        check(ifStmt,run,Seq(DummyAttribute("if")))
+        check(stmt3,run,Seq(DummyAttribute("stmt3")))
+        check(stmt4,run,Seq(DummyAttribute("stmt4")))
+        check(stmt5,run,Seq(DummyAttribute("stmt5")))
+
+      case Seqn(Seq(Seqn(Seq(stmt1:ast.LocalVarAssign,stmt2:ast.LocalVarAssign)),ite@ast.If(cond,stmt3:ast.LocalVarAssign,stmt4:ast.LocalVarAssign),stmt5:ast.LocalVarAssign)) =>
+        //.toCfg.toAst will remove the Seqns wrapping stmt3, stmt4 and stmt5 when parsed
+        ifTest2(Seqn(scala.collection.immutable.Seq(stmt1,stmt2,ast.If(cond,Seqn(Seq(stmt3))(),Seqn(Seq(stmt4))())(ite.pos,ite.info,ite.attributes),stmt5))(),run)
+      case Seqn(ss) =>
+        fail(s"Seqn(ss) on run $run, ss has ${ss.size} elements: {\n" + ss.map(s => s.toString() + "of " + s.getClass).mkString("\n|*|\n") + "}")
+      case _ =>
+        fail(s"unexpected body for t1 on run $run:\nbody is of ${stmt.getClass}\n$stmt")
+    }
+  }
+
+  private def ifTest3(stmt:ast.Stmt,run:Int):Unit = {
+    stmt match{
+      case Seqn(Seq(ifStmt@ast.If(_,Seqn(Seq(stmt1:ast.LocalVarAssign)),Seqn(Seq())),stmt2:LocalVarAssign)) =>
+        check(ifStmt,run,Seq(DummyAttribute("if")))
+        check(stmt1,run,Seq(DummyAttribute("stmt1")))
+        check(stmt2,run,Seq(DummyAttribute("stmt2")))
+      case Seqn(Seq(Seqn(Seq()),ite@ast.If(cond,stmt1:ast.LocalVarAssign,Seqn(Seq())),stmt2:ast.LocalVarAssign)) =>
+        //.toCfg.toAst will remove the Seqns wrapping stmt1 when parsed and injects an empty Seqn
+        ifTest3(Seqn(scala.collection.immutable.Seq(ast.If(cond,Seqn(Seq(stmt1))(),Seqn(Seq())())(ite.pos,ite.info,ite.attributes),stmt2))(),run)
+      case Seqn(ss) =>
+        fail(s"Seqn(ss) on run $run, ss has ${ss.size} elements: {\n" + ss.map(s => s.toString() + "of " + s.getClass).mkString("\n|*|\n") + "}")
+      case _ =>
+        fail(s"unexpected body for t1 on run $run:\nbody is of ${stmt.getClass}\n$stmt")
+    }
+  }
+
+  private def ifTest4(stmt:ast.Stmt,run:Int):Unit = {
+    stmt match{
+      case Seqn(Seq(iteite@ast.If(_,Seqn(Seq(stmt1:ast.LocalVarAssign)),ite@ast.If(_,Seqn(Seq(stmt2:ast.LocalVarAssign)),Seqn(Seq(stmt3:ast.LocalVarAssign)))))) =>
+        check(iteite,run,Seq(DummyAttribute("if")))
+        check(stmt1,run,Seq(DummyAttribute("stmt1")))
+        check(ite,run,Seq())
+        check(stmt2,run,Seq(DummyAttribute("stmt2")))
+        check(stmt3,run,Seq(DummyAttribute("stmt3")))
+
+      case Seqn(Seq(Seqn(Seq()),iteite@ast.If(cond1,stmt1:ast.LocalVarAssign,Seqn(Seq(Seqn(Seq()),ite@ast.If(cond2,stmt2:ast.LocalVarAssign,stmt3:ast.LocalVarAssign)))),Seqn(Seq()))) =>
+        val s = Seqn(Seq(ast.If(cond1,Seqn(Seq(stmt1))(),ast.If(cond2,Seqn(Seq(stmt2))(),Seqn(Seq(stmt3))())(ite.pos,ite.info,ite.attributes))(iteite.pos,iteite.info,iteite.attributes)))()
+        ifTest4(s,run)
+      case Seqn(ss) =>
+        fail(s"Seqn(ss) on run $run, ss has ${ss.size} elements: {\n" + ss.map(s => s.toString() + "of " + s.getClass).mkString("\n|*|\n") + "}")
+      case _ =>
+        fail(s"unexpected body for t1 on run $run:\nbody is of ${stmt.getClass}\n$stmt")
     }
   }
 }
