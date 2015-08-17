@@ -66,7 +66,6 @@ method fail1(this: Ref)
   requires acc(this.x, write)
   ensures acc(P(this), write)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/59/)
   ensures (unfolding acc(P(this), write) in this.x == old((unfolding acc(P(this), write) in this.x)))
 {
   fold acc(P(this), write)
