@@ -17,6 +17,5 @@ requires acc(Pair(p)) && acc(r.f)
   var x:Int 
   x := sum(p)
   exhale acc(r.f)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/41/)
   assert (unfolding Pair(p) in p.f+p.g == x)
 }
