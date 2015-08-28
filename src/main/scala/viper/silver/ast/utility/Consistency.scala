@@ -9,7 +9,7 @@ package viper.silver.ast.utility
 import org.kiama.util.Messaging
 import scala.collection.mutable
 import util.parsing.input.{Position, NoPosition}
-import viper.silver.parser.{PIdnUse, Parser}
+import viper.silver.parser.{PForallReferences, PIdnUse, Parser}
 import viper.silver.ast._
 
 /** An utility object for consistency checking. */
@@ -60,6 +60,12 @@ object Consistency {
   /** Returns true if the given node contains no result. */
   def noResult(n: Node) = !n.existsDefined { case _: Result => }
 
+  /** Returns true if the given node contains no perm expression.*/
+  def noPerm(n: Node)  = !n.existsDefined { case _: CurrentPerm => }
+
+  /** Returns true if the given node contains no forallrefs expression.*/
+  def noForallRefs(n: Node)  = !n.existsDefined { case _: ForallReferences => }
+
   /** Returns true if the given node contains no access locations. */
   def noAccessLocation(n: Node) = !n.existsDefined { case _: LocationAccess => }
 
@@ -103,6 +109,8 @@ object Consistency {
   def checkFunctionBody(e: Exp) {
     recordIfNot(e, noOld(e), "Old expressions are not allowed in functions bodies.")
     recordIfNot(e, noResult(e), "Result variables are not allowed in function bodies.")
+    recordIfNot(e, noForallRefs(e), "Function bodies are not allowed to contain forallrefs expressions")
+    recordIfNot(e, noPerm(e), "Function bodies are not allowed to contain perm expressions")
     checkNoPositiveOnly(e)
   }
 

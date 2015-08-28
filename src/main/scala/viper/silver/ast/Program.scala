@@ -9,6 +9,7 @@ package viper.silver.ast
 //import sun.org.mozilla.javascript.internal.ast.AstNode
 import utility.{Consistency, Types}
 import org.kiama.output._
+import viper.silver.ast.utility
 
 import scala.collection.immutable.HashSet
 import scala.collection.mutable
@@ -414,6 +415,13 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _b
   def body = _body
   def body_=(b: Option[Exp]) {
     b map Consistency.checkNonPostContract
+
+    b.foreach({x => Consistency.recordIfNot(x, Consistency.noPerm(x),
+            "Perm expressions not allowed in predicates")})
+
+    b.foreach({x => Consistency.recordIfNot(x, Consistency.noPerm(x),
+      "Forallrefs expression is not allowed in predicates")})
+
     _body = b
   }
   def isAbstract = body.isEmpty

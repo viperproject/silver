@@ -359,6 +359,12 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
 case class ForallReferences(variable: LocalVarDecl, accessList: Seq[Location], exp: Exp)
                            (val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
   require(exp isSubtype Bool)
+
+  Consistency.recordIfNot(exp, Consistency.noPerm(exp),
+    "Forallrefs expression is not allowed to contain perm expressions")
+  Consistency.recordIfNot(exp, Consistency.noForallRefs(exp),
+    "Forallrefs expression is not allowed to contain nested forallrefs expressions")
+
   //TODO: make type of Seq more specific
   lazy val typ = Bool
 }
