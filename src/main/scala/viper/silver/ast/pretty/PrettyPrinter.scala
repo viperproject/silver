@@ -203,11 +203,16 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         val sss = ss filter (s => !(s.isInstanceOf[Seqn] && s.children.size == 0))
         ssep(sss map show, line)
       case While(cond, invs, locals, body) =>
-        // TODO: invariants and locals
         "while" <+> parens(show(cond)) <>
           nest(
             showContracts("invariant", invs)
-          ) <+> lineIfSomeNonEmpty(invs) <> showBlock(body)
+          ) <+> lineIfSomeNonEmpty(invs) <>
+          braces(nest(
+            lineIfSomeNonEmpty(locals, body.children) <>
+              ssep(
+                (if (locals == null) Nil else locals map ("var" <+> showVar(_))) ++
+                  Seq(showStmt(body)), line)
+          ) <> line)
       case If(cond, thn, els) =>
         "if" <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
       case Label(name) =>
