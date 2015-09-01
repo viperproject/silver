@@ -20,7 +20,7 @@ method test03(xs: Set[Ref], x: Ref)
   requires xs == Set(x)
 {
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/61/)
-  assert x == null
+  assert x != null
 }
 
 method test04(xs: Set[Ref], x: Ref)
