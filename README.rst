@@ -12,7 +12,7 @@ Quick Start
 
 Instructions how to get started with Viper:
 
-+   `Developing on Linux <https://bitbucket.org/viperproject/viper-linux-dev/>`_
++   `Linux <https://bitbucket.org/viperproject/viper-linux-dev/>`_
 
 Syntax Highlighting
 ===================
