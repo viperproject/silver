@@ -110,7 +110,7 @@ method insert(xs: Ref, y: Int) returns (ys: Ref, i: Int)
   if (y <= head(xs)) {
     ys := prepend(xs, y)
     i := 0
-  } elsif (tail(xs) == null) {
+  } elseif (tail(xs) == null) {
     assume head(xs) == last(xs) // (3) NOTE: *assumption* is needed without resorting to limited functions
     assume |elems(xs)| == 1 // (3) NOTE: *assumption* is needed without resorting to limited functions
     append(xs, y)

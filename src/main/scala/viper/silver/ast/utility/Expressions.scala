@@ -6,6 +6,8 @@
 
 package viper.silver.ast.utility
 
+import scala.reflect.ClassTag
+
 import viper.silver.ast._
 
 /** Utility methods for expressions. */
@@ -17,7 +19,7 @@ object Expressions {
     case InhaleExhaleExp(in, ex) => isPure(in) && isPure(ex)
     case BinExp(e0, e1) => isPure(e0) && isPure(e1)
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
-    case Unfolding(_, in) => isPure(in) /* Assuming that the first argument is pure */
+    case Unfolding(_, in) => isPure(in)
     case QuantifiedExp(_, e0) => isPure(e0)
     case Let(_, _, body) => isPure(body)
     case _:ForallReferences => false
@@ -41,9 +43,12 @@ object Expressions {
     case fapp: FuncApp if fapp.func(p).pres.exists(isHeapDependent(_, p)) =>
   }
 
-  def purify(e: Exp): Exp = e.transform({
+  def asBooleanExp(e: Exp): Exp = {
+    e.transform({
       case _: AccessPredicate => TrueLit()()
+      case Unfolding(predicate, exp) => asBooleanExp(exp)
     })()
+  }
 
   def whenInhaling(e: Exp) = e.transform()(post = {
     case InhaleExhaleExp(in, _) => in
@@ -52,6 +57,10 @@ object Expressions {
   def whenExhaling(e: Exp) = e.transform()(post = {
     case InhaleExhaleExp(_, ex) => ex
   })
+
+  def contains[T <: Node : ClassTag](expressions: Seq[Exp]) = {
+    expressions.exists(_.contains[T])
+  }
 
   /** In an expression, instantiate a list of variables with given expressions. */
   def instantiateVariables[E <: Exp]
@@ -154,7 +163,7 @@ object Expressions {
     // We want to make the proof obligations as weak as possible, but we cannot use access predicates as guards,
     // so we need to remove them and make the guard weaker. This makes the proof obligations slightly too strong,
     // but it is the best we can do.
-    val guard = purify(left)
+    val guard = asBooleanExp(left)
     reduceLazyBinOpProofObs(guard, leftConds, rightConds, p)
   }
 

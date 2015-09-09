@@ -1,47 +1,45 @@
 field f: Int
 
 function f1(r: Ref): Int
-    requires acc(r.f, wildcard)
+  requires acc(r.f, wildcard)
 { r.f }
 
-//:: ExpectedOutput(function.not.wellformed:receiver.null)
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
-//:: MissingOutput(function.not.wellformed:insufficient.permission, /silicon/issue/34/)
 function f3_a(r: Ref): Int
-    requires ((r.f) == 2)
+  //:: ExpectedOutput(not.wellformed:receiver.null)
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /silicon/issue/34/)
+  requires ((r.f) == 2)
 { 2 }
 
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function f3_b(r: Ref): Int
-    requires r != null
-    requires ((r.f) == 2)
+  requires r != null
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  requires ((r.f) == 2)
 { 2 }
 
 function f4(r: Ref): Int
-    requires acc(r.f, write)
-    requires (r.f) == 2
+  requires acc(r.f, write)
+  requires (r.f) == 2
 { 2 }
 
 //:: ExpectedOutput(function.not.wellformed:insufficient.permission)
 function f5(r: Ref): Int
-    requires r != null
-{
-    r.f
-}
+  requires r != null
+{ r.f }
 
 function f6(r: Ref): Int
-    requires r != null
+  requires r != null
 {
-    //:: ExpectedOutput(application.precondition:insufficient.permission)
-    f4(r)
+  //:: ExpectedOutput(application.precondition:insufficient.permission)
+  f4(r)
 }
 
 method t1(r: Ref)
-    requires acc(r.f, write)
+  requires acc(r.f, write)
 {
-    r.f := 1
-    assert f1(r) == 1;
+  r.f := 1
+  assert f1(r) == 1;
 
-    //:: ExpectedOutput(application.precondition:assertion.false)
-    assert f4(r) > 0;
+  //:: ExpectedOutput(application.precondition:assertion.false)
+  assert f4(r) > 0;
 }

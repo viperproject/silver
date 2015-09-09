@@ -1,0 +1,5 @@
+method test()
+{
+  //:: ExpectedOutput(typechecker.error)
+  assert [false, true] || [true, false]
+}

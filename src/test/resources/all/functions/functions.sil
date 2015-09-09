@@ -38,10 +38,10 @@ function fun5(x: Ref): Int
 
 
 
-//:: ExpectedOutput(function.not.wellformed:receiver.null)
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
-//:: MissingOutput(function.not.wellformed:insufficient.permission, /silicon/issue/34/)
 function err1(x: Ref): Int
+  //:: ExpectedOutput(not.wellformed:receiver.null)
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /silicon/issue/34/)
   requires acc(x.h.f)
 { 0 }
 

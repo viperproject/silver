@@ -1,0 +1,8 @@
+//:: IgnoreFile(/Silicon/issue/163/)
+field x: Int
+
+function inhaleTrue(this: Ref): Int
+  requires [true, true]
+{
+  0
+}

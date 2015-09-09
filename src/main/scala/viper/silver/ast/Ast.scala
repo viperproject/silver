@@ -6,6 +6,8 @@
 
 package viper.silver.ast
 
+import scala.reflect.ClassTag
+
 import pretty.PrettyPrinter
 import utility.{Visitor, Nodes, Transformer}
 
@@ -116,6 +118,17 @@ trait Node extends Traversable[Node] {
   /** @see [[Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[Node, R]): Seq[R] =
     Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
+
+  def contains(n: Node): Boolean = this.existsDefined{
+    case `n` =>
+  }
+
+  def contains[N <: Node : ClassTag]: Boolean = {
+    val clazz = implicitly[ClassTag[N]].runtimeClass
+    this.existsDefined{
+      case n: N if clazz.isInstance(n) =>
+    }
+  }
 }
 
 /** A trait to have additional information for nodes. */

@@ -133,17 +133,17 @@ method controlStructures()
 {
   var whileer: Ref
   var ifer: Ref
-  var elsifer: Ref
+  var elseifer: Ref
   var elseer: Ref
 
   whileer := new(foo)
   ifer := new(foo)
-  elsifer := new(foo)
+  elseifer := new(foo)
   elseer := new(foo)
 
   whileer.foo := 1
   ifer.foo := 1
-  elsifer.foo := 1
+  elseifer.foo := 1
   elseer.foo := 1
 }
 

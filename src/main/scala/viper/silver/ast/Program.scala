@@ -6,14 +6,9 @@
 
 package viper.silver.ast
 
-//import sun.org.mozilla.javascript.internal.ast.AstNode
-import utility.{Consistency, Types}
-import org.kiama.output._
-import viper.silver.ast.utility
-
-import scala.collection.immutable.HashSet
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import org.kiama.output.{Fixity, Infix, Prefix, NonAssoc, RightAssoc}
+import utility.{Consistency, Types}
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
@@ -25,7 +20,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     ), "names of members must be distinct"
   )
 
-  val groundTypeInstances = findNecessaryTypeInstances()
+  lazy val groundTypeInstances = findNecessaryTypeInstances()
 
   lazy val members = domains ++ fields ++ functions ++ predicates ++ methods
 
@@ -137,14 +132,14 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     
     val allDirectGroundInstances = allDirectGroundTypes.filter { case dt : DomainType  => true case _ => false }
     
-    val todo = new collection.mutable.Queue[TypeCoordinate]()
-    val done = new collection.mutable.HashSet[TypeCoordinate]()
+    val todo = new mutable.Queue[TypeCoordinate]()
+    val done = new mutable.HashSet[TypeCoordinate]()
+
+    val tcLuggage = new mutable.HashMap[TypeCoordinate,Map[TypeVar,Int]]()
     
-    val tcLuggage = new collection.mutable.HashMap[TypeCoordinate,Map[TypeVar,Int]]()
+    val rimTCs = new mutable.HashSet[TypeCoordinate]
     
-    val rimTCs = new collection.mutable.HashSet[TypeCoordinate]
-    
-    val baseTCs = new collection.mutable.HashSet[TypeCoordinate]()
+    val baseTCs = new mutable.HashSet[TypeCoordinate]()
     allDirectGroundTypes.foreach(
       gt=>{
         val tc = makeTypeCoordinate(gt)
@@ -153,7 +148,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
         {
           todo.enqueue(tc)
           tcLuggage(tc)= gt match{
-            case dt:DomainType => dt.domainTypVars.map{v => (v->0)}.toMap
+            case dt:DomainType => dt.domainTypVars.map{v => v -> 0}.toMap
             case _ => Map()
           }
         }
@@ -166,55 +161,53 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       assert (done contains tc)
       assert (tcLuggage contains  tc)
 //      println("   Adding type coordinate <" + tc.toString() + ">")
-      val ntcs = new collection.mutable.HashSet[TypeCoordinate]()
+      val ntcs = new mutable.HashSet[TypeCoordinate]()
       tc match{
-          case ctc : CollectionTypeCoordinate => {
+          case ctc : CollectionTypeCoordinate =>
             val tc2 = ctc.etc
             ntcs += tc2
-            tcLuggage(tc2)=Map()}
-          case at : AtomicTypeCoordinate => {}
-          case ditc : DomainInstanceTypeCoordinate =>{
+            tcLuggage(tc2)=Map()
+          case at : AtomicTypeCoordinate =>
+          case ditc : DomainInstanceTypeCoordinate =>
             assert (ditc.args.forall { tc => done contains tc })
 
             val domain = findDomain(ditc.dn)
             val tv2tcMap = ditc.dt.typVarsMap.map{case (tv:TypeVar,t:Type)=>tv->makeTypeCoordinate(t)}.toMap
             val types = getTypes(domain)
-            types.foreach( 
+            types.foreach(
                 t=>{
                   val tc2 = makeTypeCoordinate(t.substitute(ditc.dt.typVarsMap))
 
                   if (!(done contains tc2))
                   {
-                    val tc2InflationMap = 
+                    val tc2InflationMap =
                       (t match {
-                        case dt2:DomainType => {
+                        case dt2:DomainType =>
                           dt2.typVarsMap.map {
-                              case (tv2 : TypeVar,t2 : Type) => (tv2->((getFTVDepths(t2).map{case (ftv:TypeVar,d:Int) => d+tcLuggage(tc)(ftv)}++Seq(0)).max))
+                              case (tv2 : TypeVar,t2 : Type) => tv2 -> (getFTVDepths(t2).map { case (ftv: TypeVar, d: Int) => d + tcLuggage(tc)(ftv) } ++ Seq(0)).max
                           }
-                        }
                         case _ => Seq()
                       }
                       ).toMap
-                      
+
                       if (tc2InflationMap.values.forall(v=>v<=1))
                       {
                         if (!tcLuggage.contains(tc2))
                           tcLuggage(tc2) = tc2InflationMap
                         else
-                          tcLuggage(tc2) = 
+                          tcLuggage(tc2) =
                             tcLuggage(tc2) ++ tc2InflationMap.map { case (tv,d) => tv -> (d + tcLuggage(tc2).getOrElse(tv,0)) }
-                            
+
                           assert (tcLuggage contains tc2)
                           ntcs += tc2
-                        
+
                       }else{
 //                        println("At domain \"" + tc + "\" skipped creating \"" + tc2 + "\"")
                       }
-                      
+
                   }
                 }
               )
-          }
       }
       ntcs.foreach { 
         tc2 =>{ 
@@ -232,33 +225,29 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
 //    println("Calculating ground type instances result done - total " + result.size)
     
-    return result
+    result
   }
   
-  def getFTVDepths(t : Type) : Map[TypeVar,Int] = (
-     t match{
-       case dt : DomainType => 
-         dt.typVarsMap.flatMap{
-           case (tv:TypeVar,t:Type) => getFTVDepths(t).map{ case (tv2:TypeVar,d:Int)=>(tv2->d.+(1))}
-         }.toMap
-       case ct : CollectionType => getFTVDepths(ct.elementType).map{ case (tv2:TypeVar,d:Int)=>  (tv2->d.+(1)) }
-       case tv : TypeVar => Map(tv->0)
-       case at : BuiltInType => Map()
-     }
-  )
-  
-  
-  def down1Types(t:Type) : Set[Type] = (
-      t match {
-        case dt : DomainType => dt.typVarsMap.values.toSet
-        case ct : CollectionType => Set(ct.elementType)
-        case bt : BuiltInType => Set()
-        case tv : TypeVar => Set()
+  def getFTVDepths(t : Type) : Map[TypeVar,Int] = t match {
+    case dt: DomainType =>
+      dt.typVarsMap.flatMap {
+        case (tv: TypeVar, t: Type) => getFTVDepths(t).map { case (tv2: TypeVar, d: Int) => tv2 -> d.+(1) }
       }
-  )
+    case ct: CollectionType => getFTVDepths(ct.elementType).map { case (tv2: TypeVar, d: Int) => tv2 -> d.+(1) }
+    case tv: TypeVar => Map(tv -> 0)
+    case at: BuiltInType => Map()
+  }
+  
+  
+  def down1Types(t:Type) : Set[Type] = t match {
+    case dt: DomainType => dt.typVarsMap.values.toSet
+    case ct: CollectionType => Set(ct.elementType)
+    case bt: BuiltInType => Set()
+    case tv: TypeVar => Set()
+  }
   
   def downClosure(t:Type) : Set[Type] = 
-    Set(t) ++ down1Types(t).flatMap(downClosure(_))
+    Set(t) ++ down1Types(t).flatMap(downClosure)
   
 
   def getTypes(d:Domain) : Set[Type] = d.deepCollect{case t : Type => downClosure(t)}.flatten.toSet
@@ -269,7 +258,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     case bit : BuiltInType    => AtomicTypeCoordinate(bit)
     case dt  : DomainType     => new DomainInstanceTypeCoordinate(
         dt.domainName,
-        dt.domainTypVars.map(tv=>makeTypeCoordinate(dt.typVarsMap(tv))).toSeq
+        dt.domainTypVars.map(tv => makeTypeCoordinate(dt.typVarsMap(tv)))
         )(dt)
     case tv:TypeVar => throw new Exception("Internal error in type system - unexpected non-ground type <" + t.toString() + ">")
   }
@@ -316,12 +305,12 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   case class TarjanNode[N](n:N,var es:Array[TarjanNode[N]],var index:Int,var lowIndex:Int)
   class TarjanAR[N](val nodes:Map[N,TarjanNode[N]])
   {
-    val r = new scala.collection.mutable.ListBuffer[Set[N]]()
+    val r = new mutable.ListBuffer[mutable.Set[N]]()
     var index : Int = 0
-    val stack = new scala.collection.mutable.Stack[N]()
-    val set = new scala.collection.mutable.HashSet[N]()
+    val stack = new mutable.Stack[N]()
+    val set = new mutable.HashSet[N]()
   }
-  def getSCCs[N, L](g: Map[N, Map[N, L]]): List[Set[N]] = {
+  def getSCCs[N, L](g: Map[N, Map[N, L]]): List[mutable.Set[N]] = {
     val tNodes = g.map { e => e._1 -> TarjanNode(e._1, null, -1, 0) }
     tNodes.values.foreach(n=>{n.es=g(n.n).keys.map(tNodes(_)).toArray})
     val ar = new TarjanAR[N](tNodes)
@@ -357,7 +346,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     {
       assert (ar.set.nonEmpty)
       assert (ar.set contains n.n)
-      var ns = new HashSet[N]
+      var ns = new mutable.HashSet[N]
       var u = ar.stack.top
       do{
         u = ar.stack.pop()
@@ -386,7 +375,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     t match {
       case tv : TypeVar => Set(tv)
       case dt : DomainType =>
-        ((dt.domainTypVars.toSet -- dt.typVarsMap.keys) ++ dt.typVarsMap.values.flatMap(getTVs(_)))
+        (dt.domainTypVars.toSet -- dt.typVarsMap.keys) ++ dt.typVarsMap.values.flatMap(getTVs)
       case ct : CollectionType => getTVs(ct.elementType)
       case _ => Set()
     }
@@ -411,17 +400,10 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 
 /** A predicate declaration. */
 case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
-  if (body != null) body map Consistency.checkNonPostContract
+  if (body != null) body foreach Consistency.checkNonPostContract
   def body = _body
   def body_=(b: Option[Exp]) {
-    b map Consistency.checkNonPostContract
-
-    b.foreach({x => Consistency.recordIfNot(x, Consistency.noPerm(x),
-            "Perm expressions not allowed in predicates")})
-
-    b.foreach({x => Consistency.recordIfNot(x, Consistency.noPerm(x),
-      "Forallrefs expression is not allowed in predicates")})
-
+    b foreach Consistency.checkNonPostContract
     _body = b
   }
   def isAbstract = body.isEmpty
@@ -466,7 +448,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   require(_body == null || (_body map (_ isSubtype typ) getOrElse true))
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
   if (_posts != null) _posts foreach Consistency.checkPost
-  if (_body != null) _body map Consistency.checkFunctionBody
+  if (_body != null) _body foreach Consistency.checkFunctionBody
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
     s foreach Consistency.checkNonPostContract
@@ -481,7 +463,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   def body = _body
   def body_=(b: Option[Exp]) {
     require(b map (_ isSubtype typ) getOrElse true)
-    b map Consistency.checkFunctionBody
+    b foreach Consistency.checkFunctionBody
     _body = b
   }
 
@@ -594,8 +576,8 @@ sealed trait FuncLike extends Callable with Typed
 
 /** A member with a contract. */
 sealed trait Contracted extends Member {
-  if (pres != null) pres map Consistency.checkNonPostContract
-  if (posts != null) posts map Consistency.checkPost
+  if (pres != null) pres foreach Consistency.checkNonPostContract
+  if (posts != null) posts foreach Consistency.checkPost
   def pres: Seq[Exp]
   def posts: Seq[Exp]
 }
@@ -645,7 +627,7 @@ sealed trait BinOp extends Op {
 
 /** Left associative operator. */
 sealed trait LeftAssoc {
-  lazy val fixity = Infix(LeftAssoc)
+  lazy val fixity = Infix(org.kiama.output.LeftAssoc)
 }
 
 /** Domain functions that represent built-in binary operators where both arguments are integers. */

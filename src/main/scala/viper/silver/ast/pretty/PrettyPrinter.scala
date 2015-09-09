@@ -206,11 +206,16 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         val sss = ss filter (s => !(s.isInstanceOf[Seqn] && s.children.size == 0))
         ssep(sss map show, line)
       case While(cond, invs, locals, body) =>
-        // TODO: invariants and locals
         "while" <+> parens(show(cond)) <>
           nest(
             showContracts("invariant", invs)
-          ) <+> lineIfSomeNonEmpty(invs) <> showBlock(body)
+          ) <+> lineIfSomeNonEmpty(invs) <>
+          braces(nest(
+            lineIfSomeNonEmpty(locals, body.children) <>
+              ssep(
+                (if (locals == null) Nil else locals map ("var" <+> showVar(_))) ++
+                  Seq(showStmt(body)), line)
+          ) <> line)
       case If(cond, thn, els) =>
         "if" <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
       case Label(name) =>
@@ -225,7 +230,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   def showElse(els: Stmt): PrettyPrinter.Doc = els match {
     case Seqn(Seq()) => empty
     case Seqn(Seq(s)) => showElse(s)
-    case If(cond1, thn1, els1) => empty <+> "elsif" <+> parens(show(cond1)) <+> showBlock(thn1) <> showElse(els1)
+    case If(cond1, thn1, els1) => empty <+> "elseif" <+> parens(show(cond1)) <+> showBlock(thn1) <> showElse(els1)
     case _ => empty <+> "else" <+> showBlock(els)
   }
 

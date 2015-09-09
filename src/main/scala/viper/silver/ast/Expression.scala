@@ -642,7 +642,7 @@ case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val
   lazy val left = elem
   lazy val op = "in"
   lazy val right = s
-  lazy val typ = Bool
+  lazy val typ = if (s.typ.isInstanceOf[SetType]) Bool else Int
   def getArgs = Seq(elem,s)
   def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs(0),newArgs(1))(pos,info)
 }

@@ -540,7 +540,7 @@ case class TypeChecker(names: NameAnalyser) {
             } else if (!right.typ.isInstanceOf[PSeqType] &&
               !right.typ.isInstanceOf[PSetType] &&
               !right.typ.isInstanceOf[PMultisetType]) {
-              issueError(right, s"expected sequence type, but found ${right.typ}")
+              issueError(right, s"expected set, multiset or sequence type, but found ${right.typ}")
             } else if (
               (right.typ.isInstanceOf[PSeqType] && !isCompatible(left.typ, right.typ.asInstanceOf[PSeqType].elementType)) ||
                 (right.typ.isInstanceOf[PSetType] && !isCompatible(left.typ, right.typ.asInstanceOf[PSetType].elementType)) ||
@@ -549,7 +549,7 @@ case class TypeChecker(names: NameAnalyser) {
               issueError(right, s"element $left with type ${left.typ} cannot be in a sequence/set of type ${right.typ}")
             }
             // TODO: perform type refinement and propagate down
-            setType(Bool)
+            if (right.typ.isInstanceOf[PMultisetType]) setType(Int) else setType(Bool)
           case "++" =>
             val newExpected = if (expected.isEmpty) Seq(genericSeqType) else expected
             check(left, newExpected)

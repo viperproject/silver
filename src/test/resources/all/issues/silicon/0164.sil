@@ -1,0 +1,26 @@
+method loopTrueFalse(this: Ref)
+{
+  var i: Int
+  i := 1
+  while (i < 10)
+    //:: ExpectedOutput(invariant.not.established:assertion.false)
+    //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /Silicon/issue/164/)
+    //:: MissingOutput(invariant.not.preserved:assertion.false, /Silicon/issue/164/)
+    invariant [true, false]
+  {
+    i := i + 1
+  }
+}
+
+method loopFalse(this: Ref)
+{
+  var i: Int
+  i := 1
+  while (i < 10)
+    //:: ExpectedOutput(invariant.not.established:assertion.false)
+    invariant false
+  {
+    i := i + 1
+  }
+}
+
