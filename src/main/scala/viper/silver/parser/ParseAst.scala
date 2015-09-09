@@ -21,6 +21,8 @@ trait KiamaPositioned {
   def start = Positions.getStart(this)
   def setStart(p:Position) = Positions.setStart(this,p)
   def setPos(a:Any) : this.type = Positions.dupPos(a,this)
+  def finish = Positions.getFinish(this)
+  def setFinish(p:Position) = Positions.setFinish(this,p)
 }
 
 /**

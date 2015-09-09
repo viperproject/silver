@@ -9,7 +9,6 @@ package viper.silver.parser
 import language.implicitConversions
 import org.kiama.attribution.Attributable
 import org.kiama.util.Messaging
-import org.kiama.util.{Positioned => KiamaPositioned}
 import viper.silver.ast._
 import viper.silver.ast.utility.{Visitor, Statements}
 import viper.silver.ast.utility.Consistency

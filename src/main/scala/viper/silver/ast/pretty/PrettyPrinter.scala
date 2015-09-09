@@ -210,8 +210,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           braces(nest(
             lineIfSomeNonEmpty(locals, body.children) <>
               ssep(
-                (if (locals == null) Nil else locals map ("var" <+> showVar(_))) ++
-                  Seq(showStmt(body)), line)
+                ((if (locals == null) Nil else locals map ("var" <+> showVar(_))) ++
+                  Seq(showStmt(body))).to[collection.immutable.Seq], line)
           ) <> line)
       case If(cond, thn, els) =>
         "if" <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
