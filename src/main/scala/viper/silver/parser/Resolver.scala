@@ -128,10 +128,10 @@ case class TypeChecker(names: NameAnalyser) {
       case PSeqn(ss) =>
         ss map check
       case PFold(e) =>
-        acceptNonAbstactPredicateAccess(e, "abstract predicates cannot be folded")
+        acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be folded")
         check(e, Bool)
       case PUnfold(e) =>
-        acceptNonAbstactPredicateAccess(e, "abstract predicates cannot be unfolded")
+        acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be unfolded")
         check(e, Bool)
       case PExhale(e) =>
         check(e, Bool)
@@ -226,7 +226,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def acceptNonAbstactPredicateAccess(exp: PExp, messageIfAbstractPredicate: String) {
+  def acceptNonAbstractPredicateAccess(exp: PExp, messageIfAbstractPredicate: String) {
     exp match {
       case PAccPred(PPredicateAccess(_, idnuse), _) =>
         acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
@@ -688,7 +688,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnfolding(acc, body) =>
         check(acc.perm, Perm)
         check(acc.loc, Pred)
-        acceptNonAbstactPredicateAccess(acc, "abstract predicates cannot be unfolded")
+        acceptNonAbstractPredicateAccess(acc, "abstract predicates cannot be unfolded")
         check(body, expected)
         setType(exp.typ)
       case PLet(exp1, nestedScope @ PLetNestedScope(variable, body)) =>
