@@ -19,7 +19,7 @@ object Consistency {
   def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
     if (!property) {
       val pos = suspect.pos match {
-        case rp: RealPosition =>
+        case rp: AbstractSourcePosition =>
           new Position {
             val line = rp.line
             val column = rp.column
@@ -146,6 +146,13 @@ object Consistency {
       case e : PossibleTrigger => !(e.existsDefined { case _: ForbiddenInTrigger => })
       case _ => false
     }
+  }
+
+  /** Returns true iff the given QuantifiedExp is either pure, or of the shape of quantified permissions allowed (see QuantifiedPermissionSupporter)*/
+  def supportedQuantifier(q: QuantifiedExp) : Boolean = q match {
+    case QuantifiedPermissionSupporter.ForallRefPerm(_, _, _, _, _, _, _) =>
+      true
+    case _ => q.isPure
   }
 
   /**

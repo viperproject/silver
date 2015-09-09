@@ -17,6 +17,7 @@ method test1(xs: Seq[Ref])
   var b: Int := fun1(xs)
   assert b == fun1(xs)
 
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert a == b
 }
 

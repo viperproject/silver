@@ -45,7 +45,6 @@ method test4(xs: Set[Ref], x: Ref, y: Ref)
   var yf: Int := fun1(xs, y)
   x.f := xf + 1
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/122/)
   assert fun1(xs, x) == xf + 1
   assert fun1(xs, y) == yf
 
@@ -53,7 +52,7 @@ method test4(xs: Set[Ref], x: Ref, y: Ref)
 
   assert fun1(xs, x) == xf + 1
 
-  // :: ExpectedOutput(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert fun1(xs, y) == yf
 }
 

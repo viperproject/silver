@@ -8,8 +8,6 @@ package viper.silver.frontend
 
 import collection._
 import org.rogach.scallop.LazyScallopConf
-import viper.silver.verifier.{Verifier}
-import org.rogach.scallop.exceptions.{Help, Version, ScallopException}
 
 /**
  * The configuration of a SIL front-end.
@@ -30,10 +28,10 @@ class SilFrontendConfig(args: Seq[String], private var projectName: String) exte
     */
   var initialized: Boolean = false
 
-  val file = trailArg[String]("file", "The file to verify.", (x: String) => {
+  val file = trailArg[String]("file", "The file to verify.")/*, (x: String) => {
     val f = new java.io.File(x)
     f.canRead
-  })
+  })*/
 
   val dependencies = opt[Boolean]("dependencies",
     descr = "Print full information about dependencies.",
@@ -55,6 +53,43 @@ class SilFrontendConfig(args: Seq[String], private var projectName: String) exte
     noshort = true,
     hidden = true
   )
+
+  val ignoreFile = opt[Boolean]("ignoreFile",
+    descr = "Ignore the file (in particular, don't check that it can actually be read).",
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
+  val ideMode = opt[Boolean]("ideMode",
+    descr = (  "Report errors in the format '<file>,<line>:<col>: <message>', and write"
+             + "errors in the format '<file>,<line>:<col>,<line>:<col>,<message>' to"
+             + "a file (see option ideModeErrorFile)."),
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
+  val ideModeErrorFile = opt[String]("ideModeErrorFile",
+    descr = "File to which errors should be written",
+    default = Some("errors.log"),
+    noshort = true,
+    hidden = true
+  )
+
+  dependsOnAll(ideModeErrorFile, ideMode :: Nil)
+
+  validateOpt(file, ignoreFile) {
+    case (_, Some(true)) => Right(Unit)
+    case (Some(path), _) =>
+      if (new java.io.File(path).canRead) Right(Unit)
+      else Left(s"Cannot read $path")
+    case (optFile, optIgnoreFile) =>
+      /* Since the file is a trailing argument and thus mandatory, this case
+       * (in which optFile == None) should never occur.
+       */
+      sys.error(s"Unexpected combination of $optFile and $optIgnoreFile")
+  }
 
   banner(s"""Usage: $projectName [options] <file>
             |

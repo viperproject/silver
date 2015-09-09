@@ -81,7 +81,7 @@ class TestAnnotationsTest extends FunSuite with BeforeAndAfter with ShouldMatche
     annotations = Seq(expectedFoo1, unexpectedFoo1Carbon, missingFoo1Silicon))
 
   test("filtering by project") {
-    val newAnnotations = annotations.filterByProject("Carbon")
+    val newAnnotations = annotations.filterByProject(new ProjectInfo(List("Carbon")))
     newAnnotations.errors should be (annotations.errors)
     newAnnotations.annotations should be (Seq(expectedFoo1, unexpectedFoo1Carbon))
   }

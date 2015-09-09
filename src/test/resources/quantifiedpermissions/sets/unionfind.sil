@@ -1,5 +1,3 @@
-//:: IgnoreFile(/Silicon/issue/79/)
-
 // class Node
 field parent: Ref
 
@@ -21,6 +19,11 @@ method add(struct: Ref, this: Ref)
   ensures acc(inv(struct), write)
   ensures allNodes(struct) == old(allNodes(struct)) union Set(this)
   ensures this == find(struct, this)
+  // Previously marked as /silicon/issue/122/
+  // Trying to ensure
+  //   ensures forall o: Ref :: o in old(allNodes(struct)) ==> o != null
+  // makes the example not terminate (with Z3 using up insane amounts of memory).
+  //:: UnexpectedOutput(application.precondition:assertion.false, /silicon/issue/133/)
   ensures forall o: Ref :: o in old(allNodes(struct)) ==> find(struct, o) == old(find(struct, o))
 {
     unfold acc(inv(struct), write)
@@ -29,12 +32,12 @@ method add(struct: Ref, this: Ref)
     fold acc(inv(struct), write)
 
 	inhale unfolding acc(inv(struct), write) in this.parent == this  // this gets arround issue #79 -- todo: fix
-	
+
 	assert forall x: Ref :: x in old(allNodes(struct)) ==> (unfolding acc(inv(struct), write) in x.parent) == old(unfolding acc(inv(struct), write) in x.parent)
-	
+
 	inhale forall o: Ref :: o in old(allNodes(struct)) ==> find(struct, o) == old(find(struct, o))
-	
-	
+
+
 	// lemma -- todo: prove   forall o: Ref :: o in old(allNodes(struct)) ==> find(struct, o) == old(find(struct, o))
 	/*var o: Ref
 	var of: Ref
@@ -77,6 +80,9 @@ method unionn(struct: Ref, this: Ref, other: Ref)
   requires other != null && other in allNodes(struct)
   ensures acc(inv(struct), write)
   ensures allNodes(struct) == old(allNodes(struct))
+  // Previously marked as /silicon/issue/122/
+  // The cause of the failing precondition is probably the same as above.
+  //:: UnexpectedOutput(application.precondition:assertion.false, /silicon/issue/133/)
   ensures forall p: Ref, q: Ref :: p in allNodes(struct) && q in allNodes(struct) && old(find(struct, p) == find(struct, q)) ==> find(struct, p) == find(struct, q)
   ensures forall p: Ref, q: Ref :: p in allNodes(struct) && q in allNodes(struct) && old(find(struct, p) == find(struct, this)) && old(find(struct, q) == find(struct, other)) ==> find(struct, p) == find(struct, q)
   ensures forall p: Ref, q: Ref ::

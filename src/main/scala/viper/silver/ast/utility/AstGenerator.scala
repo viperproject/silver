@@ -44,9 +44,10 @@ object AstGenerator {
           case b @ LoopBlock(body, _, _, _, succ) =>
             val loops2 = calculateSurroundingLoops(succ, surroundingLoop, loops1)
             calculateSurroundingLoops(body, Some(b), loops2)
-          case ConstrainingBlock(_, body, _) =>
+          case ConstrainingBlock(_, body, succ) =>
             /* [Malte] Tried to follow what happens in case of a ConditionalBlock. */
-            calculateSurroundingLoops(body, surroundingLoop, loops1)
+            val loops2 = calculateSurroundingLoops(body, surroundingLoop, loops1)
+            calculateSurroundingLoops(succ,surroundingLoop,loops2)
         }
       }
     }
@@ -62,9 +63,11 @@ object AstGenerator {
       } else {
         val thenContinuation = continuation(block.thn, surroundingLoops(block), previousBlocks + block)
         val elseContinuation = continuation(block.els, surroundingLoops(block), previousBlocks + block)
-        val (revContinuationPairs, revBranches) = thenContinuation.reverse.zip(elseContinuation.reverse).span(a => a._1 eq a._2)
-        val revContinuation = revContinuationPairs.unzip._1
-        val (revThen, revElse) = revBranches.unzip
+        val revThnCont = thenContinuation.reverse
+        val revElsCont = elseContinuation.reverse
+        val revContinuation = revThnCont.zip(revElsCont).takeWhile(a => a._1 eq a._2).unzip._1
+        val revThen = revThnCont.drop(revContinuation.size)
+        val revElse = revElsCont.drop(revContinuation.size)
         val branchInfo = BranchInformation(revThen.reverse, revElse.reverse, revContinuation.reverse)
         branchesCache.put(block, branchInfo)
         branchInfo

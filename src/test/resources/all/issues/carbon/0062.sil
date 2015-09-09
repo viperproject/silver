@@ -1,0 +1,12 @@
+//:: IgnoreFile(/Carbon/issue/62/)
+method test()
+{
+  var k: Perm
+  constraining (k) {
+  }
+}
+method test2()
+{
+  constraining () {
+  }
+}

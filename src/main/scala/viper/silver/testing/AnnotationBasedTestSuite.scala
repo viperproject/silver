@@ -50,7 +50,7 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
 
       // If there were any outputs that could not be matched up
       // (or other problems), make the test fail
-      if (!errors.isEmpty) {
+      if (errors.nonEmpty) {
         val title = s"${errors.size} errors"
         val body = errors.groupBy(_.errorType).map({
           case (typ, es) =>
@@ -67,7 +67,7 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
     for (system <- systemsUnderTest) {
       // Builds a new test input for the specific system under test.
       // For example, it may ignore files if necessary.
-      val newInput = input.makeForProject(system.projectName)
+      val newInput = input.makeForProject(system.projectInfo)
       if (newInput.files.isEmpty)
         ignore(newInput.name, newInput.tags: _*) {}
       else
@@ -146,7 +146,7 @@ case class OutputMatcher(
 /** The system that produces output given the test input. */
 trait SystemUnderTest {
   /** For filtering test annotations. Does not need to be unique. */
-  val projectName: String
+  val projectInfo: ProjectInfo
 
   def run(input: AnnotatedTestInput): Seq[AbstractOutput]
 }
@@ -173,7 +173,7 @@ trait AnnotatedTestInput extends TestInput {
   val annotations: TestAnnotations
 
   /** Create a test input that is specific to the given project. */
-  def makeForProject(projectName: String): AnnotatedTestInput
+  def makeForProject(projectInfo: ProjectInfo): AnnotatedTestInput
 }
 
 /** Test input that also includes test annotations. */
@@ -190,11 +190,14 @@ case class DefaultAnnotatedTestInput(
    * It creates an additional tag, filters files according to annotations
    * and also filters the annotations themselves.
    */
-  def makeForProject(projectName: String): DefaultAnnotatedTestInput = copy(
-    name = s"$name [$projectName]",
-    files = files.filter(!annotations.isFileIgnored(_, projectName)),
-    tags = Tag(projectName) :: tags.toList,
-    annotations = annotations.filterByProject(projectName))
+  def makeForProject(projectInfo: ProjectInfo): DefaultAnnotatedTestInput = {
+    val ignore = (file: Path) => projectInfo.projectNames.exists(annotations.isFileIgnored(file, _))
+    copy(
+      name = s"$name [${projectInfo.fullName}]",
+      files = files.filter(!ignore(_)),
+      tags = projectInfo.projectNames.map(Tag(_)) ++ tags.toList,
+      annotations = annotations.filterByProject(projectInfo))
+  }
 }
 
 object DefaultAnnotatedTestInput extends TestAnnotationParser {

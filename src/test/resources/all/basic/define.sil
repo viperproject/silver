@@ -1,0 +1,38 @@
+field f: Ref
+
+method test01() {
+  define A true
+  define B true
+
+  exhale A ==> B
+}
+
+define X true
+
+method test02() {
+  define A true
+
+  inhale X ==> A
+  exhale A ==> X
+}
+
+method test03(x: Ref)
+  requires acc(x.f)
+{
+  define A acc(x.f)
+
+  inhale A && X
+  exhale acc(x.f)
+}
+
+define P(x, v) acc(x.f) && x.f == v
+
+method test04(x: Ref)
+{
+  inhale P(x, null)
+  var y: Ref := x
+  var z: Ref
+  z := new(f)
+  y.f := z
+  exhale P(y, z) && acc(y.f.f)
+}

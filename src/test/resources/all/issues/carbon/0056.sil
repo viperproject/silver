@@ -1,0 +1,117 @@
+// chaliceSuite/examples/dining-philosophers.chalice
+field joinable$: Bool
+
+field Philosopherleft$: Ref
+
+field Philosopherright$: Ref
+
+field par$Philosopherrun$this$_2: Ref
+
+function PhilosophergetLeft$(this$_3: Ref): Ref
+  requires this$_3 != null
+  requires acc(Philosophervalid$(this$_3), wildcard)
+  ensures result != null
+{
+  (unfolding acc(Philosophervalid$(this$_3), wildcard) in this$_3.Philosopherleft$)
+}
+
+function PhilosophergetRight$(this$_4: Ref): Ref
+  requires this$_4 != null
+  requires acc(Philosophervalid$(this$_4), wildcard)
+  ensures result != null
+{
+  (unfolding acc(Philosophervalid$(this$_4), wildcard) in this$_4.Philosopherright$)
+}
+
+predicate Philosophervalid$(this$_5: Ref) {
+  acc(this$_5.Philosopherleft$, write) && acc(this$_5.Philosopherright$, write) && (this$_5.Philosopherleft$ != null) && (this$_5.Philosopherright$ != null)
+}
+
+method Philosopherinit$(this: Ref, f1: Ref, f2: Ref)
+  requires this != null
+  requires (f1 != null) && (f2 != null)
+  requires acc(this.Philosopherright$, write) && (acc(this.Philosopherleft$, write) && true)
+  ensures acc(Philosophervalid$(this), write)
+  ensures (PhilosophergetLeft$(this) == f1) && (PhilosophergetRight$(this) == f2)
+{
+  this.Philosopherleft$ := f1
+  this.Philosopherright$ := f2
+  fold acc(Philosophervalid$(this), write)
+}
+
+method Philosopherrun$(this: Ref, k$_1: Perm)
+  requires this != null
+  requires acc(Philosophervalid$(this), write)
+{
+}
+
+method Programmain$(this$_8: Ref, k$_2: Perm)
+  requires this$_8 != null
+  requires k$_2 > none
+  requires write > k$_2
+{
+  var f1: Ref
+  var f2: Ref
+  var f3: Ref
+  var aristotle: Ref
+  var plato: Ref
+  var kant: Ref
+  var tk0: Ref
+  var tk1: Ref
+  var tk2: Ref
+
+  f1 := new(joinable$, Philosopherleft$, Philosopherright$)
+  f1.Philosopherleft$ := null
+  f1.Philosopherright$ := null
+  f2 := new(joinable$, Philosopherleft$, Philosopherright$)
+  f2.Philosopherleft$ := null
+  f2.Philosopherright$ := null
+  f3 := new(joinable$, Philosopherleft$, Philosopherright$)
+  f3.Philosopherleft$ := null
+  f3.Philosopherright$ := null
+
+  aristotle := new(joinable$, Philosopherleft$, Philosopherright$)
+  aristotle.Philosopherleft$ := null
+  aristotle.Philosopherright$ := null
+  Philosopherinit$(aristotle, f1, f2)
+
+  plato := new(joinable$, Philosopherleft$, Philosopherright$)
+  plato.Philosopherleft$ := null
+  plato.Philosopherright$ := null
+  Philosopherinit$(plato, f2, f3)
+
+  kant := new(joinable$, Philosopherleft$, Philosopherright$)
+  kant.Philosopherleft$ := null
+  kant.Philosopherright$ := null
+  Philosopherinit$(kant, f1, f3)
+
+  tk0 := new(joinable$, Philosopherleft$, Philosopherright$, par$Philosopherrun$this$_2)
+  tk0.Philosopherleft$ := null
+  tk0.Philosopherright$ := null
+  tk0.joinable$ := true
+  tk0.par$Philosopherrun$this$_2 := aristotle
+  exhale (aristotle != null) && acc(Philosophervalid$(aristotle), write)
+
+  tk1 := new(joinable$, Philosopherleft$, Philosopherright$)
+  tk1.Philosopherleft$ := null
+  tk1.Philosopherright$ := null
+  tk1.joinable$ := true
+  exhale (plato != null) && acc(Philosophervalid$(plato), write)
+
+  tk2 := new(joinable$, Philosopherleft$, Philosopherright$)
+  tk2.Philosopherleft$ := null
+  tk2.Philosopherright$ := null
+  tk2.joinable$ := true
+  exhale (kant != null) && acc(Philosophervalid$(kant), write)
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/56/)
+  assert tk0.joinable$
+  inhale true
+  tk0.joinable$ := false
+  assert tk1.joinable$
+  inhale true
+  tk1.joinable$ := false
+  assert tk2.joinable$
+  inhale true
+  tk2.joinable$ := false
+}

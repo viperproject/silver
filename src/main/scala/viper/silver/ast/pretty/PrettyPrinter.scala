@@ -92,11 +92,11 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
                   Seq(showStmt(body))).to[collection.immutable.Seq], line)
           ) <> line)
       case p@Predicate(name, formalArgs, body) =>
-        "predicate" <+> name <> parens(showVars(formalArgs)) <+>
-          braces(nest(
-            line <> show(body)
-          ) <> line)
-      case p@Function(name, formalArgs, typ, pres, posts, exp) =>
+        "predicate" <+> name <> parens(showVars(formalArgs)) <+> (body match {
+          case None => empty
+          case Some(exp) => braces(nest(line <> show(exp)) <> line)
+        })
+      case p@Function(name, formalArgs, typ, pres, posts, optBody) =>
         "function" <+> name <> parens(showVars(formalArgs)) <>
           ":" <+> show(typ) <>
           nest(
@@ -104,9 +104,11 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
             showContracts("ensures", posts)
           ) <>
           line <>
-          braces(nest(
-            line <> show(exp)
-          ) <> line)
+          (optBody match {
+            case None => empty
+            case Some(exp) => braces(nest(line <> show(exp)) <> line)
+            case _ => uninitialized
+          })
       case d: Domain =>
         showDomain(d)
     }
@@ -201,11 +203,16 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         val sss = ss filter (s => !(s.isInstanceOf[Seqn] && s.children.size == 0))
         ssep((sss map show).to[collection.immutable.Seq], line)
       case While(cond, invs, locals, body) =>
-        // TODO: invariants and locals
         "while" <+> parens(show(cond)) <>
           nest(
             showContracts("invariant", invs)
-          ) <+> lineIfSomeNonEmpty(invs) <> showBlock(body)
+          ) <+> lineIfSomeNonEmpty(invs) <>
+          braces(nest(
+            lineIfSomeNonEmpty(locals, body.children) <>
+              ssep(
+                (if (locals == null) Nil else locals map ("var" <+> showVar(_))) ++
+                  Seq(showStmt(body)), line)
+          ) <> line)
       case If(cond, thn, els) =>
         "if" <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
       case Label(name) =>
@@ -220,7 +227,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   def showElse(els: Stmt): PrettyPrinter.Doc = els match {
     case Seqn(Seq()) => empty
     case Seqn(Seq(s)) => showElse(s)
-    case If(cond1, thn1, els1) => empty <+> "elsif" <+> parens(show(cond1)) <+> showBlock(thn1) <> showElse(els1)
+    case If(cond1, thn1, els1) => empty <+> "elseif" <+> parens(show(cond1)) <+> showBlock(thn1) <> showElse(els1)
     case _ => empty <+> "else" <+> showBlock(els)
   }
 
@@ -249,6 +256,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
     case Old(exp) =>
       "old" <> parens(show(exp))
+    case Let(v, exp, body) =>
+      parens("let" <+> show(v) <+> "==" <+> show(exp) <+> "in" <+> show(body))
     case CondExp(cond, thn, els) =>
       parens(show(cond) <+> "?" <+> show(thn) <+> ":" <+> show(els))
     case Exists(v, exp) =>

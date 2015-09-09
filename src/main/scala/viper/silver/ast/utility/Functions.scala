@@ -17,7 +17,7 @@ import org.jgrapht.{DirectedGraph, EdgeFactory}
 import org.jgrapht.alg.{CycleDetector, StrongConnectivityInspector}
 import org.jgrapht.graph.DefaultDirectedGraph
 import org.jgrapht.traverse.TopologicalOrderIterator
-import viper.silver.ast.{Function, FuncApp, Exp, Program}
+import viper.silver.ast._
 
 /**
  * Utility methods for functions.
@@ -45,7 +45,7 @@ object Functions {
       }
     }
     for (f <- p.functions) {
-      process(f, f.exp)
+      f.body map (process(f, _))
       f.pres map (process(f, _))
       f.posts map (process(f, _))
     }
@@ -148,5 +148,32 @@ object Functions {
     }
 
     result.toMap
+  }
+
+  /**
+   * Helper method for finding the recursive function calls in f's body, and pairing them with the unfolding expressions they occur under.
+   * This can be useful for axiomatisation of functions, and possible for termination checking.
+   *
+   * Note that the LHS of unfolding expressions is not recursed into (we might want to revisit this decision).
+   *
+   * @param f The function whose body we want to analyse
+   * @return A sequence of pairs of function application with the sequence of unfoldings (outermost-first) under which they occur
+   */
+  def recursiveCallsAndSurroundingUnfoldings(f : Function) : Seq[(FuncApp,Seq[Unfolding])] = {
+    var result: Seq[(FuncApp, Seq[Unfolding])] = Seq()
+
+    def recordCallsAndUnfoldings(e: Node, ufs: Seq[Unfolding]) {
+      e.shallowCollect {
+      case uf@Unfolding (acc, body) =>
+        recordCallsAndUnfoldings (body, ufs :+ uf) // note: acc is not recursively-processed - we may want to revisit this decision
+      case fa@FuncApp (func, args) =>
+        result +:= (fa, ufs)
+        args.map ((n) => recordCallsAndUnfoldings (n, ufs) )
+      }
+    }
+
+    f.body map (recordCallsAndUnfoldings(_, Seq()))
+
+    result
   }
 }

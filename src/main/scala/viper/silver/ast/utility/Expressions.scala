@@ -6,6 +6,8 @@
 
 package viper.silver.ast.utility
 
+import scala.reflect.ClassTag
+
 import viper.silver.ast._
 
 /** Utility methods for expressions. */
@@ -17,8 +19,9 @@ object Expressions {
     case InhaleExhaleExp(in, ex) => isPure(in) && isPure(ex)
     case BinExp(e0, e1) => isPure(e0) && isPure(e1)
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
-    case Unfolding(_, in) => isPure(in) /* Assuming that the first argument is pure */
+    case Unfolding(_, in) => isPure(in)
     case QuantifiedExp(_, e0) => isPure(e0)
+    case Let(_, _, body) => isPure(body)
 
     case _: Literal
          | _: PermExp
@@ -39,9 +42,12 @@ object Expressions {
     case fapp: FuncApp if fapp.func(p).pres.exists(isHeapDependent(_, p)) =>
   }
 
-  def purify(e: Exp): Exp = e.transform({
+  def asBooleanExp(e: Exp): Exp = {
+    e.transform({
       case _: AccessPredicate => TrueLit()()
+      case Unfolding(predicate, exp) => asBooleanExp(exp)
     })()
+  }
 
   def whenInhaling(e: Exp) = e.transform()(post = {
     case InhaleExhaleExp(in, _) => in
@@ -50,6 +56,10 @@ object Expressions {
   def whenExhaling(e: Exp) = e.transform()(post = {
     case InhaleExhaleExp(_, ex) => ex
   })
+
+  def contains[T <: Node : ClassTag](expressions: Seq[Exp]) = {
+    expressions.exists(_.contains[T])
+  }
 
   /** In an expression, instantiate a list of variables with given expressions. */
   def instantiateVariables[E <: Exp]
@@ -83,7 +93,7 @@ object Expressions {
   }
 
   // note: dependency on program for looking up function preconditions
-  def proofObligations(e: Exp): (Program => Seq[Exp]) = ((prog:Program) => {
+  def proofObligations(e: Exp): (Program => Seq[Exp]) = (prog: Program) => {
     e.reduceTree[Seq[Exp]] {
       (n: Node, subConds: Seq[Seq[Exp]]) =>
         val p = n match {
@@ -106,38 +116,34 @@ object Expressions {
         }
         // Combine the conditions of the subnodes depending on what node we currently have.
         val finalSubConds = n match {
-          case And(left, _) => {
+          case And(left, _) =>
             val Seq(leftConds, rightConds) = nonTrivialSubConds
             reduceAndProofObs(left, leftConds, rightConds, p)
-          }
-          case Implies(left, _) => {
+          case Implies(left, _) =>
             val Seq(leftConds, rightConds) = nonTrivialSubConds
             reduceImpliesProofObs(left, leftConds, rightConds, p)
-          }
-          case Or(left, _) => {
+          case Or(left, _) =>
             val Seq(leftConds, rightConds) = nonTrivialSubConds
             reduceOrProofObs(left, leftConds, rightConds, p)
-          }
-          case CondExp(cond, _, _) => {
+          case CondExp(cond, _, _) =>
             val Seq(condConds, thenConds, elseConds) = nonTrivialSubConds
             reduceCondExpProofObs(cond, condConds, thenConds, elseConds, p)
-          }
           case _ => subConds.flatten
         }
         // The condition of the current node has to be at the end because the subtrees have to be well-formed first.
         finalSubConds ++ conds
     }
-  })
+  }
 
   /** Calculates the proof obligations for a conditional expression given the proof obligations of the subexpressions. */
   def reduceCondExpProofObs(cond: Exp, condConds: Seq[Exp], thenConds: Seq[Exp], elseConds: Seq[Exp], p: Position): Seq[Exp] = {
-    val guardedBodyConds = if (!thenConds.isEmpty || !elseConds.isEmpty) {
-      val combinedThenCond = if (!thenConds.isEmpty)
+    val guardedBodyConds = if (thenConds.nonEmpty || elseConds.nonEmpty) {
+      val combinedThenCond = if (thenConds.nonEmpty)
         thenConds reduce {
           (a, b) => And(a, b)(p)
         }
       else TrueLit()(p)
-      val combinedElseCond = if (!elseConds.isEmpty)
+      val combinedElseCond = if (elseConds.nonEmpty)
         elseConds reduce {
           (a, b) => And(a, b)(p)
         }
@@ -156,7 +162,7 @@ object Expressions {
     // We want to make the proof obligations as weak as possible, but we cannot use access predicates as guards,
     // so we need to remove them and make the guard weaker. This makes the proof obligations slightly too strong,
     // but it is the best we can do.
-    val guard = purify(left)
+    val guard = asBooleanExp(left)
     reduceLazyBinOpProofObs(guard, leftConds, rightConds, p)
   }
 
@@ -167,7 +173,7 @@ object Expressions {
   /** Calculates the proof obligations of a binary expression which has a second half which will only be evaluated
     * if `evalCond` is true given the proof obligations of the subexpressions. */
   def reduceLazyBinOpProofObs(evalCond: Exp, leftConds: Seq[Exp], rightConds: Seq[Exp], p: Position): Seq[Exp] = {
-    val guardedRightConds = if (!rightConds.isEmpty) {
+    val guardedRightConds = if (rightConds.nonEmpty) {
       val combinedRightCond = rightConds reduce {
         (a, b) => And(a, b)(p)
       }
@@ -184,9 +190,22 @@ object Expressions {
    * the same extra variables).
    */
   def generateTrigger(exp: QuantifiedExp): Seq[(Seq[Trigger], Seq[LocalVarDecl])] = {
-    TriggerGeneration.generateTriggers(exp.variables map (_.localVar), exp.exp)
+    TriggerGeneration.generateTriggerGroups(exp.variables map (_.localVar), exp.exp)
                      .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)()))}
   }
+
+  /** Returns the first group of trigger sets (together with newly introduced
+    * variables) returned by `generateTriggers`, or `None` if the latter
+    * didn't return any group.
+    *
+    * @param vs Variables to cover by the trigger sets.
+    * @param exp Expression to generate triggers for.
+    * @return A pair of trigger sets and additional variables (or `None`).
+    */
+  def potentialTriggers(vs: Seq[LocalVar], exp: Exp): Option[(Seq[Trigger], Seq[LocalVarDecl])] =
+    TriggerGeneration.generateTriggerGroups(vs, exp)
+        .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)()))}
+        .headOption
 
   object TriggerGeneration extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp, PossibleTrigger,
                                                            ForbiddenInTrigger, Old, WrappingTrigger, Trigger] {
