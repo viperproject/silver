@@ -6,14 +6,16 @@
 
 package viper.silver.ast.utility
 
-import org.kiama.util.Messaging
+import org.kiama.util.{Message, Messaging}
 import scala.collection.mutable
 import util.parsing.input.{Position, NoPosition}
 import viper.silver.parser.{PForallReferences, PIdnUse, Parser}
 import viper.silver.ast._
+import scala.Seq
 
 /** An utility object for consistency checking. */
 object Consistency {
+  var messages: Messaging.Messages = Nil
   def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
     if (!property) {
       val pos = suspect.pos match {
@@ -23,14 +25,21 @@ object Consistency {
             val column = rp.column
             val lineContents = "<none>"
           }
-
-        case _ => NoPosition
+        case rp: HasLineColumn =>
+          new Position {
+            val line = rp.line
+            val column = rp.column
+            val lineContents = "<none>"
+          }
+        case rp@viper.silver.ast.NoPosition => NoPosition
       }
 
-      Messaging.messages += Messaging.Record(pos, message)
+      this.messages ++= Messaging.aMessage(Message(message,pos))  // this is the way to contruct a message directly with a position (only).
     }
   }
 
+  /** Reset the Kiama messages */
+  def resetMessages { this.messages = Nil }
   /** Names that are not allowed for use in programs. */
   def reservedNames: Seq[String] = Parser.reserved
 

@@ -137,7 +137,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
 
       case Some(filter) =>
         val tags = Map(testInput.name -> testInput.tags.map(_.name).toSet)
-        val (filterTest, _ /*ignoreTest*/) = filter(testInput.name, tags)
+        val (filterTest, _ /*ignoreTest*/) = filter(testInput.name, tags, "ResourceBasedTestSuite")
         !filterTest /*&& !ignoreTest*/
     }
   }
@@ -259,51 +259,39 @@ abstract class ResourceBasedTestSuite extends FunSuite {
   /** The filter passed to one of the `run`-methods. */
   protected var optFilter: Option[Filter] = None
 
-  protected override def runTest(
+  protected override def runTest (
       testName: String,
-      reporter: Reporter,
-      stopper: Stopper,
-      configMap: Map[String, Any],
-      tracker: Tracker) {
+      args : Args) : Status =
+    {
 
-    this.configMap = configMap
+    this.configMap = args.configMap
 
     registerTests()
 
-    super.runTest(testName, reporter, stopper, configMap, tracker)
+    super.runTest(testName, args)
   }
 
   protected override def runTests(
       testName: Option[String],
-      reporter: Reporter,
-      stopper: Stopper,
-      filter: Filter,
-      configMap: Map[String, Any],
-      distributor: Option[Distributor],
-      tracker: Tracker) {
+      args: Args) : Status = {
 
-    this.configMap = configMap
-    this.optFilter = Some(filter)
+    this.configMap = args.configMap
+    this.optFilter = Some(args.filter)
 
     registerTests()
 
-    super.runTests(testName, reporter, stopper, filter, configMap, distributor, tracker)
+    super.runTests(testName, args)
   }
 
   override def run(
       testName: Option[String],
-      reporter: Reporter,
-      stopper: Stopper,
-      filter: Filter,
-      configMap: Map[String, Any],
-      distributor: Option[Distributor],
-      tracker: Tracker) {
+      args : Args) : Status  = {
 
-    this.configMap = configMap
-    this.optFilter = Some(filter)
+    this.configMap = args.configMap
+    this.optFilter = Some(args.filter)
 
     registerTests()
 
-    super.run(testName, reporter, stopper, filter, configMap, distributor, tracker)
+    super.run(testName, args)
   }
 }

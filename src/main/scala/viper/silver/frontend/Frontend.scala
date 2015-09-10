@@ -31,6 +31,12 @@ trait Frontend {
   def reset(input: Seq[Path])
 
   /**
+   * Reset any messages recorded internally (errors from previous program translations, etc.)
+   */
+  def resetMessages ()
+
+
+  /**
    * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then
    * returning result.
    */
@@ -130,7 +136,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _verificationResult = None
     _parseResult = None
     _typecheckResult = None
-    Messaging.resetmessages()
+    resetMessages()
   }
 
   protected def mapVerificationResult(in: VerificationResult): VerificationResult
@@ -151,7 +157,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _state = TranslatorState.Parsed
   }
 
-  override def typecheck() {
+  override def typecheck() { // typecheck and translate (if successful)
     if (state >= TranslatorState.Typechecked || !_errors.isEmpty) return
     parse()
     if (!_errors.isEmpty) {

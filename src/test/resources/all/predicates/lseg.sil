@@ -1,7 +1,3 @@
-/*
- * ATTENTION: Please keep this file in sync with lseg_silicon.sil!
- */
-
 field next: Ref
 field value: Int
 
