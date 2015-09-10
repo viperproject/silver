@@ -137,7 +137,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
 
       case Some(filter) =>
         val tags = Map(testInput.name -> testInput.tags.map(_.name).toSet)
-        val (filterTest, _ /*ignoreTest*/) = filter(testInput.name, tags)
+        val (filterTest, _ /*ignoreTest*/) = filter(testInput.name, tags, "ResourceBasedTestSuite")
         !filterTest /*&& !ignoreTest*/
     }
   }
