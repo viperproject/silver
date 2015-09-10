@@ -25,11 +25,18 @@ object Consistency {
             val column = rp.column
             val lineContents = "<none>"
           }
-
-        case _ => NoPosition
+        case rp: HasLineColumn =>
+          new Position {
+            val line = rp.line
+            val column = rp.column
+            val lineContents = "<none>"
+          }
+        case rp@viper.silver.ast.NoPosition => NoPosition
       }
 
-      this.messages ++= Messaging.message(pos, message)
+
+
+      this.messages ++= Messaging.aMessage(Message(message,pos))  // this is the way to contruct a message directly with a position (only).
     }
   }
 
