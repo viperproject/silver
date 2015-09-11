@@ -52,6 +52,7 @@ object Expressions {
     e.transform({
       case _: AccessPredicate => TrueLit()()
       case Unfolding(predicate, exp) => asBooleanExp(exp)
+      case _: MagicWand => TrueLit()()
     })()
   }
 

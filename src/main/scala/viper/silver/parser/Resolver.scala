@@ -10,6 +10,7 @@ import scala.collection.mutable
 import scala.reflect._
 import org.kiama.util.Messaging
 import viper.silver.ast.MagicWandOp
+import viper.silver.ast.MagicWandOp
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.

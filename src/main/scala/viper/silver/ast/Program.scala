@@ -6,9 +6,14 @@
 
 package viper.silver.ast
 
+//import sun.org.mozilla.javascript.internal.ast.AstNode
+import utility.{Consistency, Types}
+
+import scala.collection.immutable.HashSet
 import scala.collection.mutable
 import org.kiama.output.{Fixity, Infix, Prefix, NonAssoc, RightAssoc}
 import utility.{Consistency, Types}
+import scala.collection.mutable.ListBuffer
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])

@@ -108,7 +108,7 @@ case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
                       (val domainTypVars: Seq[TypeVar])
     extends Type {
 
-  require (domainTypVars.toSet == typVarsMap.keys.toSet) 
+  require (domainTypVars.toSet == typVarsMap.keys.toSet)
   //  require(typVarsMap.values.forall(t => !t.isInstanceOf[TypeVar]))
 
   lazy val isConcrete: Boolean = {
