@@ -249,7 +249,7 @@ case class TypeChecker(names: NameAnalyser) {
     case PBinExp(_, MagicWandOp.op, _) =>
       check(e, Wand)
     case _ =>
-      message(e, "expected magic wand")
+      messages ++= Messaging.message(e, "expected magic wand")
   }
 
   /** This handy method checks if all passed `idnUses` refer to specific
