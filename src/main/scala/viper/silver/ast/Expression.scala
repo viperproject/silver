@@ -598,6 +598,9 @@ case class SeqUpdate(s: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition
   require(idx isSubtype Int)
   require(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)
   Consistency.checkNoPositiveOnly(elem)
+  lazy val desugaredAssumingIndexInRange : SeqExp = {
+    SeqAppend(SeqTake(s,idx)(pos,info),SeqAppend(ExplicitSeq(List(elem))(pos,info),SeqDrop(s,Add(idx,IntLit(1)(pos,info))(pos,info))(pos,info))(pos,info))(pos,info)
+  }
   lazy val typ = s.typ
   def getArgs = Seq(s,idx,elem)
   def withArgs(newArgs: Seq[Exp]) = SeqUpdate(newArgs(0),newArgs(1),newArgs(2))(pos,info)
@@ -733,7 +736,7 @@ case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val
   lazy val left = elem
   lazy val op = "in"
   lazy val right = s
-  lazy val typ = Bool
+  lazy val typ = if (s.typ.isInstanceOf[SetType]) Bool else Int
   def getArgs = Seq(elem,s)
   def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs(0),newArgs(1))(pos,info)
 }

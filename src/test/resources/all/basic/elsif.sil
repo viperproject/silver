@@ -4,11 +4,11 @@ method t1(a: Int) returns (b: Int)
 {
     if (a == 1) {
         b := 2
-    } elsif (a == 2) {
+    } elseif (a == 2) {
         b := 3
-    } elsif (a == 3) {
+    } elseif (a == 3) {
         b := 4
-    } elsif (a == 4) {
+    } elseif (a == 4) {
         b := 2
     } else {
         b := 5

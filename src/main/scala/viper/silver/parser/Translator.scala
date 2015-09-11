@@ -9,9 +9,9 @@ package viper.silver.parser
 import language.implicitConversions
 import org.kiama.attribution.Attributable
 import org.kiama.util.Messaging
-import org.kiama.util.{Positioned => KiamaPositioned}
 import viper.silver.ast._
 import viper.silver.ast.utility.{Visitor, Statements}
+import viper.silver.ast.utility.Consistency
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -29,7 +29,7 @@ case class Translator(program: PProgram) {
   val file = program.file
 
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
-    assert(Messaging.messagecount == 0, "Expected previous phases to succeed, but found error messages.")
+    // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
     program match {
       case PProgram(_, pdomains, pfields, pfunctions, ppredicates, pmethods) =>
@@ -43,7 +43,7 @@ case class Translator(program: PProgram) {
         val methods = pmethods map (translate(_))
         val prog = Program(domain, fields, functions, predicates, methods)(program)
 
-        if (Messaging.messagecount == 0) Some(prog)
+        if (Consistency.messages.size == 0) Some(prog) // all error messages generated during translation should be Consistency messages
         else None
     }
   }
@@ -209,7 +209,7 @@ case class Translator(program: PProgram) {
           case _: PLocalVarDecl | _: PFormalArgDecl => LocalVar(name)(ttyp(pexp.typ), pos)
           case pf: PField =>
             /* A malformed AST where a field is dereferenced without a receiver */
-            Messaging.message(piu, s"expected expression but found field $name")
+            Consistency.messages ++= Messaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
           case _: PLetWand =>
             /* TODO: We might want to differentiate between magic wand references and regular local variables. */
@@ -452,9 +452,9 @@ case class Translator(program: PProgram) {
         case Some(d) =>
           val domain = d.asInstanceOf[Domain]
           val typVarMapping = domain.typVars zip (args map ttyp)
-          DomainType(domain, typVarMapping.filter {
-            case (tv, tt) => !tt.isInstanceOf[TypeVar]
-          }.toMap)
+          DomainType(domain, typVarMapping /*.filter {
+            case (tv, tt) => tv!=tt //!tt.isInstanceOf[TypeVar]
+          }*/.toMap)
         case None =>
           assert(args.length == 0)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable

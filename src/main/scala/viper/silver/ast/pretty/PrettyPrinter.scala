@@ -39,7 +39,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case v: LocalVarDecl => showVar(v)
     case dm: DomainMember => showDomainMember(dm)
     case Trigger(exps) =>
-      "{" <+> ssep(exps map show, comma) <+> "}"
+      "{" <+> ssep(exps.to[collection.immutable.Seq] map show, comma) <+> "}"
     case null => uninitialized
   }
 
@@ -47,7 +47,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   def showProgram(p: Program): Doc = {
     val Program(domains, fields, functions, predicates, methods) = p
     showComment(p) <>
-      ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
+      ssep((domains ++ fields ++ functions ++ predicates ++ methods).to[collection.immutable.Seq] map show, line <> line)
   }
 
   /** Show a domain member. */
@@ -88,8 +88,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           braces(nest(
             lineIfSomeNonEmpty(locals, if (body == null) null else body.children) <>
               ssep(
-                (if (locals == null) Nil else locals map ("var" <+> showVar(_))) ++
-                  Seq(showStmt(body)), line)
+                ((if (locals == null) Nil else locals map ("var" <+> showVar(_))) ++
+                  Seq(showStmt(body))).to[collection.immutable.Seq], line)
           ) <> line)
       case p@Predicate(name, formalArgs, body) =>
         "predicate" <+> name <> parens(showVars(formalArgs)) <+> (body match {
@@ -107,6 +107,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           (optBody match {
             case None => empty
             case Some(exp) => braces(nest(line <> show(exp)) <> line)
+            case _ => uninitialized
           })
       case d: Domain =>
         showDomain(d)
@@ -119,7 +120,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     if (contracts == null)
       line <> name <+> uninitialized
     else
-      lineIfSomeNonEmpty(contracts) <> ssep(contracts map (name <+> show(_)), line)
+      lineIfSomeNonEmpty(contracts) <> ssep((contracts map (name <+> show(_))).to[collection.immutable.Seq], line)
   }
 
   /** Returns `n` lines if at least one element of `s` is non-empty, and an empty document otherwise. */
@@ -133,7 +134,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   }
 
   /** Show a list of formal arguments. */
-  def showVars(vars: Seq[LocalVarDecl]): Doc = ssep(vars map showVar, comma <> space)
+  def showVars(vars: Seq[LocalVarDecl]): Doc = ssep((vars map showVar).to[collection.immutable.Seq], comma <> space)
   /** Show a variable name with the type of the variable (e.g. to be used in formal argument lists). */
   def showVar(v: LocalVarDecl): Doc = v.name <> ":" <+> showType(v.typ)
 
@@ -142,10 +143,10 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     d match {
       case Domain(name, functions, axioms, typVars) =>
         "domain" <+> name <>
-          (if (typVars.isEmpty) empty else "[" <> ssep(typVars map show, comma <> space) <> "]") <+>
+          (if (typVars.isEmpty) empty else "[" <> ssep((typVars map show).to[collection.immutable.Seq], comma <> space) <> "]") <+>
           braces(nest(
             line <> line <>
-              ssep((functions ++ axioms) map show, line <> line)
+              ssep(((functions ++ axioms) map show).to[collection.immutable.Seq], line <> line)
           ) <> line)
     }
   }
@@ -165,7 +166,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case TypeVar(v) => v
       case dt@DomainType(domainName, typVarsMap) =>
         val typArgs = dt.domainTypVars map (t => show(typVarsMap.getOrElse(t, t)))
-        domainName <> (if (typArgs.isEmpty) empty else brackets(ssep(typArgs, comma <> space)))
+        domainName <> (if (typArgs.isEmpty) empty else brackets(ssep(typArgs.to[collection.immutable.Seq], comma <> space)))
     }
   }
 
@@ -181,7 +182,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   def showStmt(stmt: Stmt): Doc = {
     val stmtDoc = stmt match {
       case NewStmt(target, fields) =>
-        show(target) <+> ":=" <+> "new(" <> ssep(fields map (f => value(f.name)), comma <> space) <>")"
+        show(target) <+> ":=" <+> "new(" <> ssep((fields map (f => value(f.name))).to[collection.immutable.Seq], comma <> space) <>")"
       case LocalVarAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case FieldAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case Fold(e) => "fold" <+> show(e)
@@ -192,24 +193,29 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case Exhale(e) => "exhale" <+> show(e)
       case Assert(e) => "assert" <+> show(e)
       case Fresh(vars) =>
-        "fresh" <+> ssep(vars map show, comma <> space)
+        "fresh" <+> ssep((vars map show).to[collection.immutable.Seq], comma <> space)
       case Constraining(vars, body) =>
-        "constraining" <> parens(ssep(vars map show, comma <> space)) <+> showBlock(body)
+        "constraining" <> parens(ssep((vars map show).to[collection.immutable.Seq], comma <> space)) <+> showBlock(body)
       case MethodCall(mname, args, targets) =>
-        val call = mname <> parens(ssep(args map show, comma <> space))
+        val call = mname <> parens(ssep((args map show).to[collection.immutable.Seq], comma <> space))
         targets match {
           case Nil => call
-          case _ => ssep(targets map show, comma <> space) <+> ":=" <+> call
+          case _ => ssep((targets map show).to[collection.immutable.Seq], comma <> space) <+> ":=" <+> call
         }
       case Seqn(ss) =>
         val sss = ss filter (s => !(s.isInstanceOf[Seqn] && s.children.size == 0))
-        ssep(sss map show, line)
+        ssep((sss map show).to[collection.immutable.Seq], line)
       case While(cond, invs, locals, body) =>
-        // TODO: invariants and locals
         "while" <+> parens(show(cond)) <>
           nest(
             showContracts("invariant", invs)
-          ) <+> lineIfSomeNonEmpty(invs) <> showBlock(body)
+          ) <+> lineIfSomeNonEmpty(invs) <>
+          braces(nest(
+            lineIfSomeNonEmpty(locals, body.children) <>
+              ssep(
+                ((if (locals == null) Nil else locals map ("var" <+> showVar(_))) ++
+                  Seq(showStmt(body))).to[collection.immutable.Seq], line)
+          ) <> line)
       case If(cond, thn, els) =>
         "if" <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
       case Label(name) =>
@@ -224,7 +230,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   def showElse(els: Stmt): PrettyPrinter.Doc = els match {
     case Seqn(Seq()) => empty
     case Seqn(Seq(s)) => showElse(s)
-    case If(cond1, thn1, els1) => empty <+> "elsif" <+> parens(show(cond1)) <+> showBlock(thn1) <> showElse(els1)
+    case If(cond1, thn1, els1) => empty <+> "elseif" <+> parens(show(cond1)) <+> showBlock(thn1) <> showElse(els1)
     case _ => empty <+> "else" <+> showBlock(els)
   }
 
@@ -234,7 +240,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       empty
     else {
       val comment = n.info.comment
-      if (comment.size > 0) ssep(comment map ("//" <+> _), line) <> line
+      if (comment.size > 0) ssep((comment map ("//" <+> _)).to[collection.immutable.Seq], line) <> line
       else empty
     }
   }
@@ -248,7 +254,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case FieldAccess(rcv, field) =>
       show(rcv) <> "." <> field.name
     case PredicateAccess(params, predicateName) =>
-      predicateName <> parens(ssep(params map show, comma <> space))
+      predicateName <> parens(ssep((params map show).to[collection.immutable.Seq], comma <> space))
     case Unfolding(acc, exp) =>
       parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
     case Folding(acc, exp) =>
@@ -269,7 +275,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       parens("exists" <+> showVars(v) <+> "::" <+> show(exp))
     case Forall(v, triggers, exp) =>
       parens("forall" <+> showVars(v) <+> "::" <>
-        (if (triggers.isEmpty) empty else space <> ssep(triggers map show, space)) <+>
+        (if (triggers.isEmpty) empty else space <> ssep((triggers map show).to[collection.immutable.Seq], space)) <+>
         show(exp))
     case InhaleExhaleExp(in, ex) =>
       brackets(show(in) <> comma <+> show(ex))
@@ -286,14 +292,14 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case AccessPredicate(loc, perm) =>
       "acc" <> parens(show(loc) <> "," <+> show(perm))
     case FuncApp(funcname, args) =>
-      funcname <> parens(ssep(args map show, comma <> space))
+      funcname <> parens(ssep((args map show).to[collection.immutable.Seq], comma <> space))
     case DomainFuncApp(funcname, args, _) =>
-      funcname <> parens(ssep(args map show, comma <> space))
+      funcname <> parens(ssep((args map show).to[collection.immutable.Seq], comma <> space))
 
     case EmptySeq(elemTyp) =>
       "Seq[" <> showType(elemTyp) <> "]()"
     case ExplicitSeq(elems) =>
-      "Seq" <> parens(ssep(elems map show, comma <> space))
+      "Seq" <> parens(ssep((elems map show).to[collection.immutable.Seq], comma <> space))
     case RangeSeq(low, high) =>
       "[" <> show(low) <> ".." <> show(high) <> ")"
     case SeqIndex(seq, idx) =>
@@ -314,11 +320,11 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case EmptySet(elemTyp) =>
       "Set[" <> showType(elemTyp) <> "]()"
     case ExplicitSet(elems) =>
-      "Set" <> parens(ssep(elems map show, comma <> space))
+      "Set" <> parens(ssep((elems map show).to[collection.immutable.Seq], comma <> space))
     case EmptyMultiset(elemTyp) =>
       "Multiset[" <> showType(elemTyp) <> "]()"
     case ExplicitMultiset(elems) =>
-      "Multiset" <> parens(ssep(elems map show, comma <> space))
+      "Multiset" <> parens(ssep((elems map show).to[collection.immutable.Seq], comma <> space))
     case AnySetUnion(left, right) =>
       show(left) <+> "union" <+> show(right)
     case AnySetIntersection(left, right) =>

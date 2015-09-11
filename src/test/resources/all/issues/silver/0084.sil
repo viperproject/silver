@@ -1,0 +1,9 @@
+//:: IgnoreFile(/Silver/issue/84/)
+
+field Counterx: Int
+
+predicate Counter$MonitorInvariant(this: Ref) {
+  //:: ExpectedOutput(parser.error)
+  //:: MissingOutput(parser.error, /Silver/issue/84/)
+  (acc(this.Counterx, write) && (old(this.Counterx) < this.Counterx))
+}

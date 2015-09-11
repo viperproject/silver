@@ -78,11 +78,11 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
      */
     toSearch.toStream.flatMap(generateTriggers(vs, _)).headOption
 
-  def generateStrictestTrigger(vs: Seq[Var], toSearch: Exp): Option[(Seq[Trigger], Seq[Var])] =
-    generateTriggerGroups(vs: Seq[Var], toSearch: Exp).headOption.map{ case (triggerSets, vars) =>
+  def generateStrictestTrigger(vs: Seq[Var], toSearch: Exp): Option[(Trigger, Seq[Var])] =
+    generateTriggerGroups(vs, toSearch).headOption.map { case (triggerSets, vars) =>
       val triggerExps = triggerSets.foldLeft(Set[Exp]())((acc, trigger) => acc ++ exps(trigger))
 
-      (Trigger(triggerExps.toSeq) :: Nil, vars)
+      (Trigger(triggerExps.toSeq), vars)
     }
 
   /* Generates groups of trigger sets to cover the variables `vs`, by searching

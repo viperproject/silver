@@ -8,7 +8,7 @@ package viper.silver.utility
 
 import viper.silver.ast.utility.Consistency
 import util.matching.Regex
-import scala.concurrent.Lock
+import java.util.concurrent.locks.ReentrantLock
 
 /**
  * Interface for a class that can generate unique names.
@@ -151,7 +151,7 @@ trait DefaultNameGenerator extends NameGenerator {
 
     private val contexts = this :: enclosingContexts
 
-    private val lock = new Lock
+    private val lock = new ReentrantLock()
 
     private def subContexts: List[NameContext] = directSubContexts ++ directSubContexts.flatMap(_.subContexts)
 
@@ -171,7 +171,7 @@ trait DefaultNameGenerator extends NameGenerator {
       // 2. Indices of the ancestors inside the subcontext list of their parent.
       //    If there are several, lexicographic ordering from top to bottom is used.
       // 3. Index of the context itself inside the subcontext list of its parent.
-      cc.foreach(_.lock.acquire())
+      cc.foreach(_.lock.lock())
       val res = if (!cc.exists(_.identCounters.contains(s))) {
         identCounters.put(s, 0)
         s
@@ -192,7 +192,7 @@ trait DefaultNameGenerator extends NameGenerator {
         identCounters.put(newS, 0)
         newS
       }
-      cc.foreach(_.lock.release())
+      cc.foreach(_.lock.unlock())
       res
     }
 

@@ -8,7 +8,7 @@ package viper.silver.testing
 
 import java.nio.file._
 import collection.mutable
-import org.scalatest.BeforeAndAfterAll
+import org.scalatest.{ConfigMap, BeforeAndAfterAll}
 import viper.silver.verifier._
 import viper.silver.ast.{TranslatedPosition, SourcePosition}
 import viper.silver.frontend.Frontend
@@ -23,6 +23,9 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
 
   /** The frontend to be used. */
   def frontend(verifier: Verifier, files: Seq[Path]): Frontend
+
+  /** The list of projects under the test. */
+  def projectInfo: ProjectInfo = new ProjectInfo(List("Silver"))
 
   /** Populated by splitting the (key, values) in `configMap` (which is
     * expected to be non-null) into (prefix, actual key, value) triples such
@@ -39,7 +42,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
     *
     * @param configMap The config map provided by ScalaTest.
     */
-  override def beforeAll(configMap: Map[String, Any]) {
+  override def beforeAll(configMap: ConfigMap) {
     this.configMap = configMap
     verifiers foreach (_.start())
   }
@@ -82,7 +85,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
   private case class VerifierUnderTest(verifier: Verifier)
     extends SystemUnderTest with TimingUtils {
 
-    val projectName: String = verifier.name
+    val projectInfo: ProjectInfo = SilSuite.this.projectInfo.update(verifier.name)
 
     def run(input: AnnotatedTestInput): Seq[AbstractOutput] = {
       val fe = frontend(verifier, input.files)

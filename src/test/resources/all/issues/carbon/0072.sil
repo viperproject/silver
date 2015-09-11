@@ -1,0 +1,10 @@
+field frac: Perm
+field data: Ref
+
+method run(this: Ref)
+  requires this != null
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  ensures acc(this.data, this.frac)
+{
+  assume false
+}

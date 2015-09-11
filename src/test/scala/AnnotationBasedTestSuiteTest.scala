@@ -7,7 +7,7 @@
 package viper.silver
 
 import org.scalatest.{BeforeAndAfter, FunSuite}
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.Matchers
 import viper.silver.testing._
 import java.nio.file.{FileSystems, Path}
 import viper.silver.testing.OutputAnnotationId
@@ -37,7 +37,7 @@ case class DummyOutput(file: Path, lineNr: Int, fullId: String) extends Abstract
 }
 
 /** Tests [[viper.silver.testing.OutputMatcher]]. */
-class OutputMatcherTest extends FunSuite with BeforeAndAfter with ShouldMatchers {
+class OutputMatcherTest extends FunSuite with BeforeAndAfter with Matchers {
   import TestFixtures._
 
   test("expected output") {
@@ -73,7 +73,7 @@ class OutputMatcherTest extends FunSuite with BeforeAndAfter with ShouldMatchers
 }
 
 /** Tests [[viper.silver.testing.TestAnnotations]]. */
-class TestAnnotationsTest extends FunSuite with BeforeAndAfter with ShouldMatchers {
+class TestAnnotationsTest extends FunSuite with BeforeAndAfter with Matchers {
   import TestFixtures._
 
   val annotations = TestAnnotations(
@@ -81,7 +81,7 @@ class TestAnnotationsTest extends FunSuite with BeforeAndAfter with ShouldMatche
     annotations = Seq(expectedFoo1, unexpectedFoo1Carbon, missingFoo1Silicon))
 
   test("filtering by project") {
-    val newAnnotations = annotations.filterByProject("Carbon")
+    val newAnnotations = annotations.filterByProject(new ProjectInfo(List("Carbon")))
     newAnnotations.errors should be (annotations.errors)
     newAnnotations.annotations should be (Seq(expectedFoo1, unexpectedFoo1Carbon))
   }
@@ -119,7 +119,7 @@ class TestAnnotationsTest extends FunSuite with BeforeAndAfter with ShouldMatche
 }
 
 /** Tests [[viper.silver.testing.OutputAnnotationId]]. */
-class OutputAnnotationIdTest extends FunSuite with BeforeAndAfter with ShouldMatchers {
+class OutputAnnotationIdTest extends FunSuite with BeforeAndAfter with Matchers {
   val foo = OutputAnnotationId("foo", None)
   val fooBar = OutputAnnotationId("foo", Some("bar"))
 

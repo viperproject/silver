@@ -1,0 +1,12 @@
+field Ref__Integer_value: Int
+
+method Ref__zero(diz: Ref, M: Int, N: Int, step: Int, matrix: Seq[Ref])
+  requires diz != null
+  requires (M > 0) && (N > 0) && (step > N)
+  requires N <= step
+  requires (forall j1: Int :: (j1 in [0..M * step)) && (j1 % step < N) ==> acc(matrix[j1].Ref__Integer_value, write))
+{
+  var __flatten_1: Ref
+  __flatten_1 := matrix[0]
+  __flatten_1.Ref__Integer_value := 0
+}

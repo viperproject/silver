@@ -26,6 +26,7 @@ method main(this:Ref)
   requires acc(this.val,write)
 {
   this.ar[3].val:=false
+
   assume count(this.ar,|this.ar|)==3
   assert count(this.ar,|this.ar|)==3
 }
