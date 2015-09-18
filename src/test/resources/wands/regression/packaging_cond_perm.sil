@@ -17,7 +17,7 @@ method t02(x: Ref)
     
   exhale acc(x.f,1/4)
   
-//:: ExpectedError(exhale.failed:insufficient.permission)  
+//:: ExpectedOutput(exhale.failed:insufficient.permission)  
   exhale acc(x.f,1/4)
 }
 
@@ -27,7 +27,7 @@ requires acc(x.f,3/4)
 {
   package true --* (acc(x.f, 1/4) && acc(x.f, (x.f > 0 ? 1/4: 1/2)) )
     
-//:: ExpectedError(exhale.failed:insufficient.permission)
+//:: ExpectedOutput(exhale.failed:insufficient.permission)
   exhale(acc(x.f,1/4)) //shouldn't work, since can't prove that x.f > 0
 }
 
@@ -50,7 +50,7 @@ requires x.f > 0
 {
   package true --* (acc(x.f, 1/4) && acc(x.f, (x.f > 0 ? 1/4: 1/2)) )
 
-  //:: ExpectedError(exhale.failed:insufficient.permission)  
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)  
   exhale(acc(x.f,1/2))
 }
 
