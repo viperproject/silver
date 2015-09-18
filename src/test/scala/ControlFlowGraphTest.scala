@@ -6,14 +6,12 @@
 
 package viper.silver
 
-import org.scalatest.{BeforeAndAfter, FunSuite}
+import org.scalatest.{Matchers, BeforeAndAfter, FunSuite}
 import viper.silver.ast._
 import viper.silver.ast.utility.ControlFlowGraph
-import java.lang.RuntimeException
 import java.nio.file.FileSystems
-import org.scalatest.matchers.ShouldMatchers
 
-class ControlFlowGraphTest extends FunSuite with BeforeAndAfter with ShouldMatchers {
+class ControlFlowGraphTest extends FunSuite with BeforeAndAfter with Matchers {
   // Some AST nodes that are useful to construct test CFGs
   val emptyStmt = Seqn(Seq.empty)()
   val nonEmptyStmt = Assert(TrueLit()())()

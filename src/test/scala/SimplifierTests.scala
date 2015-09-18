@@ -7,12 +7,11 @@
 package viper.silver
 
 import scala.language.implicitConversions
-import org.scalatest.FunSuite
-import org.scalatest.matchers.ShouldMatchers
+import org.scalatest.{Matchers, FunSuite}
 import ast._
 import ast.utility.Transformer._
 
-class SimplifierTests extends FunSuite with ShouldMatchers {
+class SimplifierTests extends FunSuite with Matchers {
   test("div and mod") {
     val e1 = Div(0, 0)()
     val e2 = Mod(0, 0)()
