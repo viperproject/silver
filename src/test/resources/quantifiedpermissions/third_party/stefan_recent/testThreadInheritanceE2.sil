@@ -368,6 +368,8 @@ method Main__main(current_thread_id: Int) returns (sys__thrown: Ref)
   sys__thrown := Worker__join(w, current_thread_id, write)
   assert w.Worker__input == 7
   sys__thrown := Worker__open_postJoin_at_Worker(w, current_thread_id, write)
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    // confirmed by Stefan Blom    
   assert w.Worker__output == 8
 }
 

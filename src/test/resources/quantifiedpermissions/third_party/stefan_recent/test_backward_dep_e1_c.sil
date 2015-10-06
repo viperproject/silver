@@ -110,6 +110,8 @@ method Ref__loop_body_54(diz: Ref, current_thread_id: Int, len: Int, b: Seq[Ref]
   __flatten_4 := a[i]
   __flatten_6 := b[i]
   __flatten_5 := __flatten_6.Ref__Integer_value + 1
+    //:: ExpectedOutput(assignment.failed:insufficient.permission)
+    // confirmed by Stefan Blom    
   __flatten_4.Ref__Integer_value := __flatten_5
   if (i > 0) {
     Ref__recv_body_145(diz, current_thread_id, a, i)

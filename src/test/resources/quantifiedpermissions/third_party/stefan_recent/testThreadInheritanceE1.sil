@@ -376,6 +376,8 @@ method Main__main(current_thread_id: Int) returns (sys__thrown: Ref)
   assert w.Worker__input == 7
   sys__thrown := Worker__open_postJoin_at_Worker(w, current_thread_id, write)
   unfold acc(Worker__postJoin_at_Worker(w, write), write)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    // confirmed by Stefan Blom    
   assert w.Worker__output == 7
 }
 

@@ -22,6 +22,8 @@ method Ref__Mul(diz: Ref, current_thread_id: Int, n: Int) returns (sys__result: 
   diz.Ref__res := __flatten_4
   while (i < n)
     invariant acc(diz.Ref__res, write)
+    //:: ExpectedOutput(invariant.not.preserved:assertion.false)
+    // confirmed by Stefan Blom    
     invariant i <= n
     invariant diz.Ref__res == i * n 
   {

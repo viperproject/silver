@@ -118,6 +118,8 @@ method Ref__loop_body_54(diz: Ref, current_thread_id: Int, len: Int, b: Seq[Ref]
     Ref__recv_body_148(diz, current_thread_id, a, i)
     __flatten_9 := c[i]
     __flatten_11 := a[i + 1]
+    //:: ExpectedOutput(assignment.failed:receiver.null)
+    // confirmed by Stefan Blom    
     __flatten_10 := __flatten_11.Ref__Integer_value + 2
     __flatten_9.Ref__Integer_value := __flatten_10
   }

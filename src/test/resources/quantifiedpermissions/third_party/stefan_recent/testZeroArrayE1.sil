@@ -65,6 +65,8 @@ method Ref__loop_body_23(diz: Ref, current_thread_id: Int, len: Int, ar: Seq[Ref
   ensures (0 <= i) && (i < len)
   ensures |ar| == len
   ensures acc(ar[i].Ref__Integer_value, write)
+    //:: ExpectedOutput(postcondition.violated:assertion.false)
+    // confirmed by Stefan Blom    
   ensures ar[i].Ref__Integer_value == 0
 {
   var __flatten_2: Ref

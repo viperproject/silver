@@ -24,6 +24,8 @@ method zero__main_main(diz: Ref, current_thread_id: Int, tcount: Int, gsize: Int
   ensures |diz.zero__x| == tcount
   ensures diz.zero__x == old(diz.zero__x)
   ensures acc(diz.zero__x[tid].Ref__Integer_value, write)
+    //:: ExpectedOutput(postcondition.violated:assertion.false)
+    // confirmed by Stefan Blom    
   ensures diz.zero__x[tid].Ref__Integer_value == 0
 {
   var __last_barrier: Int

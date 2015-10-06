@@ -457,6 +457,8 @@ method Tree__del_min(diz: Ref, current_thread_id: Int, top: Ref) returns (sys__r
     __flatten_82 := __flatten_41
     cur.Tree__left := __flatten_82
     fold acc(Tree__state(cur), write)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    // confirmed by Stefan Blom    
     assert Tree__tolist(cur) == cur_contents[1..]
     assert acc(Tree__state(cur), write) && (Tree__tolist(cur) == Tree__tolist(cur))
     assert acc(Tree__state(cur), write) && (Tree__tolist(cur) == cur_contents[1..])

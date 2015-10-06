@@ -29,5 +29,7 @@ method Ref__zero(diz: Ref, current_thread_id: Int, M: Int, N: Int, step: Int, ma
   __flatten_1 := __flatten_2
   __flatten_3 := matrix[__flatten_1]
   __flatten_4 := 0
+      //:: ExpectedOutput(assignment.failed:receiver.null)
+      // confirmed by Stefan Blom
   __flatten_3.Ref__Integer_value := __flatten_4
 }
