@@ -692,7 +692,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(acc.loc, Pred)
         acceptNonAbstractPredicateAccess(acc, "abstract predicates cannot be unfolded")
         check(body, expected)
-        setType(exp.typ)
+        setType(body.typ)
       case PLet(exp1, nestedScope @ PLetNestedScope(variable, body)) =>
         check(exp1, Nil)
         val oldCurMember = curMember
