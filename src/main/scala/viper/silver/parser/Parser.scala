@@ -94,7 +94,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   /** A helper method for wrapping keywords so that identifiers that have a keyword as their
     *  prefix are parsed correctly.*/
-  private def keyword(identifier: String) = (not(s"${identifier}${identOtherLetter}".r) ~> identifier)
+  private def keyword(identifier: String) = not(s"$identifier$identOtherLetter".r) ~> identifier
 
   /**
    * All keywords of SIL.
@@ -153,12 +153,15 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val programDecl =
     rep(defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
       case decls =>
-        val globalDefines = decls.collect{case d: PDefine => d}
+        var globalDefines: Seq[PDefine] = decls.collect{case d: PDefine => d}
+        globalDefines = expandDefines(globalDefines, globalDefines)
+
         val fields = decls collect { case d: PField => d }
 
         val methods = decls collect {
           case meth: PMethod =>
-            val localDefines = meth.deepCollect {case n: PDefine => n}
+            var localDefines = meth.deepCollect {case n: PDefine => n}
+            localDefines = expandDefines(localDefines ++ globalDefines, localDefines)
 
             val methWithoutDefines =
               if (localDefines.isEmpty)
@@ -168,12 +171,12 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
                   case la: PDefine => PSkip().setPos(la)
                 }()
 
-            substituteDefines(localDefines ++ globalDefines, methWithoutDefines)
+            expandDefines(localDefines ++ globalDefines, methWithoutDefines)
         }
 
-        val domains = decls collect { case d: PDomain => substituteDefines(globalDefines, d) }
-        val functions = decls collect { case d: PFunction => substituteDefines(globalDefines, d) }
-        val predicates = decls collect { case d: PPredicate => substituteDefines(globalDefines, d) }
+        val domains = decls collect { case d: PDomain => expandDefines(globalDefines, d) }
+        val functions = decls collect { case d: PFunction => expandDefines(globalDefines, d) }
+        val predicates = decls collect { case d: PPredicate => expandDefines(globalDefines, d) }
 
         PProgram(file, domains, fields, functions, predicates, methods)
     }
@@ -557,27 +560,85 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       result
     }.asInstanceOf[E]
 
-  private def substituteDefines[N <: PMember](defines: Seq[PDefine], pnode: N): N = {
+  private def expandDefines(defines: Seq[PDefine], toExpand: Seq[PDefine]): Seq[PDefine] = {
+    val maxCount = 25
+      /* TODO: Totally arbitrary cycle breaker. We should properly detect
+       * (mutually) recursive named assertions.
+       */
+    var count = 0
+    var definesToExpand = toExpand
+    var expandedIds = Seq[String]()
+
+    do {
+      expandedIds = Seq.empty
+      count += 1
+
+      definesToExpand = definesToExpand.map(define => {
+        val optExpandedDefine = doExpandDefines[PDefine](defines, define)
+        expandedIds = optExpandedDefine.map(_.idndef.name).toSeq ++ expandedIds
+
+        optExpandedDefine.getOrElse(define)
+      })
+    } while (expandedIds.nonEmpty && count <= maxCount)
+
+    if (count > maxCount)
+      sys.error(  s"Couldn't expand all named assertions in $maxCount cycles. "
+                + s"Might there be a mutual recursion involving $expandedIds?")
+
+    definesToExpand
+  }
+
+  @inline
+  private def expandDefines[N <: PNode](defines: Seq[PDefine], node: N): N =
+    doExpandDefines(defines, node).getOrElse(node)
+
+  private def doExpandDefines[N <: PNode](defines: Seq[PDefine], node: N): Option[N] = {
+    var expanded = false
+
     def lookupOrElse(piu: PIdnUse, els: PExp) =
       defines.find(_.idndef.name == piu.name).fold[PExp](els) _
 
-    pnode.transform {
-      case piu: PIdnUse =>
-        lookupOrElse(piu, piu)(_.exp)
+    val potentiallyExpandedNode =
+      node.transform {
+        case piu: PIdnUse =>
+          /* Potentially expand a named assertion that takes no arguments, e.g. A.
+           * If piu (which is a symbol) denotes a named assertion (i.e. if there
+           * is a define in defines whose name is piu), then it is replaced by
+           * the body of the named assertion.
+           */
+          lookupOrElse(piu, piu)(define => {
+            expanded = true
 
-      case fapp: PFunctApp =>
-        lookupOrElse(fapp.func, fapp)(define => define.args match {
-          case None => fapp
-          case Some(args) if fapp.args.length != args.length => fapp
-          case Some(args) =>
-            define.exp.transform {
-              case piu: PIdnUse =>
-                args.indexWhere(_.name == piu.name) match {
-                  case -1 => piu
-                  case i => fapp.args(i)
-                }
-            }() : PExp /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
-        })
-    }()
+            define.exp
+          })
+
+        case fapp: PFunctApp =>
+          /* Potentially expand a named assertion that takes arguments, e.g. A(x, y) */
+          lookupOrElse(fapp.func, fapp)(define => define.args match {
+            case None =>
+              /* There is a named assertion with name `func`, but the named
+               * assertion takes arguments. Hence, the fapp cannot denote the
+               * use of a named assertion.
+               */
+              fapp
+            case Some(args) if fapp.args.length != args.length =>
+              /* Similar to the previous case */
+              fapp
+            case Some(args) =>
+              expanded = true
+
+              define.exp.transform {
+                /* Expand the named assertion's formal arguments by the given actual arguments */
+                case piu: PIdnUse =>
+                  args.indexWhere(_.name == piu.name) match {
+                    case -1 => piu
+                    case i => fapp.args(i)
+                  }
+              }() : PExp /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
+          })
+      }()
+
+    if (expanded) Some(potentiallyExpandedNode)
+    else None
   }
 }
