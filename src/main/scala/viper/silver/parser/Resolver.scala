@@ -6,6 +6,8 @@
 
 package viper.silver.parser
 
+import viper.silver.ast.utility.Visitor
+
 import scala.collection.mutable
 import scala.reflect._
 import org.kiama.util.Messaging
@@ -1074,6 +1076,30 @@ case class NameAnalyser() {
             if (!i.parent.isInstanceOf[PDomainType]) {
               messages ++= Messaging.message(i, s"identifier $name not defined.")
             }
+          // local variables must not be used in pre- or postconditions
+          // see Silver issue #56
+          case localVar : PLocalVarDecl => {
+            getContainingMethod(localVar) match {
+              case Some(PMethod(_, args, returns, pres, posts, _)) => {
+                if (pres.exists(pre => Visitor.hasSubnode(pre, i, Nodes.subnodes)) || posts.exists(post => Visitor.hasSubnode(post, i, Nodes.subnodes))){
+                  messages ++= Messaging.message(i, s"local variable $name cannot be accessed in pre- or postcondition.")
+                }
+              }
+              case _ =>
+            }
+          }
+          // return parameters must not be used in preconditions
+          // see Silver issue #77
+          case arg : PFormalArgDecl => {
+            getContainingMethod(arg) match {
+              case Some(PMethod(_, args, returns, pres, posts, _)) => {
+                if (returns.contains(arg) && pres.exists(pre => Visitor.hasSubnode(pre, i, Nodes.subnodes))){
+                  messages ++= Messaging.message(i, s"return variable $name cannot be accessed in precondition.")
+                }
+              }
+              case _ =>
+            }
+          }
           case _ =>
         }
       case _ =>
@@ -1084,5 +1110,18 @@ case class NameAnalyser() {
     })
 
     messages.isEmpty
+  }
+
+  def getContainingMethod(node : PNode) : Option[PMethod] = {
+    return node match {
+      case null => None
+      case method : PMethod => Some(method)
+      case nonMethod => {
+        nonMethod.parent match {
+          case parentNode : PNode => getContainingMethod(parentNode)
+          case _ => None
+        }
+      }
+    }
   }
 }
