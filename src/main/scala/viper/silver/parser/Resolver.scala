@@ -6,13 +6,11 @@
 
 package viper.silver.parser
 
-import viper.silver.ast.utility.Visitor
-
 import scala.collection.mutable
 import scala.reflect._
 import org.kiama.util.Messaging
 import viper.silver.ast.MagicWandOp
-import viper.silver.ast.MagicWandOp
+import viper.silver.ast.utility.Visitor
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -1090,6 +1088,23 @@ case class NameAnalyser() {
       }
     }
 
+    def containsSubnode(container : PNode, toFind : PNode) : Boolean = {
+      Visitor.existsDefined(container, Nodes.subnodes){ case found if (found eq toFind) && found != container => }
+    }
+
+    def getContainingMethod(node : PNode) : Option[PMethod] = {
+      return node match {
+        case null => None
+        case method : PMethod => Some(method)
+        case nonMethod => {
+          nonMethod.parent match {
+            case parentNode : PNode => getContainingMethod(parentNode)
+            case _ => None
+          }
+        }
+      }
+    }
+
     // find all declarations
     p.visit( nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
 
@@ -1111,7 +1126,7 @@ case class NameAnalyser() {
           case localVar : PLocalVarDecl => {
             getContainingMethod(localVar) match {
               case Some(PMethod(_, args, returns, pres, posts, _)) => {
-                if (pres.exists(pre => Visitor.hasSubnode(pre, i, Nodes.subnodes)) || posts.exists(post => Visitor.hasSubnode(post, i, Nodes.subnodes))){
+                if (pres.exists(pre => containsSubnode(pre, i)) || posts.exists(post => containsSubnode(post, i))){
                   messages ++= Messaging.message(i, s"local variable $name cannot be accessed in pre- or postcondition.")
                 }
               }
@@ -1123,7 +1138,7 @@ case class NameAnalyser() {
           case arg : PFormalArgDecl => {
             getContainingMethod(arg) match {
               case Some(PMethod(_, args, returns, pres, posts, _)) => {
-                if (returns.contains(arg) && pres.exists(pre => Visitor.hasSubnode(pre, i, Nodes.subnodes))){
+                if (returns.contains(arg) && pres.exists(pre => containsSubnode(pre, i))){
                   messages ++= Messaging.message(i, s"return variable $name cannot be accessed in precondition.")
                 }
               }
@@ -1140,18 +1155,5 @@ case class NameAnalyser() {
     })
 
     messages.isEmpty
-  }
-
-  def getContainingMethod(node : PNode) : Option[PMethod] = {
-    return node match {
-      case null => None
-      case method : PMethod => Some(method)
-      case nonMethod => {
-        nonMethod.parent match {
-          case parentNode : PNode => getContainingMethod(parentNode)
-          case _ => None
-        }
-      }
-    }
   }
 }
