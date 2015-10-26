@@ -6,6 +6,8 @@
 
 package viper.silver.parser
 
+import viper.silver.ast.utility.Visitor
+
 import scala.collection.mutable
 import scala.reflect._
 import org.kiama.util.Messaging
@@ -690,7 +692,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(acc.loc, Pred)
         acceptNonAbstractPredicateAccess(acc, "abstract predicates cannot be unfolded")
         check(body, expected)
-        setType(exp.typ)
+        setType(body.typ)
       case PLet(exp1, nestedScope @ PLetNestedScope(variable, body)) =>
         check(exp1, Nil)
         val oldCurMember = curMember
@@ -1070,6 +1072,23 @@ case class NameAnalyser() {
       }
     }
 
+    def containsSubnode(container : PNode, toFind : PNode) : Boolean = {
+      Visitor.existsDefined(container, Nodes.subnodes){ case found if (found eq toFind) && found != container => }
+    }
+
+    def getContainingMethod(node : PNode) : Option[PMethod] = {
+      return node match {
+        case null => None
+        case method : PMethod => Some(method)
+        case nonMethod => {
+          nonMethod.parent match {
+            case parentNode : PNode => getContainingMethod(parentNode)
+            case _ => None
+          }
+        }
+      }
+    }
+
     // find all declarations
     p.visit( nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
 
@@ -1086,6 +1105,30 @@ case class NameAnalyser() {
             if (!i.parent.isInstanceOf[PDomainType]) {
               messages ++= Messaging.message(i, s"identifier $name not defined.")
             }
+          // local variables must not be used in pre- or postconditions
+          // see Silver issue #56
+          case localVar : PLocalVarDecl => {
+            getContainingMethod(localVar) match {
+              case Some(PMethod(_, args, returns, pres, posts, _)) => {
+                if (pres.exists(pre => containsSubnode(pre, i)) || posts.exists(post => containsSubnode(post, i))){
+                  messages ++= Messaging.message(i, s"local variable $name cannot be accessed in pre- or postcondition.")
+                }
+              }
+              case _ =>
+            }
+          }
+          // return parameters must not be used in preconditions
+          // see Silver issue #77
+          case arg : PFormalArgDecl => {
+            getContainingMethod(arg) match {
+              case Some(PMethod(_, args, returns, pres, posts, _)) => {
+                if (returns.contains(arg) && pres.exists(pre => containsSubnode(pre, i))){
+                  messages ++= Messaging.message(i, s"return variable $name cannot be accessed in precondition.")
+                }
+              }
+              case _ =>
+            }
+          }
           case _ =>
         }
       case _ =>
