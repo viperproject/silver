@@ -17,6 +17,6 @@ method test01(x: Ref, b: Bool, c: Bool)
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/000/)
   assert forall j: Int :: unfolding acc(P(x, c)) in fun1(j) > 0
 
-  // :: ExpectedOutput(assert.failed:assertion.false)
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
