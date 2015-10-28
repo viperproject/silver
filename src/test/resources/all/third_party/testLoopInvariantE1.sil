@@ -1,3 +1,5 @@
+//:: IgnoreFile(/Carbon/issue/77/)
+
 field Ref__res: Int
 
 field Ref__Integer_value: Int

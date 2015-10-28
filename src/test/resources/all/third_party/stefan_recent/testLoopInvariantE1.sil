@@ -1,3 +1,5 @@
+//:: IgnoreFile(/Carbon/issue/77/)
+
 field Ref__res: Int
 
 method Ref__Mul(diz: Ref, current_thread_id: Int, n: Int) returns (sys__result: Int)
