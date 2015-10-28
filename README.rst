@@ -13,6 +13,9 @@ Quick Start
 Instructions how to get started with Viper:
 
 +   `Linux <https://bitbucket.org/viperproject/viper-linux-dev/>`_
++   `Mac OS X <https://bitbucket.org/viperproject/documentation/wiki/InstallOSX>`_
++   `Viper-Sublime-IDE <https://bitbucket.org/viperproject/viper-sublime-ide/>`_
+
 
 Syntax Highlighting
 ===================
