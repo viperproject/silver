@@ -246,7 +246,9 @@ object PredicateAccess {
 // --- Conditional expression
 
 /** A conditional expressions. */
-case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
+    extends Exp with ForbiddenInTrigger {
+
   require(cond isSubtype Bool)
   Consistency.checkNoPositiveOnly(cond)
   require(thn.typ == els.typ)
