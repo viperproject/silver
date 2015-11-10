@@ -1,5 +1,3 @@
-//:: IgnoreFile(/carbon/issue/76/)
-
 function prio(this: Ref): Int
 
 /*****************************************************************
@@ -19,9 +17,15 @@ predicate Lseg(this: Ref, end: Ref)
 
 function contentNodes(this: Ref, end: Ref): Seq[Ref]
   requires acc(Lseg(this, end))
-  ensures  this == end ==> result == Seq[Ref]()
+  ensures  this == end <==> result == Seq[Ref]()
+  ensures  this != end ==> 0 < |result|
   ensures  this != end ==> result[0] == unfolding acc(Lseg(this, end)) in this.data
-  ensures  this != end ==> forall i: Int, j: Int :: 0 <= i && i < j && j < |result| ==> prio(result[i]) <= prio(result[j])
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /carbon/issue/76/)
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/181/)
+  ensures  this != end ==>
+    forall i: Int, j: Int ::
+      0 <= i && i < j && j < |result| ==>
+        prio(result[i]) <= prio(result[j])
 {
   this == end ? Seq[Ref]() :
                 unfolding acc(Lseg(this, end)) in (
