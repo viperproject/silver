@@ -6,11 +6,27 @@ method test01(x: Ref)
   assert x != null
 }
 
-method test01_qp(xs: Seq[Ref], y: Ref)
+method test01_client(x: Ref) {
+  //:: ExpectedOutput(call.precondition:receiver.null)
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  //:: MissingOutput(call.precondition:insufficient.permission, /silicon/issue/34/)
+  test01(x)
+}
+
+ method test01_qp(xs: Seq[Ref], y: Ref)
+   requires y in xs
+   requires forall x: Ref :: x in xs ==> acc(x.f)
+ {
+   assert y != null
+ }
+
+method test01_qp_client(xs: Seq[Ref], y: Ref)
   requires y in xs
-  requires forall x: Ref :: x in xs ==> acc(x.f)
 {
-  assert y != null
+  //:: ExpectedOutput(call.precondition:receiver.null)
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  //:: MissingOutput(call.precondition:insufficient.permission, /silicon/issue/34/)
+  test01_qp(xs, y)
 }
 
 method test02(x: Ref, p: Perm)
@@ -21,11 +37,30 @@ method test02(x: Ref, p: Perm)
   assert p != none
 }
 
-method test02_qp(xs: Seq[Ref], y: Ref, p: Perm)
-  requires y in xs
-  requires forall x: Ref :: x in xs ==> acc(x.f, p)
+method test02_client(x: Ref, p: Perm)
+  requires p == none
+  requires acc(x.f, p)
 {
-  assert y != null
+  test02(x, p)
   //:: ExpectedOutput(assert.failed:assertion.false)
-  assert p != none
+  assert false
+}
+
+ method test02_qp(xs: Seq[Ref], y: Ref, p: Perm)
+   requires y in xs
+   requires forall x: Ref :: x in xs ==> acc(x.f, p)
+ {
+   assert y != null
+   //:: ExpectedOutput(assert.failed:assertion.false)
+   assert p != none
+ }
+
+method test02_qp_client(xs: Seq[Ref], y: Ref, p: Perm)
+  requires p == none
+  requires y in xs
+  requires forall x: Ref :: x in xs ==> x != null
+{
+  test02_qp(xs, y, p)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
 }

@@ -14,6 +14,9 @@ method test04() {
   var S: Set[Ref] := Set(s1, s2, s3)
 
   assert forall s: Ref :: s in S ==> acc(s.f)
+  // inhale forall s: Ref :: s in S ==> s.f != null /* TODO: see silicon/issues/179/ */
+  inhale s1.f != null && s2.f != null && s3.f != null
+
   //:: ExpectedOutput(assert.failed:receiver.not.injective)
   assert forall s: Ref :: s in S ==> acc(s.f.g)
 }
