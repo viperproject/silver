@@ -39,7 +39,6 @@ abstract class GenericAxiomRewriter[Type <: AnyRef,
 
   protected def Var_id(v: Var): String
 
-//  protected def Quantification_triggers(q: Quantification): Seq[Trigger]
   protected def Quantification_vars(q: Quantification): Seq[Var]
   protected def Quantification_body(q: Quantification): Exp
   protected def Quantification_copy(q: Quantification, vars: Seq[Var], body: Exp, triggers: Seq[Trigger]): Quantification
