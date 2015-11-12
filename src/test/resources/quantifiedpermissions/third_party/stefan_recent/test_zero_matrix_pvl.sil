@@ -63,7 +63,7 @@ method Ref__loop_main_33(diz: Ref, current_thread_id: Int, matrix: Seq[Ref], N: 
   requires current_thread_id >= 0
   requires (forall j: Int :: (0 <= j) && (j < M * N) ==> acc(matrix[j].Ref__Integer_value, write))
   ensures (forall j: Int :: (0 <= j) && (j < M * N) ==> acc(matrix[j].Ref__Integer_value, write))
-  ensures (forall i: Int :: (0 <= i) && (i < M) ==> (forall j: Int :: (0 <= j) && (j < N) ==> (matrix[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value == 0)))
+  ensures (forall i: Int, j: Int :: (0 <= i) && (i < M) && (0 <= j) && (j < N) ==> (matrix[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value == 0))
 {
   inhale false
 }
@@ -94,7 +94,7 @@ method Ref__matrix(diz: Ref, current_thread_id: Int, M: Int, N: Int, step: Int, 
   requires (M > 0) && (N > 0) && (step >= N)
   requires (forall j1: Int :: (0 <= j1) && (j1 < M * N) ==> acc(matrix[j1].Ref__Integer_value, write))
   ensures (forall j2: Int :: (0 <= j2) && (j2 < M * N) ==> acc(matrix[j2].Ref__Integer_value, write))
-  ensures (forall i3: Int :: (0 <= i3) && (i3 < M) ==> (forall j3: Int :: (0 <= j3) && (j3 < N) ==> (matrix[Ref__multidim_index_2(M, N, i3, j3)].Ref__Integer_value == 0)))
+  ensures (forall i3: Int, j3: Int :: (0 <= i3) && (i3 < M) && (0 <= j3) && (j3 < N) ==> (matrix[Ref__multidim_index_2(M, N, i3, j3)].Ref__Integer_value == 0))
 {
   Ref__loop_main_33(diz, current_thread_id, matrix, N, M)
 }

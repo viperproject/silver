@@ -65,7 +65,7 @@ method Ref__loop_main_68(diz: Ref, current_thread_id: Int, N: Int, M: Int, inp: 
   requires (forall i: Int :: (0 <= i) && (i < N * M) ==> acc(inp[i].Ref__Integer_value, 1 / 4))
   ensures (forall j: Int :: (0 <= j) && (j < M * N) ==> acc(out[j].Ref__Integer_value, write))
   ensures (forall i: Int :: (0 <= i) && (i < N * M) ==> acc(inp[i].Ref__Integer_value, 1 / 4))
-  ensures (forall i: Int :: (0 <= i) && (i < M) ==> (forall j: Int :: (0 <= j) && (j < N) ==> (out[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value == inp[Ref__multidim_index_2(N, M, j, i)].Ref__Integer_value)))
+  ensures (forall i: Int, j: Int :: (0 <= i) && (i < M) && (0 <= j) && (j < N) ==> (out[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value == inp[Ref__multidim_index_2(N, M, j, i)].Ref__Integer_value))
 {
   inhale false
 }
@@ -107,8 +107,8 @@ method Ref__transpose(diz: Ref, current_thread_id: Int, M: Int, N: Int, out: Seq
   ensures (M > 0) && (N > 0)
   ensures (forall j1: Int :: (0 <= j1) && (j1 < M * N) ==> acc(out[j1].Ref__Integer_value, write))
   ensures (forall j1: Int :: (0 <= j1) && (j1 < N * M) ==> acc(inp[j1].Ref__Integer_value, 1 / 2))
-  ensures (forall i: Int :: (0 <= i) && (i < M) ==> (forall j: Int :: (0 <= j) && (j < N) ==> (out[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value == inp[Ref__multidim_index_2(N, M, j, i)].Ref__Integer_value)))
-  ensures (forall i: Int :: (0 <= i) && (i < M) ==> (forall j: Int :: (0 <= j) && (j < N) ==> (inp[Ref__multidim_index_2(N, M, j, i)].Ref__Integer_value == old(inp[Ref__multidim_index_2(N, M, j, i)].Ref__Integer_value))))
+  ensures (forall i: Int, j: Int :: (0 <= i) && (i < M) && (0 <= j) && (j < N) ==> (out[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value == inp[Ref__multidim_index_2(N, M, j, i)].Ref__Integer_value))
+  ensures (forall i: Int, j: Int :: (0 <= i) && (i < M) && (0 <= j) && (j < N) ==> (inp[Ref__multidim_index_2(N, M, j, i)].Ref__Integer_value == old(inp[Ref__multidim_index_2(N, M, j, i)].Ref__Integer_value)))
 {
   Ref__loop_main_68(diz, current_thread_id, N, M, inp, out)
 }
