@@ -22,23 +22,25 @@ object GenericTriggerGenerator {
   trait WrappingTrigger[M <: AnyRef, GPT <: PossibleTrigger[M, GPT], S <: WrappingTrigger[M, GPT, S]] extends PossibleTrigger[M, GPT] {
     def wrappee: GPT
   }
+
+  case class TriggerSet[E](exps: Seq[E])
 }
 
 abstract class GenericTriggerGenerator[Node <: AnyRef,
                                        Type <: AnyRef,
-                                       Exp  <: Node,
-                                       Var <: Node: ClassTag,
-                                       QuantifiedExp <: Exp : ClassTag,
+                                       Exp  <: Node : ClassTag,
+                                       Var <: Node : ClassTag,
+                                       Quantification <: Exp : ClassTag,
                                        PossibleTrigger <: GenericTriggerGenerator.PossibleTrigger[Exp, PossibleTrigger] : ClassTag,
-                                       ForbiddenInTrigger <: GenericTriggerGenerator.ForbiddenInTrigger[Type] : ClassTag,
                                        Old <: Exp : ClassTag,
-                                       WrappingTrigger <: PossibleTrigger with GenericTriggerGenerator.WrappingTrigger[Exp, PossibleTrigger, WrappingTrigger] : ClassTag,
-                                       Trigger <: AnyRef] {
-
+                                       WrappingTrigger <: PossibleTrigger with GenericTriggerGenerator.WrappingTrigger[Exp, PossibleTrigger, WrappingTrigger] : ClassTag] {
   /* 2014-09-22 Malte: I tried to use abstract type members instead of type
    * parameters, but that resulted in the warning "The outer reference in this
    * type test cannot be checked at run time.".
    */
+
+  type TriggerSet = GenericTriggerGenerator.TriggerSet[Exp]
+  val TriggerSet = GenericTriggerGenerator.TriggerSet
 
   /* Node */
   protected def hasSubnode(root: Node, child: Node): Boolean
@@ -47,14 +49,14 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
   protected def reduceTree[A](root: Node)(f: (Node, Seq[A]) => A): A
   protected def transform[N <: Node](root: N)(f: PartialFunction[Node, Node]): N
 
-  /* QuantifiedExp */
-  protected def quantifiedVariables(q: QuantifiedExp): Seq[Var]
+  /* Exp */
+  protected def Exp_typ(exp: Exp): Type
 
-  /* Trigger */
-  protected def exps(t: Trigger): Seq[Exp]
-
+  /* Var */
   protected def Var(id: String, typ:  Type): Var
-  protected def Trigger(exps: Seq[Exp]): Trigger
+
+  /* QuantiQuantifiedExp */
+  protected def Quantification_vars(q: Quantification): Seq[Var]
 
   /* Wrapping triggers */
   protected val wrapperMap: Map[Class[_], PossibleTrigger => WrappingTrigger]
@@ -64,25 +66,32 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
       wrapperMap.find{case (clazz, f) => clazz.isInstance(n)}.map(_._2)
   }
 
+  /* True iff the given node is not allowed in triggers */
+  protected def isForbiddenInTrigger(e: Exp): Boolean
+
+  private var _allowInvalidTriggers = false
+  def allowInvalidTriggers = _allowInvalidTriggers
+  def allowInvalidTriggers_=(allow: Boolean) {_allowInvalidTriggers = allow}
+
   private var nextUniqueId = 0
 
-  def generateTriggers(vs: Seq[Var], toSearch: Exp): Option[(Seq[Trigger], Seq[Var])] =
-    generateTriggerGroups(vs: Seq[Var], toSearch: Exp).headOption
+  def generateTriggerSetGroup(vs: Seq[Var], toSearch: Exp): Option[(Seq[TriggerSet], Seq[Var])] =
+    generateTriggerSetGroups(vs: Seq[Var], toSearch: Exp).headOption
 
-  def generateFirstTriggers(vs: Seq[Var], toSearch: Seq[Exp]): Option[(Seq[Trigger], Seq[Var])] =
+  def generateFirstTriggerSetGroup(vs: Seq[Var], toSearch: Seq[Exp]): Option[(Seq[TriggerSet], Seq[Var])] =
     /* TODO: It would be better to increase the set of terms from which triggers
      * can be computed. That is, if toSearch = [e1, e2, ..., en], then
      * generateTriggers(e1) should be tried first, then generateTriggers(e1, e2),
      * etc. This is, because it could be that only the combination of multiple
      * ei's provides enough terms to cover all quantified variables.
      */
-    toSearch.toStream.flatMap(generateTriggers(vs, _)).headOption
+    toSearch.toStream.flatMap(generateTriggerSetGroup(vs, _)).headOption
 
-  def generateStrictestTrigger(vs: Seq[Var], toSearch: Exp): Option[(Trigger, Seq[Var])] =
-    generateTriggerGroups(vs, toSearch).headOption.map { case (triggerSets, vars) =>
-      val triggerExps = triggerSets.foldLeft(Set[Exp]())((acc, trigger) => acc ++ exps(trigger))
+  def generateStrictestTriggerSet(vs: Seq[Var], toSearch: Exp): Option[(TriggerSet, Seq[Var])] =
+    generateTriggerSetGroups(vs, toSearch).headOption.map { case (triggerSets, vars) =>
+      val triggerExps = triggerSets.foldLeft(Set[Exp]())((acc, trigger) => acc ++ trigger.exps)
 
-      (Trigger(triggerExps.toSeq), vars)
+      (TriggerSet(triggerExps.toSeq), vars)
     }
 
   /* Generates groups of trigger sets to cover the variables `vs`, by searching
@@ -92,7 +101,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
    * variables they require to be quantified over (each list of triggers must
    * contain trigger sets which employ exactly the same extra variables).
    */
-  def generateTriggerGroups(vs: Seq[Var], toSearch: Exp): Seq[(Seq[Trigger], Seq[Var])] = {
+  def generateTriggerSetGroups(vs: Seq[Var], toSearch: Exp): Seq[(Seq[TriggerSet], Seq[Var])] = {
     /* Find suitable function applications */
     val functionApps: (Seq[(PossibleTrigger, Seq[Var], Seq[Var])]) =
       getFunctionAppsContaining(vs, toSearch)
@@ -100,15 +109,15 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
     if (functionApps.isEmpty)
       Seq()
     else {
-      val candidates: Seq[(Trigger, Seq[Var])] = buildTriggersCovering(vs, functionApps, Nil, Seq())
+      val candidates: Seq[(TriggerSet, Seq[Var])] = buildTriggersCovering(vs, functionApps, Nil, Seq())
 
       /* Filter out any trigger sets with redundant terms, e.g., for {g(x),f(g(x))}
        * the entire set is dropped, since the version without redundancy will
        * also be found, i.e., {f(g(x))},
        */
-      val filteredCandidates: Seq[(Trigger, Seq[Var])] =
+      val filteredCandidates: Seq[(TriggerSet, Seq[Var])] =
         candidates.filterNot { case (trigger, _) =>
-          exps(trigger).exists(exp1 => exps(trigger).exists(exp2 => hasSubnode(exp1, exp2)))}
+          trigger.exps.exists(exp1 => trigger.exps.exists(exp2 => hasSubnode(exp1, exp2)))}
 
       /* Remove any trigger sets which are "subsumed" by another trigger set (in
        * the sense that they define a strictly weaker criterion).
@@ -119,16 +128,16 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
        * some unification to spot e.g. that f(g(x),g(y)) is stricter than
        * f(x,y), but this is not done here.
        */
-      var triggerSetsToUse: Seq[(Trigger, Seq[Var])] =
+      var triggerSetsToUse: Seq[(TriggerSet, Seq[Var])] =
         filteredCandidates.filterNot { case pair1 @ (trigger1, _) =>
           filteredCandidates.exists { case pair2 @ (trigger2, _) => (
                pair1 != pair2
-            && exps(trigger1).forall(exp1 => exps(trigger2).exists(exp2 => hasSubnode(exp2, exp1))))
+            && trigger1.exps.forall(exp1 => trigger2.exps.exists(exp2 => hasSubnode(exp2, exp1))))
           }
         }
 
       /* Group trigger sets by those which use the same sets of extra boolean variables */
-      var groupedTriggerSets: Seq[(Seq[Trigger], Seq[Var])] = Seq()
+      var groupedTriggerSets: Seq[(Seq[TriggerSet], Seq[Var])] = Seq()
 
       while (triggerSetsToUse.nonEmpty) {
         triggerSetsToUse.partition(ts => triggerSetsToUse.head._2.equals(ts._2)) match {
@@ -163,7 +172,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
     /* Get all variables bound in nested quantifiers, to avoid considering
      * function applications mentioning these */
     val nestedBoundVars: Seq[Var] =
-      deepCollect(toSearch){ case qe: QuantifiedExp => quantifiedVariables(qe)}.flatten
+      deepCollect(toSearch){ case qe: Quantification => Quantification_vars(qe)}.flatten
 
     /* Get all function applications */
     reduceTree(toSearch)((node: Node, results: Seq[Seq[(PossibleTrigger, Seq[Var], Seq[Var])]]) => node match {
@@ -173,30 +182,19 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
       case possibleTrigger: PossibleTrigger =>
         var extraVars: Seq[Var] = Seq() /* Collect extra variables generated for this term */
         var containsNestedBoundVars = false /* Flag to rule out this term */
-
-        /* Closure to generate fresh LocalVar to replace problematic expressions
-         * which may not occur in triggers
-         */
-        val freshVar: (Type => Var) = ty => {
-          val newV = Var("fresh__" + nextUniqueId, ty)
-          nextUniqueId += 1
-          extraVars +:= newV
-          newV
-        }
-
-        /* Replaces problematic logical/comparison expressions with fresh
-         * boolean variables
-         */
-        val boolExprEliminator: PartialFunction[Node, Var] = {
-          case e: ForbiddenInTrigger => freshVar(e.typ)
-        }
-
         var containedVars: Seq[Var] = Seq()
 
         /* Eliminate all boolean expressions forbidden from triggers, and
          * replace with "extraVars"
          */
-        val processedArgs = possibleTrigger.getArgs map (pt => transform(pt)(boolExprEliminator))
+        val processedArgs = possibleTrigger.getArgs map (pt => transform(pt) {
+          case e: Exp if isForbiddenInTrigger(e) =>
+            val newV = Var("fresh__" + nextUniqueId, Exp_typ(e))
+            nextUniqueId += 1
+            extraVars +:= newV
+
+            newV
+        })
 
         /* Collect all the sought (vs) variables in the function application */
         processedArgs map (arg => visit(arg) {
@@ -226,11 +224,11 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
                             functs: Seq[(PossibleTrigger, Seq[Var], Seq[Var])],
                             currentTrigger: Seq[Exp],
                             extraVars: Seq[Var])
-                           : Seq[(Trigger, Seq[Var])] = {
+                           : Seq[(TriggerSet, Seq[Var])] = {
 
     if (vars.isEmpty)
       /* We have found a suitable trigger set */
-      Seq((Trigger(currentTrigger), extraVars))
+      Seq((TriggerSet(currentTrigger), extraVars))
     else functs match {
       case Nil => Nil /* This branch didn't result in a solution */
       case ((f, vs, extra) +: rest) =>
