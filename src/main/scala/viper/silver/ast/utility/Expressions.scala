@@ -9,6 +9,7 @@ package viper.silver.ast.utility
 import scala.reflect.ClassTag
 
 import viper.silver.ast._
+import viper.silver.ast.utility.Triggers.TriggerGeneration
 
 /** Utility methods for expressions. */
 object Expressions {
@@ -183,46 +184,29 @@ object Expressions {
     leftConds ++ guardedRightConds
   }
 
-  /**
-   * Generates trigger sets to cover the variables "vs", by searching the
-   * expression "toSearch". Returns a list of pairs of lists of trigger sets
-   * couple with the extra variables they require to be quantified over
-   * (each list of triggers must contain trigger sets which employ exactly
-   * the same extra variables).
-   */
-  def generateTrigger(exp: QuantifiedExp): Seq[(Seq[Trigger], Seq[LocalVarDecl])] = {
-    TriggerGeneration.generateTriggerGroups(exp.variables map (_.localVar), exp.exp)
+  /** See [[TriggerGeneration.generateTriggerSetGroups]] */
+  def generateTriggerGroups(exp: QuantifiedExp): Seq[(Seq[TriggerGeneration.TriggerSet], Seq[LocalVarDecl])] = {
+    TriggerGeneration.generateTriggerSetGroups(exp.variables map (_.localVar), exp.exp)
                      .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)()))}
   }
 
   /** Returns the first group of trigger sets (together with newly introduced
-    * variables) returned by `generateTriggers`, or `None` if the latter
-    * didn't return any group.
-    *
-    * @param vs Variables to cover by the trigger sets.
-    * @param exp Expression to generate triggers for.
-    * @return A pair of trigger sets and additional variables (or `None`).
+    * variables) returned by [[Expressions.generateTriggerGroups]], or `None`
+    * if the latter didn't return any group.
     */
-  def potentialTriggers(vs: Seq[LocalVar], exp: Exp): Option[(Seq[Trigger], Seq[LocalVarDecl])] =
-    TriggerGeneration.generateTriggerGroups(vs, exp)
-        .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)()))}
-        .headOption
+  def generateTriggerSet(exp: QuantifiedExp): Option[(Seq[LocalVarDecl], Seq[TriggerGeneration.TriggerSet])] = {
+    val gen = Expressions.generateTriggerGroups(exp)
 
-  object TriggerGeneration extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp, PossibleTrigger,
-                                                           ForbiddenInTrigger, Old, WrappingTrigger, Trigger] {
+    if (gen.nonEmpty)
+      gen.find(pair => pair._2.isEmpty) match {
+        case Some((newTriggers, _)) =>
+          Some((exp.variables, newTriggers))
 
-    protected def hasSubnode(root: Node, child: Node) = root.hasSubnode(child)
-    protected def visit[A](root: Node)(f: PartialFunction[Node, A]) = root.visit(f)
-    protected def deepCollect[A](root: Node)(f: PartialFunction[Node, A]) = root.deepCollect(f)
-    protected def reduceTree[A](root: Node)(f: (Node, Seq[A]) => A) = root.reduceTree(f)
-    protected def transform[N <: Node](root: N)(f: PartialFunction[Node, Node]) = root.transform(f)()
-    protected def quantifiedVariables(q: QuantifiedExp) = q.variables map (_.localVar)
-    protected def exps(t: Trigger) = t.exps
-
-    protected def Trigger(exps: Seq[Exp]) = viper.silver.ast.Trigger(exps)()
-    protected def Var(id: String, typ: Type) = LocalVar(id)(typ)
-
-    protected val wrapperMap: Map[Class[_], PossibleTrigger => WrappingTrigger] = Map(
-      classOf[Old] -> (pt => OldTrigger(pt)(pt.pos,pt.info)))
+        case None =>
+          val (triggers, extraVariables) = gen.head // somewhat arbitrarily take the first choice
+          Some((exp.variables ++ extraVariables, triggers))
+      }
+    else
+      None
   }
 }

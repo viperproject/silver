@@ -30,6 +30,7 @@ method test02(xs: Set[Ref], y: Ref, z: Ref)
 }
 
 method test03(xs: Set[Ref], y: Ref, k0: Perm)
+  requires k0 > none
   requires forall x: Ref :: x in xs ==> acc(x.f, k0)
   ensures  forall x: Ref :: x in xs ==> acc(x.f, wildcard)
   //:: ExpectedOutput(postcondition.violated:insufficient.permission)
