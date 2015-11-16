@@ -104,7 +104,6 @@ method Programmain$(this$_8: Ref, k$_2: Perm)
   tk2.joinable$ := true
   exhale (kant != null) && acc(Philosophervalid$(kant), write)
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/56/)
   assert tk0.joinable$
   inhale true
   tk0.joinable$ := false
