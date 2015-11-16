@@ -21,7 +21,6 @@ function contentNodes(this: Ref, end: Ref): Seq[Ref]
   ensures  this != end ==> 0 < |result|
   ensures  this != end ==> result[0] == unfolding acc(Lseg(this, end)) in this.data
   //:: UnexpectedOutput(postcondition.violated:assertion.false, /carbon/issue/76/)
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/181/)
   ensures  this != end ==>
     forall i: Int, j: Int ::
       0 <= i && i < j && j < |result| ==>
