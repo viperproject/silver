@@ -120,7 +120,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
           trigger.exps.exists(exp1 => trigger.exps.exists(exp2 => hasSubnode(exp1, exp2)))}
 
       /* Remove any trigger sets which are "subsumed" by another trigger set (in
-       * the sense that they define a strictly weaker criterion).
+       * the sense that they define a strictly weaker criterion), as well as any duplicates.
        * The criterion used here is that a set is weaker than another iff every
        * term in the first set is a strict subterm of some term in the second
        * set.
@@ -129,9 +129,9 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
        * f(x,y), but this is not done here.
        */
       var triggerSetsToUse: Seq[(TriggerSet, Seq[Var])] =
-        filteredCandidates.filterNot { case pair1 @ (trigger1, _) =>
-          filteredCandidates.exists { case pair2 @ (trigger2, _) => (
-               pair1 != pair2
+        filteredCandidates.distinct.filterNot { case pair1 @ (trigger1, vs1) =>
+          filteredCandidates.exists { case pair2 @ (trigger2, vs2) => (
+               pair1 != pair2 && vs1.toSet == vs2.toSet // only "subsumed" if we don't need to bind more variables, otherwise the simpler option may really be simpler
             && trigger1.exps.forall(exp1 => trigger2.exps.exists(exp2 => hasSubnode(exp2, exp1))))
           }
         }
