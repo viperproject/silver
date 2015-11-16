@@ -91,12 +91,12 @@ method Ref__loop_main_107(diz: Ref, current_thread_id: Int, step: Int, matrix: S
   requires (forall k: Int :: (0 <= k) && (k < P) ==> acc(hist[k].Ref__Integer_value, write))
   requires N <= step
   requires (forall j: Int :: (0 <= j) && (j < M * step) && (j % step < N) ==> acc(matrix[j].Ref__Integer_value, p))
-  requires (forall i: Int :: (0 <= i) && (i < M) ==> (forall j: Int :: (0 <= j) && (j < N) ==> (0 <= matrix[Ref__multidim_index_2(M, step, i, j)].Ref__Integer_value)))
-  requires (forall i: Int :: (0 <= i) && (i < M) ==> (forall j: Int :: (0 <= j) && (j < N) ==> (matrix[Ref__multidim_index_2(M, step, i, j)].Ref__Integer_value < P)))
+  requires (forall i: Int, j: Int :: (0 <= i) && (i < M) && (0 <= j) && (j < N) ==> (0 <= matrix[Ref__multidim_index_2(M, step, i, j)].Ref__Integer_value))
+  requires (forall i: Int, j: Int :: (0 <= i) && (i < M) && (0 <= j) && (j < N) ==> (matrix[Ref__multidim_index_2(M, step, i, j)].Ref__Integer_value < P))
   ensures (p != none) && (M > 0) && (N > 0) && (step >= N) && (P > 0)
   ensures N <= step
   ensures (forall j: Int :: (0 <= j) && (j < M * step) && (j % step < N) ==> acc(matrix[j].Ref__Integer_value, p))
-  ensures (forall i: Int :: (0 <= i) && (i < M) ==> (forall j: Int :: (0 <= j) && (j < N) ==> (matrix[Ref__multidim_index_2(M, step, i, j)].Ref__Integer_value == old(matrix[Ref__multidim_index_2(M, step, i, j)].Ref__Integer_value))))
+  ensures (forall i: Int, j: Int :: (0 <= i) && (i < M) && (0 <= j) && (j < N) ==> (matrix[Ref__multidim_index_2(M, step, i, j)].Ref__Integer_value == old(matrix[Ref__multidim_index_2(M, step, i, j)].Ref__Integer_value)))
   ensures (forall k: Int :: (0 <= k) && (k < P) ==> acc(hist[k].Ref__Integer_value, write))
   ensures (forall k: Int :: (0 <= k) && (k < P) ==> (hist[k].Ref__Integer_value == old(hist[k].Ref__Integer_value) + count_square(0, 0, N, step, 0, M * step, matrix, k)))
 {
@@ -143,12 +143,12 @@ method Ref__histogram(diz: Ref, current_thread_id: Int, M: Int, N: Int, step: In
   requires (p != none) && (M > 0) && (N > 0) && (step >= N) && (P > 0)
   requires N <= step
   requires (forall j1: Int :: (0 <= j1) && (j1 < M * step) && (j1 % step < N) ==> acc(matrix[j1].Ref__Integer_value, p))
-  requires (forall i1: Int :: (0 <= i1) && (i1 < M) ==> (forall j1: Int :: (0 <= j1) && (j1 < N) ==> (0 <= matrix[Ref__multidim_index_2(M, step, i1, j1)].Ref__Integer_value) && (matrix[Ref__multidim_index_2(M, step, i1, j1)].Ref__Integer_value < P)))
+  requires (forall i1: Int, j1: Int :: (0 <= i1) && (i1 < M) && (0 <= j1) && (j1 < N) ==> (0 <= matrix[Ref__multidim_index_2(M, step, i1, j1)].Ref__Integer_value) && (matrix[Ref__multidim_index_2(M, step, i1, j1)].Ref__Integer_value < P))
   requires (forall i1: Int :: (0 <= i1) && (i1 < P) ==> acc(hist[i1].Ref__Integer_value, write))
   ensures (p != none) && (M > 0) && (N > 0) && (step >= N) && (P > 0)
   ensures N <= step
   ensures (forall j1: Int :: (0 <= j1) && (j1 < M * step) && (j1 % step < N) ==> acc(matrix[j1].Ref__Integer_value, p))
-  ensures (forall i1: Int :: (0 <= i1) && (i1 < M) ==> (forall j1: Int :: (0 <= j1) && (j1 < N) ==> (matrix[Ref__multidim_index_2(M, step, i1, j1)].Ref__Integer_value == old(matrix[Ref__multidim_index_2(M, step, i1, j1)].Ref__Integer_value))))
+  ensures (forall i1: Int, j1: Int :: (0 <= i1) && (i1 < M) && (0 <= j1) && (j1 < N) ==> (matrix[Ref__multidim_index_2(M, step, i1, j1)].Ref__Integer_value == old(matrix[Ref__multidim_index_2(M, step, i1, j1)].Ref__Integer_value)))
   ensures (forall i1: Int :: (0 <= i1) && (i1 < P) ==> acc(hist[i1].Ref__Integer_value, write))
   ensures (forall k: Int :: (0 <= k) && (k < P) ==> (hist[k].Ref__Integer_value == count_square(0, 0, N, step, 0, M * step, matrix, k)))
 {

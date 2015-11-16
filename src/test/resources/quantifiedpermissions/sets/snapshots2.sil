@@ -87,6 +87,8 @@ method test04(xs: Set[Ref], ys: Set[Ref], x: Ref, y: Ref, n: Int)
   requires x != null && y != null // TODO: Should not be necessary, see Silicon issue 61
   requires n >= 0
 {
+  /* TODO: Should not be necessary, see silicon/issues/61/ */
+  assert forall z: Ref :: {z in (xs union ys)}{z in xs} z in (xs union ys) ==> z != null
   var v: Int := fun(xs, x, n)
   y.f := 0
 

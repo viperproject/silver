@@ -90,7 +90,7 @@ method Ref__loop_main_96(diz: Ref, current_thread_id: Int, P: Int, N: Int, M: In
   requires (M > 0) && (N > 0) && (P > 0)
   requires (forall k: Int :: (0 <= k) && (k < P) ==> acc(hist[k].Ref__Integer_value, write))
   requires (forall j: Int :: (0 <= j) && (j < M * N) ==> acc(matrix[j].Ref__Integer_value, 1 / 4))
-  requires (forall i: Int :: (0 <= i) && (i < M) ==> (forall j: Int :: (0 <= j) && (j < N) ==> (0 <= matrix[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value) && (matrix[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value < P)))
+  requires (forall i: Int, j: Int :: (0 <= i) && (i < M) && (0 <= j) && (j < N) ==> (0 <= matrix[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value) && (matrix[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value < P))
   ensures (M > 0) && (N > 0) && (P > 0)
   ensures (forall j: Int :: (0 <= j) && (j < M * N) ==> acc(matrix[j].Ref__Integer_value, 1 / 4))
   ensures (forall k: Int :: (0 <= k) && (k < P) ==> acc(hist[k].Ref__Integer_value, write))
@@ -136,12 +136,12 @@ method Ref__histogram(diz: Ref, current_thread_id: Int, M: Int, N: Int, matrix: 
   requires current_thread_id >= 0
   requires (M > 0) && (N > 0) && (P > 0)
   requires (forall j1: Int :: (0 <= j1) && (j1 < M * N) ==> acc(matrix[j1].Ref__Integer_value, 1 / 2))
-  requires (forall i1: Int :: (0 <= i1) && (i1 < M) ==> (forall j1: Int :: (0 <= j1) && (j1 < N) ==> (0 <= matrix[Ref__multidim_index_2(M, N, i1, j1)].Ref__Integer_value) && (matrix[Ref__multidim_index_2(M, N, i1, j1)].Ref__Integer_value < P)))
+  requires (forall i1: Int, j1: Int :: (0 <= i1) && (i1 < M) && (0 <= j1) && (j1 < N) ==> (0 <= matrix[Ref__multidim_index_2(M, N, i1, j1)].Ref__Integer_value) && (matrix[Ref__multidim_index_2(M, N, i1, j1)].Ref__Integer_value < P))
   requires (forall i1: Int :: (0 <= i1) && (i1 < P) ==> acc(hist[i1].Ref__Integer_value, write))
   ensures (forall j1: Int :: (0 <= j1) && (j1 < M * N) ==> acc(matrix[j1].Ref__Integer_value, 1 / 2))
   ensures (forall i1: Int :: (0 <= i1) && (i1 < P) ==> acc(hist[i1].Ref__Integer_value, write))
   ensures (forall k: Int :: (0 <= k) && (k < P) ==> (hist[k].Ref__Integer_value == count_array(0, M * N, matrix, k)))
-  ensures (forall i1: Int :: (0 <= i1) && (i1 < M) ==> (forall j1: Int :: (0 <= j1) && (j1 < N) ==> (matrix[Ref__multidim_index_2(M, N, i1, j1)].Ref__Integer_value == old(matrix[Ref__multidim_index_2(M, N, i1, j1)].Ref__Integer_value))))
+  ensures (forall i1: Int, j1: Int :: (0 <= i1) && (i1 < M) && (0 <= j1) && (j1 < N) ==> (matrix[Ref__multidim_index_2(M, N, i1, j1)].Ref__Integer_value == old(matrix[Ref__multidim_index_2(M, N, i1, j1)].Ref__Integer_value)))
 {
   Ref__loop_main_76(diz, current_thread_id, P, hist)
   Ref__loop_main_96(diz, current_thread_id, P, N, M, matrix, hist)

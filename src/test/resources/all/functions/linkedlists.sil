@@ -1,5 +1,5 @@
 // NOTES (important points are also commented in the code below)
-// (1) The definition of list(xs) precludes the case xs==null. But, without unfolding the predicate, this information is not available. This is important for e.g., 
+// (1) The definition of list(xs) precludes the case xs==null. But, without unfolding the predicate, this information is not available. This is important for e.g.,
 // showing that length increases by 1 when prepending. For now, the explicit non-nullity of the argument has been conjoined everywhere.
 // (2) The definition of the function ascending in terms of the function head means that framing head is often necessary. This is true even in cases where the head
 // element is "clear", e.g. when a postcondition about elems is also written, since relating the sequence to the head() function is not automatic.
@@ -164,8 +164,7 @@ method test02(xs: Ref, x: Int, ys: Ref)
 {
   xs.val := x
   xs.next := ys
-  
+
   fold acc(list(xs))
-  
   assert forall i: Int :: i in [1..length(xs)) ==> get(xs, i) == unfolding acc(list(xs), write) in get(ys, i - 1)
 }

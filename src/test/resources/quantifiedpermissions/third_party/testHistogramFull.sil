@@ -116,7 +116,11 @@ method Ref__histogram(diz: Ref, M: Int, N: Int, step: Int, matrix: Seq[Ref], P: 
   requires (M > 0) && (N > 0) && (step >= N) && (P > 0)
   requires N <= step
   requires (forall j1: Int :: (j1 in [0..M * step)) && (j1 % step < N) ==> acc(matrix[j1].Ref__Integer_value, 1 / 2))
-  requires (N <= step) && (forall k_fresh_rw_0: Int :: (k_fresh_rw_0 in [0..M * step)) && (k_fresh_rw_0 % step < N) ==> (matrix[k_fresh_rw_0].Ref__Integer_value in [0..P)))
+  requires (N <= step)
+  requires forall k_fresh_rw_0: Int :: {matrix[k_fresh_rw_0]}
+    (k_fresh_rw_0 in [0..M * step)) && (k_fresh_rw_0 % step < N)
+      ==>
+    (matrix[k_fresh_rw_0].Ref__Integer_value in [0..P))
   requires (forall i1: Int :: (i1 in [0..P)) ==> acc(hist[i1].Ref__Integer_value, write))
   ensures (M > 0) && (N > 0) && (step >= N) && (P > 0)
   ensures N <= step

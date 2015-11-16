@@ -1,0 +1,79 @@
+field f1: Int
+field f2: Int
+field f3: Int
+
+method noFields()
+{
+  var r1: Ref
+  var r2: Ref
+  assert forallrefs[f1] r :: r.f1 > 0
+  assert forallrefs[f2] r :: r.f2 > 0
+  assert forallrefs[f1,f2] r :: r.f1 > 0
+  assert forallrefs[f1,f2] r :: r.f2 > 0
+  assert forallrefs[f1,f2] r :: r.f1 > 0 && r.f2 > 0
+}
+
+method noFields2()
+{
+  var r1: Ref
+  var r2: Ref
+  inhale acc(r1.f3)
+  assert forallrefs[f1] r :: r.f1 > 0
+  assert forallrefs[f2] r :: r.f2 > 0
+  assert forallrefs[f1,f2] r :: r.f1 > 0
+  assert forallrefs[f1,f2] r :: r.f2 > 0
+  assert forallrefs[f1,f2] r :: r.f1 > 0 && r.f2 > 0
+}
+
+method permOnlyOneField()
+{
+  var r1: Ref
+  var r2: Ref
+  inhale acc(r1.f1) && r1.f1 > 0
+  assert forallrefs[f1] r :: r.f1 > 0
+  assert forallrefs[f2] r :: r.f2 > 0
+  assert forallrefs[f1,f2] r :: r.f1 > 0
+}
+
+method permOnlyOneField1()
+{
+  var r1: Ref
+  var r2: Ref
+  inhale acc(r1.f1) && r1.f1 > 0
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert forallrefs[f1,f2] r :: r.f2 > 0
+}
+
+method permOnlyOneField2()
+{
+  var r1: Ref
+  var r2: Ref
+  inhale acc(r1.f1) && r1.f1 > 0
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert forallrefs[f1,f2] r :: r.f1 > 0 && r.f2 > 0
+}
+
+method permCheck1()
+{
+  var r1: Ref
+  var r2: Ref
+  assert forallrefs[f1,f2] r :: false
+}
+
+method permCheck2()
+{
+  var r1: Ref
+  var r2: Ref
+  inhale acc(r1.f1)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert forallrefs[f1,f2] r :: false
+}
+
+method permCheck3()
+{
+  var r1: Ref
+  var r2: Ref
+  inhale acc(r1.f1)
+  exhale acc(r1.f1)
+  assert forallrefs[f1,f2] r :: false
+}
