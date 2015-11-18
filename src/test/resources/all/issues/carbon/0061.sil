@@ -42,7 +42,6 @@ method Programmain$(this: Ref, k$: Perm)
   consumer := new(joinable$, Consumerbuffer$)
   Consumerinit$(consumer)
   exhale acc(Consumervalid$(consumer), write)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/61/)
   assert tkP.joinable$
 }
 
