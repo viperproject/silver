@@ -1,0 +1,15 @@
+field f: Int
+field next: Ref
+
+predicate valid(self: Ref) {
+    acc(self.f)
+}
+
+method read(a: Ref)
+    requires acc(valid(a), write)
+    ensures acc(valid(a), write)
+{
+    //:: ExpectedOutput(assertion.failed:receiver.null)
+    //:: MissingOutput(assertion.failed:receiver.null, /Carbon/issue/81/)
+    assert perm(a.f) == none
+} 
