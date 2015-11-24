@@ -99,6 +99,7 @@ case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo) ex
 // --- Accessibility predicates
 
 /** A common trait for accessibility predicates. */
+// Note: adding extra instances of AccessPredicate will require adding cases to viper.silver.ast.utility.multiplyExpByPerm method
 sealed trait AccessPredicate extends Exp {
   require(perm isSubtype Perm)
   def loc: LocationAccess
