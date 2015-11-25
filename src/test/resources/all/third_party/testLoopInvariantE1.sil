@@ -1,5 +1,3 @@
-//:: IgnoreFile(/Carbon/issue/77/)
-
 field Ref__res: Int
 
 field Ref__Integer_value: Int
@@ -26,6 +24,8 @@ method Ref__Mul(diz: Ref, n: Int) returns (sys__result: Int)
     invariant acc(diz.Ref__res, write)
     //:: ExpectedOutput(invariant.not.preserved:assertion.false)
     invariant i <= n
+    //:: ExpectedOutput(invariant.not.preserved:assertion.false)
+    //:: MissingOutput(invariant.not.preserved:assertion.false, /Silicon/issue/34/)
     invariant diz.Ref__res == i * n 
   {
     __flatten_4 := diz.Ref__res + n
