@@ -32,7 +32,7 @@ method bar(self: Ref, rd: Perm)
   unfold acc(valid__Cell(self, rd), rd)
   //:: UnexpectedOutput(assert.failed:insufficient.permission, /Silicon/issue/183/)
   //:: UnexpectedOutput(assert.failed:insufficient.permission, /Carbon/issue/83/)
-  assert self.v == 1
+  assert self.v >= self.v
 }
 
 method bar_gist(self: Ref, rd: Perm)

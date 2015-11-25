@@ -1,3 +1,4 @@
+//:: IgnoreFile(/Carbon/issue/85/)
 // chaliceSuite/examples/iterator2.chalice
 domain GlobalKPermission {
 
