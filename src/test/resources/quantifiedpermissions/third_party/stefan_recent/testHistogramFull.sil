@@ -1,3 +1,5 @@
+//:: IgnoreFile(/silicon/issue/148/)
+
 field Ref__Integer_value: Int
 
 function Ref__multidim_index_2(N0: Int, N1: Int, i0: Int, i1: Int): Int
@@ -154,4 +156,11 @@ method Ref__histogram(diz: Ref, current_thread_id: Int, M: Int, N: Int, step: In
 {
   Ref__loop_main_87(diz, current_thread_id, P, hist)
   Ref__loop_main_107(diz, current_thread_id, step, matrix, P, N, M, p, hist)
+
+  /* Corresponds to the last postcondition.
+   * Uncomment, and Silicon/Z3 won't terminate.
+   */
+//  var k0: Int
+//  assume  (0 <= k0) && (k0 < P)
+//  assert (hist[k0].Ref__Integer_value == count_square(0, 0, N, step, 0, M * step, matrix, k0))
 }

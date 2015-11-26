@@ -406,8 +406,12 @@ method Tree__del_min(diz: Ref, current_thread_id: Int, top: Ref) returns (sys__r
     assert Tree__tolist(top.Tree__left) == Seq[Int]()
     __flatten_36 := top.Tree__right
     sys__result := __flatten_36
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/169/)
+
+    /* Previously, this assert failed as-is, but succeeded when it was split into
+     * three dedicated asserts.
+     */
     assert ((sys__result != null) ==> acc(Tree__state(sys__result), write)) && (old(Tree__tolist(top))[1..] == Tree__tolist(sys__result)) && (old(Tree__sorted(top)) ==> Tree__sorted(sys__result))
+    
     inhale false
   } else {
     cur := top
