@@ -13,6 +13,7 @@ method foo_fail(self: Ref, rd: Perm)
   requires acc(valid__Cell(self, rd), rd)
   requires none < rd && rd < write
   //:: UnexpectedOutput(not.wellformed:insufficient.permission, /Silicon/issue/183/)
+  //:: UnexpectedOutput(not.wellformed:insufficient.permission, /Carbon/issue/83/)
   requires (unfolding acc(valid__Cell(self, rd), rd) in self.v) == 1
 {}
 
@@ -20,6 +21,7 @@ method foo_fail_gist(self: Ref, rd: Perm)
   requires none < rd && rd < write
 {
   //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/183/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/83/)
   assert none < rd * rd
 }
 
@@ -29,13 +31,15 @@ method bar(self: Ref, rd: Perm)
 {
   unfold acc(valid__Cell(self, rd), rd)
   //:: UnexpectedOutput(assert.failed:insufficient.permission, /Silicon/issue/183/)
-  assert self.v == 1
+  //:: UnexpectedOutput(assert.failed:insufficient.permission, /Carbon/issue/83/)
+  assert self.v >= self.v
 }
 
 method bar_gist(self: Ref, rd: Perm)
   requires none < rd && rd < write
 {
   //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/183/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/83/)
   assert none < rd * rd
 }
 
