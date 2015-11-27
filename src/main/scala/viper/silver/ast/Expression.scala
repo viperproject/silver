@@ -99,6 +99,7 @@ case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo) ex
 // --- Accessibility predicates
 
 /** A common trait for accessibility predicates. */
+// Note: adding extra instances of AccessPredicate will require adding cases to viper.silver.ast.utility.multiplyExpByPerm method
 sealed trait AccessPredicate extends Exp {
   require(perm isSubtype Perm)
   def loc: LocationAccess
@@ -246,7 +247,9 @@ object PredicateAccess {
 // --- Conditional expression
 
 /** A conditional expressions. */
-case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
+    extends Exp with ForbiddenInTrigger {
+
   require(cond isSubtype Bool)
   Consistency.checkNoPositiveOnly(cond)
   require(thn.typ == els.typ)
@@ -295,12 +298,12 @@ object QuantifiedExp {
 object QuantifiedPermissionSupporter {
   object ForallRefPerm {
     def unapply(n: Forall): Option[(LocalVarDecl, /* Quantified variable */
-      Exp, /* Condition */
-      Exp, /* Receiver e of acc(e.f, p) */
-      Field, /* Field f of acc(e.f, p) */
-      Exp, /* Permissions p of acc(e.f, p) */
-      Forall, /* AST node of the forall (for error reporting) */
-      FieldAccess)] = /* AST node for e.f (for error reporting) */
+                                    Exp, /* Condition */
+                                    Exp, /* Receiver e of acc(e.f, p) */
+                                    Field, /* Field f of acc(e.f, p) */
+                                    Exp, /* Permissions p of acc(e.f, p) */
+                                    Forall, /* AST node of the forall (for error reporting) */
+                                    FieldAccess)] = /* AST node for e.f (for error reporting) */
 
       n match {
         case forall@Forall(Seq(lvd@LocalVarDecl(_, _ /*ast.types.Ref*/)),
@@ -313,33 +316,23 @@ object QuantifiedPermissionSupporter {
 
         case _ => None
       }
-    }
-
   }
-/* Unsupported expressions, features or cases */
-
-
+}
 
 /** Universal quantification. */
 case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp {
-  require(Consistency.supportedQuantifier(this), s"This form of quantified permission is not supported: { ${this.toString} } .")
-  /**
-   * Returns an identical forall quantification that has some automatically generated triggers
-   * if necessary and possible.
-   */
+  require(Consistency.supportedQuantifier(this), s"This form of quantified permission is not supported: { $this } .")
+  /** Returns an identical forall quantification that has some automatically generated triggers
+    * if necessary and possible.
+    */
   lazy val autoTrigger: Forall = {
     if (triggers.isEmpty) {
-      val gen = Expressions.generateTrigger(this)
-      if (gen.size > 0) {
-        gen.find(pair => pair._2.isEmpty) match {
-          case Some((newTriggers, _)) => Forall(variables, newTriggers, exp)(pos,info)
-          case None =>
-            val (triggers, extraVariables) = gen(0) // somewhat arbitrarily take the first choice
-            Forall(variables ++ extraVariables, triggers, exp)(pos, info)
-        }
-      } else {
-        // no triggers found
-        this
+      Expressions.generateTriggerSet(this) match {
+        case Some((vars, triggerSets)) =>
+          Forall(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, info)
+        case None =>
+          /* Couldn't generate triggers */
+          this
       }
     } else {
       // triggers already present
@@ -417,7 +410,7 @@ case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Inf
 
 /** An explicit, non-empty sequence. */
 case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
-  require(elems.length > 0)
+  require(elems.nonEmpty)
   require(elems.tail.forall(e => e.typ == elems.head.typ))
   elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = SeqType(elems.head.typ)
@@ -557,7 +550,7 @@ case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Inf
 
 /** An explicit, non-empty set. */
 case class ExplicitSet(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
-  require(elems.length > 0)
+  require(elems.nonEmpty)
   require(elems.tail.forall(e => e.typ == elems.head.typ))
   elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = SetType(elems.head.typ)
@@ -576,7 +569,7 @@ case class EmptyMultiset(elemTyp: Type)(val pos: Position = NoPosition, val info
 
 /** An explicit, non-empty multiset. */
 case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends MultisetExp {
-  require(elems.length > 0)
+  require(elems.nonEmpty)
   require(elems.tail.forall(e => e.typ == elems.head.typ))
   elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = MultisetType(elems.head.typ)

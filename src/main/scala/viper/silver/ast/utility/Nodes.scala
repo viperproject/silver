@@ -12,6 +12,7 @@
 
 package viper.silver.ast.utility
 
+import scala.collection.mutable
 import viper.silver.ast._
 
 /** Utility methods for AST nodes. */
@@ -159,10 +160,41 @@ object Nodes {
       case p: Product => p.productIterator.flatMap {
         case t: Traversable[_] if !t.isInstanceOf[Node] => t
         case other => other :: Nil
-    }
+      }
     }).toSeq
 
     relevantChildren.partition(_.isInstanceOf[Node])
                     .asInstanceOf[(Seq[Node], Seq[Any])]
   }
+
+  /** Returns all subnodes of `root` that reference (other) Silver member.
+    * The returned sequence may contain `root` itself, and it may contain
+    * duplicates.
+    */
+  def memberReferencingNodes(root: Node): Seq[Node] = {
+    val collected = mutable.ListBuffer[Node]()
+
+    root visit {
+      case n: MethodCall => collected += n
+      case n: FuncApp => collected += n
+      case n: Unfolding => collected += n
+      case n: Unfold => collected += n
+      case n: Fold => collected += n
+    }
+
+    collected.result()
+  }
+
+  /** Returns all members that are referenced from inside `root`.
+    * The returned sequence may contain `root` itself, and it it duplicate-free.
+    */
+  def referencedMembers(root: Node, program: Program): Seq[Member] =
+    memberReferencingNodes(root).map {
+      case n: MethodCall => program.findMethod(n.methodName)
+      case n: FuncApp => program.findFunction(n.funcname)
+      case n: Unfolding => program.findPredicate(n.acc.loc.predicateName)
+      case n: Unfold => program.findPredicate(n.acc.loc.predicateName)
+      case n: Fold => program.findPredicate(n.acc.loc.predicateName)
+      case other => sys.error(s"Unexpected node $other")
+    }.distinct
 }

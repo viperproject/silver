@@ -1,6 +1,6 @@
 field x: Int
 
-function postFunction(this: Ref): Int
+function post1(this: Ref): Int
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
@@ -8,6 +8,19 @@ function postFunction(this: Ref): Int
   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/162/)
   //:: MissingOutput(postcondition.violated:assertion.false, /Carbon/issue/69/)
   ensures this.x == 0
+{
+  1
+}
+
+function post2(this: Ref): Int
+  requires this != null
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  //:: MissingOutput(postcondition.violated:assertion.false, /Carbon/issue/69/)
+  //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
+  //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/162/)
+  ensures this != null &&
+          this.x == 0
 {
   1
 }

@@ -1,6 +1,26 @@
 field f: Ref
 field g: Int
 
+method test03(S: Set[Ref]) {
+  inhale forall s: Ref :: s in S ==> acc(s.f)
+  inhale forall s: Ref :: s in S ==> acc(s.f.g)
+  exhale forall s: Ref :: s in S ==> acc(s.f.g)
+}
+
+method test04() {
+  var s1: Ref; s1 := new(*)
+  var s2: Ref; s2 := new(*)
+  var s3: Ref; s3 := new(*)
+  var S: Set[Ref] := Set(s1, s2, s3)
+
+  assert forall s: Ref :: s in S ==> acc(s.f)
+  // inhale forall s: Ref :: s in S ==> s.f != null /* TODO: see silicon/issues/179/ */
+  inhale s1.f != null && s2.f != null && s3.f != null
+
+  //:: ExpectedOutput(assert.failed:receiver.not.injective)
+  assert forall s: Ref :: s in S ==> acc(s.f.g)
+}
+
 method test01(S: Set[Ref])
   requires forall s: Ref :: s in S ==> acc(s.f)
   requires forall s: Ref :: s in S ==> acc(s.f.g)

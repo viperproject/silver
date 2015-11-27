@@ -1,0 +1,6 @@
+method m1() returns (ret : Int)
+    //:: ExpectedOutput(typechecker.error)
+    requires ret == 0
+{
+    ret := 0
+}

@@ -98,6 +98,7 @@ method Client__main(diz: Ref, current_thread_id: Int)
   __flatten_4 := 1
   __flatten_15 := __flatten_4
   diz.Client__x := __flatten_15
+  //:: UnexpectedOutput(call.precondition:insufficient.permission, /Carbon/issue/77/)
   Lock__lock(l, current_thread_id, Multiset(l))
   __flatten_6 := 2
   __flatten_17 := __flatten_6

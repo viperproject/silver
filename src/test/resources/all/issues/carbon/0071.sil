@@ -1,3 +1,4 @@
+//:: IgnoreFile(/Carbon/issue/85/)
 // chaliceSuite/examples/iterator2.chalice
 domain GlobalKPermission {
 
@@ -200,7 +201,6 @@ method Programmain$(this$_11: Ref) returns (k$_4: Perm)
     newK$_5 := Iteratordispose$(iter1)
     newK$_6 := Iteratordispose$(iter2)
     assert acc(Listvalid$(list), write)
-    //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/71/)
     assert Listsize$(list) == 2
     exhale (k$_4 > none) && (write > k$_4)
   }
