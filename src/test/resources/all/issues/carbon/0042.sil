@@ -29,7 +29,6 @@ method test01(diz: Ref)
   ensures  acc(token(diz))
 {
   unfold acc(token(diz))
-  //:: UnexpectedOutput(fold.failed:negative.permission, /silicon/issue/135/)
   fold acc(token(diz))
   //:: ExpectedOutput(fold.failed:insufficient.permission)
   //:: MissingOutput(fold.failed:insufficient.permission, /silicon/issue/34/)
