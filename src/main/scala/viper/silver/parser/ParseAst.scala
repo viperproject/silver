@@ -233,6 +233,7 @@ case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 
 sealed trait POldExp extends PExp { def e: PExp }
 case class POld(e: PExp) extends POldExp
+case class PLabelledOld(label: PIdnUse, e: PExp) extends POldExp
 
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
  * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but
@@ -300,6 +301,7 @@ case class PConstraining(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with PTypedDeclaration with PLocalDeclaration
 case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) extends PStmt
 case class PLabel(idndef: PIdnDef) extends PStmt with PLocalDeclaration
+case class PStateLabel(idndef: PIdnDef) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 
@@ -436,6 +438,7 @@ object Nodes {
       case PNewStmt(target, fields) => Seq(target) ++ fields.getOrElse(Seq())
       case PMethodCall(targets, method, args) => targets ++ Seq(method) ++ args
       case PLabel(name) => Seq(name)
+      case PStateLabel(name) => Seq(name)
       case PGoto(label) => Seq(label)
       case PVarAssign(target, rhs) => Seq(target, rhs)
       case PFieldAssign(field, rhs) => Seq(field, rhs)

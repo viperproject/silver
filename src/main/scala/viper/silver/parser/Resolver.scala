@@ -186,6 +186,8 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case PLabel(name) =>
       // nothing to check
+      case PStateLabel(name) =>
+        // nothing to check
       case PGoto(label) =>
         names.definition(curMember)(label) match {
           case PLabel(_) =>
@@ -727,7 +729,15 @@ case class TypeChecker(names: NameAnalyser) {
             // ok
             setType(po.e.typ)
         }
-
+        // For labelled old expressions, ensure that they refer to a state label
+        po match {
+          case PLabelledOld(lbl,_) =>
+            names.definition(curMember)(lbl) match {
+              case PStateLabel(_) => ()
+              case _ => messages ++= Messaging.message(po, "expected state label")
+            }
+          case _ => ()
+        }
       case f@ PForallReferences(v,fields, e) =>
         val oldCurMember = curMember
         curMember = f

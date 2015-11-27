@@ -138,6 +138,14 @@ case class Label(name: String)(val pos: Position = NoPosition, val info: Info = 
   Consistency.validUserDefinedIdentifier(name)
 }
 
+/** A label that names a state that can later be referenced via a LabelledOld.
+  * State labels and control flow labels are separate because keeping old state around "just in case" is expensive.
+  * Additionally, many state labels are not control flow targets. The two concepts have very little in common.
+  * */
+case class StateLabel(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+  Consistency.validUserDefinedIdentifier(name)
+}
+
 /**
  * A goto statement.  Note that goto's in SIL are limited to forward jumps, and a jump cannot enter
  * a loop but might leave one or several loops.  This ensures that the only back edges in the

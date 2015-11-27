@@ -452,7 +452,8 @@ object CfgGenerator {
              _: Inhale | _: Exhale |
              _: Fold | _: Unfold |
              _: MethodCall | _: Fresh |
-             _: NewStmt | _: Assert =>
+             _: NewStmt | _: Assert |
+             _: StateLabel =>
           // regular, non-control statements
           nodes += RegularStmt(s)
       }

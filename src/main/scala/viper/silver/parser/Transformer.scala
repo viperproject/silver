@@ -62,6 +62,7 @@ object Transformer {
         case _: PEpsilon => parent
         case PAccPred(loc, perm) => PAccPred(go(loc), go(perm))
         case POld(e) => POld(go(e))
+        case PLabelledOld(lbl,e) => PLabelledOld(go(lbl),go(e))
         case PEmptySeq(t) => PEmptySeq(go(t))
         case PExplicitSeq(elems) => PExplicitSeq(elems map go)
         case PRangeSeq(low, high) => PRangeSeq(go(low), go(high))
@@ -93,6 +94,7 @@ object Transformer {
         case PLocalVarDecl(idndef, typ, init) => PLocalVarDecl(go(idndef), go(typ), init map go)
         case PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)
         case PLabel(idndef) => PLabel(go(idndef))
+        case PStateLabel(idndef) => PStateLabel(go(idndef))
         case PGoto(target) => PGoto(go(target))
         case PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))
         case PLet(exp, nestedScope) => PLet(go(exp), go(nestedScope))

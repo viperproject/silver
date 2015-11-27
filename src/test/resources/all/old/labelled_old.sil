@@ -1,0 +1,18 @@
+field tk: Ref
+field f: Int
+
+method main() {
+  var m: Ref
+  m := new (*)
+  m.f := 15
+
+  statelabel initial
+
+  m.f := 3
+  inhale acc(m.tk, write)
+
+  assert m.f == 3 && old[initial](m.f) == 15
+  assert perm(m.tk) == write && old[initial](perm(m.tk)) == none
+  exhale acc(m.f)
+  assert old[initial](m.f) == 15
+}

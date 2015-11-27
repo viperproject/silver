@@ -128,7 +128,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // prover hint expressions
     "unfolding", "in",
     // old expression
-    "old",
+    "old","statelabel",
     // quantification
     "forall", "exists", "forallrefs",
     // permission syntax
@@ -245,7 +245,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val stmt =
     fieldassign | localassign | fold | unfold | exhale | assert |
       inhale | ifthnels | whle | varDecl |defineDecl | newstmt | fresh | constrainingBlock |
-      methodCall | goto | lbl
+      methodCall | goto | lbl | stateLabel
 
   lazy val fold =
     "fold" ~> predicateAccessPred ^^ PFold
@@ -294,6 +294,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     | repsep(idnuse, ",") ^^ (fields => Some(fields)))
   lazy val lbl =
     idndef <~ ":" ^^ PLabel
+  lazy val stateLabel =
+    "statelabel" ~> idndef ^^ PStateLabel
   lazy val goto =
     "goto" ~> idnuse ^^ PGoto
   lazy val methodCall =
@@ -454,7 +456,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "{" ~> repsep(exp, ",") <~ "}"
 
   lazy val old: PackratParser[PExp] =
-    "old" ~> parens(exp) ^^ POld
+    "old" ~> (parens(exp) ^^ POld |
+      ("[" ~> idnuse <~ "]") ~ parens(exp) ^^ PLabelledOld)
 
   lazy val locAcc: PackratParser[PLocationAccess] =
     fieldAcc | predAcc
