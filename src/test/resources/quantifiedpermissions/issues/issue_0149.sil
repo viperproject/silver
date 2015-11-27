@@ -5,7 +5,7 @@ method test01(x1: Ref, x2: Ref)
   requires acc(x1.g) && acc(x1.g.f)
   requires acc(x2.g) && acc(x2.g.f)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g)
-  // Previously: UnexpectedOutput(postcondition.violated:receiver.not.injective, /silicon/issue/149/)
+  //:: UnexpectedOutput(postcondition.violated:receiver.not.injective, /silicon/issue/149/)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f)
 {
 //  assert x1 != x2       // Any of these two assert makes ...
@@ -16,7 +16,7 @@ method test02(x1: Ref, x2: Ref)
   requires acc(x1.g) && acc(x1.g.f, 2/3)
   requires acc(x2.g) && acc(x2.g.f, 2/3)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g, 2/3)
-  // Previously: UnexpectedOutput(postcondition.violated:receiver.not.injective, /silicon/issue/149/)
+  //:: UnexpectedOutput(postcondition.violated:receiver.not.injective, /silicon/issue/149/)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, 2/3)
 {
 //  assert x1 != x2       // Any of these two assert makes ...
