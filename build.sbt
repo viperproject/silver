@@ -27,7 +27,7 @@ scalacOptions += "-feature"
 
 scalacOptions += "-unchecked"
 
-scalacOptions += "-Dscalac.patmat.analysisBudget=40960"
+scalacOptions += "-Dscalac.patmat.analysisBudget=off"
 
 // Make publish-local also create a test artifact, i.e., put a jar-file into the local Ivy
 // repository that contains all classes and resources relevant for testing.
