@@ -2,24 +2,24 @@ field f: Int
 
 method main(i:Int) {
   var m: Ref
-  m := new (*)
+  m := new(f)
   m.f := i
 
   if(m.f != 15){
     m.f := 15
-    statelabel initial
+initial:
   }
 
   m.f := 3
 
   //shouldn't work because the state label is undefined on at least one execution path => fails
-  //:: ExpectedOutput(internal:labelled.state.not.reached)
+  //:: ExpectedOutput(assert.failed:labelled.state.not.reached)
   assert m.f == 3 && old[initial](m.f) == 15
 }
 
 method main3() {
   var m: Ref
-  m := new (*)
+  m := new(f)
 
   m.f := 15
 
@@ -27,10 +27,10 @@ method main3() {
   while(m.f != 3)
     invariant acc(m.f)
   {
-    statelabel initial;
+initial:
     m.f := m.f - 1;
   }
 
-  //:: ExpectedOutput(internal:labelled.state.not.reached)
+  //:: ExpectedOutput(assert.failed:labelled.state.not.reached)
   assert m.f == 3 && old[initial](m.f) == 15
 }

@@ -244,7 +244,6 @@ object Transformer {
               Inhale(go(expression))(statement.pos, statement.info)
 
             case Label(_) => statement
-            case StateLabel(_) => statement
 
             case LocalVarAssign(variable, value) =>
               LocalVarAssign(go(variable),

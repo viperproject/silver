@@ -2,16 +2,16 @@ field f: Int
 
 method main2() {
   var m: Ref
-  m := new (*)
+  m := new(f)
   m.f := 15
 
   // shouldn't work because we have two conflicting statelabels => fails
   if(m.f > 3) {
     m.f := 5;
     //:: ExpectedOutput(typechecker.error)
-    statelabel initial;
+initial:
   } else {
     m.f := 3;
-    statelabel initial;
+initial:
   }
 }

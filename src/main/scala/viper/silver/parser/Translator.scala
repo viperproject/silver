@@ -175,8 +175,6 @@ case class Translator(program: PProgram) {
         MethodCall(findMethod(method), args map exp, ts)(pos)
       case PLabel(name) =>
         Label(name.name)(pos)
-      case PStateLabel(name) =>
-        StateLabel(name.name)(pos)
       case PGoto(label) =>
         Goto(label.name)(pos)
       case PIf(cond, thn, els) =>

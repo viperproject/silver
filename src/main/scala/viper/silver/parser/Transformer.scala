@@ -94,7 +94,6 @@ object Transformer {
         case PLocalVarDecl(idndef, typ, init) => PLocalVarDecl(go(idndef), go(typ), init map go)
         case PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)
         case PLabel(idndef) => PLabel(go(idndef))
-        case PStateLabel(idndef) => PStateLabel(go(idndef))
         case PGoto(target) => PGoto(go(target))
         case PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))
         case PLet(exp, nestedScope) => PLet(go(exp), go(nestedScope))

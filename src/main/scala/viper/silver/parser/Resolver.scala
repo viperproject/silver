@@ -186,8 +186,6 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case PLabel(name) =>
       // nothing to check
-      case PStateLabel(name) =>
-        // nothing to check
       case PGoto(label) =>
         names.definition(curMember)(label) match {
           case PLabel(_) =>
@@ -733,7 +731,7 @@ case class TypeChecker(names: NameAnalyser) {
         po match {
           case PLabelledOld(lbl,_) =>
             names.definition(curMember)(lbl) match {
-              case PStateLabel(_) => ()
+              case PLabel(_) => ()
               case _ => messages ++= Messaging.message(po, "expected state label")
             }
           case _ => ()

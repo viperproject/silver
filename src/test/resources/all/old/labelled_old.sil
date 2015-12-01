@@ -1,12 +1,12 @@
 field tk: Ref
 field f: Int
 
-method main() {
+method test01() {
   var m: Ref
-  m := new (*)
+  m := new(f)
   m.f := 15
 
-  statelabel initial
+initial:
 
   m.f := 3
   inhale acc(m.tk, write)
@@ -15,4 +15,64 @@ method main() {
   assert perm(m.tk) == write && old[initial](perm(m.tk)) == none
   exhale acc(m.f)
   assert old[initial](m.f) == 15
+}
+
+method test02() {
+  var m: Ref
+  m := new(f)
+  m.f := 15
+
+initial:
+
+  m.f := 3
+  inhale acc(m.tk, write)
+
+  exhale m.f == 3 && old[initial](m.f) == 15
+  assert perm(m.tk) == write
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert old[initial](perm(m.tk)) == write
+}
+
+method test03() {
+  var m: Ref
+  m := new(f)
+
+  m.f := 15
+
+initial:
+
+  m.f := 3
+  inhale acc(m.tk, write)
+
+  exhale m.f == 3 && old[initial](m.f) == 15
+  exhale acc(m.f)
+  //:: ExpectedOutput(exhale.failed:assertion.false)
+  exhale old[initial](m.f) == 3
+}
+
+method test04(x: Ref)
+  requires acc(x.f)
+{
+first:
+  var y: Ref
+  y := new(f)
+
+second:
+  assert forallrefs[f] z :: z.f == old[second](z.f)
+
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  assert forallrefs[f] z :: z.f == old[first](z.f)
+}
+
+method test05(x: Ref, y: Ref)
+  requires acc(x.f) && acc(y.f)
+{
+first:
+  y.f := 0
+
+second:
+  assert forallrefs[f] z :: z.f == old[second](z.f)
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert forallrefs[f] z :: z.f == old[first](z.f)
 }

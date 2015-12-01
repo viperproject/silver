@@ -245,7 +245,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val stmt =
     fieldassign | localassign | fold | unfold | exhale | assert |
       inhale | ifthnels | whle | varDecl |defineDecl | newstmt | fresh | constrainingBlock |
-      methodCall | goto | lbl | stateLabel
+      methodCall | goto | lbl
 
   lazy val fold =
     "fold" ~> predicateAccessPred ^^ PFold
@@ -294,8 +294,6 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     | repsep(idnuse, ",") ^^ (fields => Some(fields)))
   lazy val lbl =
     idndef <~ ":" ^^ PLabel
-  lazy val stateLabel =
-    "statelabel" ~> idndef ^^ PStateLabel
   lazy val goto =
     "goto" ~> idnuse ^^ PGoto
   lazy val methodCall =
