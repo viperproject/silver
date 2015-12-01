@@ -443,9 +443,6 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     keyword("epsilon") ^^ (_ => PEpsilon()) |
     "perm" ~> parens(locAcc) ^^ PCurPerm
 
-  private def mkForPerm(fields: Seq[PIdnUse], v: PIdnDef, exp: PExp): PForPerm =
-    PForPerm(PFormalArgDecl(v,PPrimitiv("Ref")), fields, exp)
-
   lazy val quant: PackratParser[PExp] =
     (keyword("forall") ~> formalArgList <~ "::") ~ rep(trigger) ~ exp ^^ PForall |
     (keyword("exists") ~> formalArgList <~ "::") ~ exp ^^ PExists
