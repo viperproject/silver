@@ -128,7 +128,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // prover hint expressions
     "unfolding", "in",
     // old expression
-    "old",
+    "old","statelabel",
     // quantification
     "forall", "exists", "forallrefs",
     // permission syntax
@@ -454,7 +454,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "{" ~> repsep(exp, ",") <~ "}"
 
   lazy val old: PackratParser[PExp] =
-    "old" ~> parens(exp) ^^ POld
+    "old" ~> (parens(exp) ^^ POld |
+      ("[" ~> idnuse <~ "]") ~ parens(exp) ^^ PLabelledOld)
 
   lazy val locAcc: PackratParser[PLocationAccess] =
     fieldAcc | predAcc

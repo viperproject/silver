@@ -12,7 +12,7 @@
 
 package viper.silver.ast
 
-import viper.silver.ast.utility.{Expressions, Consistency, Statements, CfgGenerator}
+import viper.silver.ast.utility.{Consistency, Statements, CfgGenerator}
 
 // --- Statements
 
@@ -130,10 +130,12 @@ case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stm
                 (val pos: Position = NoPosition, val info: Info = NoInfo)
       extends Stmt {
   Consistency.checkNoPositiveOnly(cond)
-  invs map Consistency.checkNonPostContract
+  invs foreach Consistency.checkNonPostContract
 }
 
-/** A label (that can be the target of a goto). */
+/** A named label. Labels can be used by gotos as jump targets, and by labelled old-expressions
+  * to refer to the state as it existed at that label.
+  */
 case class Label(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
   Consistency.validUserDefinedIdentifier(name)
 }

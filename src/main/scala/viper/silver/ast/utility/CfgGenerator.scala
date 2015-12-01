@@ -445,9 +445,12 @@ object CfgGenerator {
           for (s <- ss) run(s)
         case Goto(target) =>
           nodes += Jump(Lbl(target))
-        case Label(name) =>
+        case lbl @ Label(name) =>
           lblmap += Lbl(name) -> nextNode
-          nodes += EmptyStmt()
+          /* Since labels are also used for labelled old-expressions, they (also) need to be
+           * translated analogous to other regular statements.
+           */
+          nodes += RegularStmt(lbl)
         case _: LocalVarAssign | _: FieldAssign |
              _: Inhale | _: Exhale |
              _: Fold | _: Unfold |

@@ -64,6 +64,7 @@ object Transformer {
               PredicateAccess(params map go, predicateName)(p, i)
             case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i)
             case Old(e) => Old(go(e))(p, i)
+            case LabelledOld(e,lbl) => LabelledOld(go(e),lbl)(p,i)
             case CondExp(cond, thn, els) =>
               CondExp(go(cond), go(thn), go(els))(p, i)
             case Let(v, exp1, body) => Let(go(v), go(exp1), go(body))(p, i)

@@ -233,6 +233,7 @@ case class PAccPred(loc: PLocationAccess, perm: PExp) extends PExp
 
 sealed trait POldExp extends PExp { def e: PExp }
 case class POld(e: PExp) extends POldExp
+case class PLabelledOld(label: PIdnUse, e: PExp) extends POldExp
 
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
  * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but

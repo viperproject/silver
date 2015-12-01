@@ -368,6 +368,8 @@ case class Translator(program: PProgram) {
         ForallReferences(liftVarDecl(f.variable), argAccess.toList, exp(e))(pos)
       case POld(e) =>
         Old(exp(e))(pos)
+      case PLabelledOld(lbl,e) =>
+        LabelledOld(exp(e),lbl.name)(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
       case PCurPerm(loc) =>

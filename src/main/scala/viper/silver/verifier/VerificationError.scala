@@ -276,4 +276,10 @@ object reasons {
     val id = "receiver.not.injective"
     def readableMessage = s"Receiver of $offendingNode might not be injective."
   }
+
+  case class LabelledStateNotReached(offendingNode: LabelledOld) extends AbstractErrorReason {
+    val id = "labelled.state.not.reached"
+    val lbl = offendingNode.oldLabel
+    def readableMessage = s"Did not reach labelled state $lbl required to evaluate $offendingNode."
+  }
 }
