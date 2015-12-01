@@ -128,7 +128,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // prover hint expressions
     "unfolding", "in",
     // old expression
-    "old","statelabel",
+    "old",
     // quantification
     "forall", "exists", "forallrefs",
     // permission syntax
