@@ -23,9 +23,8 @@ object Expressions {
     case Unfolding(_, in) => isPure(in)
     case QuantifiedExp(_, e0) => isPure(e0)
     case Let(_, _, body) => isPure(body)
-    case _:ForPerm => true
 
-    case _: Literal
+    case   _: Literal
          | _: PermExp
          | _: FuncApp
          | _: DomainFuncApp
@@ -34,7 +33,8 @@ object Expressions {
          | _: SeqExp
          | _: SetExp
          | _: MultisetExp
-    => true
+         | _:ForPerm
+      => true
   }
 
   def isHeapDependent(e: Exp, p: Program): Boolean = e existsDefined {
