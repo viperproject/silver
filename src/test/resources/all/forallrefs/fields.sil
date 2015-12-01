@@ -41,7 +41,7 @@ method permOnlyOneField1()
   var r2: Ref
   inhale acc(r1.f1) && r1.f1 > 0
   //:: ExpectedOutput(assert.failed:insufficient.permission)
-  assert forallrefs[f1,f2] r :: r.f2 > 0
+  assert forallrefs[f1,f2] r :: r.f2 >= r.f2
 }
 
 method permOnlyOneField2()
@@ -50,7 +50,7 @@ method permOnlyOneField2()
   var r2: Ref
   inhale acc(r1.f1) && r1.f1 > 0
   //:: ExpectedOutput(assert.failed:insufficient.permission)
-  assert forallrefs[f1,f2] r :: r.f1 > 0 && r.f2 > 0
+  assert forallrefs[f1,f2] r :: r.f1 > 0 && r.f2 >= r.f2
 }
 
 method permCheck1()
