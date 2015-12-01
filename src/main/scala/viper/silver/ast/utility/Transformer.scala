@@ -201,7 +201,7 @@ object Transformer {
 
             case Int => aType
             case Perm => aType
-            case Pred => aType
+            case InternalType => aType
             case Ref => aType
             case SeqType(elementType) => SeqType(go(elementType))
             case SetType(elementType) => SetType(go(elementType))

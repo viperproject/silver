@@ -168,24 +168,24 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
                 meth
               else
                 meth.transform {
-                  case la: PDefine => PSkip().setPos(la)
-                }()
+      case la: PDefine => PSkip().setPos(la)
+    }()
 
-            expandDefines(localDefines ++ globalDefines, methWithoutDefines)
-        }
+  expandDefines(localDefines ++ globalDefines, methWithoutDefines)
+}
 
-        val domains = decls collect { case d: PDomain => expandDefines(globalDefines, d) }
-        val functions = decls collect { case d: PFunction => expandDefines(globalDefines, d) }
-        val predicates = decls collect { case d: PPredicate => expandDefines(globalDefines, d) }
+val domains = decls collect { case d: PDomain => expandDefines(globalDefines, d) }
+val functions = decls collect { case d: PFunction => expandDefines(globalDefines, d) }
+val predicates = decls collect { case d: PPredicate => expandDefines(globalDefines, d) }
 
-        PProgram(file, domains, fields, functions, predicates, methods)
-    }
+PProgram(file, domains, fields, functions, predicates, methods)
+}
 
-  lazy val fieldDecl =
-    ("field" ~> idndef) ~ (":" ~> typ <~ opt(";")) ^^ PField
+lazy val fieldDecl =
+("field" ~> idndef) ~ (":" ~> typ <~ opt(";")) ^^ PField
 
-  lazy val methodDecl =
-    methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
+lazy val methodDecl =
+methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
       case name ~ args ~ rets ~ pres ~ posts ~ body =>
         PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
     }

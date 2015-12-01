@@ -161,7 +161,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case Int => "Int"
       case Ref => "Ref"
       case Perm => "Perm"
-      case Pred => "$PredicateType"
+      case InternalType => "InternalType"
       case SeqType(elemType) => "Seq" <> "[" <> show(elemType) <> "]"
       case SetType(elemType) => "Set" <> "[" <> show(elemType) <> "]"
       case MultisetType(elemType) => "Multiset" <> "[" <> show(elemType) <> "]"

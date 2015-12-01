@@ -63,8 +63,9 @@ case object Bool extends AtomicType
 case object Perm extends AtomicType
 /** Type for references. */
 case object Ref extends AtomicType
-/** Type for predicates (only used internally). */
-case object Pred extends AtomicType
+/** Type used for internal nodes (e.g. typing predicate accesses) - should not be the type of any expression whose value is meaningful in the translation. */
+case object InternalType extends AtomicType
+
 /** Type for sequences */
 
 sealed trait CollectionType extends BuiltInType {
