@@ -736,7 +736,7 @@ case class TypeChecker(names: NameAnalyser) {
             }
           case _ => ()
         }
-      case f@ PForallReferences(v,fields, e) =>
+      case f@ PForPerm(v,fields, e) =>
         val oldCurMember = curMember
         curMember = f
         check(f.variable.typ)

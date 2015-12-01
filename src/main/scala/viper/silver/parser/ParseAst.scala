@@ -221,7 +221,7 @@ case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends PExp
 case class PUnfolding(acc: PAccPred, exp: PExp) extends PExp
 case class PExists(variable: Seq[PFormalArgDecl], exp: PExp) extends PExp with PScope
 case class PForall(variable: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp) extends PExp with PScope
-case class PForallReferences(variable: PFormalArgDecl, fields: Seq[PIdnUse], exp: PExp) extends PExp with PScope
+case class PForPerm(variable: PFormalArgDecl, fields: Seq[PIdnUse], exp: PExp) extends PExp with PScope
 case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends PExp
 case class PInhaleExhaleExp(in: PExp, ex: PExp) extends PExp
 case class PCurPerm(loc: PLocationAccess) extends PExp
@@ -405,7 +405,7 @@ object Nodes {
       case PLet(exp, nestedScope) => Seq(exp, nestedScope)
       case PLetNestedScope(variable, body) => Seq(variable, body)
       case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
-      case PForallReferences(v,fields, expr) => v +: fields :+ expr
+      case PForPerm(v,fields, expr) => v +: fields :+ expr
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)
       case PCurPerm(loc) => Seq(loc)

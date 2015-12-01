@@ -411,7 +411,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       inhaleExhale |
       perm |
       let |
-      quant |
+      quant | forperm |
       unfolding |
       setTypedEmpty | explicitSetNonEmpty |
       explicitMultisetNonEmpty | multiSetTypedEmpty |
@@ -443,12 +443,17 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     keyword("epsilon") ^^ (_ => PEpsilon()) |
     "perm" ~> parens(locAcc) ^^ PCurPerm
 
-  private def mkForallReferences(fields: Seq[PIdnUse], v: PIdnDef, exp: PExp) : PForallReferences
-  = PForallReferences(PFormalArgDecl(v,PPrimitiv("Ref")),fields,exp)
+  private def mkForPerm(fields: Seq[PIdnUse], v: PIdnDef, exp: PExp): PForPerm =
+    PForPerm(PFormalArgDecl(v,PPrimitiv("Ref")), fields, exp)
+
   lazy val quant: PackratParser[PExp] =
-    ("forallrefs" ~> "[" ~> repsep(idnuse,",") <~ "]") ~ idndef ~ ("::" ~> exp) ^^ (mkForallReferences _) |
-    ("forall" ~> formalArgList <~ "::") ~ rep(trigger) ~ exp ^^ PForall |
-      ("exists" ~> formalArgList <~ "::") ~ exp ^^ PExists
+    (keyword("forall") ~> formalArgList <~ "::") ~ rep(trigger) ~ exp ^^ PForall |
+    (keyword("exists") ~> formalArgList <~ "::") ~ exp ^^ PExists
+
+  lazy val forperm: PackratParser[PExp] =
+    (keyword("forallrefs") ~> "[" ~> repsep(idnuse,",") <~ "]") ~ idndef ~ ("::" ~> exp) ^^ {
+      case ids ~ id ~ body => PForPerm(PFormalArgDecl(id, PPrimitiv("Ref")), ids, body)
+    }
 
   lazy val trigger: PackratParser[Seq[PExp]] =
     "{" ~> repsep(exp, ",") <~ "}"

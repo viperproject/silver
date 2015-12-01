@@ -359,14 +359,14 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
 
 
 /** Quantification over heap chunks with positive permission in any of the listed fields */
-case class ForallReferences(variable: LocalVarDecl, accessList: Seq[Location], exp: Exp)
-                           (val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
-  require(exp isSubtype Bool)
+case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
+                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+  require(body isSubtype Bool)
 
-  Consistency.recordIfNot(exp, Consistency.noPerm(exp),
-    "Forallrefs expression is not allowed to contain perm expressions")
-  Consistency.recordIfNot(exp, Consistency.noForallRefs(exp),
-    "Forallrefs expression is not allowed to contain nested forallrefs expressions")
+  Consistency.recordIfNot(body, Consistency.noPerm(body),
+    "forperm expression is not allowed to contain perm expressions")
+  Consistency.recordIfNot(body, Consistency.noForallRefs(body),
+    "forperm expression is not allowed to contain nested forperm expressions")
 
   //TODO: make type of Seq more specific
   lazy val typ = Bool
