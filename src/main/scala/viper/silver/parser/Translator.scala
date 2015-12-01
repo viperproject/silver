@@ -347,7 +347,7 @@ case class Translator(program: PProgram) {
       case PForall(vars, triggers, e) =>
         val ts = triggers map (exps => Trigger(exps map exp)(exps(0)))
         Forall(vars map liftVarDecl, ts, exp(e))(pos)
-      case f@PForallReferences(v, args, e) =>
+      case f@PForPerm(v, args, e) =>
 
         //val args = fields map findField
 
@@ -365,7 +365,7 @@ case class Translator(program: PProgram) {
           }
         }
 
-        ForallReferences(liftVarDecl(f.variable), argAccess.toList, exp(e))(pos)
+        ForPerm(liftVarDecl(f.variable), argAccess.toList, exp(e))(pos)
       case POld(e) =>
         Old(exp(e))(pos)
       case PLabelledOld(lbl,e) =>

@@ -271,7 +271,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       parens("forall" <+> showVars(v) <+> "::" <>
         (if (triggers.isEmpty) empty else space <> ssep((triggers map show).to[collection.immutable.Seq], space)) <+>
         show(exp))
-    case ForallReferences(v, fields, exp) =>
+    case ForPerm(v, fields, exp) =>
       parens("forallrefs"
         <+> brackets(ssep((fields map showLocation).to[collection.immutable.Seq], comma <> space))
         <+> v.name <+> "::" <+> show(exp))

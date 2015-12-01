@@ -9,7 +9,7 @@ package viper.silver.ast.utility
 import org.kiama.util.{Message, Messaging}
 import scala.collection.mutable
 import util.parsing.input.{Position, NoPosition}
-import viper.silver.parser.{PForallReferences, PIdnUse, Parser}
+import viper.silver.parser.{PForPerm, PIdnUse, Parser}
 import viper.silver.ast._
 import scala.Seq
 
@@ -73,7 +73,7 @@ object Consistency {
   def noPerm(n: Node)  = !n.existsDefined { case _: CurrentPerm => }
 
   /** Returns true if the given node contains no forallrefs expression.*/
-  def noForallRefs(n: Node)  = !n.existsDefined { case _: ForallReferences => }
+  def noForallRefs(n: Node)  = !n.existsDefined { case _: ForPerm => }
 
   /** Returns true if the given node contains no access locations. */
   def noAccessLocation(n: Node) = !n.existsDefined { case _: LocationAccess => }
