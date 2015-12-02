@@ -6,11 +6,11 @@
 
 package viper.silver.parser
 
-import viper.silver.ast.utility.Visitor
-
 import scala.collection.mutable
 import scala.reflect._
 import org.kiama.util.Messaging
+import viper.silver.ast.MagicWandOp
+import viper.silver.ast.utility.Visitor
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -135,6 +135,10 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnfold(e) =>
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be unfolded")
         check(e, Bool)
+      case PPackageWand(e) =>
+        checkMagicWand(e, allowWandRefs = false)
+      case PApplyWand(e) =>
+        checkMagicWand(e, allowWandRefs = true)
       case PExhale(e) =>
         check(e, Bool)
       case PAssert(e) =>
@@ -221,6 +225,7 @@ case class TypeChecker(names: NameAnalyser) {
         val msg = "expected variable in fresh read permission block"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
         check(s)
+      case PLetWand(_, wand) => check(wand, Wand)
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
@@ -237,6 +242,15 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case _ => messages ++= Messaging.message(exp, "expected predicate access")
     }
+  }
+
+  def checkMagicWand(e: PExp, allowWandRefs: Boolean) = e match {
+    case _: PIdnUse if allowWandRefs =>
+      check(e, Wand)
+    case PBinExp(_, MagicWandOp.op, _) =>
+      check(e, Wand)
+    case _ =>
+      messages ++= Messaging.message(e, "expected magic wand")
   }
 
   /** This handy method checks if all passed `idnUses` refer to specific
@@ -284,7 +298,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(typ: PType) {
     typ match {
-      case _: PPredicateType =>
+      case _: PPredicateType | _: PWandType =>
         sys.error("unexpected use of internal typ")
       case PPrimitiv(_) =>
       case dt@PDomainType(domain, args) =>
@@ -362,6 +376,7 @@ case class TypeChecker(names: NameAnalyser) {
       case (dt: PDomainType, _) if dt.isUndeclared => true
       case (_, dt: PDomainType) if dt.isUndeclared => true
       case (PTypeVar(_), _) | (_, PTypeVar(_)) => true
+      case (Bool, PWandType()) => true
       case (PSeqType(e1), PSeqType(e2)) => isCompatible(e1, e2)
       case (PSetType(e1), PSetType(e2)) => isCompatible(e1, e2)
       case (PMultisetType(e1), PMultisetType(e2)) => isCompatible(e1, e2)
@@ -459,6 +474,7 @@ case class TypeChecker(names: NameAnalyser) {
           case decl @ PFormalArgDecl(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PField(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PPredicate(_, _, _) => setPIdnUseTypeAndEntity(piu, Pred, decl)
+          case decl: PLetWand => setPIdnUseTypeAndEntity(piu, Wand, decl)
           case x => issueError(piu, s"expected identifier, but got $x")
         }
       case PBinExp(left, op, right) =>
@@ -538,6 +554,10 @@ case class TypeChecker(names: NameAnalyser) {
             check(left, Bool)
             check(right, Bool)
             setType(Bool)
+          case MagicWandOp.op =>
+            check(left, Bool)
+            check(right, Bool)
+            setType(Wand)
           case "in" =>
             check(left, Nil)
             check(right, genericAnySetType ++ Seq(genericSeqType))
@@ -687,12 +707,20 @@ case class TypeChecker(names: NameAnalyser) {
           case x =>
             issueError(func, "expected function")
         }
-      case PUnfolding(acc, body) =>
-        check(acc.perm, Perm)
-        check(acc.loc, Pred)
-        acceptNonAbstractPredicateAccess(acc, "abstract predicates cannot be unfolded")
-        check(body, expected)
-        setType(body.typ)
+      case e: PUnFoldingExp =>
+        check(e.acc.perm, Perm)
+        check(e.acc.loc, Pred)
+        acceptNonAbstractPredicateAccess(e.acc, "abstract predicates cannot be (un)folded")
+        check(e.exp, expected)
+        setType(e.exp.typ)
+      case PPackaging(wand, in) =>
+        checkMagicWand(wand, allowWandRefs = false)
+        check(in, expected)
+        setType(in.typ)
+      case PApplying(wand, in) =>
+        checkMagicWand(wand, allowWandRefs = true)
+        check(in, expected)
+        setType(in.typ)
       case PLet(exp1, nestedScope @ PLetNestedScope(variable, body)) =>
         check(exp1, Nil)
         val oldCurMember = curMember
@@ -1036,7 +1064,7 @@ case class NameAnalyser() {
                   case None =>
                     getMap(d).put(d.idndef.name, d)
                 }
-              }
+            }
           case _ =>
         }
 

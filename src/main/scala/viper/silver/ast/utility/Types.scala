@@ -75,7 +75,7 @@ object Types {
     * @return The list of transitive type constituents of `typ`.
     */
   def typeConstituents(typ: Type): List[Type] = typ match {
-    case Int | Bool | Perm | Ref | InternalType | _: TypeVar => Nil
+    case Int | Bool | Perm | Ref | InternalType | _: TypeVar | Wand => Nil
     case dt: DomainType => dt.domainTypVars.map(_.substitute(dt.typVarsMap)).toList
     case SeqType(elementType) => elementType :: typeConstituents(elementType)
     case SetType(elementType) => elementType :: typeConstituents(elementType)

@@ -162,6 +162,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case Ref => "Ref"
       case Perm => "Perm"
       case InternalType => "InternalType"
+      case Wand => "$WandType"
       case SeqType(elemType) => "Seq" <> "[" <> show(elemType) <> "]"
       case SetType(elemType) => "Set" <> "[" <> show(elemType) <> "]"
       case MultisetType(elemType) => "Multiset" <> "[" <> show(elemType) <> "]"
@@ -189,6 +190,8 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case FieldAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case Fold(e) => "fold" <+> show(e)
       case Unfold(e) => "unfold" <+> show(e)
+      case Package(e) => "package" <+> show(e)
+      case Apply(e) => "apply" <+> show(e)
       case Inhale(e) => "inhale" <+> show(e)
       case Exhale(e) => "exhale" <+> show(e)
       case Assert(e) => "assert" <+> show(e)
@@ -257,10 +260,18 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       predicateName <> parens(ssep((params map show).to[collection.immutable.Seq], comma <> space))
     case Unfolding(acc, exp) =>
       parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
+    case Folding(acc, exp) =>
+      parens("folding" <+> show(acc) <+> "in" <+> show(exp))
+    case Packaging(wand, in) =>
+      parens("packaging" <+> show(wand) <+> "in" <+> show(in))
+    case Applying(wand, in) =>
+      parens("applying" <+> show(wand) <+> "in" <+> show(in))
     case Old(exp) =>
       "old" <> parens(show(exp))
     case LabelledOld(exp,label) =>
       "old" <> brackets(label) <> parens(show(exp))
+    case ApplyOld(exp) =>
+      "given" <> parens(show(exp))
     case Let(v, exp, body) =>
       parens("let" <+> show(v) <+> "==" <+> show(exp) <+> "in" <+> show(body))
     case CondExp(cond, thn, els) =>

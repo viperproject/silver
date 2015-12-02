@@ -33,6 +33,7 @@ sealed trait Type extends Node {
               case None => false
             }
         }
+      case (Wand, Bool) => true
       case _ => this == other
     }
   }
@@ -63,9 +64,10 @@ case object Bool extends AtomicType
 case object Perm extends AtomicType
 /** Type for references. */
 case object Ref extends AtomicType
-/** Type used for internal nodes (e.g. typing predicate accesses) - should not be the type of any expression whose value is meaningful in the translation. */
-case object InternalType extends AtomicType
+/** Type for predicates (only used internally). */
 
+/** Type for letwand-declared variables. */
+case object Wand extends AtomicType
 /** Type for sequences */
 
 sealed trait CollectionType extends BuiltInType {
@@ -105,7 +107,7 @@ case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
                       (val domainTypVars: Seq[TypeVar])
     extends Type {
 
-  require (domainTypVars.toSet == typVarsMap.keys.toSet) 
+  require (domainTypVars.toSet == typVarsMap.keys.toSet)
   //  require(typVarsMap.values.forall(t => !t.isInstanceOf[TypeVar]))
 
   lazy val isConcrete: Boolean = {

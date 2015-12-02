@@ -189,6 +189,22 @@ object errors {
   def UnfoldFailed(offendingNode: Unfold): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => UnfoldFailed(offendingNode, reason))
 
+  case class PackageFailed(offendingNode: Package, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "package.failed"
+    val text = s"Packaging wand might fail."
+  }
+
+  def PackageFailed(offendingNode: Package): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => PackageFailed(offendingNode, reason))
+
+  case class ApplyFailed(offendingNode: Apply, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "apply.failed"
+    val text = s"Applying wand might fail."
+  }
+
+  def ApplyFailed(offendingNode: Apply): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => ApplyFailed(offendingNode, reason))
+
   case class LoopInvariantNotPreserved(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
     val id = "invariant.not.preserved"
     val text = s"Loop invariant $offendingNode might not be preserved."
@@ -220,10 +236,39 @@ object errors {
 
   def PredicateNotWellformed(offendingNode: Predicate): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PredicateNotWellformed(offendingNode, reason))
+
+  case class MagicWandNotWellformed(offendingNode: MagicWand, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "wand.not.wellformed"
+    val text = s"Magic wand might not be well-formed."
+  }
+
+  def MagicWandNotWellformed(offendingNode: MagicWand): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => MagicWandNotWellformed(offendingNode, reason))
+
+  case class LetWandFailed(offendingNode: LocalVarAssign, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "letwand.failed"
+    val text = s"Referencing a wand might fail."
+  }
+
+  def LetWandFailed(offendingNode: LocalVarAssign): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => LetWandFailed(offendingNode, reason))
+
+  case class HeuristicsFailed(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "heuristics.failed"
+    val text = "Applying heuristics failed."
+  }
+
+  def HeuristicsFailed(offendingNode: PositionedNode): PartialVerificationError =
+    PartialVerificationError((reason: ErrorReason) => HeuristicsFailed(offendingNode, reason))
 }
 
 object reasons {
   type PositionedNode = Node with Positioned
+
+  case class InternalReason(offendingNode: PositionedNode, explanation: String) extends AbstractErrorReason {
+    val id = "internal"
+    val readableMessage = explanation
+  }
 
   case class FeatureUnsupported(offendingNode: PositionedNode, explanation: String) extends AbstractErrorReason {
     val id = "feature.unsupported"
@@ -270,6 +315,21 @@ object reasons {
   case class InvalidPermMultiplication(offendingNode: PermMul) extends AbstractErrorReason {
     val id = "invalid.perm.multiplication"
     def readableMessage = s"Permission multiplication might not be possible, as an operand might contain epsilons."
+  }
+
+  case class MagicWandChunkNotFound(offendingNode: MagicWand) extends AbstractErrorReason {
+    val id = "wand.not.found"
+    def readableMessage = s"Magic wand instance not found."
+  }
+
+  case class NamedMagicWandChunkNotFound(offendingNode: AbstractLocalVar) extends AbstractErrorReason {
+    val id = "wand.not.found"
+    def readableMessage = s"Magic wand instance not found."
+  }
+
+  case class MagicWandChunkOutdated(offendingNode: MagicWand) extends AbstractErrorReason {
+    val id = "wand.outdated"
+    def readableMessage = s"Found magic wand instance, but now-expressions might not match."
   }
 
   case class ReceiverNotInjective(offendingNode: LocationAccess) extends AbstractErrorReason {

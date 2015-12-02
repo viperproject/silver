@@ -6,9 +6,14 @@
 
 package viper.silver.ast
 
+//import sun.org.mozilla.javascript.internal.ast.AstNode
+import utility.{Consistency, Types}
+
+import scala.collection.immutable.HashSet
 import scala.collection.mutable
 import org.kiama.output.{Fixity, Infix, Prefix, NonAssoc, RightAssoc}
 import utility.{Consistency, Types}
+import scala.collection.mutable.ListBuffer
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
@@ -16,9 +21,11 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   require(
     Consistency.noDuplicates(
       (members map (_.name)) ++
-        (domains flatMap (d => (d.axioms map (_.name)) ++ (d.functions map (_.name))))
-    ), "names of members must be distinct"
-  )
+        (domains flatMap (d => (d.axioms map (_.name)) ++ (d.functions map (_.name))))),
+      "names of members must be distinct")
+
+  Consistency.checkContextDependentConsistency(this)
+//  visit { case wand: MagicWand => Consistency.checkNoImpureConditionals(wand, this) }
 
   lazy val groundTypeInstances = findNecessaryTypeInstances()
 
@@ -727,6 +734,14 @@ case object AndOp extends BoolBinOp with BoolDomainFunc with LeftAssoc {
 /** Boolean implication. */
 case object ImpliesOp extends BoolBinOp with BoolDomainFunc {
   lazy val op = "==>"
+  lazy val priority = 4
+  lazy val fixity = Infix(RightAssoc)
+}
+
+/** Separating implication/Magic Wand. */
+case object MagicWandOp extends BoolBinOp with AbstractDomainFunc {
+  lazy val typ = Wand
+  lazy val op = "--*"
   lazy val priority = 4
   lazy val fixity = Infix(RightAssoc)
 }
