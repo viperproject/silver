@@ -216,7 +216,7 @@ method Tree__Wand_state_contains_for_state_contains_lemma_1(diz: Ref, current_th
   ensures Wand_state_contains_for_state_contains__get_out_1(sys__result) == out_1
   ensures Wand_state_contains_for_state_contains__get_out_1_0(sys__result) == out_1_0
 {
-  var wand: Ref
+  var vwand: Ref
   var __flatten_9: Ref
   var __flatten_10: Int
   var __flatten_11: Ref
@@ -246,48 +246,48 @@ method Tree__Wand_state_contains_for_state_contains_lemma_1(diz: Ref, current_th
   var __flatten_65: Ref
   var __flatten_66: Seq[Int]
   __flatten_9 := Wand_state_contains_for_state_contains__Wand_state_contains_for_state_contains(current_thread_id)
-  wand := __flatten_9
+  vwand := __flatten_9
   __flatten_10 := 1
   __flatten_54 := __flatten_10
-  wand.Wand_state_contains_for_state_contains__lemma := __flatten_54
+  vwand.Wand_state_contains_for_state_contains__lemma := __flatten_54
   __flatten_11 := this_1
   __flatten_55 := __flatten_11
-  wand.Wand_state_contains_for_state_contains__this_1 := __flatten_55
+  vwand.Wand_state_contains_for_state_contains__this_1 := __flatten_55
   __flatten_12 := target_contents_1
   __flatten_56 := __flatten_12
-  wand.Wand_state_contains_for_state_contains__target_contents_1 := __flatten_56
+  vwand.Wand_state_contains_for_state_contains__target_contents_1 := __flatten_56
   __flatten_13 := prev_contents_1
   __flatten_57 := __flatten_13
-  wand.Wand_state_contains_for_state_contains__prev_contents_1 := __flatten_57
+  vwand.Wand_state_contains_for_state_contains__prev_contents_1 := __flatten_57
   __flatten_14 := prev_1
   __flatten_58 := __flatten_14
-  wand.Wand_state_contains_for_state_contains__prev_1 := __flatten_58
+  vwand.Wand_state_contains_for_state_contains__prev_1 := __flatten_58
   __flatten_15 := cur_contents_1
   __flatten_59 := __flatten_15
-  wand.Wand_state_contains_for_state_contains__cur_contents_1 := __flatten_59
+  vwand.Wand_state_contains_for_state_contains__cur_contents_1 := __flatten_59
   __flatten_16 := top_1
   __flatten_60 := __flatten_16
-  wand.Wand_state_contains_for_state_contains__top_1 := __flatten_60
+  vwand.Wand_state_contains_for_state_contains__top_1 := __flatten_60
   __flatten_17 := cur_1
   __flatten_61 := __flatten_17
-  wand.Wand_state_contains_for_state_contains__cur_1 := __flatten_61
+  vwand.Wand_state_contains_for_state_contains__cur_1 := __flatten_61
   __flatten_18 := wand_1
   __flatten_62 := __flatten_18
-  wand.Wand_state_contains_for_state_contains__wand_1 := __flatten_62
+  vwand.Wand_state_contains_for_state_contains__wand_1 := __flatten_62
   __flatten_19 := in_1
   __flatten_63 := __flatten_19
-  wand.Wand_state_contains_for_state_contains__in_1 := __flatten_63
+  vwand.Wand_state_contains_for_state_contains__in_1 := __flatten_63
   __flatten_20 := in_1_0
   __flatten_64 := __flatten_20
-  wand.Wand_state_contains_for_state_contains__in_1_0 := __flatten_64
+  vwand.Wand_state_contains_for_state_contains__in_1_0 := __flatten_64
   __flatten_21 := out_1
   __flatten_65 := __flatten_21
-  wand.Wand_state_contains_for_state_contains__out_1 := __flatten_65
+  vwand.Wand_state_contains_for_state_contains__out_1 := __flatten_65
   __flatten_22 := out_1_0
   __flatten_66 := __flatten_22
-  wand.Wand_state_contains_for_state_contains__out_1_0 := __flatten_66
-  fold acc(Wand_state_contains_for_state_contains__valid_wand(wand), write)
-  __flatten_23 := wand
+  vwand.Wand_state_contains_for_state_contains__out_1_0 := __flatten_66
+  fold acc(Wand_state_contains_for_state_contains__valid_wand(vwand), write)
+  __flatten_23 := vwand
   sys__result := __flatten_23
   assert (sys__result != null) && acc(Wand_state_contains_for_state_contains__valid_wand(sys__result), write) && (Wand_state_contains_for_state_contains__get_in_1(sys__result) == in_1) && (Wand_state_contains_for_state_contains__get_in_1_0(sys__result) == in_1_0) && (Wand_state_contains_for_state_contains__get_out_1(sys__result) == out_1) && (Wand_state_contains_for_state_contains__get_out_1_0(sys__result) == out_1_0)
   inhale false
@@ -310,7 +310,7 @@ method Tree__Wand_state_contains_for_state_contains_lemma_2(diz: Ref, current_th
   ensures Wand_state_contains_for_state_contains__get_out_1(sys__result) == out_1
   ensures Wand_state_contains_for_state_contains__get_out_1_0(sys__result) == out_1_0
 {
-  var wand: Ref
+  var vwand: Ref
   var __flatten_24: Ref
   var __flatten_25: Int
   var __flatten_26: Ref
@@ -330,33 +330,33 @@ method Tree__Wand_state_contains_for_state_contains_lemma_2(diz: Ref, current_th
   var __flatten_74: Ref
   var __flatten_75: Seq[Int]
   __flatten_24 := Wand_state_contains_for_state_contains__Wand_state_contains_for_state_contains(current_thread_id)
-  wand := __flatten_24
+  vwand := __flatten_24
   __flatten_25 := 2
   __flatten_68 := __flatten_25
-  wand.Wand_state_contains_for_state_contains__lemma := __flatten_68
+  vwand.Wand_state_contains_for_state_contains__lemma := __flatten_68
   __flatten_26 := this_2
   __flatten_69 := __flatten_26
-  wand.Wand_state_contains_for_state_contains__this_2 := __flatten_69
+  vwand.Wand_state_contains_for_state_contains__this_2 := __flatten_69
   __flatten_27 := target_contents_2
   __flatten_70 := __flatten_27
-  wand.Wand_state_contains_for_state_contains__target_contents_2 := __flatten_70
+  vwand.Wand_state_contains_for_state_contains__target_contents_2 := __flatten_70
   __flatten_28 := top_2
   __flatten_71 := __flatten_28
-  wand.Wand_state_contains_for_state_contains__top_2 := __flatten_71
+  vwand.Wand_state_contains_for_state_contains__top_2 := __flatten_71
   __flatten_29 := in_1
   __flatten_72 := __flatten_29
-  wand.Wand_state_contains_for_state_contains__in_1 := __flatten_72
+  vwand.Wand_state_contains_for_state_contains__in_1 := __flatten_72
   __flatten_30 := in_1_0
   __flatten_73 := __flatten_30
-  wand.Wand_state_contains_for_state_contains__in_1_0 := __flatten_73
+  vwand.Wand_state_contains_for_state_contains__in_1_0 := __flatten_73
   __flatten_31 := out_1
   __flatten_74 := __flatten_31
-  wand.Wand_state_contains_for_state_contains__out_1 := __flatten_74
+  vwand.Wand_state_contains_for_state_contains__out_1 := __flatten_74
   __flatten_32 := out_1_0
   __flatten_75 := __flatten_32
-  wand.Wand_state_contains_for_state_contains__out_1_0 := __flatten_75
-  fold acc(Wand_state_contains_for_state_contains__valid_wand(wand), write)
-  __flatten_33 := wand
+  vwand.Wand_state_contains_for_state_contains__out_1_0 := __flatten_75
+  fold acc(Wand_state_contains_for_state_contains__valid_wand(vwand), write)
+  __flatten_33 := vwand
   sys__result := __flatten_33
   assert (sys__result != null) && acc(Wand_state_contains_for_state_contains__valid_wand(sys__result), write) && (Wand_state_contains_for_state_contains__get_in_1(sys__result) == in_1) && (Wand_state_contains_for_state_contains__get_in_1_0(sys__result) == in_1_0) && (Wand_state_contains_for_state_contains__get_out_1(sys__result) == out_1) && (Wand_state_contains_for_state_contains__get_out_1_0(sys__result) == out_1_0)
   inhale false
@@ -373,7 +373,7 @@ method Tree__del_min(diz: Ref, current_thread_id: Int, top: Ref) returns (sys__r
 {
   var prev_contents: Seq[Int]
   var prev: Ref
-  var wand: Ref
+  var vwand: Ref
   var cur_contents: Seq[Int]
   var left: Ref
   var cur: Ref
@@ -414,7 +414,7 @@ method Tree__del_min(diz: Ref, current_thread_id: Int, top: Ref) returns (sys__r
     cur_contents := orig_contents
     assert cur_contents == Tree__tolist(left) ++ Seq(top.Tree__data) ++ Tree__tolist(top.Tree__right)
     unfold acc(Tree__state(left), write)
-    wand := Tree__Wand_state_contains_for_state_contains_lemma_2(diz, current_thread_id, diz, target_contents, top, top, target_contents, top, target_contents)
+    vwand := Tree__Wand_state_contains_for_state_contains_lemma_2(diz, current_thread_id, diz, target_contents, top, top, target_contents, top, target_contents)
     while (left.Tree__left != null)
       invariant acc(cur.Tree__left, write)
       invariant acc(cur.Tree__data, write)
@@ -427,12 +427,12 @@ method Tree__del_min(diz: Ref, current_thread_id: Int, top: Ref) returns (sys__r
       invariant (left.Tree__left != null) ==> acc(Tree__state(left.Tree__left), write)
       invariant (left.Tree__right != null) ==> acc(Tree__state(left.Tree__right), write)
       invariant cur_contents == Tree__tolist(left.Tree__left) ++ Seq(left.Tree__data) ++ Tree__tolist(left.Tree__right) ++ Seq(cur.Tree__data) ++ Tree__tolist(cur.Tree__right)
-      invariant wand != null
-      invariant acc(Wand_state_contains_for_state_contains__valid_wand(wand), write)
-      invariant Wand_state_contains_for_state_contains__get_in_1(wand) == cur
-      invariant Wand_state_contains_for_state_contains__get_in_1_0(wand) == cur_contents[1..]
-      invariant Wand_state_contains_for_state_contains__get_out_1(wand) == top
-      invariant Wand_state_contains_for_state_contains__get_out_1_0(wand) == target_contents 
+      invariant vwand != null
+      invariant acc(Wand_state_contains_for_state_contains__valid_wand(vwand), write)
+      invariant Wand_state_contains_for_state_contains__get_in_1(vwand) == cur
+      invariant Wand_state_contains_for_state_contains__get_in_1_0(vwand) == cur_contents[1..]
+      invariant Wand_state_contains_for_state_contains__get_out_1(vwand) == top
+      invariant Wand_state_contains_for_state_contains__get_out_1_0(vwand) == target_contents
     {
       prev := cur
       prev_contents := cur_contents
@@ -450,19 +450,19 @@ method Tree__del_min(diz: Ref, current_thread_id: Int, top: Ref) returns (sys__r
       assert |prev_contents| > 0
       assert |cur_contents| > 0
       assert prev_contents == cur_contents ++ Seq(prev.Tree__data) ++ Tree__tolist(prev.Tree__right)
-      __flatten_40 := Tree__Wand_state_contains_for_state_contains_lemma_1(diz, current_thread_id, diz, target_contents, prev_contents, prev, cur_contents, top, cur, wand, cur, cur_contents[1..], top, target_contents)
-      wand := __flatten_40
+      __flatten_40 := Tree__Wand_state_contains_for_state_contains_lemma_1(diz, current_thread_id, diz, target_contents, prev_contents, prev, cur_contents, top, cur, vwand, cur, cur_contents[1..], top, target_contents)
+      vwand := __flatten_40
     }
     __flatten_41 := left.Tree__left
     __flatten_82 := __flatten_41
     cur.Tree__left := __flatten_82
     fold acc(Tree__state(cur), write)
     //:: ExpectedOutput(assert.failed:assertion.false)
-    // confirmed by Stefan Blom    
+    // confirmed by Stefan Blom
     assert Tree__tolist(cur) == cur_contents[1..]
     assert acc(Tree__state(cur), write) && (Tree__tolist(cur) == Tree__tolist(cur))
     assert acc(Tree__state(cur), write) && (Tree__tolist(cur) == cur_contents[1..])
-    Wand_state_contains_for_state_contains___apply(wand, current_thread_id)
+    Wand_state_contains_for_state_contains___apply(vwand, current_thread_id)
     __flatten_43 := top
     sys__result := __flatten_43
     assert ((sys__result != null) ==> acc(Tree__state(sys__result), write)) && (old(Tree__tolist(top))[1..] == Tree__tolist(sys__result)) && (old(Tree__sorted(top)) ==> Tree__sorted(sys__result))

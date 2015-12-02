@@ -260,7 +260,7 @@ method List__Wand_list_for_list_lemma_1(diz: Ref, current_thread_id: Int, this_1
   ensures Wand_list_for_list__get_out_1(sys__result) == out_1
   ensures Wand_list_for_list__get_out_1_0(sys__result) == out_1_0
 {
-  var wand: Ref
+  var vwand: Ref
   var __flatten_14: Ref
   var __flatten_15: Int
   var __flatten_16: Ref
@@ -290,48 +290,48 @@ method List__Wand_list_for_list_lemma_1(diz: Ref, current_thread_id: Int, this_1
   var __flatten_70: Ref
   var __flatten_71: Seq[Int]
   __flatten_14 := Wand_list_for_list__Wand_list_for_list(current_thread_id)
-  wand := __flatten_14
+  vwand := __flatten_14
   __flatten_15 := 1
   __flatten_59 := __flatten_15
-  wand.Wand_list_for_list__lemma := __flatten_59
+  vwand.Wand_list_for_list__lemma := __flatten_59
   __flatten_16 := this_1
   __flatten_60 := __flatten_16
-  wand.Wand_list_for_list__this_1 := __flatten_60
+  vwand.Wand_list_for_list__this_1 := __flatten_60
   __flatten_17 := L2_1
   __flatten_61 := __flatten_17
-  wand.Wand_list_for_list__L2_1 := __flatten_61
+  vwand.Wand_list_for_list__L2_1 := __flatten_61
   __flatten_18 := tmp_suffix_1
   __flatten_62 := __flatten_18
-  wand.Wand_list_for_list__tmp_suffix_1 := __flatten_62
+  vwand.Wand_list_for_list__tmp_suffix_1 := __flatten_62
   __flatten_19 := L1_1
   __flatten_63 := __flatten_19
-  wand.Wand_list_for_list__L1_1 := __flatten_63
+  vwand.Wand_list_for_list__L1_1 := __flatten_63
   __flatten_20 := tmp_1
   __flatten_64 := __flatten_20
-  wand.Wand_list_for_list__tmp_1 := __flatten_64
+  vwand.Wand_list_for_list__tmp_1 := __flatten_64
   __flatten_21 := suffix_1
   __flatten_65 := __flatten_21
-  wand.Wand_list_for_list__suffix_1 := __flatten_65
+  vwand.Wand_list_for_list__suffix_1 := __flatten_65
   __flatten_22 := cursor_1
   __flatten_66 := __flatten_22
-  wand.Wand_list_for_list__cursor_1 := __flatten_66
+  vwand.Wand_list_for_list__cursor_1 := __flatten_66
   __flatten_23 := wand_1
   __flatten_67 := __flatten_23
-  wand.Wand_list_for_list__wand_1 := __flatten_67
+  vwand.Wand_list_for_list__wand_1 := __flatten_67
   __flatten_24 := in_1
   __flatten_68 := __flatten_24
-  wand.Wand_list_for_list__in_1 := __flatten_68
+  vwand.Wand_list_for_list__in_1 := __flatten_68
   __flatten_25 := in_1_0
   __flatten_69 := __flatten_25
-  wand.Wand_list_for_list__in_1_0 := __flatten_69
+  vwand.Wand_list_for_list__in_1_0 := __flatten_69
   __flatten_26 := out_1
   __flatten_70 := __flatten_26
-  wand.Wand_list_for_list__out_1 := __flatten_70
+  vwand.Wand_list_for_list__out_1 := __flatten_70
   __flatten_27 := out_1_0
   __flatten_71 := __flatten_27
-  wand.Wand_list_for_list__out_1_0 := __flatten_71
-  fold acc(Wand_list_for_list__valid_wand(wand), write)
-  __flatten_28 := wand
+  vwand.Wand_list_for_list__out_1_0 := __flatten_71
+  fold acc(Wand_list_for_list__valid_wand(vwand), write)
+  __flatten_28 := vwand
   sys__result := __flatten_28
   assert (sys__result != null) && acc(Wand_list_for_list__valid_wand(sys__result), write) && (Wand_list_for_list__get_in_1(sys__result) == in_1) && (Wand_list_for_list__get_in_1_0(sys__result) == in_1_0) && (Wand_list_for_list__get_out_1(sys__result) == out_1) && (Wand_list_for_list__get_out_1_0(sys__result) == out_1_0)
   inhale false
@@ -354,7 +354,7 @@ method List__Wand_list_for_list_lemma_2(diz: Ref, current_thread_id: Int, this_2
   ensures Wand_list_for_list__get_out_1(sys__result) == out_1
   ensures Wand_list_for_list__get_out_1_0(sys__result) == out_1_0
 {
-  var wand: Ref
+  var vwand: Ref
   var __flatten_29: Ref
   var __flatten_30: Int
   var __flatten_31: Ref
@@ -374,33 +374,33 @@ method List__Wand_list_for_list_lemma_2(diz: Ref, current_thread_id: Int, this_2
   var __flatten_79: Ref
   var __flatten_80: Seq[Int]
   __flatten_29 := Wand_list_for_list__Wand_list_for_list(current_thread_id)
-  wand := __flatten_29
+  vwand := __flatten_29
   __flatten_30 := 2
   __flatten_73 := __flatten_30
-  wand.Wand_list_for_list__lemma := __flatten_73
+  vwand.Wand_list_for_list__lemma := __flatten_73
   __flatten_31 := this_2
   __flatten_74 := __flatten_31
-  wand.Wand_list_for_list__this_2 := __flatten_74
+  vwand.Wand_list_for_list__this_2 := __flatten_74
   __flatten_32 := L2_2
   __flatten_75 := __flatten_32
-  wand.Wand_list_for_list__L2_2 := __flatten_75
+  vwand.Wand_list_for_list__L2_2 := __flatten_75
   __flatten_33 := L1_2
   __flatten_76 := __flatten_33
-  wand.Wand_list_for_list__L1_2 := __flatten_76
+  vwand.Wand_list_for_list__L1_2 := __flatten_76
   __flatten_34 := in_1
   __flatten_77 := __flatten_34
-  wand.Wand_list_for_list__in_1 := __flatten_77
+  vwand.Wand_list_for_list__in_1 := __flatten_77
   __flatten_35 := in_1_0
   __flatten_78 := __flatten_35
-  wand.Wand_list_for_list__in_1_0 := __flatten_78
+  vwand.Wand_list_for_list__in_1_0 := __flatten_78
   __flatten_36 := out_1
   __flatten_79 := __flatten_36
-  wand.Wand_list_for_list__out_1 := __flatten_79
+  vwand.Wand_list_for_list__out_1 := __flatten_79
   __flatten_37 := out_1_0
   __flatten_80 := __flatten_37
-  wand.Wand_list_for_list__out_1_0 := __flatten_80
-  fold acc(Wand_list_for_list__valid_wand(wand), write)
-  __flatten_38 := wand
+  vwand.Wand_list_for_list__out_1_0 := __flatten_80
+  fold acc(Wand_list_for_list__valid_wand(vwand), write)
+  __flatten_38 := vwand
   sys__result := __flatten_38
   assert (sys__result != null) && acc(Wand_list_for_list__valid_wand(sys__result), write) && (Wand_list_for_list__get_in_1(sys__result) == in_1) && (Wand_list_for_list__get_in_1_0(sys__result) == in_1_0) && (Wand_list_for_list__get_out_1(sys__result) == out_1) && (Wand_list_for_list__get_out_1_0(sys__result) == out_1_0)
   inhale false
@@ -421,7 +421,7 @@ method List__append_iter(diz: Ref, current_thread_id: Int, l: Ref, L1: Seq[Int],
   var prefix: Seq[Int]
   var suffix: Seq[Int]
   var __flatten_39: Seq[Int]
-  var wand: Ref
+  var vwand: Ref
   var __flatten_40: Seq[Int]
   var __flatten_41: Ref
   var __flatten_42: Ref
@@ -435,7 +435,7 @@ method List__append_iter(diz: Ref, current_thread_id: Int, l: Ref, L1: Seq[Int],
   __flatten_81 := List__contents(cursor)
   __flatten_39 := __flatten_81
   suffix := __flatten_39
-  wand := List__Wand_list_for_list_lemma_2(diz, current_thread_id, diz, L2, L1, diz, L1 ++ L2, diz, L1 ++ L2)
+  vwand := List__Wand_list_for_list_lemma_2(diz, current_thread_id, diz, L2, L1, diz, L1 ++ L2, diz, L1 ++ L2)
   while (List__get_next(cursor) != null)
     invariant cursor != null
     invariant acc(List__state(cursor), write)
@@ -445,12 +445,12 @@ method List__append_iter(diz: Ref, current_thread_id: Int, l: Ref, L1: Seq[Int],
     invariant acc(List__state(l), write)
     //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /Carbon/issue/77/)
     invariant List__contents(l) == L2
-    invariant wand != null
-    invariant acc(Wand_list_for_list__valid_wand(wand), write)
-    invariant Wand_list_for_list__get_in_1(wand) == cursor
-    invariant Wand_list_for_list__get_in_1_0(wand) == suffix ++ L2
-    invariant Wand_list_for_list__get_out_1(wand) == diz
-    invariant Wand_list_for_list__get_out_1_0(wand) == L1 ++ L2 
+    invariant vwand != null
+    invariant acc(Wand_list_for_list__valid_wand(vwand), write)
+    invariant Wand_list_for_list__get_in_1(vwand) == cursor
+    invariant Wand_list_for_list__get_in_1_0(vwand) == suffix ++ L2
+    invariant Wand_list_for_list__get_out_1(vwand) == diz
+    invariant Wand_list_for_list__get_out_1_0(vwand) == L1 ++ L2
   {
     tmp := cursor
     tmp_suffix := suffix
@@ -460,13 +460,13 @@ method List__append_iter(diz: Ref, current_thread_id: Int, l: Ref, L1: Seq[Int],
     __flatten_40 := __flatten_82
     suffix := __flatten_40
     cursor := cursor.List__next
-    __flatten_41 := List__Wand_list_for_list_lemma_1(diz, current_thread_id, diz, L2, tmp_suffix, L1, tmp, suffix, cursor, wand, cursor, suffix ++ L2, diz, L1 ++ L2)
-    wand := __flatten_41
+    __flatten_41 := List__Wand_list_for_list_lemma_1(diz, current_thread_id, diz, L2, tmp_suffix, L1, tmp, suffix, cursor, vwand, cursor, suffix ++ L2, diz, L1 ++ L2)
+    vwand := __flatten_41
   }
   unfold acc(List__state(cursor), write)
   __flatten_42 := l
   __flatten_84 := __flatten_42
   cursor.List__next := __flatten_84
   fold acc(List__state(cursor), write)
-  Wand_list_for_list___apply(wand, current_thread_id)
+  Wand_list_for_list___apply(vwand, current_thread_id)
 }
