@@ -6,7 +6,8 @@
 
 package viper.silver.parser
 
-import language.implicitConversions
+import scala.language.implicitConversions
+import scala.collection.mutable
 import org.kiama.attribution.Attributable
 import org.kiama.util.Messaging
 import viper.silver.ast._
@@ -33,7 +34,7 @@ case class Translator(program: PProgram) {
     program match {
       case PProgram(_, pdomains, pfields, pfunctions, ppredicates, pmethods) =>
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
-            pmethods ++ (pdomains flatMap (_.funcs))) map translateMemberSignature
+            pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
 
         val domain = pdomains map (translate(_))
         val fields = pfields map (translate(_))
@@ -42,7 +43,7 @@ case class Translator(program: PProgram) {
         val methods = pmethods map (translate(_))
         val prog = Program(domain, fields, functions, predicates, methods)(program)
 
-        if (Consistency.messages.size == 0) Some(prog) // all error messages generated during translation should be Consistency messages
+        if (Consistency.messages.isEmpty) Some(prog) // all error messages generated during translation should be Consistency messages
         else None
     }
   }
@@ -359,7 +360,7 @@ case class Translator(program: PProgram) {
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>
-        val ts = triggers map (exps => Trigger(exps map exp)(exps(0)))
+        val ts = triggers map (exps => Trigger(exps map exp)(exps.head))
         Forall(vars map liftVarDecl, ts, exp(e))(pos)
       case f@PForPerm(v, args, e) =>
 
@@ -476,7 +477,7 @@ case class Translator(program: PProgram) {
             case (tv, tt) => tv!=tt //!tt.isInstanceOf[TypeVar]
           }*/.toMap)
         case None =>
-          assert(args.length == 0)
+          assert(args.isEmpty)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable
       }
     case PWandType() => Wand

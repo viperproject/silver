@@ -64,12 +64,13 @@ case object Bool extends AtomicType
 case object Perm extends AtomicType
 /** Type for references. */
 case object Ref extends AtomicType
-/** Type for predicates (only used internally). */
-
+/** Type used for internal nodes (e.g. typing predicate accesses) - should not be
+  * the type of any expression whose value is meaningful in the translation.
+  */
+case object InternalType extends AtomicType
 /** Type for letwand-declared variables. */
 case object Wand extends AtomicType
-/** Type for sequences */
-
+/** Base type for collections */
 sealed trait CollectionType extends BuiltInType {
   val elementType : Type
   override lazy val isConcrete = elementType.isConcrete
@@ -77,6 +78,7 @@ sealed trait CollectionType extends BuiltInType {
   override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
     make(elementType.substitute(typVarsMap))
 }
+/** Type for sequences */
 case class SeqType(override val elementType: Type) extends CollectionType{
   def make(et:Type) : SeqType = SeqType(et)
 //  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
