@@ -1,5 +1,3 @@
-//:: IgnoreFile(/Carbon/issue/77/)
-
 domain TYPE {
   
   function class_Object(): TYPE

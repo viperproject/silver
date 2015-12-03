@@ -1,5 +1,3 @@
-//:: IgnoreFile(/Carbon/issue/77/)
-
 field Wand_list_for_list__lemma: Int
 
 field Wand_list_for_list__in_1: Ref
@@ -430,6 +428,8 @@ method List__append_iter(diz: Ref, current_thread_id: Int, l: Ref, L1: Seq[Int],
   var __flatten_81: Seq[Int]
   var __flatten_82: Seq[Int]
   var __flatten_84: Ref
+    var tmp: Ref // moved manually from loop, due to Carbon issue 74
+    var tmp_suffix: Seq[Int] // moved manually from loop, due to Carbon issue 74
   cursor := diz
   prefix := Seq[Int]()
   __flatten_81 := List__contents(cursor)
@@ -443,6 +443,7 @@ method List__append_iter(diz: Ref, current_thread_id: Int, l: Ref, L1: Seq[Int],
     invariant prefix ++ suffix == L1
     invariant l != null
     invariant acc(List__state(l), write)
+    //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /Carbon/issue/77/)
     invariant List__contents(l) == L2
     invariant wand != null
     invariant acc(Wand_list_for_list__valid_wand(wand), write)
@@ -451,8 +452,6 @@ method List__append_iter(diz: Ref, current_thread_id: Int, l: Ref, L1: Seq[Int],
     invariant Wand_list_for_list__get_out_1(wand) == diz
     invariant Wand_list_for_list__get_out_1_0(wand) == L1 ++ L2 
   {
-    var tmp: Ref
-    var tmp_suffix: Seq[Int]
     tmp := cursor
     tmp_suffix := suffix
     unfold acc(List__state(cursor), write)

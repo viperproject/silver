@@ -31,4 +31,12 @@ object Permissions {
   def isConditional(exp: Exp) = exp existsDefined {
     case _: CondExp =>
   }
+
+  def multiplyExpByPerm(e: Exp, permFactor: Exp) : Exp = {
+    assert(permFactor.typ == Perm, "Internal error: attempted to permission-scale expression " + e.toString() + " by non-permission-typed expression " + permFactor.toString())
+    if(permFactor.isInstanceOf[FullPerm]) e else
+    e.transform({
+      case fa@FieldAccessPredicate(loc,p) => FieldAccessPredicate(loc,PermMul(p,permFactor)(p.pos,p.info))(fa.pos,fa.info)
+      case pa@PredicateAccessPredicate(loc,p) => PredicateAccessPredicate(loc,PermMul(p,permFactor)(p.pos,p.info))(pa.pos,pa.info)
+    })()}
 }

@@ -31,7 +31,6 @@ method TestuseZZ$(this: Ref)
   // (ZZ, 60), (Z, 30), (z, 10)
   assert acc(ZZ(this), 60 / 100)
   assert acc(Z(this), 30 / 100)
-  //:: UnexpectedOutput(assert.failed:insufficient.permission, /Carbon/issue/60/)
   assert acc(this.z, 10 / 100)
 
   fold acc(ZZ(this), 30 / 100)

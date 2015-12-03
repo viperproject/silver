@@ -1,5 +1,35 @@
 field x: Int
 
+function pre(this: Ref): Int
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  requires this != null && this.x == 0
+{
+  1
+}
+
+function post(this: Ref): Int
+  requires this != null
+  //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  //:: MissingOutput(postcondition.violated:assertion.false, /Carbon/issue/69/)
+  //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
+  //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/162/)
+  ensures this.x == 0
+{
+  1
+}
+
+//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
+function body(this: Ref): Int
+  requires this != null
+{
+  this.x
+}
+
+
+
+
+
 function pre1(this: Ref): Int
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires this != null && this.x == 0
@@ -39,46 +69,13 @@ function pre3Abstract(this: Ref): Int
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires this.x == 0
 
-
-function post1(this: Ref): Int
-  requires this != null
-  //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: ExpectedOutput(postcondition.violated:assertion.false)
-  //:: MissingOutput(postcondition.violated:assertion.false, /Carbon/issue/69/)
-  //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
-  //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/162/)
-  ensures this.x == 0
-{
-  1
-}
-
 function post1Abstract(this: Ref): Int
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   ensures this.x == 0
-
-function post2(this: Ref): Int
-  requires this != null
-  //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: ExpectedOutput(postcondition.violated:assertion.false)
-  //:: MissingOutput(postcondition.violated:assertion.false, /Carbon/issue/69/)
-  //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
-  //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/162/)
-  ensures this != null &&
-          this.x == 0
-{
-  1
-}
 
 function post2Abstract(this: Ref): Int
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   ensures this != null &&
           this.x == 0
-
-//:: ExpectedOutput(function.not.wellformed:insufficient.permission)
-function body(this: Ref): Int
-  requires this != null
-{
-  this.x
-}
