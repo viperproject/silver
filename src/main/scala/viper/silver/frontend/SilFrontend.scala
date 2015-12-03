@@ -54,7 +54,7 @@ trait SilFrontend extends DefaultFrontend {
   def startTime = _startTime
 
   def resetMessages() {
-    Consistency.resetMessages
+    Consistency.resetMessages()
   }
 
   /**

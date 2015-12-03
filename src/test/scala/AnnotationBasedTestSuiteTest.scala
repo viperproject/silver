@@ -51,8 +51,7 @@ class OutputMatcherTest extends FunSuite with BeforeAndAfter with Matchers {
   }
 
   test("unexpected output") {
-    OutputMatcher(Seq(actualFoo1), Seq(unexpectedFoo1Carbon)).errors should be
-      Nil
+    OutputMatcher(Seq(actualFoo1), Seq(unexpectedFoo1Carbon)).errors should be (Nil)
 
     OutputMatcher(Seq(), Seq(unexpectedFoo1Carbon)).errors should be
       Seq(TestUnexpectedButMissingOutputError(unexpectedFoo1Carbon))

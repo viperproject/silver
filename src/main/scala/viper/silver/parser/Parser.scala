@@ -65,13 +65,13 @@ trait DebuggingParser extends WhitespacePositionedParserUtilities {
       val fr = if (t.successful) " for " + t.get else ""
       println(s"$indent</$name> ${t.getClass.getSimpleName} at ${t.next.pos}$fr")
 
-      DebuggingParser.depth - 1
+      DebuggingParser.depth -= 1
 
       t
     }
   }
 
-  implicit def toWrapped(name: String) = new {
+  implicit def toWrapped(name: String): AnyRef = new {
     def !!![T](p: Parser[T]) = new Wrap(name,p)
   }
 }
@@ -272,12 +272,12 @@ methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
     fieldAcc ~ (":=" ~> exp) ^^ PFieldAssign
   lazy val ifthnels =
     ("if" ~> "(" ~> exp <~ ")") ~ block ~ elsifEls ^^ {
-      case cond ~ thn ~ els => PIf(cond, PSeqn(thn), els)
+      case cond ~ thn ~ ele => PIf(cond, PSeqn(thn), ele)
     }
   lazy val elsifEls: PackratParser[PStmt] = elsif | els
   lazy val elsif: PackratParser[PStmt] =
     ("elseif" ~> "(" ~> exp <~ ")") ~ block ~ elsifEls ^^ {
-      case cond ~ thn ~ els => PIf(cond, PSeqn(thn), els)
+      case cond ~ thn ~ ele => PIf(cond, PSeqn(thn), ele)
     }
   lazy val els: PackratParser[PStmt] = opt("else" ~> block) ^^ { block => PSeqn(block.getOrElse(Nil)) }
   lazy val whle =

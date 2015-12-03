@@ -553,7 +553,7 @@ case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val inf
   require((low isSubtype Int) && (high isSubtype Int))
   lazy val typ = SeqType(Int)
   def getArgs = Seq(low,high)
-  def withArgs(newArgs: Seq[Exp]) = RangeSeq(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = RangeSeq(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Appending two sequences of the same type. */
@@ -564,7 +564,7 @@ case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
   lazy val op = "++"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = SeqAppend(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqAppend(newArgs.head,newArgs(1))(pos,info)
 
 }
 
@@ -574,7 +574,7 @@ case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: 
   require(idx isSubtype Int)
   lazy val typ = s.typ.asInstanceOf[SeqType].elementType
   def getArgs = Seq(s,idx)
-  def withArgs(newArgs: Seq[Exp]) = SeqIndex(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqIndex(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Take the first 'n' elements of the sequence 'seq'. */
@@ -583,7 +583,7 @@ case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Inf
   require(n isSubtype Int)
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
-  def withArgs(newArgs: Seq[Exp]) = SeqTake(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqTake(newArgs.head,newArgs(1))(pos,info)
 
 }
 
@@ -593,7 +593,7 @@ case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Inf
   require(n isSubtype Int)
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
-  def withArgs(newArgs: Seq[Exp]) = SeqDrop(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqDrop(newArgs.head,newArgs(1))(pos,info)
 
 }
 
@@ -608,7 +608,7 @@ case class SeqContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val in
   lazy val right: PrettyExpression = s
   lazy val typ = Bool
   def getArgs = Seq(elem,s)
-  def withArgs(newArgs: Seq[Exp]) = SeqContains(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqContains(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** The same sequence as 'seq', but with the element at index 'idx' replaced with 'elem'. */
@@ -622,7 +622,7 @@ case class SeqUpdate(s: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition
   }
   lazy val typ = s.typ
   def getArgs = Seq(s,idx,elem)
-  def withArgs(newArgs: Seq[Exp]) = SeqUpdate(newArgs(0),newArgs(1),newArgs(2))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqUpdate(newArgs.head,newArgs(1),newArgs(2))(pos,info)
 
 }
 
@@ -631,7 +631,7 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
   require(s.typ.isInstanceOf[SeqType])
   lazy val typ = Int
   def getArgs = Seq(s)
-  def withArgs(newArgs: Seq[Exp]) = SeqLength(newArgs(0))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqLength(newArgs.head)(pos,info)
 
 }
 
@@ -707,7 +707,7 @@ case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   lazy val op = "union"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetUnion(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetUnion(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Intersection of two sets or two multisets. */
@@ -719,7 +719,7 @@ case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosit
   lazy val op = "union"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetIntersection(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetIntersection(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Subset relation of two sets or two multisets. */
@@ -731,7 +731,7 @@ case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, v
   lazy val op = "subset"
   lazy val typ = Bool
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetSubset(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetSubset(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Set difference. */
@@ -743,7 +743,7 @@ case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   lazy val op = "setminus"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetMinus(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetMinus(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
@@ -757,7 +757,7 @@ case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val
   lazy val right = s
   lazy val typ = if (s.typ.isInstanceOf[SetType]) Bool else Int
   def getArgs = Seq(elem,s)
-  def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** The length of a sequence. */
@@ -766,7 +766,7 @@ case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: I
   val exp = s
   lazy val typ = Int
   def getArgs = Seq(s)
-  def withArgs(newArgs: Seq[Exp]) = AnySetCardinality(newArgs(0))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetCardinality(newArgs.head)(pos,info)
 }
 
 // --- Common functionality

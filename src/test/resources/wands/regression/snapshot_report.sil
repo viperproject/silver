@@ -10,7 +10,7 @@ method test01(x: Ref)
   package acc(x.f,1/2)&&x.f==1 --* acc(x.f,1/2)&&acc(x.g)
   apply acc(x.f,1/2)&&x.f==1 --* acc(x.f,1/2)&&acc(x.g)
   assert x.f==1
-  
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon-wands/issue/1/)
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/1/)
   assert x.g==1
 }

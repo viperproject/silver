@@ -206,7 +206,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
           case _ => ssep((targets map show).to[collection.immutable.Seq], comma <> space) <+> ":=" <+> call
         }
       case Seqn(ss) =>
-        val sss = ss filter (s => !(s.isInstanceOf[Seqn] && s.children.size == 0))
+        val sss = ss filter (s => !(s.isInstanceOf[Seqn] && s.children.isEmpty))
         ssep((sss map show).to[collection.immutable.Seq], line)
       case While(cond, invs, locals, body) =>
         "while" <+> parens(show(cond)) <>
@@ -243,7 +243,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       empty
     else {
       val comment = n.info.comment
-      if (comment.size > 0) ssep((comment map ("//" <+> _)).to[collection.immutable.Seq], line) <> line
+      if (comment.nonEmpty) ssep((comment map ("//" <+> _)).to[collection.immutable.Seq], line) <> line
       else empty
     }
   }

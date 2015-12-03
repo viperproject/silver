@@ -158,9 +158,9 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   }
 
   override def typecheck() { // typecheck and translate (if successful)
-    if (state >= TranslatorState.Typechecked || !_errors.isEmpty) return
+    if (state >= TranslatorState.Typechecked || _errors.nonEmpty) return
     parse()
-    if (!_errors.isEmpty) {
+    if (_errors.nonEmpty) {
       _state = TranslatorState.Typechecked
       return
     }
@@ -172,9 +172,9 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   }
 
   override def translate() {
-    if (state >= TranslatorState.Translated || !_errors.isEmpty) return
+    if (state >= TranslatorState.Translated || _errors.nonEmpty) return
     typecheck()
-    if (!_errors.isEmpty) {
+    if (_errors.nonEmpty) {
       _state = TranslatorState.Translated
       return
     }
@@ -186,9 +186,9 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   }
 
   override def verify() {
-    if (state >= TranslatorState.Verified || !_errors.isEmpty) return
+    if (state >= TranslatorState.Verified || _errors.nonEmpty) return
     translate()
-    if (!_errors.isEmpty) {
+    if (_errors.nonEmpty) {
       _state = TranslatorState.Verified
       return
     }

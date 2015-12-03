@@ -57,7 +57,7 @@ object CfgGenerator {
       super.+=(e)
       edges += e
     }
-    def stmt = if (stmts.size == 1) stmts(0) else Seqn(stmts)(NoPosition)
+    def stmt = if (stmts.size == 1) stmts.head else Seqn(stmts)(NoPosition)
     override def toString = s"VarBlock(${stmts.mkString(";\n  ")}, ${edges.mkString("[", ",", "]")})"
     def succs = (edges map (_.dest)).toSeq
   }
@@ -107,7 +107,7 @@ object CfgGenerator {
     worklist.enqueue(block)
     val visited = collection.mutable.Set[TmpBlock]()
 
-    while (!worklist.isEmpty) {
+    while (worklist.nonEmpty) {
       val tb = worklist.dequeue()
       val succsAndBody = tb.succs ++ (tb match {
         case l: TmpLoopBlock => Seq(l.body)
@@ -164,12 +164,12 @@ object CfgGenerator {
             b = lb
           case tmpCB: TmpConstrainingBlock =>
             b = ConstrainingBlock(tmpCB.constraining.vars, null, null)
-          case vb: VarBlock if vb.edges.size == 0 =>
+          case vb: VarBlock if vb.edges.isEmpty => /* length 0 */
             b = TerminalBlock(vb.stmt)
-          case vb: VarBlock if vb.edges.size == 1 =>
+          case vb: VarBlock if vb.edges.tail.isEmpty => /* length 1 */
             b = NormalBlock(vb.stmt, null)
-          case vb: VarBlock if vb.edges.size == 2 =>
-            b = ConditionalBlock(vb.stmt, vb.edges(0).asInstanceOf[CondEdge].cond, null, null)
+          case vb: VarBlock if vb.edges.tail.tail.isEmpty => /* length 2 */
+            b = ConditionalBlock(vb.stmt, vb.edges.head.asInstanceOf[CondEdge].cond, null, null)
           case _ =>
             sys.error("unexpected block")
         }
@@ -189,12 +189,12 @@ object CfgGenerator {
             val cb = b.asInstanceOf[ConstrainingBlock]
             cb.body = b2b(tmpCB.body)
             cb.succ = b2b(tmpCB.edge.dest)
-          case vb: VarBlock if vb.edges.size == 0 => // nothing to do, no successors
-          case vb: VarBlock if vb.edges.size == 1 =>
-            b.asInstanceOf[NormalBlock].succ = b2b(vb.edges(0).dest)
-          case vb: VarBlock if vb.edges.size == 2 =>
+          case vb: VarBlock if vb.edges.isEmpty => /* length 0 - nothing to do, no successors */
+          case vb: VarBlock if vb.edges.tail.isEmpty => /* length 1 */
+            b.asInstanceOf[NormalBlock].succ = b2b(vb.edges.head.dest)
+          case vb: VarBlock if vb.edges.tail.tail.isEmpty => /* length 2 */
             val cb = b.asInstanceOf[ConditionalBlock]
-            cb.thn = b2b(vb.edges(0).dest)
+            cb.thn = b2b(vb.edges.head.dest)
             cb.els = b2b(vb.edges(1).dest)
           case _ =>
             sys.error("unexpected block")
@@ -211,7 +211,7 @@ object CfgGenerator {
 
     // find and remove empty blocks
     bfs(start) {
-      case vb: VarBlock if vb.stmt.children.size == 0 =>
+      case vb: VarBlock if vb.stmt.children.isEmpty =>
         vb.edges match {
           case ListBuffer(UncondEdge(succ)) =>
             // go through all predecessors and relink them to 'succ', and update the predecessors of 'succ'
@@ -234,8 +234,8 @@ object CfgGenerator {
                 case predVb: VarBlock if predVb.edges.size == 1 =>
                   predVb.edges(0) = UncondEdge(succ)
                 case predVb: VarBlock if predVb.edges.size == 2 =>
-                  if (predVb.edges(0).dest == vb) {
-                    predVb.edges(0) = CondEdge(succ, predVb.edges(0).asInstanceOf[CondEdge].cond)
+                  if (predVb.edges.head.dest == vb) {
+                    predVb.edges(0) = CondEdge(succ, predVb.edges.head.asInstanceOf[CondEdge].cond)
                   } else {
                     predVb.edges(1) = CondEdge(succ, predVb.edges(1).asInstanceOf[CondEdge].cond)
                   }
@@ -243,7 +243,7 @@ object CfgGenerator {
                   sys.error("unexpected block")
               }
             }
-            if (vb.pred.size == 0) {
+            if (vb.pred.isEmpty) {
               assert(vb == start)
               start == succ
             }

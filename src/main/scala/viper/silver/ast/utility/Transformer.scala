@@ -430,10 +430,12 @@ object Transformer {
         IntLit(left - right)(root.pos, root.info)
       case root @ Mul(IntLit(left), IntLit(right)) =>
         IntLit(left * right)(root.pos, root.info)
-      case root @ Div(IntLit(left), IntLit(right)) if right != 0 =>
+      case root @ Div(IntLit(left), IntLit(right)) if right != bigIntZero =>
         IntLit(left / right)(root.pos, root.info)
-      case root @ Mod(IntLit(left), IntLit(right)) if right != 0 =>
+      case root @ Mod(IntLit(left), IntLit(right)) if right != bigIntZero =>
         IntLit(left % right)(root.pos, root.info)
     })
   }
+
+  private val bigIntZero = BigInt(0)
 }

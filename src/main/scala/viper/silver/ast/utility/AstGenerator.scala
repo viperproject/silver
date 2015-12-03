@@ -132,8 +132,8 @@ object AstGenerator {
         // Goto at the end of the continuation
         val stmts = translate(b)
         stmts :+ Goto(label(succ))()
-      case block :: rest =>
-        val stmts = translate(block)
+      case head :: rest =>
+        val stmts = translate(head)
         val restStmts = translateList(rest)
         stmts ++ restStmts
     }

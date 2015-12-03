@@ -101,7 +101,7 @@ method test13(x: Ref)
 }
 
 method test14(x: Ref) {
-  //:: UnexpectedOutput(package.failed:assertion.false, /silicon-wands/issue/00/)
+  //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/00/)
   package acc(x.f) && acc(x.f) --* false
   // :: ExpectedOutput(assert.failed:assertion.false)
   assert false

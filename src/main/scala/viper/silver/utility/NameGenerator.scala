@@ -208,7 +208,7 @@ trait DefaultNameGenerator extends NameGenerator {
     } else {
       val builder = new StringBuilder
       val first = input.head
-      if (!firstCharacter.findFirstIn(first.toString).isDefined && !replacableLetters.contains(first)) {
+      if (firstCharacter.findFirstIn(first.toString).isEmpty && !replacableLetters.contains(first)) {
         builder.append(defaultIdent)
       }
       input foreach {

@@ -32,8 +32,8 @@ class NameGeneratorTest extends FunSuite with BeforeAndAfter {
   }
 
   List(
-    (gen.createIdentifier(_), "createIdentifier"),
-    (gen.createUniqueIdentifier(_), "createUniqueIdentifier")).foreach { fn =>
+    (gen.createIdentifier _, "createIdentifier"),
+    (gen.createUniqueIdentifier _, "createUniqueIdentifier")).foreach { fn =>
     val (f, name) = fn
 
     test("Valid Identifier Unchanged " + name) {

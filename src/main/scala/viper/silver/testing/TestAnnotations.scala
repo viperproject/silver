@@ -25,7 +25,7 @@ sealed case class TestAnnotations(
     case _ => false
   }
 
-  def hasErrors: Boolean = errors.size > 0
+  def hasErrors: Boolean = errors.nonEmpty
 
   /** Returns all the annotations without IgnoreFile and IgnoreFileList. */
   def outputAnnotations: Seq[LocatedAnnotation] = {
@@ -85,9 +85,8 @@ sealed case class TestAnnotations(
    */
   def filterByProject(projectInfo: ProjectInfo): TestAnnotations =
     copy(annotations = annotations filter {
-      case a: ProjectSpecificAnnotation => {
+      case a: ProjectSpecificAnnotation =>
         projectInfo.projectNames.exists(projectNameMatches(a.project, _))
-      }
       case _ => true
     })
 

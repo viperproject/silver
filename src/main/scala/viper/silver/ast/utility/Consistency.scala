@@ -39,7 +39,7 @@ object Consistency {
   }
 
   /** Reset the Kiama messages */
-  def resetMessages { this.messages = Nil }
+  def resetMessages() { this.messages = Nil }
   @inline
   def recordIf(suspect: Positioned, property: Boolean, message: String) =
     recordIfNot(suspect, !property, message)
@@ -101,16 +101,13 @@ object Consistency {
    */
   def hasNoPositiveOnly(e: Exp, exceptInhaleExhale: Boolean = false): Boolean = e match {
     case _: AccessPredicate => false
-    case InhaleExhaleExp(inhale, exhale) => {
+    case InhaleExhaleExp(inhale, exhale) =>
       exceptInhaleExhale && hasNoPositiveOnly(inhale, exceptInhaleExhale) && hasNoPositiveOnly(exhale, exceptInhaleExhale)
-    }
-    case And(left, right) => {
+    case And(left, right) =>
       hasNoPositiveOnly(left, exceptInhaleExhale) && hasNoPositiveOnly(right, exceptInhaleExhale)
-    }
-    case Implies(_, right) => {
+    case Implies(_, right) =>
       // The left side is checked during creation of the Implies expression.
       hasNoPositiveOnly(right, exceptInhaleExhale)
-    }
     case _ => true // All other cases are checked during creation of the expression.
   }
 
@@ -161,7 +158,7 @@ object Consistency {
   def validTrigger(e: Exp): Boolean = {
     e match {
       case Old(nested) => validTrigger(nested) // case corresponds to OldTrigger node
-      case e : PossibleTrigger => !(e.existsDefined { case _: ForbiddenInTrigger => })
+      case e : PossibleTrigger => !e.existsDefined { case _: ForbiddenInTrigger => }
       case _ => false
     }
   }
