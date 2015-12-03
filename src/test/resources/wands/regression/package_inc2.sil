@@ -2,7 +2,7 @@ field f: Int
 field g: Ref
 field h: Ref
 
-method test01(x: Ref) 
+method test01(x: Ref)
 requires acc(x.f) && x.f == 3
 {
   //package acc(x.f,1/2) && x.f == 2 --* acc(x.f)
@@ -10,12 +10,12 @@ requires acc(x.f) && x.f == 3
 
 //x.f in rhs will be 2 and 3 --> inconsistent state
   package acc(x.f,1/2) && x.f == 2 --* acc(x.f) && false
-  
+
   //:: ExpectedOutput(apply.failed:assertion.false)
   apply acc(x.f,1/2) && x.f == 2 --* acc(x.f) && false
 }
 
-method test02(x:Ref) 
+method test02(x:Ref)
 requires acc(x.f)
 {
   package acc(x.f,1/2) --* acc(x.f,1/2)&&acc(x.f,1/2)
@@ -27,7 +27,7 @@ requires acc(x.f)
 }
 
 
-method test03(x: Ref) 
+method test03(x: Ref)
 requires acc(x.f,1/3) && x.f == 2
 {
 
@@ -35,13 +35,14 @@ requires acc(x.f,1/3) && x.f == 2
   package acc(x.f,1/3) && x.f == 2 --* acc(x.f)
 }
 
-method test04(x: Ref) 
+method test04(x: Ref)
 requires acc(x.f,1/3) && x.f == 3
 {
-  //here inconsistency on rhs
-  package acc(x.f,1/3) && x.f == 2 --* acc(x.f)
-  
+  //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/188/)
+  package acc(x.f,1/3) && x.f == 2 --* acc(x.f) //here inconsistency on rhs
+
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 

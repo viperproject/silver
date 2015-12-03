@@ -1,13 +1,15 @@
 field f: Int
 
 method t(x:Ref) {
-  package acc(x.f) --* acc(x.f) 
+  package acc(x.f) --* acc(x.f)
   inhale acc(x.f)&&x.f==2
   apply acc(x.f) --* acc(x.f)
-  
-  assert x.f==2 
-  
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/185/)
+  assert x.f==2
+
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(if.failed:insufficient.permission, /silicon/issue/34/)
   assert false
 }
 

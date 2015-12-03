@@ -20,7 +20,6 @@ method test02(x: Ref)
   ensures acc(x.f) && acc(x.f) --* acc(x.g)
 {}
 
-/* See wand-silicon/issue/19/ for a discussion of which error(s) to report */
 method test03(x: Ref)
   requires acc(x.f) && acc(x.g)
   //:: ExpectedOutput(postcondition.violated:wand.not.found)

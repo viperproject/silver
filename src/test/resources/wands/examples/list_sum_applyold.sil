@@ -1,4 +1,4 @@
-//:: IgnoreFile(/silicon/issue/9/)
+//:: IgnoreFile(/silicon/issue/187/)
 
 /* It encodes and specifies an iterative computation of the sum
  * of a recursively defined linked-list. Magic wands are used to book-keep

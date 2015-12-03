@@ -49,7 +49,7 @@ method test06(x: Ref) {
   inhale A1 --* B1
   apply A1 --* B1
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/24/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/193/)
   assert unfolding LL(x) in x.next != null ==> unfolding LL(x.next) in x.next.val == 2 * x.val
 }
 

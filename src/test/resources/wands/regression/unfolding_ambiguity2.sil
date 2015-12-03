@@ -11,6 +11,7 @@ method t02(x:Ref) {
 
 if the unfolding is interpreted just as an unfolding expression then the wand is not well-formed */
 
+  //:: UnexpectedOutput(wand.not.wellformed:insufficient.permission, /silicon/issue/197/)
   package acc(P(x)) --* unfolding P(x) in true
 
   exhale (acc(P(x)) --* true)
