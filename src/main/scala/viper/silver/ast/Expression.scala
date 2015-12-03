@@ -387,6 +387,7 @@ case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = N
 case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnExp {
   require(oldLabel != null, "LabelledOld(exp, _): exp cannot be null")
   require(oldLabel != null, "LabelledOld(_, oldLabel): oldLabel cannot be null")
+  require(wand isSubtype Wand, s"Expected wand but found ${wand.typ} ($wand)")
   Consistency.checkNoPositiveOnly(exp)
 
   lazy val typ = exp.typ
