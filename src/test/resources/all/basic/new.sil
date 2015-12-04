@@ -69,9 +69,8 @@ field Node_v: Int
 field Node_n: Ref
 
 predicate Node_P(this: Ref) {
-     acc(this.Node_v, wildcard)
-  && acc(this.Node_n, wildcard)
-  && (this.Node_n != null ==> acc(Node_P(this.Node_n), wildcard))
+  acc(this.Node_v) && acc(this.Node_n) && 
+    (this.Node_n != null ==> acc(Node_P(this.Node_n)))
 }
 
 method test5(n: Ref)
@@ -80,19 +79,16 @@ method test5(n: Ref)
   var m: Ref
 
   m := new()
+  assert m != null
   assert m != n
 
   unfold acc(Node_P(n), wildcard)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/29/)
+  assert m != (n.Node_n)
+  
   if (n.Node_n != null) {
-    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/29/)
-    assert m != (n.Node_n)
-
-    unfold acc(Node_P(n), wildcard)
-    //:: ExpectedOutput(if.failed:insufficient.permission)
-    //:: MissingOutput(if.failed:insufficient.permission, /silicon/issue/34/)
-    if (n.Node_n.Node_n != null) {
-      assert m != (n.Node_n.Node_n)
-    }
+    unfold acc(Node_P(n.Node_n), wildcard)
+    assert m != (n.Node_n.Node_n)
   }
 }
 
