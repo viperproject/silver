@@ -1,15 +1,17 @@
+//:: IgnoreFile(/silicon/issue/202/)
+
 field f: Int
 field g: Ref
 field h: Ref
 
 method test02(x: Ref) {
   package true --* (packaging (false --* folding P(x) in true) in true)
-  
+
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
 
-method test03(x:Ref) 
+method test03(x:Ref)
 requires acc(P(x),1/2)
 {
   package acc(P(x),1/2) --* acc(P(x))
@@ -17,7 +19,7 @@ requires acc(P(x),1/2)
 
 method test04(x:Ref)
 {
-  package acc(x.f) --* packaging (acc(x.f) --* folding Q(x) in false) in true 
+  package acc(x.f) --* packaging (acc(x.f) --* folding Q(x) in false) in true
 
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
@@ -40,4 +42,3 @@ predicate Q(x: Ref) {
 }
 
 
-  
