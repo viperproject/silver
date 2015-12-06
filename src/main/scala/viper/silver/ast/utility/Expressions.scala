@@ -8,6 +8,7 @@ package viper.silver.ast.utility
 
 import scala.reflect.ClassTag
 
+import viper.silver.ast.QuantifiedPermissionSupporter.ForallRefPerm
 import viper.silver.ast._
 import viper.silver.ast.utility.Triggers.TriggerGeneration
 
@@ -52,9 +53,9 @@ object Expressions {
 
   def asBooleanExp(e: Exp): Exp = {
     e.transform({
-      case _: AccessPredicate => TrueLit()()
+      case _: AccessPredicate | _: MagicWand => TrueLit()()
+      case ForallRefPerm(_, _, _, _, _, _, _) => TrueLit()()
       case Unfolding(predicate, exp) => asBooleanExp(exp)
-      case _: MagicWand => TrueLit()()
     })()
   }
 
