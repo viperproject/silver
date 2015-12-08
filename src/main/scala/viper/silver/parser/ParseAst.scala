@@ -186,6 +186,9 @@ case class PMultisetType(elementType: PType) extends PType {
   override def substitute(map: Map[String, PType]) = PMultisetType(elementType.substitute(map))
 }
 
+/** Type used for internal nodes (e.g. typing predicate accesses) - should not be
+  * the type of any expression whose value is meaningful in the translation.
+  */
 sealed trait PInternalType extends PType
 
 // for resolving if something cannot be typed
