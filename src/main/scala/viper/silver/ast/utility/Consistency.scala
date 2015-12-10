@@ -6,12 +6,10 @@
 
 package viper.silver.ast.utility
 
+import scala.util.parsing.input.{Position, NoPosition}
 import org.kiama.util.{Message, Messaging}
-import scala.collection.mutable
-import util.parsing.input.{Position, NoPosition}
-import viper.silver.parser.{PForPerm, PIdnUse, Parser}
+import viper.silver.parser.Parser
 import viper.silver.ast._
-import scala.Seq
 
 /** An utility object for consistency checking. */
 object Consistency {
@@ -165,7 +163,7 @@ object Consistency {
 
   /** Returns true iff the given QuantifiedExp is either pure, or of the shape of quantified permissions allowed (see QuantifiedPermissionSupporter)*/
   def supportedQuantifier(q: QuantifiedExp) : Boolean = q match {
-    case QuantifiedPermissionSupporter.ForallRefPerm(_, _, _, _, _, _, _) =>
+    case QuantifiedPermissions.QPForall(_, _, _, _, _, _, _) =>
       true
     case _ => q.isPure
   }
