@@ -33,6 +33,12 @@ object QuantifiedPermissions {
       }
   }
 
+  /* TODO: Computing the set of quantified fields would probably benefit from caching
+   *       the (sub)results per member. Ideally, it would be possible to retrieve the
+   *       (cached) results from the members themselves,
+   *       e.g. someMethod.quantifiedFields.
+   */
+
   def quantifiedFields(root: Node, program: Program): collection.Set[Field] = {
     val collected = mutable.LinkedHashSet[Field]()
     val visited = mutable.Set[Member]()
