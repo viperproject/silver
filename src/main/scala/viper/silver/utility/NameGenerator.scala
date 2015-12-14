@@ -6,7 +6,6 @@
 
 package viper.silver.utility
 
-import viper.silver.ast.utility.Consistency
 import util.matching.Regex
 import java.util.concurrent.locks.ReentrantLock
 
@@ -76,7 +75,7 @@ trait DefaultNameGenerator extends NameGenerator {
   def reservedNames: Set[String]
 
   /** Special letters that can be replaced with a specific string inside identifiers */
-  lazy val replacableLetters = Map(
+  lazy val replaceableLetters = Map(
     'Α' -> "Alpha",
     'Β' -> "Beta",
     'Γ' -> "Gamma",
@@ -208,15 +207,15 @@ trait DefaultNameGenerator extends NameGenerator {
     } else {
       val builder = new StringBuilder
       val first = input.head
-      if (firstCharacter.findFirstIn(first.toString).isEmpty && !replacableLetters.contains(first)) {
+      if (firstCharacter.findFirstIn(first.toString).isEmpty && !replaceableLetters.contains(first)) {
         builder.append(defaultIdent)
       }
       input foreach {
         c =>
           if (otherCharacter.findFirstIn(c.toString).isDefined) {
             builder.append(c)
-          } else if (replacableLetters.contains(c)) {
-            builder.append(replacableLetters(c))
+          } else if (replaceableLetters.contains(c)) {
+            builder.append(replaceableLetters(c))
           }
       }
       var res = builder.result
