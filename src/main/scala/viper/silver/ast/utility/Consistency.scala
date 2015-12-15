@@ -156,7 +156,7 @@ object Consistency {
   def validTrigger(e: Exp): Boolean = {
     e match {
       case Old(nested) => validTrigger(nested) // case corresponds to OldTrigger node
-      case e : PossibleTrigger => !e.existsDefined { case _: ForbiddenInTrigger => }
+      case _ : PossibleTrigger | _: FieldAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
       case _ => false
     }
   }
