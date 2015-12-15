@@ -6,7 +6,6 @@ function postFunction(this: Ref): Int
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   //:: MissingOutput(postcondition.violated:assertion.false, /Carbon/issue/69/)
   //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
-  //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/162/)
   ensures this.x == 0
 {
   1

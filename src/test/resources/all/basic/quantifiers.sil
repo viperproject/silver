@@ -114,7 +114,7 @@ method test1(A: Seq[Int]) {
 
   //:: ExpectedOutput(assert.failed:assertion.false)
 	assert forall v2: Int ::
-		(0 <= v2 && v2 < 3 && f2(v2)) ==> (exists j2: Int :: 0 <= j2 && j2 < 3 && j2 == v2) /* @Error 410 */
+		(0 <= v2 && v2 < 3 && f2(v2)) ==> (exists j2: Int :: 0 <= j2 && j2 < 3 && j2 == v2)
     /* 2013-08-05 Malte: Fails, probably due to a triggering problem of Z3.
      *            Should hold otherwise.
      */

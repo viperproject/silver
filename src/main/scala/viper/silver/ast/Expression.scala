@@ -320,14 +320,14 @@ object LocationAccess {
 /** A field access expression. */
 case class FieldAccess(rcv: Exp, field: Field)
                       (val pos: Position = NoPosition, val info: Info = NoInfo)
-    extends LocationAccess with Lhs with PossibleTrigger {
+    extends LocationAccess with Lhs /*with PossibleTrigger*/ {
 
   def loc(p : Program) = field
   lazy val typ = field.typ
 
-  def getArgs: Seq[Exp] = Seq(rcv)
-  def withArgs(args: Seq[Exp]): PossibleTrigger = copy(rcv = args.head, field)(pos, info)
-  def asManifestation: Exp = this
+//  def getArgs: Seq[Exp] = Seq(rcv)
+//  def withArgs(args: Seq[Exp]): PossibleTrigger = copy(rcv = args.head, field)(pos, info)
+//  def asManifestation: Exp = this
 }
 
 /** A predicate access expression. See also companion object below for an alternative creation signature */

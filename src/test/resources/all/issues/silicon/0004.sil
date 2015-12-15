@@ -1,7 +1,7 @@
 domain GlobalKPermission {
-  
+
   unique function globalK$(): Perm
-  
+
   axiom globalKReadOnly {
     (globalK$() > none) && (write > globalK$())
   }
@@ -61,7 +61,6 @@ method NodeaddAtEndRec$(this$_4: Ref, k$: Perm, n: Ref)
   requires write > k$
   requires acc(Nodelseg$(this$_4), write) && acc(n.Nodenext$, write) && acc(n.Nodeval$, write) && acc(n.Nodelength$, write)
   ensures acc(Nodelseg$(this$_4), write)
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/4/)
   ensures Nodeend$(this$_4) == old(n.Nodenext$)
   ensures Nodelseg_length$(this$_4) == old(Nodelseg_length$(this$_4)) + 1
 {
@@ -75,7 +74,6 @@ method NodeaddAtEndRec$(this$_4: Ref, k$: Perm, n: Ref)
     this$_4.Nodenext$ := n
     n.Nodelength$ := 1
     fold acc(Nodelseg$(n), write)
-    // assert Nodeend$(n) == old(n.Nodenext$) /* Makes Silicon succeed */
   } else {
     fresh newK$_3
     constraining(newK$_3) {
@@ -110,7 +108,7 @@ method NodeaddAtEnd$(this$_5: Ref, k$_1: Perm, v: Int)
     invariant acc(cur.Nodenext$, write) && acc(cur.Nodeval$, write) && acc(cur.Nodelength$, write)
     invariant (this$_5 != cur) ==> acc(Nodelseg$(this$_5), write) && (Nodeend$(this$_5) == cur)
     //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /Carbon/issue/10/)
-    invariant (cur.Nodelength$ > 0) && ((cur.Nodelength$ > 1) ==> (cur.Nodenext$ != null) && acc(Nodelseg$(cur.Nodenext$), write)) && ((cur.Nodelength$ == 1 ? cur.Nodenext$ : Nodeend$(cur.Nodenext$)) == null) 
+    invariant (cur.Nodelength$ > 0) && ((cur.Nodelength$ > 1) ==> (cur.Nodenext$ != null) && acc(Nodelseg$(cur.Nodenext$), write)) && ((cur.Nodelength$ == 1 ? cur.Nodenext$ : Nodeend$(cur.Nodenext$)) == null)
   {
     temp := cur
     cur := cur.Nodenext$

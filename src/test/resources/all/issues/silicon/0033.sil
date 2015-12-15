@@ -30,13 +30,6 @@ method unfoldTwice(this: Ref)
   requires size(this) == 2
 {
   unfold acc(valid(this), write)
-
-  assert size(this.next) == 1
-    /* Required by Silicon, the final assertions fails otherwise.
-     * Alternatively, run Silicon with --unrollFunctions 2.
-     * See also Silicon issue #41.
-     */
-
   unfold acc(valid(this.next), write)
 
   assert this.next.next == null
@@ -47,14 +40,8 @@ method unfoldThrice(this: Ref)
   requires acc(valid(this), write)
   requires size(this) == 3
 {
-  /* Issue #41 again; either have additional assertions triggering function
-   * unrolling, or run Silicon with --unrollFunctions 3.
-   */
-
   unfold acc(valid(this), write)
-  assert size(this.next) == 2
   unfold acc(valid(this.next), write)
-  assert size(this.next.next) == 1
   unfold acc(valid(this.next.next), write)
 
   assert this.next.next.next == null

@@ -65,7 +65,6 @@ method prepend(xs: Ref, y: Int) returns (ys: Ref)
 method append(xs: Ref, y: Int)
   requires acc(list(xs)) && xs != null
   ensures acc(list(xs)) && xs != null
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/130/)
   ensures length(xs) == old(length(xs)) + 1
   ensures elems(xs) == old(elems(xs)) ++ Seq(y)
   ensures head(xs) == old(head(xs)) // (2)
@@ -80,14 +79,8 @@ method append(xs: Ref, y: Int)
     ys.next := null
     fold acc(list(ys))
     xs.next := ys
-
-//    assert length(ys) == 1      // Needed by Silicon?
-//    assert elems(ys) == Seq(y)  // Needed by Silicon?
-//    assert ascending(ys)        // Needed by Silicon?
   } else {
     append(xs.next, y)
-
-//    assert head(xs.next) == elems(xs.next)[0]  // Needed by Silicon?
   }
 
   fold acc(list(xs))
@@ -102,7 +95,6 @@ method insert(xs: Ref, y: Int) returns (ys: Ref, i: Int)
   ensures acc(list(ys)) && ys != null
   ensures 0 <= i && i <= old(length(xs))
   ensures (i > 0 ==> head(ys) == old(head(xs))) && (i == 0 ==> head(ys) == y) // (2)
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/130/)
   ensures length(ys) == old(length(xs)) + 1
   ensures elems(ys) == old(elems(xs))[0..i] ++ Seq(y) ++ old(elems(xs))[i..]
   ensures old(ascending(xs)) ==> ascending(ys) // (2)
@@ -124,15 +116,11 @@ method insert(xs: Ref, y: Int) returns (ys: Ref, i: Int)
       ys.val := y
       ys.next := xs.next
       fold acc(list(ys))
-//      assert length(ys) == old(length(xs)) // Needed by Silicon?
-//      assert elems(ys) == Seq(y) ++  unfolding acc(list(ys)) in elems(xs.next) // Needed by Silicon?
-//      assert old(ascending(xs)) ==> ascending(ys) // Needed by Silicon?
       xs.next := ys
       ys := xs
       i := 1
     } else {
       ys, i := insert(xs.next, y)
-//      assert head(ys) == elems(ys)[0] // Needed by Silicon?
       xs.next := ys
       ys := xs
       i := i + 1
