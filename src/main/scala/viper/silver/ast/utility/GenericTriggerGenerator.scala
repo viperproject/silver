@@ -9,20 +9,6 @@ package viper.silver.ast.utility
 import reflect.ClassTag
 
 object GenericTriggerGenerator {
-  trait PossibleTrigger[M <: AnyRef, S <: PossibleTrigger[M, S]] {
-    def getArgs: Seq[M]
-    def withArgs(args: Seq[M]): S
-    def asManifestation: M
-  }
-
-  trait ForbiddenInTrigger[T] {
-    def typ: T
-  }
-
-  trait WrappingTrigger[M <: AnyRef, GPT <: PossibleTrigger[M, GPT], S <: WrappingTrigger[M, GPT, S]] extends PossibleTrigger[M, GPT] {
-    def wrappee: GPT
-  }
-
   case class TriggerSet[E](exps: Seq[E])
 }
 
@@ -30,10 +16,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
                                        Type <: AnyRef,
                                        Exp  <: Node : ClassTag,
                                        Var <: Node : ClassTag,
-                                       Quantification <: Exp : ClassTag,
-                                       PossibleTrigger <: GenericTriggerGenerator.PossibleTrigger[Exp, PossibleTrigger] : ClassTag,
-                                       Old <: Exp : ClassTag,
-                                       WrappingTrigger <: PossibleTrigger with GenericTriggerGenerator.WrappingTrigger[Exp, PossibleTrigger, WrappingTrigger] : ClassTag] {
+                                       Quantification <: Exp : ClassTag] {
   /* 2014-09-22 Malte: I tried to use abstract type members instead of type
    * parameters, but that resulted in the warning "The outer reference in this
    * type test cannot be checked at run time.".
@@ -41,6 +24,9 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
 
   type TriggerSet = GenericTriggerGenerator.TriggerSet[Exp]
   val TriggerSet = GenericTriggerGenerator.TriggerSet
+
+  private type PossibleTrigger = Exp
+  private type ForbiddenInTrigger = Exp
 
   /* Node */
   protected def hasSubnode(root: Node, child: Node): Boolean
@@ -58,13 +44,11 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
   /* QuantiQuantifiedExp */
   protected def Quantification_vars(q: Quantification): Seq[Var]
 
-  /* Wrapping triggers */
-  protected val wrapperMap: Map[Class[_], PossibleTrigger => WrappingTrigger]
+  /* True iff the given node is a possible trigger */
+  protected def isPossibleTrigger(e: Exp): Boolean
 
-  object WrappingGNode {
-    def unapply(n: Node): Option[PossibleTrigger => WrappingTrigger] =
-      wrapperMap.find{case (clazz, f) => clazz.isInstance(n)}.map(_._2)
-  }
+  protected def withArgs(e: Exp, args: Seq[Exp]): Exp
+  protected def getArgs(e: Exp): Seq[Exp]
 
   /* True iff the given node is not allowed in triggers */
   protected def isForbiddenInTrigger(e: Exp): Boolean
@@ -176,10 +160,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
 
     /* Get all function applications */
     reduceTree(toSearch)((node: Node, results: Seq[Seq[(PossibleTrigger, Seq[Var], Seq[Var])]]) => node match {
-      case WrappingGNode(f) =>
-        results.flatten map {case (pt, vars, extras) => (f(pt)/*(pt.pos,pt.info)*/, vars, extras)}
-
-      case possibleTrigger: PossibleTrigger =>
+      case possibleTrigger: PossibleTrigger if isPossibleTrigger(possibleTrigger) =>
         var extraVars: Seq[Var] = Seq() /* Collect extra variables generated for this term */
         var containsNestedBoundVars = false /* Flag to rule out this term */
         var containedVars: Seq[Var] = Seq()
@@ -187,7 +168,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
         /* Eliminate all boolean expressions forbidden from triggers, and
          * replace with "extraVars"
          */
-        val processedArgs = possibleTrigger.getArgs map (pt => transform(pt) {
+        val processedArgs = getArgs(possibleTrigger) map (pt => transform(pt) {
           case e: Exp if isForbiddenInTrigger(e) =>
             val newV = Var("fresh__" + nextUniqueId, Exp_typ(e))
             nextUniqueId += 1
@@ -197,18 +178,18 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
         })
 
         /* Collect all the sought (vs) variables in the function application */
-        processedArgs map (arg => visit(arg) {
+        processedArgs foreach (arg => visit(arg) {
           case v: Var =>
             if (nestedBoundVars.contains(v)) containsNestedBoundVars = true
             if (vs.contains(v)) containedVars +:= v
         })
 
         if (!containsNestedBoundVars && containedVars.nonEmpty)
-          results.flatten ++ Seq((possibleTrigger.withArgs(processedArgs), containedVars, extraVars))
+          results.flatten ++ Seq((withArgs(possibleTrigger, processedArgs), containedVars, extraVars))
         else
           results.flatten
 
-        case _ => results.flatten
+      case _ => results.flatten
     })
   }
 
@@ -238,7 +219,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
         var result =
           buildTriggersCovering(needed,
                                 rest.filter(func => func._2.intersect(needed).nonEmpty),
-                                currentTrigger :+ f.asManifestation,
+                                currentTrigger :+ f,
                                 (extraVars ++ extra).distinct)
 
         result ++= buildTriggersCovering(vars, rest, currentTrigger, extraVars)

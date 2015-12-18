@@ -500,9 +500,7 @@ case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Inf
  * Marker trait for all sequence-related expressions. Does not imply that the type of the
  * expression is `SeqType`.
  */
-sealed trait SeqExp extends Exp with PossibleTrigger {
-  override def asManifestation = this
-}
+sealed trait SeqExp extends Exp with PossibleTrigger
 
 /** The empty sequence of a given element type. */
 case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
@@ -624,17 +622,13 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
  * Marker trait for all set-related expressions. Does not imply that the type of the
  * expression is `SetType`.
  */
-sealed trait SetExp extends Exp with PossibleTrigger {
-  override def asManifestation:Exp = this
-}
+sealed trait SetExp extends Exp with PossibleTrigger
 
 /**
  * Marker trait for all set-related expressions. Does not imply that the type of the
  * expression is `MultisetType`.
  */
-sealed trait MultisetExp extends Exp with PossibleTrigger {
-  override def asManifestation:Exp = this
-}
+sealed trait MultisetExp extends Exp with PossibleTrigger
 
 /**
  * Marker traits for all expressions that correspond to operations on sets or multisets.
@@ -766,34 +760,12 @@ sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominato
  * Used to label expression nodes as potentially valid trigger terms for quantifiers.
  * Use ForbiddenInTrigger to declare terms which may not be used in triggers.
  */
-sealed trait PossibleTrigger extends GenericTriggerGenerator.PossibleTrigger[Exp, PossibleTrigger] {
-  def pos : Position
-  def info : Info
+sealed trait PossibleTrigger extends Exp {
+  def getArgs: Seq[Exp]
+  def withArgs(args: Seq[Exp]): PossibleTrigger
 }
 
-sealed trait WrappingTrigger extends PossibleTrigger
-    with GenericTriggerGenerator.WrappingTrigger[Exp, PossibleTrigger, WrappingTrigger]
-
-// Representation for a trigger term to be evaluated in the "old" heap
-case class OldTrigger(wrappee: PossibleTrigger)(val pos: Position = NoPosition, val info: Info = NoInfo)
-    extends WrappingTrigger {
-
-  def getArgs = wrappee.getArgs
-  def withArgs(args : Seq[Exp]) = OldTrigger(wrappee.withArgs(args))(pos,info)
-  def asManifestation = Old(wrappee.asManifestation)(pos,info)
-}
-object OldTrigger { // creates an instance, recording the pos and info of the old expression
-  def apply(oldExp : Old) : OldTrigger = {
-    val exp = oldExp.exp match {
-      case trigger: PossibleTrigger => trigger
-      case _ => sys.error("Internal Error: tried to create invalid trigger node from : " + oldExp)
-    }
-
-    OldTrigger(exp)(oldExp.pos, oldExp.info)
-  }
-}
-
-sealed trait ForbiddenInTrigger extends Exp with GenericTriggerGenerator.ForbiddenInTrigger[Type]
+sealed trait ForbiddenInTrigger extends Exp
 
 /** Common ancestor of Domain Function applications and Function applications. */
 sealed trait FuncLikeApp extends Exp with Call {

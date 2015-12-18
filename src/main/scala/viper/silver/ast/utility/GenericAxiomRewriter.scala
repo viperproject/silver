@@ -18,11 +18,13 @@ abstract class GenericAxiomRewriter[Type <: AnyRef,
                                     Implies <: Exp,
                                     Plus <: Exp,
                                     Minus <: Exp,
-                                    Trigger <: AnyRef,
-                                    ForbiddenInTrigger <: GenericTriggerGenerator.ForbiddenInTrigger[Type] with Exp : ClassTag] {
+                                    Trigger <: AnyRef/*,
+                                    ForbiddenInTrigger <: GenericTriggerGenerator.ForbiddenInTrigger[Type] with Exp : ClassTag*/] {
 
   type TriggerSet = GenericTriggerGenerator.TriggerSet[Exp]
   val TriggerSet = GenericTriggerGenerator.TriggerSet[Exp] _
+
+  type ForbiddenInTrigger = Exp
 
   /*
    * Abstract members - type arguments
@@ -45,6 +47,9 @@ abstract class GenericAxiomRewriter[Type <: AnyRef,
 
   protected def Trigger_exps(t: Trigger): Seq[Exp]
   protected def Trigger(exps: Seq[Exp]): Trigger
+
+  /* True iff the given node is not allowed in triggers */
+  protected def isForbiddenInTrigger(e: Exp): Boolean
 
   /*
    * Abstract members - dependencies
@@ -75,7 +80,8 @@ abstract class GenericAxiomRewriter[Type <: AnyRef,
      * This difference might matter if multiple quantified variables occur in
      * an invalid term, e.g. as in 'f(x + (y - 1))'.
      */
-    triggers flatMap (_.exps map (Exp_shallowCollect(_){ case s: ForbiddenInTrigger => s }))
+    triggers flatMap (_.exps map (Exp_shallowCollect(_) {
+      case s: ForbiddenInTrigger if isForbiddenInTrigger(s) => s }))
 
   protected def partitionInvalidTerms(invalidTerms: ListSet[ForbiddenInTrigger],
                                       qvars: Seq[Var])

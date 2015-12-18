@@ -11,9 +11,7 @@ import viper.silver.ast._
 
 /** Utility methods for triggers */
 object Triggers {
-  object TriggerGeneration extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp, PossibleTrigger,
-                                                           Old, WrappingTrigger] {
-
+  object TriggerGeneration extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp] {
     protected def hasSubnode(root: Node, child: Node) = root.hasSubnode(child)
     protected def visit[A](root: Node)(f: PartialFunction[Node, A]) = root.visit(f)
     protected def deepCollect[A](root: Node)(f: PartialFunction[Node, A]) = root.deepCollect(f)
@@ -26,20 +24,30 @@ object Triggers {
     protected def Trigger(exps: Seq[Exp]) = viper.silver.ast.Trigger(exps)()
     protected def Var(id: String, typ: Type) = LocalVar(id)(typ)
 
-    protected val wrapperMap: Map[Class[_], PossibleTrigger => WrappingTrigger] = Map(
-      classOf[Old] -> (pt => OldTrigger(pt)(pt.pos,pt.info)))
+    /* True iff the given node is a possible trigger */
+    protected def isPossibleTrigger(e: Exp): Boolean = e.isInstanceOf[PossibleTrigger]
 
     /* Note: If Add and Sub were type arguments of GenericTriggerGenerator, the latter
      *       could implement isForbiddenInTrigger already */
-    protected def isForbiddenInTrigger(e: Exp) = e match {
+    def isForbiddenInTrigger(e: Exp) = e match {
       case _: Add | _: Sub if allowInvalidTriggers => false
       case _: ForbiddenInTrigger => true
       case _ => false
     }
+
+    protected def withArgs(e: Exp, args: Seq[Exp]): Exp = e match {
+      case pt: PossibleTrigger => pt.withArgs(args)
+      case other => sys.error(s"Unexpected expression $e")
+    }
+
+    protected def getArgs(e: Exp): Seq[Exp] = e match {
+      case pt: PossibleTrigger => pt.getArgs
+      case other => sys.error(s"Unexpected expression $e")
+    }
   }
 
   object AxiomRewriter extends GenericAxiomRewriter[Type, Exp, LocalVar, Forall, EqCmp, And, Implies, Add, Sub,
-                                                    Trigger, ForbiddenInTrigger] {
+                                                    Trigger] {
 
     private var nextUniqueId = 0
 
@@ -70,6 +78,9 @@ object Triggers {
 
     protected def Trigger_exps(t: Trigger) = t.exps
     protected def Trigger(exps: Seq[Exp]) = ast.Trigger(exps)()
+
+    /* True iff the given node is not allowed in triggers */
+    protected def isForbiddenInTrigger(e: Exp): Boolean = TriggerGeneration.isForbiddenInTrigger(e)
 
     /*
      * Abstract members - dependencies
