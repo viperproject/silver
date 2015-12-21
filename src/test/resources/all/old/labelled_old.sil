@@ -6,7 +6,7 @@ method test01() {
   m := new(f)
   m.f := 15
 
-initial:
+label initial
 
   m.f := 3
   inhale acc(m.tk, write)
@@ -22,7 +22,7 @@ method test02() {
   m := new(f)
   m.f := 15
 
-initial:
+label initial
 
   m.f := 3
   inhale acc(m.tk, write)
@@ -39,7 +39,7 @@ method test03() {
 
   m.f := 15
 
-initial:
+label initial
 
   m.f := 3
   inhale acc(m.tk, write)
@@ -53,26 +53,26 @@ initial:
 method test04(x: Ref)
   requires acc(x.f)
 {
-first:
+label first
   var y: Ref
   y := new(f)
 
-second:
-  assert forallrefs[f] z :: z.f == old[second](z.f)
+label second
+  assert forperm[f] z :: z.f == old[second](z.f)
 
   //:: ExpectedOutput(assert.failed:insufficient.permission)
-  assert forallrefs[f] z :: z.f == old[first](z.f)
+  assert forperm[f] z :: z.f == old[first](z.f)
 }
 
 method test05(x: Ref, y: Ref)
   requires acc(x.f) && acc(y.f)
 {
-first:
+label first
   y.f := 0
 
-second:
-  assert forallrefs[f] z :: z.f == old[second](z.f)
+label second
+  assert forperm[f] z :: z.f == old[second](z.f)
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  assert forallrefs[f] z :: z.f == old[first](z.f)
+  assert forperm[f] z :: z.f == old[first](z.f)
 }

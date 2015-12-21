@@ -116,9 +116,9 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // specifications
     "requires", "ensures", "invariant",
     // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "goto", "package", "apply",
-    // control structures
-    "while", "if", "elseif", "else",
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
+    // control flow
+    "while", "if", "elseif", "else", "goto", "label",
     // special fresh block
     "fresh", "constraining",
     // sequences
@@ -132,14 +132,14 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // other expressions
     "let",
     // quantification
-    "forall", "exists", "forallrefs",
+    "forall", "exists", "forperm",
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
-    "unique",
+    "unique"/*,
 
     // TODO: Hacks to stop the parser from interpreting, e.g., "inhale" as "in hale"
-    "variant", "hale", "tersection"
+    "variant", "hale", "tersection"*/
   )
 
   lazy val parser = phrase(programDecl)
@@ -304,7 +304,7 @@ methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
       "*" ^^ (_ => None)
     | repsep(idnuse, ",") ^^ (fields => Some(fields)))
   lazy val lbl =
-    idndef <~ ":" ^^ PLabel
+    keyword("label") ~> idndef ^^ PLabel
   lazy val goto =
     "goto" ~> idnuse ^^ PGoto
   lazy val methodCall =
@@ -468,7 +468,7 @@ methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
     (keyword("exists") ~> formalArgList <~ "::") ~ exp ^^ PExists
 
   lazy val forperm: PackratParser[PExp] =
-    (keyword("forallrefs") ~> "[" ~> repsep(idnuse,",") <~ "]") ~ idndef ~ ("::" ~> exp) ^^ {
+    (keyword("forperm") ~> "[" ~> repsep(idnuse,",") <~ "]") ~ idndef ~ ("::" ~> exp) ^^ {
       case ids ~ id ~ body => PForPerm(PFormalArgDecl(id, PPrimitiv("Ref")), ids, body)
     }
 

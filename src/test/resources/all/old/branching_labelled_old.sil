@@ -7,7 +7,7 @@ method main(i:Int) {
 
   if(m.f != 15){
     m.f := 15
-initial:
+label initial
   }
 
   m.f := 3
@@ -27,7 +27,7 @@ method main3() {
   while(m.f != 3)
     invariant acc(m.f)
   {
-initial:
+label initial
     m.f := m.f - 1;
   }
 

@@ -14,19 +14,19 @@ method permUse()
 {
   var r1: Ref
   //:: ExpectedOutput(typechecker.error)
-  assert forallrefs[f1] r :: perm(r.f1) > none
+  assert forperm[f1] r :: perm(r.f1) > none
 }
 
 method nonRefPredicateUse()
 {
   var r1: Ref
   //:: MissingOutput(typechecker.error, /Silver/issue/104/)
-  assert forallrefs[P] r :: true
+  assert forperm[P] r :: true
 }
 
 method nonSingleArgumentPredicateUse()
 {
   var r1: Ref
   //:: MissingOutput(typechecker.error, /Silver/issue/104/)
-  assert forallrefs[P2] r :: true
+  assert forperm[P2] r :: true
 }
