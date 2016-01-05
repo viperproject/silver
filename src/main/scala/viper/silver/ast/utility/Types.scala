@@ -26,7 +26,7 @@ object Types {
     */
   def typeVariables(typ: Type): Set[TypeVar] = typ match {
     case t : TypeVar => Set(t)
-    case dt@DomainType(domain,typeVarsMap) => (typeVarsMap.values.flatMap(typeVariables(_))/* ++ (dt.domainTypVars.toSet -- typeVarsMap.keys )*/).toSet
+    case dt@DomainType(domain,typeVarsMap) => typeVarsMap.values.flatMap(typeVariables).toSet
     case ct : CollectionType => typeVariables(ct.elementType)
     case _ => Set()
   }
@@ -75,7 +75,7 @@ object Types {
     * @return The list of transitive type constituents of `typ`.
     */
   def typeConstituents(typ: Type): List[Type] = typ match {
-    case Int | Bool | Perm | Ref | InternalType | _: TypeVar => Nil
+    case Int | Bool | Perm | Ref | InternalType | _: TypeVar | Wand => Nil
     case dt: DomainType => dt.domainTypVars.map(_.substitute(dt.typVarsMap)).toList
     case SeqType(elementType) => elementType :: typeConstituents(elementType)
     case SetType(elementType) => elementType :: typeConstituents(elementType)

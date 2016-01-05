@@ -7,12 +7,12 @@ method Ref__t2(diz: Ref, current_thread_id: Int, n: Int) returns (sys__result: I
   var r: Int
   var __flatten_1: Int
   goto lbl1
-  lbl2:
+label lbl2
   r := n
   goto lbl3
-  lbl1:
+label lbl1
   goto lbl2
-  lbl3:
+label lbl3
   __flatten_1 := r
   sys__result := __flatten_1
   assert sys__result > 0

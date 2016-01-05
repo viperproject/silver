@@ -9,9 +9,9 @@ method main2() {
   if(m.f > 3) {
     m.f := 5;
     //:: ExpectedOutput(typechecker.error)
-initial:
+label initial
   } else {
     m.f := 3;
-initial:
+label initial
   }
 }

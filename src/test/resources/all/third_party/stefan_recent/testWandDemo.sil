@@ -110,7 +110,7 @@ method WandDemo__Wand_readonly_for_writeonly_lemma_1(diz: Ref, current_thread_id
   ensures Wand_readonly_for_writeonly__get_in_1(sys__result) == in_1
   ensures Wand_readonly_for_writeonly__get_out_1(sys__result) == out_1
 {
-  var wand: Ref
+  var vwand: Ref
   var __flatten_2: Ref
   var __flatten_3: Int
   var __flatten_4: Ref
@@ -122,35 +122,35 @@ method WandDemo__Wand_readonly_for_writeonly_lemma_1(diz: Ref, current_thread_id
   var __flatten_19: Ref
   var __flatten_20: Ref
   __flatten_2 := Wand_readonly_for_writeonly__Wand_readonly_for_writeonly(current_thread_id)
-  wand := __flatten_2
+  vwand := __flatten_2
   __flatten_3 := 1
   __flatten_17 := __flatten_3
-  wand.Wand_readonly_for_writeonly__lemma := __flatten_17
+  vwand.Wand_readonly_for_writeonly__lemma := __flatten_17
   __flatten_4 := this_1
   __flatten_18 := __flatten_4
-  wand.Wand_readonly_for_writeonly__this_1 := __flatten_18
+  vwand.Wand_readonly_for_writeonly__this_1 := __flatten_18
   __flatten_5 := in_1
   __flatten_19 := __flatten_5
-  wand.Wand_readonly_for_writeonly__in_1 := __flatten_19
+  vwand.Wand_readonly_for_writeonly__in_1 := __flatten_19
   __flatten_6 := out_1
   __flatten_20 := __flatten_6
-  wand.Wand_readonly_for_writeonly__out_1 := __flatten_20
-  fold acc(Wand_readonly_for_writeonly__valid_wand(wand), write)
-  __flatten_7 := wand
+  vwand.Wand_readonly_for_writeonly__out_1 := __flatten_20
+  fold acc(Wand_readonly_for_writeonly__valid_wand(vwand), write)
+  __flatten_7 := vwand
   sys__result := __flatten_7
   assert (sys__result != null) && acc(Wand_readonly_for_writeonly__valid_wand(sys__result), write) && (Wand_readonly_for_writeonly__get_in_1(sys__result) == in_1) && (Wand_readonly_for_writeonly__get_out_1(sys__result) == out_1)
   inhale false
 }
 
-method WandDemo__set(diz: Ref, current_thread_id: Int, v: Int) returns (wand: Ref)
+method WandDemo__set(diz: Ref, current_thread_id: Int, v: Int) returns (vwand: Ref)
   requires diz != null
   requires current_thread_id >= 0
   requires acc(WandDemo__writeonly(diz), write)
   ensures acc(WandDemo__readonly(diz), write)
-  ensures wand != null
-  ensures acc(Wand_readonly_for_writeonly__valid_wand(wand), write)
-  ensures Wand_readonly_for_writeonly__get_in_1(wand) == diz
-  ensures Wand_readonly_for_writeonly__get_out_1(wand) == diz
+  ensures vwand != null
+  ensures acc(Wand_readonly_for_writeonly__valid_wand(vwand), write)
+  ensures Wand_readonly_for_writeonly__get_in_1(vwand) == diz
+  ensures Wand_readonly_for_writeonly__get_out_1(vwand) == diz
 {
   var __flatten_8: Int
   var __flatten_9: Ref
@@ -161,14 +161,14 @@ method WandDemo__set(diz: Ref, current_thread_id: Int, v: Int) returns (wand: Re
   diz.WandDemo__x := __flatten_21
   fold acc(WandDemo__readonly(diz), write)
   __flatten_9 := WandDemo__Wand_readonly_for_writeonly_lemma_1(diz, current_thread_id, diz, diz, diz)
-  wand := __flatten_9
+  vwand := __flatten_9
 }
 
 method WandDemo__demo(diz: Ref, current_thread_id: Int)
   requires diz != null
   requires current_thread_id >= 0
 {
-  var wand: Ref
+  var vwand: Ref
   var d: Ref
   var __flatten_10: Ref
   var i: Int
@@ -180,14 +180,14 @@ method WandDemo__demo(diz: Ref, current_thread_id: Int)
   d := __flatten_10
   i := 1
   while (true)
-    invariant acc(WandDemo__writeonly(d), write) 
+    invariant acc(WandDemo__writeonly(d), write)
   {
-    wand := WandDemo__set(d, current_thread_id, i)
+    vwand := WandDemo__set(d, current_thread_id, i)
     __flatten_25 := WandDemo__get(d)
     __flatten_12 := __flatten_25
     __flatten_26 := WandDemo__get(d)
     __flatten_13 := __flatten_26
     i := __flatten_12 + __flatten_13
-    Wand_readonly_for_writeonly___apply(wand, current_thread_id)
+    Wand_readonly_for_writeonly___apply(vwand, current_thread_id)
   }
 }

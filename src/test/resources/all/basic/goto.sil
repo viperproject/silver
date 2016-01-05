@@ -6,5 +6,5 @@ method t1(n: Int) returns (r: Int)
 {
     goto lbl
     r := n
-    lbl:
+label lbl
 }

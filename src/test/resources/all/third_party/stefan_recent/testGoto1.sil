@@ -8,7 +8,7 @@ method Ref__t1(diz: Ref, current_thread_id: Int, n: Int) returns (sys__result: I
   var __flatten_1: Int
   goto lbl
   r := n
-  lbl:
+label lbl
   __flatten_1 := r
   sys__result := __flatten_1
     //:: ExpectedOutput(assert.failed:assertion.false)

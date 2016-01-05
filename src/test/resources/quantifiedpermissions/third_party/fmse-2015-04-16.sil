@@ -18,7 +18,12 @@ method Exercise4__zip(diz: Ref, a: Seq[Ref], b: Seq[Ref], res: Seq[Ref])
   ensures (forall i: Int :: (i in [0..|b|)) ==> acc(b[i].Ref__Integer_value, write))
   ensures (forall i: Int :: (i in [0..|res|)) ==> acc(res[i].Ref__Integer_value, write))
   ensures (forall i: Int :: (i in [0..|a|)) ==> (res[2 * i].Ref__Integer_value == a[i].Ref__Integer_value))
-    /* [2015-11-12 Malte]
+    /* [2015-12-10 Malte]
+     * The comment from 2015-11-12 no longer applies because field value functions that
+     * are not used as snapshots are no longer partial, and therefore, domain axioms will no
+     * longer be generated/
+     *
+     * [2015-11-12 Malte]
      * Picking triggers for the domain axioms generated for the (quantified) field access
      *   res[2 * i].Ref__Integer_value
      * is difficult because of the multiplication.

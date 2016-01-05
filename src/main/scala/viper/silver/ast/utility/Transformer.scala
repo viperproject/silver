@@ -62,9 +62,15 @@ object Transformer {
             case FieldAccess(rcv, field) => FieldAccess(go(rcv), go(field))(p, i)
             case PredicateAccess(params, predicateName) =>
               PredicateAccess(params map go, predicateName)(p, i)
+
             case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i)
+            case Folding(acc, e) => Folding(go(acc), go(e))(p, i)
+            case Applying(wand, in) => Applying(go(wand), go(in))(p, i)
+            case Packaging(wand, in) => Packaging(go(wand), go(in))(p, i)
+
             case Old(e) => Old(go(e))(p, i)
             case LabelledOld(e,lbl) => LabelledOld(go(e),lbl)(p,i)
+            case ApplyOld(e) => ApplyOld(go(e))(p, i)
             case CondExp(cond, thn, els) =>
               CondExp(go(cond), go(thn), go(els))(p, i)
             case Let(v, exp1, body) => Let(go(v), go(exp1), go(body))(p, i)
@@ -99,6 +105,7 @@ object Transformer {
             case Or(l, r) => Or(go(l), go(r))(p, i)
             case And(l, r) => And(go(l), go(r))(p, i)
             case Implies(l, r) => Implies(go(l), go(r))(p, i)
+            case MagicWand(l, r) => MagicWand(go(l), go(r))(p, i)
 
             case Add(l, r) => Add(go(l), go(r))(p, i)
             case Sub(l, r) => Sub(go(l), go(r))(p, i)
@@ -202,6 +209,7 @@ object Transformer {
             case Int => aType
             case Perm => aType
             case InternalType => aType
+            case Wand => aType
             case Ref => aType
             case SeqType(elementType) => SeqType(go(elementType))
             case SetType(elementType) => SetType(go(elementType))
@@ -261,6 +269,12 @@ object Transformer {
 
             case Unfold(predicate) =>
               Unfold(go(predicate))(statement.pos, statement.info)
+
+            case Package(wand) =>
+              Package(go(wand))(statement.pos, statement.info)
+
+            case Apply(wand) =>
+              Apply(go(wand))(statement.pos, statement.info)
 
             case While(condition, invariants, locals, body) =>
               While(go(condition), invariants map go, locals map go,
@@ -416,10 +430,12 @@ object Transformer {
         IntLit(left - right)(root.pos, root.info)
       case root @ Mul(IntLit(left), IntLit(right)) =>
         IntLit(left * right)(root.pos, root.info)
-      case root @ Div(IntLit(left), IntLit(right)) if right != 0 =>
+      case root @ Div(IntLit(left), IntLit(right)) if right != bigIntZero =>
         IntLit(left / right)(root.pos, root.info)
-      case root @ Mod(IntLit(left), IntLit(right)) if right != 0 =>
+      case root @ Mod(IntLit(left), IntLit(right)) if right != bigIntZero =>
         IntLit(left % right)(root.pos, root.info)
     })
   }
+
+  private val bigIntZero = BigInt(0)
 }

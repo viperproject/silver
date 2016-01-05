@@ -1,0 +1,35 @@
+field f: Ref
+
+method t01(x:Ref) {
+
+  package acc(x.f) --* acc(x.f)
+  package acc(x.f) --* acc(x.f)
+
+  //:: UnexpectedOutput(exhale.failed:wand.not.found, /silicon/issue/200/)
+  exhale (acc(x.f) --* acc(x.f)) && (acc(x.f) --* acc(x.f)) //failed previously
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
+  assert false
+
+}
+
+method t02(x:Ref)
+requires acc(x.f)
+{
+  package acc(x.f) --* acc(x.f)
+  exhale acc(x.f)&&(acc(x.f) --* acc(x.f)) //failed previously
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method t03(x:Ref)
+requires acc(x.f)
+{
+  package acc(x.f) --* acc(x.f)
+  exhale (acc(x.f) --* acc(x.f))&&acc(x.f) //failed previously
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}

@@ -16,9 +16,11 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   require(
     Consistency.noDuplicates(
       (members map (_.name)) ++
-        (domains flatMap (d => (d.axioms map (_.name)) ++ (d.functions map (_.name))))
-    ), "names of members must be distinct"
-  )
+        (domains flatMap (d => (d.axioms map (_.name)) ++ (d.functions map (_.name))))),
+      "names of members must be distinct")
+
+  Consistency.checkContextDependentConsistency(this)
+//  visit { case wand: MagicWand => Consistency.checkNoImpureConditionals(wand, this) }
 
   lazy val groundTypeInstances = findNecessaryTypeInstances()
 
@@ -102,7 +104,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
         e => println("    " + e.s.toString + " -> " +e.t.toString)
       )
 */
-  
+
     /*sccs
     val g = domains.flatMap { getDomainDependencies(_) }.
       groupBy(_.s).
@@ -125,20 +127,20 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       }
     }
 */
-    
+
     val allDirectGroundTypes = deepCollect({
-      case t : Type if t.isConcrete => downClosure(t) 
+      case t : Type if t.isConcrete => downClosure(t)
     }).flatten
-    
+
     val allDirectGroundInstances = allDirectGroundTypes.filter { case dt : DomainType  => true case _ => false }
-    
+
     val todo = new mutable.Queue[TypeCoordinate]()
     val done = new mutable.HashSet[TypeCoordinate]()
 
     val tcLuggage = new mutable.HashMap[TypeCoordinate,Map[TypeVar,Int]]()
-    
+
     val rimTCs = new mutable.HashSet[TypeCoordinate]
-    
+
     val baseTCs = new mutable.HashSet[TypeCoordinate]()
     allDirectGroundTypes.foreach(
       gt=>{
@@ -154,7 +156,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
         }
       }
     )
-    
+
     while (todo.nonEmpty)
     {
       val tc = todo.dequeue()
@@ -172,7 +174,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
             assert (ditc.args.forall { tc => done contains tc })
 
             val domain = findDomain(ditc.dn)
-            val tv2tcMap = ditc.dt.typVarsMap.map{case (tv:TypeVar,t:Type)=>tv->makeTypeCoordinate(t)}.toMap
+            val tv2tcMap = ditc.dt.typVarsMap.map { case (tv: TypeVar, t: Type) => tv -> makeTypeCoordinate(t) }
             val types = getTypes(domain)
             types.foreach(
                 t=>{
@@ -209,8 +211,8 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
                 }
               )
       }
-      ntcs.foreach { 
-        tc2 =>{ 
+      ntcs.foreach {
+        tc2 =>{
           assert (tcLuggage contains tc2)
           done add tc2
           todo.enqueue(tc2)
@@ -218,16 +220,16 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
         }
 
     }
-      
+
 //    println("Calculating ground type instances done - total " + done.size)
-    
+
     val result = done.map(_.t).toSet
 
 //    println("Calculating ground type instances result done - total " + result.size)
-    
+
     result
   }
-  
+
   def getFTVDepths(t : Type) : Map[TypeVar,Int] = t match {
     case dt: DomainType =>
       dt.typVarsMap.flatMap {
@@ -237,22 +239,22 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     case tv: TypeVar => Map(tv -> 0)
     case at: BuiltInType => Map()
   }
-  
-  
+
+
   def down1Types(t:Type) : Set[Type] = t match {
     case dt: DomainType => dt.typVarsMap.values.toSet
     case ct: CollectionType => Set(ct.elementType)
     case bt: BuiltInType => Set()
     case tv: TypeVar => Set()
   }
-  
-  def downClosure(t:Type) : Set[Type] = 
+
+  def downClosure(t:Type) : Set[Type] =
     Set(t) ++ down1Types(t).flatMap(downClosure)
-  
+
 
   def getTypes(d:Domain) : Set[Type] = d.deepCollect{case t : Type => downClosure(t)}.flatten.toSet
-  
-  def makeTypeCoordinate(t:Type) : TypeCoordinate = 
+
+  def makeTypeCoordinate(t:Type) : TypeCoordinate =
     t match {
     case ct  : CollectionType => CollectionTypeCoordinate(CollectionClass.getCC(ct),makeTypeCoordinate(ct.elementType))
     case bit : BuiltInType    => AtomicTypeCoordinate(bit)
@@ -267,18 +269,18 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     override def toString = t.toString()
     def down : Set[TypeCoordinate]
   }
-  
+
   class CollectionClass
   object CollectionClass extends Enumeration{
     type CollectionClass = Value
     val Seq,Set,MultiSet = Value
-    
+
     def makeCT(cc : CollectionClass,et:Type) = cc match{
       case Set => SetType(et)
       case Seq => SeqType(et)
       case MultiSet => MultisetType(et)
     }
-    
+
     def getCC(ct : CollectionType) : CollectionClass.Value =
     {
       ct match {
@@ -287,10 +289,10 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
         case SeqType(_) => Seq
       }
     }
-    
+
   }
-  
-   
+
+
   case class AtomicTypeCoordinate(bit : BuiltInType) extends TypeCoordinate(bit){
     override def down : Set[TypeCoordinate] = Set(this)
   }
@@ -300,8 +302,8 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   case class DomainInstanceTypeCoordinate(dn : String,args:Seq[TypeCoordinate])(val dt:DomainType) extends TypeCoordinate(dt){
     override def down : Set[TypeCoordinate] = Set(this) ++ args.flatMap(_.down)
   }
- 
-  
+
+
   case class TarjanNode[N](n:N,var es:Array[TarjanNode[N]],var index:Int,var lowIndex:Int)
   class TarjanAR[N](val nodes:Map[N,TarjanNode[N]])
   {
@@ -727,6 +729,14 @@ case object AndOp extends BoolBinOp with BoolDomainFunc with LeftAssoc {
 /** Boolean implication. */
 case object ImpliesOp extends BoolBinOp with BoolDomainFunc {
   lazy val op = "==>"
+  lazy val priority = 4
+  lazy val fixity = Infix(RightAssoc)
+}
+
+/** Separating implication/Magic Wand. */
+case object MagicWandOp extends BoolBinOp with AbstractDomainFunc {
+  lazy val typ = Wand
+  lazy val op = "--*"
   lazy val priority = 4
   lazy val fixity = Infix(RightAssoc)
 }

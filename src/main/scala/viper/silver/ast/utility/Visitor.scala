@@ -171,7 +171,7 @@ object Visitor {
      */
 
     def shallowCollect(ns: Seq[N], subs: N => Seq[N])(f: Function[N, Option[R]]): Seq[R] = {
-    ns.flatMap((node: N) =>
+      ns.flatMap((node: N) =>
         f(node).fold(shallowCollect(subs(node), subs)(f))(_ :: Nil))
     }
 

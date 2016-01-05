@@ -6,11 +6,11 @@
 
 package viper.silver.parser
 
-import viper.silver.ast.utility.Visitor
-
 import scala.collection.mutable
 import scala.reflect._
 import org.kiama.util.Messaging
+import viper.silver.ast.MagicWandOp
+import viper.silver.ast.utility.Visitor
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -46,15 +46,15 @@ case class TypeChecker(names: NameAnalyser) {
 
   def run(p: PProgram): Boolean = {
     check(p)
-    messages.size == 0
+    messages.isEmpty
   }
 
   def check(p: PProgram) {
-    p.domains map check
-    p.fields map check
-    p.functions map check
-    p.predicates map check
-    p.methods map check
+    p.domains foreach check
+    p.fields foreach check
+    p.functions foreach check
+    p.predicates foreach check
+    p.methods foreach check
 
     /* Report any domain type that couldn't be resolved */
     p visit {
@@ -70,9 +70,9 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(m: PMethod) {
     checkMember(m) {
-      (m.formalArgs ++ m.formalReturns) map (a => check(a.typ))
-      m.pres map (check(_, Bool))
-      m.posts map (check(_, Bool))
+      (m.formalArgs ++ m.formalReturns) foreach (a => check(a.typ))
+      m.pres foreach (check(_, Bool))
+      m.posts foreach (check(_, Bool))
       check(m.body)
     }
   }
@@ -82,12 +82,12 @@ case class TypeChecker(names: NameAnalyser) {
       assert(curFunction==null)
       curFunction=f
       check(f.typ)
-      f.formalArgs map (a => check(a.typ))
+      f.formalArgs foreach (a => check(a.typ))
       check(f.typ)
-      f.pres map (check(_, Bool))
+      f.pres foreach (check(_, Bool))
       resultAllowed=true
-      f.posts map (check(_, Bool))
-      f.body.map(check(_, f.typ)) //result in the function body gets the error message somewhere else
+      f.posts foreach (check(_, Bool))
+      f.body.foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
       resultAllowed=false
       curFunction=null
     }
@@ -96,8 +96,8 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(p: PPredicate) {
     checkMember(p) {
-      p.formalArgs map (a => check(a.typ))
-      p.body.map(check(_, Bool))
+      p.formalArgs foreach (a => check(a.typ))
+      p.body.foreach(check(_, Bool))
     }
   }
 
@@ -109,8 +109,8 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(d: PDomain) {
     checkMember(d) {
-      d.funcs map check
-      d.axioms map check
+      d.funcs foreach check
+      d.axioms foreach check
     }
   }
 
@@ -122,19 +122,23 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(f: PDomainFunction) {
     check(f.typ)
-    f.formalArgs map (a => check(a.typ))
+    f.formalArgs foreach (a => check(a.typ))
   }
 
   def check(stmt: PStmt) {
     stmt match {
       case PSeqn(ss) =>
-        ss map check
+        ss foreach check
       case PFold(e) =>
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be folded")
         check(e, Bool)
       case PUnfold(e) =>
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be unfolded")
         check(e, Bool)
+      case PPackageWand(e) =>
+        checkMagicWand(e, allowWandRefs = false)
+      case PApplyWand(e) =>
+        checkMagicWand(e, allowWandRefs = true)
       case PExhale(e) =>
         check(e, Bool)
       case PAssert(e) =>
@@ -160,7 +164,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PNewStmt(target, fields) =>
         val msg = "expected variable as lhs"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(target), msg){(v, _) => check(v, Ref)}
-        fields map (_.map (field =>
+        fields foreach (_.foreach (field =>
           names.definition(curMember)(field, Some(PField.getClass)) match {
             case PField(_, typ) =>
               check(field, typ)
@@ -206,7 +210,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(els)
       case PWhile(cond, invs, body) =>
         check(cond, Bool)
-        invs map (check(_, Bool))
+        invs foreach (check(_, Bool))
         check(body)
       case PLocalVarDecl(idndef, typ, init) =>
         check(typ)
@@ -221,6 +225,7 @@ case class TypeChecker(names: NameAnalyser) {
         val msg = "expected variable in fresh read permission block"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
         check(s)
+      case PLetWand(_, wand) => check(wand, Wand)
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
@@ -237,6 +242,15 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case _ => messages ++= Messaging.message(exp, "expected predicate access")
     }
+  }
+
+  def checkMagicWand(e: PExp, allowWandRefs: Boolean) = e match {
+    case _: PIdnUse if allowWandRefs =>
+      check(e, Wand)
+    case PBinExp(_, MagicWandOp.op, _) =>
+      check(e, Wand)
+    case _ =>
+      messages ++= Messaging.message(e, "expected magic wand")
   }
 
   /** This handy method checks if all passed `idnUses` refer to specific
@@ -284,11 +298,11 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(typ: PType) {
     typ match {
-      case _: PPredicateType =>
+      case _: PPredicateType | _: PWandType =>
         sys.error("unexpected use of internal typ")
       case PPrimitiv(_) =>
       case dt@PDomainType(domain, args) =>
-        args map check
+        args foreach check
 
         var x: Any = null
 
@@ -326,7 +340,7 @@ case class TypeChecker(names: NameAnalyser) {
   def learn(a: PType, b: PType): Seq[(String, PType)] = {
     @inline
     def multiLearn(as: Seq[PType], bs: Seq[PType]) =
-      (0 until as.length) flatMap (i => learn(as(i), bs(i)))
+      as.indices flatMap (i => learn(as(i), bs(i)))
 
     (a, b) match {
       case (PTypeVar(name), t) if t.isConcrete => Seq(name -> t)
@@ -362,6 +376,7 @@ case class TypeChecker(names: NameAnalyser) {
       case (dt: PDomainType, _) if dt.isUndeclared => true
       case (_, dt: PDomainType) if dt.isUndeclared => true
       case (PTypeVar(_), _) | (_, PTypeVar(_)) => true
+      case (Bool, PWandType()) => true
       case (PSeqType(e1), PSeqType(e2)) => isCompatible(e1, e2)
       case (PSetType(e1), PSetType(e2)) => isCompatible(e1, e2)
       case (PMultisetType(e1), PMultisetType(e2)) => isCompatible(e1, e2)
@@ -459,12 +474,13 @@ case class TypeChecker(names: NameAnalyser) {
           case decl @ PFormalArgDecl(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PField(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PPredicate(_, _, _) => setPIdnUseTypeAndEntity(piu, Pred, decl)
+          case decl: PLetWand => setPIdnUseTypeAndEntity(piu, Wand, decl)
           case x => issueError(piu, s"expected identifier, but got $x")
         }
       case PBinExp(left, op, right) =>
         op match {
           case "+" | "-" =>
-            val safeExpected = if (expected.size == 0) Seq(Int, Perm) else expected
+            val safeExpected = if (expected.isEmpty) Seq(Int, Perm) else expected
             safeExpected.filter(x => Seq(Int, Perm) contains x) match {
               case Nil =>
                 issueError(exp, s"expected $expectedString, but found operator $op that cannot have such a type")
@@ -480,7 +496,7 @@ case class TypeChecker(names: NameAnalyser) {
                 }
             }
           case "*" =>
-            val safeExpected = if (expected.size == 0) Seq(Int, Perm) else expected
+            val safeExpected = if (expected.isEmpty) Seq(Int, Perm) else expected
             safeExpected.filter(x => Seq(Int, Perm) contains x) match {
               case Nil =>
                 issueError(exp, s"expected $expectedString, but found operator $op that cannot have such a type")
@@ -538,6 +554,10 @@ case class TypeChecker(names: NameAnalyser) {
             check(left, Bool)
             check(right, Bool)
             setType(Bool)
+          case MagicWandOp.op =>
+            check(left, Bool)
+            check(right, Bool)
+            setType(Wand)
           case "in" =>
             check(left, Nil)
             check(right, genericAnySetType ++ Seq(genericSeqType))
@@ -607,7 +627,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnExp(op, e) =>
         op match {
           case "-" | "+" =>
-            val safeExpected = if (expected.size == 0) Seq(Int, Perm) else expected
+            val safeExpected = if (expected.isEmpty) Seq(Int, Perm) else expected
             safeExpected.filter(x => Seq(Int, Perm) contains x) match {
               case Nil =>
                 issueError(exp, s"expected $expectedString, but found unary operator $op that cannot have such a type")
@@ -659,7 +679,7 @@ case class TypeChecker(names: NameAnalyser) {
            * and 2. with the correct types of arguments.
            */
           if (args.length != predicate.formalArgs.length) issueError(idnuse, "predicate arity doesn't match")
-          args zip predicate.formalArgs map {case (aarg, farg) => check(aarg, farg.typ)}
+          args zip predicate.formalArgs foreach {case (aarg, farg) => check(aarg, farg.typ)}
         }
         setType(Pred)
       case fa@PFunctApp(func, args) =>
@@ -687,12 +707,20 @@ case class TypeChecker(names: NameAnalyser) {
           case x =>
             issueError(func, "expected function")
         }
-      case PUnfolding(acc, body) =>
-        check(acc.perm, Perm)
-        check(acc.loc, Pred)
-        acceptNonAbstractPredicateAccess(acc, "abstract predicates cannot be unfolded")
-        check(body, expected)
-        setType(body.typ)
+      case e: PUnFoldingExp =>
+        check(e.acc.perm, Perm)
+        check(e.acc.loc, Pred)
+        acceptNonAbstractPredicateAccess(e.acc, "abstract predicates cannot be (un)folded")
+        check(e.exp, expected)
+        setType(e.exp.typ)
+      case PPackaging(wand, in) =>
+        checkMagicWand(wand, allowWandRefs = false)
+        check(in, expected)
+        setType(in.typ)
+      case PApplying(wand, in) =>
+        checkMagicWand(wand, allowWandRefs = true)
+        check(in, expected)
+        setType(in.typ)
       case PLet(exp1, nestedScope @ PLetNestedScope(variable, body)) =>
         check(exp1, Nil)
         val oldCurMember = curMember
@@ -706,14 +734,14 @@ case class TypeChecker(names: NameAnalyser) {
       case f@ PExists(vars, e) =>
         val oldCurMember = curMember
         curMember = f
-        vars map (v => check(v.typ))
+        vars foreach (v => check(v.typ))
         check(e, Bool)
         curMember = oldCurMember
       case f@ PForall(vars, triggers, e) =>
         val oldCurMember = curMember
         curMember = f
-        vars map (v => check(v.typ))
-        triggers.flatten map (x => check(x, Nil))
+        vars foreach (v => check(v.typ))
+        triggers.flatten foreach (x => check(x, Nil))
         check(e, Bool)
         curMember = oldCurMember
       case po: POldExp =>
@@ -792,7 +820,7 @@ case class TypeChecker(names: NameAnalyser) {
           case PSeqType(e) => Some(e)
           case _ => None
         }) filter (_.isDefined) map (_.get)
-        elems map (check(_, expextedElemTyp))
+        elems foreach (check(_, expextedElemTyp))
         elems map (_.typ) filterNot (_.isUnknown) match {
           case Nil =>
             // all elements have an error type
@@ -893,7 +921,7 @@ case class TypeChecker(names: NameAnalyser) {
           case PSetType(e) => Some(e)
           case _ => None
         }) filter (_.isDefined) map (_.get)
-        elems map (check(_, expectedElemTyp))
+        elems foreach (check(_, expectedElemTyp))
         elems map (_.typ) filterNot (_.isUnknown) match {
           case Nil =>
             // all elements have an error type
@@ -920,7 +948,7 @@ case class TypeChecker(names: NameAnalyser) {
           case PMultisetType(e) => Some(e)
           case _ => None
         }) filter (_.isDefined) map (_.get)
-        elems map (check(_, expectedElemTyp))
+        elems foreach (check(_, expectedElemTyp))
         elems map (_.typ) filterNot (_.isUnknown) match {
           case Nil =>
             // all elements have an error type
@@ -1036,7 +1064,7 @@ case class NameAnalyser() {
                   case None =>
                     getMap(d).put(d.idndef.name, d)
                 }
-              }
+            }
           case _ =>
         }
 
@@ -1085,15 +1113,14 @@ case class NameAnalyser() {
     }
 
     def getContainingMethod(node : PNode) : Option[PMethod] = {
-      return node match {
+      node match {
         case null => None
         case method : PMethod => Some(method)
-        case nonMethod => {
+        case nonMethod =>
           nonMethod.parent match {
             case parentNode : PNode => getContainingMethod(parentNode)
             case _ => None
           }
-        }
       }
     }
 
@@ -1115,28 +1142,24 @@ case class NameAnalyser() {
             }
           // local variables must not be used in pre- or postconditions
           // see Silver issue #56
-          case localVar : PLocalVarDecl => {
+          case localVar : PLocalVarDecl =>
             getContainingMethod(localVar) match {
-              case Some(PMethod(_, args, returns, pres, posts, _)) => {
+              case Some(PMethod(_, args, returns, pres, posts, _)) =>
                 if (pres.exists(pre => containsSubnode(pre, i)) || posts.exists(post => containsSubnode(post, i))){
                   messages ++= Messaging.message(i, s"local variable $name cannot be accessed in pre- or postcondition.")
                 }
-              }
               case _ =>
             }
-          }
           // return parameters must not be used in preconditions
           // see Silver issue #77
-          case arg : PFormalArgDecl => {
+          case arg : PFormalArgDecl =>
             getContainingMethod(arg) match {
-              case Some(PMethod(_, args, returns, pres, posts, _)) => {
+              case Some(PMethod(_, args, returns, pres, posts, _)) =>
                 if (returns.contains(arg) && pres.exists(pre => containsSubnode(pre, i))){
                   messages ++= Messaging.message(i, s"return variable $name cannot be accessed in precondition.")
                 }
-              }
               case _ =>
             }
-          }
           case _ =>
         }
       case _ =>

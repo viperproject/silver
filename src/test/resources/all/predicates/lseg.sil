@@ -48,7 +48,6 @@ method initUnitCycle(this: Ref, val: Int)
 method addAtEnd(this: Ref, end: Ref, val: Int)
     requires acc(lseg(this, end), write)
     ensures acc(lseg(this, end), write) /* POST1 */
-    //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/41/)
     ensures length(this, end) == (old(length(this, end)) + 1) /* POST2 */
     ensures (forall i: Int :: (0 <= i && i < old(length(this, end))) ==> (get(this, i, end) == old(get(this, i, end)))) /* POST3 */
     ensures get(this, length(this, end) - 1, end) == val /* POST4 */

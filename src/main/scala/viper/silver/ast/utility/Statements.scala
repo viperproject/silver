@@ -41,9 +41,8 @@ object Statements {
     def extractLocal(n: Node, decls: Seq[LocalVarDecl]) = n match {
       case l: LocalVar => decls.find(_.name == l.name) match {
         case None => List(l)
-        case Some(d) if d.typ != l.typ => {
+        case Some(d) if d.typ != l.typ =>
           sys.error("Local variable " + l.name + " is declared with type " + d.typ + " but used with type " + l.typ + ".")
-        }
         case _ => Nil
       }
       case _ => Nil

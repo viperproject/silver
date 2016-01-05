@@ -7,20 +7,24 @@
 package viper.silver.ast.utility
 
 import scala.reflect.ClassTag
-
 import viper.silver.ast._
 import viper.silver.ast.utility.Triggers.TriggerGeneration
 
 /** Utility methods for expressions. */
 object Expressions {
   def isPure(e: Exp): Boolean = e match {
-    case _: AccessPredicate => false
+    case   _: AccessPredicate
+         | _: MagicWand
+         => false
+
+    case lv: AbstractLocalVar if lv.typ == Wand => false
 
     case UnExp(e0) => isPure(e0)
     case InhaleExhaleExp(in, ex) => isPure(in) && isPure(ex)
     case BinExp(e0, e1) => isPure(e0) && isPure(e1)
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
-    case Unfolding(_, in) => isPure(in)
+    case unf: Unfolding => isPure(unf.body)
+    case gop: GhostOperation => false
     case QuantifiedExp(_, e0) => isPure(e0)
     case Let(_, _, body) => isPure(body)
 
@@ -39,14 +43,16 @@ object Expressions {
 
   def isHeapDependent(e: Exp, p: Program): Boolean = e existsDefined {
     case   _: AccessPredicate
-         | _: LocationAccess =>
+         | _: LocationAccess
+         | _: MagicWand =>
 
     case fapp: FuncApp if fapp.func(p).pres.exists(isHeapDependent(_, p)) =>
   }
 
   def asBooleanExp(e: Exp): Exp = {
     e.transform({
-      case _: AccessPredicate => TrueLit()()
+      case _: AccessPredicate | _: MagicWand => TrueLit()()
+      case QuantifiedPermissions.QPForall(_, _, _, _, _, _, _) => TrueLit()()
       case Unfolding(predicate, exp) => asBooleanExp(exp)
     })()
   }

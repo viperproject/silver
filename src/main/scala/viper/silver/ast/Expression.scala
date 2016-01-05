@@ -7,11 +7,10 @@
 package viper.silver.ast
 
 import org.kiama.output._
-import utility.{GenericTriggerGenerator, Expressions, Consistency}
+import utility.{Nodes, GenericTriggerGenerator, Expressions, Consistency}
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
-
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
 
@@ -72,8 +71,104 @@ case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: I
   Consistency.checkNoPositiveOnly(right)
 }
 case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(AndOp)
+
 case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(ImpliesOp) {
   Consistency.checkNoPositiveOnly(left)
+}
+
+case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
+    extends DomainBinExp(MagicWandOp) {
+
+  /** Erases all ghost operations such as unfolding from this wand.
+    * For example (let A, B and C be free of ghost operations, let P be a predicates,
+    * and let W be a wand):
+    *
+    *     A && unfolding P in B && applying W in C
+    *
+    * will be transformed into
+    *
+    *     A && B && C
+    *
+    * @return The ghost-operations-free version of this wand.
+    */
+  lazy val withoutGhostOperations: MagicWand = {
+    /* We use the post-transformer instead of the pre-transformer in order to
+     * perform bottom-up transformation. With a top-down transformer we could
+     * not simply replace ghost operations with their bodies, because these
+     * can contain ghost operations themselves, to which the transformer
+     * would not be applied (per se).
+     */
+
+    /* False if we already encountered a ghost operation (that was not a pure
+     * unfolding). If so, then unfolding expressions are considered as impure
+     * ghost operations, and therefore replaced by their bodies.
+     * This is necessary to correctly handle expressions such as
+     *   acc(P(l)) --* unfolding P(l) in folding Q(l) in true
+     * where the outer unfolding must be erased although its body is pure
+     * by the time we reach the unfolding (since we transform bottom-up).
+     */
+    var keepUnfolding = true
+
+    this.transform()(post = {
+      case u: Unfolding if !u.isPure || !keepUnfolding =>
+        u.body
+
+      case gop: GhostOperation if !gop.isInstanceOf[Unfolding] =>
+        keepUnfolding = false
+        gop.body
+
+      case let: Let => let.body
+    })
+  }
+
+  def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
+    this.shallowCollect {
+      case old: Old => old
+      case e: Exp if !e.isHeapDependent(p) => e
+    }
+  }
+
+  def structurallyMatches(other: MagicWand, p: Program): Boolean = {
+    val ignoreExps1 = this.subexpressionsToEvaluate(p)
+    val ignoreExps2 = other.subexpressionsToEvaluate(p)
+
+//    println(s"\nignoreExps1 = $ignoreExps1")
+//    println(s"ignoreExps2 = $ignoreExps2")
+
+    /* It would suffice to define eq for Exps instead Nodes, but
+     * Nodes.children returns a Seq[Nodes]. */
+    def eq(e1: Node, e2: Node): Boolean = (e1, e2) match {
+      case (`e1`, `e1`) => true
+      case _ =>
+//        println(s"\ne1 = $e1, e2 = $e2")
+        val idx1 = ignoreExps1.indexOf(e1)
+//        println(s"idx1 = $idx1")
+
+        if (idx1 >= 0) {
+//          println(ignoreExps2(idx1))
+//          println(ignoreExps2(idx1) == e2)
+
+          ignoreExps2(idx1) == e2
+        } else {
+          val b0 = e1.getClass == e2.getClass
+//          println(s"  comparing classes: $b0")
+          val (subnodes1, otherChildren1) = Nodes.children(e1)
+          val (subnodes2, otherChildren2) = Nodes.children(e2)
+//          println(s"  subnodes1 = ${subnodes1.toList}\n  otherChildren1 = ${otherChildren1.toList}")
+//          println(s"  subnodes2 = ${subnodes2.toList}\n  otherChildren2 = ${otherChildren2.toList}")
+          val b1 = subnodes1.zip(subnodes2).forall { case (e1i, e2i) => eq(e1i, e2i)}
+//          println(s"  comparing subnodes: $b1")
+          val b2 = otherChildren1 == otherChildren2
+//          println(s"  comparing other children: $b2")
+
+          (   b0
+           && b1
+           && b2)
+        }
+    }
+
+    eq(this.left, other.left) && eq(this.right, other.right)
+  }
 }
 
 /** Boolean negation. */
@@ -223,9 +318,16 @@ object LocationAccess {
 
 
 /** A field access expression. */
-case class FieldAccess(rcv: Exp, field: Field)(val pos: Position = NoPosition, val info: Info = NoInfo) extends LocationAccess with Lhs {
+case class FieldAccess(rcv: Exp, field: Field)
+                      (val pos: Position = NoPosition, val info: Info = NoInfo)
+    extends LocationAccess with Lhs /*with PossibleTrigger*/ {
+
   def loc(p : Program) = field
   lazy val typ = field.typ
+
+//  def getArgs: Seq[Exp] = Seq(rcv)
+//  def withArgs(args: Seq[Exp]): PossibleTrigger = copy(rcv = args.head, field)(pos, info)
+//  def asManifestation: Exp = this
 }
 
 /** A predicate access expression. See also companion object below for an alternative creation signature */
@@ -256,21 +358,36 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
   lazy val typ = thn.typ
 }
 
-// --- Unfolding expression
+// --- Prover hint expressions
 
-case class Unfolding(acc: PredicateAccessPredicate, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
-  Consistency.checkNoPositiveOnlyExceptInhaleExhale(exp)
+sealed trait GhostOperation extends Exp {
+  val body: Exp
+  lazy val typ = body.typ
+}
 
+sealed trait UnFoldingExp extends GhostOperation {
+  val acc: PredicateAccessPredicate
+}
+
+case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp
+case class Folding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp
+
+case class Applying(exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
+  require(exp isSubtype Wand, s"Expected wand but found ${exp.typ} ($exp)")
+}
+
+case class Packaging(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
+  require(wand isSubtype Wand, s"Expected wand but found ${wand.typ} ($wand)")
+}
+
+// --- Old expressions
+
+sealed trait OldExp extends UnExp {
   lazy val typ = exp.typ
 }
 
-// --- Old expression
-
-case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnExp {
-  Consistency.checkNoPositiveOnly(exp)
-  //require(exp.isPure)
-  lazy val typ = exp.typ
-}
+case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
+case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
 
 /** Old expression that references a particular state earlier in the program that has been given a name.
   * Evaluates expression in that state. */
@@ -303,30 +420,6 @@ sealed trait QuantifiedExp extends Exp {
 
 object QuantifiedExp {
   def unapply(q: QuantifiedExp): Option[(Seq[LocalVarDecl], Exp)] = Some(q.variables, q.exp)
-}
-
-object QuantifiedPermissionSupporter {
-  object ForallRefPerm {
-    def unapply(n: Forall): Option[(LocalVarDecl, /* Quantified variable */
-                                    Exp, /* Condition */
-                                    Exp, /* Receiver e of acc(e.f, p) */
-                                    Field, /* Field f of acc(e.f, p) */
-                                    Exp, /* Permissions p of acc(e.f, p) */
-                                    Forall, /* AST node of the forall (for error reporting) */
-                                    FieldAccess)] = /* AST node for e.f (for error reporting) */
-
-      n match {
-        case forall@Forall(Seq(lvd@LocalVarDecl(_, _ /*ast.types.Ref*/)),
-        triggers,
-        Implies(condition, FieldAccessPredicate(fa@FieldAccess(rcvr, f), gain)))
-          if rcvr.exists(_ == lvd.localVar)
-            && triggers.isEmpty =>
-
-          Some((lvd, condition, rcvr, f, gain, forall, fa))
-
-        case _ => None
-      }
-  }
 }
 
 /** Universal quantification. */
@@ -410,9 +503,7 @@ case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Inf
  * Marker trait for all sequence-related expressions. Does not imply that the type of the
  * expression is `SeqType`.
  */
-sealed trait SeqExp extends Exp with PossibleTrigger {
-  override def asManifestation = this
-}
+sealed trait SeqExp extends Exp with PossibleTrigger
 
 /** The empty sequence of a given element type. */
 case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
@@ -446,7 +537,7 @@ case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val inf
   require((low isSubtype Int) && (high isSubtype Int))
   lazy val typ = SeqType(Int)
   def getArgs = Seq(low,high)
-  def withArgs(newArgs: Seq[Exp]) = RangeSeq(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = RangeSeq(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Appending two sequences of the same type. */
@@ -457,7 +548,7 @@ case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
   lazy val op = "++"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = SeqAppend(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqAppend(newArgs.head,newArgs(1))(pos,info)
 
 }
 
@@ -467,7 +558,7 @@ case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: 
   require(idx isSubtype Int)
   lazy val typ = s.typ.asInstanceOf[SeqType].elementType
   def getArgs = Seq(s,idx)
-  def withArgs(newArgs: Seq[Exp]) = SeqIndex(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqIndex(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Take the first 'n' elements of the sequence 'seq'. */
@@ -476,7 +567,7 @@ case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Inf
   require(n isSubtype Int)
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
-  def withArgs(newArgs: Seq[Exp]) = SeqTake(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqTake(newArgs.head,newArgs(1))(pos,info)
 
 }
 
@@ -486,7 +577,7 @@ case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Inf
   require(n isSubtype Int)
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
-  def withArgs(newArgs: Seq[Exp]) = SeqDrop(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqDrop(newArgs.head,newArgs(1))(pos,info)
 
 }
 
@@ -501,7 +592,7 @@ case class SeqContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val in
   lazy val right: PrettyExpression = s
   lazy val typ = Bool
   def getArgs = Seq(elem,s)
-  def withArgs(newArgs: Seq[Exp]) = SeqContains(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqContains(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** The same sequence as 'seq', but with the element at index 'idx' replaced with 'elem'. */
@@ -515,7 +606,7 @@ case class SeqUpdate(s: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition
   }
   lazy val typ = s.typ
   def getArgs = Seq(s,idx,elem)
-  def withArgs(newArgs: Seq[Exp]) = SeqUpdate(newArgs(0),newArgs(1),newArgs(2))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqUpdate(newArgs.head,newArgs(1),newArgs(2))(pos,info)
 
 }
 
@@ -524,7 +615,7 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
   require(s.typ.isInstanceOf[SeqType])
   lazy val typ = Int
   def getArgs = Seq(s)
-  def withArgs(newArgs: Seq[Exp]) = SeqLength(newArgs(0))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqLength(newArgs.head)(pos,info)
 
 }
 
@@ -534,17 +625,13 @@ case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = No
  * Marker trait for all set-related expressions. Does not imply that the type of the
  * expression is `SetType`.
  */
-sealed trait SetExp extends Exp with PossibleTrigger {
-  override def asManifestation:Exp = this
-}
+sealed trait SetExp extends Exp with PossibleTrigger
 
 /**
  * Marker trait for all set-related expressions. Does not imply that the type of the
  * expression is `MultisetType`.
  */
-sealed trait MultisetExp extends Exp with PossibleTrigger {
-  override def asManifestation:Exp = this
-}
+sealed trait MultisetExp extends Exp with PossibleTrigger
 
 /**
  * Marker traits for all expressions that correspond to operations on sets or multisets.
@@ -600,7 +687,7 @@ case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   lazy val op = "union"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetUnion(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetUnion(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Intersection of two sets or two multisets. */
@@ -612,7 +699,7 @@ case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosit
   lazy val op = "union"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetIntersection(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetIntersection(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Subset relation of two sets or two multisets. */
@@ -624,7 +711,7 @@ case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, v
   lazy val op = "subset"
   lazy val typ = Bool
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetSubset(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetSubset(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Set difference. */
@@ -636,7 +723,7 @@ case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   lazy val op = "setminus"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetMinus(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetMinus(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
@@ -650,7 +737,7 @@ case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val
   lazy val right = s
   lazy val typ = if (s.typ.isInstanceOf[SetType]) Bool else Int
   def getArgs = Seq(elem,s)
-  def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs(0),newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs.head,newArgs(1))(pos,info)
 }
 
 /** The length of a sequence. */
@@ -659,7 +746,7 @@ case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: I
   val exp = s
   lazy val typ = Int
   def getArgs = Seq(s)
-  def withArgs(newArgs: Seq[Exp]) = AnySetCardinality(newArgs(0))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetCardinality(newArgs.head)(pos,info)
 }
 
 // --- Common functionality
@@ -676,34 +763,12 @@ sealed abstract class AbstractConcretePerm(val numerator: BigInt, val denominato
  * Used to label expression nodes as potentially valid trigger terms for quantifiers.
  * Use ForbiddenInTrigger to declare terms which may not be used in triggers.
  */
-sealed trait PossibleTrigger extends GenericTriggerGenerator.PossibleTrigger[Exp, PossibleTrigger] {
-  def pos : Position
-  def info : Info
+sealed trait PossibleTrigger extends Exp {
+  def getArgs: Seq[Exp]
+  def withArgs(args: Seq[Exp]): PossibleTrigger
 }
 
-sealed trait WrappingTrigger extends PossibleTrigger
-    with GenericTriggerGenerator.WrappingTrigger[Exp, PossibleTrigger, WrappingTrigger]
-
-// Representation for a trigger term to be evaluated in the "old" heap
-case class OldTrigger(wrappee: PossibleTrigger)(val pos: Position = NoPosition, val info: Info = NoInfo)
-    extends WrappingTrigger {
-
-  def getArgs = wrappee.getArgs
-  def withArgs(args : Seq[Exp]) = OldTrigger(wrappee.withArgs(args))(pos,info)
-  def asManifestation = Old(wrappee.asManifestation)(pos,info)
-}
-object OldTrigger { // creates an instance, recording the pos and info of the old expression
-  def apply(oldExp : Old) : OldTrigger = {
-    val exp = oldExp.exp match {
-      case trigger: PossibleTrigger => trigger
-      case _ => sys.error("Internal Error: tried to create invalid trigger node from : " + oldExp)
-    }
-
-    OldTrigger(exp)(oldExp.pos, oldExp.info)
-  }
-}
-
-sealed trait ForbiddenInTrigger extends Exp with GenericTriggerGenerator.ForbiddenInTrigger[Type]
+sealed trait ForbiddenInTrigger extends Exp
 
 /** Common ancestor of Domain Function applications and Function applications. */
 sealed trait FuncLikeApp extends Exp with Call {

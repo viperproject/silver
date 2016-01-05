@@ -45,9 +45,9 @@ object Functions {
       }
     }
     for (f <- p.functions) {
-      f.body map (process(f, _))
-      f.pres map (process(f, _))
-      f.posts map (process(f, _))
+      f.body foreach (process(f, _))
+      f.pres foreach (process(f, _))
+      f.posts foreach (process(f, _))
     }
     g
   }
@@ -168,11 +168,11 @@ object Functions {
         recordCallsAndUnfoldings (body, ufs :+ uf) // note: acc is not recursively-processed - we may want to revisit this decision
       case fa@FuncApp (func, args) =>
         result +:= (fa, ufs)
-        args.map ((n) => recordCallsAndUnfoldings (n, ufs) )
+        args.foreach ((n) => recordCallsAndUnfoldings (n, ufs) )
       }
     }
 
-    f.body map (recordCallsAndUnfoldings(_, Seq()))
+    f.body foreach (recordCallsAndUnfoldings(_, Seq()))
 
     result
   }

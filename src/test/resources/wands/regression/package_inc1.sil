@@ -1,0 +1,20 @@
+field f: Ref
+field g: Ref
+field h: Ref
+
+method test01(x: Ref) {
+  package true --* packaging (false --* true) in true
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method test02(x:Ref) {
+  //:: UnexpectedOutput(package.failed:wand.not.found, /silicon/issue/188/)
+  package false --* applying (false --* true) in true
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
+  assert false
+}
+

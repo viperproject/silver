@@ -22,7 +22,7 @@ class SilNameGenerator extends DefaultNameGenerator {
   override def createIdentifier(input: String) = {
     super.createIdentifier(input)
   } ensuring {
-    Consistency.validIdentifier(_)
+    Consistency.validIdentifier _
   }
 
 }

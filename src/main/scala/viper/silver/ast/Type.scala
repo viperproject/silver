@@ -33,6 +33,7 @@ sealed trait Type extends Node {
               case None => false
             }
         }
+      case (Wand, Bool) => true
       case _ => this == other
     }
   }
@@ -63,11 +64,13 @@ case object Bool extends AtomicType
 case object Perm extends AtomicType
 /** Type for references. */
 case object Ref extends AtomicType
-/** Type used for internal nodes (e.g. typing predicate accesses) - should not be the type of any expression whose value is meaningful in the translation. */
+/** Type used for internal nodes (e.g. typing predicate accesses) - should not be
+  * the type of any expression whose value is meaningful in the translation.
+  */
 case object InternalType extends AtomicType
-
-/** Type for sequences */
-
+/** Type for letwand-declared variables. */
+case object Wand extends AtomicType
+/** Base type for collections */
 sealed trait CollectionType extends BuiltInType {
   val elementType : Type
   override lazy val isConcrete = elementType.isConcrete
@@ -75,6 +78,7 @@ sealed trait CollectionType extends BuiltInType {
   override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
     make(elementType.substitute(typVarsMap))
 }
+/** Type for sequences */
 case class SeqType(override val elementType: Type) extends CollectionType{
   def make(et:Type) : SeqType = SeqType(et)
 //  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
@@ -105,7 +109,7 @@ case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
                       (val domainTypVars: Seq[TypeVar])
     extends Type {
 
-  require (domainTypVars.toSet == typVarsMap.keys.toSet) 
+  require (domainTypVars.toSet == typVarsMap.keys.toSet)
   //  require(typVarsMap.values.forall(t => !t.isInstanceOf[TypeVar]))
 
   lazy val isConcrete: Boolean = {

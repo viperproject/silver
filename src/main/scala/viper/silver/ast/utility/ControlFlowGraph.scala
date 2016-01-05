@@ -26,7 +26,7 @@ object ControlFlowGraph {
     worklist.enqueue(block)
     val visited = collection.mutable.Set[Block]()
 
-    while (!worklist.isEmpty) {
+    while (worklist.nonEmpty) {
       val b = worklist.dequeue()
       // Call f(b) before collecting the successors of b,
       // thereby allowing f to modify the successors first
@@ -233,10 +233,10 @@ object ControlFlowGraph {
       val r = b match {
         case LoopBlock(_, cond, _, _, _) => s"while ($cond)"
         case ConstrainingBlock(vars, _, _) => s"constraining ($vars)"
-        case TerminalBlock(stmt) => stmt.toString
-        case NormalBlock(stmt, _) => stmt.toString
+        case TerminalBlock(stmt) => stmt.toString()
+        case NormalBlock(stmt, _) => stmt.toString()
         case ConditionalBlock(stmt, cond, _, _) =>
-          if (stmt.toString == "") s"if ($cond)"
+          if (stmt.toString() == "") s"if ($cond)"
           else s"$stmt\n\nif ($cond)"
       }
       r.replaceAll("\\n", "\\\\l")

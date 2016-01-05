@@ -6,9 +6,7 @@
 
 package viper.silver.utility
 
-import viper.silver.ast.utility.Consistency
 import util.matching.Regex
-import java.util.concurrent.locks.ReentrantLock
 
 /**
  * Interface for a class that can generate unique names.
@@ -76,7 +74,7 @@ trait DefaultNameGenerator extends NameGenerator {
   def reservedNames: Set[String]
 
   /** Special letters that can be replaced with a specific string inside identifiers */
-  lazy val replacableLetters = Map(
+  lazy val replaceableLetters = Map(
     'Α' -> "Alpha",
     'Β' -> "Beta",
     'Γ' -> "Gamma",
@@ -151,8 +149,6 @@ trait DefaultNameGenerator extends NameGenerator {
 
     private val contexts = this :: enclosingContexts
 
-    private val lock = new ReentrantLock()
-
     private def subContexts: List[NameContext] = directSubContexts ++ directSubContexts.flatMap(_.subContexts)
 
     // TODO If performance is an issue, these can be cached until the next call of createSubContext().
@@ -166,12 +162,7 @@ trait DefaultNameGenerator extends NameGenerator {
 
     def createUnique(s: String) = {
       val cc = conflictingContexts
-      // Note that this is deadlock free because we have a total ordering on all the contexts according to the following properties.
-      // 1. Level
-      // 2. Indices of the ancestors inside the subcontext list of their parent.
-      //    If there are several, lexicographic ordering from top to bottom is used.
-      // 3. Index of the context itself inside the subcontext list of its parent.
-      cc.foreach(_.lock.lock())
+
       val res = if (!cc.exists(_.identCounters.contains(s))) {
         identCounters.put(s, 0)
         s
@@ -192,7 +183,7 @@ trait DefaultNameGenerator extends NameGenerator {
         identCounters.put(newS, 0)
         newS
       }
-      cc.foreach(_.lock.unlock())
+
       res
     }
 
@@ -208,15 +199,15 @@ trait DefaultNameGenerator extends NameGenerator {
     } else {
       val builder = new StringBuilder
       val first = input.head
-      if (!firstCharacter.findFirstIn(first.toString).isDefined && !replacableLetters.contains(first)) {
+      if (firstCharacter.findFirstIn(first.toString).isEmpty && !replaceableLetters.contains(first)) {
         builder.append(defaultIdent)
       }
       input foreach {
         c =>
           if (otherCharacter.findFirstIn(c.toString).isDefined) {
             builder.append(c)
-          } else if (replacableLetters.contains(c)) {
-            builder.append(replacableLetters(c))
+          } else if (replaceableLetters.contains(c)) {
+            builder.append(replaceableLetters(c))
           }
       }
       var res = builder.result

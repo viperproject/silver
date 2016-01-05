@@ -6,13 +6,12 @@
 
 package viper.silver.parser
 
-import language.implicitConversions
+import scala.language.implicitConversions
+import scala.collection.mutable
 import org.kiama.attribution.Attributable
 import org.kiama.util.Messaging
 import viper.silver.ast._
 import viper.silver.ast.utility.{Consistency, Visitor, Statements}
-
-import scala.collection.mutable
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -35,7 +34,7 @@ case class Translator(program: PProgram) {
     program match {
       case PProgram(_, pdomains, pfields, pfunctions, ppredicates, pmethods) =>
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
-            pmethods ++ (pdomains flatMap (_.funcs))) map translateMemberSignature
+            pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
 
         val domain = pdomains map (translate(_))
         val fields = pfields map (translate(_))
@@ -44,7 +43,7 @@ case class Translator(program: PProgram) {
         val methods = pmethods map (translate(_))
         val prog = Program(domain, fields, functions, predicates, methods)(program)
 
-        if (Consistency.messages.size == 0) Some(prog) // all error messages generated during translation should be Consistency messages
+        if (Consistency.messages.isEmpty) Some(prog) // all error messages generated during translation should be Consistency messages
         else None
     }
   }
@@ -155,6 +154,10 @@ case class Translator(program: PProgram) {
         Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PUnfold(e) =>
         Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
+      case PPackageWand(e) =>
+        Package(exp(e).asInstanceOf[MagicWand])(pos)
+      case PApplyWand(e) =>
+        Apply(exp(e))(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
       case PExhale(e) =>
@@ -190,6 +193,8 @@ case class Translator(program: PProgram) {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos)
+      case PLetWand(idndef, wand) =>
+        LocalVarAssign(LocalVar(idndef.name)(Wand, pos), exp(wand))(pos)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
@@ -206,6 +211,9 @@ case class Translator(program: PProgram) {
             /* A malformed AST where a field is dereferenced without a receiver */
             Consistency.messages ++= Messaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
+          case _: PLetWand =>
+            /* TODO: We might want to differentiate between magic wand references and regular local variables. */
+            LocalVar(name)(ttyp(pexp.typ), pos)
           case other =>
             sys.error("should not occur in type-checked program")
         }
@@ -271,6 +279,7 @@ case class Translator(program: PProgram) {
           case "==" => EqCmp(l, r)(pos)
           case "!=" => NeCmp(l, r)(pos)
           case "==>" => Implies(l, r)(pos)
+          case "--*" => MagicWand(l, r)(pos)
           case "<==>" => EqCmp(l, r)(pos)
           case "&&" => And(l, r)(pos)
           case "||" => Or(l, r)(pos)
@@ -338,6 +347,12 @@ case class Translator(program: PProgram) {
         }
       case PUnfolding(loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
+      case PFolding(loc, e) =>
+        Folding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
+      case PApplying(e, in) =>
+        Applying(exp(e), exp(in))(pos)
+      case PPackaging(e, in) =>
+        Packaging(exp(e).asInstanceOf[MagicWand], exp(in))(pos)
       case PLet(exp1, PLetNestedScope(variable, body)) =>
         Let(liftVarDecl(variable), exp(exp1), exp(body))(pos)
       case _: PLetNestedScope =>
@@ -345,7 +360,7 @@ case class Translator(program: PProgram) {
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>
-        val ts = triggers map (exps => Trigger(exps map exp)(exps(0)))
+        val ts = triggers map (exps => Trigger(exps map exp)(exps.head))
         Forall(vars map liftVarDecl, ts, exp(e))(pos)
       case f@PForPerm(v, args, e) =>
 
@@ -370,6 +385,8 @@ case class Translator(program: PProgram) {
         Old(exp(e))(pos)
       case PLabelledOld(lbl,e) =>
         LabelledOld(exp(e),lbl.name)(pos)
+      case PApplyOld(e) =>
+        ApplyOld(exp(e))(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
       case PCurPerm(loc) =>
@@ -460,9 +477,10 @@ case class Translator(program: PProgram) {
             case (tv, tt) => tv!=tt //!tt.isInstanceOf[TypeVar]
           }*/.toMap)
         case None =>
-          assert(args.length == 0)
+          assert(args.isEmpty)
           TypeVar(name.name) // not a domain, i.e. it must be a type variable
       }
+    case PWandType() => Wand
     case PUnknown() =>
       sys.error("unknown type unexpected here")
     case PPredicateType() =>

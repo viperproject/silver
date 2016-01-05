@@ -6,12 +6,10 @@
 
 package viper.silver.ast.utility
 
+import scala.util.parsing.input.{Position, NoPosition}
 import org.kiama.util.{Message, Messaging}
-import scala.collection.mutable
-import util.parsing.input.{Position, NoPosition}
-import viper.silver.parser.{PForPerm, PIdnUse, Parser}
+import viper.silver.parser.Parser
 import viper.silver.ast._
-import scala.Seq
 
 /** An utility object for consistency checking. */
 object Consistency {
@@ -39,7 +37,11 @@ object Consistency {
   }
 
   /** Reset the Kiama messages */
-  def resetMessages { this.messages = Nil }
+  def resetMessages() { this.messages = Nil }
+  @inline
+  def recordIf(suspect: Positioned, property: Boolean, message: String) =
+    recordIfNot(suspect, !property, message)
+
   /** Names that are not allowed for use in programs. */
   def reservedNames: Seq[String] = Parser.reserved
 
@@ -97,16 +99,13 @@ object Consistency {
    */
   def hasNoPositiveOnly(e: Exp, exceptInhaleExhale: Boolean = false): Boolean = e match {
     case _: AccessPredicate => false
-    case InhaleExhaleExp(inhale, exhale) => {
+    case InhaleExhaleExp(inhale, exhale) =>
       exceptInhaleExhale && hasNoPositiveOnly(inhale, exceptInhaleExhale) && hasNoPositiveOnly(exhale, exceptInhaleExhale)
-    }
-    case And(left, right) => {
+    case And(left, right) =>
       hasNoPositiveOnly(left, exceptInhaleExhale) && hasNoPositiveOnly(right, exceptInhaleExhale)
-    }
-    case Implies(_, right) => {
+    case Implies(_, right) =>
       // The left side is checked during creation of the Implies expression.
       hasNoPositiveOnly(right, exceptInhaleExhale)
-    }
     case _ => true // All other cases are checked during creation of the expression.
   }
 
@@ -148,18 +147,23 @@ object Consistency {
     recordIfNot(e, e isSubtype Bool, s"Contract $e: ${e.typ} must be boolean.")
   }
 
+  def noGhostOperations(n: Node) = !n.existsDefined {
+    case u: Unfolding if !u.isPure =>
+    case gop: GhostOperation if !gop.isInstanceOf[Unfolding] =>
+  }
+
   /** Returns true iff the given expression is a valid trigger. */
   def validTrigger(e: Exp): Boolean = {
     e match {
       case Old(nested) => validTrigger(nested) // case corresponds to OldTrigger node
-      case e : PossibleTrigger => !(e.existsDefined { case _: ForbiddenInTrigger => })
+      case _ : PossibleTrigger | _: FieldAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
       case _ => false
     }
   }
 
   /** Returns true iff the given QuantifiedExp is either pure, or of the shape of quantified permissions allowed (see QuantifiedPermissionSupporter)*/
   def supportedQuantifier(q: QuantifiedExp) : Boolean = q match {
-    case QuantifiedPermissionSupporter.ForallRefPerm(_, _, _, _, _, _, _) =>
+    case QuantifiedPermissions.QPForall(_, _, _, _, _, _, _) =>
       true
     case _ => q.isPure
   }
@@ -234,4 +238,115 @@ object Consistency {
     recordIfNot(positioned, fieldOrPredicate(positioned), "Can only use fields and predicates in 'forallrefs' expressions")
     recordIfNot(positioned, oneRefParam(positioned), "Can only use predicates with one Ref parameter in 'forallrefs' expressions")
   }
+
+//  def checkNoImpureConditionals(wand: MagicWand, program: Program) = {
+//    var expsToVisit = wand.left :: wand.right :: Nil
+//    var visitedMembers = List[Member]()
+//    var conditionals = List[Exp]()
+//    var continue = true
+//    var ok = true
+//
+//    while (ok && expsToVisit.nonEmpty) {
+//      var newExpsToVisit = List[Exp]()
+//
+//      expsToVisit.foreach(_.visit {
+//        case c: Implies if !c.isPure => ok = false
+//        case c: CondExp if !c.isPure => ok = false
+//
+//        case e: UnFoldingExp =>
+//          val predicate = e.acc.loc.loc(program)
+//
+//          if (!visitedMembers.contains(predicate)) {
+//            newExpsToVisit ::= predicate.body
+//            visitedMembers ::= predicate
+//          }
+//      })
+//
+//      expsToVisit = newExpsToVisit
+//    }
+//
+//    recordIfNot(wand, ok, s"Conditionals transitively reachable from a magic wand must be pure (see issue 16).")
+//  }
+
+  /** Checks consistency that is depends on some context. For example, that some expression
+    * Foo(...) must be pure except if it occurs inside Bar(...).
+    *
+    * @param n The starting node of the consistency check.
+    * @param c The initial context (optional).
+    */
+  def checkContextDependentConsistency(n: Node, c: Context = Context()) = n.visitWithContext(c) (c => {
+    case _: Package =>
+      c.copy(insidePackageStmt = true)
+
+    case p: Packaging =>
+      recordIfNot(p, c.insideWandStatus.isInside, "Packaging-expressions may only occur inside wands.")
+
+      c.copy(insidePackageStmt = true)
+
+    case a: Applying =>
+      recordIfNot(a, c.insideWandStatus.isInside, "Applying-expressions may only occur inside wands.")
+
+      c
+
+    case mw @ MagicWand(lhs, rhs) =>
+      checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
+
+      recordIfNot(lhs, noGhostOperations(lhs), "Ghost operations may not occur on the left of wands.")
+
+      if (!c.insidePackageStmt)
+        recordIfNot(rhs, noGhostOperations(rhs), "Ghost operations may only occur inside wands when these are packaged.")
+
+      checkIfValidChainOfGhostOperations(rhs, mw)
+
+      c.copy(insideWandStatus = InsideWandStatus.Yes)
+
+    case po: ApplyOld =>
+      recordIfNot(po, c.insideWandStatus.isInside, "given-expressions may only occur inside wands.")
+
+      c
+
+    case e: UnFoldingExp =>
+      recordIfNot(e, c.insideWandStatus.isInside || e.isPure, "(Un)folding expressions outside of wands must be pure.")
+
+      c
+  })
+
+  private def checkWandRelatedOldExpressions(n: Node, c: Context) {
+    n.visitWithContextManually(c) (c => {
+      case MagicWand(lhs, rhs) =>
+        checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
+        checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
+
+      case po: ApplyOld =>
+        recordIfNot(po,
+                    c.insideWandStatus.isRight,
+                    "Wands may contain given-expressions on the rhs only.")
+    })
+  }
+
+  private def checkIfValidChainOfGhostOperations(n: Node, root: MagicWand): Unit = n match {
+    case gop: GhostOperation => checkIfValidChainOfGhostOperations(gop.body, root)
+    case let: Let => checkIfValidChainOfGhostOperations(let.body, root)
+
+    case _ =>
+      recordIfNot(root, noGhostOperations(n), "Magic wand has unsupported shape. "
+                                 + "Its RHS must be of the shape 'GOp1 in GOp2 in ... in A', where the GOps are "
+                                 + "(impure) ghost operations, and where the final in-clause assertion A may "
+                                 + "only contain pure unfolding expressions.")
+  }
+
+  class InsideWandStatus protected[InsideWandStatus](val isInside: Boolean, val isLeft: Boolean, val isRight: Boolean) {
+    assert(!(isLeft || isRight) || isInside, "Inconsistent status")
+  }
+
+  object InsideWandStatus {
+    val No = new InsideWandStatus(false, false, false)
+    val Yes = new InsideWandStatus(true, false, false)
+    val Left = new InsideWandStatus(true, true, false)
+    val Right = new InsideWandStatus(true, false, true)
+  }
+
+  /** Context for context dependent consistency checking. */
+  case class Context(insidePackageStmt: Boolean = false,
+                     insideWandStatus: InsideWandStatus = InsideWandStatus.No)
 }
