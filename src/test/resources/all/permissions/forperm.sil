@@ -5,19 +5,34 @@ method test01(x: Ref, b: Bool)
   requires acc(x.f, b ? write : none)
 {
   assert b || forperm[f] y :: false
-  
+
   assert (forperm[f] y :: false) ==> (forperm[f] y :: true)
-  
+
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/205/)
   assert (forperm[f] y :: false) ==> !b
-  
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
+  assert forperm[f] y :: false
+}
+
+method test01b(x: Ref, b: Bool)
+  requires b ==> acc(x.f)
+{
+  assert b || forperm[f] y :: false
+
+  assert (forperm[f] y :: false) ==> (forperm[f] y :: true)
+
+  assert (forperm[f] y :: false) ==> !b
+
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert forperm[f] y :: false
 }
 
 method test02(x: Ref, b1: Bool, b2: Bool)
   requires acc(x.f, 1/5)
-{  
-  assert forperm[f,g] y :: y != null 
+{
+  assert forperm[f,g] y :: y != null
 }
 
 method test03(x: Ref, b1: Bool, b2: Bool)
@@ -27,9 +42,9 @@ method test03(x: Ref, b1: Bool, b2: Bool)
 
   inhale acc(x.f, 4/5)
   x.f := a1 + 1
-  
+
   assert forperm[g] y :: y.f > a1
-  
+
   //:: ExpectedOutput(assert.failed:insufficient.permission)
   assert forperm[f] y :: y.g > y.g - 1
 }
@@ -41,11 +56,11 @@ method test04(x: Ref, b1: Bool, b2: Bool)
 
   inhale acc(x.f, 4/5)
   x.f := a1 + 1
-  
+
   assert forperm[f] y :: y.f > a1
-  
+
   assert forperm[f] y :: y.f > old(y.f)
-  
+
   assert forperm[f,g] y :: old(y.f) <= old(y.f)
 }
 
