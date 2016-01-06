@@ -4,16 +4,20 @@ field f: Ref
 
 method test01(x: Ref, y: Ref)
   requires acc(x.f, wildcard)
-  ensures  acc(x.f, wildcard)
 {
   var k: Perm
   k := wildcard // should be disallowed be a consistency check in Silver
 
-  exhale acc(x.f, k) // should not hold
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
   exhale acc(x.f, k)
 
-  inhale acc(y.f, k)
-  exhale acc(y.f, k) // k is constrained at every exhale, which creates a contradiction here
-
-  assert false
+/* Previously, the preceding exhaled verified (in Silicon), and it was possible to
+ * verify the following lines:
+ */
+//  exhale acc(x.f, k)
+//
+//  inhale acc(y.f, k)
+//  exhale acc(y.f, k) // k is constrained at every exhale, which creates a contradiction here
+//
+//  assert false
 }
