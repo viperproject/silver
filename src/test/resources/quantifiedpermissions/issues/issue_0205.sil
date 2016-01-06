@@ -1,0 +1,42 @@
+field f: Int
+
+/* Regular permissions */
+
+function fun01(x: Ref, y: Ref, b: Bool): Int
+  requires b ? acc(x.f) : acc(y.f)
+
+function fun02(x: Ref, y: Ref, b: Bool): Int
+  requires acc(x.f, b ? write : none)
+  requires acc(y.f, !b ? write : none)
+
+method test01(x: Ref, y: Ref, b: Bool)
+  requires acc(x.f) && acc(y.f)
+{
+  y.f := 0
+
+  assert fun01(x, y, true) == old(fun01(x, y, true))
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/205/)
+  assert fun02(x, y, true) == old(fun02(x, y, true))
+}
+
+/* Quantified permissions */
+
+function fun01qp(xs: Seq[Ref], i: Int): Int
+  requires 0 <= i && i < |xs|
+  requires forall j: Int :: 0 <= j && j < |xs| && j == i ==> acc(xs[j].f, write)
+
+function fun02qp(xs: Seq[Ref], i: Int): Int
+  requires 0 <= i && i < |xs|
+  requires forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].f, j == i ? write : none)
+
+method test02(xs: Seq[Ref], i1: Int, i2: Int)
+  requires 0 <= i1 && i1 < |xs|
+  requires 0 <= i2 && i2 < |xs|
+  requires i1 != i2
+  requires forall j: Int :: 0 <= j && j < |xs| ==> acc(xs[j].f, write)
+{
+  xs[i1].f := 0
+
+  assert fun01qp(xs, i2) == old(fun01qp(xs, i2))
+  assert fun02qp(xs, i2) == old(fun02qp(xs, i2))
+}
