@@ -10,7 +10,6 @@ import viper.silver.utility.{SilNameGenerator, NameGenerator}
 import org.scalatest.{BeforeAndAfter, FunSuite}
 
 class NameGeneratorTest extends FunSuite with BeforeAndAfter {
-
   var gen: SilNameGenerator = null
   var sub: NameGenerator = null
   var subsub: NameGenerator = null
@@ -31,11 +30,14 @@ class NameGeneratorTest extends FunSuite with BeforeAndAfter {
     assert(a == b, s"""Expected "$b" and got "$a".""")
   }
 
-  List(
-    (gen.createIdentifier _, "createIdentifier"),
-    (gen.createUniqueIdentifier _, "createUniqueIdentifier")).foreach { fn =>
-    val (f, name) = fn
+  /* Note: When `testArgs` is populated, gen is still null - `gen` will only be initialised
+   * right before each test case is called (by the `before` method above).
+   */
+  val testArgs = List(
+    ((s: String) => gen.createIdentifier(s), "createIdentifier"),
+    ((s: String) => gen.createUniqueIdentifier(s), "createUniqueIdentifier"))
 
+  testArgs foreach { case (f, name) =>
     test("Valid Identifier Unchanged " + name) {
       assertEq(f("asdf"), "asdf")
     }
@@ -61,7 +63,6 @@ class NameGeneratorTest extends FunSuite with BeforeAndAfter {
     test("Deleting " + name) {
       assertEq(f("a′"), "a")
     }
-
   }
 
   test("Unique Counter") {
