@@ -325,8 +325,8 @@ case class FieldAccess(rcv: Exp, field: Field)
   def loc(p : Program) = field
   lazy val typ = field.typ
 
-//  def getArgs: Seq[Exp] = Seq(rcv)
-//  def withArgs(args: Seq[Exp]): PossibleTrigger = copy(rcv = args.head, field)(pos, info)
+  def getArgs: Seq[Exp] = Seq(rcv)
+  def withArgs(args: Seq[Exp]): FieldAccess = copy(rcv = args.head, field)(pos, info)
 //  def asManifestation: Exp = this
 }
 
