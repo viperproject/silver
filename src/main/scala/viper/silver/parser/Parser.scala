@@ -106,7 +106,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // special variables
     "result",
     // types
-    "Int", "Perm", "Bool", "Ref",
+    "Int", "Perm", "Bool", "Ref", "Rational",
     // boolean constants
     "true", "false",
     // null
@@ -328,6 +328,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val multisetType: PackratParser[PType] =
     "Multiset" ~ "[" ~> typ <~ "]" ^^ PMultisetType
   lazy val primitiveTyp: PackratParser[PType] =
+    "Rational" ^^ { case _ => PPrimitiv("Perm") } |
     ("Int" | "Bool" | "Perm" | "Ref") ^^ PPrimitiv
 
   // --- Expressions
