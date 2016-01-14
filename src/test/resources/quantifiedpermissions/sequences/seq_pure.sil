@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/93/)
 field f: Int
 
 method test01(S:Seq[Ref], a:Int)

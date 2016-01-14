@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/93/)
 /* Provided by Stefan Blom of Univ. of Twente */
 
 field Exercise4__Integer_value: Int

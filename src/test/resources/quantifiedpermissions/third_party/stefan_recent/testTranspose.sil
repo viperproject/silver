@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/93/)
 field Ref__Integer_value: Int
 
 function Ref__multidim_index_2(N0: Int, N1: Int, i0: Int, i1: Int): Int
