@@ -66,6 +66,7 @@ method main_main(this: Ref, tcount: Int, gsize: Int, tid: Int, gid: Int, lid: In
       invariant (__last_barrier == 1) ==> ((tid == 0) ==> acc(this.dst[0].Integer_value, write)) && ((tid == 0) ==> acc(this.dst[1].Integer_value, write))
       invariant (__last_barrier == 0) ==> acc(this.dst[tid].Integer_value, write)
       invariant (0 < k) && (k <= half)
+      //:: ExpectedOutput(invariant.not.established:insufficient.permission)
       invariant acc(this.dst[tid].Integer_value, write)
       invariant (forall i: Int :: (0 <= i) && (i < k) ==> (this.dst[tid].Integer_value >= this.src[tid * half + i].Integer_value))
     {

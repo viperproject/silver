@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/92/)
 field f: Int
 
 method m() {
