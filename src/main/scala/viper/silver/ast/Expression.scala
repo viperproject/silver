@@ -428,13 +428,13 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.
     */
-  lazy val autoTrigger: Forall = {
-    if (triggers.isEmpty) {
-      Expressions.generateTriggerSet(this) match {
-        case Some((vars, triggerSets)) =>
-          Forall(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, info)
-        case None =>
-          /* Couldn't generate triggers */
+          lazy val autoTrigger: Forall = {
+            if (triggers.isEmpty) {
+              Expressions.generateTriggerSet(this) match {
+                case Some((vars, triggerSets)) =>
+                  Forall(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, info)
+                case None =>
+                  /* Couldn't generate triggers */
           this
       }
     } else {

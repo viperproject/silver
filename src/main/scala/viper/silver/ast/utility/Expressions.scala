@@ -69,6 +69,26 @@ object Expressions {
     expressions.exists(_.contains[T])
   }
 
+  /** In an expression, rename a list (domain) of variables with given (range) variables. */
+  def renameVariables[E <: Exp]
+  (exp: E, domain: Seq[AbstractLocalVar], range: Seq[AbstractLocalVar])
+  : E = {
+
+    val argNames = (domain map (_.name)).zipWithIndex
+
+    def actualArg(formalArg: String): Option[AbstractLocalVar] = {
+      argNames.find(x => x._1 == formalArg) map {
+        case (_, idx) => range(idx)
+      }
+    }
+
+    val res = exp.transform {
+      case AbstractLocalVar(name) if actualArg(name).isDefined => actualArg(name).get
+      case orig@LocalVarDecl(name,typ) if actualArg(name).isDefined => LocalVarDecl(actualArg(name).get.name,typ)(orig.pos,orig.info)
+    }()
+    res
+  }
+
   /** In an expression, instantiate a list of variables with given expressions. */
   def instantiateVariables[E <: Exp]
                           (exp: E, variables: Seq[AbstractLocalVar], values: Seq[Exp])

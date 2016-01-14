@@ -288,7 +288,7 @@ object Transformer {
         case null => null
 
         case other => throw
-          new AssertionError("Kind of node not covered: " + other.getClass)
+          new AssertionError("Internal Error: transform code for node not covered: " + other.getClass)
       }
     }
 
