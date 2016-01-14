@@ -53,9 +53,11 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
   /* True iff the given node is not allowed in triggers */
   protected def isForbiddenInTrigger(e: Exp): Boolean
 
-  private var _allowInvalidTriggers = false
-  def allowInvalidTriggers = _allowInvalidTriggers
-  def allowInvalidTriggers_=(allow: Boolean) {_allowInvalidTriggers = allow}
+  protected var customIsPossibleTrigger: PartialFunction[Exp, Boolean] = PartialFunction.empty
+  def setCustomIsPossibleTrigger(f: PartialFunction[Exp, Boolean]) { customIsPossibleTrigger = f }
+
+  protected var customIsForbiddenInTrigger: PartialFunction[Exp, Boolean] = PartialFunction.empty
+  def setCustomIsForbiddenInTrigger(f: PartialFunction[Exp, Boolean]) { customIsForbiddenInTrigger = f }
 
   private var nextUniqueId = 0
 

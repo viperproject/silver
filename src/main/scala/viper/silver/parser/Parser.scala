@@ -106,7 +106,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     // special variables
     "result",
     // types
-    "Int", "Perm", "Bool", "Ref",
+    "Int", "Perm", "Bool", "Ref", "Rational",
     // boolean constants
     "true", "false",
     // null
@@ -172,25 +172,23 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
               if (localDefines.isEmpty)
                 meth
               else
-                meth.transform {
-      case la: PDefine => PSkip().setPos(la)
-    }()
+                meth.transform { case la: PDefine => PSkip().setPos(la) }()
 
-  expandDefines(localDefines ++ globalDefines, methWithoutDefines)
-}
+            expandDefines(localDefines ++ globalDefines, methWithoutDefines)
+        }
 
-val domains = decls collect { case d: PDomain => expandDefines(globalDefines, d) }
-val functions = decls collect { case d: PFunction => expandDefines(globalDefines, d) }
-val predicates = decls collect { case d: PPredicate => expandDefines(globalDefines, d) }
+        val domains = decls collect { case d: PDomain => expandDefines(globalDefines, d) }
+        val functions = decls collect { case d: PFunction => expandDefines(globalDefines, d) }
+        val predicates = decls collect { case d: PPredicate => expandDefines(globalDefines, d) }
 
-PProgram(file, domains, fields, functions, predicates, methods)
-}
+        PProgram(file, domains, fields, functions, predicates, methods)
+    }
 
-lazy val fieldDecl =
-("field" ~> idndef) ~ (":" ~> typ <~ opt(";")) ^^ PField
+  lazy val fieldDecl =
+    ("field" ~> idndef) ~ (":" ~> typ <~ opt(";")) ^^ PField
 
-lazy val methodDecl =
-methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
+  lazy val methodDecl =
+    methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
       case name ~ args ~ rets ~ pres ~ posts ~ body =>
         PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
     }
@@ -330,6 +328,7 @@ methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
   lazy val multisetType: PackratParser[PType] =
     "Multiset" ~ "[" ~> typ <~ "]" ^^ PMultisetType
   lazy val primitiveTyp: PackratParser[PType] =
+    "Rational" ^^ { case _ => PPrimitiv("Perm") } |
     ("Int" | "Bool" | "Perm" | "Ref") ^^ PPrimitiv
 
   // --- Expressions
@@ -690,7 +689,7 @@ methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
                   }
               }() : PExp /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
           })
-      }()
+      }(recursive = _ => true)
 
     if (expanded) Some(potentiallyExpandedNode)
     else None

@@ -36,3 +36,20 @@ method test04(x: Ref)
   y.f := z
   exhale P(y, z) && acc(y.f.f)
 }
+
+function fun01(b: Bool): Bool
+
+method test05(x: Int) {
+  var i: Int
+
+  define sfx(k) x != k
+
+  assume fun01(sfx(i))
+
+  while (i < 0)
+    invariant fun01(sfx(i))
+  {
+    i := i + 1
+    assume false
+  }
+}

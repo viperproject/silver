@@ -25,23 +25,27 @@ object Triggers {
     protected def Var(id: String, typ: Type) = LocalVar(id)(typ)
 
     /* True iff the given node is a possible trigger */
-    protected def isPossibleTrigger(e: Exp): Boolean = e.isInstanceOf[PossibleTrigger]
+    protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
+      case p: PossibleTrigger => true
+      case _ => false
+    }: PartialFunction[Exp, Boolean])(e)
 
     /* Note: If Add and Sub were type arguments of GenericTriggerGenerator, the latter
      *       could implement isForbiddenInTrigger already */
-    def isForbiddenInTrigger(e: Exp) = e match {
-      case _: Add | _: Sub if allowInvalidTriggers => false
+    def isForbiddenInTrigger(e: Exp) = (customIsForbiddenInTrigger orElse {
       case _: ForbiddenInTrigger => true
       case _ => false
-    }
+    }: PartialFunction[Exp, Boolean])(e)
 
     protected def withArgs(e: Exp, args: Seq[Exp]): Exp = e match {
       case pt: PossibleTrigger => pt.withArgs(args)
+      case fa: FieldAccess => fa.withArgs(args)
       case other => sys.error(s"Unexpected expression $e")
     }
 
     protected def getArgs(e: Exp): Seq[Exp] = e match {
       case pt: PossibleTrigger => pt.getArgs
+      case fa: FieldAccess => fa.getArgs
       case other => sys.error(s"Unexpected expression $e")
     }
   }
