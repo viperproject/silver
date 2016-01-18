@@ -4,8 +4,6 @@ method loopTrueFalse(this: Ref)
   i := 1
   while (i < 10)
     //:: ExpectedOutput(invariant.not.established:assertion.false)
-    //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /Silicon/issue/164/)
-    //:: MissingOutput(invariant.not.preserved:assertion.false, /Silicon/issue/164/)
     invariant [true, false]
   {
     i := i + 1
