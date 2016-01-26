@@ -144,9 +144,9 @@ method test03(xs: Set[Ref], ys: Set[Ref], x: Ref)
   assume a != 0
   var b: Ref := x.g
 
-  //:: ExpectedOutput(assignment.failed:receiver.null)
-  //:: IgnoreOthers
-  a := x.g.f /* Access to x.g.f not guaranteed, hence x.g not guaranteed to be non-null */
+  //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  //:: MissingOutput(assignment.failed:receiver.null, /silicon/issue/34/)
+  a := x.g.f
 }
 
 method test04(xs: Set[Ref], ys: Set[Ref], x: Ref)
