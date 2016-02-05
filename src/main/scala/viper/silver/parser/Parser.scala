@@ -204,6 +204,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   lazy val formalArgList =
     repsep(formalArg, ",")
+  lazy val nonEmptyFormalArgList =
+    rep1sep(formalArg, ",")
   lazy val formalArg =
     idndef ~ (":" ~> typ) ^^ PFormalArgDecl
 
@@ -463,8 +465,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "perm" ~> parens(locAcc) ^^ PCurPerm
 
   lazy val quant: PackratParser[PExp] =
-    (keyword("forall") ~> formalArgList <~ "::") ~ rep(trigger) ~ exp ^^ PForall |
-    (keyword("exists") ~> formalArgList <~ "::") ~ exp ^^ PExists
+    (keyword("forall") ~> nonEmptyFormalArgList <~ "::") ~ rep(trigger) ~ exp ^^ PForall |
+    (keyword("exists") ~> nonEmptyFormalArgList <~ "::") ~ exp ^^ PExists
 
   lazy val forperm: PackratParser[PExp] =
     (keyword("forperm") ~> "[" ~> repsep(idnuse,",") <~ "]") ~ idndef ~ ("::" ~> exp) ^^ {
