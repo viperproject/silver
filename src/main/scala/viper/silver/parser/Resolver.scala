@@ -736,6 +736,7 @@ case class TypeChecker(names: NameAnalyser) {
         curMember = f
         vars foreach (v => check(v.typ))
         check(e, Bool)
+        setType(Bool)
         curMember = oldCurMember
       case f@ PForall(vars, triggers, e) =>
         val oldCurMember = curMember
@@ -743,6 +744,7 @@ case class TypeChecker(names: NameAnalyser) {
         vars foreach (v => check(v.typ))
         triggers.flatten foreach (x => check(x, Nil))
         check(e, Bool)
+        setType(Bool)
         curMember = oldCurMember
       case po: POldExp =>
         check(po.e, expected)
