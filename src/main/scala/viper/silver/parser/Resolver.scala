@@ -57,6 +57,7 @@ case class TypeChecker(names: NameAnalyser) {
     p.methods foreach check
 
     /* Report any domain type that couldn't be resolved */
+    /* Alex suggests replacing *all* these occurrences by one arbitrary type */
     p visit {
       case dt: PDomainType if dt.isUndeclared => messages ++= Messaging.message(dt, s"found undeclared type ${dt.domain.name}")
     }

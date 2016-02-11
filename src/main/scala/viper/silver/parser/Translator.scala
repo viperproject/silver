@@ -347,7 +347,7 @@ case class Translator(program: PProgram) {
               return Some(sp)
             }
             def unify(t1: Type, t2: Type, s: Substitution): Option[Substitution] = {
-              require(t2.isConcrete)
+//              require(t2.isConcrete)
               if (t1.isConcrete) {
                 if (t1 == t2)
                   return Some(s)
@@ -365,6 +365,7 @@ case class Translator(program: PProgram) {
                       assert(gt1.typeParameters.length == gt2.typeParameters.length)
                       return unifys(gt1.typeArguments, gt2.typeArguments, s)
                     }
+                  case _ => return None
                 }
               return None
             }
