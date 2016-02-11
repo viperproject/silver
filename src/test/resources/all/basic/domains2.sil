@@ -36,6 +36,11 @@ domain D10[A,B,C,D,E,F,G,H]
 		) : D10[Bool,B,C,D,E,F,G,H]
 
 }
+
+method m1(x : Int) returns (r : D10[Int,Int,Int,Int,Int,Int,Int,Int])
+{
+}
+
 /*
 domain DR[A,B]
 {
