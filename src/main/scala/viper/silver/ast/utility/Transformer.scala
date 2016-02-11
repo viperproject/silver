@@ -204,7 +204,7 @@ object Transformer {
             case Bool => aType
 
             case dt@DomainType(domainName, typeVariables) =>
-              DomainType(domainName, goTypeVariables(typeVariables))(dt.domainTypVars)
+              DomainType(domainName, goTypeVariables(typeVariables))(dt.typeParameters)
 
             case Int => aType
             case Perm => aType

@@ -6,6 +6,8 @@
 
 package viper.silver.parser
 
+import com.sun.org.apache.xerces.internal.impl.xs.SubstitutionGroupHandler
+
 import scala.language.implicitConversions
 import scala.collection.mutable
 import org.kiama.attribution.Attributable
@@ -325,24 +327,68 @@ case class Translator(program: PProgram) {
       case PFunctApp(func, args) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
-          case f @ DomainFunc(name, formalArgs, typ, _) =>
+          case f @ DomainFunc(name, formalArgs, typ, _) => {
             val actualArgs = args map exp
             val translatedTyp = ttyp(pexp.typ)
             // 'learn' looks at the formal type of an expression and the one actually
             // occurring in the program and tries to learn instantiations for type variables.
-            def learn(formal: Type, actual: Type): Seq[(TypeVar, Type)] = {
+            type Substitution = Map[TypeVar, Type]
+            def unifys(st1: Seq[Type], st2: Seq[Type], s: Substitution): Option[Substitution] = {
+              var sp = s
+              val zzip = st1.zip(st2)
+              for ((tv1, gt2) <- zzip) {
+                //Allow for gt1 or gt2 to be renamings
+                val spo: Option[Substitution] = unify(tv1, gt2, s)
+                spo match {
+                  case Some(ss) => sp = ss
+                  case _ => return None
+                }
+              }
+              return Some(sp)
+            }
+            def unify(t1: Type, t2: Type, s: Substitution): Option[Substitution] = {
+              require(t2.isConcrete)
+              if (t1.isConcrete) {
+                if (t1 == t2)
+                  return Some(s)
+              }
+              else
+                (t1, t2) match {
+                  case (tv: TypeVar, _) =>
+                    if (!s.contains(tv))
+                      return Some(s + (tv->t2))
+                    else if (s(tv) == t2)
+                      return Some(s)
+                  case (gt1: GenericType, gt2: GenericType) =>
+                    if (gt1.genericName == gt2.genericName) {
+                      //must ensure no Domain has the same name as a builtin generic type
+                      assert(gt1.typeParameters.length == gt2.typeParameters.length)
+                      return unifys(gt1.typeArguments, gt2.typeArguments, s)
+                    }
+                }
+              return None
+            }
+            /*            def learn(formal: Type, actual: Type): Seq[(TypeVar, Type)] = {
               (formal, actual) match {
                 case (tv: TypeVar, t) if t.isConcrete => Seq(tv -> t)
-                case (DomainType(_, m1), DomainType(_, m2)) =>
-                  m2.toSeq
+                case (dt1:DomainType, dt2:DomainType) =>
+                  if (dt1.domainName==dt2.domainName)
+                  {
+                    Nil
+                  } else
+                        Nil
                 case _ => Nil
               }
-            }
+            }*/
             // infer the type variable mapping for this call
-            val map = learn(typ, translatedTyp) ++
-              ((formalArgs map (_.typ)) zip (actualArgs map (_.typ)) flatMap (x => learn(x._1, x._2)))
-
-            DomainFuncApp(f, actualArgs, map.toMap)(pos)
+            //            val map = learn(typ, translatedTyp) ++
+            //              ((formalArgs map (_.typ)) zip (actualArgs map (_.typ)) flatMap (x => learn(x._1, x._2)))
+            val so = unifys((formalArgs map (_.typ)) /*++ Seq(typ)*/, (actualArgs map (_.typ)) /*++ Seq(translatedTyp)*/, Map[TypeVar, Type]())
+            so match {
+              case Some(s) => DomainFuncApp(f, actualArgs, s)(pos)
+              case _ => sys.error("type unification error - should report and not crash")
+            }
+          }
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>

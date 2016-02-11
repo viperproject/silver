@@ -76,7 +76,7 @@ object Types {
     */
   def typeConstituents(typ: Type): List[Type] = typ match {
     case Int | Bool | Perm | Ref | InternalType | _: TypeVar | Wand => Nil
-    case dt: DomainType => dt.domainTypVars.map(_.substitute(dt.typVarsMap)).toList
+    case dt: DomainType => dt.typeParameters.map(_.substitute(dt.typVarsMap)).toList
     case SeqType(elementType) => elementType :: typeConstituents(elementType)
     case SetType(elementType) => elementType :: typeConstituents(elementType)
     case MultisetType(elementType) => elementType :: typeConstituents(elementType)

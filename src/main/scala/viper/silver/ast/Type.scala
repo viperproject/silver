@@ -70,60 +70,95 @@ case object Ref extends AtomicType
 case object InternalType extends AtomicType
 /** Type for letwand-declared variables. */
 case object Wand extends AtomicType
+
+//Base type for collections and domain types
+sealed trait GenericType extends Type
+{
+  type Substitution = Map[TypeVar, Type]
+  type MyType <: GenericType
+  def genericName : String
+  def typVarsMap: Substitution
+  def typeParameters : Seq[TypeVar]
+  def typeArguments : Seq[Type] = typeParameters.map(typVarsMap(_))
+  def substitute(s: Substitution) : MyType =
+    make(s)
+  protected def make(s : Substitution) : MyType
+
+  override def isConcrete = typVarsMap.values.forall(_.isConcrete)
+}
+
 /** Base type for collections */
-sealed trait CollectionType extends BuiltInType {
+sealed trait CollectionType extends BuiltInType with GenericType {
   val elementType : Type
-  override lazy val isConcrete = elementType.isConcrete
-  def make(et:Type) : CollectionType
-  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
-    make(elementType.substitute(typVarsMap))
+  val typeParameter = TypeVar("X")
+  override type MyType <: CollectionType
+  override val typeParameters = Seq(typeParameter)
+  override val typVarsMap: Map[TypeVar, Type] = Map((typeParameter,elementType))
+
+//  override lazy val isConcrete = elementType.isConcrete
+
+  protected def make(s : Substitution) : MyType = {
+    require(s.keySet == typeParameter.toSet)
+    make(s(typeParameter))
+  }
+  protected def make(et:Type) : MyType
 }
 /** Type for sequences */
-case class SeqType(override val elementType: Type) extends CollectionType{
-  def make(et:Type) : SeqType = SeqType(et)
-//  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
-//    SeqType(elementType.substitute(typVarsMap))
+sealed case class SeqType(override val elementType: Type) extends CollectionType{
+  override type MyType = SeqType
+  override def make(et:Type) : MyType = SeqType(et)
+  override val genericName = "Seq"
+//  override def substitute(typVarsMap: Map[TypeVar, Type]): Tpe =
+//    SeqType(elementType.substitute(typVarsMap))y
 }
 /** Type for sets */
-case class SetType(override val  elementType: Type) extends CollectionType{
+sealed case class SetType(override val  elementType: Type) extends CollectionType{
 //  override lazy val isConcrete = elementType.isConcrete
-  def make(et:Type) : SetType = SetType(et)
+  override type MyType = SetType
+  override def make(et:Type) : MyType = SetType(et)
+  override val genericName = "Set"
 //  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
 //    SetType(elementType.substitute(typVarsMap))
 }
 /** Type for multisets */
-case class MultisetType(override val  elementType: Type) extends CollectionType{
+sealed case class MultisetType(override val  elementType: Type) extends CollectionType{
 //  override lazy val isConcrete = elementType.isConcrete
-  def make(et:Type) : MultisetType = MultisetType(et)
-//  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
+  override type MyType = MultisetType
+  override def make(et:Type) : MyType = MultisetType(et)
+  override val genericName = "MultiSet"
+  //  override def substitute(typVarsMap: Map[TypeVar, Type]): Type =
 //    MultisetType(elementType.substitute(typVarsMap))
 }
 
 /**
  * Type for user-defined domains. See also the companion object below, which allows passing a Domain - this should be used in general for creation (so that domainTypVars is guaranteed to be set correctly)
+ *
  * @param domainName The name of the underlying domain.
  * @param typVarsMap Maps type parameters to (possibly concrete) types. May not map all type
  *                   parameters, may even be empty.
  */
-case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
-                      (val domainTypVars: Seq[TypeVar])
-    extends Type {
 
-  require (domainTypVars.toSet == typVarsMap.keys.toSet)
+sealed case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
+                      (val typeParameters: Seq[TypeVar])
+    extends GenericType {
+
+  require(typeParameters.toSet == typVarsMap.keys.toSet)
+
+  override val genericName = domainName
+  override type MyType = DomainType
   //  require(typVarsMap.values.forall(t => !t.isInstanceOf[TypeVar]))
 
-  lazy val isConcrete: Boolean = {
-    var res = true
-    // all type variables need to be gone
-    for (typVar <- domainTypVars) {
-      typVarsMap.get(typVar) match {
-        case None => res = false
-        case Some(t) => if (!t.isConcrete) res = false
-      }
-    }
-
-    res
-  }
+//  lazy val isConcrete: Boolean = {
+//    var res = true
+//    // all type variables need to be gone
+//    for (typVar <- domainTypVars) {
+//      typVarsMap.get(typVar) match {
+//        case None => res = false
+//        case Some(t) => if (!t.isConcrete) res = false
+//      }
+//    }
+//    res
+//  }
 
 //  def getDomainTypeVars = domainTypVars
 
@@ -134,19 +169,18 @@ case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
     * the mapping `A -> Int`.
     *
     * @param newTypVarsMap Additional type variable mappings.
-    *
     * @return A domain type that corresponds to this domain type plus the additional type
     *         variable mappings.
     */
-  def substitute(newTypVarsMap: Map[TypeVar, Type]): DomainType = {
+  override def make(newTypVarsMap: Map[TypeVar, Type]): MyType = {
 /*    val unmappedTypeVars = domainTypVars filterNot typVarsMap.keys.toSet.contains
     val additionalTypeMap = (unmappedTypeVars flatMap (t => newTypVarsMap get t map (t -> _))).toMap
     val newTypeMap = typVarsMap ++ additionalTypeMap
   */
 
-    assert (this.typVarsMap.keys.toSet equals this.domainTypVars.toSet)
+    assert (this.typVarsMap.keys.toSet equals this.typeParameters.toSet)
     val newTypeMap = typVarsMap.map(kv=>kv._1 -> kv._2.substitute(newTypVarsMap))
-    DomainType(domainName, newTypeMap)(domainTypVars)
+    DomainType(domainName, newTypeMap)(typeParameters)
   }
 }
 
