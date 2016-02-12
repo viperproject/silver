@@ -69,7 +69,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   }
 
-  DomainInstances.showInstanceMembers(this)
+//  DomainInstances.showInstanceMembers(this)
 
 }//class Program
 

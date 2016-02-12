@@ -8,6 +8,12 @@ import scala.collection.mutable
   * Created by juhaszu on 11-Feb-16.
   */
 object DomainInstances {
+  type TypeSubstitution = Map[TypeVar,Type]
+
+  def substitute[A<:Node](e:A,s:TypeSubstitution) : A =
+    Transformer.transform[A](e,{case gt:GenericType => gt.substitute(s)})()
+
+  def collectTypes(n:Node) = n.deepCollect({case t : Type => t}).toSet
   ///////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////////////////
   //Generic type instances
@@ -99,7 +105,7 @@ object DomainInstances {
       val tc = todo.dequeue()
       assert (done contains tc)
       assert (tcLuggage contains  tc)
-      println("   Adding type coordinate <" + tc.toString() + ">")
+//      println("   Adding type coordinate <" + tc.toString() + ">")
       val ntcs = new mutable.HashSet[TypeCoordinate]()
       tc match{
         case ctc : CollectionTypeCoordinate =>
@@ -140,7 +146,7 @@ object DomainInstances {
                   ntcs += tc2
 
                 }else{
-                  println("At domain \"" + tc + "\" skipped creating \"" + tc2 + "\"")
+//                  println("At domain \"" + tc + "\" skipped creating \"" + tc2 + "\"")
                 }
 
               }
@@ -157,13 +163,22 @@ object DomainInstances {
 
     }
 
-    println("Calculating ground type instances done - total " + done.size)
+//    println("Calculating ground type instances done - total " + done.size)
     val result = done.map(_.t).toSet
-    println("Calculating ground type instances result done - total " + result.size)
+//    println("Calculating ground type instances result done - total " + result.size)
 
     result
   }
 
+  def getInstanceMembers(p:Program,dt : DomainType) : (Set[DomainFunc],Set[DomainAxiom]) = {
+    val domain = p.findDomain(dt.domainName)
+
+    (
+      domain.functions.filter(f => collectTypes(substitute(f, dt.typVarsMap)).subsetOf(p.groundTypeInstances)).toSet,
+      domain.axioms.filter(a => collectTypes(substitute(a, dt.typVarsMap)).subsetOf(p.groundTypeInstances)).toSet
+      )
+
+  }
   def showInstanceMembers(p:Program) = {
     for (ti <- p.groundTypeInstances)
     {
@@ -171,6 +186,18 @@ object DomainInstances {
         case dt : DomainType =>
         {
           println("Members for Domain type " + dt.toString())
+          val domain = p.findDomain(dt.domainName)
+          val (fs,as) = getInstanceMembers(p,dt)
+          for (f <- fs)
+            println("   Function " + f.toString())
+          for (a <- as)
+            println("   Axiom " + a.toString())
+          for (rf <- domain.functions.filter(f=> fs.forall((ff)=>ff.name!=f.name)))
+            println("   Rejected Function " + rf.toString())
+          for (ra <- domain.axioms.filter(a=> as.forall((aa)=>aa.name!=a.name)))
+            println("   Rejected Axiom " + ra.toString())
+
+/*
           val domain = p.findDomain(dt.domainName)
           for (f <- domain.functions){
             val rt = f.typ.substitute(dt.typVarsMap)
@@ -183,7 +210,7 @@ object DomainInstances {
             val sts = (types map (_.substitute(dt.typVarsMap))).toSet
             val b = (sts.subsetOf(p.groundTypeInstances))
             println("   " + (if (b) "" else  "Rejected ") + "Axiom " + a.name + " : " + a.exp.toString() )
-          }
+          }*/
         }
         case _ => {}
 

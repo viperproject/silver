@@ -8,6 +8,7 @@ import java.nio.file.{Paths, Path}
 
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast._
+import viper.silver.ast.utility.DomainInstances
 import viper.silver.frontend.{TranslatorState, SilFrontend}
 import viper.silver.verifier
 import viper.silver.verifier.AbstractError
@@ -38,7 +39,8 @@ class DomainInstanceTest extends FunSuite with Matchers {
     frontend.translate(file) match {
       case (Some(p), _) =>
         {
-            p.groundTypeInstances.size should be (6)
+            DomainInstances.showInstanceMembers(p)
+            p.groundTypeInstances.size should be (258)
 
             for (gi <-p.groundTypeInstances)
               gi match {
@@ -55,7 +57,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
           p.groundTypeInstances.count(
             _ match {case dt:DomainType => dt.domainName=="D10"
             case _ => false}
-          ) should be (4)
+          ) should be (256)
         }
       case _ => {}
     }
