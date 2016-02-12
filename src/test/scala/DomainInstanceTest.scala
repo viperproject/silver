@@ -38,7 +38,24 @@ class DomainInstanceTest extends FunSuite with Matchers {
     frontend.translate(file) match {
       case (Some(p), _) =>
         {
-            p.groundTypeInstances.size should be (10)
+            p.groundTypeInstances.size should be (6)
+
+            for (gi <-p.groundTypeInstances)
+              gi match {
+                case dt : DomainType => {
+                  dt.domainName should not be "D1"
+                }
+                case _ =>
+              }
+
+            p.groundTypeInstances.count(
+              _ match {case dt:DomainType => dt.domainName=="D10" && dt.typVarsMap.values.forall(_==Int)
+              case _ => false}
+            ) should be (1)
+          p.groundTypeInstances.count(
+            _ match {case dt:DomainType => dt.domainName=="D10"
+            case _ => false}
+          ) should be (4)
         }
       case _ => {}
     }
