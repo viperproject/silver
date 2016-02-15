@@ -96,10 +96,86 @@ object DomainInstances {
       case dfa : DomainFuncApp if dfa.typVarMap.values.forall(_.isConcrete)  => dfa.func(p).
     }).flatten
   */
-    val allDirectGroundTypes = p.deepCollect({
+
+    val domainFunctionAxiomMap = p.domains.flatMap(d=>d.axioms.flatMap(a=>a.exp.deepCollect({
+      case dfa : DomainFuncApp => dfa->a
+    }))).groupBy((pair)=>pair._1.funcname)
+
+    val allGroundDFAs = p.deepCollect( {
+      case dfa : DomainFuncApp if dfa.typVarMap.values.forall(_.isConcrete) =>
+        dfa
+      }
+    )
+
+    def tryUnify(t1:Type,t2:Type,s:TypeSubstitution) : Option[TypeSubstitution] ={
+      assert(t2.isConcrete)
+      (t1,t2) match{
+        case (tv:TypeVar,_) =>
+          if (s.contains(tv))
+            if (s(tv)==t2)
+              Some(s)
+            else
+              None
+          else
+            Some(s+(tv->t2))
+        case (gt1:GenericType,gt2:GenericType) =>
+          if (gt1.genericName==gt2.genericName)
+            tryUnify(gt1.typeArguments,gt2.typeArguments,s)
+          else
+            None
+        case _ => if (t1==t2) Some(s) else None
+      }
+    }
+
+    def tryUnify(ts1:Seq[Type],ts2:Seq[Type],s:TypeSubstitution) : Option[TypeSubstitution] =
+    {
+      assert(ts1.size==ts2.size)
+      var ss : Option[TypeSubstitution] = Some(s)
+      for (tp <- ts1.zip(ts2)) {
+        ss match{
+          case Some(sss) => ss = tryUnify(tp._1, tp._2, sss)
+          case None => return None
+        }
+      }
+      ss
+    }
+
+    def tryUnifyWithDefault(tvs:Seq[TypeVar],ts1:Seq[Type],ts2:Seq[Type]) : Option[TypeSubstitution] =
+    {
+      tryUnify(ts1,ts2,Map[TypeVar,Type]()) match {
+        case Some(s) => complete(s,tvs)
+        case None => None
+      }
+    }
+    def complete(ts:TypeSubstitution,tvs:Seq[TypeVar]) =
+      (tvs map (tv=>tv->ts.getOrElse(tv,Program.defaultType ))).toMap
+
+    val gtis =
+    (for (dfa <- allGroundDFAs)
+      domainFunctionAxiomMap.get(dfa.funcname) match{
+        case Some(ps) =>
+          ( for (pair <- ps){
+//            assert(dfa.funcname==pair._1.funcname)
+            val tvs = p.findDomain(pair._2.domainName).typVars
+            tryUnifyWithDefault(tvs,tvs.map(pair._1.typVarMap(_)),tvs.map(dfa.typVarMap(_))) match {
+              case Some(ts) => Set[Type](DomainType(pair._2.domainName, ts)(tvs))
+              case None => Set[Type]()
+            }})
+        case None => Set()
+      }).flatten
+
+
+    var allDirectGroundTypes = p.deepCollect({
       case t : Type if t.isConcrete => downClosure(t)
-      case dfa : DomainFuncApp => val d = p.findDomain(dfa.func(p).domainName);downClosure(DomainType(d,dfa.typVarMap))
+      case dfa : DomainFuncApp if  dfa.typVarMap.values.forall(_.isConcrete) =>
+        val d = p.findDomain(dfa.func(p).domainName);downClosure(DomainType(d,dfa.typVarMap))
     }).flatten
+
+    for (t <- gtis)
+      if (!allDirectGroundTypes.contains(t))
+        println(t.toString())
+
+    allDirectGroundTypes = allDirectGroundTypes.union(gtis)
 
     val todo = new mutable.Queue[TypeCoordinate]()
     val done = new mutable.HashSet[TypeCoordinate]()
@@ -121,6 +197,9 @@ object DomainInstances {
       }
     )
 
+
+
+//    var newTCs : mutable.Set[TypeCoordinate] = Set()
 
 
     while (todo.nonEmpty)
@@ -196,12 +275,12 @@ object DomainInstances {
   def getInstanceMembers(p:Program,dt : DomainType) : (Set[DomainFunc],Set[DomainAxiom]) = {
     val domain = p.findDomain(dt.domainName)
 
-      for (a <- domain.axioms){
+/*      for (a <- domain.axioms){
         var sa = substitute(a, dt.typVarsMap,p)
         var types = collectGroundTypes(sa,p)
         if (!types.subsetOf(p.groundTypeInstances))
           println("")
-      }
+      }*/
     (
       domain.functions.map(substitute(_, dt.typVarsMap,p)).filter(collectGroundTypes(_,p).subsetOf(p.groundTypeInstances)).toSet,
       domain.axioms.map(substitute(_, dt.typVarsMap,p)).filter(collectGroundTypes(_,p).subsetOf(p.groundTypeInstances)).toSet
@@ -218,7 +297,7 @@ object DomainInstances {
           println("Members for Domain type " + dt.toString())
           val domain = p.findDomain(dt.domainName)
           val (fs,as) = getInstanceMembers(p,dt)
-          val sfs = domain.functions.map(substitute(_,dt.typVarsMap,p))
+//          val sfs = domain.functions.map(substitute(_,dt.typVarsMap,p))
           for (f <- fs)
             println("   " + f.toString())
           for (a <- as)

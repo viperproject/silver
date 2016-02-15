@@ -72,7 +72,9 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   DomainInstances.showInstanceMembers(this)
 
 }//class Program
-
+object Program{
+  val defaultType = Int
+}
 
 // --- Program members
 

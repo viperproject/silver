@@ -370,9 +370,8 @@ case class Translator(program: PProgram) {
               return Some(sp)
             }
 
-            val defaultType = Int
             def completeWithDefault(tvs : Seq[TypeVar],s:TypeSubstitution) : TypeSubstitution =
-              (tvs map (tv=> (tv->s.getOrElse(tv,defaultType)))).toMap
+              (tvs map (tv=> (tv->s.getOrElse(tv,Program.defaultType)))).toMap
             val paramTypes = (formalArgs map (_.typ)) :+ typ
             val argTypes = (actualArgs map (_.typ)) :+ translatedTyp
             val so = unifys(paramTypes, argTypes, Map[TypeVar, Type]())
