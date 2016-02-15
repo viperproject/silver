@@ -69,7 +69,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   }
 
-//  DomainInstances.showInstanceMembers(this)
+  DomainInstances.showInstanceMembers(this)
 
 }//class Program
 
@@ -199,7 +199,9 @@ case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Se
 }
 
 /** A domain axiom. */
-case class DomainAxiom(name: String, exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainMember {
+case class DomainAxiom(name: String, exp: Exp)
+                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String)
+  extends DomainMember {
   require(Consistency.noResult(exp), "Axioms can never contain result variables.")
   require(Consistency.noOld(exp), "Axioms can never contain old expressions.")
   require(Consistency.noAccessLocation(exp), "Axioms can never contain access locations.")
@@ -213,16 +215,9 @@ object Substitution{
 }
 /** Domain function which is not a binary or unary operator. */
 case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
-                     (val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractDomainFunc with DomainMember {
+                     (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String)
+                      extends AbstractDomainFunc with DomainMember {
   require(!unique || formalArgs.isEmpty, "Only constants, i.e. nullary domain functions can be unique.")
-
-/*  def substitute(s:Substitution.Substitution) : DomainFunc =
-    new DomainFunc(
-      name + Substitution.toString(s),
-      formalArgs map (p => new LocalVarDecl(p.name,p.typ.substitute(s))),
-      typ.substitute(s),
-      unique
-    )*/
 }
 
 
@@ -246,6 +241,7 @@ sealed trait DomainMember extends Node with Positioned with Infoed {
   require(Consistency.validUserDefinedIdentifier(name))
 
   def name: String
+  def domainName : String //TODO:make names qualified
 
   /** See [[viper.silver.ast.utility.Types.freeTypeVariables]]. */
   lazy val freeTypeVariables = Types.freeTypeVariables(this)

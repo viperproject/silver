@@ -126,7 +126,7 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PType {
   var kind: PDomainTypeKinds.Kind = PDomainTypeKinds.Unresolved
 
   /* This class is also used to represent type variables, as they cannot
-   * syntactically distinguished from domain types without generic arguments.
+   * be distinguished syntactically from domain types without generic arguments.
    * For type variables, we have args.length = 0
    */
   def isTypeVar = kind == PDomainTypeKinds.TypeVar
@@ -372,13 +372,15 @@ case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], func
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PMember with PGlobalDeclaration with PTypedDeclaration
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends PMember with PGlobalDeclaration with PTypedDeclaration
-case class PAxiom(idndef: PIdnDef, exp: PExp) extends PScope with PGlobalDeclaration //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PMember with PGlobalDeclaration with PTypedDeclaration
+case class PAxiom(idndef: PIdnDef, exp: PExp)(val domainName:PIdnUse) extends PScope with PGlobalDeclaration  //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
 case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
   val typ = PPredicateType()
 }
 
+case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends KiamaPositioned with Attributable
+case class PAxiom1(idndef: PIdnDef, exp: PExp) extends KiamaPositioned with Attributable
 
 /**
  * A entity represented by names for whom we have seen more than one

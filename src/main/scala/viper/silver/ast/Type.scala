@@ -193,10 +193,10 @@ case class TypeVar(name: String) extends Type {
   lazy val isConcrete = false
 
   def substitute(typVarsMap: Map[TypeVar, Type]): Type = {
-    typVarsMap.get(this) match {
+    typVarsMap.getOrElse(this,this)/* match {
       case Some(t) => t
       case None => this
-    }
+    }                                */
   }
 
   //def !=(other: TypeVar) = name != other

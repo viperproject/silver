@@ -33,9 +33,9 @@ domain D10[A,B,C,D,E,F,G,H]
 		,e:D10[A,B,C,D,F,E,G,H]
 		,f:D10[A,B,C,D,E,G,F,H]
 		,g:D10[A,B,C,D,E,F,H,G]
-//		,h:D10[A,A,C,D,E,F,H,G]
-//		,i:D10[DD[A],B,C,D,E,F,H,G] / //uncomment to have some types
-		) : D10[Bool,B,C,D,E,F,G,H]
+		,h:D10[A,A,C,D,E,F,H,G]
+		,i:D10[DD[A],B,C,D,E,F,H,G] //uncomment to have some types
+		) : D10[Int,B,C,D,E,F,G,H]
 
 }
 

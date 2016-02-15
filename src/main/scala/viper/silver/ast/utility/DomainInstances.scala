@@ -10,10 +10,27 @@ import scala.collection.mutable
 object DomainInstances {
   type TypeSubstitution = Map[TypeVar,Type]
 
-  def substitute[A<:Node](e:A,s:TypeSubstitution) : A =
-    Transformer.transform[A](e,{case gt:GenericType => gt.substitute(s)})()
+  def substitute[A<:Node](e:A,s:TypeSubstitution,p:Program) : A =
+    Transformer.transform[A](e,
+      {
+        case dfa@DomainFuncApp(name,args,ts) =>
+            val ts2 = ts.toSeq.map(pair => (pair._1,substitute(pair._2,s,p))).toMap;
+            val argss = args map (substitute(_,s,p))
+            DomainFuncApp(dfa.func(p), argss, ts2)(dfa.pos,dfa.info)
+//            )(dfa.pos, dfa.info, substitute(dfa.typ,s), dfa.formalArgs.map(substitute(_,s)))
+        case lvd@LocalVar(name) =>
+          LocalVar(name)(substitute(lvd.typ,s,p),lvd.pos,lvd.info)
 
-  def collectTypes(n:Node) = n.deepCollect({case t : Type => t}).toSet
+        case t:Type => t.substitute(s)
+      })()
+
+  def collectGroundTypes(n:Node,p:Program) = n.deepCollect(
+    {
+      case t : Type if t.isConcrete => t
+      case dfa : DomainFuncApp if dfa.typVarMap.values.forall(_.isConcrete) =>
+        DomainType(dfa.domainName,dfa.typVarMap)(p.findDomain(dfa.domainName).typVars)
+    }
+  ).toSet
   ///////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////////////////
   //Generic type instances
@@ -74,8 +91,14 @@ object DomainInstances {
     }
 */
 * */
+
+/*    val allDFApps union p.deepCollect({
+      case dfa : DomainFuncApp if dfa.typVarMap.values.forall(_.isConcrete)  => dfa.func(p).
+    }).flatten
+  */
     val allDirectGroundTypes = p.deepCollect({
       case t : Type if t.isConcrete => downClosure(t)
+      case dfa : DomainFuncApp => val d = p.findDomain(dfa.func(p).domainName);downClosure(DomainType(d,dfa.typVarMap))
     }).flatten
 
     val todo = new mutable.Queue[TypeCoordinate]()
@@ -105,7 +128,7 @@ object DomainInstances {
       val tc = todo.dequeue()
       assert (done contains tc)
       assert (tcLuggage contains  tc)
-//      println("   Adding type coordinate <" + tc.toString() + ">")
+      println("   Adding type coordinate <" + tc.toString() + ">")
       val ntcs = new mutable.HashSet[TypeCoordinate]()
       tc match{
         case ctc : CollectionTypeCoordinate =>
@@ -163,9 +186,9 @@ object DomainInstances {
 
     }
 
-//    println("Calculating ground type instances done - total " + done.size)
+    println("Calculating ground type instances done - total " + done.size)
     val result = done.map(_.t).toSet
-//    println("Calculating ground type instances result done - total " + result.size)
+    println("Calculating ground type instances result done - total " + result.size)
 
     result
   }
@@ -173,13 +196,20 @@ object DomainInstances {
   def getInstanceMembers(p:Program,dt : DomainType) : (Set[DomainFunc],Set[DomainAxiom]) = {
     val domain = p.findDomain(dt.domainName)
 
+      for (a <- domain.axioms){
+        var sa = substitute(a, dt.typVarsMap,p)
+        var types = collectGroundTypes(sa,p)
+        if (!types.subsetOf(p.groundTypeInstances))
+          println("")
+      }
     (
-      domain.functions.filter(f => collectTypes(substitute(f, dt.typVarsMap)).subsetOf(p.groundTypeInstances)).toSet,
-      domain.axioms.filter(a => collectTypes(substitute(a, dt.typVarsMap)).subsetOf(p.groundTypeInstances)).toSet
+      domain.functions.map(substitute(_, dt.typVarsMap,p)).filter(collectGroundTypes(_,p).subsetOf(p.groundTypeInstances)).toSet,
+      domain.axioms.map(substitute(_, dt.typVarsMap,p)).filter(collectGroundTypes(_,p).subsetOf(p.groundTypeInstances)).toSet
       )
 
   }
   def showInstanceMembers(p:Program) = {
+    println("================== Domain instances")
     for (ti <- p.groundTypeInstances)
     {
       ti match {
@@ -188,14 +218,15 @@ object DomainInstances {
           println("Members for Domain type " + dt.toString())
           val domain = p.findDomain(dt.domainName)
           val (fs,as) = getInstanceMembers(p,dt)
+          val sfs = domain.functions.map(substitute(_,dt.typVarsMap,p))
           for (f <- fs)
-            println("   Function " + f.toString())
+            println("   " + f.toString())
           for (a <- as)
-            println("   Axiom " + a.toString())
+            println("   " + a.toString())
           for (rf <- domain.functions.filter(f=> fs.forall((ff)=>ff.name!=f.name)))
-            println("   Rejected Function " + rf.toString())
+            println("   Rejected " + substitute(rf,dt.typVarsMap,p).toString())
           for (ra <- domain.axioms.filter(a=> as.forall((aa)=>aa.name!=a.name)))
-            println("   Rejected Axiom " + ra.toString())
+            println("   Rejected " + substitute(ra,dt.typVarsMap,p).toString())
 
 /*
           val domain = p.findDomain(dt.domainName)
@@ -216,7 +247,10 @@ object DomainInstances {
 
       }
     }
-
+    println("================== Domain instances done")
+    var allTypes = collectGroundTypes(p,p)
+    for (t <- allTypes)
+      println(t.toString())
   }
 
 
@@ -239,7 +273,7 @@ object DomainInstances {
   }
 
   def downClosure(t:Type) : Set[Type] =
-    Set(t) ++ down1Types(t).flatMap(downClosure)
+    (if (t.isConcrete) Set(t) else  Set()) ++ down1Types(t).flatMap(downClosure)
 
 
   def getTypes(d:Domain) : Set[Type] = d.deepCollect{case t : Type => downClosure(t)}.flatten.toSet

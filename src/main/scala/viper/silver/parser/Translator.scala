@@ -76,8 +76,8 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(a: PAxiom): DomainAxiom = a match {
-    case PAxiom(name, e) =>
-      DomainAxiom(name.name, exp(e))(a)
+    case pa@PAxiom(name, e) =>
+      DomainAxiom(name.name, exp(e))(a,domainName = pa.domainName.name)
   }
 
   private def translate(f: PFunction) = f match {
@@ -110,8 +110,8 @@ case class Translator(program: PProgram) {
         Field(name, ttyp(typ))(pos)
       case PFunction(_, formalArgs, typ, _, _, _) =>
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
-      case PDomainFunction(_, args, typ, unique) =>
-        DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos)
+      case pdf@ PDomainFunction(_, args, typ, unique) =>
+        DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
       case PDomain(_, typVars, funcs, axioms) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)))(pos)
       case PPredicate(_, formalArgs, _) =>
@@ -330,24 +330,10 @@ case class Translator(program: PProgram) {
           case f @ DomainFunc(name, formalArgs, typ, _) => {
             val actualArgs = args map exp
             val translatedTyp = ttyp(pexp.typ)
-            // 'learn' looks at the formal type of an expression and the one actually
-            // occurring in the program and tries to learn instantiations for type variables.
-            type Substitution = Map[TypeVar, Type]
-            def unifys(st1: Seq[Type], st2: Seq[Type], s: Substitution): Option[Substitution] = {
-              var sp = s
-              val zzip = st1.zip(st2)
-              for ((tv1, gt2) <- zzip) {
-                //Allow for gt1 or gt2 to be renamings
-                val spo: Option[Substitution] = unify(tv1, gt2, s)
-                spo match {
-                  case Some(ss) => sp = ss
-                  case _ => return None
-                }
-              }
-              return Some(sp)
-            }
-            def unify(t1: Type, t2: Type, s: Substitution): Option[Substitution] = {
-//              require(t2.isConcrete)
+            type TypeSubstitution = Map[TypeVar, Type]
+            //Type unification - the range of the result is only the downward closure of t2 (i.e. assumes t2 is ground)
+            def unify(t1: Type, t2: Type, s: TypeSubstitution): Option[TypeSubstitution] = {
+              //              require(t2.isConcrete)
               if (t1.isConcrete) {
                 if (t1 == t2)
                   return Some(s)
@@ -369,24 +355,39 @@ case class Translator(program: PProgram) {
                 }
               return None
             }
-            /*            def learn(formal: Type, actual: Type): Seq[(TypeVar, Type)] = {
-              (formal, actual) match {
-                case (tv: TypeVar, t) if t.isConcrete => Seq(tv -> t)
-                case (dt1:DomainType, dt2:DomainType) =>
-                  if (dt1.domainName==dt2.domainName)
-                  {
-                    Nil
-                  } else
-                        Nil
-                case _ => Nil
+            //sequence type unification
+            def unifys(st1: Seq[Type], st2: Seq[Type], s: TypeSubstitution): Option[TypeSubstitution] = {
+              var sp = s
+              val zzip = st1.zip(st2)
+              for ((tv1, gt2) <- zzip) {
+                //Allow for gt1 or gt2 to be renamings
+                val spo: Option[TypeSubstitution] = unify(tv1, gt2, sp)
+                spo match {
+                  case Some(ss) => sp = ss
+                  case _ => return None
+                }
               }
-            }*/
-            // infer the type variable mapping for this call
-            //            val map = learn(typ, translatedTyp) ++
-            //              ((formalArgs map (_.typ)) zip (actualArgs map (_.typ)) flatMap (x => learn(x._1, x._2)))
-            val so = unifys((formalArgs map (_.typ)) /*++ Seq(typ)*/, (actualArgs map (_.typ)) /*++ Seq(translatedTyp)*/, Map[TypeVar, Type]())
+              return Some(sp)
+            }
+
+            val defaultType = Int
+            def completeWithDefault(tvs : Seq[TypeVar],s:TypeSubstitution) : TypeSubstitution =
+              (tvs map (tv=> (tv->s.getOrElse(tv,defaultType)))).toMap
+            val paramTypes = (formalArgs map (_.typ)) :+ typ
+            val argTypes = (actualArgs map (_.typ)) :+ translatedTyp
+            val so = unifys(paramTypes, argTypes, Map[TypeVar, Type]())
+
             so match {
-              case Some(s) => DomainFuncApp(f, actualArgs, s)(pos)
+              case Some(s) => {
+//                val cs = paramTypes.map ((k:,v) => (k->v.substitute(s)))
+                val d = members.get(f.domainName).get.asInstanceOf[Domain]
+                if (/*func.name=="butLast")// &&*/ s.keys.toSet != d.typVars.toSet)
+                  println("Underspecified function type " + f.name)
+                assert(s.keys.toSet.subsetOf(d.typVars.toSet))
+                val sp = completeWithDefault(d.typVars,s)
+                assert(sp.keys.toSet == d.typVars.toSet)
+                DomainFuncApp(f, actualArgs, sp)(pos)
+              }
               case _ => sys.error("type unification error - should report and not crash")
             }
           }
