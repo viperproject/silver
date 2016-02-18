@@ -367,7 +367,7 @@ case class Translator(program: PProgram) {
         //val args = fields map findField
 
         //check that the arguments contain only fields and predicates
-        args.foreach(a => Consistency.checkForallRefsArguments(members.get(a.name).get))
+        args.foreach(a => Consistency.checkForPermArguments(members.get(a.name).get))
 
         val argAccess = mutable.Buffer[Location]()
         for (a <- args) {
@@ -376,7 +376,7 @@ case class Translator(program: PProgram) {
           members.get(a.name).get match {
             case f : Field => argAccess += f
             case p : Predicate =>  argAccess += p
-            case _ => sys.error("Internal Error: Can only handle fields and predicates in forallrefs")
+            case _ => sys.error("Internal Error: Can only handle fields and predicates in forperm")
           }
         }
 

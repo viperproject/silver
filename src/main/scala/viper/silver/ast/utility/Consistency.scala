@@ -74,8 +74,8 @@ object Consistency {
   /** Returns true if the given node contains no perm expression.*/
   def noPerm(n: Node)  = !n.existsDefined { case _: CurrentPerm => }
 
-  /** Returns true if the given node contains no forallrefs expression.*/
-  def noForallRefs(n: Node)  = !n.existsDefined { case _: ForPerm => }
+  /** Returns true if the given node contains no forperm expression.*/
+  def noForPerm(n: Node)  = !n.existsDefined { case _: ForPerm => }
 
   /** Returns true if the given node contains no access locations. */
   def noAccessLocation(n: Node) = !n.existsDefined { case _: LocationAccess => }
@@ -117,7 +117,7 @@ object Consistency {
   def checkFunctionBody(e: Exp) {
     recordIfNot(e, noOld(e), "Old expressions are not allowed in functions bodies.")
     recordIfNot(e, noResult(e), "Result variables are not allowed in function bodies.")
-    recordIfNot(e, noForallRefs(e), "Function bodies are not allowed to contain forallrefs expressions")
+    recordIfNot(e, noForPerm(e), "Function bodies are not allowed to contain forperm expressions")
     recordIfNot(e, noPerm(e), "Function bodies are not allowed to contain perm expressions")
     checkNoPositiveOnly(e)
   }
@@ -227,16 +227,16 @@ object Consistency {
     case _ => true
   }
 
-  //check all properties that need to be satisfied by the arguments of forallrefs expressions
-  def checkForallRefsArguments(arg : Node) {
+  //check all properties that need to be satisfied by the arguments of forperm expressions
+  def checkForPermArguments(arg : Node) {
 
     val positioned : Positioned = arg match {
       case p : Positioned => p
       case _ => sys.error("Can only handle positioned arguments!")
     }
 
-    recordIfNot(positioned, fieldOrPredicate(positioned), "Can only use fields and predicates in 'forallrefs' expressions")
-    recordIfNot(positioned, oneRefParam(positioned), "Can only use predicates with one Ref parameter in 'forallrefs' expressions")
+    recordIfNot(positioned, fieldOrPredicate(positioned), "Can only use fields and predicates in 'forperm' expressions")
+    recordIfNot(positioned, oneRefParam(positioned), "Can only use predicates with one Ref parameter in 'forperm' expressions")
   }
 
 //  def checkNoImpureConditionals(wand: MagicWand, program: Program) = {
