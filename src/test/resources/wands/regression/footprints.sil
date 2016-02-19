@@ -29,10 +29,11 @@ method test3(x: Ref)
 {
   x.v := true
   //:: ExpectedOutput(wand.not.wellformed)
+  //:: MissingOutput(wand.not.wellformed, /carbon/issue/105/)
   package true --* x.v
 
-  /* Preceding package previously succeeded, which allowed the following to succeed as well */
-//  x.v := false
-//  apply true --* x.v
-//  assert false
+  /* If the preceding package had succeeded, it would allow the following to succeed as well */
+  x.v := false
+  apply true --* x.v
+  assert false
 }

@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/103/)
+
 /* See tree_delete_min.sil */
 
 field __CONFIG_HEURISTICS: Bool /* Activates heuristics */
