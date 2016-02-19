@@ -98,6 +98,7 @@ case class PIdnDef(name: String) extends PNode with PIdentifier
 
 case class PIdnUse(name: String) extends PExp with PIdentifier {
   var decl: PDeclaration = null
+  override val localTypeSubstitutions = null
     /* Should be set during resolving. Intended to preserve information
      * that is needed by the translator.
      */
@@ -232,7 +233,7 @@ case class PWandType() extends PInternalType {
 // The argument types are unified with the (fresh versions of) types  are
 sealed trait PExp extends PNode {
   var typ: PType = PUnknown()
-  def typeSubstitutions : Set[PTypeSubstitution] //= new scala.collection.mutable.HashSet[PTypeSubstitution]()
+  def typeSubstitutions = new scala.collection.mutable.HashSet[PTypeSubstitution]()
   def localTypeSubstitutions : Set[PTypeSubstitution]
   val extraLocalTypeVariables : Set[PDomainType] = Set()
 }
@@ -247,7 +248,6 @@ object PExp{
 sealed trait POpApp extends PExp{
   def opName : String
   def args : Seq[PExp]
-  val typeSubstitutions = new scala.collection.mutable.HashSet[PTypeSubstitution]()
 }
 
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends POpApp
@@ -255,101 +255,78 @@ case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends POpApp
   override val opName = func.name
   var localTypeSubstitutions = null
 }
-case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp{
-  override val args = Seq(left,right)
+case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
+  override val args = Seq(left, right)
   val extraElementType = PTypeVar("#E")
-  override val extraLocalTypeVariables : Set[PDomainType] =
+  override val extraLocalTypeVariables: Set[PDomainType] =
     opName match {
-      case "++" => Set(extraElementType)
+      case "++" | "union" | "intersection" | "setminus" | "subset" => Set(extraElementType)
       case _ => Set()
     }
-  val localTypeSubstitutions = opName match{
+  val localTypeSubstitutions = opName match {
     case "+" | "-" => Set(
-      Map(PExp.pArgTypeVar(0)->Int,PExp.pArgTypeVar(1)->Int,PExp.pResultTypeVar->Int),
-      Map(PExp.pArgTypeVar(0)->Perm,PExp.pArgTypeVar(1)->Perm,PExp.pResultTypeVar->Perm)
+      Map(PExp.pArgTypeVar(0) -> Int, PExp.pArgTypeVar(1) -> Int, PExp.pResultTypeVar -> Int),
+      Map(PExp.pArgTypeVar(0) -> Perm, PExp.pArgTypeVar(1) -> Perm, PExp.pResultTypeVar -> Perm)
     )
     case "*" => Set(
-      Map(PExp.pArgTypeVar(0)->Int,PExp.pArgTypeVar(1)->Int,PExp.pResultTypeVar->Int),
-      Map(PExp.pArgTypeVar(0)->Perm,PExp.pArgTypeVar(1)->Perm,PExp.pResultTypeVar->Perm),
-      Map(PExp.pArgTypeVar(0)->Int,PExp.pArgTypeVar(1)->Perm,PExp.pResultTypeVar->Perm)
+      Map(PExp.pArgTypeVar(0) -> Int, PExp.pArgTypeVar(1) -> Int, PExp.pResultTypeVar -> Int),
+      Map(PExp.pArgTypeVar(0) -> Perm, PExp.pArgTypeVar(1) -> Perm, PExp.pResultTypeVar -> Perm),
+      Map(PExp.pArgTypeVar(0) -> Int, PExp.pArgTypeVar(1) -> Perm, PExp.pResultTypeVar -> Perm)
     )
     case "/" => Set(
-      Map(PExp.pArgTypeVar(0)->Int,PExp.pArgTypeVar(1)->Int,PExp.pResultTypeVar->Perm),
-      Map(PExp.pArgTypeVar(0)->Perm,PExp.pArgTypeVar(1)->Int,PExp.pResultTypeVar->Perm)
+      Map(PExp.pArgTypeVar(0) -> Int, PExp.pArgTypeVar(1) -> Int, PExp.pResultTypeVar -> Perm),
+      Map(PExp.pArgTypeVar(0) -> Perm, PExp.pArgTypeVar(1) -> Int, PExp.pResultTypeVar -> Perm)
     )
     case "\\" | "%" => Set(
-      Map(PExp.pArgTypeVar(0)->Int,PExp.pArgTypeVar(1)->Int,PExp.pResultTypeVar->Int))
+      Map(PExp.pArgTypeVar(0) -> Int, PExp.pArgTypeVar(1) -> Int, PExp.pResultTypeVar -> Int))
     case "<" | "<=" | ">" | ">=" => Set(
-      Map(PExp.pArgTypeVar(0)->Int,PExp.pArgTypeVar(1)->Int,PExp.pResultTypeVar->Bool),
-      Map(PExp.pArgTypeVar(0)->Perm,PExp.pArgTypeVar(1)->Int,PExp.pResultTypeVar->Bool))
+      Map(PExp.pArgTypeVar(0) -> Int, PExp.pArgTypeVar(1) -> Int, PExp.pResultTypeVar -> Bool),
+      Map(PExp.pArgTypeVar(0) -> Perm, PExp.pArgTypeVar(1) -> Int, PExp.pResultTypeVar -> Bool))
     case "==" | "!=" => Set(
-      Map(PExp.pArgTypeVar(1)->PExp.pArgTypeVar(0),PExp.pResultTypeVar->Bool))
+      Map(PExp.pArgTypeVar(1) -> PExp.pArgTypeVar(0), PExp.pResultTypeVar -> Bool))
     case "&&" | "||" | "<==>" | "==>" => Set(
-      Map(PExp.pArgTypeVar(1)->Bool,PExp.pArgTypeVar(0)->Bool,PExp.pResultTypeVar->Bool))
-    case MagicWandOp.op =>Set(
-      Map(PExp.pArgTypeVar(1)->Bool,PExp.pArgTypeVar(0)->Bool,PExp.pResultTypeVar->Wand))
-    case "in" =>Set(
-      Map(PExp.pArgTypeVar(1)->PSetType     (PExp.pArgTypeVar(0)),PExp.pResultTypeVar->Bool),
-      Map(PExp.pArgTypeVar(1)->PSeqType     (PExp.pArgTypeVar(0)),PExp.pResultTypeVar->Bool),
-      Map(PExp.pArgTypeVar(1)->PMultisetType(PExp.pArgTypeVar(0)),PExp.pResultTypeVar->Int)
+      Map(PExp.pArgTypeVar(1) -> Bool, PExp.pArgTypeVar(0) -> Bool, PExp.pResultTypeVar -> Bool))
+    case MagicWandOp.op => Set(
+      Map(PExp.pArgTypeVar(1) -> Bool, PExp.pArgTypeVar(0) -> Bool, PExp.pResultTypeVar -> Wand))
+    case "in" => Set(
+      Map(PExp.pArgTypeVar(1) -> PSetType(PExp.pArgTypeVar(0)), PExp.pResultTypeVar -> Bool),
+      Map(PExp.pArgTypeVar(1) -> PSeqType(PExp.pArgTypeVar(0)), PExp.pResultTypeVar -> Bool),
+      Map(PExp.pArgTypeVar(1) -> PMultisetType(PExp.pArgTypeVar(0)), PExp.pResultTypeVar -> Int)
     )
-    case "++" =>Set(
-      Map(PExp.pArgTypeVar(0)->PSeqType(extraElementType),PExp.pArgTypeVar(1)->PSeqType(extraElementType),PExp.pResultTypeVar->PSeqType(extraElementType))
+    case "++" => Set(
+      Map(PExp.pArgTypeVar(0) -> PSeqType(extraElementType), PExp.pArgTypeVar(1) -> PSeqType(extraElementType), PExp.pResultTypeVar -> PSeqType(extraElementType))
     )
-    case "union" | "intersection" | "setminus" =>
-  val newExpected = if (expected.isEmpty) genericAnySetType else expected
-  check(left, newExpected)
-  check(right, newExpected)
-  if (left.typ.isUnknown || right.typ.isUnknown) {
-    // nothing to do, error has already been issued
-  setErrorType()
-  } else if (isCompatible(left.typ, right.typ)) {
-    // ok
-    // TODO: perform type refinement and propagate down
-  setType(left.typ)
-  } else {
-  issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
-  }
-  case "subset" =>
-  val newExpected = genericAnySetType
-  check(left, newExpected)
-  check(right, newExpected)
-  if (left.typ.isUnknown || right.typ.isUnknown) {
-    // nothing to do, error has already been issued
-  setErrorType()
-  } else if (isCompatible(left.typ, right.typ)) {
-    // ok
-    // TODO: perform type refinement and propagate down
-  setType(Bool)
-  } else {
-  issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
-  }
-  case _ => sys.error(s"unexpected operator $op")
-  }
-    case PUnExp(op, e) =>
-      op match {
-        case "-" | "+" =>
-          val safeExpected = if (expected.isEmpty) Seq(Int, Perm) else expected
-          safeExpected.filter(x => Seq(Int, Perm) contains x) match {
-            case Nil =>
-              issueError(exp, s"expected $expectedString, but found unary operator $op that cannot have such a type")
-            case expectedStillPossible =>
-              check(e, expectedStillPossible)
-              if (e.typ.isUnknown) {
-                setErrorType()
-              } else {
-                // ok
-                setType(e.typ)
-              }
-          }
-        case "!" =>
-          check(e, Bool)
-          setType(Bool)
-        case _ => sys.error(s"unexpected operator $op")
-      }
+    case "union" | "intersection" | "setminus" => Set(
+      Map(PExp.pArgTypeVar(0) -> PSetType(extraElementType), PExp.pArgTypeVar(1) -> PSetType(extraElementType), PExp.pResultTypeVar -> PSetType(extraElementType)),
+      Map(PExp.pArgTypeVar(0) -> PMultisetType(extraElementType), PExp.pArgTypeVar(1) -> PMultisetType(extraElementType), PExp.pResultTypeVar -> PMultisetType(extraElementType))
+    )
+    case "subset" => Set(
+      Map(PExp.pArgTypeVar(0) -> PSetType(extraElementType), PExp.pArgTypeVar(1) -> PSetType(extraElementType), PExp.pResultTypeVar -> Bool),
+      Map(PExp.pArgTypeVar(0) -> PMultisetType(extraElementType), PExp.pArgTypeVar(1) -> PMultisetType(extraElementType), PExp.pResultTypeVar -> Bool)
+    )
+    case _ => sys.error(s"internal error - unknown binary operator $opName")
   }
 }
-case class PUnExp(opName: String, exp: PExp) extends POpApp{ override val args = Seq(exp)}
+
+case class PUnExp(opName: String, exp: PExp) extends POpApp {
+  override val args = Seq(exp)
+  val extraElementType = PTypeVar("#E")
+  override val extraLocalTypeVariables: Set[PDomainType] =
+    opName match {
+      case "++" | "union" | "intersection" | "setminus" | "subset" => Set(extraElementType)
+      case _ => Set()
+    }
+  val localTypeSubstitutions = opName match {
+    case "-" | "+" => Set(
+      Map(PExp.pArgTypeVar(0) -> Int, PExp.pResultTypeVar -> Int),
+      Map(PExp.pArgTypeVar(0) -> Perm, PExp.pResultTypeVar -> Perm)
+    )
+    case "!" => Set(
+      Map(PExp.pArgTypeVar(0) -> Bool, PExp.pResultTypeVar -> Bool)
+    )
+    case _ => sys.error(s"internal error - unknown unary operator $opName")
+  }
+}
 
 // Simple literals
 trait PSimpleLiteral extends PExp {
