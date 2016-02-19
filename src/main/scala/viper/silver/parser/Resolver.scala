@@ -335,35 +335,43 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   /**
-   * Look at two valid types for an expression and attempts to learn the instantiations for
-   * type variables.  Returns a mapping of type variables to types.
+   * Type unification
+   * Returns a mapping of type variables to types.
+    *
+    * Assymetric type unification - type variables on both sides are considered distinct
+    * The resulting substitution has in its domain only type variables of the rhs
    */
-  def learn(a: PType, b: PType): Seq[(String, PType)] = {
-    @inline
-    def multiLearn(as: Seq[PType], bs: Seq[PType]) =
-      as.indices flatMap (i => learn(as(i), bs(i)))
+  type PTypeVar = PDomainType
+  type PTypeSubstitution = Map[PTypeVar,PType]
+  def tryUnifyTypes(a: PType, b: PType): Option[PTypeSubstitution] =
+    tryUnifyTypesR(a,b,Map[PTypeVar,PType]())
 
-    (a, b) match {
-      case (PTypeVar(name), t) if t.isConcrete => Seq(name -> t)
-      case (t, PTypeVar(name)) if t.isConcrete => Seq(name -> t)
-      case (PSeqType(e1), PSeqType(e2)) =>
-        learn(e1, e2)
-      case (PSetType(e1), PSetType(e2)) =>
-        learn(e1, e2)
-      case (PMultisetType(e1), PMultisetType(e2)) =>
-        learn(e1, e2)
-      case (dt1 @ PDomainType(n1, m1), dt2 @ PDomainType(n2, m2)) if m1.length == m2.length =>
-        if (n1 == n2)
-          multiLearn(m1, m2)
-        else if (dt1.isTypeVar && dt2.isConcrete)
-          (dt1.domain.name -> dt2) +: multiLearn(m1, m2)
-        else if (dt2.isTypeVar && dt1.isConcrete)
-          (dt2.domain.name -> dt1) +: multiLearn(m1, m2)
-        else
-          Nil
-      case _ => Nil
+  def tryUnifyTypesR(a: PType, b: PType,s:PTypeSubstitution): Option[PTypeSubstitution] = {
+    /*    def unifyTypeSequences(as: Seq[PType], bs: Seq[PType]) =
+      as.indices flatMap (i => unifyTypes(as(i), bs(i)))
+  */
+    val as = a match {
+      case tv: PTypeVar if s.contains(tv) => s(tv)
+      case _ => a
+    }
+    val bs = b match {
+      case tv: PTypeVar if s.contains(tv) => s(tv)
+      case _ => b
+    }
+    (as, bs) match {
+      case (aa,bb) if (aa==bb) => Some(s)
+      case (tv@PTypeVar(name), t) => assert(!(s contains tv)); Some(s + (tv -> t))
+      case (t, PTypeVar(name)) => tryUnifyTypesR(bs, as, s)
+      case (gt1: PGenericType, gt2: PGenericType) if (gt1.genericName == gt2.genericName) =>
+          ((gt1.typeArguments zip gt2.typeArguments).foldLeft[Option[PTypeSubstitution]](Some(s))
+          ((ss: Option[PTypeSubstitution], p: (PType, PType)) => ss match {
+            case Some(s) => tryUnifyTypesR(a, b, s)
+            case None => None
+          }))
+      case _ => None
     }
   }
+
 
   /**
    * Are types 'a' and 'b' compatible?  Type variables are assumed to be unbound so far,
@@ -395,12 +403,13 @@ case class TypeChecker(names: NameAnalyser) {
    * The empty set can be passed for expected, if any type is fine.
    */
   def check(exp: PExp, expected: PType): Unit = check(exp, Seq(expected))
+  {
+    check(exp,new PTypeSubstitution())
+    if (!isCompatible(expected, exp.typ))
+      messages ++= Messaging.message(exp, s"expected type $expectedString, but got $actual at the expression at ${exp.start}-${exp.finish}")
+  }
 
-  def check(exp: PExp, expectedRaw: Seq[PType]): Unit = {
-    val expected = expectedRaw filter {
-      case PTypeVar(_) => false
-      case _ => true
-    }
+  def check(exp: PExp, s : PTypeSubstitution) : Unit = { //expectedRaw: Seq[PType]): Unit = {
     def setRefinedType(actual: PType, inferred: Seq[(String, PType)]) {
       val t = actual.substitute(inferred.toMap)
       check(t)
@@ -409,17 +418,19 @@ case class TypeChecker(names: NameAnalyser) {
     /**
      * Turn 'expected' into a readable string.
      */
-    lazy val expectedString = {
+/*    lazy val expectedString = {
       if (expected.size == 1) {
         expected.head.toString
       } else {
         s"one of [${expected.mkString(", ")}]"
       }
-    }
+    }*/
     /**
      * Set the type of 'exp', and check that the actual type is allowed by one of the expected types.
      */
     def setType(actual: PType) {
+      exp.typ = actual
+      /*
       if (actual.isUnknown) {
         // no error for unknown type (an error has already been issued)
         exp.typ = actual
@@ -438,7 +449,7 @@ case class TypeChecker(names: NameAnalyser) {
         if (!found) {
           messages ++= Messaging.message(exp, s"expected type $expectedString, but got $actual at the expression at ${exp.start}-${exp.finish}")
         }
-      }
+      } */
     }
     /**
      * Issue an error for the node at 'n'. Also sets an error type for 'exp' to suppress
@@ -458,11 +469,11 @@ case class TypeChecker(names: NameAnalyser) {
       setType(PUnknown())
     }
 
-    def genericSeqType: PSeqType = PSeqType(PTypeVar("."))
+/*    def genericSeqType: PSeqType = PSeqType(PTypeVar("."))
     def genericSetType: PSetType = PSetType(PTypeVar("."))
     def genericMultisetType: PMultisetType = PMultisetType(PTypeVar("."))
     def genericAnySetType = Seq(genericSetType, genericMultisetType)
-
+  */
     def setPIdnUseTypeAndEntity(piu: PIdnUse, typ: PType, entity: PDeclaration) {
       setType(typ)
       piu.decl = entity
@@ -479,6 +490,9 @@ case class TypeChecker(names: NameAnalyser) {
           case x => issueError(piu, s"expected identifier, but got $x")
         }
       case PBinExp(left, op, right) =>
+        check(left,s)
+        check(right,s)
+
         op match {
           case "+" | "-" =>
             val safeExpected = if (expected.isEmpty) Seq(Int, Perm) else expected

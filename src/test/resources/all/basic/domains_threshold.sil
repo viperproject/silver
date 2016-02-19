@@ -9,8 +9,8 @@ domain D1[T]{
 	function f6(t:D1[T]) : D1[D1[T]]
 
 	axiom A1 { forall x : T  :: f6(f1(x))==f1(f1(x))}
-	axiom A2 { forall x : D1[T] :: x==f2(x) }
-	axiom A3 { forall x : D1[D1[T]] :: f4(x)==f3(f3(x)) }
+	axiom A2 { forall y : D1[T] :: y==f2(y) }
+	axiom A3 { forall z : D1[D1[T]] :: f4(z)==f3(f3(z)) }
 }
 
 method m(x:D1[Int]) returns (r:D1[Bool])

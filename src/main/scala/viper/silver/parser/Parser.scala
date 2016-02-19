@@ -598,6 +598,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    * keyword, for example "index".
    */
 
+  //We assume the symbol "#" cannot occur in using given identifiers
   val identFirstLetter = "[a-zA-Z$_]"
 
   val identOtherLetterChars = "a-zA-Z0-9$_'"

@@ -146,21 +146,6 @@ sealed case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type]
 
   override val genericName = domainName
   override type MyType = DomainType
-  //  require(typVarsMap.values.forall(t => !t.isInstanceOf[TypeVar]))
-
-//  lazy val isConcrete: Boolean = {
-//    var res = true
-//    // all type variables need to be gone
-//    for (typVar <- domainTypVars) {
-//      typVarsMap.get(typVar) match {
-//        case None => res = false
-//        case Some(t) => if (!t.isConcrete) res = false
-//      }
-//    }
-//    res
-//  }
-
-//  def getDomainTypeVars = domainTypVars
 
   /** Returns this domain type but adds the type variable mappings from `newTypVarsMap` to those
     * already existing in `this.typVarsMap`. Already existing mappings will '''not''' be overridden!
@@ -173,11 +158,6 @@ sealed case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type]
     *         variable mappings.
     */
   override def make(newTypVarsMap: Map[TypeVar, Type]): MyType = {
-/*    val unmappedTypeVars = domainTypVars filterNot typVarsMap.keys.toSet.contains
-    val additionalTypeMap = (unmappedTypeVars flatMap (t => newTypVarsMap get t map (t -> _))).toMap
-    val newTypeMap = typVarsMap ++ additionalTypeMap
-  */
-
     assert (this.typVarsMap.keys.toSet equals this.typeParameters.toSet)
     val newTypeMap = typVarsMap.map(kv=>kv._1 -> kv._2.substitute(newTypVarsMap))
     DomainType(domainName, newTypeMap)(typeParameters)

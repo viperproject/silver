@@ -375,7 +375,9 @@ case class Translator(program: PProgram) {
             val paramTypes = (formalArgs map (_.typ)) :+ typ
             val argTypes = (actualArgs map (_.typ)) :+ translatedTyp
             val so = unifys(paramTypes, argTypes, Map[TypeVar, Type]())
-
+            println("exp:" + pexp.toString)
+            println("  pt:" + paramTypes.toString)
+            println("  at:" + argTypes.toString)
             so match {
               case Some(s) => {
 //                val cs = paramTypes.map ((k:,v) => (k->v.substitute(s)))
