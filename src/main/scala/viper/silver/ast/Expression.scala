@@ -458,7 +458,7 @@ case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
 
   Consistency.recordIfNot(body, Consistency.noPerm(body),
     "forperm expression is not allowed to contain perm expressions")
-  Consistency.recordIfNot(body, Consistency.noForallRefs(body),
+  Consistency.recordIfNot(body, Consistency.noForPerm(body),
     "forperm expression is not allowed to contain nested forperm expressions")
 
   def variables: Seq[LocalVarDecl] = Seq(variable)
