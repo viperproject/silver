@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/103/)
+
 /* See list_sum.sil */
 
 field __CONFIG_HEURISTICS: Bool /* Activates heuristics */

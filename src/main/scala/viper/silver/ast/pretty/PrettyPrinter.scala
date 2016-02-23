@@ -283,7 +283,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         (if (triggers.isEmpty) empty else space <> ssep((triggers map show).to[collection.immutable.Seq], space)) <+>
         show(exp))
     case ForPerm(v, fields, exp) =>
-      parens("forallrefs"
+      parens("forperm"
         <+> brackets(ssep((fields map showLocation).to[collection.immutable.Seq], comma <> space))
         <+> v.name <+> "::" <+> show(exp))
 

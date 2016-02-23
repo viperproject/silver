@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/102/)
+
 /* This example encodes and specifies an iterative implementation of
  * inserting a value into a linked list. A magic wand is used to
  * book-keep permissions.
