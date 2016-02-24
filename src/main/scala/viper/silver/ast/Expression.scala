@@ -287,22 +287,25 @@ object FuncApp {
 }
 
 /** User-defined domain function application. */
-case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl]) extends AbstractDomainFuncApp with PossibleTrigger {
+case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])
+                        (val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl],val domainName:String)
+  extends AbstractDomainFuncApp with PossibleTrigger {
   args foreach Consistency.checkNoPositiveOnly
 //  args foreach (_.isPure)
   def typ = typPassed
   def formalArgs = formalArgsPassed
   def func = (p:Program) => p.findDomainFunction(funcname)
   def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs)
+  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs,domainName)
   def asManifestation = this
 }
 object DomainFuncApp {
-  def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo) : DomainFuncApp = DomainFuncApp(func.name,args,typVarMap)(pos,info,func.typ.substitute(typVarMap),func.formalArgs map {
+  def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo) : DomainFuncApp =
+    DomainFuncApp(func.name,args,typVarMap)(pos,info,func.typ.substitute(typVarMap),func.formalArgs map {
     fa =>
       // substitute parameter types
       LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
-  })
+  },func.domainName)
 }
 
 // --- Field and predicate accesses
