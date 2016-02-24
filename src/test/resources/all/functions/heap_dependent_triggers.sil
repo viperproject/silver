@@ -29,6 +29,7 @@ method test01b(x: Ref, y: Ref) {
   inhale acc(y.f)
 
   inhale fun01(x, 5)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/113/)
   assert bar01(5) > 0
 }
 
@@ -61,6 +62,7 @@ method test03b(x: Ref, y: Ref)
   inhale acc(y.f)
 
   inhale fun01(x, 5)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/113/)
   assert bar01(5) > 0
 }
 

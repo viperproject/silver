@@ -104,6 +104,7 @@ method test20b(x: Ref)
 
   package A --* B
 
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/104/)
   assert    (perm(x.g) == write && perm(x.h) == none)
          || (perm(x.h) == write && perm(x.g) == none)
 

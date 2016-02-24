@@ -50,6 +50,8 @@ method curry_test01(x: Ref)
 
 method curry_test02(x: Ref)
   requires (acc(P()) && acc(Q())) --* acc(R())
+  //:: ExpectedOutput(postcondition.violated:wand.not.found)
+  //:: MissingOutput(postcondition.violated:wand.not.found, /silicon/issue/34/)
   ensures acc(P()) --* (acc(Q()) --* acc(R()))
 {
   inhale acc(P())

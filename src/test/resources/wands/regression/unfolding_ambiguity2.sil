@@ -14,7 +14,16 @@ if the unfolding is interpreted just as an unfolding expression then the wand is
   //:: UnexpectedOutput(wand.not.wellformed:insufficient.permission, /silicon/issue/197/)
   package acc(P(x)) --* unfolding P(x) in true
 
+  //:: UnexpectedOutput(exhale.failed:wand.not.found, /carbon/issue/111/)
   exhale (acc(P(x)) --* true)
+}
+
+method t03(x:Ref) {
+  //:: UnexpectedOutput(wand.not.wellformed:insufficient.permission, /silicon/issue/197/)
+  package acc(P(x)) --* unfolding P(x) in true
+
+  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /carbon/issue/105/)
+  exhale (acc(P(x)) --* unfolding P(x) in true)
 }
 
 predicate P(x:Ref) {

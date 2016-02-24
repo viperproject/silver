@@ -12,8 +12,10 @@ function sum(p: Ref): Int
 }
 
 method test06(p: Ref) {
+  //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
   package
     //:: ExpectedOutput(wand.not.wellformed)
+    //:: MissingOutput(wand.not.wellformed, /carbon/issue/105/)
     (acc(Pair(p)) && sum(p) == 10)
       --*
     unfolding acc(Pair(p)) in p.f + p.g == 10 // rhs is not self-framing

@@ -23,6 +23,7 @@ method t02(x: Ref)
   inhale acc(x.f,1/2)
   
   //this package should succeed, but note on the right hand side for acc(x.f,1/4) the permission is transferred from the current state and in the current state itself the value of x.f is not known. In the transfer of acc(x.f,1/2) in the packaging ghost operation we learn that x.f is 2 in the current state but that information can generally only be used until the packaging ghost operation is finished executing. So in the current version of Carbon (23.08) that fact won't be available when transferring acc(x.f,1/4), hence it doesn't verify currently in Carbon.
+  //:: UnexpectedOutput(package.failed:assertion.false, /carbon/issue/109/)
   package acc(x.f,1/4)&&x.f==2 --* packaging (true --* acc(x.f,1/2)&&x.f == 2) in 
     acc(x.f,1/4)&&x.f==2
    

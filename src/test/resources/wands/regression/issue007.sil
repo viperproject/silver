@@ -6,6 +6,8 @@ method test01(x: Ref)
   x.f := 3
 
   //:: ExpectedOutput(wand.not.wellformed)
+  //:: MissingOutput(wand.not.wellformed, /carbon/issue/105/)
+  //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
   package true --* x.f == 3
   x.f := x.f + 1
   apply true --* x.f == 3 // Malformed as well
@@ -16,6 +18,8 @@ method test02(x: Ref)
   requires acc(x.f)
 {
   //:: ExpectedOutput(wand.not.wellformed)
+  //:: MissingOutput(wand.not.wellformed, /carbon/issue/105/)
+  //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
   package acc(x.f) && x.f == 0 --* x.f == 0
   x.f := 0
 
@@ -25,6 +29,8 @@ method test02(x: Ref)
 method test03(x: Ref)
   requires acc(x.f) && x.f == 0
   //:: ExpectedOutput(wand.not.wellformed)
+  //:: MissingOutput(wand.not.wellformed, /carbon/issue/105/)
+  //:: UnexpectedOutput(not.wellformed:insufficient.permission, /carbon/issue/105/)
   requires acc(x.f) && x.f == 0 --* x.f == 0
 {
   apply acc(x.f) && x.f == 0 --* x.f == 0 // Malformed as well

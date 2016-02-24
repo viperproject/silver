@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/107/)
+
 field f: Ref
 
 predicate P(x:Ref) {
