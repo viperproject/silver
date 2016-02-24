@@ -324,57 +324,22 @@ case class Translator(program: PProgram) {
         FieldAccess(exp(rcv), findField(idn))(pos)
       case p@PPredicateAccess(args, idn) =>
         PredicateAccess(args map exp, findPredicate(idn))(pos)
-      case PFunctApp(func, args) =>
+      case pfa@PFunctApp(func, args) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
           case f @ DomainFunc(name, formalArgs, typ, _) => {
+            if (name=="cons" || name=="length")
+              println
             val actualArgs = args map exp
             val translatedTyp = ttyp(pexp.typ)
             type TypeSubstitution = Map[TypeVar, Type]
             //Type unification - the range of the result is only the downward closure of t2 (i.e. assumes t2 is ground)
-            def unify(t1: Type, t2: Type, s: TypeSubstitution): Option[TypeSubstitution] = {
-              //              require(t2.isConcrete)
-              if (t1.isConcrete) {
-                if (t1 == t2)
-                  return Some(s)
-              }
-              else
-                (t1, t2) match {
-                  case (tv: TypeVar, _) =>
-                    if (!s.contains(tv))
-                      return Some(s + (tv->t2))
-                    else if (s(tv) == t2)
-                      return Some(s)
-                  case (gt1: GenericType, gt2: GenericType) =>
-                    if (gt1.genericName == gt2.genericName) {
-                      //must ensure no Domain has the same name as a builtin generic type
-                      assert(gt1.typeParameters.length == gt2.typeParameters.length)
-                      return unifys(gt1.typeArguments, gt2.typeArguments, s)
-                    }
-                  case _ => return None
-                }
-              return None
-            }
-            //sequence type unification
-            def unifys(st1: Seq[Type], st2: Seq[Type], s: TypeSubstitution): Option[TypeSubstitution] = {
-              var sp = s
-              val zzip = st1.zip(st2)
-              for ((tv1, gt2) <- zzip) {
-                //Allow for gt1 or gt2 to be renamings
-                val spo: Option[TypeSubstitution] = unify(tv1, gt2, sp)
-                spo match {
-                  case Some(ss) => sp = ss
-                  case _ => return None
-                }
-              }
-              return Some(sp)
-            }
-
-            def completeWithDefault(tvs : Seq[TypeVar],s:TypeSubstitution) : TypeSubstitution =
-              (tvs map (tv=> (tv->s.getOrElse(tv,Program.defaultType)))).toMap
             val paramTypes = (formalArgs map (_.typ)) :+ typ
             val argTypes = (actualArgs map (_.typ)) :+ translatedTyp
-            val so = unifys(paramTypes, argTypes, Map[TypeVar, Type]())
+            val so : Option[TypeSubstitution] = pfa.domainSubstitution match{
+              case Some(ps) => Some(ps.m.map(kv=>TypeVar(kv._1)->ttyp(kv._2)))
+              case None => None
+            } //unifys(paramTypes, argTypes, Map[TypeVar, Type]())
             println("exp:" + pexp.toString)
             println("  pt:" + paramTypes.toString)
             println("  at:" + argTypes.toString)
@@ -382,10 +347,10 @@ case class Translator(program: PProgram) {
               case Some(s) => {
 //                val cs = paramTypes.map ((k:,v) => (k->v.substitute(s)))
                 val d = members.get(f.domainName).get.asInstanceOf[Domain]
-                if (/*func.name=="butLast")// &&*/ s.keys.toSet != d.typVars.toSet)
-                  println("Underspecified function type " + f.name)
+//                if (/*func.name=="butLast")// &&*/ s.keys.toSet != d.typVars.toSet)
+//                  println("Underspecified function type " + f.name)
                 assert(s.keys.toSet.subsetOf(d.typVars.toSet))
-                val sp = completeWithDefault(d.typVars,s)
+                val sp = s//completeWithDefault(d.typVars,s)
                 assert(sp.keys.toSet == d.typVars.toSet)
                 DomainFuncApp(f, actualArgs, sp)(pos)
               }
