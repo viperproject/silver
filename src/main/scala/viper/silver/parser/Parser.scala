@@ -611,7 +611,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   val ident =
     not(keyword) ~> identifier.r |
-      failure("identifier expected")
+      identifier.r >> { a => failure(s"identifier expected, but keyword `$a' found") }
 
   private def foldPExp[E <: PExp](e: PExp, es: List[PExp => E]): E =
     es.foldLeft(e){(t, a) =>
