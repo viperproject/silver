@@ -10,7 +10,6 @@ import org.kiama.util.Messaging
 import viper.silver.ast.MagicWandOp
 import viper.silver.ast.utility.Visitor
 
-import scala.collection
 import scala.collection.mutable
 import scala.reflect._
 
@@ -144,8 +143,10 @@ case class TypeChecker(names: NameAnalyser) {
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be unfolded")
         check(e, Bool)
       case PPackageWand(e) =>
+        check(e,Wand)
         checkMagicWand(e, allowWandRefs = false)
       case PApplyWand(e) =>
+        check(e,Wand)
         checkMagicWand(e, allowWandRefs = true)
       case PExhale(e) =>
         check(e, Bool)
@@ -182,6 +183,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PMethodCall(targets, method, args) =>
         names.definition(curMember)(method) match {
           case PMethod(_, formalArgs, formalTargets, _, _, _) =>
+            formalArgs.foreach(fa=>check(fa.typ))
             if (formalArgs.length != args.length) {
               messages ++= Messaging.message(stmt, "wrong number of arguments")
             } else {
@@ -253,10 +255,10 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def checkMagicWand(e: PExp, allowWandRefs: Boolean) = e match {
-    case _: PIdnUse if allowWandRefs =>
-      check(e, Wand)
-    case PBinExp(_, MagicWandOp.op, _) =>
-      check(e, Wand)
+    case _: PIdnUse if allowWandRefs =>{}
+//      if (recurse) check(e, Wand)
+    case PBinExp(_, MagicWandOp.op, _) =>{}
+ //     if (recurse) check(e, Wand)
     case _ =>
       messages ++= Messaging.message(e, "expected magic wand")
   }
@@ -396,7 +398,7 @@ case class TypeChecker(names: NameAnalyser) {
     pts.m.flatMap(kv=>kv._2.freeTypeVariables &~ pts.m.keySet).foldLeft(pts)((ts,fv)=>ts.add(PTypeVar(fv),PTypeSubstitution.defaultType).get)
 
   def selectAndGroundTypeSubstitution(etss: collection.Set[PTypeSubstitution]) : PTypeSubstitution = {
-    require(!etss.isEmpty)
+    require(etss.nonEmpty)
     ground(
       if (etss.size==1)
         ground(etss.head)
@@ -404,22 +406,33 @@ case class TypeChecker(names: NameAnalyser) {
         etss.min(Ordering.by((ets:PTypeSubstitution)=>ets.toString)))
   }
 
-  def check(exp: PExp, expected: PType): Unit =
+  def typeError(exp:PExp) = {
+    messages ++= Messaging.message(exp, s"Type error in the expression at ${exp.start}-${exp.finish}")
+  }
+  def check(exp: PExp, expected: PType) = checkTopTyped(exp,Some(expected))
+  def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
   {
     check(exp,PTypeSubstitution.id)
-    val etss = exp.typeSubstitutions.flatMap(_.add(exp.typ,expected))
-    if (!etss.isEmpty) {
-      val ts = selectAndGroundTypeSubstitution(etss)
-      exp.forceSubstitution(ts)
-    }else{
-      val expectedString = expected.toString
-      val actualString = exp.typ.toString
-      if (!isCompatible(expected, exp.typ))
-        messages ++= Messaging.message(exp, s"expected type $expectedString, but got $actualString at the expression at ${exp.start}-${exp.finish}")
+    if (exp.typ.isValidAndResolved && exp.typeSubstitutions.nonEmpty){
+      val etss = oexpected match{
+        case Some(expected) if expected.isValidAndResolved => exp.typeSubstitutions.flatMap(_.add(exp.typ,expected))
+        case _ => exp.typeSubstitutions
+      }
+      if (etss.nonEmpty) {
+        val ts = selectAndGroundTypeSubstitution(etss)
+        exp.forceSubstitution(ts)
+      }else {
+        oexpected match {
+          case Some(expected) =>
+            messages ++= Messaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.start}-${exp.finish}")
+          case None =>
+            typeError(exp)
+        }
+      }
     }
   }
 
-  def check(exp: PExp): Unit = //check(exp, Seq(expected))
+  def checkInternal(exp: PExp): Unit =
   {
     check(exp,PTypeSubstitution.id)
   }
@@ -476,14 +489,15 @@ case class TypeChecker(names: NameAnalyser) {
           case _=>
         }
       case poa: POpApp =>
-        poa.args.foreach(check(_))
+        assert(poa.typeSubstitutions.isEmpty)
+        poa.args.foreach(checkInternal)
         poa match{
           case pfa@PFunctApp(func, args) =>
             names.definition(curMember)(func) match {
               case PFunction(_, formalArgs, resultType, _, _, _) =>
                 ensure(formalArgs.size == args.size, pfa, "wrong number of arguments")
-                pfa._localTypeSubstitutions = Set(
-                  new PTypeSubstitution(args.indices.map(i=> POpApp.pArgTypeVar(i).domain.name -> formalArgs(i).typ):+(POpApp.pResultTypeVar.domain.name->resultType))
+                pfa._signatures = Set(
+                  new PTypeSubstitution(args.indices.map(i=> POpApp.pArg(i).domain.name -> formalArgs(i).typ):+(POpApp.pRes.domain.name->resultType))
                 )
               case pdf@PDomainFunction(_, formalArgs, resultType, unique) =>
                 ensure(formalArgs.size == args.size, pfa, "wrong number of arguments")
@@ -493,19 +507,23 @@ case class TypeChecker(names: NameAnalyser) {
                 val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).toSet) //fresh domain type variables
                 pfa.domainTypeRenaming = Some(fdtv)
                 pfa._extraLocalTypeVariables = (domain.typVars map (tv=>PTypeVar(tv.idndef.name))).toSet
-                pfa._localTypeSubstitutions = Set(
+                pfa._signatures = Set(
                   new PTypeSubstitution(
-                    args.indices.map(i=> POpApp.pArgTypeVar(i).domain.name -> formalArgs(i).typ.substitute(fdtv)):+
-                      (POpApp.pResultTypeVar.domain.name->pdf.typ.substitute(fdtv)))
+                    args.indices.map(i=> POpApp.pArg(i).domain.name -> formalArgs(i).typ.substitute(fdtv)):+
+                      (POpApp.pRes.domain.name->pdf.typ.substitute(fdtv)))
                 )
               case x =>
                 issueError(func, "expected function")
             }
           case pue : PUnFoldingExp =>
-            check(pue.acc.perm, Perm)
-            check(pue.acc.loc, Pred)
+//            check(pue.acc.perm, Perm)
+            if (!isCompatible(pue.acc.loc.typ, Pred)) {
+              messages ++= Messaging.message(pue, "expected predicate access")
+            }
             acceptNonAbstractPredicateAccess(pue.acc, "abstract predicates cannot be (un)folded")
           case pfa@PFieldAccess(rcv, idnuse) =>
+//            check(idnuse.typ)
+//            check(rcv, Ref)
             /* For a field access of the type rcv.fld we have to ensure that the
              * receiver denotes a local variable. Just checking that it is of type
              * Ref is not sufficient, since it could also denote a Ref-typed field.
@@ -516,25 +534,30 @@ case class TypeChecker(names: NameAnalyser) {
               case _ =>
               /* More complicated expressions should be ok if of type Ref, which is checked next */
             }
-            pfa._localTypeSubstitutions = Set(PTypeSubstitution(Map(POpApp.pArgTypeVar(0).domain.name -> Ref,POpApp.pResultTypeVar.domain.name -> idnuse.typ)))
-            //            check(rcv, Ref)
-            acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")((_, _) => {})//check(idnuse, expected))
+            acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")(
+              (id, decl) => {checkInternal(id)})
+
+            pfa._localSignatures = if (Set(rcv.typ,idnuse.typ).forall(_.isValidAndResolved))
+              Set(PTypeSubstitution(Map(POpApp.pArgS(0) -> Ref,POpApp.pResS -> idnuse.typ)))
+            else
+              Set()
           //setType()
           case ppa@PPredicateAccess(args, idnuse) =>
             //_predicate.asInstanceOf[PPredicate]
+//            check(idnuse.typ)
             val predicate = names.definition(curMember)(ppa.idnuse).asInstanceOf[PPredicate]
-            acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
-              check(idnuse)
+            acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(id, decl) =>
+              checkInternal(id)
               /* Check that the predicate is used with 1. the correct number of arguments,
                * and 2. with the correct types of arguments.
                */
               if (args.length != predicate.formalArgs.length) issueError(idnuse, "predicate arity doesn't match")
               //              args zip predicate.formalArgs foreach {case (aarg, farg) => check(aarg, farg.typ)}
             }
-            ppa._localTypeSubstitutions = Set(
+            ppa._localSignatures = Set(
               new PTypeSubstitution(
-                args.indices.map(i=> POpApp.pArgTypeVar(i).domain.name -> predicate.formalArgs(i).typ):+
-                  (POpApp.pResultTypeVar.domain.name->Pred))
+                args.indices.map(i=> POpApp.pArg(i).domain.name -> predicate.formalArgs(i).typ):+
+                  (POpApp.pRes.domain.name->Pred))
             )
           //            setType(Pred)
           case PPackaging(wand, in) =>
@@ -553,16 +576,22 @@ case class TypeChecker(names: NameAnalyser) {
             }
           case _ =>
         }
-        val ltr = getFreshTypeSubstitution(poa.localScope) //local type renaming - fresh versions
-        val rlts = poa.localTypeSubstitutions map (ts=>refreshWith(ts,ltr)) //local substitutions refreshed
-        assert(rlts.nonEmpty)
-        val flat = poa.args.indices map (i=>POpApp.pArgTypeVar(i).substitute(ltr)) //fresh local argument types
-        poa.typeSubstitutions ++= unifySequenceWithSubstitutions(rlts,flat.indices.map(i => (flat(i),poa.args(i).typ,poa.args(i).typeSubstitutions.toSet)).toSeq)
-        val ts = poa.typeSubstitutions.toSet
-        if (ts.isEmpty)
-          issueError(poa, s"type error in expression $poa")
-        val rrt = POpApp.pResultTypeVar.substitute(ltr)
-        poa.typ = if (ts.size==1) rrt.substitute(ts.head) else rrt
+        if (poa.signatures.nonEmpty && poa.args.forall(_.typeSubstitutions.nonEmpty)) {
+          val ltr = getFreshTypeSubstitution(poa.localScope) //local type renaming - fresh versions
+          val rlts = poa.signatures map (ts => refreshWith(ts, ltr)) //local substitutions refreshed
+          assert(rlts.nonEmpty)
+          val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
+          poa.typeSubstitutions ++= unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.toSet)).toSeq)
+          val ts = poa.typeSubstitutions.toSet
+          if (ts.isEmpty)
+            typeError(poa)
+          val rrt = POpApp.pRes.substitute(ltr)
+          poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
+        }else{
+          poa.typeSubstitutions.clear()
+          poa.typ = PUnknown()
+//          typeError(poa)
+        }
       case piu @ PIdnUse(name) =>
         names.definition(curMember)(piu) match {
           case decl @ PLocalVarDecl(_, typ, _) => setPIdnUseTypeAndEntity(piu, typ, decl)
@@ -572,196 +601,21 @@ case class TypeChecker(names: NameAnalyser) {
           case decl: PLetWand => setPIdnUseTypeAndEntity(piu, Wand, decl)
           case x => issueError(piu, s"expected identifier, but got $x")
         }
-      /*
-    case PBinExp(left, op, right) =>
-      check(left,s)
-      check(right,s)
-
-      op match {
-        case "+" | "-" =>
-          val safeExpected = if (expected.isEmpty) Seq(Int, Perm) else expected
-          safeExpected.filter(x => Seq(Int, Perm) contains x) match {
-            case Nil =>
-              issueError(exp, s"expected $expectedString, but found operator $op that cannot have such a type")
-            case expectedStillPossible =>
-              check(left, expectedStillPossible)
-              check(right, expectedStillPossible)
-              if (left.typ.isUnknown || right.typ.isUnknown) {
-                setErrorType()
-              } else if (left.typ == right.typ) {
-                setType(left.typ)
-              } else {
-                issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
-              }
-          }
-        case "*" =>
-          val safeExpected = if (expected.isEmpty) Seq(Int, Perm) else expected
-          safeExpected.filter(x => Seq(Int, Perm) contains x) match {
-            case Nil =>
-              issueError(exp, s"expected $expectedString, but found operator $op that cannot have such a type")
-            case expectedStillPossible =>
-              expectedStillPossible match {
-                case Seq(Perm) =>
-                  check(left, Seq(Perm, Int))
-                  check(right, Perm)
-                case _ =>
-                  check(left, expectedStillPossible)
-                  check(right, expectedStillPossible)
-              }
-              if (left.typ.isUnknown || right.typ.isUnknown) {
-                setErrorType()
-              } else {
-                setType(right.typ)
-              }
-          }
-        case "/" =>
-          check(left, Seq(Int,Perm))
-          check(right, Int)
-          setType(Perm)
-        case "\\" =>
-          check(left, Int)
-          check(right, Int)
-          setType(Int)
-        case "%" =>
-          check(left, Int)
-          check(right, Int)
-          setType(Int)
-        case "<" | "<=" | ">" | ">=" =>
-          check(left, Seq(Int, Perm))
-          check(right, Seq(Int, Perm))
-          if (left.typ.isUnknown || right.typ.isUnknown) {
-            // nothing to do, error has already been issued
-          } else if (left.typ == right.typ) {
-            // ok
-          } else {
-            issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
-          }
-          setType(Bool)
-        case "==" | "!=" =>
-          check(left, Nil) // any type is fine
-          check(right, Nil)
-          if (left.typ.isUnknown || right.typ.isUnknown) {
-            // nothing to do, error has already been issued
-          } else if (isCompatible(left.typ, right.typ)) {
-            // ok
-            // TODO: perform type refinement and propagate down
-          } else {
-            issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
-          }
-          setType(Bool)
-        case "&&" | "||" | "<==>" | "==>" =>
-          check(left, Bool)
-          check(right, Bool)
-          setType(Bool)
-        case MagicWandOp.op =>
-          check(left, Bool)
-          check(right, Bool)
-          setType(Wand)
-        case "in" =>
-          check(left, Nil)
-          check(right, genericAnySetType ++ Seq(genericSeqType))
-          if (left.typ.isUnknown || right.typ.isUnknown) {
-            // nothing to do, error has already been issued
-          } else if (!right.typ.isInstanceOf[PSeqType] &&
-            !right.typ.isInstanceOf[PSetType] &&
-            !right.typ.isInstanceOf[PMultisetType]) {
-            issueError(right, s"expected set, multiset or sequence type, but found ${right.typ}")
-          } else if (
-            (right.typ.isInstanceOf[PSeqType] && !isCompatible(left.typ, right.typ.asInstanceOf[PSeqType].elementType)) ||
-              (right.typ.isInstanceOf[PSetType] && !isCompatible(left.typ, right.typ.asInstanceOf[PSetType].elementType)) ||
-              (right.typ.isInstanceOf[PMultisetType] && !isCompatible(left.typ, right.typ.asInstanceOf[PMultisetType].elementType))
-              ) {
-            issueError(right, s"element $left with type ${left.typ} cannot be in a sequence/set of type ${right.typ}")
-          }
-          // TODO: perform type refinement and propagate down
-          if (right.typ.isInstanceOf[PMultisetType]) setType(Int) else setType(Bool)
-        case "++" =>
-          val newExpected = if (expected.isEmpty) Seq(genericSeqType) else expected
-          check(left, newExpected)
-          check(right, newExpected)
-          if (left.typ.isUnknown || right.typ.isUnknown) {
-            // nothing to do, error has already been issued
-            setErrorType()
-          } else if (!right.typ.isInstanceOf[PSeqType] || !left.typ.isInstanceOf[PSeqType]){
-            setErrorType()
-            issueError(exp, s"left- and right-hand-side of ++ must be sequences, but found ${left.typ} and ${right.typ}")
-          }
-          else if (isCompatible(left.typ, right.typ)) {
-            // ok
-            // TODO: perform type refinement and propagate down
-            setType(left.typ)
-          } else {
-            issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
-          }
-        case "union" | "intersection" | "setminus" =>
-          val newExpected = if (expected.isEmpty) genericAnySetType else expected
-          check(left, newExpected)
-          check(right, newExpected)
-          if (left.typ.isUnknown || right.typ.isUnknown) {
-            // nothing to do, error has already been issued
-            setErrorType()
-          } else if (isCompatible(left.typ, right.typ)) {
-            // ok
-            // TODO: perform type refinement and propagate down
-            setType(left.typ)
-          } else {
-            issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
-          }
-        case "subset" =>
-          val newExpected = genericAnySetType
-          check(left, newExpected)
-          check(right, newExpected)
-          if (left.typ.isUnknown || right.typ.isUnknown) {
-            // nothing to do, error has already been issued
-            setErrorType()
-          } else if (isCompatible(left.typ, right.typ)) {
-            // ok
-            // TODO: perform type refinement and propagate down
-            setType(Bool)
-          } else {
-            issueError(exp, s"left- and right-hand-side must have same type, but found ${left.typ} and ${right.typ}")
-          }
-        case _ => sys.error(s"unexpected operator $op")
-      }
-    case PUnExp(op, e) =>
-      op match {
-        case "-" | "+" =>
-          val safeExpected = if (expected.isEmpty) Seq(Int, Perm) else expected
-          safeExpected.filter(x => Seq(Int, Perm) contains x) match {
-            case Nil =>
-              issueError(exp, s"expected $expectedString, but found unary operator $op that cannot have such a type")
-            case expectedStillPossible =>
-              check(e, expectedStillPossible)
-              if (e.typ.isUnknown) {
-                setErrorType()
-              } else {
-                // ok
-                setType(e.typ)
-              }
-          }
-        case "!" =>
-          check(e, Bool)
-          setType(Bool)
-        case _ => sys.error(s"unexpected operator $op")
-      }
-    case PIntLit(i) =>
-      setType(Int)
-*/
       case pl@PLet(e,ns) =>
-        check(e)
         val oldCurMember = curMember
         curMember = ns
-        check(pl.body)
-        ns.variable.typ = pl.body.typ
+        checkInternal(e)
+        ns.variable.typ = e.typ
+        checkInternal(pl.body)
         pl.typ = pl.body.typ
-        pl._typeSubstitutions = pl.body.typeSubstitutions.toSet
+        pl._typeSubstitutions = (for (ts1 <- pl.body.typeSubstitutions;ts2 <- e.typeSubstitutions) yield ts1*ts2).flatten.toSet
         curMember = oldCurMember
       case pq:PQuantifier =>
         val oldCurMember = curMember
         curMember = pq
         pq.vars foreach (v => check(v.typ))
         check(pq.body,Bool)
-        pq.triggers map (_ map check)
+        pq.triggers foreach (_ foreach (tpe=>checkTopTyped(tpe,None)))
         pq._typeSubstitutions = pq.body.typeSubstitutions.toSet
         pq.typ = Bool
         curMember = oldCurMember

@@ -328,8 +328,6 @@ case class Translator(program: PProgram) {
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
           case f @ DomainFunc(name, formalArgs, typ, _) => {
-            if (name=="cons" || name=="length")
-              println
             val actualArgs = args map exp
             val translatedTyp = ttyp(pexp.typ)
             type TypeSubstitution = Map[TypeVar, Type]
@@ -339,16 +337,10 @@ case class Translator(program: PProgram) {
             val so : Option[TypeSubstitution] = pfa.domainSubstitution match{
               case Some(ps) => Some(ps.m.map(kv=>TypeVar(kv._1)->ttyp(kv._2)))
               case None => None
-            } //unifys(paramTypes, argTypes, Map[TypeVar, Type]())
-            println("exp:" + pexp.toString)
-            println("  pt:" + paramTypes.toString)
-            println("  at:" + argTypes.toString)
+            }
             so match {
               case Some(s) => {
-//                val cs = paramTypes.map ((k:,v) => (k->v.substitute(s)))
                 val d = members.get(f.domainName).get.asInstanceOf[Domain]
-//                if (/*func.name=="butLast")// &&*/ s.keys.toSet != d.typVars.toSet)
-//                  println("Underspecified function type " + f.name)
                 assert(s.keys.toSet.subsetOf(d.typVars.toSet))
                 val sp = s//completeWithDefault(d.typVars,s)
                 assert(sp.keys.toSet == d.typVars.toSet)

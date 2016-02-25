@@ -377,12 +377,12 @@ sealed trait POpApp extends PExp{
 
   private val _typeSubstitutions = new scala.collection.mutable.HashSet[PTypeSubstitution]()
   final override def typeSubstitutions = _typeSubstitutions
-  def localTypeSubstitutions : Set[PTypeSubstitution]
+  def signatures : Set[PTypeSubstitution]
   def extraLocalTypeVariables : Set[PDomainType] = Set()
   def localScope : Set[PDomainType] =
     extraLocalTypeVariables union
-      Set(POpApp.pResultTypeVar) union
-      args.indices.map(POpApp.pArgTypeVar).toSet
+      Set(POpApp.pRes) union
+      args.indices.map(POpApp.pArg).toSet
 
   def forceSubstitution(ts: PTypeSubstitution) = {
     typeSubstitutions.clear(); typeSubstitutions+=ts
@@ -394,17 +394,17 @@ sealed trait POpApp extends PExp{
 object POpApp{
   //type PTypeSubstitution = Map[PDomainType,PType]
   val idPTypeSubstitution = Map[PDomainType,PType]()
-  def pArgTypeVarS(n:Int) = { require(n>=0); "#T"+n.toString}
-  def pResultTypeVarS     = "#R"
-  def pArgTypeVar(n:Int) = { require(n>=0); PTypeVar(pArgTypeVarS(n))}
-  def pResultTypeVar     = PTypeVar(pResultTypeVarS)
+  def pArgS(n:Int) = { require(n>=0); "#T"+n.toString}
+  def pResS     = "#R"
+  def pArg(n:Int) = { require(n>=0); PTypeVar(pArgS(n))}
+  def pRes     = PTypeVar(pResS)
 }
 
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends POpApp
 {
   override val opName = func.name
-  override def localTypeSubstitutions = _localTypeSubstitutions
-  var _localTypeSubstitutions : Set[PTypeSubstitution] = Set()
+  override def signatures = _signatures
+  var _signatures : Set[PTypeSubstitution] = Set()
   override def extraLocalTypeVariables = _extraLocalTypeVariables
   var _extraLocalTypeVariables : Set[PDomainType] = Set()
   var domainTypeRenaming : Option[PTypeRenaming] = None
@@ -448,46 +448,49 @@ case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
       case "++" | "union" | "intersection" | "setminus" | "subset" => Set(extraElementType)
       case _ => Set()
     }
-  val localTypeSubstitutions : Set[PTypeSubstitution] = opName match {
+  val signatures : Set[PTypeSubstitution] = opName match {
     case "+" | "-" => Set(
-      new PTypeSubstitution(Map(POpApp.pArgTypeVarS(0) -> Int, POpApp.pArgTypeVarS(1) -> Int, POpApp.pResultTypeVarS -> Int)),
-      new PTypeSubstitution(Map(POpApp.pArgTypeVarS(0) -> Perm, POpApp.pArgTypeVarS(1) -> Perm, POpApp.pResultTypeVarS -> Perm))
+      new PTypeSubstitution(Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int)),
+      new PTypeSubstitution(Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Perm))
     )
     case "*" => Set(
-      Map(POpApp.pArgTypeVarS(0) -> Int, POpApp.pArgTypeVarS(1) -> Int, POpApp.pResultTypeVarS -> Int),
-      Map(POpApp.pArgTypeVarS(0) -> Perm, POpApp.pArgTypeVarS(1) -> Perm, POpApp.pResultTypeVarS -> Perm),
-      Map(POpApp.pArgTypeVarS(0) -> Int, POpApp.pArgTypeVarS(1) -> Perm, POpApp.pResultTypeVarS -> Perm)
+      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int),
+      Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Perm),
+      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Perm)
     )
     case "/" => Set(
-      Map(POpApp.pArgTypeVarS(0) -> Int, POpApp.pArgTypeVarS(1) -> Int, POpApp.pResultTypeVarS -> Perm),
-      Map(POpApp.pArgTypeVarS(0) -> Perm, POpApp.pArgTypeVarS(1) -> Int, POpApp.pResultTypeVarS -> Perm)
+      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Perm),
+      Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Int, POpApp.pResS -> Perm)
     )
     case "\\" | "%" => Set(
-      Map(POpApp.pArgTypeVarS(0) -> Int, POpApp.pArgTypeVarS(1) -> Int, POpApp.pResultTypeVarS -> Int))
+      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Int))
     case "<" | "<=" | ">" | ">=" => Set(
-      Map(POpApp.pArgTypeVarS(0) -> Int, POpApp.pArgTypeVarS(1) -> Int, POpApp.pResultTypeVarS -> Bool),
-      Map(POpApp.pArgTypeVarS(0) -> Perm, POpApp.pArgTypeVarS(1) -> Int, POpApp.pResultTypeVarS -> Bool))
+      Map(POpApp.pArgS(0) -> Int, POpApp.pArgS(1) -> Int, POpApp.pResS -> Bool),
+      Map(POpApp.pArgS(0) -> Perm, POpApp.pArgS(1) -> Perm, POpApp.pResS -> Bool))
     case "==" | "!=" => Set(
-      Map(POpApp.pArgTypeVarS(1) -> POpApp.pArgTypeVar(0), POpApp.pResultTypeVarS -> Bool))
+      Map(POpApp.pArgS(1) -> POpApp.pArg(0), POpApp.pResS -> Bool))
     case "&&" | "||" | "<==>" | "==>" => Set(
-      Map(POpApp.pArgTypeVarS(1) -> Bool, POpApp.pArgTypeVarS(0) -> Bool, POpApp.pResultTypeVarS -> Bool))
+      Map(POpApp.pArgS(1) -> Bool, POpApp.pArgS(0) -> Bool, POpApp.pResS -> Bool))
     case MagicWandOp.op => Set(
-      Map(POpApp.pArgTypeVarS(1) -> Bool, POpApp.pArgTypeVarS(0) -> Bool, POpApp.pResultTypeVarS -> Wand))
+      Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Bool, POpApp.pResS -> Wand),
+      Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Bool, POpApp.pResS -> Bool),
+      Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Wand, POpApp.pResS -> Wand),
+      Map(POpApp.pArgS(0) -> Bool, POpApp.pArgS(1) -> Wand, POpApp.pResS -> Bool))
     case "in" => Set(
-      Map(POpApp.pArgTypeVarS(1) -> PSetType(POpApp.pArgTypeVar(0)), POpApp.pResultTypeVarS -> Bool),
-      Map(POpApp.pArgTypeVarS(1) -> PSeqType(POpApp.pArgTypeVar(0)), POpApp.pResultTypeVarS -> Bool),
-      Map(POpApp.pArgTypeVarS(1) -> PMultisetType(POpApp.pArgTypeVar(0)), POpApp.pResultTypeVarS -> Int)
+      Map(POpApp.pArgS(1) -> PSetType(POpApp.pArg(0)), POpApp.pResS -> Bool),
+      Map(POpApp.pArgS(1) -> PSeqType(POpApp.pArg(0)), POpApp.pResS -> Bool),
+      Map(POpApp.pArgS(1) -> PMultisetType(POpApp.pArg(0)), POpApp.pResS -> Int)
     )
     case "++" => Set(
-      Map(POpApp.pArgTypeVarS(0) -> PSeqType(extraElementType), POpApp.pArgTypeVarS(1) -> PSeqType(extraElementType), POpApp.pResultTypeVarS -> PSeqType(extraElementType))
+      Map(POpApp.pArgS(0) -> PSeqType(extraElementType), POpApp.pArgS(1) -> PSeqType(extraElementType), POpApp.pResS -> PSeqType(extraElementType))
     )
     case "union" | "intersection" | "setminus" => Set(
-      Map(POpApp.pArgTypeVarS(0) -> PSetType(extraElementType), POpApp.pArgTypeVarS(1) -> PSetType(extraElementType), POpApp.pResultTypeVarS -> PSetType(extraElementType)),
-      Map(POpApp.pArgTypeVarS(0) -> PMultisetType(extraElementType), POpApp.pArgTypeVarS(1) -> PMultisetType(extraElementType), POpApp.pResultTypeVarS -> PMultisetType(extraElementType))
+      Map(POpApp.pArgS(0) -> PSetType(extraElementType), POpApp.pArgS(1) -> PSetType(extraElementType), POpApp.pResS -> PSetType(extraElementType)),
+      Map(POpApp.pArgS(0) -> PMultisetType(extraElementType), POpApp.pArgS(1) -> PMultisetType(extraElementType), POpApp.pResS -> PMultisetType(extraElementType))
     )
     case "subset" => Set(
-      Map(POpApp.pArgTypeVarS(0) -> PSetType(extraElementType), POpApp.pArgTypeVarS(1) -> PSetType(extraElementType), POpApp.pResultTypeVarS -> Bool),
-      Map(POpApp.pArgTypeVarS(0) -> PMultisetType(extraElementType), POpApp.pArgTypeVarS(1) -> PMultisetType(extraElementType), POpApp.pResultTypeVarS -> Bool)
+      Map(POpApp.pArgS(0) -> PSetType(extraElementType), POpApp.pArgS(1) -> PSetType(extraElementType), POpApp.pResS -> Bool),
+      Map(POpApp.pArgS(0) -> PMultisetType(extraElementType), POpApp.pArgS(1) -> PMultisetType(extraElementType), POpApp.pResS -> Bool)
     )
     case _ => sys.error(s"internal error - unknown binary operator $opName")
   }
@@ -501,13 +504,13 @@ case class PUnExp(opName: String, exp: PExp) extends POpApp {
       case "++" | "union" | "intersection" | "setminus" | "subset" => Set(extraElementType)
       case _ => Set()
     }
-  override val localTypeSubstitutions : Set[PTypeSubstitution] = opName match {
+  override val signatures : Set[PTypeSubstitution] = opName match {
     case "-" | "+" => Set(
-      Map(POpApp.pArgTypeVarS(0) -> Int, POpApp.pResultTypeVarS -> Int),
-      Map(POpApp.pArgTypeVarS(0) -> Perm, POpApp.pResultTypeVarS -> Perm)
+      Map(POpApp.pArgS(0) -> Int, POpApp.pResS -> Int),
+      Map(POpApp.pArgS(0) -> Perm, POpApp.pResS -> Perm)
     )
     case "!" => Set(
-      Map(POpApp.pArgTypeVarS(0) -> Bool, POpApp.pResultTypeVarS -> Bool)
+      Map(POpApp.pArgS(0) -> Bool, POpApp.pResS -> Bool)
     )
     case _ => sys.error(s"internal error - unknown unary operator $opName")
   }
@@ -517,8 +520,8 @@ case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends POpApp
 {
   override val opName = "?:"
   override val args = Seq(cond,thn,els)
-  val localTypeSubstitutions : Set[PTypeSubstitution] = Set(
-      Map(POpApp.pArgTypeVarS(0) -> Bool,POpApp.pArgTypeVarS(2) -> POpApp.pArgTypeVar(1), POpApp.pResultTypeVarS -> POpApp.pArgTypeVar(1))
+  val signatures : Set[PTypeSubstitution] = Set(
+      Map(POpApp.pArgS(0) -> Bool,POpApp.pArgS(2) -> POpApp.pArg(1), POpApp.pResS -> POpApp.pArg(1))
   )
 
 }
@@ -544,8 +547,8 @@ sealed trait PHeapOpApp extends POpApp{
 }
 sealed trait PLocationAccess extends PHeapOpApp {
   def idnuse: PIdnUse
-  override def localTypeSubstitutions : Set[PTypeSubstitution] = _localTypeSubstitutions
-  var _localTypeSubstitutions : Set[PTypeSubstitution] = null
+  override def signatures : Set[PTypeSubstitution] = _localSignatures
+  var _localSignatures : Set[PTypeSubstitution] = null
 }
 
 case class PFieldAccess(rcv: PExp, idnuse: PIdnUse) extends PLocationAccess{
@@ -560,8 +563,8 @@ sealed trait PUnFoldingExp extends PHeapOpApp{
   def acc: PAccPred
   def exp: PExp
   override val args = Seq(acc,exp)
-  override val localTypeSubstitutions : Set[PTypeSubstitution] =
-    Set(Map(POpApp.pArgTypeVarS(0) -> Bool,POpApp.pResultTypeVarS -> POpApp.pArgTypeVar(1)))
+  override val signatures : Set[PTypeSubstitution] =
+    Set(Map(POpApp.pArgS(0) -> Bool,POpApp.pResS -> POpApp.pArg(1)))
 
 //  check(e.acc.perm, Perm)
 //  check(e.acc.loc, Pred)
@@ -578,15 +581,15 @@ case class PFolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp{
 case class PApplying(wand: PExp, exp: PExp) extends PHeapOpApp{
   override final val opName = "applying"
   override final val args = Seq(wand,exp)
-  val localTypeSubstitutions : Set[PTypeSubstitution] = Set(
-    Map(POpApp.pArgTypeVarS(0) -> Wand, POpApp.pResultTypeVarS -> POpApp.pArgTypeVar(1))
+  val signatures : Set[PTypeSubstitution] = Set(
+    Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1))
   )
 }
 case class PPackaging(wand: PExp, exp: PExp) extends PHeapOpApp{
   override final val opName = "packaging"
   override final val args = Seq(wand,exp)
-  val localTypeSubstitutions : Set[PTypeSubstitution]  = Set(
-    Map(POpApp.pArgTypeVarS(0) -> Wand, POpApp.pResultTypeVarS -> POpApp.pArgTypeVar(1))
+  val signatures : Set[PTypeSubstitution]  = Set(
+    Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1))
   )
 //  checkMagicWand(wand, allowWandRefs = false)
 //  check(in, expected)
@@ -628,37 +631,23 @@ case class PLet(exp: PExp, nestedScope: PLetNestedScope) extends PBinder{
   override def forceSubstitution(ts: PTypeSubstitution) = {
     super.forceSubstitution(ts)
     exp.forceSubstitution(ts)
+    this.nestedScope.variable.typ = exp.typ
   }
 }
 case class PLetNestedScope(variable: PFormalArgDecl, body: PExp) extends PNode with PScope
-//  override val opName = "for#perm"
-//  override val args = Seq(exp)
-//  override var extraLocalTypeVariables :Set[PDomainType]= null
-//  override final var localTypeSubstitutions = null
-//  val oldCurMember = curMember
-//  curMember = f
-//  case f@ PForPerm(v,fields, e) =>
-//  check(f.variable.typ)
-//  if(! isCompatible(f.variable.typ,Ref)){
-//    val t = f.variable
-//    messages ++= Messaging.message(v, s"expected $Ref, but got $t")
-//  }
-//  check(e, Bool)
-//  curMember = oldCurMember
-//}
 
 case class PInhaleExhaleExp(in: PExp, ex: PExp) extends PHeapOpApp{
   override val opName = "#inhale#exhale"
   override val args = Seq(in,ex)
-  val localTypeSubstitutions : Set[PTypeSubstitution] = Set(
-    Map(POpApp.pArgTypeVarS(0) -> Bool,POpApp.pArgTypeVarS(1) -> Bool, POpApp.pResultTypeVarS -> Bool)
+  val signatures : Set[PTypeSubstitution] = Set(
+    Map(POpApp.pArgS(0) -> Bool,POpApp.pArgS(1) -> Bool, POpApp.pResS -> Bool)
   )
 }
 case class PCurPerm(loc: PLocationAccess) extends PHeapOpApp{
   override val opName = "#perm"
   override val args = Seq(loc)
-  val localTypeSubstitutions : Set[PTypeSubstitution] = Set(
-    Map(POpApp.pResultTypeVarS -> Perm)
+  val signatures : Set[PTypeSubstitution] = Set(
+    Map(POpApp.pResS -> Perm)
   )
 }
 case class PNoPerm() extends PSimpleLiteral{typ = Perm}
@@ -667,16 +656,16 @@ case class PWildcard() extends PSimpleLiteral{typ = Perm}
 case class PEpsilon() extends PSimpleLiteral{typ = Perm}
 case class PAccPred(loc: PLocationAccess, perm: PExp) extends POpApp {
   override val opName = "acc"
-  override val localTypeSubstitutions : Set[PTypeSubstitution] = Set(
-    Map(POpApp.pArgTypeVarS(1) -> Perm,POpApp.pResultTypeVarS -> Bool))
+  override val signatures : Set[PTypeSubstitution] = Set(
+    Map(POpApp.pArgS(1) -> Perm,POpApp.pResS -> Bool))
   override val args = Seq(loc,perm)
 }
 
 sealed trait POldExp extends PHeapOpApp {
   def e: PExp
   override val args = Seq(e)
-  override val localTypeSubstitutions : Set[PTypeSubstitution] = Set(
-    Map(POpApp.pResultTypeVarS -> POpApp.pArgTypeVar(0)))
+  override val signatures : Set[PTypeSubstitution] = Set(
+    Map(POpApp.pResS -> POpApp.pArg(0)))
 }
 case class POld(e: PExp) extends POldExp{
   override val opName = "old"
@@ -692,25 +681,25 @@ case class PApplyOld(e: PExp) extends POldExp{
 sealed trait PCollectionLiteral extends POpApp{
   def pElementType : PType
   def pCollectionType(pType:PType) : PType
-  def getLocalTypeSubstitutions(numArgs : Int) : Set[PTypeSubstitution]= {
+  def getSignatures(numArgs : Int) : Set[PTypeSubstitution]= {
     require(numArgs >= 0)
     Set(
-      (0 until numArgs-1) map
-        (n => if (n==0) POpApp.pResultTypeVarS -> pCollectionType(pElementType) else POpApp.pArgTypeVarS(n) -> POpApp.pArgTypeVar(0)) toMap
+      ((0 until numArgs) map
+        (n => if (n==0) POpApp.pResS -> pCollectionType(POpApp.pArg(0)) else POpApp.pArgS(n) -> POpApp.pArg(0))).toMap
     )
   }
-  def getLocalTypeSubstitutions(elemType : PType) : Set[PTypeSubstitution]= Set(
-    Map(POpApp.pResultTypeVarS -> pCollectionType(elemType))
+  def getSignatures(elemType : PType) : Set[PTypeSubstitution]= Set(
+    Map(POpApp.pResS -> pCollectionType(elemType))
   )
-  typ = pCollectionType(pElementType)
+//  typ = pCollectionType(pElementType)
 }
 
 sealed trait PEmptyCollectionLiteral extends PCollectionLiteral {
-  override val localTypeSubstitutions : Set[PTypeSubstitution] = getLocalTypeSubstitutions(pElementType)
+  override val signatures : Set[PTypeSubstitution] = getSignatures(pElementType)
   override val args = Seq()
 }
 sealed trait PExplicitCollectionLiteral extends PCollectionLiteral {
-  override val localTypeSubstitutions  : Set[PTypeSubstitution] = getLocalTypeSubstitutions(args.size)
+  override val signatures  : Set[PTypeSubstitution] = getSignatures(args.size)
   override val pElementType = args.head.typ
 }
 sealed trait PSeqLiteral extends PCollectionLiteral{
@@ -724,51 +713,51 @@ case class PExplicitSeq(override val args: Seq[PExp]) extends PSeqLiteral with P
 case class PRangeSeq(low: PExp, high: PExp) extends POpApp{
   override val opName = "Seq#RangeSeq"
   override val args = Seq(low,high)
-  override val localTypeSubstitutions : Set[PTypeSubstitution]= Set(
-    Map(POpApp.pArgTypeVarS(0)->Int,POpApp.pArgTypeVarS(1)->Int,POpApp.pResultTypeVarS->Int))
+  override val signatures : Set[PTypeSubstitution]= Set(
+    Map(POpApp.pArgS(0)->Int,POpApp.pArgS(1)->Int,POpApp.pResS->PSeqType(Int)))
 }
 case class PSeqIndex(seq: PExp, idx: PExp) extends POpApp{
   override val opName = "Seq#At"
   override val args = Seq(seq,idx)
-  override val localTypeSubstitutions : Set[PTypeSubstitution]= Set(
+  override val signatures : Set[PTypeSubstitution]= Set(
     Map(
-      POpApp.pArgTypeVarS(0)->PSeqType(POpApp.pArgTypeVar(1)),
-      POpApp.pResultTypeVarS->POpApp.pArgTypeVar(1))
+      POpApp.pArgS(0)->PSeqType(POpApp.pRes),
+      POpApp.pArgS(1)->Int)
   )
 }
 case class PSeqTake(seq: PExp, n: PExp) extends POpApp{
   override val opName = "Seq#Take"
   val elementType = PTypeVar("#E")
-  override val args = Seq(seq,n)
-  override val localTypeSubstitutions : Set[PTypeSubstitution]= Set(
-    Map(
-      POpApp.pArgTypeVarS(0)->PSeqType(elementType),
-      POpApp.pArgTypeVarS(1)->Int,
-      POpApp.pResultTypeVarS->PSeqType(elementType)
-  ))
   override val extraLocalTypeVariables = Set(elementType)
+  override val args = Seq(seq,n)
+  override val signatures : Set[PTypeSubstitution]= Set(
+    Map(
+      POpApp.pArgS(0)->PSeqType(elementType),
+      POpApp.pArgS(1)->Int,
+      POpApp.pResS->PSeqType(elementType)
+  ))
 }
 case class PSeqDrop(seq: PExp, n: PExp) extends POpApp{
   override val opName = "Seq#Drop"
   val elementType = PTypeVar("#E")
   override val extraLocalTypeVariables = Set(elementType)
   override val args = Seq(seq,n)
-  override val localTypeSubstitutions : Set[PTypeSubstitution]= Set(
+  override val signatures : Set[PTypeSubstitution]= Set(
     Map(
-      POpApp.pArgTypeVarS(0)->PSeqType(elementType),
-      POpApp.pArgTypeVarS(1)->Int,
-      POpApp.pResultTypeVarS->PSeqType(elementType)
+      POpApp.pArgS(0)->PSeqType(elementType),
+      POpApp.pArgS(1)->Int,
+      POpApp.pResS->PSeqType(elementType)
     ))
 }
 case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends POpApp{
   override val opName = "Seq#update"
-  val elementType = POpApp.pArgTypeVar(2)
+  val elementType = POpApp.pArg(2)
   override val args = Seq(seq,idx,elem)
-  override val localTypeSubstitutions : Set[PTypeSubstitution] = Set(
+  override val signatures : Set[PTypeSubstitution] = Set(
     Map(
-      POpApp.pArgTypeVarS(0)->PSeqType(elementType),
-      POpApp.pArgTypeVarS(1)->Int,
-      POpApp.pResultTypeVarS->PSeqType(elementType)
+      POpApp.pArgS(0)->PSeqType(elementType),
+      POpApp.pArgS(1)->Int,
+      POpApp.pResS->PSeqType(elementType)
     ))
   override val extraLocalTypeVariables = Set(elementType)
 }
@@ -778,11 +767,11 @@ case class PSize(seq: PExp) extends POpApp{
   val elementType = PTypeVar("#E")
   override val extraLocalTypeVariables = Set(elementType)
   override val args = Seq(seq)
-  override val localTypeSubstitutions : Set[PTypeSubstitution] = Set(
-    Map(
-    POpApp.pArgTypeVarS(0)->PSeqType(elementType),
-    POpApp.pResultTypeVarS->Int
-    ))
+  override val signatures : Set[PTypeSubstitution] = Set(
+    Map(POpApp.pArgS(0)->PSeqType(elementType),POpApp.pResS->Int),
+    Map(POpApp.pArgS(0)->PSetType(elementType),POpApp.pResS->Int),
+    Map(POpApp.pArgS(0)->PMultisetType(elementType),POpApp.pResS->Int)
+  )
 }
 
 sealed trait PSetLiteral extends PCollectionLiteral{
