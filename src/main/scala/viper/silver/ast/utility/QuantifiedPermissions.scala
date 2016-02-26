@@ -21,7 +21,7 @@ object QuantifiedPermissions {
                                     FieldAccess)] = /* AST node for e.f (for error reporting) */
 
       n match {
-        case forall@Forall(Seq(lvd @ LocalVarDecl(_, Ref)),
+        case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
                            triggers,
                            Implies(condition, FieldAccessPredicate(fa@FieldAccess(rcvr, f), gain)))
           if     rcvr.exists(_ == lvd.localVar)
