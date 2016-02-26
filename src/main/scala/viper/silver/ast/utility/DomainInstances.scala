@@ -266,7 +266,7 @@ object DomainInstances {
           )
       }
       for (ntc <- ntcs) {
-        assert(ntc.subTCs.forall(done union ntcs contains))
+        assert(ntc.subTCs.forall(tc=>(done union ntcs).contains(tc)))
         recursiveBottomUpEnqueue(todo, done, ntc)
       }
       /*
