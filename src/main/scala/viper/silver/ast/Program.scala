@@ -8,7 +8,7 @@ package viper.silver.ast
 
 import scala.collection.mutable
 import org.kiama.output.{Fixity, Infix, Prefix, NonAssoc, RightAssoc}
-import utility.{Consistency, Types}
+import viper.silver.ast.utility.{Consistency, Types}
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
@@ -409,6 +409,12 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _b
     _body = b
   }
   def isAbstract = body.isEmpty
+
+  override def isValid : Boolean = _body match {
+    case Some(e) if e.contains[PermExp] => false
+    case Some(e) if e.contains[ForPerm] => false
+    case _ => true
+  }
 }
 
 /** A method declaration. */
@@ -482,6 +488,17 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   })
 
   def isAbstract = body.isEmpty
+
+  override def isValid : Boolean /* Option[Message] */ = this match {
+    case _ if (for (e <- _pres ++ _posts) yield e.contains[MagicWand]).contains(true) => false
+    case _ if (for (e <- _body)           yield e.contains[MagicWand]).contains(true) => false
+    case _ if (for (e <- _pres ++ _posts) yield e.contains[CurrentPerm]).contains(true) => false
+    case _ if (for (e <- _body)           yield e.contains[CurrentPerm]).contains(true) => false
+    case _ if (for (e <- _pres ++ _posts) yield e.contains[ForPerm]).contains(true) => false
+    case _ if (for (e <- _body)           yield e.contains[ForPerm]).contains(true) => false
+    case _ => true
+  }
+
 }
 
 

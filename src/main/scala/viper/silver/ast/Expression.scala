@@ -7,7 +7,7 @@
 package viper.silver.ast
 
 import org.kiama.output._
-import utility.{Nodes, GenericTriggerGenerator, Expressions, Consistency}
+import viper.silver.ast.utility._
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
@@ -168,6 +168,14 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
     }
 
     eq(this.left, other.left) && eq(this.right, other.right)
+  }
+
+  override def isValid : Boolean = this match {
+    case _ if  left.contains[ForPerm] => false
+    case _ if right.contains[ForPerm] => false
+    case _ if  left.deepCollect{ case q: Forall if !q.isPure => q }.nonEmpty => false
+    case _ if right.deepCollect{ case q: Forall if !q.isPure => q }.nonEmpty => false
+    case _ => true
   }
 }
 
@@ -416,6 +424,14 @@ sealed trait QuantifiedExp extends Exp {
   def variables: Seq[LocalVarDecl]
   def exp: Exp
   lazy val typ = Bool
+
+  override def isValid : Boolean = this match {
+    case _ if contains[MagicWand] => false
+    case _ if contains[ForPerm] => false
+    case _ if isPure && contains[AccessPredicate] => false
+    case _ if !isPure && contains[PredicateAccess] => false
+    case _ => true
+  }
 }
 
 object QuantifiedExp {
@@ -424,23 +440,23 @@ object QuantifiedExp {
 
 /** Universal quantification. */
 case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp {
-  require(Consistency.supportedQuantifier(this), s"This form of quantified permission is not supported: { $this } .")
+  //require(isValid, s"Invalid quantifier: { $this } .")
+
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.
     */
-          lazy val autoTrigger: Forall = {
-            if (triggers.isEmpty) {
-              Expressions.generateTriggerSet(this) match {
-                case Some((vars, triggerSets)) =>
-                  Forall(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, info)
-                case None =>
-                  /* Couldn't generate triggers */
+  lazy val autoTrigger: Forall = {
+    if (triggers.isEmpty) {
+      Expressions.generateTriggerSet(this) match {
+        case Some((vars, triggerSets)) =>
+          Forall(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, info)
+        case None =>
+          /* Couldn't generate triggers */
           this
       }
     } else {
       // triggers already present
       this
-
     }
   }
 }
@@ -466,6 +482,12 @@ case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
 
   //TODO: make type of Seq more specific
   override lazy val typ = Bool
+
+  override def isValid : Boolean = this match {
+    case _ if body.contains[PermExp] => false
+    case ForPerm(_, Seq( Predicate(_, Seq(LocalVarDecl(_, Ref)), _) ), _) => true
+    case _ => false
+  }
 }
 
 
