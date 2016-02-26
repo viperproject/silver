@@ -6,10 +6,9 @@ method test1(x: Ref)
 {
   assert x.l != null
 
+  //:: UnexpectedOutput(package.failed:receiver.null, /silicon/issue/219/)
   //:: ExpectedOutput(package.failed:insufficient.permission)
   //:: MissingOutput(package.failed:insufficient.permission, /silicon/issue/219/)
-  //:: UnexpectedOutput(package.failed:receiver.null, /silicon/issue/219/)
-  
   package acc(x.l) --* acc(x.l) && acc(x.l.v)
     /* The x.l from the LHS might no longer have the same value */
 }
