@@ -493,25 +493,20 @@ case class TypeChecker(names: NameAnalyser) {
         poa.args.foreach(checkInternal)
         poa match{
           case pfa@PFunctApp(func, args) =>
-            names.definition(curMember)(func) match {
-              case PFunction(_, formalArgs, resultType, _, _, _) =>
+            val ad = names.definition(curMember)(func).asInstanceOf[PAnyFunction]
+            ad match{
+              case fd : PAnyFunction =>
+                pfa.function = fd
+                val formalArgs = fd.formalArgs
                 ensure(formalArgs.size == args.size, pfa, "wrong number of arguments")
-                pfa._signatures = Set(
-                  new PTypeSubstitution(args.indices.map(i=> POpApp.pArg(i).domain.name -> formalArgs(i).typ):+(POpApp.pRes.domain.name->resultType))
-                )
-              case pdf@PDomainFunction(_, formalArgs, resultType, unique) =>
-                ensure(formalArgs.size == args.size, pfa, "wrong number of arguments")
-//                formalArgs.foreach(fa=>check(fa.typ))
-//                check(resultType)
-                val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
-                val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).toSet) //fresh domain type variables
-                pfa.domainTypeRenaming = Some(fdtv)
-                pfa._extraLocalTypeVariables = (domain.typVars map (tv=>PTypeVar(tv.idndef.name))).toSet
-                pfa._signatures = Set(
-                  new PTypeSubstitution(
-                    args.indices.map(i=> POpApp.pArg(i).domain.name -> formalArgs(i).typ.substitute(fdtv)):+
-                      (POpApp.pRes.domain.name->pdf.typ.substitute(fdtv)))
-                )
+                fd match {
+                  case PFunction(_, formalArgs, resultType, _, _, _) =>
+                  case pdf@PDomainFunction(_, formalArgs, resultType, unique) =>
+                    val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
+                    val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).toSet) //fresh domain type variables
+                    pfa.domainTypeRenaming = Some(fdtv)
+                    pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
+              }
               case x =>
                 issueError(func, "expected function")
             }
@@ -522,8 +517,6 @@ case class TypeChecker(names: NameAnalyser) {
             }
             acceptNonAbstractPredicateAccess(pue.acc, "abstract predicates cannot be (un)folded")
           case pfa@PFieldAccess(rcv, idnuse) =>
-//            check(idnuse.typ)
-//            check(rcv, Ref)
             /* For a field access of the type rcv.fld we have to ensure that the
              * receiver denotes a local variable. Just checking that it is of type
              * Ref is not sufficient, since it could also denote a Ref-typed field.
@@ -536,30 +529,15 @@ case class TypeChecker(names: NameAnalyser) {
             }
             acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")(
               (id, decl) => {checkInternal(id)})
-
-            pfa._localSignatures = if (Set(rcv.typ,idnuse.typ).forall(_.isValidAndResolved))
-              Set(PTypeSubstitution(Map(POpApp.pArgS(0) -> Ref,POpApp.pResS -> idnuse.typ)))
-            else
-              Set()
-          //setType()
           case ppa@PPredicateAccess(args, idnuse) =>
-            //_predicate.asInstanceOf[PPredicate]
-//            check(idnuse.typ)
             val predicate = names.definition(curMember)(ppa.idnuse).asInstanceOf[PPredicate]
             acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(id, decl) =>
               checkInternal(id)
-              /* Check that the predicate is used with 1. the correct number of arguments,
-               * and 2. with the correct types of arguments.
-               */
-              if (args.length != predicate.formalArgs.length) issueError(idnuse, "predicate arity doesn't match")
-              //              args zip predicate.formalArgs foreach {case (aarg, farg) => check(aarg, farg.typ)}
+              if (args.length != predicate.formalArgs.length)
+                issueError(idnuse, "predicate arity doesn't match")
+              else
+                ppa.predicate = predicate
             }
-            ppa._localSignatures = Set(
-              new PTypeSubstitution(
-                args.indices.map(i=> POpApp.pArg(i).domain.name -> predicate.formalArgs(i).typ):+
-                  (POpApp.pRes.domain.name->Pred))
-            )
-          //            setType(Pred)
           case PPackaging(wand, in) =>
             checkMagicWand(wand, allowWandRefs = false)
           case PApplying(wand, in) =>
@@ -590,7 +568,6 @@ case class TypeChecker(names: NameAnalyser) {
         }else{
           poa.typeSubstitutions.clear()
           poa.typ = PUnknown()
-//          typeError(poa)
         }
       case piu @ PIdnUse(name) =>
         names.definition(curMember)(piu) match {

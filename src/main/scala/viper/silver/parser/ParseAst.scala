@@ -403,8 +403,18 @@ object POpApp{
 case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends POpApp
 {
   override val opName = func.name
-  override def signatures = _signatures
-  var _signatures : Set[PTypeSubstitution] = Set()
+  override def signatures = function match{
+    case pf:PFunction => Set(
+      new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
+    )
+    case pdf:PDomainFunction =>
+      Set(
+        new PTypeSubstitution(
+          args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ.substitute(domainTypeRenaming.get)) :+
+            (POpApp.pRes.domain.name -> pdf.typ.substitute(domainTypeRenaming.get)))
+      )
+  }
+  var function : PAnyFunction = null
   override def extraLocalTypeVariables = _extraLocalTypeVariables
   var _extraLocalTypeVariables : Set[PDomainType] = Set()
   var domainTypeRenaming : Option[PTypeRenaming] = None
@@ -414,23 +424,15 @@ case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends POpApp
 
     val ts = domainTypeRenaming match {
       case Some(dtr) =>
-        val s3 = PTypeSubstitution(dtr.mm.map(kv => (kv._1 -> (ots.get(kv._2) match {
+        val s3 = PTypeSubstitution(dtr.mm.map(kv => kv._1 -> (ots.get(kv._2) match {
           case Some(pt) => pt
           case None => PTypeSubstitution.defaultType
-        }))))
-/*        val s1a = ots * dtr
-        assert(s1a.isDefined)
-        val s1 = s1a.get
-        val missingBits = PTypeSubstitution((dtr.mm.values.toSet -- s1.m.keySet).map(s => s -> (PTypeSubstitution.defaultType: PType)).toMap)
-        val s2a = s1 * missingBits
-        assert(s2a.isDefined)
-        val s2 = s2a.get
-        val s3 = s2.restrict(dtr.mm.keySet)*/
+        })))
         assert(s3.m.keySet==dtr.mm.keySet)
         assert(s3.m.forall(_._2.isGround))
         domainSubstitution = Some(s3)
         dtr.mm.values.foldLeft(ots)(
-          (tss,s)=>(if (tss.contains(s)) tss else tss.add(s,PTypeSubstitution.defaultType).get))
+          (tss,s)=> if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).get)
       case _ => ots
     }
     super.forceSubstitution(ts)
@@ -547,16 +549,25 @@ sealed trait PHeapOpApp extends POpApp{
 }
 sealed trait PLocationAccess extends PHeapOpApp {
   def idnuse: PIdnUse
-  override def signatures : Set[PTypeSubstitution] = _localSignatures
-  var _localSignatures : Set[PTypeSubstitution] = null
 }
 
 case class PFieldAccess(rcv: PExp, idnuse: PIdnUse) extends PLocationAccess{
   override final val opName = "."
   override final val args = Seq(rcv)
+  override def signatures =
+    if (Set(rcv.typ,idnuse.typ).forall(_.isValidAndResolved))
+      Set(PTypeSubstitution(Map(POpApp.pArgS(0) -> Ref,POpApp.pResS -> idnuse.typ)))
+    else
+      Set()
+  //setType()
 }
 case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse) extends PLocationAccess{
   override final val opName = "acc"
+  var predicate : PPredicate = null
+  override def signatures = if (predicate == null) Set() else
+    Set(new PTypeSubstitution(
+        args.indices.map(i => POpApp.pArg(i).domain.name -> predicate.formalArgs(i).typ) :+
+          (POpApp.pRes.domain.name -> Pred)))
 }
 
 sealed trait PUnFoldingExp extends PHeapOpApp{
@@ -591,9 +602,6 @@ case class PPackaging(wand: PExp, exp: PExp) extends PHeapOpApp{
   val signatures : Set[PTypeSubstitution]  = Set(
     Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1))
   )
-//  checkMagicWand(wand, allowWandRefs = false)
-//  check(in, expected)
-//  setType(in.typ)
 }
 
 sealed trait PBinder extends PExp{
@@ -681,25 +689,21 @@ case class PApplyOld(e: PExp) extends POldExp{
 sealed trait PCollectionLiteral extends POpApp{
   def pElementType : PType
   def pCollectionType(pType:PType) : PType
-  def getSignatures(numArgs : Int) : Set[PTypeSubstitution]= {
-    require(numArgs >= 0)
-    Set(
-      ((0 until numArgs) map
-        (n => if (n==0) POpApp.pResS -> pCollectionType(POpApp.pArg(0)) else POpApp.pArgS(n) -> POpApp.pArg(0))).toMap
-    )
-  }
-  def getSignatures(elemType : PType) : Set[PTypeSubstitution]= Set(
-    Map(POpApp.pResS -> pCollectionType(elemType))
-  )
-//  typ = pCollectionType(pElementType)
 }
 
 sealed trait PEmptyCollectionLiteral extends PCollectionLiteral {
-  override val signatures : Set[PTypeSubstitution] = getSignatures(pElementType)
+  override val signatures : Set[PTypeSubstitution] = Set(
+    Map(POpApp.pResS -> pCollectionType(pElementType))
+  )
   override val args = Seq()
 }
 sealed trait PExplicitCollectionLiteral extends PCollectionLiteral {
-  override val signatures  : Set[PTypeSubstitution] = getSignatures(args.size)
+  override val signatures  : Set[PTypeSubstitution] =
+    Set(
+      ((0 until args.size) map
+        (n => if (n==0) POpApp.pResS -> pCollectionType(POpApp.pArg(0)) else POpApp.pArgS(n) -> POpApp.pArg(0))).toMap
+    )
+
   override val pElementType = args.head.typ
 }
 sealed trait PSeqLiteral extends PCollectionLiteral{
@@ -869,11 +873,16 @@ sealed trait PMember extends PDeclaration with PScope {
 //  def idndef: PIdnDef
 }
 
+sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDeclaration{
+  def idndef: PIdnDef
+  def formalArgs: Seq[PFormalArgDecl]
+  def typ: PType
+}
 case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PMember with PGlobalDeclaration with PTypedDeclaration
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PMember with PGlobalDeclaration with PTypedDeclaration
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PAnyFunction
 case class PAxiom(idndef: PIdnDef, exp: PExp)(val domainName:PIdnUse) extends PScope with PGlobalDeclaration  //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
 case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
