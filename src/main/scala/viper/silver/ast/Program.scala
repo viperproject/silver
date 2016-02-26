@@ -20,7 +20,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       "names of members must be distinct")
 
   Consistency.checkContextDependentConsistency(this)
-  //  visit { case wand: MagicWand => Consistency.checkNoImpureConditionals(wand, this) }
+//  visit { case wand: MagicWand => Consistency.checkNoImpureConditionals(wand, this) }
 
   lazy val groundTypeInstances = DomainInstances.findNecessaryTypeInstances(this)
 
@@ -93,6 +93,12 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _b
     _body = b
   }
   def isAbstract = body.isEmpty
+
+  override def isValid : Boolean = _body match {
+    case Some(e) if e.contains[PermExp] => false
+    case Some(e) if e.contains[ForPerm] => false
+    case _ => true
+  }
 }
 
 /** A method declaration. */
@@ -166,6 +172,17 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   })
 
   def isAbstract = body.isEmpty
+
+  override def isValid : Boolean /* Option[Message] */ = this match {
+    case _ if (for (e <- _pres ++ _posts) yield e.contains[MagicWand]).contains(true) => false
+    case _ if (for (e <- _body)           yield e.contains[MagicWand]).contains(true) => false
+    case _ if (for (e <- _pres ++ _posts) yield e.contains[CurrentPerm]).contains(true) => false
+    case _ if (for (e <- _body)           yield e.contains[CurrentPerm]).contains(true) => false
+    case _ if (for (e <- _pres ++ _posts) yield e.contains[ForPerm]).contains(true) => false
+    case _ if (for (e <- _body)           yield e.contains[ForPerm]).contains(true) => false
+    case _ => true
+  }
+
 }
 
 
