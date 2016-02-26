@@ -104,6 +104,7 @@ method test14(x: Ref) {
   //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/188/)
   package acc(x.f) && acc(x.f) --* false
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 
