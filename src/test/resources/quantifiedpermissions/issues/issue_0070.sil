@@ -30,10 +30,11 @@ method parallel_max(a:Ref, start:Int, end:Int, kperm: Perm) returns (mx: Int, po
     if(end-start > 1) {
       middle := start + (end-start)\2
       fresh kperm1
-
+      //:: UnexpectedOutput(call.precondition:insufficient.permission, /carbon/issue/119/)
 		  constraining(kperm1) { ml,posl := parallel_max(a, start, middle, kperm1) }
 
       fresh kperm2
+      //:: UnexpectedOutput(call.precondition:insufficient.permission, /carbon/issue/119/)
 		  constraining(kperm2) { mr,posr := parallel_max(a, middle, end, kperm2) }
 
       mx := ml>mr ? ml : mr

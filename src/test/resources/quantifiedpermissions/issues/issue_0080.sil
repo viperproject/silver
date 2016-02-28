@@ -1,5 +1,4 @@
-//:: IgnoreFile(/Silicon/issue/35/)
-
+//:: IgnoreFile(/silver/issue/53/)
 field f:Int
 
 method m(xs: Seq[Ref], a: Int, b: Int)
