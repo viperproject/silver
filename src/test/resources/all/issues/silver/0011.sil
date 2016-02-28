@@ -34,8 +34,9 @@ domain List[A] {
   function take(n: Natural, l: List[A]): List[A]
 
   axiom takeSuccessorCons {
-    /* y should have same type A as elements of ys. */
+    /* y should have same type A as elements of ys - hence this is not valid for all instances of List and hence rejected. */
     forall x: Natural, y: Natural, ys: List[A] ::
+  //:: ExpectedOutput(typechecker.error)
       take(successor(x), cons(y, ys)) == cons(y, take(x, ys))
   }
 }

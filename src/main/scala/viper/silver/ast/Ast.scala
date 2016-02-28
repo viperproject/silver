@@ -129,6 +129,9 @@ trait Node extends Traversable[Node] {
       case n: N if clazz.isInstance(n) =>
     }
   }
+
+  /* To be overridden in subclasses of Node. */
+  def isValid: Boolean = true
 }
 
 /** A trait to have additional information for nodes. */

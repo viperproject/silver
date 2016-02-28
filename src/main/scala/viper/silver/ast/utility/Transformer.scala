@@ -97,7 +97,7 @@ object Transformer {
             case fa@FuncApp(fname, args) =>
               FuncApp(fname, args map go)(p, i, fa.typ, fa.formalArgs)
             case dfa@DomainFuncApp(fname, args, m) =>
-              DomainFuncApp(fname, args map go, goTypeVariables(m))(p, i, dfa.typ, dfa.formalArgs)
+              DomainFuncApp(fname, args map go, goTypeVariables(m))(p, i, dfa.typ, dfa.formalArgs,dfa.domainName)
 
             case Minus(e) => Minus(go(e))(p, i)
             case Not(e) => Not(go(e))(p, i)
@@ -191,12 +191,10 @@ object Transformer {
         case domainMember: DomainMember =>
           domainMember match {
             case DomainAxiom(name, body) =>
-              DomainAxiom(name, go(body))(domainMember.pos,
-                domainMember.info)
+              DomainAxiom(name, go(body))(domainMember.pos,domainMember.info,domainMember.domainName)
 
             case DomainFunc(name, parameters, aType, unique) =>
-              DomainFunc(name, parameters map go, go(aType),
-                unique)(domainMember.pos, domainMember.info)
+              DomainFunc(name, parameters map go, go(aType),unique)(domainMember.pos, domainMember.info,domainMember.domainName)
           }
 
         case aType: Type =>
@@ -204,7 +202,7 @@ object Transformer {
             case Bool => aType
 
             case dt@DomainType(domainName, typeVariables) =>
-              DomainType(domainName, goTypeVariables(typeVariables))(dt.domainTypVars)
+              DomainType(domainName, goTypeVariables(typeVariables))(dt.typeParameters)
 
             case Int => aType
             case Perm => aType

@@ -6,6 +6,8 @@
 
 package viper.silver.parser
 
+import com.sun.org.apache.xerces.internal.impl.xs.SubstitutionGroupHandler
+
 import scala.language.implicitConversions
 import scala.collection.mutable
 import org.kiama.attribution.Attributable
@@ -74,8 +76,8 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(a: PAxiom): DomainAxiom = a match {
-    case PAxiom(name, e) =>
-      DomainAxiom(name.name, exp(e))(a)
+    case pa@PAxiom(name, e) =>
+      DomainAxiom(name.name, exp(e))(a,domainName = pa.domainName.name)
   }
 
   private def translate(f: PFunction) = f match {
@@ -108,8 +110,8 @@ case class Translator(program: PProgram) {
         Field(name, ttyp(typ))(pos)
       case PFunction(_, formalArgs, typ, _, _, _) =>
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
-      case PDomainFunction(_, args, typ, unique) =>
-        DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos)
+      case pdf@ PDomainFunction(_, args, typ, unique) =>
+        DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
       case PDomain(_, typVars, funcs, axioms) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)))(pos)
       case PPredicate(_, formalArgs, _) =>
@@ -322,27 +324,31 @@ case class Translator(program: PProgram) {
         FieldAccess(exp(rcv), findField(idn))(pos)
       case p@PPredicateAccess(args, idn) =>
         PredicateAccess(args map exp, findPredicate(idn))(pos)
-      case PFunctApp(func, args) =>
+      case pfa@PFunctApp(func, args) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
-          case f @ DomainFunc(name, formalArgs, typ, _) =>
+          case f @ DomainFunc(name, formalArgs, typ, _) => {
             val actualArgs = args map exp
             val translatedTyp = ttyp(pexp.typ)
-            // 'learn' looks at the formal type of an expression and the one actually
-            // occurring in the program and tries to learn instantiations for type variables.
-            def learn(formal: Type, actual: Type): Seq[(TypeVar, Type)] = {
-              (formal, actual) match {
-                case (tv: TypeVar, t) if t.isConcrete => Seq(tv -> t)
-                case (DomainType(_, m1), DomainType(_, m2)) =>
-                  m2.toSeq
-                case _ => Nil
-              }
+            type TypeSubstitution = Map[TypeVar, Type]
+            //Type unification - the range of the result is only the downward closure of t2 (i.e. assumes t2 is ground)
+            val paramTypes = (formalArgs map (_.typ)) :+ typ
+            val argTypes = (actualArgs map (_.typ)) :+ translatedTyp
+            val so : Option[TypeSubstitution] = pfa.domainSubstitution match{
+              case Some(ps) => Some(ps.m.map(kv=>TypeVar(kv._1)->ttyp(kv._2)))
+              case None => None
             }
-            // infer the type variable mapping for this call
-            val map = learn(typ, translatedTyp) ++
-              ((formalArgs map (_.typ)) zip (actualArgs map (_.typ)) flatMap (x => learn(x._1, x._2)))
-
-            DomainFuncApp(f, actualArgs, map.toMap)(pos)
+            so match {
+              case Some(s) => {
+                val d = members.get(f.domainName).get.asInstanceOf[Domain]
+                assert(s.keys.toSet.subsetOf(d.typVars.toSet))
+                val sp = s//completeWithDefault(d.typVars,s)
+                assert(sp.keys.toSet == d.typVars.toSet)
+                DomainFuncApp(f, actualArgs, sp)(pos)
+              }
+              case _ => sys.error("type unification error - should report and not crash")
+            }
+          }
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>

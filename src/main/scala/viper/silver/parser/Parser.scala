@@ -217,7 +217,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val domainFunctionDecl = opt("unique") ~ (functionSignature <~ opt(";")) ^^ {
     case unique ~ fdecl =>
       fdecl match {
-        case name ~ formalArgs ~ t => PDomainFunction(name, formalArgs, t, unique.isDefined)
+        case name ~ formalArgs ~ t => PDomainFunction1(name, formalArgs, t, unique.isDefined)
       }
   }
 
@@ -230,14 +230,18 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       ("{" ~> rep(domainFunctionDecl)) ~
       (rep(axiomDecl) <~ "}") ^^ {
       case name ~ typparams ~ funcs ~ axioms =>
-        PDomain(name, typparams.getOrElse(Nil), funcs, axioms)
+        PDomain(
+          name,
+          typparams.getOrElse(Nil),
+          funcs map (f=>PDomainFunction(f.idndef,f.formalArgs,f.typ,f.unique)(PIdnUse(name.name))),
+          axioms map (a=>PAxiom(a.idndef,a.exp)(PIdnUse(name.name))))
     }
 
   lazy val domainTypeVarDecl =
     idndef ^^ PTypeVarDecl
 
   lazy val axiomDecl =
-    ("axiom" ~> idndef) ~ ("{" ~> (exp <~ "}")) <~ opt(";") ^^ PAxiom
+    ("axiom" ~> idndef) ~ ("{" ~> (exp <~ "}")) <~ opt(";") ^^ PAxiom1
 
   // --- Statements
 
@@ -594,6 +598,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    * keyword, for example "index".
    */
 
+  //We assume the symbol "#" cannot occur in using given identifiers
   val identFirstLetter = "[a-zA-Z$_]"
 
   val identOtherLetterChars = "a-zA-Z0-9$_'"
@@ -606,7 +611,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
   val ident =
     not(keyword) ~> identifier.r |
-      failure("identifier expected")
+      identifier.r >> { a => failure(s"identifier expected, but keyword `$a' found") }
 
   private def foldPExp[E <: PExp](e: PExp, es: List[PExp => E]): E =
     es.foldLeft(e){(t, a) =>
