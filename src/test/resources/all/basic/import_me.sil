@@ -1,0 +1,6 @@
+function imported_function(): Bool
+{
+    true
+}
+
+

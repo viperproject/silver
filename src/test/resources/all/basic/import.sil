@@ -1,0 +1,9 @@
+import "./import_me.sil"
+import "import_me_too.sil"
+
+method TestImport()
+{
+    assert imported_function()
+    //assert true
+}
+
