@@ -6,7 +6,7 @@
 
 package viper.silver.parser
 
-import java.nio.file.Path
+import java.nio.file.{Path, Paths}
 import org.kiama.util.WhitespacePositionedParserUtilities
 
 /**
@@ -24,10 +24,24 @@ import org.kiama.util.WhitespacePositionedParserUtilities
 object Parser extends BaseParser {
   override def file = _file
   var _file: Path = null
-
   def parse(s: String, f: Path) = {
     _file = f
-    val r = parseAll(parser, s)
+
+    val imp_r = parseAll(imp_parser, s)
+    val imp_s: String = imp_r match {
+      case Success(PImports(imp_list), _) =>
+        (for (PImport(fname) <- imp_list) yield {
+          val fpath = _file.getParent + "/" + fname
+          println(s"@importing $fpath")
+          val source = scala.io.Source.fromFile(fpath)
+          // serialize all lines of the module
+          val lines = try source.getLines mkString "\n" finally source.close()
+          lines
+        }) mkString "\n" // serialize all imported modules
+      case _ => ""
+    }
+
+    val r = parseAll(parser, imp_s + s)
     r match {
       // make sure the tree is correctly initialized
       case Success(e, _) => e.initTreeProperties()
@@ -111,6 +125,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "true", "false",
     // null
     "null",
+    // preamble importing
+    "import",
     // declaration keywords
     "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "wand",
     // specifications
@@ -143,6 +159,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   )
 
   lazy val parser = phrase(programDecl)
+  lazy val imp_parser = phrase(programDeclForImports)
 
   // --- Whitespace
 
@@ -156,7 +173,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   // --- Declarations
 
   lazy val programDecl =
-    rep(defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
+    rep(preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
       case decls =>
         var globalDefines: Seq[PDefine] = decls.collect{case d: PDefine => d}
         globalDefines = expandDefines(globalDefines, globalDefines)
@@ -181,8 +198,24 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
         val functions = decls collect { case d: PFunction => expandDefines(globalDefines, d) }
         val predicates = decls collect { case d: PPredicate => expandDefines(globalDefines, d) }
 
+        /** These PNodes are parsed separetly through programDeclForImports.
+          * Some checks could be implemented as this point. */
+        val imports = decls collect {
+          case PImport(in) =>
+            //println(s"@begin importing:\n$in@end importing")
+
+        }
+
         PProgram(file, domains, fields, functions, predicates, methods)
     }
+
+  lazy val programDeclForImports =
+      rep(preambleImport) <~ rep(preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
+        case decls =>
+          val imports = decls collect { case d: PImport => d }
+
+          PImports(imports)
+      }
 
   lazy val fieldDecl =
     ("field" ~> idndef) ~ (":" ~> typ <~ opt(";")) ^^ PField
@@ -246,6 +279,16 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   // --- Statements
 
   def parens[A](p: Parser[A]) = "(" ~> p <~ ")"
+  def quoted[A](p: Parser[A]) = "\"" ~> p <~ "\""
+
+  lazy val relativeFilePath =
+    "\\A[~.]?(?:\\/?[.\\w-\\s])+".r
+
+  lazy val preambleImport =
+    keyword("import") ~> quoted(relativeFilePath) ^^ {
+      case filename =>
+        PImport(filename)
+    }
 
   lazy val block: Parser[Seq[PStmt]] =
     "{" ~> (stmts <~ "}")

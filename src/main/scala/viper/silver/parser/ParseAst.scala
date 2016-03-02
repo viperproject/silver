@@ -879,6 +879,8 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def typ: PType
 }
 case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
+case class PImports(imports: Seq[PImport]) extends PNode
+case class PImport(file: String) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction
@@ -986,6 +988,10 @@ object Nodes {
       case PConstraining(vars, stmt) => vars ++ Seq(stmt)
       case PProgram(file, domains, fields, functions, predicates, methods) =>
         domains ++ fields ++ functions ++ predicates ++ methods
+      case PImports(files) =>
+        files
+      case PImport(file) =>
+        Seq()
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
