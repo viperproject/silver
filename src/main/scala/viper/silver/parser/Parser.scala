@@ -210,12 +210,17 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     }
 
   lazy val programDeclForImports =
-      rep(preambleImport) <~ rep(preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
-        case decls =>
-          val imports = decls collect { case d: PImport => d }
+    rep(preambleImport) <~ rep(preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
+      case decls =>
+        val imports: List[PImport] = decls collect { case d: PImport => d }
+        // check if imports contains duplicates
+        val dups = imports.groupBy(identity).collect { case (PImport(x), List(_,_,_*)) => x }
+        if (0 < dups.size) {
+          println(s"warning: there are duplicated imports: " + dups.mkString("; "))
+        }
 
-          PImports(imports)
-      }
+        PImports(imports)
+    }
 
   lazy val fieldDecl =
     ("field" ~> idndef) ~ (":" ~> typ <~ opt(";")) ^^ PField
