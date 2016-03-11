@@ -7,8 +7,7 @@
  * in a binary search tree.
  *
  * The example contains two assertions (marked with "TODO") that
- * help overcoming a known incompleteness in Silicon's. This
- * incompleteness is unrelated to our work on magic wands.
+ * help overcoming an incompleteness with respect to sequences.
  */
 
 field v: Int
