@@ -362,8 +362,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
         PDomain(
           name,
           typparams.getOrElse(Nil),
-          funcs map (f=>PDomainFunction(f.idndef,f.formalArgs,f.typ,f.unique)(PIdnUse(name.name))),
-          axioms map (a=>PAxiom(a.idndef,a.exp)(PIdnUse(name.name))))
+          funcs map (f => PDomainFunction(f.idndef,f.formalArgs,f.typ,f.unique)(PIdnUse(name.name)).setPos(f)),
+          axioms map (a=>PAxiom(a.idndef,a.exp)(PIdnUse(name.name)).setPos(a)))
     }
 
   lazy val domainTypeVarDecl =
