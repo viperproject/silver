@@ -33,6 +33,8 @@ method test3(x: Ref)
   //:: ExpectedOutput(wand.not.wellformed)
   //:: MissingOutput(wand.not.wellformed, /carbon/issue/105/)
   //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
+  //:: MissingOutput(wand.not.wellformed, /silicon/issue/201/)
+  //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/201/)
   package true --* x.v
 
   /* If the preceding package had succeeded, it would allow the following to succeed as well */

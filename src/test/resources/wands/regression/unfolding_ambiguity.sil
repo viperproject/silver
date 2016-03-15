@@ -2,8 +2,10 @@ field f: Int
 
 method t(x:Ref,y:Ref) {
   //:: ExpectedOutput(wand.not.wellformed:insufficient.permission)
-  //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
   //:: MissingOutput(wand.not.wellformed, /carbon/issue/105/)
+  //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
+  //:: MissingOutput(wand.not.wellformed, /silicon/issue/201/)
+  //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/201/)
   package acc(y.f)&&acc(P(x)) --* acc(y.f)&&(unfolding P(x) in true)
 
   //:: ExpectedOutput(assert.failed:assertion.false)
