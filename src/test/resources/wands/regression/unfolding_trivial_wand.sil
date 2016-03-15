@@ -1,7 +1,8 @@
 field f: Int
 
 method t(x:Ref) {
-  //:: UnexpectedOutput(wand.not.wellformed:insufficient.permission, /silicon/issue/198/)
+  // Previously was UnexpectedOutput(wand.not.wellformed:insufficient.permission, /silicon/issue/198/)
+  //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/201/)
   package acc(P(x),2/1) --* (unfolding P(x) in (unfolding P(x) in false))
 
   //  assert acc(x.f) --* false

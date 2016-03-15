@@ -1,0 +1,30 @@
+// oldC2SCases/unrelatedLockchange.chalice
+field mustReleaseBounded$: Ref
+
+field mustReleaseUnbounded$: Ref
+
+field Main$f: Int
+
+predicate Main$MonitorInvariant(this$_2: Ref) {
+  true && acc(this$_2.Main$f, write)
+}
+
+method Main$change(this: Ref, m: Ref, n: Int)
+  requires this != null
+  requires m != null
+  ensures perm(m.mustReleaseBounded$) == none
+  ensures write - perm(m.mustReleaseBounded$) == write
+  //ensures acc(m.mustReleaseUnbounded$, write)                             // WORKS
+  ensures acc(m.mustReleaseUnbounded$, write - perm(m.mustReleaseBounded$)) // FAILS
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /Carbon/issue/100/)
+  ensures (forperm [mustReleaseUnbounded$] r$_15 :: false)
+{
+  assert m != null
+  // Check if we already acquired lock
+  assert perm(m.mustReleaseBounded$) + perm(m.mustReleaseUnbounded$) == none
+  inhale acc(Main$MonitorInvariant(m), write)
+  unfold acc(Main$MonitorInvariant(m), write)
+  // Inhaling an unbounded (= fresh) release obligation
+  inhale acc(m.mustReleaseUnbounded$, write)
+  m.Main$f := n
+}
