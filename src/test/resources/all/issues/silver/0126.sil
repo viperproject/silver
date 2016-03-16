@@ -7,6 +7,6 @@ method f()
   var s: Seq[Ref]
   assume g(Seq(b) ++ Seq[Ref]()) == s
   // assert Seq(b) ++ Seq[Ref]() == Seq(b) // <- needs this assertion to verify
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silver/issue/126/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silver/issue/126/)
   assert g(Seq(b)) == s
 }
