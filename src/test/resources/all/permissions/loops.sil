@@ -1,16 +1,14 @@
 field f: Int
 
-method test1(x: Ref)
+method test(x: Ref)
   requires acc(x.f) && x.f != 3
 {
   var b: Bool
   b := true
-  //:: UnexpectedOutput(while.failed:insufficient.permission, /Silicon/issue/0000/)
   while (b)
     //:: ExpectedOutput(not.wellformed:insufficient.permission)
     //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/70/)
-    //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/0000/)
-    invariant x != null && x.f != 3 // ERROR: This is not self-framing.
+    invariant x != null && x.f != 3 // This is not self-framing.
   {
     //:: UnexpectedOutput(assignment.failed:insufficient.permission, /Carbon/issue/70/)
     x.f := 4  // Loop body should be verified under assumption that invariant

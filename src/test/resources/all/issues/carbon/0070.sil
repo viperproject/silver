@@ -5,11 +5,9 @@ method test(x: Ref)
 {
   var b: Bool
   b := true
-  //:: UnexpectedOutput(while.failed:insufficient.permission, /Silicon/issue/165/)
   while (b)
     //:: ExpectedOutput(not.wellformed:insufficient.permission)
     //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/70/)
-    //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/165/)
     invariant x != null && x.f != 3 // This is not self-framing.
   {
     //:: UnexpectedOutput(assignment.failed:insufficient.permission, /Carbon/issue/70/)
