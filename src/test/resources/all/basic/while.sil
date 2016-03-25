@@ -131,8 +131,8 @@ method t11(r: Ref) returns ()
 {
     var j: Int := 2
 
-    //:: ExpectedOutput(while.failed:insufficient.permission)
     while (j < 3)
+        //:: ExpectedOutput(not.wellformed:insufficient.permission)
         //:: ExpectedOutput(invariant.not.established:assertion.false)
         //:: MissingOutput(invariant.not.established:assertion.false, /Silicon/issue/34/)
         invariant r != null && r.f == 2
