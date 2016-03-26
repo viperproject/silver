@@ -1,108 +1,31 @@
-function lifetimeCaller$(): Int
-
-
-function lifetimeSend$_2(r$: Ref): Int
-
-
-function terminationLifetime$_2(): Int
-
-
-function lifetimeSend$_1(r$: Ref): Int
-
-
-function terminationLifetime$_1(): Int
-
-
-// switch between the two arguments: (if cond then a else b)
-function switch$(c: Bool, a: Int, b: Int): Int
-{
-  (c ? a : b)
-}
-
-predicate mustTerminate$(r$: Ref) {
-  true
-}
-
 predicate mustSendBounded$(r$: Ref) {
-  true
-}
-
-predicate mustSendUnbounded$(r$: Ref) {
-  true
-}
-
-predicate mayReceive$(r$: Ref) {
-  true
-}
-
-predicate creditGenerationGuard$(r$: Ref) {
-  true
-}
-
-predicate obligationGenerationGuard$(r$: Ref) {
-  true
-}
-
-predicate callLeakCheckGuard$(r$: Ref) {
   true
 }
 
 method test(this: Ref, c: Ref, n: Int)
   requires this != null
   requires n > 0
-  requires (c != null) && (n * write >= none) && acc(mustSendBounded$(c), n * write)
-  ensures (forperm [mustSendBounded$] r$_12 :: false) && ((forperm [mustSendUnbounded$] r$_13 :: false))
+  requires (c != null) && acc(mustSendBounded$(c), n * write)
 {
-  var terminationFlag$: Perm
-  var loopLeakCheckGuard$_1: Bool
   var i: Int
-  inhale terminationLifetime$_1() == -1
-  inhale terminationLifetime$_1() == lifetimeCaller$()
-  inhale lifetimeSend$_1(c) == 1
   i := 0
-  exhale (perm(creditGenerationGuard$(c)) > none ? acc(creditGenerationGuard$(c), perm(creditGenerationGuard$(c))) : true)
-  // Inhaling credit guard access for upcoming loop invariant exhale
-  inhale acc(creditGenerationGuard$(c), (n - i) * write)
-  loopLeakCheckGuard$_1 := false
-  terminationFlag$ := perm(mustTerminate$(this))
+
+  exhale ((n - i) * write >= none) && acc(mustSendBounded$(c), (n - i) * write)
+  exhale (n - i + 1 > 0) && (n - i >= 0)
+
   while (i < n)
-    invariant [((n - i) * write >= none) && acc(mustSendBounded$(c), (n - i) * write), (loopLeakCheckGuard$_1 ? ((n - i) * write >= none) && (lifetimeSend$_2(c) > n - i + 1 ? (perm(mustSendBounded$(c)) >= (n - i) * write ? (((n - i) * write >= none) && ((n - i) * write <= none) ? true : acc(mustSendBounded$(c), (n - i) * write)) : ((n - i) * write - perm(mustSendBounded$(c)) >= none) && (perm(mustSendUnbounded$(c)) >= (n - i) * write - perm(mustSendBounded$(c)) ? (((n - i) * write - perm(mustSendBounded$(c)) >= none) && ((n - i) * write - perm(mustSendBounded$(c)) <= none) ? true : acc(mustSendUnbounded$(c), (n - i) * write - perm(mustSendBounded$(c)))) : (perm(creditGenerationGuard$(c)) > none ? acc(creditGenerationGuard$(c), (n - i) * write - perm(mustSendBounded$(c)) - perm(mustSendUnbounded$(c))) : true) && (perm(mustSendUnbounded$(c)) > none ? acc(mustSendUnbounded$(c), perm(mustSendUnbounded$(c))) : true)) && (perm(mustSendBounded$(c)) > none ? acc(mustSendBounded$(c), perm(mustSendBounded$(c))) : true)) : ((n - i) * write >= none) && (perm(mustSendUnbounded$(c)) >= (n - i) * write ? (((n - i) * write >= none) && ((n - i) * write <= none) ? true : acc(mustSendUnbounded$(c), (n - i) * write)) : (perm(creditGenerationGuard$(c)) > none ? acc(creditGenerationGuard$(c), (n - i) * write - perm(mustSendUnbounded$(c))) : true) && (perm(mustSendUnbounded$(c)) > none ? acc(mustSendUnbounded$(c), perm(mustSendUnbounded$(c))) : true))) : true) && (!loopLeakCheckGuard$_1 ? ((n - i) * write >= none) && (perm(mustSendBounded$(c)) >= (n - i) * write ? (((n - i) * write >= none) && ((n - i) * write <= none) ? true : acc(mustSendBounded$(c), (n - i) * write)) : ((n - i) * write - perm(mustSendBounded$(c)) >= none) && (perm(mustSendUnbounded$(c)) >= (n - i) * write - perm(mustSendBounded$(c)) ? (((n - i) * write - perm(mustSendBounded$(c)) >= none) && ((n - i) * write - perm(mustSendBounded$(c)) <= none) ? true : acc(mustSendUnbounded$(c), (n - i) * write - perm(mustSendBounded$(c)))) : (perm(creditGenerationGuard$(c)) > none ? acc(creditGenerationGuard$(c), (n - i) * write - perm(mustSendBounded$(c)) - perm(mustSendUnbounded$(c))) : true) && (perm(mustSendUnbounded$(c)) > none ? acc(mustSendUnbounded$(c), perm(mustSendUnbounded$(c))) : true)) && (perm(mustSendBounded$(c)) > none ? acc(mustSendBounded$(c), perm(mustSendBounded$(c))) : true)) : true)]
-    invariant (n - i + 1 > 0) && (n - i >= 0)
-    invariant [true, !loopLeakCheckGuard$_1 ==> (terminationFlag$ > none ? perm(mustTerminate$(this)) < terminationFlag$ : (forperm [mustSendBounded$] r$_8 :: false) && ((forperm [mustSendUnbounded$] r$_9 :: false)))]
-    //:: ExpectedOutput(invariant.not.preserved:assertion.false)
-    //:: MissingOutput(invariant.not.preserved:assertion.false, /Silicon/issue/227/)
-    invariant [true, (loopLeakCheckGuard$_1 ? (forperm [mustSendBounded$] r$_4 :: false) && ((forperm [mustSendUnbounded$] r$_5 :: false)) : true)]
   {
-    inhale terminationLifetime$_2() == -1
-    inhale lifetimeSend$_2(c) == n - i + 1
-    // Restoring termination obligation
-    exhale (perm(mustTerminate$(this)) > write) ==> acc(mustTerminate$(this), perm(mustTerminate$(this)) - write)
-    loopLeakCheckGuard$_1 := true
+    inhale ((n - i) * write >= none) && acc(mustSendBounded$(c), (n - i) * write)
+    inhale (n - i + 1 > 0) && (n - i >= 0)
+
     // Send Statement:
     // Start of Send----------------------------
     assert c != null
-    // Initialise guard for send exhale
-    exhale (perm(obligationGenerationGuard$(c)) > none ? acc(obligationGenerationGuard$(c), perm(obligationGenerationGuard$(c))) : true)
-    // Initialise guard for send exhale
-    exhale (perm(creditGenerationGuard$(c)) > none ? acc(creditGenerationGuard$(c), perm(creditGenerationGuard$(c))) : true)
-    inhale acc(obligationGenerationGuard$(c), 1 * write)
-    inhale acc(creditGenerationGuard$(c), write)
     // Exhaling a send obligation
-    exhale (1 * write >= none) && (perm(mustSendBounded$(c)) >= 1 * write ? ((1 * write >= none) && (1 * write <= none) ? true : acc(mustSendBounded$(c), 1 * write)) : (1 * write - perm(mustSendBounded$(c)) >= none) && (perm(mustSendUnbounded$(c)) >= 1 * write - perm(mustSendBounded$(c)) ? ((1 * write - perm(mustSendBounded$(c)) >= none) && (1 * write - perm(mustSendBounded$(c)) <= none) ? true : acc(mustSendUnbounded$(c), 1 * write - perm(mustSendBounded$(c)))) : (perm(creditGenerationGuard$(c)) > none ? acc(creditGenerationGuard$(c), 1 * write - perm(mustSendBounded$(c)) - perm(mustSendUnbounded$(c))) : true) && (perm(mustSendUnbounded$(c)) > none ? acc(mustSendUnbounded$(c), perm(mustSendUnbounded$(c))) : true)) && (perm(mustSendBounded$(c)) > none ? acc(mustSendBounded$(c), perm(mustSendBounded$(c))) : true))
-    // Inhale possibly generated obligations
-    inhale (1 * write > perm(obligationGenerationGuard$(c)) ? acc(mustSendUnbounded$(c), 1 * write - perm(obligationGenerationGuard$(c))) : true)
-    // Inhale possibly generated credit
-    inhale (perm(creditGenerationGuard$(c)) > none ? true : acc(mayReceive$(c), write))
-    // End of Send----------------------------
-    // At least one of the antecedents guarding the termination obligations must be true
-    assert (terminationLifetime$_2() > -1) ==> true
-    assert (terminationLifetime$_2() > -1) && true ==> (terminationLifetime$_2() > -1)
-    exhale (perm(creditGenerationGuard$(c)) > none ? acc(creditGenerationGuard$(c), perm(creditGenerationGuard$(c))) : true)
-    // Inhaling credit guard access for upcoming loop invariant exhale
-    inhale acc(creditGenerationGuard$(c), (n - i) * write)
+    exhale acc(mustSendBounded$(c), 1 * write)
+
+    //:: ExpectedOutput(exhale.failed:assertion.false)
+    //:: MissingOutput(exhale.failed:assertion.false, /Silicon/issue/227/)
+    exhale (forperm [mustSendBounded$] r$_4 :: false)
   }
-  // Restoring termination obligation
-  exhale (perm(mustTerminate$(this)) > none) ==> acc(mustTerminate$(this), perm(mustTerminate$(this)))
-  inhale (terminationLifetime$_1() > -1) ==> acc(mustTerminate$(this), write)
-  // End of loop -------------------------------
 }
