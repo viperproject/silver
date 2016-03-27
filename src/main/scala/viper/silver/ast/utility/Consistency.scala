@@ -8,7 +8,7 @@ package viper.silver.ast.utility
 
 import scala.util.parsing.input.{Position, NoPosition}
 import org.kiama.util.{Message, Messaging}
-import viper.silver.parser.Parser
+import viper.silver.parser.{MultiFileParserPosition, Parser}
 import viper.silver.ast._
 
 /** An utility object for consistency checking. */
@@ -18,12 +18,9 @@ object Consistency {
     if (!property) {
       val pos = suspect.pos match {
         case rp: AbstractSourcePosition =>
-          new Position {
-            val line = rp.line
-            val column = rp.column
-            val lineContents = "<none>"
-          }
+          new MultiFileParserPosition(rp.file, rp.line, rp.column)
         case rp: HasLineColumn =>
+          /** This should probably not happen. */
           new Position {
             val line = rp.line
             val column = rp.column
@@ -94,7 +91,8 @@ object Consistency {
 
   /**
    * Does this boolean expression contain no subexpressions that can appear in positive positions only?
-   * @param exceptInhaleExhale Are inhale-exhale expressions possible?
+    *
+    * @param exceptInhaleExhale Are inhale-exhale expressions possible?
    *                           Default: false.
    */
   def hasNoPositiveOnly(e: Exp, exceptInhaleExhale: Boolean = false): Boolean = e match {

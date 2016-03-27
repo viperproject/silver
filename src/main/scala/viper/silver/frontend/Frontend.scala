@@ -6,7 +6,6 @@
 
 package viper.silver.frontend
 
-import org.kiama.util.Messaging
 import java.nio.file.{Files, Path}
 import scala.io.Source
 import viper.silver.verifier.{Failure, AbstractError, VerificationResult, Verifier}
@@ -200,6 +199,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 //    _verifier.get.stop()
 
     _state = TranslatorState.Verified
+    //org.kiama.util.Positions.resetMemo()
   }
 
   override def result = {

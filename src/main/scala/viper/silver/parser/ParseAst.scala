@@ -7,8 +7,9 @@
 package viper.silver.parser
 
 import org.kiama.util.Positions
+import org.kiama.util.Positions._
 import viper.silver.ast.MagicWandOp
-import scala.util.parsing.input.Position
+import scala.util.parsing.input.{NoPosition, Position}
 import org.kiama.attribution.Attributable
 import viper.silver.ast.utility.Visitor
 import viper.silver.parser.TypeHelper._
@@ -21,10 +22,19 @@ import scala.language.implicitConversions
 
 trait KiamaPositioned {
   def start = Positions.getStart(this)
-  def setStart(p:Position) = Positions.setStart(this,p)
-  def setPos(a:Any) : this.type = Positions.dupPos(a,this)
+  def startWhite = Positions.getStartWhite(this)
   def finish = Positions.getFinish(this)
-  def setFinish(p:Position) = Positions.setFinish(this,p)
+
+  def setStart(p:Position) = Positions.setStart(this,viper.silver.parser.Parser.multiFileCoords(p))
+  def setStartWhite(p:Position) = Positions.setStartWhite(this,viper.silver.parser.Parser.multiFileCoords(p))
+  def setFinish(p:Position) = Positions.setFinish(this,viper.silver.parser.Parser.multiFileCoords(p))
+
+  def setPos(a:KiamaPositioned): this.type = {
+    setStart(a.start)
+    setStartWhite(a.startWhite)
+    setFinish(a.finish)
+    this
+  }
 }
 
 /**

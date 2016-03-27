@@ -110,9 +110,11 @@ object Parser extends BaseParser {
   }
 
   /** TODO decide if we need (and are able) to convert these implicitly.
+
   implicit def liftKiamaPositionToSourcePosition(pos: MultiFileParserPosition) {
     pos.asInstanceOf[SourcePosition]
-  }*/
+  }
+  */
 }
 
 /* A parser intended for debugging. Extend it and make parsing rules log their invocation
@@ -755,6 +757,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   private def foldPExp[E <: PExp](e: PExp, es: List[PExp => E]): E =
     es.foldLeft(e){(t, a) =>
       val result = a(t)
+      //print(t)
       result.setPos(t)
       result
     }.asInstanceOf[E]
