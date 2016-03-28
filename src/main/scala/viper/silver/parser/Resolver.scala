@@ -689,12 +689,12 @@ case class NameAnalyser() {
           case d: PDeclaration =>
             getMap(d).get(d.idndef.name) match {
               case Some(e: PDeclaration) =>
-                messages ++= Messaging.message(e, "Duplicate identifier `" + e.idndef.name + "' : at " + e.idndef.start + " and at " + d.idndef.start)
+                messages ++= Messaging.message(e, "Duplicate identifier `" + e.idndef.name + "' : at " + e.idndef.startPosStr + " and at " + d.idndef.startPosStr)
               case Some(e:PErrorEntity) =>
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
-                    messages ++= Messaging.message(e, "Identifier shadowing `" + e.idndef.name + "' : at " + e.idndef.start + " and at " + d.idndef.start)
+                    messages ++= Messaging.message(e, "Identifier shadowing `" + e.idndef.name + "' : at " + e.idndef.startPosStr + " and at " + d.idndef.startPosStr)
                   case Some(e:PErrorEntity) =>
                   case None =>
                     getMap(d).put(d.idndef.name, d)

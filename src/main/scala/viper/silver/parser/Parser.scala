@@ -30,6 +30,7 @@ object Parser extends BaseParser {
 
   def parse(s: String, f: Path) = {
     _file = f
+    _imports = Nil // don't forget to reset the state!
     val imp_r = parseAll(imp_parser, s)
     val imp_s: String = imp_r match {
       case Success(PImports(imp_list), _) =>
@@ -177,13 +178,12 @@ trait DebuggingParser extends WhitespacePositionedParserUtilities {
  */
 trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities {
 
-  /**
-    * TODO fix comment (this one is taken from the overridden method)
+  /** Overriding this method allows to compute and store relative positions
+    * for the AST nodes created by Kiama. Used with the import feature.
     *
     * Run a parse function on some input and set the position of the
     * resulting value.
     */
-
   override def parseAndPosition[T] (f : Input => ParseResult[T], in : Input) : ParseResult[T] =
     f (in) match {
       case res @ Success (t, in1) =>
@@ -501,7 +501,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val orExp: PackratParser[PExp] =
     andExp ~ "||" ~ orExp ^^ PBinExp | andExp
   lazy val andExp: PackratParser[PExp] =
-    eqExp ~ "&&" ~ andExp ^^ PBinExp | eqExp
+    cmpExp ~ "&&" ~ andExp ^^ PBinExp | cmpExp
 
   /* [2013-11-20 Malte]:
    * Consider the snippet
@@ -529,16 +529,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    * it is really the in-operator that is coming, and if so, it actually
    * parses it.
    */
-  lazy val eqOp = "==" | "!="
-
-  lazy val eqExp: PackratParser[PExp] =
-    cmpExp ~ eqOp ~ eqExp ^^ PBinExp | cmpExp
-
-
-  lazy val cmpOp = "<=" | ">=" | "<" | ">" | keyword("in")
+  lazy val cmpOp = "==" | "!=" | "<=" | ">=" | "<" | ">" | keyword("in")
 
   lazy val cmpExp: PackratParser[PExp] =
-    sum ~ cmpOp ~ cmpExp ^^ PBinExp | sum
+    sum ~ cmpOp ~ sum ^^ PBinExp | sum
 
   lazy val sumOp =
     "++" |
@@ -763,7 +757,6 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   private def foldPExp[E <: PExp](e: PExp, es: List[PExp => E]): E =
     es.foldLeft(e){(t, a) =>
       val result = a(t)
-      //print(t)
       result.setPos(t)
       result
     }.asInstanceOf[E]

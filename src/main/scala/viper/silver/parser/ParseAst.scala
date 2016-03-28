@@ -25,6 +25,13 @@ trait KiamaPositioned {
   def startWhite = Positions.getStartWhite(this)
   def finish = Positions.getFinish(this)
 
+  def startPosStr = start match {
+    case mfpp: MultiFileParserPosition =>
+      s"${mfpp.rel_file.getFileName}@${start}"
+    case _ =>
+      s"${start}"
+  }
+
   def setStart(p:Position) = Positions.setStart(this,viper.silver.parser.Parser.multiFileCoords(p))
   def setStartWhite(p:Position) = Positions.setStartWhite(this,viper.silver.parser.Parser.multiFileCoords(p))
   def setFinish(p:Position) = Positions.setFinish(this,viper.silver.parser.Parser.multiFileCoords(p))
