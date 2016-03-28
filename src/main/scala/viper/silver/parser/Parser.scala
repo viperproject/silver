@@ -501,7 +501,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val orExp: PackratParser[PExp] =
     andExp ~ "||" ~ orExp ^^ PBinExp | andExp
   lazy val andExp: PackratParser[PExp] =
-    cmpExp ~ "&&" ~ andExp ^^ PBinExp | cmpExp
+    eqExp ~ "&&" ~ andExp ^^ PBinExp | eqExp
 
   /* [2013-11-20 Malte]:
    * Consider the snippet
@@ -529,10 +529,16 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    * it is really the in-operator that is coming, and if so, it actually
    * parses it.
    */
-  lazy val cmpOp = "==" | "!=" | "<=" | ">=" | "<" | ">" | keyword("in")
+  lazy val eqOp = "==" | "!="
+
+  lazy val eqExp: PackratParser[PExp] =
+    cmpExp ~ eqOp ~ eqExp ^^ PBinExp | cmpExp
+
+
+  lazy val cmpOp = "<=" | ">=" | "<" | ">" | keyword("in")
 
   lazy val cmpExp: PackratParser[PExp] =
-    sum ~ cmpOp ~ sum ^^ PBinExp | sum
+    sum ~ cmpOp ~ cmpExp ^^ PBinExp | sum
 
   lazy val sumOp =
     "++" |

@@ -199,7 +199,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 //    _verifier.get.stop()
 
     _state = TranslatorState.Verified
-    //org.kiama.util.Positions.resetMemo()
   }
 
   override def result = {
