@@ -237,7 +237,6 @@ trait SilFrontend extends DefaultFrontend {
           case None => // then these are translation messages
             Fail(Messaging.sortmessages(Consistency.messages) map (m =>
               {
-                println(m)
                 TypecheckerError(
                 // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
 
