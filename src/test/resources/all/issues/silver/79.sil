@@ -1,0 +1,9 @@
+method test1()
+{
+  exhale write*3 == 3*write
+}
+
+method test2()
+{
+  exhale (-1/2)*3 == -3*(1/2)
+}

@@ -236,7 +236,12 @@ case class Translator(program: PProgram) {
             }
           case "*" =>
             r.typ match {
-              case Int => Mul(l, r)(pos)
+              case Int =>
+                l.typ match {
+                  case Int => Mul(l, r)(pos)
+                  case Perm => IntPermMul(r, l)(pos)
+                  case _ => sys.error("should not occur in type-checked program")
+                }
               case Perm =>
                 l.typ match {
                   case Int => IntPermMul(l, r)(pos)
