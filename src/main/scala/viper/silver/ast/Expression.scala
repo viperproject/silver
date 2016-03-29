@@ -476,7 +476,7 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
 case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
                   (val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp with QuantifiedExp {
   require(body isSubtype Bool)
-
+  Consistency.checkNoPositiveOnly(body)
   Consistency.recordIfNot(body, Consistency.noPerm(body),
     "forperm expression is not allowed to contain perm expressions")
   Consistency.recordIfNot(body, Consistency.noForPerm(body),
