@@ -1,0 +1,3 @@
+domain Process {
+  function p_arg(es: Seq[Int]): Process
+}

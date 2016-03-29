@@ -98,8 +98,7 @@ sealed trait CollectionType extends BuiltInType with GenericType {
 //  override lazy val isConcrete = elementType.isConcrete
 
   protected def make(s : Substitution) : MyType = {
-    require(s.keySet == typeParameter.toSet)
-    make(s(typeParameter))
+    make(typVarsMap(typeParameter).substitute(s))
   }
   protected def make(et:Type) : MyType
 }
