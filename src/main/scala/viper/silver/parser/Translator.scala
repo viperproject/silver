@@ -301,7 +301,12 @@ case class Translator(program: PProgram) {
         val e = exp(pe)
         op match {
           case "+" => e
-          case "-" => Minus(e)(pos)
+          case "-" =>
+            e.typ match {
+              case Int => Minus(e)(pos)
+              case Perm => PermMinus(e)(pos)
+              case _ => sys.error("unexpected type")
+            }
           case "!" => Not(e)(pos)
         }
       case PInhaleExhaleExp(in, ex) =>

@@ -121,6 +121,7 @@ object Transformer {
             case EqCmp(l, r) => EqCmp(go(l), go(r))(p, i)
             case NeCmp(l, r) => NeCmp(go(l), go(r))(p, i)
 
+            case PermMinus(e) => PermMinus(go(e))(p, i)
             case PermAdd(l, r) => PermAdd(go(l), go(r))(p, i)
             case PermSub(l, r) => PermSub(go(l), go(r))(p, i)
             case PermMul(l, r) => PermMul(go(l), go(r))(p, i)
@@ -412,6 +413,8 @@ object Transformer {
 
       case root @ Minus(IntLit(literal)) => IntLit(-literal)(root.pos, root.info)
       case Minus(Minus(single)) => single
+
+      case PermMinus(PermMinus(single)) => single
 
       case root @ GeCmp(IntLit(left), IntLit(right)) =>
         BoolLit(left >= right)(root.pos, root.info)

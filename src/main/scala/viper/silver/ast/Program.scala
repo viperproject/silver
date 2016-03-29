@@ -411,6 +411,13 @@ case object NegOp extends UnOp with IntDomainFunc {
   lazy val fixity = Prefix
 }
 
+case object PermNegOp extends UnOp with PermDomainFunc {
+  lazy val expTyp = Perm
+  lazy val op = "-"
+  lazy val priority = 10
+  lazy val fixity = Prefix
+}
+
 // Integer comparison operators
 case object LtOp extends RelOp("<") with IntBinOp
 case object LeOp extends RelOp("<=") with IntBinOp
