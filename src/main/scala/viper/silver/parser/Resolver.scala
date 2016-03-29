@@ -747,6 +747,23 @@ case class NameAnalyser() {
       Visitor.existsDefined(container, Nodes.subnodes){ case found if (found eq toFind) && found != container => }
     }
 
+    def containsSubnodeBefore(container: PNode, toFind: PNode, before: PNode) : Boolean = {
+      var beforeFound = false
+      val pred = new PartialFunction[PNode, PNode] {
+        def isDefinedAt(node: PNode): Boolean = {
+          if (!beforeFound){
+            if (node eq before){
+              beforeFound = true
+            }
+          }
+          return (node eq toFind) && node != container && !beforeFound
+        }
+
+        def apply(node: PNode) = node
+      }
+      Visitor.existsDefined(container, Nodes.subnodes)(pred)
+    }
+
     def getContainingMethod(node : PNode) : Option[PMethod] = {
       node match {
         case null => None
@@ -775,13 +792,21 @@ case class NameAnalyser() {
             if (!i.parent.isInstanceOf[PDomainType]) {
               messages ++= Messaging.message(i, s"identifier $name not defined.")
             }
-          // local variables must not be used in pre- or postconditions
-          // see Silver issue #56
           case localVar : PLocalVarDecl =>
             getContainingMethod(localVar) match {
-              case Some(PMethod(_, args, returns, pres, posts, _)) =>
+              case Some(PMethod(_, args, returns, pres, posts, body)) =>
+                // local variables must not be used in pre- or postconditions
+                // see Silver issue #56
                 if (pres.exists(pre => containsSubnode(pre, i)) || posts.exists(post => containsSubnode(post, i))){
                   messages ++= Messaging.message(i, s"local variable $name cannot be accessed in pre- or postcondition.")
+                }
+                // Variables must not be used before they are declared
+                // This is a workaround that should work for most cases, but not all, but should be alright
+                // until scopes are supported properly. E.g. it does not prevent using a variable in an else clause
+                // if it has been defined in the respective then-clause.
+                // See Silver issue #116
+                if (containsSubnodeBefore(body, i, localVar)){
+                  messages ++= Messaging.message(i, s"local variable $name cannot be accessed before it is declared.")
                 }
               case _ =>
             }
