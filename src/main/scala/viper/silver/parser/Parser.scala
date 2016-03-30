@@ -107,7 +107,7 @@ object Parser extends BaseParser {
 
   def multiFileCoords(pos: util.parsing.input.Position): MultiFileParserPosition = {
     val (rel_file, rel_line, abs_column) = multiFileLineColumn(pos.line, pos.column)
-    new MultiFileParserPosition(rel_file, rel_line, abs_column)
+    MultiFileParserPosition(rel_file, rel_line, abs_column)
   }
 
   /** TODO decide if we need (and are able) to convert these implicitly.
@@ -134,9 +134,21 @@ import scala.language.reflectiveCalls
   * MultiFileParserPosition is a workaround case class which extends util.parsing.input.Position
   * and provides the missing field (file) from the AbstractSourcePosition trait.
   */
-case class MultiFileParserPosition(rel_file: Path, y: Int, x: Int)
-  extends SourcePosition(rel_file, LineColumnPosition(y, x), None) with util.parsing.input.Position {
+case class MultiFileParserPosition(val rel_file: Path, override val start: HasLineColumn, override val end: Option[HasLineColumn])
+  extends SourcePosition(rel_file, start, end) with util.parsing.input.Position {
   def lineContents = toString
+  override def toString = end match {
+    case Some(end_pos) => s"${rel_file.getFileName}@[$start-$end_pos]"
+    case _ => s"${rel_file.getFileName}@$start)"
+  }
+}
+
+case object MultiFileParserPosition {
+  def apply(rel_file: Path, y: Int, x: Int) =
+    new MultiFileParserPosition(rel_file, LineColumnPosition(y, x), None)
+
+  def apply(rel_file: Path, start: HasLineColumn, end: HasLineColumn) =
+    new MultiFileParserPosition(rel_file, start, Some(end))
 }
 
 object DebuggingParser {

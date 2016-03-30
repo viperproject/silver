@@ -7,9 +7,8 @@
 package viper.silver.parser
 
 import org.kiama.util.Positions
-import org.kiama.util.Positions._
 import viper.silver.ast.MagicWandOp
-import scala.util.parsing.input.{NoPosition, Position}
+import scala.util.parsing.input.Position
 import org.kiama.attribution.Attributable
 import viper.silver.ast.utility.Visitor
 import viper.silver.parser.TypeHelper._
