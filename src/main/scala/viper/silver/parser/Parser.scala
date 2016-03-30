@@ -320,9 +320,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     ("field" ~> idndef) ~ (":" ~> typ <~ opt(";")) ^^ PField
 
   lazy val methodDecl =
-    methodSignature ~ rep(pre) ~ rep(post) ~ block ^^ {
-      case name ~ args ~ rets ~ pres ~ posts ~ body =>
+    methodSignature ~ rep(pre) ~ rep(post) ~ opt(block) ^^ {
+      case name ~ args ~ rets ~ pres ~ posts ~ Some(body) =>
         PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
+      case name ~ args ~ rets ~ pres ~ posts ~ None =>
+        PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(Seq(PInhale(PBoolLit(b = false)))))
     }
 
   lazy val methodSignature =
