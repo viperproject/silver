@@ -49,7 +49,7 @@ object Parser extends BaseParser {
           source = scala.io.Source.fromFile(fpath)
           try source.getLines mkString "\n" finally source.close()
 
-        }) mkString "\n" // serialize all imported modules
+        }).mkString("\n") + "\n" // serialize all imported modules and terminate the last line
 
       case _ => ""
     }
