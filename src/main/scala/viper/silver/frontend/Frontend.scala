@@ -6,7 +6,6 @@
 
 package viper.silver.frontend
 
-import org.kiama.util.Messaging
 import java.nio.file.{Files, Path}
 import scala.io.Source
 import viper.silver.verifier.{Failure, AbstractError, VerificationResult, Verifier}

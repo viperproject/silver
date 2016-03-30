@@ -7,8 +7,9 @@
 package viper.silver.parser
 
 import org.kiama.util.Positions
+import org.kiama.util.Positions._
 import viper.silver.ast.MagicWandOp
-import scala.util.parsing.input.Position
+import scala.util.parsing.input.{NoPosition, Position}
 import org.kiama.attribution.Attributable
 import viper.silver.ast.utility.Visitor
 import viper.silver.parser.TypeHelper._
@@ -21,10 +22,26 @@ import scala.language.implicitConversions
 
 trait KiamaPositioned {
   def start = Positions.getStart(this)
-  def setStart(p:Position) = Positions.setStart(this,p)
-  def setPos(a:Any) : this.type = Positions.dupPos(a,this)
+  def startWhite = Positions.getStartWhite(this)
   def finish = Positions.getFinish(this)
-  def setFinish(p:Position) = Positions.setFinish(this,p)
+
+  def startPosStr = start match {
+    case mfpp: MultiFileParserPosition =>
+      s"${mfpp.rel_file.getFileName}@${start}"
+    case _ =>
+      s"${start}"
+  }
+
+  def setStart(p:Position) = Positions.setStart(this,viper.silver.parser.Parser.multiFileCoords(p))
+  def setStartWhite(p:Position) = Positions.setStartWhite(this,viper.silver.parser.Parser.multiFileCoords(p))
+  def setFinish(p:Position) = Positions.setFinish(this,viper.silver.parser.Parser.multiFileCoords(p))
+
+  def setPos(a:KiamaPositioned): this.type = {
+    setStart(a.start)
+    setStartWhite(a.startWhite)
+    setFinish(a.finish)
+    this
+  }
 }
 
 /**
@@ -880,6 +897,8 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def typ: PType
 }
 case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
+case class PImports(imports: Seq[PImport]) extends PNode
+case class PImport(file: String) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction
@@ -987,6 +1006,10 @@ object Nodes {
       case PConstraining(vars, stmt) => vars ++ Seq(stmt)
       case PProgram(file, domains, fields, functions, predicates, methods) =>
         domains ++ fields ++ functions ++ predicates ++ methods
+      case PImports(files) =>
+        files
+      case PImport(file) =>
+        Seq()
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>

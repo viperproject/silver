@@ -8,7 +8,7 @@ package viper.silver.ast.utility
 
 import scala.util.parsing.input.{Position, NoPosition}
 import org.kiama.util.{Message, Messaging}
-import viper.silver.parser.Parser
+import viper.silver.parser.{MultiFileParserPosition, Parser}
 import viper.silver.ast._
 
 /** An utility object for consistency checking. */

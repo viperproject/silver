@@ -16,7 +16,7 @@ import viper.silver.verifier._
 import viper.silver.verifier.CliOptionError
 import viper.silver.verifier.Failure
 import viper.silver.verifier.ParseError
-import viper.silver.ast.{Position, HasLineColumn, AbstractSourcePosition, SourcePosition, Program}
+import viper.silver.ast._
 import viper.silver.verifier.TypecheckerError
 import viper.silver.ast.utility.Consistency
 
@@ -203,9 +203,21 @@ trait SilFrontend extends DefaultFrontend {
       case Parser.Success(e, _) =>
         Succ(e)
       case Parser.Failure(msg, next) =>
-        Fail(List(ParseError(s"Failure: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
+        next.pos match {
+          case mfpp: MultiFileParserPosition =>
+            Fail(List(ParseError(s"Failure: $msg", SourcePosition(mfpp.file, next.pos.line, next.pos.column))))
+          case _ =>
+            Fail(List(ParseError(s"Failure: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
+        }
+
       case Parser.Error(msg, next) =>
-        Fail(List(ParseError(s"Error: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
+        next.pos match {
+          case mfpp: MultiFileParserPosition =>
+            Fail(List(ParseError(s"Error: $msg", SourcePosition(mfpp.file, next.pos.line, next.pos.column))))
+          case _ =>
+            Fail(List(ParseError(s"Error: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
+        }
+
     }
   }
 
@@ -223,14 +235,31 @@ trait SilFrontend extends DefaultFrontend {
             Succ(program)
 
           case None => // then these are translation messages
-            Fail(Messaging.sortmessages(Consistency.messages) map (m => TypecheckerError(m.label, SourcePosition(_inputFile.get, m.pos.line, m.pos.column)))) // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
+            Fail(Messaging.sortmessages(Consistency.messages) map (m =>
+              {
+                TypecheckerError(
+                // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
+
+                m.label, m.pos match {
+                  case mfpp: MultiFileParserPosition =>
+                    SourcePosition(mfpp.file, m.pos.line, m.pos.column)
+                  case _ =>
+                    SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
+                })
+
+              }))
         }
 
       case None =>
-       val errors = for (m <- Messaging.sortmessages(r.messages)) yield {
-          TypecheckerError(m.label, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))
+        val errors = for (m <- Messaging.sortmessages(r.messages)) yield {
+          TypecheckerError(m.label, m.pos match {
+            case mfpp: MultiFileParserPosition =>
+              SourcePosition(mfpp.file, m.pos.line, m.pos.column)
+            case _ =>
+              SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
+          })
         }
-      Fail(errors)
+        Fail(errors)
     }
   }
 
