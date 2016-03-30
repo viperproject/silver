@@ -21,15 +21,37 @@ import scala.language.implicitConversions
  */
 
 trait KiamaPositioned {
+
+  /** Do not use these first three interfaces for reporting the positions.
+      They may or may not contain the rel_file field, depending on whether
+      the AST is constructed through the Parser or via the Scala interfaces. */
+
+  /** TODO get ride of `implicit def liftPos' of Translator.scala and make these methods private. */
   def start = Positions.getStart(this)
   def startWhite = Positions.getStartWhite(this)
   def finish = Positions.getFinish(this)
 
+  /** Used for reporting the starting position of an AST node. */
   def startPosStr = start match {
     case mfpp: MultiFileParserPosition =>
       s"${mfpp.rel_file.getFileName}@${start}"
     case _ =>
       s"${start}"
+  }
+
+  /** Used for reporting the range of positions occupied by an AST node. */
+  def rangeStr = start match {
+    case mfpp_a: MultiFileParserPosition =>
+      require(finish.isInstanceOf[MultiFileParserPosition],
+        s"start and finish positions must be instances of MultiFileParserPosition at the same time")
+      val mfpp_b = finish.asInstanceOf[MultiFileParserPosition]
+      if (mfpp_a.rel_file == mfpp_b.rel_file)
+        s"${mfpp_a.rel_file.getFileName}@[$start-$finish]"
+      else
+        // An AST node should probably not spread between multiple source files, but who knows?
+        s"[${mfpp_a.rel_file.getFileName}@$start-${mfpp_b.rel_file.getFileName}@$finish]"
+    case _ =>
+      s"[${start}-${finish}]"
   }
 
   def setStart(p:Position) = Positions.setStart(this,viper.silver.parser.Parser.multiFileCoords(p))

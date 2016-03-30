@@ -132,3 +132,7 @@ method t11() returns (r: Ref)
     y := new()
     assert x != y
 }
+
+method bodyless() returns (r: Int)
+    requires true
+    ensures 0 <= r && r < 10

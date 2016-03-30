@@ -407,7 +407,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def typeError(exp:PExp) = {
-    messages ++= Messaging.message(exp, s"Type error in the expression at ${exp.start}-${exp.finish}")
+    messages ++= Messaging.message(exp, s"Type error in the expression at ${exp.rangeStr}")
   }
   def check(exp: PExp, expected: PType) = checkTopTyped(exp,Some(expected))
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
@@ -424,7 +424,7 @@ case class TypeChecker(names: NameAnalyser) {
       }else {
         oexpected match {
           case Some(expected) =>
-            messages ++= Messaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.start}-${exp.finish}")
+            messages ++= Messaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.rangeStr}")
           case None =>
             typeError(exp)
         }
