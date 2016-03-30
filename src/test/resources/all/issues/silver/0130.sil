@@ -1,0 +1,14 @@
+
+domain D {
+
+}
+
+
+function f(x:D) : Int
+  {
+    g(x)
+  }
+
+function g(y:D) : Int {
+    5 // same problem without a body
+}
