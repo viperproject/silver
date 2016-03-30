@@ -54,9 +54,12 @@ case class TypeChecker(names: NameAnalyser) {
     p.domains foreach checkFunctions
     p.domains foreach checkAxioms
     p.fields foreach check
-    p.functions foreach check
-    p.predicates foreach check
-    p.methods foreach check
+    p.functions foreach checkDeclaration
+    p.predicates foreach checkDeclaration
+    p.functions foreach checkBody
+    p.predicates foreach checkBody
+    p.methods foreach checkDeclaration
+    p.methods foreach checkBody
 
     /* Report any domain type that couldn't be resolved */
     /* Alex suggests replacing *all* these occurrences by one arbitrary type */
@@ -71,22 +74,32 @@ case class TypeChecker(names: NameAnalyser) {
     curMember = null
   }
 
-  def check(m: PMethod) {
+  def checkDeclaration(m: PMethod) {
     checkMember(m) {
       (m.formalArgs ++ m.formalReturns) foreach (a => check(a.typ))
+    }
+  }
+  def checkBody(m: PMethod) {
+    checkMember(m) {
       m.pres foreach (check(_, Bool))
       m.posts foreach (check(_, Bool))
       check(m.body)
     }
   }
 
-  def check(f: PFunction) {
+  def checkDeclaration(f: PFunction) {
     checkMember(f) {
       assert(curFunction==null)
       curFunction=f
-      check(f.typ)
       f.formalArgs foreach (a => check(a.typ))
       check(f.typ)
+      curFunction=null
+    }
+  }
+  def checkBody(f: PFunction) {
+    checkMember(f) {
+      assert(curFunction==null)
+      curFunction=f
       f.pres foreach (check(_, Bool))
       resultAllowed=true
       f.posts foreach (check(_, Bool))
@@ -97,9 +110,13 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
 
-  def check(p: PPredicate) {
+  def checkDeclaration(p: PPredicate) {
     checkMember(p) {
       p.formalArgs foreach (a => check(a.typ))
+    }
+  }
+  def checkBody(p: PPredicate) {
+    checkMember(p) {
       p.body.foreach(check(_, Bool))
     }
   }
