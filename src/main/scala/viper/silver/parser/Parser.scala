@@ -36,7 +36,8 @@ object Parser extends BaseParser {
       case Success(PImports(imp_list), _) =>
         (for (PImport(fname) <- imp_list) yield {
           val fpath = _file.getParent + "/" + fname
-          println(s"@importing $fpath")
+          //TODO print debug info iff --dbg switch is used
+          //println(s"@importing $fpath")
 
           // count lines of the module
           var source = scala.io.Source.fromFile(fpath)
