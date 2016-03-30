@@ -31,30 +31,29 @@ object Parser extends BaseParser {
   def parse(s: String, f: Path) = {
     _file = f
     _imports = Nil // don't forget to reset the state!
-    val imp_r = parseAll(imp_parser, s)
-    val imp_s: String = imp_r match {
+    val imp: String = parseAll(imp_parser, s) match {
       case Success(PImports(imp_list), _) =>
-        (for (PImport(fname) <- imp_list) yield {
-          val fpath = _file.getParent + "/" + fname
-          //TODO print debug info iff --dbg switch is used
-          //println(s"@importing $fpath")
+        imp_list.map {
+          case PImport(fname) => {
+            val fpath = _file.getParent + "/" + fname
+            //TODO print debug info iff --dbg switch is used
+            //println(s"@importing $fpath")
 
-          // count lines of the module
-          var source = scala.io.Source.fromFile(fpath)
-          _imports :+= (
-            FileSystems.getDefault.getPath(fpath),
-            try source.getLines.size finally source.close())
+            // count lines of the module
+            val source = scala.io.Source.fromFile(fpath)
+            val buffer = try source.getLines.toArray finally source.close()
+            _imports :+=(
+              FileSystems.getDefault.getPath(fpath),
+              buffer.size + 1)
 
-          // serialize all lines of the module
-          source = scala.io.Source.fromFile(fpath)
-          try source.getLines mkString "\n" finally source.close()
-
-        }).mkString("\n") + "\n" // serialize all imported modules and terminate the last line
-
+            // serialize all lines of the module
+            buffer.mkString("\n") + "\n"
+          }
+        }.mkString("\n") // serialize all imported modules
       case _ => ""
     }
 
-    val r = parseAll(parser, imp_s + s)
+    val r = parseAll(parser, imp + s)
 
     r match {
       // make sure the tree is correctly initialized

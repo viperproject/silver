@@ -26,7 +26,7 @@ trait KiamaPositioned {
       They may or may not contain the rel_file field, depending on whether
       the AST is constructed through the Parser or via the Scala interfaces. */
 
-  /** TODO get ride of `implicit def liftPos' of Translator.scala and make these methods private. */
+  /** TODO get ride of 'implicit def liftPos' of Translator.scala and make these methods private. */
   def start = Positions.getStart(this)
   def startWhite = Positions.getStartWhite(this)
   def finish = Positions.getFinish(this)
