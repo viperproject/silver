@@ -140,6 +140,7 @@ case class Translator(program: PProgram) {
          */
         val call = PMethodCall(Seq(idnuse), func, args)
         call.setStart(s.start)
+        call.setFinish(s.finish)
         stmt(call)
       case PVarAssign(idnuse, rhs) =>
         LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos), exp(rhs))(pos)
