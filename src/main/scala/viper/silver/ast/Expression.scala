@@ -124,10 +124,11 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
   // maybe rename this sometime
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
     this.shallowCollect {
-      case old: Old => old
-      case lo: LabelledOld => lo
-      case e: Exp if !e.isHeapDependent(p) => e
-    }
+      case old: Old => Some(old)
+      case lo: LabelledOld => Some(lo)
+      case q: QuantifiedExp if q.isHeapDependent(p) => None
+      case e: Exp if !e.isHeapDependent(p) => Some(e)
+    }.flatten
   }
 
   def structurallyMatches(other: MagicWand, p: Program): Boolean = {
