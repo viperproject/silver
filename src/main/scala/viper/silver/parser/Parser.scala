@@ -663,7 +663,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     ("unfolding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PUnfolding
 
   lazy val folding: PackratParser[PExp] =
-    ("folding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PFolding
+    ("folding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PFoldingGhostOp
 
   lazy val applying: PackratParser[PExp] =
     /* We must be careful here to not create ambiguities in our grammar.
@@ -681,11 +681,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
      * Moreover, not using a memoising parser might make the parser
      * significantly slower.
      */
-    ("applying" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PApplying
+    ("applying" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PApplyingGhostOp
 
   lazy val packaging: PackratParser[PExp] =
     /* See comment on applying */
-    ("packaging" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PPackaging
+    ("packaging" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PPackagingGhostOp
 
   lazy val let: PackratParser[PExp] =
     ("let" ~> idndef <~ "==") ~ ("(" ~> exp <~ ")") ~ ("in" ~> exp) ^^ { case id ~ exp1 ~ exp2 =>

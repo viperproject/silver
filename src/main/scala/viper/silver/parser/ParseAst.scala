@@ -104,10 +104,11 @@ sealed trait PNode extends KiamaPositioned with Attributable {
   /** @see [[Transformer.transform()]]  */
   def transform(pre: PartialFunction[PNode, PNode] = PartialFunction.empty)
                (recursive: PNode => Boolean = !pre.isDefinedAt(_),
-                post: PartialFunction[PNode, PNode] = PartialFunction.empty)
+                post: PartialFunction[PNode, PNode] = PartialFunction.empty,
+                allowChangingNodeType: Boolean = false)
                : this.type =
 
-    Transformer.transform[this.type](this, pre)(recursive, post)
+    Transformer.transform[this.type](this, pre)(recursive, post, allowChangingNodeType)
 
   /** @see [[Visitor.deepCollect()]] */
   def deepCollect[A](f: PartialFunction[PNode, A]) : Seq[A] =
@@ -622,20 +623,25 @@ sealed trait PUnFoldingExp extends PHeapOpApp{
 }
 
 case class PUnfolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp{
-  override final val opName = "#unfolding"
-}
-case class PFolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp{
-  override final val opName = "#folding"
+  override final val opName = "unfolding"
 }
 
-case class PApplying(wand: PExp, exp: PExp) extends PHeapOpApp{
+case class PUnfoldingGhostOp(acc: PAccPred, exp: PExp) extends PUnFoldingExp {
+  override final val opName = "unfolding"
+}
+
+case class PFoldingGhostOp(acc: PAccPred, exp: PExp) extends PUnFoldingExp {
+  override final val opName = "folding"
+}
+
+case class PApplyingGhostOp(wand: PExp, exp: PExp) extends PHeapOpApp {
   override final val opName = "applying"
   override final val args = Seq(wand,exp)
   val signatures : Set[PTypeSubstitution] = Set(
     Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1))
   )
 }
-case class PPackaging(wand: PExp, exp: PExp) extends PHeapOpApp{
+case class PPackagingGhostOp(wand: PExp, exp: PExp) extends PHeapOpApp{
   override final val opName = "packaging"
   override final val args = Seq(wand,exp)
   val signatures : Set[PTypeSubstitution]  = Set(
@@ -976,8 +982,8 @@ object Nodes {
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
       case PFunctApp(func, args) => Seq(func) ++ args
       case e: PUnFoldingExp => Seq(e.acc, e.exp)
-      case PApplying(wand, in) => Seq(wand, in)
-      case PPackaging(wand, in) => Seq(wand, in)
+      case PApplyingGhostOp(wand, in) => Seq(wand, in)
+      case PPackagingGhostOp(wand, in) => Seq(wand, in)
       case PExists(vars, exp) => vars ++ Seq(exp)
       case po: POldExp => Seq(po.e)
       case PLet(exp, nestedScope) => Seq(exp, nestedScope)

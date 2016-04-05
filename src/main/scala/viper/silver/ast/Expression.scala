@@ -93,30 +93,13 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
     */
   lazy val withoutGhostOperations: MagicWand = {
     /* We use the post-transformer instead of the pre-transformer in order to
-     * perform bottom-up transformation. With a top-down transformer we could
-     * not simply replace ghost operations with their bodies, because these
-     * can contain ghost operations themselves, to which the transformer
-     * would not be applied (per se).
+     * perform bottom-up transformation.
+     * An alternative would be a pre-transformer and passing a 'recursive'
+     * predicate to transform that makes transform recurse if the pre-transformer
+     * is defined.
      */
-
-    /* False if we already encountered a ghost operation (that was not a pure
-     * unfolding). If so, then unfolding expressions are considered as impure
-     * ghost operations, and therefore replaced by their bodies.
-     * This is necessary to correctly handle expressions such as
-     *   acc(P(l)) --* unfolding P(l) in folding Q(l) in true
-     * where the outer unfolding must be erased although its body is pure
-     * by the time we reach the unfolding (since we transform bottom-up).
-     */
-    var keepUnfolding = true
-
     this.transform()(post = {
-      case u: Unfolding if !u.isPure || !keepUnfolding =>
-        u.body
-
-      case gop: GhostOperation if !gop.isInstanceOf[Unfolding] =>
-        keepUnfolding = false
-        gop.body
-
+      case gop: GhostOperation => gop.body
       case let: Let => let.body
     })
   }
@@ -374,23 +357,29 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
 
 // --- Prover hint expressions
 
+case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+  Consistency.checkNoPositiveOnly(body)
+  lazy val typ = body.typ
+}
+
+/* Ghost operations used when packaging magic wands */
 sealed trait GhostOperation extends Exp {
   val body: Exp
   lazy val typ = body.typ
 }
 
-sealed trait UnFoldingExp extends GhostOperation {
-  val acc: PredicateAccessPredicate
-}
+//sealed trait UnFoldingExp extends GhostOperation {
+//  val acc: PredicateAccessPredicate
+//}
 
-case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp
-case class Folding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnFoldingExp
+case class UnfoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
+case class FoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
 
-case class Applying(exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
+case class ApplyingGhostOp(exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
   require(exp isSubtype Wand, s"Expected wand but found ${exp.typ} ($exp)")
 }
 
-case class Packaging(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
+case class PackagingGhostOp(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
   require(wand isSubtype Wand, s"Expected wand but found ${wand.typ} ($wand)")
 }
 
