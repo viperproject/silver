@@ -158,7 +158,8 @@ case class Translator(program: PProgram) {
       case PUnfold(e) =>
         Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PPackageWand(e) =>
-        Package(exp(e).asInstanceOf[MagicWand])(pos)
+        val wand = translateWandToBePackaged(e.asInstanceOf[PBinExp])
+        Package(wand)(pos)
       case PApplyWand(e) =>
         Apply(exp(e))(pos)
       case PInhale(e) =>
@@ -338,7 +339,7 @@ case class Translator(program: PProgram) {
       case pfa@PFunctApp(func, args) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
-          case f @ DomainFunc(name, formalArgs, typ, _) => {
+          case f @ DomainFunc(name, formalArgs, typ, _) =>
             val actualArgs = args map exp
             val translatedTyp = ttyp(pexp.typ)
             type TypeSubstitution = Map[TypeVar, Type]
@@ -350,26 +351,27 @@ case class Translator(program: PProgram) {
               case None => None
             }
             so match {
-              case Some(s) => {
+              case Some(s) =>
                 val d = members.get(f.domainName).get.asInstanceOf[Domain]
                 assert(s.keys.toSet.subsetOf(d.typVars.toSet))
-                val sp = s//completeWithDefault(d.typVars,s)
+                val sp = s //completeWithDefault(d.typVars,s)
                 assert(sp.keys.toSet == d.typVars.toSet)
                 DomainFuncApp(f, actualArgs, sp)(pos)
-              }
               case _ => sys.error("type unification error - should report and not crash")
             }
-          }
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
-      case PFolding(loc, e) =>
-        Folding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
-      case PApplying(e, in) =>
-        Applying(exp(e), exp(in))(pos)
-      case PPackaging(e, in) =>
-        Packaging(exp(e).asInstanceOf[MagicWand], exp(in))(pos)
+      case PUnfoldingGhostOp(loc, e) =>
+        UnfoldingGhostOp(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
+      case PFoldingGhostOp(loc, e) =>
+        FoldingGhostOp(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
+      case PApplyingGhostOp(e, in) =>
+        ApplyingGhostOp(exp(e), exp(in))(pos)
+      case PPackagingGhostOp(e, in) =>
+        val wand = translateWandToBePackaged(e.asInstanceOf[PBinExp])
+        PackagingGhostOp(wand, exp(in))(pos)
       case PLet(exp1, PLetNestedScope(variable, body)) =>
         Let(liftVarDecl(variable), exp(exp1), exp(body))(pos)
       case _: PLetNestedScope =>
@@ -460,7 +462,7 @@ case class Translator(program: PProgram) {
 //  implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition =
 //    SourcePosition(file, pos.line, pos.column)
 
-  /** Takes a [[org.kiama.util.Positioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
+  /** Takes a [[viper.silver.parser.KiamaPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
   implicit def liftPos(pos: KiamaPositioned): SourcePosition = {
     val start = LineColumnPosition(pos.start.line, pos.start.column)
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
@@ -502,5 +504,29 @@ case class Translator(program: PProgram) {
       sys.error("unknown type unexpected here")
     case PPredicateType() =>
       sys.error("unexpected use of internal typ")
+  }
+
+  private def translateWandToBePackaged(pwand: PBinExp): MagicWand = {
+    /* Translates a PWand and turns expressions such as unfolding into the
+     * corresponding ghost operation.
+     */
+
+    val f: PartialFunction[PNode, PNode] = {
+      /* Make f defined for all ghost operations so that we keep on transforming
+       * down the potential chain of ghost operations
+       */
+      case e: PFoldingGhostOp => e
+      case e: PApplyingGhostOp => e
+      case e: PPackagingGhostOp => e
+      /* Rewrite unfolding expressions to unfolding ghost operations (along the
+       * potential chain of ghost operations)
+       */
+      case unf: PUnfolding => PUnfoldingGhostOp(unf.acc, unf.exp).setPos(unf)
+    }
+
+    val rhs = pwand.right.transform(f)(recursive = f.isDefinedAt, allowChangingNodeType = true)
+    val ghostOpWand = pwand.copy(right = rhs).setPos(pwand)
+
+    exp(ghostOpWand).asInstanceOf[MagicWand]
   }
 }

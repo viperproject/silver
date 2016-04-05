@@ -555,9 +555,9 @@ case class TypeChecker(names: NameAnalyser) {
               else
                 ppa.predicate = predicate
             }
-          case PPackaging(wand, in) =>
+          case PPackagingGhostOp(wand, in) =>
             checkMagicWand(wand, allowWandRefs = false)
-          case PApplying(wand, in) =>
+          case PApplyingGhostOp(wand, in) =>
             checkMagicWand(wand, allowWandRefs = true)
           case po: POldExp =>
             // For labelled old expressions, ensure that they refer to a state label

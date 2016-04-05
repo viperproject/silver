@@ -260,11 +260,13 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       predicateName <> parens(ssep((params map show).to[collection.immutable.Seq], comma <> space))
     case Unfolding(acc, exp) =>
       parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
-    case Folding(acc, exp) =>
+    case UnfoldingGhostOp(acc, exp) =>
+      parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
+    case FoldingGhostOp(acc, exp) =>
       parens("folding" <+> show(acc) <+> "in" <+> show(exp))
-    case Packaging(wand, in) =>
+    case PackagingGhostOp(wand, in) =>
       parens("packaging" <+> show(wand) <+> "in" <+> show(in))
-    case Applying(wand, in) =>
+    case ApplyingGhostOp(wand, in) =>
       parens("applying" <+> show(wand) <+> "in" <+> show(in))
     case Old(exp) =>
       "old" <> parens(show(exp))
