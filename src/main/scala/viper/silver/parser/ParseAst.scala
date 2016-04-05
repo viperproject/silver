@@ -20,11 +20,49 @@ import scala.language.implicitConversions
  */
 
 trait KiamaPositioned {
+
+  /** Do not use these first three interfaces for reporting the positions.
+      They may or may not contain the rel_file field, depending on whether
+      the AST is constructed through the Parser or via the Scala interfaces. */
+
+  /** TODO get ride of 'implicit def liftPos' of Translator.scala and make these methods private. */
   def start = Positions.getStart(this)
-  def setStart(p:Position) = Positions.setStart(this,p)
-  def setPos(a:Any) : this.type = Positions.dupPos(a,this)
+  def startWhite = Positions.getStartWhite(this)
   def finish = Positions.getFinish(this)
-  def setFinish(p:Position) = Positions.setFinish(this,p)
+
+  /** Used for reporting the starting position of an AST node. */
+  def startPosStr = start match {
+    case mfpp: MultiFileParserPosition =>
+      s"${mfpp.rel_file.getFileName}@${start}"
+    case _ =>
+      s"${start}"
+  }
+
+  /** Used for reporting the range of positions occupied by an AST node. */
+  def rangeStr = start match {
+    case mfpp_a: MultiFileParserPosition =>
+      require(finish.isInstanceOf[MultiFileParserPosition],
+        s"start and finish positions must be instances of MultiFileParserPosition at the same time")
+      val mfpp_b = finish.asInstanceOf[MultiFileParserPosition]
+      if (mfpp_a.rel_file == mfpp_b.rel_file)
+        s"${mfpp_a.rel_file.getFileName}@[$start-$finish]"
+      else
+        // An AST node should probably not spread between multiple source files, but who knows?
+        s"[${mfpp_a.rel_file.getFileName}@$start-${mfpp_b.rel_file.getFileName}@$finish]"
+    case _ =>
+      s"[${start}-${finish}]"
+  }
+
+  def setStart(p:Position) = Positions.setStart(this,viper.silver.parser.Parser.multiFileCoords(p))
+  def setStartWhite(p:Position) = Positions.setStartWhite(this,viper.silver.parser.Parser.multiFileCoords(p))
+  def setFinish(p:Position) = Positions.setFinish(this,viper.silver.parser.Parser.multiFileCoords(p))
+
+  def setPos(a:KiamaPositioned): this.type = {
+    setStart(a.start)
+    setStartWhite(a.startWhite)
+    setFinish(a.finish)
+    this
+  }
 }
 
 /**
@@ -880,6 +918,8 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def typ: PType
 }
 case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
+case class PImports(imports: Seq[PImport]) extends PNode
+case class PImport(file: String) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction
@@ -987,6 +1027,10 @@ object Nodes {
       case PConstraining(vars, stmt) => vars ++ Seq(stmt)
       case PProgram(file, domains, fields, functions, predicates, methods) =>
         domains ++ fields ++ functions ++ predicates ++ methods
+      case PImports(files) =>
+        files
+      case PImport(file) =>
+        Seq()
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
