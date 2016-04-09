@@ -1,0 +1,11 @@
+/****************************************
+ * List
+ ****************************************/
+
+field data: Int
+field next: Ref
+
+predicate list(this: Ref)
+
+function length(this: Ref): Int
+  requires acc(list(this))

@@ -2,12 +2,19 @@
 // Declarations
 sil-program ::=
 	(
+		import    |
 		domain    |
 		field     |
 		function  |
 		predicate |
 		method
 	)*
+
+import ::=
+    "import" relative-path
+
+relative-path ::=
+    \A(?:[\w-]+\/?)+\z
 
 domain ::=
 	"domain" domain-name "{"

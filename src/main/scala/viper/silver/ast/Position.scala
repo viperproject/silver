@@ -27,6 +27,7 @@ case object NoPosition extends Position {
 trait HasLineColumn extends Position {
   def line: Int
   def column: Int
+  override def toString = s"$line.$column"
 }
 
 case class LineColumnPosition(line: Int, column: Int) extends HasLineColumn

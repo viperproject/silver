@@ -424,7 +424,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def typeError(exp:PExp) = {
-    messages ++= Messaging.message(exp, s"Type error in the expression at ${exp.start}-${exp.finish}")
+    messages ++= Messaging.message(exp, s"Type error in the expression at ${exp.rangeStr}")
   }
   def check(exp: PExp, expected: PType) = checkTopTyped(exp,Some(expected))
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
@@ -441,7 +441,7 @@ case class TypeChecker(names: NameAnalyser) {
       }else {
         oexpected match {
           case Some(expected) =>
-            messages ++= Messaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.start}-${exp.finish}")
+            messages ++= Messaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.rangeStr}")
           case None =>
             typeError(exp)
         }
@@ -706,12 +706,12 @@ case class NameAnalyser() {
           case d: PDeclaration =>
             getMap(d).get(d.idndef.name) match {
               case Some(e: PDeclaration) =>
-                messages ++= Messaging.message(e, "Duplicate identifier \"" + e.idndef.name + "\" : at " + e.idndef.start + " and at " + d.idndef.start)
+                messages ++= Messaging.message(e, "Duplicate identifier `" + e.idndef.name + "' : at " + e.idndef.startPosStr + " and at " + d.idndef.startPosStr)
               case Some(e:PErrorEntity) =>
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
-                    messages ++= Messaging.message(e, "Identifier shadowing \"" + e.idndef.name + "\" : at " + e.idndef.start + " and at " + d.idndef.start)
+                    messages ++= Messaging.message(e, "Identifier shadowing `" + e.idndef.name + "' : at " + e.idndef.startPosStr + " and at " + d.idndef.startPosStr)
                   case Some(e:PErrorEntity) =>
                   case None =>
                     getMap(d).put(d.idndef.name, d)

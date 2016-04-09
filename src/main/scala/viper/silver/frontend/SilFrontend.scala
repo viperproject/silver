@@ -224,14 +224,31 @@ trait SilFrontend extends DefaultFrontend {
             Succ(program)
 
           case None => // then these are translation messages
-            Fail(Messaging.sortmessages(Consistency.messages) map (m => TypecheckerError(m.label, SourcePosition(_inputFile.get, m.pos.line, m.pos.column)))) // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
+            Fail(Messaging.sortmessages(Consistency.messages) map (m =>
+              {
+                TypecheckerError(
+                // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
+
+                m.label, m.pos match {
+                  case fp: FilePosition =>
+                    SourcePosition(fp.file, m.pos.line, m.pos.column)
+                  case _ =>
+                    SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
+                })
+
+              }))
         }
 
       case None =>
-       val errors = for (m <- Messaging.sortmessages(r.messages)) yield {
-          TypecheckerError(m.label, SourcePosition(_inputFile.get, m.pos.line, m.pos.column))
+        val errors = for (m <- Messaging.sortmessages(r.messages)) yield {
+          TypecheckerError(m.label, m.pos match {
+            case fp: FilePosition =>
+              SourcePosition(fp.file, m.pos.line, m.pos.column)
+            case _ =>
+              SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
+          })
         }
-      Fail(errors)
+        Fail(errors)
     }
   }
 

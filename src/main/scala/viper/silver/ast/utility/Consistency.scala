@@ -32,7 +32,7 @@ object Consistency {
         case rp@viper.silver.ast.NoPosition => NoPosition
       }
 
-      this.messages ++= Messaging.aMessage(Message(message,pos))  // this is the way to contruct a message directly with a position (only).
+      this.messages ++= Messaging.aMessage(Message(message,pos))  // this is the way to construct a message directly with a position (only).
     }
   }
 
