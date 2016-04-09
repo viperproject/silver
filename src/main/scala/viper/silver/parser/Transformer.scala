@@ -107,7 +107,8 @@ object Transformer {
         case PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))
         case _: PSkip => parent
 
-        case PProgram(file, domains, fields, functions, predicates, methods) => PProgram(file, domains map go, fields map go, functions map go, predicates map go, methods map go)
+        case PProgram(files, domains, fields, functions, predicates, methods, errors) => PProgram(files, domains map go, fields map go, functions map go, predicates map go, methods map go, errors)
+        case PImport(file) => PImport(file)
         case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, go(body))
         case PDomain(idndef, typVars, funcs, axioms) => PDomain(go(idndef), typVars map go, funcs map go, axioms map go)
         case PField(idndef, typ) => PField(go(idndef), go(typ))

@@ -1,3 +1,4 @@
+
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -6,150 +7,74 @@
 
 package viper.silver.parser
 
-import java.nio.file.{FileSystems, Path}
+import java.nio.file.Path
+
 import org.kiama.util.Positions._
 import org.kiama.util.WhitespacePositionedParserUtilities
 import viper.silver.ast._
+import viper.silver.verifier.ParseError
 
-/**
- * A parser for the SIL language that takes a string and produces an intermediate
- * AST ([[viper.silver.parser.PNode]]), or a parse error.  The intermediate AST can
- * then be type-checked and translated into the SIL AST ([[viper.silver.ast.Node]])
- * using [[viper.silver.parser.Translator]].
- *
- * IMPORTANT: If you change or extend the syntax, please also update the synatx
- * description in documentation/syntax as well as the syntax highlighting definitions
- * in util/highlighting!
- *
- * IMPORTANT: Also keep the parser in sync with the pretty printer!
- */
-object Parser extends BaseParser {
-  override def file = _file
-  var _file: Path = null
-  var _imports: Seq[(Path, Int)] = Nil
-
-  def parse(s: String, f: Path) = {
-    _file = f
-    _imports = Nil // don't forget to reset the state!
-    val imp: String = parseAll(imp_parser, s) match {
-      case Success(PImports(imp_list), _) =>
-        imp_list.map {
-          case PImport(fname) => {
-            val fpath = _file.getParent + "/" + fname
-            //TODO print debug info iff --dbg switch is used
-            //println(s"@importing $fpath")
-
-            // count lines of the module
-            val source = scala.io.Source.fromFile(fpath)
-            val buffer = try source.getLines.toArray finally source.close()
-            _imports :+=(
-              FileSystems.getDefault.getPath(fpath),
-              buffer.size + 1)
-
-            // serialize all lines of the module
-            buffer.mkString("\n") + "\n"
-          }
-        }.mkString("\n") // serialize all imported modules
-      case _ => ""
-    }
-
-    val r = parseAll(parser, imp + s)
-
-    r match {
-      // make sure the tree is correctly initialized
-      case Success(e, _) =>
-        e.initTreeProperties()
-      case _ =>
-    }
-    r
-  }
-
-  def multiFileLine(abs_line: Int): (Path, Int) = {
-    var ac_line = abs_line
-    var ac_file = _file
-    var sum_size = 0
-    var is_detected = false
-
-    //println(s"_file = ${_file}")
-    //println(s"_imports = ${_imports}")
-
-    for ((file, size) <- _imports) {
-      //if (!is_detected) println(s"> check out: file=$file, size=$size, sum_size=$sum_size")
-      if (!is_detected && sum_size+size > abs_line) {
-        ac_line = abs_line - sum_size
-        ac_file = file
-        is_detected = true
-        //println(s"> finally: file=$file, ac_line=$ac_line")
-      }
-      sum_size += size
-    }
-    if (!is_detected) ac_line = if (sum_size==0) abs_line else abs_line-sum_size+1
-    //println(s"Absolute line number: $abs_line")
-    //println(s"Actual line number: (${ac_file.getFileName()}, $ac_line)")
-    (ac_file, ac_line)
-  }
-
-  def multiFileLineColumn(abs_line: Int, abs_column: Int) = {
-    val (rel_file, rel_line) = multiFileLine(abs_line)
-    (rel_file, rel_line, abs_column)
-  }
-
-  def multiFileCoords(abs_line: Int, abs_column: Int) = {
-    val (rel_file, rel_line, _) = multiFileLineColumn(abs_line, abs_column)
-    SourcePosition(rel_file, rel_line, abs_column)
-  }
-
-  def multiFileCoords(start: HasLineColumn, end: HasLineColumn): SourcePosition =
-    new SourcePosition(
-      multiFileCoords(start.line, start.column).file,
-      multiFileCoords(start.line, start.column).start,
-      multiFileCoords(end.line, end.column).end)
-
-  def multiFileCoords(pos: util.parsing.input.Position): MultiFileParserPosition = {
-    val (rel_file, rel_line, abs_column) = multiFileLineColumn(pos.line, pos.column)
-    MultiFileParserPosition(rel_file, rel_line, abs_column)
-  }
-
-  /** TODO decide if we need (and are able) to convert these implicitly.
-
-  implicit def liftKiamaPositionToSourcePosition(pos: MultiFileParserPosition) {
-    pos.asInstanceOf[SourcePosition]
-  }
-  */
-}
-
-/* A parser intended for debugging. Extend it and make parsing rules log their invocation
- * by changing a rule such as
- *   lazy val foo = body
- * to
- *   lazy val foo = "foo" !!! body
- *
- * Taken from http://jim-mcbeath.blogspot.be/2011/07/debugging-scala-parser-combinators.html
- */
-
+import scala.collection.immutable.Iterable
+import scala.collection.mutable
+import scala.collection.mutable.HashMap
 import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 
-/** ATG: Kiama does not support AST node positions with files.
-  * MultiFileParserPosition is a workaround case class which extends util.parsing.input.Position
-  * and provides the missing field (file) from the AbstractSourcePosition trait.
+/**
+  * A parser for the SIL language that takes a string and produces an intermediate
+  * AST ([[viper.silver.parser.PNode]]), or a parse error.  The intermediate AST can
+  * then be type-checked and translated into the SIL AST ([[viper.silver.ast.Node]])
+  * using [[viper.silver.parser.Translator]].
+  *
+  * IMPORTANT: If you change or extend the syntax, please also update the syntax
+  * description in documentation/syntax as well as the syntax highlighting definitions
+  * in util/highlighting!
+  *
+  * IMPORTANT: Also keep the parser in sync with the pretty printer!
   */
-case class MultiFileParserPosition(val rel_file: Path, override val start: HasLineColumn, override val end: Option[HasLineColumn])
-  extends SourcePosition(rel_file, start, end) with util.parsing.input.Position {
-  def lineContents = toString
-  override def toString = end match {
-    case Some(end_pos) => s"${rel_file.getFileName}@[$start-$end_pos]"
-    case _ => s"${rel_file.getFileName}@$start)"
+object Parser extends BaseParser {
+  override def file = _file
+  var _file: Path = null
+  var _imports: mutable.HashMap[Path, Boolean] = null
+
+  def parse(s: String, f: Path) = {
+    _file = f
+    _imports = mutable.HashMap((f, true))
+    val rp = RecParser(f)
+    rp.parse(s) match {
+      case rp.Success(a, b) => Success(a, b)
+      case rp.Failure(a, b) => Failure(a, b)
+      case rp.Error(a, b) => Error(a, b)
+    }
+  }
+
+  case class RecParser(file: Path) extends BaseParser {
+    def parse(s: String) = parseAll(parser, s)
   }
 }
 
-case object MultiFileParserPosition {
-  def apply(rel_file: Path, y: Int, x: Int) =
-    new MultiFileParserPosition(rel_file, LineColumnPosition(y, x), None)
-
-  def apply(rel_file: Path, start: HasLineColumn, end: HasLineColumn) =
-    new MultiFileParserPosition(rel_file, start, Some(end))
+/**
+  * ATG: Kiama does not support AST node positions with files.
+  * MultiFileParserPosition is a workaround case class which extends util.parsing.input.Position
+  * and provides the missing field (file) from the AbstractSourcePosition trait.
+  */
+case class FilePosition(file: Path, pos: util.parsing.input.Position) extends util.parsing.input.Position with HasLineColumn
+{
+  override lazy val line = pos.line
+  override lazy val column = pos.column
+  override lazy val lineContents = toString
+  override lazy val toString = s"${file.getFileName}@$pos"
 }
+
+/**
+  * A parser intended for debugging. Extend it and make parsing rules log their invocation
+  * by changing a rule such as
+  *   lazy val foo = body
+  * to
+  *   lazy val foo = "foo" !!! body
+  *
+  * Taken from http://jim-mcbeath.blogspot.be/2011/07/debugging-scala-parser-combinators.html
+  */
 
 object DebuggingParser {
   var depth: Int = 0
@@ -178,32 +103,27 @@ trait DebuggingParser extends WhitespacePositionedParserUtilities {
 }
 
 
-/* This parser is a PackratParser and thus CAN support left recursive parsing
- * rules with memoisation. You have to EXPLICITLY declare the return type of
- * such rules as PackratPerser[T], though. Moreover, if sub-rules further down
- * the line are not declared to return a PackratParser, then the memoisation
- * won't be total and the run-time is no longer linear. Mixing different
- * parsers is otherwise fine.
- *
- * See the Kiama documentation for further information, for example,
- * http://code.google.com/p/kiama/wiki/ParserCombs.
- */
+/**
+  * This parser is a PackratParser and thus CAN support left recursive parsing
+  * rules with memoisation. You have to EXPLICITLY declare the return type of
+  * such rules as PackratPerser[T], though. Moreover, if sub-rules further down
+  * the line are not declared to return a PackratParser, then the memoisation
+  * won't be total and the run-time is no longer linear. Mixing different
+  * parsers is otherwise fine.
+  *
+  * See the Kiama documentation for further information, for example,
+  * http://code.google.com/p/kiama/wiki/ParserCombs.
+  */
 trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities {
 
-  /** Overriding this method allows to compute and store relative positions
-    * for the AST nodes created by Kiama. Used with the import feature.
-    *
-    * Run a parse function on some input and set the position of the
-    * resulting value.
-    */
   override def parseAndPosition[T] (f : Input => ParseResult[T], in : Input) : ParseResult[T] =
     f (in) match {
       case res @ Success (t, in1) =>
         val startoffset = handleWhiteSpace (in)
         val newin = in.drop (startoffset - in.offset)
-        setStart (t, viper.silver.parser.Parser.multiFileCoords(newin.pos))
-        setStartWhite (t, viper.silver.parser.Parser.multiFileCoords(in.pos))
-        setFinish (t, viper.silver.parser.Parser.multiFileCoords(in1.pos))
+        setStart (t, FilePosition(file, newin.pos))
+        setStartWhite (t, FilePosition(file, in.pos))
+        setFinish (t, FilePosition(file, in1.pos))
         res
       case res =>
         res
@@ -213,7 +133,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   def file: Path
 
   /** A helper method for wrapping keywords so that identifiers that have a keyword as their
-    *  prefix are parsed correctly.*/
+    *  prefix are parsed correctly.
+    */
   private def keyword(identifier: String) = not(s"$identifier$identOtherLetter".r) ~> identifier
 
   /**
@@ -264,8 +185,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     "variant", "hale", "tersection"*/
   )
 
-  lazy val parser = phrase(programDecl)
-  lazy val imp_parser = phrase(programDeclForImports)
+  lazy val parser: PackratParser[PProgram] = phrase(programDecl)
 
   // --- Whitespace
 
@@ -284,47 +204,84 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
         var globalDefines: Seq[PDefine] = decls.collect{case d: PDefine => d}
         globalDefines = expandDefines(globalDefines, globalDefines)
 
-        val fields = decls collect { case d: PField => d }
+        val imports: List[PImport] = decls.collect { case imp: PImport => imp }
 
-        val methods = decls collect {
-          case meth: PMethod =>
-            var localDefines = meth.deepCollect {case n: PDefine => n}
-            localDefines = expandDefines(localDefines ++ globalDefines, localDefines)
-
-            val methWithoutDefines =
-              if (localDefines.isEmpty)
-                meth
-              else
-                meth.transform { case la: PDefine => PSkip().setPos(la) }()
-
-            expandDefines(localDefines ++ globalDefines, methWithoutDefines)
+        val dups: Iterable[ParseError] = imports.groupBy(identity).collect {
+          case (imp@PImport(x), List(_,_,_*)) =>
+            ParseError(s"""multiple imports of the same file "$x" detected""", imp.start.asInstanceOf[viper.silver.ast.Position])
         }
+        //if (0 < dups.size) {
+        //  println(dups.mkString("\n"))
+        //}
 
-        val domains = decls collect { case d: PDomain => expandDefines(globalDefines, d) }
-        val functions = decls collect { case d: PFunction => expandDefines(globalDefines, d) }
-        val predicates = decls collect { case d: PPredicate => expandDefines(globalDefines, d) }
+        println(s"imports in current file: $imports")
+        println(s"all imports: ${viper.silver.parser.Parser._imports}")
 
-        /** These PNodes are parsed separetly through programDeclForImports.
-          * Some checks could be implemented as this point. */
-        val imports = decls collect {
-          case PImport(in) =>
-            //println(s"@begin importing:\n$in@end importing")
+        val imp_progs_results = imports.collect {
+          case PImport(imp_file) =>
+            //TODO print debug info iff --dbg switch is used
+            println(s"@importing $imp_file into $file")
 
-        }
+            val imp_path = java.nio.file.Paths.get(file.getParent + "/" + imp_file)
 
-        PProgram(file, domains, fields, functions, predicates, methods)
-    }
+            if (viper.silver.parser.Parser._imports.put(imp_path, true).isEmpty) {
 
-  lazy val programDeclForImports =
-    rep(preambleImport) <~ rep(preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
-      case imports =>
-        // check if imports contains duplicates
-        val dups = imports.groupBy(identity).collect { case (PImport(x), List(_,_,_*)) => x }
-        if (0 < dups.size) {
-          println(s"warning: there are duplicated imports: " + dups.mkString("; "))
-        }
+              val source = scala.io.Source.fromFile(imp_path.toString)
+              val buffer = try source.getLines.toArray finally source.close()
+              val s: String = buffer.mkString("\n") + "\n"
 
-        PImports(imports)
+              val p = viper.silver.parser.Parser.RecParser(imp_path)
+              p.parse(s) match {
+                case p.Success(a, _) => a
+                case p.Failure(msg, next) => ParseError(s"Failure: $msg", FilePosition(imp_path, next.pos))
+                case p.Error(msg, next) => ParseError(s"Error: $msg", FilePosition(imp_path, next.pos))
+              }
+            }
+          }
+
+        val imp_progs = imp_progs_results.collect { case p: PProgram => p }
+
+        val imp_errors = imp_progs_results.collect { case e: ParseError => e } ++
+          imp_progs.collect { case PProgram(_, _, _, _, _, _, e: List[ParseError]) => e }.flatten ++
+            dups
+
+        val files =
+          imp_progs.collect { case PProgram(f: List[PImport], _, _, _, _, _, _) => f }.flatten ++
+            imports
+
+        val domains =
+          imp_progs.collect { case PProgram(_, d: List[PDomain], _, _, _, _, _) => d }.flatten ++
+            decls.collect { case d: PDomain => expandDefines(globalDefines, d) }
+
+        val fields =
+          imp_progs.collect { case PProgram(_, _, f: List[PField], _, _, _, _) => f }.flatten ++
+            decls.collect { case f: PField => f }
+
+        val functions =
+          imp_progs.collect { case PProgram(_, _, _, f: List[PFunction], _, _, _) => f }.flatten ++
+            decls.collect { case d: PFunction => expandDefines(globalDefines, d) }
+
+        val predicates =
+          imp_progs.collect { case PProgram(_, _, _, _, p: List[PPredicate], _, _) => p }.flatten ++
+            decls.collect { case d: PPredicate => expandDefines(globalDefines, d) }
+
+        val methods =
+          imp_progs.collect { case PProgram(_, _, _, _, _, m: List[PMethod], _) => m }.flatten ++
+            decls.collect {
+              case meth: PMethod =>
+                var localDefines = meth.deepCollect {case n: PDefine => n}
+                localDefines = expandDefines(localDefines ++ globalDefines, localDefines)
+
+                val methWithoutDefines =
+                  if (localDefines.isEmpty)
+                    meth
+                  else
+                    meth.transform { case la: PDefine => PSkip().setPos(la) }()
+
+                expandDefines(localDefines ++ globalDefines, methWithoutDefines)
+            }
+
+        PProgram(files, domains, fields, functions, predicates, methods, imp_errors)
     }
 
   lazy val fieldDecl =

@@ -28,13 +28,12 @@ import viper.silver.ast.utility.{Consistency, Visitor, Statements}
  * Messaging feature.
  */
 case class Translator(program: PProgram) {
-  val file = program.file
 
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
     program match {
-      case PProgram(_, pdomains, pfields, pfunctions, ppredicates, pmethods) =>
+      case PProgram(_, pdomains, pfields, pfunctions, ppredicates, pmethods, _) =>
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
             pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
 
@@ -139,8 +138,7 @@ case class Translator(program: PProgram) {
          * TODO: Get rid of this case! There is a matching case in the resolver.
          */
         val call = PMethodCall(Seq(idnuse), func, args)
-        call.setStart(s.start)
-        call.setFinish(s.finish)
+        call.setPos(s)
         stmt(call)
       case PVarAssign(idnuse, rhs) =>
         LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos), exp(rhs))(pos)
@@ -460,11 +458,14 @@ case class Translator(program: PProgram) {
 //  implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition =
 //    SourcePosition(file, pos.line, pos.column)
 
-  /** Takes a [[org.kiama.util.Positioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
+  /** Takes a [[viper.silver.parser.KiamaPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
   implicit def liftPos(pos: KiamaPositioned): SourcePosition = {
     val start = LineColumnPosition(pos.start.line, pos.start.column)
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
-    SourcePosition(file, start, end)
+    pos.start match {
+      case fp: FilePosition => SourcePosition(fp.file, start, end)
+      case _ => SourcePosition(null, start, end)
+    }
   }
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */

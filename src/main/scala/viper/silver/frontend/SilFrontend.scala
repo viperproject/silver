@@ -8,15 +8,16 @@ package viper.silver.frontend
 
 import java.io.File
 import java.nio.file.{Path, Paths}
+
 import org.apache.commons.io.FilenameUtils
 import org.kiama.util.Messaging
-import org.rogach.scallop.exceptions.{Version, Help, ScallopException}
+import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
 import viper.silver.parser._
 import viper.silver.verifier._
 import viper.silver.verifier.CliOptionError
 import viper.silver.verifier.Failure
 import viper.silver.verifier.ParseError
-import viper.silver.ast.{Position, HasLineColumn, AbstractSourcePosition, SourcePosition, Program}
+import viper.silver.ast.{AbstractSourcePosition, HasLineColumn, Position, Program, SourcePosition}
 import viper.silver.verifier.TypecheckerError
 import viper.silver.ast.utility.Consistency
 
@@ -198,10 +199,10 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
-    val p = Parser.parse(input, file)
-    p match {
-      case Parser.Success(e, _) =>
-        Succ(e)
+    Parser.parse(input, file) match {
+      case Parser.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
+        if (err_list.isEmpty) Succ(e)
+        else Fail(err_list)
       case Parser.Failure(msg, next) =>
         Fail(List(ParseError(s"Failure: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
       case Parser.Error(msg, next) =>
