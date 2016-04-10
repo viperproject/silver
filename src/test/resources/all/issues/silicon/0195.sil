@@ -1,0 +1,5 @@
+field f: Int
+
+method test(x: Ref) {
+  package false --* (packaging (acc(x.f) --* false) in true)
+}

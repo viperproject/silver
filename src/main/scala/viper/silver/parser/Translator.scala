@@ -463,15 +463,10 @@ case class Translator(program: PProgram) {
 //    SourcePosition(file, pos.line, pos.column)
 
   /** Takes a [[viper.silver.parser.KiamaPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
-  implicit def liftPos(pos: KiamaPositioned): MultiFileParserPosition = {
+  implicit def liftPos(pos: KiamaPositioned): SourcePosition = {
     val start = LineColumnPosition(pos.start.line, pos.start.column)
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
-    pos.start match {
-      case mfpp: MultiFileParserPosition =>
-        MultiFileParserPosition(mfpp.rel_file, start, end)
-      case _ =>
-        MultiFileParserPosition(file, start, end)
-    }
+    SourcePosition(file, start, end)
   }
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */

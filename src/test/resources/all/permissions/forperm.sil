@@ -7,12 +7,9 @@ method test01(x: Ref, b: Bool)
   assert b || forperm[f] y :: false
 
   assert (forperm[f] y :: false) ==> (forperm[f] y :: true)
-
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/205/)
   assert (forperm[f] y :: false) ==> !b
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert forperm[f] y :: false
 }
 
