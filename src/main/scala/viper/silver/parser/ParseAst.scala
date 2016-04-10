@@ -13,7 +13,7 @@ import scala.util.parsing.input.Position
 import org.kiama.attribution.Attributable
 import viper.silver.ast.utility.Visitor
 import viper.silver.parser.TypeHelper._
-import viper.silver.verifier.ParseError
+import viper.silver.verifier.{ParseError, ParseReport}
 
 import scala.language.implicitConversions
 
@@ -926,7 +926,7 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def typ: PType
 }
 
-case class PProgram(files: List[PImport], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseError]) extends PNode
+case class PProgram(files: List[PImport], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
 case class PImport(file: String) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
