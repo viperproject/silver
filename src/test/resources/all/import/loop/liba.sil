@@ -1,0 +1,4 @@
+import "libb.sil"
+
+function liba(): Bool
+	ensures result == libb()

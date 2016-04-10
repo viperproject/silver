@@ -206,7 +206,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
         val imports: List[PImport] = decls.collect { case imp: PImport => imp }
 
         val dups: Iterable[ParseError] = imports.groupBy(identity).collect {
-          case (imp@PImport(x), List(_,_,_*)) =>
+          case (imp@ PImport(x), List(_,_,_*)) =>
             ParseError(s"""multiple imports of the same file "$x" detected""", imp.start.asInstanceOf[viper.silver.ast.Position])
         }
 
@@ -214,13 +214,15 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
         //println(s"all imports: ${viper.silver.parser.Parser._imports}")
 
         val imp_progs_results = imports.collect {
-          case PImport(imp_file) =>
+          case imp@ PImport(imp_file) =>
             //TODO print debug info iff --dbg switch is used
             //println(s"@importing $imp_file into $file")
 
             val imp_path = java.nio.file.Paths.get(file.getParent + "/" + imp_file)
 
-            if (viper.silver.parser.Parser._imports.put(imp_path, true).isEmpty) {
+            if (imp_path == file) ParseError(s"importing yourself is probably not a good idea!", imp.start.asInstanceOf[viper.silver.ast.Position])
+
+            else if (viper.silver.parser.Parser._imports.put(imp_path, true).isEmpty) {
 
               val source = scala.io.Source.fromFile(imp_path.toString)
               val buffer = try source.getLines.toArray finally source.close()
