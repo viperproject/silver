@@ -1,5 +1,0 @@
-domain HelloWorld {
-    function foo(x: Int): Bool
-    axiom Bar { forall a: Int :: { foo(a) } foo(a) == false }
-}
-
