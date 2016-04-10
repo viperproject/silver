@@ -47,7 +47,7 @@ trait KiamaPositioned {
         s"start and finish positions must be instances of FilePosition at the same time")
       val fp_b = finish.asInstanceOf[FilePosition]
       if (fp_a.file == fp_b.file)
-        s"${fp_a.file.getFileName}@[$start-$finish]"
+        s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
       else
         // An AST node should probably not spread between multiple source files, but who knows?
         s"[$fp_a-$fp_b]"

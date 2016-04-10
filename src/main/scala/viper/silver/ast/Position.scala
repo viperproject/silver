@@ -44,7 +44,7 @@ trait AbstractSourcePosition extends HasLineColumn {
   lazy val column = start.column
 
   override def toString =
-    s"${if(file==null || file.getFileName==null) "" else file.getFileName.toString},$line:$column"
+    s"${if(file==null || file.getFileName==null) "" else file.getFileName.toString + "@"}$line.$column"
 }
 
 object AbstractSourcePosition {
