@@ -1,11 +1,26 @@
-predicate mustTerminate$(r: Ref) {
-  true
+predicate P(r: Ref)
+
+method test01(this: Ref)
+  requires acc(P(this));
+{
+  exhale perm(P(this)) == write &&
+         acc(P(this)) &&
+         perm(P(this)) == none
 }
 
-method test(this: Ref)
-  requires acc(mustTerminate$(this), write);
+method test02a(this: Ref)
+  requires acc(P(this));
 {
-  exhale perm(mustTerminate$(this)) == write &&
-         acc(mustTerminate$(this), write) &&
-         perm(mustTerminate$(this)) == none;
+  //:: ExpectedOutput(exhale.failed:assertion.false)
+  exhale (forperm[P] r :: false) &&
+         acc(P(this)) &&
+         (forperm[P] r :: false)
+}
+
+method test02b(this: Ref)
+  requires acc(P(this));
+{
+  exhale /*(forperm[P] r :: false &&)*/
+         acc(P(this)) &&
+         (forperm[P] r :: false)
 }

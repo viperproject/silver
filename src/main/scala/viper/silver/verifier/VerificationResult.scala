@@ -52,10 +52,20 @@ trait AbstractError {
   }
 }
 
+abstract class ParseReport(message: String, pos: Position) extends AbstractError
+
 /** A parser error. */
-case class ParseError(message: String, pos: Position) extends AbstractError {
+case class ParseError(message: String, override val pos: Position)
+  extends ParseReport(message, pos) {
   def fullId = "parser.error"
   def readableMessage = s"Parse error: $message ($pos)"
+}
+
+/** A case class used for treating certain parser reports as non-critical. */
+case class ParseWarning(message: String, override val pos: Position)
+  extends ParseReport(message, pos) {
+  def fullId = "parser.warning"
+  def readableMessage = s"Parse warning: $message ($pos)"
 }
 
 /** A typechecker error. */

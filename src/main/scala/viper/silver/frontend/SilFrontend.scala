@@ -201,7 +201,8 @@ trait SilFrontend extends DefaultFrontend {
     val file = _inputFile.get
     Parser.parse(input, file) match {
       case Parser.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
-        if (err_list.isEmpty) Succ({ e.initTreeProperties(); e })
+        if (err_list.isEmpty || err_list.forall{ case p => p.isInstanceOf[ParseWarning] })
+          Succ({ e.initTreeProperties(); e })
         else Fail(err_list)
       case Parser.Failure(msg, next) =>
         Fail(List(ParseError(s"Failure: $msg", SourcePosition(file, next.pos.line, next.pos.column))))

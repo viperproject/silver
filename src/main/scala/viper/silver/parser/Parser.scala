@@ -19,6 +19,8 @@ import scala.collection.mutable
 import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 
+import viper.silver.verifier._
+
 /**
   * A parser for the SIL language that takes a string and produces an intermediate
   * AST ([[viper.silver.parser.PNode]]), or a parse error.  The intermediate AST can
@@ -201,50 +203,70 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val programDecl =
     rep(preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl) ^^ {
       case decls =>
-        var globalDefines: Seq[PDefine] = decls.collect{case d: PDefine => d}
+        var globalDefines: Seq[PDefine] = decls.collect { case d: PDefine => d }
         globalDefines = expandDefines(globalDefines, globalDefines)
 
-        val imports: List[PImport] = decls.collect { case imp: PImport => imp }
+        val imports: List[PImport] = decls.collect { case i: PImport => i }
 
         val dups: Iterable[ParseError] = imports.groupBy(identity).collect {
           case (imp@ PImport(x), List(_,_,_*)) =>
-            ParseError(s"""multiple imports of the same file "$x" detected""",
-              imp.start.asInstanceOf[viper.silver.ast.Position])
+            val dup_pos = imp.start.asInstanceOf[viper.silver.ast.Position]
+            val report = s"""multiple imports of the same file "$x" detected"""
+            //println(s"warning: $report ($dup_pos)")
+            ParseError(report, dup_pos)
         }
 
         //println(s"imports in current file: $imports")
         //println(s"all imports: ${viper.silver.parser.Parser._imports}")
 
-        val imp_progs_results = imports.collect {
+        val imp_progs_results: List[Either[ParseReport, Any] with Product with Serializable] = imports.collect {
           case imp@ PImport(imp_file) =>
-            //TODO print debug info iff --dbg switch is used
-            //println(s"@importing $imp_file into $file")
-
             val imp_path = java.nio.file.Paths.get(file.getParent + "/" + imp_file)
+            val imp_pos = imp.start.asInstanceOf[viper.silver.ast.Position]
 
-            if (java.nio.file.Files.isSameFile(imp_path, file))
-              ParseError(s"importing yourself is probably not a good idea!",
-                imp.start.asInstanceOf[viper.silver.ast.Position])
+            if (java.nio.file.Files.notExists(imp_path))
+              Left(ParseError(s"""file "$imp_path" does not exist""", imp_pos))
+
+            else if (java.nio.file.Files.isSameFile(imp_path, file))
+              Left(ParseError(s"""importing yourself is probably not a good idea!""", imp_pos))
 
             else if (viper.silver.parser.Parser._imports.put(imp_path, true).isEmpty) {
-
               val source = scala.io.Source.fromFile(imp_path.toString)
-              val buffer = try source.getLines.toArray finally source.close()
-              val s: String = buffer.mkString("\n") + "\n"
+              val buffer = try {
+                Right(source.getLines.toArray)
+              } catch {
+                case e@(_: RuntimeException | _: java.io.IOException) =>
+                  Left(ParseError(s"""could not import file ($e)""", imp_pos))
+              } finally {
+                source.close()
+              }
+              buffer match {
+                case Left(e) => Left(e)
+                case Right(s) =>
+                  //TODO print debug info iff --dbg switch is used
+                  //println(s"@importing $imp_file into $file")
 
-              val p = viper.silver.parser.Parser.RecParser(imp_path)
-              p.parse(s) match {
-                case p.Success(a, _) => a
-                case p.Failure(msg, next) => ParseError(s"Failure: $msg", FilePosition(imp_path, next.pos))
-                case p.Error(msg, next) => ParseError(s"Error: $msg", FilePosition(imp_path, next.pos))
+                  val p = viper.silver.parser.Parser.RecParser(imp_path)
+                  p.parse(s.mkString("\n") + "\n") match {
+                    case p.Success(a, _) => Right(a)
+                    case p.Failure(msg, next) => Left(ParseError(s"Failure: $msg", FilePosition(imp_path, next.pos)))
+                    case p.Error(msg, next) => Left(ParseError(s"Error: $msg", FilePosition(imp_path, next.pos)))
+                  }
               }
             }
-          }
 
-        val imp_progs = imp_progs_results.collect { case p: PProgram => p }
+            else {
+              val report = s"fount loop dependency among these imports:\n" +
+                viper.silver.parser.Parser._imports.map {case (k,v)=>k} .mkString("\n")
+              println(s"warning: $report\n(loop starts at $imp_pos)")
+              Right(ParseWarning(report, imp_pos))
+            }
+        }
 
-        val imp_errors = imp_progs_results.collect { case e: ParseError => e } ++
-          imp_progs.collect { case PProgram(_, _, _, _, _, _, e: List[ParseError]) => e }.flatten ++
+        val imp_progs = imp_progs_results.collect { case Right(p) => p }
+
+        val imp_reports = imp_progs_results.collect { case Left(e) => e } ++
+          imp_progs.collect { case PProgram(_, _, _, _, _, _, e: List[ParseReport]) => e }.flatten ++
             dups
 
         val files =
@@ -283,7 +305,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
                 expandDefines(localDefines ++ globalDefines, methWithoutDefines)
             }
 
-        PProgram(files, domains, fields, functions, predicates, methods, imp_errors)
+        PProgram(files, domains, fields, functions, predicates, methods, imp_reports)
     }
 
   lazy val fieldDecl =
