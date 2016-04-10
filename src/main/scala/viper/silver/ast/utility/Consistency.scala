@@ -271,15 +271,10 @@ object Consistency {
     case _: Package =>
       c.copy(insidePackageStmt = true)
 
-    case p: Packaging =>
-      recordIfNot(p, c.insideWandStatus.isInside, "Packaging-expressions may only occur inside wands.")
+    case ghop: GhostOperation =>
+      recordIfNot(ghop, c.insideWandStatus.isInside, "Ghost operations may only be used when packaging magic wands.")
 
-      c.copy(insidePackageStmt = true)
-
-    case a: Applying =>
-      recordIfNot(a, c.insideWandStatus.isInside, "Applying-expressions may only occur inside wands.")
-
-      c
+      c.copy(insidePackageStmt = c.insidePackageStmt || ghop.isInstanceOf[PackagingGhostOp])
 
     case mw @ MagicWand(lhs, rhs) =>
       checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
@@ -295,11 +290,6 @@ object Consistency {
 
     case po: ApplyOld =>
       recordIfNot(po, c.insideWandStatus.isInside, "given-expressions may only occur inside wands.")
-
-      c
-
-    case e: UnFoldingExp =>
-      recordIfNot(e, c.insideWandStatus.isInside || e.isPure, "(Un)folding expressions outside of wands must be pure.")
 
       c
   })

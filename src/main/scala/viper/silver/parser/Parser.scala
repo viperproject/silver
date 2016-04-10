@@ -16,7 +16,6 @@ import viper.silver.verifier.ParseError
 
 import scala.collection.immutable.Iterable
 import scala.collection.mutable
-import scala.collection.mutable.HashMap
 import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 
@@ -210,17 +209,14 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
           case (imp@PImport(x), List(_,_,_*)) =>
             ParseError(s"""multiple imports of the same file "$x" detected""", imp.start.asInstanceOf[viper.silver.ast.Position])
         }
-        //if (0 < dups.size) {
-        //  println(dups.mkString("\n"))
-        //}
 
-        println(s"imports in current file: $imports")
-        println(s"all imports: ${viper.silver.parser.Parser._imports}")
+        //println(s"imports in current file: $imports")
+        //println(s"all imports: ${viper.silver.parser.Parser._imports}")
 
         val imp_progs_results = imports.collect {
           case PImport(imp_file) =>
             //TODO print debug info iff --dbg switch is used
-            println(s"@importing $imp_file into $file")
+            //println(s"@importing $imp_file into $file")
 
             val imp_path = java.nio.file.Paths.get(file.getParent + "/" + imp_file)
 
@@ -620,7 +616,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     ("unfolding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PUnfolding
 
   lazy val folding: PackratParser[PExp] =
-    ("folding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PFolding
+    ("folding" ~> predicateAccessPred) ~ ("in" ~> exp) ^^ PFoldingGhostOp
 
   lazy val applying: PackratParser[PExp] =
     /* We must be careful here to not create ambiguities in our grammar.
@@ -638,11 +634,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
      * Moreover, not using a memoising parser might make the parser
      * significantly slower.
      */
-    ("applying" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PApplying
+    ("applying" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PApplyingGhostOp
 
   lazy val packaging: PackratParser[PExp] =
     /* See comment on applying */
-    ("packaging" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PPackaging
+    ("packaging" ~> ("(" ~> realMagicWandExp <~ ")" | idnuse)) ~ ("in" ~> exp) ^^ PPackagingGhostOp
 
   lazy val let: PackratParser[PExp] =
     ("let" ~> idndef <~ "==") ~ ("(" ~> exp <~ ")") ~ ("in" ~> exp) ^^ { case id ~ exp1 ~ exp2 =>

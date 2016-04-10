@@ -17,11 +17,12 @@ object Transformer {
   def transform[A <: PNode](node: A,
                             pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
                             recursive: PNode => Boolean = !pre.isDefinedAt(_),
-                            post: PartialFunction[PNode, PNode] = PartialFunction.empty): A = {
+                            post: PartialFunction[PNode, PNode] = PartialFunction.empty,
+                            allowChangingNodeType: Boolean = false): A = {
 
     @inline
     def go[B <: PNode](root: B): B = {
-      transform(root, pre)(recursive, post)
+      transform(root, pre)(recursive, post, allowChangingNodeType)
     }
 
     def recurse(parent: PNode): PNode = {
@@ -49,9 +50,11 @@ object Transformer {
         case PFunctApp(func, args) => PFunctApp(go(func), args map go)
 
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
-        case PFolding(acc, exp) => PFolding(go(acc), go(exp))
-        case PApplying(wand, exp) => PApplying(go(wand), go(exp))
-        case PPackaging(wand, exp) => PPackaging(go(wand), go(exp))
+
+        case PUnfoldingGhostOp(acc, exp) => PUnfoldingGhostOp(go(acc), go(exp))
+        case PFoldingGhostOp(acc, exp) => PFoldingGhostOp(go(acc), go(exp))
+        case PApplyingGhostOp(wand, exp) => PApplyingGhostOp(go(wand), go(exp))
+        case PPackagingGhostOp(wand, exp) => PPackagingGhostOp(go(wand), go(exp))
 
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map (_ map go), go(exp))
@@ -118,7 +121,8 @@ object Transformer {
         case pda@PAxiom(idndef, exp) => PAxiom(go(idndef), go(exp))(domainName = pda.domainName)
       }
 
-      assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
+      if (!allowChangingNodeType)
+        assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
 
       newNode.setPos(parent)
     }
