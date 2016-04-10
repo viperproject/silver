@@ -5,7 +5,6 @@ predicate mustTerminate$(r: Ref) {
 method test(this: Ref)
   requires acc(mustTerminate$(this), write);
 {
-  //:: UnexpectedOutput(exhale.failed:assertion.false, /Silicon/issue/231/)
   exhale perm(mustTerminate$(this)) == write &&
          acc(mustTerminate$(this), write) &&
          perm(mustTerminate$(this)) == none;
