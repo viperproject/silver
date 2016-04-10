@@ -1,0 +1,17 @@
+predicate obligationGenerationGuard$(r$: Ref) {
+  true
+}
+
+method test(c: Ref, d: Ref, e: Ref)
+{
+
+  inhale acc(obligationGenerationGuard$(c), write)
+
+  inhale acc(obligationGenerationGuard$(d), write)
+
+  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /Silicon/issue/232/)
+  exhale (
+      perm(obligationGenerationGuard$(e)) > none ?
+      acc(obligationGenerationGuard$(e), perm(obligationGenerationGuard$(e))) :
+      true)
+}
