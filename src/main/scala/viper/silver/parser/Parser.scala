@@ -57,7 +57,8 @@ object Parser extends BaseParser {
   * MultiFileParserPosition is a workaround case class which extends util.parsing.input.Position
   * and provides the missing field (file) from the AbstractSourcePosition trait.
   */
-case class FilePosition(file: Path, pos: util.parsing.input.Position) extends util.parsing.input.Position with HasLineColumn
+case class FilePosition(file: Path, pos: util.parsing.input.Position)
+  extends util.parsing.input.Position with HasLineColumn
 {
   override lazy val line = pos.line
   override lazy val column = pos.column
@@ -207,7 +208,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
         val dups: Iterable[ParseError] = imports.groupBy(identity).collect {
           case (imp@ PImport(x), List(_,_,_*)) =>
-            ParseError(s"""multiple imports of the same file "$x" detected""", imp.start.asInstanceOf[viper.silver.ast.Position])
+            ParseError(s"""multiple imports of the same file "$x" detected""",
+              imp.start.asInstanceOf[viper.silver.ast.Position])
         }
 
         //println(s"imports in current file: $imports")
@@ -220,7 +222,9 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
             val imp_path = java.nio.file.Paths.get(file.getParent + "/" + imp_file)
 
-            if (imp_path == file) ParseError(s"importing yourself is probably not a good idea!", imp.start.asInstanceOf[viper.silver.ast.Position])
+            if (java.nio.file.Files.isSameFile(imp_path, file))
+              ParseError(s"importing yourself is probably not a good idea!",
+                imp.start.asInstanceOf[viper.silver.ast.Position])
 
             else if (viper.silver.parser.Parser._imports.put(imp_path, true).isEmpty) {
 
