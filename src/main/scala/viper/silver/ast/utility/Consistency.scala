@@ -8,7 +8,7 @@ package viper.silver.ast.utility
 
 import scala.util.parsing.input.{Position, NoPosition}
 import org.kiama.util.{Message, Messaging}
-import viper.silver.parser.{MultiFileParserPosition, Parser}
+import viper.silver.parser.Parser
 import viper.silver.ast._
 
 /** An utility object for consistency checking. */
@@ -32,7 +32,7 @@ object Consistency {
         case rp@viper.silver.ast.NoPosition => NoPosition
       }
 
-      this.messages ++= Messaging.aMessage(Message(message,pos))  // this is the way to contruct a message directly with a position (only).
+      this.messages ++= Messaging.aMessage(Message(message,pos))  // this is the way to construct a message directly with a position (only).
     }
   }
 

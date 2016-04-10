@@ -1,0 +1,5 @@
+//:: IgnoreFile(/Silver/issue/132/)
+method test() {
+  var x: Int;
+  assert x == old[l1](x);
+}

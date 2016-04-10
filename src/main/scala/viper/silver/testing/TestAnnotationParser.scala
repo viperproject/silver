@@ -157,7 +157,7 @@ trait TestAnnotationParser {
   }
 
   /** Try to parse the annotation a ``IgnoreFile``, and otherwise use `next`. */
-  private def isIgnoreFile(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
+    private def isIgnoreFile(annotation: String, file: Path, lineNr: Int, next: () => Option[TestAnnotation] = () => None): Option[TestAnnotation] = {
     val regex = """^IgnoreFile\(/(.*)/issue/([0-9]+)/\)$""".r
     annotation match {
       case regex(project, issueNr) => Some(IgnoreFile(file, lineNr, project, issueNr.toInt))

@@ -8,11 +8,13 @@ package viper.silver.parser
 
 import org.kiama.util.Positions
 import viper.silver.ast.MagicWandOp
+
 import scala.util.parsing.input.Position
 import org.kiama.attribution.Attributable
 import viper.silver.ast.utility.Visitor
 import viper.silver.parser.TypeHelper._
-import java.nio.file.Path
+import viper.silver.verifier.ParseError
+
 import scala.language.implicitConversions
 
 /**
@@ -32,32 +34,32 @@ trait KiamaPositioned {
 
   /** Used for reporting the starting position of an AST node. */
   def startPosStr = start match {
-    case mfpp: MultiFileParserPosition =>
-      s"${mfpp.rel_file.getFileName}@${start}"
+    case fp: FilePosition =>
+      s"${fp.file.getFileName}@${start}"
     case _ =>
       s"${start}"
   }
 
   /** Used for reporting the range of positions occupied by an AST node. */
   def rangeStr = start match {
-    case mfpp_a: MultiFileParserPosition =>
-      require(finish.isInstanceOf[MultiFileParserPosition],
-        s"start and finish positions must be instances of MultiFileParserPosition at the same time")
-      val mfpp_b = finish.asInstanceOf[MultiFileParserPosition]
-      if (mfpp_a.rel_file == mfpp_b.rel_file)
-        s"${mfpp_a.rel_file.getFileName}@[$start-$finish]"
+    case fp_a: FilePosition =>
+      require(finish.isInstanceOf[FilePosition],
+        s"start and finish positions must be instances of FilePosition at the same time")
+      val fp_b = finish.asInstanceOf[FilePosition]
+      if (fp_a.file == fp_b.file)
+        s"${fp_a.file.getFileName}@[$start-$finish]"
       else
         // An AST node should probably not spread between multiple source files, but who knows?
-        s"[${mfpp_a.rel_file.getFileName}@$start-${mfpp_b.rel_file.getFileName}@$finish]"
+        s"[$fp_a-$fp_b]"
     case _ =>
       s"[${start}-${finish}]"
   }
 
-  def setStart(p:Position) = Positions.setStart(this,viper.silver.parser.Parser.multiFileCoords(p))
-  def setStartWhite(p:Position) = Positions.setStartWhite(this,viper.silver.parser.Parser.multiFileCoords(p))
-  def setFinish(p:Position) = Positions.setFinish(this,viper.silver.parser.Parser.multiFileCoords(p))
+  private def setStart(p: Position) = Positions.setStart(this, (p))
+  private def setStartWhite(p: Position) = Positions.setStartWhite(this, (p))
+  private def setFinish(p: Position) = Positions.setFinish(this, (p))
 
-  def setPos(a:KiamaPositioned): this.type = {
+  def setPos(a: KiamaPositioned): this.type = {
     setStart(a.start)
     setStartWhite(a.startWhite)
     setFinish(a.finish)
@@ -923,8 +925,8 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def formalArgs: Seq[PFormalArgDecl]
   def typ: PType
 }
-case class PProgram(file: Path, domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]) extends PNode
-case class PImports(imports: Seq[PImport]) extends PNode
+
+case class PProgram(files: List[PImport], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseError]) extends PNode
 case class PImport(file: String) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
@@ -1031,10 +1033,8 @@ object Nodes {
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
       case PFresh(vars) => vars
       case PConstraining(vars, stmt) => vars ++ Seq(stmt)
-      case PProgram(file, domains, fields, functions, predicates, methods) =>
+      case PProgram(files, domains, fields, functions, predicates, methods, errors) =>
         domains ++ fields ++ functions ++ predicates ++ methods
-      case PImports(files) =>
-        files
       case PImport(file) =>
         Seq()
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms

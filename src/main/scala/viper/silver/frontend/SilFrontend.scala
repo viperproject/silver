@@ -8,15 +8,16 @@ package viper.silver.frontend
 
 import java.io.File
 import java.nio.file.{Path, Paths}
+
 import org.apache.commons.io.FilenameUtils
 import org.kiama.util.Messaging
-import org.rogach.scallop.exceptions.{Version, Help, ScallopException}
+import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
 import viper.silver.parser._
 import viper.silver.verifier._
 import viper.silver.verifier.CliOptionError
 import viper.silver.verifier.Failure
 import viper.silver.verifier.ParseError
-import viper.silver.ast._
+import viper.silver.ast.{AbstractSourcePosition, HasLineColumn, Position, Program, SourcePosition}
 import viper.silver.verifier.TypecheckerError
 import viper.silver.ast.utility.Consistency
 
@@ -198,26 +199,14 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
-    val p = Parser.parse(input, file)
-    p match {
-      case Parser.Success(e, _) =>
-        Succ(e)
+    Parser.parse(input, file) match {
+      case Parser.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
+        if (err_list.isEmpty) Succ({ e.initTreeProperties(); e })
+        else Fail(err_list)
       case Parser.Failure(msg, next) =>
-        next.pos match {
-          case mfpp: MultiFileParserPosition =>
-            Fail(List(ParseError(s"Failure: $msg", SourcePosition(mfpp.file, next.pos.line, next.pos.column))))
-          case _ =>
-            Fail(List(ParseError(s"Failure: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
-        }
-
+        Fail(List(ParseError(s"Failure: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
       case Parser.Error(msg, next) =>
-        next.pos match {
-          case mfpp: MultiFileParserPosition =>
-            Fail(List(ParseError(s"Error: $msg", SourcePosition(mfpp.file, next.pos.line, next.pos.column))))
-          case _ =>
-            Fail(List(ParseError(s"Error: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
-        }
-
+        Fail(List(ParseError(s"Error: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
     }
   }
 
@@ -241,8 +230,8 @@ trait SilFrontend extends DefaultFrontend {
                 // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
 
                 m.label, m.pos match {
-                  case mfpp: MultiFileParserPosition =>
-                    SourcePosition(mfpp.file, m.pos.line, m.pos.column)
+                  case fp: FilePosition =>
+                    SourcePosition(fp.file, m.pos.line, m.pos.column)
                   case _ =>
                     SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
                 })
@@ -253,8 +242,8 @@ trait SilFrontend extends DefaultFrontend {
       case None =>
         val errors = for (m <- Messaging.sortmessages(r.messages)) yield {
           TypecheckerError(m.label, m.pos match {
-            case mfpp: MultiFileParserPosition =>
-              SourcePosition(mfpp.file, m.pos.line, m.pos.column)
+            case fp: FilePosition =>
+              SourcePosition(fp.file, m.pos.line, m.pos.column)
             case _ =>
               SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
           })

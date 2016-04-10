@@ -1,0 +1,10 @@
+import "liba.sil"
+
+function main(): Bool
+	ensures result == liba()
+
+method test()
+{
+	//:: ExpectedOutput(assert.failed)
+	assert main()
+}
