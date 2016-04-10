@@ -217,26 +217,39 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
 
         val imp_progs_results = imports.collect {
           case imp@ PImport(imp_file) =>
-            //TODO print debug info iff --dbg switch is used
-            //println(s"@importing $imp_file into $file")
-
             val imp_path = java.nio.file.Paths.get(file.getParent + "/" + imp_file)
+            val imp_pos = imp.start.asInstanceOf[viper.silver.ast.Position]
 
-            if (java.nio.file.Files.isSameFile(imp_path, file))
-              ParseError(s"importing yourself is probably not a good idea!",
-                imp.start.asInstanceOf[viper.silver.ast.Position])
+            if (java.nio.file.Files.notExists(imp_path))
+              ParseError(s"""file "$imp_path" does not exist""", imp_pos)
+
+            else if (java.nio.file.Files.isSameFile(imp_path, file))
+              ParseError(s"""importing yourself is probably not a good idea!""", imp_pos)
 
             else if (viper.silver.parser.Parser._imports.put(imp_path, true).isEmpty) {
 
               val source = scala.io.Source.fromFile(imp_path.toString)
-              val buffer = try source.getLines.toArray finally source.close()
-              val s: String = buffer.mkString("\n") + "\n"
+              val buffer = try {
+                source.getLines.toArray
+              } catch {
+                case e @ (_ : RuntimeException | _ : java.io.IOException) =>
+                  ParseError(s"""could not import file ($e)""", imp_pos)
+              } finally {
+                source.close()
+              }
 
-              val p = viper.silver.parser.Parser.RecParser(imp_path)
-              p.parse(s) match {
-                case p.Success(a, _) => a
-                case p.Failure(msg, next) => ParseError(s"Failure: $msg", FilePosition(imp_path, next.pos))
-                case p.Error(msg, next) => ParseError(s"Error: $msg", FilePosition(imp_path, next.pos))
+              buffer match {
+                case e: ParseError => e
+                case s: Array[String] =>
+                  //TODO print debug info iff --dbg switch is used
+                  //println(s"@importing $imp_file into $file")
+
+                  val p = viper.silver.parser.Parser.RecParser(imp_path)
+                  p.parse( s.mkString("\n") + "\n" ) match {
+                    case p.Success(a, _) => a
+                    case p.Failure(msg, next) => ParseError(s"Failure: $msg", FilePosition(imp_path, next.pos))
+                    case p.Error(msg, next) => ParseError(s"Error: $msg", FilePosition(imp_path, next.pos))
+                  }
               }
             }
           }
