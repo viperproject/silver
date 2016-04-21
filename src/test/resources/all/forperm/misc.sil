@@ -18,6 +18,7 @@ method test03(c1: Ref, c2: Ref, c3: Ref)
   requires c3 == c1 || c3 == c2
 {
   inhale forperm[val] r :: r == c3 ==> false
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/131/)  
   assert false
 }
 

@@ -37,6 +37,7 @@ method test08(x: Ref, y: Ref)
   requires x.f > 0 && y.f > 0
 {
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  //:: MissingOutput(exhale.failed:insufficient.permission, /Carbon/issue/130/)
   exhale acc(y.f) && (forperm[f] r :: y.f > 0)
     /* forperm is evaluated in the current state, as is its body */
 }

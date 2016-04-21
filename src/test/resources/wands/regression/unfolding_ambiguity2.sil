@@ -15,7 +15,6 @@ method t02(x:Ref) {
    */
   package acc(P(x)) --* unfolding P(x) in true
 
-  //:: UnexpectedOutput(exhale.failed:wand.not.found, /carbon/issue/111/)
   exhale (acc(P(x)) --* true)
 }
 

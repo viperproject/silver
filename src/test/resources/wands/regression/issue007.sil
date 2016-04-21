@@ -41,6 +41,7 @@ method test03(x: Ref)
 
   //:: ExpectedOutput(wand.not.wellformed)
   //:: MissingOutput(wand.not.wellformed, /silicon/issue/201/)
+  //:: MissingOutput(wand.not.wellformed, /carbon/issue/105/)
   //:: UnexpectedOutput(apply.failed:insufficient.permission, /silicon/issue/201/)
   apply acc(x.f) && x.f == 0 --* x.f == 0 // Malformed as well
 }

@@ -124,7 +124,7 @@ method t10(r: Ref) returns ()
         j := j+1
     }
     assert j >= (r.f)
-}
+w}
 
 method t11(r: Ref) returns ()
   requires r != null
@@ -133,6 +133,8 @@ method t11(r: Ref) returns ()
 
     while (j < 3)
         //:: ExpectedOutput(not.wellformed:insufficient.permission)
+        //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/129/)
+        //:: UnexpectedOutput(while.failed:insufficient.permission, /Carbon/issue/129/)
         //:: ExpectedOutput(invariant.not.established:assertion.false)
         //:: MissingOutput(invariant.not.established:assertion.false, /Silicon/issue/34/)
         invariant r != null && r.f == 2

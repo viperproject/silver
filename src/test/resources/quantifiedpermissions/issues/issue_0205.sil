@@ -16,6 +16,7 @@ method test01(x: Ref, y: Ref, b: Bool)
 
   assert fun01(x, y, true) == old(fun01(x, y, true))
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/205/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/115/)
   assert fun02(x, y, true) == old(fun02(x, y, true))
 }
 
@@ -38,5 +39,8 @@ method test02(xs: Seq[Ref], i1: Int, i2: Int)
   xs[i1].f := 0
 
   assert fun01qp(xs, i2) == old(fun01qp(xs, i2))
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/115/)
+  //:: UnexpectedOutput(application.precondition:negative.permission, /carbon/issue/116/)
+  //:: UnexpectedOutput(application.precondition:negative.permission, /carbon/issue/116/)
   assert fun02qp(xs, i2) == old(fun02qp(xs, i2))
 }

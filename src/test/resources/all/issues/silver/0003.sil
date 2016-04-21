@@ -7,6 +7,7 @@ method t11(r: Ref) returns ()
 
     while (j < 3)
         //:: ExpectedOutput(not.wellformed:insufficient.permission)
+        //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/70/)
         //:: ExpectedOutput(invariant.not.established:assertion.false)
         //:: MissingOutput(invariant.not.established:assertion.false, /Silicon/issue/34/)
         invariant r != null && r.f == 2

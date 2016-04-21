@@ -30,5 +30,6 @@ method test03(xs: Seq[Ref])
   ensures xs[0] != xs[1]
 {
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/149/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/132/)
   assert xs[0] != xs[1]
 }

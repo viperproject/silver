@@ -1,3 +1,5 @@
+//:: IgnoreFile(/Carbon/issue/072/)
+
 method test1()
 {
   exhale write*3 == 3*write

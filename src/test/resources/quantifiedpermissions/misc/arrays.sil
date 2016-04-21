@@ -4,10 +4,16 @@ field val: Int
 
 domain IArray {
   function loc(a: IArray, i: Int): Ref
+  function loc_limited(a: IArray, i: Int): Ref
   function len(a: IArray): Int
   function first(r: Ref): IArray
   function second(r: Ref): Int
 
+  axiom limited {
+    forall a: IArray, i: Int :: {loc(a, i)}
+      loc(a,i) == loc_limited(a,i)
+  } 
+  
   axiom all_diff {
     forall a: IArray, i: Int :: {loc(a, i)}
       first(loc(a, i)) == a && second(loc(a, i)) == i
@@ -47,9 +53,10 @@ method test03(a: IArray, left: Int, right: Int, pw1: Seq[Int], pw2: Seq[Int]) {
   inhale forall i: Int :: 0 <= i && i < |pw1| ==> left <= pw1[i] && pw1[i] <= right
   inhale forall i: Int :: 0 <= i && i < |pw2| ==> left <= pw2[i] && pw2[i] <= right
 
-  inhale forall j: Int :: 0 <= j - left && j - left < |pw1| ==> loc(a, j).val == loc(a, pw1[j - left]).val
-  inhale forall j: Int :: 0 <= j && j < |pw2| ==> loc(a, j + left).val == loc(a, pw2[j]).val
+  // ad hoc triggering to avoid matching loops - this should be revisited (or perhaps dropped from the example)
+  inhale forall j: Int :: {loc(a,j).val} 0 <= j - left && j - left < |pw1| ==> loc(a, j).val == loc_limited(a, pw1[j - left]).val
+  inhale forall j: Int :: {loc(a, pw2[j])} 0 <= j && j < |pw2| ==> loc_limited(a, j + left).val == loc(a, pw2[j]).val
 
-  assert forall j: Int :: 0 <= j - left && j - left < |pw2| ==> loc(a, j).val == loc(a, pw2[j - left]).val
+  assert forall k: Int :: {loc(a,k).val} 0 <= k - left && k - left < |pw2| ==> loc_limited(a, k).val == loc(a, pw2[k - left]).val
   assert forall j: Int :: 0 <= j && j < |pw1| ==> loc(a, j + left).val == loc(a, pw1[j]).val
 }
