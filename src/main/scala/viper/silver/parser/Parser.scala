@@ -583,7 +583,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       setTypedEmpty | explicitSetNonEmpty |
       explicitMultisetNonEmpty | multiSetTypedEmpty |
       seqTypedEmpty | seqLength | explicitSeqNonEmpty | seqRange |
-      fapp |
+      fapp | typedFapp |
       idnuse
 
   lazy val accessPred: PackratParser[PAccPred] =
@@ -594,10 +594,16 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val predicateAccessPred: PackratParser[PAccPred] =
     accessPred | predAcc ^^ {case loc => PAccPred(loc, PFullPerm())}
 
-  lazy val fapp: PackratParser[PExp] =
-    idnuse ~ parens(actualArgList) ~ opt(":" ~> typ) ^^ {
-      case func ~ args ~ typeGiven => PFunctApp(func,args,typeGiven)
+  lazy val typedFapp: PackratParser[PExp] =
+    idnuse ~ parens(actualArgList) ~ (":" ~> typ) ^^ {
+      case func ~ args ~ typeGiven => PFunctApp(func,args,Some(typeGiven))
     }
+
+  lazy val fapp: PackratParser[PExp] =
+    idnuse ~ parens(actualArgList) ^^ {
+      case func ~ args => PFunctApp(func,args,None)
+    }
+
 
   lazy val actualArgList: PackratParser[Seq[PExp]] =
     repsep(exp, ",")
