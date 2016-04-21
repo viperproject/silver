@@ -512,7 +512,7 @@ case class TypeChecker(names: NameAnalyser) {
         assert(poa.typeSubstitutions.isEmpty)
 
         poa.args.foreach(checkInternal)
-        var nestedTypeError = poa.args.forall(a => a.typ.isValidAndResolved)
+        var nestedTypeError = !poa.args.forall(a => a.typ.isValidAndResolved)
         if (!nestedTypeError) {
         poa match {
           case pfa@PFunctApp(func, args, explicitType) =>
