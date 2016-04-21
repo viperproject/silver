@@ -1,3 +1,5 @@
+//:: IgnoreFile(/Carbon/issue/072/)
+
 field f: Int
 
 predicate token(x: Ref) {

@@ -11,6 +11,7 @@ method main() {
   while (i < 10)
     invariant i <= 10
     invariant |v| == i
+    //:: UnexpectedOutput(invariant.not.preserved:receiver.not.injective, /carbon/issue/126/)
     invariant forall j:Int :: j in [0..i) ==> acc(v[j].val)
     invariant forall j:Int :: j in [0..i) ==> v[j].val == 1
   {

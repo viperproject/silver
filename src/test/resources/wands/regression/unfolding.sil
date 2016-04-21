@@ -12,6 +12,8 @@ function sum(p: Ref): Int
 }
 
 method test06(p: Ref) {
+  // Note: the following should fail whether the unfolding is interpreted as part of an expression on the RHS (old way), or as a ghost operation for the package (new way)
+  //:: ExpectedOutput(package.failed:insufficient.permission)
   package
     (acc(Pair(p)) && sum(p) == 10)
       --*
