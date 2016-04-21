@@ -124,7 +124,7 @@ method t10(r: Ref) returns ()
         j := j+1
     }
     assert j >= (r.f)
-w}
+}
 
 method t11(r: Ref) returns ()
   requires r != null
