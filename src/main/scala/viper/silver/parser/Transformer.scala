@@ -47,7 +47,7 @@ object Transformer {
         case _: PNullLit => parent
         case PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))
         case PPredicateAccess(args, idnuse) => PPredicateAccess( args map go, go(idnuse))
-        case PFunctApp(func, args) => PFunctApp(go(func), args map go)
+        case PFunctApp(func, args, explicitType) => PFunctApp(go(func), args map go, ( explicitType match {case Some(t) => Some(go(t)) case None => None}))
 
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
 

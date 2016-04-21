@@ -133,7 +133,7 @@ case class Translator(program: PProgram) {
   private def stmt(s: PStmt): Stmt = {
     val pos = s
     s match {
-      case PVarAssign(idnuse, PFunctApp(func, args)) if members.get(func.name).get.isInstanceOf[Method] =>
+      case PVarAssign(idnuse, PFunctApp(func, args, _)) if members.get(func.name).get.isInstanceOf[Method] =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the resolver.
          */
@@ -334,7 +334,7 @@ case class Translator(program: PProgram) {
         FieldAccess(exp(rcv), findField(idn))(pos)
       case p@PPredicateAccess(args, idn) =>
         PredicateAccess(args map exp, findPredicate(idn))(pos)
-      case pfa@PFunctApp(func, args) =>
+      case pfa@PFunctApp(func, args, _) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
           case f @ DomainFunc(name, formalArgs, typ, _) =>
