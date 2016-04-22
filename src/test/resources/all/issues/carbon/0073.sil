@@ -8,7 +8,7 @@ method test(this: Ref, I: Perm)
   exhale acc(this.data, write)
   assert this.rds >= 0
   //assert I > none   // Uncommenting this makes a program to verify.
-  // currently, this works! //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/73/) 
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/73/) 
   // check Z3 version - this seems to work with some versions
   assert this.rds * I > none
 }
