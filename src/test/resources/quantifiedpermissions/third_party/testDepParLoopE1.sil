@@ -116,7 +116,10 @@ method Ref__loop_body_54(diz: Ref, len: Int, ar: Seq[Ref], br: Seq[Ref], i: Int,
   if (i > 0) {
     Ref__recv_body_148(diz, ar, i)
     __flatten_12 := ar[i + 1]
+        // confirmed by Stefan Blom
     //:: ExpectedOutput(assignment.failed:receiver.null)
+    //:: ExpectedOutput(assignment.failed:insufficient.permission)
+    //:: MissingOutput(assignment.failed:insufficient.permission, /silicon/issue/34/)
     __flatten_11 := __flatten_12.Ref__Integer_value + 2
     __flatten_4 := __flatten_11
     __flatten_13 := cr[i]

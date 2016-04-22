@@ -41,6 +41,5 @@ method test02(xs: Seq[Ref], i1: Int, i2: Int)
   assert fun01qp(xs, i2) == old(fun01qp(xs, i2))
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/115/)
   //:: UnexpectedOutput(application.precondition:negative.permission, /carbon/issue/116/)
-  //:: UnexpectedOutput(application.precondition:negative.permission, /carbon/issue/116/)
   assert fun02qp(xs, i2) == old(fun02qp(xs, i2))
 }

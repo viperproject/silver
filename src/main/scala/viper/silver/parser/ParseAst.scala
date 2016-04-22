@@ -441,10 +441,10 @@ object POpApp{
   def pRes     = PTypeVar(pResS)
 }
 
-case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends POpApp
+case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] = None) extends POpApp
 {
   override val opName = func.name
-  override def signatures = function match{
+  override def signatures = if (function.formalArgs.size == args.size) (function match{
     case pf:PFunction => Set(
       new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
     )
@@ -454,7 +454,8 @@ case class PFunctApp(func: PIdnUse, args: Seq[PExp]) extends POpApp
           args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ.substitute(domainTypeRenaming.get)) :+
             (POpApp.pRes.domain.name -> pdf.typ.substitute(domainTypeRenaming.get)))
       )
-  }
+  }) else Set() // this case is handled in Resolver.scala (- method check) which generates the appropriate error message
+
   var function : PAnyFunction = null
   override def extraLocalTypeVariables = _extraLocalTypeVariables
   var _extraLocalTypeVariables : Set[PDomainType] = Set()
@@ -982,7 +983,7 @@ object Nodes {
       case PResultLit() => Nil
       case PFieldAccess(rcv, field) => Seq(rcv, field)
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
-      case PFunctApp(func, args) => Seq(func) ++ args
+      case PFunctApp(func, args, optType) => Seq(func) ++ args ++ (optType match { case Some(t) => Seq(t) case None => Nil})
       case e: PUnFoldingExp => Seq(e.acc, e.exp)
       case PApplyingGhostOp(wand, in) => Seq(wand, in)
       case PPackagingGhostOp(wand, in) => Seq(wand, in)

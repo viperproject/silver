@@ -256,7 +256,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
             }
 
             else {
-              val report = s"fount loop dependency among these imports:\n" +
+              val report = s"found loop dependency among these imports:\n" +
                 viper.silver.parser.Parser._imports.map {case (k,v)=>k} .mkString("\n")
               println(s"warning: $report\n(loop starts at $imp_pos)")
               Right(ParseWarning(report, imp_pos))
@@ -583,7 +583,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
       setTypedEmpty | explicitSetNonEmpty |
       explicitMultisetNonEmpty | multiSetTypedEmpty |
       seqTypedEmpty | seqLength | explicitSeqNonEmpty | seqRange |
-      fapp |
+      fapp | typedFapp |
       idnuse
 
   lazy val accessPred: PackratParser[PAccPred] =
@@ -594,8 +594,16 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val predicateAccessPred: PackratParser[PAccPred] =
     accessPred | predAcc ^^ {case loc => PAccPred(loc, PFullPerm())}
 
+  lazy val typedFapp: PackratParser[PExp] =
+    parens(idnuse ~ parens(actualArgList) ~ (":" ~> typ)) ^^ {
+      case func ~ args ~ typeGiven => PFunctApp(func,args,Some(typeGiven))
+    }
+
   lazy val fapp: PackratParser[PExp] =
-    idnuse ~ parens(actualArgList) ^^ PFunctApp
+    idnuse ~ parens(actualArgList) ^^ {
+      case func ~ args => PFunctApp(func,args,None)
+    }
+
 
   lazy val actualArgList: PackratParser[Seq[PExp]] =
     repsep(exp, ",")
