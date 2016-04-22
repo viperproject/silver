@@ -24,8 +24,8 @@ method test01(y: Ref) {
   assert z.f == 0 //       asserting z.f == 0. See unbounded.smt2 (in Silicon's
                   //       repo in docs/logs/).
 
-  // //:: ExpectedOutput(assert.failed:assertion.false)
   // false can be proven because of the inclusion of null in the range of the above quantifiers
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/61/)
   assert false
 }
 
