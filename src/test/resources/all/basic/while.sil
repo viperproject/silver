@@ -131,10 +131,10 @@ method t11(r: Ref) returns ()
 {
     var j: Int := 2
 
+    //:: UnexpectedOutput(while.failed:insufficient.permission, /Carbon/issue/129/)
     while (j < 3)
         //:: ExpectedOutput(not.wellformed:insufficient.permission)
         //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/129/)
-        //:: UnexpectedOutput(while.failed:insufficient.permission, /Carbon/issue/129/)
         //:: ExpectedOutput(invariant.not.established:assertion.false)
         //:: MissingOutput(invariant.not.established:assertion.false, /Silicon/issue/34/)
         invariant r != null && r.f == 2

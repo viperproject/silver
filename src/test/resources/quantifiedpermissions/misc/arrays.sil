@@ -1,5 +1,3 @@
-//:: IgnoreFile(/Silicon/issue/168/)
-
 field val: Int
 
 domain IArray {
@@ -47,7 +45,7 @@ method test03(a: IArray, left: Int, right: Int, pw1: Seq[Int], pw2: Seq[Int]) {
 
   inhale 0 <= left && left < right && right < len(a)
 
-  inhale forall i: Int :: i in [left..right+1) ==> acc(loc(a, i).val)
+  inhale forall i: Int :: i in [left..right+1) ==> acc(loc_limited(a, i).val)
 
   inhale |pw1| == |pw2| && |pw2| == right + 1 - left
   inhale forall i: Int :: 0 <= i && i < |pw1| ==> left <= pw1[i] && pw1[i] <= right
@@ -57,6 +55,8 @@ method test03(a: IArray, left: Int, right: Int, pw1: Seq[Int], pw2: Seq[Int]) {
   inhale forall j: Int :: {loc(a,j).val} 0 <= j - left && j - left < |pw1| ==> loc(a, j).val == loc_limited(a, pw1[j - left]).val
   inhale forall j: Int :: {loc(a, pw2[j])} 0 <= j && j < |pw2| ==> loc_limited(a, j + left).val == loc(a, pw2[j]).val
 
-  assert forall k: Int :: {loc(a,k).val} 0 <= k - left && k - left < |pw2| ==> loc_limited(a, k).val == loc(a, pw2[k - left]).val
+  // making the following trigger {loc(a,k).val) seems to cause performance problems in Carbon
+  // ! Note that even the current trigger has a matching loop (which seems difficult to avoid) !
+  assert forall k: Int :: {loc(a,k)} 0 <= k - left && k - left < |pw2| ==> loc_limited(a, k).val == loc(a, pw2[k - left]).val
   assert forall j: Int :: 0 <= j && j < |pw1| ==> loc(a, j + left).val == loc(a, pw1[j]).val
 }
