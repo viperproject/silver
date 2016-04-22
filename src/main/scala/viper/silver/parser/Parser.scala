@@ -595,7 +595,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
     accessPred | predAcc ^^ {case loc => PAccPred(loc, PFullPerm())}
 
   lazy val typedFapp: PackratParser[PExp] =
-    idnuse ~ parens(actualArgList) ~ (":" ~> typ) ^^ {
+    parens(idnuse ~ parens(actualArgList) ~ (":" ~> typ)) ^^ {
       case func ~ args ~ typeGiven => PFunctApp(func,args,Some(typeGiven))
     }
 
