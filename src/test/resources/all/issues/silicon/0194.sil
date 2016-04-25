@@ -1,0 +1,8 @@
+method test01() {
+  wand w := true --* true
+}
+
+method test02() {
+  //:: ExpectedOutput(typechecker.error)
+  wand w := let x == (0) in true --* true
+}

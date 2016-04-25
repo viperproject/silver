@@ -252,7 +252,12 @@ case class TypeChecker(names: NameAnalyser) {
         val msg = "expected variable in fresh read permission block"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
         check(s)
-      case PLetWand(_, wand) => check(wand, Wand)
+      case plw @ PLetWand(_, wand) =>
+        check(wand, Wand)
+        wand match {
+          case pbe: PBinExp if pbe.opName == MagicWandOp.op && pbe.typ == PWandType() => /* Good */
+          case _ => messages ++= Messaging.message(plw, s"Expected a wand literal")
+        }
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
