@@ -1,5 +1,3 @@
-//:: IgnoreFile(/silicon/issue/202/)
-
 field f: Int
 field g: Ref
 field h: Ref
@@ -12,22 +10,22 @@ method test02(x: Ref) {
 }
 
 method test03(x:Ref)
-requires acc(P(x),1/2)
+  requires acc(P(x),1/2)
 {
   package acc(P(x),1/2) --* acc(P(x))
 }
 
-method test04(x:Ref)
-{
+method test04(x:Ref) {
+  //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/183/)
   package acc(x.f) --* packaging (acc(x.f) --* folding Q(x) in false) in true
 
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 
 
-method test06(x:Ref)
-{
+method test06(x:Ref) {
   //:: ExpectedOutput(package.failed:insufficient.permission)
   package acc(x.f) --* folding P(x) in acc(x.f) //should fail
 }
@@ -38,7 +36,7 @@ predicate P(x: Ref) {
 }
 
 predicate Q(x: Ref) {
-  acc(x.f)&&acc(x.f)
+  acc(x.f) && acc(x.f)
 }
 
 
