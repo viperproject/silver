@@ -8,10 +8,12 @@ predicate LLInf(x: Ref, i: Int) {
 }
 
 method test04(x: Ref) {
-  package // ERR: Magic wand might not be well-formed. Receiver of x.next might be null.
+  package
         acc(LLInf(x, 0))
     --*
         unfolding acc(LLInf(x, 0)) in
         unfolding acc(LLInf(x.next, 1)) in
-        acc(x.next.val) && x.next.val == 1
+        acc(x.next) && acc(x.next.val) && x.next.val == 1
+        
+  assert acc(LLInf(x, 0)) --* acc(x.next) && acc(x.next.val) && x.next.val == 1
 }
