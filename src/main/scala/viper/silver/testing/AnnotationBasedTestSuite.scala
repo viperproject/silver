@@ -8,6 +8,7 @@ package viper.silver.testing
 
 import java.nio.file.Path
 import org.scalatest.Tag
+import org.scalatest.events.TestIgnored
 
 /**
  * End-to-end test suite that extracts [[viper.silver.testing.TestAnnotations]]
@@ -43,7 +44,9 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
       // Match expected outputs with actual outputs
       val actualOutputs = system.run(input)
       val expectedOutputs = input.annotations.outputAnnotations
-      val outputErrors = OutputMatcher(actualOutputs, expectedOutputs).errors
+      val matcher = OutputMatcher(actualOutputs, expectedOutputs)
+      val unexpectedAnnotations = input.annotations.outputAnnotations.filter(shouldLeadToTestCancel)
+      val outputErrors = matcher.errors
 
       // All errors
       val errors = parserErrors ++ outputErrors
@@ -58,6 +61,27 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
         }).mkString("\n\n")
         fail(title + "\n\n" + body + "\n\n")
       }
+      // If the test succeeds, but there were annotations for unexpected
+      // or missing outputs, we mark the test as cancelled.
+      if (unexpectedAnnotations.nonEmpty) {
+        val title = s"${unexpectedAnnotations.size} ignored errors"
+        val body = unexpectedAnnotations.map({
+          case UnexpectedOutput(id, _, _, _, _, issue) =>
+            id.toString + ", issue " + issue
+          case MissingOutput(id, _, _, _, project, issue) =>
+            id.toString + ", issue " + issue
+          case _ => ""
+        }).mkString("\n")
+        cancel(title + "\n" + body + "\n")
+      }
+    }
+  }
+
+  def shouldLeadToTestCancel(ann: LocatedAnnotation) = {
+    ann match {
+      case UnexpectedOutput(_, _, _, _, _, _) => true
+      case MissingOutput(_, _, _, _, _, _) => true
+      case _ => false
     }
   }
 
