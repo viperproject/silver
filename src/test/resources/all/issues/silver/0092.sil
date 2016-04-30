@@ -3,6 +3,8 @@ field x: Int
 method test(this: Ref)
 {
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(žalias:grybas, /Silver/issue/92/)
-  assert true
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  //:: MissingOutput(assert.failed:insufficient.permission, /silver/issue/000/)
+  assert false
+  // note: the idea of this (fixed) Silver issue (92) was to point out that MissingOutput annotations "silenced" all other annotations on the line. But it's not really possible to demonstrate this directly without making the test fail.
 }

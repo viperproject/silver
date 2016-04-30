@@ -4,7 +4,7 @@ method callee(x: Int) returns (r: Int)
   ensures r == 1\x
 {
   //:: ExpectedOutput(assignment.failed:division.by.zero)
-  //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
+  //:: MissingOutput(assignment.failed:division.by.zero, /Silicon/issue/162/)
   r := 1\x
 }
 

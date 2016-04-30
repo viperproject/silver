@@ -31,6 +31,5 @@ method test01(diz: Ref)
   unfold acc(token(diz))
   fold acc(token(diz))
   //:: ExpectedOutput(fold.failed:insufficient.permission)
-  //:: MissingOutput(fold.failed:insufficient.permission, /silicon/issue/34/)
   fold acc(token(diz))
 }

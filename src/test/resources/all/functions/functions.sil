@@ -47,9 +47,9 @@ function err1(x: Ref): Int
 
 function err2(x: Ref): Int
   requires acc(x.f)
-  //:: ExpectedOutput(application.precondition:receiver.null)
   //:: ExpectedOutput(application.precondition:insufficient.permission)
-  //:: MissingOutput(application.precondition:insufficient.permission, /silicon/issue/34/)
+  //:: ExpectedOutput(application.precondition:receiver.null)
+  //:: MissingOutput(application.precondition:receiver.null, /silicon/issue/34/)
   requires err1(x) == 0
 { 0 }
 

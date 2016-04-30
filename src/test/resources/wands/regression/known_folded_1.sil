@@ -13,7 +13,7 @@ method t02(x:Ref) {
         (packaging (acc(x.f,1/2) --* (folding Q(x) in (folding Q(x) in acc(Q(x),2/1)))) in true)
 
    //:: ExpectedOutput(assert.failed:assertion.false)
-   //:: MissingOutput(if.failed:insufficient.permission, /silicon/issue/34/)
+   //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 
