@@ -9,8 +9,33 @@ package viper.silver.ast.utility
 import scala.collection.mutable
 import viper.silver.ast._
 
-/** Utility methods for quantified permissions. */
+/** Utility methods for quantified predicate permissions. */
 object QuantifiedPermissions {
+  object QPPForall {
+    //TODO
+    def unapply(n: Forall): Option[(LocalVarDecl, /* Quantified variable */
+      Exp, /* Condition */
+      Seq[Exp], /* Predicate arguments in acc(pred(args), p) */
+      String, /* predicate name of acc(pred(args), p) */
+      Exp, /* Permissions p of acc(e.f, p) */
+      Forall, /* AST node of the forall (for error reporting) */
+      PredicateAccess)] = /* AST node for e.f (for error reporting) */
+
+      n match {
+        case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
+        triggers,
+        Implies(condition, PredicateAccessPredicate(pa@PredicateAccess(args, predname), gain)))
+          //TODO predicate exists check?
+          if    triggers.isEmpty =>
+
+          Some((lvd, condition, args, predname, gain, forall, pa))
+
+        case _ => None
+      }
+
+  }
+
+  /** Utility methods for quantified field permissions. */
   object QPForall {
     def unapply(n: Forall): Option[(LocalVarDecl, /* Quantified variable */
                                     Exp, /* Condition */
