@@ -1,0 +1,10 @@
+field f: Int
+
+method test02(x: Ref, p: Perm)
+    //requires acc(x.f)
+  requires forall y:Ref :: y == x ==> acc(y.f)
+  ensures forall y:Ref :: y == x ==> acc(y.f)
+{
+    
+    //x.f := 1
+}
