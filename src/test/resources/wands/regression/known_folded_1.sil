@@ -8,12 +8,10 @@ method t01(x:Ref) {
 }
 
 method t02(x:Ref) {
-  //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/198/)
   package acc(x.f,1/2) --*
         (packaging (acc(x.f,1/2) --* (folding Q(x) in (folding Q(x) in acc(Q(x),2/1)))) in true)
 
    //:: ExpectedOutput(assert.failed:assertion.false)
-   //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 
