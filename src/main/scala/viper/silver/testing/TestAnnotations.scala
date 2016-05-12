@@ -129,9 +129,6 @@ case class OutputAnnotationId(keyId: String, valueId: Option[String]) {
 sealed trait LocatedAnnotation extends TestAnnotation {
   def file: Path
   def forLineNr: Int
-
-  def sameSource(other: LocatedAnnotation) =
-    Files.isSameFile(this.file, other.file) && forLineNr == other.forLineNr
 }
 
 /**
@@ -140,6 +137,9 @@ sealed trait LocatedAnnotation extends TestAnnotation {
  */
 sealed trait OutputAnnotation extends LocatedAnnotation {
   def id: OutputAnnotationId
+
+  def sameSource(other: OutputAnnotation) =
+    Files.isSameFile(this.file, other.file) && forLineNr == other.forLineNr && this.id == other.id
 
   override def toString = s"$id (${file.getFileName.toString}:$forLineNr)"
 }

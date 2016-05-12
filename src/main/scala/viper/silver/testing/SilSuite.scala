@@ -24,8 +24,12 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
   /** The frontend to be used. */
   def frontend(verifier: Verifier, files: Seq[Path]): Frontend
 
-  /** The list of projects under the test. */
-  def projectInfo: ProjectInfo = new ProjectInfo(List("Silver"))
+  /** The list of projects under the test.
+    *
+    * Silver is always included - this means that e.g. IgnoreFile annotations
+    * for Silver project will cause the file to be ignored by all verifiers
+    */
+   def projectInfo: ProjectInfo = new ProjectInfo(List("Silver"))
 
   /** Populated by splitting the (key, values) in `configMap` (which is
     * expected to be non-null) into (prefix, actual key, value) triples such

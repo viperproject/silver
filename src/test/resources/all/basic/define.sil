@@ -53,3 +53,47 @@ method test05(x: Int) {
     assume false
   }
 }
+
+define swap(x, y, t) {
+  t.g := x.g
+  x.g := y.g
+  y.g := t.g
+}
+
+field g: Int
+
+method test06() {
+  var x: Ref; inhale acc(x.g); x.g := 1
+  var y: Ref; inhale acc(y.g); y.g := 2
+  var t: Ref; inhale acc(t.g)
+  swap(x, y, t)
+  assert x.g == 2 && y.g == 1 && t.g == 1
+  swap(y, t, x)
+  assert x.g == 1 && y.g == 1 && t.g == 1
+}
+
+method test07(x: Ref)
+  requires acc(x.g)
+{
+  define gtOrPrune(i, n) {
+    if (i <= n) {
+      assume false
+    }
+  }
+
+  x.g := 1
+  gtOrPrune(x.g, 5)
+  assert false
+}
+
+//method test09(x: Ref)
+//  requires acc(x.f)
+//{
+//  define outer() {
+//    define inner true
+//  }
+//
+//  outer()
+//  assert inner
+//}
+//

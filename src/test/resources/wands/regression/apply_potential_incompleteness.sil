@@ -9,7 +9,7 @@ method t(x:Ref) {
   assert x.f==2
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(if.failed:insufficient.permission, /silicon/issue/34/)
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 

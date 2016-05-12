@@ -87,7 +87,8 @@ Exhale.
 method e0(this: Ref)
   //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/34/)
+  //:: MissingOutput(not.wellformed:receiver.null, /Silicon/issue/160/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
   requires [true, this.x == 0]
 {
 }
@@ -95,7 +96,8 @@ method e0(this: Ref)
 method e1(this: Ref)
   //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/34/)
+  //:: MissingOutput(not.wellformed:receiver.null, /Silicon/issue/160/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
   ensures [true, this.x == 0]
 {
   inhale acc(this.x) && this.x == 0

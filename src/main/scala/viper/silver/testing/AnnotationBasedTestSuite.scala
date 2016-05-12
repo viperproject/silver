@@ -68,7 +68,7 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
         val body = unexpectedAnnotations.map({
           case UnexpectedOutput(id, _, _, _, _, issue) =>
             id.toString + ", issue " + issue
-          case MissingOutput(id, _, _, _, project, issue) =>
+          case MissingOutput(id, _, _, _, _, issue) =>
             id.toString + ", issue " + issue
           case _ => ""
         }).mkString("\n")
@@ -135,33 +135,42 @@ case class OutputMatcher(
           actual.isSameLine(file, lineNr)
       }) match {
         case Nil => None
-        case l => l.find(_.isInstanceOf[OutputAnnotation]) match {
-          case Some(x) =>
-            // Remove the output from the list of expected output
-            // (i.e. only match once)
-            remainingOutputs = remainingOutputs.filterNot(_.eq(x))
-            Some(x)
-          case None =>
-            Some(l.head) // IgnoreOthers should not be removed
+        case l => l.find(o => o.isInstanceOf[MissingOutput]) match // prioritise missing output annotations which match
+        {
+          case Some(mo) => Some(mo) // this is an error - declared missing, but it happened (the fact that this is a problem is handled in the calling code)
+          case None => l.find(o => o.isInstanceOf[ExpectedOutput] || o.isInstanceOf[UnexpectedOutput]) match {
+            case Some(eo) =>
+              remainingOutputs = remainingOutputs.diff(Seq(eo)) // note: diff removes exactly one instance
+              Some(eo) // this case is OK - we matched an annotation for this output
+            case None => l.head match {
+              case io@IgnoreOthers(_, _, _) => Some(io)
+              case _ => sys.error("Unexpected error annotation type in test-annotation matching code")
+            }
+          }
         }
       }
     }
 
     // Separate missing outputs from remaining outputs
-    val missingOutputs = remainingOutputs.collect{case m: MissingOutput => m}
+    var missingOutputs : Seq[MissingOutput] = remainingOutputs.collect{case m: MissingOutput => m}
     remainingOutputs = remainingOutputs.filterNot(missingOutputs.contains)
 
     // Process remaining outputs that have not been matched
-    remainingOutputs.foreach {
+    remainingOutputs.foreach { _ match {
       case e: ExpectedOutput =>
-        if (!missingOutputs.exists(_.sameSource(e)))
-          errors ::= TestExpectedButMissingOutputError(e)
+        missingOutputs.find(_.sameSource(e)) match {
+          case Some(mo) => missingOutputs = missingOutputs.diff(Seq(e))
+          case None => errors ::= TestExpectedButMissingOutputError(e)
+        }
       case u: UnexpectedOutput =>
         errors ::= TestUnexpectedButMissingOutputError(u)
       case _: IgnoreOthers =>
       case _: MissingOutput =>
-        sys.error("Should not occur because they were previously filtered")
+        sys.error("MissingOutput should not occur here because they were previously filtered")
     }
+    }
+
+    // Process remaining MissingOutput annotations which did not correspond to a missing output
 
     errors.toSeq
   }
