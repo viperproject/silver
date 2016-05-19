@@ -19,12 +19,12 @@ object QuantifiedPermissions {
       String, /* predicate name of acc(pred(args), p) */
       Exp, /* Permissions p of acc(e.f, p) */
       Forall, /* AST node of the forall (for error reporting) */
-      PredicateAccess)] = /* AST node for e.f (for error reporting) */
+      PredicateAccessPredicate)] = /* AST node for e.f (for error reporting) */
 
       n match {
         case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
         triggers,
-        Implies(condition, PredicateAccessPredicate(pa@PredicateAccess(args, predname), gain)))
+        Implies(condition, pa@PredicateAccessPredicate(PredicateAccess(args, predname), gain)))
           //TODO predicate exists check?
           if    triggers.isEmpty =>
 
