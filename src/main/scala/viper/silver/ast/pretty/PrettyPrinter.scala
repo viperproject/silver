@@ -222,7 +222,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case If(cond, thn, els) =>
         "if" <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
       case Label(name) =>
-        name <> ":"
+        "label" <+> name
       case Goto(target) =>
         "goto" <+> target
       case null => uninitialized
