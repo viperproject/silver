@@ -10,32 +10,42 @@ requires acc(access(a, i)) && (i%2 == 0)
     sum := loc(a, i).val + loc(a, i+1).val
 }
 
+
 method totalSum(a:IArray, i:Int) returns (sum:Int)
-requires i >= 0 && i <= len(a)
-requires forall j:Int :: j >= 0 && j < len(a) && (j%2 ==0) ==> acc(access(a,j))
+requires i >= 0 && i + 1 < len(a)
+requires i % 2 == 0
+requires forall j:Int :: (j >= 0 && j < len(a) && (j%2 ==0)) ==> acc(access(a,j))
 ensures i >= 0 && i <= len(a)
 ensures forall j:Int :: j >= 0 && j < len(a) && (j%2 ==0) ==> acc(access(a,j))
 {
-    if (i > len(a)) {
-        sum := 0
+    if (i + 3 < len(a)) {
+        sum:= totalSum(a, i+2)
+        unfold access(a, i)
+        sum := sum + loc(a, i).val + loc(a, i+1).val
+        fold access(a, i)
     } else {
-        sum := loc(a, i).val + loc(a, i+1).val + totalSum(a, i+2)
+        unfold access(a, i)
+        sum := loc(a, i).val + loc(a, i+1).val
+        fold access(a, i)
     }
 
 }
 
+
 method setVal(a:IArray, i:Int, newVal:Int) 
 requires i >= 0 && i < len(a)
-requires len(a) % 2 == 0
+requires i % 2 == 0
 requires forall j:Int :: j >= 0 && j < len(a) && (j%2 ==0) ==> acc(access(a,j))
 ensures i >= 0 && i < len(a)
 ensures forall j:Int :: j >= 0 && j < len(a) && (j%2 ==0) ==> acc(access(a,j))
 {
+    unfold access(a,i)
     loc(a,i).val := newVal
 	loc(a,i+1).val := newVal
-	
+	fold access(a,i)
+
 	if (i + 2 < len(a)) {
-        setVal(a, i+2)
+        setVal(a, i+2, newVal)
     }
 }
 

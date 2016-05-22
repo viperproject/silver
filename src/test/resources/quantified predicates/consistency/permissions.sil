@@ -16,7 +16,6 @@ method test01(x: Ref)
 }
 
 method test01_client(x: Ref) {
-  //:: ExpectedOutput(call.precondition:receiver.null)
   //:: ExpectedOutput(call.precondition:insufficient.permission)
   test01(x)
 }
@@ -32,7 +31,6 @@ method test01_client(x: Ref) {
 method test01_qp_client(xs: Seq[Ref], y: Ref)
   requires y in xs
 {
-  //:: ExpectedOutput(call.precondition:receiver.null)
   //:: ExpectedOutput(call.precondition:insufficient.permission)
   test01_qp(xs, y)
 }
@@ -40,6 +38,7 @@ method test01_qp_client(xs: Seq[Ref], y: Ref)
 method test02(x: Ref, p: Perm)
   requires acc(pred2(x, p))
 {
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert x != null
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert p != none
@@ -61,18 +60,15 @@ method test02_client(x: Ref, p: Perm)
    unfold pred2(y, p)
    assert y != null
    //:: ExpectedOutput(assert.failed:assertion.false)
-   //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/116/)
    assert p != none
  }
 
 method test02_qp_client(xs: Seq[Ref], y: Ref, p: Perm)
   requires p == none
   requires y in xs
-  requires forall x: Ref :: x in xs ==> x != null
+  requires forall x: Ref :: x in xs ==> acc(pred2(x, p))
 {
-  //:: UnexpectedOutput(call.precondition:negative.permission, /carbon/issue/116/)
   test02_qp(xs, y, p)
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/116/)
   assert false
 }

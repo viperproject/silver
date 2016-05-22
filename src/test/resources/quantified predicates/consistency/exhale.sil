@@ -10,7 +10,7 @@ predicate pred2(a:Ref, p:Perm) {
 
 method test01(x: Ref)
   requires acc(pred1(x))
-  ensures acc(pred1(x)
+  ensures acc(pred1(x))
 {
   unfold pred1(x)
   assert x != null
@@ -37,7 +37,7 @@ method test01(x: Ref)
    assert y != null
    fold pred1(y)
  }
- 
+
  method test03_qp(xs: Seq[Ref], y: Ref)
    requires y in xs
    requires forall x: Ref :: x in xs ==> acc(pred1(x))
@@ -46,11 +46,11 @@ method test01(x: Ref)
    assert y != null
    fold pred1(y)
    exhale acc(pred1(y))
-   
+
    //:: ExpectedOutput(call.precondition:insufficient.permission)
    exhale forall x: Ref :: x in xs ==> acc(pred1(x))
  }
- 
+
   method test04_qp(xs: Seq[Ref], y: Ref)
    requires y in xs
    requires forall x: Ref :: x in xs ==> acc(pred1(x))
@@ -59,7 +59,7 @@ method test01(x: Ref)
    assert y != null
    fold pred1(y)
    exhale acc(pred1(y))
-   
+
    //:: ExpectedOutput(call.precondition:insufficient.permission)
    unfold pred1(y)
  }
@@ -69,13 +69,15 @@ method test01(x: Ref)
    requires y in xs
    requires y != null
    requires forall x: Ref :: x in xs ==> acc(pred1(x))
+   //:: ExpectedOutput(call.postcondition:insufficient.permission)
    ensures y.f == 1
  {
    unfold pred1(y)
    y.f := 1
    fold pred1(y)
+   assert y.f == 1
    exhale acc(pred1(y))
-   
+
    //:: ExpectedOutput(call.precondition:insufficient.permission)
    unfold pred1(y)
  }
