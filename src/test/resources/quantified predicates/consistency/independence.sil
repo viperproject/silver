@@ -48,7 +48,7 @@ ensures acc(p2(r, -1))
 	fold p2(r, -1)
 }
 
-//differend predicate
+//different predicate
 method m4(r:Ref, i:Int)
  requires acc(p1(r))
  ensures acc(p1(r))
@@ -60,18 +60,6 @@ method m4(r:Ref, i:Int)
  	unfold p1(r)
  	fold p1(r)
  }
- 
- //independent magic wand
- field f: Int
-field g: Int
-
-predicate p1(a:Ref) {
-	acc(a.f)
-}
-
-predicate p2(a:Ref, b:Int) {
-	acc(a.g)
-}
 
 method m5(r:Ref, r2:Ref, i:Int)
  requires acc(r.f)
