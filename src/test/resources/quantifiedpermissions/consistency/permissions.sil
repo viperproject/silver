@@ -7,9 +7,7 @@ method test01(x: Ref)
 }
 
 method test01_client(x: Ref) {
-  //:: ExpectedOutput(call.precondition:receiver.null)
   //:: ExpectedOutput(call.precondition:insufficient.permission)
-  //:: MissingOutput(call.precondition:insufficient.permission, /silicon/issue/34/)
   test01(x)
 }
 
@@ -23,17 +21,18 @@ method test01_client(x: Ref) {
 method test01_qp_client(xs: Seq[Ref], y: Ref)
   requires y in xs
 {
-  //:: ExpectedOutput(call.precondition:receiver.null)
   //:: ExpectedOutput(call.precondition:insufficient.permission)
-  //:: MissingOutput(call.precondition:insufficient.permission, /silicon/issue/34/)
   test01_qp(xs, y)
 }
 
 method test02(x: Ref, p: Perm)
   requires acc(x.f, p)
 {
-  assert x != null
   //:: ExpectedOutput(assert.failed:assertion.false)
+  assert x != null
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert p != none
 }
 
@@ -50,9 +49,12 @@ method test02_client(x: Ref, p: Perm)
    requires y in xs
    requires forall x: Ref :: x in xs ==> acc(x.f, p)
  {
+  //:: ExpectedOutput(assert.failed:assertion.false)
    assert y != null
+
    //:: ExpectedOutput(assert.failed:assertion.false)
    //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/116/)
+   //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
    assert p != none
  }
 

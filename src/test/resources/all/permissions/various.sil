@@ -7,7 +7,7 @@ method t1(r: Ref) returns ()
 }
 
 method t1b() {
-    //:: ExpectedOutput(call.precondition:receiver.null)
+    //:: ExpectedOutput(call.precondition:insufficient.permission)
     t1(null)
 }
 

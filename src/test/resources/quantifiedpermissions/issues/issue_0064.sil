@@ -3,8 +3,7 @@ field f: Int
 method m01(S1: Seq[Ref], S2: Set[Ref], x: Ref)
   requires S1 == Seq(x) && S2 == Set(x)
   requires forall i: Int :: i in [0..|S1|) ==> acc(S1[i].f)
-  //:: UnexpectedOutput(postcondition.violated:receiver.null, /silicon/issue/64/)
-  //:: UnexpectedOutput(postcondition.violated:receiver.null, /carbon/issue/117/)
+  //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /silicon/issue/64/)
   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /carbon/issue/117/)
   ensures  forall y: Ref :: y in S2 ==> acc(y.f) /* y in Set fails */
 {}

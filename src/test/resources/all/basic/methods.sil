@@ -51,9 +51,7 @@ method t4b() returns (a: Ref, b: Ref)
 }
 
 method t5_a(r: Ref)
-     //:: ExpectedOutput(not.wellformed:receiver.null)
      //:: ExpectedOutput(not.wellformed:insufficient.permission)
-     //:: MissingOutput(not.wellformed:insufficient.permission, /silicon/issue/34/)
      requires r.f == 2
  {
  }
@@ -66,9 +64,7 @@ method t5_a(r: Ref)
  }
 
 method t6_a(r: Ref)
-    //:: ExpectedOutput(not.wellformed:receiver.null)
     //:: ExpectedOutput(not.wellformed:insufficient.permission)
-    //:: MissingOutput(not.wellformed:insufficient.permission, /silicon/issue/34/)
     ensures r.f == 2
 {
     assume false

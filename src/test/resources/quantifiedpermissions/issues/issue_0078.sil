@@ -21,9 +21,7 @@ method Dmm2(this: Ref)
   requires this in this.s
   requires this.p == null
 {
-  //:: ExpectedOutput(exhale.failed:receiver.null)
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  //:: MissingOutput(exhale.failed:insufficient.permission, /silicon/issue/34/)
   exhale    acc(this.s)
          && (forall x: Ref :: x in this.s ==> acc(x.p, 1/2))
                 /* There could be x != this in this.s s.t. we don't have access to x.p */
