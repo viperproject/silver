@@ -427,7 +427,10 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   lazy val varDecl =
     ("var" ~> idndef) ~ (":" ~> typ) ~ opt(":=" ~> exp) ^^ PLocalVarDecl
   lazy val defineDecl =
-    ("define" ~> idndef) ~ opt("(" ~> repsep(idndef, ",") <~ ")") ~ exp ^^ PDefine
+    ("define" ~> idndef) ~ opt("(" ~> repsep(idndef, ",") <~ ")") ~ (exp | block) ^^ {
+      case iddef ~ args ~ (e: PExp) => PDefine(iddef, args, e)
+      case iddef ~ args ~ (ss: Seq[PStmt] @unchecked) => PDefine(iddef, args, PSeqn(ss))
+    }
   lazy val letwandDecl =
     ("wand" ~> idndef) ~ (":=" ~> exp) ^^ PLetWand
   lazy val fresh =
@@ -805,8 +808,34 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   private def doExpandDefines[N <: PNode](defines: Seq[PDefine], node: N): Option[N] = {
     var expanded = false
 
-    def lookupOrElse(piu: PIdnUse, els: PExp) =
-      defines.find(_.idndef.name == piu.name).fold[PExp](els) _
+    def lookupOrElse(piu: PIdnUse, els: PNode) =
+      defines.find(_.idndef.name == piu.name).fold[PNode](els) _
+
+    def expandAllegedInvocation(target: PIdnUse, targetArgs: Seq[PExp], els: PNode): PNode = {
+      /* Potentially expand a named assertion that takes arguments, e.g. A(x, y) */
+      lookupOrElse(target, els)(define => define.args match {
+        case None =>
+          /* There is a named assertion with name `target`, but the named
+           * assertion takes arguments. Hence, `target` cannot denote the
+           * use of a named assertion.
+           */
+          els
+        case Some(args) if targetArgs.length != args.length =>
+          /* Similar to the previous case */
+          els
+        case Some(args) =>
+          expanded = true
+
+          define.body.transform {
+            /* Expand the named assertion's formal arguments by the given actual arguments */
+            case piu: PIdnUse =>
+              args.indexWhere(_.name == piu.name) match {
+                case -1 => piu
+                case i => targetArgs(i)
+              }
+          }() : PNode /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
+      })
+    }
 
     val potentiallyExpandedNode =
       node.transform {
@@ -819,33 +848,11 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
           lookupOrElse(piu, piu)(define => {
             expanded = true
 
-            define.exp
+            define.body
           })
 
-        case fapp: PFunctApp =>
-          /* Potentially expand a named assertion that takes arguments, e.g. A(x, y) */
-          lookupOrElse(fapp.func, fapp)(define => define.args match {
-            case None =>
-              /* There is a named assertion with name `func`, but the named
-               * assertion takes arguments. Hence, the fapp cannot denote the
-               * use of a named assertion.
-               */
-              fapp
-            case Some(args) if fapp.args.length != args.length =>
-              /* Similar to the previous case */
-              fapp
-            case Some(args) =>
-              expanded = true
-
-              define.exp.transform {
-                /* Expand the named assertion's formal arguments by the given actual arguments */
-                case piu: PIdnUse =>
-                  args.indexWhere(_.name == piu.name) match {
-                    case -1 => piu
-                    case i => fapp.args(i)
-                  }
-              }() : PExp /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
-          })
+        case fapp: PFunctApp => expandAllegedInvocation(fapp.func, fapp.args, fapp)
+        case call: PMethodCall => expandAllegedInvocation(call.method, call.args, call)
       }(recursive = _ => true)
 
     if (expanded) Some(potentiallyExpandedNode)
