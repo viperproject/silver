@@ -60,7 +60,7 @@ method m4(r:Ref, i:Int)
  	unfold p1(r)
  	fold p1(r)
  }
-
+/*
 method m5(r:Ref, r2:Ref, i:Int)
  requires acc(r.f)
  requires acc(r2.f)
@@ -77,3 +77,4 @@ method m5(r:Ref, r2:Ref, i:Int)
     assert (r2.g == i)
     package  acc(r2.f) --* r2 != null && acc(r2.g) && r2.g == i
  }
+ */

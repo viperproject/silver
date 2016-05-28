@@ -6,7 +6,7 @@ predicate h(a:Ref) {
 
 
 method test01(xs: Set[Ref], ys: Seq[Ref])
-  requires forall x: Ref :: x in xs ==> acc(h(x)
+  requires forall x: Ref :: x in xs ==> acc(h(x))
   requires forall i: Int :: i in [0..|ys|) ==> acc(h(ys[i]))
 {}
 
