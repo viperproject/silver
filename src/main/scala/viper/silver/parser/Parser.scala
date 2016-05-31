@@ -188,6 +188,8 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
   )
 
   lazy val parser: PackratParser[PProgram] = phrase(programDecl)
+  //added here
+  lazy val testparser: PackratParser[PExp] = phrase(atom)
 
   // --- Whitespace
 
@@ -570,7 +572,7 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
    */
   lazy val atom: PackratParser[PExp] =
     integer | bool | nul |
-      old | applyOld |
+  old | applyOld |
       keyword("result") ^^ (_ => PResultLit()) |
       ("-" | "!" | "+") ~ sum ^^ PUnExp |
       "(" ~> exp <~ ")" |

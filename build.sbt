@@ -21,6 +21,9 @@ libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % 
 
 libraryDependencies += "commons-io" % "commons-io" % "2.4"
 
+libraryDependencies += "com.lihaoyi" %% "fastparse" % "0.3.7"
+
+
 scalacOptions += "-deprecation"
 
 scalacOptions += "-feature"
@@ -28,6 +31,9 @@ scalacOptions += "-feature"
 scalacOptions += "-unchecked"
 
 scalacOptions += "-Dscalac.patmat.analysisBudget=off"
+
+
+
 
 // Make publish-local also create a test artifact, i.e., put a jar-file into the local Ivy
 // repository that contains all classes and resources relevant for testing.
