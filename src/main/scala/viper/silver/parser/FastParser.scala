@@ -114,7 +114,8 @@ package object Main {
 
     lazy val atom: P[PExp] = P(integer| booltrue| boolfalse| nul| old| applyOld
       | keyword("result").map{_ => PResultLit()} |  (CharIn("-!+").! ~ sum).map{case(a,b) => PUnExp(a,b)}
-      | "(" ~/ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm
+      | "(" ~/ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding | applying
+      | packaging | setTypedEmpty | explicitSetNonEmpty | explicitMultisetNonEmpty
 
 
     )
@@ -204,18 +205,50 @@ package object Main {
     lazy val multisetType: P[PType] = P("Multiset" ~ "[" ~ typ ~ "]").map(PMultisetType)
     lazy val primitiveTyp: P[PType] = P(StringIn("Rational")).!.map{ case _ => PPrimitiv("Perm") } | StringIn("Int","Bool","Perm","Ref").!.map(PPrimitiv)
     lazy val trigger: P[Seq[PExp]] = P("{" ~ exp.rep(sep = ",") ~ "}")
+    //showing red but possibly correct checked on forperm [ ] hello::2*2
     lazy val forperm: P[PExp] =P( keyword("forperm") ~ "[" ~ idnuse.rep(sep = ",") ~ "]" ~ idndef ~ "::" ~ exp).map{
-                                case (ids , id ,body) => PForPerm(PFormalArgDecl(id, PPrimitiv("Ref")), ids, body))
+                                case (ids , id ,body) => PForPerm(PFormalArgDecl(id, PPrimitiv("Ref")), ids, body)
                               }
+    lazy val unfolding: P[PExp] = P("unfolding" ~ predicateAccessPred ~ "in" ~ exp).map{case(a,b) => PUnfolding(a,b)}
+    lazy val predicateAccessPred: P[PAccPred] = P(accessPred | predAcc.map{case loc => PAccPred(loc, PFullPerm())})
+    lazy val folding: P[PExp] =P ("folding" ~ predicateAccessPred ~ "in" ~ exp).map{case(a,b) => PFoldingGhostOp(a,b)}
+
+    lazy val applying: P[PExp] =
+    /*
+      This is a inherited comment, will check this out
+
+      We must be careful here to not create ambiguities in our grammar.
+     * when 'magicWandExp' is used instead of the more specific
+     * 'realMagicWandExp | idnuse', then the following problem can occur:
+     * Consider an expression such as "applying w in A". The parser
+     * will interpret "w in A" as a set-contains expression, which is
+     * fine according to our rules. The outer applying-rule will the fail.
+     * I suspect that NOT using a memoising packrat parser would help
+     * here, because the failing applying-rule should backtrack enough
+     * to reparse "w in A", but this time as desired, not as a
+     * set-contains expression. This is just an assumption, however,
+     * and implementing would mean that we have to rewrite the
+     * left-recursive parsing rules (are these only sum and term?).
+     * Moreover, not using a memoising parser might make the parser
+     * significantly slower.
+     */
+      P((("applying" ~ "(" ~ realMagicWandExp ~ ")" )| idnuse) ~ "in" ~ exp).map{case(a,b) => PApplyingGhostOp(a,b)}
+
+    lazy val packaging: P[PExp] = /* See comment on applying */
+      P("packaging" ~ ("(" ~ realMagicWandExp ~ ")" | idnuse) ~ "in" ~ exp).map{case(a,b) => PPackagingGhostOp(a,b)}
+    lazy val setTypedEmpty: P[PExp] =  P("Set" ~ "[" ~ typ ~ "]" ~ "(" ~ ")").map{case a => PEmptySet(a)}
+    lazy val explicitSetNonEmpty: P[PExp] = P( "Set" /*~ opt("[" ~> typ <~ "]")*/ ~ "(" ~ exp.rep(sep = ",") ~ ")").map(PExplicitSet)
+    lazy val explicitMultisetNonEmpty: P[PExp] = P("Multiset" ~ "(" ~ exp.rep(min = 1, sep= ",") ~ ")").map{case elems => PExplicitMultiset(elems)}
+
+
+
+
+
 
     /*
     *
     *
     *
-    * lazy val forperm: PackratParser[PExp] =
-    (keyword("forperm") ~> "[" ~> repsep(idnuse,",") <~ "]") ~ idndef ~ ("::" ~> exp) ^^ {
-      case ids ~ id ~ body => PForPerm(PFormalArgDecl(id, PPrimitiv("Ref")), ids, body)
-    }
     *
     *
     *
@@ -229,7 +262,7 @@ package object Main {
     *
     * */
 
-    println(fieldAcc.parse("test"))
+    println(forperm.parse("forperm [ ] hello::2*2"))
 
 
 
