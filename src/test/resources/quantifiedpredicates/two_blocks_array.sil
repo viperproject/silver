@@ -1,5 +1,5 @@
 predicate access(a:IArray, i:Int) {
-    (i % 2 == 0)  ==> acc(loc(a, i).val) && acc(loc(a, i+1).val) && loc(a,i) != null && loc(a, i+1) != null
+    (i % 2 == 0)  ==> acc(loc(a, i).val) && acc(loc(a, i+1).val)/* && loc(a,i) != null && loc(a, i+1) != null*/
 }
 
 
@@ -32,22 +32,47 @@ ensures forall j:Int :: j >= 0 && j < len(a) && (j%2 ==0) ==> acc(access(a,j))
 }
 
 
-method setVal(a:IArray, i:Int, newVal:Int) 
+method setVal(a:IArray, i:Int, newVal:Int)
 requires i >= 0 && i < len(a)
 requires i % 2 == 0
 requires forall j:Int :: j >= 0 && j < len(a) && (j%2 ==0) ==> acc(access(a,j))
 ensures i >= 0 && i < len(a)
 ensures forall j:Int :: j >= 0 && j < len(a) && (j%2 ==0) ==> acc(access(a,j))
+ensures forall j:Int :: (j == i ==> true && unfolding acc(access(a,j)) in (loc(a,j).val == newVal))
 {
+    var k:Int
+    assume k >= 0 && k < len(a) && (k%2 == 0) && k!= i
     unfold access(a,i)
     loc(a,i).val := newVal
 	loc(a,i+1).val := newVal
 	fold access(a,i)
 
+    assert (unfolding acc(access(a, k)) in loc(a, k).val) == old(unfolding acc(access(a, k)) in loc(a, k).val)
 	if (i + 2 < len(a)) {
         setVal(a, i+2, newVal)
     }
+
+    //assert (unfolding acc(access(a, k)) in loc(a, k).val) == old(unfolding acc(access(a, k)) in loc(a, k).val)
 }
+
+
+method setVal2(a:IArray, i:Int, newVal:Int)
+requires i >= 0 && i < len(a)
+requires forall j:Int :: j >= 0 && j < len(a) ==> acc(loc(a,j).val)
+ensures i >= 0 && i < len(a)
+ensures forall j:Int :: j >= 0 && j < len(a) ==> acc(loc(a,j).val)
+ensures forall j:Int :: j >= 0 && j < len(a) && j < i ==> old(loc(a, j).val) == loc(a, j).val
+{
+    var k:Int
+    assume k >= 0 && k < len(a) && (k%2 == 0) && k!= i
+    loc(a,i).val := newVal
+
+	if (i + 2 < len(a)) {
+        setVal2(a, i+1, newVal)
+    }
+
+}
+
 
 /* Encoding of arrays */
 
