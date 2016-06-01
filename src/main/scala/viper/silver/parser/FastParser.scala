@@ -83,14 +83,25 @@ package object Main {
       // modifiers
       "unique") ~~ !CharIn('0' to '9','A' to 'Z', 'a' to 'z'))
 
-    /*
+     
 
 
 
-    *
-    *
-    *
-    * */
+
+
+
+
+    lazy val atom: P[PExp] = P(integer| booltrue| boolfalse| nul| old| applyOld
+                              | keyword("result").map{_ => PResultLit()} |  (CharIn("-!+").! ~ sum).map{case(a,b) => PUnExp(a,b)}
+                              | "(" ~/ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding | applying
+                              | packaging | setTypedEmpty | explicitSetNonEmpty | explicitMultisetNonEmpty | multiSetTypedEmpty | seqTypedEmpty
+                              | seqLength | explicitSeqNonEmpty | seqRange |  fapp | typedFapp | idnuse )
+
+
+
+
+
+
 
     lazy val integer = P(CharIn('0' to '9').rep(1)).!.map{s => PIntLit(BigInt(s)) }
     lazy val booltrue = P(keyword("true")).map(_ => PBoolLit(b = true))
@@ -104,35 +115,6 @@ package object Main {
 
     lazy val old: P[PExp] = P((StringIn("old") ~/ parens(exp)).map(POld) | ("[" ~ idnuse ~ "]" ~ parens(exp)).map{case(a,b) => PLabelledOld(a,b)} )
     lazy val applyOld: P[PExp] =P((StringIn("lhs") ~/ parens(exp)).map(PApplyOld) )
-
-
-
-
-
-
-
-
-    lazy val atom: P[PExp] = P(integer| booltrue| boolfalse| nul| old| applyOld
-      | keyword("result").map{_ => PResultLit()} |  (CharIn("-!+").! ~ sum).map{case(a,b) => PUnExp(a,b)}
-      | "(" ~/ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding | applying
-      | packaging | setTypedEmpty | explicitSetNonEmpty | explicitMultisetNonEmpty
-
-
-    )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     lazy val magicWandExp:P[PExp] = P(realMagicWandExp | orExp)
     lazy val realMagicWandExp:P[PExp] = P((orExp ~ "--*".! ~ magicWandExp).map{case(a,b,c) =>  PBinExp(a,b,c)})
     lazy val implExp: P[PExp] = P((magicWandExp ~ "==>".! ~ implExp).map{case(a,b,c) =>  PBinExp(a,b,c)} | magicWandExp)
@@ -239,6 +221,27 @@ package object Main {
     lazy val setTypedEmpty: P[PExp] =  P("Set" ~ "[" ~ typ ~ "]" ~ "(" ~ ")").map{case a => PEmptySet(a)}
     lazy val explicitSetNonEmpty: P[PExp] = P( "Set" /*~ opt("[" ~> typ <~ "]")*/ ~ "(" ~ exp.rep(sep = ",") ~ ")").map(PExplicitSet)
     lazy val explicitMultisetNonEmpty: P[PExp] = P("Multiset" ~ "(" ~ exp.rep(min = 1, sep= ",") ~ ")").map{case elems => PExplicitMultiset(elems)}
+    lazy val multiSetTypedEmpty: P[PExp] =  P("Multiset" ~ "[" ~ typ ~ "]" ~ "("~")").map(PEmptyMultiset)
+    lazy val seqTypedEmpty: P[PExp] =  P("Seq[" ~ typ ~ "]()").map(PEmptySeq)
+    lazy val seqLength: P[PExp] =  P( "|" ~ exp ~ "|").map(PSize)
+    lazy val explicitSeqNonEmpty: P[PExp] = P("Seq(" ~ exp.rep(min=1, sep =",") ~ ")").map{
+                                            //      case Nil => PEmptySeq(PUnknown())
+                                            case elems => PExplicitSeq(elems)
+                                          }
+    lazy val seqRange: P[PExp] =   P("[" ~ exp ~ ".." ~ exp ~ ")").map{case(a,b) => PRangeSeq(a,b)}
+    lazy val fapp: P[PExp] =  P(idnuse ~ parens(actualArgList)).map{
+                                              case func ~ args => PFunctApp(func,args,None)
+                                            }
+    lazy val typedFapp: P[PExp] =  P(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map{
+                                      case (func , args , typeGiven) => PFunctApp(func,args,Some(typeGiven))
+                                    }
+
+
+
+
+
+
+
 
 
 
