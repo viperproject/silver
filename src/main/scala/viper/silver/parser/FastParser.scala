@@ -8,6 +8,7 @@ import java.nio.file.Path
 
 import fastparse.parsers.Combinators.Rule
 import fastparse.WhitespaceApi
+import fastparse.parsers.{Intrinsics, Terminals}
 /*import fastparse.core.{Parsed, Parser}*/
 import fastparse.parsers.Intrinsics
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
@@ -36,11 +37,12 @@ package object Main {
 
   val White = WhitespaceApi.Wrapper {
     import fastparse.all._
-    NoTrace(" ".rep)
+
+    NoTrace( ( ("/*"  ~ (AnyChar ~ !StringIn("*/")).rep ~ AnyChar ~"*/") | ("//" ~ CharsWhile( _ != '\n') ~ "\n") |" " | "\n").rep   )
   }
 
   import fastparse.noApi._
-  //   import fastparse.all._
+//     import fastparse.all._
   import White._
 
 
@@ -140,7 +142,7 @@ package object Main {
     else None
   }
   /** The file we are currently parsing (for creating positions later). */
-  def file: Path
+  def file: Path = null
 
   def expandDefines[N <: PNode](defines: Seq[PDefine], node: N): N =
     doExpandDefines(defines, node).getOrElse(node)
@@ -195,7 +197,7 @@ package object Main {
 
   lazy val atom: P[PExp] = P(integer| booltrue| boolfalse| nul| old| applyOld
     | keyword("result").map{_ => PResultLit()} |  (CharIn("-!+").! ~ sum).map{case(a,b) => PUnExp(a,b)}
-    | "(" ~/ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding | applying
+    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding | applying
     | packaging | setTypedEmpty | explicitSetNonEmpty | explicitMultisetNonEmpty | multiSetTypedEmpty | seqTypedEmpty
     | seqLength | explicitSeqNonEmpty | seqRange |  fapp | typedFapp | idnuse )
 
@@ -215,8 +217,8 @@ package object Main {
   //possible customize error code in rule ident
   lazy val idnuse: P[PIdnUse] = P(ident ).map(PIdnUse)
 
-  lazy val old: P[PExp] = P((StringIn("old") ~/ parens(exp)).map(POld) | ("[" ~ idnuse ~ "]" ~ parens(exp)).map{case(a,b) => PLabelledOld(a,b)} )
-  lazy val applyOld: P[PExp] =P((StringIn("lhs") ~/ parens(exp)).map(PApplyOld) )
+  lazy val old: P[PExp] = P((StringIn("old") ~ parens(exp)).map(POld) | ("[" ~ idnuse ~ "]" ~ parens(exp)).map{case(a,b) => PLabelledOld(a,b)} )
+  lazy val applyOld: P[PExp] =P((StringIn("lhs") ~ parens(exp)).map(PApplyOld) )
   lazy val magicWandExp:P[PExp] = P(realMagicWandExp | orExp)
   lazy val realMagicWandExp:P[PExp] = P((orExp ~ "--*".! ~ magicWandExp).map{case(a,b,c) =>  PBinExp(a,b,c)})
   lazy val implExp: P[PExp] = P((magicWandExp ~ "==>".! ~ implExp).map{case(a,b,c) =>  PBinExp(a,b,c)} | magicWandExp)
@@ -250,7 +252,7 @@ package object Main {
   lazy val andExp:P[PExp] = P((eqExp ~ "&&".! ~ andExp).map{case(a,b,c) =>  PBinExp(a,b,c)} | eqExp)
   lazy val orExp:P[PExp] = P((andExp ~ "||".! ~ orExp).map{case(a,b,c) =>  PBinExp(a,b,c)} | andExp )
 
-  lazy val accessPred: P[PAccPred] = P(StringIn("acc") ~/ parens(locAcc ~ ("," ~ exp).?).map{case (loc , perms) => PAccPred(loc, perms.getOrElse(PFullPerm()))})
+  lazy val accessPred: P[PAccPred] = P(StringIn("acc") ~ parens(locAcc ~ ("," ~ exp).?).map{case (loc , perms) => PAccPred(loc, perms.getOrElse(PFullPerm()))})
   lazy val locAcc: P[PLocationAccess] =P(fieldAcc | predAcc)
   //this rule is in doubt :D
   lazy val fieldAcc :P[PFieldAccess] = P(realSuffixExpr.filter(getFieldAccess).map{case fa: PFieldAccess => fa}).opaque("Field Expected")
@@ -526,7 +528,7 @@ package object Main {
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(Seq(PInhale(PBoolLit(b = false)))))
   }
   lazy val methodSignature = P("method" ~ idndef ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")").?)
-  lazy val parser: P[PProgram] = P(programDecl)
+  lazy val parser = P(programDecl)
 
 
 
@@ -566,6 +568,6 @@ package object Main {
 
 
 def main(args: Array[String]) {
-  println(forperm.parse("forperm [ ] hello::2*2"))
+  println(parser.parse("method helper(a:Int, b: Int)\n{\n  assert a+b == (a + b) //Verifies\n  \n}"))
   }
 }

@@ -13,7 +13,7 @@ object ParserTester extends BaseParser {
   override def file = _file
   var _file: Path = null
   def main(args: Array[String]) {
-    parse("result", null)
+    parse("method helper(a:Int, b: Int)\n{\n  assert -a+b == -(a + b) //Verifies\n  \n}", null)
   }
 
   def parse(s: String, f: Path) = {
@@ -30,6 +30,6 @@ object ParserTester extends BaseParser {
   }
 
   case class RecParser(file: Path) extends BaseParser {
-    def parse(s: String) = parseAll(testparser, s)
+    def parse(s: String) = parseAll(parser, s)
   }
 }
