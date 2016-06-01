@@ -83,7 +83,7 @@ package object Main {
       // modifiers
       "unique") ~~ !CharIn('0' to '9','A' to 'Z', 'a' to 'z'))
 
-     
+
 
 
 
@@ -230,13 +230,55 @@ package object Main {
                                           }
     lazy val seqRange: P[PExp] =   P("[" ~ exp ~ ".." ~ exp ~ ")").map{case(a,b) => PRangeSeq(a,b)}
     lazy val fapp: P[PExp] =  P(idnuse ~ parens(actualArgList)).map{
-                                              case func ~ args => PFunctApp(func,args,None)
+                                              case (func , args) => PFunctApp(func,args,None)
                                             }
     lazy val typedFapp: P[PExp] =  P(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map{
                                       case (func , args , typeGiven) => PFunctApp(func,args,Some(typeGiven))
                                     }
 
 
+
+    lazy val stmt = P( fieldassign | localassign | fold | unfold | exhale | assert |
+        inhale | ifthnels | whle | varDecl | defineDecl | letwandDecl | newstmt | fresh | constrainingBlock |
+      methodCall | goto | lbl | packageWand | applyWand )
+
+    lazy val fieldassign = P( fieldAcc ~ ":=" ~ exp).map{case(a,b) => PFieldAssign(a,b)}
+    lazy val localassign = P( idnuse ~ ":=" ~ exp).map{case(a,b) => PVarAssign(a,b)}
+    lazy val fold =  P("fold" ~ predicateAccessPred).map(PFold)
+    lazy val unfold = P("unfold" ~ predicateAccessPred).map{PUnfold}
+    lazy val exhale = P(keyword("exhale") ~ exp).map(PExhale)
+    lazy val assert =  P(keyword("assert") ~ exp).map(PAssert)
+    lazy val inhale =   P((keyword("inhale") | keyword("assume")) ~ exp).map(PInhale)
+    lazy val ifthnels =  P("if" ~ "(" ~ exp ~ ")" ~ block ~ elsifEls).map{
+        case(cond , thn , ele) => PIf(cond, PSeqn(thn), ele)
+      }
+    lazy val block: P[Seq[PStmt]] = P("{" ~ stmts ~ "}")
+    lazy val stmts =  P(stmt ~ ";".?).rep
+    lazy val elsifEls: P[PStmt] = P(elsif | els)
+    lazy val elsif: P[PStmt] =   P("elseif" ~ "(" ~ exp ~ ")" ~ block ~ elsifEls).map{
+                                  case (cond , thn , ele) => PIf(cond, PSeqn(thn), ele)
+                                }
+    lazy val els: P[PStmt] = ("else" ~ block).?.map{ block => PSeqn(block.getOrElse(Nil)) }
+    lazy val whle = P("while" ~ "(" ~ exp ~ ")" ~ inv.rep ~ block).map{
+                          case (cond , invs , body) => PWhile(cond, invs, PSeqn(body))
+                        }
+    lazy val inv =  P("invariant" ~ exp ~ ";".?)
+    lazy val varDecl =  P("var" ~ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map{case(a,b,c) => PLocalVarDecl(a,b,c )}
+    lazy val defineDecl =P( "define" ~ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ exp).map{case(a,b,c) => PDefine(a,b,c)}
+    lazy val letwandDecl = P("wand" ~ idndef ~ ":=" ~ exp).map{case(a,b) => PLetWand(a,b)}
+    lazy val newstmt =  P(idnuse ~ ":=" ~ "new" ~ "(" ~ starOrFields ~ ")").map{case(a,b) => PNewStmt(a,b)}
+    //doubt see what happened here later on (had to add .! in first case)
+    lazy val starOrFields = P(("*").!.map{_ => None} | idnuse.rep(sep= ",").map{fields => Some(fields)})
+    lazy val fresh = P("fresh" ~ idnuse.rep(sep= ",")).map{ case vars => PFresh(vars) }
+    lazy val constrainingBlock =P("constraining" ~ "(" ~ idnuse.rep(sep= ",") ~ ")" ~ block).map{case (vars , s) => PConstraining(vars, PSeqn(s)) }
+    lazy val methodCall =P((idnuse.rep(sep= ",") ~ ":=").? ~ idnuse ~ parens(exp.rep(sep= ","))).map{
+                        case (None , method , args) => PMethodCall(Nil, method, args)
+                        case (Some(targets) , method , args) => PMethodCall(targets, method, args)
+                      }
+    lazy val goto =  P("goto" ~ idnuse).map(PGoto)
+    lazy val lbl =  P(keyword("label") ~ idndef).map(PLabel)
+    lazy val packageWand =  P("package" ~ magicWandExp).map(PPackageWand)
+    lazy val applyWand = P("apply" ~ magicWandExp).map(PApplyWand)
 
 
 
