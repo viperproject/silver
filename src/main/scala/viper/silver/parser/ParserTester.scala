@@ -13,7 +13,7 @@ object ParserTester extends BaseParser {
   override def file = _file
   var _file: Path = null
   def main(args: Array[String]) {
-    parse("method helper(a:Int, b: Int)\n{\n  assert -a+b == -(a + b) //Verifies\n  \n}", null)
+    parse("method helper(a:Int, b: Int)\n{\n  assert -a+b == -(a + b) //Verifies\n  assert -a+b == (-a) + b    //Does not verify. Minus at the beginning doesn't bind strongest\n}", null)
   }
 
   def parse(s: String, f: Path) = {

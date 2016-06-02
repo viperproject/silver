@@ -38,7 +38,7 @@ package object Main {
   val White = WhitespaceApi.Wrapper {
     import fastparse.all._
 
-    NoTrace( ( ("/*"  ~ (AnyChar ~ !StringIn("*/")).rep ~ AnyChar ~"*/") | ("//" ~ CharsWhile( _ != '\n') ~ "\n") |" " | "\n").rep   )
+    NoTrace( ( ("/*"  ~ (AnyChar ~ !StringIn("*/")).rep ~ AnyChar ~"*/") | ("//" ~ CharsWhile( _ != '\n') ~ "\n") |" "| "\t" | "\n").rep   )
   }
 
   import fastparse.noApi._
@@ -228,7 +228,7 @@ package object Main {
 
   lazy val suffix: Parser[PExp => PExp] =
     P(("." ~ idnuse).map{id => (e: PExp) => PFieldAccess(e, id)} |
-      ("[.." ~ exp ~ "]").map{n => (e: PExp) => PSeqTake(e, n)} |
+      ("[.." ~/ exp ~ "]").map{n => (e: PExp) => PSeqTake(e, n)} |
       ("[" ~ exp ~ "..]").map{n => (e: PExp) => PSeqDrop(e, n)} |
       ("[" ~ exp ~ ".." ~ exp ~ "]" ).map{case( n , m )=> (e: PExp) => PSeqDrop(PSeqTake(e, m), n)} |
       ("[" ~ exp ~ "]").map{e1 => (e0: PExp) => PSeqIndex(e0, e1)} |
@@ -236,7 +236,7 @@ package object Main {
 
   lazy val suffixExpr: P[PExp] =P((atom ~ suffix.rep).map{case (fac, ss) => foldPExp[PExp](fac, ss)})
 
-  lazy val realSuffixExpr: P[PExp] =P((atom ~ (suffix).rep).map{case (fac, ss) => foldPExp[PExp](fac, ss)})
+  lazy val realSuffixExpr: P[PExp] =P((atom ~ suffix.rep).map{case (fac, ss) => foldPExp[PExp](fac, ss)})
 
   lazy val termOp = P(StringIn("*" , "/" , "\\" , "%").!)
   lazy val term: P[PExp] = P((suffixExpr ~ termd.rep).map{ case (a, ss)  => foldPExp[PExp](a, ss)})
@@ -264,7 +264,7 @@ package object Main {
     |keyword("epsilon").map(_ => PEpsilon()) | ("perm" ~ parens(locAcc)).map(PCurPerm))
   //doubt (how is this working!!!! - Uses KIama Stuff :( )
   lazy val let: P[PExp] = P(
-    ("let" ~ idndef ~ "==" ~ "(" ~ exp ~ ")" ~ "in" ~ exp).map{ case (id , exp1 , exp2) =>
+    ("let" ~/ idndef ~ "==" ~ "(" ~ exp ~ ")" ~ "in" ~ exp).map{ case (id , exp1 , exp2) =>
       /* Type unresolvedType is expected to be replaced with the type of exp1
        * after the latter has been resolved
        * */
@@ -276,7 +276,7 @@ package object Main {
     })
   lazy val idndef = P(ident).map(PIdnDef)
 
-  lazy val quant: P[PExp] =P((keyword("forall") ~ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map{case(a,b,c) => PForall(a,b,c)} |
+  lazy val quant: P[PExp] =P((keyword("forall") ~/ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map{case(a,b,c) => PForall(a,b,c)} |
     (keyword("exists") ~ nonEmptyFormalArgList ~ "::" ~ exp).map{case(a,b) => PExists(a,b)})
   lazy val nonEmptyFormalArgList: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
   lazy val formalArg: P[PFormalArgDecl] =P(idndef ~ ":" ~ typ).map{case(a,b) => PFormalArgDecl(a,b)}
@@ -286,7 +286,7 @@ package object Main {
     idnuse.map{// domain type without type arguments (might also be a type variable)
       case name => PDomainType(name, Nil)
     })
-  lazy val seqType: P[PType] =P("Seq" ~ "[" ~ typ ~ "]").map(PSeqType)
+  lazy val seqType: P[PType] =P("Seq" ~/ "[" ~ typ ~ "]").map(PSeqType)
   lazy val setType: P[PType] = P("Set" ~ "[" ~ typ ~ "]").map(PSetType)
   lazy val multisetType: P[PType] = P("Multiset" ~ "[" ~ typ ~ "]").map(PMultisetType)
   lazy val primitiveTyp: P[PType] = P(StringIn("Rational")).!.map{ case _ => PPrimitiv("Perm") } | StringIn("Int","Bool","Perm","Ref").!.map(PPrimitiv)
@@ -295,9 +295,9 @@ package object Main {
   lazy val forperm: P[PExp] =P( keyword("forperm") ~ "[" ~ idnuse.rep(sep = ",") ~ "]" ~ idndef ~ "::" ~ exp).map{
     case (ids , id ,body) => PForPerm(PFormalArgDecl(id, PPrimitiv("Ref")), ids, body)
   }
-  lazy val unfolding: P[PExp] = P("unfolding" ~ predicateAccessPred ~ "in" ~ exp).map{case(a,b) => PUnfolding(a,b)}
+  lazy val unfolding: P[PExp] = P("unfolding" ~/ predicateAccessPred ~ "in" ~ exp).map{case(a,b) => PUnfolding(a,b)}
   lazy val predicateAccessPred: P[PAccPred] = P(accessPred | predAcc.map{case loc => PAccPred(loc, PFullPerm())})
-  lazy val folding: P[PExp] =P ("folding" ~ predicateAccessPred ~ "in" ~ exp).map{case(a,b) => PFoldingGhostOp(a,b)}
+  lazy val folding: P[PExp] =P ("folding" ~/ predicateAccessPred ~ "in" ~ exp).map{case(a,b) => PFoldingGhostOp(a,b)}
 
   lazy val applying: P[PExp] =
   /*
@@ -318,14 +318,14 @@ package object Main {
    * Moreover, not using a memoising parser might make the parser
    * significantly slower.
    */
-    P((("applying" ~ "(" ~ realMagicWandExp ~ ")" )| idnuse) ~ "in" ~ exp).map{case(a,b) => PApplyingGhostOp(a,b)}
+    P((("applying" ~/ "(" ~ realMagicWandExp ~ ")" )| idnuse) ~ "in" ~ exp).map{case(a,b) => PApplyingGhostOp(a,b)}
 
   lazy val packaging: P[PExp] = /* See comment on applying */
     P("packaging" ~ ("(" ~ realMagicWandExp ~ ")" | idnuse) ~ "in" ~ exp).map{case(a,b) => PPackagingGhostOp(a,b)}
   lazy val setTypedEmpty: P[PExp] =  P("Set" ~ "[" ~ typ ~ "]" ~ "(" ~ ")").map{case a => PEmptySet(a)}
   lazy val explicitSetNonEmpty: P[PExp] = P( "Set" /*~ opt("[" ~> typ <~ "]")*/ ~ "(" ~ exp.rep(sep = ",") ~ ")").map(PExplicitSet)
-  lazy val explicitMultisetNonEmpty: P[PExp] = P("Multiset" ~ "(" ~ exp.rep(min = 1, sep= ",") ~ ")").map{case elems => PExplicitMultiset(elems)}
-  lazy val multiSetTypedEmpty: P[PExp] =  P("Multiset" ~ "[" ~ typ ~ "]" ~ "("~")").map(PEmptyMultiset)
+  lazy val explicitMultisetNonEmpty: P[PExp] = P("Multiset" ~ "(" ~/ exp.rep(min = 1, sep= ",") ~ ")").map{case elems => PExplicitMultiset(elems)}
+  lazy val multiSetTypedEmpty: P[PExp] =  P("Multiset" ~ "[" ~/ typ ~ "]" ~ "(" ~ ")" ).map(PEmptyMultiset)
   lazy val seqTypedEmpty: P[PExp] =  P("Seq[" ~ typ ~ "]()").map(PEmptySeq)
   lazy val seqLength: P[PExp] =  P( "|" ~ exp ~ "|").map(PSize)
   lazy val explicitSeqNonEmpty: P[PExp] = P("Seq(" ~ exp.rep(min=1, sep =",") ~ ")").map{
@@ -350,8 +350,8 @@ package object Main {
   lazy val localassign = P( idnuse ~ ":=" ~ exp).map{case(a,b) => PVarAssign(a,b)}
   lazy val fold =  P("fold" ~ predicateAccessPred).map(PFold)
   lazy val unfold = P("unfold" ~ predicateAccessPred).map{PUnfold}
-  lazy val exhale = P(keyword("exhale") ~ exp).map(PExhale)
-  lazy val assert =  P(keyword("assert") ~ exp).map(PAssert)
+  lazy val exhale = P(keyword("exhale") ~/ exp).map(PExhale)
+  lazy val assert =  P(keyword("assert") ~/ exp).map(PAssert)
   lazy val inhale =   P((keyword("inhale") | keyword("assume")) ~ exp).map(PInhale)
   lazy val ifthnels =  P("if" ~ "(" ~ exp ~ ")" ~ block ~ elsifEls).map{
     case(cond , thn , ele) => PIf(cond, PSeqn(thn), ele)
@@ -359,7 +359,7 @@ package object Main {
   lazy val block: P[Seq[PStmt]] = P("{" ~ stmts ~ "}")
   lazy val stmts =  P(stmt ~ ";".?).rep
   lazy val elsifEls: P[PStmt] = P(elsif | els)
-  lazy val elsif: P[PStmt] =   P("elseif" ~ "(" ~ exp ~ ")" ~ block ~ elsifEls).map{
+  lazy val elsif: P[PStmt] =   P("elseif" ~/ "(" ~ exp ~ ")" ~ block ~ elsifEls).map{
     case (cond , thn , ele) => PIf(cond, PSeqn(thn), ele)
   }
   lazy val els: P[PStmt] = ("else" ~ block).?.map{ block => PSeqn(block.getOrElse(Nil)) }
@@ -367,9 +367,9 @@ package object Main {
     case (cond , invs , body) => PWhile(cond, invs, PSeqn(body))
   }
   lazy val inv =  P("invariant" ~ exp ~ ";".?)
-  lazy val varDecl =  P("var" ~ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map{case(a,b,c) => PLocalVarDecl(a,b,c )}
-  lazy val defineDecl =P( "define" ~ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ exp).map{case(a,b,c) => PDefine(a,b,c)}
-  lazy val letwandDecl = P("wand" ~ idndef ~ ":=" ~ exp).map{case(a,b) => PLetWand(a,b)}
+  lazy val varDecl =  P("var" ~/ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map{case(a,b,c) => PLocalVarDecl(a,b,c )}
+  lazy val defineDecl =P( "define" ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ exp).map{case(a,b,c) => PDefine(a,b,c)}
+  lazy val letwandDecl = P("wand" ~/ idndef ~ ":=" ~ exp).map{case(a,b) => PLetWand(a,b)}
   lazy val newstmt =  P(idnuse ~ ":=" ~ "new" ~ "(" ~ starOrFields ~ ")").map{case(a,b) => PNewStmt(a,b)}
   //doubt see what happened here later on (had to add .! in first case)
   lazy val starOrFields = P(("*").!.map{_ => None} | idnuse.rep(sep= ",").map{fields => Some(fields)})
@@ -379,10 +379,10 @@ package object Main {
     case (None , method , args) => PMethodCall(Nil, method, args)
     case (Some(targets) , method , args) => PMethodCall(targets, method, args)
   }
-  lazy val goto =  P("goto" ~ idnuse).map(PGoto)
-  lazy val lbl =  P(keyword("label") ~ idndef).map(PLabel)
-  lazy val packageWand =  P("package" ~ magicWandExp).map(PPackageWand)
-  lazy val applyWand = P("apply" ~ magicWandExp).map(PApplyWand)
+  lazy val goto =  P("goto" ~/ idnuse).map(PGoto)
+  lazy val lbl =  P(keyword("label") ~/ idndef).map(PLabel)
+  lazy val packageWand =  P("package" ~/ magicWandExp).map(PPackageWand)
+  lazy val applyWand = P("apply" ~/ magicWandExp).map(PApplyWand)
 
   // Declarations
 
@@ -492,10 +492,10 @@ package object Main {
 
       PProgram(files, domains, fields, functions, predicates, methods, imp_reports)
   }
-  lazy val preambleImport = P(keyword("import") ~ quoted(relativeFilePath)).map{ case filename =>  PImport(filename) }
+  lazy val preambleImport = P(keyword("import") ~/ quoted(relativeFilePath)).map{ case filename =>  PImport(filename) }
   //chek if this is a correct regex doubt
   lazy val relativeFilePath = P(("A" ~~ CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1) )
-  lazy val domainDecl = P("domain" ~ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep =  ",") ~ "]").? ~  "{" ~ domainFunctionDecl.rep ~
+  lazy val domainDecl = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep =  ",") ~ "]").? ~  "{" ~ domainFunctionDecl.rep ~
     axiomDecl.rep ~ "}").map{
     case (name , typparams , funcs , axioms) =>
       PDomain(
@@ -513,22 +513,22 @@ package object Main {
   lazy val functionSignature = P("function" ~ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ)
   lazy val formalArgList: P[Seq[PFormalArgDecl]] =  P(formalArg.rep(sep= ","))
   lazy val axiomDecl = P("axiom" ~ idndef ~ "{" ~ exp ~ "}" ~ ";".?).map{case(a,b) => PAxiom1(a,b)}
-  lazy val fieldDecl = P("field" ~ idndef ~ ":" ~ typ ~ ";".?).map{case(a,b) => PField(a,b)}
-  lazy val functionDecl =   P( "function" ~ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
+  lazy val fieldDecl = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map{case(a,b) => PField(a,b)}
+  lazy val functionDecl =   P( "function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
     post.rep ~ ("{" ~ exp ~ "}").?).map{case(a,b,c,d,e,f) => PFunction(a,b,c,d,e,f) }
 
-  lazy val pre = P("requires" ~ exp ~ ";".?)
-  lazy val post = P("ensures" ~ exp ~ ";".?)
+  lazy val pre = P("requires" ~/ exp ~ ";".?)
+  lazy val post = P("ensures" ~/ exp ~ ";".?)
 
-  lazy val predicateDecl =  P("predicate" ~ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map{case(a,b,c) => PPredicate(a,b,c)}
-  lazy val methodDecl =  P(methodSignature ~ pre.rep ~ post.rep ~ block.?).map{
+  lazy val predicateDecl =  P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map{case(a,b,c) => PPredicate(a,b,c)}
+  lazy val methodDecl =  P(methodSignature ~/ pre.rep ~ post.rep ~ block.?).map{
     case (name , args , rets , pres , posts , Some(body)) =>
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
     case (name , args , rets , pres , posts , None) =>
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(Seq(PInhale(PBoolLit(b = false)))))
   }
-  lazy val methodSignature = P("method" ~ idndef ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")").?)
-  lazy val parser = P(programDecl)
+  lazy val methodSignature = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")").?)
+  lazy val parser = P(programDecl ~ End)
 
 
 
@@ -568,6 +568,6 @@ package object Main {
 
 
 def main(args: Array[String]) {
-  println(parser.parse("method helper(a:Int, b: Int)\n{\n  assert a+b == (a + b) //Verifies\n  \n}"))
+//  println(parser.parse("method helper(a:Int, b: Int)\n{\n  assert -a+b == -(a + b) //Verifies\n  assert -a+b == (-a) + b    //Does not verify. Minus at the beginning doesn't bind strongest\n}"))
   }
 }
