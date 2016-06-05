@@ -62,7 +62,6 @@ method test02_qp_client(xs: Seq[Ref], y: Ref, p: Perm)
   requires y in xs
   requires forall x: Ref :: x in xs ==> x != null
 {
-  //:: UnexpectedOutput(call.precondition:negative.permission, /carbon/issue/116/)
   test02_qp(xs, y, p)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
