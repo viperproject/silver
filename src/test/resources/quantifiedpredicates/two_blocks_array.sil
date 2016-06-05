@@ -38,10 +38,11 @@ requires i % 2 == 0
 requires len(a)%2 == 0
 requires forall j:Int :: j >= 0 && j < len(a) && (j%2 ==0) ==> acc(access(a,j))
 ensures i >= 0 && i < len(a)
+ensures len(a)%2 == old(len(a)%2)
 ensures forall j:Int :: j >= 0 && j < len(a) && (j%2 ==0) ==> acc(access(a,j))
 ensures forall j:Int :: j >= 0 && j < i && (j%2 ==0) ==> (unfolding acc(access(a,j)) in  loc(a, j).val) == old(unfolding acc(access(a,j)) in  loc(a, j).val)
 ensures forall j:Int :: j >= 0 && j < i && (j%2 ==0) ==> (unfolding acc(access(a,j)) in  loc(a, j+1).val) == old(unfolding acc(access(a,j)) in  loc(a, j+1).val)
-ensures forall j:Int :: j >= i && j < len(a) && (j%2 ==0) ==> (unfolding acc(access(a,j)) in  (loc(a, j).val == newVal)) && (unfolding acc(access(a,j)) in  (loc(a, j+1).val == newVal))
+ensures forall j:Int :: j == i && j < len(a) && (j%2 ==0) ==> (unfolding acc(access(a,j)) in  (loc(a, j).val == newVal)) && (unfolding acc(access(a,j)) in  (loc(a, j+1).val == newVal))
 {
     var k:Int
     assume k >= 0 && k < len(a) && (k%2 == 0) && k!= i
