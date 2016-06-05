@@ -10,53 +10,86 @@ import scala.collection.mutable
 import viper.silver.ast._
 
 /** Utility methods for quantified predicate permissions. */
-object QuantifiedPermissions {
-  object QPPForall {
-    //TODO
-    def unapply(n: Forall): Option[(LocalVarDecl, /* Quantified variable */
-      Exp, /* Condition */
-      Seq[Exp], /* Predicate arguments in acc(pred(args), p) */
-      String, /* predicate name of acc(pred(args), p) */
-      Exp, /* Permissions p of acc(e.f, p) */
-      Forall, /* AST node of the forall (for error reporting) */
-      PredicateAccessPredicate)] = /* AST node for e.f (for error reporting) */
+  object QuantifiedPermissions {
 
-      n match {
-        case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
-        triggers,
-        Implies(condition, pa@PredicateAccessPredicate(PredicateAccess(args, predname), gain)))
-          //TODO predicate exists check?
-          if    triggers.isEmpty =>
 
-          Some((lvd, condition, args, predname, gain, forall, pa))
+    object QuantifiedPermission {
+      def unapply(n:Forall):
+      Option[(LocalVarDecl,
+        Exp,
+        Exp)] =
+        n match {
+          //field access
 
-        case _ => None
-      }
+          /* case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
+           triggers,
+           Implies(condition, fa@FieldAccessPredicate(FieldAccess(rcvr, f), gain)))
+             if     rcvr.exists(_ == lvd.localVar)
+               && triggers.isEmpty =>
 
-  }
+             Some((lvd, condition, Seq(fa)))
+           //predicate access
+           case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
+           triggers,
+           Implies(condition, pa@PredicateAccessPredicate(PredicateAccess(args, predname), perm)))
+             if    triggers.isEmpty =>
+             Some((lvd, condition, Seq(pa)))*/
+          case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
+          triggers,
+          Implies(condition, expr))
+            if    triggers.isEmpty =>
+            Some((lvd, condition,expr))
+          case _ => None
+        }
+    }
 
-  /** Utility methods for quantified field permissions. */
-  object QPForall {
-    def unapply(n: Forall): Option[(LocalVarDecl, /* Quantified variable */
-                                    Exp, /* Condition */
-                                    Exp, /* Receiver e of acc(e.f, p) */
-                                    Field, /* Field f of acc(e.f, p) */
-                                    Exp, /* Permissions p of acc(e.f, p) */
-                                    Forall, /* AST node of the forall (for error reporting) */
-                                    FieldAccess)] = /* AST node for e.f (for error reporting) */
+    /** Utility methods for quantified field permissions. */
+    object QPForall {
+      def unapply(n: Forall): Option[(LocalVarDecl, /* Quantified variable */
+        Exp, /* Condition */
+        Exp, /* Receiver e of acc(e.f, p) */
+        Field, /* Field f of acc(e.f, p) */
+        Exp, /* Permissions p of acc(e.f, p) */
+        Forall, /* AST node of the forall (for error reporting) */
+        FieldAccess)] = /* AST node for e.f (for error reporting) */
 
-      n match {
-        case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
-                           triggers,
-                           Implies(condition, FieldAccessPredicate(fa@FieldAccess(rcvr, f), gain)))
-          if     rcvr.exists(_ == lvd.localVar)
+        n match {
+          case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
+          triggers,
+          Implies(condition, FieldAccessPredicate(fa@FieldAccess(rcvr, f), gain)))
+            if     rcvr.exists(_ == lvd.localVar)
               && triggers.isEmpty =>
 
-          Some((lvd, condition, rcvr, f, gain, forall, fa))
+            Some((lvd, condition, rcvr, f, gain, forall, fa))
 
-        case _ => None
-      }
-  }
+          case _ => None
+        }
+    }
+
+
+
+    object QPPForall {
+      def unapply(n: Forall): Option[(LocalVarDecl, /* Quantified variable */
+        Exp, /* Condition */
+        Seq[Exp], /* Predicate arguments in acc(pred(args), p) */
+        String, /* predicate name of acc(pred(args), p) */
+        Exp, /* Permissions p of acc(e.f, p) */
+        Forall, /* AST node of the forall (for error reporting) */
+        PredicateAccessPredicate)] = /* AST node for e.f (for error reporting) */
+
+        n match {
+          case forall@Forall(Seq(lvd@LocalVarDecl(_, _ /*Ref*/)),
+          triggers,
+          Implies(condition, pa@PredicateAccessPredicate(PredicateAccess(args, predname), gain)))
+            if triggers.isEmpty =>
+
+            Some((lvd, condition, args, predname, gain, forall, pa))
+
+          case _ => None
+        }
+    }
+
+
 
   /* TODO: Computing the set of quantified fields would probably benefit from caching
    *       the (sub)results per member. Ideally, it would be possible to retrieve the
