@@ -51,9 +51,7 @@ method reprotwo(s:Seq[Ref])
 {
   inhale (forall x: Ref :: x in s ==> acc(x.f))
   //:: UnexpectedOutput(inhale.failed:receiver.null, /silicon/issue/64/)
-  //:: UnexpectedOutput(inhale.failed:receiver.null, /carbon/issue/117/)
   inhale (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].f == 0))
-  //:: UnexpectedOutput(assert.failed:receiver.null, /carbon/issue/117/)
   assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].f == 0))
 }
 
@@ -63,7 +61,6 @@ method reprothree(s:Seq[Ref])
   inhale (forall x: Ref :: x in s ==> (x.f == 0))
   // // :: UnexpectedOutput(assert.failed:receiver.null, /silicon/issue/64/)
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/99/)
-  //:: UnexpectedOutput(assert.failed:receiver.null, /carbon/issue/117/)
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/117/)
   assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].f == 0))
 }
@@ -75,6 +72,5 @@ method reprofour(s:Seq[Ref])
   assert (forall x: Ref :: x in s ==> (x.f == 0))
   // // :: UnexpectedOutput(assert.failed:receiver.null, /silicon/issue/64/)
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/99/)
-  //:: UnexpectedOutput(assert.failed:receiver.null, /carbon/issue/117/)
   assert |s|>0 ==> s[0].f == 0
 }

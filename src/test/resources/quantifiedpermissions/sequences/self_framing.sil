@@ -3,7 +3,6 @@ field f:Int
 method foo(s: Seq[Ref])
   requires |s| > 2 && (forall i: Int :: i in [0..2) ==> acc(s[i].f, write))
 {
-    //:: ExpectedOutput(inhale.failed:receiver.null)
     //:: ExpectedOutput(inhale.failed:insufficient.permission)
     //:: MissingOutput(inhale.failed:insufficient.permission, /silicon/issue/34/)
     inhale |s| > 3 ==> s[2].f == 1

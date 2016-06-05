@@ -144,7 +144,6 @@ method test03(xs: Set[Ref], ys: Set[Ref], x: Ref)
   assume a != 0
   var b: Ref := x.g
 
-  //:: ExpectedOutput(assignment.failed:receiver.null)
   //:: ExpectedOutput(assignment.failed:insufficient.permission)
   //:: MissingOutput(assignment.failed:receiver.null, /silicon/issue/219/)
   a := x.g.f

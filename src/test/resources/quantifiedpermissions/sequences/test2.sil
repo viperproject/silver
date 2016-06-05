@@ -10,7 +10,6 @@ method test01(s: Seq[Ref], t: Seq[Ref])
 method test02(s: Seq[Ref], x: Ref)
   requires forall i: Int :: i in [0..|s|) ==> acc(s[i].f)
 {
-  //:: ExpectedOutput(assert.failed:receiver.null)
   //:: ExpectedOutput(assert.failed:insufficient.permission)
   //:: MissingOutput(assert.failed:insufficient.permission, /silicon/issue/34/)
   assert x.f == old(x.f)

@@ -6,7 +6,6 @@ method test01(x: Ref) {
   //:: MissingOutput(wand.not.wellformed:insufficient.permission, /carbon/issue/105/)
   //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/201/)
   //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
-  //:: UnexpectedOutput(package.failed:receiver.null, /carbon/issue/105/)
   package true --* acc(x.f.f)
     /* - x might be null
      * - no permissions to read x.f

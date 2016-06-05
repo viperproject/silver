@@ -53,7 +53,6 @@ method test02_client(x: Ref, p: Perm)
    assert y != null
 
    //:: ExpectedOutput(assert.failed:assertion.false)
-   //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/116/)
    //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
    assert p != none
  }
@@ -66,6 +65,5 @@ method test02_qp_client(xs: Seq[Ref], y: Ref, p: Perm)
   //:: UnexpectedOutput(call.precondition:negative.permission, /carbon/issue/116/)
   test02_qp(xs, y, p)
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/116/)
   assert false
 }
