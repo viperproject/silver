@@ -71,6 +71,7 @@ method test04(xs: Set[Ref])
     exhale forall x: Ref :: x in xs ==> acc(x.f, k1)
   }
 
+  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /carbon/issue/119/)
   exhale forall x: Ref :: x in xs ==> acc(x.f, wildcard)
 
   var k2: Perm
