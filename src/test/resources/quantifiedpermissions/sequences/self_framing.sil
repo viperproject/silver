@@ -3,9 +3,8 @@ field f:Int
 method foo(s: Seq[Ref])
   requires |s| > 2 && (forall i: Int :: i in [0..2) ==> acc(s[i].f, write))
 {
-    //:: ExpectedOutput(inhale.failed:insufficient.permission)
-    //:: MissingOutput(inhale.failed:insufficient.permission, /silicon/issue/34/)
-    inhale |s| > 3 ==> s[2].f == 1
+  //:: ExpectedOutput(inhale.failed:insufficient.permission)
+  inhale |s| > 3 ==> s[2].f == 1
 }
 
 // Should be accepted
@@ -18,8 +17,8 @@ method foo1(s: Seq[Ref])
 method foo2(s: Seq[Ref])
   requires |s| > 2 && acc(s[0].f, write) && acc(s[1].f, write)
 {
-    //:: UnexpectedOutput(inhale.failed:insufficient.permission, /silicon/issue/72/)
-    inhale forall i2: Int :: i2 in [0..2) ==> s[i2].f == 0
+  //:: UnexpectedOutput(inhale.failed:insufficient.permission, /silicon/issue/72/)
+  inhale forall i2: Int :: i2 in [0..2) ==> s[i2].f == 0
 }
 
 method foo2korbinian(s:Seq[Ref])
