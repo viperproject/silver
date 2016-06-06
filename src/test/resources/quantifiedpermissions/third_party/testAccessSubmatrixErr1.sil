@@ -9,8 +9,6 @@ method Ref__zero(diz: Ref, M: Int, N: Int, step: Int, matrix: Seq[Ref])
   var __flatten_1: Ref
   __flatten_1 := matrix[N]
         // confirmed by Stefan Blom
-    //:: ExpectedOutput(assignment.failed:receiver.null)
     //:: ExpectedOutput(assignment.failed:insufficient.permission)
-    //:: MissingOutput(assignment.failed:insufficient.permission, /silicon/issue/34/)
   __flatten_1.Ref__Integer_value := 0
 }

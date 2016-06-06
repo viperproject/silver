@@ -39,17 +39,13 @@ function fun5(x: Ref): Int
 
 
 function err1(x: Ref): Int
-  //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /silicon/issue/34/)
   requires acc(x.h.f)
 { 0 }
 
 function err2(x: Ref): Int
   requires acc(x.f)
   //:: ExpectedOutput(application.precondition:insufficient.permission)
-  //:: ExpectedOutput(application.precondition:receiver.null)
-  //:: MissingOutput(application.precondition:receiver.null, /silicon/issue/34/)
   requires err1(x) == 0
 { 0 }
 

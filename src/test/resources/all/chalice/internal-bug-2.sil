@@ -6,8 +6,6 @@ method koko(this: Ref)
   requires acc(inv(this), write)
 {
   //:: ExpectedOutput(assignment.failed:insufficient.permission)
-  //:: IgnoreOthers
-  //:: MissingOutput(assignment.failed:insufficient.permission, /silicon/issue/34/)
   this.x := this.x + 1
 
   assert (((unfolding acc(inv(this), write) in this.x)) == (old((unfolding acc(inv(this), write) in this.x))))

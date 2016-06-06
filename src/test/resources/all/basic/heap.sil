@@ -31,8 +31,8 @@ method t2(r: Ref) {
   if (r != null) {
     assert perm(r.f) == none
   } else {
-    //:: ExpectedOutput(assert.failed:receiver.null)
     assert perm(r.f) == none
+      /* Still expected to pass - perm(e.f) does not require e != null */
   }
 }
 

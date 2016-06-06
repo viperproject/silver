@@ -119,9 +119,7 @@ method Ref__loop_body_54(diz: Ref, current_thread_id: Int, len: Int, b: Seq[Ref]
     __flatten_9 := c[i]
     __flatten_11 := a[i + 1]
         // confirmed by Stefan Blom
-    //:: ExpectedOutput(assignment.failed:receiver.null)
     //:: ExpectedOutput(assignment.failed:insufficient.permission)
-    //:: MissingOutput(assignment.failed:insufficient.permission, /silicon/issue/34/)  
     __flatten_10 := __flatten_11.Ref__Integer_value + 2
     __flatten_9.Ref__Integer_value := __flatten_10
   }

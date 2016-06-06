@@ -13,7 +13,11 @@ method test01(xs: Set[Ref], x: Ref, y: Ref)
 method test02(xs: Set[Ref], x: Ref, k: Perm)
   requires x in xs
   requires forall z: Ref :: z in xs ==> acc(z.f, k)
-{ assert x != null }
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert x != null
+    /* none < k is not known, hence (forall z) z.f != null is not known either */
+}
 
 method test03(xs: Set[Ref], x: Ref)
   requires forall z: Ref :: z in xs ==> acc(z.f)
