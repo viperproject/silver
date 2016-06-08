@@ -9,6 +9,7 @@ package viper.silver.frontend
 import java.io.File
 import java.nio.file.{Path, Paths}
 
+import fastparse.core.Parsed
 import org.apache.commons.io.FilenameUtils
 import org.kiama.util.Messaging
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
@@ -199,6 +200,9 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
+//   sahil FastPArser.parse(input)
+
+
     Parser.parse(input, file) match {
       case Parser.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
         if (err_list.isEmpty || err_list.forall{ case p => p.isInstanceOf[ParseWarning] })
@@ -210,6 +214,24 @@ trait SilFrontend extends DefaultFrontend {
         Fail(List(ParseError(s"Error: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
     }
   }
+  /*override def doParse(input: String): Result[ParserResult] = {
+    val file = _inputFile.get
+    //   sahil FastPArser.parse(input)
+    val result = FastParser.fastparser.parse(input)
+     result match {
+      case Parsed.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
+        if (err_list.isEmpty || err_list.forall{ case p => p.isInstanceOf[ParseWarning] })
+        Succ({ e.initTreeProperties(); e })
+      else Fail(err_list)
+      case Parsed.Failure(msg, next, extra) =>
+        Fail(List(ParseError(s"Failure: $msg", SourcePosition(file, extra.line, extra.col))))
+
+    }
+
+  }*/
+
+
+
 
   /* TODO: Naming of doTypecheck and doTranslate isn't ideal.
            doTypecheck already translated the program, whereas doTranslate doesn't actually translate

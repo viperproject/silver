@@ -27,11 +27,11 @@ import viper.silver.verifier._
   * then be type-checked and translated into the SIL AST ([[viper.silver.ast.Node]])
   * using [[viper.silver.parser.Translator]].
   *
+  *
+  * IMPORTANT: Also keep the parser
   * IMPORTANT: If you change or extend the syntax, please also update the syntax
   * description in documentation/syntax as well as the syntax highlighting definitions
-  * in util/highlighting!
-  *
-  * IMPORTANT: Also keep the parser in sync with the pretty printer!
+  * in util/highlighting! in sync with the pretty printer!
   */
 object Parser extends BaseParser {
   override def file = _file

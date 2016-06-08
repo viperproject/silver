@@ -13,7 +13,7 @@ object ParserTester extends BaseParser {
   override def file = _file
   var _file: Path = null
   def main(args: Array[String]) {
-    parse("method helper(a:Int, b: Int)\n{\n  assert -a+b == -(a + b) //Verifies\n  assert -a+b == (-a) + b    //Does not verify. Minus at the beginning doesn't bind strongest\n}", null)
+    parse("field next: Ref\n\nmethod Bug(nodes: Seq[Ref]) returns ()\n  requires  1 < |nodes| && !(null in nodes)\n  requires forall i: Int :: i in [0..|nodes|) ==> acc(nodes[i].next)\n  \n{\n  assert nodes[0].next == nodes[1]\n}", null)
   }
 
   def parse(s: String, f: Path) = {
