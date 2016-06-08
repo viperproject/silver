@@ -50,7 +50,6 @@ method test01(s:Seq[Ref])
 method reprotwo(s:Seq[Ref])
 {
   inhale (forall x: Ref :: x in s ==> acc(x.f))
-  //:: UnexpectedOutput(inhale.failed:receiver.null, /silicon/issue/64/)
   inhale (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].f == 0))
   assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].f == 0))
 }
