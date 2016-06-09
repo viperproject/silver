@@ -216,6 +216,7 @@ trait SilFrontend extends DefaultFrontend {
   }
   /*override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
+    FastParser._file = file
     //   sahil FastPArser.parse(input)
     val result = FastParser.fastparser.parse(input)
      result match {

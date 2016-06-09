@@ -8,10 +8,15 @@ import java.nio.file.Path
 
 import fastparse.parsers.Combinators.Rule
 import fastparse.WhitespaceApi
+import fastparse.core.Parsed.Position
 import fastparse.parsers.Intrinsics
-//import fastparse.core.{Mutable, ParseCtx, Parser}
+import fastparse.core.{Mutable, ParseCtx, Parser}
 import fastparse.parsers.{Intrinsics, Terminals}
 import org.kiama.util.Positions
+import org.kiama.util.Positions._
+import viper.silver.ast.HasLineColumn
+
+import scala.reflect.internal.util.Position
 /*import fastparse.core.{Parsed, Parser}*/
 import fastparse.parsers.Intrinsics
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
@@ -21,25 +26,45 @@ import scala.collection.mutable
 import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 
+case class PFilePosition(file: Path, vline: Int , col: Int) extends util.parsing.input.Position with HasLineColumn
+{
+  override lazy val line = vline
+  override lazy val column = col
+  override lazy val lineContents = toString
+  override lazy val toString = s"${file.getFileName}@$vline.$col"
+//  println(toString)
+}
 
 
-
-/*class PositionRule[+T](override val name: String, override val p: () => Parser[T]) extends Rule[T](name, p){
+class PositionRule[+T](override val name: String, override val p: () => Parser[T], file: Path) extends Rule[T](name, p){
   lazy val pCached = p()
   override def parseRec(cfg: ParseCtx, index: Int) = {
 
+
+    def computeFrom(input: String, index: Int) : (Int, Int) = {
+      val lines = input.take(1 + index).lines.toVector
+      val line = lines.length
+      val col = lines.lastOption.map(_.length).getOrElse(0)
+      Pair(line, col)
+    }
     if (cfg.instrument == null) {
       pCached.parseRec(cfg, index) match{
         case f: Mutable.Failure => failMore(f, index, cfg.logDepth)
-        case s: Mutable.Success[T] => {
-//          Positions.setStart(s.toResult.value, )
+        case s: Mutable.Success[T] =>
+          val start = computeFrom(cfg.input, index)
+          val end = computeFrom(cfg.input, s.index)
+          setStart (s.value, PFilePosition(file, start._1, start._2))
+          setFinish (s.value, PFilePosition(file, end._1, end._2))
           s
-        }
       }
     } else {
       lazy val res = pCached.parseRec(cfg, index) match{
         case f: Mutable.Failure => failMore(f, index, cfg.logDepth)
         case s: Mutable.Success[T] => {
+          val start = computeFrom(cfg.input, index)
+          val end = computeFrom(cfg.input, s.index)
+          setStart (s.value, PFilePosition(file, start._1, start._2))
+          setFinish (s.value, PFilePosition(file, end._1, end._2))
           s
         }
       }
@@ -47,13 +72,18 @@ import scala.language.reflectiveCalls
       res
     }
   }
-}*/
+}
 
 
 
-package object Main {
-  /* def PP[T](p: => Parser[T])(implicit name: sourcecode.Name): Parser[T] =
-    new PositionRule(name.value, () => p)*/
+
+
+object FastParser {
+
+  var _file: Path = null
+
+   def P[T](p: => Parser[T])(implicit name: sourcecode.Name): Parser[T] =
+    new PositionRule(name.value, () => p, _file)
 
   val White = WhitespaceApi.Wrapper {
     import fastparse.all._
@@ -74,9 +104,9 @@ package object Main {
   //from here the code starts
   def keyword(check: String) = check ~~ !CharIn('0' to '9', 'A' to 'Z', 'a' to 'z')
 
-  def parens[A](p: Parser[A]) = "(" ~ p ~ ")"
+  def parens[A](p: fastparse.noApi.Parser[A]) = "(" ~ p ~ ")"
 
-  def quoted[A](p: Parser[A]) = "\"" ~ p ~ "\""
+  def quoted[A](p:fastparse.noApi.Parser[A]) = "\"" ~ p ~ "\""
 
   def foldPExp[E <: PExp](e: PExp, es: Seq[PExp => E]): E =
     es.foldLeft(e) { (t, a) =>
@@ -293,9 +323,9 @@ package object Main {
       case None => a
     }
   }
-  lazy val exp: P[PExp] = P(iteExpr).log()
+  lazy val exp: P[PExp] = P(iteExpr)
 
-  lazy val suffix: Parser[PExp => PExp] =
+  lazy val suffix: fastparse.noApi.Parser[PExp => PExp] =
     P(("." ~ idnuse).map { id => (e: PExp) => PFieldAccess(e, id) } |
       ("[.." ~/ exp ~ "]").map { n => (e: PExp) => PSeqTake(e, n) } |
       ("[" ~ exp ~ "..]").map { n => (e: PExp) => PSeqDrop(e, n) } |
@@ -337,7 +367,7 @@ package object Main {
     }
   }
 
-  lazy val accessPred: P[PAccPred] = P(StringIn("acc") ~/ ("(" ~ locAcc ~ ("," ~ exp).? ~ ")").log().map { case (loc, perms) => PAccPred(loc, perms.getOrElse(PFullPerm())) })
+  lazy val accessPred: P[PAccPred] = P(StringIn("acc") ~/ ("(" ~ locAcc ~ ("," ~ exp).? ~ ")").map { case (loc, perms) => PAccPred(loc, perms.getOrElse(PFullPerm())) })
   lazy val locAcc: P[PLocationAccess] = P(fieldAcc | predAcc)
   //this rule is in doubt :D 2. Leaving an opaques symbol here
   lazy val fieldAcc: P[PFieldAccess] = P(realSuffixExpr.filter(getFieldAccess).map { case fa: PFieldAccess => fa })
@@ -480,7 +510,7 @@ package object Main {
 
   // Declarations
 
-  lazy val programDecl = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl).rep).log().map {
+  lazy val programDecl = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl).rep).map {
     case decls =>
       var globalDefines: Seq[PDefine] = decls.collect { case d: PDefine => d }
       globalDefines = expandDefines(globalDefines, globalDefines)
@@ -611,7 +641,7 @@ package object Main {
   lazy val functionDecl = P("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
     post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f) => PFunction(a, b, c, d, e, f) }
 
-  lazy val pre = P("requires" ~/ exp ~ ";".?).log()
+  lazy val pre = P("requires" ~/ exp ~ ";".?)
   lazy val post = P("ensures" ~/ exp ~ ";".?)
 
   lazy val predicateDecl = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }
@@ -621,8 +651,8 @@ package object Main {
     case (name, args, rets, pres, posts, None) =>
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(Seq(PInhale(PBoolLit(b = false)))))
   }
-  lazy val methodSignature = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")").?).log()
-  lazy val fastparser = P( Start ~ programDecl ~ End).log()
+  lazy val methodSignature = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")").?)
+  lazy val fastparser = P( Start ~ programDecl ~ End)
 
 
   /*

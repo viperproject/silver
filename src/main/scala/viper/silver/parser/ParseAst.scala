@@ -35,7 +35,7 @@ trait KiamaPositioned {
   /** Used for reporting the starting position of an AST node. */
   def startPosStr = start match {
     case fp: FilePosition =>
-      s"${fp.file.getFileName}@${start}"
+      s"${fp.file.getFileName}@@${start}"
     case _ =>
       s"${start}"
   }
