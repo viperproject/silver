@@ -45,7 +45,7 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
       val lines = input.take(1 + index).lines.toVector
       val line = lines.length
       val col = lines.lastOption.map(_.length).getOrElse(0)
-      Pair(line, col)
+      (line, col)
     }
     if (cfg.instrument == null) {
       pCached.parseRec(cfg, index) match{
@@ -55,6 +55,7 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
           val end = computeFrom(cfg.input, s.index)
           setStart (s.value, PFilePosition(file, start._1, start._2))
           setFinish (s.value, PFilePosition(file, end._1, end._2))
+//          println(file)
           s
       }
     } else {
@@ -88,7 +89,7 @@ object FastParser {
   val White = WhitespaceApi.Wrapper {
     import fastparse.all._
 
-    NoTrace((("/*" ~ (AnyChar ~ !StringIn("*/")).rep ~ AnyChar ~ "*/") | ("//" ~ CharsWhile(_ != '\n') ~ "\n") | " " | "\t" | "\n").rep)
+    NoTrace((("/*" ~ (AnyChar ~ !StringIn("*/")).rep ~ AnyChar ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ "\n") | " " | "\t" | "\n" | "\r").rep)
   }
 
   import fastparse.noApi._
@@ -558,8 +559,8 @@ object FastParser {
                 val p = viper.silver.parser.Parser.RecParser(imp_path)
                 p.parse(s.mkString("\n") + "\n") match {
                   case p.Success(a, _) => Right(a)
-                  case p.Failure(msg, next) => Left(viper.silver.verifier.ParseError(s"Failure: $msg", FilePosition(imp_path, next.pos)))
-                  case p.Error(msg, next) => Left(viper.silver.verifier.ParseError(s"Error: $msg", FilePosition(imp_path, next.pos)))
+                  case p.Failure(msg, next) => Left(viper.silver.verifier.ParseError(s"Failure: $msg", PFilePosition(imp_path, next.pos.line, next.pos.column)))
+                  case p.Error(msg, next) => Left(viper.silver.verifier.ParseError(s"Error: $msg", PFilePosition(imp_path, next.pos.line, next.pos.column)))
                 }
             }
           }

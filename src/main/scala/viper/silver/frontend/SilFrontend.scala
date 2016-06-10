@@ -198,7 +198,7 @@ trait SilFrontend extends DefaultFrontend {
     println("No errors found.")
   }
 
-  override def doParse(input: String): Result[ParserResult] = {
+  /*override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
 //   sahil FastPArser.parse(input)
 
@@ -213,8 +213,8 @@ trait SilFrontend extends DefaultFrontend {
       case Parser.Error(msg, next) =>
         Fail(List(ParseError(s"Error: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
     }
-  }
-  /*override def doParse(input: String): Result[ParserResult] = {
+  }*/
+  override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
     FastParser._file = file
     //   sahil FastPArser.parse(input)
@@ -229,7 +229,7 @@ trait SilFrontend extends DefaultFrontend {
 
     }
 
-  }*/
+  }
 
 
 

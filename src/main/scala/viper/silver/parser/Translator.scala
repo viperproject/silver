@@ -6,6 +6,8 @@
 
 package viper.silver.parser
 
+import java.nio.file.Path
+
 import com.sun.org.apache.xerces.internal.impl.xs.SubstitutionGroupHandler
 
 import scala.language.implicitConversions
@@ -13,7 +15,9 @@ import scala.collection.mutable
 import org.kiama.attribution.Attributable
 import org.kiama.util.Messaging
 import viper.silver.ast._
-import viper.silver.ast.utility.{Consistency, Visitor, Statements}
+import viper.silver.ast.utility.{Consistency, Statements, Visitor}
+
+import scala.reflect.io.Path
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -464,9 +468,11 @@ case class Translator(program: PProgram) {
   implicit def liftPos(pos: KiamaPositioned): SourcePosition = {
     val start = LineColumnPosition(pos.start.line, pos.start.column)
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
+//    def file =java.nio.file.Paths.get("/home/sahil/test/some_file.sil")
     pos.start match {
+      case fp: PFilePosition => SourcePosition(fp.file, start, end)
       case fp: FilePosition => SourcePosition(fp.file, start, end)
-      case _ => SourcePosition(null, start, end)
+      case _ => SourcePosition(null , start, end)
     }
   }
 

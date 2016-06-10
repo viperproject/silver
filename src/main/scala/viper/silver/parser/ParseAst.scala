@@ -35,7 +35,9 @@ trait KiamaPositioned {
   /** Used for reporting the starting position of an AST node. */
   def startPosStr = start match {
     case fp: FilePosition =>
-      s"${fp.file.getFileName}@@${start}"
+      s"${fp.file.getFileName}@${start}"
+    case fp: PFilePosition =>
+      s"${fp.file.getFileName}@${start}"
     case _ =>
       s"${start}"
   }
@@ -51,8 +53,18 @@ trait KiamaPositioned {
       else
         // An AST node should probably not spread between multiple source files, but who knows?
         s"[$fp_a-$fp_b]"
+    case fp_a: PFilePosition =>
+      require(finish.isInstanceOf[PFilePosition],
+        s"start and finish positions must be instances of FilePosition at the same time")
+      val fp_b = finish.asInstanceOf[PFilePosition]
+      if (fp_a.file == fp_b.file)
+        s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
+      else
+      // An AST node should probably not spread between multiple source files, but who knows?
+        s"[$fp_a--$fp_b]"
     case _ =>
-      s"[${start}-${finish}]"
+      s"[${start}--${finish}]"
+//      s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
   }
 
   private def setStart(p: Position) = Positions.setStart(this, (p))
