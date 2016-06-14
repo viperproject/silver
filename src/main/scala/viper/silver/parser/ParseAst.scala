@@ -740,7 +740,7 @@ sealed trait PCollectionLiteral extends POpApp{
 }
 
 sealed trait PEmptyCollectionLiteral extends PCollectionLiteral {
-  override val signatures : Set[PTypeSubstitution] = Set(
+  override def signatures : Set[PTypeSubstitution] = Set(
     Map(POpApp.pResS -> pCollectionType(pElementType))
   )
   override val args = Seq()
