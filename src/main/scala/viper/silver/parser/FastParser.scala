@@ -6,11 +6,13 @@ package viper.silver.parser
 
 import java.nio.file.Path
 
-import fastparse.parsers.Combinators.Rule
+import fastparse.Implicits.Sequencer
+import fastparse.parsers.Combinators.{Rule, Sequence}
 import fastparse.WhitespaceApi
+import fastparse.all._
 import fastparse.core.Parsed.Position
 import fastparse.parsers.Intrinsics
-import fastparse.core.{Mutable, ParseCtx, Parser}
+import fastparse.core.{Mutable, ParseCtx, Parsed, Parser}
 import fastparse.parsers.{Intrinsics, Terminals}
 import org.kiama.util.Positions
 import org.kiama.util.Positions._
@@ -32,12 +34,64 @@ case class PFilePosition(file: Path, vline: Int , col: Int) extends util.parsing
   override lazy val column = col
   override lazy val lineContents = toString
   override lazy val toString = s"${file.getFileName}@$vline.$col"
-//  println(toString)
+  //  println(toString)
+}
+
+
+class PosCustomSequence[+T, +R, +V](WL: P0, p0: P[T], p: P[V], cut: Boolean, file: Path)
+                                   (implicit ev: Sequencer[T, V, R]) extends WhitespaceApi.CustomSequence(WL, p0, p, cut)(ev){
+
+  def computeFrom(input: String, index: Int) : (Int, Int) = {
+    val lines = input.take(1 + index).lines.toVector
+    val line = lines.length
+    val col = lines.lastOption.map(_.length).getOrElse(0)
+    (line, col)
+  }
+
+  override def parseRec(cfg: ParseCtx, index: Int) = {
+    p0.parseRec(cfg, index) match {
+      case f: Mutable.Failure => failMore(f, index, cfg.logDepth, f.traceParsers, false)
+      case Mutable.Success(value0, index0, traceParsers0, cut0) =>
+        val start0 = computeFrom(cfg.input, index)
+        val end0 = computeFrom(cfg.input, index0)
+        setStart (value0, PFilePosition(file, start0._1, start0._2))
+        setFinish (value0, PFilePosition(file, end0._1, end0._2))
+        WL.parseRec(cfg, index0) match {
+          case f1: Mutable.Failure => failMore(f1, index, cfg.logDepth)
+          case Mutable.Success(value1, index1, traceParsers1, cut1) =>
+            p.parseRec(cfg, index1) match {
+              case f: Mutable.Failure => failMore(
+                f, index1, cfg.logDepth,
+                mergeTrace(cfg.traceIndex, traceParsers0, f.traceParsers),
+                cut | cut0
+              )
+              case Mutable.Success(value2, index2, traceParsers2, cut2) =>
+                val start1 = computeFrom(cfg.input, index1)
+                val end1 = computeFrom(cfg.input, index2)
+                setStart (value2, PFilePosition(file, start1._1, start1._2))
+                setFinish (value2, PFilePosition(file, end1._1, end1._2))
+                val (newIndex, newCut) =
+                  if (index2 > index1 || index1 == cfg.input.length) (index2, cut | cut0 | cut1 | cut2)
+                  else (index0, cut | cut0 | cut2)
+
+                success(
+                  cfg.success,
+                  ev.apply(value0, value2),
+                  newIndex,
+                  mergeTrace(cfg.traceIndex, traceParsers0, traceParsers2),
+                  newCut
+                )
+            }
+        }
+    }
+  }
+
 }
 
 
 class PositionRule[+T](override val name: String, override val p: () => Parser[T], file: Path) extends Rule[T](name, p){
   lazy val pCached = p()
+
   override def parseRec(cfg: ParseCtx, index: Int) = {
 
 
@@ -55,7 +109,7 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
           val end = computeFrom(cfg.input, s.index)
           setStart (s.value, PFilePosition(file, start._1, start._2))
           setFinish (s.value, PFilePosition(file, end._1, end._2))
-//          println(file)
+          //          println(file)
           s
       }
     } else {
@@ -83,10 +137,36 @@ object FastParser {
 
   var _file: Path = null
 
-   def P[T](p: => Parser[T])(implicit name: sourcecode.Name): Parser[T] =
+  def P[T](p: => Parser[T])(implicit name: sourcecode.Name): Parser[T] =
     new PositionRule(name.value, () => p, _file)
 
-  val White = WhitespaceApi.Wrapper {
+  def PWrapper(WL: P0) = new PWrapper(WL)
+  class PWrapper(WL: P0){
+    implicit def parserApi[T, V](p0: T)(implicit c: T => P[V]): WhitespaceApi[V] =
+      new WhitespaceApi[V](p0, WL){
+        //        override def ~[V, R](p: P[V])
+        //                            (implicit ev: Sequencer[T, V, R])
+        //        : P[R] = {
+        //          assert(p != null)
+        //          new WhitespaceApi.CustomSequence(WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[T]], p, cut=false)(ev)
+        //        }
+
+        override def ~[V2, R](p: Parser[V2])(implicit ev: Sequencer[V, V2, R]): Parser[R] = {
+          assert(p != null)
+          new PosCustomSequence[V, R, V2](WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[V]], p, cut=false, _file)(ev)
+        }
+
+
+        override def ~/[V2, R](p: P[V2])
+                              (implicit ev: Sequencer[V, V2, R])
+        : P[R] = {
+          assert(p != null)
+          new PosCustomSequence(WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[V]], p, cut=true, _file)(ev)
+        }
+      }
+  }
+
+  val White = PWrapper {
     import fastparse.all._
 
     NoTrace((("/*" ~ (AnyChar ~ !StringIn("*/")).rep ~ AnyChar ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ "\n") | " " | "\t" | "\n" | "\r").rep)
@@ -289,17 +369,17 @@ object FastParser {
 
 //    lazy val atom: P[PExp] = P(seqRange|seqLength| integer|idnuse )
 
-  lazy val integer = P(CharIn('0' to '9').rep(1)).!.map { s => PIntLit(BigInt(s)) }
-  lazy val booltrue = P(keyword("true")).map(_ => PBoolLit(b = true))
-  lazy val boolfalse = P(keyword("false")).map(_ => PBoolLit(b = false))
-  lazy val nul = P(keyword("null")).map(_ => PNullLit())
+  lazy val integer: P[PIntLit] = P(CharIn('0' to '9').rep(1)).!.map { s => PIntLit(BigInt(s)) }
+  lazy val booltrue: P[PBoolLit] = P(keyword("true")).map(_ => PBoolLit(b = true))
+  lazy val boolfalse: P[PBoolLit] = P(keyword("false")).map(_ => PBoolLit(b = false))
+  lazy val nul: P[PNullLit] = P(keyword("null")).map(_ => PNullLit())
 
-  lazy val identifier = P(CharIn('A' to 'Z', 'a' to 'z', "$_") ~~ CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "$_").repX)
-  lazy val ident = P(identifier.!).filter{case a => !keywords.contains(a)}
+  lazy val identifier: P[Unit] = P(CharIn('A' to 'Z', 'a' to 'z', "$_") ~~ CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "$_").repX)
+  lazy val ident: P[String] = P(identifier.!).filter{case a => !keywords.contains(a)}
   //possible customize error code in rule ident
   lazy val idnuse: P[PIdnUse] = P(ident).map(PIdnUse)
 
-  lazy val old: P[PExp] = P((StringIn("old") ~ parens(exp)).map(POld) | ("[" ~ idnuse ~ "]" ~ parens(exp)).map { case (a, b) => PLabelledOld(a, b) })
+  lazy val old: P[PExp] = P(StringIn("old") ~ (parens(exp).map(POld) | ("[" ~ idnuse ~ "]" ~ parens(exp)).map { case (a, b) => PLabelledOld(a, b) }))
   lazy val applyOld: P[PExp] = P((StringIn("lhs") ~ parens(exp)).map(PApplyOld))
   lazy val magicWandExp: P[PExp] = P(orExp ~ ("--*".! ~ magicWandExp).?).map{ case(a, b) => b match {
       case Some(c) => PBinExp(a, c._1,c._2 )
@@ -338,10 +418,10 @@ object FastParser {
 
   lazy val realSuffixExpr: P[PExp] = P((atom ~ suffix.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
 
-  lazy val termOp = P(StringIn("*", "/", "\\", "%").!)
+  lazy val termOp: P[String] = P(StringIn("*", "/", "\\", "%").!)
   lazy val term: P[PExp] = P((suffixExpr ~ termd.rep).map { case (a, ss) => foldPExp[PExp](a, ss) })
   lazy val termd: P[PExp => PBinExp] = P(termOp ~ suffixExpr).map { case (op, id) => (e: PExp) => PBinExp(e, op, id) }
-  lazy val sumOp = P(StringIn("++", "+", "-").! | keyword("union").! | keyword("intersection").! | keyword("setminus").! | keyword("subset").!)
+  lazy val sumOp: P[String] = P(StringIn("++", "+", "-").! | keyword("union").! | keyword("intersection").! | keyword("setminus").! | keyword("subset").!)
   lazy val sum: P[PExp] = P((term ~ sumd.rep).map { case (a, ss) => foldPExp[PBinExp](a, ss) })
   lazy val sumd: P[PExp => PBinExp] = P(sumOp ~ term).map { case (op, id) => (e: PExp) => PBinExp(e, op, id) }
   lazy val cmpOp = P(StringIn("<=", ">=", "<", ">").! | keyword("in").!)
@@ -368,9 +448,9 @@ object FastParser {
     }
   }
 
-  lazy val accessPred: P[PAccPred] = P(StringIn("acc") ~/ ("(" ~ locAcc ~ ("," ~ exp).? ~ ")").map { case (loc, perms) => PAccPred(loc, perms.getOrElse(PFullPerm())) })
+  lazy val accessPred: P[PAccPred] = P(keyword("acc") ~/ ("(" ~ locAcc ~ ("," ~ exp).? ~ ")").map { case (loc, perms) => PAccPred(loc, perms.getOrElse(PFullPerm())) })
   lazy val locAcc: P[PLocationAccess] = P(fieldAcc | predAcc)
-  //this rule is in doubt :D 2. Leaving an opaques symbol here
+  //this rule is in doubt 2. Leaving an opaques symbol here
   lazy val fieldAcc: P[PFieldAccess] = P(realSuffixExpr.filter(getFieldAccess).map { case fa: PFieldAccess => fa })
   lazy val predAcc: P[PPredicateAccess] = P(idnuse ~ parens(actualArgList)).map { case (id, args) => PPredicateAccess(args, id) }
   //is it required to be one or more than 1 below
@@ -390,7 +470,7 @@ object FastParser {
 
       PLet(exp1, nestedScope)
     })
-  lazy val idndef = P(ident).map(PIdnDef)
+  lazy val idndef: P[PIdnDef] = P(ident).map(PIdnDef)
 
   lazy val quant: P[PExp] = P((keyword("forall") ~/ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) => PForall(a, b, c) } |
     (keyword("exists") ~ nonEmptyFormalArgList ~ "::" ~ exp).map { case (a, b) => PExists(a, b) })
@@ -403,18 +483,18 @@ object FastParser {
       // domain type without type arguments (might also be a type variable)
       case name => PDomainType(name, Nil)
     })
-  lazy val seqType: P[PType] = P("Seq" ~/ "[" ~ typ ~ "]").map(PSeqType)
+  lazy val seqType: P[PType] = P(keyword("Seq") ~/ "[" ~ typ ~ "]").map(PSeqType)
   lazy val setType: P[PType] = P("Set" ~ "[" ~ typ ~ "]").map(PSetType)
   lazy val multisetType: P[PType] = P("Multiset" ~ "[" ~ typ ~ "]").map(PMultisetType)
-  lazy val primitiveTyp: P[PType] = P(StringIn("Rational")).!.map { case _ => PPrimitiv("Perm") } | StringIn("Int", "Bool", "Perm", "Ref").!.map(PPrimitiv)
+  lazy val primitiveTyp: P[PType] = P(StringIn("Rational").!.map { case _ => PPrimitiv("Perm") } | StringIn("Int", "Bool", "Perm", "Ref").!.map(PPrimitiv))
   lazy val trigger: P[Seq[PExp]] = P("{" ~ exp.rep(sep = ",") ~ "}")
   //showing red but possibly correct checked on forperm [ ] hello::2*2
   lazy val forperm: P[PExp] = P(keyword("forperm") ~ "[" ~ idnuse.rep(sep = ",") ~ "]" ~ idndef ~ "::" ~ exp).map {
     case (ids, id, body) => PForPerm(PFormalArgDecl(id, PPrimitiv("Ref")), ids, body)
   }
-  lazy val unfolding: P[PExp] = P("unfolding" ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PUnfolding(a, b) }
+  lazy val unfolding: P[PExp] = P(keyword("unfolding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PUnfolding(a, b) }
   lazy val predicateAccessPred: P[PAccPred] = P(accessPred | predAcc.map { case loc => PAccPred(loc, PFullPerm()) })
-  lazy val folding: P[PExp] = P("folding" ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PFoldingGhostOp(a, b) }
+  lazy val folding: P[PExp] = P(keyword("folding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PFoldingGhostOp(a, b) }
 
   lazy val applying: P[PExp] =
   /*
@@ -465,53 +545,51 @@ object FastParser {
 
 
   //  Statemnts
-  lazy val stmt = P(fieldassign | localassign | fold | unfold | exhale | assert |
+  lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | ifthnels | whle | varDecl | defineDecl | letwandDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand)
 
-  lazy val fieldassign = P(fieldAcc ~ ":=" ~ exp).map { case (a, b) => PFieldAssign(a, b) }
-  lazy val localassign = P(idnuse ~ ":=" ~ exp).map { case (a, b) => PVarAssign(a, b) }
-  lazy val fold = P("fold" ~ predicateAccessPred).map(PFold)
-  lazy val unfold = P("unfold" ~ predicateAccessPred).map {
-    PUnfold
-  }
-  lazy val exhale = P(keyword("exhale") ~/ exp).map(PExhale)
-  lazy val assert = P(keyword("assert") ~/ exp).map(PAssert)
-  lazy val inhale = P((keyword("inhale") | keyword("assume")) ~ exp).map(PInhale)
-  lazy val ifthnels = P("if" ~ "(" ~ exp ~ ")" ~ block ~ elsifEls).map {
+  lazy val fieldassign: P[PFieldAssign] = P(fieldAcc ~ ":=" ~ exp).map { case (a, b) => PFieldAssign(a, b) }
+  lazy val localassign: P[PVarAssign] = P(idnuse ~ ":=" ~ exp).map { case (a, b) => PVarAssign(a, b) }
+  lazy val fold: P[PFold] = P("fold" ~ predicateAccessPred).map(PFold)
+  lazy val unfold: P[PUnfold] = P("unfold" ~ predicateAccessPred).map(PUnfold)
+  lazy val exhale: P[PExhale] = P(keyword("exhale") ~/ exp).map(PExhale)
+  lazy val assertP: P[PAssert] = P(keyword("assert") ~/ exp).map(PAssert)
+  lazy val inhale: P[PInhale] = P((keyword("inhale") | keyword("assume")) ~ exp).map(PInhale)
+  lazy val ifthnels: P[PIf] = P("if" ~ "(" ~ exp ~ ")" ~ block ~ elsifEls).map {
     case (cond, thn, ele) => PIf(cond, PSeqn(thn), ele)
   }
   lazy val block: P[Seq[PStmt]] = P("{" ~ stmts ~ "}")
-  lazy val stmts = P(stmt ~ ";".?).rep
+  lazy val stmts: P[Seq[PStmt]] = P(stmt ~ ";".?).rep
   lazy val elsifEls: P[PStmt] = P(elsif | els)
   lazy val elsif: P[PStmt] = P("elseif" ~/ "(" ~ exp ~ ")" ~ block ~ elsifEls).map {
     case (cond, thn, ele) => PIf(cond, PSeqn(thn), ele)
   }
   lazy val els: P[PStmt] = ("else" ~ block).?.map { block => PSeqn(block.getOrElse(Nil)) }
-  lazy val whle = P("while" ~ "(" ~ exp ~ ")" ~ inv.rep ~ block).map {
+  lazy val whle: P[PWhile] = P("while" ~ "(" ~ exp ~ ")" ~ inv.rep ~ block).map {
     case (cond, invs, body) => PWhile(cond, invs, PSeqn(body))
   }
-  lazy val inv = P("invariant" ~ exp ~ ";".?)
-  lazy val varDecl = P("var" ~/ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map { case (a, b, c) => PLocalVarDecl(a, b, c) }
-  lazy val defineDecl = P("define" ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ exp).map { case (a, b, c) => PDefine(a, b, c) }
-  lazy val letwandDecl = P("wand" ~/ idndef ~ ":=" ~ exp).map { case (a, b) => PLetWand(a, b) }
-  lazy val newstmt = P(idnuse ~ ":=" ~ "new" ~ "(" ~ starOrFields ~ ")").map { case (a, b) => PNewStmt(a, b) }
+  lazy val inv: P[PExp] = P(keyword("invariant") ~ exp ~ ";".?)
+  lazy val varDecl: P[PLocalVarDecl] = P(keyword("var") ~/ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map { case (a, b, c) => PLocalVarDecl(a, b, c) }
+  lazy val defineDecl: P[PDefine] = P(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ exp).map { case (a, b, c) => PDefine(a, b, c) }
+  lazy val letwandDecl: P[PLetWand] = P(keyword("wand") ~/ idndef ~ ":=" ~ exp).map { case (a, b) => PLetWand(a, b) }
+  lazy val newstmt: P[PNewStmt] = P(idnuse ~ ":=" ~ "new" ~ "(" ~ starOrFields ~ ")").map { case (a, b) => PNewStmt(a, b) }
   //doubt see what happened here later on (had to add .! in first case)
-  lazy val starOrFields = P(("*").!.map { _ => None } | idnuse.rep(sep = ",").map { fields => Some(fields) })
-  lazy val fresh = P("fresh" ~ idnuse.rep(sep = ",")).map { case vars => PFresh(vars) }
-  lazy val constrainingBlock = P("constraining" ~ "(" ~ idnuse.rep(sep = ",") ~ ")" ~ block).map { case (vars, s) => PConstraining(vars, PSeqn(s)) }
-  lazy val methodCall = P((idnuse.rep(sep = ",") ~ ":=").? ~ idnuse ~ parens(exp.rep(sep = ","))).map {
+  lazy val starOrFields: P[Option[Seq[PIdnUse]]] = P(("*").!.map { _ => None } | (idnuse.rep(sep = ",").map { fields => Some(fields) }))
+  lazy val fresh: P[PFresh] = P("fresh" ~ idnuse.rep(sep = ",")).map { case vars => PFresh(vars) }
+  lazy val constrainingBlock: P[PConstraining] = P("constraining" ~ "(" ~ idnuse.rep(sep = ",") ~ ")" ~ block).map { case (vars, s) => PConstraining(vars, PSeqn(s)) }
+  lazy val methodCall: P[PMethodCall] = P((idnuse.rep(sep = ",") ~ ":=").? ~ idnuse ~ parens(exp.rep(sep = ","))).map {
     case (None, method, args) => PMethodCall(Nil, method, args)
     case (Some(targets), method, args) => PMethodCall(targets, method, args)
   }
-  lazy val goto = P("goto" ~/ idnuse).map(PGoto)
-  lazy val lbl = P(keyword("label") ~/ idndef).map(PLabel)
-  lazy val packageWand = P("package" ~/ magicWandExp).map(PPackageWand)
-  lazy val applyWand = P("apply" ~/ magicWandExp).map(PApplyWand)
+  lazy val goto: P[PGoto] = P("goto" ~/ idnuse).map(PGoto)
+  lazy val lbl: P[PLabel] = P(keyword("label") ~/ idndef).map(PLabel)
+  lazy val packageWand: P[PPackageWand] = P("package" ~/ magicWandExp).map(PPackageWand)
+  lazy val applyWand: P[PApplyWand] = P("apply" ~/ magicWandExp).map(PApplyWand)
 
   // Declarations
 
-  lazy val programDecl = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl).rep).map {
+  lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl).rep).map {
     case decls =>
       var globalDefines: Seq[PDefine] = decls.collect { case d: PDefine => d }
       globalDefines = expandDefines(globalDefines, globalDefines)
@@ -617,10 +695,10 @@ object FastParser {
 
       PProgram(files, domains, fields, functions, predicates, methods, imp_reports)
   }
-  lazy val preambleImport = P(keyword("import") ~/ quoted(relativeFilePath)).map { case filename => PImport(filename) }
+  lazy val preambleImport: P[PImport] = P(keyword("import") ~/ quoted(relativeFilePath)).map { case filename => PImport(filename) }
   //chek if this is a correct regex doubt
-  lazy val relativeFilePath = P(("A" ~~ CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
-  lazy val domainDecl = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ domainFunctionDecl.rep ~
+  lazy val relativeFilePath: P[String] = P(("A" ~~ CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
+  lazy val domainDecl: P[PDomain] = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ domainFunctionDecl.rep ~
     axiomDecl.rep ~ "}").map {
     case (name, typparams, funcs, axioms) =>
       PDomain(
@@ -629,31 +707,31 @@ object FastParser {
         funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique)(PIdnUse(name.name)).setPos(f)),
         axioms map (a => PAxiom(a.idndef, a.exp)(PIdnUse(name.name)).setPos(a)))
   }
-  lazy val domainTypeVarDecl = P(idndef).map(PTypeVarDecl)
-  lazy val domainFunctionDecl = P("unique".!.? ~ functionSignature ~ ";".?).map {
+  lazy val domainTypeVarDecl: P[PTypeVarDecl] = P(idndef).map(PTypeVarDecl)
+  lazy val domainFunctionDecl: P[PDomainFunction1] = P("unique".!.? ~ functionSignature ~ ";".?).map {
     case (unique, fdecl) => fdecl match {
       case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined)
     }
   }
   lazy val functionSignature = P("function" ~ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ)
   lazy val formalArgList: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
-  lazy val axiomDecl = P("axiom" ~ idndef ~ "{" ~ exp ~ "}" ~ ";".?).map { case (a, b) => PAxiom1(a, b) }
-  lazy val fieldDecl = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map { case (a, b) => PField(a, b) }
-  lazy val functionDecl = P("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
+  lazy val axiomDecl: P[PAxiom1] = P("axiom" ~ idndef ~ "{" ~ exp ~ "}" ~ ";".?).map { case (a, b) => PAxiom1(a, b) }
+  lazy val fieldDecl: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map { case (a, b) => PField(a, b) }
+  lazy val functionDecl: P[PFunction] = P("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
     post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f) => PFunction(a, b, c, d, e, f) }
 
-  lazy val pre = P("requires" ~/ exp ~ ";".?)
-  lazy val post = P("ensures" ~/ exp ~ ";".?)
+  lazy val pre: P[PExp] = P("requires" ~/ exp ~ ";".?)
+  lazy val post: P[PExp] = P("ensures" ~/ exp ~ ";".?)
 
-  lazy val predicateDecl = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }
-  lazy val methodDecl = P(methodSignature ~/ pre.rep ~ post.rep ~ block.?).map {
+  lazy val predicateDecl: P[PPredicate] = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }
+  lazy val methodDecl: P[PMethod] = P(methodSignature ~/ pre.rep ~ post.rep ~ block.?).map {
     case (name, args, rets, pres, posts, Some(body)) =>
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
     case (name, args, rets, pres, posts, None) =>
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(Seq(PInhale(PBoolLit(b = false)))))
   }
   lazy val methodSignature = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")").?)
-  lazy val fastparser = P( Start ~ programDecl ~ End)
+  lazy val fastparser: P[PProgram] = P( Start ~ programDecl ~ End)
 
 
   /*
@@ -680,7 +758,7 @@ object FastParser {
 
 
 def main(args: Array[String]) {
-  println(fastparser.parse("field next: Ref\n\nmethod Bug(nodes: Seq[Ref]) returns ()\n  requires  1 < |nodes| && !(null in nodes)\n  requires forall i: Int :: i in [0..|nodes|) ==> acc(nodes[i].next)\n  \n{\n  assert nodes[0].next == nodes[1]\n}"))
+  println(fastparser.parse("field foo: Int\n\nmethod specialVariables()\n{\n  var resulter: Ref\n\n  resulter := new(foo)\n\n  resulter.foo := 1\n}\n\nmethod types()\n{\n  var Inter: Ref\n  var Permer: Ref\n  var Booler: Ref\n  var Refer: Ref\n\n  Inter := new(foo)\n  Permer := new(foo)\n  Booler := new(foo)\n  Refer := new(foo)\n\n  Inter.foo := 1\n  Permer.foo := 1\n  Booler.foo := 1\n  Refer.foo := 1\n}\n\nmethod booleanConstants()\n{\n  var trueer: Ref\n  var falseer: Ref\n\n  trueer := new(foo)\n  falseer := new(foo)\n\n  trueer.foo := 1\n  falseer.foo := 1\n}\n\nmethod nulll()\n{\n  var nuller: Ref\n\n  nuller := new(foo)\n\n  nuller.foo := 1\n}\n\nmethod declarationKeywords()\n{\n  var methoder: Ref\n  var functioner: Ref\n  var predicateer: Ref\n  var programer: Ref\n  var domainer: Ref\n  var axiomer: Ref\n  var varer: Ref\n  var returnser: Ref\n  var fielder: Ref\n  var defineer: Ref\n\n  methoder := new(foo)\n  functioner := new(foo)\n  predicateer := new(foo)\n  programer := new(foo)\n  domainer := new(foo)\n  axiomer := new(foo)\n  varer := new(foo)\n  returnser := new(foo)\n  fielder := new(foo)\n  defineer := new(foo)\n\n  methoder.foo := 1\n  functioner.foo := 1\n  predicateer.foo := 1\n  programer.foo := 1\n  domainer.foo := 1\n  axiomer.foo := 1\n  varer.foo := 1\n  returnser.foo := 1\n  fielder.foo := 1\n  defineer.foo := 1\n}\n\nmethod specifications()\n{\n  var requireser: Ref\n  var ensureser: Ref\n  var invarianter: Ref\n\n  requireser := new(foo)\n  ensureser := new(foo)\n  invarianter := new(foo)\n\n  requireser.foo := 1\n  ensureser.foo := 1\n  invarianter.foo := 1\n}\n\nmethod statements()\n{\n  var folder: Ref\n  var unfolder: Ref\n  var inhaleer: Ref\n  var exhaleer: Ref\n  var newer: Ref\n  var asserter: Ref\n  var assumeer: Ref\n  var gotoer: Ref\n\n  folder := new(foo)\n  unfolder := new(foo)\n  inhaleer := new(foo)\n  exhaleer := new(foo)\n  newer := new(foo)\n  asserter := new(foo)\n  assumeer := new(foo)\n  gotoer := new(foo)\n\n  folder.foo := 1\n  unfolder.foo := 1\n  inhaleer.foo := 1\n  exhaleer.foo := 1\n  newer.foo := 1\n  asserter.foo := 1\n  assumeer.foo := 1\n  gotoer.foo := 1\n}\n\nmethod controlStructures()\n{\n  var whileer: Ref\n  var ifer: Ref\n  var elseifer: Ref\n  var elseer: Ref\n\n  whileer := new(foo)\n  ifer := new(foo)\n  elseifer := new(foo)\n  elseer := new(foo)\n\n  whileer.foo := 1\n  ifer.foo := 1\n  elseifer.foo := 1\n  elseer.foo := 1\n}\n\nmethod specialFreshBlock()\n{\n  var fresher: Ref\n  var constraininger: Ref\n\n  fresher := new(foo)\n  constraininger := new(foo)\n\n  fresher.foo := 1\n  constraininger.foo := 1\n}\n\nmethod sequences()\n{\n  var Seqer: Ref\n\n  Seqer := new(foo)\n\n  Seqer.foo := 1\n}\n\nmethod setsAndMultisets()\n{\n  var Seter: Ref\n  var Multiseter: Ref\n  var unioner: Ref\n  var intersectioner: Ref\n  var setminuser: Ref\n  var subseter: Ref\n\n  Seter := new(foo)\n  Multiseter := new(foo)\n  unioner := new(foo)\n  intersectioner := new(foo)\n  setminuser := new(foo)\n  subseter := new(foo)\n\n  Seter.foo := 1\n  Multiseter.foo := 1\n  unioner.foo := 1\n  intersectioner.foo := 1\n  setminuser.foo := 1\n  subseter.foo := 1\n}\n\nmethod proverHintExpressions()\n{\n  var unfoldinger: Ref\n  var iner: Ref\n\n  unfoldinger := new(foo)\n  unfoldinger.foo := 1\n  iner := new(foo)\n  iner.foo := 1\n}\n\nmethod oldExpression()\n{\n  var older: Ref\n\n  older := new(foo)\n  older.foo := 1\n}\n\nmethod quantification()\n{\n  var foraller: Ref\n  var existser: Ref\n\n  foraller := new(foo)\n  foraller.foo := 1\n  existser := new(foo)\n  existser.foo := 1\n}\n\nmethod permissionSyntax()\n{\n  var accer: Ref\n  var wildcarder: Ref\n  var writer: Ref\n  var noneer: Ref\n  var epsiloner: Ref\n  var permer: Ref\n\n  accer := new(foo)\n  accer.foo := 1\n  wildcarder := new(foo)\n  wildcarder.foo := 1\n  writer := new(foo)\n  writer.foo := 1\n  noneer := new(foo)\n  noneer.foo := 1\n  epsiloner := new(foo)\n  epsiloner.foo := 1\n  permer := new(foo)\n  permer.foo := 1\n}\n\nmethod modifiers()\n{\n  var uniqueer: Ref\n\n  uniqueer := new(foo)\n  uniqueer.foo := 1\n}"))
 //  println(exp.parse("[0..|nodes|)"))
 }
 }

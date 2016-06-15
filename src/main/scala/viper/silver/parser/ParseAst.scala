@@ -29,6 +29,7 @@ trait KiamaPositioned {
 
   /** TODO get ride of 'implicit def liftPos' of Translator.scala and make these methods private. */
   def start = Positions.getStart(this)
+//  println(start)
   def startWhite = Positions.getStartWhite(this)
   def finish = Positions.getFinish(this)
 
@@ -39,7 +40,7 @@ trait KiamaPositioned {
     case fp: PFilePosition =>
       s"${fp.file.getFileName}@${start}"
     case _ =>
-      s"${start}"
+      s"1${start}"
   }
 
   /** Used for reporting the range of positions occupied by an AST node. */
@@ -61,7 +62,7 @@ trait KiamaPositioned {
         s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
       else
       // An AST node should probably not spread between multiple source files, but who knows?
-        s"[$fp_a--$fp_b]"
+        s"[${fp_a.toString}--]"
     case _ =>
       s"[${start}--${finish}]"
 //      s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
@@ -73,6 +74,7 @@ trait KiamaPositioned {
 
   def setPos(a: KiamaPositioned): this.type = {
     setStart(a.start)
+//    println(a.start)
     setStartWhite(a.startWhite)
     setFinish(a.finish)
     this
@@ -497,6 +499,9 @@ case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PTyp
   }
 }
 case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
+//  if (right.toString.contains("PIntLit(0)")) {
+//    println("11111")
+//  }
   override val args = Seq(left, right)
   val extraElementType = PTypeVar("#E")
   override val extraLocalTypeVariables: Set[PDomainType] =

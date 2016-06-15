@@ -127,6 +127,9 @@ trait BaseParser extends /*DebuggingParser*/ WhitespacePositionedParserUtilities
         setStartWhite (t, FilePosition(file, in.pos))
         setFinish (t, FilePosition(file, in1.pos))
 //        println(t)
+        if (t.toString.contains(",==,PIdnUse(v)")){
+          println(t)
+        }
         res
       case res =>
         res

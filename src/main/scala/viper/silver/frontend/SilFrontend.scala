@@ -200,7 +200,7 @@ trait SilFrontend extends DefaultFrontend {
 
   /*override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
-//   sahil FastPArser.parse(input)
+
 
 
     Parser.parse(input, file) match {
@@ -256,6 +256,8 @@ trait SilFrontend extends DefaultFrontend {
                 m.label, m.pos match {
                   case fp: FilePosition =>
                     SourcePosition(fp.file, m.pos.line, m.pos.column)
+                  case fp: PFilePosition =>
+                    SourcePosition(fp.file, m.pos.line, m.pos.column)
                   case _ =>
                     SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
                 })
@@ -267,6 +269,8 @@ trait SilFrontend extends DefaultFrontend {
         val errors = for (m <- Messaging.sortmessages(r.messages)) yield {
           TypecheckerError(m.label, m.pos match {
             case fp: FilePosition =>
+              SourcePosition(fp.file, m.pos.line, m.pos.column)
+            case fp: PFilePosition =>
               SourcePosition(fp.file, m.pos.line, m.pos.column)
             case _ =>
               SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
