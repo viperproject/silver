@@ -48,16 +48,7 @@ requires forall x:Ref :: x in xs ==> (x in ys ==> acc(x.f)) && (x in ys ==> acc(
 {}
 
 
-/* Not yet working:
-error: acc(x.f, write) is non pure and appears where only pure expressions are allowed. (test.sil@51.50)
-
-method m9(xs:Seq[Ref], ys:Seq[Ref])
-requires forall x:Ref :: x in xs ==> (x in ys || acc(x.f))
-{}
-
-
-method m8(xs:Seq[Ref])
+method m9(xs:Seq[Ref])
 requires forall x:Ref :: x in xs ==> acc(x.f) && acc(x.g) &&  acc(pred(x)) && x.f > 0
 ensures forall x:Ref :: x in xs ==> acc(x.f) && acc(x.g) &&  acc(pred(x)) && x.f > 0
 {}
-*/
