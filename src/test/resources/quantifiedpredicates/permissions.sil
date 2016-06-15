@@ -46,10 +46,10 @@ method test02(x: Ref, p: Perm)
 
  method test02_2(xs: Seq[Ref], y: Ref, p: Perm)
    requires y in xs
-   requires p > none
    requires acc(pred2(y, p))
  {
    unfold pred2(y, p)
+   //:: ExpectedOutput(assert.failed:assertion.false)
    assert y != null
    //:: ExpectedOutput(assert.failed:assertion.false)
    assert p != none
@@ -66,11 +66,11 @@ method test02_client(x: Ref, p: Perm)
 }
 
  method test02_qp(xs: Seq[Ref], y: Ref, p: Perm)
-    requires p > none
    requires y in xs
    requires forall x: Ref :: x in xs ==> acc(pred2(x, p))
  {
    unfold pred2(y, p)
+   //:: ExpectedOutput(assert.failed:assertion.false)
    assert y != null
    //:: ExpectedOutput(assert.failed:assertion.false)
    assert p != none
