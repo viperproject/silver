@@ -35,3 +35,7 @@ field f:Int
   ensures forall x:Ref :: x in xs ==> acc(x.f) && acc(pred2(x.f))
   {}
   
+  //should raise error at least...
+  method m5(xs:Seq[Ref], ys:Seq[Ref])
+  requires forall x:Ref :: x in xs ==> (x.g > 0 ==> acc(x.f)) && (x.f ==> acc(x.f))
+  {}
