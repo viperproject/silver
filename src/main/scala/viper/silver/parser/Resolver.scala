@@ -738,7 +738,9 @@ case class NameAnalyser() {
           case d: PDeclaration =>
             getMap(d).get(d.idndef.name) match {
               case Some(e: PDeclaration) =>
+
                 messages ++= Messaging.message(e, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+//                println(e.start + "=>" + e)
               case Some(e:PErrorEntity) =>
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {

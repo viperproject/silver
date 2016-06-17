@@ -6,18 +6,20 @@ package viper.silver.parser
 
 import java.nio.file.Path
 
-import fastparse.Implicits.Sequencer
-import fastparse.parsers.Combinators.{Rule, Sequence}
-import fastparse.WhitespaceApi
+import fastparse.Implicits.{Repeater, Sequencer}
+import fastparse.parsers.Combinators.{Repeat, Rule, Sequence}
+import fastparse.{Implicits, WhitespaceApi}
 import fastparse.all._
 import fastparse.core.Parsed.Position
 import fastparse.parsers.Intrinsics
 import fastparse.core.{Mutable, ParseCtx, Parsed, Parser}
+import fastparse.parsers.Terminals.Pass
 import fastparse.parsers.{Intrinsics, Terminals}
 import org.kiama.util.Positions
 import org.kiama.util.Positions._
 import viper.silver.ast.HasLineColumn
 
+import scala.annotation.tailrec
 import scala.reflect.internal.util.Position
 /*import fastparse.core.{Parsed, Parser}*/
 import fastparse.parsers.Intrinsics
@@ -37,6 +39,81 @@ case class PFilePosition(file: Path, vline: Int , col: Int) extends util.parsing
   //  println(toString)
 }
 
+class PosRepeat[T, +R](p: Parser[T], min: Int, max: Int, delimiter: Parser[_],file: Path)
+                        (implicit ev: Implicits.Repeater[T, R]) extends Repeat[T, R](p, min, max, delimiter){
+
+  def computeFrom(input: String, index: Int) : (Int, Int) = {
+    val lines = input.take(1 + index).lines.toVector
+    val line = lines.length
+    val col = lines.lastOption.map(_.length).getOrElse(0)
+    (line, col)
+  }
+
+ override def parseRec(cfg: ParseCtx, index: Int) = {
+    @tailrec def rec(index: Int,
+                     del: Parser[_],
+                     lastFailure: Mutable.Failure,
+                     acc: ev.Acc,
+                     cut: Boolean,
+                     count: Int): Mutable[R] = {
+      del.parseRec(cfg, index) match{
+        case f1: Mutable.Failure =>
+          val cut1 = f1.cut
+          if (cut1) failMore(f1, index, cfg.logDepth, cut = true)
+          else passInRange(cut, f1, index, ev.result(acc), count)
+
+        case Mutable.Success(value0, index0, traceParsers0, cut0)  =>
+          p.parseRec(cfg, index0) match{
+            case f2: Mutable.Failure =>
+              val cut2 = f2.cut
+              if (cut2 | cut0) failMore(f2, index0, cfg.logDepth, cut = true)
+              else passInRange(cut | cut0, f2, index, ev.result(acc), count)
+
+            case Mutable.Success(value1, index1, traceParsers1, cut1)  =>
+              ev.accumulate(value1, acc)
+              val counted = count + 1
+              val start1 = computeFrom(cfg.input, index0)
+              val end1 = computeFrom(cfg.input, index1)
+              setStart (value1, PFilePosition(file, start1._1, start1._2))
+              setFinish (value1, PFilePosition(file, end1._1, end1._2))
+              if (counted < max)
+                rec(index1, delimiter, lastFailure, acc, cut0 | cut1, counted)
+              else
+                passInRange(cut0 | cut1, lastFailure, index1, ev.result(acc), counted)
+          }
+      }
+    }
+
+    def passInRange(cut: Boolean,
+                    lastFailure: Mutable.Failure,
+                    finalIndex: Int,
+                    acc: R,
+                    count: Int) = {
+      if (min <= count) {
+        val parsers =
+          if (null == lastFailure) Set.empty[Parser[_]]
+          else lastFailure.traceParsers
+        success(cfg.success, acc, finalIndex, parsers, cut)
+      } else failMore(lastFailure, index, cfg.logDepth, cut = cut)
+    }
+
+    // don't call the parseRec at all, if max is "0", as our parser corresponds to `Pass` in that case.
+    if (max == 0 ) {
+      success(cfg.success, ev.result(ev.initial), index, Set.empty[Parser[_]], false)
+    } else {
+      rec(index, Pass, null, ev.initial, false, 0)
+    }
+  }
+  override def toString = {
+    val things = Seq(
+      if (min == 0) None else Some(min),
+      if (delimiter == Pass) None else Some("sep = " + delimiter),
+      if (max == Int.MaxValue) None else Some("max = " + max)
+    ).flatten.mkString(", ")
+    if (things.isEmpty) opWrap(p) + ".rep"
+    else s"${opWrap(p)}.rep($things)"
+  }
+}
 
 class PosCustomSequence[+T, +R, +V](WL: P0, p0: P[T], p: P[V], cut: Boolean, file: Path)
                                    (implicit ev: Sequencer[T, V, R]) extends WhitespaceApi.CustomSequence(WL, p0, p, cut)(ev){
@@ -110,6 +187,7 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
           setStart (s.value, PFilePosition(file, start._1, start._2))
           setFinish (s.value, PFilePosition(file, end._1, end._2))
           //          println(file)
+
           s
       }
     } else {
@@ -120,6 +198,7 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
           val end = computeFrom(cfg.input, s.index)
           setStart (s.value, PFilePosition(file, start._1, start._2))
           setFinish (s.value, PFilePosition(file, end._1, end._2))
+
           s
         }
       }
@@ -141,29 +220,50 @@ object FastParser {
     new PositionRule(name.value, () => p, _file)
 
   def PWrapper(WL: P0) = new PWrapper(WL)
+  class PWhitespaceApi[V](p0: P[V], WL: P0) extends WhitespaceApi[V](p0, WL){
+    //        override def ~[V, R](p: P[V])
+    //                            (implicit ev: Sequencer[T, V, R])
+    //        : P[R] = {
+    //          assert(p != null)
+    //          new WhitespaceApi.CustomSequence(WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[T]], p, cut=false)(ev)
+    //        }
+
+
+    override def repX[R](implicit ev: Repeater[V, R]): Parser[R] = new PosRepeat(p0, 0, Int.MaxValue, Pass, _file)
+
+    override def rep[R](implicit ev: Repeater[V, R]): Parser[R] = new PosRepeat(p0, 0, Int.MaxValue, NoCut(WL), _file)
+
+    override def repX[R](min: Int = 0, sep: Parser[_] = Pass, max: Int = Int.MaxValue)
+               (implicit ev: Repeater[V, R]): Parser[R] =  new PosRepeat(p0, min, max, sep, _file)
+
+    override def rep[R](min: Int = 0, sep: Parser[_] = Pass, max: Int = Int.MaxValue)
+                       (implicit ev: Repeater[V, R]): Parser[R] = {
+      new PosRepeat(p0, min, max, if (sep != Pass) NoCut(WL) ~ sep ~ NoCut(WL) else NoCut(WL), _file)
+    }
+//    override def rep[R](min: Int = 0, sep: P[_] = Pass, max: Int = Int.MaxValue)
+//               (implicit ev: Repeater[V, R]): P[R] = {
+//      Repeat(p0, min, max, if (sep != Pass) NoCut(WL) ~ sep ~ NoCut(WL) else NoCut(WL))
+//    }
+
+
+    override def ~[V2, R](p: Parser[V2])(implicit ev: Sequencer[V, V2, R]): Parser[R] = {
+      assert(p != null)
+      new PosCustomSequence[V, R, V2](WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[V]], p, cut=false, _file)(ev)
+    }
+
+
+
+    override def ~/[V2, R](p: P[V2])
+                          (implicit ev: Sequencer[V, V2, R])
+    : P[R] = {
+      assert(p != null)
+      new PosCustomSequence(WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[V]], p, cut=true, _file)(ev)
+    }
+  }
   class PWrapper(WL: P0){
-    implicit def parserApi[T, V](p0: T)(implicit c: T => P[V]): WhitespaceApi[V] =
-      new WhitespaceApi[V](p0, WL){
-        //        override def ~[V, R](p: P[V])
-        //                            (implicit ev: Sequencer[T, V, R])
-        //        : P[R] = {
-        //          assert(p != null)
-        //          new WhitespaceApi.CustomSequence(WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[T]], p, cut=false)(ev)
-        //        }
+    implicit def parserApi[T, V](p0: T)(implicit c: T => P[V]): PWhitespaceApi[V] =
 
-        override def ~[V2, R](p: Parser[V2])(implicit ev: Sequencer[V, V2, R]): Parser[R] = {
-          assert(p != null)
-          new PosCustomSequence[V, R, V2](WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[V]], p, cut=false, _file)(ev)
-        }
-
-
-        override def ~/[V2, R](p: P[V2])
-                              (implicit ev: Sequencer[V, V2, R])
-        : P[R] = {
-          assert(p != null)
-          new PosCustomSequence(WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[V]], p, cut=true, _file)(ev)
-        }
-      }
+      new PWhitespaceApi[V](p0, WL)
   }
 
   val White = PWrapper {
@@ -183,7 +283,7 @@ object FastParser {
   def tester(test: String) = "1"
 
   //from here the code starts
-  def keyword(check: String) = check ~~ !CharIn('0' to '9', 'A' to 'Z', 'a' to 'z')
+  def keyword(check: String) = check ~~ !CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "$_")
 
   def parens[A](p: fastparse.noApi.Parser[A]) = "(" ~ p ~ ")"
 
@@ -454,7 +554,7 @@ object FastParser {
   lazy val fieldAcc: P[PFieldAccess] = P(realSuffixExpr.filter(getFieldAccess).map { case fa: PFieldAccess => fa })
   lazy val predAcc: P[PPredicateAccess] = P(idnuse ~ parens(actualArgList)).map { case (id, args) => PPredicateAccess(args, id) }
   //is it required to be one or more than 1 below
-  lazy val actualArgList: P[Seq[PExp]] = P(exp).rep(sep = ",")
+  lazy val actualArgList: P[Seq[PExp]] = P(exp.rep(sep = ","))
   lazy val inhaleExhale: P[PExp] = P("[" ~ exp ~ "," ~ exp ~ "]").map { case (a, b) => PInhaleExhaleExp(a, b) }
   lazy val perm: P[PExp] = P(keyword("none").map(_ => PNoPerm()) | keyword("wildcard").map(_ => PWildcard()) | keyword("write").map(_ => PFullPerm())
     | keyword("epsilon").map(_ => PEpsilon()) | ("perm" ~ parens(locAcc)).map(PCurPerm))
@@ -474,7 +574,7 @@ object FastParser {
 
   lazy val quant: P[PExp] = P((keyword("forall") ~/ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) => PForall(a, b, c) } |
     (keyword("exists") ~ nonEmptyFormalArgList ~ "::" ~ exp).map { case (a, b) => PExists(a, b) })
-  lazy val nonEmptyFormalArgList: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
+  lazy val nonEmptyFormalArgList: P[Seq[PFormalArgDecl]] = P(formalArg.rep(min = 1, sep = ","))
   lazy val formalArg: P[PFormalArgDecl] = P(idndef ~ ":" ~ typ).map { case (a, b) => PFormalArgDecl(a, b) }
   //types
   lazy val typ: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType)
@@ -532,10 +632,7 @@ object FastParser {
     //      case Nil => PEmptySeq(PUnknown())
     case elems => PExplicitSeq(elems)
   }
-  lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => {
-//    println("we are here")
-    PRangeSeq(a, b)
-  } }
+  lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => { PRangeSeq(a, b) } }
   lazy val fapp: P[PExp] = P(idnuse ~ parens(actualArgList)).map {
     case (func, args) => PFunctApp(func, args, None)
   }
@@ -714,8 +811,8 @@ object FastParser {
     }
   }
   lazy val functionSignature = P("function" ~ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ)
-  lazy val formalArgList: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
-  lazy val axiomDecl: P[PAxiom1] = P("axiom" ~ idndef ~ "{" ~ exp ~ "}" ~ ";".?).map { case (a, b) => PAxiom1(a, b) }
+  lazy val formalArgList: P[Seq[PFormalArgDecl]] = P( formalArg.rep(sep = ","))
+  lazy val axiomDecl: P[PAxiom1] = P(keyword("axiom") ~ idndef ~ "{" ~ exp ~ "}" ~ ";".?).map { case (a, b) => PAxiom1(a, b) }
   lazy val fieldDecl: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map { case (a, b) => PField(a, b) }
   lazy val functionDecl: P[PFunction] = P("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
     post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f) => PFunction(a, b, c, d, e, f) }
@@ -758,7 +855,7 @@ object FastParser {
 
 
 def main(args: Array[String]) {
-  println(fastparser.parse("field foo: Int\n\nmethod specialVariables()\n{\n  var resulter: Ref\n\n  resulter := new(foo)\n\n  resulter.foo := 1\n}\n\nmethod types()\n{\n  var Inter: Ref\n  var Permer: Ref\n  var Booler: Ref\n  var Refer: Ref\n\n  Inter := new(foo)\n  Permer := new(foo)\n  Booler := new(foo)\n  Refer := new(foo)\n\n  Inter.foo := 1\n  Permer.foo := 1\n  Booler.foo := 1\n  Refer.foo := 1\n}\n\nmethod booleanConstants()\n{\n  var trueer: Ref\n  var falseer: Ref\n\n  trueer := new(foo)\n  falseer := new(foo)\n\n  trueer.foo := 1\n  falseer.foo := 1\n}\n\nmethod nulll()\n{\n  var nuller: Ref\n\n  nuller := new(foo)\n\n  nuller.foo := 1\n}\n\nmethod declarationKeywords()\n{\n  var methoder: Ref\n  var functioner: Ref\n  var predicateer: Ref\n  var programer: Ref\n  var domainer: Ref\n  var axiomer: Ref\n  var varer: Ref\n  var returnser: Ref\n  var fielder: Ref\n  var defineer: Ref\n\n  methoder := new(foo)\n  functioner := new(foo)\n  predicateer := new(foo)\n  programer := new(foo)\n  domainer := new(foo)\n  axiomer := new(foo)\n  varer := new(foo)\n  returnser := new(foo)\n  fielder := new(foo)\n  defineer := new(foo)\n\n  methoder.foo := 1\n  functioner.foo := 1\n  predicateer.foo := 1\n  programer.foo := 1\n  domainer.foo := 1\n  axiomer.foo := 1\n  varer.foo := 1\n  returnser.foo := 1\n  fielder.foo := 1\n  defineer.foo := 1\n}\n\nmethod specifications()\n{\n  var requireser: Ref\n  var ensureser: Ref\n  var invarianter: Ref\n\n  requireser := new(foo)\n  ensureser := new(foo)\n  invarianter := new(foo)\n\n  requireser.foo := 1\n  ensureser.foo := 1\n  invarianter.foo := 1\n}\n\nmethod statements()\n{\n  var folder: Ref\n  var unfolder: Ref\n  var inhaleer: Ref\n  var exhaleer: Ref\n  var newer: Ref\n  var asserter: Ref\n  var assumeer: Ref\n  var gotoer: Ref\n\n  folder := new(foo)\n  unfolder := new(foo)\n  inhaleer := new(foo)\n  exhaleer := new(foo)\n  newer := new(foo)\n  asserter := new(foo)\n  assumeer := new(foo)\n  gotoer := new(foo)\n\n  folder.foo := 1\n  unfolder.foo := 1\n  inhaleer.foo := 1\n  exhaleer.foo := 1\n  newer.foo := 1\n  asserter.foo := 1\n  assumeer.foo := 1\n  gotoer.foo := 1\n}\n\nmethod controlStructures()\n{\n  var whileer: Ref\n  var ifer: Ref\n  var elseifer: Ref\n  var elseer: Ref\n\n  whileer := new(foo)\n  ifer := new(foo)\n  elseifer := new(foo)\n  elseer := new(foo)\n\n  whileer.foo := 1\n  ifer.foo := 1\n  elseifer.foo := 1\n  elseer.foo := 1\n}\n\nmethod specialFreshBlock()\n{\n  var fresher: Ref\n  var constraininger: Ref\n\n  fresher := new(foo)\n  constraininger := new(foo)\n\n  fresher.foo := 1\n  constraininger.foo := 1\n}\n\nmethod sequences()\n{\n  var Seqer: Ref\n\n  Seqer := new(foo)\n\n  Seqer.foo := 1\n}\n\nmethod setsAndMultisets()\n{\n  var Seter: Ref\n  var Multiseter: Ref\n  var unioner: Ref\n  var intersectioner: Ref\n  var setminuser: Ref\n  var subseter: Ref\n\n  Seter := new(foo)\n  Multiseter := new(foo)\n  unioner := new(foo)\n  intersectioner := new(foo)\n  setminuser := new(foo)\n  subseter := new(foo)\n\n  Seter.foo := 1\n  Multiseter.foo := 1\n  unioner.foo := 1\n  intersectioner.foo := 1\n  setminuser.foo := 1\n  subseter.foo := 1\n}\n\nmethod proverHintExpressions()\n{\n  var unfoldinger: Ref\n  var iner: Ref\n\n  unfoldinger := new(foo)\n  unfoldinger.foo := 1\n  iner := new(foo)\n  iner.foo := 1\n}\n\nmethod oldExpression()\n{\n  var older: Ref\n\n  older := new(foo)\n  older.foo := 1\n}\n\nmethod quantification()\n{\n  var foraller: Ref\n  var existser: Ref\n\n  foraller := new(foo)\n  foraller.foo := 1\n  existser := new(foo)\n  existser.foo := 1\n}\n\nmethod permissionSyntax()\n{\n  var accer: Ref\n  var wildcarder: Ref\n  var writer: Ref\n  var noneer: Ref\n  var epsiloner: Ref\n  var permer: Ref\n\n  accer := new(foo)\n  accer.foo := 1\n  wildcarder := new(foo)\n  wildcarder.foo := 1\n  writer := new(foo)\n  writer.foo := 1\n  noneer := new(foo)\n  noneer.foo := 1\n  epsiloner := new(foo)\n  epsiloner.foo := 1\n  permer := new(foo)\n  permer.foo := 1\n}\n\nmethod modifiers()\n{\n  var uniqueer: Ref\n\n  uniqueer := new(foo)\n  uniqueer.foo := 1\n}"))
+  println(fastparser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1"))
 //  println(exp.parse("[0..|nodes|)"))
 }
 }

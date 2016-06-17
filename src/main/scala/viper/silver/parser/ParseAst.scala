@@ -74,7 +74,6 @@ trait KiamaPositioned {
 
   def setPos(a: KiamaPositioned): this.type = {
     setStart(a.start)
-//    println(a.start)
     setStartWhite(a.startWhite)
     setFinish(a.finish)
     this
