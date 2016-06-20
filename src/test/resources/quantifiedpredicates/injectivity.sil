@@ -24,7 +24,7 @@ method test02(xs: Seq[Ref], y: Ref)
 	exhale forall x: Ref :: x in xs  ==> acc(pred2(y, 1))
 }
 
-//not injective
+//injective
 method test03(xs: Seq[Ref], y: Ref)
 {
 	//:: ExpectedOutput(exhale.failed:insufficient.permission)

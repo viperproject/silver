@@ -8,7 +8,6 @@ predicate pred2(a:Ref, i:Int) {
 	acc(a.f)
 }
 
-//not injective clause 2
 method test01(xs: Seq[Ref], y: Ref)
 {
 	inhale forall x:Ref :: x in xs ==> acc(x.f)
@@ -17,7 +16,6 @@ method test01(xs: Seq[Ref], y: Ref)
 	exhale forall x: Ref :: x in xs  ==> acc(x.f) && acc(pred1(1))
 }
 
-//not injective clause 2s
 method test02(xs: Seq[Ref], y: Ref)
 {
 	//:: ExpectedOutput(exhale.failed:receiver.not.injective)
