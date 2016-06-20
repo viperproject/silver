@@ -252,7 +252,7 @@ case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
 
 // Arithmetic expressions
-case class PermMinus(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(PermNegOp)
+case class PermMinus(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(PermNegOp) with PermExp
 case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermAddOp) with PermExp
 case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermSubOp) with PermExp
 case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermMulOp) with PermExp

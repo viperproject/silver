@@ -13,17 +13,13 @@ expressions are not used.
 */
 
 method s0(this: Ref)
-  //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/34/)
   requires this.x == 0
 {
 }
 
 method s1(this: Ref)
-  //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/34/)
   ensures this.x == 0
 {
   inhale acc(this.x) && this.x == 0
@@ -51,17 +47,13 @@ Inhale.
 */
 
 method i0(this: Ref)
-  //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/34/)
   requires [this.x == 0, true]
 {
 }
 
 method i1(this: Ref)
-  //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/34/)
   ensures [this.x == 0, true]
 {
   inhale acc(this.x) && this.x == 0
@@ -85,18 +77,14 @@ Exhale.
 */
 
 method e0(this: Ref)
-  //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:receiver.null, /Silicon/issue/160/)
   //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
   requires [true, this.x == 0]
 {
 }
 
 method e1(this: Ref)
-  //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:receiver.null, /Silicon/issue/160/)
   //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
   ensures [true, this.x == 0]
 {
@@ -123,17 +111,13 @@ Both.
 */
 
 method ie0(this: Ref)
-  //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/34/)
   requires [this.x == 0, this.x == 0]
 {
 }
 
 method ie1(this: Ref)
-  //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/34/)
   ensures [this.x == 0, this.x == 0]
 {
   inhale acc(this.x) && this.x == 0

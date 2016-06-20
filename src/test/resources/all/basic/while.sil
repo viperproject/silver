@@ -67,8 +67,7 @@ method t5(n: Int, r: Ref) returns ()
 
 method t6(r: Ref) returns ()
 {
-    //:: ExpectedOutput(while.failed:receiver.null)
-    while (perm(r.f) == none)
+    while (perm(r.f) == none) /* OK - perm(e.f) does not require e != null */
     {
     }
 }

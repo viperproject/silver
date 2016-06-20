@@ -30,8 +30,6 @@ method Ref__zero(diz: Ref, current_thread_id: Int, M: Int, N: Int, step: Int, ma
   __flatten_3 := matrix[__flatten_1]
   __flatten_4 := 0
         // confirmed by Stefan Blom
-    //:: ExpectedOutput(assignment.failed:receiver.null)
     //:: ExpectedOutput(assignment.failed:insufficient.permission)
-    //:: MissingOutput(assignment.failed:insufficient.permission, /silicon/issue/34/)
   __flatten_3.Ref__Integer_value := __flatten_4
 }

@@ -5,9 +5,7 @@ function f1(r: Ref): Int
 { r.f }
 
 function f3_a(r: Ref): Int
-  //:: ExpectedOutput(not.wellformed:receiver.null)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /silicon/issue/34/)
   requires ((r.f) == 2)
 { 2 }
 

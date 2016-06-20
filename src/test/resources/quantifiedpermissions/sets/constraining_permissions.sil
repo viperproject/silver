@@ -14,7 +14,6 @@ method test01(xs: Set[Ref], ys: Set[Ref])
 method test02(xs: Set[Ref], y: Ref, z: Ref)
   requires forall x: Ref :: x in xs ==> acc(x.f, wildcard)
   requires z in xs
-  ensures  forall x: Ref :: x in xs ==> acc(x.f, wildcard)
 {
   if (y in xs) {
     exhale acc(y.f, wildcard)
@@ -24,7 +23,7 @@ method test02(xs: Set[Ref], y: Ref, z: Ref)
   exhale forall x: Ref :: x in xs ==> acc(x.f, wildcard)
 
   var k0: Perm
-  assume k0 > none // TODO: Should not be necessary
+  assume k0 >= none
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
   exhale forall x: Ref :: x in xs ==> acc(x.f, k0)
 }
@@ -32,6 +31,7 @@ method test02(xs: Set[Ref], y: Ref, z: Ref)
 method test03(xs: Set[Ref], y: Ref, k0: Perm)
   requires k0 > none
   requires forall x: Ref :: x in xs ==> acc(x.f, k0)
+  //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /carbon/issue/119/)
   ensures  forall x: Ref :: x in xs ==> acc(x.f, wildcard)
   //:: ExpectedOutput(postcondition.violated:insufficient.permission)
   ensures  forall x: Ref :: x in xs ==> acc(x.f, k0)
@@ -71,6 +71,7 @@ method test04(xs: Set[Ref])
     exhale forall x: Ref :: x in xs ==> acc(x.f, k1)
   }
 
+  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /carbon/issue/119/)
   exhale forall x: Ref :: x in xs ==> acc(x.f, wildcard)
 
   var k2: Perm

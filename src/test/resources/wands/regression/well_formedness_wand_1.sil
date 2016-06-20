@@ -1,15 +1,11 @@
 field f: Ref
 
 method test01(x: Ref) {
-  //:: ExpectedOutput(wand.not.wellformed:receiver.null)
   //:: ExpectedOutput(wand.not.wellformed:insufficient.permission)
-  //:: MissingOutput(wand.not.wellformed:receiver.null, /silicon/issue/201/)
   //:: MissingOutput(wand.not.wellformed:insufficient.permission, /silicon/issue/201/)
-  //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
-  //:: UnexpectedOutput(package.failed:receiver.null, /carbon/issue/105/)
-  //:: MissingOutput(wand.not.wellformed:receiver.null, /carbon/issue/105/)
   //:: MissingOutput(wand.not.wellformed:insufficient.permission, /carbon/issue/105/)
-  //:: UnexpectedOutput(package.failed:receiver.null, /silicon/issue/201/)
+  //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/201/)
+  //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
   package true --* acc(x.f.f)
     /* - x might be null
      * - no permissions to read x.f

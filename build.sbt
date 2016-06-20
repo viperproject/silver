@@ -32,9 +32,6 @@ scalacOptions += "-unchecked"
 
 scalacOptions += "-Dscalac.patmat.analysisBudget=off"
 
-
-
-
 // Make publish-local also create a test artifact, i.e., put a jar-file into the local Ivy
 // repository that contains all classes and resources relevant for testing.
 // Other projects, e.g., Carbon or Silicon, can then depend on the Sil test artifact, which

@@ -582,6 +582,8 @@ case class TypeChecker(names: NameAnalyser) {
               checkMagicWand(wand, allowWandRefs = false)
               case PApplyingGhostOp(wand, in) =>
               checkMagicWand(wand, allowWandRefs = true)
+              case pecl : PEmptyCollectionLiteral =>
+                check(pecl.pElementType)
               case po: POldExp =>
                 // For labelled old expressions, ensure that they refer to a state label
                 po match {

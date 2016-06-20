@@ -756,7 +756,7 @@ sealed trait PCollectionLiteral extends POpApp{
 }
 
 sealed trait PEmptyCollectionLiteral extends PCollectionLiteral {
-  override val signatures : Set[PTypeSubstitution] = Set(
+  override def signatures : Set[PTypeSubstitution] = Set(
     Map(POpApp.pResS -> pCollectionType(pElementType))
   )
   override val args = Seq()
@@ -895,7 +895,7 @@ case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 
 case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
-case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], exp: PExp) extends PStmt with PLocalDeclaration
+case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
 sealed trait PScope extends PNode {
@@ -1067,7 +1067,7 @@ object Nodes {
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
       case PLetWand(idndef, wand) => Seq(idndef, wand)
-      case PDefine(idndef, optArgs, exp) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(exp)
+      case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case _: PSkip => Nil
     }
   }
