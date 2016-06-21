@@ -10,6 +10,7 @@ import fastparse.Implicits.{Repeater, Sequencer}
 import fastparse.parsers.Combinators.{Repeat, Rule, Sequence}
 import fastparse.{Implicits, WhitespaceApi}
 import fastparse.all._
+import fastparse.core.Mutable.{Failure, Success}
 import fastparse.core.Parsed.Position
 import fastparse.parsers.Intrinsics
 import fastparse.core.{Mutable, ParseCtx, Parsed, Parser}
@@ -215,6 +216,22 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
 object FastParser {
 
   var _file: Path = null
+  var _imports: mutable.HashMap[Path, Boolean] = null
+
+  def parse(s: String, f: Path) = {
+    _file = f
+    _imports = mutable.HashMap((f, true))
+    val rp = RecParser(f).parses(s)
+    rp match {
+      case _ => rp
+
+//      case rp.Error(a, b) => Error(a, b)
+    }
+  }
+
+  case class RecParser(file: Path) extends BaseParser {
+    def parses(s: String) = fastparser.parse(s)
+  }
 
   def P[T](p: => Parser[T])(implicit name: sourcecode.Name): Parser[T] =
     new PositionRule(name.value, () => p, _file)
@@ -332,8 +349,34 @@ object FastParser {
   def doExpandDefines[N <: PNode](defines: Seq[PDefine], node: N): Option[N] = {
     var expanded = false
 
-    def lookupOrElse(piu: PIdnUse, els: PExp) =
-      defines.find(_.idndef.name == piu.name).fold[PExp](els) _
+    def lookupOrElse(piu: PIdnUse, els: PNode) =
+      defines.find(_.idndef.name == piu.name).fold[PNode](els) _
+
+    def expandAllegedInvocation(target: PIdnUse, targetArgs: Seq[PExp], els: PNode): PNode = {
+      /* Potentially expand a named assertion that takes arguments, e.g. A(x, y) */
+      lookupOrElse(target, els)(define => define.args match {
+        case None =>
+          /* There is a named assertion with name `target`, but the named
+           * assertion takes arguments. Hence, `target` cannot denote the
+           * use of a named assertion.
+           */
+          els
+        case Some(args) if targetArgs.length != args.length =>
+          /* Similar to the previous case */
+          els
+        case Some(args) =>
+          expanded = true
+
+          define.body.transform {
+            /* Expand the named assertion's formal arguments by the given actual arguments */
+            case piu: PIdnUse =>
+              args.indexWhere(_.name == piu.name) match {
+                case -1 => piu
+                case i => targetArgs(i)
+              }
+          }() : PNode /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
+      })
+    }
 
     val potentiallyExpandedNode =
       node.transform {
@@ -346,33 +389,11 @@ object FastParser {
           lookupOrElse(piu, piu)(define => {
             expanded = true
 
-            define.exp
+            define.body
           })
 
-        case fapp: PFunctApp =>
-          /* Potentially expand a named assertion that takes arguments, e.g. A(x, y) */
-          lookupOrElse(fapp.func, fapp)(define => define.args match {
-            case None =>
-              /* There is a named assertion with name `func`, but the named
-               * assertion takes arguments. Hence, the fapp cannot denote the
-               * use of a named assertion.
-               */
-              fapp
-            case Some(args) if fapp.args.length != args.length =>
-              /* Similar to the previous case */
-              fapp
-            case Some(args) =>
-              expanded = true
-
-              define.exp.transform {
-                /* Expand the named assertion's formal arguments by the given actual arguments */
-                case piu: PIdnUse =>
-                  args.indexWhere(_.name == piu.name) match {
-                    case -1 => piu
-                    case i => fapp.args(i)
-                  }
-              }(): PExp /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
-          })
+             case fapp: PFunctApp => expandAllegedInvocation(fapp.func, fapp.args, fapp)
+             case call: PMethodCall => expandAllegedInvocation(call.method, call.args, call)
       }(recursive = _ => true)
 
     if (expanded) Some(potentiallyExpandedNode)
@@ -668,7 +689,21 @@ object FastParser {
   }
   lazy val inv: P[PExp] = P(keyword("invariant") ~ exp ~ ";".?)
   lazy val varDecl: P[PLocalVarDecl] = P(keyword("var") ~/ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map { case (a, b, c) => PLocalVarDecl(a, b, c) }
-  lazy val defineDecl: P[PDefine] = P(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ exp).map { case (a, b, c) => PDefine(a, b, c) }
+
+ /* lazy val defineDecl =
+    ("define" ~> idndef) ~ opt("(" ~> repsep(idndef, ",") <~ ")") ~ (exp | block) ^^ {
+      case iddef ~ args ~ (e: PExp) => PDefine(iddef, args, e)
+      case iddef ~ args ~ (ss: Seq[PStmt] @unchecked) => PDefine(iddef, args, PSeqn(ss))
+    }*/
+  lazy val defineDecl: P[PDefine] = P(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ (exp|block)).map {
+    case (a, b, c) => c match {
+      case e: PExp => PDefine(a,b,e)
+      case ss: Seq[PStmt] @unchecked => PDefine(a,b,PSeqn(ss))
+    }
+
+
+
+  }
   lazy val letwandDecl: P[PLetWand] = P(keyword("wand") ~/ idndef ~ ":=" ~ exp).map { case (a, b) => PLetWand(a, b) }
   lazy val newstmt: P[PNewStmt] = P(idnuse ~ ":=" ~ "new" ~ "(" ~ starOrFields ~ ")").map { case (a, b) => PNewStmt(a, b) }
   //doubt see what happened here later on (had to add .! in first case)
@@ -715,7 +750,7 @@ object FastParser {
           else if (java.nio.file.Files.isSameFile(imp_path, file))
             Left(viper.silver.verifier.ParseError(s"""importing yourself is probably not a good idea!""", imp_pos))
 
-          else if (viper.silver.parser.Parser._imports.put(imp_path, true).isEmpty) {
+          else if (_imports.put(imp_path, true).isEmpty) {
             val source = scala.io.Source.fromFile(imp_path.toString)
             val buffer = try {
               Right(source.getLines.toArray)
@@ -731,18 +766,18 @@ object FastParser {
                 //TODO print debug info iff --dbg switch is used
                 //println(s"@importing $imp_file into $file")
 
-                val p = viper.silver.parser.Parser.RecParser(imp_path)
-                p.parse(s.mkString("\n") + "\n") match {
-                  case p.Success(a, _) => Right(a)
-                  case p.Failure(msg, next) => Left(viper.silver.verifier.ParseError(s"Failure: $msg", PFilePosition(imp_path, next.pos.line, next.pos.column)))
-                  case p.Error(msg, next) => Left(viper.silver.verifier.ParseError(s"Error: $msg", PFilePosition(imp_path, next.pos.line, next.pos.column)))
+                val p = RecParser(imp_path).parses(s.mkString("\n") + "\n")
+                p match {
+                  case fastparse.core.Parsed.Success(a, _) => Right(a)
+                  case fastparse.core.Parsed.Failure(msg, next, extra) => Left(viper.silver.verifier.ParseError(s"Failure: $msg", PFilePosition(imp_path, extra.line, extra.col)))
+//                  case p.Error(msg, next) => Left(viper.silver.verifier.ParseError(s"Error: $msg", PFilePosition(imp_path, next.pos.line, next.pos.column)))
                 }
             }
           }
 
           else {
             val report = s"found loop dependency among these imports:\n" +
-              viper.silver.parser.Parser._imports.map { case (k, v) => k }.mkString("\n")
+              _imports.map { case (k, v) => k }.mkString("\n")
             println(s"warning: $report\n(loop starts at $imp_pos)")
             Right(ParseWarning(report, imp_pos))
           }
@@ -855,7 +890,8 @@ object FastParser {
 
 
 def main(args: Array[String]) {
-  println(fastparser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1"))
+//  println(fastparser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1"))
+  println(FastParser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1", file))
 //  println(exp.parse("[0..|nodes|)"))
 }
 }
