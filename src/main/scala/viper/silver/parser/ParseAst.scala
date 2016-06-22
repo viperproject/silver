@@ -11,7 +11,7 @@ import viper.silver.ast.MagicWandOp
 import viper.silver.FastPositions
 
 import scala.util.parsing.input.Position
-import org.kiama.attribution.Attributable
+
 
 import viper.silver.ast.utility.Visitor
 import viper.silver.parser.TypeHelper._
@@ -133,12 +133,108 @@ trait FastPositioned {
     this
   }
 }
+trait FastAttributable extends Product with Cloneable {
+
+  /**
+    * A link to the parent `Attributable` node of this node or `null` if
+    * this node has no parent.  Note that this link will skip intervening
+    * non-`Attributable` ancestors.
+    *
+    * @see initTreeProperties
+    */
+  var parent : FastAttributable = null
+
+  /**
+    * A short-hand for `parent.asInstanceOf[T]`, which is useful in cases
+    * a `T`-specific operation is applied to the parent, which otherwise
+    * would be of type `Attributable`.
+    */
+  def parent[T] : T = parent.asInstanceOf[T]
+
+  /**
+    * Is this node the root of the hierarchy?
+    */
+  private val _children = scala.collection.mutable.ListBuffer[FastAttributable] ()
+  var index : Int = -1
+  def prev[T] : T = prev.asInstanceOf[T]
+  var next : FastAttributable = null
+  var prev : FastAttributable = null
+
+  def initTreeProperties () {
+
+    import scala.collection.GenTraversable
+
+    var ind : Int = 0
+    var prev : FastAttributable = null
+
+    /**
+      * Set the node connections and index of `c`.
+      */
+    def setConnections (c : FastAttributable) {
+      c.parent = this
+      _children += c
+      c.index = ind
+      ind += 1
+      c.prev = prev
+      c.next = null
+      if (prev != null) prev.next = c
+      prev = c
+
+      // Recursively set the connections below c
+      c.initTreeProperties
+    }
+
+    /**
+      * Recursively set the child connections of `node` and its
+      * `Attributable` children, skipping any number of `Some` options,
+      * `Left` or `Right` eithers, tuples, or `GenTraversable` nodes
+      * on the way.
+      */
+    def setNodeChildConnections (node : Any) : Unit =
+      node match {
+        case c : FastAttributable =>
+          setConnections (c)
+        case Some (o) =>
+          setNodeChildConnections (o)
+        case Left (l) =>
+          setNodeChildConnections (l)
+        case Right (r) =>
+          setNodeChildConnections (r)
+        case (a, b) =>
+          setNodeChildConnections (a)
+          setNodeChildConnections (b)
+        case (a, b, c) =>
+          setNodeChildConnections (a)
+          setNodeChildConnections (b)
+          setNodeChildConnections (c)
+        case (a, b, c, d) =>
+          setNodeChildConnections (a)
+          setNodeChildConnections (b)
+          setNodeChildConnections (c)
+          setNodeChildConnections (d)
+        case s : GenTraversable[_] =>
+          for (v <- s)
+            setNodeChildConnections (v)
+        case _ =>
+        // Ignore other kinds of nodes
+      }
+
+    // Start by setting the connections of the fields of this.
+    _children.clear ()
+    for (c <- productIterator)
+      setNodeChildConnections (c)
+
+  }
+
+
+}
+
 
 /**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual SIL abstract syntax tree.
  */
-sealed trait PNode extends FastPositioned with Attributable {
+sealed trait PNode extends FastPositioned with FastAttributable{
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
 
@@ -1009,8 +1105,8 @@ case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Op
   val typ = PPredicateType()
 }
 
-case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned with Attributable
-case class PAxiom1(idndef: PIdnDef, exp: PExp) extends FastPositioned with Attributable
+case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned with FastAttributable
+case class PAxiom1(idndef: PIdnDef, exp: PExp) extends FastPositioned with FastAttributable
 
 /**
  * A entity represented by names for whom we have seen more than one

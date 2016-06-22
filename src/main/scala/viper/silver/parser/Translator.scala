@@ -324,7 +324,7 @@ case class Translator(program: PProgram) {
         IntLit(i)(pos)
       case p@PResultLit() =>
         // find function
-        var par: Attributable = p.parent
+        var par: FastAttributable = p.parent
         while (!par.isInstanceOf[PFunction]) {
           if (par == null) sys.error("cannot use 'result' outside of function")
           par = par.parent
