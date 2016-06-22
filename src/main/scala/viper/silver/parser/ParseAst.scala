@@ -6,11 +6,13 @@
 
 package viper.silver.parser
 
-import org.kiama.util.Positions
+
 import viper.silver.ast.MagicWandOp
+import viper.silver.FastPositions
 
 import scala.util.parsing.input.Position
 import org.kiama.attribution.Attributable
+
 import viper.silver.ast.utility.Visitor
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.{ParseError, ParseReport}
@@ -21,7 +23,7 @@ import scala.language.implicitConversions
  * This is a trait to ease interfacing with the changed Kiama interface - it no-longer provides Positioned as a trait, but rather a global Positions object..
  */
 
-trait KiamaPositioned {
+/*trait KiamaPositioned {
 
   /** Do not use these first three interfaces for reporting the positions.
       They may or may not contain the rel_file field, depending on whether
@@ -64,7 +66,7 @@ trait KiamaPositioned {
       // An AST node should probably not spread between multiple source files, but who knows?
         s"[${fp_a.toString}--]"
     case _ =>
-      s"[${start}--${finish}]"
+      s"[${start}-${finish}]"
 //      s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
   }
 
@@ -78,13 +80,65 @@ trait KiamaPositioned {
     setFinish(a.finish)
     this
   }
+}*/
+trait FastPositioned {
+
+  /** Do not use these first three interfaces for reporting the positions.
+      They may or may not contain the rel_file field, depending on whether
+      the AST is constructed through the Parser or via the Scala interfaces. */
+
+  /** TODO get ride of 'implicit def liftPos' of Translator.scala and make these methods private. */
+  def start = FastPositions.getStart(this)
+  def finish = FastPositions.getFinish(this)
+
+  /** Used for reporting the starting position of an AST node. */
+  def startPosStr = start match {
+    case fp: PFilePosition =>
+      s"${fp.file.getFileName}@${start}"
+    case _ =>
+      s"1${start}"
+  }
+
+  /** Used for reporting the range of positions occupied by an AST node. */
+  def rangeStr = start match {
+    /*case fp_a: FilePosition =>
+      require(finish.isInstanceOf[FilePosition],
+        s"start and finish positions must be instances of FilePosition at the same time")
+      val fp_b = finish.asInstanceOf[FilePosition]
+      if (fp_a.file == fp_b.file)
+        s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
+      else
+      // An AST node should probably not spread between multiple source files, but who knows?
+        s"[$fp_a-$fp_b]"*/
+    case fp_a: PFilePosition =>
+      require(finish.isInstanceOf[PFilePosition],
+        s"start and finish positions must be instances of FilePosition at the same time")
+      val fp_b = finish.asInstanceOf[PFilePosition]
+      if (fp_a.file == fp_b.file)
+        s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
+      else
+      // An AST node should probably not spread between multiple source files, but who knows?
+        s"[${fp_a.toString}--]"
+    case _ =>
+      s"[${start}-${finish}]"
+    //      s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
+  }
+
+  private def setStart(p: Position) = FastPositions.setStart(this, (p))
+  private def setFinish(p: Position) = FastPositions.setFinish(this, (p))
+
+  def setPos(a: FastPositioned): this.type = {
+    setStart(a.start)
+    setFinish(a.finish)
+    this
+  }
 }
 
 /**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual SIL abstract syntax tree.
  */
-sealed trait PNode extends KiamaPositioned with Attributable {
+sealed trait PNode extends FastPositioned with Attributable {
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
 
@@ -955,8 +1009,8 @@ case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Op
   val typ = PPredicateType()
 }
 
-case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends KiamaPositioned with Attributable
-case class PAxiom1(idndef: PIdnDef, exp: PExp) extends KiamaPositioned with Attributable
+case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned with Attributable
+case class PAxiom1(idndef: PIdnDef, exp: PExp) extends FastPositioned with Attributable
 
 /**
  * A entity represented by names for whom we have seen more than one

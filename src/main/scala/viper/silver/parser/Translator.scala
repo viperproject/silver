@@ -464,8 +464,8 @@ case class Translator(program: PProgram) {
 //  implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition =
 //    SourcePosition(file, pos.line, pos.column)
 
-  /** Takes a [[viper.silver.parser.KiamaPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
-  implicit def liftPos(pos: KiamaPositioned): SourcePosition = {
+  /** Takes a [[viper.silver.parser.FastPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
+  implicit def liftPos(pos: FastPositioned): SourcePosition = {
     val start = LineColumnPosition(pos.start.line, pos.start.column)
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
 //    def file =java.nio.file.Paths.get("/home/sahil/test/some_file.sil")

@@ -472,7 +472,7 @@ case class TypeChecker(names: NameAnalyser) {
      *
      * TODO: Similar to Consistency.recordIfNot. Combine!
      */
-    def issueError(n: KiamaPositioned, m: String) {
+    def issueError(n: FastPositioned, m: String) {
       messages ++= Messaging.message(n, m)
       setErrorType() // suppress further warnings
     }
@@ -653,7 +653,7 @@ case class TypeChecker(names: NameAnalyser) {
   /**
    * If b is false, report an error for node.
    */
-  def ensure(b: Boolean, node: KiamaPositioned, msg: String) {
+  def ensure(b: Boolean, node: FastPositioned, msg: String) {
     if (!b) messages ++= Messaging.message(node, msg)
   }
 }

@@ -16,10 +16,9 @@ import fastparse.parsers.Intrinsics
 import fastparse.core.{Mutable, ParseCtx, Parsed, Parser}
 import fastparse.parsers.Terminals.Pass
 import fastparse.parsers.{Intrinsics, Terminals}
-import org.kiama.util.Positions
-import org.kiama.util.Positions._
-import viper.silver.ast.HasLineColumn
 
+import viper.silver.ast.HasLineColumn
+import viper.silver.FastPositions
 import scala.annotation.tailrec
 import scala.reflect.internal.util.Position
 /*import fastparse.core.{Parsed, Parser}*/
@@ -75,8 +74,8 @@ class PosRepeat[T, +R](p: Parser[T], min: Int, max: Int, delimiter: Parser[_],fi
               val counted = count + 1
               val start1 = computeFrom(cfg.input, index0)
               val end1 = computeFrom(cfg.input, index1)
-              setStart (value1, PFilePosition(file, start1._1, start1._2))
-              setFinish (value1, PFilePosition(file, end1._1, end1._2))
+              viper.silver.FastPositions.setStart(value1, PFilePosition(file, start1._1, start1._2))
+              viper.silver.FastPositions.setFinish (value1, PFilePosition(file, end1._1, end1._2))
               if (counted < max)
                 rec(index1, delimiter, lastFailure, acc, cut0 | cut1, counted)
               else
@@ -132,8 +131,8 @@ class PosCustomSequence[+T, +R, +V](WL: P0, p0: P[T], p: P[V], cut: Boolean, fil
       case Mutable.Success(value0, index0, traceParsers0, cut0) =>
         val start0 = computeFrom(cfg.input, index)
         val end0 = computeFrom(cfg.input, index0)
-        setStart (value0, PFilePosition(file, start0._1, start0._2))
-        setFinish (value0, PFilePosition(file, end0._1, end0._2))
+        viper.silver.FastPositions.setStart (value0, PFilePosition(file, start0._1, start0._2))
+        viper.silver.FastPositions.setFinish (value0, PFilePosition(file, end0._1, end0._2))
         WL.parseRec(cfg, index0) match {
           case f1: Mutable.Failure => failMore(f1, index, cfg.logDepth)
           case Mutable.Success(value1, index1, traceParsers1, cut1) =>
@@ -146,8 +145,8 @@ class PosCustomSequence[+T, +R, +V](WL: P0, p0: P[T], p: P[V], cut: Boolean, fil
               case Mutable.Success(value2, index2, traceParsers2, cut2) =>
                 val start1 = computeFrom(cfg.input, index1)
                 val end1 = computeFrom(cfg.input, index2)
-                setStart (value2, PFilePosition(file, start1._1, start1._2))
-                setFinish (value2, PFilePosition(file, end1._1, end1._2))
+                viper.silver.FastPositions.setStart (value2, PFilePosition(file, start1._1, start1._2))
+                viper.silver.FastPositions.setFinish (value2, PFilePosition(file, end1._1, end1._2))
                 val (newIndex, newCut) =
                   if (index2 > index1 || index1 == cfg.input.length) (index2, cut | cut0 | cut1 | cut2)
                   else (index0, cut | cut0 | cut2)
@@ -185,8 +184,8 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
         case s: Mutable.Success[T] =>
           val start = computeFrom(cfg.input, index)
           val end = computeFrom(cfg.input, s.index)
-          setStart (s.value, PFilePosition(file, start._1, start._2))
-          setFinish (s.value, PFilePosition(file, end._1, end._2))
+          viper.silver.FastPositions.setStart (s.value, PFilePosition(file, start._1, start._2))
+          viper.silver.FastPositions.setFinish (s.value, PFilePosition(file, end._1, end._2))
           //          println(file)
 
           s
@@ -197,8 +196,8 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
         case s: Mutable.Success[T] => {
           val start = computeFrom(cfg.input, index)
           val end = computeFrom(cfg.input, s.index)
-          setStart (s.value, PFilePosition(file, start._1, start._2))
-          setFinish (s.value, PFilePosition(file, end._1, end._2))
+          viper.silver.FastPositions.setStart (s.value, PFilePosition(file, start._1, start._2))
+          viper.silver.FastPositions.setFinish (s.value, PFilePosition(file, end._1, end._2))
 
           s
         }
@@ -208,6 +207,9 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
     }
   }
 }
+
+
+
 
 
 
@@ -594,7 +596,7 @@ object FastParser {
   lazy val idndef: P[PIdnDef] = P(ident).map(PIdnDef)
 
   lazy val quant: P[PExp] = P((keyword("forall") ~/ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) => PForall(a, b, c) } |
-    (keyword("exists") ~ nonEmptyFormalArgList ~ "::" ~ exp).map { case (a, b) => PExists(a, b) })
+    (keyword("exists") ~/ nonEmptyFormalArgList ~ "::" ~ exp).map { case (a, b) => PExists(a, b) })
   lazy val nonEmptyFormalArgList: P[Seq[PFormalArgDecl]] = P(formalArg.rep(min = 1, sep = ","))
   lazy val formalArg: P[PFormalArgDecl] = P(idndef ~ ":" ~ typ).map { case (a, b) => PFormalArgDecl(a, b) }
   //types
