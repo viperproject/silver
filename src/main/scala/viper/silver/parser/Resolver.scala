@@ -6,10 +6,10 @@
 
 package viper.silver.parser
 
-import org.kiama.util.Messaging
+
 import viper.silver.ast.MagicWandOp
 import viper.silver.ast.utility.Visitor
-
+import viper.silver.FastMessaging
 import scala.collection.mutable
 import scala.reflect._
 
@@ -43,7 +43,7 @@ case class TypeChecker(names: NameAnalyser) {
   var resultAllowed : Boolean = false
 
   /** to record error messages */
-  var messages : Messaging.Messages = Nil
+  var messages : FastMessaging.Messages = Nil
 
   def run(p: PProgram): Boolean = {
     check(p)
@@ -64,7 +64,7 @@ case class TypeChecker(names: NameAnalyser) {
     /* Report any domain type that couldn't be resolved */
     /* Alex suggests replacing *all* these occurrences by one arbitrary type */
     p visit {
-      case dt: PDomainType if dt.isUndeclared => messages ++= Messaging.message(dt, s"found undeclared type ${dt.domain.name}")
+      case dt: PDomainType if dt.isUndeclared => messages ++= FastMessaging.message(dt, s"found undeclared type ${dt.domain.name}")
     }
   }
 
@@ -185,7 +185,7 @@ case class TypeChecker(names: NameAnalyser) {
             check(idnuse, typ)
             check(rhs, typ)
           case _ =>
-            messages ++= Messaging.message(stmt, "expected variable as lhs")
+            messages ++= FastMessaging.message(stmt, "expected variable as lhs")
         }
       case PNewStmt(target, fields) =>
         val msg = "expected variable as lhs"
@@ -195,17 +195,17 @@ case class TypeChecker(names: NameAnalyser) {
             case PField(_, typ) =>
               check(field, typ)
             case _ =>
-              messages ++= Messaging.message(stmt, "expected a field as lhs")
+              messages ++= FastMessaging.message(stmt, "expected a field as lhs")
           }))
       case PMethodCall(targets, method, args) =>
         names.definition(curMember)(method) match {
           case PMethod(_, formalArgs, formalTargets, _, _, _) =>
             formalArgs.foreach(fa=>check(fa.typ))
             if (formalArgs.length != args.length) {
-              messages ++= Messaging.message(stmt, "wrong number of arguments")
+              messages ++= FastMessaging.message(stmt, "wrong number of arguments")
             } else {
               if (formalTargets.length != targets.length) {
-                messages ++= Messaging.message(stmt, "wrong number of targets")
+                messages ++= FastMessaging.message(stmt, "wrong number of targets")
               } else {
                 for ((formal, actual) <- (formalArgs zip args) ++ (formalTargets zip targets)) {
                   check(actual, formal.typ)
@@ -213,7 +213,7 @@ case class TypeChecker(names: NameAnalyser) {
               }
             }
           case _ =>
-            messages ++= Messaging.message(stmt, "expected a method")
+            messages ++= FastMessaging.message(stmt, "expected a method")
         }
       case PLabel(name) =>
       // nothing to check
@@ -221,7 +221,7 @@ case class TypeChecker(names: NameAnalyser) {
         names.definition(curMember)(label) match {
           case PLabel(_) =>
           case _ =>
-            messages ++= Messaging.message(stmt, "expected a label")
+            messages ++= FastMessaging.message(stmt, "expected a label")
         }
       case PFieldAssign(field, rhs) =>
         names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
@@ -229,7 +229,7 @@ case class TypeChecker(names: NameAnalyser) {
             check(field, typ)
             check(rhs, typ)
           case _ =>
-            messages ++= Messaging.message(stmt, "expected a field as lhs")
+            messages ++= FastMessaging.message(stmt, "expected a field as lhs")
         }
       case PIf(cond, thn, els) =>
         check(cond, Bool)
@@ -256,7 +256,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(wand, Wand)
         wand match {
           case pbe: PBinExp if pbe.opName == MagicWandOp.op && pbe.typ == PWandType() => /* Good */
-          case _ => messages ++= Messaging.message(plw, s"Expected a wand literal")
+          case _ => messages ++= FastMessaging.message(plw, s"Expected a wand literal")
         }
       case _: PDefine =>
         /* Should have been removed right after parsing */
@@ -270,9 +270,9 @@ case class TypeChecker(names: NameAnalyser) {
       case PAccPred(PPredicateAccess(_, idnuse), _) =>
         acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
           val predicate = _predicate.asInstanceOf[PPredicate]
-          if (predicate.body.isEmpty) messages ++= Messaging.message(idnuse, messageIfAbstractPredicate)
+          if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
         }
-      case _ => messages ++= Messaging.message(exp, "expected predicate access")
+      case _ => messages ++= FastMessaging.message(exp, "expected predicate access")
     }
   }
 
@@ -282,7 +282,7 @@ case class TypeChecker(names: NameAnalyser) {
     case PBinExp(_, MagicWandOp.op, _) =>{}
  //     if (recurse) check(e, Wand)
     case _ =>
-      messages ++= Messaging.message(e, "expected magic wand")
+      messages ++= FastMessaging.message(e, "expected magic wand")
   }
 
   /** This handy method checks if all passed `idnUses` refer to specific
@@ -323,7 +323,7 @@ case class TypeChecker(names: NameAnalyser) {
         case Some(_) =>
           handle(use, decl.asInstanceOf[PTypedDeclaration])
         case None =>
-          messages ++= Messaging.message(use, errorMessage)
+          messages ++= FastMessaging.message(use, errorMessage)
       }
     }
   }
@@ -361,7 +361,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PMultisetType(elemType) =>
         check(elemType)
       case PUnknown() =>
-        messages ++= Messaging.message(typ, "expected concrete type, but found unknown type")
+        messages ++= FastMessaging.message(typ, "expected concrete type, but found unknown type")
     }
   }
 
@@ -429,7 +429,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def typeError(exp:PExp) = {
-    messages ++= Messaging.message(exp, s"Type error in the expression at ${exp.rangeStr}")
+    messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.rangeStr}")
   }
   def check(exp: PExp, expected: PType) = checkTopTyped(exp,Some(expected))
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
@@ -446,7 +446,7 @@ case class TypeChecker(names: NameAnalyser) {
       }else {
         oexpected match {
           case Some(expected) =>
-            messages ++= Messaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.rangeStr}")
+            messages ++= FastMessaging.message(exp, s"Expected type ${expected.toString}, but found ${exp.typ.toString} at the expression at ${exp.rangeStr}")
           case None =>
             typeError(exp)
         }
@@ -473,7 +473,7 @@ case class TypeChecker(names: NameAnalyser) {
      * TODO: Similar to Consistency.recordIfNot. Combine!
      */
     def issueError(n: FastPositioned, m: String) {
-      messages ++= Messaging.message(n, m)
+      messages ++= FastMessaging.message(n, m)
       setErrorType() // suppress further warnings
     }
 
@@ -551,7 +551,7 @@ case class TypeChecker(names: NameAnalyser) {
               case pue: PUnFoldingExp =>
                 //            check(pue.acc.perm, Perm)
                 if (!isCompatible(pue.acc.loc.typ, Pred)) {
-                  messages ++= Messaging.message(pue, "expected predicate access")
+                  messages ++= FastMessaging.message(pue, "expected predicate access")
                 }
                 acceptNonAbstractPredicateAccess(pue.acc, "abstract predicates cannot be (un)folded")
               case pfa@PFieldAccess(rcv, idnuse) =>
@@ -590,7 +590,7 @@ case class TypeChecker(names: NameAnalyser) {
                   case PLabelledOld(lbl, _) =>
                     names.definition(curMember)(lbl) match {
                       case PLabel(_) => ()
-                      case _ => messages ++= Messaging.message(po, "expected state label")
+                      case _ => messages ++= FastMessaging.message(po, "expected state label")
                     }
                   case _ => ()
                 }
@@ -654,7 +654,7 @@ case class TypeChecker(names: NameAnalyser) {
    * If b is false, report an error for node.
    */
   def ensure(b: Boolean, node: FastPositioned, msg: String) {
-    if (!b) messages ++= Messaging.message(node, msg)
+    if (!b) messages ++= FastMessaging.message(node, msg)
   }
 }
 
@@ -664,7 +664,7 @@ case class TypeChecker(names: NameAnalyser) {
 case class NameAnalyser() {
 
   /** To record error messages */
-  var messages : Messaging.Messages = Nil
+  var messages : FastMessaging.Messages = Nil
 
 
   /** Resolves the entity to which the given identifier `idnuse` refers.
@@ -741,13 +741,13 @@ case class NameAnalyser() {
             getMap(d).get(d.idndef.name) match {
               case Some(e: PDeclaration) =>
 
-                messages ++= Messaging.message(e, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+                messages ++= FastMessaging.message(e, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
 //                println(e.start + "=>" + e)
               case Some(e:PErrorEntity) =>
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {
                   case Some(e: PDeclaration) =>
-                    messages ++= Messaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+                    messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
                   case Some(e:PErrorEntity) =>
                   case None =>
                     getMap(d).put(d.idndef.name, d)
@@ -843,7 +843,7 @@ case class NameAnalyser() {
           case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
             if (!i.parent.isInstanceOf[PDomainType]) {
-              messages ++= Messaging.message(i, s"identifier $name not defined.")
+              messages ++= FastMessaging.message(i, s"identifier $name not defined.")
             }
           case localVar : PLocalVarDecl =>
             getContainingMethod(localVar) match {
@@ -851,7 +851,7 @@ case class NameAnalyser() {
                 // local variables must not be used in pre- or postconditions
                 // see Silver issue #56
                 if (pres.exists(pre => containsSubnode(pre, i)) || posts.exists(post => containsSubnode(post, i))){
-                  messages ++= Messaging.message(i, s"local variable $name cannot be accessed in pre- or postcondition.")
+                  messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed in pre- or postcondition.")
                 }
                 // Variables must not be used before they are declared
                 // This is a workaround that should work for most cases, but not all, but should be alright
@@ -859,7 +859,7 @@ case class NameAnalyser() {
                 // if it has been defined in the respective then-clause.
                 // See Silver issue #116
                 if (containsSubnodeBefore(body, i, localVar)){
-                  messages ++= Messaging.message(i, s"local variable $name cannot be accessed before it is declared.")
+                  messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed before it is declared.")
                 }
               case _ =>
             }
@@ -869,7 +869,7 @@ case class NameAnalyser() {
             getContainingMethod(arg) match {
               case Some(PMethod(_, args, returns, pres, posts, _)) =>
                 if (returns.contains(arg) && pres.exists(pre => containsSubnode(pre, i))){
-                  messages ++= Messaging.message(i, s"return variable $name cannot be accessed in precondition.")
+                  messages ++= FastMessaging.message(i, s"return variable $name cannot be accessed in precondition.")
                 }
               case _ =>
             }

@@ -6,14 +6,15 @@
 
 package viper.silver.ast.utility
 
-import scala.util.parsing.input.{Position, NoPosition}
-import org.kiama.util.{Message, Messaging}
+import viper.silver.{FastMessage, FastMessaging}
+
+import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.parser.Parser
 import viper.silver.ast._
 
 /** An utility object for consistency checking. */
 object Consistency {
-  var messages: Messaging.Messages = Nil
+  var messages: FastMessaging.Messages = Nil
   def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
     if (!property) {
       val pos = suspect.pos match {
@@ -32,7 +33,7 @@ object Consistency {
         case rp@viper.silver.ast.NoPosition => NoPosition
       }
 
-      this.messages ++= Messaging.aMessage(Message(message,pos))  // this is the way to construct a message directly with a position (only).
+      this.messages ++= FastMessaging.aMessage(FastMessage(message,pos))  // this is the way to construct a message directly with a position (only).
     }
   }
 

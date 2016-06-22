@@ -12,8 +12,8 @@ import com.sun.org.apache.xerces.internal.impl.xs.SubstitutionGroupHandler
 
 import scala.language.implicitConversions
 import scala.collection.mutable
-import org.kiama.attribution.Attributable
-import org.kiama.util.Messaging
+
+import viper.silver.FastMessaging
 import viper.silver.ast._
 import viper.silver.ast.utility.{Consistency, Statements, Visitor}
 
@@ -215,7 +215,7 @@ case class Translator(program: PProgram) {
           case _: PLocalVarDecl | _: PFormalArgDecl => LocalVar(name)(ttyp(pexp.typ), pos)
           case pf: PField =>
             /* A malformed AST where a field is dereferenced without a receiver */
-            Consistency.messages ++= Messaging.message(piu, s"expected expression but found field $name")
+            Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
           case _: PLetWand =>
             /* TODO: We might want to differentiate between magic wand references and regular local variables. */

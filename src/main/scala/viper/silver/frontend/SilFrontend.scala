@@ -11,7 +11,7 @@ import java.nio.file.{Path, Paths}
 
 import fastparse.core.Parsed
 import org.apache.commons.io.FilenameUtils
-import org.kiama.util.Messaging
+import viper.silver.FastMessaging
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
 import viper.silver.parser._
 import viper.silver.verifier._
@@ -248,14 +248,14 @@ trait SilFrontend extends DefaultFrontend {
             Succ(program)
 
           case None => // then these are translation messages
-            Fail(Messaging.sortmessages(Consistency.messages) map (m =>
+            Fail(FastMessaging.sortmessages(Consistency.messages) map (m =>
               {
                 TypecheckerError(
                 // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
 
                 m.label, m.pos match {
-                  case fp: FilePosition =>
-                    SourcePosition(fp.file, m.pos.line, m.pos.column)
+                  /*case fp: FilePosition =>
+                    SourcePosition(fp.file, m.pos.line, m.pos.column)*/
                   case fp: PFilePosition =>
                     SourcePosition(fp.file, m.pos.line, m.pos.column)
                   case _ =>
@@ -266,10 +266,10 @@ trait SilFrontend extends DefaultFrontend {
         }
 
       case None =>
-        val errors = for (m <- Messaging.sortmessages(r.messages)) yield {
+        val errors = for (m <- FastMessaging.sortmessages(r.messages)) yield {
           TypecheckerError(m.label, m.pos match {
-            case fp: FilePosition =>
-              SourcePosition(fp.file, m.pos.line, m.pos.column)
+            /*case fp: FilePosition =>
+              SourcePosition(fp.file, m.pos.line, m.pos.column)*/
             case fp: PFilePosition =>
               SourcePosition(fp.file, m.pos.line, m.pos.column)
             case _ =>
