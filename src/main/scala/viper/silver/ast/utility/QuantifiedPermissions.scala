@@ -19,26 +19,13 @@ import viper.silver.ast._
         Exp,
         Exp)] =
         n match {
-          //field access
-
-          /* case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
-           triggers,
-           Implies(condition, fa@FieldAccessPredicate(FieldAccess(rcvr, f), gain)))
-             if     rcvr.exists(_ == lvd.localVar)
-               && triggers.isEmpty =>
-
-             Some((lvd, condition, Seq(fa)))
-           //predicate access
-           case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
-           triggers,
-           Implies(condition, pa@PredicateAccessPredicate(PredicateAccess(args, predname), perm)))
-             if    triggers.isEmpty =>
-             Some((lvd, condition, Seq(pa)))*/
           case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
           triggers,
           Implies(condition, expr))
             if    triggers.isEmpty =>
             Some((lvd, condition,expr))
+          case forall@Forall(Seq(lvd@LocalVarDecl(_, _)), triggers, expr) =>
+            Some(lvd, BoolLit(true)(forall.pos, forall.info), expr)
           case _ => None
         }
     }
