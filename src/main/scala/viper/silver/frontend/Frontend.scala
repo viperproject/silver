@@ -6,10 +6,13 @@
 
 package viper.silver.frontend
 
+import java.io.{BufferedWriter, FileWriter}
 import java.nio.file.{Files, Path}
+
 import scala.io.Source
-import viper.silver.verifier.{Failure, AbstractError, VerificationResult, Verifier}
+import viper.silver.verifier.{AbstractError, Failure, VerificationResult, Verifier}
 import viper.silver.ast.Program
+import viper.silver.ast.pretty.FastPrettyPrinter
 
 /** Represents one phase of a frontend */
 case class Phase(name: String, action: () => Unit)
@@ -178,7 +181,17 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
       return
     }
     doTranslate(_typecheckResult.get) match {
-      case Succ(r) => _program = Some(r)
+      case Succ(r) => _program = {
+        val str = FastPrettyPrinter.pretty(r)
+        val br = new BufferedWriter(new FileWriter("out.txt", true))
+        br.write(str)
+        br.write("\n++++++++\n")
+        br.close()
+
+        Some(r)
+
+      }
+
       case Fail(e) => _errors ++= e
     }
     _state = TranslatorState.Translated

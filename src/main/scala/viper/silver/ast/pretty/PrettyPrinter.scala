@@ -12,13 +12,416 @@
 
 package viper.silver.ast.pretty
 
-import org.kiama.output.{PrettyBinaryExpression, PrettyUnaryExpression, PrettyExpression, ParenPrettyPrinter}
+
 import viper.silver.ast._
+
 
 /**
  * A pretty printer for the SIL language.
  */
-object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrinter {
+trait FastPrettyPrinterBase {
+
+  import scala.collection.immutable.Seq
+
+
+  type Indent = Int
+
+
+  type Width = Int
+
+  /**
+    * The final layout of a document as a string.
+    */
+  type Layout = String
+
+  /**
+    * Default indentation is four spaces.
+    */
+  val defaultIndent = 4
+
+  /**
+    * Default layout width is 75 characters.
+    */
+  val defaultWidth = 75
+
+  /**
+    * The operations provided by a pretty-printable document that don't
+    * depend on the document's representation type.
+    */
+  trait DocOps {
+
+    def <> (e : Doc) : Doc
+
+
+    def <+> (e : Doc) : Doc =
+      this <> space <> e
+
+
+
+    def <@> (e : Doc) : Doc =
+      this <> line <> e
+
+
+
+  }
+
+
+
+
+  trait PrettyPrintable {
+    def toDoc : Doc = value (this)
+  }
+
+
+  implicit def anyToPrettyPrintable (a : Any) : PrettyPrintable =
+    new PrettyPrintable {
+      override def toDoc : Doc = value (a)
+    }
+
+
+  def string (s : String) : Doc =
+    if (s == "") {
+      empty
+    } else if (s.charAt(0) == '\n') {
+      line <> string (s.tail)
+    } else {
+      val (xs, ys) = s.span (_ != '\n')
+      text (xs) <> string (ys)
+    }
+
+  /**
+    * Convert a character to a document.  The character can be a newline.
+    */
+  implicit def char (c : Char) : Doc =
+    if (c == '\n')
+      line
+    else
+      text (c.toString)
+
+
+
+
+
+  def any (a : Any) : Doc =
+    if (a == null)
+      "null"
+    else
+      a match {
+//        case v : Vector[_] => list (v.toList, "Vector ", any)
+//        case m : Map[_,_]  => list (m.toList, "Map ", any)
+        case Nil           => "Nil"
+//        case l : Seq[_]   => {seq (l, " ", any) }
+        case (l, r)        => any (l) <+> "->" <+> any (r)
+        case None          => "None"
+        /*case p : Product   => seq (p.productIterator.toList,
+          s"${p.productPrefix} ",
+          any)*/
+        case s : String    => char('\"') <> text (s) <> char('\"')
+        case _             => a.toDoc
+      }
+
+
+  /**
+    * Return a document that is the result of folding `f` over the sequence
+    * `ds`. Returns the empty document is `ds` is empty.
+    */
+  def folddoc (ds : Seq[Doc], f : (Doc, Doc) => Doc) =
+    if (ds.isEmpty)
+      empty
+    else
+      ds.tail.foldLeft (ds.head) (f)
+
+  /**
+    * Return a document that concatenates the documents in the given sequence
+    * and separates adjacent documents with `sep` with no space around the
+    * separator.
+    */
+  def ssep (ds : Seq[Doc], sep : Doc) : Doc =
+    folddoc (ds, (_ <> sep <> _))
+
+  def lsep (ds : Seq[Doc], sep : Doc) : Doc =
+    if (ds.isEmpty)
+      empty
+    else
+      linebreak <> folddoc (ds, _ <> sep <@> _)
+
+  def value (v : Any) : Doc =
+    if (v == null)
+      "null"
+    else
+      string (v.toString)
+
+  def surround (d : Doc, b : Doc) : Doc =
+    b <> d <> b
+
+  def braces (d : Doc) : Doc =
+    char ('{') <> d <> char ('}')
+
+  def parens (d : Doc) : Doc =
+    char ('(') <> d <> char (')')
+
+
+  def brackets (d : Doc) : Doc =
+    char ('[') <> d <> char (']')
+
+
+  def space : Doc =
+    char (' ')
+
+
+
+
+  import scala.collection.immutable.{Queue, Seq}
+  import scala.collection.immutable.Queue.{empty => emptyDq}
+
+  // Internal data types
+
+  /*private type Remaining  = Int
+  private type Horizontal = Boolean
+  private type Buffer     = Seq[String]
+  private type Out        = Remaining => Trampoline[Buffer]
+  private type OutGroup   = Horizontal => Out => Trampoline[Out]
+  private type PPosition  = Int
+  private type Dq         = Queue[(PPosition,OutGroup)]
+  private type TreeCont   = (PPosition,Dq) => Trampoline[Out]
+  private type IW         = (Indent,Width)
+  private type DocCont    = IW => TreeCont => Trampoline[TreeCont]*/
+  type Remaining = Int
+  type Horizontal = Boolean
+  type Buffer = String
+  type Out = Remaining => Buffer
+  type OutGroup = Horizontal => Out => Out
+  type PPosition = Int
+  type Dq = Queue[(PPosition,OutGroup)]
+  type TreeCont = (PPosition,Dq) => Out
+  type IW = (Indent,Width)
+  type DocCont = IW => TreeCont => TreeCont
+
+  // Helper functions
+
+  private def scan (l : Width, out : OutGroup) (c : TreeCont) : TreeCont =
+
+      (p : PPosition, dq : Dq) =>
+        if (dq.isEmpty) {
+
+
+              val o1 = c (p + l, emptyDq)
+              val o2 = out (false) (o1)
+             o2
+
+        } else {
+          val (s, grp) = dq.last
+          val n = (s, (h : Horizontal) =>
+            (o1 : Out) =>
+
+
+
+                 grp (h) (out (h) (o1))
+
+            )
+          prune (c) (p + l, dq.init :+ n)
+        }
+
+
+
+
+  private def prune (c1 : TreeCont) : TreeCont =
+    (p : PPosition, dq : Dq) =>
+
+        (r : Remaining) =>
+          if (dq.isEmpty)
+            c1(p,emptyDq) (r)
+
+          else {
+            val (s, grp) = dq.head
+            if (p > s + r) {
+              grp(false) (prune(c1) (p,dq.tail))  (r)
+
+            } else {
+              c1 (p, dq) (r)
+            }
+          }
+
+
+  private def leave (c : TreeCont) : TreeCont =
+    (p : PPosition, dq : Dq) =>
+      if (dq.isEmpty) {
+        c (p, emptyDq)
+      } else if (dq.length == 1) {
+        val (s1, grp1) = dq.last
+       grp1(true) (c(p,emptyDq))
+
+      } else {
+        val (s1, grp1) = dq.last
+        val (s2, grp2) = dq.init.last
+        val n = (s2, (h : Horizontal) =>
+          (o1 : Out) => {
+            val o3 =
+              (r : Remaining) =>
+
+                    grp1 (p <= s1 + r) (o1) (r)
+
+                 grp2 (h) (o3)
+
+
+          })
+        c (p, dq.init.init :+ n)
+      }
+
+  /**
+    * Continuation representation of documents.
+    */
+  class Doc (f : DocCont) extends DocCont with DocOps {
+
+    // Forward function operations to the function
+
+    def apply (iw : IW) : TreeCont => TreeCont =
+      f (iw)
+
+    // Basic operations
+
+    def <> (e : Doc) : Doc =
+      new Doc (
+        (iw : IW) =>
+          (c1 : TreeCont) =>
+
+
+                 f (iw) (e (iw) (c1))
+
+
+      )
+
+  }
+
+  // Basic combinators
+
+   implicit def text (t : String) : Doc =
+     if (t == "") empty else
+       new Doc (
+         (iw : IW) => {
+           val l = t.length
+           val outText : OutGroup =
+             (_ : Horizontal) => (o : Out) =>
+               (r : Remaining) =>
+                 t + o (r - l)
+           scan (l, outText)
+         }
+       )
+
+  def line (repl : Layout) : Doc =
+    new Doc ({
+      case (i, w) =>
+        val outLine: OutGroup =
+          (h : Horizontal) => (c : Out) =>
+
+              (r : Remaining) =>
+                if (h)
+
+
+                   (repl + c (r - repl.length))
+
+
+                else
+
+
+                  ("\n" + (" " * i) + c (w - i))
+
+
+
+        scan (1, outLine)
+    })
+
+  def line : Doc =
+    line (" ")
+
+  def linebreak : Doc =
+    line ("")
+/*
+  def group (d : Doc) : Doc =
+    new Doc (
+      (iw : IW) =>
+        (c1 : TreeCont) =>
+
+
+
+
+              (p : PPosition, dq : Dq) => {
+                d (iw) (leave (c1)) (p, dq :+ ((p,(h : Horizontal) => (o : Out) => o)))
+              }
+
+    )*/
+
+
+
+
+
+  def empty : Doc =
+    new Doc (
+      (iw : IW) =>
+        (c : TreeCont) =>
+          c
+    )
+
+  def nest (d : Doc, j : Indent = defaultIndent) : Doc =
+    new Doc ({
+      case (i, w) =>
+        d ((i + j, w))
+    })
+
+
+
+  // Obtaining output
+
+  def pretty (d : Doc, w : Width = defaultWidth) : Layout = {
+    val initBuffer = ("")
+    val cend : TreeCont =
+      (p : PPosition, dq : Dq) => (r : Remaining) => initBuffer
+
+    val finalBuffer = d(0,w) (cend) (0,emptyDq) (w)
+     finalBuffer.toString
+  }
+
+
+}
+
+/*trait FastPrettyPrinter extends FastPrettyPrinterBase {
+
+}*/
+
+//stuff needed for the bracket calculation
+abstract class Side
+
+trait FastPrettyExpression
+case object LeftAssoc extends Side
+case object RightAssoc extends Side
+case object NonAssoc extends Side
+
+abstract class Fixity
+case object Prefix extends Fixity
+case object Postfix extends Fixity
+case class Infix (side : Side) extends Fixity
+
+
+
+trait FastPrettyOperatorExpression  extends FastPrettyExpression {
+  def priority : Int
+  def fixity : Fixity
+}
+
+trait FastPrettyBinaryExpression extends FastPrettyOperatorExpression {
+  def left : FastPrettyExpression
+  def op : String
+  def right : FastPrettyExpression
+}
+trait FastPrettyUnaryExpression extends FastPrettyOperatorExpression {
+  def op : String
+  def exp : FastPrettyExpression
+}
+
+
+
+
+object FastPrettyPrinter extends  FastPrettyPrinterBase {
 
   override val defaultIndent = 2
 
@@ -27,6 +430,35 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   /** Pretty-print any AST node. */
   def pretty(n: Node): String = {
     super.pretty(show(n))
+  }
+  //uses to implement the paper algo, if sees that it has to be bracketed, brackets else not
+  def bracket (inner : FastPrettyOperatorExpression, outer : FastPrettyOperatorExpression,
+               side : Side) : Doc = {
+    val d = toParenDoc (inner)
+    if (noparens (inner, outer, side)) d else parens (d)
+  }
+  //this is part of the algo of the paper, right now it is directly the kiama one
+  def noparens (inner : FastPrettyOperatorExpression, outer : FastPrettyOperatorExpression,
+                side : Side) : Boolean = {
+    val pi = inner.priority
+    val po = outer.priority
+    lazy val fi = inner.fixity
+    lazy val fo = outer.fixity
+    (pi < po) ||
+      ((fi, side) match {
+        case (Postfix, LeftAssoc) =>
+          true
+        case (Prefix, RightAssoc) =>
+          true
+        case (Infix (LeftAssoc), LeftAssoc) =>
+          (pi == po) && (fo == Infix (LeftAssoc))
+        case (Infix (RightAssoc), RightAssoc) =>
+          (pi == po) && (fo == Infix (RightAssoc))
+        case (_, NonAssoc) =>
+          fi == fo
+        case _ =>
+          false
+      })
   }
 
   /** Show any AST node. */
@@ -39,7 +471,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case v: LocalVarDecl => showVar(v)
     case dm: DomainMember => showDomainMember(dm)
     case Trigger(exps) =>
-      "{" <+> ssep(exps.to[collection.immutable.Seq] map show, comma) <+> "}"
+      "{" <+> ssep(exps.to[collection.immutable.Seq] map show, char (',')) <+> "}"
     case null => uninitialized
   }
 
@@ -134,19 +566,19 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   }
 
   /** Show a list of formal arguments. */
-  def showVars(vars: Seq[LocalVarDecl]): Doc = ssep((vars map showVar).to[collection.immutable.Seq], comma <> space)
+  def showVars(vars: Seq[LocalVarDecl]): Doc = ssep((vars map showVar).to[collection.immutable.Seq], char (',') <> space)
   /** Show a variable name with the type of the variable (e.g. to be used in formal argument lists). */
   def showVar(v: LocalVarDecl): Doc = v.name <> ":" <+> showType(v.typ)
 
   /** Show field name */
-  private def showLocation(loc: Location): PrettyPrinter.Doc = loc.name
+  private def showLocation(loc: Location): FastPrettyPrinter.Doc = loc.name
 
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Doc = {
     d match {
       case Domain(name, functions, axioms, typVars) =>
         "domain" <+> name <>
-          (if (typVars.isEmpty) empty else "[" <> ssep((typVars map show).to[collection.immutable.Seq], comma <> space) <> "]") <+>
+          (if (typVars.isEmpty) empty else "[" <> ssep((typVars map show).to[collection.immutable.Seq], char (',') <> space) <> "]") <+>
           braces(nest(
             line <> line <>
               ssep(((functions ++ axioms) map show).to[collection.immutable.Seq], line <> line)
@@ -169,7 +601,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case TypeVar(v) => v
       case dt@DomainType(domainName, typVarsMap) =>
         val typArgs = dt.typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
-        domainName <> (if (typArgs.isEmpty) empty else brackets(ssep(typArgs.to[collection.immutable.Seq], comma <> space)))
+        domainName <> (if (typArgs.isEmpty) empty else brackets(ssep(typArgs.to[collection.immutable.Seq], char (',') <> space)))
     }
   }
 
@@ -185,7 +617,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   def showStmt(stmt: Stmt): Doc = {
     val stmtDoc = stmt match {
       case NewStmt(target, fields) =>
-        show(target) <+> ":=" <+> "new(" <> ssep((fields map (f => value(f.name))).to[collection.immutable.Seq], comma <> space) <>")"
+        show(target) <+> ":=" <+> "new(" <> ssep((fields map (f => value(f.name))).to[collection.immutable.Seq], char(',') <> space) <>")"
       case LocalVarAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case FieldAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case Fold(e) => "fold" <+> show(e)
@@ -196,14 +628,14 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
       case Exhale(e) => "exhale" <+> show(e)
       case Assert(e) => "assert" <+> show(e)
       case Fresh(vars) =>
-        "fresh" <+> ssep((vars map show).to[collection.immutable.Seq], comma <> space)
+        "fresh" <+> ssep((vars map show).to[collection.immutable.Seq], char (',') <> space)
       case Constraining(vars, body) =>
-        "constraining" <> parens(ssep((vars map show).to[collection.immutable.Seq], comma <> space)) <+> showBlock(body)
+        "constraining" <> parens(ssep((vars map show).to[collection.immutable.Seq], char (',') <> space)) <+> showBlock(body)
       case MethodCall(mname, args, targets) =>
-        val call = mname <> parens(ssep((args map show).to[collection.immutable.Seq], comma <> space))
+        val call = mname <> parens(ssep((args map show).to[collection.immutable.Seq], char (',') <> space))
         targets match {
           case Nil => call
-          case _ => ssep((targets map show).to[collection.immutable.Seq], comma <> space) <+> ":=" <+> call
+          case _ => ssep((targets map show).to[collection.immutable.Seq], char (',') <> space) <+> ":=" <+> call
         }
       case Seqn(ss) =>
         val sss = ss filter (s => !(s.isInstanceOf[Seqn] && s.children.isEmpty))
@@ -230,7 +662,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     showComment(stmt) <> stmtDoc
   }
 
-  def showElse(els: Stmt): PrettyPrinter.Doc = els match {
+  def showElse(els: Stmt): FastPrettyPrinter.Doc = els match {
     case Seqn(Seq()) => empty
     case Seqn(Seq(s)) => showElse(s)
     case If(cond1, thn1, els1) => empty <+> "elseif" <+> parens(show(cond1)) <+> showBlock(thn1) <> showElse(els1)
@@ -238,7 +670,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   }
 
   /** Outputs the comments attached to `n` if there is at least one. */
-  def showComment(n: Infoed): PrettyPrinter.Doc = {
+  def showComment(n: Infoed): FastPrettyPrinter.Doc = {
     if (n == null)
       empty
     else {
@@ -249,7 +681,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
   }
 
   // Note: pretty-printing expressions is mostly taken care of by kiama
-  override def toParenDoc(e: PrettyExpression): Doc = e match {
+  def toParenDoc(e: FastPrettyExpression): Doc = e match {
     case IntLit(i) => value(i)
     case BoolLit(b) => value(b)
     case NullLit() => value(null)
@@ -257,7 +689,7 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case FieldAccess(rcv, field) =>
       show(rcv) <> "." <> field.name
     case PredicateAccess(params, predicateName) =>
-      predicateName <> parens(ssep((params map show).to[collection.immutable.Seq], comma <> space))
+      predicateName <> parens(ssep((params map show).to[collection.immutable.Seq], char (',') <> space))
     case Unfolding(acc, exp) =>
       parens("unfolding" <+> show(acc) <+> "in" <+> show(exp))
     case UnfoldingGhostOp(acc, exp) =>
@@ -286,11 +718,11 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
         show(exp))
     case ForPerm(v, fields, exp) =>
       parens("forperm"
-        <+> brackets(ssep((fields map showLocation).to[collection.immutable.Seq], comma <> space))
+        <+> brackets(ssep((fields map showLocation).to[collection.immutable.Seq], char (',') <> space))
         <+> v.name <+> "::" <+> show(exp))
 
     case InhaleExhaleExp(in, ex) =>
-      brackets(show(in) <> comma <+> show(ex))
+      brackets(show(in) <> char (',') <+> show(ex))
     case WildcardPerm() =>
       "wildcard"
     case FullPerm() =>
@@ -304,14 +736,14 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case AccessPredicate(loc, perm) =>
       "acc" <> parens(show(loc) <> "," <+> show(perm))
     case FuncApp(funcname, args) =>
-      funcname <> parens(ssep((args map show).to[collection.immutable.Seq], comma <> space))
+      funcname <> parens(ssep((args map show).to[collection.immutable.Seq], char (',') <> space))
     case DomainFuncApp(funcname, args, _) =>
-      funcname <> parens(ssep((args map show).to[collection.immutable.Seq], comma <> space))
+      funcname <> parens(ssep((args map show).to[collection.immutable.Seq], char (',') <> space))
 
     case EmptySeq(elemTyp) =>
       "Seq[" <> showType(elemTyp) <> "]()"
     case ExplicitSeq(elems) =>
-      "Seq" <> parens(ssep((elems map show).to[collection.immutable.Seq], comma <> space))
+      "Seq" <> parens(ssep((elems map show).to[collection.immutable.Seq], char (',') <> space))
     case RangeSeq(low, high) =>
       "[" <> show(low) <> ".." <> show(high) <> ")"
     case SeqIndex(seq, idx) =>
@@ -325,18 +757,18 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case SeqUpdate(seq, idx, elem) =>
       show(seq) <> brackets(show(idx) <+> ":=" <+> show(elem))
     case SeqLength(seq) =>
-      surround(show(seq),verticalbar)
+      surround(show(seq),char ('|'))
     case SeqContains(elem, seq) =>
       parens(show(elem) <+> "in" <+> show(seq))
 
     case EmptySet(elemTyp) =>
       "Set[" <> showType(elemTyp) <> "]()"
     case ExplicitSet(elems) =>
-      "Set" <> parens(ssep((elems map show).to[collection.immutable.Seq], comma <> space))
+      "Set" <> parens(ssep((elems map show).to[collection.immutable.Seq], char (',') <> space))
     case EmptyMultiset(elemTyp) =>
       "Multiset[" <> showType(elemTyp) <> "]()"
     case ExplicitMultiset(elems) =>
-      "Multiset" <> parens(ssep((elems map show).to[collection.immutable.Seq], comma <> space))
+      "Multiset" <> parens(ssep((elems map show).to[collection.immutable.Seq], char (',') <> space))
     case AnySetUnion(left, right) =>
       show(left) <+> "union" <+> show(right)
     case AnySetIntersection(left, right) =>
@@ -348,10 +780,43 @@ object PrettyPrinter extends org.kiama.output.PrettyPrinter with ParenPrettyPrin
     case AnySetContains(elem, s) =>
       parens(show(elem) <+> "in" <+> show(s))
     case AnySetCardinality(s) =>
-      surround(show(s),verticalbar)
+      surround(show(s),char ('|'))
 
     case null => uninitialized
-    case _: PrettyUnaryExpression | _: PrettyBinaryExpression => super.toParenDoc(e)
+    case _: FastPrettyUnaryExpression | _: FastPrettyBinaryExpression => {
+      e match {
+        case b: FastPrettyBinaryExpression =>
+          val ld =
+            b.left match {
+              case l: FastPrettyOperatorExpression =>
+                bracket(l, b, LeftAssoc)
+              case l =>
+                toParenDoc(l)
+            }
+          val rd =
+            b.right match {
+              case r: FastPrettyOperatorExpression =>
+                bracket(r, b, RightAssoc)
+              case r =>
+                toParenDoc(r)
+            }
+          ld <+> text(b.op) <+> rd
+
+        case u: FastPrettyUnaryExpression =>
+          val ed =
+            u.exp match {
+              case e: FastPrettyOperatorExpression =>
+                bracket(e, u, NonAssoc)
+              case e =>
+                toParenDoc(e)
+            }
+          if (u.fixity == Prefix)
+            text(u.op) <> ed
+          else
+            ed <> text(u.op)
+
+      }
+    }
     case _ => sys.error(s"unknown expression: ${e.getClass}")
   }
 

@@ -7,7 +7,7 @@
 package viper.silver.ast
 
 import scala.collection.mutable
-import org.kiama.output.{Fixity, Infix, Prefix, NonAssoc, RightAssoc}
+import viper.silver.ast.pretty._
 import utility.{Consistency, Types,DomainInstances}
 
 /** A Silver program. */
@@ -338,7 +338,7 @@ sealed trait BinOp extends Op {
 
 /** Left associative operator. */
 sealed trait LeftAssoc {
-  lazy val fixity = Infix(org.kiama.output.LeftAssoc)
+  lazy val fixity = Infix(LeftAssoc)
 }
 
 /** Domain functions that represent built-in binary operators where both arguments are integers. */
