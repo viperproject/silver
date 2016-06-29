@@ -6,10 +6,12 @@
 
 package viper.silver.ast.utility
 
+//import viper.silver.{FastMessage, FastMessaging}
+
 import viper.silver.{FastMessage, FastMessaging}
 
 import scala.util.parsing.input.{NoPosition, Position}
-import viper.silver.parser.Parser
+import viper.silver.parser.FastParser
 import viper.silver.ast._
 
 /** An utility object for consistency checking. */
@@ -44,10 +46,50 @@ object Consistency {
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */
-  def reservedNames: Seq[String] = Parser.reserved
+  def reservedNames: Seq[String] = Seq("result",
+    // types
+    "Int", "Perm", "Bool", "Ref", "Rational",
+    // boolean constants
+    "true", "false",
+    // null
+    "null",
+    // preamble importing
+    "import",
+    // declaration keywords
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "wand",
+    // specifications
+    "requires", "ensures", "invariant",
+    // statements
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
+    // control flow
+    "while", "if", "elseif", "else", "goto", "label",
+    // special fresh block
+    "fresh", "constraining",
+    // sequences
+    "Seq",
+    // sets and multisets
+    "Set", "Multiset", "union", "intersection", "setminus", "subset",
+    // prover hint expressions
+    "unfolding", "in", "folding", "applying", "packaging",
+    // old expression
+    "old", "lhs",
+    // other expressions
+    "let",
+    // quantification
+    "forall", "exists", "forperm",
+    // permission syntax
+    "acc", "wildcard", "write", "none", "epsilon", "perm",
+    // modifiers
+    "unique")
 
   /** Returns true iff the string `name` is a valid identifier. */
-  def validIdentifier(name: String) = ("^" + Parser.identifier + "$").r.findFirstIn(name).isDefined
+  val identFirstLetter = "[a-zA-Z$_]"
+
+  val identOtherLetterChars = "a-zA-Z0-9$_'"
+  val identOtherLetter = s"[$identOtherLetterChars]"
+  val identifier = identFirstLetter + identOtherLetter + "*"
+
+  def validIdentifier(name: String) = ("^" + identifier + "$").r.findFirstIn(name).isDefined
 
   /** Returns true iff the string `name` is a valid identifier, and not a reserved word. */
   def validUserDefinedIdentifier(name: String) = validIdentifier(name) && !reservedNames.contains(name)

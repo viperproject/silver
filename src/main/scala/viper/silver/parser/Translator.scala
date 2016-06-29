@@ -6,9 +6,7 @@
 
 package viper.silver.parser
 
-import java.nio.file.Path
 
-import com.sun.org.apache.xerces.internal.impl.xs.SubstitutionGroupHandler
 
 import scala.language.implicitConversions
 import scala.collection.mutable
@@ -471,7 +469,7 @@ case class Translator(program: PProgram) {
 //    def file =java.nio.file.Paths.get("/home/sahil/test/some_file.sil")
     pos.start match {
       case fp: PFilePosition => SourcePosition(fp.file, start, end)
-      case fp: FilePosition => SourcePosition(fp.file, start, end)
+//      case fp: FilePosition => SourcePosition(fp.file, start, end)
       case _ => SourcePosition(null , start, end)
     }
   }

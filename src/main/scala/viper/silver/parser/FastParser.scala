@@ -231,7 +231,7 @@ object FastParser {
     }
   }
 
-  case class RecParser(file: Path) extends BaseParser {
+  case class RecParser(file: Path) {
     def parses(s: String) = fastparser.parse(s)
   }
 
@@ -483,6 +483,7 @@ object FastParser {
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
     "unique")
+
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old | applyOld
     | keyword("result").map { _ => PResultLit() } | (CharIn("-!+").! ~ sum).map { case (a, b) => PUnExp(a, b) }

@@ -1,6 +1,8 @@
 package viper.silver
 
-import scala.util.parsing.input.{NoPosition, Position}
+
+import com.google.common.cache.{Cache, CacheBuilder}
+
 
 /**
   * Created by sahil on 22.06.16.
@@ -8,7 +10,7 @@ import scala.util.parsing.input.{NoPosition, Position}
 
 trait Memoiser {
 
-  import com.google.common.cache.{Cache, CacheBuilder}
+
 
 
   private var memoVersion = 0
@@ -79,12 +81,6 @@ trait Memoiser {
   }
 
 
-  /*trait Memoised[T,U] extends MemoisedBase[T,U] {
-
-    val memo : Cache[AnyRef,AnyRef] =
-      CacheBuilder.newBuilder ().build ()
-
-  }*/
 
 
   trait IdMemoised[T,U] extends MemoisedBase[T,U] {
