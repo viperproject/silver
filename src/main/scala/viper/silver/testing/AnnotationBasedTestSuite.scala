@@ -45,15 +45,16 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
       val actualOutputs = system.run(input)
       val expectedOutputs = input.annotations.outputAnnotations
       val matcher = OutputMatcher(actualOutputs, expectedOutputs)
-      val unexpectedAnnotations = input.annotations.outputAnnotations.filter(shouldLeadToTestCancel)
+      val unexpectedAnnotations = input.annotations.outputAnnotations.filter(annotationShouldLeadToTestCancel)
       val outputErrors = matcher.errors
 
       // All errors
-      val errors = parserErrors ++ outputErrors
+      val (errors, ignoredErrors) = (parserErrors ++ outputErrors).partition(!errorShouldLeadToTestCancel(_))
 
       // If there were any outputs that could not be matched up
-      // (or other problems), make the test fail
-      if (errors.nonEmpty) {
+      // (or other problems), make the test fail,
+      // except if there are errors that make the test ignored
+      if (errors.nonEmpty && ignoredErrors.isEmpty) {
         val title = s"${errors.size} errors"
         val body = errors.groupBy(_.errorType).map({
           case (typ, es) =>
@@ -63,21 +64,28 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
       }
       // If the test succeeds, but there were annotations for unexpected
       // or missing outputs, we mark the test as cancelled.
-      if (unexpectedAnnotations.nonEmpty) {
-        val title = s"${unexpectedAnnotations.size} ignored errors"
-        val body = unexpectedAnnotations.map({
+      // If the test fails with some specific error type, we also mark it as cancelled.
+      if (unexpectedAnnotations.nonEmpty || ignoredErrors.nonEmpty) {
+        val title = s"${unexpectedAnnotations.size + ignoredErrors.size} ignored errors"
+        val body = (unexpectedAnnotations.map({
           case UnexpectedOutput(id, _, _, _, _, issue) =>
             id.toString + ", issue " + issue
           case MissingOutput(id, _, _, _, _, issue) =>
             id.toString + ", issue " + issue
           case _ => ""
-        }).mkString("\n")
+        })
+          ++ ignoredErrors.groupBy(_.errorType).map({
+          case (typ, es) =>
+            TestErrorType.message(typ) + ":\n" + es.map("  " + _.message).mkString("\n")
+        })).mkString("\n")
         cancel(title + "\n" + body + "\n")
       }
     }
   }
 
-  def shouldLeadToTestCancel(ann: LocatedAnnotation) = {
+  def errorShouldLeadToTestCancel(err: TestError) = false
+
+  def annotationShouldLeadToTestCancel(ann: LocatedAnnotation) = {
     ann match {
       case UnexpectedOutput(_, _, _, _, _, _) => true
       case MissingOutput(_, _, _, _, _, _) => true

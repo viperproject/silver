@@ -30,6 +30,13 @@ trait HasLineColumn extends Position {
   override def toString = s"$line.$column"
 }
 
+/** A position that references an identifier, intended to be used
+  * by frontends to identify the origin of a node.
+  */
+trait HasIdentifier extends HasLineColumn {
+  def id: String
+}
+
 case class LineColumnPosition(line: Int, column: Int) extends HasLineColumn
 
 /** Represents a source code position by referencing a file, a line and a column.
@@ -61,6 +68,11 @@ class SourcePosition(val file: Path, val start: HasLineColumn, val end: Option[H
     extends AbstractSourcePosition with StructuralEquality {
 
   protected val equalityDefiningMembers = file :: start :: end :: Nil
+}
+
+class IdentifierPosition(val file: Path, val start: HasLineColumn, val end: Option[HasLineColumn], val id: String)
+  extends AbstractSourcePosition with StructuralEquality with HasIdentifier {
+  protected val equalityDefiningMembers = file :: start :: end :: id :: Nil
 }
 
 object SourcePosition {
