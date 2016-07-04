@@ -576,7 +576,8 @@ object FastParser {
   lazy val locAcc: P[PLocationAccess] = P(fieldAcc | predAcc)
   //this rule is in doubt 2. Leaving an opaques symbol here
   lazy val fieldAcc: P[PFieldAccess] = P(realSuffixExpr.filter(getFieldAccess).map { case fa: PFieldAccess => fa })
-  lazy val predAcc: P[PPredicateAccess] = P(idnuse ~ parens(actualArgList)).map { case (id, args) => PPredicateAccess(args, id) }
+  lazy val predAcc: P[PLocationAccess] = P(fapp)
+//lazy val predAcc: P[PPredicateAccess] = P(idnuse ~ parens(actualArgList)).map { case (id, args) => PPredicateAccess(args, id) }
   //is it required to be one or more than 1 below
   lazy val actualArgList: P[Seq[PExp]] = P(exp.rep(sep = ","))
   lazy val inhaleExhale: P[PExp] = P("[" ~ exp ~ "," ~ exp ~ "]").map { case (a, b) => PInhaleExhaleExp(a, b) }
@@ -657,7 +658,7 @@ object FastParser {
     case elems => PExplicitSeq(elems)
   }
   lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => { PRangeSeq(a, b) } }
-  lazy val fapp: P[PExp] = P(idnuse ~ parens(actualArgList)).map {
+  lazy val fapp: P[PFunctApp] = P(idnuse ~ parens(actualArgList)).map {
     case (func, args) => PFunctApp(func, args, None)
   }
   lazy val typedFapp: P[PExp] = P(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map {
@@ -894,7 +895,7 @@ object FastParser {
 
 def main(args: Array[String]) {
 //  println(fastparser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1"))
-  println(FastParser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1", file))
+  println(FastParser.parse("predicate P() { true }\n\n\n\nmethod test02() {\n  inhale unfolding P() in true \n}", file))
 //  println(exp.parse("[0..|nodes|)"))
 }
 }

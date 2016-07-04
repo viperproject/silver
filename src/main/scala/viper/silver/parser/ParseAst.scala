@@ -604,10 +604,12 @@ object POpApp{
   def pRes     = PTypeVar(pResS)
 }
 
-case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] = None) extends POpApp
+case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] = None) extends POpApp with PLocationAccess
 {
+  override val idnuse = func
   override val opName = func.name
-  override def signatures = if (function.formalArgs.size == args.size) (function match{
+  //function!=null added for cases when this is not actually a function such as Issue #137(A method then). Does it break anyhthing?? -->Sahil
+  override def signatures = if (function!=null&& function.formalArgs.size == args.size) (function match{
     case pf:PFunction => Set(
       new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
     )
@@ -617,9 +619,19 @@ case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PTyp
           args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ.substitute(domainTypeRenaming.get)) :+
             (POpApp.pRes.domain.name -> pdf.typ.substitute(domainTypeRenaming.get)))
       )
-  }) else Set() // this case is handled in Resolver.scala (- method check) which generates the appropriate error message
+
+  })
+  else if(extfunction!=null && extfunction.formalArgs.size == args.size)( extfunction match{
+    case ppa: PPredicate => Set(
+      new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> extfunction.typ))
+    )
+  })
+
+
+  else Set() // this case is handled in Resolver.scala (- method check) which generates the appropriate error message
 
   var function : PAnyFunction = null
+  var extfunction : PPredicate = null
   override def extraLocalTypeVariables = _extraLocalTypeVariables
   var _extraLocalTypeVariables : Set[PDomainType] = Set()
   var domainTypeRenaming : Option[PTypeRenaming] = None

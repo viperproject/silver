@@ -331,7 +331,7 @@ case class FieldAccess(rcv: Exp, field: Field)
 /** A predicate access expression. See also companion object below for an alternative creation signature */
 case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Position, val info: Info) extends LocationAccess {
   def loc(p:Program) = p.findPredicate(predicateName)
-  lazy val typ = InternalType
+  lazy val typ = Bool
 
   /** The body of the predicate with the arguments instantiated correctly. */
   def predicateBody(program : Program) = {

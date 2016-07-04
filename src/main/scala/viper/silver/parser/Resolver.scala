@@ -528,25 +528,36 @@ case class TypeChecker(names: NameAnalyser) {
               case None =>
             }
             if(!nestedTypeError) {
-              val ad = names.definition(curMember)(func).asInstanceOf[PAnyFunction]
-              ad match {
-                case fd: PAnyFunction =>
-                  pfa.function = fd
-                  val formalArgs = fd.formalArgs
-                  ensure(formalArgs.size == args.size, pfa, "wrong number of arguments")
-                  fd match {
-                    case PFunction(_, formalArgs, resultType, _, _, _) =>
-                    case pdf@PDomainFunction(_, formalArgs, resultType, unique) =>
-                      val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
-                      val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).toSet) //fresh domain type variables
-                      pfa.domainTypeRenaming = Some(fdtv)
-                      pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
-                      // somewhere here : use explicitType?
-                      extraReturnTypeConstraint = explicitType
-                  }
-                case x =>
-                  issueError(func, "expected function")
-              }
+              val ad = names.definition(curMember)(func)
+                ad match {
+                  case fd: PAnyFunction =>
+                    pfa.function = fd
+                    val formalArgs = fd.formalArgs
+                    ensure(formalArgs.size == args.size, pfa, "wrong number of arguments")
+                    fd match {
+                      case PFunction(_, formalArgs, resultType, _, _, _) =>
+                      case pdf@PDomainFunction(_, formalArgs, resultType, unique) =>
+                        val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
+                        val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).toSet) //fresh domain type variables
+                        pfa.domainTypeRenaming = Some(fdtv)
+                        pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
+                        // somewhere here : use explicitType?
+                        extraReturnTypeConstraint = explicitType
+                    }
+                  case ppa: PPredicate =>
+                    pfa.extfunction = ppa
+                    val predicate = names.definition(curMember)(func).asInstanceOf[PPredicate]
+                    acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate") { (id, decl) =>
+                      checkInternal(id)
+                      if (args.length != predicate.formalArgs.length)
+                        issueError(func, "predicate arity doesn't match")
+                      else
+                        predicate
+                    }
+                  case x =>
+                    issueError(func, "expected function is ")
+
+                }
             }
               case pue: PUnFoldingExp =>
                 //            check(pue.acc.perm, Perm)

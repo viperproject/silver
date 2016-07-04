@@ -359,6 +359,7 @@ case class Translator(program: PProgram) {
                 DomainFuncApp(f, actualArgs, sp)(pos)
               case _ => sys.error("type unification error - should report and not crash")
             }
+          case f: Predicate => PredicateAccess(args map exp, findPredicate(func)) (pos)
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>
