@@ -21,8 +21,7 @@ import viper.silver.ast._
         n match {
           case forall@Forall(Seq(lvd @ LocalVarDecl(_, _ /*Ref*/)),
           triggers,
-          Implies(condition, expr))
-            if    triggers.isEmpty =>
+          Implies(condition, expr)) =>
             Some((lvd, condition,expr))
           case forall@Forall(Seq(lvd@LocalVarDecl(_, _)), triggers, expr) =>
             Some(lvd, BoolLit(true)(forall.pos, forall.info), expr)
