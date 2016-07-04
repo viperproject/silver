@@ -272,6 +272,11 @@ case class TypeChecker(names: NameAnalyser) {
           val predicate = _predicate.asInstanceOf[PPredicate]
           if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
         }
+      case PAccPred(PFunctApp( idnuse, _, _), _) =>
+        acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
+          val predicate = _predicate.asInstanceOf[PPredicate]
+          if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
+        }
       case _ => messages ++= FastMessaging.message(exp, "expected predicate access")
     }
   }
