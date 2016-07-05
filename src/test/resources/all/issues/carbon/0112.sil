@@ -1,0 +1,3 @@
+function fun02(): Int
+  ensures result != 0
+  ensures 1 \ result != 1
