@@ -895,7 +895,7 @@ object FastParser {
 
 def main(args: Array[String]) {
 //  println(fastparser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1"))
-  println(FastParser.parse("predicate P() { true }\n\n\n\nmethod test02() {\n  inhale unfolding P() in true \n}", file))
+  println(FastParser.parse("predicate F1() {true}\n\n\nmethod main(r: Ref)\n{\n        inhale acc(F1()) // should work, doesn't \n}", file))
 //  println(exp.parse("[0..|nodes|)"))
 }
 }

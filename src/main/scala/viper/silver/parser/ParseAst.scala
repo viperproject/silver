@@ -623,7 +623,7 @@ case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PTyp
   })
   else if(extfunction!=null && extfunction.formalArgs.size == args.size)( extfunction match{
     case ppa: PPredicate => Set(
-      new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> extfunction.typ))
+      new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> Bool))
     )
   })
 

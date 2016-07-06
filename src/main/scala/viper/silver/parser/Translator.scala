@@ -359,7 +359,11 @@ case class Translator(program: PProgram) {
                 DomainFuncApp(f, actualArgs, sp)(pos)
               case _ => sys.error("type unification error - should report and not crash")
             }
-          case f: Predicate => PredicateAccess(args map exp, findPredicate(func)) (pos)
+          case f: Predicate => {
+            val inner = PredicateAccess(args map exp, findPredicate(func)) (pos)
+            val fullPerm = FullPerm()(pos)
+            PredicateAccessPredicate(inner, fullPerm) (pos)
+          }
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>
@@ -426,6 +430,7 @@ case class Translator(program: PProgram) {
             FieldAccessPredicate(loc, p)(pos)
           case loc@PredicateAccess(rcv, pred) =>
             PredicateAccessPredicate(loc, p)(pos)
+          case loc@PredicateAccessPredicate(inner, args) => PredicateAccessPredicate(inner, p)(pos)
           case _ =>
             sys.error("unexpected location")
         }
