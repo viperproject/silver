@@ -413,8 +413,15 @@ case class Translator(program: PProgram) {
         ApplyOld(exp(e))(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
-      case PCurPerm(loc) =>
-        CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos)
+      case PCurPerm(loc) => {
+        exp(loc) match {
+          case loc@PredicateAccessPredicate(inner, args) => CurrentPerm(inner.asInstanceOf[LocationAccess])(pos)
+          case x: FieldAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
+          case x: PredicateAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
+//          case _ =>
+        }
+      }
+//        CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos)
       case PNoPerm() =>
         NoPerm()(pos)
       case PFullPerm() =>

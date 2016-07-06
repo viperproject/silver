@@ -895,7 +895,7 @@ object FastParser {
 
 def main(args: Array[String]) {
 //  println(fastparser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1"))
-  println(FastParser.parse("predicate F1() {true}\n\n\nmethod main(r: Ref)\n{\n        inhale acc(F1()) // should work, doesn't \n}", file))
+  println(FastParser.parse("predicate P(r: Ref)\n\nmethod test01(this: Ref)\n  requires acc(P(this));\n{\n  exhale perm(P(this)) == write &&\n         acc(P(this)) &&\n         perm(P(this)) == none\n}\n\nmethod test02a(this: Ref)\n  requires acc(P(this));\n{\n  //:: ExpectedOutput(exhale.failed:assertion.false)\n  exhale (forperm[P] r :: false) &&\n         acc(P(this)) &&\n         (forperm[P] r :: false)\n}\n\nmethod test02b(this: Ref)\n  requires acc(P(this));\n{\n  exhale /*(forperm[P] r :: false &&)*/\n         acc(P(this)) &&\n         (forperm[P] r :: false)\n}", file))
 //  println(exp.parse("[0..|nodes|)"))
 }
 }

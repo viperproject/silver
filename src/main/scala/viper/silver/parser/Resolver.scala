@@ -578,7 +578,7 @@ case class TypeChecker(names: NameAnalyser) {
             }
               case pue: PUnFoldingExp =>
                 //            check(pue.acc.perm, Perm)
-                if (!isCompatible(pue.acc.loc.typ, Pred)) {
+                if (!isCompatible(pue.acc.loc.typ, Bool)) {
                   messages ++= FastMessaging.message(pue, "expected predicate access")
                 }
                 acceptNonAbstractPredicateAccess(pue.acc, "abstract predicates cannot be (un)folded")
@@ -608,6 +608,7 @@ case class TypeChecker(names: NameAnalyser) {
                       case _ =>
                     }
                   }
+                  case _ =>
                 }
               }
               case ppa@PPredicateAccess(args, idnuse) =>
