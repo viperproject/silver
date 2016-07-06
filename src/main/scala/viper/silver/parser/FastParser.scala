@@ -376,7 +376,13 @@ object FastParser {
                 case -1 => piu
                 case i => targetArgs(i)
               }
-          }() : PNode /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
+          }(post = {
+            case n => {
+              FastPositions.setStart(n, target.start, true)
+              FastPositions.setFinish(n, target.finish, true)
+              n
+            }
+          }) : PNode /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
       })
     }
 
@@ -391,7 +397,13 @@ object FastParser {
           lookupOrElse(piu, piu)(define => {
             expanded = true
 
-            define.body
+            define.body.transform()(post = {
+              case n => {
+                FastPositions.setStart(n, piu.start, true)
+                FastPositions.setFinish(n, piu.finish, true)
+                n
+              }
+            })
           })
 
              case fapp: PFunctApp => expandAllegedInvocation(fapp.func, fapp.args, fapp)
