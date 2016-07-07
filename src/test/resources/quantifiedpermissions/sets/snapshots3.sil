@@ -24,7 +24,6 @@ predicate inv(this: Ref) {
 
 method m1(this: Ref)
   requires acc(inv(this))
-  ensures acc(inv(this))
 {
 	unfold acc(inv(this))
 
@@ -43,7 +42,6 @@ method m1(this: Ref)
 	unfold acc(P(this.n))
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/136/)
 	assert a == t.f
 }
 
@@ -64,6 +62,5 @@ method m1_carbon_regression(this: Ref)
 
 	fold acc(P(this.n))
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/136/)
         assert false
 }
