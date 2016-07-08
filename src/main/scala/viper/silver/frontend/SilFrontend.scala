@@ -183,8 +183,8 @@ trait SilFrontend extends DefaultFrontend {
 
       println(s"The following errors were found in ${ideModeErrors.head.shortFileStr}:")
 
-      viper.silver.utility.Common.toFile(ideModeErrors.map(_.fileErrorStr).mkString("\n"),
-                                         new File(config.ideModeErrorFile()))
+//      viper.silver.utility.Common.toFile(ideModeErrors.map(_.fileErrorStr).mkString("\n"),
+//                                         new File(config.ideModeErrorFile()))
 
       ideModeErrors.foreach(e => println(s"  ${e.consoleErrorStr}"))
     } else {
@@ -317,9 +317,10 @@ trait SilFrontend extends DefaultFrontend {
     lazy val shortFileStr = fileOpt.map(f => FilenameUtils.getName(f.toString)).getOrElse("<unknown file>")
     lazy val startStr = startOpt.map(toStr).getOrElse("<unknown start line>:<unknown start column>")
     lazy val endStr = endOpt.map(toStr).getOrElse("<unknown end line>:<unknown end column>")
+    lazy val typeStr = error.fullId
 
     //lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
-    lazy val consoleErrorStr = s"$startStr: $messageStr"
+    lazy val consoleErrorStr = s"[$typeStr] $startStr: $messageStr"
     lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
 
     @inline
