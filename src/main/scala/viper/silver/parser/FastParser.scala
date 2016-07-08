@@ -683,6 +683,9 @@ object FastParser {
   lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | ifthnels | whle | varDecl | defineDecl | letwandDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand)
+  lazy val nodefinestmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
+    inhale | ifthnels | whle | varDecl  | letwandDecl | newstmt | fresh | constrainingBlock |
+    methodCall | goto | lbl | packageWand | applyWand)
 
   lazy val fieldassign: P[PFieldAssign] = P(fieldAcc ~ ":=" ~ exp).map { case (a, b) => PFieldAssign(a, b) }
   lazy val localassign: P[PVarAssign] = P(idnuse ~ ":=" ~ exp).map { case (a, b) => PVarAssign(a, b) }
@@ -707,12 +710,8 @@ object FastParser {
   lazy val inv: P[PExp] = P(keyword("invariant") ~ exp ~ ";".?)
   lazy val varDecl: P[PLocalVarDecl] = P(keyword("var") ~/ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map { case (a, b, c) => PLocalVarDecl(a, b, c) }
 
- /* lazy val defineDecl =
-    ("define" ~> idndef) ~ opt("(" ~> repsep(idndef, ",") <~ ")") ~ (exp | block) ^^ {
-      case iddef ~ args ~ (e: PExp) => PDefine(iddef, args, e)
-      case iddef ~ args ~ (ss: Seq[PStmt] @unchecked) => PDefine(iddef, args, PSeqn(ss))
-    }*/
-  lazy val defineDecl: P[PDefine] = P(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ (exp|block)).map {
+
+  lazy val defineDecl: P[PDefine] = P(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ (exp|"{"~ (nodefinestmt ~ ";".?).rep ~ "}")).map {
     case (a, b, c) => c match {
       case e: PExp => PDefine(a,b,e)
       case ss: Seq[PStmt] @unchecked => PDefine(a,b,PSeqn(ss))
