@@ -273,10 +273,16 @@ case class TypeChecker(names: NameAnalyser) {
           if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
         }
       case PAccPred(PFunctApp( idnuse, _, _), _) =>
-        acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
-          val predicate = _predicate.asInstanceOf[PPredicate]
-          if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
+        val ad = names.definition(curMember)(idnuse)
+        ad match {
+          case ppa : PPredicate =>
+            acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate"){(_, _predicate) =>
+              val predicate = _predicate.asInstanceOf[PPredicate]
+              if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
+            }
+          case _ => messages ++= FastMessaging.message(exp, "expected predicate access")
         }
+
       case _ => messages ++= FastMessaging.message(exp, "expected predicate access")
     }
   }
@@ -518,13 +524,17 @@ case class TypeChecker(names: NameAnalyser) {
               issueError(r, "'result' can only be used in function postconditions")
           case _=>
         }
+
+
       case poa: POpApp =>
         assert(poa.typeSubstitutions.isEmpty)
 
         poa.args.foreach(checkInternal)
         var nestedTypeError = !poa.args.forall(a => a.typ.isValidAndResolved)
+
         if (!nestedTypeError) {
         poa match {
+
           case pfa@PFunctApp(func, args, explicitType) =>
             explicitType match {
               case Some(t) => {
@@ -552,6 +562,8 @@ case class TypeChecker(names: NameAnalyser) {
                   case ppa: PPredicate =>
                     pfa.extfunction = ppa
                     val predicate = names.definition(curMember)(func).asInstanceOf[PPredicate]
+//                    setType(Bool)
+//                    predicate.typ = Bool
                     acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate") { (id, decl) =>
                       checkInternal(id)
                       if (args.length != predicate.formalArgs.length)
@@ -560,13 +572,13 @@ case class TypeChecker(names: NameAnalyser) {
                         predicate
                     }
                   case x =>
-                    issueError(func, "expected function is ")
+                    issueError(func, "expected function or predicate ")
 
                 }
             }
               case pue: PUnFoldingExp =>
                 //            check(pue.acc.perm, Perm)
-                if (!isCompatible(pue.acc.loc.typ, Pred)) {
+                if (!isCompatible(pue.acc.loc.typ, Bool)) {
                   messages ++= FastMessaging.message(pue, "expected predicate access")
                 }
                 acceptNonAbstractPredicateAccess(pue.acc, "abstract predicates cannot be (un)folded")
@@ -585,6 +597,20 @@ case class TypeChecker(names: NameAnalyser) {
                 (id, decl) => {
                   checkInternal(id)
                 })
+              case ppp@PAccPred(loc, _) => {
+                loc match {
+                  case ppfa@PFunctApp(func, args, explicitType) => {
+                    val ad = names.definition(curMember)(func)
+                    ad match {
+                      case ppf : PFunction => {
+                        issueError(func, "expected predicate ")
+                      }
+                      case _ =>
+                    }
+                  }
+                  case _ =>
+                }
+              }
               case ppa@PPredicateAccess(args, idnuse) =>
               val predicate = names.definition(curMember)(ppa.idnuse).asInstanceOf[PPredicate]
               acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (id, decl) =>
@@ -631,7 +657,8 @@ case class TypeChecker(names: NameAnalyser) {
               if (ts.isEmpty)
                 typeError(poa)
               poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
-            } else {
+            }
+            else {
               poa.typeSubstitutions.clear()
               poa.typ = PUnknown()
             }

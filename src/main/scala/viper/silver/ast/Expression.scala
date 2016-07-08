@@ -8,6 +8,7 @@ package viper.silver.ast
 
 import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
+import viper.silver.parser.PLocationAccess
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with FastPrettyExpression {

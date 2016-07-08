@@ -359,7 +359,11 @@ case class Translator(program: PProgram) {
                 DomainFuncApp(f, actualArgs, sp)(pos)
               case _ => sys.error("type unification error - should report and not crash")
             }
-          case f: Predicate => PredicateAccess(args map exp, findPredicate(func)) (pos)
+          case f: Predicate => {
+            val inner = PredicateAccess(args map exp, findPredicate(func)) (pos)
+            val fullPerm = FullPerm()(pos)
+            PredicateAccessPredicate(inner, fullPerm) (pos)
+          }
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>
@@ -409,8 +413,15 @@ case class Translator(program: PProgram) {
         ApplyOld(exp(e))(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
-      case PCurPerm(loc) =>
-        CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos)
+      case PCurPerm(loc) => {
+        exp(loc) match {
+          case loc@PredicateAccessPredicate(inner, args) => CurrentPerm(inner.asInstanceOf[LocationAccess])(pos)
+          case x: FieldAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
+          case x: PredicateAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
+//          case _ =>
+        }
+      }
+//        CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos)
       case PNoPerm() =>
         NoPerm()(pos)
       case PFullPerm() =>
@@ -426,6 +437,7 @@ case class Translator(program: PProgram) {
             FieldAccessPredicate(loc, p)(pos)
           case loc@PredicateAccess(rcv, pred) =>
             PredicateAccessPredicate(loc, p)(pos)
+          case loc@PredicateAccessPredicate(inner, args) => PredicateAccessPredicate(inner, p)(pos)
           case _ =>
             sys.error("unexpected location")
         }
