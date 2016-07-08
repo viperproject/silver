@@ -226,8 +226,9 @@ trait SilFrontend extends DefaultFrontend {
       else Fail(err_list)
       case Parsed.Failure(msg, next, extra) =>
         Fail(List(ParseError(s"Failure: $msg", SourcePosition(file, extra.line, extra.col))))
+      case ParseError(msg, pos) => Fail(List(ParseError(msg, pos)))
 
-    }
+     }
 
   }
 

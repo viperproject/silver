@@ -11,14 +11,15 @@ import fastparse.parsers.Combinators.{Repeat, Rule, Sequence}
 import fastparse.{Implicits, WhitespaceApi}
 import fastparse.all._
 import fastparse.core.Mutable.{Failure, Success}
-import fastparse.core.Parsed.Position
+import fastparse.core.Parsed.Failure.Extra
+import fastparse.core.Parsed.{Position, TracedFailure}
 import fastparse.parsers.Intrinsics
 import fastparse.core.{Mutable, ParseCtx, Parsed, Parser}
 import fastparse.parsers.Terminals.Pass
 import fastparse.parsers.{Intrinsics, Terminals}
-
-import viper.silver.ast.HasLineColumn
+import viper.silver.ast.{HasLineColumn, SourcePosition}
 import viper.silver.FastPositions
+
 import scala.annotation.tailrec
 import scala.reflect.internal.util.Position
 /*import fastparse.core.{Parsed, Parser}*/
@@ -211,7 +212,7 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
 
 
 
-
+case class argException(pos: scala.util.parsing.input.Position)  extends Exception
 
 
 
@@ -222,13 +223,21 @@ object FastParser {
 
   def parse(s: String, f: Path) = {
     _file = f
-    _imports = mutable.HashMap((f, true))
-    val rp = RecParser(f).parses(s)
-    rp match {
-      case _ => rp
-
-//      case rp.Error(a, b) => Error(a, b)
+      _imports = mutable.HashMap((f, true))
+    try {
+      val rp = RecParser(f).parses(s)
+      rp match {
+        case _ => rp
+        //      case rp.Error(a, b) => Error(a, b)
+      }
     }
+    catch {
+      case e@argException(pos) => new ParseError("Arg Number does not match" , SourcePosition(_file, pos.line,pos.column))
+
+
+    }
+
+
   }
 
   case class RecParser(file: Path) {
@@ -365,7 +374,8 @@ object FastParser {
           els
         case Some(args) if targetArgs.length != args.length =>
           /* Similar to the previous case */
-          els
+          throw new argException(FastPositions.getStart(target))
+//          els
         case Some(args) =>
           expanded = true
 
@@ -381,6 +391,7 @@ object FastParser {
     }
 
     val potentiallyExpandedNode =
+
       node.transform {
         case piu: PIdnUse =>
           /* Potentially expand a named assertion that takes no arguments, e.g. A.
@@ -393,6 +404,8 @@ object FastParser {
 
             define.body
           })
+
+
 
              case fapp: PFunctApp => expandAllegedInvocation(fapp.func, fapp.args, fapp)
              case call: PMethodCall => expandAllegedInvocation(call.method, call.args, call)
@@ -895,7 +908,7 @@ object FastParser {
 
 def main(args: Array[String]) {
 //  println(fastparser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1"))
-  println(FastParser.parse("predicate P(r: Ref)\n\nmethod test01(this: Ref)\n  requires acc(P(this));\n{\n  exhale perm(P(this)) == write &&\n         acc(P(this)) &&\n         perm(P(this)) == none\n}\n\nmethod test02a(this: Ref)\n  requires acc(P(this));\n{\n  //:: ExpectedOutput(exhale.failed:assertion.false)\n  exhale (forperm[P] r :: false) &&\n         acc(P(this)) &&\n         (forperm[P] r :: false)\n}\n\nmethod test02b(this: Ref)\n  requires acc(P(this));\n{\n  exhale /*(forperm[P] r :: false &&)*/\n         acc(P(this)) &&\n         (forperm[P] r :: false)\n}", file))
+  println(FastParser.parse("define B(x, res) true\n\nmethod test1(y: Ref, n: Ref)\n    ensures B(y)\n    {}", file))
 //  println(exp.parse("[0..|nodes|)"))
 }
 }
