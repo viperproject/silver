@@ -30,6 +30,5 @@ method Celltest$(this: Ref, k$_1: Perm, a: Int)
   assert Cellget1$(this).joinable$
   inhale true
   assert Cellget1$(this) == tk
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /Carbon/issue/50/)
   Cellget1$(this).joinable$ := false
 }

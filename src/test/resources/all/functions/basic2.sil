@@ -4,7 +4,6 @@ function fun01(): Int
 
 function fun02(): Int
   ensures result != 0
-  //:: UnexpectedOutput(not.wellformed:division.by.zero, /carbon/issue/112/)
   ensures 1 \ result != 1
 
 function fun03(): Int
