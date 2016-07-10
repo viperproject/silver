@@ -229,8 +229,14 @@ object Expressions {
           Some((exp.variables, newTriggers))
 
         case None =>
-          val (triggers, extraVariables) = gen.head // somewhat arbitrarily take the first choice
-          Some((exp.variables ++ extraVariables, triggers))
+            if (exp.isPure) {
+              val (triggers, extraVariables) = gen.head // somewhat arbitrarily take the first choice
+              Some((exp.variables ++ extraVariables, triggers))
+            } else {
+              //For now, since no nested quantified permissions supported
+              Some(exp.variables, Seq())
+            }
+
       }
     else
       None
