@@ -44,7 +44,7 @@ import viper.silver.ast._
           triggers,
           Implies(condition, FieldAccessPredicate(fa@FieldAccess(rcvr, f), gain)))
             if     rcvr.exists(_ == lvd.localVar)
-              && triggers.isEmpty =>
+              /*&& triggers.isEmpty*/ =>
 
             Some((lvd, condition, rcvr, f, gain, forall, fa))
 
