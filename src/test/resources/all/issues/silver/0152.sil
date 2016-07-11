@@ -1,0 +1,13 @@
+//:: IgnoreFile(/Silver/issue/152/)
+method test()
+{
+  while (true)
+  {
+    if (true) {
+    }
+    else {
+      var foo: Ref;
+      foo := new ();
+    }
+  }
+}
