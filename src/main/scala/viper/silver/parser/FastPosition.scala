@@ -117,13 +117,19 @@ object FastPositions extends Memoiser {
     FfinishMap.getWithDefault (t, NoPosition)
 
 
-  def setStart[T] (t : T, p : Position) {
-    FstartMap.putIfNotPresent (t, p)
+  def setStart[T] (t : T, p : Position, force : Boolean = false) {
+    if (force)
+      FstartMap.put(t, p)
+    else
+      FstartMap.putIfNotPresent(t, p)
   }
 
 
-  def setFinish[T] (t : T, p : Position) {
-    FfinishMap.putIfNotPresent (t, p)
+  def setFinish[T] (t : T, p : Position, force : Boolean = false) {
+    if (force)
+      FfinishMap.put(t, p)
+    else
+      FfinishMap.putIfNotPresent(t, p)
   }
 
 
