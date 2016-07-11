@@ -40,14 +40,21 @@ case class PFilePosition(file: Path, vline: Int , col: Int) extends util.parsing
   //  println(toString)
 }
 
+
+
 class PosRepeat[T, +R](p: Parser[T], min: Int, max: Int, delimiter: Parser[_],file: Path)
                         (implicit ev: Implicits.Repeater[T, R]) extends Repeat[T, R](p, min, max, delimiter){
 
   def computeFrom(input: String, index: Int) : (Int, Int) = {
-    val lines = input.take(1 + index).lines.toVector
-    val line = lines.length
-    val col = lines.lastOption.map(_.length).getOrElse(0)
-    (line, col)
+    var left = index
+    var i = 0
+    val arr = FastParser._lines
+    while (i < arr.length && left >= arr(i)){
+      left -= arr(i)
+      i += 1
+    }
+    val r1 = (i + 1, left + 1)
+    r1
   }
 
  override def parseRec(cfg: ParseCtx, index: Int) = {
@@ -120,10 +127,15 @@ class PosCustomSequence[+T, +R, +V](WL: P0, p0: P[T], p: P[V], cut: Boolean, fil
                                    (implicit ev: Sequencer[T, V, R]) extends WhitespaceApi.CustomSequence(WL, p0, p, cut)(ev){
 
   def computeFrom(input: String, index: Int) : (Int, Int) = {
-    val lines = input.take(1 + index).lines.toVector
-    val line = lines.length
-    val col = lines.lastOption.map(_.length).getOrElse(0)
-    (line, col)
+    var left = index
+    var i = 0
+    val arr = FastParser._lines
+    while (i < arr.length && left >= arr(i)){
+      left -= arr(i)
+      i += 1
+    }
+    val r1 = (i + 1, left + 1)
+    r1
   }
 
   override def parseRec(cfg: ParseCtx, index: Int) = {
@@ -174,10 +186,15 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
 
 
     def computeFrom(input: String, index: Int) : (Int, Int) = {
-      val lines = input.take(1 + index).lines.toVector
-      val line = lines.length
-      val col = lines.lastOption.map(_.length).getOrElse(0)
-      (line, col)
+      var left = index
+      var i = 0
+      val arr = FastParser._lines
+      while (i < arr.length && left >= arr(i)){
+        left -= arr(i)
+        i += 1
+      }
+      val r1 = (i + 1, left + 1)
+      r1
     }
     if (cfg.instrument == null) {
       pCached.parseRec(cfg, index) match{
@@ -212,7 +229,7 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
 
 
 
-case class argException(pos: scala.util.parsing.input.Position)  extends Exception
+case class argException(msg: String, pos: scala.util.parsing.input.Position)  extends Exception
 
 
 
@@ -220,10 +237,15 @@ object FastParser {
 
   var _file: Path = null
   var _imports: mutable.HashMap[Path, Boolean] = null
+  var _lines : Array[Int] = null
+
 
   def parse(s: String, f: Path) = {
     _file = f
-      _imports = mutable.HashMap((f, true))
+    _imports = mutable.HashMap((f, true))
+    val lines = s.linesWithSeparators
+    _lines = lines.map(_.length).toArray
+
     try {
       val rp = RecParser(f).parses(s)
       rp match {
@@ -232,7 +254,15 @@ object FastParser {
       }
     }
     catch {
-      case e@argException(pos) => new ParseError("Arg Number does not match" , SourcePosition(_file, pos.line,pos.column))
+      case e@argException(msg, pos) => {
+        var line = 0
+        var column = 0
+        if (pos != null){
+          line = pos.line
+          column = pos.column
+        }
+        new ParseError(msg , SourcePosition(_file, line, column))
+      }
 
 
     }
@@ -297,7 +327,7 @@ object FastParser {
   val White = PWrapper {
     import fastparse.all._
 
-    NoTrace((("/*" ~ (AnyChar ~ !StringIn("*/")).rep ~ AnyChar ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ "\n") | " " | "\t" | "\n" | "\r").rep)
+    NoTrace((("/*" ~ (AnyChar ~ !StringIn("*/")).rep ~ AnyChar ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
 
   import fastparse.noApi._
@@ -374,7 +404,7 @@ object FastParser {
           els
         case Some(args) if targetArgs.length != args.length =>
           /* Similar to the previous case */
-          throw new argException(FastPositions.getStart(target))
+          throw new argException("Number of arguments does not match", FastPositions.getStart(target))
 //          els
         case Some(args) =>
           expanded = true
@@ -395,7 +425,7 @@ object FastParser {
           }) : PNode /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
       })
     }
-
+  try {
     val potentiallyExpandedNode =
 
       node.transform {
@@ -419,16 +449,23 @@ object FastParser {
 
 
 
-             case fapp: PFunctApp => expandAllegedInvocation(fapp.func, fapp.args, fapp)
-             case call: PMethodCall => expandAllegedInvocation(call.method, call.args, call)
+        case fapp: PFunctApp => expandAllegedInvocation(fapp.func, fapp.args, fapp)
+        case call: PMethodCall => expandAllegedInvocation(call.method, call.args, call)
       }(recursive = _ => true)
 
     if (expanded) Some(potentiallyExpandedNode)
     else None
+  }catch {
+    case e : ClassCastException => {
+      throw new argException("Statement macro used as expression or vice versa", null)
+    }
+
+  }
+
   }
 
   /** The file we are currently parsing (for creating positions later). */
-  def file: Path = null
+  def file: Path = _file
 
   def expandDefines[N <: PNode](defines: Seq[PDefine], node: N): N =
     doExpandDefines(defines, node).getOrElse(node)
@@ -524,7 +561,7 @@ object FastParser {
   lazy val nul: P[PNullLit] = P(keyword("null")).map(_ => PNullLit())
 
   lazy val identifier: P[Unit] = P(CharIn('A' to 'Z', 'a' to 'z', "$_") ~~ CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "$_").repX)
-  lazy val ident: P[String] = P(identifier.!).filter{case a => !keywords.contains(a)}
+  lazy val ident: P[String] = P(identifier.!).filter{case a => !keywords.contains(a)}.opaque("invalid identifier (could be a keyword)")
   //possible customize error code in rule ident
   lazy val idnuse: P[PIdnUse] = P(ident).map(PIdnUse)
 
@@ -856,9 +893,11 @@ object FastParser {
 
       PProgram(files, domains, fields, functions, predicates, methods, imp_reports)
   }
-  lazy val preambleImport: P[PImport] = P(keyword("import") ~/ quoted(relativeFilePath)).map { case filename => PImport(filename) }
+  lazy val preambleImport: P[PImport] = P(keyword("import") ~/ quoted(relativeFilePath.!)).map {
+    case filename => PImport(filename)
+  }
   //chek if this is a correct regex doubt
-  lazy val relativeFilePath: P[String] = P(("A" ~~ CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
+  lazy val relativeFilePath: P[String] = P((CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
   lazy val domainDecl: P[PDomain] = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ domainFunctionDecl.rep ~
     axiomDecl.rep ~ "}").map {
     case (name, typparams, funcs, axioms) =>

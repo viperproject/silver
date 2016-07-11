@@ -538,7 +538,7 @@ case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info
   elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = SeqType(elems.head.typ)
   lazy val desugared : SeqExp = {
-    elems match {
+    elems.toList match {
       case Nil => sys.error("did not expect empty sequence")
       case a :: Nil => this
       case a :: as => // desugar into singleton sequences and appends

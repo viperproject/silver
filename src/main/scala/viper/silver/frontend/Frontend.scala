@@ -182,11 +182,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     }
     doTranslate(_typecheckResult.get) match {
       case Succ(r) => _program = {
-        val str = FastPrettyPrinter.pretty(r)
-        val br = new BufferedWriter(new FileWriter("out.txt", true))
-        br.write(str)
-        br.write("\n++++++++\n")
-        br.close()
+
 
         Some(r)
 
