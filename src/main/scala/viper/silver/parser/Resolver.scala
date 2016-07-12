@@ -9,7 +9,8 @@ package viper.silver.parser
 
 import viper.silver.ast.MagicWandOp
 import viper.silver.ast.utility.Visitor
-import viper.silver.FastMessaging
+import viper.silver.{FastMessaging, FastPositions}
+
 import scala.collection.mutable
 import scala.reflect._
 
@@ -175,7 +176,12 @@ case class TypeChecker(names: NameAnalyser) {
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the translator.
          */
-        check(PMethodCall(Seq(idnuse), func, args))
+        /*FastPositions.setStart(PMethodCall(Seq(idnuse), func, args) , FastPositions.getStart(stmt), true)
+        FastPositions.setFinish(PMethodCall(Seq(idnuse), func, args), FastPositions.getFinish(stmt), true)*/
+        val newnode: PStmt = PMethodCall(Seq(idnuse), func, args)
+        newnode.setPos(stmt)
+        check(newnode)
+
       case PVarAssign(idnuse, rhs) =>
         names.definition(curMember)(idnuse) match {
           case PLocalVarDecl(_, typ, _) =>

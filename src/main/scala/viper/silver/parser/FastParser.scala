@@ -958,7 +958,7 @@ object FastParser {
 
 def main(args: Array[String]) {
 //  println(fastparser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1"))
-  println(FastParser.parse("define B(x, res) true\n\nmethod test1(y: Ref, n: Ref)\n    ensures B(y)\n    {}", file))
+  println(FastParser.parse("method callee() returns (x: Int, y: Int)\n{}\n\nmethod caller() {\n  var x: Int\n\n  x := callee()\n}", file))
 //  println(exp.parse("[0..|nodes|)"))
 }
 }
