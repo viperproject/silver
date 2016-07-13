@@ -548,7 +548,8 @@ object FastParser {
 
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old | applyOld
-    | keyword("result").map { _ => PResultLit() } | (CharIn("-!+").! ~ sum).map { case (a, b) => PUnExp(a, b) }
+    | keyword("result").map { _ => PResultLit() } //|(CharIn("-").! ~ idnuse).map { case (a, b) => PUnExp(a, b) }
+    | (CharIn("-!+").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) }
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding | applying
     | packaging | setTypedEmpty | explicitSetNonEmpty | explicitMultisetNonEmpty | multiSetTypedEmpty | seqTypedEmpty
     | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
@@ -567,7 +568,7 @@ object FastParser {
 
   lazy val old: P[PExp] = P(StringIn("old") ~ (parens(exp).map(POld) | ("[" ~ idnuse ~ "]" ~ parens(exp)).map { case (a, b) => PLabelledOld(a, b) }))
   lazy val applyOld: P[PExp] = P((StringIn("lhs") ~ parens(exp)).map(PApplyOld))
-  lazy val magicWandExp: P[PExp] = P(orExp ~ ("--*".! ~ magicWandExp).?).map{ case(a, b) => b match {
+  lazy val magicWandExp: P[PExp] = P(orExp ~ ("--*".! ~   exp ).?).map{ case(a, b) => b match {
       case Some(c) => PBinExp(a, c._1,c._2 )
       case None => a
     }
@@ -958,7 +959,7 @@ object FastParser {
 
 def main(args: Array[String]) {
 //  println(fastparser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1"))
-  println(FastParser.parse("method callee() returns (x: Int, y: Int)\n{}\n\nmethod caller() {\n  var x: Int\n\n  x := callee()\n}", file))
+  println(FastParser.parse("method test(b: Bool) {\n  assert true --* b ==> (true --* true)\n}", file))
 //  println(exp.parse("[0..|nodes|)"))
 }
 }
