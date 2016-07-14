@@ -27,6 +27,7 @@ object Transformer {
 
     def recurse(parent: PNode): PNode = {
       val newNode = parent match {
+        case PMacroRef(idnuse) => PMacroRef(go(idnuse))
         case _: PIdnDef => parent
         case _: PIdnUse => parent
         case PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))

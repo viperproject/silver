@@ -748,6 +748,7 @@ case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends POpApp
   )
 
 }
+case class PMacroRef(idnuse : PIdnUse) extends PStmt
 // Simple literals
 sealed trait PSimpleLiteral extends PExp {
   override final val typeSubstitutions = Set(PTypeSubstitution.id)
@@ -1142,6 +1143,7 @@ object Nodes {
    */
   def subnodes(n: PNode): Seq[PNode] = {
     n match {
+      case PMacroRef(name) => Nil
       case PIdnDef(name) => Nil
       case PIdnUse(name) => Nil
       case PFormalArgDecl(idndef, typ) => Seq(idndef, typ)

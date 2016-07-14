@@ -447,7 +447,25 @@ object FastParser {
             })
           })
 
+        case pmac: PMacroRef => pmac.idnuse match {
+          case piu: PIdnUse =>
+            /* Potentially expand a named assertion that takes no arguments, e.g. A.
+             * If piu (which is a symbol) denotes a named assertion (i.e. if there
+             * is a define in defines whose name is piu), then it is replaced by
+             * the body of the named assertion.
+             */
+            lookupOrElse(piu, piu)(define => {
+              expanded = true
 
+              define.body.transform()(post = {
+                case n => {
+                  FastPositions.setStart(n, piu.start, true)
+                  FastPositions.setFinish(n, piu.finish, true)
+                  n
+                }
+              })
+            })
+        }
 
         case fapp: PFunctApp => expandAllegedInvocation(fapp.func, fapp.args, fapp)
         case call: PMethodCall => expandAllegedInvocation(call.method, call.args, call)
@@ -732,11 +750,11 @@ object FastParser {
   //  Statemnts
   lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | ifthnels | whle | varDecl | defineDecl | letwandDecl | newstmt | fresh | constrainingBlock |
-    methodCall | goto | lbl | packageWand | applyWand)
+    methodCall | goto | lbl | packageWand | applyWand| macroref)
   lazy val nodefinestmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | ifthnels | whle | varDecl  | letwandDecl | newstmt | fresh | constrainingBlock |
-    methodCall | goto | lbl | packageWand | applyWand)
-
+    methodCall | goto | lbl | packageWand | applyWand | macroref)
+  lazy val macroref: P[PMacroRef] = P(idnuse).map{ case(a) => PMacroRef(a)}
   lazy val fieldassign: P[PFieldAssign] = P(fieldAcc ~ ":=" ~ exp).map { case (a, b) => PFieldAssign(a, b) }
   lazy val localassign: P[PVarAssign] = P(idnuse ~ ":=" ~ exp).map { case (a, b) => PVarAssign(a, b) }
   lazy val fold: P[PFold] = P("fold" ~ predicateAccessPred).map(PFold)
@@ -774,7 +792,7 @@ object FastParser {
   lazy val newstmt: P[PNewStmt] = P(idnuse ~ ":=" ~ "new" ~ "(" ~ starOrFields ~ ")").map { case (a, b) => PNewStmt(a, b) }
   //doubt see what happened here later on (had to add .! in first case)
   lazy val starOrFields: P[Option[Seq[PIdnUse]]] = P(("*").!.map { _ => None } | (idnuse.rep(sep = ",").map { fields => Some(fields) }))
-  lazy val fresh: P[PFresh] = P("fresh" ~ idnuse.rep(sep = ",")).map { case vars => PFresh(vars) }
+  lazy val fresh: P[PFresh] = P(keyword("fresh") ~ idnuse.rep(sep = ",")).map { case vars => PFresh(vars) }
   lazy val constrainingBlock: P[PConstraining] = P("constraining" ~ "(" ~ idnuse.rep(sep = ",") ~ ")" ~ block).map { case (vars, s) => PConstraining(vars, PSeqn(s)) }
   lazy val methodCall: P[PMethodCall] = P((idnuse.rep(sep = ",") ~ ":=").? ~ idnuse ~ parens(exp.rep(sep = ","))).map {
     case (None, method, args) => PMethodCall(Nil, method, args)
@@ -959,7 +977,7 @@ object FastParser {
 
 def main(args: Array[String]) {
 //  println(fastparser.parse("var newK$_1: Perm\n  this_1 := __this_1\n  in_1 := __in_1\n  out_1 := __out_1\n  n$_3 := new(*)\n  __flatten_1 := n$_3\n  fresh newK$_1"))
-  println(FastParser.parse("method test(b: Bool) {\n  assert true --* b ==> (true --* true)\n}", file))
+  println(FastParser.parse("define S { assert true } // Macro a statement\nmethod m()\n{    \nassert true\nS\nassert true // parse error\n}", file))
 //  println(exp.parse("[0..|nodes|)"))
 }
 }
