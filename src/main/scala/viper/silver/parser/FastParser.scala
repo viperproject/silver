@@ -456,7 +456,9 @@ object FastParser {
              */
             lookupOrElse(piu, piu)(define => {
               expanded = true
-
+              if(!define.args.isEmpty) {
+                throw new argException("Number of arguments does not match", FastPositions.getStart(piu))
+              }
               define.body.transform()(post = {
                 case n => {
                   FastPositions.setStart(n, piu.start, true)
