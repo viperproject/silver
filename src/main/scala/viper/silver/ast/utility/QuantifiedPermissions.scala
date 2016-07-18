@@ -66,11 +66,8 @@ import viper.silver.ast._
         n match {
           case forall@Forall(Seq(lvd@LocalVarDecl(_, _ /*Ref*/)),
           triggers,
-          Implies(condition, pa@PredicateAccessPredicate(PredicateAccess(args, predname), gain)))
-            if triggers.isEmpty =>
-
+          Implies(condition, pa@PredicateAccessPredicate(PredicateAccess(args, predname), gain))) =>
             Some((lvd, condition, args, predname, gain, forall, pa))
-
           case _ => None
         }
     }
