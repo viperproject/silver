@@ -47,7 +47,6 @@ import viper.silver.ast._
               /*&& triggers.isEmpty*/ =>
 
             Some((lvd, condition, rcvr, f, gain, forall, fa))
-
           case _ => None
         }
     }
@@ -97,6 +96,29 @@ import viper.silver.ast._
     collected
   }
 
+  /* TODO: Computing the set of quantified predicates would probably benefit from caching
+ *       the (sub)results per member. Ideally, it would be possible to retrieve the
+ *       (cached) results from the members themselves,
+ *       e.g. someMethod.quantifiedFields.
+ */
+
+  def quantifiedPredicates(root: Node, program: Program): collection.Set[Predicate] = {
+    val collected = mutable.LinkedHashSet[Predicate]()
+    val visited = mutable.Set[Member]()
+    val toVisit = mutable.Queue[Member]()
+
+    root match {
+      case m: Member => toVisit += m
+      case _ =>
+    }
+
+    toVisit ++= Nodes.referencedMembers(root, program)
+
+    quantifiedPredicates(toVisit, collected, visited, program)
+
+    collected
+  }
+
   private def quantifiedFields(toVisit: mutable.Queue[Member],
                                collected: mutable.LinkedHashSet[Field],
                                visited: mutable.Set[Member],
@@ -107,6 +129,25 @@ import viper.silver.ast._
 
       root visit {
         case QPForall(_, _, _, field, _, _, _) => collected += field
+      }
+
+      visited += root
+
+      utility.Nodes.referencedMembers(root, program) foreach (m =>
+        if (!visited.contains(m)) toVisit += m)
+    }
+  }
+
+  private def quantifiedPredicates(toVisit: mutable.Queue[Member],
+                               collected: mutable.LinkedHashSet[Predicate],
+                               visited: mutable.Set[Member],
+                               program: Program) {
+
+    while (toVisit.nonEmpty) {
+      val root = toVisit.dequeue()
+
+      root visit {
+        case QPPForall(_, _, _,predname , _, _, _) => collected += program.findPredicate(predname)
       }
 
       visited += root
