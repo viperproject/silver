@@ -1,20 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
 package viper.silver.ast.pretty
 
-
 import viper.silver.ast._
-
+import scala.collection.immutable.{Queue}
+import scala.collection.immutable.Queue.{empty => emptyDq}
 
 /**
  * A pretty printer for the SIL language.
@@ -23,9 +11,7 @@ trait FastPrettyPrinterBase {
 
   import scala.collection.immutable.Seq
 
-
   type Indent = Int
-
 
   type Width = Int
 
@@ -52,26 +38,17 @@ trait FastPrettyPrinterBase {
 
     def <> (e : Doc) : Doc
 
-
     def <+> (e : Doc) : Doc =
       this <> space <> e
-
-
 
     def <@> (e : Doc) : Doc =
       this <> line <> e
 
-
-
   }
-
-
-
 
   trait PrettyPrintable {
     def toDoc : Doc = value (this)
   }
-
 
   implicit def anyToPrettyPrintable (a : Any) : PrettyPrintable =
     new PrettyPrintable {
@@ -98,46 +75,29 @@ trait FastPrettyPrinterBase {
     else
       text (c.toString)
 
-
-
-
-
   def any (a : Any) : Doc =
     if (a == null)
       "null"
     else
       a match {
-//        case v : Vector[_] => list (v.toList, "Vector ", any)
-//        case m : Map[_,_]  => list (m.toList, "Map ", any)
         case Nil           => "Nil"
-//        case l : Seq[_]   => {seq (l, " ", any) }
         case (l, r)        => any (l) <+> "->" <+> any (r)
         case None          => "None"
-        /*case p : Product   => seq (p.productIterator.toList,
-          s"${p.productPrefix} ",
-          any)*/
         case s : String    => char('\"') <> text (s) <> char('\"')
         case _             => a.toDoc
       }
 
 
-  /**
-    * Return a document that is the result of folding `f` over the sequence
-    * `ds`. Returns the empty document is `ds` is empty.
-    */
+
   def folddoc (ds : Seq[Doc], f : (Doc, Doc) => Doc) =
     if (ds.isEmpty)
       empty
     else
       ds.tail.foldLeft (ds.head) (f)
 
-  /**
-    * Return a document that concatenates the documents in the given sequence
-    * and separates adjacent documents with `sep` with no space around the
-    * separator.
-    */
   def ssep (ds : Seq[Doc], sep : Doc) : Doc =
     folddoc (ds, (_ <> sep <> _))
+
 
   def lsep (ds : Seq[Doc], sep : Doc) : Doc =
     if (ds.isEmpty)
@@ -145,20 +105,25 @@ trait FastPrettyPrinterBase {
     else
       linebreak <> folddoc (ds, _ <> sep <@> _)
 
+
   def value (v : Any) : Doc =
     if (v == null)
       "null"
     else
       string (v.toString)
 
+
   def surround (d : Doc, b : Doc) : Doc =
     b <> d <> b
+
 
   def braces (d : Doc) : Doc =
     char ('{') <> d <> char ('}')
 
+
   def parens (d : Doc) : Doc =
     char ('(') <> d <> char (')')
+
 
 
   def brackets (d : Doc) : Doc =
@@ -171,21 +136,7 @@ trait FastPrettyPrinterBase {
 
 
 
-  import scala.collection.immutable.{Queue, Seq}
-  import scala.collection.immutable.Queue.{empty => emptyDq}
-
   // Internal data types
-
-  /*private type Remaining  = Int
-  private type Horizontal = Boolean
-  private type Buffer     = Seq[String]
-  private type Out        = Remaining => Trampoline[Buffer]
-  private type OutGroup   = Horizontal => Out => Trampoline[Out]
-  private type PPosition  = Int
-  private type Dq         = Queue[(PPosition,OutGroup)]
-  private type TreeCont   = (PPosition,Dq) => Trampoline[Out]
-  private type IW         = (Indent,Width)
-  private type DocCont    = IW => TreeCont => Trampoline[TreeCont]*/
   type Remaining = Int
   type Horizontal = Boolean
   type Buffer = String
@@ -203,40 +154,27 @@ trait FastPrettyPrinterBase {
 
       (p : PPosition, dq : Dq) =>
         if (dq.isEmpty) {
-
-
               val o1 = c (p + l, emptyDq)
               val o2 = out (false) (o1)
              o2
-
         } else {
           val (s, grp) = dq.last
           val n = (s, (h : Horizontal) =>
             (o1 : Out) =>
-
-
-
                  grp (h) (out (h) (o1))
-
             )
           prune (c) (p + l, dq.init :+ n)
         }
 
-
-
-
   private def prune (c1 : TreeCont) : TreeCont =
     (p : PPosition, dq : Dq) =>
-
         (r : Remaining) =>
           if (dq.isEmpty)
             c1(p,emptyDq) (r)
-
           else {
             val (s, grp) = dq.head
             if (p > s + r) {
               grp(false) (prune(c1) (p,dq.tail))  (r)
-
             } else {
               c1 (p, dq) (r)
             }
@@ -250,7 +188,6 @@ trait FastPrettyPrinterBase {
       } else if (dq.length == 1) {
         val (s1, grp1) = dq.last
        grp1(true) (c(p,emptyDq))
-
       } else {
         val (s1, grp1) = dq.last
         val (s2, grp2) = dq.init.last
@@ -258,39 +195,23 @@ trait FastPrettyPrinterBase {
           (o1 : Out) => {
             val o3 =
               (r : Remaining) =>
-
                     grp1 (p <= s1 + r) (o1) (r)
-
                  grp2 (h) (o3)
-
-
           })
         c (p, dq.init.init :+ n)
       }
 
-  /**
-    * Continuation representation of documents.
-    */
   class Doc (f : DocCont) extends DocCont with DocOps {
-
-    // Forward function operations to the function
 
     def apply (iw : IW) : TreeCont => TreeCont =
       f (iw)
-
-    // Basic operations
 
     def <> (e : Doc) : Doc =
       new Doc (
         (iw : IW) =>
           (c1 : TreeCont) =>
-
-
                  f (iw) (e (iw) (c1))
-
-
       )
-
   }
 
   // Basic combinators
@@ -316,18 +237,9 @@ trait FastPrettyPrinterBase {
 
               (r : Remaining) =>
                 if (h)
-
-
                    (repl + c (r - repl.length))
-
-
                 else
-
-
                   ("\n" + (" " * i) + c (w - i))
-
-
-
         scan (1, outLine)
     })
 
@@ -336,24 +248,6 @@ trait FastPrettyPrinterBase {
 
   def linebreak : Doc =
     line ("")
-/*
-  def group (d : Doc) : Doc =
-    new Doc (
-      (iw : IW) =>
-        (c1 : TreeCont) =>
-
-
-
-
-              (p : PPosition, dq : Dq) => {
-                d (iw) (leave (c1)) (p, dq :+ ((p,(h : Horizontal) => (o : Out) => o)))
-              }
-
-    )*/
-
-
-
-
 
   def empty : Doc =
     new Doc (
@@ -367,8 +261,6 @@ trait FastPrettyPrinterBase {
       case (i, w) =>
         d ((i + j, w))
     })
-
-
 
   // Obtaining output
 
@@ -384,11 +276,9 @@ trait FastPrettyPrinterBase {
 
 }
 
-/*trait FastPrettyPrinter extends FastPrettyPrinterBase {
-
-}*/
 
 //stuff needed for the bracket calculation
+
 abstract class Side
 
 trait FastPrettyExpression

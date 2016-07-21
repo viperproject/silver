@@ -289,8 +289,9 @@ trait SilFrontend extends DefaultFrontend {
 
     val methods = input.methods filter (m => verifyMethods.contains(m.name))
     val program = Program(input.domains, input.fields, input.functions, input.predicates, methods)(input.pos, input.info)
-
+//    println(program)
     Succ(program)
+
   }
 
   override def mapVerificationResult(in: VerificationResult) = in
