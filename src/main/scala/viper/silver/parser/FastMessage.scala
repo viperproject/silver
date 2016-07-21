@@ -14,10 +14,12 @@ case class FastMessage (label : String, pos : Position = NoPosition) {
 
   def column : Int = pos.column
 
-
-//  def format : String = s"[${pos}] $label\n\n${pos.longString}"
-
 }
+
+/**
+  * Support for Messages in FastParser. Messages are finally kept
+  * as a sequence and sorted before display
+  * */
 
 object FastMessaging {
 
@@ -28,12 +30,18 @@ object FastMessaging {
   def aMessage (message : FastMessage) =
     IndexedSeq (message)
 
+   /**
+    * Makes a message list if cond is true. Stored with the position of the value
+    */
   def message (value : Any, msg : String, cond : Boolean = true) : Messages =
     if (cond)
       aMessage (FastMessage (msg, FastPositions.getStart (value)))
     else
       noMessages
 
+  /**
+    * Sort the messages by position in increasing order.
+    */
    def sortmessages (messages : Messages) : Messages =
     messages.sortWith {
       case (msg1, msg2) =>

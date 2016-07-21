@@ -481,7 +481,7 @@ case class Translator(program: PProgram) {
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
 //    def file =java.nio.file.Paths.get("/home/sahil/test/some_file.sil")
     pos.start match {
-      case fp: PFilePosition => SourcePosition(fp.file, start, end)
+      case fp: FilePosition => SourcePosition(fp.file, start, end)
 //      case fp: FilePosition => SourcePosition(fp.file, start, end)
       case _ => SourcePosition(null , start, end)
     }

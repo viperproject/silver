@@ -6,13 +6,9 @@
 
 package viper.silver.ast.utility
 
-//import viper.silver.{FastMessage, FastMessaging}
-
-import viper.silver.{FastMessage, FastMessaging}
-
 import scala.util.parsing.input.{NoPosition, Position}
-import viper.silver.parser.FastParser
 import viper.silver.ast._
+import viper.silver.{FastMessage, FastMessaging}
 
 /** An utility object for consistency checking. */
 object Consistency {
@@ -39,7 +35,6 @@ object Consistency {
     }
   }
 
-  /** Reset the Kiama messages */
   def resetMessages() { this.messages = Nil }
   @inline
   def recordIf(suspect: Positioned, property: Boolean, message: String) =

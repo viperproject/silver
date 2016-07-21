@@ -84,8 +84,8 @@ import scala.language.implicitConversions
 trait FastPositioned {
 
   /** Do not use these first three interfaces for reporting the positions.
-      They may or may not contain the rel_file field, depending on whether
-      the AST is constructed through the Parser or via the Scala interfaces. */
+      *They may or may not contain the rel_file field, depending on whether
+      *the AST is constructed through the Parser or via the Scala interfaces. */
 
   /** TODO get ride of 'implicit def liftPos' of Translator.scala and make these methods private. */
   def start = FastPositions.getStart(this)
@@ -93,7 +93,7 @@ trait FastPositioned {
 
   /** Used for reporting the starting position of an AST node. */
   def startPosStr = start match {
-    case fp: PFilePosition =>
+    case fp: FilePosition =>
       s"${fp.file.getFileName}@${start}"
     case _ =>
       s"1${start}"
@@ -110,10 +110,10 @@ trait FastPositioned {
       else
       // An AST node should probably not spread between multiple source files, but who knows?
         s"[$fp_a-$fp_b]"*/
-    case fp_a: PFilePosition =>
-      require(finish.isInstanceOf[PFilePosition],
+    case fp_a: FilePosition =>
+      require(finish.isInstanceOf[FilePosition],
         s"start and finish positions must be instances of FilePosition at the same time")
-      val fp_b = finish.asInstanceOf[PFilePosition]
+      val fp_b = finish.asInstanceOf[FilePosition]
       if (fp_a.file == fp_b.file)
         s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
       else

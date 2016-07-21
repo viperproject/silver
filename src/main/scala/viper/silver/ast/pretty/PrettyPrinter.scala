@@ -327,7 +327,10 @@ object FastPrettyPrinter extends  FastPrettyPrinterBase {
     val d = toParenDoc (inner)
     if (noparens (inner, outer, side)) d else parens (d)
   }
-  //this is part of the algo of the paper, right now it is directly the kiama one
+  /**
+    * Based on algorithm in "Unparsing expressions with prefix and postfix operators",
+    * Ramsey, SP&E, 28 (12), October 1998.
+    */
   def noparens (inner : FastPrettyOperatorExpression, outer : FastPrettyOperatorExpression,
                 side : Side) : Boolean = {
     val pi = inner.priority
