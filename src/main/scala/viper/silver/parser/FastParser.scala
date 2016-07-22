@@ -197,7 +197,7 @@ object FastParser extends PosParser{
             })
         }
 
-        case fapp: PFunctApp => expandAllegedInvocation(fapp.func, fapp.args, fapp)
+        case fapp: PCall => expandAllegedInvocation(fapp.func, fapp.args, fapp)
         case call: PMethodCall => expandAllegedInvocation(call.method, call.args, call)
       }(recursive = _ => true)
 
@@ -459,12 +459,12 @@ object FastParser extends PosParser{
 
   lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => { PRangeSeq(a, b) } }
 
-  lazy val fapp: P[PFunctApp] = P(idnuse ~ parens(actualArgList)).map {
-    case (func, args) => PFunctApp(func, args, None)
+  lazy val fapp: P[PCall] = P(idnuse ~ parens(actualArgList)).map {
+    case (func, args) => PCall(func, args, None)
   }
 
   lazy val typedFapp: P[PExp] = P(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map {
-    case (func, args, typeGiven) => PFunctApp(func, args, Some(typeGiven))
+    case (func, args, typeGiven) => PCall(func, args, Some(typeGiven))
   }
 
 

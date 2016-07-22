@@ -170,7 +170,7 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PInhale(e) =>
         check(e, Bool)
-      case PVarAssign(idnuse, PFunctApp(func, args, _)) if names.definition(curMember)(func).isInstanceOf[PMethod] =>
+      case PVarAssign(idnuse, PCall(func, args, _)) if names.definition(curMember)(func).isInstanceOf[PMethod] =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the translator.
          */
@@ -274,7 +274,7 @@ case class TypeChecker(names: NameAnalyser) {
           val predicate = _predicate.asInstanceOf[PPredicate]
           if (predicate.body.isEmpty) messages ++= FastMessaging.message(idnuse, messageIfAbstractPredicate)
         }
-      case PAccPred(PFunctApp( idnuse, _, _), _) =>
+      case PAccPred(PCall( idnuse, _, _), _) =>
         val ad = names.definition(curMember)(idnuse)
         ad match {
           case ppa : PPredicate =>
@@ -291,9 +291,7 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkMagicWand(e: PExp, allowWandRefs: Boolean) = e match {
     case _: PIdnUse if allowWandRefs =>{}
-//      if (recurse) check(e, Wand)
     case PBinExp(_, MagicWandOp.op, _) =>{}
- //     if (recurse) check(e, Wand)
     case _ =>
       messages ++= FastMessaging.message(e, "expected magic wand")
   }
@@ -533,7 +531,7 @@ case class TypeChecker(names: NameAnalyser) {
         if (!nestedTypeError) {
         poa match {
 
-          case pfa@PFunctApp(func, args, explicitType) =>
+          case pfa@PCall(func, args, explicitType) =>
             explicitType match {
               case Some(t) => {
                 check(t); if (!t.isValidAndResolved) nestedTypeError = true
@@ -554,7 +552,6 @@ case class TypeChecker(names: NameAnalyser) {
                         val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).toSet) //fresh domain type variables
                         pfa.domainTypeRenaming = Some(fdtv)
                         pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
-                        // somewhere here : use explicitType?
                         extraReturnTypeConstraint = explicitType
                     }
                   case ppa: PPredicate =>
@@ -594,7 +591,7 @@ case class TypeChecker(names: NameAnalyser) {
                 })
               case ppp@PAccPred(loc, _) => {
                 loc match {
-                  case ppfa@PFunctApp(func, args, explicitType) => {
+                  case ppfa@PCall(func, args, explicitType) => {
                     val ad = names.definition(curMember)(func)
                     ad match {
                       case ppf : PFunction => {

@@ -159,9 +159,6 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
   lazy val pCached = p()
 
   override def parseRec(cfg: ParseCtx, index: Int) = {
-
-
-
     if (cfg.instrument == null) {
       pCached.parseRec(cfg, index) match{
         case f: Mutable.Failure => failMore(f, index, cfg.logDepth)
@@ -196,8 +193,6 @@ trait PosParser{
     * which override the normal definitions with 'PositionRule' to add support for
     * FastPosition in the parser.
     * */
-
-
   var _file: Path = null
 
   def P[T](p: => Parser[T])(implicit name: sourcecode.Name): Parser[T] =
@@ -205,8 +200,6 @@ trait PosParser{
 
   def PWrapper(WL: P0) = new PWrapper(WL)
   class PWhitespaceApi[V](p0: P[V], WL: P0) extends WhitespaceApi[V](p0, WL){
-
-
 
     override def repX[R](implicit ev: Repeater[V, R]): Parser[R] = new PosRepeat(p0, 0, Int.MaxValue, Pass, _file)
 
@@ -219,16 +212,10 @@ trait PosParser{
                        (implicit ev: Repeater[V, R]): Parser[R] = {
       new PosRepeat(p0, min, max, if (sep != Pass) NoCut(WL) ~ sep ~ NoCut(WL) else NoCut(WL), _file)
     }
-
-
-
     override def ~[V2, R](p: Parser[V2])(implicit ev: Sequencer[V, V2, R]): Parser[R] = {
       assert(p != null)
       new PosCustomSequence[V, R, V2](WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[V]], p, cut=false, _file)(ev)
     }
-
-
-
     override def ~/[V2, R](p: P[V2])
                           (implicit ev: Sequencer[V, V2, R])
     : P[R] = {
@@ -236,7 +223,6 @@ trait PosParser{
       new PosCustomSequence(WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[V]], p, cut=true, _file)(ev)
     }
   }
-
   class PWrapper(WL: P0){
     implicit def parserApi[T, V](p0: T)(implicit c: T => P[V]): PWhitespaceApi[V] =
 

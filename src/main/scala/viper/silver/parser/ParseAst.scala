@@ -58,27 +58,6 @@ trait FastPositioned {
     this
   }
 }
-trait FastAttributable extends Product with Cloneable {
-
-  /**
-    * A link to the parent `Attributable` node of this node or `null` if
-    * this node has no parent.  Note that this link will skip intervening
-    * non-`Attributable` ancestors.
-    *
-    * @see initTreeProperties
-    */
-
-  /**
-    * A short-hand for `parent.asInstanceOf[T]`, which is useful in cases
-    * a `T`-specific operation is applied to the parent, which otherwise
-    * would be of type `Attributable`.
-    */
-
-
-
-
-
-}
 
 
 /**
@@ -86,9 +65,6 @@ trait FastAttributable extends Product with Cloneable {
  * with the actual SIL abstract syntax tree.
  */
 sealed trait PNode extends FastPositioned with Product{
-
-
-
 
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
@@ -501,7 +477,7 @@ object POpApp{
   def pRes     = PTypeVar(pResS)
 }
 
-case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] = None) extends POpApp with PLocationAccess
+case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] = None) extends POpApp with PLocationAccess
 {
   override val idnuse = func
   override val opName = func.name
@@ -642,7 +618,6 @@ case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends POpApp
   )
 
 }
-case class PMacroRef(idnuse : PIdnUse) extends PStmt
 // Simple literals
 sealed trait PSimpleLiteral extends PExp {
   override final val typeSubstitutions = Set(PTypeSubstitution.id)
@@ -950,7 +925,7 @@ case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) 
 case class PLabel(idndef: PIdnDef) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
-
+case class PMacroRef(idnuse : PIdnUse) extends PStmt
 case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
 case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
@@ -1011,8 +986,8 @@ case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Op
   val typ = PPredicateType()
 }
 
-case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned with FastAttributable
-case class PAxiom1(idndef: PIdnDef, exp: PExp) extends FastPositioned with FastAttributable
+case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned
+case class PAxiom1(idndef: PIdnDef, exp: PExp) extends FastPositioned
 
 /**
  * A entity represented by names for whom we have seen more than one
@@ -1036,7 +1011,6 @@ object Nodes {
    */
   def subnodes(n: PNode): Seq[PNode] = {
     n match {
-      case PMacroRef(name) => Nil
       case PIdnDef(name) => Nil
       case PIdnUse(name) => Nil
       case PFormalArgDecl(idndef, typ) => Seq(idndef, typ)
@@ -1056,7 +1030,7 @@ object Nodes {
       case PResultLit() => Nil
       case PFieldAccess(rcv, field) => Seq(rcv, field)
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
-      case PFunctApp(func, args, optType) => Seq(func) ++ args ++ (optType match { case Some(t) => Seq(t) case None => Nil})
+      case PCall(func, args, optType) => Seq(func) ++ args ++ (optType match { case Some(t) => Seq(t) case None => Nil})
       case e: PUnFoldingExp => Seq(e.acc, e.exp)
       case PApplyingGhostOp(wand, in) => Seq(wand, in)
       case PPackagingGhostOp(wand, in) => Seq(wand, in)
@@ -1087,7 +1061,7 @@ object Nodes {
       case PExplicitSet(elems) => elems
       case PEmptyMultiset(t) => Seq(t)
       case PExplicitMultiset(elems) => elems
-
+      case PMacroRef(name) => Nil
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)
