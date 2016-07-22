@@ -10,7 +10,6 @@ import scala.util.parsing.input.{NoPosition, Position}
 
 class PositionMap {
 
-    private var thisMemoVersion = 0
 
     val memo : Cache[AnyRef,AnyRef] =
     CacheBuilder.newBuilder ().weakKeys ().build ()
@@ -39,12 +38,6 @@ class PositionMap {
 
 
 object FastPositions {
-
-    private var memoVersion = 0
-
-    def resetMemo () {
-      memoVersion += 1
-    }
 
     private val MapStart = new PositionMap
     private val MapFinish = new PositionMap

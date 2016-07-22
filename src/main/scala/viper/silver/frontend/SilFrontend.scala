@@ -197,7 +197,7 @@ trait SilFrontend extends DefaultFrontend {
      result match {
       case Parsed.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
         if (err_list.isEmpty || err_list.forall{ case p => p.isInstanceOf[ParseWarning] })
-        Succ({ e.initTreeProperties(); e })
+        Succ({ e.initProperties(); e })
       else Fail(err_list)
       case Parsed.Failure(msg, next, extra) =>
         Fail(List(ParseError(msg.toString, SourcePosition(file, extra.line, extra.col))))

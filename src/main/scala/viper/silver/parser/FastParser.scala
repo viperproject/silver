@@ -21,19 +21,12 @@ import viper.silver.FastPositions
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 
 
-
-
-
-
-
-
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position)  extends Exception
 
 
 
-object FastParser {
+object FastParser extends PosParser{
 
-  var _file: Path = null
   var _imports: mutable.HashMap[Path, Boolean] = null
   var _lines : Array[Int] = null
 
@@ -71,48 +64,6 @@ object FastParser {
     def parses(s: String) = fastparser.parse(s)
   }
 
-  def P[T](p: => Parser[T])(implicit name: sourcecode.Name): Parser[T] =
-    new PositionRule(name.value, () => p, _file)
-
-  def PWrapper(WL: P0) = new PWrapper(WL)
-  class PWhitespaceApi[V](p0: P[V], WL: P0) extends WhitespaceApi[V](p0, WL){
-
-
-
-    override def repX[R](implicit ev: Repeater[V, R]): Parser[R] = new PosRepeat(p0, 0, Int.MaxValue, Pass, _file)
-
-    override def rep[R](implicit ev: Repeater[V, R]): Parser[R] = new PosRepeat(p0, 0, Int.MaxValue, NoCut(WL), _file)
-
-    override def repX[R](min: Int = 0, sep: Parser[_] = Pass, max: Int = Int.MaxValue)
-               (implicit ev: Repeater[V, R]): Parser[R] =  new PosRepeat(p0, min, max, sep, _file)
-
-    override def rep[R](min: Int = 0, sep: Parser[_] = Pass, max: Int = Int.MaxValue)
-                       (implicit ev: Repeater[V, R]): Parser[R] = {
-      new PosRepeat(p0, min, max, if (sep != Pass) NoCut(WL) ~ sep ~ NoCut(WL) else NoCut(WL), _file)
-    }
-
-
-
-    override def ~[V2, R](p: Parser[V2])(implicit ev: Sequencer[V, V2, R]): Parser[R] = {
-      assert(p != null)
-      new PosCustomSequence[V, R, V2](WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[V]], p, cut=false, _file)(ev)
-    }
-
-
-
-    override def ~/[V2, R](p: P[V2])
-                          (implicit ev: Sequencer[V, V2, R])
-    : P[R] = {
-      assert(p != null)
-      new PosCustomSequence(WL, if (p0 != WL) p0 else Pass.asInstanceOf[P[V]], p, cut=true, _file)(ev)
-    }
-  }
-  class PWrapper(WL: P0){
-    implicit def parserApi[T, V](p0: T)(implicit c: T => P[V]): PWhitespaceApi[V] =
-
-      new PWhitespaceApi[V](p0, WL)
-  }
-
   val White = PWrapper {
     import fastparse.all._
 
@@ -139,9 +90,8 @@ object FastParser {
       result
     }.asInstanceOf[E]
 
-  def getFieldAccess(obj: Any) = obj match {
-    case n: PFieldAccess => true
-    case _ => false
+  def isFieldAccess(obj: Any) = {
+    obj.isInstanceOf[PFieldAccess]
   }
 
   def expandDefines(defines: Seq[PDefine], toExpand: Seq[PDefine]): Seq[PDefine] = {
@@ -231,7 +181,7 @@ object FastParser {
 
         case pmac: PMacroRef => pmac.idnuse match {
           case piu: PIdnUse =>
-            /* Same as expanding Named Assertion in previuos case for Pidnuse*/
+            /* Same as expanding named assertion in previous case for PIdnUse*/
             lookupOrElse(piu, piu)(define => {
               expanded = true
               if(!define.args.isEmpty) {
@@ -307,8 +257,7 @@ object FastParser {
 
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old | applyOld
-    | keyword("result").map { _ => PResultLit() } //|(CharIn("-").! ~ idnuse).map { case (a, b) => PUnExp(a, b) }
-    | (CharIn("-!+").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) }
+    | keyword("result").map { _ => PResultLit() } | (CharIn("-!+").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) }
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding | applying
     | packaging | setTypedEmpty | explicitSetNonEmpty | explicitMultisetNonEmpty | multiSetTypedEmpty | seqTypedEmpty
     | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
@@ -411,7 +360,7 @@ object FastParser {
 
   lazy val locAcc: P[PLocationAccess] = P(fieldAcc | predAcc)
 
-  lazy val fieldAcc: P[PFieldAccess] = P(realSuffixExpr.filter(getFieldAccess).map { case fa: PFieldAccess => fa })
+  lazy val fieldAcc: P[PFieldAccess] = P(realSuffixExpr.filter(isFieldAccess).map { case fa: PFieldAccess => fa })
 
   lazy val predAcc: P[PLocationAccess] = P(fapp)
 
@@ -421,7 +370,6 @@ object FastParser {
 
   lazy val perm: P[PExp] = P(keyword("none").map(_ => PNoPerm()) | keyword("wildcard").map(_ => PWildcard()) | keyword("write").map(_ => PFullPerm())
     | keyword("epsilon").map(_ => PEpsilon()) | ("perm" ~ parens(locAcc)).map(PCurPerm))
-  //doubt (how is this working!!!! - Uses KIama Stuff :( )
 
   lazy val let: P[PExp] = P(
     ("let" ~/ idndef ~ "==" ~ "(" ~ exp ~ ")" ~ "in" ~ exp).map { case (id, exp1, exp2) =>
@@ -474,20 +422,16 @@ object FastParser {
 
   lazy val applying: P[PExp] =
   /**
-    * We must be careful here to not create ambiguities in our grammar.
+   * We must be careful here to not create ambiguities in our grammar.
    * when 'magicWandExp' is used instead of the more specific
    * 'realMagicWandExp | idnuse', then the following problem can occur:
    * Consider an expression such as "applying w in A". The parser
    * will interpret "w in A" as a set-contains expression, which is
-   * fine according to our rules. The outer applying-rule will the fail.
-   * I suspect that NOT using a memoising packrat parser would help
-   * here, because the failing applying-rule should backtrack enough
+   * fine according to our rules.
+   * The outer applying-rule will fail.
+   * Possible solution is that we should backtrack enough
    * to reparse "w in A", but this time as desired, not as a
-   * set-contains expression. This is just an assumption, however,
-   * and implementing would mean that we have to rewrite the
-   * left-recursive parsing rules (are these only sum and term?).
-   * Moreover, not using a memoising parser might make the parser
-   * significantly slower.
+   * set-contains expression.
    */
 
   P("applying" ~ ("(" ~ realMagicWandExp ~ ")" | idnuse) ~ ("in" ~ exp)).map { case (a, b) => PApplyingGhostOp(a, b) }
@@ -498,7 +442,7 @@ object FastParser {
 
   lazy val setTypedEmpty: P[PExp] = P("Set" ~ "[" ~ typ ~ "]" ~ "(" ~ ")").map { case a => PEmptySet(a) }
 
-  lazy val explicitSetNonEmpty: P[PExp] = P("Set" /*~ opt("[" ~> typ <~ "]")*/ ~ "(" ~ exp.rep(sep = ",") ~ ")").map(PExplicitSet)
+  lazy val explicitSetNonEmpty: P[PExp] = P("Set"  ~ "(" ~ exp.rep(sep = ",") ~ ")").map(PExplicitSet)
 
   lazy val explicitMultisetNonEmpty: P[PExp] = P("Multiset" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map { case elems => PExplicitMultiset(elems) }
 
@@ -642,7 +586,6 @@ object FastParser {
               case Left(e) => Left(e)
               case Right(s) =>
                 //TODO print debug info iff --dbg switch is used
-                //println(s"@importing $imp_file into $file")
                 val p = RecParser(imp_path).parses(s.mkString("\n") + "\n")
                 p match {
                   case fastparse.core.Parsed.Success(a, _) => Right(a)

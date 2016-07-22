@@ -49,7 +49,6 @@ object Transformer {
         case PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))
         case PPredicateAccess(args, idnuse) => PPredicateAccess( args map go, go(idnuse))
         case PFunctApp(func, args, explicitType) => {
-
           PFunctApp(go(func), args map go, ( explicitType match {case Some(t) => Some(go(t)) case None => None}))
         }
 
@@ -128,7 +127,6 @@ object Transformer {
 
       if (!allowChangingNodeType)
         assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
-
       newNode.setPos(parent)
     }
 
@@ -141,7 +139,6 @@ object Transformer {
     } else {
       beforeRecursion
     }
-
     post.applyOrElse(afterRecursion, identity[PNode]).asInstanceOf[A]
   }
 

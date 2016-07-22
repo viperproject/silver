@@ -6,13 +6,11 @@
 
 package viper.silver.parser
 
-
-import viper.silver.ast.MagicWandOp
-import viper.silver.ast.utility.Visitor
-import viper.silver.{FastMessaging, FastPositions}
-
 import scala.collection.mutable
 import scala.reflect._
+import viper.silver.ast.MagicWandOp
+import viper.silver.ast.utility.Visitor
+import viper.silver.{FastMessaging}
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -176,8 +174,6 @@ case class TypeChecker(names: NameAnalyser) {
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the translator.
          */
-        /*FastPositions.setStart(PMethodCall(Seq(idnuse), func, args) , FastPositions.getStart(stmt), true)
-        FastPositions.setFinish(PMethodCall(Seq(idnuse), func, args), FastPositions.getFinish(stmt), true)*/
         val newnode: PStmt = PMethodCall(Seq(idnuse), func, args)
         newnode.setPos(stmt)
         check(newnode)
@@ -530,14 +526,10 @@ case class TypeChecker(names: NameAnalyser) {
               issueError(r, "'result' can only be used in function postconditions")
           case _=>
         }
-
-
       case poa: POpApp =>
         assert(poa.typeSubstitutions.isEmpty)
-
         poa.args.foreach(checkInternal)
         var nestedTypeError = !poa.args.forall(a => a.typ.isValidAndResolved)
-
         if (!nestedTypeError) {
         poa match {
 
@@ -568,8 +560,6 @@ case class TypeChecker(names: NameAnalyser) {
                   case ppa: PPredicate =>
                     pfa.extfunction = ppa
                     val predicate = names.definition(curMember)(func).asInstanceOf[PPredicate]
-//                    setType(Bool)
-//                    predicate.typ = Bool
                     acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(func), "expected predicate") { (id, decl) =>
                       checkInternal(id)
                       if (args.length != predicate.formalArgs.length)
@@ -583,7 +573,6 @@ case class TypeChecker(names: NameAnalyser) {
                 }
             }
               case pue: PUnFoldingExp =>
-                //            check(pue.acc.perm, Perm)
                 if (!isCompatible(pue.acc.loc.typ, Bool)) {
                   messages ++= FastMessaging.message(pue, "expected predicate access")
                 }
@@ -663,8 +652,7 @@ case class TypeChecker(names: NameAnalyser) {
               if (ts.isEmpty)
                 typeError(poa)
               poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
-            }
-            else {
+            } else {
               poa.typeSubstitutions.clear()
               poa.typ = PUnknown()
             }
@@ -789,9 +777,7 @@ case class NameAnalyser() {
           case d: PDeclaration =>
             getMap(d).get(d.idndef.name) match {
               case Some(e: PDeclaration) =>
-
                 messages ++= FastMessaging.message(e, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
-//                println(e.start + "=>" + e)
               case Some(e:PErrorEntity) =>
               case None =>
                 globalDeclarationMap.get(d.idndef.name) match {

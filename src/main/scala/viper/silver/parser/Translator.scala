@@ -10,12 +10,11 @@ package viper.silver.parser
 
 import scala.language.implicitConversions
 import scala.collection.mutable
-
-import viper.silver.FastMessaging
 import viper.silver.ast._
 import viper.silver.ast.utility.{Consistency, Statements, Visitor}
+import viper.silver.FastMessaging
 
-import scala.reflect.io.Path
+
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -322,7 +321,7 @@ case class Translator(program: PProgram) {
         IntLit(i)(pos)
       case p@PResultLit() =>
         // find function
-        var par: FastAttributable = p.parent
+        var par: PNode = p.parent
         while (!par.isInstanceOf[PFunction]) {
           if (par == null) sys.error("cannot use 'result' outside of function")
           par = par.parent
@@ -418,10 +417,8 @@ case class Translator(program: PProgram) {
           case loc@PredicateAccessPredicate(inner, args) => CurrentPerm(inner.asInstanceOf[LocationAccess])(pos)
           case x: FieldAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
           case x: PredicateAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
-//          case _ =>
         }
       }
-//        CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos)
       case PNoPerm() =>
         NoPerm()(pos)
       case PFullPerm() =>
@@ -471,18 +468,12 @@ case class Translator(program: PProgram) {
     }
   }
 
-//  /** Takes a `scala.util.parsing.input.Position` and turns it into a `SourcePosition`. */
-//  implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition =
-//    SourcePosition(file, pos.line, pos.column)
-
   /** Takes a [[viper.silver.parser.FastPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
   implicit def liftPos(pos: FastPositioned): SourcePosition = {
     val start = LineColumnPosition(pos.start.line, pos.start.column)
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
-//    def file =java.nio.file.Paths.get("/home/sahil/test/some_file.sil")
     pos.start match {
       case fp: FilePosition => SourcePosition(fp.file, start, end)
-//      case fp: FilePosition => SourcePosition(fp.file, start, end)
       case _ => SourcePosition(null , start, end)
     }
   }

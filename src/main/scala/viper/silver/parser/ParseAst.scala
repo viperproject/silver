@@ -6,86 +6,21 @@
 
 package viper.silver.parser
 
-
+import scala.collection.GenTraversable
+import scala.language.implicitConversions
+import scala.util.parsing.input.Position
+import viper.silver.ast.utility.Visitor
 import viper.silver.ast.MagicWandOp
 import viper.silver.FastPositions
-
-import scala.util.parsing.input.Position
-
-
-import viper.silver.ast.utility.Visitor
 import viper.silver.parser.TypeHelper._
-import viper.silver.verifier.{ParseError, ParseReport}
+import viper.silver.verifier.{ParseReport}
 
-import scala.language.implicitConversions
 
-/**
- * This is a trait to ease interfacing with the changed Kiama interface - it no-longer provides Positioned as a trait, but rather a global Positions object..
- */
-
-/*trait KiamaPositioned {
-
-  /** Do not use these first three interfaces for reporting the positions.
-      They may or may not contain the rel_file field, depending on whether
-      the AST is constructed through the Parser or via the Scala interfaces. */
-
-  /** TODO get ride of 'implicit def liftPos' of Translator.scala and make these methods private. */
-  def start = Positions.getStart(this)
-//  println(start)
-  def startWhite = Positions.getStartWhite(this)
-  def finish = Positions.getFinish(this)
-
-  /** Used for reporting the starting position of an AST node. */
-  def startPosStr = start match {
-    case fp: FilePosition =>
-      s"${fp.file.getFileName}@${start}"
-    case fp: PFilePosition =>
-      s"${fp.file.getFileName}@${start}"
-    case _ =>
-      s"1${start}"
-  }
-
-  /** Used for reporting the range of positions occupied by an AST node. */
-  def rangeStr = start match {
-    case fp_a: FilePosition =>
-      require(finish.isInstanceOf[FilePosition],
-        s"start and finish positions must be instances of FilePosition at the same time")
-      val fp_b = finish.asInstanceOf[FilePosition]
-      if (fp_a.file == fp_b.file)
-        s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
-      else
-        // An AST node should probably not spread between multiple source files, but who knows?
-        s"[$fp_a-$fp_b]"
-    case fp_a: PFilePosition =>
-      require(finish.isInstanceOf[PFilePosition],
-        s"start and finish positions must be instances of FilePosition at the same time")
-      val fp_b = finish.asInstanceOf[PFilePosition]
-      if (fp_a.file == fp_b.file)
-        s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
-      else
-      // An AST node should probably not spread between multiple source files, but who knows?
-        s"[${fp_a.toString}--]"
-    case _ =>
-      s"[${start}-${finish}]"
-//      s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
-  }
-
-  private def setStart(p: Position) = Positions.setStart(this, (p))
-  private def setStartWhite(p: Position) = Positions.setStartWhite(this, (p))
-  private def setFinish(p: Position) = Positions.setFinish(this, (p))
-
-  def setPos(a: KiamaPositioned): this.type = {
-    setStart(a.start)
-    setStartWhite(a.startWhite)
-    setFinish(a.finish)
-    this
-  }
-}*/
 trait FastPositioned {
 
   /** Do not use these first three interfaces for reporting the positions.
-      *They may or may not contain the rel_file field, depending on whether
-      *the AST is constructed through the Parser or via the Scala interfaces. */
+    * They may or may not contain the rel_file field, depending on whether
+    * the AST is constructed through the Parser or via the Scala interfaces. */
 
   /** TODO get ride of 'implicit def liftPos' of Translator.scala and make these methods private. */
   def start = FastPositions.getStart(this)
@@ -96,21 +31,12 @@ trait FastPositioned {
     case fp: FilePosition =>
       s"${fp.file.getFileName}@${start}"
     case _ =>
-      s"1${start}"
+      s"${start}"
   }
 
   /** Used for reporting the range of positions occupied by an AST node. */
   def rangeStr = start match {
-    /*case fp_a: FilePosition =>
-      require(finish.isInstanceOf[FilePosition],
-        s"start and finish positions must be instances of FilePosition at the same time")
-      val fp_b = finish.asInstanceOf[FilePosition]
-      if (fp_a.file == fp_b.file)
-        s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
-      else
-      // An AST node should probably not spread between multiple source files, but who knows?
-        s"[$fp_a-$fp_b]"*/
-    case fp_a: FilePosition =>
+       case fp_a: FilePosition =>
       require(finish.isInstanceOf[FilePosition],
         s"start and finish positions must be instances of FilePosition at the same time")
       val fp_b = finish.asInstanceOf[FilePosition]
@@ -121,7 +47,6 @@ trait FastPositioned {
         s"[${fp_a.toString}--]"
     case _ =>
       s"[${start}-${finish}]"
-    //      s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
   }
 
   private def setStart(p: Position) = FastPositions.setStart(this, (p))
@@ -142,89 +67,15 @@ trait FastAttributable extends Product with Cloneable {
     *
     * @see initTreeProperties
     */
-  var parent : FastAttributable = null
 
   /**
     * A short-hand for `parent.asInstanceOf[T]`, which is useful in cases
     * a `T`-specific operation is applied to the parent, which otherwise
     * would be of type `Attributable`.
     */
-  def parent[T] : T = parent.asInstanceOf[T]
 
-  /**
-    * Is this node the root of the hierarchy?
-    */
-  private val _children = scala.collection.mutable.ListBuffer[FastAttributable] ()
-  var index : Int = -1
-  def prev[T] : T = prev.asInstanceOf[T]
-  var next : FastAttributable = null
-  var prev : FastAttributable = null
 
-  def initTreeProperties () {
 
-    import scala.collection.GenTraversable
-
-    var ind : Int = 0
-    var prev : FastAttributable = null
-
-    /**
-      * Set the node connections and index of `c`.
-      */
-    def setConnections (c : FastAttributable) {
-      c.parent = this
-      _children += c
-      c.index = ind
-      ind += 1
-      c.prev = prev
-      c.next = null
-      if (prev != null) prev.next = c
-      prev = c
-
-      // Recursively set the connections below c
-      c.initTreeProperties
-    }
-
-    /**
-      * Recursively set the child connections of `node` and its
-      * `Attributable` children, skipping any number of `Some` options,
-      * `Left` or `Right` eithers, tuples, or `GenTraversable` nodes
-      * on the way.
-      */
-    def setNodeChildConnections (node : Any) : Unit =
-      node match {
-        case c : FastAttributable =>
-          setConnections (c)
-        case Some (o) =>
-          setNodeChildConnections (o)
-        case Left (l) =>
-          setNodeChildConnections (l)
-        case Right (r) =>
-          setNodeChildConnections (r)
-        case (a, b) =>
-          setNodeChildConnections (a)
-          setNodeChildConnections (b)
-        case (a, b, c) =>
-          setNodeChildConnections (a)
-          setNodeChildConnections (b)
-          setNodeChildConnections (c)
-        case (a, b, c, d) =>
-          setNodeChildConnections (a)
-          setNodeChildConnections (b)
-          setNodeChildConnections (c)
-          setNodeChildConnections (d)
-        case s : GenTraversable[_] =>
-          for (v <- s)
-            setNodeChildConnections (v)
-        case _ =>
-        // Ignore other kinds of nodes
-      }
-
-    // Start by setting the connections of the fields of this.
-    _children.clear ()
-    for (c <- productIterator)
-      setNodeChildConnections (c)
-
-  }
 
 
 }
@@ -234,7 +85,11 @@ trait FastAttributable extends Product with Cloneable {
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual SIL abstract syntax tree.
  */
-sealed trait PNode extends FastPositioned with FastAttributable{
+sealed trait PNode extends FastPositioned with Product{
+
+
+
+
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
 
@@ -282,6 +137,48 @@ sealed trait PNode extends FastPositioned with FastAttributable{
   /** @see [[Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[PNode, R]): Seq[R] =
     Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
+
+  private val _children = scala.collection.mutable.ListBuffer[PNode] ()
+
+
+  var parent : PNode = null
+  var index : Int = -1
+  var next : PNode = null
+  var prev : PNode = null
+
+  def initProperties() {
+
+    var ind : Int = 0
+    var prev : PNode = null
+
+
+    def setNodeChildConnections (node : Any) : Unit =
+      node match {
+        case c : PNode =>
+          c.parent = this
+          _children += c
+          c.index = ind
+          ind += 1
+          c.prev = prev
+          c.next = null
+          if (prev != null) prev.next = c
+          prev = c
+          c.initProperties
+        case Some (o) =>
+          setNodeChildConnections (o)
+          case s : GenTraversable[_] =>
+          for (v <- s)
+            setNodeChildConnections (v)
+        case _ =>
+        // Ignore other kinds of nodes
+      }
+
+    _children.clear ()
+    for (c <- productIterator)
+      setNodeChildConnections (c)
+
+  }
+
 }
 
 object TypeHelper {
@@ -608,7 +505,6 @@ case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PTyp
 {
   override val idnuse = func
   override val opName = func.name
-  //function!=null added for cases when this is not actually a function such as Issue #137(A method then). Does it break anyhthing?? -->Sahil
   override def signatures = if (function!=null&& function.formalArgs.size == args.size) (function match{
     case pf:PFunction => Set(
       new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
@@ -660,9 +556,7 @@ case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PTyp
   }
 }
 case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
-//  if (right.toString.contains("PIntLit(0)")) {
-//    println("11111")
-//  }
+
   override val args = Seq(left, right)
   val extraElementType = PTypeVar("#E")
   override val extraLocalTypeVariables: Set[PDomainType] =
@@ -1105,7 +999,6 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def formalArgs: Seq[PFormalArgDecl]
   def typ: PType
 }
-//s change
 case class PProgram(files: Seq[PImport], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
 case class PImport(file: String) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
