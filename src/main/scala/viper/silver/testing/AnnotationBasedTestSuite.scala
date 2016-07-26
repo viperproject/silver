@@ -224,7 +224,6 @@ case class DefaultAnnotatedTestInput(
     files: Seq[Path],
     tags: Seq[Tag],
     annotations: TestAnnotations) extends AnnotatedTestInput {
-
   /**
    * Create a test input that is specific to the given project.
    *

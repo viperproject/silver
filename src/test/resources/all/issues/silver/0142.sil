@@ -1,0 +1,6 @@
+method helper(a:Int, b: Int)
+{
+    assert -a+b == (-a) + b    
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert -a+b == -(a + b)    
+}

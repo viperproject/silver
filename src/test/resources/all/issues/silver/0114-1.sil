@@ -1,0 +1,7 @@
+define foo(x) true
+
+method bar()
+{
+    //:: ExpectedOutput(parser.error)
+    assert foo(1, 2)
+}

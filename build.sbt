@@ -9,7 +9,6 @@ scalaVersion := "2.11.7"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1"
 
-libraryDependencies += "com.googlecode.kiama" % "kiama_2.11" % "1.8.0"
 
 libraryDependencies += "org.rogach" %% "scallop" % "0.9.5"
 
@@ -21,11 +20,16 @@ libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % 
 
 libraryDependencies += "commons-io" % "commons-io" % "2.4"
 
+libraryDependencies += "com.lihaoyi" %% "fastparse" % "0.3.7"
+libraryDependencies +=  "com.google.guava" % "guava" % "17.0"
+
 scalacOptions += "-deprecation"
 
 scalacOptions += "-feature"
 
 scalacOptions += "-unchecked"
+
+scalacOptions += "-Dscalac.patmat.analysisBudget=off"
 
 // Make publish-local also create a test artifact, i.e., put a jar-file into the local Ivy
 // repository that contains all classes and resources relevant for testing.

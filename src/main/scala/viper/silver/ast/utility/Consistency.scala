@@ -6,14 +6,13 @@
 
 package viper.silver.ast.utility
 
-import scala.util.parsing.input.{Position, NoPosition}
-import org.kiama.util.{Message, Messaging}
-import viper.silver.parser.Parser
+import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast._
+import viper.silver.{FastMessage, FastMessaging}
 
 /** An utility object for consistency checking. */
 object Consistency {
-  var messages: Messaging.Messages = Nil
+  var messages: FastMessaging.Messages = Nil
   def recordIfNot(suspect: Positioned, property: Boolean, message: String) {
     if (!property) {
       val pos = suspect.pos match {
@@ -32,21 +31,60 @@ object Consistency {
         case rp@viper.silver.ast.NoPosition => NoPosition
       }
 
-      this.messages ++= Messaging.aMessage(Message(message,pos))  // this is the way to construct a message directly with a position (only).
+      this.messages ++= FastMessaging.aMessage(FastMessage(message,pos))  // this is the way to construct a message directly with a position (only).
     }
   }
 
-  /** Reset the Kiama messages */
   def resetMessages() { this.messages = Nil }
   @inline
   def recordIf(suspect: Positioned, property: Boolean, message: String) =
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */
-  def reservedNames: Seq[String] = Parser.reserved
+  def reservedNames: Seq[String] = Seq("result",
+    // types
+    "Int", "Perm", "Bool", "Ref", "Rational",
+    // boolean constants
+    "true", "false",
+    // null
+    "null",
+    // preamble importing
+    "import",
+    // declaration keywords
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "wand",
+    // specifications
+    "requires", "ensures", "invariant",
+    // statements
+    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
+    // control flow
+    "while", "if", "elseif", "else", "goto", "label",
+    // special fresh block
+    "fresh", "constraining",
+    // sequences
+    "Seq",
+    // sets and multisets
+    "Set", "Multiset", "union", "intersection", "setminus", "subset",
+    // prover hint expressions
+    "unfolding", "in", "folding", "applying", "packaging",
+    // old expression
+    "old", "lhs",
+    // other expressions
+    "let",
+    // quantification
+    "forall", "exists", "forperm",
+    // permission syntax
+    "acc", "wildcard", "write", "none", "epsilon", "perm",
+    // modifiers
+    "unique")
 
   /** Returns true iff the string `name` is a valid identifier. */
-  def validIdentifier(name: String) = ("^" + Parser.identifier + "$").r.findFirstIn(name).isDefined
+  val identFirstLetter = "[a-zA-Z$_]"
+
+  val identOtherLetterChars = "a-zA-Z0-9$_'"
+  val identOtherLetter = s"[$identOtherLetterChars]"
+  val identifier = identFirstLetter + identOtherLetter + "*"
+
+  def validIdentifier(name: String) = ("^" + identifier + "$").r.findFirstIn(name).isDefined
 
   /** Returns true iff the string `name` is a valid identifier, and not a reserved word. */
   def validUserDefinedIdentifier(name: String) = validIdentifier(name) && !reservedNames.contains(name)

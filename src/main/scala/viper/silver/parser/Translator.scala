@@ -6,14 +6,15 @@
 
 package viper.silver.parser
 
-import com.sun.org.apache.xerces.internal.impl.xs.SubstitutionGroupHandler
+
 
 import scala.language.implicitConversions
 import scala.collection.mutable
-import org.kiama.attribution.Attributable
-import org.kiama.util.Messaging
 import viper.silver.ast._
-import viper.silver.ast.utility.{Consistency, Visitor, Statements}
+import viper.silver.ast.utility.{Consistency, Statements, Visitor}
+import viper.silver.FastMessaging
+
+
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -133,7 +134,7 @@ case class Translator(program: PProgram) {
   private def stmt(s: PStmt): Stmt = {
     val pos = s
     s match {
-      case PVarAssign(idnuse, PFunctApp(func, args, _)) if members.get(func.name).get.isInstanceOf[Method] =>
+      case PVarAssign(idnuse, PCall(func, args, _)) if members.get(func.name).get.isInstanceOf[Method] =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the resolver.
          */
@@ -211,7 +212,7 @@ case class Translator(program: PProgram) {
           case _: PLocalVarDecl | _: PFormalArgDecl => LocalVar(name)(ttyp(pexp.typ), pos)
           case pf: PField =>
             /* A malformed AST where a field is dereferenced without a receiver */
-            Consistency.messages ++= Messaging.message(piu, s"expected expression but found field $name")
+            Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
           case _: PLetWand =>
             /* TODO: We might want to differentiate between magic wand references and regular local variables. */
@@ -254,7 +255,7 @@ case class Translator(program: PProgram) {
             assert(r.typ==Int)
             l.typ match {
               case Perm => PermDiv(l, r)(pos)
-              case Int  => assert (l.typ==Int); FractionalPerm(l, r)(pos)
+              case Int  => assert (r.typ==Int); FractionalPerm(l, r)(pos)
               case _    => sys.error("should not occur in type-checked program")
             }
           case "\\" => Div(l, r)(pos)
@@ -320,7 +321,7 @@ case class Translator(program: PProgram) {
         IntLit(i)(pos)
       case p@PResultLit() =>
         // find function
-        var par: Attributable = p.parent
+        var par: PNode = p.parent
         while (!par.isInstanceOf[PFunction]) {
           if (par == null) sys.error("cannot use 'result' outside of function")
           par = par.parent
@@ -334,7 +335,7 @@ case class Translator(program: PProgram) {
         FieldAccess(exp(rcv), findField(idn))(pos)
       case p@PPredicateAccess(args, idn) =>
         PredicateAccess(args map exp, findPredicate(idn))(pos)
-      case pfa@PFunctApp(func, args, _) =>
+      case pfa@PCall(func, args, _) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
           case f @ DomainFunc(name, formalArgs, typ, _) =>
@@ -357,6 +358,11 @@ case class Translator(program: PProgram) {
                 DomainFuncApp(f, actualArgs, sp)(pos)
               case _ => sys.error("type unification error - should report and not crash")
             }
+          case f: Predicate => {
+            val inner = PredicateAccess(args map exp, findPredicate(func)) (pos)
+            val fullPerm = FullPerm()(pos)
+            PredicateAccessPredicate(inner, fullPerm) (pos)
+          }
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>
@@ -406,8 +412,13 @@ case class Translator(program: PProgram) {
         ApplyOld(exp(e))(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
-      case PCurPerm(loc) =>
-        CurrentPerm(exp(loc).asInstanceOf[LocationAccess])(pos)
+      case PCurPerm(loc) => {
+        exp(loc) match {
+          case loc@PredicateAccessPredicate(inner, args) => CurrentPerm(inner.asInstanceOf[LocationAccess])(pos)
+          case x: FieldAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
+          case x: PredicateAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
+        }
+      }
       case PNoPerm() =>
         NoPerm()(pos)
       case PFullPerm() =>
@@ -423,6 +434,7 @@ case class Translator(program: PProgram) {
             FieldAccessPredicate(loc, p)(pos)
           case loc@PredicateAccess(rcv, pred) =>
             PredicateAccessPredicate(loc, p)(pos)
+          case loc@PredicateAccessPredicate(inner, args) => PredicateAccessPredicate(inner, p)(pos)
           case _ =>
             sys.error("unexpected location")
         }
@@ -456,17 +468,13 @@ case class Translator(program: PProgram) {
     }
   }
 
-//  /** Takes a `scala.util.parsing.input.Position` and turns it into a `SourcePosition`. */
-//  implicit def liftPos(pos: scala.util.parsing.input.Position): SourcePosition =
-//    SourcePosition(file, pos.line, pos.column)
-
-  /** Takes a [[viper.silver.parser.KiamaPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
-  implicit def liftPos(pos: KiamaPositioned): SourcePosition = {
+  /** Takes a [[viper.silver.parser.FastPositioned]] and turns it into a [[viper.silver.ast.SourcePosition]]. */
+  implicit def liftPos(pos: FastPositioned): SourcePosition = {
     val start = LineColumnPosition(pos.start.line, pos.start.column)
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
     pos.start match {
       case fp: FilePosition => SourcePosition(fp.file, start, end)
-      case _ => SourcePosition(null, start, end)
+      case _ => SourcePosition(null , start, end)
     }
   }
 

@@ -6,11 +6,11 @@
 
 package viper.silver.ast
 
-import org.kiama.output._
+import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 
 /** Expressions. */
-sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
+sealed trait Exp extends Node with Typed with Positioned with Infoed with FastPrettyExpression {
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
 
@@ -331,7 +331,7 @@ case class FieldAccess(rcv: Exp, field: Field)
 /** A predicate access expression. See also companion object below for an alternative creation signature */
 case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Position, val info: Info) extends LocationAccess {
   def loc(p:Program) = p.findPredicate(predicateName)
-  lazy val typ = InternalType
+  lazy val typ = Bool
 
   /** The body of the predicate with the arguments instantiated correctly. */
   def predicateBody(program : Program) = {
@@ -537,7 +537,7 @@ case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info
   elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = SeqType(elems.head.typ)
   lazy val desugared : SeqExp = {
-    elems match {
+    elems.toList match {
       case Nil => sys.error("did not expect empty sequence")
       case a :: Nil => this
       case a :: as => // desugar into singleton sequences and appends
@@ -559,7 +559,7 @@ case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val inf
 }
 
 /** Appending two sequences of the same type. */
-case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp with PrettyBinaryExpression {
+case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp with FastPrettyBinaryExpression {
   require(left.typ == right.typ)
   lazy val priority = 0
   lazy val fixity = Infix(LeftAssoc)
@@ -600,14 +600,14 @@ case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Inf
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
-case class SeqContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp with PrettyBinaryExpression {
+case class SeqContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp with FastPrettyBinaryExpression {
   require(s.typ.isInstanceOf[SeqType])
   require(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)
   lazy val priority = 0
   lazy val fixity = Infix(LeftAssoc)
-  lazy val left: PrettyExpression = elem
+  lazy val left: FastPrettyExpression = elem
   lazy val op = "in"
-  lazy val right: PrettyExpression = s
+  lazy val right: FastPrettyExpression = s
   lazy val typ = Bool
   def getArgs = Seq(elem,s)
   def withArgs(newArgs: Seq[Exp]) = SeqContains(newArgs.head,newArgs(1))(pos,info)
@@ -657,7 +657,7 @@ sealed trait MultisetExp extends Exp with PossibleTrigger
  */
 sealed trait AnySetExp extends SetExp with MultisetExp
 sealed trait AnySetUnExp extends AnySetExp with UnExp
-sealed trait AnySetBinExp extends AnySetExp with PrettyBinaryExpression with BinExp
+sealed trait AnySetBinExp extends AnySetExp with FastPrettyBinaryExpression with BinExp
 
 /** The empty set of a given element type. */
 case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
@@ -814,7 +814,7 @@ sealed trait AbstractDomainFuncApp extends FuncLikeApp {
  * A common class for equality and inequality comparisons.  Note that equality is defined for
  * all types, and therefore is not a domain function and does not belong to a domain.
  */
-sealed abstract class EqualityCmp(val op: String) extends BinExp with PrettyBinaryExpression {
+sealed abstract class EqualityCmp(val op: String) extends BinExp with FastPrettyBinaryExpression {
   require(left.typ == right.typ, s"expected the same typ, but got ${left.typ} and ${right.typ}")
   Consistency.checkNoPositiveOnly(left)
   Consistency.checkNoPositiveOnly(right)
@@ -829,7 +829,7 @@ sealed trait DomainOpExp extends AbstractDomainFuncApp with ForbiddenInTrigger {
 }
 
 /** Binary expressions of any kind (whether or not they belong to a domain). */
-sealed trait BinExp extends Exp with PrettyBinaryExpression {
+sealed trait BinExp extends Exp with FastPrettyBinaryExpression {
   lazy val args = List(left, right)
   def left: Exp
   def right: Exp
@@ -863,7 +863,7 @@ object DomainBinExp {
 }
 
 /** Common superclass for unary expressions that belong to a domain (and thus have a domain operator). */
-sealed abstract class DomainUnExp(val funct: UnOp) extends PrettyUnaryExpression with DomainOpExp with UnExp {
+sealed abstract class DomainUnExp(val funct: UnOp) extends FastPrettyUnaryExpression with DomainOpExp with UnExp {
   def func = (p:Program) => funct
   def funcname = funct.name
   def typ = funct.typ

@@ -27,6 +27,7 @@ object Transformer {
 
     def recurse(parent: PNode): PNode = {
       val newNode = parent match {
+        case PMacroRef(idnuse) => PMacroRef(go(idnuse))
         case _: PIdnDef => parent
         case _: PIdnUse => parent
         case PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))
@@ -47,7 +48,9 @@ object Transformer {
         case _: PNullLit => parent
         case PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))
         case PPredicateAccess(args, idnuse) => PPredicateAccess( args map go, go(idnuse))
-        case PFunctApp(func, args, explicitType) => PFunctApp(go(func), args map go, ( explicitType match {case Some(t) => Some(go(t)) case None => None}))
+        case PCall(func, args, explicitType) => {
+          PCall(go(func), args map go, ( explicitType match {case Some(t) => Some(go(t)) case None => None}))
+        }
 
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
 
@@ -112,7 +115,8 @@ object Transformer {
 
         case PProgram(files, domains, fields, functions, predicates, methods, errors) => PProgram(files, domains map go, fields map go, functions map go, predicates map go, methods map go, errors)
         case PImport(file) => PImport(file)
-        case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, go(body))
+        case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go,
+          go(body))
         case PDomain(idndef, typVars, funcs, axioms) => PDomain(go(idndef), typVars map go, funcs map go, axioms map go)
         case PField(idndef, typ) => PField(go(idndef), go(typ))
         case PFunction(idndef, formalArgs, typ, pres, posts, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, body map go)
@@ -123,17 +127,19 @@ object Transformer {
 
       if (!allowChangingNodeType)
         assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
-
       newNode.setPos(parent)
     }
 
+
+
     val beforeRecursion = pre.applyOrElse(node, identity[PNode])
+
     val afterRecursion = if (recursive(node)) {
       recurse(beforeRecursion)
     } else {
       beforeRecursion
     }
-
     post.applyOrElse(afterRecursion, identity[PNode]).asInstanceOf[A]
   }
+
 }

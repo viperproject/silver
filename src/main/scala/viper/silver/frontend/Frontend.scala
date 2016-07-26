@@ -6,10 +6,12 @@
 
 package viper.silver.frontend
 
+import java.io.{BufferedWriter, FileWriter}
 import java.nio.file.{Files, Path}
 import scala.io.Source
-import viper.silver.verifier.{Failure, AbstractError, VerificationResult, Verifier}
 import viper.silver.ast.Program
+import viper.silver.verifier.{AbstractError, Failure, VerificationResult, Verifier}
+
 
 /** Represents one phase of a frontend */
 case class Phase(name: String, action: () => Unit)
