@@ -1,6 +1,6 @@
 field b: Bool
 field c: Ref
-
+field d: Ref
 field f: Int
 
 method succeeds1(k: Perm, x: Ref) returns (r: Bool)
@@ -20,7 +20,6 @@ method succeeds1(k: Perm, x: Ref) returns (r: Bool)
 
   r := x.b ? x.c == x.d : true
 }
-field d: Ref
 
 method succeeds2(k: Perm, x: Ref) returns (r: Bool)
   requires k > none
