@@ -1,0 +1,9 @@
+define S { assert true } // statement macro
+
+method m()
+{	
+    assert true
+    S
+    assert true
+}
+
