@@ -289,7 +289,8 @@ trait SilFrontend extends DefaultFrontend {
     lazy val shortFileStr = fileOpt.map(f => FilenameUtils.getName(f.toString)).getOrElse("<unknown file>")
     lazy val startStr = startOpt.map(toStr).getOrElse("<unknown start line>:<unknown start column>")
     lazy val endStr = endOpt.map(toStr).getOrElse("<unknown end line>:<unknown end column>")
-    lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
+    lazy val typeStr = error.fullId
+    lazy val consoleErrorStr = s"[$typeStr] $shortFileStr,$startStr: $messageStr"
     lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
 
     @inline
