@@ -6,6 +6,8 @@
 
 package viper.silver.parser
 
+import viper.silver.FastPositions
+
 /* TODO: This is basically a copy of silver.ast.utility.Transformer. Can we share code?
  *       This could be done by using tree visiting and rewriting functionality from Kiama,
   *      or to implement something generic ourselves. Shapeless or Scala Macros might be
@@ -18,11 +20,12 @@ object Transformer {
                             pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
                             recursive: PNode => Boolean = !pre.isDefinedAt(_),
                             post: PartialFunction[PNode, PNode] = PartialFunction.empty,
-                            allowChangingNodeType: Boolean = false): A = {
+                            allowChangingNodeType: Boolean = false,
+                            resultCheck : PartialFunction[(PNode, PNode), Unit] = PartialFunction.empty): A = {
 
     @inline
     def go[B <: PNode](root: B): B = {
-      transform(root, pre)(recursive, post, allowChangingNodeType)
+      transform(root, pre)(recursive, post, allowChangingNodeType, resultCheck)
     }
 
     def recurse(parent: PNode): PNode = {
@@ -127,12 +130,15 @@ object Transformer {
 
       if (!allowChangingNodeType)
         assert(newNode.getClass == parent.getClass, "Transformer is not expected to change type of nodes.")
+
       newNode.setPos(parent)
     }
 
 
 
     val beforeRecursion = pre.applyOrElse(node, identity[PNode])
+
+    resultCheck.applyOrElse((node, beforeRecursion), identity[(PNode, PNode)])
 
     val afterRecursion = if (recursive(node)) {
       recurse(beforeRecursion)

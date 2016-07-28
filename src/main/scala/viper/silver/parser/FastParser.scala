@@ -125,6 +125,15 @@ object FastParser extends PosParser{
   def doExpandDefines[N <: PNode](defines: Seq[PDefine], node: N): Option[N] = {
     var expanded = false
 
+    def checkMacroType(oldNode: PNode, newNode: PNode): Unit = {
+      if (oldNode.isInstanceOf[PStmt] && !newNode.isInstanceOf[PStmt]) {
+        throw new ParseException("Expression macro used as statement", FastPositions.getStart(oldNode))
+      }
+      if (oldNode.isInstanceOf[PExp] && !newNode.isInstanceOf[PExp]) {
+        throw new ParseException("Statement macro used as expression", FastPositions.getStart(oldNode))
+      }
+    }
+
     def lookupOrElse(piu: PIdnUse, els: PNode) =
       defines.find(_.idndef.name == piu.name).fold[PNode](els) _
 
@@ -154,10 +163,11 @@ object FastParser extends PosParser{
               FastPositions.setFinish(n, target.finish, true)
               n
             }
+          }, resultCheck = {
+            case (o,n) => checkMacroType(o, n)
           }) : PNode /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
       })
     }
-  try {
     val potentiallyExpandedNode =
 
       node.transform {
@@ -169,22 +179,26 @@ object FastParser extends PosParser{
            */
           lookupOrElse(piu, piu)(define => {
             expanded = true
-
+            if(define.args.isDefined && !define.args.get.isEmpty) {
+              throw new ParseException("Number of arguments does not match", FastPositions.getStart(piu))
+            }
             define.body.transform()(post = {
               case n => {
                 FastPositions.setStart(n, piu.start, true)
                 FastPositions.setFinish(n, piu.finish, true)
                 n
               }
+            }, resultCheck = {
+              case (o,n) => checkMacroType(o, n)
             })
           })
 
         case pmac: PMacroRef => pmac.idnuse match {
           case piu: PIdnUse =>
             /* Same as expanding named assertion in previous case for PIdnUse*/
-            lookupOrElse(piu, piu)(define => {
+            lookupOrElse(piu, pmac)(define => {
               expanded = true
-              if(!define.args.isEmpty) {
+              if(define.args.isDefined && !define.args.get.isEmpty) {
                 throw new ParseException("Number of arguments does not match", FastPositions.getStart(piu))
               }
               define.body.transform()(post = {
@@ -193,23 +207,21 @@ object FastParser extends PosParser{
                   FastPositions.setFinish(n, piu.finish, true)
                   n
                 }
+              }, resultCheck = {
+                case (o,n) => checkMacroType(o, n)
               })
             })
         }
 
         case fapp: PCall => expandAllegedInvocation(fapp.func, fapp.args, fapp)
         case call: PMethodCall => expandAllegedInvocation(call.method, call.args, call)
-      }(recursive = _ => true)
+      }(recursive = _ => true,
+        resultCheck = {
+          case (o,n) => checkMacroType(o, n)
+        })
 
     if (expanded) Some(potentiallyExpandedNode)
     else None
-  }   catch {
-        case e : ClassCastException => {
-          throw new ParseException("Statement macro used as expression or vice versa", null)
-        }
-
-      }
-
   }
 
   /** The file we are currently parsing (for creating positions later). */
