@@ -101,10 +101,11 @@ sealed trait PNode extends FastPositioned with Product{
   def transform(pre: PartialFunction[PNode, PNode] = PartialFunction.empty)
                (recursive: PNode => Boolean = !pre.isDefinedAt(_),
                 post: PartialFunction[PNode, PNode] = PartialFunction.empty,
-                allowChangingNodeType: Boolean = false)
+                allowChangingNodeType: Boolean = false,
+                resultCheck : PartialFunction[(PNode, PNode), Unit] = PartialFunction.empty)
                : this.type =
 
-    Transformer.transform[this.type](this, pre)(recursive, post, allowChangingNodeType)
+    Transformer.transform[this.type](this, pre)(recursive, post, allowChangingNodeType, resultCheck)
 
   /** @see [[Visitor.deepCollect()]] */
   def deepCollect[A](f: PartialFunction[PNode, A]) : Seq[A] =
