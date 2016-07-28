@@ -40,8 +40,10 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }
   }
 
+  def findFunctionOptionally(name: String): Option[Function] = this.functions.find(_.name == name)
+
   def findFunction(name: String): Function = {
-    this.functions.find(_.name == name) match {
+    findFunctionOptionally(name) match {
       case Some(f) => f
       case None => sys.error("Function name " + name + " not found in program.")
     }

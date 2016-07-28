@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/147/)
+
 /* Provided by Stefan Blom of U Twente. */
 
 field src: Seq[Ref]
