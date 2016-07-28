@@ -262,6 +262,16 @@ trait FastPrettyPrinterBase {
         d ((i + j, w))
     })
 
+  def group (d : Doc) : Doc =
+    new Doc (
+      (iw : IW) =>
+        (c1 : TreeCont) =>
+              (p : PPosition, dq : Dq) => {
+                val n = (h : Horizontal) => (o : Out) => o
+                (d (iw) (leave (c1))) (p, dq :+ ((p, n)))
+              }
+    )
+
   // Obtaining output
 
   def pretty (d : Doc, w : Width = defaultWidth) : Layout = {
@@ -308,19 +318,9 @@ trait FastPrettyUnaryExpression extends FastPrettyOperatorExpression {
   def exp : FastPrettyExpression
 }
 
+trait BracketPrettyPrinter extends FastPrettyPrinterBase {
+  def toParenDoc(e: FastPrettyExpression): Doc
 
-
-
-object FastPrettyPrinter extends  FastPrettyPrinterBase {
-
-  override val defaultIndent = 2
-
-  lazy val uninitialized: Doc = value("<not initialized>")
-
-  /** Pretty-print any AST node. */
-  def pretty(n: Node): String = {
-    super.pretty(show(n))
-  }
   //uses to implement the paper algo, if sees that it has to be bracketed, brackets else not
   def bracket (inner : FastPrettyOperatorExpression, outer : FastPrettyOperatorExpression,
                side : Side) : Doc = {
@@ -353,6 +353,22 @@ object FastPrettyPrinter extends  FastPrettyPrinterBase {
           false
       })
   }
+}
+
+
+
+
+object FastPrettyPrinter extends  BracketPrettyPrinter {
+
+  override val defaultIndent = 2
+
+  lazy val uninitialized: Doc = value("<not initialized>")
+
+  /** Pretty-print any AST node. */
+  def pretty(n: Node): String = {
+    super.pretty(show(n))
+  }
+
 
   /** Show any AST node. */
   def show(n: Node): Doc = n match {
@@ -573,7 +589,6 @@ object FastPrettyPrinter extends  FastPrettyPrinterBase {
     }
   }
 
-  // Note: pretty-printing expressions is mostly taken care of by kiama
   def toParenDoc(e: FastPrettyExpression): Doc = e match {
     case IntLit(i) => value(i)
     case BoolLit(b) => value(b)

@@ -499,7 +499,7 @@ object FastParser extends PosParser{
 
   lazy val block: P[Seq[PStmt]] = P("{" ~ stmts ~ "}")
 
-  lazy val stmts: P[Seq[PStmt]] = P(stmt ~ ";".?).rep
+  lazy val stmts: P[Seq[PStmt]] = P(stmt ~/ ";".?).rep
 
   lazy val elsifEls: P[PStmt] = P(elsif | els)
 
@@ -507,9 +507,9 @@ object FastParser extends PosParser{
     case (cond, thn, ele) => PIf(cond, PSeqn(thn), ele)
   }
 
-  lazy val els: P[PStmt] = ("else" ~ block).?.map { block => PSeqn(block.getOrElse(Nil)) }
+  lazy val els: P[PStmt] = (keyword("else") ~/ block).?.map { block => PSeqn(block.getOrElse(Nil)) }
 
-  lazy val whle: P[PWhile] = P("while" ~ "(" ~ exp ~ ")" ~ inv.rep ~ block).map {
+  lazy val whle: P[PWhile] = P(keyword("while") ~/ "(" ~ exp ~ ")" ~ inv.rep ~ block).map {
     case (cond, invs, body) => PWhile(cond, invs, PSeqn(body))
   }
 

@@ -13,7 +13,7 @@ package viper.silver.parser
   *      copying existing nodes, i.e., case classes.
  */
 object Transformer {
-  /* Attention: You most likely want to call org.kiama.attribution.Attribution.initTree on the transformed node. */
+  /* Attention: You most likely want to call initTree on the transformed node. */
   def transform[A <: PNode](node: A,
                             pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
                             recursive: PNode => Boolean = !pre.isDefinedAt(_),
