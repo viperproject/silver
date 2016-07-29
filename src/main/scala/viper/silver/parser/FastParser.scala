@@ -269,11 +269,15 @@ object FastParser extends PosParser{
 
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old | applyOld
-    | keyword("result").map { _ => PResultLit() } | (CharIn("-!+").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) }
+    | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding | applying
     | packaging | setTypedEmpty | explicitSetNonEmpty | explicitMultisetNonEmpty | multiSetTypedEmpty | seqTypedEmpty
     | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
 
+
+  lazy val result: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
+
+  lazy val unExp: P[PUnExp] = P((CharIn("-!+").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
 
   lazy val integer: P[PIntLit] = P(CharIn('0' to '9').rep(1)).!.map { s => PIntLit(BigInt(s)) }
 
@@ -397,7 +401,7 @@ object FastParser extends PosParser{
 
   lazy val idndef: P[PIdnDef] = P(ident).map(PIdnDef)
 
-  lazy val quant: P[PExp] = P((keyword("forall") ~/ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) => PForall(a, b, c) } |
+  lazy val quant: P[PExp] = P((keyword("forall") ~/ nonEmptyFormalArgList ~ "::" ~/ trigger.rep ~ exp).map { case (a, b, c) => PForall(a, b, c) } |
     (keyword("exists") ~/ nonEmptyFormalArgList ~ "::" ~ exp).map { case (a, b) => PExists(a, b) })
 
   lazy val nonEmptyFormalArgList: P[Seq[PFormalArgDecl]] = P(formalArg.rep(min = 1, sep = ","))
@@ -414,15 +418,15 @@ object FastParser extends PosParser{
 
   lazy val seqType: P[PType] = P(keyword("Seq") ~/ "[" ~ typ ~ "]").map(PSeqType)
 
-  lazy val setType: P[PType] = P("Set" ~ "[" ~ typ ~ "]").map(PSetType)
+  lazy val setType: P[PType] = P(keyword("Set") ~/ "[" ~ typ ~ "]").map(PSetType)
 
-  lazy val multisetType: P[PType] = P("Multiset" ~ "[" ~ typ ~ "]").map(PMultisetType)
+  lazy val multisetType: P[PType] = P(keyword("Multiset") ~/ "[" ~ typ ~ "]").map(PMultisetType)
 
   lazy val primitiveTyp: P[PType] = P(StringIn("Rational").!.map { case _ => PPrimitiv("Perm") } | StringIn("Int", "Bool", "Perm", "Ref").!.map(PPrimitiv))
 
-  lazy val trigger: P[Seq[PExp]] = P("{" ~ exp.rep(sep = ",") ~ "}")
+  lazy val trigger: P[Seq[PExp]] = P("{" ~/ exp.rep(sep = ",", min = 1) ~ "}")
 
-  lazy val forperm: P[PExp] = P(keyword("forperm") ~ "[" ~ idnuse.rep(sep = ",") ~ "]" ~ idndef ~ "::" ~ exp).map {
+  lazy val forperm: P[PExp] = P(keyword("forperm") ~ "[" ~ idnuse.rep(sep = ",") ~ "]" ~ idndef ~ "::" ~/ exp).map {
     case (ids, id, body) => PForPerm(PFormalArgDecl(id, PPrimitiv("Ref")), ids, body)
   }
 
@@ -454,7 +458,7 @@ object FastParser extends PosParser{
 
   lazy val setTypedEmpty: P[PExp] = P("Set" ~ "[" ~ typ ~ "]" ~ "(" ~ ")").map { case a => PEmptySet(a) }
 
-  lazy val explicitSetNonEmpty: P[PExp] = P("Set"  ~ "(" ~ exp.rep(sep = ",") ~ ")").map(PExplicitSet)
+  lazy val explicitSetNonEmpty: P[PExp] = P("Set"  ~ "(" ~/ exp.rep(sep = ",", min = 1) ~ ")").map(PExplicitSet)
 
   lazy val explicitMultisetNonEmpty: P[PExp] = P("Multiset" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map { case elems => PExplicitMultiset(elems) }
 
@@ -464,7 +468,7 @@ object FastParser extends PosParser{
 
   lazy val seqLength: P[PExp] = P("|" ~ exp ~ "|").map(PSize)
 
-  lazy val explicitSeqNonEmpty: P[PExp] = P("Seq(" ~ exp.rep(min = 1, sep = ",") ~ ")").map {
+  lazy val explicitSeqNonEmpty: P[PExp] = P("Seq(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map {
     //      case Nil => PEmptySeq(PUnknown())
     case elems => PExplicitSeq(elems)
   }
