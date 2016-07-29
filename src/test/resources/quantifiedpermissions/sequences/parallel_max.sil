@@ -27,7 +27,7 @@ method parallel_max(a:Ref, start:Int, end:Int, kperm: Perm) returns (mx: Int, po
 
     if(end-start > 1)
     {
-        middle := start + (end-start)\2
+        middle := start + (end-start)/2
 
         // fork tl := parallel_max(a, start, middle, (1 / 2) * kperm)
         exhale a != null

@@ -44,7 +44,7 @@ method main_main(this: Ref, tcount: Int, gsize: Int, tid: Int, gid: Int, lid: In
   var half: Int
   var offset: Int
   __last_barrier := 0
-  half := gsize \ 2
+  half := gsize / 2
   offset := (tid == 0 ? 0 : half)
   if (tid < 2) {
     this.dst[tid].Integer_value := this.src[offset].Integer_value

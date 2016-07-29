@@ -1,17 +1,17 @@
 method callee(x: Int) returns (r: Int)
   requires true
   //:: ExpectedOutput(not.wellformed:division.by.zero)
-  ensures r == 1\x
+  ensures r == 1/x
 {
   //:: ExpectedOutput(assignment.failed:division.by.zero)
   //:: MissingOutput(assignment.failed:division.by.zero, /Silicon/issue/162/)
-  r := 1\x
+  r := 1/x
 }
 
 method test01(x: Int) {
   var r: Int
   //:: ExpectedOutput(call.failed:division.by.zero)
-  r := callee(1\x)
+  r := callee(1/x)
 }
 
 method test02(x: Int) {

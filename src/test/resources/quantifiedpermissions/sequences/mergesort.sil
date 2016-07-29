@@ -25,7 +25,7 @@ method parallel_mergesort(a:Ref, b:Ref, start:Int, end:Int)
 
     if(end-start > 1)
     {
-        middle := start + (end-start)\2
+        middle := start + (end-start)/2
 
 		// fork t1 := parallel_mergesort(a,b, start, middle)
 		t1A := a.array

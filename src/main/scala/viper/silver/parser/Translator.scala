@@ -220,7 +220,7 @@ case class Translator(program: PProgram) {
           case other =>
             sys.error("should not occur in type-checked program")
         }
-      case PBinExp(left, op, right) =>
+      case be@PBinExp(left, op, right) =>
         val (l, r) = (exp(left), exp(right))
         op match {
           case "+" =>
@@ -253,11 +253,18 @@ case class Translator(program: PProgram) {
             }
           case "/" =>
             assert(r.typ==Int)
-            l.typ match {
-              case Perm => PermDiv(l, r)(pos)
-              case Int  => assert (r.typ==Int); FractionalPerm(l, r)(pos)
-              case _    => sys.error("should not occur in type-checked program")
+            be.typ match {
+              case TypeHelper.Perm => {
+                l.typ match {
+                  case Perm => PermDiv(l, r)(pos)
+                  case Int => assert(r.typ == Int); FractionalPerm(l, r)(pos)
+                  case _ => sys.error("should not occur in type-checked program")
+                }
+              }
+              case TypeHelper.Int => Div(l, r)(pos)
+              case _ => sys.error("should not occur in type-checked program")
             }
+
           case "\\" => Div(l, r)(pos)
           case "%" => Mod(l, r)(pos)
           case "<" =>
