@@ -1,3 +1,4 @@
+//:: IgnoreFile(/Silver/issue/90/)
 method test(k: Perm)
 {
   fresh k
