@@ -1,0 +1,5 @@
+method m()
+{
+    //:: ExpectedOutput(parser.error)
+    assert forall i : Int :: {} true
+}

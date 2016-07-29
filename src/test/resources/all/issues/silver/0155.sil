@@ -1,0 +1,7 @@
+method foo(){
+
+    var g: Set[Ref]
+    //:: ExpectedOutput(parser.error)
+    exhale g == g union Set()
+
+}

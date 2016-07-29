@@ -1,0 +1,6 @@
+define outer
+//:: ExpectedOutput(parser.error)
+{
+  define inner {
+  }
+}
