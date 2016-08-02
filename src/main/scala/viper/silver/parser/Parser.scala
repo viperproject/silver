@@ -39,6 +39,7 @@ object Parser extends BaseParser {
   var _imports: mutable.HashMap[Path, Boolean] = null
 
   def parse(s: String, f: Path) = {
+    println(f)
     _file = f
     _imports = mutable.HashMap((f, true))
     val rp = RecParser(f)

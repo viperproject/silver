@@ -156,4 +156,32 @@ import viper.silver.ast._
         if (!visited.contains(m)) toVisit += m)
     }
   }
+
+  def rewriteForall (e: Forall) : Exp = {
+    val vars = e.variables
+    val triggers = e.triggers
+    e match {
+      case qp@QuantifiedPermission (v, cond, expr) =>
+        val stmts:Exp = expr match {
+          case AccessPredicate (_, _) =>
+            e
+          case and@And (e0, e1) =>
+            val rewrittenExp = And(rewriteForall (Forall (vars, triggers, Implies (cond, e0) (expr.pos, expr.info) ) (e.pos, e.info)),
+              rewriteForall (Forall (vars, triggers, Implies (cond, e1) (expr.pos, expr.info) ) (e.pos, e.info))) (and.pos, and.info)
+            rewrittenExp
+          //combination: implies
+          case implies@Implies (e0, e1) =>
+            //e0 must be pure
+            val newCond = And (cond, e0) (cond.pos, cond.info)
+            val newFa = Forall (vars, triggers, Implies (newCond, e1) (expr.pos, expr.info) ) (e.pos, e.info)
+            val rewrittenExp:Exp = rewriteForall (newFa)
+            rewrittenExp
+          case _ =>
+            e
+        }
+        stmts
+      case _ =>
+        e
+    }
+  }
 }

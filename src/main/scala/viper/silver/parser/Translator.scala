@@ -13,7 +13,7 @@ import scala.collection.mutable
 import org.kiama.attribution.Attributable
 import org.kiama.util.Messaging
 import viper.silver.ast._
-import viper.silver.ast.utility.{Consistency, Visitor, Statements}
+import viper.silver.ast.utility.{Consistency, Visitor, Statements, QuantifiedPermissions}
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -378,7 +378,12 @@ case class Translator(program: PProgram) {
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>
         val ts = triggers map (exps => Trigger(exps map exp)(exps.head))
-        Forall(vars map liftVarDecl, ts, exp(e))(pos)
+        var fa = Forall(vars map liftVarDecl, ts, exp(e))(pos)
+       if (fa.isPure) {
+          fa
+        } else {
+          QuantifiedPermissions.rewriteForall(fa)
+        }
       case f@PForPerm(v, args, e) =>
 
         //val args = fields map findField
