@@ -6,9 +6,11 @@
 
 package viper.silver.ast
 
+import org.kiama.output._
+
 import scala.collection.mutable
 import viper.silver.ast.pretty._
-import utility.{Consistency, Types,DomainInstances}
+import utility.{Consistency, DomainInstances, Types}
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])

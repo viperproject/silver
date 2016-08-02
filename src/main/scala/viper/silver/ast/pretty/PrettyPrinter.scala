@@ -1,8 +1,12 @@
 package viper.silver.ast.pretty
 
+import javax.print.Doc
+
 import viper.silver.ast._
-import scala.collection.immutable.{Queue}
+
+import scala.collection.immutable.Queue
 import scala.collection.immutable.Queue.{empty => emptyDq}
+import org.kiama.output._
 
 /**
  * A pretty printer for the SIL language.
@@ -56,15 +60,16 @@ trait FastPrettyPrinterBase {
     }
 
 
-  def string (s : String) : Doc =
+  def string (s : String) : Doc = {
     if (s == "") {
       empty
     } else if (s.charAt(0) == '\n') {
-      line <> string (s.tail)
+      line <> string(s.tail)
     } else {
-      val (xs, ys) = s.span (_ != '\n')
-      text (xs) <> string (ys)
+      val (xs, ys) = s.span(_ != '\n')
+      text(xs) <> string(ys)
     }
+  }
 
   /**
     * Convert a character to a document.  The character can be a newline.
@@ -150,56 +155,57 @@ trait FastPrettyPrinterBase {
 
   // Helper functions
 
-  private def scan (l : Width, out : OutGroup) (c : TreeCont) : TreeCont =
-
-      (p : PPosition, dq : Dq) =>
-        if (dq.isEmpty) {
-              val o1 = c (p + l, emptyDq)
-              val o2 = out (false) (o1)
-             o2
-        } else {
-          val (s, grp) = dq.last
-          val n = (s, (h : Horizontal) =>
-            (o1 : Out) =>
-                 grp (h) (out (h) (o1))
-            )
-          prune (c) (p + l, dq.init :+ n)
-        }
-
-  private def prune (c1 : TreeCont) : TreeCont =
-    (p : PPosition, dq : Dq) =>
-        (r : Remaining) =>
-          if (dq.isEmpty)
-            c1(p,emptyDq) (r)
-          else {
-            val (s, grp) = dq.head
-            if (p > s + r) {
-              grp(false) (prune(c1) (p,dq.tail))  (r)
-            } else {
-              c1 (p, dq) (r)
-            }
-          }
-
-
-  private def leave (c : TreeCont) : TreeCont =
-    (p : PPosition, dq : Dq) =>
+  private def scan (l : Width, out : OutGroup) (c : TreeCont) : TreeCont = {
+    (p: PPosition, dq: Dq) =>
       if (dq.isEmpty) {
-        c (p, emptyDq)
+        out(false)(c(p + l, emptyDq))
+      } else {
+        val (s, grp) = dq.last
+        prune(c)(p + l, dq.init :+ (s, (h: Horizontal) => {
+          (c0: Out) => {
+            grp(h)(out(h)(c0))
+          }
+        }))
+      }
+  }
+
+  private def prune(c: TreeCont): TreeCont = {
+    (p: PPosition, dq: Dq) => {
+      (r: Remaining) => {
+        if (dq.isEmpty) {
+          c(p, emptyDq)(r)
+        }else{
+          val (s, grp) = dq.head
+          if (p > s + r) {
+            grp(false)(prune(c)(p, dq.tail))(r)
+          }else{
+            c(p, dq)(r)
+          }
+        }
+      }
+    }
+  }
+
+  private def leave (c: TreeCont): TreeCont = {
+    (p: PPosition, dq: Dq) => {
+      if (dq.isEmpty) {
+        c(p, emptyDq)
       } else if (dq.length == 1) {
         val (s1, grp1) = dq.last
-       grp1(true) (c(p,emptyDq))
+        grp1(true)(c(p, emptyDq))
       } else {
         val (s1, grp1) = dq.last
         val (s2, grp2) = dq.init.last
-        val n = (s2, (h : Horizontal) =>
-          (o1 : Out) => {
-            val o3 =
-              (r : Remaining) =>
-                    grp1 (p <= s1 + r) (o1) (r)
-                 grp2 (h) (o3)
-          })
-        c (p, dq.init.init :+ n)
+        c(p, dq.init.init :+ (s2, (h: Horizontal) => {
+          (c0: Out) => {
+            grp2(h)((r: Remaining) => {
+              grp1(p <= s1 + r)(c0)(r)
+            })
+          }
+        }))
       }
+    }
+  }
 
   class Doc (f : DocCont) extends DocCont with DocOps {
 
@@ -217,31 +223,40 @@ trait FastPrettyPrinterBase {
   // Basic combinators
 
    implicit def text (t : String) : Doc =
-     if (t == "") empty else
        new Doc (
          (iw : IW) => {
            val l = t.length
            val outText : OutGroup =
-             (_ : Horizontal) => (o : Out) =>
-               (r : Remaining) =>
-                 t + o (r - l)
+             (_ : Horizontal) => {
+               (c : Out) => {
+                 (r : Remaining) => {
+                   t + (c (r - l))
+                 }
+               }
+             }
            scan (l, outText)
          }
        )
 
   def line (repl : Layout) : Doc =
-    new Doc ({
-      case (i, w) =>
+    new Doc (
+      (iw: IW) => {
+        val (i, w) = iw
         val outLine: OutGroup =
-          (h : Horizontal) => (c : Out) =>
-
-              (r : Remaining) =>
-                if (h)
-                   (repl + c (r - repl.length))
-                else
-                  ("\n" + (" " * i) + c (w - i))
+          (h: Horizontal) => {
+            (c: Out) => {
+              (r: Remaining) => {
+                if (h) {
+                  " " + c(r - 1)
+                }else{
+                  "\n" + (" " * i) + c(w - i)
+                }
+              }
+            }
+          }
         scan (1, outLine)
-    })
+      }
+    )
 
   def line : Doc =
     line (" ")
@@ -256,21 +271,23 @@ trait FastPrettyPrinterBase {
           c
     )
 
-  def nest (d : Doc, j : Indent = defaultIndent) : Doc =
+  def nest (d : Doc, j : Indent = defaultIndent) : Doc = {
     new Doc ({
       case (i, w) =>
         d ((i + j, w))
     })
+  }
 
-  def group (d : Doc) : Doc =
-    new Doc (
-      (iw : IW) =>
-        (c1 : TreeCont) =>
-              (p : PPosition, dq : Dq) => {
-                val n = (h : Horizontal) => (o : Out) => o
-                (d (iw) (leave (c1))) (p, dq :+ ((p, n)))
-              }
+  def group (d : Doc) : Doc = {
+    new Doc(
+      (iw: IW) =>
+        (c1: TreeCont) =>
+          (p: PPosition, dq: Dq) => {
+            val n = (h: Horizontal) => (o: Out) => o
+            (d(iw)(leave(c1))) (p, dq :+ ((p, n)))
+          }
     )
+  }
 
   // Obtaining output
 
@@ -289,40 +306,40 @@ trait FastPrettyPrinterBase {
 
 //stuff needed for the bracket calculation
 
-abstract class Side
+//abstract class Side
+//
+//trait FastPrettyExpression
+//case object LeftAssoc extends Side
+//case object RightAssoc extends Side
+//case object NonAssoc extends Side
+//
+//abstract class Fixity
+//case object Prefix extends Fixity
+//case object Postfix extends Fixity
+//case class Infix (side : Side) extends Fixity
 
-trait FastPrettyExpression
-case object LeftAssoc extends Side
-case object RightAssoc extends Side
-case object NonAssoc extends Side
-
-abstract class Fixity
-case object Prefix extends Fixity
-case object Postfix extends Fixity
-case class Infix (side : Side) extends Fixity
 
 
-
-trait FastPrettyOperatorExpression  extends FastPrettyExpression {
-  def priority : Int
-  def fixity : Fixity
-}
-
-trait FastPrettyBinaryExpression extends FastPrettyOperatorExpression {
-  def left : FastPrettyExpression
-  def op : String
-  def right : FastPrettyExpression
-}
-trait FastPrettyUnaryExpression extends FastPrettyOperatorExpression {
-  def op : String
-  def exp : FastPrettyExpression
-}
+//trait FastPrettyOperatorExpression  extends FastPrettyExpression {
+//  def priority : Int
+//  def fixity : Fixity
+//}
+//
+//trait FastPrettyBinaryExpression extends FastPrettyOperatorExpression {
+//  def left : FastPrettyExpression
+//  def op : String
+//  def right : FastPrettyExpression
+//}
+//trait FastPrettyUnaryExpression extends FastPrettyOperatorExpression {
+//  def op : String
+//  def exp : FastPrettyExpression
+//}
 
 trait BracketPrettyPrinter extends FastPrettyPrinterBase {
-  def toParenDoc(e: FastPrettyExpression): Doc
+  def toParenDoc(e: PrettyExpression): Doc
 
   //uses to implement the paper algo, if sees that it has to be bracketed, brackets else not
-  def bracket (inner : FastPrettyOperatorExpression, outer : FastPrettyOperatorExpression,
+  def bracket (inner : PrettyOperatorExpression, outer : PrettyOperatorExpression,
                side : Side) : Doc = {
     val d = toParenDoc (inner)
     if (noparens (inner, outer, side)) d else parens (d)
@@ -331,7 +348,7 @@ trait BracketPrettyPrinter extends FastPrettyPrinterBase {
     * Based on algorithm in "Unparsing expressions with prefix and postfix operators",
     * Ramsey, SP&E, 28 (12), October 1998.
     */
-  def noparens (inner : FastPrettyOperatorExpression, outer : FastPrettyOperatorExpression,
+  def noparens (inner : PrettyOperatorExpression, outer : PrettyOperatorExpression,
                 side : Side) : Boolean = {
     val pi = inner.priority
     val po = outer.priority
@@ -358,7 +375,7 @@ trait BracketPrettyPrinter extends FastPrettyPrinterBase {
 
 
 
-object FastPrettyPrinter extends  BracketPrettyPrinter {
+object FastPrettyPrinter extends  org.kiama.output.PrettyPrinter with ParenPrettyPrinter {
 
   override val defaultIndent = 2
 
@@ -580,16 +597,16 @@ object FastPrettyPrinter extends  BracketPrettyPrinter {
 
   /** Outputs the comments attached to `n` if there is at least one. */
   def showComment(n: Infoed): FastPrettyPrinter.Doc = {
-    if (n == null)
+    //if (n == null)
       empty
-    else {
-      val comment = n.info.comment
-      if (comment.nonEmpty) ssep((comment map ("//" <+> _)).to[collection.immutable.Seq], line) <> line
-      else empty
-    }
+    //else {
+      //val comment = n.info.comment
+      //if (comment.nonEmpty) ssep((comment map ("//" <+> _)).to[collection.immutable.Seq], line) <> line
+      //else empty
+    //}
   }
 
-  def toParenDoc(e: FastPrettyExpression): Doc = e match {
+  override def toParenDoc(e: PrettyExpression): Doc = e match {
     case IntLit(i) => value(i)
     case BoolLit(b) => value(b)
     case NullLit() => value(null)
@@ -691,29 +708,29 @@ object FastPrettyPrinter extends  BracketPrettyPrinter {
       surround(show(s),char ('|'))
 
     case null => uninitialized
-    case _: FastPrettyUnaryExpression | _: FastPrettyBinaryExpression => {
+    case _: PrettyUnaryExpression | _: PrettyBinaryExpression => {
       e match {
-        case b: FastPrettyBinaryExpression =>
+        case b: PrettyBinaryExpression =>
           val ld =
             b.left match {
-              case l: FastPrettyOperatorExpression =>
+              case l: PrettyOperatorExpression =>
                 bracket(l, b, LeftAssoc)
               case l =>
                 toParenDoc(l)
             }
           val rd =
             b.right match {
-              case r: FastPrettyOperatorExpression =>
+              case r: PrettyOperatorExpression =>
                 bracket(r, b, RightAssoc)
               case r =>
                 toParenDoc(r)
             }
           ld <+> text(b.op) <+> rd
 
-        case u: FastPrettyUnaryExpression =>
+        case u: PrettyUnaryExpression =>
           val ed =
             u.exp match {
-              case e: FastPrettyOperatorExpression =>
+              case e: PrettyOperatorExpression =>
                 bracket(e, u, NonAssoc)
               case e =>
                 toParenDoc(e)

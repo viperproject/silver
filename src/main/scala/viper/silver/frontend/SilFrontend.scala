@@ -220,8 +220,10 @@ trait SilFrontend extends DefaultFrontend {
     r.run match {
       case Some(modifiedInput) =>
         Translator(modifiedInput).translate match {
-          case Some(program) =>
+          case Some(program) =>{
             Succ(program)
+          }
+
 
           case None => // then these are translation messages
             Fail(FastMessaging.sortmessages(Consistency.messages) map (m =>
