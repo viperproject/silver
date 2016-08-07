@@ -42,7 +42,7 @@ function head(xs: Ref): Int
 /* Inserts value x at an appropriate position into the ordered linked-list xs, such that
  * the list remains ordered if it was in ascending order before.
  */
-method insert(xs: Ref, x: Int) returns (i: Int)
+method insert(xs: Ref, x:Int) returns (i: Int)
   requires acc(List(xs))
   requires head(xs) < x
   ensures acc(List(xs))
@@ -89,7 +89,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
 
 	/* Create a new node with value x and append the list tail starting at nxt to it. */
   var node: Ref
-  node := new(val, next)
+  node := new(val,next)
   node.val := x
   node.next := nxt
 

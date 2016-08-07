@@ -16,7 +16,6 @@ method addother(this: Ref, i: Int)
   requires this != null
   requires acc(valid(this))
   ensures acc(valid(this))
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /carbon/issue/113/)
   ensures forall x: Int :: (contains(this, x) == old(contains(this, x)) || (x == i))
 {
   var n: Ref

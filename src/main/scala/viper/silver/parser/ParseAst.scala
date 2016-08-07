@@ -6,31 +6,25 @@
 
 package viper.silver.parser
 
-import org.kiama.util.Positions
-import viper.silver.ast.MagicWandOp
-
-import scala.util.parsing.input.Position
-import org.kiama.attribution.Attributable
-import viper.silver.ast.utility.Visitor
-import viper.silver.parser.TypeHelper._
-import viper.silver.verifier.{ParseError, ParseReport}
-
+import scala.collection.GenTraversable
 import scala.language.implicitConversions
+import scala.util.parsing.input.Position
+import viper.silver.ast.utility.Visitor
+import viper.silver.ast.MagicWandOp
+import viper.silver.FastPositions
+import viper.silver.parser.TypeHelper._
+import viper.silver.verifier.{ParseReport}
 
-/**
- * This is a trait to ease interfacing with the changed Kiama interface - it no-longer provides Positioned as a trait, but rather a global Positions object..
- */
 
-trait KiamaPositioned {
+trait FastPositioned {
 
   /** Do not use these first three interfaces for reporting the positions.
-      They may or may not contain the rel_file field, depending on whether
-      the AST is constructed through the Parser or via the Scala interfaces. */
+    * They may or may not contain the rel_file field, depending on whether
+    * the AST is constructed through the Parser or via the Scala interfaces. */
 
   /** TODO get ride of 'implicit def liftPos' of Translator.scala and make these methods private. */
-  def start = Positions.getStart(this)
-  def startWhite = Positions.getStartWhite(this)
-  def finish = Positions.getFinish(this)
+  def start = FastPositions.getStart(this)
+  def finish = FastPositions.getFinish(this)
 
   /** Used for reporting the starting position of an AST node. */
   def startPosStr = start match {
@@ -42,36 +36,36 @@ trait KiamaPositioned {
 
   /** Used for reporting the range of positions occupied by an AST node. */
   def rangeStr = start match {
-    case fp_a: FilePosition =>
+       case fp_a: FilePosition =>
       require(finish.isInstanceOf[FilePosition],
         s"start and finish positions must be instances of FilePosition at the same time")
       val fp_b = finish.asInstanceOf[FilePosition]
       if (fp_a.file == fp_b.file)
         s"${fp_a.file.getFileName}@[${start.line}.${start.column}-${finish.line}.${finish.column}]"
       else
-        // An AST node should probably not spread between multiple source files, but who knows?
-        s"[$fp_a-$fp_b]"
+      // An AST node should probably not spread between multiple source files, but who knows?
+        s"[${fp_a.toString}--]"
     case _ =>
       s"[${start}-${finish}]"
   }
 
-  private def setStart(p: Position) = Positions.setStart(this, (p))
-  private def setStartWhite(p: Position) = Positions.setStartWhite(this, (p))
-  private def setFinish(p: Position) = Positions.setFinish(this, (p))
+  private def setStart(p: Position) = FastPositions.setStart(this, (p))
+  private def setFinish(p: Position) = FastPositions.setFinish(this, (p))
 
-  def setPos(a: KiamaPositioned): this.type = {
+  def setPos(a: FastPositioned): this.type = {
     setStart(a.start)
-    setStartWhite(a.startWhite)
     setFinish(a.finish)
     this
   }
 }
 
+
 /**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual SIL abstract syntax tree.
  */
-sealed trait PNode extends KiamaPositioned with Attributable {
+sealed trait PNode extends FastPositioned with Product{
+
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
 
@@ -107,10 +101,11 @@ sealed trait PNode extends KiamaPositioned with Attributable {
   def transform(pre: PartialFunction[PNode, PNode] = PartialFunction.empty)
                (recursive: PNode => Boolean = !pre.isDefinedAt(_),
                 post: PartialFunction[PNode, PNode] = PartialFunction.empty,
-                allowChangingNodeType: Boolean = false)
+                allowChangingNodeType: Boolean = false,
+                resultCheck : PartialFunction[(PNode, PNode), Unit] = PartialFunction.empty)
                : this.type =
 
-    Transformer.transform[this.type](this, pre)(recursive, post, allowChangingNodeType)
+    Transformer.transform[this.type](this, pre)(recursive, post, allowChangingNodeType, resultCheck)
 
   /** @see [[Visitor.deepCollect()]] */
   def deepCollect[A](f: PartialFunction[PNode, A]) : Seq[A] =
@@ -119,6 +114,48 @@ sealed trait PNode extends KiamaPositioned with Attributable {
   /** @see [[Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[PNode, R]): Seq[R] =
     Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
+
+  private val _children = scala.collection.mutable.ListBuffer[PNode] ()
+
+
+  var parent : PNode = null
+  var index : Int = -1
+  var next : PNode = null
+  var prev : PNode = null
+
+  def initProperties() {
+
+    var ind : Int = 0
+    var prev : PNode = null
+
+
+    def setNodeChildConnections (node : Any) : Unit =
+      node match {
+        case c : PNode =>
+          c.parent = this
+          _children += c
+          c.index = ind
+          ind += 1
+          c.prev = prev
+          c.next = null
+          if (prev != null) prev.next = c
+          prev = c
+          c.initProperties
+        case Some (o) =>
+          setNodeChildConnections (o)
+          case s : GenTraversable[_] =>
+          for (v <- s)
+            setNodeChildConnections (v)
+        case _ =>
+        // Ignore other kinds of nodes
+      }
+
+    _children.clear ()
+    for (c <- productIterator)
+      setNodeChildConnections (c)
+
+  }
+
 }
 
 object TypeHelper {
@@ -441,10 +478,11 @@ object POpApp{
   def pRes     = PTypeVar(pResS)
 }
 
-case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] = None) extends POpApp
+case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] = None) extends POpApp with PLocationAccess
 {
+  override val idnuse = func
   override val opName = func.name
-  override def signatures = if (function.formalArgs.size == args.size) (function match{
+  override def signatures = if (function!=null&& function.formalArgs.size == args.size) (function match{
     case pf:PFunction => Set(
       new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
     )
@@ -454,9 +492,19 @@ case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PTyp
           args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ.substitute(domainTypeRenaming.get)) :+
             (POpApp.pRes.domain.name -> pdf.typ.substitute(domainTypeRenaming.get)))
       )
-  }) else Set() // this case is handled in Resolver.scala (- method check) which generates the appropriate error message
+
+  })
+  else if(extfunction!=null && extfunction.formalArgs.size == args.size)( extfunction match{
+    case ppa: PPredicate => Set(
+      new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> Bool))
+    )
+  })
+
+
+  else Set() // this case is handled in Resolver.scala (- method check) which generates the appropriate error message
 
   var function : PAnyFunction = null
+  var extfunction : PPredicate = null
   override def extraLocalTypeVariables = _extraLocalTypeVariables
   var _extraLocalTypeVariables : Set[PDomainType] = Set()
   var domainTypeRenaming : Option[PTypeRenaming] = None
@@ -485,6 +533,7 @@ case class PFunctApp(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PTyp
   }
 }
 case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
+
   override val args = Seq(left, right)
   val extraElementType = PTypeVar("#E")
   override val extraLocalTypeVariables: Set[PDomainType] =
@@ -877,7 +926,7 @@ case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) 
 case class PLabel(idndef: PIdnDef) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
-
+case class PMacroRef(idnuse : PIdnUse) extends PStmt
 case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
 case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
@@ -926,8 +975,7 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def formalArgs: Seq[PFormalArgDecl]
   def typ: PType
 }
-
-case class PProgram(files: List[PImport], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
+case class PProgram(files: Seq[PImport], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
 case class PImport(file: String) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
@@ -939,8 +987,8 @@ case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Op
   val typ = PPredicateType()
 }
 
-case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends KiamaPositioned with Attributable
-case class PAxiom1(idndef: PIdnDef, exp: PExp) extends KiamaPositioned with Attributable
+case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned
+case class PAxiom1(idndef: PIdnDef, exp: PExp) extends FastPositioned
 
 /**
  * A entity represented by names for whom we have seen more than one
@@ -983,7 +1031,7 @@ object Nodes {
       case PResultLit() => Nil
       case PFieldAccess(rcv, field) => Seq(rcv, field)
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
-      case PFunctApp(func, args, optType) => Seq(func) ++ args ++ (optType match { case Some(t) => Seq(t) case None => Nil})
+      case PCall(func, args, optType) => Seq(func) ++ args ++ (optType match { case Some(t) => Seq(t) case None => Nil})
       case e: PUnFoldingExp => Seq(e.acc, e.exp)
       case PApplyingGhostOp(wand, in) => Seq(wand, in)
       case PPackagingGhostOp(wand, in) => Seq(wand, in)
@@ -1014,7 +1062,7 @@ object Nodes {
       case PExplicitSet(elems) => elems
       case PEmptyMultiset(t) => Seq(t)
       case PExplicitMultiset(elems) => elems
-
+      case PMacroRef(name) => Nil
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)

@@ -6,6 +6,8 @@
 
 package viper.silver.parser
 
+import viper.silver.FastPositions
+
 /* TODO: This is basically a copy of silver.ast.utility.Transformer. Can we share code?
  *       This could be done by using tree visiting and rewriting functionality from Kiama,
   *      or to implement something generic ourselves. Shapeless or Scala Macros might be
@@ -13,20 +15,22 @@ package viper.silver.parser
   *      copying existing nodes, i.e., case classes.
  */
 object Transformer {
-  /* Attention: You most likely want to call org.kiama.attribution.Attribution.initTree on the transformed node. */
+  /* Attention: You most likely want to call initTree on the transformed node. */
   def transform[A <: PNode](node: A,
                             pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
                             recursive: PNode => Boolean = !pre.isDefinedAt(_),
                             post: PartialFunction[PNode, PNode] = PartialFunction.empty,
-                            allowChangingNodeType: Boolean = false): A = {
+                            allowChangingNodeType: Boolean = false,
+                            resultCheck : PartialFunction[(PNode, PNode), Unit] = PartialFunction.empty): A = {
 
     @inline
     def go[B <: PNode](root: B): B = {
-      transform(root, pre)(recursive, post, allowChangingNodeType)
+      transform(root, pre)(recursive, post, allowChangingNodeType, resultCheck)
     }
 
     def recurse(parent: PNode): PNode = {
       val newNode = parent match {
+        case PMacroRef(idnuse) => PMacroRef(go(idnuse))
         case _: PIdnDef => parent
         case _: PIdnUse => parent
         case PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))
@@ -47,7 +51,9 @@ object Transformer {
         case _: PNullLit => parent
         case PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))
         case PPredicateAccess(args, idnuse) => PPredicateAccess( args map go, go(idnuse))
-        case PFunctApp(func, args, explicitType) => PFunctApp(go(func), args map go, ( explicitType match {case Some(t) => Some(go(t)) case None => None}))
+        case PCall(func, args, explicitType) => {
+          PCall(go(func), args map go, ( explicitType match {case Some(t) => Some(go(t)) case None => None}))
+        }
 
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
 
@@ -112,7 +118,8 @@ object Transformer {
 
         case PProgram(files, domains, fields, functions, predicates, methods, errors) => PProgram(files, domains map go, fields map go, functions map go, predicates map go, methods map go, errors)
         case PImport(file) => PImport(file)
-        case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, go(body))
+        case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go,
+          go(body))
         case PDomain(idndef, typVars, funcs, axioms) => PDomain(go(idndef), typVars map go, funcs map go, axioms map go)
         case PField(idndef, typ) => PField(go(idndef), go(typ))
         case PFunction(idndef, formalArgs, typ, pres, posts, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, body map go)
@@ -127,13 +134,18 @@ object Transformer {
       newNode.setPos(parent)
     }
 
+
+
     val beforeRecursion = pre.applyOrElse(node, identity[PNode])
+
+    resultCheck.applyOrElse((node, beforeRecursion), identity[(PNode, PNode)])
+
     val afterRecursion = if (recursive(node)) {
       recurse(beforeRecursion)
     } else {
       beforeRecursion
     }
-
     post.applyOrElse(afterRecursion, identity[PNode]).asInstanceOf[A]
   }
+
 }

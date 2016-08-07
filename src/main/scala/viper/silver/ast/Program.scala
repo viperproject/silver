@@ -6,9 +6,11 @@
 
 package viper.silver.ast
 
+import org.kiama.output._
+
 import scala.collection.mutable
-import org.kiama.output.{Fixity, Infix, Prefix, NonAssoc, RightAssoc}
-import utility.{Consistency, Types,DomainInstances}
+import viper.silver.ast.pretty._
+import utility.{Consistency, DomainInstances, Types}
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
@@ -40,8 +42,10 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }
   }
 
+  def findFunctionOptionally(name: String): Option[Function] = this.functions.find(_.name == name)
+
   def findFunction(name: String): Function = {
-    this.functions.find(_.name == name) match {
+    findFunctionOptionally(name) match {
       case Some(f) => f
       case None => sys.error("Function name " + name + " not found in program.")
     }
@@ -338,7 +342,7 @@ sealed trait BinOp extends Op {
 
 /** Left associative operator. */
 sealed trait LeftAssoc {
-  lazy val fixity = Infix(org.kiama.output.LeftAssoc)
+  lazy val fixity = Infix(LeftAssoc)
 }
 
 /** Domain functions that represent built-in binary operators where both arguments are integers. */

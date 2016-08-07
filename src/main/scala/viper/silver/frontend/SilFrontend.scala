@@ -6,20 +6,19 @@
 
 package viper.silver.frontend
 
-import java.io.File
+import fastparse.core.Parsed
 import java.nio.file.{Path, Paths}
-
 import org.apache.commons.io.FilenameUtils
-import org.kiama.util.Messaging
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
+import viper.silver.ast.{AbstractSourcePosition, HasLineColumn, Position, Program, SourcePosition}
+import viper.silver.ast.utility.Consistency
+import viper.silver.FastMessaging
 import viper.silver.parser._
 import viper.silver.verifier._
 import viper.silver.verifier.CliOptionError
 import viper.silver.verifier.Failure
 import viper.silver.verifier.ParseError
-import viper.silver.ast.{AbstractSourcePosition, HasLineColumn, Position, Program, SourcePosition}
 import viper.silver.verifier.TypecheckerError
-import viper.silver.ast.utility.Consistency
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
@@ -179,12 +178,7 @@ trait SilFrontend extends DefaultFrontend {
   protected def printErrors(errors: AbstractError*) {
     if (config.ideMode()) {
       val ideModeErrors = errors.map(e => new IdeModeErrorRepresentation(e))
-
       println(s"The following errors were found in ${ideModeErrors.head.shortFileStr}:")
-
-      viper.silver.utility.Common.toFile(ideModeErrors.map(_.fileErrorStr).mkString("\n"),
-                                         new File(config.ideModeErrorFile()))
-
       ideModeErrors.foreach(e => println(s"  ${e.consoleErrorStr}"))
     } else {
       println("The following errors were found:")
@@ -199,17 +193,22 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
-    Parser.parse(input, file) match {
-      case Parser.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
+    val result = FastParser.parse(input, file)
+     result match {
+      case Parsed.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
         if (err_list.isEmpty || err_list.forall{ case p => p.isInstanceOf[ParseWarning] })
-          Succ({ e.initTreeProperties(); e })
-        else Fail(err_list)
-      case Parser.Failure(msg, next) =>
-        Fail(List(ParseError(s"Failure: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
-      case Parser.Error(msg, next) =>
-        Fail(List(ParseError(s"Error: $msg", SourcePosition(file, next.pos.line, next.pos.column))))
-    }
+        Succ({ e.initProperties(); e })
+      else Fail(err_list)
+      case Parsed.Failure(msg, next, extra) =>
+        Fail(List(ParseError(msg.toString, SourcePosition(file, extra.line, extra.col))))
+      case ParseError(msg, pos) => Fail(List(ParseError(msg, pos)))
+
+     }
+
   }
+
+
+
 
   /* TODO: Naming of doTypecheck and doTranslate isn't ideal.
            doTypecheck already translated the program, whereas doTranslate doesn't actually translate
@@ -221,11 +220,13 @@ trait SilFrontend extends DefaultFrontend {
     r.run match {
       case Some(modifiedInput) =>
         Translator(modifiedInput).translate match {
-          case Some(program) =>
+          case Some(program) =>{
             Succ(program)
+          }
+
 
           case None => // then these are translation messages
-            Fail(Messaging.sortmessages(Consistency.messages) map (m =>
+            Fail(FastMessaging.sortmessages(Consistency.messages) map (m =>
               {
                 TypecheckerError(
                 // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
@@ -241,7 +242,7 @@ trait SilFrontend extends DefaultFrontend {
         }
 
       case None =>
-        val errors = for (m <- Messaging.sortmessages(r.messages)) yield {
+        val errors = for (m <- FastMessaging.sortmessages(r.messages)) yield {
           TypecheckerError(m.label, m.pos match {
             case fp: FilePosition =>
               SourcePosition(fp.file, m.pos.line, m.pos.column)
@@ -261,8 +262,8 @@ trait SilFrontend extends DefaultFrontend {
 
     val methods = input.methods filter (m => verifyMethods.contains(m.name))
     val program = Program(input.domains, input.fields, input.functions, input.predicates, methods)(input.pos, input.info)
-
     Succ(program)
+
   }
 
   override def mapVerificationResult(in: VerificationResult) = in
@@ -290,9 +291,8 @@ trait SilFrontend extends DefaultFrontend {
     lazy val shortFileStr = fileOpt.map(f => FilenameUtils.getName(f.toString)).getOrElse("<unknown file>")
     lazy val startStr = startOpt.map(toStr).getOrElse("<unknown start line>:<unknown start column>")
     lazy val endStr = endOpt.map(toStr).getOrElse("<unknown end line>:<unknown end column>")
-
-    //lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
-    lazy val consoleErrorStr = s"$startStr: $messageStr"
+    
+    lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
     lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
 
     @inline

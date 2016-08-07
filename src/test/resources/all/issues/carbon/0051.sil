@@ -33,7 +33,6 @@ method Listappend$(this$_4: Ref, k$: Perm, newval: Int)
   ensures Listlen$(this$_4) > 0
   ensures Listlen$(this$_4) == old(Listlen$(this$_4)) + 1
   ensures Listget$(this$_4, Listlen$(this$_4) - 1) == newval
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /Carbon/issue/51/)
   ensures (forall i: Int :: true && (i in [0..old(Listlen$(this$_4)))) ==> (Listget$(this$_4, i) == old(Listget$(this$_4, i))))
 {
   var n$: Ref

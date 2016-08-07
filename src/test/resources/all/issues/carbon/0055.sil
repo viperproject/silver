@@ -41,7 +41,6 @@ method Nodeadd$(this: Ref, k$_1: Perm, x: Int)
   requires acc(Nodevalid$(this), write)
   ensures acc(Nodevalid$(this), write)
   ensures Nodesize$(this) == old(Nodesize$(this)) + 1
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /Carbon/issue/55/)
   ensures (forall y: Int :: true ==> (Nodecontains$(this, y) == old(Nodecontains$(this, y)) || (x == y)))
 {
   var n$_1: Ref

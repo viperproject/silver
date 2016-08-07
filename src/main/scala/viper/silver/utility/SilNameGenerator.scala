@@ -6,18 +6,20 @@
 
 package viper.silver.utility
 
-import viper.silver.parser.Parser
 import viper.silver.ast.utility.Consistency
+import viper.silver.parser.FastParser
 
 /**
  * A name generator for SIL.
  */
 class SilNameGenerator extends DefaultNameGenerator {
-
+  val identFirstLetter = "[a-zA-Z$_]"
+  val identOtherLetterChars = "a-zA-Z0-9$_'"
+  val identOtherLetter = s"[$identOtherLetterChars]"
   val reservedNames = Consistency.reservedNames.toSet
   val separator = "_"
-  val firstCharacter = Parser.identFirstLetter.r
-  val otherCharacter = Parser.identOtherLetter.r
+  val firstCharacter = identFirstLetter.r
+  val otherCharacter = identOtherLetter.r
 
   override def createIdentifier(input: String) = {
     super.createIdentifier(input)

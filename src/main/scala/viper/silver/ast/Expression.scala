@@ -7,6 +7,7 @@
 package viper.silver.ast
 
 import org.kiama.output._
+import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 
 /** Expressions. */
@@ -331,7 +332,7 @@ case class FieldAccess(rcv: Exp, field: Field)
 /** A predicate access expression. See also companion object below for an alternative creation signature */
 case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Position, val info: Info) extends LocationAccess {
   def loc(p:Program) = p.findPredicate(predicateName)
-  lazy val typ = InternalType
+  lazy val typ = Bool
 
   /** The body of the predicate with the arguments instantiated correctly. */
   def predicateBody(program : Program) = {
@@ -537,7 +538,7 @@ case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info
   elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = SeqType(elems.head.typ)
   lazy val desugared : SeqExp = {
-    elems match {
+    elems.toList match {
       case Nil => sys.error("did not expect empty sequence")
       case a :: Nil => this
       case a :: as => // desugar into singleton sequences and appends

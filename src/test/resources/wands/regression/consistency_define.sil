@@ -3,7 +3,7 @@ field f: Ref
 define A true
 define INV(x, v) acc(x.f) && x.f == v
 
-//:: ExpectedOutput(typechecker.error)
+
 define FOO(x) acc(foo.f)
 
 method test01() {
@@ -12,6 +12,6 @@ method test01() {
 }
 
 method test03(a: Ref) {
-  /* TODO: Error location should be here, not above */
+  //:: ExpectedOutput(typechecker.error)
   inhale FOO(a)
 }
