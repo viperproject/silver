@@ -11,8 +11,7 @@ package viper.silver.parser
 import scala.language.implicitConversions
 import scala.collection.mutable
 import viper.silver.ast._
-import viper.silver.ast.utility.{Consistency, Visitor, Statements, QuantifiedPermissions}
-import viper.silver.ast.utility.{Consistency, Statements, Visitor}
+import viper.silver.ast.utility.{Consistency, Visitor, Statements, Visitor, QuantifiedPermissions}
 import viper.silver.FastMessaging
 
 
