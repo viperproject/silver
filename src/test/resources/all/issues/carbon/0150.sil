@@ -15,5 +15,7 @@ method test(self: Ref)
   requires acc(Tree_valid(self), write)
 {
     unfold acc(Tree_valid(self), write)
+    //:: ExpectedOutput(call.precondition:insufficient.permission)
+    //:: MissingOutput(call.precondition:insufficient.permission, /Carbon/issue/150/)
     callee(self)
 }
