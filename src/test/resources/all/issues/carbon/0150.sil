@@ -14,6 +14,7 @@ method callee(self: Ref)
 method test(self: Ref)
   requires acc(Tree_valid(self), write)
 {
-    unfold acc(Tree_valid(self), write)
-    callee(self)
+  unfold acc(Tree_valid(self), write)
+  //:: ExpectedOutput(call.precondition:insufficient.permission)
+  callee(self)
 }
