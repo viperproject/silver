@@ -24,3 +24,28 @@ method test02b(this: Ref)
          acc(P(this)) &&
          (forperm[P] r :: false)
 }
+
+
+method test03a(this: Ref)
+{
+  while (true)
+    invariant [acc(P(this), write), true]
+    invariant [true, (perm(P(this)) > none) ==> acc(P(this))]
+    //:: UnexpectedOutput(invariant.not.preserved:insufficient.permission, /Silicon/issue/231/)
+    invariant [true, (perm(P(this)) >= write) ==> acc(P(this))]
+  {
+    //exhale acc(P(this))
+  }
+}
+
+
+method test03b(this: Ref)
+{
+  while (true)
+    invariant [acc(P(this), write), true]
+    invariant [true, (perm(P(this)) > none) ==> acc(P(this))]
+    invariant [true, (perm(P(this)) >= write) ==> acc(P(this))]
+  {
+    exhale acc(P(this))
+  }
+}
