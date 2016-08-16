@@ -26,16 +26,34 @@ method test02b(this: Ref)
 }
 
 
+method test04a(this: Ref) {
+  inhale acc(P(this))
+
+  //:: ExpectedOutput(exhale.failed:assertion.false)
+  exhale acc(P(this)) && perm(P(this)) >= write
+}
+
+method test04b(this: Ref) {
+  inhale acc(P(this))
+
+  exhale acc(P(this))
+  exhale (perm(P(this)) >= write ==> acc(P(this)))
+}
+
+method test04c(this: Ref) {
+  inhale acc(P(this))
+
+  exhale acc(P(this)) && (perm(P(this)) >= write ==> acc(P(this)))
+}
+
+
 method test03a(this: Ref)
 {
   while (true)
     invariant [acc(P(this), write), true]
     invariant [true, (perm(P(this)) > none) ==> acc(P(this))]
-    //:: UnexpectedOutput(invariant.not.preserved:insufficient.permission, /Silicon/issue/231/)
-    invariant [true, (perm(P(this)) >= write) ==> acc(P(this))]
-  {
-    //exhale acc(P(this))
-  }
+    invariant [true, (perm(P(this)) >= write) ==> acc(P(this))] // Previously failed unexpectedly
+  {}
 }
 
 
