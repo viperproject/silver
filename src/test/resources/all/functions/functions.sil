@@ -40,16 +40,19 @@ function fun5(x: Ref): Int
 
 function err1(x: Ref): Int
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires acc(x.h.f)
 { 0 }
 
 function err2(x: Ref): Int
   requires acc(x.f)
   //:: ExpectedOutput(application.precondition:insufficient.permission)
+  //:: MissingOutput(application.precondition:insufficient.permission, /dummy/issue/0003/)
   requires err1(x) == 0
 { 0 }
 
 //:: ExpectedOutput(function.not.wellformed:insufficient.permission)
+//:: MissingOutput(function.not.wellformed:insufficient.permission, /dummy/issue/0008/)
 function er3(x: Ref, y: Ref): Int
   requires acc(x.f) && acc(y.g)
 { y.f + x.g }

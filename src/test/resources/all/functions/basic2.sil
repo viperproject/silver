@@ -1,5 +1,6 @@
 function fun01(): Int
   //:: ExpectedOutput(not.wellformed:division.by.zero)
+  //:: MissingOutput(not.wellformed:division.by.zero, /dummy/issue/0008/)
   ensures 1 \ result != 1
 
 function fun02(): Int

@@ -1,3 +1,4 @@
+//:: IgnoreFile(/dummy/issue/000/)
 field next: Ref
 field val: Int
 

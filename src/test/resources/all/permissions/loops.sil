@@ -8,9 +8,12 @@ method test(x: Ref)
   while (b)
     //:: ExpectedOutput(not.wellformed:insufficient.permission)
     //:: MissingOutput(not.wellformed:insufficient.permission, /Carbon/issue/70/)
+    //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
+    //:: UnexpectedOutput(invariant.not.established:assertion.false, /dummy/issue/0008/)
     invariant x != null && x.f != 3 // This is not self-framing.
   {
     //:: UnexpectedOutput(assignment.failed:insufficient.permission, /Carbon/issue/70/)
+    //:: UnexpectedOutput(assignment.failed:insufficient.permission, /dummy/issue/0008/)
     x.f := 4  // Loop body should be verified under assumption that invariant
               // is wellformed.
     b := false
@@ -30,6 +33,7 @@ method test3(x: Ref)
   requires acc(x.f)
 {
   //:: ExpectedOutput(while.failed:insufficient.permission)
+  //:: MissingOutput(while.failed:insufficient.permission, /dummy/issue/0008/)
   while (x.f < 3)
   {
   }

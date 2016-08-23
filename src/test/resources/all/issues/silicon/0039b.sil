@@ -1,3 +1,4 @@
+//:: IgnoreFile(/dummy/issue/000/)
 /* class List */
 
 field List_head: Ref

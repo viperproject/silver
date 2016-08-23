@@ -3,6 +3,7 @@ field f: Int
 method foo(x: Ref)
   requires x != null
   //:: ExpectedOutput(application.precondition:insufficient.permission)
+  //:: MissingOutput(application.precondition:insufficient.permission, /dummy/issue/0003/)
   ensures bar(x)
 {}
 

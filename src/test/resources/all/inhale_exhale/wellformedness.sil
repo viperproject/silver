@@ -14,12 +14,14 @@ expressions are not used.
 
 method s0(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires this.x == 0
 {
 }
 
 method s1(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   ensures this.x == 0
 {
   inhale acc(this.x) && this.x == 0
@@ -27,12 +29,15 @@ method s1(this: Ref)
 
 method s2(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires this != null && this.x == 0
 {
 }
 
 method s3(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /dummy/issue/0008/)
   ensures this != null && this.x == 0
 {
   inhale acc(this.x) && this.x == 0
@@ -48,12 +53,14 @@ Inhale.
 
 method i0(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires [this.x == 0, true]
 {
 }
 
 method i1(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   ensures [this.x == 0, true]
 {
   inhale acc(this.x) && this.x == 0
@@ -61,12 +68,14 @@ method i1(this: Ref)
 
 method i2(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires [this != null && this.x == 0, true]
 {
 }
 
 method i3(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   ensures [this != null && this.x == 0, true]
 {
   inhale acc(this.x) && this.x == 0
@@ -79,6 +88,7 @@ Exhale.
 method e0(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires [true, this.x == 0]
 {
 }
@@ -86,6 +96,7 @@ method e0(this: Ref)
 method e1(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   ensures [true, this.x == 0]
 {
   inhale acc(this.x) && this.x == 0
@@ -94,6 +105,7 @@ method e1(this: Ref)
 method e2(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires [true, this != null && this.x == 0]
 {
 }
@@ -101,6 +113,8 @@ method e2(this: Ref)
 method e3(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /dummy/issue/0008/)
   ensures [true, this != null && this.x == 0]
 {
   inhale acc(this.x) && this.x == 0
@@ -112,12 +126,14 @@ Both.
 
 method ie0(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires [this.x == 0, this.x == 0]
 {
 }
 
 method ie1(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   ensures [this.x == 0, this.x == 0]
 {
   inhale acc(this.x) && this.x == 0
@@ -125,12 +141,15 @@ method ie1(this: Ref)
 
 method ie2(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires [this != null && this.x == 0, this != null && this.x == 0]
 {
 }
 
 method ie3(this: Ref)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /dummy/issue/0008/)
   ensures [this != null && this.x == 0, this != null && this.x == 0]
 {
   inhale acc(this.x) && this.x == 0
@@ -150,6 +169,7 @@ method t1(this: Ref)
   requires [acc(this.x), true]
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires [true, this != null && this.x == 0]
 {
 }
@@ -163,6 +183,7 @@ method t1(this: Ref)
 method t2(this: Ref)
   requires [true, acc(this.x)]
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires [this != null && this.x == 0, true]
 {
 }
@@ -177,6 +198,8 @@ method t3(this: Ref)
   ensures [acc(this.x), true]
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   //:: MissingOutput(not.wellformed:insufficient.permission, /Silicon/issue/160/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /dummy/issue/0008/)
   ensures [true, this != null && this.x == 0]
 {
   inhale acc(this.x) && this.x == 0
@@ -191,6 +214,7 @@ method t3(this: Ref)
 method t4(this: Ref)
   ensures [true, acc(this.x)]
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   ensures [this != null && this.x == 0, true]
 {
   inhale acc(this.x) && this.x == 0

@@ -1,3 +1,5 @@
+//:: IgnoreFile(/dummy/issue/000/)
+
   field value: Int
   field next: Ref
   predicate valid(this: Ref) { acc(this.value, write) && acc(this.next, write) && (((this.next) != (null)) ==> acc(valid(this.next), write)) }

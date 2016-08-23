@@ -1,6 +1,7 @@
 method callee(x: Int) returns (r: Int)
   requires true
   //:: ExpectedOutput(not.wellformed:division.by.zero)
+  //:: MissingOutput(not.wellformed:division.by.zero, /dummy/issue/0008/)
   ensures r == 1\x
 {
   //:: ExpectedOutput(assignment.failed:division.by.zero)

@@ -10,6 +10,7 @@ method fail10(this: Ref)
   requires acc(P(this), write)
   ensures acc(P(this), write)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0019/)
   ensures unfolding P(this) in this.x == old(this.x)
 {
 }
@@ -33,6 +34,7 @@ method fail5(this: Ref)
   requires acc(P(this), write)
   ensures acc(P(this), write)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0019/)
   ensures unfolding P(this) in this.x == old(this.x) + 1
 {
   unfold P(this)
@@ -66,6 +68,7 @@ method fail1(this: Ref)
   requires acc(this.x, write)
   ensures acc(P(this), write)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0019/)
   ensures (unfolding acc(P(this), write) in this.x == old((unfolding acc(P(this), write) in this.x)))
 {
   fold acc(P(this), write)

@@ -41,6 +41,7 @@ method t2b(this: Ref)
     ensures acc(valid(this, true), write)
 {
     //:: ExpectedOutput(fold.failed:insufficient.permission)
+    //:: MissingOutput(fold.failed:insufficient.permission, /dummy/issue/0019/)
     fold acc(valid(this, false), write)
 }
 
@@ -51,6 +52,7 @@ method t3(this: Ref, b: Bool)
     //:: UnexpectedOutput(not.wellformed:insufficient.permission, /silicon/issue/36/)
     requires (unfolding acc(valid(this, false), write) in ((this.g) == 2))
     ensures acc(valid(this, b), write)
+    //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /dummy/issue/0020/)
     ensures acc(valid(this, !b), write)
     ensures (unfolding acc(valid(this, false), write) in ((this.g) == 2))
 {
@@ -66,6 +68,7 @@ method t3a(this: Ref, b: Bool)
     //:: UnexpectedOutput(not.wellformed:insufficient.permission, /silicon/issue/36/)
     requires (unfolding acc(valid(this, false), write) in ((this.g) == 2))
     ensures acc(valid(this, b), write)
+    //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /dummy/issue/0020/)
     ensures acc(valid(this, !b), write)
     ensures (unfolding acc(valid(this, false), write) in ((this.g) == 2))
 {
@@ -83,5 +86,6 @@ method t3b(this: Ref, b: Bool)
     unfold acc(valid(this, true), write)
     //:: ExpectedOutput(assignment.failed:insufficient.permission)
     //:: MissingOutput(assignment.failed:insufficient.permission, /silicon/issue/36/)
+    //:: MissingOutput(assignment.failed:insufficient.permission, /dummy/issue/0019/)
     this.g := 1
 }

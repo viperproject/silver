@@ -29,6 +29,7 @@ method test03(x: Ref, y: Ref) {
   x.f := y
 
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /dummy/issue/0003/)
   assert fun02(x)
 }
 
@@ -45,6 +46,7 @@ method test04(x: Ref, y: Ref) {
   x.f := y
 
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /dummy/issue/0003/)
   assert !fun03(x)
 }
 
@@ -63,5 +65,6 @@ method client(id: Int) {
   file_close(id)
 
   //:: ExpectedOutput(call.precondition:insufficient.permission)
+  //:: MissingOutput(call.precondition:insufficient.permission, /dummy/issue/0003/)
   file_close(id)
 }

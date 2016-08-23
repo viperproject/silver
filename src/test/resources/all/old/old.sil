@@ -27,6 +27,8 @@ method t3(this: Ref) returns ()
     var r: Ref
     r := new()
     //:: ExpectedOutput(exhale.failed:insufficient.permission)
+    //:: MissingOutput(exhale.failed:insufficient.permission, /dummy/issue/0002/)
+    //:: UnexpectedOutput(exhale.failed:assertion.false, /dummy/issue/0002/)
     exhale (old(r.f) > 0)
 }
 
@@ -39,6 +41,8 @@ method t4(r: Ref) returns ()
     // we hold no permission to r.f any longer, but old(r.f) is still ok
     exhale (old(r.f) > 0)
     //:: ExpectedOutput(exhale.failed:insufficient.permission)
+    //:: MissingOutput(exhale.failed:insufficient.permission, /dummy/issue/0002/)
+    //:: UnexpectedOutput(exhale.failed:assertion.false, /dummy/issue/0002/)
     exhale (r.f) > 0
 }
 

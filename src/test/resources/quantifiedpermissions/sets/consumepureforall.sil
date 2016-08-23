@@ -78,6 +78,7 @@ method m8(S: Set[Ref], b: Ref, a :Int, c: Ref)
   requires c.f < 0
   requires a > 0
   ensures forall r : Ref :: r in S ==> acc(r.f)
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /dummy/issue/0020/)
   ensures forall t : Ref :: t in S ==> (t.f == ((t == b) ? 2*a+1 : a))
 {
   b.f := 2*a+1

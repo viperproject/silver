@@ -12,5 +12,6 @@ method m2(this: Ref, xs: Set[Ref])
   fold acc(inv(this))
 
   //:: ExpectedOutput(assignment.failed:insufficient.permission)
+  //:: MissingOutput(assignment.failed:insufficient.permission, /dummy/issue/0019/)
   this.n := xs
 }

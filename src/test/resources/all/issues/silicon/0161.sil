@@ -2,12 +2,14 @@ field x: Int
 
 function pre(this: Ref): Int
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires this != null && this.x == 0
 {
   1
 }
 
 //:: ExpectedOutput(function.not.wellformed:insufficient.permission)
+//:: MissingOutput(function.not.wellformed:insufficient.permission, /dummy/issue/0008/)
 function body(this: Ref): Int
   requires this != null
 {
@@ -20,6 +22,7 @@ function body(this: Ref): Int
 
 function pre1(this: Ref): Int
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires this != null && this.x == 0
 {
   1
@@ -27,11 +30,13 @@ function pre1(this: Ref): Int
 
 function pre1Abstract(this: Ref): Int
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires this != null && this.x == 0
 
 
 function pre2(this: Ref): Int
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires this != null &&
            this.x == 0
 {
@@ -40,6 +45,7 @@ function pre2(this: Ref): Int
 
 function pre2Abstract(this: Ref): Int
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires this != null &&
            this.x == 0
 
@@ -47,6 +53,7 @@ function pre2Abstract(this: Ref): Int
 function pre3(this: Ref): Int
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires this.x == 0
 {
   1
@@ -55,15 +62,18 @@ function pre3(this: Ref): Int
 function pre3Abstract(this: Ref): Int
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   requires this.x == 0
 
 function post1Abstract(this: Ref): Int
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   ensures this.x == 0
 
 function post2Abstract(this: Ref): Int
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
   ensures this != null &&
           this.x == 0

@@ -13,6 +13,7 @@ method test6(x: Ref)
 {
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/026/)
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/112/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0023/)
   assert x != null
 }
 
@@ -29,9 +30,11 @@ method test7(x: Ref, y: Ref)
 {
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/026/)
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/112/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0023/)
   assert x != null
   
   // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/112/)
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/026/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0023/)
   assert y != null
 }

@@ -9,6 +9,7 @@ method lemmaFrontX(a: Array, from: Int)
   requires 0 <= from && from <= length(a);
   requires forall z: Int :: (from <= z && z < length(a) ==> acc(loc(a,z).val));
 {
+  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0003/)
   assert
     countFalseX(a, from)
       ==
@@ -19,6 +20,7 @@ method lemmaFrontXX(a: Array, from: Int)
   requires 0 <= from && from <= length(a);
   requires forall z: Int :: (from <= z && z < length(a) ==> acc(loc(a,z).val));
 {
+  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0003/)
   assert
     countFalseX(a, from)
       ==
@@ -43,6 +45,7 @@ method lemmaFront(a: Array, from: Int, to: Int)
   requires forall z: Int :: (from <= z && z < to ==> acc(loc(a,z).val));
 {
   /* Previously failed */
+  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0003/)
   assert
     countFalse(a, from, to)
       ==

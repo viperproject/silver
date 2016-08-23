@@ -42,6 +42,8 @@ method m1(this: Ref)
 	unfold acc(P(this.n))
 
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /dummy/issue/0014/)
+  //:: UnexpectedOutput(assert.failed:insufficient.permission, /dummy/issue/0014/)
 	assert a == t.f
 }
 

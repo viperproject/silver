@@ -2,6 +2,7 @@ field x: Int
 
 //:: ExpectedOutput(predicate.not.wellformed:insufficient.permission)
 //:: MissingOutput(predicate.not.wellformed:insufficient.permission, /Carbon/issue/30/)
+//:: MissingOutput(predicate.not.wellformed:insufficient.permission, /dummy/issue/0008/)
 predicate P(this: Ref) {
   this != null && this.x == 1
 }

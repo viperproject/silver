@@ -26,6 +26,7 @@ method test1(this: Ref)
   x.next := x
 
   //:: ExpectedOutput(fold.failed:insufficient.permission)
+  //:: MissingOutput(fold.failed:insufficient.permission, /dummy/issue/0019/)
   fold acc(valid(x), write)
 }
 
@@ -38,5 +39,6 @@ method test2(this: Ref)
 
   //:: ExpectedOutput(application.precondition:insufficient.permission)
   //:: IgnoreOthers
+  //:: MissingOutput(application.precondition:insufficient.permission, /dummy/issue/0019/)
   assert ((length(x)) == (length(x.next) + 1))
 }

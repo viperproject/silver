@@ -6,6 +6,7 @@ method t1(this: Ref, b: Bool)
     requires acc(valid(false), write)
 {
     //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /dummy/issue/0019/)
     assert false
 }
 

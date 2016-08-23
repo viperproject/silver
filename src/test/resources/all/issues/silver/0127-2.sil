@@ -6,5 +6,6 @@ method test01() {
 
 method test02() {
   //:: ExpectedOutput(inhale.failed:insufficient.permission)
+  //:: MissingOutput(inhale.failed:insufficient.permission, /dummy/issue/0019/)
   inhale unfolding P() in true 
 }
