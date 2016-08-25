@@ -36,6 +36,7 @@ ensures acc(p2(x))
 
 method m3(x: Ref, xs: Seq[Ref])
 requires forall r:Ref :: r in xs ==> acc(p2(r))
+//:: ExpectedOutput(postcondition.violated:insufficient.permission)
 ensures acc(p2(x))
 {}
 
@@ -48,6 +49,7 @@ ensures acc(p3(x))
 
 method m5(x: Ref, xs: Seq[Ref])
 requires forall r:Ref :: r in xs ==> acc(p3(r))
+//:: ExpectedOutput(postcondition.violated:insufficient.permission)
 ensures acc(p3(x))
 {}
 
@@ -60,6 +62,7 @@ ensures acc(p4(x, i))
 
 method m7(x: Ref, i:Int, xs: Seq[Ref])
 requires forall r:Ref :: r in xs ==> acc(p4(r, i))
+//:: ExpectedOutput(postcondition.violated:insufficient.permission)
 ensures acc(p4(x, i))
 {}
 
@@ -72,5 +75,6 @@ ensures acc(p5(x, i))
 
 method m9(x: Ref, i:Int, xs: Seq[Ref])
 requires forall r:Ref :: r in xs ==> acc(p5(r, i))
+//:: ExpectedOutput(postcondition.violated:insufficient.permission)
 ensures acc(p5(x, i))
 {}

@@ -53,6 +53,7 @@ object Expressions {
     e.transform({
       case _: AccessPredicate | _: MagicWand => TrueLit()()
       case QuantifiedPermissions.QPForall(_, _, _, _, _, _, _) => TrueLit()()
+      case QuantifiedPermissions.QPPForall(_, _, _, _, _, _, _) => TrueLit()()
       case Unfolding(predicate, exp) => asBooleanExp(exp)
     })()
   }
