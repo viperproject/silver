@@ -37,6 +37,7 @@ method t2(a: IArray, n: Int)
   requires n > 5
   requires forall i: Int :: i in [0..n) ==> acc(p(a, i))
   ensures forall i: Int :: i in [4..n) ==> acc(p(a, i))
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
   ensures forall i: Int :: i in [0..5) ==> acc(p(a, i))
 {}
 
@@ -52,6 +53,7 @@ method t4(a: IArray, n: Int)
   requires forall i: Int :: i in [0..n) ==> acc(p(a, i))
   ensures forall i: Int :: i in [1..n) ==> acc(p(a, i))
   ensures acc(p(a, 0))
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
   ensures acc(p(a, 1))
 {}
 

@@ -38,6 +38,7 @@ requires forall r:Ref :: r in xs ==> acc(p2(r))
 method m3(x: Ref, xs: Seq[Ref])
 requires forall r:Ref :: r in xs ==> acc(p2(r))
 {
+    //:: ExpectedOutput(unfold.failed:insufficient.permission)
     unfold acc(p2(x))
     x.f := 4
 }
@@ -50,12 +51,14 @@ requires forall r:Ref :: r in xs ==> acc(p3(r))
     assert(x.f == 0)
     x.f := 4
     assert(x.f == 4)
+    //:: ExpectedOutput(unfold.failed:insufficient.permission)
 	unfold acc(p3(x))
 }
 
 method m5(x: Ref, xs: Seq[Ref])
 requires forall r:Ref :: r in xs ==> acc(p3(r))
 {
+    //:: ExpectedOutput(unfold.failed:insufficient.permission)
     unfold acc(p3(x))
     x.f := 4
 }
@@ -71,6 +74,7 @@ requires forall r:Ref :: r in xs ==> acc(p4(r, i))
 method m7(x: Ref, i:Int, xs: Seq[Ref])
 requires forall r:Ref :: r in xs ==> acc(p4(r, i))
 {
+    //:: ExpectedOutput(unfold.failed:insufficient.permission)
     unfold acc(p4(x, i))
     x.f := 4
 }
@@ -89,6 +93,7 @@ requires x in xs
 requires forall r:Ref :: r in xs ==> acc(p5(r, i))
 {
     unfold acc(p5(x, i))
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert (x.f == 0)
     x.f := 4
 }
@@ -96,5 +101,6 @@ requires forall r:Ref :: r in xs ==> acc(p5(r, i))
 method m10(x: Ref, i:Int, xs: Seq[Ref])
 requires forall r:Ref :: r in xs ==> acc(p5(r, i))
 {
+    //:: ExpectedOutput(unfold.failed:insufficient.permission)
     unfold acc(p5(x, i))
 }
