@@ -3,6 +3,7 @@
 sil-program ::=
 	(
 		import    |
+		define    |
 		domain    |
 		field     |
 		function  |
@@ -16,6 +17,15 @@ import ::=
 relative-path ::=
     \A(?:[\w-]+\/?)+\z
 
+define ::=
+    "define" identifier [ "(" parameter^,* ")" ] expression-or-block
+
+parameter ::= ident
+
+expression-or-block ::=
+    exp |
+    block
+
 domain ::=
 	"domain" domain-name "{"
 		domain-function*
@@ -27,22 +37,22 @@ domain-name ::=
 	ident "[" ident^,* "]"  //e.g. Seq[T]
 
 domain-function ::=
-	["unique"] "function" ident function-signature
+	["unique"] function-signature [";"]
 
 function-signature ::=
-	 formal-args ":" type
+	"function" ident formal-args ":" type
 		
 axiom ::=
-	"axiom" ident "{" exp "}"
+	"axiom" ident "{" exp "}" [";"]
 
 field ::=
-	"field" ident ":" type
+	"field" ident ":" type [";"]
 
 function ::=
-	"function" ident function-signature
+	function-signature
 		precondition*
 		postcondition*
-	"{" exp "}"
+	"{" exp "}" // Semicolon not permitted
 
 precondition ::=
 	"requires" exp
@@ -54,12 +64,13 @@ invariant ::=
 	"invariant" exp
 
 predicate ::=
-	"predicate" ident formal-args "{" exp "}"
+	"predicate" ident formal-args ["{" exp "}"] // Semicolon not permitted
 
 method ::=
 	"method" ident formal-args [formal-returns]
-			precondition*  postcondition*
-		block
+		precondition*  
+		postcondition*
+	[ block ]
 
 formal-args ::=
 	"(" formal-arg^,* ")"
@@ -72,18 +83,29 @@ formal-returns ::=
 
 // Statements		
 block ::=
-	"{" stmt "}"
+	"{" statement-with-optional-semicolon* "}"
+
+statement-with-optional-semicolon ::= 
+	stmt [";"]
 
 stmt ::=
-	"var" ident  ":" type [":=" exp] // local variable
-	                                 // declaration with an
-																	 // optional initial value
-	ident         ":=" exp | // local variable assignment
-	field-access  ":=" exp | // field assignment
-	ident         ":=" "new(*)" | // object creation
-                                // (all fields)
-	ident         ":=" "new(" ident^,* ")" | // obj. creation 
-                                    // (specified fields)
+	// local variable declaration with an optional initial value
+	"var" ident  ":" type [":=" exp] |
+
+	// local definition
+	define |
+
+	// local variable assignment
+	ident ":=" exp | 
+
+	// field assignment
+	field-access ":=" exp | 
+
+	// object creation (all fields)
+	ident ":=" "new(*)" | 
+
+	// object creation (specified fields)
+	ident ":=" "new(" ident^,* ")" |
 	
 	"assert" exp |
 	"assume" exp |
@@ -92,34 +114,41 @@ stmt ::=
 	"fold"   acc-exp |
 	"unfold" acc-exp |
 	
-	"goto" ident    |           // goto statement
-	ident ":"       |           // a goto label
+	"goto" ident | // goto statement
+	"label ident | // a goto label
 	
-	if-statement    |
-	while-statement |
-	call-statement  |	
-	fresh-block
+	if-statement           |
+	while-statement        |
+	call-statement         |
+	fresh-statement        |
+	wand-statement         |
+	constraining-block     |
 		
 if-statement ::=
 	"if" "(" exp ")"
-		statement-block
+		block
 	("elsif" "(" exp ")"
-		statement-block
+		block
 	)*            // any number of elseif branches
 	["else"
-		statement-block
+		block
 	]             // optional else branch
 	
 while-statement ::=
 	"while" "(" exp ")"
-			invariant*
-		statement-block
+		invariant*
+		block
 
 call-statement ::= // method call [with return target]
 	[ident^,* :=] ident "(" exp^,* ")"
 	
 fresh-statement ::=	
 	"fresh" ident^,*
+
+wand-statement ::=
+	"wand" ident ":=" exp |
+	"package" magic-wand-exp |
+	"apply" magic-wand-exp
 	
 constraining-block ::=	
 	"constraining" "(" ident^,* ")"
@@ -138,6 +167,7 @@ binop ::=
 	                               //  and modulo
 	"\/" |                         // permission division
 	                               //  (of two integers)
+	"--*" |                        // magic wand
 
 	"union" | "intersection" | "setminus"  //set operators
 	"++"  |           // sequence concatenation
@@ -150,8 +180,7 @@ unop ::=
 	
 exp ::=
 	"true"  | "false" |          // boolean literal
-	integer |                    // integer literal
-	
+	integer |                    // integer literal	
 	"null"   |                   // null literal
 	"result" |                   // result literal in
 	                             //  function postconditions
@@ -161,51 +190,66 @@ exp ::=
 
 	unop exp |                  // unary expression
 	exp binop exp |             // binary expression
-	exp "?" exp ":" exp |       // conditional expression
+	exp "?" exp ":" exp |       // conditional expression 
 
-	"old" "(" exp ")"            // old expression
+	"old" "(" exp ")"           // old expression
+	"[" ident "]" "(" exp ")"   // labeled old expression
+	"lhs" "(" exp ")"           // apply old expression
 
 	"none"     |             // no permission literal
 	"write"    |             // full permission literal
 	"epsilon"  |             // epsilon permission literal
 	"wildcard" |             // wildcard permission
-	exp "/" exp |            // concrete fractional
-	                         //  permission
 	
 	"perm" "(" loc-access ")" | // current permission
 	                            //  of given location
 	
 	acc-exp  |                   // accessibility predicate
 	
-	ident "(" exp^,* ")" |  // [domain] function
-	                        //  application
+	ident "(" exp^,* ")" |                // [domain] function application
+	"(" ident "(" exp^,* ")" ":" type ")" // typed function application
+
+    
 	field-access         |  // field read
 	predicate-access     |  // predicate access
 
 	"[" exp "," exp "]" |        // inhale exhale expression
-	"unfolding" acc-exp in exp | // unfolding expression
+	"unfolding" acc-exp "in" exp | // unfolding expression
+	"folding" acc-exp "in" exp
+	"applying" ( "(" magic-wand-exp ")" | ident ) "in" exp
+	"packaging" ( "(" magic-wand-exp ")" | ident ) "in" exp
 	
 	// quantification
 	"forall" formal-arg^,* "::" trigger^,* exp |
-	"exists" formal-arg^,* "::" trigger^,* exp |
+	"exists" formal-arg^,* "::" exp |
 	
 	seq-constructor-exp      |
 	set-constructor-exp      |
 	
-	seq-op-exp |
-	set-op-exp
+	seq-op-exp  |
+	"|" exp "|" |                // length of a sequence; or set/multiset cardinality
+
+	let-in-exp  |
+	forperm-exp 
+
+magic-wand-exp ::=
+    exp // except that it must not be <==> or ==>
+let-in-exp ::=
+    "let" ident "==" "(" exp ")" "in" exp
+
+forperm-exp ::=
+    "forperm" "[" ident^,* "]" ident "::" exp
 
 seq-constructor-exp ::=	
-	"Seq" "[" type "]" "()" | // the empty sequence
-	"Seq" "(" exp^,* ")"     | // explicit sequence
-	"[" exp ".." exp ")"      // half-open range of numbers
+	"Seq[" type "]()"     | // the empty sequence
+	"Seq(" exp^,* ")"     | // explicit sequence (must not be empty)
+	"[" exp ".." exp ")"    // half-open range of numbers
 				
 set-constructor-exp ::=
-	"Set"      "[" type "]" "(" exp^,* ")" | // explicit set
-	"Multiset" "[" type "]" "(" exp^,* ")"   // explicit
-	                                        //   multiset			
-set-op-exp ::=
-	"|" exp "|"                 // set/multiset cardinality
+	"Set" "[" type "]" "(" ")"             | // empty set
+	"Set" "(" exp^,* ")"                   | // explicit set
+	"Multiset" "[" type "]" "(" ")"        | // empty multiset
+	"Multiset" "(" exp^,* ")"              | // explicit multiset			
 				
 seq-op-exp ::=
 	exp "[" exp "]"          |  // sequence lookup
@@ -213,8 +257,6 @@ seq-op-exp ::=
 	exp "[" exp ".." "]"     |  // drop n first elements
 	exp "[" exp ".." exp "]" |  // take and drop
 	exp "[" exp ":=" exp "]" |  // update sequence at
-	
-	"|" exp "|"                 // length of a sequence
 
 trigger ::=
 	"{" exp^,* "}"  // a trigger for a quantification
@@ -233,13 +275,29 @@ predicate-access ::=
 
 // Types
 type ::=
-	"Int" | "Bool" | "Perm" | "Ref" |  // primitive types
-	"Seq" "[" type "]"                 // sequence type
-	"Set" "[" type "]"                 // set type
-	"Multiset" "[" type "]"            // multiset type
-	ident [ "[" type^,* "]" ]
-	             // [instance of a generic] domain type
+	"Int" | "Bool" | "Perm" | "Ref" | "Rational" | // primitive types
+	"Seq" "[" type "]" |                           // sequence type
+	"Set" "[" type "]" |                           // set type
+	"Multiset" "[" type "]" |                      // multiset type
+	ident [ "[" type^,* "]" ]                      // [instance of a generic] domain type
 
 // Identifiers
-	ident ::=    // regular expression for an identifier
-		"[a-zA-Z$_][a-zA-Z0-9$_']*"
+ident ::=    // regular expression for an identifier
+    "[a-zA-Z$_][a-zA-Z0-9$_']*"
+
+Expression operator priority
+============================
+(operators are in general, right-associative)
+
+ternary conditional operator
+<==> 
+==> 
+--*
+||
+&&
+== !=
+<= >= < > in
+++ + - union intersection setminus subset (left-associative!)
+* / \ % (left-associative!)
+field-access seq-op-exp
+other expressions
