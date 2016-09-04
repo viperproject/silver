@@ -10,19 +10,17 @@ predicate pred2(a:Ref, i:Int) {
 
 //1 argument
 method test01(xs: Seq[Ref], y: Ref)
-{
-	//:: ExpectedOutput(exhale.failed:insufficient.permission)
-	//:: ExpectedOutput(exhale.failed:receiver.not.injective)
-	exhale forall x: Ref :: x in xs  ==> acc(pred1(y))
-}
+requires acc(pred1(y))
+//:: ExpectedOutput(exhale.failed:receiver.not.injective)
+ensures forall x: Ref :: x in xs  ==> acc(pred1(y))
+{}
 
-//2 argument
+//2 arguments
 method test02(xs: Seq[Ref], y: Ref)
-{
-	//:: ExpectedOutput(exhale.failed:insufficient.permission)
+	requires acc(pred2(y, 1))
 	//:: ExpectedOutput(exhale.failed:receiver.not.injective)
-	exhale forall x: Ref :: x in xs  ==> acc(pred2(y, 1))
-}
+	ensures forall x: Ref :: x in xs  ==> acc(pred2(y, 1))
+{}
 
 //injective
 method test03(xs: Seq[Ref], y: Ref)

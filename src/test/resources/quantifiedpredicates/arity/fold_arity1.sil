@@ -31,16 +31,16 @@ predicate p5(r:Ref, i:Int)
 method m1(x: Ref, xs: Seq[Ref])
 requires x in xs
 requires forall r:Ref :: r in xs ==> acc(p2(r))
+ensures acc(p2(x))
+ensures unfolding p2(x) in (x.f == 4)
 {
     unfold acc(p2(x))
     x.f := 4
     fold acc(p2(x))
-    //uhoh
-    fold acc(p2(x))
-    //failes: assert (false)
     unfold acc(p2(x))
-    assert (false)
+    fold acc(p2(x))
 }
+
 
 method m2(x: Ref, xs: Seq[Ref])
 requires x in xs
@@ -62,7 +62,6 @@ ensures acc(p3(x))
     fold acc(p3(x))
 }
 
-//upsi
 method m4(x: Ref, i:Int, xs: Seq[Ref])
 requires x in xs
 requires forall r:Ref :: r in xs ==> acc(p4(r, i))
@@ -73,7 +72,6 @@ ensures forall r:Ref :: r in xs ==> acc(p4(r, i))
     fold acc(p4(x, i))
 }
 
-//upsi?
 method m5(x: Ref, i:Int, xs: Seq[Ref])
 requires x in xs
 requires forall r:Ref :: r in xs ==> acc(p5(r, i))
