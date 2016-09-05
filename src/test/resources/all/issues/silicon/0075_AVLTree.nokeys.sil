@@ -409,9 +409,10 @@ field root : Ref
 		var rh : Int := (this.right==null ? 0 : this.right.height );
 		bf := lh-rh;
 
-		/* TODO: The following two asserts are required by Silicon, POST1 otherwise fails */
-		assert this.right!=null ==> unfolding acc(valid(this.right),write) in this.right.height>0;
-		assert this.left !=null ==> unfolding acc(valid(this.left),write) in this.left .height>0;
+    /* The following assertions enables proving POST1: from the unfolded
+     * body, the verifier learns that this.right.height > 0.
+     */
+		assert this.right != null ==> unfolding acc(valid(this.right), write) in true;
 	}
 
 	method close(this:Ref)
@@ -447,9 +448,11 @@ field root : Ref
 		this.height := ( (( this.left==null ? 0 : this.left.height )>( this.right==null ? 0 : this.right.height )) ? ( this.left==null ? 0 : this.left.height )+1 : ( this.right==null ? 0 : this.right.height )+1);
 		this.balanceFactor := ( this.left==null ? 0 : this.left.height )-( this.right==null ? 0 : this.right.height );
 
-    /* TODO: The following two asserts are required by Silicon, the fold afterwards otherwise fails */
-		assert this.left !=null ==> unfolding acc(valid(this.left),write) in this.left .height>0;
-		assert this.right!=null ==> unfolding acc(valid(this.right),write) in this.right.height>0;
+    /* The following two asserts enable subsequently folding valid(this): from the unfolded
+     * bodies the verifier learns that this.left.height > 0 (and analogous for this.right).
+     */
+		assert this.left != null ==> unfolding acc(valid(this.left), write)  in true;
+		assert this.right!= null ==> unfolding acc(valid(this.right), write) in true;
 
 		fold acc(valid(this),write);
 	}
