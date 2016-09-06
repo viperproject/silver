@@ -11,7 +11,7 @@ method test01(x: Ref, y: Ref)
   y.f := 0
   assert vx == fun01(x, y, true)
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /dummy/issue/0003/)
+  //:: MissingOutput(assert.failed:assertion.false, /natrix/issue/0003/)
   assert vy == fun01(x, y, false)
 }
 
@@ -29,6 +29,6 @@ method test02(x: Ref, y: Ref)
   assert vx == fun02(x, y, true)
   //:: ExpectedOutput(assert.failed:assertion.false)
   //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
-  //:: MissingOutput(assert.failed:assertion.false, /dummy/issue/0003/)
+  //:: MissingOutput(assert.failed:assertion.false, /natrix/issue/0003/)
   assert vy == fun02(x, y, false)
 }

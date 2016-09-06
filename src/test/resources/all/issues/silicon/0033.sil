@@ -32,7 +32,7 @@ method unfoldTwice(this: Ref)
   unfold acc(valid(this), write)
   unfold acc(valid(this.next), write)
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0021/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0021/)
   assert this.next.next == null
 }
 
@@ -45,7 +45,7 @@ method unfoldThrice(this: Ref)
   unfold acc(valid(this.next), write)
   unfold acc(valid(this.next.next), write)
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0021/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0021/)
   assert this.next.next.next == null
 }
 

@@ -48,7 +48,7 @@ method test03() {
   x.g.f := 17
 
   assert fun4(true, x, x) == 7 - 3 + 17 + 17
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0020/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0020/)
   assert fun4(false, x, x) == 7 + 3 + 99
 
   //:: ExpectedOutput(assert.failed:assertion.false)
@@ -58,7 +58,7 @@ method test03() {
 function fun5(x: Ref): Int
   requires acc(x.f)
   //:: ExpectedOutput(application.precondition:insufficient.permission)
-  //:: MissingOutput(application.precondition:insufficient.permission, /dummy/issue/0003/)
+  //:: MissingOutput(application.precondition:insufficient.permission, /natrix/issue/0003/)
 { fun3(x) }
 
 function fun6(x: Ref): Int

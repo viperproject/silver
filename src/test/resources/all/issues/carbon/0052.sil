@@ -3,7 +3,7 @@ field x: Int
 method f(this: Ref)
   requires acc(this.x)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /natrix/issue/0008/)
   ensures this.x == 1
 {
   this.x := 1

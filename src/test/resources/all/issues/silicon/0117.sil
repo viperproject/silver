@@ -1,4 +1,4 @@
-//:: IgnoreFile(/dummy/issue/0021/)
+//:: IgnoreFile(/natrix/issue/0021/)
 predicate p(this: Ref) { acc(p(this), write) }
 
 function fun(this: Ref): Bool

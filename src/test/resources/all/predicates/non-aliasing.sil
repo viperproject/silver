@@ -12,6 +12,6 @@ method t1(r1: Ref, r2: Ref, b: Bool)
   requires acc(valid(false, r1, r2), write)
 {
   unfold acc(valid(false, r1, r2), write)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0020/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0020/)
   assert (r2 != (r2.f))
 }

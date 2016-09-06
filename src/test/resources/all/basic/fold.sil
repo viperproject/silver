@@ -20,7 +20,7 @@ method t2(r: Ref) returns ()
 {
     r.f := 1
     //:: ExpectedOutput(fold.failed:assertion.false)
-    //:: MissingOutput(fold.failed:assertion.false, /dummy/issue/0019/)
+    //:: MissingOutput(fold.failed:assertion.false, /natrix/issue/0019/)
     fold acc(valid(r), write)
 }
 
@@ -29,6 +29,6 @@ method t3(r: Ref) returns ()
 {
     r.f := 1
     //:: ExpectedOutput(unfold.failed:insufficient.permission)
-    //:: MissingOutput(unfold.failed:insufficient.permission, /dummy/issue/0019/)
+    //:: MissingOutput(unfold.failed:insufficient.permission, /natrix/issue/0019/)
     unfold acc(valid(r), write)
 }

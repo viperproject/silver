@@ -47,7 +47,7 @@ method test05(x: Int) {
   assume fun01(sfx(i))
 
   while (i < 0)
-    //:: UnexpectedOutput(invariant.not.established:assertion.false, /dummy/issue/0020/)
+    //:: UnexpectedOutput(invariant.not.established:assertion.false, /natrix/issue/0020/)
     invariant fun01(sfx(i))
   {
     i := i + 1

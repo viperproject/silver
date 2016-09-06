@@ -28,7 +28,7 @@ method loopTrueFalse(this: Ref)
   i := 1
   while (i < 10)
     //:: ExpectedOutput(invariant.not.established:assertion.false)
-    //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /dummy/issue/0002/)
+    //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /natrix/issue/0002/)
     invariant [true, false]
   {
     i := i + 1

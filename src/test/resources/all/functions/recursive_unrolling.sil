@@ -33,7 +33,7 @@ method test01() {
   n5.next := n4
   fold acc(node(n5))
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0021/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0021/)
   assert length(n5) == 5
 }
 
@@ -45,6 +45,6 @@ method test02(n4: Ref)
   unfold acc(node(n4.next.next))
   unfold acc(node(n4.next.next.next))
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0021/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0021/)
   assert n4.next.next.next.next == null
 }

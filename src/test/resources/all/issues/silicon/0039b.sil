@@ -1,4 +1,4 @@
-//:: IgnoreFile(/dummy/issue/000/)
+//:: IgnoreFile(/natrix/issue/0021/)
 /* class List */
 
 field List_head: Ref

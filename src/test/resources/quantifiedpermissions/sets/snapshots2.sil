@@ -41,7 +41,7 @@ method test05(xs: Set[Ref], x: Ref, y: Ref, n: Int)
 {
   var v: Int := fun(xs, x, n)
   y.f := y.f
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0003/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0003/)
   assert v == fun(xs, x, n)
 }
 
@@ -55,7 +55,7 @@ method test06(xs: Set[Ref], x: Ref, y: Ref, n: Int)
   var yf: Int := y.f
   y.f := 0
   y.f := yf
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0003/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0003/)
   assert v == fun(xs, x, n)
 }
 
@@ -68,7 +68,7 @@ method test07(xs: Set[Ref], x: Ref, y: Ref, n: Int)
   var v: Int := fun(xs, x, n)
   y.f := 0
   y.f := old(y.f)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0003/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0003/)
   assert v == fun(xs, x, n)
 }
 
@@ -80,7 +80,7 @@ method test03(xs: Set[Ref], x: Ref, y: Ref, n: Int)
 {
   var v: Int := fun(xs, x, 0)
   y.f := 0
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0003/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0003/)
   assert v == fun(xs, x, 0)
 }
 
@@ -92,7 +92,7 @@ method test04(xs: Set[Ref], ys: Set[Ref], x: Ref, y: Ref, n: Int)
   requires n >= 0
 {
   /* TODO: Should not be necessary, see silicon/issues/61/ */
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0023/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0023/)
   assert forall z: Ref :: {z in (xs union ys)}{z in xs} z in (xs union ys) ==> z != null
   var v: Int := fun(xs, x, n)
   y.f := 0

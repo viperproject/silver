@@ -6,9 +6,9 @@ method koko(this: Ref)
   requires acc(inv(this), write)
 {
   //:: ExpectedOutput(assignment.failed:insufficient.permission)
-  //:: MissingOutput(assignment.failed:insufficient.permission, /dummy/issue/0019/)
+  //:: MissingOutput(assignment.failed:insufficient.permission, /natrix/issue/0019/)
   this.x := this.x + 1
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0019/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0019/)
   assert (((unfolding acc(inv(this), write) in this.x)) == (old((unfolding acc(inv(this), write) in this.x))))
 }

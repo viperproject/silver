@@ -3,11 +3,11 @@ field x: Int
 function postFunction(this: Ref): Int
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /natrix/issue/0008/)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   //:: MissingOutput(postcondition.violated:assertion.false, /Carbon/issue/69/)
   //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
-  //:: MissingOutput(postcondition.violated:assertion.false, /dummy/issue/0003/)
+  //:: MissingOutput(postcondition.violated:assertion.false, /natrix/issue/0003/)
   ensures this.x == 0
 {
   1
@@ -16,10 +16,10 @@ function postFunction(this: Ref): Int
 method postMethod(this: Ref)
   requires this != null
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /natrix/issue/0008/)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/162/)
-  //:: MissingOutput(postcondition.violated:assertion.false, /dummy/issue/0008/)
+  //:: MissingOutput(postcondition.violated:assertion.false, /natrix/issue/0008/)
   ensures this.x == 0
 {
 }
@@ -27,7 +27,7 @@ method postMethod(this: Ref)
 function postFunction2(this: Ref): Int
   requires this != null && acc(this.x)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
-  //:: MissingOutput(postcondition.violated:assertion.false, /dummy/issue/0003/)
+  //:: MissingOutput(postcondition.violated:assertion.false, /natrix/issue/0003/)
   ensures this.x == 0
 {
   1

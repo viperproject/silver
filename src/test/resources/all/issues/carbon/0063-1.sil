@@ -27,7 +27,7 @@ field x: Int
 method test0(this: Ref)
   requires acc(P(this), write)
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /natrix/issue/0008/)
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   //:: MissingOutput(postcondition.violated:assertion.false, /Silicon/issue/34/)
   ensures (unfolding acc(P(this), write) in true) && this.x == 0
@@ -38,8 +38,8 @@ method test1(this: Ref)
 {
   inhale acc(P(this), write) && this != null
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  //:: MissingOutput(exhale.failed:insufficient.permission, /dummy/issue/0002/)
-  //:: UnexpectedOutput(exhale.failed:assertion.false, /dummy/issue/0002/)
+  //:: MissingOutput(exhale.failed:insufficient.permission, /natrix/issue/0002/)
+  //:: UnexpectedOutput(exhale.failed:assertion.false, /natrix/issue/0002/)
   exhale (unfolding acc(P(this), write) in true) && this.x == 0
 }
 
@@ -47,8 +47,8 @@ method test1Reference(this: Ref)
 {
   inhale this != null
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  //:: MissingOutput(exhale.failed:insufficient.permission, /dummy/issue/0002/)
-  //:: UnexpectedOutput(exhale.failed:assertion.false, /dummy/issue/0002/)
+  //:: MissingOutput(exhale.failed:insufficient.permission, /natrix/issue/0002/)
+  //:: UnexpectedOutput(exhale.failed:assertion.false, /natrix/issue/0002/)
   exhale true && this.x == 0
 }
 

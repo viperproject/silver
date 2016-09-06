@@ -1,4 +1,4 @@
-//:: IgnoreFile(/dummy/issue/000/)
+//:: IgnoreFile(/natrix/issue/0021/)
 
   field value: Int
   field next: Ref

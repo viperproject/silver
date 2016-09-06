@@ -18,6 +18,6 @@ method test(x: Ref) {
   v2 := fun(x)
     
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/122/)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0003/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0003/)
   assert v1 == v2 // Fails in Carbon, verifies in Silicon
 }

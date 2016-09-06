@@ -14,6 +14,6 @@ method test01(x: Ref, b: Bool)
   assert fun01(x, true) == 1
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /dummy/issue/0003/)
+  //:: MissingOutput(assert.failed:assertion.false, /natrix/issue/0003/)
   assert fun01(x, false) == -1
 }

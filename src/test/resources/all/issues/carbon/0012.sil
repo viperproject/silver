@@ -11,13 +11,13 @@ method allocTest(x: Ref) {
   }
   
   y := new()
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0004/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0004/)
   assert x != y
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0004/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0004/)
   assert z != y
   
   inhale acc(x.f)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0004/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0004/)
   assert y != x.f
   inhale acc(y.f)
   //:: ExpectedOutput(assert.failed:assertion.false)
@@ -34,21 +34,21 @@ method allocTest(x: Ref) {
   z := m()
   y := new()
   
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0004/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0004/)
   assert x != y
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0004/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0004/)
   assert z != y
   
   inhale acc(x.f)
-  //:: UnexpectedOutput(assert.failed:insufficient.permission, /dummy/issue/0004/)
+  //:: UnexpectedOutput(assert.failed:insufficient.permission, /natrix/issue/0004/)
   assert y != x.f
   inhale acc(y.f)
-  //:: UnexpectedOutput(assert.failed:insufficient.permission, /dummy/issue/0004/)
-  //:: MissingOutput(assert.failed:assertion.false, /dummy/issue/0004/)
+  //:: UnexpectedOutput(assert.failed:insufficient.permission, /natrix/issue/0004/)
+  //:: MissingOutput(assert.failed:assertion.false, /natrix/issue/0004/)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert x != y.f
-  //:: UnexpectedOutput(assert.failed:insufficient.permission, /dummy/issue/0004/)
-  //:: MissingOutput(assert.failed:assertion.false, /dummy/issue/0004/)
+  //:: UnexpectedOutput(assert.failed:insufficient.permission, /natrix/issue/0004/)
+  //:: MissingOutput(assert.failed:assertion.false, /natrix/issue/0004/)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert x != x.f  
 }

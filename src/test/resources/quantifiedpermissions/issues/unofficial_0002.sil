@@ -23,7 +23,7 @@ method trav(graph: Set[Ref], node: Ref)
 		trav(graph, node.left)
 	}
 	//:: ExpectedOutput(assert.failed:insufficient.permission)
-	//:: MissingOutput(assert.failed:insufficient.permission, /dummy/issue/0014/)
+	//:: MissingOutput(assert.failed:insufficient.permission, /natrix/issue/0014/)
   assert node.is_marked; /* Previously succeeded */
 }
 

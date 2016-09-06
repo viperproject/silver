@@ -4,7 +4,7 @@ method loopTrueFalse(this: Ref)
   i := 1
   while (i < 10)
     //:: ExpectedOutput(invariant.not.established:assertion.false)
-    //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /dummy/issue/0016/)
+    //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /natrix/issue/0016/)
     invariant [true, false]
   {
     i := i + 1

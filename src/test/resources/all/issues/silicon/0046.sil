@@ -4,7 +4,7 @@ method test01(this: Ref)
   requires acc(this.f, write) && this.f == 0
 {
   while (true) {
-    //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0006/)
+    //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0006/)
     assert old(this.f) == 0 /* Used to fail */
   }
 

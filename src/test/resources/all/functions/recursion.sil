@@ -7,7 +7,7 @@ function fac(n: Int): Int
 
 method test() {
   assert fac(0) == 0
-  //:: UnexpectedOutput(assert.failed:assertion.false, /dummy/issue/0003/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /natrix/issue/0003/)
   assert fac(1) == 1
   assert fac(2) == 2
   assert fac(3) == 6
@@ -21,6 +21,6 @@ method test() {
 function err1(n: Int): Int
   requires n >= 0
   //:: ExpectedOutput(postcondition.violated:assertion.false)
-  //:: MissingOutput(postcondition.violated:assertion.false, /dummy/issue/0003/)
+  //:: MissingOutput(postcondition.violated:assertion.false, /natrix/issue/0003/)
   ensures result >= 0
 { n <= 1 ? 1 : err1(n - 1) - n }

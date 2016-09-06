@@ -16,7 +16,7 @@ method t_minus_1(x: Ref)
     requires acc(x.f)
 {
     //:: ExpectedOutput(fold.failed:negative.permission)
-    //:: MissingOutput(fold.failed:negative.permission, /dummy/issue/0019/)
+    //:: MissingOutput(fold.failed:negative.permission, /natrix/issue/0019/)
     fold acc(token(x), (-1/1))
 }
 
@@ -24,7 +24,7 @@ method t_minus_2(x: Ref)
     requires acc(x.f)
 {
     //:: ExpectedOutput(fold.failed:negative.permission)
-    //:: MissingOutput(fold.failed:negative.permission, /dummy/issue/0019/)
+    //:: MissingOutput(fold.failed:negative.permission, /natrix/issue/0019/)
     fold acc(token(x), -(1/1))
 }
 

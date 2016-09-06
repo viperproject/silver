@@ -61,7 +61,7 @@
     assert acc(this.value, write)
     fold acc(inv(this), write)
     //:: ExpectedOutput(assert.failed:insufficient.permission)
-    //:: MissingOutput(assert.failed:insufficient.permission, /dummy/issue/0019/)
+    //:: MissingOutput(assert.failed:insufficient.permission, /natrix/issue/0019/)
     assert acc(this.value, write)
   }
   method uf1(this: Ref)
@@ -84,34 +84,34 @@
     assert acc(inv(this), write)
     unfold acc(inv(this), write)
     //:: ExpectedOutput(assert.failed:insufficient.permission)
-    //:: MissingOutput(assert.failed:insufficient.permission, /dummy/issue/0019/)
+    //:: MissingOutput(assert.failed:insufficient.permission, /natrix/issue/0019/)
     assert acc(inv(this), write)
   }
   method badframing0(this: Ref)
     requires this != null
     //:: ExpectedOutput(application.precondition:insufficient.permission)
-    //:: MissingOutput(application.precondition:insufficient.permission, /dummy/issue/0003/)
+    //:: MissingOutput(application.precondition:insufficient.permission, /natrix/issue/0003/)
     requires ((get(this)) == (2))
   {
   }
   method badframing1(this: Ref)
     requires this != null
     //:: ExpectedOutput(not.wellformed:insufficient.permission)
-    //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
+    //:: MissingOutput(not.wellformed:insufficient.permission, /natrix/issue/0008/)
     requires ((this.value) == (2))
   {
   }
   method badframing2(this: Ref)
     requires this != null
     //:: ExpectedOutput(application.precondition:insufficient.permission)
-    //:: MissingOutput(application.precondition:insufficient.permission, /dummy/issue/0003/)
+    //:: MissingOutput(application.precondition:insufficient.permission, /natrix/issue/0003/)
     requires acc(this.value, write) && ((get(this)) == (2))
   {
   }
   method badframing3(this: Ref)
     requires this != null
     //:: ExpectedOutput(not.wellformed:insufficient.permission)
-    //:: MissingOutput(not.wellformed:insufficient.permission, /dummy/issue/0008/)
+    //:: MissingOutput(not.wellformed:insufficient.permission, /natrix/issue/0008/)
     requires acc(inv(this), write) && ((this.value) == (2))
   {
   }

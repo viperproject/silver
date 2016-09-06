@@ -11,7 +11,7 @@ method m(o:Ref)
     o.f := 5
   }
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /dummy/issue/0030/)
-  //:: UnexpectedOutput(assert.failed:insufficient.permission, /dummy/issue/0030/)
+  //:: MissingOutput(assert.failed:assertion.false, /natrix/issue/0030/)
+  //:: UnexpectedOutput(assert.failed:insufficient.permission, /natrix/issue/0030/)
   assert (o.f == old(o.f))
 }

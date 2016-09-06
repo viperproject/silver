@@ -41,7 +41,7 @@ method History__lemma(diz: Ref, current_thread_id: Int, n: Int)
   requires diz != null
   requires current_thread_id >= 0
   requires n >= 0
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /dummy/issue/0020/)
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /natrix/issue/0020/)
   ensures p_single(n) == (n > 0 ? p_seq(p_single(n - 1), p_incr()) : p_empty())
 {
   var if_any_bool: Bool
