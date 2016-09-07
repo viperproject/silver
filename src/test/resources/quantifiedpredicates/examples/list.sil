@@ -41,6 +41,7 @@ ensures forall r: Ref :: r in lists ==> acc(list(r, length)) //&& allSet(r, leng
         invariant forall r: Ref :: r in lists && !(r in s) ==> acc(list(r, length)) /*&& allSet(r, length, v)*/
         invariant forall r: Ref :: r in s ==> acc(r.val) && r.val == v
         invariant forall r: Ref :: r in s ==> acc(r.next) && acc(list(r.next, length-1))
+        invariant forall r1: Ref, r2: Ref :: r1 in s && r2 in s && r1 != r2 ==> r1.next != r2.next
         //invariant forall r: Ref :: r in s ==> allSet(r.next, length-1, v)
         //invariant forall r: Ref :: r in lists && !(r in s) ==> r.next in sNext
         {
