@@ -146,9 +146,13 @@ trait SilFrontend extends DefaultFrontend {
     * arguments failed.
     */
   protected def printFallbackHeader() {
-    println(s"${_ver.name} ${_ver.version}")
-    println(s"${_ver.copyright}")
-    println()
+    if(config.ideMode()) {
+      println(s"""{"type":"Start","backendType":"${_ver.name}"}\r\n""")
+    }else {
+      println(s"${_ver.name} ${_ver.version}")
+      println(s"${_ver.copyright}")
+      println()
+    }
   }
 
   /** Prints the frontend header. May depend on command line arguments. */
@@ -162,7 +166,11 @@ trait SilFrontend extends DefaultFrontend {
   protected def printFinishHeader() {
     if (!_config.exit) {
       if (_config.noTiming()) {
-        println(s"${_ver.name} finished.")
+        if(config.ideMode()) {
+          println(s"""{"type":"End"}\r\n""")
+        }else {
+          println(s"${_ver.name} finished.")
+        }
       } else {
         printFinishHeaderWithTime()
       }
@@ -172,14 +180,19 @@ trait SilFrontend extends DefaultFrontend {
   protected def printFinishHeaderWithTime() {
     val timeMs = System.currentTimeMillis() - _startTime
     val time = f"${timeMs / 1000.0}%.3f seconds"
-    println(s"${_ver.name} finished in $time.")
+    if(config.ideMode()) {
+      println(s"""{"type":"End","time":"${time}"}\r\n""")
+    }else {
+      println(s"${_ver.name} finished in $time.")
+    }
   }
 
   protected def printErrors(errors: AbstractError*) {
     if (config.ideMode()) {
+      //output a JSON representation of the errors for the IDE
       val ideModeErrors = errors.map(e => new IdeModeErrorRepresentation(e))
-      println(s"The following errors were found in ${ideModeErrors.head.shortFileStr}:")
-      ideModeErrors.foreach(e => println(s"  ${e.consoleErrorStr}"))
+      val jsonErrors = ideModeErrors.map(e => e.jsonError).mkString(",")
+      println(s"""{"type":"Error","file":"${ideModeErrors.head.shortFileStr}","errors":[$jsonErrors]}""")
     } else {
       println("The following errors were found:")
 
@@ -287,6 +300,7 @@ trait SilFrontend extends DefaultFrontend {
     }
 
     lazy val messageStr = extractMessage(error)
+    lazy val escapedMessageStr = messageStr.replaceAll("\\\\","\\\\\\\\").replaceAll("\\\"","\\\\\"").replaceAll("\\n","\\\\n").replaceAll("\\r","\\\\r").replaceAll("\\t","\\\\t")
     lazy val longFileStr = fileOpt.map(_.toString).getOrElse("<unknown file>")
     lazy val shortFileStr = fileOpt.map(f => FilenameUtils.getName(f.toString)).getOrElse("<unknown file>")
     lazy val startStr = startOpt.map(toStr).getOrElse("<unknown start line>:<unknown start column>")
@@ -294,6 +308,9 @@ trait SilFrontend extends DefaultFrontend {
     
     lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
     lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
+
+    //TODO: add error tag
+    lazy val jsonError = s"""{"message":"$escapedMessageStr","start":"$startStr","end":"$endStr"}"""
 
     @inline
     private def extractMessage(error: AbstractError) = {
