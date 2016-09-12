@@ -1,0 +1,14 @@
+//:: IgnoreFile(/carbon/issue/103/)
+
+field __CONFIG_HEURISTICS: Bool
+
+field f: Int
+
+predicate P(x: Ref) { acc(x.f) }
+predicate Q(y: Ref) { P(y) }
+
+method test(z: Ref) {
+  inhale true --* P(z)
+
+  fold Q(z)
+}
