@@ -1,0 +1,18 @@
+field f: Int
+
+method test02(x: Ref)
+  requires acc(x.f)
+{
+  var p: Perm
+  fresh p
+  
+  constraining(p) {
+    exhale acc(x.f, p)
+    goto out
+    assert false
+  }
+  
+  label out
+  //:: ExpectedOutput(exhale.failed:insufficient.permission)
+  exhale acc(x.f, p)
+}
