@@ -30,28 +30,34 @@ object Functions {
       Edge(source, target)
   }
 
-  /**
-   * Returns the call graph of a given program (also considering specifications as calls).
-   */
-  def getCallgraph(p: Program): DirectedGraph[Function, Edge[Function]] = {
-    val g = new DefaultDirectedGraph[Function, Edge[Function]](Factory[Function]())
-    for (f <- p.functions) {
-      g.addVertex(f)
+  def allSubexpressions(func: Function): Seq[Exp] = func.pres ++ func.posts ++ func.body
+
+  /** Returns the call graph of a given program (also considering specifications as calls).
+    *
+    * TODO: Memoize invocations of `getFunctionCallgraph`.
+    */
+  def getFunctionCallgraph(program: Program, subs: Function => Seq[Exp] = allSubexpressions)
+                          : DirectedGraph[Function, Edge[Function]] = {
+
+    val graph = new DefaultDirectedGraph[Function, Edge[Function]](Factory[Function]())
+
+    for (f <- program.functions) {
+      graph.addVertex(f)
     }
+
     def process(f: Function, e: Exp) {
       e visit {
         case FuncApp(f2name, args) =>
-          g.addEdge(f, p.findFunction(f2name))
+          graph.addEdge(f, program.findFunction(f2name))
       }
     }
-    for (f <- p.functions) {
-      f.body foreach (process(f, _))
-      f.pres foreach (process(f, _))
-      f.posts foreach (process(f, _))
-    }
-    g
-  }
 
+    for (f <- program.functions) {
+      subs(f) foreach (process(f, _))
+    }
+
+    graph
+  }
   /**
     * Computes the height of every function.  If the height h1 of a function f1 is
     * smaller than the height h2 of function f2, then f1 appears earlier in the
@@ -68,7 +74,7 @@ object Functions {
      * An edge from f1 to f2 denotes that f1 calls f2, either in the function
      * body or in the specifications.
      */
-    val callGraph = getCallgraph(program)
+    val callGraph = getFunctionCallgraph(program)
 
 ///* debugging */
 //    val functionVNP = new org.jgrapht.ext.VertexNameProvider[Function] {
@@ -175,5 +181,31 @@ object Functions {
     f.body foreach (recordCallsAndUnfoldings(_, Seq()))
 
     result
+  }
+
+  /** Returns all cycles formed by functions that (transitively) recurse via their precondition.
+    *
+    * @param program The program that defines the functions to check for cycles.
+    * @return A map from functions to sets of functions. If a function `f` maps to a set of
+    *         functions `fs`, then `f` (transitively) recurses via its precondition, and the
+    *         formed cycles involves the set of functions `fs`.
+    */
+  def findFunctionCyclesViaPreconditions(program: Program): Map[Function, Set[Function]] = {
+    def subs(entryFunc: Function)(otherFunc: Function): Seq[Exp] =
+      if (otherFunc == entryFunc)
+        otherFunc.pres
+      else
+        allSubexpressions(otherFunc)
+
+    program.functions.flatMap(func => {
+      val graph = getFunctionCallgraph(program, subs(func))
+      val cycleDetector = new CycleDetector(graph)
+      val cycle = cycleDetector.findCyclesContainingVertex(func)
+
+      if (cycle.isEmpty)
+        None
+      else
+        Some(func -> cycle.toSet)
+    }).toMap[Function, Set[Function]]
   }
 }

@@ -302,6 +302,18 @@ object Consistency {
 //    recordIfNot(wand, ok, s"Conditionals transitively reachable from a magic wand must be pure (see issue 16).")
 //  }
 
+  def checkNoFunctionRecursesViaPreconditions(program: Program): Unit = {
+    Functions.findFunctionCyclesViaPreconditions(program) foreach { case (func, cycleSet) =>
+      var msg = s"Function ${func.name} recurses via its precondition"
+
+      if (cycleSet.nonEmpty) {
+        msg = s"$msg: the cycle contains the function(s) ${cycleSet.map(_.name).mkString(", ")}"
+      }
+
+      recordIf(func, true, msg)
+    }
+  }
+
   /** Checks consistency that is depends on some context. For example, that some expression
     * Foo(...) must be pure except if it occurs inside Bar(...).
     *

@@ -8,8 +8,6 @@ package viper.silver.ast
 
 import org.kiama.output._
 
-import scala.collection.mutable
-import viper.silver.ast.pretty._
 import utility.{Consistency, DomainInstances, Types}
 
 /** A Silver program. */
@@ -22,6 +20,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       "names of members must be distinct")
 
   Consistency.checkContextDependentConsistency(this)
+  Consistency.checkNoFunctionRecursesViaPreconditions(this)
 //  visit { case wand: MagicWand => Consistency.checkNoImpureConditionals(wand, this) }
 
   lazy val groundTypeInstances = DomainInstances.findNecessaryTypeInstances(this)
@@ -158,7 +157,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   }
   def body = _body
   def body_=(b: Option[Exp]) {
-    require(b map (_ isSubtype typ) getOrElse true)
+    require(b forall (_ isSubtype typ))
     b foreach Consistency.checkFunctionBody
     _body = b
   }
