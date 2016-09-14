@@ -80,7 +80,10 @@ object Consistency {
   /** Returns true iff the string `name` is a valid identifier. */
   val identFirstLetter = "[a-zA-Z$_]"
 
-  val identOtherLetterChars = "a-zA-Z0-9$_'"
+  /** Special characters other than dollar ($) and underscore (_) are reserved
+    * for Viper-internal use.
+    */
+  val identOtherLetterChars = "a-zA-Z0-9$_'@"
   val identOtherLetter = s"[$identOtherLetterChars]"
   val identifier = identFirstLetter + identOtherLetter + "*"
 
