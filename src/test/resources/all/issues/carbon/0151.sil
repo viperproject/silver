@@ -13,12 +13,10 @@ method Tree_work(_cthread: Ref, self: Ref, call_height: Int)
   requires acc(MustTerminate(_cthread), 2 * write)
 {
   assert perm(MustTerminate(_cthread)) == 2 * write
-  exhale ((unfolding acc(Tree_valid(self), write) in self.Tree_height == call_height) && // Commenting out, changes verification result in Carbon
+  exhale ((unfolding acc(Tree_valid(self), write) in self.Tree_height == call_height) &&
           (acc(MustTerminate(_cthread), write)))
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/151/)
-  assert perm(MustTerminate(_cthread)) == 1 * write // Verifies in Silicon
+  assert perm(MustTerminate(_cthread)) == 1 * write 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /Carbon/issue/151/)
-  assert perm(MustTerminate(_cthread)) == 2 * write // Verifies in Carbon
+  assert perm(MustTerminate(_cthread)) == 2 * write
 }
