@@ -11,6 +11,44 @@ method test(xs: Set[Ref]) {
 
 
 
+define P(xs) forall x: Ref :: x in xs ==> acc(x.f)
+
+function fun01(xs: Set[Ref], i: Int): Bool
+  requires P(xs)
+
+function fun02(xs: Set[Ref], i: Int): Bool
+  requires P(xs)
+
+method test10(xs: Set[Ref], ys: Set[Ref]) {
+  inhale P(xs)
+  inhale P(ys)
+
+  inhale forall j: Int :: fun01(xs, j) == fun02(ys, j)
+  exhale forall j: Int :: fun01(xs, j) == fun02(ys, j)
+}
+
+
+
+
+function bar01(xs: Set[Ref], i: Int): Bool
+  requires P(xs)
+
+function bar02(xs: Set[Ref], i: Int): Int
+  requires P(xs)
+
+method test20(xs: Set[Ref], ys: Set[Ref]) {
+  inhale P(xs)
+  inhale P(ys)
+
+  inhale
+    forall j: Int :: {bar01(xs, bar02(ys, j))}
+                     {foo(xs, j)}
+      bar01(xs, bar02(ys, j)) == foo(xs, j)
+
+  exhale
+    forall j: Int ::
+      bar01(xs, bar02(ys, j)) == foo(xs, j)
+}
 
 
 
@@ -80,6 +118,3 @@ method MatrixMul(C: HeapMatrix)
     assume forall z: Int :: get(hm2m(C), z, z) == 0
     assert forall z: Int :: get(hm2m(C), z, z) == 0
 }
-
-
-
