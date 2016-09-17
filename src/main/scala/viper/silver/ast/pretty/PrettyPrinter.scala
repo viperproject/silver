@@ -1,12 +1,11 @@
 package viper.silver.ast.pretty
 
 import javax.print.Doc
-
-import viper.silver.ast._
-
+import scala.language.implicitConversions
 import scala.collection.immutable.Queue
 import scala.collection.immutable.Queue.{empty => emptyDq}
 import org.kiama.output._
+import viper.silver.ast._
 
 /**
  * A pretty printer for the SIL language.

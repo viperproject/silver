@@ -1,7 +1,8 @@
 package viper.silver.parser
 
 import java.nio.file.Path
-
+import scala.annotation.tailrec
+import scala.language.implicitConversions
 import fastparse.{Implicits, WhitespaceApi}
 import fastparse.Implicits.{Repeater, Sequencer}
 import fastparse.all._
@@ -9,8 +10,6 @@ import fastparse.core.{Mutable, ParseCtx, Parser}
 import fastparse.parsers.Combinators.{Repeat, Rule}
 import fastparse.parsers.Terminals.Pass
 import viper.silver.ast.HasLineColumn
-
-import scala.annotation.tailrec
 
 /**
   * Created by sahil on 21.07.16.
@@ -172,14 +171,13 @@ class PositionRule[+T](override val name: String, override val p: () => Parser[T
     } else {
       lazy val res = pCached.parseRec(cfg, index) match{
         case f: Mutable.Failure => failMore(f, index, cfg.logDepth)
-        case s: Mutable.Success[T] => {
+        case s: Mutable.Success[T] =>
           val start = computeFrom(cfg.input, index)
           val end = computeFrom(cfg.input, s.index)
           viper.silver.FastPositions.setStart (s.value, FilePosition(file, start._1, start._2))
           viper.silver.FastPositions.setFinish (s.value, FilePosition(file, end._1, end._2))
 
           s
-        }
       }
       cfg.instrument(this, index, () => res.toResult)
       res

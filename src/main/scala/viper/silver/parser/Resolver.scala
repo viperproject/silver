@@ -10,7 +10,7 @@ import scala.collection.mutable
 import scala.reflect._
 import viper.silver.ast.MagicWandOp
 import viper.silver.ast.utility.Visitor
-import viper.silver.{FastMessaging}
+import viper.silver.FastMessaging
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -292,8 +292,8 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def checkMagicWand(e: PExp, allowWandRefs: Boolean) = e match {
-    case _: PIdnUse if allowWandRefs =>{}
-    case PBinExp(_, MagicWandOp.op, _) =>{}
+    case _: PIdnUse if allowWandRefs =>
+    case PBinExp(_, MagicWandOp.op, _) =>
     case _ =>
       messages ++= FastMessaging.message(e, "expected magic wand")
   }
@@ -535,9 +535,9 @@ case class TypeChecker(names: NameAnalyser) {
 
           case pfa@PCall(func, args, explicitType) =>
             explicitType match {
-              case Some(t) => {
-                check(t); if (!t.isValidAndResolved) nestedTypeError = true
-              }
+              case Some(t) =>
+                check(t)
+                if (!t.isValidAndResolved) nestedTypeError = true
               case None =>
             }
             if(!nestedTypeError) {
@@ -545,11 +545,10 @@ case class TypeChecker(names: NameAnalyser) {
                 ad match {
                   case fd: PAnyFunction =>
                     pfa.function = fd
-                    val formalArgs = fd.formalArgs
-                    ensure(formalArgs.size == args.size, pfa, "wrong number of arguments")
+                    ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                     fd match {
-                      case PFunction(_, formalArgs, resultType, _, _, _) =>
-                      case pdf@PDomainFunction(_, formalArgs, resultType, unique) =>
+                      case PFunction(_, _, resultType, _, _, _) =>
+                      case pdf@PDomainFunction(_, _, resultType, unique) =>
                         val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
                         val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).toSet) //fresh domain type variables
                         pfa.domainTypeRenaming = Some(fdtv)
@@ -563,8 +562,6 @@ case class TypeChecker(names: NameAnalyser) {
                       checkInternal(id)
                       if (args.length != predicate.formalArgs.length)
                         issueError(func, "predicate arity doesn't match")
-                      else
-                        predicate
                     }
                   case x =>
                     issueError(func, "expected function or predicate ")
@@ -591,21 +588,18 @@ case class TypeChecker(names: NameAnalyser) {
                 (id, decl) => {
                   checkInternal(id)
                 })
-              case ppp@PAccPred(loc, _) => {
+              case ppp@PAccPred(loc, _) =>
                 loc match {
-                  case ppfa@PCall(func, args, explicitType) => {
+                  case ppfa@PCall(func, args, explicitType) =>
                     val ad = names.definition(curMember)(func)
                     ad match {
-                      case ppf : PFunction => {
+                      case ppf : PFunction =>
                         issueError(func, "expected predicate ")
-                      }
                       case _ =>
                     }
-                  }
                   case _ =>
                 }
-              }
-              case ppa@PPredicateAccess(args, idnuse) =>
+          case ppa@PPredicateAccess(args, idnuse) =>
               val predicate = names.definition(curMember)(ppa.idnuse).asInstanceOf[PPredicate]
               acceptAndCheckTypedEntity[PPredicate, Nothing](Seq(idnuse), "expected predicate") { (id, decl) =>
                 checkInternal(id)
@@ -640,7 +634,7 @@ case class TypeChecker(names: NameAnalyser) {
               val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
               val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
               // the triples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions)
-              poa.typeSubstitutions ++= unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.toSet)).toSeq ++
+              poa.typeSubstitutions ++= unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.toSet)) ++
                 (
                   extraReturnTypeConstraint match {
                     case None => Nil
@@ -843,7 +837,7 @@ case class NameAnalyser() {
               beforeFound = true
             }
           }
-          return (node eq toFind) && node != container && !beforeFound
+          (node eq toFind) && node != container && !beforeFound
         }
 
         def apply(node: PNode) = node
