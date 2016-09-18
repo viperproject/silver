@@ -80,7 +80,7 @@ method t1_5(this: Ref, xs : Seq[Ref], b: Bool)
     requires acc(this.unrelatedField, write)
     requires forall x: Ref :: x in xs ==> acc(valid(x, b), write)
 {
-    //:: ExpectedOutput(unfold.failed:insufficient.permission)
+    //:: ExpectedOutput(not.wellformed:insufficient.permission:insufficient.permission)
     unfold acc(valid(this, b), write)
 }
 

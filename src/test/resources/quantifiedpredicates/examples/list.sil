@@ -56,8 +56,8 @@ ensures forall r: Ref :: r in lists ==> acc(list(r, length)) && allSet(r, length
             var l2:Ref
             assume l2 in s
             fold list(l2, length)
-            assert false
             s := s setminus Set(l2)
         }
+        //:: ExpectedOutput(assert.failed:assertion.false)
         assert false
 }

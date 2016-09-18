@@ -29,16 +29,13 @@ method m2(xs:Set[Ref])
 requires forall r:Ref :: r in xs ==> acc(p2(r))
 {
     assert forall r:Ref :: r in xs ==> unfolding p2(r) in r.f == 5
-
 }
-
 
 method m3(xs:Set[Ref], i:Int)
 requires forall r:Ref :: r in xs ==> acc(p3(r, i))
 {
     assume forall r:Ref :: r in xs ==> unfolding p3(r, i) in r.f == i+1
     assert forall r:Ref :: r in xs ==> unfolding p3(r, i) in r.f == i+1
-
 }
 
 method m4(xs:Set[Ref], i:Int)
