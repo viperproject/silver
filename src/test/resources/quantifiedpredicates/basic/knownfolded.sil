@@ -25,7 +25,7 @@ method test2(x: Ref, xs: Set[Ref], b: Bool)
   requires forall y:Ref :: y in xs ==>  acc(P(y, b))
   requires x in xs
   ensures acc(P(x, b))
-  ensures unfolding P(x, b) in (b ? acc(x.f) && x.f == 0 : acc(x.g) && x.g)
+  ensures unfolding P(x, b) in (b ? x.f == 0 : x.g)
 {
   unfold acc(P(x, b))
 
