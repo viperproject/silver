@@ -30,7 +30,7 @@ predicate p(a: IArray, i:Int)
 method m1(a: IArray, n: Int, i1: Int, i2:Int)
   requires n > 3
   requires forall i: Int :: i > 0 && i < n ==> acc(p(a, i+1))
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/)
+   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/1/)
   ensures  forall i: Int :: i > 0 && i < n  ==> acc(p(a,i+1))
 {}
 
@@ -43,32 +43,32 @@ method m2(a: IArray, n: Int, i1: Int, i2:Int)
 method m3(a: IArray, n: Int, i1: Int, i2:Int)
   requires n > 3
   requires forall i: Int :: i in [0..n) ==> acc(p(a, i+1))
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /carbon/)
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/)
+   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Carbon/issue/1/)
+   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/1/)
   ensures  acc(p(a, 1))
 {}
 
 method m4(a: IArray, n: Int, i1: Int, i2:Int)
   requires n > 3
   requires forall i: Int :: i in [0..n) ==> acc(loc(a, i+1).val)
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /carbon/)
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/)
+   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Carbon/issue/1/)
+   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/1/)
   ensures  acc(loc(a, 1).val)
 {}
 
 method m5(a: IArray, n: Int, i1: Int, i2:Int)
   requires n > 3
   requires forall i: Int :: i in [0..n) ==> acc(p(a, i+1))
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /carbon/)
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/)
+   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Carbon/issue/1/)
+   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/1/)
   ensures  forall i: Int :: i in [1..n+1) ==> acc(p(a, i))
 {}
 
 method m6(a: IArray, n: Int, i1: Int, i2:Int)
   requires n > 3
   requires forall i: Int :: i in [0..n) ==> acc(loc(a, i+1).val)
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /carbon/)
-  //:: UnexpectedOutput(assignment.failed:insufficient.permission, /silicon/)
+   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Carbon/issue/1/)
+   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /Silicon/issue/1/)
   ensures  forall i: Int :: i in [1..n+1) ==> acc(loc(a, i).val)
 {}
 
