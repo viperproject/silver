@@ -8,17 +8,20 @@ package viper.silver.parser
 import fastparse.all._
 import fastparse.core.{Mutable, ParseCtx, Parser}
 import fastparse.Implicits.{Repeater, Sequencer}
-import fastparse.{WhitespaceApi}
-import fastparse.parsers.Combinators.{Rule}
+import fastparse.WhitespaceApi
+import fastparse.parsers.Combinators.Rule
 import fastparse.parsers.Terminals.Pass
 import java.nio.file.Path
+
 import scala.collection.immutable.Iterable
 import scala.collection.mutable
 import scala.language.implicitConversions
 import scala.language.reflectiveCalls
-import viper.silver.ast.{SourcePosition}
+import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
+
+import scala.util.parsing.input.NoPosition
 
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position)  extends Exception
@@ -372,7 +375,20 @@ object FastParser extends PosParser{
     }
   }
 
-  lazy val accessPred: P[PAccPred] = P(keyword("acc") ~/ ("(" ~ locAcc ~ ("," ~ exp).? ~ ")").map { case (loc, perms) => PAccPred(loc, perms.getOrElse(PFullPerm())) })
+  lazy val accessPredImpl: P[PAccPred] = P((keyword("acc") ~/ "(" ~ locAcc ~ ("," ~ exp).? ~ ")").map {
+    case (loc, perms) => PAccPred(loc, perms.getOrElse(PFullPerm()))
+  })
+
+  lazy val accessPred: P[PAccPred] = P(accessPredImpl.map {
+    case acc => {
+      val perm = acc.perm
+      if (FastPositions.getStart(perm) == NoPosition){
+        FastPositions.setStart(perm, acc.start)
+        FastPositions.setFinish(perm, acc.finish)
+      }
+      acc
+    }
+  })
 
   lazy val locAcc: P[PLocationAccess] = P(fieldAcc | predAcc)
 
@@ -432,7 +448,14 @@ object FastParser extends PosParser{
 
   lazy val unfolding: P[PExp] = P(keyword("unfolding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PUnfolding(a, b) }
 
-  lazy val predicateAccessPred: P[PAccPred] = P(accessPred | predAcc.map { case loc => PAccPred(loc, PFullPerm()) })
+  lazy val predicateAccessPred: P[PAccPred] = P(accessPred | predAcc.map {
+    case loc => {
+      val perm = PFullPerm()
+      FastPositions.setStart(perm, loc.start)
+      FastPositions.setFinish(perm, loc.finish)
+      PAccPred(loc, perm)
+    }
+  })
 
   lazy val folding: P[PExp] = P(keyword("folding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PFoldingGhostOp(a, b) }
 
