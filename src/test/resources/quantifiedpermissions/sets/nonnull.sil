@@ -23,7 +23,6 @@ method test03(xs: Set[Ref], x: Ref)
   requires forall z: Ref :: z in xs ==> acc(z.f)
   requires xs == Set(x)
 {
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/61/)
   assert x != null
 }
 
