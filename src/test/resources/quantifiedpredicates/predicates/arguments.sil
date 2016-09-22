@@ -76,14 +76,6 @@ method t1_4(this: Ref, xs : Seq[Ref], b: Bool)
     unrelated(this)
 }
 
-method t1_5(this: Ref, xs : Seq[Ref], b: Bool)
-    requires acc(this.unrelatedField, write)
-    requires forall x: Ref :: x in xs ==> acc(valid(x, b), write)
-{
-    //:: ExpectedOutput(not.wellformed:insufficient.permission:insufficient.permission)
-    unfold acc(valid(this, b), write)
-}
-
 method t2(x1: Ref, x2:Ref)
     requires acc(x1.unrelatedField, write)
     requires x1 != x2
@@ -123,7 +115,7 @@ method t3_2(this: Ref, xs: Seq[Ref], b: Bool)
     requires acc(this.unrelatedField, write)
     requires forall x: Ref :: x in xs ==> acc(valid(x, b), write)
     requires forall x: Ref :: x in xs ==> acc(valid(x, !b), write)
-    //:: ExpectedOutput(unfold.failed:insufficient.permission, /silicon/issue/36/)
+    //:: UnexpectedOutput(unfold.failed:insufficient.permission, /silicon/issue/36/)
     requires (unfolding acc(valid(this, false), write) in ((this.g) == 2))
     ensures acc(valid(this, b), write)
     ensures acc(valid(this, !b), write)

@@ -28,6 +28,7 @@ requires forall r:Ref :: r in xs ==> acc(p1(r))
 method m2(xs:Set[Ref])
 requires forall r:Ref :: r in xs ==> acc(p2(r))
 {
+    //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/1/)
     assert forall r:Ref :: r in xs ==> unfolding p2(r) in r.f == 5
 }
 
