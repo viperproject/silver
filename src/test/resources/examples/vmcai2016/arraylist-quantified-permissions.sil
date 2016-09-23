@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/137/)
+
 domain Pair[T1,T2] {
   function first(p : Pair[T1,T2]): T1
   function second(p: Pair[T1,T2]): T2
