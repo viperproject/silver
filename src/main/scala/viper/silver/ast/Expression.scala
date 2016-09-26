@@ -396,12 +396,10 @@ case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = N
 
 /** Old expression that references a particular state earlier in the program that has been given a name.
   * Evaluates expression in that state. */
-case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends UnExp {
+case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp {
   require(oldLabel != null, "LabelledOld(exp, _): exp cannot be null")
   require(oldLabel != null, "LabelledOld(_, oldLabel): oldLabel cannot be null")
   Consistency.checkNoPositiveOnly(exp)
-
-  lazy val typ = exp.typ
 }
 
 // --- Other expressions

@@ -201,7 +201,11 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   protected def printSuccess() {
-    println("No errors found.")
+    if (config.ideMode()) {
+      printf("""{"type":"Success"}""")
+    } else {
+      println("No errors found.")
+    }
   }
 
   override def doParse(input: String): Result[ParserResult] = {
@@ -309,8 +313,7 @@ trait SilFrontend extends DefaultFrontend {
     lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
     lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
 
-    //TODO: add error tag
-    lazy val jsonError = s"""{"message":"$escapedMessageStr","start":"$startStr","end":"$endStr"}"""
+    lazy val jsonError = s"""{"tag":"${error.fullId}","message":"$escapedMessageStr","start":"$startStr","end":"$endStr"}"""
 
     @inline
     private def extractMessage(error: AbstractError) = {
