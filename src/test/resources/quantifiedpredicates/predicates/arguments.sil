@@ -111,21 +111,6 @@ method t3_1(this: Ref, xs: Seq[Ref], b: Bool)
     fold acc(valid(this, true), write)
 }
 
-method t3_2(this: Ref, xs: Seq[Ref], b: Bool)
-    requires acc(this.unrelatedField, write)
-    requires forall x: Ref :: x in xs ==> acc(valid(x, b), write)
-    requires forall x: Ref :: x in xs ==> acc(valid(x, !b), write)
-    //:: UnexpectedOutput(unfold.failed:insufficient.permission, /silicon/issue/36/)
-    requires (unfolding acc(valid(this, false), write) in ((this.g) == 2))
-    ensures acc(valid(this, b), write)
-    ensures acc(valid(this, !b), write)
-    ensures (unfolding acc(valid(this, false), write) in ((this.g) == 2))
-{
-    unfold acc(valid(this, true), write)
-    this.f := 1
-    fold acc(valid(this, true), write)
-}
-
 method t3a(this: Ref, xs:Seq[Ref], b: Bool)
     requires this in xs
     requires acc(this.unrelatedField, write)
