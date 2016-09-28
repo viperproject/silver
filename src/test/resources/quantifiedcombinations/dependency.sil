@@ -24,8 +24,6 @@ field f:Int
   method m2(xs:Seq[Ref])
   //:: ExpectedOutput(not.wellformed:insufficient.permission)
   requires forall x:Ref :: x in xs ==> x.f > 0 && acc(x.f)
-  //:: ExpectedOutput(not.wellformed:insufficient.permission)
-  ensures forall x:Ref :: x in xs ==> x.f > 0 && acc(x.f)
   {}
 
 

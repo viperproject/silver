@@ -48,6 +48,9 @@ import viper.silver.ast._
               /*&& triggers.isEmpty*/ =>
 
             Some((lvd, condition, rcvr, f, gain, forall, fa))
+          case forall@Forall(Seq(lvd@LocalVarDecl(_, _)), triggers, FieldAccessPredicate(fa@FieldAccess(rcvr, f), gain))
+            if rcvr.exists(_ == lvd.localVar) =>
+            Some((lvd, BoolLit(true)(forall.pos, forall.info), rcvr, f, gain, forall, fa))
           case _ => None
         }
     }
@@ -68,6 +71,8 @@ import viper.silver.ast._
           triggers,
           Implies(condition, pa@PredicateAccessPredicate(PredicateAccess(args, predname), gain))) =>
             Some((lvd, condition, args, predname, gain, forall, pa))
+          case forall@Forall(Seq(lvd@LocalVarDecl(_, _)), triggers, pa@PredicateAccessPredicate(PredicateAccess(args, predname), gain)) =>
+            Some((lvd, BoolLit(true)(forall.pos, forall.info), args, predname, gain, forall, pa))
           case _ => None
         }
     }

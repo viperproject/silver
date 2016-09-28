@@ -40,21 +40,16 @@ requires forall j:Int :: j >= 0 && j < len(a) && (j%2 ==0) ==> acc(access(a,j))
 ensures i >= 0 && i < len(a)
 ensures len(a)%2 == old(len(a)%2)
 ensures forall j:Int :: j >= 0 && j < len(a) && (j%2 ==0) ==> acc(access(a,j))
-ensures forall j:Int :: j >= 0 && j < i && (j%2 ==0) ==> (unfolding acc(access(a,j)) in  loc(a, j).val) == old(unfolding acc(access(a,j)) in  loc(a, j).val)
-ensures forall j:Int :: j >= 0 && j < i && (j%2 ==0) ==> (unfolding acc(access(a,j)) in  loc(a, j+1).val) == old(unfolding acc(access(a,j)) in  loc(a, j+1).val)
-ensures (unfolding acc(access(a,i)) in  (loc(a, i).val == newVal)) && (unfolding acc(access(a,i)) in  (loc(a, i+1).val == newVal))
-//ensures forall j:Int :: j >= i && j < len(a) && (j%2 ==0) ==> (unfolding acc(access(a,j)) in  (loc(a, j).val == newVal)) && (unfolding acc(access(a,j)) in  (loc(a, j+1).val == newVal))
 {
     unfold access(a,i)
     loc(a,i).val := newVal
 	loc(a,i+1).val := newVal
 	fold access(a,i)
+	assert (unfolding acc(access(a,i)) in  (loc(a, i).val == newVal)) && (unfolding acc(access(a,i)) in  (loc(a, i+1).val == newVal))
 
     if (i + 2 < len(a)) {
              setVal(a, i+2, newVal)
-             assert (unfolding acc(access(a,i+2)) in  (loc(a, i+2).val == newVal)) && (unfolding acc(access(a,i+2)) in  (loc(a, i+3).val == newVal))
     }
-    assert (unfolding acc(access(a,i)) in  (loc(a, i).val == newVal)) && (unfolding acc(access(a,i)) in  (loc(a, i+1).val == newVal))
 }
 
 

@@ -21,7 +21,7 @@ requires acc(p2(x1))
 requires acc(p2(x2))
 {
     //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/1/)
-    //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/1/)
+    //:: UnexpectedOutput(assert.failed:insufficient.permission, /Silicon/issue/1/)
     assert forall r:Ref :: r in Set(x1, x2) ==> unfolding p2(r) in r.f == 5
 }
 
