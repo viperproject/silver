@@ -1,4 +1,3 @@
-//:: IgnoreFile(/Silver/issue/136/)
 function LibB(a: Int, b: Bool): Bool
     requires true
     requires true

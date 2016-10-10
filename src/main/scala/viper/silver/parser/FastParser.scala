@@ -5,6 +5,8 @@ package viper.silver.parser
   */
 
 
+import java.io.File
+
 import fastparse.all._
 import fastparse.core.{Mutable, ParseCtx, Parser}
 import fastparse.Implicits.{Repeater, Sequencer}
@@ -602,7 +604,8 @@ object FastParser extends PosParser{
 
       val imp_progs_results: Seq[Either[ParseReport, Any] with Product with Serializable] = imports.collect {
         case imp@PImport(imp_file) =>
-          val imp_path = java.nio.file.Paths.get(file.getParent + "/" + imp_file)
+          println("Importing " + file.getParent.toAbsolutePath.toString + " " + imp_file)
+          val imp_path = java.nio.file.Paths.get(file.getParent. + File.separator + imp_file)
           val imp_pos = imp.start.asInstanceOf[viper.silver.ast.Position]
 
           if (java.nio.file.Files.notExists(imp_path))
@@ -625,7 +628,8 @@ object FastParser extends PosParser{
               case Left(e) => Left(e)
               case Right(s) =>
                 //TODO print debug info iff --dbg switch is used
-                val p = RecParser(imp_path).parses(s.mkString("\n") + "\n")
+                val imported_source = s.mkString("\n") + "\n"
+                val p = RecParser(imp_path).parses(imported_source)
                 p match {
                   case fastparse.core.Parsed.Success(a, _) => Right(a)
                   case fastparse.core.Parsed.Failure(msg, next, extra) => Left(viper.silver.verifier.ParseError(s"Failure: $msg", FilePosition(imp_path, extra.line, extra.col)))

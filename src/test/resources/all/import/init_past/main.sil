@@ -1,4 +1,3 @@
-//:: IgnoreFile(/Silver/issue/136/)
 import "liba.sil"
 
 method main()
