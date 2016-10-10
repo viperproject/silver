@@ -604,8 +604,8 @@ object FastParser extends PosParser{
 
       val imp_progs_results: Seq[Either[ParseReport, Any] with Product with Serializable] = imports.collect {
         case imp@PImport(imp_file) =>
-          val imp_path = file.getParent.toAbsolutePath.resolve(imp_file)
-          println("Importing " + imp_path.toString)
+          val imp_path = file.getParent.resolve(imp_file)
+          println(s"""Importing ${file.toString} ${file.toAbsolutePath.toString} ${file.getParent.toString} ${java.nio.file.Files.notExists(file)} ${imp_path}""")
           val imp_pos = imp.start.asInstanceOf[viper.silver.ast.Position]
 
           if (java.nio.file.Files.notExists(imp_path))
