@@ -615,7 +615,7 @@ object FastParser extends PosParser{
             Left(viper.silver.verifier.ParseError(s"""importing yourself is probably not a good idea!""", imp_pos))
 
           else if (_imports.put(imp_path, true).isEmpty) {
-            val source = scala.io.Source.fromFile(imp_path.toFile)
+            val source = scala.io.Source.fromFile(imp_path.toUri)
             val buffer = try {
               Right(source.getLines.toArray)
             } catch {
