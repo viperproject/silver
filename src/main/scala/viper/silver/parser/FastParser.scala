@@ -13,7 +13,7 @@ import fastparse.Implicits.{Repeater, Sequencer}
 import fastparse.WhitespaceApi
 import fastparse.parsers.Combinators.Rule
 import fastparse.parsers.Terminals.Pass
-import java.nio.file.Path
+import java.nio.file.{Files, Path}
 
 import scala.collection.immutable.Iterable
 import scala.collection.mutable
@@ -605,7 +605,7 @@ object FastParser extends PosParser{
       val imp_progs_results: Seq[Either[ParseReport, Any] with Product with Serializable] = imports.collect {
         case imp@PImport(imp_file) =>
           val imp_path = file.getParent.resolve(imp_file)
-          println(s"""Importing ${file.toString} ${file.toAbsolutePath.toString} ${file.getParent.toString} ${java.nio.file.Files.notExists(file)} ${imp_path}""")
+          println(s"""Importing ${file.toString} ${file.toAbsolutePath.toString} ${file.getParent.toString} ${java.nio.file.Files.notExists(file)} ${imp_path} ${java.nio.file.Files.notExists(imp_path)}""")
           val imp_pos = imp.start.asInstanceOf[viper.silver.ast.Position]
 
           if (java.nio.file.Files.notExists(imp_path))
@@ -615,7 +615,7 @@ object FastParser extends PosParser{
             Left(viper.silver.verifier.ParseError(s"""importing yourself is probably not a good idea!""", imp_pos))
 
           else if (_imports.put(imp_path, true).isEmpty) {
-            val source = scala.io.Source.fromFile(imp_path.toString)
+            val source = scala.io.Source.fromFile(imp_path.toFile)
             val buffer = try {
               Right(source.getLines.toArray)
             } catch {
