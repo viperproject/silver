@@ -7,7 +7,6 @@
 package viper.silver.ast
 
 import org.kiama.output._
-import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 
 /** Expressions. */
@@ -538,7 +537,7 @@ case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info
   lazy val desugared : SeqExp = {
     elems.toList match {
       case Nil => sys.error("did not expect empty sequence")
-      case a :: Nil => this
+      case _ :: Nil => this
       case a :: as => // desugar into singleton sequences and appends
         as.foldLeft[SeqExp](ExplicitSeq(Seq(a))(pos,info)) {
           (bs:SeqExp, b:Exp) => SeqAppend(bs,ExplicitSeq(Seq(b))(pos,info))(pos, info)
@@ -849,7 +848,7 @@ object UnExp {
 /** Common superclass for binary expressions that belong to a domain (and thus have a domain operator). */
 sealed abstract class DomainBinExp(val funct: BinOp) extends BinExp with DomainOpExp
 {
-  def func = (p:Program) => funct
+  def func = (_: Program) => funct
   def funcname = funct.name
   def formalArgs = funct.formalArgs
   def op = funct.op
@@ -863,7 +862,7 @@ object DomainBinExp {
 
 /** Common superclass for unary expressions that belong to a domain (and thus have a domain operator). */
 sealed abstract class DomainUnExp(val funct: UnOp) extends PrettyUnaryExpression with DomainOpExp with UnExp {
-  def func = (p:Program) => funct
+  def func = (_ :Program) => funct
   def funcname = funct.name
   def typ = funct.typ
   def formalArgs = funct.formalArgs

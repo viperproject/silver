@@ -596,13 +596,13 @@ object FastPrettyPrinter extends  org.kiama.output.PrettyPrinter with ParenPrett
 
   /** Outputs the comments attached to `n` if there is at least one. */
   def showComment(n: Infoed): FastPrettyPrinter.Doc = {
-    //if (n == null)
+    if (n == null)
       empty
-    //else {
-      //val comment = n.info.comment
-      //if (comment.nonEmpty) ssep((comment map ("//" <+> _)).to[collection.immutable.Seq], line) <> line
-      //else empty
-    //}
+    else {
+      val comment = n.info.comment
+      if (comment.nonEmpty) ssep((comment map ("//" <+> _)).to[collection.immutable.Seq], line) <> line
+      else empty
+    }
   }
 
   override def toParenDoc(e: PrettyExpression): Doc = e match {
