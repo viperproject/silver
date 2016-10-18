@@ -133,7 +133,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
         }
       }
 
-      groupedTriggerSets
+      groupedTriggerSets.sortBy(_._2.size)
     }
   }
 
