@@ -234,8 +234,10 @@ object Expressions {
               val (triggers, extraVariables) = gen.head // somewhat arbitrarily take the first choice
               Some((exp.variables ++ extraVariables, triggers))
             } else {
-              //For now, since no nested quantified permissions supported
-              Some(exp.variables, Seq())
+              gen.find(candidate => candidate._2.isEmpty) match {
+                case None => None
+                case Some((triggers,_)) => Some(exp.variables, triggers)
+              } // extra variables cannot be added to quantified permissions, since we don't support nested quantification, yet
             }
 
       }
