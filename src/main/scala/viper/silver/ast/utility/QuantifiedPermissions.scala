@@ -23,7 +23,7 @@ import viper.silver.ast._
           triggers,
           Implies(condition, expr)) =>
             Some((lvd, condition,expr))
-          //case were no condition is deifned
+          //case were no condition is defined
           case forall@Forall(Seq(lvd@LocalVarDecl(_, _)), triggers, expr) =>
             Some(lvd, BoolLit(true)(forall.pos, forall.info), expr)
           case _ => None

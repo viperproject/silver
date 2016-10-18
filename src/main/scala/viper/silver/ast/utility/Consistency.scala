@@ -125,7 +125,7 @@ object Consistency {
   def nullValue[T](a: T, b: T) = if (a != null) a else b
 
   /**
-   * Checks that this boolean expression contains no subexpressions that can appear in positive positions (i.e. in
+   * Checks that this boolean expression contains no subexpressions that can only appear in positive positions (i.e. in
    * conjuncts or on the right side of implications or conditional expressions) only, i.e. no access predicates and
    * no InhaleExhaleExp.
    */
