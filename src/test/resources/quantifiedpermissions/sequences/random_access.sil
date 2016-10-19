@@ -24,7 +24,7 @@ method test01(s: Seq[Ref], a: Int, b: Int, n: Int)
      */
 
   /* TODO: Fails because ($Seq.at s (+ a (* i b))) doesn't trigger above axiom */
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/61/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silver/issue/67/)
   assert s[a + j*b] != null
 }
 
