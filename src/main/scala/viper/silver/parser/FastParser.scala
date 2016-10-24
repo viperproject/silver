@@ -81,8 +81,8 @@ object FastParser extends PosParser{
 
 
   // Actual Parser starts from here
-
-  def keyword(check: String) = check ~~ !CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "$_")
+  def identContinues = CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "$_")
+  def keyword(check: String) = check ~~ !identContinues
 
   def parens[A](p: fastparse.noApi.Parser[A]) = "(" ~ p ~ ")"
 
@@ -218,8 +218,12 @@ object FastParser extends PosParser{
             })
         }
 
-        case fapp: PCall => expandAllegedInvocation(fapp.func, fapp.args, fapp)
-        case call: PMethodCall => expandAllegedInvocation(call.method, call.args, call)
+        case fapp: PCall => {
+          expandAllegedInvocation(fapp.func, fapp.args, fapp)
+        }
+        case call: PMethodCall => {
+          expandAllegedInvocation(call.method, call.args, call)
+        }
       }(recursive = _ => true,
         resultCheck = {
           case (o,n) => checkMacroType(o, n)
@@ -440,7 +444,8 @@ object FastParser extends PosParser{
 
   lazy val multisetType: P[PType] = P(keyword("Multiset") ~/ "[" ~ typ ~ "]").map(PMultisetType)
 
-  lazy val primitiveTyp: P[PType] = P(StringIn("Rational").!.map { case _ => PPrimitiv("Perm") } | StringIn("Int", "Bool", "Perm", "Ref").!.map(PPrimitiv))
+  lazy val primitiveTyp: P[PType] = P(keyword("Rational").map { case _ => PPrimitiv("Perm") }
+                                      | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
 
   lazy val trigger: P[Seq[PExp]] = P("{" ~/ exp.rep(sep = ",", min = 1) ~ "}")
 
@@ -695,9 +700,11 @@ object FastParser extends PosParser{
 
   lazy val relativeFilePath: P[String] = P((CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
 
-  lazy val domainDecl: P[PDomain] = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ domainFunctionDecl.rep ~
-    axiomDecl.rep ~ "}").map {
-    case (name, typparams, funcs, axioms) =>
+  lazy val domainDecl: P[PDomain] = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
+    "}").map {
+    case (name, typparams, members) =>
+      val funcs = members collect { case m: PDomainFunction1 => m}
+      val axioms = members collect { case m: PAxiom1 => m}
       PDomain(
         name,
         typparams.getOrElse(Nil),
