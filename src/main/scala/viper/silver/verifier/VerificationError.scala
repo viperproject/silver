@@ -415,7 +415,7 @@ object reasons {
 
   case class ReceiverNotInjective(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "receiver.not.injective"
-    def readableMessage = s"Receiver of $offendingNode might not be injective."
+    def readableMessage = s"Receiver of $offendingNode [$pos]  might not be injective."
 
     def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = ReceiverNotInjective(offendingNode.asInstanceOf[LocationAccess])
   }

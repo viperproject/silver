@@ -53,6 +53,7 @@ object Expressions {
     e.transform({
       case _: AccessPredicate | _: MagicWand => TrueLit()()
       case QuantifiedPermissions.QPForall(_, _, _, _, _, _, _) => TrueLit()()
+      case QuantifiedPermissions.QPPForall(_, _, _, _, _, _, _) => TrueLit()()
       case Unfolding(predicate, exp) => asBooleanExp(exp)
     })()
   }
@@ -229,8 +230,16 @@ object Expressions {
           Some((exp.variables, newTriggers))
 
         case None =>
-          val (triggers, extraVariables) = gen.head // somewhat arbitrarily take the first choice
-          Some((exp.variables ++ extraVariables, triggers))
+            if (exp.isPure) {
+              val (triggers, extraVariables) = gen.head // somewhat arbitrarily take the first choice
+              Some((exp.variables ++ extraVariables, triggers))
+            } else {
+              gen.find(candidate => candidate._2.isEmpty) match {
+                case None => None
+                case Some((triggers,_)) => Some(exp.variables, triggers)
+              } // extra variables cannot be added to quantified permissions, since we don't support nested quantification, yet
+            }
+
       }
     else
       None

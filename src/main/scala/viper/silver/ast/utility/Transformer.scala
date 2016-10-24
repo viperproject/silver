@@ -283,8 +283,11 @@ object Transformer {
           }
 
         case trigger @ Trigger(expressions) =>
-          Trigger(expressions map go)(trigger.pos, trigger.info)
-
+         // try(
+            Trigger(expressions map go)(trigger.pos, trigger.info)
+         //   ) catch {
+         //     case ia: IllegalArgumentException => Trigger(Seq()) (trigger.pos, trigger.info)
+         //   }
         // Uninitialized subtrees are left uninitialized.
         case null => null
 

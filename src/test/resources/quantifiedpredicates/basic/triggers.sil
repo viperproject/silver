@@ -1,0 +1,38 @@
+field f: Int
+field g: Int
+
+predicate pred(r:Ref) {
+	acc(r.f)
+}
+
+function fun(r:Ref, i:Int) : Ref
+{r}
+
+function fun2(r:Ref) : Ref
+{r}
+
+/*
+method t1(xs:Seq[Ref], i:Int)
+    requires forall x:Ref :: x in xs ==> acc(fun(x, i).f)
+    ensures forall x:Ref :: x in xs ==> acc(fun2(x).f)
+{
+    assert forall x: Ref :: fun(x, i) == fun2(x)
+}
+
+
+method t2(xs:Seq[Ref], r: Ref, i:Int)
+    requires forall x:Ref :: {fun2(x)} x in xs ==> acc(fun(x, i).f)
+    ensures forall x:Ref :: {fun(x, i)} x in xs ==> acc(fun2(x).f)
+{}
+*/
+method t3(xs:Seq[Ref], r: Ref, i:Int)
+    requires forall x:Ref ::  x in xs ==> acc(pred(fun(x, i)))
+    ensures forall x:Ref :: x in xs ==> acc(pred(fun2(x)))
+{
+    assert forall x: Ref :: fun(x, i) == fun2(x)
+}
+
+method t4(xs:Seq[Ref], r: Ref, i:Int)
+    requires forall x:Ref :: {fun2(x)} x in xs ==> acc(pred(fun(x, i)))
+    ensures forall x:Ref :: {fun(x, i)} x in xs ==> acc(pred(fun2(x)))
+{}
