@@ -7,7 +7,6 @@ requires forall i: Int :: true ==> acc(loc(arr1, i).val, 0 <= i && i < 10 ? writ
 	invariant 0 <= t && t <= 10
     {
         loc(arr1, t).val := 0
-        //:: MissingOutput(assignment.failed:insufficient.permission, /Silicon/issue/252/)
         //:: ExpectedOutput(assignment.failed:insufficient.permission)
         loc(arr2, t).val := 0
         t := t + 1
@@ -29,5 +28,3 @@ domain Array {
 		forall a:Array :: length(a) >= 0
 	}
 }
-
-//@TIMING:{"total":0.911,"timings":[2,920,920]}
