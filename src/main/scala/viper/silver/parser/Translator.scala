@@ -25,7 +25,7 @@ import viper.silver.FastMessaging
  * expression "f > 0", where f is an int-typed field, is malformed.
  * The translator can thus not assume that the input tree is completely
  * wellformed, and in cases where a malformed tree is detected, it does not
- * return a tree, but instead, records error messages using Kiama's
+ * return a tree, but instead, records error messages using the
  * Messaging feature.
  */
 case class Translator(program: PProgram) {
