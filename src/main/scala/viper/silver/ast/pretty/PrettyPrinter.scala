@@ -660,8 +660,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           ) <> line)
       case If(cond, thn, els) =>
         text("if") <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
-      case Label(name) =>
-        text("label") <+> name
+      case Label(name, invs) =>
+        text("label") <+> name <>
+          nest(defaultIndent,
+            showContracts("invariant", invs)
+          )
       case Goto(target) =>
         text("goto") <+> target
       case null => uninitialized
