@@ -19,6 +19,7 @@ object Recurse extends Enumeration {
 }
 
 trait StrategyInterface[A] {
+
   protected var traversionMode: Traverse = Traverse.TopDown
   protected var recursionMode: Recurse = Recurse.None
   protected var recursionFunc: PartialFunction[A, Seq[Boolean]] = PartialFunction.empty
@@ -36,12 +37,12 @@ trait StrategyInterface[A] {
     this
   }
 
-  def recurse(r: PartialFunction[A, Seq[Boolean]]):StrategyInterface[A] = {
+  def recurseFunc(r: PartialFunction[A, Seq[Boolean]]):StrategyInterface[A] = {
     recursionFunc = r
     this
   }
 
-  def perserveData(p: PartialFunction[(A,A), A]): StrategyInterface[A] = {
+  def preserveData(p: PartialFunction[(A,A), A]): StrategyInterface[A] = {
     creationFunc = p
     this
   }
