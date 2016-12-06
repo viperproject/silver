@@ -112,7 +112,59 @@ class TransformerTests extends FunSuite with Matchers {
     // 2. Replace parameter with just the parameter in postcondition
     // 3. Replace parameters/results with arguments/targets in precondition/postconditions
 
-    //TODO
+
+    val strat = new Strategy[Node]({
+      case m:MethodCall => {
+        val mDecl: Method = null // How do i get the method declaration from a method call? :(
+
+        val replacePre = new Strategy[Exp]({
+          case l: LocalVar => {
+            mDecl.formalArgs.find((x) => x.name == l.name) match {
+              case Some(x) => {
+                val i = mDecl.formalArgs.indexOf(x)
+                m.args(i)
+              }
+              case None => l
+            }
+          }
+        }) preserveData({
+          case (l:LocalVar, l2:LocalVar) => LocalVar(l2.name)(l.typ, mDecl.pos, mDecl.info)
+            // We cannot preserve metadata of the other case. Thats not good -> change
+        })
+
+        val replaceOld = new Strategy[Exp]({
+          case o: Old => {
+            o.exp
+          }
+        })
+        // Here position and info will be changed anyway with the other transformation
+
+        val replacePost = new Strategy[Exp]({
+          case l:LocalVarDecl => {
+            mDecl.formalReturns.find((x) => x.name == l.name) match {
+              case Some(x) => {
+                val i = mDecl.formalReturns.indexOf(x)
+                m.targets(i)
+
+              }
+              case None => l
+            }
+        }}) preserveData({
+          case (l:LocalVar, l2:LocalVar) => LocalVar(l2.name)(l.typ, mDecl.pos, mDecl.info)
+          // Here the two cases are indistinguable typewise. Another problem for this solution
+        })
+
+
+
+        val pres = replacePre.execute(mDecl.pres.reduce((x,y) => And(x,y)()))
+        val posts = replacePost.execute(replacePre.execute(replaceOld.execute( mDecl.posts.reduce((x,y) => And(x,y)()))))
+        Seqn(Seq(
+          Exhale(pres)(),
+          Inhale(posts)()
+        ))()
+
+      }
+    }) traverse Traverse.Innermost
   }
 
   implicit def int2IntLit(i: Int): IntLit = IntLit(i)()
