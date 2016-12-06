@@ -169,6 +169,12 @@ object Consistency {
     for (a@LocalVarAssign(l, _) <- b if argVars.contains(l)) {
       recordIfNot(a, false, s"$a is a reassignment of formal argument $l.")
     }
+    for (f@Fresh(vars) <- b; v <- vars if argVars.contains(v)) {
+      recordIfNot(f, false, s"$f is a reassignment of formal argument $v.")
+    }
+    for (c@MethodCall(_, _, targets) <- b; t <- targets if argVars.contains(t)) {
+      recordIfNot(c, false, s"$c is a reassignment of formal argument $t.")
+    }
   }
 
   /** Check all properties required for a precondition. */
