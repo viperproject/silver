@@ -50,8 +50,6 @@ class TransformerTests extends FunSuite with Matchers {
       case (Or(l, r), c) =>
         //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
         InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
-        Or(l, r)()
-
     }) updateContext {
       case q:QuantifiedExp => q.variables
     } traverse Traverse.TopDown recurse Recurse.All recurseFunc {
