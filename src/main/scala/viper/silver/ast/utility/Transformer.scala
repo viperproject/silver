@@ -443,7 +443,7 @@ object Transformer {
     })
   }
 
-  def viperDuplicator = {
+  def viperDuplicator: PartialFunction[(Node, Seq[Any]), Node] = {
     case (il: IntLit, Seq(i: BigInt)) => IntLit(i)(il.pos, il.info)
     case (bl: BoolLit, Seq(b: Boolean)) => BoolLit(b)(bl.pos, bl.info)
     case (nl: NullLit, _) => NullLit()(nl.pos, nl.info)
@@ -536,9 +536,9 @@ object Transformer {
       SeqUpdate(seq, idx, elem)(su.pos, su.info)
     case (sl: SeqLength, Seq(seq: Exp)) => SeqLength(seq)(sl.pos, sl.info)
 
-    case (e: EmptySet, Seq(elemTyp: Type)) => EmptySet(elemTyp)
+    case (e: EmptySet, Seq(elemTyp: Type)) => EmptySet(elemTyp)(e.pos, e.info)
     case (e: ExplicitSet, Seq(elems: Seq[Exp])) => ExplicitSet(elems)(e.pos, e.info)
-    case (e: EmptyMultiset, Seq(elemTyp: Type)) => EmptyMultiset(elemTyp)
+    case (e: EmptyMultiset, Seq(elemTyp: Type)) => EmptyMultiset(elemTyp)(e.pos, e.info)
     case (e: ExplicitMultiset, Seq(elems: Seq[Exp])) => ExplicitMultiset(elems)(e.pos, e.info)
     case (a: AnySetUnion, Seq(left: Exp, right: Exp)) => AnySetUnion(left, right)(a.pos, a.info)
     case (a: AnySetIntersection, Seq(left: Exp, right: Exp)) => AnySetIntersection(left, right)(a.pos, a.info)

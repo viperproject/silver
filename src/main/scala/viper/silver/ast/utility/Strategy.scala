@@ -23,8 +23,7 @@ trait StrategyInterface[A] {
   protected var traversionMode: Traverse = Traverse.TopDown
   protected var recursionMode: Recurse = Recurse.None
   protected var recursionFunc: PartialFunction[A, Seq[Boolean]] = PartialFunction.empty
-  protected var creationFunc: PartialFunction[(A,A), A] = PartialFunction.empty
-  protected var duplicator: PartialFunction[(A, Seq[A]), A] = PartialFunction.empty
+  protected var duplicator: PartialFunction[(A, Seq[Any]), A] = PartialFunction.empty
 
   def getTraversionMode = traversionMode
   def traverse(t: Traverse):StrategyInterface[A] = {
@@ -43,12 +42,7 @@ trait StrategyInterface[A] {
     this
   }
 
-  def preserveData(p: PartialFunction[(A,A), A]): StrategyInterface[A] = {
-    creationFunc = p
-    this
-  }
-
-  def defineDuplicator(d: PartialFunction[(A, Seq[A]), A]): StrategyInterface[A] = {
+  def defineDuplicator(d: PartialFunction[(A, Seq[Any]), A]): StrategyInterface[A] = {
     duplicator = d
     this
   }
@@ -61,13 +55,53 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
 
   override def execute(node: A): A = ???
 
+  override def traverse(t: Traverse): Strategy[A] = {
+    super.traverse(t)
+    this
+  }
+
+  override def recurse(r: Recurse): Strategy[A] = {
+    super.recurse(r)
+    this
+  }
+
+  override def recurseFunc(r: PartialFunction[A, Seq[Boolean]]): Strategy[A] = {
+    super.recurseFunc(r)
+    this
+  }
+
+  override def defineDuplicator(d: PartialFunction[(A, Seq[Any]), A]): Strategy[A] = {
+    super.defineDuplicator(d)
+    this
+  }
+
 }
 
 class StrategyC[A, C](val rule: PartialFunction[(A, Seq[C]), A]) extends StrategyInterface[A] {
   protected var updateContext: PartialFunction[A, C] = PartialFunction.empty
 
-  def updateContext(p: PartialFunction[A, C]): StrategyInterface[A] = {
+  def updateContext(p: PartialFunction[A, C]): StrategyC[A, C] = {
     updateContext = p
+    this
+  }
+
+  override def traverse(t: Traverse): StrategyC[A, C] = {
+    super.traverse(t)
+    this
+  }
+
+  override def recurse(r: Recurse): StrategyC[A, C] = {
+    super.recurse(r)
+    this
+  }
+
+  override def recurseFunc(r: PartialFunction[A, Seq[Boolean]]): StrategyC[A, C] = {
+    super.recurseFunc(r)
+    this
+  }
+
+  override def defineDuplicator(d: PartialFunction[(A, Seq[Any]), A]): StrategyC[A, C] = {
+    super.defineDuplicator(d)
     this
   }
 
@@ -84,6 +118,26 @@ class Query[A,B](val rule: PartialFunction[A, B]) extends StrategyInterface[A] {
   def getAccumulator = accumulator
   def accumulate(a: Seq[B] => B):StrategyInterface[A] = {
     accumulator = a
+    this
+  }
+
+  override def traverse(t: Traverse): Query[A,B] = {
+    super.traverse(t)
+    this
+  }
+
+  override def recurse(r: Recurse): Query[A,B] = {
+    super.recurse(r)
+    this
+  }
+
+  override def recurseFunc(r: PartialFunction[A, Seq[Boolean]]): Query[A,B] = {
+    super.recurseFunc(r)
+    this
+  }
+
+  override def defineDuplicator(d: PartialFunction[(A, Seq[Any]), A]): Query[A,B] = {
+    super.defineDuplicator(d)
     this
   }
 

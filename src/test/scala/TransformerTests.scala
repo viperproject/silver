@@ -9,7 +9,7 @@ package viper.silver
 import scala.language.implicitConversions
 import org.scalatest.{FunSuite, Matchers}
 import ast._
-import ast.utility.{Recurse, Strategy, StrategyC, Traverse}
+import ast.utility.{Recurse, Strategy, StrategyC, Traverse, Transformer}
 import ast.If
 
 class TransformerTests extends FunSuite with Matchers {
@@ -17,16 +17,7 @@ class TransformerTests extends FunSuite with Matchers {
     // Create new strategy. Parameter is the partial function that is applied on all nodes
     val strat = new Strategy[Node]({
       case Implies(left, right) => Or(Not(left)(), right)()
-    })
-
-    // Preserve Data allows the user to write a partial function taking the new node and the old node and create the resulting node
-    // by combining the two nodes into one which will then be used by the framework. In this case we preserve position and information
-    strat preserveData {
-      case (i: Implies, Or(Not(x), y)) => Or(Not(x)(i.pos, i.info), y)(i.pos, i.info)
-    }
-
-    // Set the traversion and recursion rules
-    strat traverse Traverse.TopDown recurse Recurse.All
+    }) defineDuplicator Transformer.viperDuplicator traverse Traverse.TopDown recurse Recurse.All
 
     // Example of how to execute the strategy with a dummy node
     val targetNode: Node = Div(0, 0)()
@@ -40,40 +31,30 @@ class TransformerTests extends FunSuite with Matchers {
       case w: While =>
         val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
         Seqn(Seq(
-          Assert(invars)(),
-          If(Not(w.cond)(), Goto("Skiploop")(), Label("NoOp")())(),
-          Label("Loop")(),
-          w.body,
-          Assert(invars)(),
-          If(w.cond, Goto("Loop")(), Label("NoOp")())(),
-          Label("Skiploop")()
-        ))()
-
-    }) traverse Traverse.Innermost recurse Recurse.All preserveData {
-      case (w: While, Seqn(Seq(a1: Assert, i1: If, l1: Label, b: Stmt, a2: Assert, i2: If, l2: Label))) =>
-        Seqn(Seq(
-          Assert(a1.exp)(w.invs.head.pos, w.invs.head.info),
+          Assert(invars)(w.invs.head.pos, w.invs.head.info),
           If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("Skiploop")(w.pos, w.info), Label("NoOp")(w.pos, w.info))(w.pos, w.info),
-          Label(l1.name)(w.pos, w.info),
+          Label("Loop")(w.pos, w.info),
           w.body,
-          Assert(a1.exp)(w.invs.head.pos, w.invs.head.info),
-          If(w.cond, Goto("Loop")(w.pos, w.info), Label("NoOp")())(w.pos, w.info),
-          Label(l2.name)(w.pos, w.info)
-        ))()
+          Assert(invars)(w.invs.head.pos, w.invs.head.info),
+          If(w.cond, Goto("Loop")(w.pos, w.info), Label("NoOp")(w.pos, w.info))(w.pos, w.info),
+          Label("Skiploop")(w.pos, w.info)
+        ))(w.pos, w.info)
 
-    }
+    }) traverse Traverse.Innermost recurse Recurse.All
   }
 
   test("Disjunctions to Inhale/Exhale") {
     // This the example from my initial presentation slides
     // Context c holds all ancestors of the current node
-    val strat = new StrategyC[Node, LocalVarDecl]({
+    val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
       case (Or(l, r), c) =>
         //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
         InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
         Or(l, r)()
 
-    }) traverse Traverse.TopDown recurse Recurse.All recurseFunc {
+    }) updateContext {
+      case q:QuantifiedExp => q.variables
+    } traverse Traverse.TopDown recurse Recurse.All recurseFunc {
       case i: InhaleExhaleExp => Seq(true, false)
     }
   }
@@ -124,10 +105,7 @@ class TransformerTests extends FunSuite with Matchers {
               case None => l
             }
 
-        }) preserveData {
-          case (l: LocalVar, l2: LocalVar) => LocalVar(l2.name)(l.typ, mDecl.pos, mDecl.info)
-          // We cannot preserve metadata of the other case. Thats not good -> change
-        }
+        })
 
         val replaceOld = new Strategy[Exp]({
           case o: Old => o.exp
@@ -143,10 +121,7 @@ class TransformerTests extends FunSuite with Matchers {
                 m.targets(i)
               case None => l
             }
-        }) preserveData {
-          case (l: LocalVar, l2: LocalVar) => LocalVar(l2.name)(l.typ, mDecl.pos, mDecl.info)
-          // Here the two cases are indistinguable typewise. Another problem for this solution
-        }
+        })
 
 
 
