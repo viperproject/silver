@@ -24,6 +24,7 @@ trait StrategyInterface[A] {
   protected var recursionMode: Recurse = Recurse.None
   protected var recursionFunc: PartialFunction[A, Seq[Boolean]] = PartialFunction.empty
   protected var creationFunc: PartialFunction[(A,A), A] = PartialFunction.empty
+  protected var duplicator: PartialFunction[(A, Seq[A]), A] = PartialFunction.empty
 
   def getTraversionMode = traversionMode
   def traverse(t: Traverse):StrategyInterface[A] = {
@@ -47,6 +48,11 @@ trait StrategyInterface[A] {
     this
   }
 
+  def defineDuplicator(d: PartialFunction[(A, Seq[A]), A]): StrategyInterface[A] = {
+    duplicator = d
+    this
+  }
+
   def execute(node: A): A
 }
 
@@ -57,9 +63,16 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
 
 }
 
-class StrategyC[A](val rule: PartialFunction[(A, Seq[A]), A]) extends StrategyInterface[A] {
+class StrategyC[A, C](val rule: PartialFunction[(A, Seq[C]), A]) extends StrategyInterface[A] {
+  protected var updateContext: PartialFunction[A, C] = PartialFunction.empty
+
+  def updateContext(p: PartialFunction[A, C]): StrategyInterface[A] = {
+    updateContext = p
+    this
+  }
 
   override def execute(node: A): A = ???
+
 
 
 }

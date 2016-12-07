@@ -22,14 +22,14 @@ class TransformerTests extends FunSuite with Matchers {
     // Preserve Data allows the user to write a partial function taking the new node and the old node and create the resulting node
     // by combining the two nodes into one which will then be used by the framework. In this case we preserve position and information
     strat preserveData {
-      case (i:Implies, Or(Not(x), y)) => Or(Not(x)(i.pos, i.info), y)(i.pos, i.info)
+      case (i: Implies, Or(Not(x), y)) => Or(Not(x)(i.pos, i.info), y)(i.pos, i.info)
     }
 
     // Set the traversion and recursion rules
     strat traverse Traverse.TopDown recurse Recurse.All
 
     // Example of how to execute the strategy with a dummy node
-    val targetNode: Node = Div(0,0)()
+    val targetNode: Node = Div(0, 0)()
     strat.execute(targetNode)
   }
 
@@ -37,8 +37,8 @@ class TransformerTests extends FunSuite with Matchers {
     // Example of how to transform a while loop into if and goto
     // Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
     val strat = new Strategy[Node]({
-      case w:While =>
-        val invars: Exp = w.invs.reduce ((x: Exp, y: Exp) => And(x,y)())
+      case w: While =>
+        val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
         Seqn(Seq(
           Assert(invars)(),
           If(Not(w.cond)(), Goto("Skiploop")(), Label("NoOp")())(),
@@ -50,7 +50,7 @@ class TransformerTests extends FunSuite with Matchers {
         ))()
 
     }) traverse Traverse.Innermost recurse Recurse.All preserveData {
-      case (w:While, Seqn(Seq(a1:Assert, i1:If, l1:Label, b:Stmt, a2:Assert, i2:If, l2:Label))) =>
+      case (w: While, Seqn(Seq(a1: Assert, i1: If, l1: Label, b: Stmt, a2: Assert, i2: If, l2: Label))) =>
         Seqn(Seq(
           Assert(a1.exp)(w.invs.head.pos, w.invs.head.info),
           If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("Skiploop")(w.pos, w.info), Label("NoOp")(w.pos, w.info))(w.pos, w.info),
@@ -67,11 +67,9 @@ class TransformerTests extends FunSuite with Matchers {
   test("Disjunctions to Inhale/Exhale") {
     // This the example from my initial presentation slides
     // Context c holds all ancestors of the current node
-    val strat = new StrategyC[Node]({
+    val strat = new StrategyC[Node, LocalVarDecl]({
       case (Or(l, r), c) =>
-        val qvar: Seq[QuantifiedExp] = c.collect {case i: QuantifiedExp => i}
-        val quantifiedVariables = qvar.flatMap ((f:QuantifiedExp) => f.variables)
-        //val nonDet = NonDet(quantifiedVariables, Bool) Cannot use this (silver angelic)
+        //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
         InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
         Or(l, r)()
 
@@ -82,27 +80,27 @@ class TransformerTests extends FunSuite with Matchers {
 
   test("Fold many consecutive assertions into one assert") {
     // I chose arbitrarily that every combined assert has the position and info of any assert. This is probably not what we want but i don't care here
-    val strat = new StrategyC[Node]({
-      case (a:Assert, c) =>
-        c.last match {
-          case s:Seqn =>
+    val strat = new Strategy[Node]({
+      case (a: Assert, c) =>
+        // TODO implement sibling stuff here
+        c match {
+          case s: Seqn =>
             val predecessors = s.take(s.toIndexedSeq.indexOf(a)) // All nodes before a in the sequence
 
             predecessors.last match {
-              case x:Assert => Label("NoOp")() // NoOp?
+              case x: Assert => Label("NoOp")() // NoOp?
               case _ =>
                 // Take all following assertions and put them together into one assertion
-                                                       // Take all statements behind a     // Take all successors that are assertions until one is no assertion // Transform them into actual assertion type
-                val successorAssertions: Seq[Assert] = s.drop(s.toIndexedSeq.indexOf(a)+1).takeWhile({ case x:Assert => true case _ => false}).collect({case i: Assert => i}).toSeq
+                // Take all statements behind a     // Take all successors that are assertions until one is no assertion // Transform them into actual assertion type
+                val successorAssertions: Seq[Assert] = s.drop(s.toIndexedSeq.indexOf(a) + 1).takeWhile({ case x: Assert => true case _ => false }).collect({ case i: Assert => i }).toSeq
 
                 // Put everyting together
-                successorAssertions.reduce((x:Assert, y:Assert) => Assert(And(x.exp, y.exp)())(x.pos, x.info))
+                successorAssertions.reduce((x: Assert, y: Assert) => Assert(And(x.exp, y.exp)())(x.pos, x.info))
 
 
-
-          case _ => a
+              case _ => a
+            }
         }
-      }
     })
   }
 
@@ -114,10 +112,10 @@ class TransformerTests extends FunSuite with Matchers {
 
 
     val strat = new Strategy[Node]({
-      case m:MethodCall =>
+      case m: MethodCall =>
         val mDecl: Method = null // How do i get the method declaration from a method call? :(
 
-        val replacePre = new Strategy[Exp] ({
+        val replacePre = new Strategy[Exp]({
           case l: LocalVar =>
             mDecl.formalArgs.find((x) => x.name == l.name) match {
               case Some(x) =>
@@ -127,8 +125,8 @@ class TransformerTests extends FunSuite with Matchers {
             }
 
         }) preserveData {
-          case (l:LocalVar, l2:LocalVar) => LocalVar(l2.name)(l.typ, mDecl.pos, mDecl.info)
-            // We cannot preserve metadata of the other case. Thats not good -> change
+          case (l: LocalVar, l2: LocalVar) => LocalVar(l2.name)(l.typ, mDecl.pos, mDecl.info)
+          // We cannot preserve metadata of the other case. Thats not good -> change
         }
 
         val replaceOld = new Strategy[Exp]({
@@ -138,7 +136,7 @@ class TransformerTests extends FunSuite with Matchers {
         // Here position and info will be changed anyway with the other transformation
 
         val replacePost = new Strategy[Exp]({
-          case l:LocalVarDecl =>
+          case l: LocalVarDecl =>
             mDecl.formalReturns.find((x) => x.name == l.name) match {
               case Some(x) =>
                 val i = mDecl.formalReturns.indexOf(x)
@@ -146,14 +144,14 @@ class TransformerTests extends FunSuite with Matchers {
               case None => l
             }
         }) preserveData {
-          case (l:LocalVar, l2:LocalVar) => LocalVar(l2.name)(l.typ, mDecl.pos, mDecl.info)
+          case (l: LocalVar, l2: LocalVar) => LocalVar(l2.name)(l.typ, mDecl.pos, mDecl.info)
           // Here the two cases are indistinguable typewise. Another problem for this solution
         }
 
 
 
-        val pres = replacePre.execute(mDecl.pres.reduce((x,y) => And(x,y)()))
-        val posts = replacePost.execute(replacePre.execute(replaceOld.execute( mDecl.posts.reduce((x,y) => And(x,y)()))))
+        val pres = replacePre.execute(mDecl.pres.reduce((x, y) => And(x, y)()))
+        val posts = replacePost.execute(replacePre.execute(replaceOld.execute(mDecl.posts.reduce((x, y) => And(x, y)()))))
         Seqn(Seq(
           Exhale(pres)(),
           Inhale(posts)()
