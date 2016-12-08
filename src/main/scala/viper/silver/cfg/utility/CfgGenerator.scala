@@ -171,7 +171,8 @@ object CfgGenerator {
       case Goto(name) =>
         val target = TmpLabel(name)
         addStatement(JumpStmt(target))
-      case Label(name) =>
+      case Label(name, invs) =>
+        // TODO: Handle invariants.
         val label = TmpLabel(name)
         addLabel(label)
       case _: LocalVarAssign |
