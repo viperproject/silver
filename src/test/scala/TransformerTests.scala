@@ -20,10 +20,24 @@ class TransformerTests extends FunSuite with Matchers {
     }) defineDuplicator Transformer.viperDuplicator traverse Traverse.TopDown recurse Recurse.All
 
     // Example of how to execute the strategy with a dummy node
-    val targetNode: Node = Div(0, 0)()
-    strat.execute(targetNode)
-  }
+    var targetNode: Node = Div(0, 0)()
+    var res = strat.execute(targetNode)
+    println(targetNode.toString())
+    println(res.toString())
 
+
+    targetNode = Assert(Implies(TrueLit()(),TrueLit()())())()
+    res = strat.execute(targetNode)
+    println(targetNode.toString())
+    println(res.toString())
+
+
+
+
+
+    TrueLit()() should be (TrueLit()())
+  }
+/*
   test("while loop into if & goto") {
     // Example of how to transform a while loop into if and goto
     // Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
@@ -133,6 +147,7 @@ class TransformerTests extends FunSuite with Matchers {
 
     }) traverse Traverse.Innermost
   }
-
+*/
   implicit def int2IntLit(i: Int): IntLit = IntLit(i)()
+
 }

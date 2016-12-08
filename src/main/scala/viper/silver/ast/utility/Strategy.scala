@@ -91,12 +91,13 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
   override def executeTopDown(node: A): A = {
     // TODO Replace printouts with actual exceptions
     // Check which node we get from rewriting
+    println("Current node:" + node + node.getClass)
     val newNode = if (rule.isDefinedAt(node)) rule(node) else  node
 
     // Put all the children of this node into a sequence
     val children:Seq[Any] = newNode match {
       case p:Product => {
-        (0 to p.productArity) map { x => p.productElement(x) }
+        (0 until p.productArity) map { x => p.productElement(x) }
       }
       //case r:Rewritable => ...
       case rest => { print("Node does not implement Product or rewritable")
@@ -105,7 +106,14 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
     }
 
     // Get the indices of the sequence that we perform recursion on
-    val childrenSelect = recursionFunc(newNode)
+    val childrenSelect = if(recursionFunc.isDefinedAt(newNode)) {
+        recursionFunc(newNode)
+      } else {
+        newNode match {
+          case p:Product => (0 until p.productArity) map {x => true}
+          case _ => Seq()
+        }
+      }
 
     // Check whether the list of indices is of correct length
     if (childrenSelect.length != children.length) print("Incorrect number of children in recursion")
@@ -114,7 +122,7 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
     val func: (Any,Boolean) => Any = (x: Any, b:Boolean) => {
       if(b) {
         x match {
-          case n:A => executeTopDown(n)
+          case n:Product =>  executeTopDown(n.asInstanceOf[A])
           case rest => rest
         }
       } else {
@@ -124,7 +132,11 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
     val newChildren:Seq[Any] = children.zip(childrenSelect) map( x => func(x._1, x._2) )
 
     // Put the nodes together
-    duplicator(newNode, newChildren)
+    if (duplicator.isDefinedAt(newNode, newChildren)) {
+      duplicator(newNode, newChildren)
+    } else {
+      newNode
+    }
   }
 
   override def executeBottomUp(node: A): A = ???

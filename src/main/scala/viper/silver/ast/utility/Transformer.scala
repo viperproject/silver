@@ -559,8 +559,8 @@ object Transformer {
     case (f: Field, Seq(name: String, singleType: Type)) =>
       Field(name, singleType)(f.pos, f.info)
 
-    case (f: Function, Seq(name: String, parameters: Seq[LocalVarDecl], aType: Type, preconditions: Seq[Exp]),
-    postconditions, body) =>
+    case (f: Function, Seq(name: String, parameters: Seq[LocalVarDecl], aType: Type, preconditions: Seq[Exp],
+    postconditions:Seq[Exp], body:Option[Exp])) =>
       Function(name, parameters, aType,
         preconditions,
         postconditions,
