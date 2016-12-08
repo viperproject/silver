@@ -6,8 +6,9 @@
 
 package viper.silver.ast
 
-import viper.silver.ast.pretty.{Fixity, Prefix, Infix, LeftAssociative, RightAssociative, NonAssociative}
+import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
 import utility.{Consistency, DomainInstances, Types}
+import viper.silver.cfg.utility.CfgGenerator
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
@@ -133,6 +134,11 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     Consistency.checkNoArgsReassigned(formalArgs, b)
     _body = b
   }
+
+  /**
+    * Returns a control flow graph that corresponds to this method.
+    */
+  def toCfg = CfgGenerator.toCfg(this)
 }
 
 /** A function declaration */

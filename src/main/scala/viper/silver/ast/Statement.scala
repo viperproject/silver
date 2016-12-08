@@ -12,7 +12,8 @@
 
 package viper.silver.ast
 
-import viper.silver.ast.utility.{Consistency, Statements, CfgGenerator}
+import viper.silver.ast.utility.{Consistency, Statements}
+import viper.silver.cfg.utility.CfgGenerator
 
 // --- Statements
 
@@ -29,7 +30,7 @@ sealed trait Stmt extends Node with Infoed with Positioned {
   /**
    * Returns a control flow graph that corresponds to this statement.
    */
-  def toCfg = CfgGenerator.toCFG(this)
+  def toCfg = CfgGenerator.toCfg(this)
 
   /**
    * Returns a list of all undeclared local variables contained in this statement and
