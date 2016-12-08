@@ -443,15 +443,20 @@ object Transformer {
     })
   }
 
-  def viperDuplicator: PartialFunction[(Node, Seq[Any]), Node] = {
-    case (il: IntLit, Seq(i: BigInt)) => IntLit(i)(il.pos, il.info)
-    case (bl: BoolLit, Seq(b: Boolean)) => BoolLit(b)(bl.pos, bl.info)
+  def viperChildrenSelector: PartialFunction[Node, Seq[Node]] = {
+    case s:Seqn => s.ss
+
+  }
+
+  def viperDuplicator: PartialFunction[(Node, Seq[Node]), Node] = {
+    case (il: IntLit, Seq()) => IntLit(il.i)(il.pos, il.info)
+    case (bl: BoolLit, Seq()) => BoolLit(bl.value)(bl.pos, bl.info)
     case (nl: NullLit, _) => NullLit()(nl.pos, nl.info)
     case (alv: AbstractLocalVar, _) => alv
     // AS: added recursion on field: this was previously missing (as for all "shared" nodes in AST). But this could lead to the type of the field not being transformed consistently with its declaration (if the whole program is transformed)
     case (fa: FieldAccess, Seq(rcv: Exp, field: Field)) => FieldAccess(rcv, field)(fa.pos, fa.info)
-    case (pa: PredicateAccess, Seq(params: Seq[Exp], predicateName: String)) =>
-      PredicateAccess(params, predicateName)(pa.pos, pa.info)
+    case (pa: PredicateAccess, Seq(params: Seq[Exp])) =>
+      PredicateAccess(params, pa.predicateName)(pa.pos, pa.info)
 
     case (u: Unfolding, Seq(acc: PredicateAccessPredicate, e: Exp)) => Unfolding(acc, e)(u.pos, u.info)
 
@@ -461,7 +466,7 @@ object Transformer {
     case (p: PackagingGhostOp, Seq(wand: MagicWand, in: Exp)) => PackagingGhostOp(wand, in)(p.pos, p.info)
 
     case (o: Old, Seq(e: Exp)) => Old(e)(o.pos, o.info)
-    case (l: LabelledOld, Seq(e: Exp, lbl: String)) => LabelledOld(e, lbl)(l.pos, l.info)
+    case (l: LabelledOld, Seq(e: Exp)) => LabelledOld(e, l.oldLabel)(l.pos, l.info)
     case (a: ApplyOld, Seq(e: Exp)) => ApplyOld(e)(a.pos, a.info)
     case (c: CondExp, Seq(cond: Exp, thn: Exp, els: Exp)) =>
       CondExp(cond, thn, els)(c.pos, c.info)
@@ -552,37 +557,37 @@ object Transformer {
         predicates, methods)(p.pos, p.info)
 
 
-    case (d: Domain, Seq(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typeVariables: Seq[TypeVar])) =>
-      Domain(name, functions, axioms,
+    case (d: Domain, Seq(functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typeVariables: Seq[TypeVar])) =>
+      Domain(d.name, functions, axioms,
         typeVariables)(d.pos, d.info)
 
-    case (f: Field, Seq(name: String, singleType: Type)) =>
-      Field(name, singleType)(f.pos, f.info)
+    case (f: Field, Seq(singleType: Type)) =>
+      Field(f.name, singleType)(f.pos, f.info)
 
-    case (f: Function, Seq(name: String, parameters: Seq[LocalVarDecl], aType: Type, preconditions: Seq[Exp],
+    case (f: Function, Seq(parameters: Seq[LocalVarDecl], aType: Type, preconditions: Seq[Exp],
     postconditions:Seq[Exp], body:Option[Exp])) =>
-      Function(name, parameters, aType,
+      Function(f.name, parameters, aType,
         preconditions,
         postconditions,
         body)(f.pos, f.info)
 
-    case (p: Predicate, Seq(name: String, parameters: Seq[LocalVarDecl], body: Option[Exp])) =>
-      Predicate(name, parameters,
+    case (p: Predicate, Seq(parameters: Seq[LocalVarDecl], body: Option[Exp])) =>
+      Predicate(p.name, parameters,
         body)(p.pos, p.info)
 
-    case (m: Method, Seq(name: String, parameters: Seq[LocalVarDecl], results: Seq[LocalVarDecl], preconditions: Seq[Exp],
+    case (m: Method, Seq(parameters: Seq[LocalVarDecl], results: Seq[LocalVarDecl], preconditions: Seq[Exp],
     postconditions: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)) =>
-      Method(name, parameters, results,
+      Method(m.name, parameters, results,
         preconditions,
         postconditions,
         locals, body)(m.pos, m.info)
 
 
-    case (da: DomainAxiom, Seq(name: String, body: Exp)) =>
-      DomainAxiom(name, body)(da.pos, da.info, da.domainName)
+    case (da: DomainAxiom, Seq(body: Exp)) =>
+      DomainAxiom(da.name, body)(da.pos, da.info, da.domainName)
 
-    case (df: DomainFunc, Seq(name: String, parameters: Seq[LocalVarDecl], aType: Type, unique: Boolean)) =>
-      DomainFunc(name, parameters, aType, unique)(df.pos, df.info, df.domainName)
+    case (df: DomainFunc, Seq(parameters: Seq[LocalVarDecl], aType: Type)) =>
+      DomainFunc(df.name, parameters, aType, df.unique)(df.pos, df.info, df.domainName)
 
     case (Bool, _) => Bool
     case (dt: DomainType, Seq(domainName: Domain, typeVariables: Map[TypeVar, Type])) =>
@@ -598,8 +603,8 @@ object Transformer {
     case (mt: MultisetType, Seq(elementType: Type)) => MultisetType(elementType)
     case (t: TypeVar, _) => t
 
-    case (ld: LocalVarDecl, Seq(name: String, singleType: Type)) =>
-      LocalVarDecl(name, singleType)(ld.pos,
+    case (ld: LocalVarDecl, Seq(singleType: Type)) =>
+      LocalVarDecl(ld.name, singleType)(ld.pos,
         ld.info)
 
     case (a: Assert, Seq(expression: Exp)) =>
@@ -620,7 +625,8 @@ object Transformer {
     case (c: Constraining, Seq(variables: Seq[LocalVar], body: Stmt)) =>
       Constraining(variables, body)(c.pos, c.info)
 
-    case (g: Goto, Seq(target: String)) => Goto(g.target)(g.pos, g.info)
+    // We dont recurse on goto
+    //case (g: Goto, Seq(target: String)) => Goto(g.target)(g.pos, g.info)
 
     case (i: If, Seq(condition: Exp, ifTrue: Stmt, ifFalse: Stmt)) =>
       If(condition, ifTrue, ifFalse)(i.pos, i.info)
@@ -628,7 +634,8 @@ object Transformer {
     case (i: Inhale, Seq(expression: Exp)) =>
       Inhale(expression)(i.pos, i.info)
 
-    case (l: Label, Seq(s: String)) => Label(s)(l.pos, l.info)
+    // We dont recurse on label
+    //case (l: Label, Seq(s: String)) => Label(s)(l.pos, l.info)
 
     case (l: LocalVarAssign, Seq(variable: LocalVar, value: Exp)) =>
       LocalVarAssign(variable, value)(l.pos, l.info)
@@ -639,8 +646,8 @@ object Transformer {
     case (n: NewStmt, Seq(target: LocalVar, fields: Seq[Field])) =>
       NewStmt(target, fields)(n.pos, n.info)
 
-    case (s: Seqn, Seq(statements: Seq[Stmt])) =>
-      Seqn(statements)(s.pos, s.info)
+    case (s: Seqn, x:Seq[Stmt]) =>
+      Seqn(x)(s.pos, s.info)
 
     case (u: Unfold, Seq(predicate: PredicateAccessPredicate)) =>
       Unfold(predicate)(u.pos, u.info)

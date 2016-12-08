@@ -9,7 +9,7 @@ package viper.silver
 import scala.language.implicitConversions
 import org.scalatest.{FunSuite, Matchers}
 import ast._
-import ast.utility.{Recurse, Strategy, StrategyC, Traverse, Transformer}
+import ast.utility.{Strategy, Traverse, Transformer}
 import ast.If
 
 class TransformerTests extends FunSuite with Matchers {
@@ -17,23 +17,13 @@ class TransformerTests extends FunSuite with Matchers {
     // Create new strategy. Parameter is the partial function that is applied on all nodes
     val strat = new Strategy[Node]({
       case Implies(left, right) => Or(Not(left)(), right)()
-    }) defineDuplicator Transformer.viperDuplicator traverse Traverse.TopDown recurse Recurse.All
+    })
 
     // Example of how to execute the strategy with a dummy node
     var targetNode: Node = Div(0, 0)()
     var res = strat.execute(targetNode)
     println(targetNode.toString())
     println(res.toString())
-
-
-    targetNode = Assert(Implies(TrueLit()(),TrueLit()())())()
-    res = strat.execute(targetNode)
-    println(targetNode.toString())
-    println(res.toString())
-
-
-
-
 
     TrueLit()() should be (TrueLit()())
   }

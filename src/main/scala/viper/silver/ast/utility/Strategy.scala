@@ -1,6 +1,5 @@
 package viper.silver.ast.utility
 
-import viper.silver.ast.utility.Recurse.Recurse
 import viper.silver.ast.utility.Traverse.Traverse
 
 /**
@@ -13,17 +12,12 @@ object Traverse extends Enumeration {
     val TopDown, BottomUp, Innermost, Outermost = Value
 }
 
-object Recurse extends Enumeration {
-  type Recurse = Value
-  val One, Some, All, None = Value
-}
-
 trait StrategyInterface[A] {
 
   protected var traversionMode: Traverse = Traverse.TopDown
-  protected var recursionMode: Recurse = Recurse.None
   protected var recursionFunc: PartialFunction[A, Seq[Boolean]] = PartialFunction.empty
-  protected var duplicator: PartialFunction[(A, Seq[Any]), A] = PartialFunction.empty
+  protected var cChildren: PartialFunction[A, Seq[A]] = PartialFunction.empty
+  protected var duplicator: PartialFunction[(A, Seq[A]), A] = PartialFunction.empty
 
   def getTraversionMode = traversionMode
   def traverse(t: Traverse):StrategyInterface[A] = {
@@ -31,9 +25,9 @@ trait StrategyInterface[A] {
     this
   }
 
-  def getRecursionMode = recursionMode
-  def recurse(r: Recurse):StrategyInterface[A] = {
-    recursionMode = r
+  def getcustomChildren = cChildren
+  def customChildren(c: PartialFunction[A, Seq[A]]):StrategyInterface[A] = {
+    cChildren = c
     this
   }
 
@@ -42,7 +36,7 @@ trait StrategyInterface[A] {
     this
   }
 
-  def defineDuplicator(d: PartialFunction[(A, Seq[Any]), A]): StrategyInterface[A] = {
+  def defineDuplicator(d: PartialFunction[(A, Seq[A]), A]): StrategyInterface[A] = {
     duplicator = d
     this
   }
@@ -73,8 +67,8 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
     this
   }
 
-  override def recurse(r: Recurse): Strategy[A] = {
-    super.recurse(r)
+  override def customChildren(r: PartialFunction[A, Seq[A]]): Strategy[A] = {
+    super.customChildren(r)
     this
   }
 
@@ -83,7 +77,7 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
     this
   }
 
-  override def defineDuplicator(d: PartialFunction[(A, Seq[Any]), A]): Strategy[A] = {
+  override def defineDuplicator(d: PartialFunction[(A, Seq[A]), A]): Strategy[A] = {
     super.defineDuplicator(d)
     this
   }
@@ -91,35 +85,37 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
   override def executeTopDown(node: A): A = {
     // TODO Replace printouts with actual exceptions
     // Check which node we get from rewriting
-    println("Current node:" + node + node.getClass)
+    println("Current Node:" + node)
     val newNode = if (rule.isDefinedAt(node)) rule(node) else  node
 
     // Put all the children of this node into a sequence
-    val children:Seq[Any] = newNode match {
-      case p:Product => {
-        (0 until p.productArity) map { x => p.productElement(x) }
-      }
-      //case r:Rewritable => ...
-      case rest => { print("Node does not implement Product or rewritable")
-         Seq()
-      }
+
+    def getValidChild(p:Product, i:Int) = {
+
     }
+
+    val children:Seq[A] = if (cChildren.isDefinedAt(newNode)) {
+        cChildren(newNode)
+      } else {
+        newNode match {
+          case p:Product => ((0 until p.productArity) map { x:Int => p.productElement(x) }) collect ({ case i: Product => i.asInstanceOf[A] })
+          case rest => { println("We do not support nodes that dont implement product"); Seq() }
+        }
+      }
 
     // Get the indices of the sequence that we perform recursion on
     val childrenSelect = if(recursionFunc.isDefinedAt(newNode)) {
         recursionFunc(newNode)
-      } else {
-        newNode match {
-          case p:Product => (0 until p.productArity) map {x => true}
-          case _ => Seq()
-        }
-      }
+    } else {
+        children.indices map {x => true}
+    }
 
     // Check whether the list of indices is of correct length
     if (childrenSelect.length != children.length) print("Incorrect number of children in recursion")
 
+
     // Recurse on children where bit is set TODO rewrite this I got problems with the type system there
-    val func: (Any,Boolean) => Any = (x: Any, b:Boolean) => {
+    val func: (A,Boolean) => A = (x: A, b:Boolean) => {
       if(b) {
         x match {
           case n:Product =>  executeTopDown(n.asInstanceOf[A])
@@ -129,7 +125,7 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
         x
       }
     }
-    val newChildren:Seq[Any] = children.zip(childrenSelect) map( x => func(x._1, x._2) )
+    val newChildren:Seq[A] = children.zip(childrenSelect) map( x => func(x._1, x._2) )
 
     // Put the nodes together
     if (duplicator.isDefinedAt(newNode, newChildren)) {
@@ -146,7 +142,7 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
   override def executeOutermost(node: A): A = ???
 }
 
-class StrategyC[A, C](val rule: PartialFunction[(A, Seq[C]), A]) extends StrategyInterface[A] {
+/*class StrategyC[A, C](val rule: PartialFunction[(A, Seq[C]), A]) extends StrategyInterface[A] {
   protected var updateContext: PartialFunction[A, C] = PartialFunction.empty
 
   def updateContext(p: PartialFunction[A, C]): StrategyC[A, C] = {
@@ -220,4 +216,4 @@ class Query[A,B](val rule: PartialFunction[A, B]) extends StrategyInterface[A] {
   override def executeInnermost(node: A): A = ???
 
   override def executeOutermost(node: A): A = ???
-}
+}*/
