@@ -179,8 +179,8 @@ case class Translator(program: PProgram) {
       case PMethodCall(targets, method, args) =>
         val ts = (targets map exp).asInstanceOf[Seq[LocalVar]]
         MethodCall(findMethod(method), args map exp, ts)(pos)
-      case PLabel(name) =>
-        Label(name.name)(pos)
+      case PLabel(name, invs) =>
+        Label(name.name, invs map exp)(pos)
       case PGoto(label) =>
         Goto(label.name)(pos)
       case PIf(cond, thn, els) =>
