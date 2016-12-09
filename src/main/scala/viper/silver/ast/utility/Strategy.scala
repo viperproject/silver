@@ -6,12 +6,23 @@ import viper.silver.ast.utility.Traverse.Traverse
   * Created by simonfri on 05.12.2016.
   */
 
-
+/**
+  * An enumeration that represents traversion modes:
+  * - TopDown: Perform transformation before visiting children
+  * - BottomUp: Perform transformation after visiting children
+  * - Innermost: Go TopDown but stop recursion after first rewrite
+  * - Outermost: Go BottomUp and only rewrite first match
+  */
 object Traverse extends Enumeration {
-    type Traverse = Value
-    val TopDown, BottomUp, Innermost, Outermost = Value
+  type Traverse = Value
+  val TopDown, BottomUp, Innermost, Outermost = Value
 }
 
+/**
+  * Trait that encapsulates all fields and Setter/Getter that are used in every Strategy
+  *
+  * @tparam A Supertype of every node we want to rewrite
+  */
 trait StrategyInterface[A] {
 
   protected var traversionMode: Traverse = Traverse.TopDown
@@ -20,18 +31,20 @@ trait StrategyInterface[A] {
   protected var duplicator: PartialFunction[(A, Seq[A]), A] = PartialFunction.empty
 
   def getTraversionMode = traversionMode
-  def traverse(t: Traverse):StrategyInterface[A] = {
+
+  def traverse(t: Traverse): StrategyInterface[A] = {
     traversionMode = t
     this
   }
 
   def getcustomChildren = cChildren
-  def customChildren(c: PartialFunction[A, Seq[A]]):StrategyInterface[A] = {
+
+  def customChildren(c: PartialFunction[A, Seq[A]]): StrategyInterface[A] = {
     cChildren = c
     this
   }
 
-  def recurseFunc(r: PartialFunction[A, Seq[Boolean]]):StrategyInterface[A] = {
+  def recurseFunc(r: PartialFunction[A, Seq[Boolean]]): StrategyInterface[A] = {
     recursionFunc = r
     this
   }
@@ -59,9 +72,16 @@ trait StrategyInterface[A] {
   }
 }
 
-
+/**
+  * A simple lightweight rewriting strategy
+  *
+  * @param rule A partial function that defines the rewriting.
+  * @tparam A Supertype of every node we want to rewrite
+  */
 class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] {
 
+  // We need to override all the setters beacuse we want to return a Strategy and not a Strategy interface
+  // for DSL purposes. Otherwise we wont be able to call Strategy only functions
   override def traverse(t: Traverse): Strategy[A] = {
     super.traverse(t)
     this
@@ -84,45 +104,50 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
 
   override def executeTopDown(node: A): A = {
     // TODO Replace printouts with actual exceptions
+
     // Check which node we get from rewriting
-    val newNode = if (rule.isDefinedAt(node)) rule(node) else  node
+    val newNode = if (rule.isDefinedAt(node)) rule(node) else node
 
     // Put all the children of this node into a sequence
-
-    val children:Seq[A] = if (cChildren.isDefinedAt(newNode)) {
-        cChildren(newNode)
-      } else {
-        newNode match {
-          case p:Product => ((0 until p.productArity) map { x:Int => p.productElement(x) }) collect ({ case i: Product => i.asInstanceOf[A] })
-          case rest => { println("We do not support nodes that dont implement product"); Seq() }
-        }
-      }
-
-    // Get the indices of the sequence that we perform recursion on
-    val childrenSelect = if(recursionFunc.isDefinedAt(newNode)) {
-        recursionFunc(newNode)
+    // First try to get children form the user defined function cChildren in case we have a special case here
+    // Otherwise get children from the product properties, but only those that are a subtype of A and therefore form the Tree
+    val children: Seq[A] = if (cChildren.isDefinedAt(newNode)) {
+      cChildren(newNode)
     } else {
-        children.indices map {x => true}
+      newNode match {
+        case p: Product => ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
+          case i: Product => i.asInstanceOf[A]
+        }
+        case rest =>
+          println("We do not support nodes that dont implement product")
+          Seq()
+      }
     }
 
+    // Get the indices of the sequence that we perform recursion on and check if it is well formed. Default case is all children
+    val childrenSelect = if (recursionFunc.isDefinedAt(newNode)) {
+      recursionFunc(newNode)
+    } else {
+      children.indices map { x => true }
+    }
     // Check whether the list of indices is of correct length
     if (childrenSelect.length != children.length) print("Incorrect number of children in recursion")
 
 
-    // Recurse on children where bit is set TODO rewrite this I got problems with the type system there
-    val func: (A,Boolean) => A = (x: A, b:Boolean) => {
-      if(b) {
-        x match {
-          case n:Product =>  executeTopDown(n.asInstanceOf[A])
+    // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
+    val newChildren: Seq[A] = children.zip(childrenSelect) map {
+      case (child, b) => if (b) {
+        child match {
+          case n: Product => executeTopDown(n.asInstanceOf[A])
           case rest => rest
         }
       } else {
-        x
+        child
       }
     }
-    val newChildren:Seq[A] = children.zip(childrenSelect) map( x => func(x._1, x._2) )
 
-    // Put the nodes together
+    // Create the new node by providing the rewritten node and the newChildren to a user provided Duplicator function,
+    // that creates a new immutable node
     if (duplicator.isDefinedAt(newNode, newChildren)) {
       duplicator(newNode, newChildren)
     } else {

@@ -443,6 +443,8 @@ object Transformer {
     })
   }
 
+  //<editor-fold desc="Simons Master Thesis Methods">
+
   def seqFlat(ss: Seq[Stmt]): Seq[Stmt] = {
 
     val result = ss.foldLeft[Seq[Stmt]](Seq[Stmt]())((x:Seq[Stmt], y:Stmt) => { y match {
@@ -675,7 +677,7 @@ object Transformer {
       Trigger(expressions)(t.pos, t.info)
   }
 
-
+  //</editor-fold>
 
   private val bigIntZero = BigInt(0)
 }
