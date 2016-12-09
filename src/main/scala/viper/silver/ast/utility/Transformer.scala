@@ -443,8 +443,18 @@ object Transformer {
     })
   }
 
+  def seqFlat(ss: Seq[Stmt]): Seq[Stmt] = {
+
+    val result = ss.foldLeft[Seq[Stmt]](Seq[Stmt]())((x:Seq[Stmt], y:Stmt) => { y match {
+      case elems:Seq[Stmt] => x ++ seqFlat(elems)
+      case elemS:Seqn => x ++ elemS.ss
+      case elem:Stmt => x ++ Seq(elem)
+    }})
+    result
+  }
+
   def viperChildrenSelector: PartialFunction[Node, Seq[Node]] = {
-    case s:Seqn => s.ss
+    case s:Seqn => seqFlat(s.ss)
 
   }
 

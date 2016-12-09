@@ -85,14 +85,9 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
   override def executeTopDown(node: A): A = {
     // TODO Replace printouts with actual exceptions
     // Check which node we get from rewriting
-    println("Current Node:" + node)
     val newNode = if (rule.isDefinedAt(node)) rule(node) else  node
 
     // Put all the children of this node into a sequence
-
-    def getValidChild(p:Product, i:Int) = {
-
-    }
 
     val children:Seq[A] = if (cChildren.isDefinedAt(newNode)) {
         cChildren(newNode)

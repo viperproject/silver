@@ -4,12 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-import java.nio.file.{Paths, Path}
+import java.nio.file.{Path, Paths}
 
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast._
-import viper.silver.ast.utility.DomainInstances
-import viper.silver.frontend.{TranslatorState, SilFrontend}
+import viper.silver.ast.utility._
+import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silver.verifier.AbstractError
 
 import scala.language.implicitConversions
@@ -17,7 +17,7 @@ import scala.language.implicitConversions
 
 
 class DomainInstanceTest extends FunSuite with Matchers {
-  test("Basic domain instances") {
+ /* test("Basic domain instances") {
     val t = TypeVar("T")
     val d = Domain("D", Seq(), Seq(), Seq(t))(NoPosition, NoInfo)
     val r = LocalVarDecl("r", Int)(NoPosition, NoInfo)
@@ -26,9 +26,44 @@ class DomainInstanceTest extends FunSuite with Matchers {
     val p = Program(Seq(d), Seq(), Seq(), Seq(), Seq(m))(NoPosition, NoInfo)
 
     p.groundTypeInstances.size should be(3)
+  }*/
+
+  test("Transfuckingformer") {
+    val frontend = new DummyFrontend
+    println(System.getProperty("user.dir"))
+    val fileR = getClass.getResource("transformations\\custom\\implications.sil")
+    val fileU = fileR.toURI
+    val file = Paths.get(fileU)
+
+    var targetNode:Node = null
+
+    val strat = new Strategy[Node]({
+      case w: While =>
+        val invars: Exp = if (w.invs.isEmpty) { TrueLit()() } else  { w.invs.reduce((x: Exp, y: Exp) => And(x, y)()) }
+        Seqn(Seq(
+          Assert(invars)(w.invs.head.pos, w.invs.head.info),
+          If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("Skiploop")(w.pos, w.info), Label("NoOp")(w.pos, w.info))(w.pos, w.info),
+          Label("Loop")(w.pos, w.info),
+          w.body,
+          Assert(invars)(w.invs.head.pos, w.invs.head.info),
+          If(w.cond, Goto("Loop")(w.pos, w.info), Label("NoOp")(w.pos, w.info))(w.pos, w.info),
+          Label("Skiploop")(w.pos, w.info)
+        ))(w.pos, w.info)
+
+    })  defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
+
+    frontend.translate(file) match {
+      case (Some(p), _) => {
+        targetNode = p.methods.head.body
+      }
+      case (None, errors) => println("No program: " + errors)
+    }
+    val res = strat.execute(targetNode)
+    println("Old: " + targetNode.toString())
+    println("New: " + res.toString())
   }
 
-  test("Basic domain instances 2") {
+ /* test("Basic domain instances 2") {
     val frontend = new DummyFrontend
     println(System.getProperty("user.dir"))
     val fileR = getClass.getResource("all/basic/domains2.sil")
@@ -98,7 +133,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
       case _ => {}
     }
 
-  }
+  }*/
 }
 
 
