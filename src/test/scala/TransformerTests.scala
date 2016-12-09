@@ -9,11 +9,11 @@ package viper.silver
 import scala.language.implicitConversions
 import org.scalatest.{FunSuite, Matchers}
 import ast._
-import ast.utility.{Strategy, Traverse, Transformer}
+import ast.utility.{Strategy, StrategyC, Transformer, Traverse}
 import ast.If
 
 class TransformerTests extends FunSuite with Matchers {
-  test("Implication into Disjunction") {
+/*  test("Implication into Disjunction") {
     // Create new strategy. Parameter is the partial function that is applied on all nodes
     val strat = new Strategy[Node]({
       case Implies(left, right) => Or(Not(left)(), right)()
@@ -27,7 +27,7 @@ class TransformerTests extends FunSuite with Matchers {
 
     TrueLit()() should be (TrueLit()())
   }
-/*
+
   test("while loop into if & goto") {
     // Example of how to transform a while loop into if and goto
     // Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
@@ -44,7 +44,7 @@ class TransformerTests extends FunSuite with Matchers {
           Label("Skiploop")(w.pos, w.info)
         ))(w.pos, w.info)
 
-    }) traverse Traverse.Innermost recurse Recurse.All
+    }) traverse Traverse.Innermost
   }
 
   test("Disjunctions to Inhale/Exhale") {
@@ -53,12 +53,16 @@ class TransformerTests extends FunSuite with Matchers {
     val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
       case (Or(l, r), c) =>
         //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
-        InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
+        c match {
+          case None => InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())()
+          case Some(context) => InhaleExhaleExp(CondExp(Forall(context, Seq(), TrueLit()())(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
+        }
     }) updateContext {
-      case q:QuantifiedExp => q.variables
-    } traverse Traverse.TopDown recurse Recurse.All recurseFunc {
+      case (q:QuantifiedExp, None) => Some(q.variables)
+      case (q:QuantifiedExp, Some(c)) => Some(c ++ q.variables)
+    } traverse Traverse.TopDown recurseFunc {
       case i: InhaleExhaleExp => Seq(true, false)
-    }
+    } defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
   }
 
   test("Fold many consecutive assertions into one assert") {

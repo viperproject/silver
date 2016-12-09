@@ -37,20 +37,19 @@ class DomainInstanceTest extends FunSuite with Matchers {
 
     var targetNode:Node = null
 
-    val strat = new Strategy[Node]({
-      case w: While =>
-        val invars: Exp = if (w.invs.isEmpty) { TrueLit()() } else  { w.invs.reduce((x: Exp, y: Exp) => And(x, y)()) }
-        Seqn(Seq(
-          Assert(invars)(w.invs.head.pos, w.invs.head.info),
-          If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("Skiploop")(w.pos, w.info), Label("NoOp")(w.pos, w.info))(w.pos, w.info),
-          Label("Loop")(w.pos, w.info),
-          w.body,
-          Assert(invars)(w.invs.head.pos, w.invs.head.info),
-          If(w.cond, Goto("Loop")(w.pos, w.info), Label("NoOp")(w.pos, w.info))(w.pos, w.info),
-          Label("Skiploop")(w.pos, w.info)
-        ))(w.pos, w.info)
-
-    })  defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
+    val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
+      case (Or(l, r), c) =>
+        //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
+        c match {
+          case None => InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())()
+          case Some(context) => InhaleExhaleExp(CondExp(Forall(context, Seq(), TrueLit()())(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
+        }
+    }) updateContext {
+      case (q:QuantifiedExp, None) => Some(q.variables)
+      case (q:QuantifiedExp, Some(c)) => Some(c ++ q.variables)
+    } traverse Traverse.TopDown recurseFunc {
+      case i: InhaleExhaleExp => Seq(true, false)
+    } defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
 
     frontend.translate(file) match {
       case (Some(p), _) => {
