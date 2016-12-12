@@ -1036,6 +1036,7 @@ object Nodes {
       case PApplyingGhostOp(wand, in) => Seq(wand, in)
       case PPackagingGhostOp(wand, in) => Seq(wand, in)
       case PExists(vars, exp) => vars ++ Seq(exp)
+      case PLabelledOld(id, e) => Seq(id, e)
       case po: POldExp => Seq(po.e)
       case PLet(exp, nestedScope) => Seq(exp, nestedScope)
       case PLetNestedScope(variable, body) => Seq(variable, body)
