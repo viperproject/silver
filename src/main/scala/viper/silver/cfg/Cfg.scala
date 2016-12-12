@@ -85,14 +85,14 @@ class Cfg[S, E](val blocks: Seq[Block[S, E]], val edges: Seq[Edge[S, E]], val en
     * @tparam E2 The return type of the expression mapping function.
     * @return The resulting control flow graph.
     */
-  def map[S2, E2](stmtMap: S => S2, expMap: E => E2): Cfg[S2, E2] = {
+  def map[S2, E2](stmtMap: S => Seq[S2], expMap: E => E2): Cfg[S2, E2] = {
     // map all blocks and create map mapping from old to new blocks
     val blockMap = this.blocks.map { block =>
       val mapped: Block[S2, E2] = block match {
-        case StatementBlock(stmts) => StatementBlock(stmts.map(stmtMap))
+        case StatementBlock(stmts) => StatementBlock(stmts.flatMap(stmtMap))
         case PreconditionBlock(pres) => PreconditionBlock(pres.map(expMap))
         case PostconditionBlock(posts) => PostconditionBlock(posts.map(expMap))
-        case LoopHeadBlock(invs, stmts) => LoopHeadBlock(invs.map(expMap), stmts.map(stmtMap))
+        case LoopHeadBlock(invs, stmts) => LoopHeadBlock(invs.map(expMap), stmts.flatMap(stmtMap))
         case ConstrainingBlock(vars, body) => ConstrainingBlock(vars.map(expMap), body.map(stmtMap, expMap))
       }
       block -> mapped
@@ -100,7 +100,7 @@ class Cfg[S, E](val blocks: Seq[Block[S, E]], val edges: Seq[Edge[S, E]], val en
     // extract list of mapped blocks
     val blocks: Seq[Block[S2, E2]] = blockMap.values.toList
     // map all edges
-    val edges = this.edges.map { edge =>
+    val edges: Seq[Edge[S2, E2]] = this.edges.map { edge =>
       val mappedSource = blockMap.get(edge.source).get
       val mappedTarget = blockMap.get(edge.target).get
       edge match {
