@@ -109,8 +109,10 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
     // Put all the children of this node into a sequence
     // First try to get children form the user defined function cChildren in case we have a special case here
     // Otherwise get children from the product properties, but only those that are a subtype of A and therefore form the Tree
-    val children: Seq[A] = cChildren.applyOrElse(newNode, (node: A) => node match {
+    val children: Seq[Any] = cChildren.applyOrElse(newNode, (node: A) => node match {
       case p: Product => ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
+        case s: Seq[Product] => s
+        case o: Option[Product] => o
         case i: Product => i.asInstanceOf[A]
       }
       case rest =>
@@ -128,9 +130,14 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
 
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
-    val newChildren: Seq[A] = children.zip(childrenSelect) map {
+    val newChildren: Seq[Any] = children.zip(childrenSelect) map {
       case (child, b) => if (b) {
         child match {
+          case o: Option[Product] => {
+            case None => None
+            case Some(node) => Some(executeTopDown(node.asInstanceOf[A]))
+          }
+          case s: Seq[Product] => s map { x => executeTopDown(x.asInstanceOf[A]) }
           case n: Product => executeTopDown(n.asInstanceOf[A])
           case rest => rest
         }
@@ -211,6 +218,7 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Option[C]), A]) extends Stra
     val children: Seq[Any] = cChildren.applyOrElse(newNode, (x:A) => x match {
       case p: Product => ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
         case s: Seq[Product] => s
+        case o: Option[Product] => o
         case i: Product => i.asInstanceOf[A]
       }
       case rest =>
@@ -236,6 +244,10 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Option[C]), A]) extends Stra
     val newChildren: Seq[Any] = children.zip(childrenSelect) map {
       case (child, b) => if (b) {
         child match {
+          case o: Option[Product] => {
+            case None => None
+            case Some(node) => Some(executeTopDown(node.asInstanceOf[A], newContext))
+          }
           case s: Seq[Product] => s map { x => executeTopDown(x.asInstanceOf[A], newContext) }
           case n: Product => executeTopDown(n.asInstanceOf[A], newContext)
           case rest => rest

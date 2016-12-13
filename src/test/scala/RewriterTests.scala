@@ -34,7 +34,7 @@ class RewriterTests extends FunSuite with Matchers {
 
   test("DisjunctionToInhaleExhaleTests") {
     val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
-    val files = Seq(/*"simple", */"nested")
+    val files = Seq(/*"simple", "nested",*/ "functions")
 
     val frontend = new DummyFrontend
 

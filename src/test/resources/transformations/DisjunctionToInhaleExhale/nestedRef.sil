@@ -1,0 +1,7 @@
+method main() returns ()
+{
+   var i: Bool := true
+   var j: Bool := true
+
+   assert(exists k: Bool :: i && [((forall kTrafo: Bool :: true) ? k : j),(k || j)])
+}

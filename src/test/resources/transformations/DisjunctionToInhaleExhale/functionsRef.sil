@@ -1,0 +1,16 @@
+
+function func(b: Bool): Bool
+  ensures exists k: Bool :: 
+      [(forall kTrafo: Bool :: true) ? true : (b && 
+          [(forall kTrafo: Bool :: true) ? k : (exists j: Bool :: 
+              [(forall kTrafo:Bool, jTrafo:Bool :: true) ? true : j, true || j])
+          , k || exists j: Bool :: true || j]),
+      true || (b && (k || exists j: Bool :: true || j))] {
+      true
+  }
+
+method foo() returns ()
+    ensures exists k: Bool :: [(forall kTrafo: Bool :: true) ? k : true, k || true]
+{
+
+}
