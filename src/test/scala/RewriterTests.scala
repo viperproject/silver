@@ -17,26 +17,21 @@ import scala.language.implicitConversions
 
 class RewriterTests extends FunSuite with Matchers {
 
-  //  test("ImplicationToDisjunctionTests") {
-  //    // Create new strategy. Parameter is the partial function that is applied on all nodes
-  //    val strat = new Strategy[Node]({
-  //      case Implies(left, right) => Or(Not(left)(), right)()
-  //    })
-  //
-  //    // Example of how to execute the strategy with a dummy node
-  //    var targetNode: Node = Div(0, 0)()
-  //    var res = strat.execute(targetNode)
-  //    println(targetNode.toString())
-  //    println(res.toString())
-  //
-  //    TrueLit()() should be (TrueLit()())
-  //  }
+    test("ImplicationToDisjunctionTests") {
+      val filePrefix = "transformations\\ImplicationsToDisjunction\\"
+      val files = Seq("simple", "nested", "traverseEverything")
 
-  test("DisjunctionToInhaleExhaleTests") {
+      // Create new strategy. Parameter is the partial function that is applied on all nodes
+      val strat = new Strategy[Node]({
+        case Implies(left, right) => Or(Not(left)(), right)()
+      }) defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
+
+      executeTests(filePrefix, files, strat)
+    }
+
+    test("DisjunctionToInhaleExhaleTests") {
     val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
-    val files = Seq(/*"simple", "nested",*/ "functions")
-
-    val frontend = new DummyFrontend
+    val files = Seq("simple", "nested", "functions")
 
     val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
       case (Or(l, r), c) =>
@@ -53,13 +48,46 @@ class RewriterTests extends FunSuite with Matchers {
       case i: InhaleExhaleExp => Seq(true, false)
     } defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
 
-    files foreach { (fileName) => {
+    executeTests(filePrefix, files, strat)
+  }
+
+  test("WhileToIfAndGoto") {
+    val filePrefix = "transformations\\WhileToIfAndGoto\\"
+    val files = Seq("nested")
+
+    // Example of how to transform a while loop into if and goto
+    // Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
+    var count = 0
+    val strat = new Strategy[Node]({
+      case w: While =>
+        val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
+        count = count + 1
+        Seqn(Seq(
+          Assert(invars)(w.invs.head.pos, w.invs.head.info),
+          If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("skiploop" + count)(w.pos, w.info), Goto("skiploop" + count)(w.pos, w.info))(w.pos, w.info),
+          Label("loop" + count)(w.pos, w.info),
+          w.body,
+          Assert(invars)(w.invs.head.pos, w.invs.head.info),
+          If(w.cond, Goto("loop" + count)(w.pos, w.info), Goto("skiploop" + count)(w.pos, w.info))(w.pos, w.info),
+          Label("skiploop" + count)(w.pos, w.info)
+        ))(w.pos, w.info)
+
+    }) defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
+
+    executeTests(filePrefix, files, strat)
+  }
+
+  def executeTests(filePrefix: String, files: Seq[String], strat: StrategyInterface[Node]): Unit = {
+    val frontend = new DummyFrontend
+
+    files foreach { (fileName:String) => {
       val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
       val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
       assert(fileRes != null, s"File $filePrefix$fileName not found")
-      assert( fileRef != null, s"File $filePrefix$fileName Ref not found")
+      assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
       val file = Paths.get(fileRes.toURI)
       val ref = Paths.get(fileRef.toURI)
+
 
       var targetNode: Node = null
       var targetRef: Node = null
@@ -86,8 +114,7 @@ class RewriterTests extends FunSuite with Matchers {
     }
     }
   }
-
-  class DummyFrontend extends SilFrontend {
+class DummyFrontend extends SilFrontend {
     def createVerifier(fullCmd: _root_.scala.Predef.String) = ???
 
     def configureVerifier(args: Seq[String]) = ???

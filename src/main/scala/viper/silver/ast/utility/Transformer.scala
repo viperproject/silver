@@ -460,7 +460,7 @@ object Transformer {
 
   }
 
-  def viperDuplicator: PartialFunction[(Node, Seq[Product]), Node] = {
+  def viperDuplicator: PartialFunction[(Node, Seq[Any]), Node] = {
     case (il: IntLit, Seq()) => IntLit(il.i)(il.pos, il.info)
     case (bl: BoolLit, Seq()) => BoolLit(bl.value)(bl.pos, bl.info)
     case (nl: NullLit, _) => NullLit()(nl.pos, nl.info)
