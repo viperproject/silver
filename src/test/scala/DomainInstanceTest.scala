@@ -53,7 +53,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
 
     frontend.translate(file) match {
       case (Some(p), _) => {
-        targetNode = p.methods.head.body
+        targetNode = p
       }
       case (None, errors) => println("No program: " + errors)
     }
