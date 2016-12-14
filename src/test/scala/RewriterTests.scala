@@ -37,17 +37,16 @@ class RewriterTests extends FunSuite with Matchers {
     val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
       case (Or(l, r), c) =>
         //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
-        c match {
-          case None => InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())()
+        c.custom match {
+          case Seq() => InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())()
           // Had to do variable renaming because otherwise variable would be quantified inside again with forall
-          case Some(context) => InhaleExhaleExp(CondExp(Forall(context.map { vari => LocalVarDecl(vari.name + "Trafo", vari.typ)(vari.pos, vari.info) }, Seq(), TrueLit()())(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
+          case varDecls => InhaleExhaleExp(CondExp(Forall(varDecls.map { vari => LocalVarDecl(vari.name + "Trafo", vari.typ)(vari.pos, vari.info) }, Seq(), TrueLit()())(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
         }
     }) updateContext {
-      case (q: QuantifiedExp, None) => Some(q.variables)
-      case (q: QuantifiedExp, Some(c)) => Some(c ++ q.variables)
+      case (q: QuantifiedExp, c) => c ++ q.variables
     } traverse Traverse.TopDown recurseFunc {
       case i: InhaleExhaleExp => Seq(true, false)
-    } defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
+    } defaultContext Seq() defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
@@ -86,11 +85,28 @@ class RewriterTests extends FunSuite with Matchers {
 
   test("ManyToOneAssert") {
     val filePrefix = "transformations\\ManyToOneAssert\\"
-    val files = Seq("simple", "disconnected")
+    val files = Seq("simple")
 
-    val strat = new Strategy[Node]({
-      case x => x
-    }) defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
+    val strat = new StrategyC[Node, Int]({
+      case (a: Assert, c:Context[Node, Int]) => {
+
+        c.previous match {
+          case Some(Assert(_)) => Seqn(Seq())() // If previous node is assertion we go to noop
+          case _ => { // Otherwise we take all following assertions and merge their expressions into one
+            c.successors.takeWhile(x => x match { // Take all following assertions
+              case Assert(_) => true
+              case _ => false
+            }).collect({ case i: Assert => i }) match { // Collect works as a cast to list of assertion since take while does not do this
+              case Seq() => a
+              case as => { // Merge in case of multiple assertions
+                val foldedExpr = as collect { case assertion => assertion.exp } reduceRight { (l, r) => And(l, r)() }
+                Assert(And(a.exp, foldedExpr)())(a.pos, a.info)
+              }
+            }
+          }
+        }
+      }
+    }) defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector defaultContext 0
 
     val frontend = new DummyFrontend
     files foreach { fileName: String => {

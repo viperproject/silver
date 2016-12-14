@@ -177,8 +177,9 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
   * @tparam A Supertype of every node we want to rewrite
   * @tparam C Supertype of the context
   */
-class StrategyC[A, C](val rule: PartialFunction[(A, Option[C]), A]) extends StrategyInterface[A] {
-  protected var upContext: PartialFunction[(A, Option[C]), Option[C]] = PartialFunction.empty
+class StrategyC[A, C](val rule: PartialFunction[(A, Context[A, C]), A]) extends StrategyInterface[A] {
+  protected var upContext: PartialFunction[(A, C), C] = PartialFunction.empty
+  protected var defaultContxt: Option[C] = None
 
   //<editor-fold desc="Overrides for DSL">
 
@@ -187,7 +188,7 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Option[C]), A]) extends Stra
     this
   }
 
-  override def customChildren(c: PartialFunction[A, Seq[A]]): StrategyInterface[A] = {
+  override def customChildren(c: PartialFunction[A, Seq[A]]): StrategyC[A, C] = {
     super.customChildren(c)
     this
   }
@@ -204,25 +205,33 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Option[C]), A]) extends Stra
 
   //</editor-fold>
 
-  def updateContext(p: PartialFunction[(A, Option[C]), Option[C]]): StrategyC[A, C] = {
+  def updateContext(p: PartialFunction[(A, C), C]): StrategyC[A, C] = {
     upContext = p
     this
   }
 
+  def defaultContext(c: C): StrategyC[A, C] = {
+    defaultContxt = Some(c)
+    this
+  }
+
   override def execute(node: A): A = {
+    assert(defaultContxt.isDefined, "Default context not set!")
     traversionMode match {
-      case Traverse.TopDown => executeTopDown(node, None)
+      case Traverse.TopDown => executeTopDown(node, new Context[A, C](Seq(), defaultContxt.get, cChildren))
       case Traverse.BottomUp => executeBottomUp(node, None)
       case Traverse.Innermost => executeInnermost(node, None)
       case Traverse.Outermost => executeOutermost(node, None)
     }
   }
 
-  def executeTopDown(node: A, context: Option[C]): A = {
+  def executeTopDown(node: A, context: Context[A, C]): A = {
+    // Add this node to context
+    var newContext = new Context(context.ancestors ++ Seq(node), context.custom, cChildren)
 
     // Check which node we get from rewriting
-    val newNode: A = if (rule.isDefinedAt((node, context))) {
-      rule ((node, context))
+    val newNode: A = if (rule.isDefinedAt((node, newContext))) {
+      rule ((node, newContext))
     } else {
       node
     }
@@ -249,11 +258,11 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Option[C]), A]) extends Stra
     //if (childrenSelect.length != children.length) print("Incorrect number of children in recursion")
 
     // Create the new Context for children recursion
-    val newContext: Option[C] = if (upContext.isDefinedAt(newNode, context)) {
-      upContext(newNode, context)
+    newContext = new Context[A,C](newContext.ancestors, if (upContext.isDefinedAt(newNode, newContext.custom)) {
+      upContext(newNode, context.custom)
     } else {
-      context
-    }
+      newContext.custom
+    }, cChildren)
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     val newChildren: Seq[Any] = children.zip(childrenSelect) map {
@@ -283,6 +292,69 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Option[C]), A]) extends Stra
 
   def executeOutermost(node: A, context: Option[C]): A = ???
 }
+
+class Context[A, C](val ancestors:Seq[A], val custom:C, private val childFunc: PartialFunction[A, Seq[A]]) {
+
+  lazy val node = ancestors.last
+
+  /**
+    * The predecessor child of the parent that follows the node itself
+    */
+  lazy val previous: Option[Any] = predecessors.lastOption
+
+  /**
+    * All children of the parent of a node that precede the node itself
+    */
+  lazy val predecessors: Seq[Any] = {
+    val index = family.indexOf(node)
+    val list = family.splitAt(index+1)
+    val res = list._1.dropRight(1)
+    res
+  }
+
+  /**
+    * The successor child of the parent that follows the node itself
+    */
+  lazy val next: Option[Any] = successors.headOption
+
+  /**
+    * All children of the parent of a node that follow the node itself
+    */
+  lazy val successors: Seq[Any] = family.splitAt(family.indexOf(node)+1)._2
+
+  /**
+    * All children of the parent without the node itself
+    */
+  lazy val siblings: Seq[Any] = family.drop(family.indexOf(node))
+
+  /**
+    * All children of the parent
+    */
+  lazy val family: Seq[Any] = {
+    if(childFunc.isDefinedAt(parent)) {
+      childFunc(parent)
+    } else {
+      node match {
+      case p: Product => ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
+          case s: Seq[Product] => s
+          case o: Option[Product] => o
+          case i: Product => i.asInstanceOf[A]
+        }
+        case rest =>
+          println("We do not support nodes that dont implement product")
+          Seq()
+      }
+    }
+  }
+
+  /**
+    * Parent of node
+    */
+  lazy val parent: A = ancestors.dropRight(1).last
+
+}
+
+
 
 /*
 class Query[A,B](val rule: PartialFunction[A, B]) extends StrategyInterface[A] {
