@@ -17,19 +17,20 @@ import scala.language.implicitConversions
 
 class RewriterTests extends FunSuite with Matchers {
 
-    test("ImplicationToDisjunctionTests") {
-      val filePrefix = "transformations\\ImplicationsToDisjunction\\"
-      val files = Seq("simple", "nested", "traverseEverything")
+  test("ImplicationToDisjunctionTests") {
+    val filePrefix = "transformations\\ImplicationsToDisjunction\\"
+    val files = Seq("simple", "nested", "traverseEverything")
 
-      // Create new strategy. Parameter is the partial function that is applied on all nodes
-      val strat = new Strategy[Node]({
-        case Implies(left, right) => Or(Not(left)(), right)()
-      }) defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
+    // Create new strategy. Parameter is the partial function that is applied on all nodes
+    val strat = new Strategy[Node]({
+      case Implies(left, right) => Or(Not(left)(), right)()
+    }) defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
 
-      executeTests(filePrefix, files, strat)
-    }
+    val frontend = new DummyFrontend
+    files foreach { name => executeTest(filePrefix, name, strat, frontend) }
+  }
 
-    test("DisjunctionToInhaleExhaleTests") {
+  test("DisjunctionToInhaleExhaleTests") {
     val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
     val files = Seq("simple", "nested", "functions")
 
@@ -39,7 +40,7 @@ class RewriterTests extends FunSuite with Matchers {
         c match {
           case None => InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())()
           // Had to do variable renaming because otherwise variable would be quantified inside again with forall
-          case Some(context) => InhaleExhaleExp(CondExp(Forall(context.map { vari => LocalVarDecl(vari.name + "Trafo", vari.typ)(vari.pos, vari.info)}, Seq(), TrueLit()())(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
+          case Some(context) => InhaleExhaleExp(CondExp(Forall(context.map { vari => LocalVarDecl(vari.name + "Trafo", vari.typ)(vari.pos, vari.info) }, Seq(), TrueLit()())(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
         }
     }) updateContext {
       case (q: QuantifiedExp, None) => Some(q.variables)
@@ -48,12 +49,13 @@ class RewriterTests extends FunSuite with Matchers {
       case i: InhaleExhaleExp => Seq(true, false)
     } defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
 
-    executeTests(filePrefix, files, strat)
+    val frontend = new DummyFrontend
+    files foreach { name => executeTest(filePrefix, name, strat, frontend) }
   }
 
   test("WhileToIfAndGoto") {
     val filePrefix = "transformations\\WhileToIfAndGoto\\"
-    val files = Seq("nested")
+    val files = Seq("simple", "nested")
 
     // Example of how to transform a while loop into if and goto
     // Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
@@ -64,57 +66,75 @@ class RewriterTests extends FunSuite with Matchers {
         count = count + 1
         Seqn(Seq(
           Assert(invars)(w.invs.head.pos, w.invs.head.info),
-          If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("skiploop" + count)(w.pos, w.info), Goto("skiploop" + count)(w.pos, w.info))(w.pos, w.info),
+          If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("skiploop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
           Label("loop" + count)(w.pos, w.info),
           w.body,
           Assert(invars)(w.invs.head.pos, w.invs.head.info),
-          If(w.cond, Goto("loop" + count)(w.pos, w.info), Goto("skiploop" + count)(w.pos, w.info))(w.pos, w.info),
+          If(w.cond, Goto("loop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
           Label("skiploop" + count)(w.pos, w.info)
         ))(w.pos, w.info)
 
     }) defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
 
-    executeTests(filePrefix, files, strat)
-  }
-
-  def executeTests(filePrefix: String, files: Seq[String], strat: StrategyInterface[Node]): Unit = {
     val frontend = new DummyFrontend
-
-    files foreach { (fileName:String) => {
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
-      assert(fileRes != null, s"File $filePrefix$fileName not found")
-      assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
-      val file = Paths.get(fileRes.toURI)
-      val ref = Paths.get(fileRef.toURI)
-
-
-      var targetNode: Node = null
-      var targetRef: Node = null
-
-      frontend.translate(file) match {
-        case (Some(p), _) => {
-          targetNode = p
-        }
-        case (None, errors) => println("No program: " + errors)
-      }
-
-      frontend.translate(ref) match {
-        case (Some(p), _) => {
-          targetRef = p
-        }
-        case (None, errors) => println("No program: " + errors)
-      }
-
-      val res = strat.execute(targetNode)
-      println("Old: " + targetNode.toString())
-      println("New: " + res.toString())
-      println("Reference: " + targetRef.toString())
-      assert(res.toString() == targetRef.toString(), "Files are not equal")
+    files foreach { fileName: String => {
+      count = 0
+      executeTest(filePrefix, fileName, strat, frontend)
     }
     }
   }
-class DummyFrontend extends SilFrontend {
+
+  test("ManyToOneAssert") {
+    val filePrefix = "transformations\\ManyToOneAssert\\"
+    val files = Seq("simple", "disconnected")
+
+    val strat = new Strategy[Node]({
+      case x => x
+    }) defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
+
+    val frontend = new DummyFrontend
+    files foreach { fileName: String => {
+      executeTest(filePrefix, fileName, strat, frontend)
+    }
+    }
+  }
+
+  def executeTest(filePrefix: String, fileName: String, strat: StrategyInterface[Node], frontend: DummyFrontend): Unit = {
+
+    val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+    val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+    assert(fileRes != null, s"File $filePrefix$fileName not found")
+    assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
+    val file = Paths.get(fileRes.toURI)
+    val ref = Paths.get(fileRef.toURI)
+
+
+    var targetNode: Node = null
+    var targetRef: Node = null
+
+    frontend.translate(file) match {
+      case (Some(p), _) => {
+        targetNode = p
+      }
+      case (None, errors) => println("No program: " + errors)
+    }
+
+    frontend.translate(ref) match {
+      case (Some(p), _) => {
+        targetRef = p
+      }
+      case (None, errors) => println("No program: " + errors)
+    }
+
+    val res = strat.execute(targetNode)
+    println("Old: " + targetNode.toString())
+    println("New: " + res.toString())
+    println("Reference: " + targetRef.toString())
+    assert(res.toString() == targetRef.toString(), "Files are not equal")
+  }
+
+
+  class DummyFrontend extends SilFrontend {
     def createVerifier(fullCmd: _root_.scala.Predef.String) = ???
 
     def configureVerifier(args: Seq[String]) = ???

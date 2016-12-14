@@ -1,23 +1,18 @@
 method main()
 {
-    var i:Int := 5
+    var i:Int := 1
 
     assert i <= 5
     if(!(i < 5)) {
-        goto skiploop
-    } else {
-        goto skiploop
+        goto skiploop1
     }
-
-    label loop
+    label loop1
         i := i + 1
         assert i <= 5
         if(i < 5) {
-            goto loop
-        } else {
-            goto skiploop
+            goto loop1
         }
-    label skiploop
+    label skiploop1
 
     assert(i == 5)
 }

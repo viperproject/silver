@@ -1,6 +1,6 @@
 method main()
 {
-    var i:Int := 5
+    var i:Int := 1
 
     while(i < 5) 
         invariant i <= 5

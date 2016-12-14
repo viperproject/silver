@@ -6,34 +6,29 @@ method main()
     assert i <= 5
     if(!(i < 5)) {
         goto skiploop1
-    } else {
-        goto skiploop1
     }
 
-    label loop1
+    label loop1        
         
         assert i <= 5
         if(!j) {
             goto skiploop2
-        } else {
-            goto skiploop2
-        }
+        } 
+
         label loop2
+       
             j := false
             assert i <= 5
-            if(i < 5) {
+            if(j) {
                 goto loop2
-            } else {
-                goto skiploop2
             }
+        
         label skiploop2
-
+        
         i := i + 1
         assert i <= 5
         if(i < 5) {
             goto loop1
-        } else {
-            goto skiploop1
         }
     label skiploop1
 
