@@ -22,9 +22,9 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "nested", "traverseEverything")
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = new Strategy[Node]({
+    val strat = new ViperStrategy({
       case Implies(left, right) => Or(Not(left)(), right)()
-    }) defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
+    })
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
@@ -34,7 +34,7 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
     val files = Seq("simple", "nested", "functions")
 
-    val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
+    val strat = new ViperStrategyC[Seq[LocalVarDecl]]({
       case (Or(l, r), c) =>
         //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
         c.custom match {
@@ -46,7 +46,7 @@ class RewriterTests extends FunSuite with Matchers {
       case (q: QuantifiedExp, c) => c ++ q.variables
     } traverse Traverse.TopDown recurseFunc {
       case i: InhaleExhaleExp => Seq(true, false)
-    } defaultContext Seq() defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
+    } defaultContext Seq()
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
@@ -59,7 +59,7 @@ class RewriterTests extends FunSuite with Matchers {
     // Example of how to transform a while loop into if and goto
     // Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
     var count = 0
-    val strat = new Strategy[Node]({
+    val strat = new ViperStrategy({
       case w: While =>
         val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
         count = count + 1
@@ -73,7 +73,7 @@ class RewriterTests extends FunSuite with Matchers {
           Label("skiploop" + count)(w.pos, w.info)
         ))(w.pos, w.info)
 
-    }) defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
+    })
 
     val frontend = new DummyFrontend
     files foreach { fileName: String => {
@@ -87,18 +87,22 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\ManyToOneAssert\\"
     val files = Seq("simple", "interrupted", "nested")
 
-    val strat = new StrategyC[Node, Int]({
-      case (a: Assert, c:Context[Node, Int]) => {
+    val strat = new ViperStrategyC[Int]({
+      case (a: Assert, c: Context[Node, Int]) => {
 
         c.previous match {
           case Some(Assert(_)) => Seqn(Seq())() // If previous node is assertion we go to noop
-          case _ => { // Otherwise we take all following assertions and merge their expressions into one
-            c.successors.takeWhile(x => x match { // Take all following assertions
+          case _ => {
+            // Otherwise we take all following assertions and merge their expressions into one
+            c.successors.takeWhile(x => x match {
+              // Take all following assertions
               case Assert(_) => true
               case _ => false
-            }).collect({ case i: Assert => i }) match { // Collect works as a cast to list of assertion since take while does not do this
+            }).collect({ case i: Assert => i }) match {
+              // Collect works as a cast to list of assertion since take while does not do this
               case Seq() => a
-              case as => { // Merge in case of multiple assertions
+              case as => {
+                // Merge in case of multiple assertions
                 val foldedExpr = as collect { case assertion => assertion.exp } reduceRight { (l, r) => And(l, r)() }
                 Assert(And(a.exp, foldedExpr)())(a.pos, a.info)
               }
@@ -106,7 +110,7 @@ class RewriterTests extends FunSuite with Matchers {
           }
         }
       }
-    }) defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector defaultContext 0
+    }) defaultContext 0
 
     val frontend = new DummyFrontend
     files foreach { fileName: String => {
@@ -115,17 +119,37 @@ class RewriterTests extends FunSuite with Matchers {
     }
   }
 
+  test("FoldConstants") {
+    val filePrefix = "transformations\\FoldConstants\\"
+    val files = Seq("simple", "complex")
+
+    // Only implemented int trasformations. its enough for the test
+    val strat = new ViperStrategy({
+      case root@Add(i1:IntLit, i2:IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
+      case root@Sub(i1:IntLit, i2:IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
+      case root@Div(i1:IntLit, i2:IntLit) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
+      case root@Mul(i1:IntLit, i2:IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
+    }) traverse Traverse.BottomUp
+
+    val frontend = new DummyFrontend
+    files foreach { fileName: String => {
+      executeTest(filePrefix, fileName, strat, frontend)
+    }
+    }
+
+  }
+
   test("CountAdditions") {
     val filePrefix = "transformations\\CountAdditions\\"
     val filesAndResults = Seq(("simple", 3), ("nested", 10), ("traverseEverything", 12))
 
-    val query = new Query[Node, Int]({
+    val query = new ViperQuery[Int]({
       case a: Add => 1
-    }) neutralElement 0 accumulate { (s:Seq[Int]) => s.sum }  customChildren Transformer.viperChildrenSelector
+    }) neutralElement 0 accumulate { (s: Seq[Int]) => s.sum }
 
     val frontend = new DummyFrontend
 
-    filesAndResults foreach( (tuple) => {
+    filesAndResults foreach ((tuple) => {
       val fileName = tuple._1
       val result = tuple._2
 
@@ -142,8 +166,8 @@ class RewriterTests extends FunSuite with Matchers {
       }
       val res = query.execute(targetNode)
 
-      println("Actual: " + res)
-      println("Expected: " + result)
+      //      println("Actual: " + res)
+      //      println("Expected: " + result)
       assert(res == result, "Results are not equal")
     })
   }
@@ -176,9 +200,9 @@ class RewriterTests extends FunSuite with Matchers {
     }
 
     val res = strat.execute(targetNode)
-    println("Old: " + targetNode.toString())
-    println("New: " + res.toString())
-    println("Reference: " + targetRef.toString())
+    //  println("Old: " + targetNode.toString())
+      println("New: " + res.toString())
+      println("Reference: " + targetRef.toString())
     assert(res.toString() == targetRef.toString(), "Files are not equal")
   }
 

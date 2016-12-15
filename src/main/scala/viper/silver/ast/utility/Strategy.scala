@@ -113,24 +113,24 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
     // Put all the children of this node into a sequence
     // First try to get children form the user defined function cChildren in case we have a special case here
     // Otherwise get children from the product properties, but only those that are a subtype of A and therefore form the Tree
-    val children: Seq[Any] = if(cChildren.isDefinedAt(newNode)) {
-       cChildren(newNode)
+    val children: Seq[Any] = if (cChildren.isDefinedAt(newNode)) {
+      cChildren(newNode)
     } else newNode match {
-        case p: Product => ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
-          case s: Seq[Product] => s
-          case o: Option[Product] => o
-          case i: Product => i.asInstanceOf[A]
-        }
-        case rest =>
-          assert(false, "We do not support nodes that don't implement product")
-          Seq()
+      case p: Product => ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
+        case s: Seq[Product] => s
+        case o: Option[Product] => o
+        case i: Product => i.asInstanceOf[A]
+      }
+      case rest =>
+        assert(false, "We do not support nodes that don't implement product")
+        Seq()
     }
 
 
     // Get the indices of the sequence that we perform recursion on and check if it is well formed. Default case is all children
     val childrenSelect = if (recursionFunc.isDefinedAt(newNode)) {
-      recursionFunc (newNode)
-    }else {
+      recursionFunc(newNode)
+    } else {
       children.indices map { x => true }
     }
     // Check whether the list of indices is of correct length
@@ -143,7 +143,7 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
         child match {
           case o: Option[Product] => o match {
             case None => None
-            case Some(node:Product) => Some(executeTopDown(node.asInstanceOf[A]))
+            case Some(node: Product) => Some(executeTopDown(node.asInstanceOf[A]))
           }
           case s: Seq[Product] => s map { x => executeTopDown(x.asInstanceOf[A]) }
           case n: Product => executeTopDown(n.asInstanceOf[A])
@@ -158,11 +158,69 @@ class Strategy[A](val rule: PartialFunction[A, A]) extends StrategyInterface[A] 
     if (duplicator.isDefinedAt((newNode, newChildren.asInstanceOf[Seq[Any]]))) {
       duplicator((newNode, newChildren.asInstanceOf[Seq[Any]]))
     } else {
-     newNode
+      newNode
     }
   }
 
-  def executeBottomUp(node: A): A = ???
+  def executeBottomUp(node: A): A = {
+
+    // Put all the children of this node into a sequence
+    // First try to get children form the user defined function cChildren in case we have a special case here
+    // Otherwise get children from the product properties, but only those that are a subtype of A and therefore form the Tree
+    val children: Seq[Any] = if (cChildren.isDefinedAt(node)) {
+      cChildren(node)
+    } else node match {
+      case p: Product => ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
+        case s: Seq[Product] => s
+        case o: Option[Product] => o
+        case i: Product => i.asInstanceOf[A]
+      }
+      case rest =>
+        assert(false, "We do not support nodes that don't implement product")
+        Seq()
+    }
+
+    // Get the indices of the sequence that we perform recursion on and check if it is well formed. Default case is all children
+    val childrenSelect = if (recursionFunc.isDefinedAt(node)) {
+      recursionFunc(node)
+    } else {
+      children.indices map { x => true }
+    }
+    // Check whether the list of indices is of correct length
+    assert(childrenSelect.length == children.length, "Incorrect number of children in recursion")
+
+    // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
+    val newChildren: Seq[Any] = children.zip(childrenSelect) map {
+      case (child, b) => if (b) {
+        child match {
+          case o: Option[Product] => o match {
+            case None => None
+            case Some(node: Product) => Some(executeBottomUp(node.asInstanceOf[A]))
+          }
+          case s: Seq[Product] => s map { x => executeBottomUp(x.asInstanceOf[A]) }
+          case n: Product => executeBottomUp(n.asInstanceOf[A])
+        }
+      } else {
+        child
+      }
+    }
+
+    // Create a new node by providing the rewritten node and the newChildren to a user provided Duplicator function,
+    // that creates a new immutable node
+    val duplicatedNode = if (duplicator.isDefinedAt((node, newChildren.asInstanceOf[Seq[Any]]))) {
+      duplicator((node, newChildren.asInstanceOf[Seq[Any]]))
+    } else {
+      node
+    }
+
+
+    // Rewrite the node
+    if (rule.isDefinedAt(duplicatedNode)) {
+      rule(duplicatedNode)
+    } else {
+      duplicatedNode
+    }
+  }
 
   def executeInnermost(node: A): A = ???
 
@@ -231,7 +289,7 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Context[A, C]), A]) extends 
 
     // Check which node we get from rewriting
     val newNode: A = if (rule.isDefinedAt((node, newContext))) {
-      rule ((node, newContext))
+      rule((node, newContext))
     } else {
       node
     }
@@ -239,7 +297,7 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Context[A, C]), A]) extends 
     // Put all the children of this node into a sequence
     // First try to get children form the user defined function cChildren in case we have a special case here
     // Otherwise get children from the product properties, but only those that are a subtype of A and therefore form the Tree
-    val children: Seq[Any] = cChildren.applyOrElse(newNode, (x:A) => x match {
+    val children: Seq[Any] = cChildren.applyOrElse(newNode, (x: A) => x match {
       case p: Product => ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
         case s: Seq[Product] => s
         case o: Option[Product] => o
@@ -251,14 +309,14 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Context[A, C]), A]) extends 
     })
 
     // Get the indices of the sequence that we perform recursion on and check if it is well formed. Default case is all children
-    val childrenSelect = recursionFunc.applyOrElse(newNode, (node:A) => {
+    val childrenSelect = recursionFunc.applyOrElse(newNode, (node: A) => {
       children.indices map { x => true }
     })
     // Check whether the list of indices is of correct length
     //if (childrenSelect.length != children.length) print("Incorrect number of children in recursion")
 
     // Create the new Context for children recursion
-    newContext = new Context[A,C](newContext.ancestors, if (upContext.isDefinedAt(newNode, newContext.custom)) {
+    newContext = new Context[A, C](newContext.ancestors, if (upContext.isDefinedAt(newNode, newContext.custom)) {
       upContext(newNode, context.custom)
     } else {
       newContext.custom
@@ -270,7 +328,7 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Context[A, C]), A]) extends 
         child match {
           case o: Option[Product] => o match {
             case None => None
-            case Some(node:Product) => Some(executeTopDown(node.asInstanceOf[A], newContext))
+            case Some(node: Product) => Some(executeTopDown(node.asInstanceOf[A], newContext))
           }
           case s: Seq[Product] => s map { x => executeTopDown(x.asInstanceOf[A], newContext) }
           case n: Product => executeTopDown(n.asInstanceOf[A], newContext)
@@ -283,7 +341,7 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Context[A, C]), A]) extends 
 
     // Create the new node by providing the rewritten node and the newChildren to a user provided Duplicator function,
     // that creates a new immutable node
-    duplicator.applyOrElse((newNode, newChildren.asInstanceOf[Seq[Product]]), (x:Tuple2[A, Seq[Product]]) => newNode)
+    duplicator.applyOrElse((newNode, newChildren.asInstanceOf[Seq[Product]]), (x: Tuple2[A, Seq[Product]]) => newNode)
   }
 
   def executeBottomUp(node: A, context: Option[C]): A = ???
@@ -293,7 +351,7 @@ class StrategyC[A, C](val rule: PartialFunction[(A, Context[A, C]), A]) extends 
   def executeOutermost(node: A, context: Option[C]): A = ???
 }
 
-class Context[A, C](val ancestors:Seq[A], val custom:C, private val childFunc: PartialFunction[A, Seq[A]]) {
+class Context[A, C](val ancestors: Seq[A], val custom: C, private val childFunc: PartialFunction[A, Seq[A]]) {
 
   lazy val node = ancestors.last
 
@@ -307,10 +365,8 @@ class Context[A, C](val ancestors:Seq[A], val custom:C, private val childFunc: P
     */
   lazy val predecessors: Seq[Any] = {
 
-    val index:Int = family.indexWhere((x) => System.identityHashCode(x) == System.identityHashCode(node))
-    val list = family.splitAt(index+1)
-    val res = list._1.dropRight(1)
-    res
+    val index: Int = family.indexWhere((x) => System.identityHashCode(x) == System.identityHashCode(node))
+    family.splitAt(index + 1)._1.dropRight(1)
   }
 
   /**
@@ -321,7 +377,10 @@ class Context[A, C](val ancestors:Seq[A], val custom:C, private val childFunc: P
   /**
     * All children of the parent of a node that follow the node itself
     */
-  lazy val successors: Seq[Any] = family.splitAt(family.indexOf(node)+1)._2
+  lazy val successors: Seq[Any] = {
+    val index: Int = family.indexWhere((x) => System.identityHashCode(x) == System.identityHashCode(node))
+    family.splitAt(index + 1)._2
+  }
 
   /**
     * All children of the parent without the node itself
@@ -332,11 +391,11 @@ class Context[A, C](val ancestors:Seq[A], val custom:C, private val childFunc: P
     * All children of the parent
     */
   lazy val family: Seq[Any] = {
-    if(childFunc.isDefinedAt(parent)) {
+    if (childFunc.isDefinedAt(parent)) {
       childFunc(parent)
     } else {
       node match {
-      case p: Product => ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
+        case p: Product => ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
           case s: Seq[Product] => s
           case o: Option[Product] => o
           case i: Product => i.asInstanceOf[A]
@@ -356,19 +415,21 @@ class Context[A, C](val ancestors:Seq[A], val custom:C, private val childFunc: P
 }
 
 
-class Query[A,B](val getInfo: PartialFunction[A, B]) extends StrategyInterface[A] {
+class Query[A, B](val getInfo: PartialFunction[A, B]) extends StrategyInterface[A] {
 
-  protected var accumulator: Seq[B] => B = (x:Seq[B]) => x.head
+  protected var accumulator: Seq[B] => B = (x: Seq[B]) => x.head
   protected var nElement: Option[B] = None
 
   def getAccumulator = accumulator
-  def accumulate(a: Seq[B] => B):Query[A, B] = {
+
+  def accumulate(a: Seq[B] => B): Query[A, B] = {
     accumulator = a
     this
   }
 
   def getNeutralElement = nElement
-  def neutralElement(ne:B): Query[A,B] = {
+
+  def neutralElement(ne: B): Query[A, B] = {
     nElement = Some(ne)
     this
   }
@@ -405,7 +466,7 @@ class Query[A,B](val getInfo: PartialFunction[A, B]) extends StrategyInterface[A
 
   def executeTopDown(node: A): B = {
     // Check which node we get from rewriting
-    val qResult:B = if (getInfo.isDefinedAt(node)) {
+    val qResult: B = if (getInfo.isDefinedAt(node)) {
       getInfo(node)
     } else {
       assert(nElement.isDefined, "Node " + node + "does not define a result. Either define it in query or specify neutral element")
@@ -415,7 +476,7 @@ class Query[A,B](val getInfo: PartialFunction[A, B]) extends StrategyInterface[A
     // Put all the children of this node into a sequence
     // First try to get children form the user defined function cChildren in case we have a special case here
     // Otherwise get children from the product properties, but only those that are a subtype of A and therefore form the Tree
-    val children: Seq[Any] = if(cChildren.isDefinedAt(node)) {
+    val children: Seq[Any] = if (cChildren.isDefinedAt(node)) {
       cChildren(node)
     } else node match {
       case p: Product => ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
@@ -431,8 +492,8 @@ class Query[A,B](val getInfo: PartialFunction[A, B]) extends StrategyInterface[A
 
     // Get the indices of the sequence that we perform recursion on and check if it is well formed. Default case is all children
     val childrenSelect = if (recursionFunc.isDefinedAt(node)) {
-      recursionFunc (node)
-    }else {
+      recursionFunc(node)
+    } else {
       children.indices map { x => true }
     }
     // Check whether the list of indices is of correct length
@@ -445,17 +506,16 @@ class Query[A,B](val getInfo: PartialFunction[A, B]) extends StrategyInterface[A
         child match {
           case o: Option[Product] => o match {
             case None => None
-            case Some(node:Product) => Some(executeTopDown(node.asInstanceOf[A]))
+            case Some(node: Product) => Some(executeTopDown(node.asInstanceOf[A]))
           }
-          case s: Seq[Product] => Some(accumulator( s map { x => executeTopDown(x.asInstanceOf[A]) }))
+          case s: Seq[Product] => Some(accumulator(s map { x => executeTopDown(x.asInstanceOf[A]) }))
           case n: Product => Some(executeTopDown(n.asInstanceOf[A]))
         }
       } else {
         None
       }
     }
-
-    accumulator( Seq(qResult) ++ (seqResults collect { case Some(x:B) => x }) )
+    accumulator(Seq(qResult) ++ (seqResults collect { case Some(x: B) => x }))
   }
 
   def executeBottomUp(node: A): B = ???
