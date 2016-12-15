@@ -115,6 +115,39 @@ class RewriterTests extends FunSuite with Matchers {
     }
   }
 
+  test("CountAdditions") {
+    val filePrefix = "transformations\\CountAdditions\\"
+    val filesAndResults = Seq(("simple", 3), ("nested", 10), ("traverseEverything", 12))
+
+    val query = new Query[Node, Int]({
+      case a: Add => 1
+    }) neutralElement 0 accumulate { (s:Seq[Int]) => s.sum }  customChildren Transformer.viperChildrenSelector
+
+    val frontend = new DummyFrontend
+
+    filesAndResults foreach( (tuple) => {
+      val fileName = tuple._1
+      val result = tuple._2
+
+      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+      assert(fileRes != null, s"File $filePrefix$fileName not found")
+      val file = Paths.get(fileRes.toURI)
+
+      var targetNode: Node = null
+      frontend.translate(file) match {
+        case (Some(p), _) => {
+          targetNode = p
+        }
+        case (None, errors) => println("Problem with program: " + errors)
+      }
+      val res = query.execute(targetNode)
+
+      println("Actual: " + res)
+      println("Expected: " + result)
+      assert(res == result, "Results are not equal")
+    })
+  }
+
   def executeTest(filePrefix: String, fileName: String, strat: StrategyInterface[Node], frontend: DummyFrontend): Unit = {
 
     val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
