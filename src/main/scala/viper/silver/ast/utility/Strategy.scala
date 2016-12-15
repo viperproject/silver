@@ -306,7 +306,8 @@ class Context[A, C](val ancestors:Seq[A], val custom:C, private val childFunc: P
     * All children of the parent of a node that precede the node itself
     */
   lazy val predecessors: Seq[Any] = {
-    val index = family.indexOf(node)
+
+    val index:Int = family.indexWhere((x) => System.identityHashCode(x) == System.identityHashCode(node))
     val list = family.splitAt(index+1)
     val res = list._1.dropRight(1)
     res

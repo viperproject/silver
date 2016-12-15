@@ -85,7 +85,7 @@ class RewriterTests extends FunSuite with Matchers {
 
   test("ManyToOneAssert") {
     val filePrefix = "transformations\\ManyToOneAssert\\"
-    val files = Seq("simple")
+    val files = Seq("simple", "interrupted", "nested")
 
     val strat = new StrategyC[Node, Int]({
       case (a: Assert, c:Context[Node, Int]) => {
@@ -132,14 +132,14 @@ class RewriterTests extends FunSuite with Matchers {
       case (Some(p), _) => {
         targetNode = p
       }
-      case (None, errors) => println("No program: " + errors)
+      case (None, errors) => println("Problem with program: " + errors)
     }
 
     frontend.translate(ref) match {
       case (Some(p), _) => {
         targetRef = p
       }
-      case (None, errors) => println("No program: " + errors)
+      case (None, errors) => println("Problem with program: " + errors)
     }
 
     val res = strat.execute(targetNode)

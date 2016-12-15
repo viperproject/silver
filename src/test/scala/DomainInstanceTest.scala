@@ -28,40 +28,6 @@ class DomainInstanceTest extends FunSuite with Matchers {
     p.groundTypeInstances.size should be(3)
   }*/
 
-  test("Transfuckingformer") {
-    val frontend = new DummyFrontend
-    println(System.getProperty("user.dir"))
-    val fileR = getClass.getResource("transformations\\custom\\implications.sil")
-    val fileU = fileR.toURI
-    val file = Paths.get(fileU)
-
-    var targetNode:Node = null
-
-    val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
-      case (Or(l, r), c) =>
-        //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
-        c match {
-          case None => InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())()
-          case Some(context) => InhaleExhaleExp(CondExp(Forall(context, Seq(), TrueLit()())(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
-        }
-    }) updateContext {
-      case (q:QuantifiedExp, None) => Some(q.variables)
-      case (q:QuantifiedExp, Some(c)) => Some(c ++ q.variables)
-    } traverse Traverse.TopDown recurseFunc {
-      case i: InhaleExhaleExp => Seq(true, false)
-    } defineDuplicator Transformer.viperDuplicator customChildren Transformer.viperChildrenSelector
-
-    frontend.translate(file) match {
-      case (Some(p), _) => {
-        targetNode = p
-      }
-      case (None, errors) => println("No program: " + errors)
-    }
-    val res = strat.execute(targetNode)
-    println("Old: " + targetNode.toString())
-    println("New: " + res.toString())
-  }
-
  /* test("Basic domain instances 2") {
     val frontend = new DummyFrontend
     println(System.getProperty("user.dir"))
