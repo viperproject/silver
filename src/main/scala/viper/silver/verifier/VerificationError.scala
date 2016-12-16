@@ -174,14 +174,14 @@ object errors {
   def IfFailed(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => IfFailed(offendingNode, reason))
 
-  case class WhileFailed(offendingNode: While, reason: ErrorReason) extends AbstractVerificationError {
+  case class WhileFailed(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
     val id = "while.failed"
     val text = "While statement might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = WhileFailed(offendingNode.asInstanceOf[While], this.reason)
+    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = WhileFailed(offendingNode.asInstanceOf[Exp], this.reason)
   }
 
-  def WhileFailed(offendingNode: While): PartialVerificationError =
+  def WhileFailed(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => WhileFailed(offendingNode, reason))
 
   case class AssertFailed(offendingNode: Assert, reason: ErrorReason) extends AbstractVerificationError {
