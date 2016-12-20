@@ -19,6 +19,13 @@ sealed trait Block[S, E] {
     * @return The id of the basic block.
     */
   def id: Int
+
+  /**
+    * Returns the list of elements stored in the basic block.
+    *
+    * @return The list of elements stored in the basic block.
+    */
+  def elements: Seq[Either[S, E]]
 }
 
 object Block {
@@ -39,7 +46,9 @@ object Block {
   * @tparam E The type of the expressions.
   */
 final class StatementBlock[S, E] private(val id: Int, val stmts: Seq[S])
-  extends Block[S, E]
+  extends Block[S, E] {
+  override def elements: Seq[Either[S, E]] = stmts.map(Left(_))
+}
 
 object StatementBlock {
   def apply[S, E](stmts: Seq[S] = Nil): StatementBlock[S, E] =
@@ -58,7 +67,9 @@ object StatementBlock {
   * @tparam E The type of the expressions.
   */
 final class PreconditionBlock[S, E] private(val id: Int, val pres: Seq[E])
-  extends Block[S, E]
+  extends Block[S, E] {
+  override def elements: Seq[Either[S, E]] = pres.map(Right(_))
+}
 
 object PreconditionBlock {
   def apply[S, E](pres: Seq[E]): PreconditionBlock[S, E] =
@@ -77,7 +88,9 @@ object PreconditionBlock {
   * @tparam E The type of the expressions.
   */
 final class PostconditionBlock[S, E] private(val id: Int, val posts: Seq[E])
-  extends Block[S, E]
+  extends Block[S, E] {
+  override def elements: Seq[Either[S, E]] = posts.map(Right(_))
+}
 
 object PostconditionBlock {
   def apply[S, E](posts: Seq[E]): PostconditionBlock[S, E] =
@@ -98,7 +111,9 @@ object PostconditionBlock {
   * @tparam E The type of the expressions.
   */
 final class LoopHeadBlock[S, E] private(val id: Int, val invs: Seq[E], val stmts: Seq[S])
-  extends Block[S, E]
+  extends Block[S, E] {
+  override def elements: Seq[Either[S, E]] = invs.map(Right(_)) ++ stmts.map(Left(_))
+}
 
 object LoopHeadBlock {
   def apply[S, E](invs: Seq[E], stmts: Seq[S]): LoopHeadBlock[S, E] =
@@ -119,7 +134,9 @@ object LoopHeadBlock {
   * @tparam E The type of the expressions.
   */
 final class ConstrainingBlock[S, E] private(val id: Int, val vars: Seq[E], val body: Cfg[S, E])
-  extends Block[S, E]
+  extends Block[S, E] {
+  override def elements: Seq[Either[S, E]] = vars.map(Right(_))
+}
 
 object ConstrainingBlock {
   def apply[S, E](vars: Seq[E], body: Cfg[S, E]): ConstrainingBlock[S, E] =
