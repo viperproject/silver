@@ -137,12 +137,12 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "complex")
 
     // Only implemented int trasformations. its enough for the test
-    val strat = new ViperStrategy({
-      case root@Add(i1:IntLit, i2:IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
-      case root@Sub(i1:IntLit, i2:IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
-      case root@Div(i1:IntLit, i2:IntLit) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
-      case root@Mul(i1:IntLit, i2:IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
-    }) traverse Traverse.BottomUp
+    val strat = new ViperStrategyC[Int]({
+      case (root@Add(i1:IntLit, i2:IntLit), _) => IntLit(i1.i + i2.i)(root.pos, root.info)
+      case (root@Sub(i1:IntLit, i2:IntLit), _) => IntLit(i1.i - i2.i)(root.pos, root.info)
+      case (root@Div(i1:IntLit, i2:IntLit), _) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
+      case (root@Mul(i1:IntLit, i2:IntLit), _) => IntLit(i1.i * i2.i)(root.pos, root.info)
+    }) traverse Traverse.BottomUp defaultContext 0
 
     val frontend = new DummyFrontend
     files foreach { fileName: String => {
