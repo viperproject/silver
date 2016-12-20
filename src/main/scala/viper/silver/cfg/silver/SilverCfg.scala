@@ -58,10 +58,10 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
             case Kind.Out => depth - 1
             case _ => depth
           }
+          val successor = edge.target
           // add successors to the queue if we are still inside the loop (i.e.
           // the depth is non-negative) and the successor has not been visited.
-          if (successorDepth >= 0 && !visited.contains(block)) {
-            val successor = edge.target
+          if (successorDepth >= 0 && !visited.contains(successor)) {
             queue.enqueue((successor, successorDepth))
             visited.add(successor)
           }
