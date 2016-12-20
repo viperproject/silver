@@ -13,7 +13,7 @@
 package viper.silver.ast
 
 import viper.silver.ast.utility.{Consistency, Statements}
-import viper.silver.cfg.utility.CfgGenerator
+import viper.silver.cfg.silver.CfgGenerator
 
 // --- Statements
 

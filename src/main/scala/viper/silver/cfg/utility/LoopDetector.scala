@@ -16,7 +16,7 @@ object LoopDetector {
     * @return The control flow graph where the edges entering and leaving loops
     *         are marked.
     */
-  def detect[S, E](cfg: Cfg[S, E]): Cfg[S, E] = detect(cfg, Map.empty, Map.empty)
+  def detect[C <: Cfg[S, E], S, E](cfg: C): C = detect[C, S, E](cfg, Map.empty[Int, Int], Map.empty[Int, Int])
 
   /**
     * Detects loops in a control flow graph and returns a version of the control
@@ -36,7 +36,7 @@ object LoopDetector {
     * @return The control flow graph where the edges entering and leaving loops
     *         are marked.
     */
-  def detect[S, E](cfg: Cfg[S, E], loops: Map[Int, Int], parent: Map[Int, Int]): Cfg[S, E] = {
+  def detect[C <: Cfg[S, E], S, E](cfg: C, loops: Map[Int, Int], parent: Map[Int, Int]): C = {
     // TODO: Implement the actual loop detection algorithm.
 
     val edges = cfg.edges.map { case edge =>
@@ -63,6 +63,7 @@ object LoopDetector {
         case ConditionalEdge(cond, source, target, _) => ConditionalEdge(cond, source, target, kind)
       }
     }
-    Cfg(cfg.blocks, edges, cfg.entry, cfg.exit)
+
+    cfg.copy(edges = edges, entry = cfg.entry, exit = cfg.exit).asInstanceOf[C]
   }
 }

@@ -4,10 +4,12 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper.silver.cfg.utility
+package viper.silver.cfg.silver
 
 import viper.silver.ast._
 import viper.silver.cfg._
+import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
+import viper.silver.cfg.utility.LoopDetector
 
 import scala.collection.mutable
 
@@ -22,9 +24,6 @@ import scala.collection.mutable
   * statements.
   */
 object CfgGenerator {
-  type SilverCfg = Cfg[Stmt, Exp]
-  type SilverBlock = viper.silver.cfg.Block[Stmt, Exp]
-  type SilverEdge = viper.silver.cfg.Edge[Stmt, Exp]
 
   /**
     * Returns a CFG corresponding to the given method.
@@ -45,7 +44,7 @@ object CfgGenerator {
     // create cfg with pre and postconditions
     val blocks = preBlock :: postBlock :: bodyCfg.blocks.toList
     val edges = preEdge :: postEdge :: bodyCfg.edges.toList
-    Cfg(blocks, edges, preBlock, postBlock)
+    SilverCfg(blocks, edges, preBlock, postBlock)
   }
 
   /**
@@ -58,7 +57,7 @@ object CfgGenerator {
     val phase1 = new Phase1(ast)
     val phase2 = new Phase2(phase1)
     val (loops, parents) = phase2.loopInfo
-    LoopDetector.detect(phase2.cfg, loops, parents)
+    LoopDetector.detect[SilverCfg, Stmt, Exp](phase2.cfg, loops, parents)
   }
 
   /**
@@ -300,7 +299,7 @@ object CfgGenerator {
     /**
       * The cfg.
       */
-    lazy val cfg: SilverCfg = Cfg(blocks.values.toList, edges.toList, entry, exit)
+    lazy val cfg: SilverCfg = SilverCfg(blocks.values.toList, edges.toList, entry, exit)
 
     /**
       * The loop information used for constructing in and out edges.

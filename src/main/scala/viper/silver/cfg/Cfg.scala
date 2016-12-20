@@ -19,14 +19,30 @@ package viper.silver.cfg
   * The control flow graph is parametric with respect to the statements and
   * expressions so that it can be reused more easily.
   *
-  * @param blocks The list of blocks of the control flow graph.
-  * @param edges  The list of edges of the control flow graph.
-  * @param entry  The unique entry block of the control flow graph.
-  * @param exit   The unique exit edge of the control flow graph.
   * @tparam S The type of the statements.
   * @tparam E The type of the expressions.
   */
-class Cfg[S, E](val blocks: Seq[Block[S, E]], val edges: Seq[Edge[S, E]], val entry: Block[S, E], val exit: Block[S, E]) {
+trait Cfg[S, E] {
+  /**
+    * The list of blocks of the control flow graph.
+    */
+  val blocks: Seq[Block[S, E]]
+
+  /**
+    * The list of edges of the control flow graph.
+    */
+  val edges: Seq[Edge[S, E]]
+
+  /**
+    * The unique entry block of the control flow graph.
+    */
+  val entry: Block[S, E]
+
+  /**
+    * The unique exit edge of the control flow graph.
+    */
+  val exit: Block[S, E]
+
   /**
     * The map mapping blocks to the set of its ingoing edges.
     */
@@ -85,7 +101,7 @@ class Cfg[S, E](val blocks: Seq[Block[S, E]], val edges: Seq[Edge[S, E]], val en
     * @tparam E2 The return type of the expression mapping function.
     * @return The resulting control flow graph.
     */
-  def map[S2, E2](stmtMap: S => Seq[S2], expMap: E => E2): Cfg[S2, E2] = {
+  def map[S2, E2](factory: Cfg[S2, E2])(stmtMap: S => Seq[S2], expMap: E => E2): Cfg[S2, E2] = {
     // map all blocks and create map mapping from old to new blocks
     val blockMap = this.blocks.map { block =>
       val mapped: Block[S2, E2] = block match {
@@ -93,7 +109,7 @@ class Cfg[S, E](val blocks: Seq[Block[S, E]], val edges: Seq[Edge[S, E]], val en
         case PreconditionBlock(pres) => PreconditionBlock(pres.map(expMap))
         case PostconditionBlock(posts) => PostconditionBlock(posts.map(expMap))
         case LoopHeadBlock(invs, stmts) => LoopHeadBlock(invs.map(expMap), stmts.flatMap(stmtMap))
-        case ConstrainingBlock(vars, body) => ConstrainingBlock(vars.map(expMap), body.map(stmtMap, expMap))
+        case ConstrainingBlock(vars, body) => ConstrainingBlock(vars.map(expMap), body.map(factory)(stmtMap, expMap))
       }
       block -> mapped
     }.toMap
@@ -112,8 +128,13 @@ class Cfg[S, E](val blocks: Seq[Block[S, E]], val edges: Seq[Edge[S, E]], val en
     val entry = blockMap.get(this.entry).get
     val exit = blockMap.get(this.exit).get
 
-    Cfg(blocks, edges, entry, exit)
+    factory.copy(blocks, edges, entry, exit)
   }
+
+  def copy(blocks: Seq[Block[S, E]] = blocks,
+           edges: Seq[Edge[S, E]] = edges,
+           entry: Block[S, E] = entry,
+           exit: Block[S, E] = exit): Cfg[S, E]
 
   /**
     * Returns a DOT representation of the control flow graph that can be
@@ -134,11 +155,11 @@ class Cfg[S, E](val blocks: Seq[Block[S, E]], val edges: Seq[Edge[S, E]], val en
     def label(block: Block[S, E]): String = block match {
       case StatementBlock(stmts) =>
         s"${id(block)}|" + stmts.map(_.toString).map(escape).mkString("|")
-      case _: PreconditionBlock[_, _] => s"${id(block)} (Precondition)"
-      case _: PostconditionBlock[_, _] => s"${id(block)} (Postcondition)"
+      case PreconditionBlock(_) => s"${id(block)} (Precondition)"
+      case PostconditionBlock(_) => s"${id(block)} (Postcondition)"
       case LoopHeadBlock(invs, stmts) =>
         s"${id(block)} (Loop Head)|" + invs.map(inv => "invariant " + escape(inv.toString)).mkString("|") + stmts.map(_.toString).map(escape).mkString("|")
-      case _: ConstrainingBlock[_, _] => s"${id(block)} (Constraining)"
+      case ConstrainingBlock(_, _) => s"${id(block)} (Constraining)"
     }
 
     val blockStr = new StringBuilder()
@@ -152,7 +173,7 @@ class Cfg[S, E](val blocks: Seq[Block[S, E]], val edges: Seq[Edge[S, E]], val en
         blockStr.append("    label=\"" + label(block) + "\"\n")
         blockStr.append("  ];\n")
         block match {
-          case c: ConstrainingBlock[S, E] =>
+          case c@ConstrainingBlock(_, _) =>
             processBlocks(c.body.blocks)
             processEdges(c.body.edges)
             edgeStr.append("  " + id(c) + " -> " + id(c.body.entry) + "[style=dotted];\n")
@@ -195,13 +216,3 @@ class Cfg[S, E](val blocks: Seq[Block[S, E]], val edges: Seq[Edge[S, E]], val en
     dot.toString
   }
 }
-
-object Cfg {
-  def apply[S, E](blocks: Seq[Block[S, E]], edges: Seq[Edge[S, E]], entry: Block[S, E], exit: Block[S, E]): Cfg[S, E] = {
-    new Cfg(blocks, edges, entry, exit)
-  }
-
-  def unapply[S, E](cfg: Cfg[S, E]): Option[(Seq[Block[S, E]], Seq[Edge[S, E]], Block[S, E], Block[S, E])] =
-    Some((cfg.blocks, cfg.edges, cfg.entry, cfg.exit))
-}
-

@@ -8,7 +8,7 @@ package viper.silver.ast
 
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
 import utility.{Consistency, DomainInstances, Types}
-import viper.silver.cfg.utility.CfgGenerator
+import viper.silver.cfg.silver.CfgGenerator
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
