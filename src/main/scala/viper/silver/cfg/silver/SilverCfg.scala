@@ -21,13 +21,20 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
 
   private val cache: mutable.Map[SilverLoopHeadBlock, Seq[LocalVar]] = mutable.Map()
 
+  /**
+    * Computes all local variables that are written to in the loop with the
+    * given basic block as loop head.
+    *
+    * @param loop The basic block at the head of the loop.
+    * @return The list of written variables.
+    */
   def writtenVars(loop: SilverLoopHeadBlock): Seq[LocalVar] = {
     val cached = cache.get(loop)
     if (cached.isDefined) cached.get
     else {
       val visited: mutable.Set[SilverBlock] = mutable.Set()
       val queue: mutable.Queue[(SilverBlock, Int)] = mutable.Queue()
-      val result: ListBuffer[LocalVar] = ListBuffer()
+      val list: ListBuffer[LocalVar] = ListBuffer()
 
       queue.enqueue((loop, 0))
       visited.add(loop)
@@ -41,7 +48,7 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
           case Left(stmt) => stmt.writtenVars
           case Right(_) => Seq.empty
         }
-        result.append(written: _*)
+        list.append(written: _*)
 
         // process successors
         outEdges(block).foreach { edge =>
@@ -61,7 +68,12 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
         }
       }
 
-      result.distinct.toList
+      // remember result
+      val result = list.distinct.toList
+      cache.put(loop, result)
+
+      // return result
+      result
     }
   }
 
