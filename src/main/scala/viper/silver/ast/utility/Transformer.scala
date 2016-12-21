@@ -638,7 +638,7 @@ object Transformer {
       Constraining(variables, body)(c.pos, c.info)
 
     // We dont recurse on goto
-    //case (g: Goto, Seq(target: String)) => Goto(g.target)(g.pos, g.info)
+    case (g: Goto, _) => Goto(g.target)(g.pos, g.info)
 
     case (i: If, Seq(condition: Exp, ifTrue: Stmt, ifFalse: Stmt)) =>
       If(condition, ifTrue, ifFalse)(i.pos, i.info)
@@ -647,7 +647,7 @@ object Transformer {
       Inhale(expression)(i.pos, i.info)
 
     // We dont recurse on label
-    //case (l: Label, Seq(s: String)) => Label(s)(l.pos, l.info)
+    case (l: Label, _) => Label(l.name)(l.pos, l.info)
 
     case (l: LocalVarAssign, Seq(variable: LocalVar, value: Exp)) =>
       LocalVarAssign(variable, value)(l.pos, l.info)

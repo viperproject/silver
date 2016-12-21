@@ -7,9 +7,8 @@
 package viper.silver.ast
 
 import scala.reflect.ClassTag
-
 import pretty.FastPrettyPrinter
-import utility.{Visitor, Nodes, Transformer}
+import utility.{Nodes, Rewritable, Transformer, Visitor}
 
 /*
 
@@ -46,7 +45,7 @@ Some design choices:
  * - LocalVarDecl
  * - Trigger
  */
-trait Node extends Traversable[Node] {
+trait Node extends Traversable[Node] with Rewritable[Node] {
 
   /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
@@ -132,6 +131,11 @@ trait Node extends Traversable[Node] {
 
   /* To be overridden in subclasses of Node. */
   def isValid: Boolean = true
+
+  override def duplicate(children:Seq[Any]): Node = {
+    Transformer.viperDuplicator(this, children)
+  }
+
 }
 
 /** A trait to have additional information for nodes. */

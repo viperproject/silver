@@ -35,7 +35,7 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "nested", "traverseEverything")
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = new ViperStrategy({
+    val strat = new Strategy[Node]({
       case Implies(left, right) => Or(Not(left)(), right)()
     })
 
@@ -47,7 +47,7 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
     val files = Seq("simple"/*, "nested", "functions"*/)
 
-    val strat = new ViperStrategyC[Seq[LocalVarDecl]]({
+    val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
       case (Or(l, r), c) =>
         //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
         c.custom match {
@@ -72,7 +72,7 @@ class RewriterTests extends FunSuite with Matchers {
     // Example of how to transform a while loop into if and goto
     // Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
     var count = 0
-    val strat = new ViperStrategy({
+    val strat = new Strategy[Node]({
       case w: While =>
         val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
         count = count + 1
@@ -100,7 +100,7 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\ManyToOneAssert\\"
     val files = Seq("simple", "interrupted", "nested")
 
-    val strat = new ViperStrategyC[Int]({
+    val strat = new StrategyC[Node, Int]({
       case (a: Assert, c: Context[Node, Int]) => {
 
         c.previous match {
@@ -137,7 +137,7 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "complex")
 
     // Only implemented int trasformations. its enough for the test
-    val strat = new ViperStrategyC[Int]({
+    val strat = new StrategyC[Node, Int]({
       case (root@Add(i1:IntLit, i2:IntLit), _) => IntLit(i1.i + i2.i)(root.pos, root.info)
       case (root@Sub(i1:IntLit, i2:IntLit), _) => IntLit(i1.i - i2.i)(root.pos, root.info)
       case (root@Div(i1:IntLit, i2:IntLit), _) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
@@ -156,7 +156,7 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\CountAdditions\\"
     val filesAndResults = Seq(("simple", 3), ("nested", 10), ("traverseEverything", 12))
 
-    val query = new ViperQuery[Int]({
+    val query = new Query[Node, Int]({
       case a: Add => 1
     }) neutralElement 0 accumulate { (s: Seq[Int]) => s.sum }
 

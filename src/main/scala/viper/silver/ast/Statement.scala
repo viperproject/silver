@@ -21,25 +21,25 @@ sealed trait Stmt extends Node with Infoed with Positioned {
   require(Consistency.noResult(this), "Result variables are only allowed in postconditions of functions.")
 
   /**
-   * Returns a list of all actual statements contained in this statement.  That
-   * is, all statements except `Seqn`, including statements in the body of loops, etc.
-   */
+    * Returns a list of all actual statements contained in this statement.  That
+    * is, all statements except `Seqn`, including statements in the body of loops, etc.
+    */
   def children = Statements.children(this)
 
   /**
-   * Returns a control flow graph that corresponds to this statement.
-   */
+    * Returns a control flow graph that corresponds to this statement.
+    */
   def toCfg = CfgGenerator.toCFG(this)
 
   /**
-   * Returns a list of all undeclared local variables contained in this statement and
-   * throws an exception if the same variable is used with different types.
-   */
+    * Returns a list of all undeclared local variables contained in this statement and
+    * throws an exception if the same variable is used with different types.
+    */
   def undeclLocalVars = Statements.undeclLocalVars(this)
 
   /**
-   * Computes all local variables that are written to in this statement.
-   */
+    * Computes all local variables that are written to in this statement.
+    */
   def writtenVars = Statements.writtenVars(this)
 }
 
@@ -52,14 +52,18 @@ case class NewStmt(lhs: LocalVar, fields: Seq[Field])(val pos: Position = NoPosi
 sealed trait AbstractAssign extends Stmt {
   require(Consistency.isAssignable(rhs, lhs), s"${rhs.typ} ($rhs) is not assignable to ${lhs.typ} ($lhs)")
   Consistency.checkNoPositiveOnly(rhs)
+
   def lhs: Lhs
+
   def rhs: Exp
 }
+
 object AbstractAssign {
   def apply(lhs: Lhs, rhs: Exp)(pos: Position = NoPosition, info: Info = NoInfo) = lhs match {
     case l: LocalVar => LocalVarAssign(l, rhs)(pos, info)
     case l: FieldAccess => FieldAssign(l, rhs)(pos, info)
   }
+
   def unapply(a: AbstractAssign) = Some((a.lhs, a.rhs))
 }
 
@@ -72,8 +76,11 @@ case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPositio
 /** A method/function/domain function call. - AS: this comment is misleading - the trait is currently not used for method calls below */
 trait Call {
   require(Consistency.areAssignable(args, formalArgs), s"$args vs $formalArgs for callee: $callee")
+
   def callee: String
+
   def args: Seq[Exp]
+
   def formalArgs: Seq[LocalVarDecl] // formal arguments of the call, for type checking
 }
 
@@ -82,14 +89,14 @@ case class MethodCall private[ast](methodName: String, args: Seq[Exp], targets: 
   // no checks - consistency checks are made below in companion object
 }
 
-  object MethodCall {
-    def apply(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(pos: Position = NoPosition, info: Info = NoInfo) : MethodCall = {
-      require(Consistency.areAssignable(method.formalReturns, targets))
-      require(Consistency.noDuplicates(targets))
-      args foreach Consistency.checkNoPositiveOnly
-      MethodCall(method.name, args, targets)(pos,info)
-    }
+object MethodCall {
+  def apply(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(pos: Position = NoPosition, info: Info = NoInfo): MethodCall = {
+    require(Consistency.areAssignable(method.formalReturns, targets))
+    require(Consistency.noDuplicates(targets))
+    args foreach Consistency.checkNoPositiveOnly
+    MethodCall(method.name, args, targets)(pos, info)
   }
+}
 
 
 /** An exhale statement. */
@@ -128,7 +135,25 @@ case class Apply(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoIn
 }
 
 /** A sequence of statements. */
-case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
+case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
+
+  // Only take the children that are in the leaves of a possilby nestes Seqn structure
+  override def getChildren(): Seq[Any] = {
+    def seqFlat(ss: Seq[Stmt]): Seq[Stmt] = {
+      val result = ss.foldLeft[Seq[Stmt]](Seq[Stmt]())((x: Seq[Stmt], y: Stmt) => {
+        y match {
+          case elems: Seq[Stmt] => x ++ seqFlat(elems)
+          case elemS: Seqn => x ++ elemS.ss
+          case elem: Stmt => x ++ Seq(elem)
+        }
+      })
+      result
+    }
+
+    seqFlat(ss)
+  }
+
+}
 
 /** An if control statement. */
 case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt {
@@ -138,7 +163,7 @@ case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, v
 /** A while loop. */
 case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)
                 (val pos: Position = NoPosition, val info: Info = NoInfo)
-      extends Stmt {
+  extends Stmt {
   Consistency.checkNoPositiveOnly(cond)
   invs foreach Consistency.checkNonPostContract
 }
@@ -151,10 +176,10 @@ case class Label(name: String)(val pos: Position = NoPosition, val info: Info = 
 }
 
 /**
- * A goto statement.  Note that goto's in SIL are limited to forward jumps, and a jump cannot enter
- * a loop but might leave one or several loops.  This ensures that the only back edges in the
- * control flow graph are due to while loops.
- */
+  * A goto statement.  Note that goto's in SIL are limited to forward jumps, and a jump cannot enter
+  * a loop but might leave one or several loops.  This ensures that the only back edges in the
+  * control flow graph are due to while loops.
+  */
 case class Goto(target: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
 
 /** A fresh statement assigns a fresh, dedicated symbolic permission values to
@@ -170,7 +195,7 @@ case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: 
   * exhale-statements.
   */
 case class Constraining(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo)
-    extends Stmt {
+  extends Stmt {
 
   require(vars forall (_ isSubtype Perm))
 }
