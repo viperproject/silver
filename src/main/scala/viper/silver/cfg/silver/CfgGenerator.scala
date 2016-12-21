@@ -255,7 +255,7 @@ object CfgGenerator {
       * The exit block of the control flow graph. The value is computed lazily
       * and therefore should not be accessed before all blocks are added.
       */
-    private lazy val exit = blocks.get(current).get
+    private lazy val exit = blocks.get(current.get).get
 
     /**
       * The list buffer used to accumulate the statements of the current block.
@@ -280,7 +280,7 @@ object CfgGenerator {
     /**
       * The index of the current block.
       */
-    private var current = 0
+    private var current: Option[Int] = None
 
     /**
       * The map mapping the ids of basic blocks of a loop to the id of the basic
@@ -307,8 +307,8 @@ object CfgGenerator {
     lazy val loopInfo: (Map[Int, Int], Map[Int, Int]) =  (loops.toMap, parents.toMap)
 
     private def run(): Unit = {
-
-      addBlock(current, StatementBlock())
+      current = Some(0)
+      addBlock(current.get, StatementBlock())
 
       for ((stmt, index) <- phase1.stmts.zipWithIndex) {
         if (!stmt.isInstanceOf[WrappedStmt] && tmpStmts.nonEmpty) {
@@ -319,33 +319,41 @@ object CfgGenerator {
           case WrappedStmt(s) =>
             tmpStmts.append(s)
           case JumpStmt(target) =>
-            addTmpEdge(TmpUnconditionalEdge(current, resolve(target)))
+            current.foreach { currentIndex =>
+              addTmpEdge(TmpUnconditionalEdge(currentIndex, resolve(target)))
+            }
+            current = None
           case ConditionalJumpStmt(cond, thnTarget, elsTarget) =>
-            val neg = Not(cond)(cond.pos)
-            addTmpEdge(TmpConditionalEdge(cond, current, resolve(thnTarget)))
-            addTmpEdge(TmpConditionalEdge(neg, current, resolve(elsTarget)))
+            current.foreach { currentIndex =>
+              val neg = Not(cond)(cond.pos)
+              addTmpEdge(TmpConditionalEdge(cond, currentIndex, resolve(thnTarget)))
+              addTmpEdge(TmpConditionalEdge(neg, currentIndex, resolve(elsTarget)))
+            }
+            current = None
           case LoopHeadStmt(invs, after) =>
-            val last = current
-            current = index
+            current.foreach { last =>
+              current = Some(index)
 
-            val block: SilverBlock = LoopHeadBlock(invs, Nil)
+              val block: SilverBlock = LoopHeadBlock(invs, Nil)
 
-            // set loop parent information
-            head().foreach(old => parents.put(block.id, old))
-            // push current loop id block onto stack
-            loopStack.push((block.id, resolve(after)))
+              // set loop parent information
+              head(index).foreach(old => parents.put(block.id, old))
+              // push current loop id block onto stack
+              loopStack.push((block.id, resolve(after)))
 
-            addBlock(current, block)
-            addTmpEdge(TmpUnconditionalEdge(last, current))
+              addBlock(index, block)
+              addTmpEdge(TmpUnconditionalEdge(last, index))
+            }
           case ConstrainingStmt(vars, body, after) =>
-            val last = current
-            current = index
-            addBlock(current, ConstrainingBlock(vars, body))
-            addTmpEdge(TmpUnconditionalEdge(last, current))
-            addTmpEdge(TmpUnconditionalEdge(current, resolve(after)))
+            current.foreach { last =>
+              current = Some(index)
+              addBlock(index, ConstrainingBlock(vars, body))
+              addTmpEdge(TmpUnconditionalEdge(last, index))
+              addTmpEdge(TmpUnconditionalEdge(index, resolve(after)))
+            }
           case EmptyStmt() =>
-            current = index
-            addBlock(current, StatementBlock())
+            current = Some(index)
+            addBlock(index, StatementBlock())
         }
       }
 
@@ -357,16 +365,16 @@ object CfgGenerator {
     private def resolve(label: TmpLabel): Int =
       phase1.labels.get(label).get
 
-    private def head(): Option[Int] = {
+    private def head(index: Int): Option[Int] = {
       // lazily pop loops that we left
-      while(loopStack.headOption.exists(_._2 <= current)) loopStack.pop()
+      while(loopStack.headOption.exists(_._2 <= index)) loopStack.pop()
       // return id of the current loop head
       loopStack.headOption.map(_._1)
     }
 
     private def addBlock(index: Int, block: SilverBlock) = {
       // set loop information
-      head().foreach(head => loops.put(block.id, head))
+      head(index).foreach(head => loops.put(block.id, head))
       blocks.put(index, block)
     }
 
@@ -379,9 +387,11 @@ object CfgGenerator {
     }
 
     private def finalizeBlock() = {
-      val stmts = tmpStmts.toList
-      tmpStmts.clear()
-      addBlock(current, StatementBlock(stmts))
+      current.foreach { index =>
+        val stmts = tmpStmts.toList
+        tmpStmts.clear()
+        addBlock(index, StatementBlock(stmts))
+      }
     }
 
     private def finalizeEdge(edge: TmpEdge): SilverEdge = {
