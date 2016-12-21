@@ -165,11 +165,18 @@ trait Cfg[S, E] {
     val blockStr = new StringBuilder()
     val edgeStr = new StringBuilder()
 
+    def style(block: Block[S, E]): String = block match {
+      case `entry` => "style=\"filled\", fillcolor=\"palegreen\""
+      case `exit` => "style=\"filled\", fillcolor=\"paleturquoise\""
+      case _ => ""
+    }
+
     // helper function that recursively processes all blocks
     def processBlocks(blocks: Seq[Block[S, E]]): Unit = {
       for (block <- blocks) {
         blockStr.append("  " + id(block) + " [\n")
         blockStr.append("    shape=\"record\"\n")
+        blockStr.append(s"    ${style(block)}\n")
         blockStr.append("    label=\"" + label(block) + "\"\n")
         blockStr.append("  ];\n")
         block match {
