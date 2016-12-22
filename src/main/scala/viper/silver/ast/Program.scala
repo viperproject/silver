@@ -369,15 +369,15 @@ sealed trait UnOp extends Op {
 
 /** Common interface for sum operators. */
 sealed abstract class SumOp(val op: String) extends LeftAssoc {
-  lazy val priority = 12
+  lazy val priority = 8
 }
 /** Common interface for product operators. */
 sealed abstract class ProdOp(val op: String) extends LeftAssoc {
-  lazy val priority = 11
+  lazy val priority = 9
 }
 /** Common interface for relational operators. */
 sealed abstract class RelOp(val op: String) extends BoolDomainFunc {
-  lazy val priority = 13
+  lazy val priority = 7
   lazy val fixity = Infix(NonAssociative)
 }
 
@@ -435,19 +435,19 @@ case object PermGeOp extends RelOp(">=") with PermBinOp
 /** Boolean or. */
 case object OrOp extends BoolBinOp with BoolDomainFunc with LeftAssoc {
   lazy val op = "||"
-  lazy val priority = 3
+  lazy val priority = 4
 }
 
 /** Boolean and. */
 case object AndOp extends BoolBinOp with BoolDomainFunc with LeftAssoc {
   lazy val op = "&&"
-  lazy val priority = 2
+  lazy val priority = 5
 }
 
 /** Boolean implication. */
 case object ImpliesOp extends BoolBinOp with BoolDomainFunc {
   lazy val op = "==>"
-  lazy val priority = 4
+  lazy val priority = 2
   lazy val fixity = Infix(RightAssociative)
 }
 
@@ -455,7 +455,7 @@ case object ImpliesOp extends BoolBinOp with BoolDomainFunc {
 case object MagicWandOp extends BoolBinOp with AbstractDomainFunc {
   lazy val typ = Wand
   lazy val op = "--*"
-  lazy val priority = 4
+  lazy val priority = 3
   lazy val fixity = Infix(RightAssociative)
 }
 
@@ -463,6 +463,6 @@ case object MagicWandOp extends BoolBinOp with AbstractDomainFunc {
 case object NotOp extends UnOp with BoolDomainFunc {
   lazy val expTyp = Bool
   lazy val op = "!"
-  lazy val priority = 1
+  lazy val priority = 10
   lazy val fixity = Prefix
 }

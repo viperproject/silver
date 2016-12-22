@@ -431,7 +431,7 @@ trait BracketPrettyPrinter extends FastPrettyPrinterBase {
     val po = outer.priority
     lazy val fi = inner.fixity
     lazy val fo = outer.fixity
-    (pi < po) ||
+    (pi > po) ||
       ((fi, side) match {
         case (Postfix, LeftAssociative) =>
           true
