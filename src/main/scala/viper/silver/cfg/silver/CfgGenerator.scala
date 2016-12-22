@@ -188,7 +188,8 @@ object CfgGenerator {
            _: MethodCall |
            _: Fresh |
            _: NewStmt |
-           _: Assert =>
+           _: Assert |
+           _: LocalVarDeclStmt =>
         // handle regular, non-control statements
         addStatement(WrappedStmt(stmt))
     }
