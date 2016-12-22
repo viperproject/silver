@@ -716,7 +716,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case ApplyOld(exp) =>
       text("given") <> parens(show(exp))
     case Let(v, exp, body) =>
-      parens(text("let") <+> show(v) <+> "==" <+> show(exp) <+> "in" <+> show(body))
+      parens(text("let") <+> text(v.name) <+> "==" <+> parens(show(exp)) <+> "in" <+> show(body))
     case CondExp(cond, thn, els) =>
       parens(show(cond) <+> "?" <+> show(thn) <+> ":" <+> show(els))
     case Exists(v, exp) =>
