@@ -155,11 +155,14 @@ trait Cfg[S, E] {
     def label(block: Block[S, E]): String = block match {
       case StatementBlock(stmts) =>
         s"${id(block)}|" + stmts.map(_.toString).map(escape).mkString("|")
-      case PreconditionBlock(_) => s"${id(block)} (Precondition)"
-      case PostconditionBlock(_) => s"${id(block)} (Postcondition)"
+      case PreconditionBlock(pres) =>
+        s"${id(block)} (Precondition)|" + pres.map(_.toString).map(escape).mkString("|")
+      case PostconditionBlock(posts) =>
+        s"${id(block)} (Postcondition)|" + posts.map(_.toString).map(escape).mkString("|")
       case LoopHeadBlock(invs, stmts) =>
         s"${id(block)} (Loop Head)|" + invs.map(inv => "invariant " + escape(inv.toString)).mkString("|") + stmts.map(_.toString).map(escape).mkString("|")
-      case ConstrainingBlock(_, _) => s"${id(block)} (Constraining)"
+      case ConstrainingBlock(_, _) =>
+        s"${id(block)} (Constraining)"
     }
 
     val blockStr = new StringBuilder()
