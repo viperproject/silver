@@ -368,7 +368,12 @@ object CfgGenerator {
     }
 
     private def resolve(label: TmpLabel): Int =
-      phase1.labels.get(label).get
+      phase1.labels.get(label) match {
+        case Some(n) => n
+        case None =>
+          sys.error(  s"Cannot resolve label '${label.name}', probably because it is out of scope. "
+                    +  "This happens, e.g. when jumping out of a constraining-block.")
+      }
 
     private def head(index: Int): Option[Int] = {
       // lazily pop loops that we left
@@ -400,8 +405,8 @@ object CfgGenerator {
     }
 
     private def finalizeEdge(edge: TmpEdge): SilverEdge = {
-      val source = blocks.get(edge.source).get
-      val target = blocks.get(edge.target).get
+      val source = blocks(edge.source)
+      val target = blocks(edge.target)
       edge match {
         case TmpUnconditionalEdge(_, _) => UnconditionalEdge(source, target)
         case TmpConditionalEdge(cond, _, _) => ConditionalEdge(cond, source, target)
