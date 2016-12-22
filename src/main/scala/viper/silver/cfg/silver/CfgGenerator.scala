@@ -154,8 +154,11 @@ object CfgGenerator {
         addStatement(LoopHeadStmt(invs, afterTarget))
         addStatement(ConditionalJumpStmt(cond, loopTarget, afterTarget))
         // process loop body
-        // TODO: Do we have to process the locals here?
         addLabel(loopTarget)
+        for (local <- locals) {
+          val decl = LocalVarDeclStmt(local)(pos = local.pos)
+          addStatement(WrappedStmt(decl))
+        }
         run(body)
         addStatement(JumpStmt(headTarget))
         // set label after loop
@@ -223,6 +226,7 @@ object CfgGenerator {
     */
   sealed trait TmpEdge {
     def source: Int
+
     def target: Int
   }
 
@@ -304,7 +308,7 @@ object CfgGenerator {
     /**
       * The loop information used for constructing in and out edges.
       */
-    lazy val loopInfo: (Map[Int, Int], Map[Int, Int]) =  (loops.toMap, parents.toMap)
+    lazy val loopInfo: (Map[Int, Int], Map[Int, Int]) = (loops.toMap, parents.toMap)
 
     private def run(): Unit = {
       for ((stmt, index) <- phase1.stmts.zipWithIndex) {
@@ -367,7 +371,7 @@ object CfgGenerator {
 
     private def head(index: Int): Option[Int] = {
       // lazily pop loops that we left
-      while(loopStack.headOption.exists(_._2 <= index)) loopStack.pop()
+      while (loopStack.headOption.exists(_._2 <= index)) loopStack.pop()
       // return id of the current loop head
       loopStack.headOption.map(_._1)
     }
@@ -403,4 +407,5 @@ object CfgGenerator {
       }
     }
   }
+
 }
