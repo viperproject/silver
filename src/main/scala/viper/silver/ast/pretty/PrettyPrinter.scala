@@ -667,6 +667,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           )
       case Goto(target) =>
         text("goto") <+> target
+      case LocalVarDeclStmt(decl) =>
+        text("var") <+> showVar(decl)
       case null => uninitialized
     }
     showComment(stmt) <> stmtDoc

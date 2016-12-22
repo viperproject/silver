@@ -175,3 +175,11 @@ case class Constraining(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoP
 
   require(vars forall (_ isSubtype Perm))
 }
+
+/** Local variable declaration statement.
+  *
+  * [2016-12-22 Malte] Introduced so that local variables can be declared inside loops in the
+  * CFG-representation. This decision should be reevaluated when we consider introducing proper
+  * scopes.
+  */
+case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt

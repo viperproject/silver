@@ -280,6 +280,9 @@ object Transformer {
             case While(condition, invariants, locals, body) =>
               While(go(condition), invariants map go, locals map go,
                 go(body))(statement.pos, statement.info)
+
+            case LocalVarDeclStmt(decl) =>
+              LocalVarDeclStmt(go(decl))(statement.pos, statement.info)
           }
 
         case trigger @ Trigger(expressions) =>
