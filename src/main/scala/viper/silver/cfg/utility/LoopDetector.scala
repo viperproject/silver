@@ -3,7 +3,7 @@ package viper.silver.cfg.utility
 import viper.silver.cfg._
 
 /**
-  * An object that provides
+  * An object that provides a method to detect loops in a control flow graph.
   */
 object LoopDetector {
   /**

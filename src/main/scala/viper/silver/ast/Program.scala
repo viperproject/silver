@@ -138,7 +138,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   /**
     * Returns a control flow graph that corresponds to this method.
     */
-  def toCfg = CfgGenerator.toCfg(this)
+  def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
 }
 
 /** A function declaration */
