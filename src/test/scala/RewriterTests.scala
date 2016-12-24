@@ -12,6 +12,7 @@ import viper.silver.ast.utility._
 import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silver.verifier.AbstractError
 
+import scala.collection.mutable
 import scala.language.implicitConversions
 
 
@@ -120,6 +121,37 @@ class RewriterTests extends FunSuite with Matchers {
                 Assert(And(a.exp, foldedExpr)())(a.pos, a.info)
               }
             }
+          }
+        }
+      }
+    }) defaultContext 0
+
+    val frontend = new DummyFrontend
+    files foreach { fileName: String => {
+      executeTest(filePrefix, fileName, strat, frontend)
+    }
+    }
+  }
+
+  /**
+    * A second test for many to one assert that works differently form the other strategy.
+    */
+  test("ManyToOneAssert2") {
+    val filePrefix = "transformations\\ManyToOneAssert\\"
+    val files = Seq("simple", "interrupted", "nested")
+    var accumulator:mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
+    val strat = new StrategyC[Node, Int]({
+      case (a: Assert, c: Context[Node, Int]) => {
+        accumulator += a.exp
+
+        c.next match {
+          case Some(Assert(_)) => {
+            Seqn(Seq())()
+          }
+          case _ => {
+            val result = Assert(accumulator.reduceRight( And(_, _)()) )()
+            accumulator.clear()
+            result
           }
         }
       }
