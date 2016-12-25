@@ -97,11 +97,12 @@ trait Cfg[S, E] {
     *
     * @param stmtMap The statement mapping function.
     * @param expMap  The expression mapping function.
+    * @tparam C  The type of the resulting control flow graph.
     * @tparam S2 The return type of the statement mapping function.
     * @tparam E2 The return type of the expression mapping function.
     * @return The resulting control flow graph.
     */
-  def map[S2, E2](factory: Cfg[S2, E2])(stmtMap: S => Seq[S2], expMap: E => E2): Cfg[S2, E2] = {
+  def map[C <: Cfg[S2, E2], S2, E2](factory: C)(stmtMap: S => Seq[S2], expMap: E => E2): C = {
     // map all blocks and create map mapping from old to new blocks
     val blockMap = this.blocks.map { block =>
       val mapped: Block[S2, E2] = block match {
@@ -109,7 +110,7 @@ trait Cfg[S, E] {
         case PreconditionBlock(pres) => PreconditionBlock(pres.map(expMap))
         case PostconditionBlock(posts) => PostconditionBlock(posts.map(expMap))
         case LoopHeadBlock(invs, stmts) => LoopHeadBlock(invs.map(expMap), stmts.flatMap(stmtMap))
-        case ConstrainingBlock(vars, body) => ConstrainingBlock(vars.map(expMap), body.map(factory)(stmtMap, expMap))
+        case ConstrainingBlock(vars, body) => ConstrainingBlock(vars.map(expMap), body.map[C, S2, E2](factory)(stmtMap, expMap))
       }
       block -> mapped
     }.toMap
@@ -128,7 +129,7 @@ trait Cfg[S, E] {
     val entry = blockMap.get(this.entry).get
     val exit = blockMap.get(this.exit).get
 
-    factory.copy(blocks, edges, entry, exit)
+    factory.copy(blocks, edges, entry, exit).asInstanceOf[C]
   }
 
   def copy(blocks: Seq[Block[S, E]] = blocks,
@@ -142,7 +143,7 @@ trait Cfg[S, E] {
     *
     * @return A DOT representation of the CFG.
     */
-  def toDot(): String = {
+  def toDot: String = {
     // escapes special characters
     def escape(str: String): String = str
       .replace("<", "\\<")
