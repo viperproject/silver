@@ -1,0 +1,93 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
+package viper.silver.cfg.utility
+
+import viper.silver.cfg._
+
+import scala.collection.mutable
+
+/**
+  * An object that provides a method to simplify a control flow graph.
+  */
+object CfgSimplifier {
+  /**
+    * Simplifies the given control flow graph.
+    *
+    * Assumptions:
+    * The exit block has no outgoing edges.
+    *
+    * @param cfg The control flow graph to simplify.
+    * @return The simplified control flow graph.
+    */
+  def simplify[C <: Cfg[S, E], S, E](cfg: C): C = {
+    val entry = cfg.entry
+    val exit = cfg.exit
+
+    val queue = mutable.Queue[Edge[S, E]]()
+    val visited = mutable.Set[Block[S, E]]()
+
+    val blocks = mutable.Set[Block[S, E]]()
+    val edges = mutable.Set[Edge[S, E]]()
+
+    def enqueueBlock(block: Block[S, E]): Unit = {
+      blocks.add(block)
+      cfg.outEdges(block).foreach(enqueueEdge)
+    }
+
+    def enqueueEdge(edge: Edge[S, E]): Unit = {
+      val target = edge.target
+      if (visited.contains(target)) {
+        edges.add(edge)
+      } else {
+        queue.enqueue(edge)
+        visited.add(target)
+      }
+    }
+
+    enqueueBlock(entry)
+
+    while (queue.nonEmpty) {
+      val edge = queue.dequeue
+      val block = edge.target
+
+      val joined = block match {
+        case StatementBlock(stmts) if stmts.isEmpty =>
+          // compute an optional in [out] edge that is defined iff there is exactly one in [out] edge
+          val outEdges = cfg.outEdges(block)
+          val in = if (cfg.inEdges(block).size == 1) Some(edge) else None
+          val out = if (outEdges.size == 1) outEdges.headOption else None
+
+          // try to join the in and out edge
+          (in, out) match {
+            case (Some(UnconditionalEdge(source, _, Kind.Normal)), Some(UnconditionalEdge(_, target, kind))) => Some(UnconditionalEdge(source, target, kind))
+            case (Some(UnconditionalEdge(source, _, kind)), Some(UnconditionalEdge(_, target, Kind.Normal))) => Some(UnconditionalEdge(source, target, kind))
+            case (Some(ConditionalEdge(condition, source, _, Kind.Normal)), Some(UnconditionalEdge(_, target, kind))) => Some(ConditionalEdge(condition, source, target, kind))
+            case (Some(ConditionalEdge(condition, source, _, kind)), Some(UnconditionalEdge(_, target, Kind.Normal))) => Some(ConditionalEdge(condition, source, target, kind))
+            case (Some(UnconditionalEdge(source, _, Kind.Normal)), Some(ConditionalEdge(condition, _, target, kind))) => Some(ConditionalEdge(condition, source, target, kind))
+            case (Some(UnconditionalEdge(source, _, kind)), Some(ConditionalEdge(condition, _, target, Kind.Normal))) => Some(ConditionalEdge(condition, source, target, kind))
+            case _ => None
+          }
+        case _ =>
+          // do not join edges
+          None
+      }
+
+      joined match {
+        case Some(e) =>
+          enqueueEdge(e)
+        case None =>
+          edges.add(edge)
+          enqueueBlock(block)
+      }
+    }
+
+    // add exit block (in case it has not been added already)
+    blocks.add(exit)
+
+    cfg.copy(blocks.toList, edges.toList, entry, exit).asInstanceOf[C]
+  }
+}

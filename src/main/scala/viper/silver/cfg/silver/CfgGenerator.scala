@@ -9,7 +9,7 @@ package viper.silver.cfg.silver
 import viper.silver.ast._
 import viper.silver.cfg._
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
-import viper.silver.cfg.utility.LoopDetector
+import viper.silver.cfg.utility.{CfgSimplifier, LoopDetector}
 
 import scala.collection.mutable
 
@@ -22,18 +22,27 @@ import scala.collection.mutable
   * 1. In a first phase, the AST is transformed into a list of temporary
   * statements. The control flow is modeled with additional (conditional) jump
   * statements.
+  *
+  * 2. In a second phase, the list of statements is transformed into a control
+  * flow graph.
+  *
+  * 3. In a third phase, the loops are detected and edges entering and leaving
+  * the loops are marked as in and out edges.
+  *
+  * 4. In a fourth phase, the control flow graph is simplified by removing some
+  * degeneracies such as empty basic block with only one ingoing and outgoing
+  * edge.
   */
 object CfgGenerator {
-
   /**
     * Returns a CFG corresponding to the given method.
     *
     * @param method The method.
     * @return The corresponding CFG.
     */
-  def toCfg(method: Method): SilverCfg = {
+  def methodToCfg(method: Method, simplify: Boolean = true): SilverCfg = {
     // generate cfg for the body
-    val bodyCfg = method.body.toCfg
+    val bodyCfg = method.body.toCfg(simplify = false)
 
     // create blocks and corresponding edges for pre and postconditions
     val preBlock: SilverBlock = PreconditionBlock(method.pres)
@@ -44,7 +53,10 @@ object CfgGenerator {
     // create cfg with pre and postconditions
     val blocks = preBlock :: postBlock :: bodyCfg.blocks.toList
     val edges = preEdge :: postEdge :: bodyCfg.edges.toList
-    SilverCfg(blocks, edges, preBlock, postBlock)
+    val cfg = SilverCfg(blocks, edges, preBlock, postBlock)
+
+    if (simplify) CfgSimplifier.simplify[SilverCfg, Stmt, Exp](cfg)
+    else cfg
   }
 
   /**
@@ -53,11 +65,15 @@ object CfgGenerator {
     * @param ast The AST node.
     * @return The corresponding CFG.
     */
-  def toCfg(ast: Stmt): SilverCfg = {
+  def statementToCfg(ast: Stmt, simplify: Boolean = true): SilverCfg = {
     val phase1 = new Phase1(ast)
     val phase2 = new Phase2(phase1)
+
     val (loops, parents) = phase2.loopInfo
-    LoopDetector.detect[SilverCfg, Stmt, Exp](phase2.cfg, loops, parents)
+    val cfg = LoopDetector.detect[SilverCfg, Stmt, Exp](phase2.cfg, loops, parents)
+
+    if (simplify) CfgSimplifier.simplify[SilverCfg, Stmt, Exp](cfg)
+    else cfg
   }
 
   /**
@@ -165,7 +181,7 @@ object CfgGenerator {
         addLabel(afterTarget)
       case Constraining(vars, body) =>
         val after = TmpLabel.generate("after")
-        val cfg = toCfg(body)
+        val cfg = statementToCfg(body)
         addStatement(ConstrainingStmt(vars, cfg, after))
         addLabel(after)
       case Seqn(stmts) =>
@@ -188,7 +204,8 @@ object CfgGenerator {
            _: MethodCall |
            _: Fresh |
            _: NewStmt |
-           _: Assert =>
+           _: Assert |
+           _: LocalVarDeclStmt =>
         // handle regular, non-control statements
         addStatement(WrappedStmt(stmt))
     }
@@ -367,7 +384,12 @@ object CfgGenerator {
     }
 
     private def resolve(label: TmpLabel): Int =
-      phase1.labels.get(label).get
+      phase1.labels.get(label) match {
+        case Some(n) => n
+        case None =>
+          sys.error(s"Cannot resolve label '${label.name}', probably because it is out of scope. "
+            + "This happens, e.g. when jumping out of a constraining-block.")
+      }
 
     private def head(index: Int): Option[Int] = {
       // lazily pop loops that we left
@@ -399,13 +421,12 @@ object CfgGenerator {
     }
 
     private def finalizeEdge(edge: TmpEdge): SilverEdge = {
-      val source = blocks.get(edge.source).get
-      val target = blocks.get(edge.target).get
+      val source = blocks(edge.source)
+      val target = blocks(edge.target)
       edge match {
         case TmpUnconditionalEdge(_, _) => UnconditionalEdge(source, target)
         case TmpConditionalEdge(cond, _, _) => ConditionalEdge(cond, source, target)
       }
     }
   }
-
 }
