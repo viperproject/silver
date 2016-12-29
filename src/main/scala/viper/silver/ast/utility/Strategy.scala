@@ -252,8 +252,6 @@ class Context[A <: Rewritable[A], C](val ancestors: Seq[A], val custom: C) {
 
   lazy val node = ancestors.last
 
-  lazy val indexOfNode = family indexWhere ( isEqualNode )
-
   /**
     * The predecessor child of the parent that follows the node itself
     */
@@ -278,13 +276,20 @@ class Context[A <: Rewritable[A], C](val ancestors: Seq[A], val custom: C) {
   /**
     * All children of the parent without the node itself
     */
-  lazy val siblings: Seq[Any] = family.drop(indexOfNode)
+  lazy val siblings: Seq[Any] = family.filter( !isEqualNode(_))
+
 
   /**
-    * All children of the parent
+    * All children of the parent. Sequence of nodes and options of nodes will be unfolded and the node itself is included in the list
     */
-  lazy val family: Seq[Any] = parent.getChildren()
-
+  lazy val family: Seq[Any] = parent.getChildren().foldLeft(Seq.empty[Any])( (children:Seq[Any],y:Any) =>  y match {
+    case elem: Seq[A] => children ++ elem
+    case elem: Option[A] => children ++ (elem match {
+      case Some(x) => Seq(x)
+      case None => Seq.empty[Any]
+    })
+    case elem => children ++ Seq(elem)
+  })
   /**
     * Parent of node
     */

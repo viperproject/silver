@@ -4,3 +4,4 @@ method main()
     assert(true)
     assert(true)
 }
+

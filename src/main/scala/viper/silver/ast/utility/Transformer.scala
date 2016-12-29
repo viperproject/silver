@@ -503,8 +503,8 @@ object Transformer {
       FieldAccessPredicate(loc, perm)(f.pos, f.info)
     case (p: PredicateAccessPredicate, Seq(loc: PredicateAccess, perm: Exp)) =>
       PredicateAccessPredicate(loc, perm)(p.pos, p.info)
-    case (fa: FuncApp, Seq(fname: Function, args: Seq[Exp])) =>
-      FuncApp(fname, args)(fa.pos, fa.info)
+    case (fa: FuncApp, Seq(args: Seq[Exp])) =>
+      FuncApp(fa.funcname, args)(fa.pos, fa.info, fa.typ, fa.formalArgs)
     case (df: DomainFuncApp, Seq(fname: DomainFunc, args: Seq[Exp], m: Map[TypeVar, Type])) =>
       DomainFuncApp(fname, args, m)(df.pos, df.info)
 

@@ -140,10 +140,10 @@ case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = 
   // Only take the children that are in the leaves of a possilby nestes Seqn structure
   override def getChildren(): Seq[Any] = {
     def seqFlat(ss: Seq[Stmt]): Seq[Stmt] = {
-      val result = ss.foldLeft[Seq[Stmt]](Seq[Stmt]())((x: Seq[Stmt], y: Stmt) => {
+      val result = ss.foldLeft(Seq.empty[Stmt])((x: Seq[Stmt], y: Stmt) => {
         y match {
           case elems: Seq[Stmt] => x ++ seqFlat(elems)
-          case elemS: Seqn => x ++ elemS.ss
+          case elemS: Seqn => x ++ seqFlat(elemS.ss)
           case elem: Stmt => x ++ Seq(elem)
         }
       })

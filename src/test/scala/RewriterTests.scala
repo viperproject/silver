@@ -99,7 +99,7 @@ class RewriterTests extends FunSuite with Matchers {
 
   test("ManyToOneAssert") {
     val filePrefix = "transformations\\ManyToOneAssert\\"
-    val files = Seq("simple", "interrupted", "nested")
+    val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
 
     val strat = new StrategyC[Node, Int]({
       case (a: Assert, c: Context[Node, Int]) => {
@@ -138,7 +138,7 @@ class RewriterTests extends FunSuite with Matchers {
     */
   test("ManyToOneAssert2") {
     val filePrefix = "transformations\\ManyToOneAssert\\"
-    val files = Seq("simple", "interrupted", "nested")
+    val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
     var accumulator:mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
     val strat = new StrategyC[Node, Int]({
       case (a: Assert, c: Context[Node, Int]) => {
@@ -174,6 +174,30 @@ class RewriterTests extends FunSuite with Matchers {
       case (root@Sub(i1:IntLit, i2:IntLit), _) => IntLit(i1.i - i2.i)(root.pos, root.info)
       case (root@Div(i1:IntLit, i2:IntLit), _) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
       case (root@Mul(i1:IntLit, i2:IntLit), _) => IntLit(i1.i * i2.i)(root.pos, root.info)
+    }) traverse Traverse.BottomUp defaultContext 0
+
+    val frontend = new DummyFrontend
+    files foreach { fileName: String => {
+      executeTest(filePrefix, fileName, strat, frontend)
+    }
+    }
+
+  }
+
+  // This just tests functionality and is by no means a meaningful testcase
+  test("UnfoldedChildren") {
+    val filePrefix = "transformations\\UnfoldedChildren\\"
+    val files = Seq("fourAnd")
+
+    val strat = new StrategyC[Node, Int]({
+      case (e:Exp, c) => c.parent match {
+        case f:FuncApp => if(f.funcname == "fourAnd" && c.siblings.contains(FalseLit()())) {
+          FalseLit()(e.pos, e.info)
+        } else {
+          e
+        }
+        case _ => e
+      }
     }) traverse Traverse.BottomUp defaultContext 0
 
     val frontend = new DummyFrontend
