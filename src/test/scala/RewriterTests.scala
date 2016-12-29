@@ -51,7 +51,7 @@ class RewriterTests extends FunSuite with Matchers {
     val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
       case (Or(l, r), c) =>
         //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
-        c.custom match {
+        c._2 match {
           case Seq() => InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())()
           // Had to do variable renaming because otherwise variable would be quantified inside again with forall
           case varDecls => InhaleExhaleExp(CondExp(Forall(varDecls.map { vari => LocalVarDecl(vari.name + "Trafo", vari.typ)(vari.pos, vari.info) }, Seq(), TrueLit()())(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
@@ -101,8 +101,8 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\ManyToOneAssert\\"
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
 
-    val strat = new StrategyC[Node, Int]({
-      case (a: Assert, c: Context[Node, Int]) => {
+    val strat = new StrategyA[Node]({
+      case (a: Assert, c) => {
 
         c.previous match {
           case Some(Assert(_)) => Seqn(Seq())() // If previous node is assertion we go to noop
@@ -124,7 +124,7 @@ class RewriterTests extends FunSuite with Matchers {
           }
         }
       }
-    }) defaultContext 0
+    })
 
     val frontend = new DummyFrontend
     files foreach { fileName: String => {
@@ -140,8 +140,8 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\ManyToOneAssert\\"
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
     var accumulator:mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
-    val strat = new StrategyC[Node, Int]({
-      case (a: Assert, c: Context[Node, Int]) => {
+    val strat = new StrategyA[Node]({
+      case (a: Assert, c) => {
         accumulator += a.exp
 
         c.next match {
@@ -155,7 +155,7 @@ class RewriterTests extends FunSuite with Matchers {
           }
         }
       }
-    }) defaultContext 0
+    })
 
     val frontend = new DummyFrontend
     files foreach { fileName: String => {
@@ -169,12 +169,12 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "complex")
 
     // Only implemented int trasformations. its enough for the test
-    val strat = new StrategyC[Node, Int]({
-      case (root@Add(i1:IntLit, i2:IntLit), _) => IntLit(i1.i + i2.i)(root.pos, root.info)
-      case (root@Sub(i1:IntLit, i2:IntLit), _) => IntLit(i1.i - i2.i)(root.pos, root.info)
-      case (root@Div(i1:IntLit, i2:IntLit), _) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
-      case (root@Mul(i1:IntLit, i2:IntLit), _) => IntLit(i1.i * i2.i)(root.pos, root.info)
-    }) traverse Traverse.BottomUp defaultContext 0
+    val strat = new Strategy[Node]({
+      case root@Add(i1:IntLit, i2:IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
+      case root@Sub(i1:IntLit, i2:IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
+      case root@Div(i1:IntLit, i2:IntLit) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
+      case root@Mul(i1:IntLit, i2:IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
+    }) traverse Traverse.BottomUp
 
     val frontend = new DummyFrontend
     files foreach { fileName: String => {
@@ -190,8 +190,8 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("fourAnd")
 
     val strat = new StrategyC[Node, Int]({
-      case (e:Exp, c) => c.parent match {
-        case f:FuncApp => if(f.funcname == "fourAnd" && c.siblings.contains(FalseLit()())) {
+      case (e:Exp, c) => c._1.parent match {
+        case f:FuncApp => if(f.funcname == "fourAnd" && c._1.siblings.contains(FalseLit()())) {
           FalseLit()(e.pos, e.info)
         } else {
           e
