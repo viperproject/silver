@@ -1,0 +1,10 @@
+method length_iter()
+{
+    while (true)
+    {
+        if (true) {
+            var tmp4: Int
+            tmp4 := 1
+        } 
+    }
+}
