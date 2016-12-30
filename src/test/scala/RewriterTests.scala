@@ -241,6 +241,79 @@ class RewriterTests extends FunSuite with Matchers {
     })
   }
 
+  test("MethodCallDesugaring") {
+    // CAREFUL!! Don't use old inside postcondition
+    val filePrefix = "transformations\\MethodCallDesugaring\\"
+    val files = Seq("simple", "withArgs", "withArgsNRes", "withFields")
+
+    val frontend = new DummyFrontend
+
+    val symbolList = mutable.Map.empty[LocalVar, Exp]
+
+    val stratRename = new Strategy[Node]({
+      case l:LocalVar => if (symbolList.contains(l)) symbolList(l) else l
+    })
+
+
+    files foreach { fileName: String => {
+      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+      assert(fileRes != null, s"File $filePrefix$fileName not found")
+      assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
+      val file = Paths.get(fileRes.toURI)
+      val ref = Paths.get(fileRef.toURI)
+
+
+      var targetNode: Program = null
+      var targetRef: Program = null
+
+
+      val strat = new Strategy[Node]({
+        case m:MethodCall => {
+          // Get method declaration
+          val mDecl = targetNode.methods.find(_.name == m.methodName).get
+
+          // Create an exhale statement for every precondition and replace parameters with arguments
+          symbolList.clear()
+          mDecl.formalArgs.map(_.localVar).zip(m.args).map( { (x:(LocalVar, Exp)) => symbolList.put(x._1, x._2) } )
+
+          val exPres = mDecl.pres.map( stratRename.execute(_)).map( x => Exhale(x.asInstanceOf[Exp])(m.pos, m.info))
+
+          // Create an inhale statement for every postcondition, replace parameters with arguments and replace result parameters with receivers
+          val replacedArgs = mDecl.posts.map(stratRename.execute(_))
+          symbolList.clear()
+          mDecl.formalReturns.map(_.localVar).zip(m.targets).map( { (x:(LocalVar, Exp)) => symbolList.put(x._1, x._2) } )
+          val inPosts = replacedArgs.map( stratRename.execute(_)).map( x => Inhale(x.asInstanceOf[Exp])(m.pos, m.info))
+
+          Seqn(exPres ++ inPosts)(m.pos, m.info)
+        }
+      }) //traverse Traverse.Innermost
+
+
+      frontend.translate(file) match {
+        case (Some(p), _) => {
+          targetNode = p
+        }
+        case (None, errors) => println("Problem with program: " + errors)
+      }
+
+      frontend.translate(ref) match {
+        case (Some(p), _) => {
+          targetRef = p
+        }
+        case (None, errors) => println("Problem with program: " + errors)
+      }
+
+      val res = strat.execute(targetNode)
+      //  println("Old: " + targetNode.toString())
+      println("New: " + res.toString())
+      println("Reference: " + targetRef.toString())
+      assert(res.toString() == targetRef.toString(), "Files are not equal")
+    }
+    }
+
+  }
+
   def executeTest(filePrefix: String, fileName: String, strat: StrategyInterface[Node], frontend: DummyFrontend): Unit = {
 
     val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
