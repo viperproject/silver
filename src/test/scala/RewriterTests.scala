@@ -287,7 +287,7 @@ class RewriterTests extends FunSuite with Matchers {
 
           Seqn(exPres ++ inPosts)(m.pos, m.info)
         }
-      }) //traverse Traverse.Innermost
+      }) traverse Traverse.Innermost
 
 
       frontend.translate(file) match {

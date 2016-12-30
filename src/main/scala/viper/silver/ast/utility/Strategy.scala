@@ -144,7 +144,20 @@ class Strategy[A <: Rewritable[A]](val rule: PartialFunction[A, A]) extends Stra
     }
   }
 
-  def executeInnermost(node: A): A = ???
+  def executeInnermost(node: A): A = {
+    // Check which node we get from rewriting
+    val newNode = if (rule.isDefinedAt(node)) {
+      return rule(node)
+    } else {
+      node
+    }
+
+    // Then traverse children
+    val newChildren: Seq[Any] = recurseChildren(newNode, executeTopDown)
+    //println(newChildren map { x => x.getClass })
+    // Duplicate node with new children as children
+    newNode.duplicate(newChildren)
+  }
 
   def executeOutermost(node: A): A = ???
 
@@ -208,7 +221,24 @@ class StrategyA[A <: Rewritable[A]](val rule: PartialFunction[(A, Ancestors[A]),
     }
   }
 
-  def executeInnermost(node: A, context:Ancestors[A]): A = ???
+  def executeInnermost(node: A, context:Ancestors[A]): A = {
+    // Add this node to context
+    var newContext = new Ancestors(context.ancestorList ++ Seq(node))
+
+    // Check which node we get from rewriting
+    val newNode: A = if (rule.isDefinedAt((node, newContext))) {
+      return rule((node, newContext))
+    } else {
+      node
+    }
+
+    // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
+    val newChildren = recurseChildren(newNode, executeTopDown(_, newContext))
+
+    // Create the new node by providing the rewritten node and the newChildren to a user provided Duplicator function,
+    // that creates a new immutable node
+    newNode.duplicate(newChildren)
+  }
 
   def executeOutermost(node: A, context:Ancestors[A]): A = ???
 
@@ -258,7 +288,7 @@ class StrategyC[A <: Rewritable[A], C](val rule: PartialFunction[(A, (Ancestors[
     traversionMode match {
       case Traverse.TopDown => executeTopDown(node, (new Ancestors[A](Seq()), defaultContxt.get))
       case Traverse.BottomUp => executeBottomUp(node, (new Ancestors[A](Seq()), defaultContxt.get))
-      case Traverse.Innermost => executeInnermost(node, None)
+      case Traverse.Innermost => executeInnermost(node, (new Ancestors[A](Seq()), defaultContxt.get))
       case Traverse.Outermost => executeOutermost(node, None)
     }
   }
@@ -309,7 +339,31 @@ class StrategyC[A <: Rewritable[A], C](val rule: PartialFunction[(A, (Ancestors[
     }
   }
 
-  def executeInnermost(node: A, context: Option[C]): A = ???
+  def executeInnermost(node: A, context: (Ancestors[A], C)): A = {
+    // Add this node to context
+    var newContext = (new Ancestors(context._1.ancestorList ++ Seq(node)), context._2)
+
+    // Check which node we get from rewriting
+    val newNode: A = if (rule.isDefinedAt((node, newContext))) {
+      return rule((node, newContext))
+    } else {
+      node
+    }
+
+    // Create the new Context for children recursion
+    newContext = (new Ancestors(newContext._1.ancestorList), if (upContext.isDefinedAt(newNode, newContext._2)) {
+      upContext(newNode, context._2)
+    } else {
+      newContext._2
+    })
+
+    // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
+    val newChildren = recurseChildren(newNode, executeTopDown(_, newContext))
+
+    // Create the new node by providing the rewritten node and the newChildren to a user provided Duplicator function,
+    // that creates a new immutable node
+    newNode.duplicate(newChildren)
+  }
 
   def executeOutermost(node: A, context: Option[C]): A = ???
 
@@ -401,16 +455,8 @@ class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) extends S
     this
   }
 
+  // Query only makes sense top down
   override def execute(node: A): B = {
-    traversionMode match {
-      case Traverse.TopDown => executeTopDown(node)
-      case Traverse.BottomUp => executeTopDown(node)
-      case Traverse.Innermost => executeInnermost(node)
-      case Traverse.Outermost => executeOutermost(node)
-    }
-  }
-
-  def executeTopDown(node: A): B = {
     // Check which node we get from rewriting
     val qResult: B = if (getInfo.isDefinedAt(node)) {
       getInfo(node)
@@ -441,10 +487,10 @@ class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) extends S
         child match {
           case o: Option[Rewritable[A]] => o match {
             case None => None
-            case Some(node: Rewritable[A]) => Some(executeTopDown(node.asInstanceOf[A]))
+            case Some(node: Rewritable[A]) => Some(execute(node.asInstanceOf[A]))
           }
-          case s: Seq[Rewritable[A]] => Some(accumulator(s map { x => executeTopDown(x.asInstanceOf[A]) }))
-          case n: Rewritable[A] => Some(executeTopDown(n.asInstanceOf[A]))
+          case s: Seq[Rewritable[A]] => Some(accumulator(s map { x => execute(x.asInstanceOf[A]) }))
+          case n: Rewritable[A] => Some(execute(n.asInstanceOf[A]))
         }
       } else {
         None
@@ -453,7 +499,4 @@ class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) extends S
     accumulator(Seq(qResult) ++ (seqResults collect { case Some(x: B) => x }))
   }
 
-  def executeInnermost(node: A): B = ???
-
-  def executeOutermost(node: A): B = ???
 }
