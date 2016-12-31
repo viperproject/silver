@@ -19,16 +19,7 @@ import scala.language.implicitConversions
 class RewriterTests extends FunSuite with Matchers {
 
   test("TestingStuff") {
-    val test1 = Assert(TrueLit()())()
-    val test2 = Assert(TrueLit()())()
 
-    println("eq: " + test1 eq test2) // false
-    println("==: " + test1 == test2) // false
-
-    val list = Seq(Assert(TrueLit()())(), Assert(TrueLit()())(), Assert(TrueLit()())(), test1)
-    println(list.head == test1) // true
-    println(list.indexWhere (_ eq test1)) // 3
-    println(list.indexWhere (_ == test1)) // 0
   }
 
   test("ImplicationToDisjunctionTests") {
@@ -102,28 +93,24 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
 
     val strat = new StrategyA[Node]({
-      case (a: Assert, c) => {
-
+      case (a: Assert, c) =>
         c.previous match {
           case Some(Assert(_)) => Seqn(Seq())() // If previous node is assertion we go to noop
-          case _ => {
+          case _ =>
             // Otherwise we take all following assertions and merge their expressions into one
-            c.successors.takeWhile(x => x match {
+            c.successors.takeWhile({
               // Take all following assertions
               case Assert(_) => true
               case _ => false
             }).collect({ case i: Assert => i }) match {
               // Collect works as a cast to list of assertion since take while does not do this
               case Seq() => a
-              case as => {
+              case as =>
                 // Merge in case of multiple assertions
                 val foldedExpr = as collect { case assertion => assertion.exp } reduceRight { (l, r) => And(l, r)() }
                 Assert(And(a.exp, foldedExpr)())(a.pos, a.info)
-              }
             }
-          }
         }
-      }
     })
 
     val frontend = new DummyFrontend
@@ -140,21 +127,18 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\ManyToOneAssert\\"
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
     var accumulator:mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
-    val strat = new StrategyA[Node]({
-      case (a: Assert, c) => {
-        accumulator += a.exp
 
+    val strat = new StrategyA[Node]({
+      case (a: Assert, c) =>
+        accumulator += a.exp
         c.next match {
-          case Some(Assert(_)) => {
+          case Some(Assert(_)) =>
             Seqn(Seq())()
-          }
-          case _ => {
+          case _ =>
             val result = Assert(accumulator.reduceRight( And(_, _)()) )()
             accumulator.clear()
             result
-          }
         }
-      }
     })
 
     val frontend = new DummyFrontend
@@ -228,9 +212,7 @@ class RewriterTests extends FunSuite with Matchers {
 
       var targetNode: Node = null
       frontend.translate(file) match {
-        case (Some(p), _) => {
-          targetNode = p
-        }
+        case (Some(p), _) => targetNode = p
         case (None, errors) => println("Problem with program: " + errors)
       }
       val res = query.execute(targetNode)
@@ -242,7 +224,7 @@ class RewriterTests extends FunSuite with Matchers {
   }
 
   test("MethodCallDesugaring") {
-    // CAREFUL!! Don't use old inside postcondition
+    // Careful: Don't use old inside postcondition. It is not yet supported. maybe I will update the testcase
     val filePrefix = "transformations\\MethodCallDesugaring\\"
     val files = Seq("simple", "withArgs", "withArgsNRes", "withFields")
 
@@ -269,7 +251,7 @@ class RewriterTests extends FunSuite with Matchers {
 
 
       val strat = new Strategy[Node]({
-        case m:MethodCall => {
+        case m:MethodCall =>
           // Get method declaration
           val mDecl = targetNode.methods.find(_.name == m.methodName).get
 
@@ -280,27 +262,23 @@ class RewriterTests extends FunSuite with Matchers {
           val exPres = mDecl.pres.map( stratRename.execute(_)).map( x => Exhale(x.asInstanceOf[Exp])(m.pos, m.info))
 
           // Create an inhale statement for every postcondition, replace parameters with arguments and replace result parameters with receivers
-          val replacedArgs = mDecl.posts.map(stratRename.execute(_))
+          val replacedArgs = mDecl.posts.map(stratRename.execute )
           symbolList.clear()
           mDecl.formalReturns.map(_.localVar).zip(m.targets).map( { (x:(LocalVar, Exp)) => symbolList.put(x._1, x._2) } )
-          val inPosts = replacedArgs.map( stratRename.execute(_)).map( x => Inhale(x.asInstanceOf[Exp])(m.pos, m.info))
+          val inPosts = replacedArgs.map( stratRename.execute ).map( x => Inhale(x.asInstanceOf[Exp])(m.pos, m.info))
 
           Seqn(exPres ++ inPosts)(m.pos, m.info)
-        }
+
       }) traverse Traverse.Innermost
 
 
       frontend.translate(file) match {
-        case (Some(p), _) => {
-          targetNode = p
-        }
+        case (Some(p), _) =>  targetNode = p
         case (None, errors) => println("Problem with program: " + errors)
       }
 
       frontend.translate(ref) match {
-        case (Some(p), _) => {
-          targetRef = p
-        }
+        case (Some(p), _) => targetRef = p
         case (None, errors) => println("Problem with program: " + errors)
       }
 
@@ -312,6 +290,34 @@ class RewriterTests extends FunSuite with Matchers {
     }
     }
 
+  }
+
+  test("ImplicationSimplify") {
+    val filePrefix = "transformations\\ImplicationSimplify\\"
+    val files = Seq("simple")
+
+    // Create new strategy. Parameter is the partial function that is applied on all nodes
+    val strat = new Strategy[Node]({
+      case i@Implies(left, right) => Or(Not(left)(i.pos, i.info), right)(i.pos, i.info)
+    })
+
+    val strat2 = new Strategy[Node]({
+      case o@Or(Not(f:FalseLit), right) => Or(TrueLit()(f.pos, f.info), right)(o.pos, o.info)
+      case o@Or(Not(f:TrueLit), right) => Or(FalseLit()(f.pos, f.info), right)(o.pos, o.info)
+      case o@Or(left, Not(f:FalseLit)) => Or(left, TrueLit()(f.pos, f.info))(o.pos, o.info)
+      case o@Or(left, Not(f:TrueLit)) => Or(left, FalseLit()(f.pos, f.info))(o.pos, o.info)
+    })
+
+    val strat3 = new Strategy[Node]({
+      case o@Or(t:TrueLit, right) => TrueLit()(o.pos, o.info)
+      case o@Or(left, t:TrueLit) => TrueLit()(o.pos, o.info)
+    })
+
+
+    strat + strat2 + strat3
+
+    val frontend = new DummyFrontend
+    files foreach { name => executeTest(filePrefix, name, strat, frontend) }
   }
 
   def executeTest(filePrefix: String, fileName: String, strat: StrategyInterface[Node], frontend: DummyFrontend): Unit = {
@@ -328,24 +334,20 @@ class RewriterTests extends FunSuite with Matchers {
     var targetRef: Node = null
 
     frontend.translate(file) match {
-      case (Some(p), _) => {
-        targetNode = p
-      }
+      case (Some(p), _) => targetNode = p
       case (None, errors) => println("Problem with program: " + errors)
     }
 
     frontend.translate(ref) match {
-      case (Some(p), _) => {
-        targetRef = p
-      }
+      case (Some(p), _) => targetRef = p
       case (None, errors) => println("Problem with program: " + errors)
     }
 
     val res = strat.execute(targetNode)
     //  println("Old: " + targetNode.toString())
-      println("New: " + res.toString())
+      println("New: " + res.toString)
       println("Reference: " + targetRef.toString())
-    assert(res.toString() == targetRef.toString(), "Files are not equal")
+    assert(res.toString == targetRef.toString(), "Files are not equal")
   }
 
 
