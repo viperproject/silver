@@ -40,13 +40,17 @@ trait StrategyInterface[A <: Rewritable[A]] {
     this
   }
 
-  def execute(node: A): Any
+  def execute(node: A): A
+
+  def ||(s: StrategyInterface[A]): ConcatinatedStrategy[A] = {
+    new ConcatinatedStrategy[A](this, s)
+  }
 
   /**
     * Following methods are helper methods for the other Strategy implementations
     */
 
-  protected def recurseChildren(node: A, recurse:Function1[A, A]): Seq[Any] = {
+  protected def recurseChildren(node: A, recurse: A =>A): Seq[Any] = {
     // Put all the children of this node into a sequence
     // First try to get children form the user defined function cChildren in case we have a special case here
     // Otherwise get children from the product properties, but only those that are a subtype of A and therefore form the Tree
@@ -85,11 +89,16 @@ trait StrategyInterface[A <: Rewritable[A]] {
   * @param r A partial function that defines the rewriting.
   * @tparam A Supertype of every node we want to rewrite
   */
-class Strategy[A <: Rewritable[A]](r: PartialFunction[A, A]) extends StrategyInterface[A] {
+class Strategy[A <: Rewritable[A]](val r: PartialFunction[A, A]) extends StrategyInterface[A] {
 
-  val NoContext = 1 // Just some value because the context is never used
+  val NoContext = new Ancestors[A](Seq()) // Just some value because the context is never used
 
-  private var rule: Rule[A, Any] = RuleS(r)
+  private var rule: Rule[A] = RuleS(r)
+
+  def getRule: Rule[A] = {
+    rule
+  }
+
   //<editor-fold desc="Overrides for DSL">
 
   // We need to override all the setters beacuse we want to return a Strategy and not a Strategy interface
@@ -106,34 +115,22 @@ class Strategy[A <: Rewritable[A]](r: PartialFunction[A, A]) extends StrategyInt
 
 
   def +(s: StrategyInterface[A]): Strategy[A] = {
-      s match {
-        case s:Strategy[A] => {
-          rule = Append[A, Any](rule, s.rule)
-        }
-        case _ => println("Error: A simple Strategy can only be combined with other simple Strategies")
-      }
-      this
+    s match {
+      case s: Strategy[A] =>
+        rule = Append[A](rule, s.rule)
+      case _ => println("Error: A simple Strategy can only be combined with other simple Strategies")
+    }
+    this
   }
 
-/*  def <(s: StrategyInterface[A]): Strategy[A] = {
+  def <(s: StrategyInterface[A]): Strategy[A] = {
     s match {
-      case s:Strategy[A] => {
-        rule = CondAppend[A, Any](rule, s.rule)
-      }
+      case s: Strategy[A] =>
+        rule = CondAppend[A](rule, s.rule)
       case _ => println("Error: A simple Strategy can only be combined with other simple Strategies")
     }
     this
-  }*/
-
-/*  def <>(s: StrategyInterface[A]): Strategy[A] = {
-    s match {
-      case s:Strategy[A] => {
-        rule = NonDeterministic[A, Any](rule, s.rule)
-      }
-      case _ => println("Error: A simple Strategy can only be combined with other simple Strategies")
-    }
-    this
-  }*/
+  }
 
   //</editor-fold>
 
@@ -163,7 +160,6 @@ class Strategy[A <: Rewritable[A]](r: PartialFunction[A, A]) extends StrategyInt
     // At first recurse into children and get the new children
     val newChildren: Seq[Any] = recurseChildren(node, executeBottomUp)
 
-    // In case duplicator is defined. Duplicate method  TODO otherwise do duplication ourselves
     val duplicatedNode: A = node.duplicate(newChildren)
 
     // Rewrite the node
@@ -186,8 +182,14 @@ class Strategy[A <: Rewritable[A]](r: PartialFunction[A, A]) extends StrategyInt
 }
 
 
-class StrategyA[A <: Rewritable[A]](val rule: PartialFunction[(A, Ancestors[A]), A]) extends StrategyInterface[A] {
+class StrategyA[A <: Rewritable[A]](val r: PartialFunction[(A, Ancestors[A]), A]) extends StrategyInterface[A] {
   //<editor-fold desc="Overrides for DSL">
+
+  private var rule: Rule[A] = RuleA(r)
+
+  def getRule: Rule[A] = {
+    rule
+  }
 
   override def traverse(t: Traverse): StrategyA[A] = {
     super.traverse(t)
@@ -196,6 +198,28 @@ class StrategyA[A <: Rewritable[A]](val rule: PartialFunction[(A, Ancestors[A]),
 
   override def recurseFunc(r: PartialFunction[A, Seq[Boolean]]): StrategyA[A] = {
     super.recurseFunc(r)
+    this
+  }
+
+  def +(s: StrategyInterface[A]): StrategyA[A] = {
+    s match {
+      case s: Strategy[A] =>
+        rule = Append[A](rule, s.getRule)
+      case a: StrategyA[A] =>
+        rule = Append[A](rule, a.rule)
+      case _ => println("Error: A StrategyA can only be combined with simple Strategies or other StrategyAs")
+    }
+    this
+  }
+
+  def <(s: StrategyInterface[A]): StrategyA[A] = {
+    s match {
+      case s: Strategy[A] =>
+        rule = CondAppend[A](rule, s.getRule)
+      case a: StrategyA[A] =>
+        rule = CondAppend[A](rule, a.rule)
+      case _ => println("Error: A StrategyA can only be combined with simple Strategies or other StrategyAs")
+    }
     this
   }
 
@@ -210,11 +234,11 @@ class StrategyA[A <: Rewritable[A]](val rule: PartialFunction[(A, Ancestors[A]),
 
   def executeTopDown(node: A, context: Ancestors[A]): A = {
     // Add this node to context
-    var newContext = new Ancestors(context.ancestorList ++ Seq(node))
+    val newContext = new Ancestors(context.ancestorList ++ Seq(node))
 
     // Check which node we get from rewriting
-    val newNode: A = if (rule.isDefinedAt((node, newContext))) {
-      rule((node, newContext))
+    val newNode: A = if (r.isDefinedAt((node, newContext))) {
+      r((node, newContext))
     } else {
       node
     }
@@ -236,20 +260,20 @@ class StrategyA[A <: Rewritable[A]](val rule: PartialFunction[(A, Ancestors[A]),
 
     val newNode = node.duplicate(newChildren)
 
-    if (rule.isDefinedAt((newNode, newContext))) {
-      rule((newNode, newContext))
+    if (r.isDefinedAt((newNode, newContext))) {
+      r((newNode, newContext))
     } else {
       newNode
     }
   }
 
-  def executeInnermost(node: A, context:Ancestors[A]): A = {
+  def executeInnermost(node: A, context: Ancestors[A]): A = {
     // Add this node to context
-    var newContext = new Ancestors(context.ancestorList ++ Seq(node))
+    val newContext = new Ancestors(context.ancestorList ++ Seq(node))
 
     // Check which node we get from rewriting
-    val newNode: A = if (rule.isDefinedAt((node, newContext))) {
-      return rule((node, newContext))
+    val newNode: A = if (r.isDefinedAt((node, newContext))) {
+      return r((node, newContext))
     } else {
       node
     }
@@ -262,24 +286,25 @@ class StrategyA[A <: Rewritable[A]](val rule: PartialFunction[(A, Ancestors[A]),
     newNode.duplicate(newChildren)
   }
 
-  def executeOutermost(node: A, context:Ancestors[A]): A = ???
+  def executeOutermost(node: A, context: Ancestors[A]): A = ???
 
 
 }
-
 
 
 /**
   * A strategy that provides a context during rewriting. The user can control what is in the context by providing a updateContext method
   * that will be called for every ancestor of the node
   *
-  * @param rule A partial function that describes the rewriting. It takes the candidate node for rewriting and the context as argument and delivers a rewritten node
+  * @param r A partial function that describes the rewriting. It takes the candidate node for rewriting and the context as argument and delivers a rewritten node
   * @tparam A Supertype of every node we want to rewrite
   * @tparam C Supertype of the context
   */
-class StrategyC[A <: Rewritable[A], C](val rule: PartialFunction[(A, (Ancestors[A], C)), A]) extends StrategyInterface[A] {
+class StrategyC[A <: Rewritable[A], C](val r: PartialFunction[(A, Context[A, C]), A]) extends StrategyInterface[A] {
   protected var upContext: PartialFunction[(A, C), C] = PartialFunction.empty
   protected var defaultContxt: Option[C] = None
+
+  private var rule: Rule[A] = RuleC(r)
 
   //<editor-fold desc="Overrides for DSL">
 
@@ -290,6 +315,30 @@ class StrategyC[A <: Rewritable[A], C](val rule: PartialFunction[(A, (Ancestors[
 
   override def recurseFunc(r: PartialFunction[A, Seq[Boolean]]): StrategyC[A, C] = {
     super.recurseFunc(r)
+    this
+  }
+
+  def +(s: StrategyInterface[A]): StrategyC[A, C] = {
+    s match {
+      case s: Strategy[A] =>
+        rule = Append[A](rule, s.getRule)
+      case a: StrategyA[A] =>
+        rule = Append[A](rule, a.getRule)
+      case c: StrategyC[A, C] =>
+        rule = Append[A](rule, c.rule)
+      case _ => println("Error: A StrategyC can only be combined with simple Strategies, StrategyAs or StrategyCs")
+    }
+    this
+  }
+
+  def <(s: StrategyInterface[A]): StrategyC[A, C] = {
+    s match {
+      case s: Strategy[A] =>
+        rule = CondAppend[A](rule, s.getRule)
+      case a: StrategyA[A] =>
+        rule = CondAppend[A](rule, a.getRule)
+      case _ => println("Error: A StrategyC can only be combined with simple Strategies, StrategyAs or StrategyCs")
+    }
     this
   }
 
@@ -308,29 +357,29 @@ class StrategyC[A <: Rewritable[A], C](val rule: PartialFunction[(A, (Ancestors[
   override def execute(node: A): A = {
     assert(defaultContxt.isDefined, "Default context not set!")
     traversionMode match {
-      case Traverse.TopDown => executeTopDown(node, (new Ancestors[A](Seq()), defaultContxt.get))
-      case Traverse.BottomUp => executeBottomUp(node, (new Ancestors[A](Seq()), defaultContxt.get))
-      case Traverse.Innermost => executeInnermost(node, (new Ancestors[A](Seq()), defaultContxt.get))
+      case Traverse.TopDown => executeTopDown(node, new Context[A, C](Seq(), defaultContxt.get))
+      case Traverse.BottomUp => executeBottomUp(node, new Context[A, C](Seq(), defaultContxt.get))
+      case Traverse.Innermost => executeInnermost(node, new Context[A, C](Seq(), defaultContxt.get))
       case Traverse.Outermost => executeOutermost(node, None)
     }
   }
 
-  def executeTopDown(node: A, context: (Ancestors[A], C)): A = {
+  def executeTopDown(node: A, context: Context[A, C]): A = {
     // Add this node to context
-    var newContext = (new Ancestors(context._1.ancestorList ++ Seq(node)), context._2)
+    var newContext = new Context[A, C](context.ancestorList ++ Seq(node), context.custom)
 
     // Check which node we get from rewriting
-    val newNode: A = if (rule.isDefinedAt((node, newContext))) {
-      rule((node, newContext))
+    val newNode: A = if (r.isDefinedAt((node, newContext))) {
+      r((node, newContext))
     } else {
       node
     }
 
     // Create the new Context for children recursion
-    newContext = (new Ancestors(newContext._1.ancestorList), if (upContext.isDefinedAt(newNode, newContext._2)) {
-      upContext(newNode, context._2)
+    newContext = new Context(newContext.ancestorList, if (upContext.isDefinedAt(newNode, newContext.custom)) {
+      upContext(newNode, context.custom)
     } else {
-      newContext._2
+      newContext.custom
     })
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
@@ -341,12 +390,12 @@ class StrategyC[A <: Rewritable[A], C](val rule: PartialFunction[(A, (Ancestors[
     newNode.duplicate(newChildren)
   }
 
-  def executeBottomUp(node: A, context: (Ancestors[A], C)): A = {
+  def executeBottomUp(node: A, context: Context[A, C]): A = {
     // Add this node to context
-    val newContext = (new Ancestors(context._1.ancestorList ++ Seq(node)), if (upContext.isDefinedAt(node, context._2)) {
-      upContext(node, context._2)
+    val newContext = new Context(context.ancestorList ++ Seq(node), if (upContext.isDefinedAt(node, context.custom)) {
+      upContext(node, context.custom)
     } else {
-      context._2
+      context.custom
     })
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
@@ -354,29 +403,29 @@ class StrategyC[A <: Rewritable[A], C](val rule: PartialFunction[(A, (Ancestors[
 
     val newNode = node.duplicate(newChildren)
 
-    if (rule.isDefinedAt((newNode, newContext))) {
-      rule((newNode, newContext))
+    if (r.isDefinedAt((newNode, newContext))) {
+      r((newNode, newContext))
     } else {
       newNode
     }
   }
 
-  def executeInnermost(node: A, context: (Ancestors[A], C)): A = {
+  def executeInnermost(node: A, context: Context[A, C]): A = {
     // Add this node to context
-    var newContext = (new Ancestors(context._1.ancestorList ++ Seq(node)), context._2)
+    var newContext = new Context(context.ancestorList ++ Seq(node), context.custom)
 
     // Check which node we get from rewriting
-    val newNode: A = if (rule.isDefinedAt((node, newContext))) {
-      return rule((node, newContext))
+    val newNode: A = if (r.isDefinedAt((node, newContext))) {
+      return r((node, newContext))
     } else {
       node
     }
 
     // Create the new Context for children recursion
-    newContext = (new Ancestors(newContext._1.ancestorList), if (upContext.isDefinedAt(newNode, newContext._2)) {
-      upContext(newNode, context._2)
+    newContext = new Context(newContext.ancestorList, if (upContext.isDefinedAt(newNode, newContext.custom)) {
+      upContext(newNode, context.custom)
     } else {
-      newContext._2
+      newContext.custom
     })
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
@@ -392,7 +441,40 @@ class StrategyC[A <: Rewritable[A], C](val rule: PartialFunction[(A, (Ancestors[
 
 }
 
+/**
+  * This class encapsulates strategies that are appended. The execute method executes them one after another and gives the resulting node of a transformation
+  * as an argument for the next node
+  * @param s1 strategy 1
+  * @param s2 strategy 2
+  */
+class ConcatinatedStrategy[A <: Rewritable[A]](s1: StrategyInterface[A], val s2: StrategyInterface[A]) {
+  strategies.append(s1)
+  strategies.append(s2)
+
+  private var strategies = collection.mutable.ListBuffer.empty[StrategyInterface[A]]
+
+  def ||(s: StrategyInterface[A]): ConcatinatedStrategy[A] = {
+    strategies.append(s)
+    this
+  }
+
+  def ||(s: ConcatinatedStrategy[A]): ConcatinatedStrategy[A] = {
+    strategies ++= s.strategies
+    this
+  }
+
+  def execute(node: A): A = strategies.foldLeft(node)( (n, strat) => strat.execute(n) )
+}
+
+/**
+  * This class holds ancestor information about the current node
+  * @param ancestorList List of all ancestors
+  */
 class Ancestors[A <: Rewritable[A]](val ancestorList: Seq[A]) {
+
+  private[utility] def newNode(node: A): Ancestors[A] = {
+    new Ancestors[A](ancestorList.dropRight(1) ++ Seq(node))
+  }
 
   lazy val node = ancestorList.last
 
@@ -404,7 +486,7 @@ class Ancestors[A <: Rewritable[A]](val ancestorList: Seq[A]) {
   /**
     * All children of the parent of a node that precede the node itself
     */
-  lazy val predecessors: Seq[Any] = family.takeWhile( !isEqualNode(_) )
+  lazy val predecessors: Seq[Any] = family.takeWhile(!isEqualNode(_))
 
   /**
     * The successor child of the parent that follows the node itself
@@ -414,19 +496,19 @@ class Ancestors[A <: Rewritable[A]](val ancestorList: Seq[A]) {
   /**
     * All children of the parent of a node that follow the node itself
     */
-  lazy val successors: Seq[Any] = family.dropWhile( !isEqualNode(_) ).drop(1)
+  lazy val successors: Seq[Any] = family.dropWhile(!isEqualNode(_)).drop(1)
 
 
   /**
     * All children of the parent without the node itself
     */
-  lazy val siblings: Seq[Any] = family.filter( !isEqualNode(_))
+  lazy val siblings: Seq[Any] = family.filter(!isEqualNode(_))
 
 
   /**
     * All children of the parent. Sequence of nodes and options of nodes will be unfolded and the node itself is included in the list
     */
-  lazy val family: Seq[Any] = parent.getChildren().foldLeft(Seq.empty[Any])( (children:Seq[Any],y:Any) =>  y match {
+  lazy val family: Seq[Any] = parent.getChildren().foldLeft(Seq.empty[Any])((children: Seq[Any], y: Any) => y match {
     case elem: Seq[A] => children ++ elem
     case elem: Option[A] => children ++ (elem match {
       case Some(x) => Seq(x)
@@ -439,16 +521,26 @@ class Ancestors[A <: Rewritable[A]](val ancestorList: Seq[A]) {
     */
   lazy val parent: A = ancestorList.dropRight(1).last
 
-  def isEqualNode(elem:Any):Boolean = elem match { // TODO get consistent idea of a child
-    case Some(x:AnyRef) => x eq node.asInstanceOf[AnyRef]
+  def isEqualNode(elem: Any): Boolean = elem match {
+    case Some(x: AnyRef) => x eq node.asInstanceOf[AnyRef]
     case Seq(_) => false
-    case p:AnyRef => p eq node.asInstanceOf[AnyRef]
+    case p: AnyRef => p eq node.asInstanceOf[AnyRef]
   }
+}
 
+/**
+  * This class works as a Tuple of a custom context and an ancestor list. It extends Ancestors such that we get: RuleC < RuleA < RuleS
+  * @param aList List from the Ancestors part
+  * @param custom Custom context part
+  */
+class Context[A <: Rewritable[A], C](aList: Seq[A], val custom: C) extends Ancestors[A](aList) {
+  override def newNode(node: A): Context[A, C] = {
+    new Context(ancestorList.dropRight(1) ++ Seq(node) , custom)
+  }
 }
 
 
-class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) extends StrategyInterface[A] {
+class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) {
 
   protected var accumulator: Seq[B] => B = (x: Seq[B]) => x.head
   protected var nElement: Option[B] = None
@@ -459,6 +551,10 @@ class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) extends S
     accumulator = a
     this
   }
+  protected var traversionMode: Traverse = Traverse.TopDown
+  protected var recursionFunc: PartialFunction[A, Seq[Boolean]] = PartialFunction.empty
+
+  def getTraversionMode = traversionMode
 
   def getNeutralElement = nElement
 
@@ -467,18 +563,18 @@ class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) extends S
     this
   }
 
-  override def traverse(t: Traverse): Query[A, B] = {
-    super.traverse(t)
+  def traverse(t: Traverse): Query[A, B] = {
+    traversionMode = t
     this
   }
 
-  override def recurseFunc(r: PartialFunction[A, Seq[Boolean]]): Query[A, B] = {
-    super.recurseFunc(r)
+  def recurseFunc(r: PartialFunction[A, Seq[Boolean]]): Query[A, B] = {
+    recursionFunc = r
     this
   }
 
   // Query only makes sense top down
-  override def execute(node: A): B = {
+  def execute(node: A): B = {
     // Check which node we get from rewriting
     val qResult: B = if (getInfo.isDefinedAt(node)) {
       getInfo(node)
@@ -526,21 +622,33 @@ class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) extends S
 
 // ------------------------------------------------------------------------- Composition Code here -------------------------------------------------------------------------------------------------
 
-private trait Rule[A <: Rewritable[A], C] {
-  def execute(node: A, context: C): A = ???
+/**
+  * A trait that is used for providing an interface for rules. We need the contravariance parameter to create the relationship:
+  * RuleC < RuleA < RuleS that proves helpful when combining those rules
+  */
+private[utility] trait Rule[A <: Rewritable[A]] {
+  def execute(node: A, context: Ancestors[A]): A
 }
 
-private case class RuleC[A <: Rewritable[A], C](r: PartialFunction[(A, (Ancestors[A], C)), A]) extends Rule[A, (Ancestors[A], C)] {
-  override def execute(node: A, context: (Ancestors[A], C)): A = {
-    if (r.isDefinedAt((node, context))) {
-      r((node, context))
+/**
+  * RuleC lifts a partial function to a rule that is used in StrategyC
+  * @param r The partial function
+  */
+private case class RuleC[A <: Rewritable[A], C](r: PartialFunction[(A, Context[A, C]), A]) extends Rule[A] {
+  override def execute(node: A, context: Ancestors[A]): A = {
+    if (r.isDefinedAt((node, context.asInstanceOf[Context[A,C]]))) {
+      r((node, context.asInstanceOf[Context[A,C]]))
     } else {
       node
     }
   }
 }
 
-private case class RuleA[A <: Rewritable[A]](r: PartialFunction[(A, Ancestors[A]), A]) extends Rule[A, Ancestors[A]] {
+/**
+  * RuleA lifts a partial function to a rule that is used in a StrategyA
+  * @param r The partial function
+  */
+private case class RuleA[A <: Rewritable[A]](r: PartialFunction[(A, Ancestors[A]), A]) extends Rule[A] {
   override def execute(node: A, context: Ancestors[A]): A = {
     if (r.isDefinedAt((node, context))) {
       r((node, context))
@@ -550,13 +658,17 @@ private case class RuleA[A <: Rewritable[A]](r: PartialFunction[(A, Ancestors[A]
   }
 }
 
-private case class RuleS[A <: Rewritable[A]](r: PartialFunction[A, A]) extends Rule[A, Any] {
+/**
+  * RuleS lifts a partial function to a rule that is used in a Strategy
+  * @param r The partial function
+  */
+private case class RuleS[A <: Rewritable[A]](r: PartialFunction[A, A]) extends Rule[A] {
 
   def execute(node: A): A = {
-    execute(node, 1) // Just put in any parameter. it will not be used anyways
+    execute(node, new Ancestors[A](Nil)) // Just put in any parameter. it will not be used anyways
   }
 
-  override def execute(node: A, context: Any): A = {
+  override def execute(node: A, context: Ancestors[A]): A = {
     if (r.isDefinedAt(node)) {
       r(node)
     } else {
@@ -565,41 +677,57 @@ private case class RuleS[A <: Rewritable[A]](r: PartialFunction[A, A]) extends R
   }
 }
 
-private case class Append[A <: Rewritable[A], C](val r1: Rule[A, C], val r2: Rule[A, C]) extends Rule[A, C] {
+/**
+  * Class Append takes two rules and executes them one after another
+  * @param r1 First rule
+  * @param r2 Second rule
+  */
+private case class Append[A <: Rewritable[A]](r1: Rule[A], r2: Rule[A]) extends Rule[A] {
 
-  override def execute(node: A, context: C): A = {
-    r2.execute(r1.execute(node, context), context)
-  }
-}
-
-/*private case class CondAppend[A <: Rewritable[A], C](val r1: Rule[A, C], val r2: Rule[A, C]) extends Rule[A, C] {
-
-  override def execute(node: A, context: C): Option[A] = {
+  override def execute(node: A, context: Ancestors[A]): A = {
     val res1 = r1.execute(node, context)
-    res1 match {
-      case None => None
-      case Some(newNode) => r2.execute(newNode, context)
+    if(res1 ne node) {
+      r2.execute(res1, context.newNode(res1))
+    } else {
+      r2.execute(res1, context)
     }
   }
 }
 
-private case class Ternary[A <: Rewritable[A], C](val r1: Rule[A, C], val r2: Rule[A, C], val r3: Rule[A, C]) extends Rule[A, C] {
+/**
+  * CondAppend takes two rules as parameter. If r1 is defined on a node it will execute both otherwise nothing
+  * @param r1 First rule
+  * @param r2 Second rule
+  *
+  */
+private case class CondAppend[A <: Rewritable[A]](r1: Rule[A], r2: Rule[A]) extends Rule[A] {
 
-  override def execute(node: A, context: C): Option[A] = {
+  override def execute(node: A, context: Ancestors[A]): A = {
     val res1 = r1.execute(node, context)
-    res1 match {
-      case None => r3.execute(node, context)
-      case Some(newNode) => r2.execute(newNode, context)
+    if (res1 ne node) {
+      r2.execute(res1, context.newNode(res1))
+    }
+    else {
+      node
     }
   }
 }
 
-private case class NonDeterministic[A <: Rewritable[A], C](val r1: Rule[A, C], val r2: Rule[A, C]) extends Rule[A, C] {
+/**
+  * Ternary takes three rules as parameter. If r1 is defined on a node it will execute r1 and r2 otherwise r3
+  *
+  * @param r1 Rule for condition
+  * @param r2 Rule in case defined
+  * @param r3 Rule in case not defined
+  */
+private case class Ternary[A <: Rewritable[A]](r1: Rule[A], r2: Rule[A], r3: Rule[A]) extends Rule[A] {
 
-  override def execute(node: A, context: C): Option[A] = {
-    if(scala.util.Random.nextBoolean())
-      r1.execute(node, context)
-    else
-      r2.execute(node, context)
+  override def execute(node: A, context: Ancestors[A]): A = {
+    val res1 = r1.execute(node, context)
+    if (res1 ne node) {
+      r2.execute(res1, context.newNode(node))
+    } else {
+      r3.execute(node, context)
+    }
   }
-}*/
+}

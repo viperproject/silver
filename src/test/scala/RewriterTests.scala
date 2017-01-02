@@ -42,7 +42,7 @@ class RewriterTests extends FunSuite with Matchers {
     val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
       case (Or(l, r), c) =>
         //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
-        c._2 match {
+        c.custom match {
           case Seq() => InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())()
           // Had to do variable renaming because otherwise variable would be quantified inside again with forall
           case varDecls => InhaleExhaleExp(CondExp(Forall(varDecls.map { vari => LocalVarDecl(vari.name + "Trafo", vari.typ)(vari.pos, vari.info) }, Seq(), TrueLit()())(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
@@ -174,8 +174,8 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("fourAnd")
 
     val strat = new StrategyC[Node, Int]({
-      case (e:Exp, c) => c._1.parent match {
-        case f:FuncApp => if(f.funcname == "fourAnd" && c._1.siblings.contains(FalseLit()())) {
+      case (e:Exp, c) => c.parent match {
+        case f:FuncApp => if(f.funcname == "fourAnd" && c.siblings.contains(FalseLit()())) {
           FalseLit()(e.pos, e.info)
         } else {
           e
