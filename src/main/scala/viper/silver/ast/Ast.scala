@@ -139,12 +139,31 @@ trait Info {
   // A list of comments.
   def comment: Seq[String]
 }
+
 /** A default `Info` that is empty. */
 case object NoInfo extends Info {
   lazy val comment = Nil
 }
 /** A simple `Info` that contains a list of comments. */
 case class SimpleInfo(comment: Seq[String]) extends Info
+
+/** An `Info` instance for labelling a quantifier as auto-triggered. */
+case object AutoTriggered extends Info {
+  lazy val comment = Nil
+}
+
+/** An `Info` instance for composing multiple `Info`s together */
+case class ConsInfo(head: Info, tail:Info) extends Info {
+  lazy val comment = Nil
+}
+
+/** Build a `ConsInfo` instance out of two `Info`s, unless the latter is `NoInfo` (which can be dropped) */
+object MakeInfoPair {
+  def apply(head:Info, tail:Info) = tail match {
+    case NoInfo => head
+    case _ => ConsInfo(head,tail)
+  }
+}
 
 /** A trait for nodes that have additional information. */
 trait Infoed {
