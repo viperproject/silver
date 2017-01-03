@@ -3,5 +3,4 @@ method main() returns ()
    var i: Bool := true
    var j: Bool := false
 
-   assert(true)
 }

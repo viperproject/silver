@@ -292,14 +292,14 @@ class RewriterTests extends FunSuite with Matchers {
 
   }
 
-  test("ImplicationSimplify") {
-    val filePrefix = "transformations\\ImplicationSimplify\\"
-    val files = Seq("simple")
+  test("ImplicationSimplification") {
+    val filePrefix = "transformations\\ImplicationSimplification\\"
+    val files = Seq(/*"simple",*/ "complex")
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
     val strat = new Strategy[Node]({
       case i@Implies(left, right) => Or(Not(left)(i.pos, i.info), right)(i.pos, i.info)
-    })
+    }) traverse Traverse.BottomUp
 
     val strat2 = new Strategy[Node]({
       case o@Or(Not(f:FalseLit), right) => Or(TrueLit()(f.pos, f.info), right)(o.pos, o.info)
@@ -313,11 +313,51 @@ class RewriterTests extends FunSuite with Matchers {
       case o@Or(left, t:TrueLit) => TrueLit()(o.pos, o.info)
     })
 
+    val strat4 = new Strategy[Node]({
+      case a@Assert(t:TrueLit) => Seqn(Seq())()
+    })
 
-    strat + strat2 + strat3
+
+    val combined = strat < (strat2 + strat3) || strat4 // TODO continue here
 
     val frontend = new DummyFrontend
-    files foreach { name => executeTest(filePrefix, name, strat, frontend) }
+    files foreach { name => executeTest(filePrefix, name, combined, frontend) }
+  }
+
+  test("CopyPropagation") {
+    val filePrefix = "transformations\\CopyPropagation\\"
+    val files = Seq("complex")
+
+    val frontend = new DummyFrontend
+
+    val map = collection.mutable.Map.empty[LocalVar, BigInt]
+    val collect = new Strategy[Node]( {
+      case p:Program => map.clear(); p // Reset map at start
+      case ass@LocalVarAssign(l:LocalVar , i:IntLit) => map += (l -> i.i); ass
+    }) recurseFunc { case l:LocalVarAssign => Seq(false, true) }
+
+    val replace = new Strategy[Node]( {
+      case l:LocalVar =>
+        map.get(l) match {
+          case None => l
+          case Some(i:BigInt) => IntLit(i)(l.pos, l.info)
+        }
+    })
+
+    val fold = new Strategy[Node]({
+      case root@Add(i1:IntLit, i2:IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
+      case root@Sub(i1:IntLit, i2:IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
+      case root@Div(i1:IntLit, i2:IntLit) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
+      case root@Mul(i1:IntLit, i2:IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
+      case root@Or(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value || b2.value)(root.pos, root.info)
+      case root@And(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value &&  b2.value)(root.pos, root.info)
+      case root@EqCmp(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value == b2.value)(root.pos, root.info)
+      case root@EqCmp(i1:IntLit, i2:IntLit) => BoolLit(i1.i == i2.i)(root.pos, root.info)
+    }) traverse Traverse.TopDown // Do this top down such that we need to iterate
+
+    val combined = (collect + replace) || fold.repeat
+
+    files foreach { name => executeTest(filePrefix, name, combined, frontend) }
   }
 
   def executeTest(filePrefix: String, fileName: String, strat: StrategyInterface[Node], frontend: DummyFrontend): Unit = {
