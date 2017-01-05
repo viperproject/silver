@@ -11,6 +11,7 @@ method test(x: Ref) {
   inhale acc(x.val, p)
 
   constraining (p) {
+  //:: UnexpectedOutput(call.precondition:assertion.false, /carbon/issue/166/)
     callee(x, p)
       // Constraining p to be less than p is equivalent to assuming
       // false (which is why the final assertion succeeds).
