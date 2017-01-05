@@ -150,20 +150,17 @@ trait Cfg[S, E] {
       .replace(">", "\\>")
       .replace("|", "\\|")
 
-    // returns the name used for a basic block
-    def id(block: Block[S, E]): String = s"BB${block.id}"
-
     def label(block: Block[S, E]): String = block match {
       case StatementBlock(stmts) =>
-        s"${id(block)}|" + stmts.map(_.toString).map(escape).mkString("|")
+        block.toString + "|" + stmts.map(_.toString).map(escape).mkString("|")
       case PreconditionBlock(pres) =>
-        s"${id(block)} (Precondition)|" + pres.map(_.toString).map(escape).mkString("|")
+        block.toString + "|" + pres.map(_.toString).map(escape).mkString("|")
       case PostconditionBlock(posts) =>
-        s"${id(block)} (Postcondition)|" + posts.map(_.toString).map(escape).mkString("|")
+        block.toString + "|" + posts.map(_.toString).map(escape).mkString("|")
       case LoopHeadBlock(invs, stmts) =>
-        s"${id(block)} (Loop Head)|" + invs.map(inv => "invariant " + escape(inv.toString)).mkString("|") + stmts.map(_.toString).map(escape).mkString("|")
+        block.toString + "|" + invs.map(inv => "invariant " + escape(inv.toString)).mkString("|") + stmts.map(_.toString).map(escape).mkString("|")
       case ConstrainingBlock(_, _) =>
-        s"${id(block)} (Constraining)"
+        block.toString
     }
 
     val blockStr = new StringBuilder()
@@ -174,6 +171,9 @@ trait Cfg[S, E] {
       case `exit` => "style=\"filled\", fillcolor=\"paleturquoise\""
       case _ => ""
     }
+
+    // returns the name used for a basic block
+    def id(block: Block[S, E]): String = s"BB${block.id}"
 
     // helper function that recursively processes all blocks
     def processBlocks(blocks: Seq[Block[S, E]]): Unit = {

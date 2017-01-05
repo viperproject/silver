@@ -29,9 +29,9 @@ object CfgTest {
     val program = translator.translate.get
 
     for (method <- program.methods) {
-      val cfg = method.toCfg(simplify = true)
+      val cfg = method.toCfg()
       println(method.name)
-      println(cfg.toDot())
+      println(cfg.toDot)
     }
   }
 
