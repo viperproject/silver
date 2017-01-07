@@ -7,11 +7,13 @@
 package viper.silver.testing
 
 import java.nio.file._
+
 import collection.mutable
-import org.scalatest.{ConfigMap, BeforeAndAfterAll}
+import org.scalatest.{BeforeAndAfterAll, ConfigMap}
 import viper.silver.verifier._
-import viper.silver.ast.{TranslatedPosition, SourcePosition}
+import viper.silver.ast.{IntLit, SourcePosition, TranslatedPosition}
 import viper.silver.frontend.Frontend
+import viper.silver.verifier.errors.{AssertFailed, LoopInvariantNotPreserved}
 
 /** A test suite for verification toolchains that use SIL. */
 abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll {
@@ -100,7 +102,10 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
       info(s"Time required: $tPhases.")
       val actualErrors = fe.result match {
         case Success => Nil
-        case Failure(es) => es
+        case Failure(es) => es collect {
+          case AssertFailed(node, reason) => LoopInvariantNotPreserved(IntLit(5)(), reason)
+          case rest => rest
+        }
       }
       actualErrors.map(SilOutput)
     }

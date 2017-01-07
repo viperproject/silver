@@ -37,7 +37,7 @@ class RewriterTests extends FunSuite with Matchers {
 
   test("DisjunctionToInhaleExhaleTests") {
     val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
-    val files = Seq("simple"/*, "nested", "functions"*/)
+    val files = Seq("simple", "nested", "functions")
 
     val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
       case (Or(l, r), c) =>
@@ -294,7 +294,7 @@ class RewriterTests extends FunSuite with Matchers {
 
   test("ImplicationSimplification") {
     val filePrefix = "transformations\\ImplicationSimplification\\"
-    val files = Seq(/*"simple",*/ "complex")
+    val files = Seq("simple", "complex")
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
     val strat = new Strategy[Node]({
@@ -384,6 +384,7 @@ class RewriterTests extends FunSuite with Matchers {
     }
 
     val res = strat.execute(targetNode)
+    val res2 = strat.execute(res)
     //  println("Old: " + targetNode.toString())
       println("New: " + res.toString)
       println("Reference: " + targetRef.toString())
