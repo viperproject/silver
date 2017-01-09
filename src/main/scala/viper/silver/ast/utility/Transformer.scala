@@ -646,8 +646,7 @@ object Transformer {
     case (i: Inhale, Seq(expression: Exp)) =>
       Inhale(expression)(i.pos, i.info)
 
-    // We dont recurse on label
-    case (l: Label, _) => Label(l.name)(l.pos, l.info)
+    case (l: Label, invars: Seq[Exp]) => Label(l.name, invars)(l.pos, l.info)
 
     case (l: LocalVarAssign, Seq(variable: LocalVar, value: Exp)) =>
       LocalVarAssign(variable, value)(l.pos, l.info)

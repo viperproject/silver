@@ -71,11 +71,11 @@ class RewriterTests extends FunSuite with Matchers {
         Seqn(Seq(
           Assert(invars)(w.invs.head.pos, w.invs.head.info),
           If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("skiploop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
-          Label("loop" + count)(w.pos, w.info),
+          Label("loop" + count, Seq(TrueLit()()))(w.pos, w.info),
           w.body,
           Assert(invars)(w.invs.head.pos, w.invs.head.info),
           If(w.cond, Goto("loop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
-          Label("skiploop" + count)(w.pos, w.info)
+          Label("skiploop" + count, Seq(TrueLit()()))(w.pos, w.info)
         ))(w.pos, w.info)
 
     })

@@ -6,13 +6,13 @@ method main()
     if(!(i < 5)) {
         goto skiploop1
     }
-    label loop1
+    label loop1 invariant true
         i := i + 1
         assert i <= 5
         if(i < 5) {
             goto loop1
         }
-    label skiploop1
+    label skiploop1 invariant true
 
     assert(i == 5)
 }
