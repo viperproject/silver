@@ -1,0 +1,10 @@
+function t(r: Int) : Bool
+    requires r > 0
+    ensures r > 0
+    {
+        r > 0
+    }
+    
+method m() 
+    ensures t(0)
+{}
