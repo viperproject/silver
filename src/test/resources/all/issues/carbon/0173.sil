@@ -1,3 +1,5 @@
+// note: identical to 0172.sil
+
 function t(r: Int) : Bool
     requires r > 0
     ensures r > 0
