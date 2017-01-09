@@ -13,7 +13,7 @@ method posterr01(this: Ref, other: Ref)
   ensures  acc(this.f, 1/2)
   ensures  acc(other.f, 1/2)
   //:: ExpectedOutput(application.precondition:assertion.false)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/173/)
+  //:: UnexpectedOutput(poatcondition.violated:assertion.false, /Carbon/issue/173/)
   ensures  fun(this) /* Should fail */
 {}
 
@@ -23,6 +23,6 @@ method posterr02(this: Ref, other: Ref)
   ensures  acc(this.f)
   ensures  acc(other.f)
   //:: ExpectedOutput(application.precondition:assertion.false)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/173/)
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /Carbon/issue/173/)
   ensures  fun(this) /* Should fail */
 {}
