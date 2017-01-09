@@ -15,9 +15,8 @@ import viper.silver.verifier.AbstractError
 import scala.language.implicitConversions
 
 
-
 class DomainInstanceTest extends FunSuite with Matchers {
- /* test("Basic domain instances") {
+  test("Basic domain instances") {
     val t = TypeVar("T")
     val d = Domain("D", Seq(), Seq(), Seq(t))(NoPosition, NoInfo)
     val r = LocalVarDecl("r", Int)(NoPosition, NoInfo)
@@ -26,9 +25,9 @@ class DomainInstanceTest extends FunSuite with Matchers {
     val p = Program(Seq(d), Seq(), Seq(), Seq(), Seq(m))(NoPosition, NoInfo)
 
     p.groundTypeInstances.size should be(3)
-  }*/
+  }
 
- /* test("Basic domain instances 2") {
+  test("Basic domain instances 2") {
     val frontend = new DummyFrontend
     println(System.getProperty("user.dir"))
     val fileR = getClass.getResource("all/basic/domains2.sil")
@@ -37,10 +36,10 @@ class DomainInstanceTest extends FunSuite with Matchers {
 
     frontend.translate(file) match {
       case (Some(p), _) => {
-//        DomainInstances.showInstanceMembers(p)
+        //        DomainInstances.showInstanceMembers(p)
         p.groundTypeInstances.size should be(259)
 
-  //      DomainInstances.showInstanceMembers(p)
+        //      DomainInstances.showInstanceMembers(p)
         for (gi <- p.groundTypeInstances)
           gi match {
             case dt: DomainType => {
@@ -73,18 +72,18 @@ class DomainInstanceTest extends FunSuite with Matchers {
 
     frontend.translate(file) match {
       case (Some(p), _) => {
-//        DomainInstances.showInstanceMembers(p)
+        //        DomainInstances.showInstanceMembers(p)
         p.groundTypeInstances.size should be(7)
 
-/*        for (gi <- p.groundTypeInstances)
+        for (gi <- p.groundTypeInstances)
           gi match {
             case dt: DomainType => {
               dt.domainName should not be "D1"
             }
             case _ =>
           }
-  */
-/*        p.groundTypeInstances.count(
+
+        p.groundTypeInstances.count(
           _ match { case dt: DomainType => dt.domainName == "D10" && dt.typVarsMap.values.forall(_ == Int)
           case _ => false
           }
@@ -93,24 +92,25 @@ class DomainInstanceTest extends FunSuite with Matchers {
           _ match { case dt: DomainType => dt.domainName == "D10"
           case _ => false
           }
-        ) should be(256)*/
+        ) should be(256)
       }
       case _ => {}
     }
 
-  }*/
+  }
 }
 
 
 class DummyFrontend extends SilFrontend {
   def createVerifier(fullCmd: _root_.scala.Predef.String) = ???
+
   def configureVerifier(args: Seq[String]) = ???
 
-  def translate(silverFile: Path): (Option[Program],Seq[AbstractError]) = {
+  def translate(silverFile: Path): (Option[Program], Seq[AbstractError]) = {
     _verifier = None
     _state = TranslatorState.Initialized
 
-    reset(silverFile)               //
+    reset(silverFile) //
     translate()
 
     //println(s"_program = ${_program}") /* Option[Program], set if parsing and translating worked */

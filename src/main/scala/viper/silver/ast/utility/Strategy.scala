@@ -123,11 +123,12 @@ class Strategy[A <: Rewritable[A]](val r: PartialFunction[A, A]) extends Strateg
 
   val NoContext = new Ancestors[A](Seq()) // Just some value because the context is never used
 
-  private var rule: Rule[A] = RuleS(r)
+  private var rule: RuleT[A] = Rule(r)
 
-  def getRule: Rule[A] = {
+  def getRule: RuleT[A] = {
     rule
   }
+  def setRule(r:RuleT[A]) = rule = r
 
   //<editor-fold desc="Overrides for DSL">
 
@@ -142,24 +143,30 @@ class Strategy[A <: Rewritable[A]](val r: PartialFunction[A, A]) extends Strateg
     super.recurseFunc(r)
     this
   }
+  //</editor-fold>
 
+  //<editor-fold desc="Combination Operators">
 
-  def +(s: StrategyInterface[A]): Strategy[A] = {
-    s match {
-      case s: Strategy[A] =>
-        rule = Append[A](rule, s.rule)
-      case _ => println("Error: A simple Strategy can only be combined with other simple Strategies")
-    }
+  def +(s: Strategy[A]): Strategy[A] = {
+    rule = Append[A](rule, s.getRule)
     this
   }
 
-  def <(s: StrategyInterface[A]): Strategy[A] = {
+  def <(s: Strategy[A]): Strategy[A] = {
+    rule = CondAppend[A](rule, s.getRule)
+    this
+  }
+
+  def ?(s:Strategy[A]): PartialTernary[A] = {
+    PartialTernary[A](this, s.getRule)
+  }
+
+  def constructRule(s:StrategyInterface[A], Rbuilder:(RuleT[A],RuleT[A])=>RuleT[A]) = {
     s match {
       case s: Strategy[A] =>
-        rule = CondAppend[A](rule, s.rule)
+        rule = Rbuilder(rule, s.getRule)
       case _ => println("Error: A simple Strategy can only be combined with other simple Strategies")
     }
-    this
   }
 
   //</editor-fold>
@@ -215,13 +222,15 @@ class Strategy[A <: Rewritable[A]](val r: PartialFunction[A, A]) extends Strateg
 
 
 class StrategyA[A <: Rewritable[A]](val r: PartialFunction[(A, Ancestors[A]), A]) extends StrategyInterface[A] {
-  //<editor-fold desc="Overrides for DSL">
 
-  private var rule: Rule[A] = RuleA(r)
+  private var rule: RuleT[A] = RuleA(r)
 
-  def getRule: Rule[A] = {
+  def getRule: RuleT[A] = {
     rule
   }
+  def setRule(r:RuleT[A]) = rule = r
+
+  //<editor-fold desc="Overrides for DSL">
 
   override def traverse(t: Traverse): StrategyA[A] = {
     super.traverse(t)
@@ -232,28 +241,39 @@ class StrategyA[A <: Rewritable[A]](val r: PartialFunction[(A, Ancestors[A]), A]
     super.recurseFunc(r)
     this
   }
+  //</editor-fold>
 
-  def +(s: StrategyInterface[A]): StrategyA[A] = {
-    s match {
-      case s: Strategy[A] =>
-        rule = Append[A](rule, s.getRule)
-      case a: StrategyA[A] =>
-        rule = Append[A](rule, a.rule)
-      case _ => println("Error: A StrategyA can only be combined with simple Strategies or other StrategyAs")
-    }
+  //<editor-fold desc="Combination Operators">
+
+  def +(s: Strategy[A]): StrategyA[A] = {
+    rule = Append(rule, s.getRule)
     this
   }
 
-  def <(s: StrategyInterface[A]): StrategyA[A] = {
-    s match {
-      case s: Strategy[A] =>
-        rule = CondAppend[A](rule, s.getRule)
-      case a: StrategyA[A] =>
-        rule = CondAppend[A](rule, a.rule)
-      case _ => println("Error: A StrategyA can only be combined with simple Strategies or other StrategyAs")
-    }
+  def +(s: StrategyA[A]): StrategyA[A] = {
+    rule = Append(rule, s.getRule)
     this
   }
+
+  def <(s: Strategy[A]): StrategyA[A] = {
+    rule = CondAppend(rule, s.getRule)
+    this
+  }
+
+  def <(s: StrategyA[A]): StrategyA[A] = {
+    rule = CondAppend(rule, s.getRule)
+    this
+  }
+
+  def ?(s:Strategy[A]): PartialTernaryA[A] = {
+    PartialTernaryA[A](this, s.getRule)
+  }
+
+  def ?(s:StrategyA[A]): PartialTernaryA[A] = {
+    PartialTernaryA[A](this, s.getRule)
+  }
+
+  //</editor-fold>
 
   override def execute(node: A): A = {
     traversionMode match {
@@ -322,7 +342,11 @@ class StrategyC[A <: Rewritable[A], C](val r: PartialFunction[(A, Context[A, C])
   protected var upContext: PartialFunction[(A, C), C] = PartialFunction.empty
   protected var defaultContxt: Option[C] = None
 
-  private var rule: Rule[A] = RuleC(r)
+  private var rule: RuleT[A] = RuleC(r)
+
+  def getRule = rule
+
+  def setRule(r:RuleT[A]) = rule = r
 
   //<editor-fold desc="Overrides for DSL">
 
@@ -335,29 +359,50 @@ class StrategyC[A <: Rewritable[A], C](val r: PartialFunction[(A, Context[A, C])
     super.recurseFunc(r)
     this
   }
+  //</editor-fold>
 
-  def +(s: StrategyInterface[A]): StrategyC[A, C] = {
-    s match {
-      case s: Strategy[A] =>
-        rule = Append[A](rule, s.getRule)
-      case a: StrategyA[A] =>
-        rule = Append[A](rule, a.getRule)
-      case c: StrategyC[A, C] =>
-        rule = Append[A](rule, c.rule)
-      case _ => println("Error: A StrategyC can only be combined with simple Strategies, StrategyAs or StrategyCs")
-    }
+  //<editor-fold desc="Combination Operators">
+
+  def +(s: Strategy[A]): StrategyC[A, C] = {
+    rule = Append[A](rule, s.getRule)
     this
   }
 
-  def <(s: StrategyInterface[A]): StrategyC[A, C] = {
-    s match {
-      case s: Strategy[A] =>
-        rule = CondAppend[A](rule, s.getRule)
-      case a: StrategyA[A] =>
-        rule = CondAppend[A](rule, a.getRule)
-      case _ => println("Error: A StrategyC can only be combined with simple Strategies, StrategyAs or StrategyCs")
-    }
+  def +(s: StrategyA[A]): StrategyC[A, C] = {
+    rule = Append[A](rule, s.getRule)
     this
+  }
+
+  def +(s: StrategyC[A, C]): StrategyC[A, C] = {
+    rule = Append[A](rule, s.getRule)
+    this
+  }
+
+  def <(s: Strategy[A]): StrategyC[A, C] = {
+    rule = CondAppend[A](rule, s.getRule)
+    this
+  }
+
+  def <(s: StrategyA[A]): StrategyC[A, C] = {
+    rule = CondAppend[A](rule, s.getRule)
+    this
+  }
+
+  def <(s: StrategyC[A, C]): StrategyC[A, C] = {
+    rule = CondAppend[A](rule, s.getRule)
+    this
+  }
+
+  def ?(s:Strategy[A]): PartialTernaryC[A, C] = {
+    PartialTernaryC[A, C](this, s.getRule)
+  }
+
+  def ?(s:StrategyA[A]): PartialTernaryC[A, C] = {
+    PartialTernaryC[A, C](this, s.getRule)
+  }
+
+  def ?(s:StrategyC[A, C]): PartialTernaryC[A, C] = {
+    PartialTernaryC[A, C](this, s.getRule)
   }
 
   //</editor-fold>
@@ -557,7 +602,7 @@ class Ancestors[A <: Rewritable[A]](val ancestorList: Seq[A]) {
 }
 
 /**
-  * This class works as a Tuple of a custom context and an ancestor list. It extends Ancestors such that we get: RuleC < RuleA < RuleS
+  * This class works as a Tuple of a custom context and an ancestor list. It extends Ancestors such that we get: RuleC < RuleA < Rule
   *
   * @param aList  List from the Ancestors part
   * @param custom Custom context part
@@ -654,9 +699,9 @@ class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) {
 
 /**
   * A trait that is used for providing an interface for rules. We need the contravariance parameter to create the relationship:
-  * RuleC < RuleA < RuleS that proves helpful when combining those rules
+  * RuleC < RuleA < Rule that proves helpful when combining those rules
   */
-private[utility] trait Rule[A <: Rewritable[A]] {
+private[utility] trait RuleT[A <: Rewritable[A]] {
   def execute(node: A, context: Ancestors[A]): Option[A]
 }
 
@@ -665,7 +710,7 @@ private[utility] trait Rule[A <: Rewritable[A]] {
   *
   * @param r The partial function
   */
-private case class RuleC[A <: Rewritable[A], C](r: PartialFunction[(A, Context[A, C]), A]) extends Rule[A] {
+private case class RuleC[A <: Rewritable[A], C](r: PartialFunction[(A, Context[A, C]), A]) extends RuleT[A] {
   override def execute(node: A, context: Ancestors[A]): Option[A] = {
     if (r.isDefinedAt((node, context.asInstanceOf[Context[A, C]]))) {
       val res = r((node, context.asInstanceOf[Context[A, C]]))
@@ -682,7 +727,7 @@ private case class RuleC[A <: Rewritable[A], C](r: PartialFunction[(A, Context[A
   *
   * @param r The partial function
   */
-private case class RuleA[A <: Rewritable[A]](r: PartialFunction[(A, Ancestors[A]), A]) extends Rule[A] {
+private case class RuleA[A <: Rewritable[A]](r: PartialFunction[(A, Ancestors[A]), A]) extends RuleT[A] {
   override def execute(node: A, context: Ancestors[A]): Option[A] = {
     if (r.isDefinedAt((node, context))) {
       val res = r((node, context))
@@ -695,11 +740,11 @@ private case class RuleA[A <: Rewritable[A]](r: PartialFunction[(A, Ancestors[A]
 }
 
 /**
-  * RuleS lifts a partial function to a rule that is used in a Strategy
+  * Rule lifts a partial function to a rule that is used in a Strategy
   *
   * @param r The partial function
   */
-private case class RuleS[A <: Rewritable[A]](r: PartialFunction[A, A]) extends Rule[A] {
+private case class Rule[A <: Rewritable[A]](r: PartialFunction[A, A]) extends RuleT[A] {
 
   def execute(node: A): Option[A] = {
     execute(node, new Ancestors[A](Nil)) // Just put in any parameter. it will not be used anyways
@@ -722,7 +767,7 @@ private case class RuleS[A <: Rewritable[A]](r: PartialFunction[A, A]) extends R
   * @param r1 First rule
   * @param r2 Second rule
   */
-private case class Append[A <: Rewritable[A]](r1: Rule[A], r2: Rule[A]) extends Rule[A] {
+private case class Append[A <: Rewritable[A]](r1: RuleT[A], r2: RuleT[A]) extends RuleT[A] {
 
   override def execute(node: A, context: Ancestors[A]): Option[A] = {
     val res1 = r1.execute(node, context)
@@ -742,7 +787,7 @@ private case class Append[A <: Rewritable[A]](r1: Rule[A], r2: Rule[A]) extends 
   * @param r2 Second rule
   *
   */
-private case class CondAppend[A <: Rewritable[A]](r1: Rule[A], r2: Rule[A]) extends Rule[A] {
+private case class CondAppend[A <: Rewritable[A]](r1: RuleT[A], r2: RuleT[A]) extends RuleT[A] {
 
   override def execute(node: A, context: Ancestors[A]): Option[A] = {
     val res1 = r1.execute(node, context)
@@ -763,7 +808,7 @@ private case class CondAppend[A <: Rewritable[A]](r1: Rule[A], r2: Rule[A]) exte
   * @param r2 Rule in case defined
   * @param r3 Rule in case not defined
   */
-private case class Ternary[A <: Rewritable[A]](r1: Rule[A], r2: Rule[A], r3: Rule[A]) extends Rule[A] {
+private case class Ternary[A <: Rewritable[A]](r1: RuleT[A], r2: RuleT[A], r3: RuleT[A]) extends RuleT[A] {
 
   override def execute(node: A, context: Ancestors[A]): Option[A] = {
     val res1 = r1.execute(node, context)
@@ -774,5 +819,42 @@ private case class Ternary[A <: Rewritable[A]](r1: Rule[A], r2: Rule[A], r3: Rul
       val res3 = r3.execute(node, context)
       if (res3.isDefined) res3 else res1
     }
+  }
+}
+
+// Three partial ternary classes one for each strategy to make it typesafe
+case class PartialTernary[A](s: Strategy[A], r2:RuleT[A]) {
+  def |(s2:Strategy[A]): Strategy[A] = {
+    s.setRule(Ternary(s.getRule, r2, s2.getRule))
+    s
+  }
+}
+
+case class PartialTernaryA[A](s: StrategyA[A], r2:RuleT[A]) {
+  def |(s2:Strategy[A]): StrategyA[A] = {
+    s.setRule(Ternary(s.getRule, r2, s2.getRule))
+    s
+  }
+
+  def |(s2:StrategyA[A]): StrategyA[A] = {
+    s.setRule(Ternary(s.getRule, r2, s2.getRule))
+    s
+  }
+}
+
+case class PartialTernaryC[A, C](s: StrategyC[A, C], r2:RuleT[A]) {
+  def |(s2:Strategy[A]): StrategyC[A, C] = {
+    s.setRule(Ternary(s.getRule, r2, s2.getRule))
+    s
+  }
+
+  def |(s2:StrategyA[A]): StrategyC[A, C] = {
+    s.setRule(Ternary(s.getRule, r2, s2.getRule))
+    s
+  }
+
+  def |(s2:StrategyC[A, C]): StrategyC[A, C] = {
+    s.setRule(Ternary(s.getRule, r2, s2.getRule))
+    s
   }
 }
