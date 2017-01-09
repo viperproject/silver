@@ -211,9 +211,11 @@ trait SilFrontend extends DefaultFrontend {
   override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
     val result = FastParser.parse(input, file)
+
      result match {
       case Parsed.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
         if (err_list.isEmpty || err_list.forall{ case p => p.isInstanceOf[ParseWarning] })
+
         Succ({ e.initProperties(); e })
       else Fail(err_list)
       case Parsed.Failure(msg, next, extra) =>

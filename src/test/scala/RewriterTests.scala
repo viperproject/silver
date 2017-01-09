@@ -22,6 +22,24 @@ class RewriterTests extends FunSuite with Matchers {
 
   }
 
+  test("QuantifiedPermissions") {
+    val filePrefix = "transformations\\QuantifiedPermissions\\"
+    val files = Seq("simple", "allCases")
+
+    val strat = new Strategy[Node]({
+      case f@Forall(decl, _, Implies(l, r)) if r.isPure =>
+        f
+      case f@Forall(decls, triggers, i@Implies(li, And(l, r))) =>
+        And(Forall(decls, triggers, Implies(li, l)(i.pos, i.info))(f.pos, f.info), Forall(decls, triggers, Implies(li, r)(i.pos, i.info))(f.pos, f.info).rn.asInstanceOf[Exp])(f.pos, f.info)
+      case f@Forall(decls, triggers, i@Implies(li, Implies(l, r))) if l.isPure =>
+        Forall(decls, triggers, Implies(And(li, l)(i.pos, i.info), r)(i.pos, i.info))(f.pos, f.info)
+    })
+
+    val frontend = new DummyFrontend
+    files foreach { name => executeTest(filePrefix, name, strat, frontend)}
+
+  }
+
   test("ImplicationToDisjunctionTests") {
     val filePrefix = "transformations\\ImplicationsToDisjunction\\"
     val files = Seq("simple", "nested", "traverseEverything")
@@ -39,22 +57,57 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
     val files = Seq("simple", "nested", "functions")
 
-    val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
-      case (Or(l, r), c) =>
-        //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
-        c.custom match {
-          case Seq() => InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)())()
-          // Had to do variable renaming because otherwise variable would be quantified inside again with forall
-          case varDecls => InhaleExhaleExp(CondExp(Forall(varDecls.map { vari => LocalVarDecl(vari.name + "Trafo", vari.typ)(vari.pos, vari.info) }, Seq(), TrueLit()())(), l, r)(), Or(l, r)())() // Placed true lit instead of nonDet
-        }
-    }) updateContext {
-      case (q: QuantifiedExp, c) => c ++ q.variables
-    } traverse Traverse.TopDown recurseFunc {
-      case i: InhaleExhaleExp => Seq(true, false)
-    } defaultContext Seq()
-
     val frontend = new DummyFrontend
-    files foreach { name => executeTest(filePrefix, name, strat, frontend) }
+    files foreach { fileName: String => {
+      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+      assert(fileRes != null, s"File $filePrefix$fileName not found")
+      assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
+      val file = Paths.get(fileRes.toURI)
+      val ref = Paths.get(fileRef.toURI)
+
+
+      var targetNode: Program = null
+      var targetRef: Program = null
+
+      frontend.translate(file) match {
+        case (Some(p), _) => targetNode = p
+        case (None, errors) => println("Problem with program: " + errors)
+      }
+
+      // We use for NonDet a function that has name NonDet(i) where i is number of arguments
+      def NonDet(vars: Seq[LocalVarDecl]): Exp = {
+        val func: Function = targetNode.functions.find(_.name == "NonDet" + vars.size).get
+        FuncApp(func, vars.map { x => x.localVar })()
+      }
+
+      val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
+        case (Or(l, r), c) =>
+          //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
+          c.custom match {
+            case Seq() => InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)().rn.asInstanceOf[Exp])()
+            // Had to do variable renaming because otherwise variable would be quantified inside again with forall
+            case varDecls => {
+              val vars = varDecls.map { vari => LocalVarDecl(vari.name, vari.typ)(vari.pos, vari.info) }
+              InhaleExhaleExp(CondExp(NonDet(vars), l, r)(), Or(l, r)().rn.asInstanceOf[Exp])()
+            }
+          }
+      }) updateContext {
+        case (q: QuantifiedExp, c) => c ++ q.variables
+      } defaultContext Seq()
+
+      frontend.translate(ref) match {
+        case (Some(p), _) => targetRef = p
+        case (None, errors) => println("Problem with program: " + errors)
+      }
+
+      val res = strat.execute(targetNode)
+      //  println("Old: " + targetNode.toString())
+      println("New: " + res.toString())
+      println("Reference: " + targetRef.toString())
+      assert(res.toString() == targetRef.toString(), "Files are not equal")
+    }
+    }
   }
 
   test("WhileToIfAndGoto") {
@@ -326,7 +379,7 @@ class RewriterTests extends FunSuite with Matchers {
 
   test("CopyPropagation") {
     val filePrefix = "transformations\\CopyPropagation\\"
-    val files = Seq("complex")
+    val files = Seq("simple", "complex")
 
     val frontend = new DummyFrontend
 
@@ -363,13 +416,8 @@ class RewriterTests extends FunSuite with Matchers {
   def executeTest(filePrefix: String, fileName: String, strat: StrategyInterface[Node], frontend: DummyFrontend): Unit = {
 
     val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-    val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
     assert(fileRes != null, s"File $filePrefix$fileName not found")
-    assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
     val file = Paths.get(fileRes.toURI)
-    val ref = Paths.get(fileRef.toURI)
-
-
     var targetNode: Node = null
     var targetRef: Node = null
 
@@ -377,14 +425,18 @@ class RewriterTests extends FunSuite with Matchers {
       case (Some(p), _) => targetNode = p
       case (None, errors) => println("Problem with program: " + errors)
     }
+    val res = strat.execute(targetNode)
+    println("debug:" + res.toString())
 
+    val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+    assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
+
+    val ref = Paths.get(fileRef.toURI)
     frontend.translate(ref) match {
       case (Some(p), _) => targetRef = p
       case (None, errors) => println("Problem with program: " + errors)
     }
 
-    val res = strat.execute(targetNode)
-    val res2 = strat.execute(res)
     //  println("Old: " + targetNode.toString())
       println("New: " + res.toString)
       println("Reference: " + targetRef.toString())

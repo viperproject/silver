@@ -79,19 +79,16 @@ trait StrategyInterface[A <: Rewritable[A]] {
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     val newChildren: Seq[Any] = children.zip(childrenSelect) map {
-      case (child, b) => if (b) {
-        child match {
-          case o: Option[Rewritable[A]] => o match {
-            case None => None
-            case Some(x: Rewritable[A]) => Some(recurse(x.asInstanceOf[A]))
-          }
-          case s: Seq[Rewritable[A]] => s map { x => recurse(x.asInstanceOf[A]) }
-          case n: Rewritable[A] => recurse(n.asInstanceOf[A])
-        }
-      } else {
-        child
+      case (o: Option[Rewritable[A]], true) => o match {
+        case None => None
+        case Some(x: Rewritable[A]) => if (x.rec) Some(recurse(x.asInstanceOf[A])) else x
       }
+      case (s: Seq[Rewritable[A]], true) => s map { x => if (x.rec) recurse(x.asInstanceOf[A]) else x }
+      case (n: Rewritable[A], true) => if (n.rec) recurse(n.asInstanceOf[A]) else n
+      case (old, false) => old
     }
+
+
     val hasChanged: Boolean = newChildren.foldLeft(false)((b1, elem) => {
       val b2 = elem match {
         case seq: Seq[Rewritable[A]] => seq.map { x => x.wasTransformed }.fold(false)(_ || _)
@@ -128,7 +125,8 @@ class Strategy[A <: Rewritable[A]](val r: PartialFunction[A, A]) extends Strateg
   def getRule: RuleT[A] = {
     rule
   }
-  def setRule(r:RuleT[A]) = rule = r
+
+  def setRule(r: RuleT[A]) = rule = r
 
   //<editor-fold desc="Overrides for DSL">
 
@@ -143,6 +141,7 @@ class Strategy[A <: Rewritable[A]](val r: PartialFunction[A, A]) extends Strateg
     super.recurseFunc(r)
     this
   }
+
   //</editor-fold>
 
   //<editor-fold desc="Combination Operators">
@@ -157,11 +156,11 @@ class Strategy[A <: Rewritable[A]](val r: PartialFunction[A, A]) extends Strateg
     this
   }
 
-  def ?(s:Strategy[A]): PartialTernary[A] = {
+  def ?(s: Strategy[A]): PartialTernary[A] = {
     PartialTernary[A](this, s.getRule)
   }
 
-  def constructRule(s:StrategyInterface[A], Rbuilder:(RuleT[A],RuleT[A])=>RuleT[A]) = {
+  def constructRule(s: StrategyInterface[A], Rbuilder: (RuleT[A], RuleT[A]) => RuleT[A]) = {
     s match {
       case s: Strategy[A] =>
         rule = Rbuilder(rule, s.getRule)
@@ -228,7 +227,8 @@ class StrategyA[A <: Rewritable[A]](val r: PartialFunction[(A, Ancestors[A]), A]
   def getRule: RuleT[A] = {
     rule
   }
-  def setRule(r:RuleT[A]) = rule = r
+
+  def setRule(r: RuleT[A]) = rule = r
 
   //<editor-fold desc="Overrides for DSL">
 
@@ -241,6 +241,7 @@ class StrategyA[A <: Rewritable[A]](val r: PartialFunction[(A, Ancestors[A]), A]
     super.recurseFunc(r)
     this
   }
+
   //</editor-fold>
 
   //<editor-fold desc="Combination Operators">
@@ -265,11 +266,11 @@ class StrategyA[A <: Rewritable[A]](val r: PartialFunction[(A, Ancestors[A]), A]
     this
   }
 
-  def ?(s:Strategy[A]): PartialTernaryA[A] = {
+  def ?(s: Strategy[A]): PartialTernaryA[A] = {
     PartialTernaryA[A](this, s.getRule)
   }
 
-  def ?(s:StrategyA[A]): PartialTernaryA[A] = {
+  def ?(s: StrategyA[A]): PartialTernaryA[A] = {
     PartialTernaryA[A](this, s.getRule)
   }
 
@@ -346,7 +347,7 @@ class StrategyC[A <: Rewritable[A], C](val r: PartialFunction[(A, Context[A, C])
 
   def getRule = rule
 
-  def setRule(r:RuleT[A]) = rule = r
+  def setRule(r: RuleT[A]) = rule = r
 
   //<editor-fold desc="Overrides for DSL">
 
@@ -359,6 +360,7 @@ class StrategyC[A <: Rewritable[A], C](val r: PartialFunction[(A, Context[A, C])
     super.recurseFunc(r)
     this
   }
+
   //</editor-fold>
 
   //<editor-fold desc="Combination Operators">
@@ -393,15 +395,15 @@ class StrategyC[A <: Rewritable[A], C](val r: PartialFunction[(A, Context[A, C])
     this
   }
 
-  def ?(s:Strategy[A]): PartialTernaryC[A, C] = {
+  def ?(s: Strategy[A]): PartialTernaryC[A, C] = {
     PartialTernaryC[A, C](this, s.getRule)
   }
 
-  def ?(s:StrategyA[A]): PartialTernaryC[A, C] = {
+  def ?(s: StrategyA[A]): PartialTernaryC[A, C] = {
     PartialTernaryC[A, C](this, s.getRule)
   }
 
-  def ?(s:StrategyC[A, C]): PartialTernaryC[A, C] = {
+  def ?(s: StrategyC[A, C]): PartialTernaryC[A, C] = {
     PartialTernaryC[A, C](this, s.getRule)
   }
 
@@ -530,10 +532,10 @@ class RepeatedStrategy[A <: Rewritable[A]](s: StrategyInterface[A]) extends Stra
     if (i <= 0) node
 
     val result = s.execute(node)
-    if(!result.wasTransformed) {
+    if (!result.wasTransformed) {
       result
     } else {
-      execute(result, i-1)
+      execute(result, i - 1)
     }
   }
 }
@@ -823,37 +825,37 @@ private case class Ternary[A <: Rewritable[A]](r1: RuleT[A], r2: RuleT[A], r3: R
 }
 
 // Three partial ternary classes one for each strategy to make it typesafe
-case class PartialTernary[A](s: Strategy[A], r2:RuleT[A]) {
-  def |(s2:Strategy[A]): Strategy[A] = {
+case class PartialTernary[A <: Rewritable[A]](s: Strategy[A], r2: RuleT[A]) {
+  def |(s2: Strategy[A]): Strategy[A] = {
     s.setRule(Ternary(s.getRule, r2, s2.getRule))
     s
   }
 }
 
-case class PartialTernaryA[A](s: StrategyA[A], r2:RuleT[A]) {
-  def |(s2:Strategy[A]): StrategyA[A] = {
+case class PartialTernaryA[A <: Rewritable[A]](s: StrategyA[A], r2: RuleT[A]) {
+  def |(s2: Strategy[A]): StrategyA[A] = {
     s.setRule(Ternary(s.getRule, r2, s2.getRule))
     s
   }
 
-  def |(s2:StrategyA[A]): StrategyA[A] = {
+  def |(s2: StrategyA[A]): StrategyA[A] = {
     s.setRule(Ternary(s.getRule, r2, s2.getRule))
     s
   }
 }
 
-case class PartialTernaryC[A, C](s: StrategyC[A, C], r2:RuleT[A]) {
-  def |(s2:Strategy[A]): StrategyC[A, C] = {
+case class PartialTernaryC[A <: Rewritable[A], C](s: StrategyC[A, C], r2: RuleT[A]) {
+  def |(s2: Strategy[A]): StrategyC[A, C] = {
     s.setRule(Ternary(s.getRule, r2, s2.getRule))
     s
   }
 
-  def |(s2:StrategyA[A]): StrategyC[A, C] = {
+  def |(s2: StrategyA[A]): StrategyC[A, C] = {
     s.setRule(Ternary(s.getRule, r2, s2.getRule))
     s
   }
 
-  def |(s2:StrategyC[A, C]): StrategyC[A, C] = {
+  def |(s2: StrategyC[A, C]): StrategyC[A, C] = {
     s.setRule(Ternary(s.getRule, r2, s2.getRule))
     s
   }

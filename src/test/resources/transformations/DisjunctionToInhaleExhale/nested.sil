@@ -1,3 +1,7 @@
+function NonDet1(vari: Bool):Bool {
+    true
+}
+
 method main() returns ()
 {
    var i: Bool := true

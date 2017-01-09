@@ -21,6 +21,7 @@ import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
+import viper.silver.ast.utility.{Strategy, StrategyC}
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 
 import scala.util.parsing.input.NoPosition
@@ -691,6 +692,33 @@ object FastParser extends PosParser{
               expandDefines(localDefines ++ globalDefines, methWithoutDefines)
           }
 
+
+      /*val strat = new StrategyC[PNode, Seq[PDefine]]({
+        case (d:PDomain, defines) => {
+          expandDefines(defines.custom, d)
+        }
+        case (f:PFunction, defines) => {
+          expandDefines(defines.custom, f)
+        }
+        case (p:PPredicate, defines) => {
+          expandDefines(defines.custom, p)
+        }
+        case (meth:PMethod, defines) => {
+          var localDefines = meth.deepCollect { case n: PDefine => n }
+          localDefines = expandDefines(localDefines ++ defines.custom, localDefines)
+
+          val methWithoutDefines =
+            if (localDefines.isEmpty)
+              meth
+            else
+              meth.transform { case la: PDefine => PSkip().setPos(la) }()
+
+          expandDefines(localDefines ++ defines.custom, methWithoutDefines)
+        }
+      }) defaultContext globalDefines
+
+      val res = strat.execute(PProgram(files, domains, fields, functions, predicates, methods, imp_reports)).asInstanceOf[PProgram]
+      res*/
       PProgram(files, domains, fields, functions, predicates, methods, imp_reports)
   }
 

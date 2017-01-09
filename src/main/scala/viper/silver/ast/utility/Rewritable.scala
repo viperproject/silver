@@ -9,9 +9,20 @@ package viper.silver.ast.utility
 trait Rewritable[A <: Rewritable[A]] {
 
   private var transformed = false
+  private var recurse = true
 
   def wasTransformed = transformed
   def setTransformed(b: Boolean) = transformed = b
+
+  def r = {
+    recurse = true
+    this
+  }
+  def rn = {
+    recurse = false
+    this
+  }
+  def rec = recurse
 
   /**
     * Method that accesses all children of a node. Will be either a node or a traversable of a node

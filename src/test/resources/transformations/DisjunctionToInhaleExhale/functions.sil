@@ -1,3 +1,10 @@
+function NonDet1(vari1: Bool):Bool {
+    true
+}
+
+function NonDet2(vari1:Bool, vari2:Bool): Bool {
+    true
+}
 
 function func(b: Bool): Bool
   ensures exists k: Bool :: true || (b && (k || exists j: Bool :: true || j)) {
