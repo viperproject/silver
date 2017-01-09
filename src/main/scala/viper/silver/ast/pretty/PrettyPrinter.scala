@@ -431,7 +431,7 @@ trait BracketPrettyPrinter extends FastPrettyPrinterBase {
     val po = outer.priority
     lazy val fi = inner.fixity
     lazy val fo = outer.fixity
-    (pi < po) ||
+    (pi > po) ||
       ((fi, side) match {
         case (Postfix, LeftAssociative) =>
           true
@@ -660,8 +660,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           ) <> line)
       case If(cond, thn, els) =>
         text("if") <+> parens(show(cond)) <+> showBlock(thn) <> showElse(els)
-      case Label(name) =>
-        text("label") <+> name
+      case Label(name, invs) =>
+        text("label") <+> name <>
+          nest(defaultIndent,
+            showContracts("invariant", invs)
+          )
       case Goto(target) =>
         text("goto") <+> target
       case null => uninitialized
@@ -713,7 +716,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case ApplyOld(exp) =>
       text("given") <> parens(show(exp))
     case Let(v, exp, body) =>
-      parens(text("let") <+> show(v) <+> "==" <+> show(exp) <+> "in" <+> show(body))
+      parens(text("let") <+> text(v.name) <+> "==" <+> parens(show(exp)) <+> "in" <+> show(body))
     case CondExp(cond, thn, els) =>
       parens(show(cond) <+> "?" <+> show(thn) <+> ":" <+> show(els))
     case Exists(v, exp) =>

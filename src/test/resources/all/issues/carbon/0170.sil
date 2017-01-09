@@ -1,0 +1,17 @@
+field f1: Ref
+
+field f2: Ref
+
+method test1(a: Ref)
+    requires acc(a.f2, write)
+    ensures acc(a.f2, write - perm(a.f1))
+    ensures (forperm [f2] r :: false)
+{
+}
+
+method test2(a: Ref)
+{
+    inhale acc(a.f2, write)
+    exhale acc(a.f2, write - perm(a.f1))
+    exhale (forperm [f2] r :: false)
+}

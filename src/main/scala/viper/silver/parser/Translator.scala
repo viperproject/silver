@@ -179,8 +179,8 @@ case class Translator(program: PProgram) {
       case PMethodCall(targets, method, args) =>
         val ts = (targets map exp).asInstanceOf[Seq[LocalVar]]
         MethodCall(findMethod(method), args map exp, ts)(pos)
-      case PLabel(name) =>
-        Label(name.name)(pos)
+      case PLabel(name, invs) =>
+        Label(name.name, invs map exp)(pos)
       case PGoto(label) =>
         Goto(label.name)(pos)
       case PIf(cond, thn, els) =>
@@ -189,9 +189,9 @@ case class Translator(program: PProgram) {
       case PConstraining(vars, ss) =>
         Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss))(pos)
       case PWhile(cond, invs, body) =>
-        val plocals = body.childStmts collect { // Note: this won't collect declarations from nested loops
+        val plocals = body.deepCollect({ // Note: this will collect declarations from nested loops
           case l: PLocalVarDecl => l
-        }
+        })
         val locals = plocals map {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }
