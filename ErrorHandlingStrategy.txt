@@ -1,0 +1,78 @@
+
+// Strategy 1: While 2 If and Goto
+val func1: PartialFunction[VerificationError, VerificationError] = {
+  case AssertFailed(as, r) => LoopInvariantNotPreserved(as.exp, r)
+}
+
+val func2: PartialFunction[VerificationError, VerificationError] = {
+  case AssertFailed(as, r) => LoopInvariantNotEstablished(as.exp, r)
+}
+
+// Example of how to transform a while loop into if and goto
+// Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
+var count = 0
+val strat = new Strategy[Node]({
+  case w: While =>
+	val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
+	count = count + 1
+	Seqn(Seq(
+	  Assert(invars)(w.invs.head.pos, w.invs.head.info).setErrorTransform(func2).asInstanceOf[Stmt],
+	  If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("skiploop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
+	  Label("loop" + count)(w.pos, w.info),
+	  w.body,
+	  Assert(invars)(w.invs.head.pos, w.invs.head.info).setErrorTransform(func1).asInstanceOf[Stmt],
+	  If(w.cond, Goto("loop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
+	  Label("skiploop" + count)(w.pos, w.info)
+	))(w.pos, w.info)
+})
+
+// Strategy 2: Our blackboard example
+val strat = new Strategy[Node]({
+  case a:Assert => val e = Exhale(a.exp)(a.pos, a.info); e.setErrorTransform({
+	case ExhaleFailed(_, r) => AssertFailed(a, r.offendingNode.transformReason(r))
+  })
+  case o@And(f:FalseLit, right) => FalseLit()(o.pos, o.info).setErrorReasonTransform({
+	case AssertionFalse(_) => AssertionFalse(o)
+  })
+  case o@And(left, f:FalseLit) => FalseLit()(o.pos, o.info).setErrorReasonTransform({
+	case AssertionFalse(_) => AssertionFalse(o)
+  })
+})
+
+// Code inside SilSuite: only for testing purposes
+val actualErrors:Seq[AbstractError] = fe.result match {
+case Success => Nil
+case Failure(es) => es collect {
+  case e:VerificationError => {
+	val error:VerificationError = e.offendingNode.transformError(e)
+	error
+  }
+  case rest:AbstractError => rest
+}
+}
+
+
+// Modifications of Ast - Probably better with only one class of error messages not reason and error
+protected var errorTransform: PartialFunction[VerificationError, VerificationError] = PartialFunction.empty[VerificationError, VerificationError]
+protected var reasonTransform: PartialFunction[ErrorReason, ErrorReason] = PartialFunction.empty[ErrorReason, ErrorReason]
+
+
+def setErrorTransform(pf: PartialFunction[VerificationError, VerificationError]): Node = {
+	errorTransform = pf
+	this
+}
+def setErrorReasonTransform(pf: PartialFunction[ErrorReason, ErrorReason]): Node = {
+	reasonTransform = pf
+	this
+}
+
+def transformError(e: VerificationError) = {
+	val res = errorTransform.applyOrElse(e, (x:VerificationError) => e)
+	res
+}
+
+def transformReason(e: ErrorReason) = {
+	val res = reasonTransform.applyOrElse(e, (x:ErrorReason) => e)
+	res
+}
+
