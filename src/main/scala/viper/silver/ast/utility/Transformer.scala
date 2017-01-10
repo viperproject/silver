@@ -53,142 +53,143 @@ object Transformer {
         case exp: Exp =>
           val p = exp.pos
           val i = exp.info
+          val err = exp.errT
           exp match {
             case IntLit(_) => exp
             case BoolLit(_) => exp
             case NullLit() => exp
             case AbstractLocalVar(_) => exp
             // AS: added recursion on field: this was previously missing (as for all "shared" nodes in AST). But this could lead to the type of the field not being transformed consistently with its declaration (if the whole program is transformed)
-            case FieldAccess(rcv, field) => FieldAccess(go(rcv), go(field))(p, i)
+            case FieldAccess(rcv, field) => FieldAccess(go(rcv), go(field))(p, i, err)
             case PredicateAccess(params, predicateName) =>
-              PredicateAccess(params map go, predicateName)(p, i)
+              PredicateAccess(params map go, predicateName)(p, i, err)
 
-            case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i)
+            case Unfolding(acc, e) => Unfolding(go(acc), go(e))(p, i, err)
 
-            case UnfoldingGhostOp(acc, e) => UnfoldingGhostOp(go(acc), go(e))(p, i)
-            case FoldingGhostOp(acc, e) => FoldingGhostOp(go(acc), go(e))(p, i)
-            case ApplyingGhostOp(wand, in) => ApplyingGhostOp(go(wand), go(in))(p, i)
-            case PackagingGhostOp(wand, in) => PackagingGhostOp(go(wand), go(in))(p, i)
+            case UnfoldingGhostOp(acc, e) => UnfoldingGhostOp(go(acc), go(e))(p, i, err)
+            case FoldingGhostOp(acc, e) => FoldingGhostOp(go(acc), go(e))(p, i, err)
+            case ApplyingGhostOp(wand, in) => ApplyingGhostOp(go(wand), go(in))(p, i, err)
+            case PackagingGhostOp(wand, in) => PackagingGhostOp(go(wand), go(in))(p, i, err)
 
-            case Old(e) => Old(go(e))(p, i)
-            case LabelledOld(e,lbl) => LabelledOld(go(e),lbl)(p,i)
-            case ApplyOld(e) => ApplyOld(go(e))(p, i)
+            case Old(e) => Old(go(e))(p, i, err)
+            case LabelledOld(e,lbl) => LabelledOld(go(e),lbl)(p,i, err)
+            case ApplyOld(e) => ApplyOld(go(e))(p, i, err)
             case CondExp(cond, thn, els) =>
-              CondExp(go(cond), go(thn), go(els))(p, i)
-            case Let(v, exp1, body) => Let(go(v), go(exp1), go(body))(p, i)
-            case Exists(v, e) => Exists(v map go, go(e))(p, i)
+              CondExp(go(cond), go(thn), go(els))(p, i, err)
+            case Let(v, exp1, body) => Let(go(v), go(exp1), go(body))(p, i, err)
+            case Exists(v, e) => Exists(v map go, go(e))(p, i, err)
             case Forall(v, triggers, e) =>
-              Forall(v map go, triggers map go, go(e))(p, i)
+              Forall(v map go, triggers map go, go(e))(p, i, err)
             case ForPerm(v, fields, e) =>
-              ForPerm(go(v), fields map go, go(e))(p,i)
+              ForPerm(go(v), fields map go, go(e))(p,i, err)
             case InhaleExhaleExp(in, ex) =>
-              InhaleExhaleExp(go(in), go(ex))(p, i)
+              InhaleExhaleExp(go(in), go(ex))(p, i, err)
             case WildcardPerm() => exp
             case FullPerm() => exp
             case NoPerm() => exp
             case EpsilonPerm() => exp
-            case CurrentPerm(loc) => CurrentPerm(go(loc))(p, i)
+            case CurrentPerm(loc) => CurrentPerm(go(loc))(p, i, err)
             case FractionalPerm(left, right) =>
-              FractionalPerm(go(left), go(right))(p, i)
+              FractionalPerm(go(left), go(right))(p, i, err)
             case PermDiv(left, right) =>
-              PermDiv(go(left), go(right))(p, i)
+              PermDiv(go(left), go(right))(p, i, err)
             case FieldAccessPredicate(loc, perm) =>
-              FieldAccessPredicate(go(loc), go(perm))(p, i)
+              FieldAccessPredicate(go(loc), go(perm))(p, i, err)
             case PredicateAccessPredicate(loc, perm) =>
-              PredicateAccessPredicate(go(loc), go(perm))(p, i)
+              PredicateAccessPredicate(go(loc), go(perm))(p, i, err)
             case fa@FuncApp(fname, args) =>
-              FuncApp(fname, args map go)(p, i, fa.typ, fa.formalArgs)
+              FuncApp(fname, args map go)(p, i, fa.typ, fa.formalArgs, err)
             case dfa@DomainFuncApp(fname, args, m) =>
-              DomainFuncApp(fname, args map go, goTypeVariables(m))(p, i, dfa.typ, dfa.formalArgs,dfa.domainName)
+              DomainFuncApp(fname, args map go, goTypeVariables(m))(p, i, dfa.typ, dfa.formalArgs,dfa.domainName, err)
 
-            case Minus(e) => Minus(go(e))(p, i)
-            case Not(e) => Not(go(e))(p, i)
+            case Minus(e) => Minus(go(e))(p, i, err)
+            case Not(e) => Not(go(e))(p, i, err)
 
-            case Or(l, r) => Or(go(l), go(r))(p, i)
-            case And(l, r) => And(go(l), go(r))(p, i)
-            case Implies(l, r) => Implies(go(l), go(r))(p, i)
-            case MagicWand(l, r) => MagicWand(go(l), go(r))(p, i)
+            case Or(l, r) => Or(go(l), go(r))(p, i, err)
+            case And(l, r) => And(go(l), go(r))(p, i, err)
+            case Implies(l, r) => Implies(go(l), go(r))(p, i, err)
+            case MagicWand(l, r) => MagicWand(go(l), go(r))(p, i, err)
 
-            case Add(l, r) => Add(go(l), go(r))(p, i)
-            case Sub(l, r) => Sub(go(l), go(r))(p, i)
-            case Mul(l, r) => Mul(go(l), go(r))(p, i)
-            case Div(l, r) => Div(go(l), go(r))(p, i)
-            case Mod(l, r) => Mod(go(l), go(r))(p, i)
+            case Add(l, r) => Add(go(l), go(r))(p, i, err)
+            case Sub(l, r) => Sub(go(l), go(r))(p, i, err)
+            case Mul(l, r) => Mul(go(l), go(r))(p, i, err)
+            case Div(l, r) => Div(go(l), go(r))(p, i, err)
+            case Mod(l, r) => Mod(go(l), go(r))(p, i, err)
 
-            case LtCmp(l, r) => LtCmp(go(l), go(r))(p, i)
-            case LeCmp(l, r) => LeCmp(go(l), go(r))(p, i)
-            case GtCmp(l, r) => GtCmp(go(l), go(r))(p, i)
-            case GeCmp(l, r) => GeCmp(go(l), go(r))(p, i)
+            case LtCmp(l, r) => LtCmp(go(l), go(r))(p, i, err)
+            case LeCmp(l, r) => LeCmp(go(l), go(r))(p, i, err)
+            case GtCmp(l, r) => GtCmp(go(l), go(r))(p, i, err)
+            case GeCmp(l, r) => GeCmp(go(l), go(r))(p, i, err)
 
-            case EqCmp(l, r) => EqCmp(go(l), go(r))(p, i)
-            case NeCmp(l, r) => NeCmp(go(l), go(r))(p, i)
+            case EqCmp(l, r) => EqCmp(go(l), go(r))(p, i, err)
+            case NeCmp(l, r) => NeCmp(go(l), go(r))(p, i, err)
 
-            case PermMinus(e) => PermMinus(go(e))(p, i)
-            case PermAdd(l, r) => PermAdd(go(l), go(r))(p, i)
-            case PermSub(l, r) => PermSub(go(l), go(r))(p, i)
-            case PermMul(l, r) => PermMul(go(l), go(r))(p, i)
-            case IntPermMul(l, r) => IntPermMul(go(l), go(r))(p, i)
+            case PermMinus(e) => PermMinus(go(e))(p, i, err)
+            case PermAdd(l, r) => PermAdd(go(l), go(r))(p, i, err)
+            case PermSub(l, r) => PermSub(go(l), go(r))(p, i, err)
+            case PermMul(l, r) => PermMul(go(l), go(r))(p, i, err)
+            case IntPermMul(l, r) => IntPermMul(go(l), go(r))(p, i, err)
 
-            case PermLtCmp(l, r) => PermLtCmp(go(l), go(r))(p, i)
-            case PermLeCmp(l, r) => PermLeCmp(go(l), go(r))(p, i)
-            case PermGtCmp(l, r) => PermGtCmp(go(l), go(r))(p, i)
-            case PermGeCmp(l, r) => PermGeCmp(go(l), go(r))(p, i)
+            case PermLtCmp(l, r) => PermLtCmp(go(l), go(r))(p, i, err)
+            case PermLeCmp(l, r) => PermLeCmp(go(l), go(r))(p, i, err)
+            case PermGtCmp(l, r) => PermGtCmp(go(l), go(r))(p, i, err)
+            case PermGeCmp(l, r) => PermGeCmp(go(l), go(r))(p, i, err)
 
-            case EmptySeq(elemTyp) => EmptySeq(go(elemTyp))(p, i)
-            case ExplicitSeq(elems) => ExplicitSeq(elems map go)(p, i)
-            case RangeSeq(low, high) => RangeSeq(go(low), go(high))(p, i)
-            case SeqAppend(left, right) => SeqAppend(go(left), go(right))(p, i)
-            case SeqIndex(seq, idx) => SeqIndex(go(seq), go(idx))(p, i)
-            case SeqTake(seq, n) => SeqTake(go(seq), go(n))(p, i)
-            case SeqDrop(seq, n) => SeqDrop(go(seq), go(n))(p, i)
-            case SeqContains(elem, seq) => SeqContains(go(elem), go(seq))(p, i)
+            case EmptySeq(elemTyp) => EmptySeq(go(elemTyp))(p, i, err)
+            case ExplicitSeq(elems) => ExplicitSeq(elems map go)(p, i, err)
+            case RangeSeq(low, high) => RangeSeq(go(low), go(high))(p, i, err)
+            case SeqAppend(left, right) => SeqAppend(go(left), go(right))(p, i, err)
+            case SeqIndex(seq, idx) => SeqIndex(go(seq), go(idx))(p, i, err)
+            case SeqTake(seq, n) => SeqTake(go(seq), go(n))(p, i, err)
+            case SeqDrop(seq, n) => SeqDrop(go(seq), go(n))(p, i, err)
+            case SeqContains(elem, seq) => SeqContains(go(elem), go(seq))(p, i, err)
             case SeqUpdate(seq, idx, elem) =>
-              SeqUpdate(go(seq), go(idx), go(elem))(p, i)
-            case SeqLength(seq) => SeqLength(go(seq))(p, i)
+              SeqUpdate(go(seq), go(idx), go(elem))(p, i, err)
+            case SeqLength(seq) => SeqLength(go(seq))(p, i, err)
 
             case EmptySet(elemTyp) => exp
-            case ExplicitSet(elems) => ExplicitSet(elems map go)(p, i)
+            case ExplicitSet(elems) => ExplicitSet(elems map go)(p, i, err)
             case EmptyMultiset(elemTyp) => exp
-            case ExplicitMultiset(elems) => ExplicitMultiset(elems map go)(p, i)
-            case AnySetUnion(left, right) => AnySetUnion(go(left), go(right))(p, i)
-            case AnySetIntersection(left, right) => AnySetIntersection(go(left), go(right))(p, i)
-            case AnySetSubset(left, right) => AnySetSubset(go(left), go(right))(p, i)
-            case AnySetMinus(left, right) => AnySetMinus(go(left), go(right))(p, i)
-            case AnySetContains(elem, s) => AnySetContains(go(elem), go(s))(p, i)
-            case AnySetCardinality(s) => AnySetCardinality(go(s))(p, i)
+            case ExplicitMultiset(elems) => ExplicitMultiset(elems map go)(p, i, err)
+            case AnySetUnion(left, right) => AnySetUnion(go(left), go(right))(p, i, err)
+            case AnySetIntersection(left, right) => AnySetIntersection(go(left), go(right))(p, i, err)
+            case AnySetSubset(left, right) => AnySetSubset(go(left), go(right))(p, i, err)
+            case AnySetMinus(left, right) => AnySetMinus(go(left), go(right))(p, i, err)
+            case AnySetContains(elem, s) => AnySetContains(go(elem), go(s))(p, i, err)
+            case AnySetCardinality(s) => AnySetCardinality(go(s))(p, i, err)
           }
 
         case program @
           Program(domains, fields, functions, predicates, methods) =>
           Program(domains map go, fields map go, functions map go,
-            predicates map go, methods map go)(program.pos, program.info)
+            predicates map go, methods map go)(program.pos, program.info, program.errT)
 
         case member: Member =>
           member match {
             case Domain(name, functions, axioms, typeVariables) =>
               Domain(name, functions map go, axioms map go,
-                typeVariables map go)(member.pos, member.info)
+                typeVariables map go)(member.pos, member.info, member.errT)
 
             case Field(name, singleType) =>
-              Field(name, go(singleType))(member.pos, member.info)
+              Field(name, go(singleType))(member.pos, member.info, member.errT)
 
             case Function(name, parameters, aType, preconditions,
               postconditions, body) =>
               Function(name, parameters map go, go(aType),
                 preconditions map go,
                 postconditions map go,
-                body map go)(member.pos, member.info)
+                body map go)(member.pos, member.info, member.errT)
 
             case Predicate(name, parameters, body) =>
               Predicate(name, parameters map go,
-                body map go)(member.pos, member.info)
+                body map go)(member.pos, member.info, member.errT)
 
             case Method(name, parameters, results, preconditions,
               postconditions, locals, body) =>
               Method(name, parameters map go, results map go,
                 preconditions map go,
                 postconditions map go,
-                locals map go, go(body))(member.pos, member.info)
+                locals map go, go(body))(member.pos, member.info, member.errT)
           }
 
         case domainMember: DomainMember =>
@@ -220,71 +221,71 @@ object Transformer {
 
         case declaration @ LocalVarDecl(name, singleType) =>
           LocalVarDecl(name, go(singleType))(declaration.pos,
-            declaration.info)
+            declaration.info, declaration.errT)
 
         case statement: Stmt =>
           statement match {
             case Assert(expression) =>
-              Assert(go(expression))(statement.pos, statement.info)
+              Assert(go(expression))(statement.pos, statement.info, statement.errT)
 
             case Exhale(expression) =>
-              Exhale(go(expression))(statement.pos, statement.info)
+              Exhale(go(expression))(statement.pos, statement.info, statement.errT)
 
             case FieldAssign(field, value) =>
-              FieldAssign(go(field), go(value))(statement.pos, statement.info)
+              FieldAssign(go(field), go(value))(statement.pos, statement.info, statement.errT)
 
             case Fold(accessPredicate) =>
-              Fold(go(accessPredicate))(statement.pos, statement.info)
+              Fold(go(accessPredicate))(statement.pos, statement.info, statement.errT)
 
             case Fresh(variables) =>
-              Fresh(variables map go)(statement.pos, statement.info)
+              Fresh(variables map go)(statement.pos, statement.info, statement.errT)
 
             case Constraining(variables, body) =>
               Constraining(
-                variables map go, go(body))(statement.pos, statement.info)
+                variables map go, go(body))(statement.pos, statement.info, statement.errT)
 
             case Goto(_) => statement
 
             case If(condition, ifTrue, ifFalse) =>
               If(go(condition), go(ifTrue),
-                go(ifFalse))(statement.pos, statement.info)
+                go(ifFalse))(statement.pos, statement.info, statement.errT)
 
             case Inhale(expression) =>
-              Inhale(go(expression))(statement.pos, statement.info)
+              Inhale(go(expression))(statement.pos, statement.info, statement.errT)
 
-            case Label(name, invs) => Label(name, invs map go)(statement.pos, statement.info)
+            case Label(name, invs) => Label(name, invs map go)(statement.pos, statement.info, statement.errT)
 
             case LocalVarAssign(variable, value) =>
               LocalVarAssign(go(variable),
-                go(value))(statement.pos, statement.info)
+                go(value))(statement.pos, statement.info, statement.errT)
 
             case MethodCall(methodname, arguments, variables) =>
               MethodCall(methodname, arguments map go,
-                variables map go)(statement.pos, statement.info)
+                variables map go)(statement.pos, statement.info, statement.errT)
 
             case NewStmt(target, fields) =>
-              NewStmt(go(target), fields map go)(statement.pos, statement.info)
+              NewStmt(go(target), fields map go)(statement.pos, statement.info, statement.errT)
 
             case Seqn(statements) =>
-              Seqn(statements map go)(statement.pos, statement.info)
+              Seqn(statements map go)(statement.pos, statement.info, statement.errT)
 
             case Unfold(predicate) =>
-              Unfold(go(predicate))(statement.pos, statement.info)
+              Unfold(go(predicate))(statement.pos, statement.info, statement.errT)
 
             case Package(wand) =>
-              Package(go(wand))(statement.pos, statement.info)
+              Package(go(wand))(statement.pos, statement.info, statement.errT)
 
             case Apply(wand) =>
-              Apply(go(wand))(statement.pos, statement.info)
+              Apply(go(wand))(statement.pos, statement.info, statement.errT)
 
             case While(condition, invariants, locals, body) =>
               While(go(condition), invariants map go, locals map go,
-                go(body))(statement.pos, statement.info)
+                go(body))(statement.pos, statement.info, statement.errT)
           }
 
         case trigger @ Trigger(expressions) =>
          // try(
-            Trigger(expressions map go)(trigger.pos, trigger.info)
+            Trigger(expressions map go)(trigger.pos, trigger.info, trigger.errT)
          //   ) catch {
          //     case ia: IllegalArgumentException => Trigger(Seq()) (trigger.pos, trigger.info)
          //   }
@@ -461,145 +462,145 @@ object Transformer {
   }
 
   def viperDuplicator: PartialFunction[(Node, Seq[Any]), Node] = {
-    case (il: IntLit, Seq()) => IntLit(il.i)(il.pos, il.info)
-    case (bl: BoolLit, Seq()) => BoolLit(bl.value)(bl.pos, bl.info)
-    case (nl: NullLit, _) => NullLit()(nl.pos, nl.info)
+    case (il: IntLit, Seq()) => IntLit(il.i)(il.pos, il.info, il.errT)
+    case (bl: BoolLit, Seq()) => BoolLit(bl.value)(bl.pos, bl.info, bl.errT)
+    case (nl: NullLit, _) => NullLit()(nl.pos, nl.info, nl.errT)
     case (alv: AbstractLocalVar, _) => alv
     // AS: added recursion on field: this was previously missing (as for all "shared" nodes in AST). But this could lead to the type of the field not being transformed consistently with its declaration (if the whole program is transformed)
-    case (fa: FieldAccess, Seq(rcv: Exp, field: Field)) => FieldAccess(rcv, field)(fa.pos, fa.info)
+    case (fa: FieldAccess, Seq(rcv: Exp, field: Field)) => FieldAccess(rcv, field)(fa.pos, fa.info, fa.errT)
     case (pa: PredicateAccess, Seq(params: Seq[Exp])) =>
-      PredicateAccess(params, pa.predicateName)(pa.pos, pa.info)
+      PredicateAccess(params, pa.predicateName)(pa.pos, pa.info, pa.errT)
 
-    case (u: Unfolding, Seq(acc: PredicateAccessPredicate, e: Exp)) => Unfolding(acc, e)(u.pos, u.info)
+    case (u: Unfolding, Seq(acc: PredicateAccessPredicate, e: Exp)) => Unfolding(acc, e)(u.pos, u.info, u.errT)
 
-    case (u: UnfoldingGhostOp, Seq(acc: PredicateAccessPredicate, e: Exp)) => UnfoldingGhostOp(acc, e)(u.pos, u.info)
-    case (f: FoldingGhostOp, Seq(acc: PredicateAccessPredicate, e: Exp)) => FoldingGhostOp(acc, e)(f.pos, f.info)
-    case (a: ApplyingGhostOp, Seq(wand: Exp, in: Exp)) => ApplyingGhostOp(wand, in)(a.pos, a.info)
-    case (p: PackagingGhostOp, Seq(wand: MagicWand, in: Exp)) => PackagingGhostOp(wand, in)(p.pos, p.info)
+    case (u: UnfoldingGhostOp, Seq(acc: PredicateAccessPredicate, e: Exp)) => UnfoldingGhostOp(acc, e)(u.pos, u.info, u.errT)
+    case (f: FoldingGhostOp, Seq(acc: PredicateAccessPredicate, e: Exp)) => FoldingGhostOp(acc, e)(f.pos, f.info, f.errT)
+    case (a: ApplyingGhostOp, Seq(wand: Exp, in: Exp)) => ApplyingGhostOp(wand, in)(a.pos, a.info, a.errT)
+    case (p: PackagingGhostOp, Seq(wand: MagicWand, in: Exp)) => PackagingGhostOp(wand, in)(p.pos, p.info, p.errT)
 
-    case (o: Old, Seq(e: Exp)) => Old(e)(o.pos, o.info)
-    case (l: LabelledOld, Seq(e: Exp)) => LabelledOld(e, l.oldLabel)(l.pos, l.info)
-    case (a: ApplyOld, Seq(e: Exp)) => ApplyOld(e)(a.pos, a.info)
+    case (o: Old, Seq(e: Exp)) => Old(e)(o.pos, o.info, o.errT)
+    case (l: LabelledOld, Seq(e: Exp)) => LabelledOld(e, l.oldLabel)(l.pos, l.info, l.errT)
+    case (a: ApplyOld, Seq(e: Exp)) => ApplyOld(e)(a.pos, a.info, a.errT)
     case (c: CondExp, Seq(cond: Exp, thn: Exp, els: Exp)) =>
-      CondExp(cond, thn, els)(c.pos, c.info)
-    case (l: Let, Seq(v: LocalVarDecl, exp1: Exp, body: Exp)) => Let(v, exp1, body)(l.pos, l.info)
-    case (ex: Exists, Seq(v: Seq[LocalVarDecl], e: Exp)) => Exists(v, e)(ex.pos, ex.info)
+      CondExp(cond, thn, els)(c.pos, c.info, c.errT)
+    case (l: Let, Seq(v: LocalVarDecl, exp1: Exp, body: Exp)) => Let(v, exp1, body)(l.pos, l.info, l.errT)
+    case (ex: Exists, Seq(v: Seq[LocalVarDecl], e: Exp)) => Exists(v, e)(ex.pos, ex.info, ex.errT)
     case (f: Forall, Seq(v: Seq[LocalVarDecl], triggers: Seq[Trigger], e: Exp)) =>
-      Forall(v, triggers, e)(f.pos, f.info)
+      Forall(v, triggers, e)(f.pos, f.info, f.errT)
     case (f: ForPerm, Seq(v: LocalVarDecl, fields: Seq[Location], e: Exp)) =>
-      ForPerm(v, fields, e)(f.pos, f.info)
+      ForPerm(v, fields, e)(f.pos, f.info, f.errT)
     case (ie: InhaleExhaleExp, Seq(in: Exp, ex: Exp)) =>
-      InhaleExhaleExp(in, ex)(ie.pos, ie.info)
-    case (w: WildcardPerm, _) => WildcardPerm()(w.pos, w.info)
-    case (f: FullPerm, _) => FullPerm()(f.pos, f.info)
-    case (n: NoPerm, _) => NoPerm()(n.pos, n.info)
-    case (e: EpsilonPerm, _) => EpsilonPerm()(e.pos, e.info)
-    case (c: CurrentPerm, Seq(loc: LocationAccess)) => CurrentPerm(loc)(c.pos, c.info)
+      InhaleExhaleExp(in, ex)(ie.pos, ie.info, ie.errT  )
+    case (w: WildcardPerm, _) => WildcardPerm()(w.pos, w.info, w.errT)
+    case (f: FullPerm, _) => FullPerm()(f.pos, f.info, f.errT)
+    case (n: NoPerm, _) => NoPerm()(n.pos, n.info, n.errT)
+    case (e: EpsilonPerm, _) => EpsilonPerm()(e.pos, e.info, e.errT)
+    case (c: CurrentPerm, Seq(loc: LocationAccess)) => CurrentPerm(loc)(c.pos, c.info, c.errT)
     case (f: FractionalPerm, Seq(left: Exp, right: Exp)) =>
-      FractionalPerm(left, right)(f.pos, f.info)
+      FractionalPerm(left, right)(f.pos, f.info, f.errT)
     case (p: PermDiv, Seq(left: Exp, right: Exp)) =>
-      PermDiv(left, right)(p.pos, p.info)
+      PermDiv(left, right)(p.pos, p.info, p.errT)
     case (f: FieldAccessPredicate, Seq(loc: FieldAccess, perm: Exp)) =>
-      FieldAccessPredicate(loc, perm)(f.pos, f.info)
+      FieldAccessPredicate(loc, perm)(f.pos, f.info, f.errT)
     case (p: PredicateAccessPredicate, Seq(loc: PredicateAccess, perm: Exp)) =>
-      PredicateAccessPredicate(loc, perm)(p.pos, p.info)
+      PredicateAccessPredicate(loc, perm)(p.pos, p.info, p.errT)
     case (fa: FuncApp, Seq(args: Seq[Exp])) =>
-      FuncApp(fa.funcname, args)(fa.pos, fa.info, fa.typ, fa.formalArgs)
+      FuncApp(fa.funcname, args)(fa.pos, fa.info, fa.typ, fa.formalArgs, fa.errT)
     case (df: DomainFuncApp, Seq(fname: DomainFunc, args: Seq[Exp], m: Map[TypeVar, Type])) =>
-      DomainFuncApp(fname, args, m)(df.pos, df.info)
+      DomainFuncApp(fname, args, m)(df.pos, df.info, df.errT)
 
-    case (m: Minus, Seq(e: Exp)) => Minus(e)(m.pos, m.info)
-    case (n: Not, Seq(e: Exp)) => Not(e)(n.pos, n.info)
+    case (m: Minus, Seq(e: Exp)) => Minus(e)(m.pos, m.info, m.errT)
+    case (n: Not, Seq(e: Exp)) => Not(e)(n.pos, n.info, n.errT)
 
-    case (o: Or, Seq(l: Exp, r: Exp)) => Or(l, r)(o.pos, o.info)
-    case (a: And, Seq(l: Exp, r: Exp)) => And(l, r)(a.pos, a.info)
-    case (i: Implies, Seq(l: Exp, r: Exp)) => Implies(l, r)(i.pos, i.info)
-    case (m: MagicWand, Seq(l: Exp, r: Exp)) => MagicWand(l, r)(m.pos, m.info)
+    case (o: Or, Seq(l: Exp, r: Exp)) => Or(l, r)(o.pos, o.info, o.errT)
+    case (a: And, Seq(l: Exp, r: Exp)) => And(l, r)(a.pos, a.info, a.errT)
+    case (i: Implies, Seq(l: Exp, r: Exp)) => Implies(l, r)(i.pos, i.info, i.errT)
+    case (m: MagicWand, Seq(l: Exp, r: Exp)) => MagicWand(l, r)(m.pos, m.info, m.errT)
 
-    case (a: Add, Seq(l: Exp, r: Exp)) => Add(l, r)(a.pos, a.info)
-    case (s: Sub, Seq(l: Exp, r: Exp)) => Sub(l, r)(s.pos, s.info)
-    case (m: Mul, Seq(l: Exp, r: Exp)) => Mul(l, r)(m.pos, m.info)
-    case (d: Div, Seq(l: Exp, r: Exp)) => Div(l, r)(d.pos, d.info)
-    case (m: Mod, Seq(l: Exp, r: Exp)) => Mod(l, r)(m.pos, m.info)
+    case (a: Add, Seq(l: Exp, r: Exp)) => Add(l, r)(a.pos, a.info, a.errT)
+    case (s: Sub, Seq(l: Exp, r: Exp)) => Sub(l, r)(s.pos, s.info, s.errT)
+    case (m: Mul, Seq(l: Exp, r: Exp)) => Mul(l, r)(m.pos, m.info, m.errT)
+    case (d: Div, Seq(l: Exp, r: Exp)) => Div(l, r)(d.pos, d.info, d.errT)
+    case (m: Mod, Seq(l: Exp, r: Exp)) => Mod(l, r)(m.pos, m.info, m.errT)
 
-    case (lc: LtCmp, Seq(l: Exp, r: Exp)) => LtCmp(l, r)(lc.pos, lc.info)
-    case (le: LeCmp, Seq(l: Exp, r: Exp)) => LeCmp(l, r)(le.pos, le.info)
-    case (gt: GtCmp, Seq(l: Exp, r: Exp)) => GtCmp(l, r)(gt.pos, gt.info)
-    case (ge: GeCmp, Seq(l: Exp, r: Exp)) => GeCmp(l, r)(ge.pos, ge.info)
+    case (lc: LtCmp, Seq(l: Exp, r: Exp)) => LtCmp(l, r)(lc.pos, lc.info, lc.errT)
+    case (le: LeCmp, Seq(l: Exp, r: Exp)) => LeCmp(l, r)(le.pos, le.info, le.errT)
+    case (gt: GtCmp, Seq(l: Exp, r: Exp)) => GtCmp(l, r)(gt.pos, gt.info, gt.errT)
+    case (ge: GeCmp, Seq(l: Exp, r: Exp)) => GeCmp(l, r)(ge.pos, ge.info, ge.errT)
 
-    case (eq: EqCmp, Seq(l: Exp, r: Exp)) => EqCmp(l, r)(eq.pos, eq.info)
-    case (neq: NeCmp, Seq(l: Exp, r: Exp)) => NeCmp(l, r)(neq.pos, neq.info)
+    case (eq: EqCmp, Seq(l: Exp, r: Exp)) => EqCmp(l, r)(eq.pos, eq.info, eq.errT)
+    case (neq: NeCmp, Seq(l: Exp, r: Exp)) => NeCmp(l, r)(neq.pos, neq.info, neq.errT)
 
-    case (pm: PermMinus, Seq(e: Exp)) => PermMinus(e)(pm.pos, pm.info)
-    case (pa: PermAdd, Seq(l: Exp, r: Exp)) => PermAdd(l, r)(pa.pos, pa.info)
-    case (ps: PermSub, Seq(l: Exp, r: Exp)) => PermSub(l, r)(ps.pos, ps.info)
-    case (pm: PermMul, Seq(l: Exp, r: Exp)) => PermMul(l, r)(pm.pos, pm.info)
-    case (ip: IntPermMul, Seq(l: Exp, r: Exp)) => IntPermMul(l, r)(ip.pos, ip.info)
+    case (pm: PermMinus, Seq(e: Exp)) => PermMinus(e)(pm.pos, pm.info, pm.errT)
+    case (pa: PermAdd, Seq(l: Exp, r: Exp)) => PermAdd(l, r)(pa.pos, pa.info, pa.errT)
+    case (ps: PermSub, Seq(l: Exp, r: Exp)) => PermSub(l, r)(ps.pos, ps.info, ps.errT)
+    case (pm: PermMul, Seq(l: Exp, r: Exp)) => PermMul(l, r)(pm.pos, pm.info, pm.errT)
+    case (ip: IntPermMul, Seq(l: Exp, r: Exp)) => IntPermMul(l, r)(ip.pos, ip.info, ip.errT)
 
-    case (pc: PermLtCmp, Seq(l: Exp, r: Exp)) => PermLtCmp(l, r)(pc.pos, pc.info)
-    case (pc: PermLeCmp, Seq(l: Exp, r: Exp)) => PermLeCmp(l, r)(pc.pos, pc.info)
-    case (pc: PermGtCmp, Seq(l: Exp, r: Exp)) => PermGtCmp(l, r)(pc.pos, pc.info)
-    case (pc: PermGeCmp, Seq(l: Exp, r: Exp)) => PermGeCmp(l, r)(pc.pos, pc.info)
+    case (pc: PermLtCmp, Seq(l: Exp, r: Exp)) => PermLtCmp(l, r)(pc.pos, pc.info, pc.errT)
+    case (pc: PermLeCmp, Seq(l: Exp, r: Exp)) => PermLeCmp(l, r)(pc.pos, pc.info, pc.errT)
+    case (pc: PermGtCmp, Seq(l: Exp, r: Exp)) => PermGtCmp(l, r)(pc.pos, pc.info, pc.errT)
+    case (pc: PermGeCmp, Seq(l: Exp, r: Exp)) => PermGeCmp(l, r)(pc.pos, pc.info, pc.errT)
 
-    case (es: EmptySeq, Seq(elemTyp: Type)) => EmptySeq(elemTyp)(es.pos, es.info)
-    case (es: ExplicitSeq, Seq(elems: Seq[Exp])) => ExplicitSeq(elems)(es.pos, es.info)
-    case (rs: RangeSeq, Seq(low: Exp, high: Exp)) => RangeSeq(low, high)(rs.pos, rs.info)
-    case (sa: SeqAppend, Seq(left: Exp, right: Exp)) => SeqAppend(left, right)(sa.pos, sa.info)
-    case (si: SeqIndex, Seq(seq: Exp, idx: Exp)) => SeqIndex(seq, idx)(si.pos, si.info)
-    case (st: SeqTake, Seq(seq: Exp, n: Exp)) => SeqTake(seq, n)(st.pos, st.info)
-    case (sd: SeqDrop, Seq(seq: Exp, n: Exp)) => SeqDrop(seq, n)(sd.pos, sd.info)
-    case (sc: SeqContains, Seq(elem: Exp, seq: Exp)) => SeqContains(elem, seq)(sc.pos, sc.info)
+    case (es: EmptySeq, Seq(elemTyp: Type)) => EmptySeq(elemTyp)(es.pos, es.info, es.errT)
+    case (es: ExplicitSeq, Seq(elems: Seq[Exp])) => ExplicitSeq(elems)(es.pos, es.info, es.errT)
+    case (rs: RangeSeq, Seq(low: Exp, high: Exp)) => RangeSeq(low, high)(rs.pos, rs.info, rs.errT)
+    case (sa: SeqAppend, Seq(left: Exp, right: Exp)) => SeqAppend(left, right)(sa.pos, sa.info, sa.errT)
+    case (si: SeqIndex, Seq(seq: Exp, idx: Exp)) => SeqIndex(seq, idx)(si.pos, si.info, si.errT)
+    case (st: SeqTake, Seq(seq: Exp, n: Exp)) => SeqTake(seq, n)(st.pos, st.info, st.errT)
+    case (sd: SeqDrop, Seq(seq: Exp, n: Exp)) => SeqDrop(seq, n)(sd.pos, sd.info, sd.errT)
+    case (sc: SeqContains, Seq(elem: Exp, seq: Exp)) => SeqContains(elem, seq)(sc.pos, sc.info, sc.errT)
     case (su: SeqUpdate, Seq(seq: Exp, idx: Exp, elem: Exp)) =>
-      SeqUpdate(seq, idx, elem)(su.pos, su.info)
-    case (sl: SeqLength, Seq(seq: Exp)) => SeqLength(seq)(sl.pos, sl.info)
+      SeqUpdate(seq, idx, elem)(su.pos, su.info, su.errT)
+    case (sl: SeqLength, Seq(seq: Exp)) => SeqLength(seq)(sl.pos, sl.info, sl.errT)
 
-    case (e: EmptySet, Seq(elemTyp: Type)) => EmptySet(elemTyp)(e.pos, e.info)
-    case (e: ExplicitSet, Seq(elems: Seq[Exp])) => ExplicitSet(elems)(e.pos, e.info)
-    case (e: EmptyMultiset, Seq(elemTyp: Type)) => EmptyMultiset(elemTyp)(e.pos, e.info)
-    case (e: ExplicitMultiset, Seq(elems: Seq[Exp])) => ExplicitMultiset(elems)(e.pos, e.info)
-    case (a: AnySetUnion, Seq(left: Exp, right: Exp)) => AnySetUnion(left, right)(a.pos, a.info)
-    case (a: AnySetIntersection, Seq(left: Exp, right: Exp)) => AnySetIntersection(left, right)(a.pos, a.info)
-    case (a: AnySetSubset, Seq(left: Exp, right: Exp)) => AnySetSubset(left, right)(a.pos, a.info)
-    case (a: AnySetMinus, Seq(left: Exp, right: Exp)) => AnySetMinus(left, right)(a.pos, a.info)
-    case (a: AnySetContains, Seq(elem: Exp, s: Exp)) => AnySetContains(elem, s)(a.pos, a.info)
-    case (a: AnySetCardinality, Seq(s: Exp)) => AnySetCardinality(s)(a.pos, a.info)
+    case (e: EmptySet, Seq(elemTyp: Type)) => EmptySet(elemTyp)(e.pos, e.info, e.errT)
+    case (e: ExplicitSet, Seq(elems: Seq[Exp])) => ExplicitSet(elems)(e.pos, e.info, e.errT)
+    case (e: EmptyMultiset, Seq(elemTyp: Type)) => EmptyMultiset(elemTyp)(e.pos, e.info, e.errT)
+    case (e: ExplicitMultiset, Seq(elems: Seq[Exp])) => ExplicitMultiset(elems)(e.pos, e.info, e.errT  )
+    case (a: AnySetUnion, Seq(left: Exp, right: Exp)) => AnySetUnion(left, right)(a.pos, a.info, a.errT  )
+    case (a: AnySetIntersection, Seq(left: Exp, right: Exp)) => AnySetIntersection(left, right)(a.pos, a.info, a.errT)
+    case (a: AnySetSubset, Seq(left: Exp, right: Exp)) => AnySetSubset(left, right)(a.pos, a.info, a.errT)
+    case (a: AnySetMinus, Seq(left: Exp, right: Exp)) => AnySetMinus(left, right)(a.pos, a.info, a.errT)
+    case (a: AnySetContains, Seq(elem: Exp, s: Exp)) => AnySetContains(elem, s)(a.pos, a.info, a.errT)
+    case (a: AnySetCardinality, Seq(s: Exp)) => AnySetCardinality(s)(a.pos, a.info, a.errT)
 
     case (p: Program, Seq(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])) =>
       Program(domains, fields, functions,
-        predicates, methods)(p.pos, p.info)
+        predicates, methods)(p.pos, p.info, p.errT)
 
 
     case (d: Domain, Seq(functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typeVariables: Seq[TypeVar])) =>
       Domain(d.name, functions, axioms,
-        typeVariables)(d.pos, d.info)
+        typeVariables)(d.pos, d.info, d.errT  )
 
     case (f: Field, Seq(singleType: Type)) =>
-      Field(f.name, singleType)(f.pos, f.info)
+      Field(f.name, singleType)(f.pos, f.info, f.errT  )
 
     case (f: Function, Seq(parameters: Seq[LocalVarDecl], aType: Type, preconditions: Seq[Exp],
     postconditions:Seq[Exp], body:Option[Exp])) =>
       Function(f.name, parameters, aType,
         preconditions,
         postconditions,
-        body)(f.pos, f.info)
+        body)(f.pos, f.info, f.errT  )
 
     case (p: Predicate, Seq(parameters: Seq[LocalVarDecl], body: Option[Exp])) =>
       Predicate(p.name, parameters,
-        body)(p.pos, p.info)
+        body)(p.pos, p.info, p.errT)
 
     case (m: Method, Seq(parameters: Seq[LocalVarDecl], results: Seq[LocalVarDecl], preconditions: Seq[Exp],
     postconditions: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)) =>
       Method(m.name, parameters, results,
         preconditions,
         postconditions,
-        locals, body)(m.pos, m.info)
+        locals, body)(m.pos, m.info, m.errT)
 
 
     case (da: DomainAxiom, Seq(body: Exp)) =>
-      DomainAxiom(da.name, body)(da.pos, da.info, da.domainName)
+      DomainAxiom(da.name, body)(da.pos, da.info, da.domainName, da.errT  )
 
     case (df: DomainFunc, Seq(parameters: Seq[LocalVarDecl], aType: Type)) =>
-      DomainFunc(df.name, parameters, aType, df.unique)(df.pos, df.info, df.domainName)
+      DomainFunc(df.name, parameters, aType, df.unique)(df.pos, df.info, df.domainName, df.errT  )
 
     case (Bool, _) => Bool
     case (dt: DomainType, Seq(domainName: Domain, typeVariables: Map[TypeVar, Type])) =>
@@ -617,63 +618,63 @@ object Transformer {
 
     case (ld: LocalVarDecl, Seq(singleType: Type)) =>
       LocalVarDecl(ld.name, singleType)(ld.pos,
-        ld.info)
+        ld.info, ld.errT)
 
     case (a: Assert, Seq(expression: Exp)) =>
-      Assert(expression)(a.pos, a.info)
+      Assert(expression)(a.pos, a.info, a.errT)
 
     case (e: Exhale, Seq(expression: Exp)) =>
-      Exhale(expression)(e.pos, e.info)
+      Exhale(expression)(e.pos, e.info, e.errT)
 
     case (fa: FieldAssign, Seq(field: FieldAccess, value: Exp)) =>
-      FieldAssign(field, value)(fa.pos, fa.info)
+      FieldAssign(field, value)(fa.pos, fa.info, fa.errT  )
 
     case (f: Fold, Seq(accessPredicate: PredicateAccessPredicate)) =>
-      Fold(accessPredicate)(f.pos, f.info)
+      Fold(accessPredicate)(f.pos, f.info, f.errT)
 
     case (f: Fresh, Seq(variables: Seq[LocalVar])) =>
-      Fresh(variables)(f.pos, f.info)
+      Fresh(variables)(f.pos, f.info, f.errT)
 
     case (c: Constraining, Seq(variables: Seq[LocalVar], body: Stmt)) =>
-      Constraining(variables, body)(c.pos, c.info)
+      Constraining(variables, body)(c.pos, c.info, c.errT  )
 
     // We dont recurse on goto
-    case (g: Goto, _) => Goto(g.target)(g.pos, g.info)
+    case (g: Goto, _) => Goto(g.target)(g.pos, g.info, g.errT  )
 
     case (i: If, Seq(condition: Exp, ifTrue: Stmt, ifFalse: Stmt)) =>
-      If(condition, ifTrue, ifFalse)(i.pos, i.info)
+      If(condition, ifTrue, ifFalse)(i.pos, i.info, i.errT  )
 
     case (i: Inhale, Seq(expression: Exp)) =>
-      Inhale(expression)(i.pos, i.info)
+      Inhale(expression)(i.pos, i.info, i.errT)
 
-    case (l: Label, invars: Seq[Exp]) => Label(l.name, invars)(l.pos, l.info)
+    case (l: Label, invars: Seq[Exp]) => Label(l.name, invars)(l.pos, l.info, l.errT)
 
     case (l: LocalVarAssign, Seq(variable: LocalVar, value: Exp)) =>
-      LocalVarAssign(variable, value)(l.pos, l.info)
+      LocalVarAssign(variable, value)(l.pos, l.info, l.errT  )
 
     case (m: MethodCall, Seq(methodname: Method, arguments: Seq[Exp], variables: Seq[LocalVar])) =>
-      MethodCall(methodname, arguments, variables)(m.pos, m.info)
+      MethodCall(methodname, arguments, variables)(m.pos, m.info, m.errT)
 
     case (n: NewStmt, Seq(target: LocalVar, fields: Seq[Field])) =>
-      NewStmt(target, fields)(n.pos, n.info)
+      NewStmt(target, fields)(n.pos, n.info, n.errT)
 
     case (s: Seqn, x:Seq[Stmt]) =>
-      Seqn(x)(s.pos, s.info)
+      Seqn(x)(s.pos, s.info, s.errT)
 
     case (u: Unfold, Seq(predicate: PredicateAccessPredicate)) =>
-      Unfold(predicate)(u.pos, u.info)
+      Unfold(predicate)(u.pos, u.info, u.errT)
 
     case (p: Package, Seq(wand: MagicWand)) =>
-      Package(wand)(p.pos, p.info)
+      Package(wand)(p.pos, p.info, p.errT)
 
     case (a: Apply, Seq(wand: MagicWand)) =>
-      Apply(wand)(a.pos, a.info)
+      Apply(wand)(a.pos, a.info, a.errT  )
 
     case (w: While, Seq(condition: Exp, invariants: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)) =>
-      While(condition, invariants, locals, body)(w.pos, w.info)
+      While(condition, invariants, locals, body)(w.pos, w.info, w.errT)
 
     case (t: Trigger, Seq(expressions: Seq[Exp])) =>
-      Trigger(expressions)(t.pos, t.info)
+      Trigger(expressions)(t.pos, t.info, t.errT)
   }
 
   //</editor-fold>
