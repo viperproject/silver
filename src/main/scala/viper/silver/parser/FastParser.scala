@@ -21,7 +21,7 @@ import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
-import viper.silver.ast.utility.{Strategy, StrategyC}
+import viper.silver.ast.utility.{Strategy}
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 
 import scala.util.parsing.input.NoPosition
