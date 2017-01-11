@@ -27,14 +27,22 @@ trait StrategyInterface[A <: Rewritable[A]] {
 
   protected var traversionMode: Traverse = Traverse.TopDown
   protected var recursionFunc: PartialFunction[A, Seq[Boolean]] = PartialFunction.empty
-  protected var hasChanged = false
+
+  protected var noRecursion = collection.mutable.HashSet.empty[Rewritable[A]]
+  protected var wasTransformed = collection.mutable.HashSet.empty[Rewritable[A]]
+
+  def hasChanged = wasTransformed.size > 0
+
+  def transformed(node: Rewritable[A]): Unit = {
+    wasTransformed.add(node)
+  }
+
+  def dontRecurse(node: Rewritable[A]): Unit = {
+    noRecursion.add(node)
+  }
 
   def getTraversionMode = traversionMode
 
-
-  def prepare(node: A) = {
-    node.setTransformed(false)
-  }
 
 
   def traverse(t: Traverse): StrategyInterface[A] = {
@@ -48,7 +56,7 @@ trait StrategyInterface[A <: Rewritable[A]] {
   }
 
   def execute(node: A): A = {
-    hasChanged = false
+    wasTransformed.clear()
     node
   }
 
@@ -81,22 +89,22 @@ trait StrategyInterface[A <: Rewritable[A]] {
     val newChildren: Seq[Any] = children.zip(childrenSelect) map {
       case (o: Option[Rewritable[A]], true) => o match {
         case None => None
-        case Some(x: Rewritable[A]) => if (x.rec) Some(recurse(x.asInstanceOf[A])) else x
+        case Some(x: Rewritable[A]) => if (!noRecursion.contains(x)) Some(recurse(x.asInstanceOf[A])) else x
       }
-      case (s: Seq[Rewritable[A]], true) => s map { x => if (x.rec) recurse(x.asInstanceOf[A]) else x }
-      case (n: Rewritable[A], true) => if (n.rec) recurse(n.asInstanceOf[A]) else n
+      case (s: Seq[Rewritable[A]], true) => s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[A]) else x }
+      case (n: Rewritable[A], true) => if (!noRecursion.contains(n)) recurse(n.asInstanceOf[A]) else n
       case (old, false) => old
     }
 
 
     val hasChanged: Boolean = newChildren.foldLeft(false)((b1, elem) => {
       val b2 = elem match {
-        case seq: Seq[Rewritable[A]] => seq.map { x => x.wasTransformed }.fold(false)(_ || _)
+        case seq: Seq[Rewritable[A]] => seq.map { wasTransformed.contains(_) }.fold(false)(_ || _)
         case opt: Option[Rewritable[A]] => opt match {
-          case Some(x) => x.wasTransformed
-          case None => false // TODO can some1 generate an empty child from an existing child?
+          case Some(x) => wasTransformed.contains(x)
+          case None => false // No empty child can be generated from existing child => if None is new child it was already None in old child => no change
         }
-        case node: Rewritable[A] => node.wasTransformed
+        case node: Rewritable[A] => wasTransformed.contains(node)
       }
       b1 || b2
     })
@@ -118,7 +126,7 @@ trait StrategyInterface[A <: Rewritable[A]] {
   */
 class Strategy[A <: Rewritable[A]](val r: PartialFunction[A, A]) extends StrategyInterface[A] {
 
-  val NoContext = new Ancestors[A](Seq()) // Just some value because the context is never used
+  val NoContext = new Ancestors[A](Seq(), this) // Just some value because the context is never used
 
   private var rule: RuleT[A] = Rule(r)
 
@@ -179,26 +187,21 @@ class Strategy[A <: Rewritable[A]](val r: PartialFunction[A, A]) extends Strateg
   }
 
   def executeTopDown(node: A): A = {
-    prepare(node)
     // Check which node we get from rewriting
-    //val t0 = System.nanoTime()
 
     val newNode = rule.execute(node, NoContext).getOrElse(node)
-    //val t1 = System.nanoTime()
-    //println("Elapsed time: " + (t1 - t0) / 1000 + "ms")
 
     // Then traverse children and duplicate node with new children
     recurseChildren(newNode, executeTopDown) match {
-      case Some(children) => newNode.duplicateNode(children)
+      case Some(children) => newNode.duplicate(children)
       case None => newNode
     }
   }
 
   def executeBottomUp(node: A): A = {
-    prepare(node)
     // At first recurse into children and get the new children
     val newNode = recurseChildren(node, executeBottomUp) match {
-      case Some(children) => node.duplicateNode(children)
+      case Some(children) => node.duplicate(children)
       case None => node
     }
 
@@ -207,13 +210,12 @@ class Strategy[A <: Rewritable[A]](val r: PartialFunction[A, A]) extends Strateg
   }
 
   def executeInnermost(node: A): A = {
-    prepare(node)
     // Check which node we get from rewriting
     val newNode = rule.execute(node, NoContext).getOrElse(node)
 
     // Then traverse children
     recurseChildren(newNode, executeTopDown) match {
-      case Some(children) => newNode.duplicateNode(children)
+      case Some(children) => newNode.duplicate(children)
       case None => newNode
     }
   }
@@ -278,35 +280,33 @@ class StrategyA[A <: Rewritable[A]](val r: PartialFunction[(A, Ancestors[A]), A]
 
   override def execute(node: A): A = {
     traversionMode match {
-      case Traverse.TopDown => executeTopDown(node, new Ancestors[A](Seq()))
-      case Traverse.BottomUp => executeBottomUp(node, new Ancestors[A](Seq()))
-      case Traverse.Innermost => executeInnermost(node, new Ancestors[A](Seq()))
+      case Traverse.TopDown => executeTopDown(node, new Ancestors[A](Seq(), this))
+      case Traverse.BottomUp => executeBottomUp(node, new Ancestors[A](Seq(), this))
+      case Traverse.Innermost => executeInnermost(node, new Ancestors[A](Seq(), this))
     }
   }
 
   def executeTopDown(node: A, context: Ancestors[A]): A = {
-    prepare(node)
     // Add this node to context
-    val newContext = new Ancestors(context.ancestorList ++ Seq(node))
+    val newContext = new Ancestors(context.ancestorList ++ Seq(node), this)
 
     // Check which node we get from rewriting
     val newNode = rule.execute(node, newContext).getOrElse(node)
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     recurseChildren(newNode, executeTopDown(_, newContext)) match {
-      case Some(children) => newNode.duplicateNode(children)
+      case Some(children) => newNode.duplicate(children)
       case None => newNode
     }
   }
 
   def executeBottomUp(node: A, context: Ancestors[A]): A = {
-    prepare(node)
     // Add this node to context
-    val newContext = new Ancestors(context.ancestorList ++ Seq(node))
+    val newContext = new Ancestors(context.ancestorList ++ Seq(node), this)
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     val newNode = recurseChildren(node, executeBottomUp(_, newContext)) match {
-      case Some(children) => node.duplicateNode(children)
+      case Some(children) => node.duplicate(children)
       case None => node
     }
 
@@ -314,16 +314,15 @@ class StrategyA[A <: Rewritable[A]](val r: PartialFunction[(A, Ancestors[A]), A]
   }
 
   def executeInnermost(node: A, context: Ancestors[A]): A = {
-    prepare(node)
     // Add this node to context
-    val newContext = new Ancestors(context.ancestorList ++ Seq(node))
+    val newContext = new Ancestors(context.ancestorList ++ Seq(node), this)
 
     // Check which node we get from rewriting
     val newNode = rule.execute(node, newContext).getOrElse(node)
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     recurseChildren(newNode, executeTopDown(_, newContext)) match {
-      case Some(children) => newNode.duplicateNode(children)
+      case Some(children) => newNode.duplicate(children)
       case None => newNode
     }
   }
@@ -422,16 +421,15 @@ class StrategyC[A <: Rewritable[A], C](val r: PartialFunction[(A, Context[A, C])
   override def execute(node: A): A = {
     assert(defaultContxt.isDefined, "Default context not set!")
     traversionMode match {
-      case Traverse.TopDown => executeTopDown(node, new Context[A, C](Seq(), defaultContxt.get))
-      case Traverse.BottomUp => executeBottomUp(node, new Context[A, C](Seq(), defaultContxt.get))
-      case Traverse.Innermost => executeInnermost(node, new Context[A, C](Seq(), defaultContxt.get))
+      case Traverse.TopDown => executeTopDown(node, new Context[A, C](Seq(), defaultContxt.get, this))
+      case Traverse.BottomUp => executeBottomUp(node, new Context[A, C](Seq(), defaultContxt.get, this))
+      case Traverse.Innermost => executeInnermost(node, new Context[A, C](Seq(), defaultContxt.get, this))
     }
   }
 
   def executeTopDown(node: A, context: Context[A, C]): A = {
-    prepare(node)
     // Add this node to context
-    var newContext = new Context[A, C](context.ancestorList ++ Seq(node), context.custom)
+    var newContext = new Context[A, C](context.ancestorList ++ Seq(node), context.custom, this)
 
     // Check which node we get from rewriting
     val newNode: A = rule.execute(node, newContext).getOrElse(node)
@@ -441,27 +439,26 @@ class StrategyC[A <: Rewritable[A], C](val r: PartialFunction[(A, Context[A, C])
       upContext(newNode, context.custom)
     } else {
       newContext.custom
-    })
+    }, this)
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     recurseChildren(newNode, executeTopDown(_, newContext)) match {
-      case Some(children) => newNode.duplicateNode(children)
+      case Some(children) => newNode.duplicate(children)
       case None => newNode
     }
   }
 
   def executeBottomUp(node: A, context: Context[A, C]): A = {
-    prepare(node)
     // Add this node to context
     val newContext = new Context(context.ancestorList ++ Seq(node), if (upContext.isDefinedAt(node, context.custom)) {
       upContext(node, context.custom)
     } else {
       context.custom
-    })
+    }, this)
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     val newNode = recurseChildren(node, executeBottomUp(_, newContext)) match {
-      case Some(children) => node.duplicateNode(children)
+      case Some(children) => node.duplicate(children)
       case None => node
     }
 
@@ -469,9 +466,8 @@ class StrategyC[A <: Rewritable[A], C](val r: PartialFunction[(A, Context[A, C])
   }
 
   def executeInnermost(node: A, context: Context[A, C]): A = {
-    prepare(node)
     // Add this node to context
-    var newContext = new Context(context.ancestorList ++ Seq(node), context.custom)
+    var newContext = new Context(context.ancestorList ++ Seq(node), context.custom, this)
 
     // Check which node we get from rewriting
     val newNode: A = rule.execute(node, newContext).getOrElse(node)
@@ -481,11 +477,11 @@ class StrategyC[A <: Rewritable[A], C](val r: PartialFunction[(A, Context[A, C])
       upContext(newNode, context.custom)
     } else {
       newContext.custom
-    })
+    }, this)
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     recurseChildren(newNode, executeTopDown(_, newContext)) match {
-      case Some(children) => newNode.duplicateNode(children)
+      case Some(children) => newNode.duplicate(children)
       case None => newNode
     }
   }
@@ -521,7 +517,7 @@ class ConcatinatedStrategy[A <: Rewritable[A]](s1: StrategyInterface[A], val s2:
 class RepeatedStrategy[A <: Rewritable[A]](s: StrategyInterface[A]) extends StrategyInterface[A] {
   override def execute(node: A): A = {
     val result = s.execute(node)
-    if (!result.wasTransformed) {
+    if (s.hasChanged) {
       result
     } else {
       execute(result)
@@ -532,7 +528,7 @@ class RepeatedStrategy[A <: Rewritable[A]](s: StrategyInterface[A]) extends Stra
     if (i <= 0) node
 
     val result = s.execute(node)
-    if (!result.wasTransformed) {
+    if (s.hasChanged) {
       result
     } else {
       execute(result, i - 1)
@@ -545,10 +541,10 @@ class RepeatedStrategy[A <: Rewritable[A]](s: StrategyInterface[A]) extends Stra
   *
   * @param ancestorList List of all ancestors
   */
-class Ancestors[A <: Rewritable[A]](val ancestorList: Seq[A]) {
+class Ancestors[A <: Rewritable[A]](val ancestorList: Seq[A], val transformer: StrategyInterface[A]) {
 
   private[utility] def newNode(node: A): Ancestors[A] = {
-    new Ancestors[A](ancestorList.dropRight(1) ++ Seq(node))
+    new Ancestors[A](ancestorList.dropRight(1) ++ Seq(node), transformer)
   }
 
   lazy val node = ancestorList.last
@@ -609,9 +605,9 @@ class Ancestors[A <: Rewritable[A]](val ancestorList: Seq[A]) {
   * @param aList  List from the Ancestors part
   * @param custom Custom context part
   */
-class Context[A <: Rewritable[A], C](aList: Seq[A], val custom: C) extends Ancestors[A](aList) {
+class Context[A <: Rewritable[A], C](aList: Seq[A], val custom: C, transformer: StrategyInterface[A]) extends Ancestors[A](aList, transformer) {
   override def newNode(node: A): Context[A, C] = {
-    new Context(ancestorList.dropRight(1) ++ Seq(node), custom)
+    new Context(ancestorList.dropRight(1) ++ Seq(node), custom, transformer)
   }
 }
 
@@ -749,7 +745,7 @@ private case class RuleA[A <: Rewritable[A]](r: PartialFunction[(A, Ancestors[A]
 private case class Rule[A <: Rewritable[A]](r: PartialFunction[A, A]) extends RuleT[A] {
 
   def execute(node: A): Option[A] = {
-    execute(node, new Ancestors[A](Nil)) // Just put in any parameter. it will not be used anyways
+    execute(node, new Ancestors[A](Nil, new Strategy[A](PartialFunction.empty[A,A]))) // Just put in any parameter. it will not be used anyways
   }
 
   override def execute(node: A, context: Ancestors[A]): Option[A] = {

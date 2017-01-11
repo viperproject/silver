@@ -8,22 +8,6 @@ package viper.silver.ast.utility
   */
 trait Rewritable[A <: Rewritable[A]] {
 
-  private var transformed = false
-  private var recurse = true
-
-  def wasTransformed = transformed
-  def setTransformed(b: Boolean) = transformed = b
-
-  def r = {
-    recurse = true
-    this
-  }
-  def rn = {
-    recurse = false
-    this
-  }
-  def rec = recurse
-
   /**
     * Method that accesses all children of a node. Will be either a node or a traversable of a node
     * @return
@@ -47,11 +31,5 @@ trait Rewritable[A <: Rewritable[A]] {
 
   // Duplicate children. Children list must be in the same order as in getChildren
   def duplicate(children: Seq[Any]): A = ???
-
-  def duplicateNode(children:Seq[Any]): A = {
-    val a = duplicate(children)
-    a.setTransformed(true)
-    a
-  }
 
 }

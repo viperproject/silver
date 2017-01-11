@@ -26,13 +26,14 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\QuantifiedPermissions\\"
     val files = Seq("simple", "allCases")
 
-    val strat = new Strategy[Node]({
-      case f@Forall(decl, _, Implies(l, r)) if r.isPure =>
+    val strat = new StrategyA[Node]({
+      case (f@Forall(decl, _, Implies(l, r)), _ ) if r.isPure =>
         f
-      case f@Forall(decls, triggers, i@Implies(li, And(l, r))) =>
-        And(Forall(decls, triggers, Implies(li, l)(i.pos, i.info))(f.pos, f.info), Forall(decls, triggers, Implies(li, r)(i.pos, i.info))(f.pos, f.info).rn.asInstanceOf[Exp])(f.pos, f.info)
-      case f@Forall(decls, triggers, i@Implies(li, Implies(l, r))) if l.isPure =>
-        Forall(decls, triggers, Implies(And(li, l)(i.pos, i.info), r)(i.pos, i.info))(f.pos, f.info)
+      case (f@Forall(decls, triggers, i@Implies(li, And(l, r))), a) =>
+        val forall = Forall(decls, triggers, Implies(li, r)(i.pos, i.info))(f.pos, f.info);  a.transformer.dontRecurse(forall)
+        And(Forall(decls, triggers, Implies(li, l)(i.pos, i.info))(f.pos, f.info), forall)(f.pos, f.info, f.errT)
+      case (f@Forall(decls, triggers, i@Implies(li, Implies(l, r))), _) if l.isPure =>
+        Forall(decls, triggers, Implies(And(li, l)(i.pos, i.info), r)(i.pos, i.info))(f.pos, f.info, f.errT)
     })
 
     val frontend = new DummyFrontend
@@ -85,12 +86,13 @@ class RewriterTests extends FunSuite with Matchers {
         case (Or(l, r), c) =>
           //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
           c.custom match {
-            case Seq() => InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), Or(l, r)().rn.asInstanceOf[Exp])()
-            // Had to do variable renaming because otherwise variable would be quantified inside again with forall
-            case varDecls => {
+            case Seq() =>
+              val or = Or(l, r)(); c.transformer.dontRecurse(or)
+              InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), or)()
+            case varDecls =>
               val vars = varDecls.map { vari => LocalVarDecl(vari.name, vari.typ)(vari.pos, vari.info) }
-              InhaleExhaleExp(CondExp(NonDet(vars), l, r)(), Or(l, r)().rn.asInstanceOf[Exp])()
-            }
+              val or = Or(l, r)(); c.transformer.dontRecurse(or)
+              InhaleExhaleExp(CondExp(NonDet(vars), l, r)(), or)()
           }
       }) updateContext {
         case (q: QuantifiedExp, c) => c ++ q.variables

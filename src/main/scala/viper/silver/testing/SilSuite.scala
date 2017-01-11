@@ -103,8 +103,10 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
       val actualErrors = fe.result match {
         case Success => Nil
         case Failure(es) => es collect {
-          case AssertFailed(node, reason) => LoopInvariantNotPreserved(IntLit(5)(), reason)
-          case rest => rest
+          case e:AbstractVerificationError => {
+            e.transformedError()
+          }
+          case rest:AbstractError => rest
         }
       }
       actualErrors.map(SilOutput)

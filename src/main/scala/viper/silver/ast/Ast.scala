@@ -182,25 +182,26 @@ case class Trafos(error: List[PartialFunction[AbstractVerificationError, Abstrac
   def this(er:PartialFunction[AbstractVerificationError, AbstractVerificationError], re:PartialFunction[ErrorReason, ErrorReason]) = {
     this(List(er), List(re))
   }
+}
 
-  def ++(t: Trafos): Trafos = {
-    Trafos(Etransformations ++ t.Etransformations, Rtransformations ++ t.Rtransformations)
-  }
+case class ErrTrafo(error:PartialFunction[AbstractVerificationError, AbstractVerificationError]) extends ErrorTrafo {
+  val Etransformations = List(error)
+  val Rtransformations = Nil
+}
 
-  // Would like to override ++ operator too but cannot distinguish the following two cases due to type erasure
-  def er(er:PartialFunction[AbstractVerificationError, AbstractVerificationError]): Trafos = {
-    Trafos(Etransformations ++ List(er), Rtransformations)
-  }
-
-  def re(re: PartialFunction[ErrorReason, ErrorReason]): Unit = {
-    Trafos(Etransformations, Rtransformations ++ List(re))
-  }
+case class ReTrafo(reason:PartialFunction[ErrorReason, ErrorReason]) extends ErrorTrafo {
+  val Etransformations = Nil
+  val Rtransformations = List(reason)
 }
 
 trait ErrorTrafo {
   def Etransformations: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]]
 
   def Rtransformations: List[PartialFunction[ErrorReason, ErrorReason]]
+
+  def ++(t: ErrorTrafo): Trafos = {
+    Trafos(Etransformations ++ t.Etransformations, Rtransformations ++ t.Rtransformations)
+  }
 }
 
 /** A trait to have additional information for nodes. */
