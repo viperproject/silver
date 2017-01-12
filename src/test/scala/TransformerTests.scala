@@ -9,7 +9,7 @@ package viper.silver
 import scala.language.implicitConversions
 import org.scalatest.{FunSuite, Matchers}
 import ast._
-import ast.utility.{Strategy, StrategyC, Transformer, Traverse}
+import ast.utility.{Strategy, Transformer, Traverse}
 import ast.If
 
 class TransformerTests extends FunSuite with Matchers {
