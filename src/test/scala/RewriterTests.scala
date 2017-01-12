@@ -35,18 +35,18 @@ class RewriterTests extends FunSuite with Matchers {
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
   }
 
-  /*test("QuantifiedPermissions") {
+  test("QuantifiedPermissions") {
     val filePrefix = "transformations\\QuantifiedPermissions\\"
     val files = Seq("simple", "allCases")
 
-    val strat = new StrategyA[Node]({
+    val strat = StrategyWrapper.AncestorStrategy[Node]({
       case (f@Forall(decl, _, Implies(l, r)), _ ) if r.isPure =>
         f
       case (f@Forall(decls, triggers, i@Implies(li, And(l, r))), a) =>
         val forall = Forall(decls, triggers, Implies(li, r)(i.pos, i.info))(f.pos, f.info);  a.transformer.dontRecurse(forall)
-        And(Forall(decls, triggers, Implies(li, l)(i.pos, i.info))(f.pos, f.info), forall)(f.pos, f.info, f.errT)
+        And(Forall(decls, triggers, Implies(li, l)(i.pos, i.info))(f.pos, f.info), forall)(f.pos, f.info)
       case (f@Forall(decls, triggers, i@Implies(li, Implies(l, r))), _) if l.isPure =>
-        Forall(decls, triggers, Implies(And(li, l)(i.pos, i.info), r)(i.pos, i.info))(f.pos, f.info, f.errT)
+        Forall(decls, triggers, Implies(And(li, l)(i.pos, i.info), r)(i.pos, i.info))(f.pos, f.info)
     })
 
     val frontend = new DummyFrontend
@@ -82,7 +82,7 @@ class RewriterTests extends FunSuite with Matchers {
         FuncApp(func, vars.map { x => x.localVar })()
       }
 
-      val strat = new StrategyC[Node, Seq[LocalVarDecl]]({
+      val strat = StrategyWrapper.ContextStrategy[Node, Seq[LocalVarDecl]]({
         case (Or(l, r), c) =>
           //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
           c.custom match {
@@ -94,9 +94,9 @@ class RewriterTests extends FunSuite with Matchers {
               val or = Or(l, r)(); c.transformer.dontRecurse(or)
               InhaleExhaleExp(CondExp(NonDet(vars), l, r)(), or)()
           }
-      }) updateContext {
+      }, Seq(), {
         case (q: QuantifiedExp, c) => c ++ q.variables
-      } defaultContext Seq()
+      })
 
       frontend.translate(ref) match {
         case (Some(p), _) => targetRef = p
@@ -110,7 +110,7 @@ class RewriterTests extends FunSuite with Matchers {
       assert(res.toString() == targetRef.toString(), "Files are not equal")
     }
     }
-  }*/
+  }
 
   test("WhileToIfAndGoto") {
     val filePrefix = "transformations\\WhileToIfAndGoto\\"
@@ -227,16 +227,16 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\UnfoldedChildren\\"
     val files = Seq("fourAnd")
 
-    val strat:StrategyInterface[Node] = StrategyWrapper.ContextStrategy[Node, Int]({
-      case (e:Exp, c) => c.parent match {
-        case f:FuncApp => if(f.funcname == "fourAnd" && c.siblings.contains(FalseLit()())) {
+    val strat:StrategyInterface[Node] = StrategyWrapper.AncestorStrategy[Node]({
+      case (e: Exp, c) => c.parent match {
+        case f: FuncApp => if (f.funcname == "fourAnd" && c.siblings.contains(FalseLit()())) {
           FalseLit()(e.pos, e.info)
         } else {
           e
         }
         case _ => e
       }
-    }, 0) traverse Traverse.BottomUp
+    }) traverse Traverse.BottomUp
 
     val frontend = new DummyFrontend
     files foreach { fileName: String => {
@@ -345,30 +345,30 @@ class RewriterTests extends FunSuite with Matchers {
     }
 
   }
-/*
+
   test("ImplicationSimplification") {
     val filePrefix = "transformations\\ImplicationSimplification\\"
     val files = Seq("simple", "complex")
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = new Strategy[Node]({
-      case i@Implies(left, right) => Or(Not(left)(i.pos, i.info), right)(i.pos, i.info)
+    val strat = StrategyWrapper.SimpleStrategy[Node]({
+      case (i@Implies(left, right), _) => Or(Not(left)(i.pos, i.info), right)(i.pos, i.info)
     }) traverse Traverse.BottomUp
 
-    val strat2 = new Strategy[Node]({
-      case o@Or(Not(f:FalseLit), right) => Or(TrueLit()(f.pos, f.info), right)(o.pos, o.info)
-      case o@Or(Not(f:TrueLit), right) => Or(FalseLit()(f.pos, f.info), right)(o.pos, o.info)
-      case o@Or(left, Not(f:FalseLit)) => Or(left, TrueLit()(f.pos, f.info))(o.pos, o.info)
-      case o@Or(left, Not(f:TrueLit)) => Or(left, FalseLit()(f.pos, f.info))(o.pos, o.info)
+    val strat2 = StrategyWrapper.SimpleStrategy[Node]({
+      case (o@Or(Not(f:FalseLit), right), _) => Or(TrueLit()(f.pos, f.info), right)(o.pos, o.info)
+      case (o@Or(Not(f:TrueLit), right), _) => Or(FalseLit()(f.pos, f.info), right)(o.pos, o.info)
+      case (o@Or(left, Not(f:FalseLit)), _) => Or(left, TrueLit()(f.pos, f.info))(o.pos, o.info)
+      case (o@Or(left, Not(f:TrueLit)), _) => Or(left, FalseLit()(f.pos, f.info))(o.pos, o.info)
     })
 
-    val strat3 = new Strategy[Node]({
-      case o@Or(t:TrueLit, right) => TrueLit()(o.pos, o.info)
-      case o@Or(left, t:TrueLit) => TrueLit()(o.pos, o.info)
+    val strat3 = StrategyWrapper.SimpleStrategy[Node]({
+      case (o@Or(t:TrueLit, right), _) => TrueLit()(o.pos, o.info)
+      case (o@Or(left, t:TrueLit), _) => TrueLit()(o.pos, o.info)
     })
 
-    val strat4 = new Strategy[Node]({
-      case a@Assert(t:TrueLit) => Seqn(Seq())()
+    val strat4 = StrategyWrapper.SimpleStrategy[Node]({
+      case (a@Assert(t:TrueLit), _) => Seqn(Seq())()
     })
 
 
@@ -385,34 +385,34 @@ class RewriterTests extends FunSuite with Matchers {
     val frontend = new DummyFrontend
 
     val map = collection.mutable.Map.empty[LocalVar, BigInt]
-    val collect = new Strategy[Node]( {
-      case p:Program => map.clear(); p // Reset map at start
-      case ass@LocalVarAssign(l:LocalVar , i:IntLit) => map += (l -> i.i); ass
+    val collect = StrategyWrapper.SimpleStrategy[Node]( {
+      case (p:Program, _) => map.clear(); p // Reset map at start
+      case (ass@LocalVarAssign(l:LocalVar , i:IntLit), _) => map += (l -> i.i); ass
     }) recurseFunc { case l:LocalVarAssign => Seq(false, true) }
 
-    val replace = new Strategy[Node]( {
-      case l:LocalVar =>
+    val replace = StrategyWrapper.SimpleStrategy[Node]( {
+      case (l:LocalVar, _) =>
         map.get(l) match {
           case None => l
           case Some(i:BigInt) => IntLit(i)(l.pos, l.info)
         }
     })
 
-    val fold = new Strategy[Node]({
-      case root@Add(i1:IntLit, i2:IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
-      case root@Sub(i1:IntLit, i2:IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
-      case root@Div(i1:IntLit, i2:IntLit) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
-      case root@Mul(i1:IntLit, i2:IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
-      case root@Or(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value || b2.value)(root.pos, root.info)
-      case root@And(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value &&  b2.value)(root.pos, root.info)
-      case root@EqCmp(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value == b2.value)(root.pos, root.info)
-      case root@EqCmp(i1:IntLit, i2:IntLit) => BoolLit(i1.i == i2.i)(root.pos, root.info)
+    val fold = StrategyWrapper.SimpleStrategy[Node]({
+      case (root@Add(i1:IntLit, i2:IntLit), _) => IntLit(i1.i + i2.i)(root.pos, root.info)
+      case (root@Sub(i1:IntLit, i2:IntLit), _) => IntLit(i1.i - i2.i)(root.pos, root.info)
+      case (root@Div(i1:IntLit, i2:IntLit), _) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
+      case (root@Mul(i1:IntLit, i2:IntLit), _) => IntLit(i1.i * i2.i)(root.pos, root.info)
+      case (root@Or(b1:BoolLit, b2:BoolLit), _) => BoolLit(b1.value || b2.value)(root.pos, root.info)
+      case (root@And(b1:BoolLit, b2:BoolLit), _) => BoolLit(b1.value &&  b2.value)(root.pos, root.info)
+      case (root@EqCmp(b1:BoolLit, b2:BoolLit), _) => BoolLit(b1.value == b2.value)(root.pos, root.info)
+      case (root@EqCmp(i1:IntLit, i2:IntLit), _) => BoolLit(i1.i == i2.i)(root.pos, root.info)
     }) traverse Traverse.TopDown // Do this top down such that we need to iterate
 
     val combined = (collect + replace) || fold.repeat
 
     files foreach { name => executeTest(filePrefix, name, combined, frontend) }
-  }*/
+  }
 
   def executeTest(filePrefix: String, fileName: String, strat: StrategyInterface[Node], frontend: DummyFrontend): Unit = {
 
