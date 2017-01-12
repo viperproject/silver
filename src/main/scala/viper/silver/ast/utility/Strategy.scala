@@ -46,7 +46,7 @@ trait StrategyInterface[A <: Rewritable[A]] {
 
 }
 
-object StrategyWrapper {
+object StrategyBuilder {
 
   def SimpleStrategy[A <: Rewritable[A]](p: PartialFunction[(A, SimpleContext[A]), A]) = {
     new Strategy[A, SimpleContext[A]](p) defaultContext( x => new SimpleContext(x))
@@ -400,13 +400,13 @@ class ContextC[A <: Rewritable[A], C](aList: Seq[A], val custom: C, override val
     new ContextC(ancestorList.dropRight(1) ++ Seq(n), custom, transformer, upContext)
   }
 
-  def updateCustom: ContextC[A, C] = {
+  def updateCustom(): ContextC[A, C] = {
     val cust = if(upContext.isDefinedAt((node, custom))) upContext(node, custom) else custom
     new ContextC[A,C](ancestorList, cust, transformer, upContext)
   }
 
   override def update(n: A): ContextC[A, C] = {
-    replaceNode(n).updateCustom
+    replaceNode(n).updateCustom()
   }
 }
 
