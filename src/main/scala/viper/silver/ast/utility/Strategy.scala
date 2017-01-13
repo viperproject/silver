@@ -49,15 +49,15 @@ trait StrategyInterface[A <: Rewritable[A]] {
 object StrategyBuilder {
 
   def SimpleStrategy[A <: Rewritable[A]](p: PartialFunction[(A, SimpleContext[A]), A]) = {
-    new Strategy[A, SimpleContext[A]](p) defaultContext( x => new SimpleContext(x))
+    new Strategy[A, SimpleContext[A]](p) defaultContext new NoContext[A]
   }
 
   def AncestorStrategy[A <: Rewritable[A]](p: PartialFunction[(A, ContextA[A]), A]) = {
-    new Strategy[A, ContextA[A]](p) defaultContext( x => new ContextA(Seq(), x))
+    new Strategy[A, ContextA[A]](p) defaultContext new PartialContextA[A]
   }
 
-  def ContextStrategy[A <: Rewritable[A], C](p: PartialFunction[(A, ContextC[A, C]), A], default: C, updateFunc: PartialFunction[(A, C), C]) = {
-    new Strategy[A, ContextC[A, C]](p) defaultContext( x => new ContextC(Seq(), default, x, updateFunc))
+  def ContextStrategy[A <: Rewritable[A], C](p: PartialFunction[(A, ContextC[A, C]), A], default: C, updateFunc: PartialFunction[(A, C), C] = PartialFunction.empty) = {
+    new Strategy[A, ContextC[A, C]](p) defaultContext new PartialContextC[A, C](default, updateFunc)
   }
 
 }
@@ -87,8 +87,8 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A])
     this
   }
 
-  def defaultContext(cfun: Strategy[A,C]=>C): Strategy[A, C] = {
-    defaultContxt = Some(cfun(this))
+  def defaultContext(pC: PartialContext[A, C]): Strategy[A, C] = {
+    defaultContxt = Some(pC.get(this))
     this
   }
 
@@ -114,14 +114,22 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A])
     new RepeatedStrategy[A](this)
   }
 
-  override def execute(node: A): A = {
+  def selectStrat(node: A, contextUsed: C): A = {
     wasTransformed.clear()
-    assert(defaultContxt.isDefined, "Default context not set!")
     traversionMode match {
-      case Traverse.TopDown => executeTopDown(node, defaultContxt.get)
-      case Traverse.BottomUp => executeBottomUp(node, defaultContxt.get)
-      case Traverse.Innermost => executeInnermost(node, defaultContxt.get)
+      case Traverse.TopDown => executeTopDown(node, contextUsed)
+      case Traverse.BottomUp => executeBottomUp(node, contextUsed)
+      case Traverse.Innermost => executeInnermost(node, contextUsed)
     }
+  }
+
+  override def execute(node: A): A = {
+    assert(defaultContxt.isDefined, "Default context not set!")
+    selectStrat(node, defaultContxt.get)
+  }
+
+  def execute(node: A, ctxt: PartialContext[A, C]): A = {
+    selectStrat(node, ctxt.get(this))
   }
 
   def executeTopDown(node: A, context:C): A = {
@@ -385,12 +393,25 @@ class ContextA[A <: Rewritable[A]](val ancestorList: Seq[A], val transformer: St
 
 }
 
-/**
-  * This class works as a Tuple of a custom context and an ancestor list. It extends Ancestors such that we get: RuleC < RuleA < Rule
-  *
-  * @param aList  List from the Ancestors part
-  * @param custom Custom context part
-  */
+
+trait PartialContext[A <: Rewritable[A], C <: Context[A]] {
+  def get(transformer: StrategyInterface[A]): C
+}
+
+class NoContext[A <: Rewritable[A]] extends PartialContext[A, SimpleContext[A]] {
+  override def get(transformer: StrategyInterface[A]): SimpleContext[A] = new SimpleContext[A](transformer)
+}
+
+class PartialContextA[A <: Rewritable[A]](val aList:Seq[A] = Seq()) extends PartialContext[A, ContextA[A]] {
+  override def get(transformer: StrategyInterface[A]): ContextA[A] = new ContextA[A](aList, transformer)
+}
+
+class PartialContextC[A <: Rewritable[A], C](val custom: C, val upContext: PartialFunction[(A, C), C] = PartialFunction.empty, val aList:Seq[A] = Seq()) extends PartialContext[A, ContextC[A,C]] {
+  def get(list:Seq[A], upC: PartialFunction[(A, C), C], transformer: StrategyInterface[A]): ContextC[A, C] = new ContextC[A, C](list, custom, transformer, upC)
+  def get(list:Seq[A], transformer: StrategyInterface[A]): ContextC[A, C] = get(list, upContext, transformer)
+  override def get(transformer: StrategyInterface[A]): ContextC[A, C] = get(aList, transformer)
+}
+
 class ContextC[A <: Rewritable[A], C](aList: Seq[A], val custom: C, override val transformer: StrategyInterface[A], val upContext: PartialFunction[(A, C), C]) extends ContextA[A](aList, transformer) {
   override def addAncestor(n: A): ContextC[A, C] = {
     new ContextC(ancestorList ++ Seq(n), custom, transformer, upContext)

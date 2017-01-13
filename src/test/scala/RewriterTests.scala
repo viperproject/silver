@@ -174,9 +174,6 @@ class RewriterTests extends FunSuite with Matchers {
     }
   }
 
-  /**
-    * A second test for many to one assert that works differently form the other strategy.
-    */
   test("ManyToOneAssert2") {
     val filePrefix = "transformations\\ManyToOneAssert\\"
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
@@ -222,7 +219,6 @@ class RewriterTests extends FunSuite with Matchers {
 
   }
 
-  // This just tests functionality and is by no means a meaningful testcase
   test("UnfoldedChildren") {
     val filePrefix = "transformations\\UnfoldedChildren\\"
     val files = Seq("fourAnd")
