@@ -461,220 +461,219 @@ object Transformer {
 
   }
 
-  def viperDuplicator: PartialFunction[(Node, Seq[Any]), Node] = {
-    case (il: IntLit, Seq()) => IntLit(il.i)(il.pos, il.info, il.errT)
-    case (bl: BoolLit, Seq()) => BoolLit(bl.value)(bl.pos, bl.info, bl.errT)
-    case (nl: NullLit, _) => NullLit()(nl.pos, nl.info, nl.errT)
-    case (alv: AbstractLocalVar, _) => alv
+  def viperDuplicator: PartialFunction[(Node, Seq[Any], (Position, Info, ErrorTrafo)), Node] = {
+    case (il: IntLit, Seq(), meta) => IntLit(il.i)(meta._1, meta._2, meta._3)
+    case (bl: BoolLit, Seq(), meta) => BoolLit(bl.value)(meta._1, meta._2, meta._3)
+    case (nl: NullLit, _, meta) => NullLit()(meta._1, meta._2, meta._3)
+    case (alv: AbstractLocalVar, _, meta) => alv
     // AS: added recursion on field: this was previously missing (as for all "shared" nodes in AST). But this could lead to the type of the field not being transformed consistently with its declaration (if the whole program is transformed)
-    case (fa: FieldAccess, Seq(rcv: Exp, field: Field)) => FieldAccess(rcv, field)(fa.pos, fa.info, fa.errT)
-    case (pa: PredicateAccess, Seq(params: Seq[Exp])) =>
-      PredicateAccess(params, pa.predicateName)(pa.pos, pa.info, pa.errT)
+    case (fa: FieldAccess, Seq(rcv: Exp, field: Field), meta) => FieldAccess(rcv, field)(meta._1, meta._2, meta._3)
+    case (pa: PredicateAccess, Seq(params: Seq[Exp]), meta) =>
+      PredicateAccess(params, pa.predicateName)(meta._1, meta._2, meta._3)
 
-    case (u: Unfolding, Seq(acc: PredicateAccessPredicate, e: Exp)) => Unfolding(acc, e)(u.pos, u.info, u.errT)
+    case (u: Unfolding, Seq(acc: PredicateAccessPredicate, e: Exp), meta) => Unfolding(acc, e)(meta._1, meta._2, meta._3)
 
-    case (u: UnfoldingGhostOp, Seq(acc: PredicateAccessPredicate, e: Exp)) => UnfoldingGhostOp(acc, e)(u.pos, u.info, u.errT)
-    case (f: FoldingGhostOp, Seq(acc: PredicateAccessPredicate, e: Exp)) => FoldingGhostOp(acc, e)(f.pos, f.info, f.errT)
-    case (a: ApplyingGhostOp, Seq(wand: Exp, in: Exp)) => ApplyingGhostOp(wand, in)(a.pos, a.info, a.errT)
-    case (p: PackagingGhostOp, Seq(wand: MagicWand, in: Exp)) => PackagingGhostOp(wand, in)(p.pos, p.info, p.errT)
+    case (u: UnfoldingGhostOp, Seq(acc: PredicateAccessPredicate, e: Exp), meta) => UnfoldingGhostOp(acc, e)(meta._1, meta._2, meta._3)
+    case (f: FoldingGhostOp, Seq(acc: PredicateAccessPredicate, e: Exp), meta) => FoldingGhostOp(acc, e)(meta._1, meta._2, meta._3)
+    case (a: ApplyingGhostOp, Seq(wand: Exp, in: Exp), meta) => ApplyingGhostOp(wand, in)(meta._1, meta._2, meta._3)
+    case (p: PackagingGhostOp, Seq(wand: MagicWand, in: Exp), meta) => PackagingGhostOp(wand, in)(meta._1, meta._2, meta._3)
 
-    case (o: Old, Seq(e: Exp)) => Old(e)(o.pos, o.info, o.errT)
-    case (l: LabelledOld, Seq(e: Exp)) => LabelledOld(e, l.oldLabel)(l.pos, l.info, l.errT)
-    case (a: ApplyOld, Seq(e: Exp)) => ApplyOld(e)(a.pos, a.info, a.errT)
-    case (c: CondExp, Seq(cond: Exp, thn: Exp, els: Exp)) =>
-      CondExp(cond, thn, els)(c.pos, c.info, c.errT)
-    case (l: Let, Seq(v: LocalVarDecl, exp1: Exp, body: Exp)) => Let(v, exp1, body)(l.pos, l.info, l.errT)
-    case (ex: Exists, Seq(v: Seq[LocalVarDecl], e: Exp)) => Exists(v, e)(ex.pos, ex.info, ex.errT)
-    case (f: Forall, Seq(v: Seq[LocalVarDecl], triggers: Seq[Trigger], e: Exp)) =>
-      Forall(v, triggers, e)(f.pos, f.info, f.errT)
-    case (f: ForPerm, Seq(v: LocalVarDecl, fields: Seq[Location], e: Exp)) =>
-      ForPerm(v, fields, e)(f.pos, f.info, f.errT)
-    case (ie: InhaleExhaleExp, Seq(in: Exp, ex: Exp)) =>
-      InhaleExhaleExp(in, ex)(ie.pos, ie.info, ie.errT  )
-    case (w: WildcardPerm, _) => WildcardPerm()(w.pos, w.info, w.errT)
-    case (f: FullPerm, _) => FullPerm()(f.pos, f.info, f.errT)
-    case (n: NoPerm, _) => NoPerm()(n.pos, n.info, n.errT)
-    case (e: EpsilonPerm, _) => EpsilonPerm()(e.pos, e.info, e.errT)
-    case (c: CurrentPerm, Seq(loc: LocationAccess)) => CurrentPerm(loc)(c.pos, c.info, c.errT)
-    case (f: FractionalPerm, Seq(left: Exp, right: Exp)) =>
-      FractionalPerm(left, right)(f.pos, f.info, f.errT)
-    case (p: PermDiv, Seq(left: Exp, right: Exp)) =>
-      PermDiv(left, right)(p.pos, p.info, p.errT)
-    case (f: FieldAccessPredicate, Seq(loc: FieldAccess, perm: Exp)) =>
-      FieldAccessPredicate(loc, perm)(f.pos, f.info, f.errT)
-    case (p: PredicateAccessPredicate, Seq(loc: PredicateAccess, perm: Exp)) =>
-      PredicateAccessPredicate(loc, perm)(p.pos, p.info, p.errT)
-    case (fa: FuncApp, Seq(args: Seq[Exp])) =>
-      FuncApp(fa.funcname, args)(fa.pos, fa.info, fa.typ, fa.formalArgs, fa.errT)
-    case (df: DomainFuncApp, Seq(fname: DomainFunc, args: Seq[Exp], m: Map[TypeVar, Type])) =>
-      DomainFuncApp(fname, args, m)(df.pos, df.info, df.errT)
+    case (o: Old, Seq(e: Exp), meta) => Old(e)(meta._1, meta._2, meta._3)
+    case (l: LabelledOld, Seq(e: Exp), meta) => LabelledOld(e, l.oldLabel)(meta._1, meta._2, meta._3)
+    case (a: ApplyOld, Seq(e: Exp), meta) => ApplyOld(e)(meta._1, meta._2, meta._3)
+    case (c: CondExp, Seq(cond: Exp, thn: Exp, els: Exp), meta) =>
+      CondExp(cond, thn, els)(meta._1, meta._2, meta._3)
+    case (l: Let, Seq(v: LocalVarDecl, exp1: Exp, body: Exp), meta) => Let(v, exp1, body)(meta._1, meta._2, meta._3)
+    case (ex: Exists, Seq(v: Seq[LocalVarDecl], e: Exp), meta) => Exists(v, e)(meta._1, meta._2, meta._3)
+    case (f: Forall, Seq(v: Seq[LocalVarDecl], triggers: Seq[Trigger], e: Exp), meta) =>
+      Forall(v, triggers, e)(meta._1, meta._2, meta._3)
+    case (f: ForPerm, Seq(v: LocalVarDecl, fields: Seq[Location], e: Exp), meta) =>
+      ForPerm(v, fields, e)(meta._1, meta._2, meta._3)
+    case (ie: InhaleExhaleExp, Seq(in: Exp, ex: Exp), meta) =>
+      InhaleExhaleExp(in, ex)(meta._1, meta._2, meta._3)
+    case (w: WildcardPerm, _, meta) => WildcardPerm()(meta._1, meta._2, meta._3)
+    case (f: FullPerm, _, meta) => FullPerm()(meta._1, meta._2, meta._3)
+    case (n: NoPerm, _, meta) => NoPerm()(meta._1, meta._2, meta._3)
+    case (e: EpsilonPerm, _, meta) => EpsilonPerm()(meta._1, meta._2, meta._3)
+    case (c: CurrentPerm, Seq(loc: LocationAccess), meta) => CurrentPerm(loc)(meta._1, meta._2, meta._3)
+    case (f: FractionalPerm, Seq(left: Exp, right: Exp), meta) =>
+      FractionalPerm(left, right)(meta._1, meta._2, meta._3)
+    case (p: PermDiv, Seq(left: Exp, right: Exp), meta) =>
+      PermDiv(left, right)(meta._1, meta._2, meta._3)
+    case (f: FieldAccessPredicate, Seq(loc: FieldAccess, perm: Exp), meta) =>
+      FieldAccessPredicate(loc, perm)(meta._1, meta._2, meta._3)
+    case (p: PredicateAccessPredicate, Seq(loc: PredicateAccess, perm: Exp), meta) =>
+      PredicateAccessPredicate(loc, perm)(meta._1, meta._2, meta._3)
+    case (fa: FuncApp, Seq(args: Seq[Exp]), meta) =>
+      FuncApp(fa.funcname, args)(meta._1, meta._2, fa.typ, fa.formalArgs, meta._3)
+    case (df: DomainFuncApp, Seq(fname: DomainFunc, args: Seq[Exp], m: Map[TypeVar, Type]), meta) =>
+      DomainFuncApp(fname, args, m)(meta._1, meta._2, meta._3)
 
-    case (m: Minus, Seq(e: Exp)) => Minus(e)(m.pos, m.info, m.errT)
-    case (n: Not, Seq(e: Exp)) => Not(e)(n.pos, n.info, n.errT)
+    case (m: Minus, Seq(e: Exp), meta) => Minus(e)(meta._1, meta._2, meta._3)
+    case (n: Not, Seq(e: Exp), meta) => Not(e)(meta._1, meta._2, meta._3)
 
-    case (o: Or, Seq(l: Exp, r: Exp)) => Or(l, r)(o.pos, o.info, o.errT)
-    case (a: And, Seq(l: Exp, r: Exp)) => And(l, r)(a.pos, a.info, a.errT)
-    case (i: Implies, Seq(l: Exp, r: Exp)) => Implies(l, r)(i.pos, i.info, i.errT)
-    case (m: MagicWand, Seq(l: Exp, r: Exp)) => MagicWand(l, r)(m.pos, m.info, m.errT)
+    case (o: Or, Seq(l: Exp, r: Exp), meta) => Or(l, r)(meta._1, meta._2, meta._3)
+    case (a: And, Seq(l: Exp, r: Exp), meta) => And(l, r)(meta._1, meta._2, meta._3)
+    case (i: Implies, Seq(l: Exp, r: Exp), meta) => Implies(l, r)(meta._1, meta._2, meta._3)
+    case (m: MagicWand, Seq(l: Exp, r: Exp), meta) => MagicWand(l, r)(meta._1, meta._2, meta._3)
 
-    case (a: Add, Seq(l: Exp, r: Exp)) => Add(l, r)(a.pos, a.info, a.errT)
-    case (s: Sub, Seq(l: Exp, r: Exp)) => Sub(l, r)(s.pos, s.info, s.errT)
-    case (m: Mul, Seq(l: Exp, r: Exp)) => Mul(l, r)(m.pos, m.info, m.errT)
-    case (d: Div, Seq(l: Exp, r: Exp)) => Div(l, r)(d.pos, d.info, d.errT)
-    case (m: Mod, Seq(l: Exp, r: Exp)) => Mod(l, r)(m.pos, m.info, m.errT)
+    case (a: Add, Seq(l: Exp, r: Exp), meta) => Add(l, r)(meta._1, meta._2, meta._3)
+    case (s: Sub, Seq(l: Exp, r: Exp), meta) => Sub(l, r)(meta._1, meta._2, meta._3)
+    case (m: Mul, Seq(l: Exp, r: Exp), meta) => Mul(l, r)(meta._1, meta._2, meta._3)
+    case (d: Div, Seq(l: Exp, r: Exp), meta) => Div(l, r)(meta._1, meta._2, meta._3)
+    case (m: Mod, Seq(l: Exp, r: Exp), meta) => Mod(l, r)(meta._1, meta._2, meta._3)
 
-    case (lc: LtCmp, Seq(l: Exp, r: Exp)) => LtCmp(l, r)(lc.pos, lc.info, lc.errT)
-    case (le: LeCmp, Seq(l: Exp, r: Exp)) => LeCmp(l, r)(le.pos, le.info, le.errT)
-    case (gt: GtCmp, Seq(l: Exp, r: Exp)) => GtCmp(l, r)(gt.pos, gt.info, gt.errT)
-    case (ge: GeCmp, Seq(l: Exp, r: Exp)) => GeCmp(l, r)(ge.pos, ge.info, ge.errT)
+    case (lc: LtCmp, Seq(l: Exp, r: Exp), meta) => LtCmp(l, r)(meta._1, meta._2, meta._3)
+    case (le: LeCmp, Seq(l: Exp, r: Exp), meta) => LeCmp(l, r)(meta._1, meta._2, meta._3)
+    case (gt: GtCmp, Seq(l: Exp, r: Exp), meta) => GtCmp(l, r)(meta._1, meta._2, meta._3)
+    case (ge: GeCmp, Seq(l: Exp, r: Exp), meta) => GeCmp(l, r)(meta._1, meta._2, meta._3)
 
-    case (eq: EqCmp, Seq(l: Exp, r: Exp)) => EqCmp(l, r)(eq.pos, eq.info, eq.errT)
-    case (neq: NeCmp, Seq(l: Exp, r: Exp)) => NeCmp(l, r)(neq.pos, neq.info, neq.errT)
+    case (eq: EqCmp, Seq(l: Exp, r: Exp), meta) => EqCmp(l, r)(meta._1, meta._2, meta._3)
+    case (neq: NeCmp, Seq(l: Exp, r: Exp), meta) => NeCmp(l, r)(meta._1, meta._2, meta._3)
 
-    case (pm: PermMinus, Seq(e: Exp)) => PermMinus(e)(pm.pos, pm.info, pm.errT)
-    case (pa: PermAdd, Seq(l: Exp, r: Exp)) => PermAdd(l, r)(pa.pos, pa.info, pa.errT)
-    case (ps: PermSub, Seq(l: Exp, r: Exp)) => PermSub(l, r)(ps.pos, ps.info, ps.errT)
-    case (pm: PermMul, Seq(l: Exp, r: Exp)) => PermMul(l, r)(pm.pos, pm.info, pm.errT)
-    case (ip: IntPermMul, Seq(l: Exp, r: Exp)) => IntPermMul(l, r)(ip.pos, ip.info, ip.errT)
+    case (pm: PermMinus, Seq(e: Exp), meta) => PermMinus(e)(meta._1, meta._2, meta._3)
+    case (pa: PermAdd, Seq(l: Exp, r: Exp), meta) => PermAdd(l, r)(meta._1, meta._2, meta._3)
+    case (ps: PermSub, Seq(l: Exp, r: Exp), meta) => PermSub(l, r)(meta._1, meta._2, meta._3)
+    case (pm: PermMul, Seq(l: Exp, r: Exp), meta) => PermMul(l, r)(meta._1, meta._2, meta._3)
+    case (ip: IntPermMul, Seq(l: Exp, r: Exp), meta) => IntPermMul(l, r)(meta._1, meta._2, meta._3)
 
-    case (pc: PermLtCmp, Seq(l: Exp, r: Exp)) => PermLtCmp(l, r)(pc.pos, pc.info, pc.errT)
-    case (pc: PermLeCmp, Seq(l: Exp, r: Exp)) => PermLeCmp(l, r)(pc.pos, pc.info, pc.errT)
-    case (pc: PermGtCmp, Seq(l: Exp, r: Exp)) => PermGtCmp(l, r)(pc.pos, pc.info, pc.errT)
-    case (pc: PermGeCmp, Seq(l: Exp, r: Exp)) => PermGeCmp(l, r)(pc.pos, pc.info, pc.errT)
+    case (pc: PermLtCmp, Seq(l: Exp, r: Exp), meta) => PermLtCmp(l, r)(meta._1, meta._2, meta._3)
+    case (pc: PermLeCmp, Seq(l: Exp, r: Exp), meta) => PermLeCmp(l, r)(meta._1, meta._2, meta._3)
+    case (pc: PermGtCmp, Seq(l: Exp, r: Exp), meta) => PermGtCmp(l, r)(meta._1, meta._2, meta._3)
+    case (pc: PermGeCmp, Seq(l: Exp, r: Exp), meta) => PermGeCmp(l, r)(meta._1, meta._2, meta._3)
 
-    case (es: EmptySeq, Seq(elemTyp: Type)) => EmptySeq(elemTyp)(es.pos, es.info, es.errT)
-    case (es: ExplicitSeq, Seq(elems: Seq[Exp])) => ExplicitSeq(elems)(es.pos, es.info, es.errT)
-    case (rs: RangeSeq, Seq(low: Exp, high: Exp)) => RangeSeq(low, high)(rs.pos, rs.info, rs.errT)
-    case (sa: SeqAppend, Seq(left: Exp, right: Exp)) => SeqAppend(left, right)(sa.pos, sa.info, sa.errT)
-    case (si: SeqIndex, Seq(seq: Exp, idx: Exp)) => SeqIndex(seq, idx)(si.pos, si.info, si.errT)
-    case (st: SeqTake, Seq(seq: Exp, n: Exp)) => SeqTake(seq, n)(st.pos, st.info, st.errT)
-    case (sd: SeqDrop, Seq(seq: Exp, n: Exp)) => SeqDrop(seq, n)(sd.pos, sd.info, sd.errT)
-    case (sc: SeqContains, Seq(elem: Exp, seq: Exp)) => SeqContains(elem, seq)(sc.pos, sc.info, sc.errT)
-    case (su: SeqUpdate, Seq(seq: Exp, idx: Exp, elem: Exp)) =>
-      SeqUpdate(seq, idx, elem)(su.pos, su.info, su.errT)
-    case (sl: SeqLength, Seq(seq: Exp)) => SeqLength(seq)(sl.pos, sl.info, sl.errT)
+    case (es: EmptySeq, Seq(elemTyp: Type), meta) => EmptySeq(elemTyp)(meta._1, meta._2, meta._3)
+    case (es: ExplicitSeq, Seq(elems: Seq[Exp]), meta) => ExplicitSeq(elems)(meta._1, meta._2, meta._3)
+    case (rs: RangeSeq, Seq(low: Exp, high: Exp), meta) => RangeSeq(low, high)(meta._1, meta._2, meta._3)
+    case (sa: SeqAppend, Seq(left: Exp, right: Exp), meta) => SeqAppend(left, right)(meta._1, meta._2, meta._3)
+    case (si: SeqIndex, Seq(seq: Exp, idx: Exp), meta) => SeqIndex(seq, idx)(meta._1, meta._2, meta._3)
+    case (st: SeqTake, Seq(seq: Exp, n: Exp), meta) => SeqTake(seq, n)(meta._1, meta._2, meta._3)
+    case (sd: SeqDrop, Seq(seq: Exp, n: Exp), meta) => SeqDrop(seq, n)(meta._1, meta._2, meta._3)
+    case (sc: SeqContains, Seq(elem: Exp, seq: Exp), meta) => SeqContains(elem, seq)(meta._1, meta._2, meta._3)
+    case (su: SeqUpdate, Seq(seq: Exp, idx: Exp, elem: Exp), meta) =>
+      SeqUpdate(seq, idx, elem)(meta._1, meta._2, meta._3)
+    case (sl: SeqLength, Seq(seq: Exp), meta) => SeqLength(seq)(meta._1, meta._2, meta._3)
 
-    case (e: EmptySet, Seq(elemTyp: Type)) => EmptySet(elemTyp)(e.pos, e.info, e.errT)
-    case (e: ExplicitSet, Seq(elems: Seq[Exp])) => ExplicitSet(elems)(e.pos, e.info, e.errT)
-    case (e: EmptyMultiset, Seq(elemTyp: Type)) => EmptyMultiset(elemTyp)(e.pos, e.info, e.errT)
-    case (e: ExplicitMultiset, Seq(elems: Seq[Exp])) => ExplicitMultiset(elems)(e.pos, e.info, e.errT  )
-    case (a: AnySetUnion, Seq(left: Exp, right: Exp)) => AnySetUnion(left, right)(a.pos, a.info, a.errT  )
-    case (a: AnySetIntersection, Seq(left: Exp, right: Exp)) => AnySetIntersection(left, right)(a.pos, a.info, a.errT)
-    case (a: AnySetSubset, Seq(left: Exp, right: Exp)) => AnySetSubset(left, right)(a.pos, a.info, a.errT)
-    case (a: AnySetMinus, Seq(left: Exp, right: Exp)) => AnySetMinus(left, right)(a.pos, a.info, a.errT)
-    case (a: AnySetContains, Seq(elem: Exp, s: Exp)) => AnySetContains(elem, s)(a.pos, a.info, a.errT)
-    case (a: AnySetCardinality, Seq(s: Exp)) => AnySetCardinality(s)(a.pos, a.info, a.errT)
+    case (e: EmptySet, Seq(elemTyp: Type), meta) => EmptySet(elemTyp)(meta._1, meta._2, meta._3)
+    case (e: ExplicitSet, Seq(elems: Seq[Exp]), meta) => ExplicitSet(elems)(meta._1, meta._2, meta._3)
+    case (e: EmptyMultiset, Seq(elemTyp: Type), meta) => EmptyMultiset(elemTyp)(meta._1, meta._2, meta._3)
+    case (e: ExplicitMultiset, Seq(elems: Seq[Exp]), meta) => ExplicitMultiset(elems)(meta._1, meta._2, meta._3)
+    case (a: AnySetUnion, Seq(left: Exp, right: Exp), meta) => AnySetUnion(left, right)(meta._1, meta._2, meta._3)
+    case (a: AnySetIntersection, Seq(left: Exp, right: Exp), meta) => AnySetIntersection(left, right)(meta._1, meta._2, meta._3)
+    case (a: AnySetSubset, Seq(left: Exp, right: Exp), meta) => AnySetSubset(left, right)(meta._1, meta._2, meta._3)
+    case (a: AnySetMinus, Seq(left: Exp, right: Exp), meta) => AnySetMinus(left, right)(meta._1, meta._2, meta._3)
+    case (a: AnySetContains, Seq(elem: Exp, s: Exp), meta) => AnySetContains(elem, s)(meta._1, meta._2, meta._3)
+    case (a: AnySetCardinality, Seq(s: Exp), meta) => AnySetCardinality(s)(meta._1, meta._2, meta._3)
 
-    case (p: Program, Seq(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])) =>
+    case (p: Program, Seq(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method]), meta) =>
       Program(domains, fields, functions,
-        predicates, methods)(p.pos, p.info, p.errT)
+        predicates, methods)(meta._1, meta._2, meta._3)
 
 
-    case (d: Domain, Seq(functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typeVariables: Seq[TypeVar])) =>
+    case (d: Domain, Seq(functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typeVariables: Seq[TypeVar]), meta) =>
       Domain(d.name, functions, axioms,
-        typeVariables)(d.pos, d.info, d.errT  )
+        typeVariables)(meta._1, meta._2, meta._3)
 
-    case (f: Field, Seq(singleType: Type)) =>
-      Field(f.name, singleType)(f.pos, f.info, f.errT  )
+    case (f: Field, Seq(singleType: Type), meta) =>
+      Field(f.name, singleType)(meta._1, meta._2, meta._3)
 
     case (f: Function, Seq(parameters: Seq[LocalVarDecl], aType: Type, preconditions: Seq[Exp],
-    postconditions:Seq[Exp], body:Option[Exp])) =>
+    postconditions:Seq[Exp], body:Option[Exp]), meta) =>
       Function(f.name, parameters, aType,
         preconditions,
         postconditions,
-        body)(f.pos, f.info, f.errT  )
+        body)(meta._1, meta._2, meta._3)
 
-    case (p: Predicate, Seq(parameters: Seq[LocalVarDecl], body: Option[Exp])) =>
+    case (p: Predicate, Seq(parameters: Seq[LocalVarDecl], body: Option[Exp]), meta) =>
       Predicate(p.name, parameters,
-        body)(p.pos, p.info, p.errT)
+        body)(meta._1, meta._2, meta._3)
 
     case (m: Method, Seq(parameters: Seq[LocalVarDecl], results: Seq[LocalVarDecl], preconditions: Seq[Exp],
-    postconditions: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)) =>
+    postconditions: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt), meta) =>
       Method(m.name, parameters, results,
         preconditions,
         postconditions,
-        locals, body)(m.pos, m.info, m.errT)
+        locals, body)(meta._1, meta._2, meta._3)
 
 
-    case (da: DomainAxiom, Seq(body: Exp)) =>
-      DomainAxiom(da.name, body)(da.pos, da.info, da.domainName, da.errT  )
+    case (da: DomainAxiom, Seq(body: Exp), meta) =>
+      DomainAxiom(da.name, body)(meta._1, meta._2, da.domainName, meta._3  )
 
-    case (df: DomainFunc, Seq(parameters: Seq[LocalVarDecl], aType: Type)) =>
-      DomainFunc(df.name, parameters, aType, df.unique)(df.pos, df.info, df.domainName, df.errT  )
+    case (df: DomainFunc, Seq(parameters: Seq[LocalVarDecl], aType: Type), meta) =>
+      DomainFunc(df.name, parameters, aType, df.unique)(meta._1, meta._2, df.domainName, meta._3  )
 
-    case (Bool, _) => Bool
-    case (dt: DomainType, Seq(domainName: Domain, typeVariables: Map[TypeVar, Type])) =>
+    case (Bool, _, meta) => Bool
+    case (dt: DomainType, Seq(domainName: Domain, typeVariables: Map[TypeVar, Type]), meta) =>
       DomainType(domainName, typeVariables)
 
-    case (Int, _) => Int
-    case (Perm, _) => Perm
-    case (InternalType, _) => InternalType
-    case (Wand, _) => Wand
-    case (Ref, _) => Ref
-    case (st: SeqType, Seq(elementType: Type)) => SeqType(elementType)
-    case (st: SetType, Seq(elementType: Type)) => SetType(elementType)
-    case (mt: MultisetType, Seq(elementType: Type)) => MultisetType(elementType)
-    case (t: TypeVar, _) => t
+    case (Int, _, meta) => Int
+    case (Perm, _, meta) => Perm
+    case (InternalType, _, meta) => InternalType
+    case (Wand, _, meta) => Wand
+    case (Ref, _, meta) => Ref
+    case (st: SeqType, Seq(elementType: Type), meta) => SeqType(elementType)
+    case (st: SetType, Seq(elementType: Type), meta) => SetType(elementType)
+    case (mt: MultisetType, Seq(elementType: Type), meta) => MultisetType(elementType)
+    case (t: TypeVar, _, meta) => t
 
-    case (ld: LocalVarDecl, Seq(singleType: Type)) =>
-      LocalVarDecl(ld.name, singleType)(ld.pos,
-        ld.info, ld.errT)
+    case (ld: LocalVarDecl, Seq(singleType: Type), meta) =>
+      LocalVarDecl(ld.name, singleType)(meta._1, meta._2, meta._3)
 
-    case (a: Assert, Seq(expression: Exp)) =>
-      Assert(expression)(a.pos, a.info, a.errT)
+    case (a: Assert, Seq(expression: Exp), meta) =>
+      Assert(expression)(meta._1, meta._2, meta._3)
 
-    case (e: Exhale, Seq(expression: Exp)) =>
-      Exhale(expression)(e.pos, e.info, e.errT)
+    case (e: Exhale, Seq(expression: Exp), meta) =>
+      Exhale(expression)(meta._1, meta._2, meta._3)
 
-    case (fa: FieldAssign, Seq(field: FieldAccess, value: Exp)) =>
-      FieldAssign(field, value)(fa.pos, fa.info, fa.errT  )
+    case (fa: FieldAssign, Seq(field: FieldAccess, value: Exp), meta) =>
+      FieldAssign(field, value)(meta._1, meta._2, meta._3)
 
-    case (f: Fold, Seq(accessPredicate: PredicateAccessPredicate)) =>
-      Fold(accessPredicate)(f.pos, f.info, f.errT)
+    case (f: Fold, Seq(accessPredicate: PredicateAccessPredicate), meta) =>
+      Fold(accessPredicate)(meta._1, meta._2, meta._3)
 
-    case (f: Fresh, Seq(variables: Seq[LocalVar])) =>
-      Fresh(variables)(f.pos, f.info, f.errT)
+    case (f: Fresh, Seq(variables: Seq[LocalVar]), meta) =>
+      Fresh(variables)(meta._1, meta._2, meta._3)
 
-    case (c: Constraining, Seq(variables: Seq[LocalVar], body: Stmt)) =>
-      Constraining(variables, body)(c.pos, c.info, c.errT  )
+    case (c: Constraining, Seq(variables: Seq[LocalVar], body: Stmt), meta) =>
+      Constraining(variables, body)(meta._1, meta._2, meta._3)
 
     // We dont recurse on goto
-    case (g: Goto, _) => Goto(g.target)(g.pos, g.info, g.errT  )
+    case (g: Goto, _, meta) => Goto(g.target)(meta._1, meta._2, meta._3)
 
-    case (i: If, Seq(condition: Exp, ifTrue: Stmt, ifFalse: Stmt)) =>
-      If(condition, ifTrue, ifFalse)(i.pos, i.info, i.errT  )
+    case (i: If, Seq(condition: Exp, ifTrue: Stmt, ifFalse: Stmt), meta) =>
+      If(condition, ifTrue, ifFalse)(meta._1, meta._2, meta._3)
 
-    case (i: Inhale, Seq(expression: Exp)) =>
-      Inhale(expression)(i.pos, i.info, i.errT)
+    case (i: Inhale, Seq(expression: Exp), meta) =>
+      Inhale(expression)(meta._1, meta._2, meta._3)
 
-    case (l: Label, invars: Seq[Exp]) => Label(l.name, invars)(l.pos, l.info, l.errT)
+    case (l: Label, invars: Seq[Exp], meta) => Label(l.name, invars)(meta._1, meta._2, meta._3)
 
-    case (l: LocalVarAssign, Seq(variable: LocalVar, value: Exp)) =>
-      LocalVarAssign(variable, value)(l.pos, l.info, l.errT  )
+    case (l: LocalVarAssign, Seq(variable: LocalVar, value: Exp), meta) =>
+      LocalVarAssign(variable, value)(meta._1, meta._2, meta._3)
 
-    case (m: MethodCall, Seq(methodname: Method, arguments: Seq[Exp], variables: Seq[LocalVar])) =>
-      MethodCall(methodname, arguments, variables)(m.pos, m.info, m.errT)
+    case (m: MethodCall, Seq(methodname: Method, arguments: Seq[Exp], variables: Seq[LocalVar]), meta) =>
+      MethodCall(methodname, arguments, variables)(meta._1, meta._2, meta._3)
 
-    case (n: NewStmt, Seq(target: LocalVar, fields: Seq[Field])) =>
-      NewStmt(target, fields)(n.pos, n.info, n.errT)
+    case (n: NewStmt, Seq(target: LocalVar, fields: Seq[Field]), meta) =>
+      NewStmt(target, fields)(meta._1, meta._2, meta._3)
 
-    case (s: Seqn, x:Seq[Stmt]) =>
-      Seqn(x)(s.pos, s.info, s.errT)
+    case (s: Seqn, x:Seq[Stmt], meta) =>
+      Seqn(x)(meta._1, meta._2, meta._3)
 
-    case (u: Unfold, Seq(predicate: PredicateAccessPredicate)) =>
-      Unfold(predicate)(u.pos, u.info, u.errT)
+    case (u: Unfold, Seq(predicate: PredicateAccessPredicate), meta) =>
+      Unfold(predicate)(meta._1, meta._2, meta._3)
 
-    case (p: Package, Seq(wand: MagicWand)) =>
-      Package(wand)(p.pos, p.info, p.errT)
+    case (p: Package, Seq(wand: MagicWand), meta) =>
+      Package(wand)(meta._1, meta._2, meta._3)
 
-    case (a: Apply, Seq(wand: MagicWand)) =>
-      Apply(wand)(a.pos, a.info, a.errT  )
+    case (a: Apply, Seq(wand: MagicWand), meta) =>
+      Apply(wand)(meta._1, meta._2, meta._3)
 
-    case (w: While, Seq(condition: Exp, invariants: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)) =>
-      While(condition, invariants, locals, body)(w.pos, w.info, w.errT)
+    case (w: While, Seq(condition: Exp, invariants: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt), meta) =>
+      While(condition, invariants, locals, body)(meta._1, meta._2, meta._3)
 
-    case (t: Trigger, Seq(expressions: Seq[Exp])) =>
-      Trigger(expressions)(t.pos, t.info, t.errT)
+    case (t: Trigger, Seq(expressions: Seq[Exp]), meta) =>
+      Trigger(expressions)(meta._1, meta._2, meta._3)
   }
 
   //</editor-fold>

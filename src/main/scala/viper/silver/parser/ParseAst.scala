@@ -64,7 +64,7 @@ trait FastPositioned {
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual SIL abstract syntax tree.
  */
-sealed trait PNode extends FastPositioned with Product with Rewritable[PNode] {
+sealed trait PNode extends FastPositioned with Product {
 
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)

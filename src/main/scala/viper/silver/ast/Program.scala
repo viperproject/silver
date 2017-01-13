@@ -73,6 +73,10 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   DomainInstances.showInstanceMembers(this)
 
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
+
 }//class Program
 
 object Program{
@@ -84,6 +88,10 @@ object Program{
 /** A field declaration. */
 case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT:ErrorTrafo = NoTrafos) extends Location with Typed {
   require(typ.isConcrete, "Type of field " + name + ":" + typ + " must be concrete!")
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 /** A predicate declaration. */
@@ -100,6 +108,10 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _b
     case Some(e) if e.contains[PermExp] => false
     case Some(e) if e.contains[ForPerm] => false
     case _ => true
+  }
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
   }
 }
 
@@ -132,6 +144,10 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   def body_=(b: Stmt) {
     Consistency.checkNoArgsReassigned(formalArgs, b)
     _body = b
+  }
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
   }
 }
 
@@ -185,6 +201,9 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
     case _ => true
   }
 
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 
@@ -201,6 +220,10 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
    * Returns a local variable with equivalent information
    */
   lazy val localVar = LocalVar(name)(typ, pos, info, errT)
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 
@@ -218,6 +241,10 @@ case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Se
   def axioms_=(as: Seq[DomainAxiom]) {
     _axioms = as
   }
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 /** A domain axiom. */
@@ -229,6 +256,10 @@ case class DomainAxiom(name: String, exp: Exp)
   require(Consistency.noAccessLocation(exp), "Axioms can never contain access locations.")
   require(exp isSubtype Bool)
   Consistency.checkNoPositiveOnly(exp)
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 object Substitution{
@@ -240,6 +271,10 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT:ErrorTrafo = NoTrafos)
                       extends AbstractDomainFunc with DomainMember {
   require(!unique || formalArgs.isEmpty, "Only constants, i.e. nullary domain functions can be unique.")
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 

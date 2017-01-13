@@ -41,6 +41,10 @@ sealed trait Stmt extends Node with Infoed with Positioned with TransformableErr
     * Computes all local variables that are written to in this statement.
     */
   def writtenVars = Statements.writtenVars(this)
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 /** A statement that creates a new object and assigns it to a local variable. */

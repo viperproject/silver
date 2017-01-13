@@ -28,6 +28,10 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Transf
   /** Returns the subexpressions of this expression */
   lazy val subExps = Expressions.subExps(this)
 
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
+
   // AS: experimenting with removing this code...
   /**
    * Returns a conjunction of all proof obligations in this expression, e.g. rcv != null for all field accesses rcv.f,
@@ -488,6 +492,10 @@ case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
 case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT:ErrorTrafo = NoTrafos) extends Node with Positioned with Infoed {
   require(exps forall Consistency.validTrigger, s"The trigger { ${exps.mkString(", ")} } is not valid.")
   exps foreach Consistency.checkNoPositiveOnly
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 // --- Variables, this, result
