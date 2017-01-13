@@ -153,8 +153,9 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A])
 
   def executeBottomUp(node: A, context: C): A = {
     // Add this node to context
+
     val updatedContext:C = context match {
-      case cC:ContextC[A, _] => cC.update(node).asInstanceOf[C]
+      case cC:ContextC[A, _] => cC.addAncestor(node); cC.update(node).asInstanceOf[C]
       case cA:ContextA[A] => cA.addAncestor(node).asInstanceOf[C]
       case nC:SimpleContext[A] => nC.asInstanceOf[C]
     }
@@ -172,19 +173,14 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A])
   }
 
   def executeInnermost(node: A, context: C): A = {
+    val newC = context.addAncestor(node).asInstanceOf[C]
     // Check which node we get from rewriting
-    val maybe = rule.execute(node, context)
+    val maybe = rule.execute(node, newC)
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     if(maybe.isEmpty) {
 
-      val updatedContext:C = context match {
-        case cC:ContextC[A, _] => cC.update(node).asInstanceOf[C]
-        case cA:ContextA[A] => cA.addAncestor(node).asInstanceOf[C]
-        case nC:SimpleContext[A] => nC.asInstanceOf[C]
-      }
-
-      recurseChildren(node, executeTopDown(_, updatedContext)) match {
+      recurseChildren(node, executeInnermost(_, newC)) match {
         case Some(children) =>
           val dup = node.duplicate(children)
           transformed(dup)
@@ -393,6 +389,24 @@ class ContextA[A <: Rewritable[A]](val ancestorList: Seq[A], val transformer: St
 
 }
 
+class ContextC[A <: Rewritable[A], C](aList: Seq[A], val custom: C, override val transformer: StrategyInterface[A], val upContext: PartialFunction[(A, C), C]) extends ContextA[A](aList, transformer) {
+  override def addAncestor(n: A): ContextC[A, C] = {
+    new ContextC(ancestorList ++ Seq(n), custom, transformer, upContext)
+  }
+
+  override def replaceNode(n: A): ContextC[A, C] = {
+    new ContextC(ancestorList.dropRight(1) ++ Seq(n), custom, transformer, upContext)
+  }
+
+  def updateCustom(): ContextC[A, C] = {
+    val cust = if(upContext.isDefinedAt((node, custom))) upContext(node, custom) else custom
+    new ContextC[A,C](ancestorList, cust, transformer, upContext)
+  }
+
+  override def update(n: A): ContextC[A, C] = {
+    replaceNode(n).updateCustom()
+  }
+}
 
 trait PartialContext[A <: Rewritable[A], C <: Context[A]] {
   def get(transformer: StrategyInterface[A]): C
@@ -412,24 +426,6 @@ class PartialContextC[A <: Rewritable[A], C](val custom: C, val upContext: Parti
   override def get(transformer: StrategyInterface[A]): ContextC[A, C] = get(aList, transformer)
 }
 
-class ContextC[A <: Rewritable[A], C](aList: Seq[A], val custom: C, override val transformer: StrategyInterface[A], val upContext: PartialFunction[(A, C), C]) extends ContextA[A](aList, transformer) {
-  override def addAncestor(n: A): ContextC[A, C] = {
-    new ContextC(ancestorList ++ Seq(n), custom, transformer, upContext)
-  }
-
-  override def replaceNode(n: A): ContextC[A, C] = {
-    new ContextC(ancestorList.dropRight(1) ++ Seq(n), custom, transformer, upContext)
-  }
-
-  def updateCustom(): ContextC[A, C] = {
-    val cust = if(upContext.isDefinedAt((node, custom))) upContext(node, custom) else custom
-    new ContextC[A,C](ancestorList, cust, transformer, upContext)
-  }
-
-  override def update(n: A): ContextC[A, C] = {
-    replaceNode(n).updateCustom()
-  }
-}
 
 
 class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) {

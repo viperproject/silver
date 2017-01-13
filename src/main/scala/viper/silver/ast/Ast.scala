@@ -134,16 +134,19 @@ trait Node extends Traversable[Node] with Rewritable[Node] {
   def isValid: Boolean = true
 
   override def duplicate(children: Seq[Any], metadata: Seq[Any]): Node = {
-    if(metadata.size != 3) println("Invalid number of metadata fields for Node:" + this)
-    val pos = metadata(1) match { case p:Position => p case _ => println("Invalid Info of Node: " + this); NoPosition }
-    val info = metadata(2) match { case i:Info => i case _ => println("Invalid Position of Node: " + this); NoInfo }
-    val errorT = metadata(3) match { case e:ErrorTrafo => e case _ => println("Invalid ErrorTrafo of Node: " + this); NoTrafos}
-
-    Transformer.viperDuplicator(this, children, (pos, info, errorT))
+    Transformer.viperDuplicator(this, children, getPrettyMetadata(metadata))
   }
 
   override def getMetadata:Seq[Any] = {
     Seq(NoPosition, NoInfo, NoTrafos)
+  }
+
+  def getPrettyMetadata(metadata:Seq[Any]):(Position, Info, ErrorTrafo) = {
+    if(metadata.size != 3) println("Invalid number of metadata fields for Node:" + this)
+    val pos = metadata(0) match { case p:Position => p case _ => println("Invalid Info of Node: " + this); NoPosition }
+    val info = metadata(1) match { case i:Info => i case _ => println("Invalid Position of Node: " + this); NoInfo }
+    val errorT = metadata(2) match { case e:ErrorTrafo => e case _ => println("Invalid ErrorTrafo of Node: " + this); NoTrafos}
+    (pos, info, errorT)
   }
 
 

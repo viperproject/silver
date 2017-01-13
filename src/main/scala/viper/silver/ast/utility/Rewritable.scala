@@ -36,6 +36,10 @@ trait Rewritable[A <: Rewritable[A]] {
     duplicate(children, getMetadata)
   }
 
+  def duplicate(metadata: Seq[Any], i:Int): A = {
+    duplicate(getChildren, metadata)
+  }
+
   // Get access to all metadata
   def getMetadata:Seq[Any]
 
