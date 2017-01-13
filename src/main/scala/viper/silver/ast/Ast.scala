@@ -165,8 +165,8 @@ trait TransformableErrors {
         er
       }
     }
-
-    errT.Etransformations.foldRight(e)(foldfunc)
+    val res = errT.Etransformations.foldRight(e)(foldfunc)
+    res
   }
 
   def transformReason(e: ErrorReason): ErrorReason = {
