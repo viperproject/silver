@@ -1,5 +1,13 @@
+function f1():Bool
+requires false
+{ true }
+
+function f2():Bool
+requires false
+{ true }
+
 method main()
 {
-    var i:Bool
-    assert(false && i)
+    //assert(f1() && f2())
+    assert((false && true) && (false && true) )
 }

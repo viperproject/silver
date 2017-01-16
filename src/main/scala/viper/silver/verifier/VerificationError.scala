@@ -7,6 +7,7 @@
 package viper.silver.verifier
 
 import viper.silver.ast._
+import viper.silver.ast.utility.Rewritable
 
 trait ErrorMessage {
   def id: String
@@ -94,7 +95,7 @@ abstract class AbstractErrorReason extends ErrorReason {
 }
 
 object errors {
-  type ErrorNode = Node with Positioned with TransformableErrors
+  type ErrorNode = Node with Positioned with TransformableErrors with Rewritable[Node]
 
   case class Internal(offendingNode: ErrorNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "internal"

@@ -8,7 +8,8 @@ package viper.silver.ast
 
 import scala.reflect.ClassTag
 import pretty.FastPrettyPrinter
-import utility.{Nodes, Rewritable, Transformer, Visitor}
+import utility._
+import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ErrorReason}
 
 /*
@@ -137,6 +138,14 @@ trait Node extends Traversable[Node] with Rewritable[Node] {
     Transformer.viperDuplicator(this, children, getPrettyMetadata(metadata))
   }
 
+  def duplicateErrorTrafo(eT:ErrorTrafo): Node = {
+    val meta = getPrettyMetadata(getMetadata)
+    val Nmeta = (meta._1, meta._2, eT)
+    val ch = getChildren
+    Transformer.viperDuplicator(this, ch, Nmeta) // TODO Remove res
+
+  }
+
   override def getMetadata:Seq[Any] = {
     Seq(NoPosition, NoInfo, NoTrafos)
   }
@@ -152,10 +161,19 @@ trait Node extends Traversable[Node] with Rewritable[Node] {
 
 }
 
+
 /** Allow a node to have control over the error error message it causes (used in rewriter) */
 trait TransformableErrors {
   /* Methods for error handling */
   def errT: ErrorTrafo
+
+  private lazy val nodeTrafoStrat = StrategyBuilder.SimpleStrategy[Node]({
+      case (n:TransformableErrors, x) => { // TODO transformable errors is really ugly. What can i do here?
+        val res = transformNode(n.asInstanceOf[ErrorNode])
+        res
+      }
+    })
+
 
   def transformError(e: AbstractVerificationError): AbstractVerificationError = {
     def foldfunc(tr: PartialFunction[AbstractVerificationError, AbstractVerificationError], er: AbstractVerificationError): AbstractVerificationError = {
@@ -178,32 +196,53 @@ trait TransformableErrors {
       }
     }
 
-    errT.Rtransformations.foldRight(e)(foldfunc(_, _))
+    val reason = errT.Rtransformations.foldRight(e)(foldfunc)
+    val transformedNode = nodeTrafoStrat.execute(reason.offendingNode).asInstanceOf[ErrorNode]
+    reason.withNode(transformedNode).asInstanceOf[ErrorReason]
+  }
+
+  def transformNode(n: ErrorNode): ErrorNode = {
+    def foldfunc(tr: PartialFunction[ErrorNode, ErrorNode], nd: ErrorNode): ErrorNode = {
+      if (tr.isDefinedAt(nd)) {
+        tr(nd)
+      } else {
+        nd
+      }
+    }
+
+    n.errT.Ntransformations.foldRight(n)(foldfunc)
   }
 }
 
 case object NoTrafos extends ErrorTrafo {
-  lazy val Etransformations = Nil
-  lazy val Rtransformations = Nil
+  val Etransformations = Nil
+  val Rtransformations = Nil
+  val Ntransformations = Nil
 }
 
-case class Trafos(error: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]], reason: List[PartialFunction[ErrorReason, ErrorReason]]) extends ErrorTrafo {
+case class Trafos(error: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]], reason: List[PartialFunction[ErrorReason, ErrorReason]], node: List[PartialFunction[ErrorNode, ErrorNode]]) extends ErrorTrafo {
   val Etransformations = error
   val Rtransformations = reason
+  val Ntransformations = node
 
-  def this(er:PartialFunction[AbstractVerificationError, AbstractVerificationError], re:PartialFunction[ErrorReason, ErrorReason]) = {
-    this(List(er), List(re))
-  }
 }
 
 case class ErrTrafo(error:PartialFunction[AbstractVerificationError, AbstractVerificationError]) extends ErrorTrafo {
   val Etransformations = List(error)
   val Rtransformations = Nil
+  val Ntransformations = Nil
 }
 
 case class ReTrafo(reason:PartialFunction[ErrorReason, ErrorReason]) extends ErrorTrafo {
   val Etransformations = Nil
   val Rtransformations = List(reason)
+  val Ntransformations = Nil
+}
+
+case class NodeTrafo(node:PartialFunction[ErrorNode, ErrorNode]) extends ErrorTrafo {
+  val Etransformations = Nil
+  val Rtransformations = Nil
+  val Ntransformations = List(node)
 }
 
 trait ErrorTrafo {
@@ -211,8 +250,10 @@ trait ErrorTrafo {
 
   def Rtransformations: List[PartialFunction[ErrorReason, ErrorReason]]
 
+  def Ntransformations: List[PartialFunction[ErrorNode, ErrorNode]]
+
   def ++(t: ErrorTrafo): Trafos = {
-    Trafos(Etransformations ++ t.Etransformations, Rtransformations ++ t.Rtransformations)
+    Trafos(Etransformations ++ t.Etransformations, Rtransformations ++ t.Rtransformations, Ntransformations ++ t.Ntransformations)
   }
 }
 
