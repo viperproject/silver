@@ -1,0 +1,12 @@
+field f : Int
+
+method test(x:Ref, y:Ref)
+{
+  inhale acc(x.f)
+  //:: ExpectedOutput(typechecker.error)
+  assume acc(y.f)
+  assert x==y // would succeed, if supported
+  assert x!=y // would fail, if supported
+}
+
+ 

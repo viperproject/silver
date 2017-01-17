@@ -163,6 +163,10 @@ case class Translator(program: PProgram) {
         Apply(exp(e))(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
+      case assume@PAssume(e) =>
+        val sub = exp(e)
+        if(!sub.isPure) { Consistency.messages ++= FastMessaging.message(assume, "assume statements can only have pure parameters, found: " + sub) }
+        Inhale(exp(e))(pos)
       case PExhale(e) =>
         Exhale(exp(e))(pos)
       case PAssert(e) =>

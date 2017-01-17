@@ -913,6 +913,7 @@ case class PPackageWand(wand: PExp) extends PStmt
 case class PApplyWand(e: PExp) extends PStmt
 case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt
+case class PAssume(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
 case class PNewStmt(target: PIdnUse, Fields: Option[Seq[PIdnUse]]) extends PStmt
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
@@ -1072,6 +1073,7 @@ object Nodes {
       case PExhale(exp) => Seq(exp)
       case PAssert(exp) => Seq(exp)
       case PInhale(exp) => Seq(exp)
+      case PAssume(exp) => Seq(exp)
       case PNewStmt(target, fields) => Seq(target) ++ fields.getOrElse(Seq())
       case PMethodCall(targets, method, args) => targets ++ Seq(method) ++ args
       case PLabel(name, invs) => Seq(name) ++ invs

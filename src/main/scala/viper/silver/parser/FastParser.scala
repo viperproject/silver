@@ -516,11 +516,11 @@ object FastParser extends PosParser{
 
 
   lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | ifthnels | whle | varDecl | defineDecl | letwandDecl | newstmt | fresh | constrainingBlock |
+    inhale | assume | ifthnels | whle | varDecl | defineDecl | letwandDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand| macroref)
 
   lazy val nodefinestmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | ifthnels | whle | varDecl  | letwandDecl | newstmt | fresh | constrainingBlock |
+    inhale | assume | ifthnels | whle | varDecl  | letwandDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand | macroref)
 
   lazy val macroref: P[PMacroRef] = P(idnuse).map{ case(a) => PMacroRef(a)}
@@ -537,7 +537,9 @@ object FastParser extends PosParser{
 
   lazy val assertP: P[PAssert] = P(keyword("assert") ~/ exp).map(PAssert)
 
-  lazy val inhale: P[PInhale] = P((keyword("inhale") | keyword("assume")) ~ exp).map(PInhale)
+  lazy val inhale: P[PInhale] = P(keyword("inhale") ~/ exp).map(PInhale)
+
+  lazy val assume: P[PAssume] = P(keyword("assume") ~/ exp).map(PAssume)
 
   lazy val ifthnels: P[PIf] = P("if" ~ "(" ~ exp ~ ")" ~ block ~ elsifEls).map {
     case (cond, thn, ele) => PIf(cond, PSeqn(thn), ele)
