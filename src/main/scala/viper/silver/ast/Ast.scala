@@ -154,7 +154,7 @@ case object AutoTriggered extends Info {
 
 /** An `Info` instance for composing multiple `Info`s together */
 case class ConsInfo(head: Info, tail:Info) extends Info {
-  lazy val comment = Nil
+  lazy val comment = head.comment ++ tail.comment
 }
 
 /** Build a `ConsInfo` instance out of two `Info`s, unless the latter is `NoInfo` (which can be dropped) */
