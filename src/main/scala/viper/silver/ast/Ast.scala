@@ -138,11 +138,11 @@ trait Node extends Traversable[Node] with Rewritable[Node] {
     Transformer.viperDuplicator(this, children, getPrettyMetadata(metadata))
   }
 
-  def duplicateErrorTrafo(eT:ErrorTrafo): Node = {
+  def duplicateErrorTrafo[T](eT:ErrorTrafo): T = {
     val meta = getPrettyMetadata(getMetadata)
     val Nmeta = (meta._1, meta._2, eT)
     val ch = getChildren
-    Transformer.viperDuplicator(this, ch, Nmeta) // TODO Remove res
+    Transformer.viperDuplicator(this, ch, Nmeta).asInstanceOf[T] // TODO Remove res
 
   }
 
