@@ -132,7 +132,7 @@ class Dominators[S, E](val cfg: Cfg[S, E]) {
         }
       // update buckets
       buckets(sdom(index)).add(index)
-      // update forst of auxiliary trees
+      // update forest of auxiliary trees
       val parent = parents(index)
       link(parent, index)
       // implicitly compute immediate dominators
@@ -155,7 +155,6 @@ class Dominators[S, E](val cfg: Cfg[S, E]) {
     val relation = for (index <- 0 until n) yield {
       blocks(index) -> blocks(idom(index))
     }
-
     relation.toMap
   }
 }
