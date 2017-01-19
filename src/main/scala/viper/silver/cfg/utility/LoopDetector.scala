@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package viper.silver.cfg.utility
 
 import viper.silver.cfg._
@@ -31,8 +37,9 @@ object LoopDetector {
     * @param parent The map mapping the ids of basic blocks at the head of a
     *               (known) loop to the id of the basic block that is at the
     *               head of the parent loop.
-    * @tparam S The type of the statements.
-    * @tparam E The type of the expressions.
+    * @tparam C The type of the control flow graph.
+    * @tparam S The type of the statements in the control flow graph.
+    * @tparam E The type of the expressions in the control flow graph.
     * @return The control flow graph where the edges entering and leaving loops
     *         are marked.
     */
