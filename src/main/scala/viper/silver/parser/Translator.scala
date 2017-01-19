@@ -163,6 +163,10 @@ case class Translator(program: PProgram) {
         Apply(exp(e))(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
+      case assume@PAssume(e) =>
+        val sub = exp(e)
+        if(!sub.isPure) { Consistency.messages ++= FastMessaging.message(assume, "assume statements can only have pure parameters, found: " + sub) }
+        Inhale(exp(e))(pos)
       case PExhale(e) =>
         Exhale(exp(e))(pos)
       case PAssert(e) =>
@@ -189,9 +193,9 @@ case class Translator(program: PProgram) {
       case PConstraining(vars, ss) =>
         Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss))(pos)
       case PWhile(cond, invs, body) =>
-        val plocals = body.childStmts collect { // Note: this won't collect declarations from nested loops
+        val plocals = body.deepCollect({ // Note: this will collect declarations from nested loops
           case l: PLocalVarDecl => l
-        }
+        })
         val locals = plocals map {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }

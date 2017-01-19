@@ -14,9 +14,7 @@ method Main$change(this: Ref, m: Ref, n: Int)
   requires m != null
   ensures perm(m.mustReleaseBounded$) == none
   ensures write - perm(m.mustReleaseBounded$) == write
-  //ensures acc(m.mustReleaseUnbounded$, write)                             // WORKS
-  ensures acc(m.mustReleaseUnbounded$, write - perm(m.mustReleaseBounded$)) // FAILS
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /Carbon/issue/100/)
+  ensures acc(m.mustReleaseUnbounded$, write - perm(m.mustReleaseBounded$)) 
   ensures (forperm [mustReleaseUnbounded$] r$_15 :: false)
 {
   assert m != null

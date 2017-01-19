@@ -25,6 +25,7 @@ method inhaleTrue1Method1(this: Ref)
   requires this != null
 {
   //:: ExpectedOutput(application.precondition:insufficient.permission)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/173/)
   assert inhaleTrue1(this) == 0
 }
 

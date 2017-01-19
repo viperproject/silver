@@ -39,5 +39,6 @@ method t1(r: Ref)
   assert f1(r) == 1;
 
   //:: ExpectedOutput(application.precondition:assertion.false)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Carbon/issue/173/)
   assert f4(r) > 0;
 }

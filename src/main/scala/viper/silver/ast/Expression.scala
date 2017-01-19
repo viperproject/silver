@@ -442,7 +442,7 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
     if (triggers.isEmpty) {
       Expressions.generateTriggerSet(this) match {
         case Some((vars, triggerSets)) =>
-          Forall(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, info)
+          Forall(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, MakeInfoPair(AutoTriggered,info))
         case None =>
           /* Couldn't generate triggers */
           this
@@ -558,7 +558,7 @@ case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val inf
 /** Appending two sequences of the same type. */
 case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp with PrettyBinaryExpression {
   require(left.typ == right.typ)
-  lazy val priority = 0
+  lazy val priority = 8
   lazy val fixity = Infix(LeftAssociative)
   lazy val op = "++"
   lazy val typ = left.typ
@@ -600,7 +600,7 @@ case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Inf
 case class SeqContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp with PrettyBinaryExpression {
   require(s.typ.isInstanceOf[SeqType])
   require(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)
-  lazy val priority = 0
+  lazy val priority = 7
   lazy val fixity = Infix(LeftAssociative)
   lazy val left: PrettyExpression = elem
   lazy val op = "in"
@@ -697,7 +697,7 @@ case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val
 case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
-  lazy val priority = 0
+  lazy val priority = 8
   lazy val fixity = Infix(LeftAssociative)
   lazy val op = "union"
   lazy val typ = left.typ
@@ -709,9 +709,9 @@ case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, va
 case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
-  lazy val priority = 0
+  lazy val priority = 8
   lazy val fixity = Infix(LeftAssociative)
-  lazy val op = "union"
+  lazy val op = "intersection"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
   def withArgs(newArgs: Seq[Exp]) = AnySetIntersection(newArgs.head,newArgs(1))(pos,info)
@@ -721,7 +721,7 @@ case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosit
 case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
-  lazy val priority = 0
+  lazy val priority = 8
   lazy val fixity = Infix(NonAssociative)
   lazy val op = "subset"
   lazy val typ = Bool
@@ -733,7 +733,7 @@ case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, v
 case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
-  lazy val priority = 0
+  lazy val priority = 8
   lazy val fixity = Infix(NonAssociative)
   lazy val op = "setminus"
   lazy val typ = left.typ
@@ -745,7 +745,7 @@ case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, va
 case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
   require((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SetType].elementType)) ||
     (s.typ.isInstanceOf[MultisetType] && (elem isSubtype s.typ.asInstanceOf[MultisetType].elementType)))
-  lazy val priority = 0
+  lazy val priority = 7
   lazy val fixity = Infix(NonAssociative)
   lazy val left = elem
   lazy val op = "in"
@@ -815,7 +815,7 @@ sealed abstract class EqualityCmp(val op: String) extends BinExp with PrettyBina
   require(left.typ == right.typ, s"expected the same typ, but got ${left.typ} and ${right.typ}")
   Consistency.checkNoPositiveOnly(left)
   Consistency.checkNoPositiveOnly(right)
-  lazy val priority = 13
+  lazy val priority = 6
   lazy val fixity = Infix(NonAssociative)
   lazy val typ = Bool
 }

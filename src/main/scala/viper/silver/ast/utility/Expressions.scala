@@ -52,8 +52,7 @@ object Expressions {
   def asBooleanExp(e: Exp): Exp = {
     e.transform({
       case _: AccessPredicate | _: MagicWand => TrueLit()()
-      case QuantifiedPermissions.QPForall(_, _, _, _, _, _, _) => TrueLit()()
-      case QuantifiedPermissions.QPPForall(_, _, _, _, _, _, _) => TrueLit()()
+      case fa@Forall(vs,ts,body) => Forall(vs,ts,asBooleanExp(body))(fa.pos,fa.info)
       case Unfolding(predicate, exp) => asBooleanExp(exp)
     })()
   }

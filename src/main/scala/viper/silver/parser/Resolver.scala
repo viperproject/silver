@@ -172,6 +172,8 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PInhale(e) =>
         check(e, Bool)
+      case PAssume(e) =>
+        check(e, Bool)
       case PVarAssign(idnuse, PCall(func, args, _)) if names.definition(curMember)(func).isInstanceOf[PMethod] =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the translator.
