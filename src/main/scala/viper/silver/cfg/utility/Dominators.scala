@@ -62,11 +62,8 @@ class Dominators[S, E](val cfg: Cfg[S, E]) {
   /**
     * Returns a map holding the indices of all blocks with respect to the depth
     * first order.
-    *
-    * @return A map holding the indices of all blocks with respect to the depth
-    *         first order.
     */
-  private def indices = mutable.Map[Block[S, E], Int]()
+  private val indices = mutable.Map[Block[S, E], Int]()
 
   /**
     * Returns a map representing the immediate dominator relation for the given
@@ -76,10 +73,8 @@ class Dominators[S, E](val cfg: Cfg[S, E]) {
     *
     * Note: This implementation follows the paper "A Fast Algorithm for Finding
     * Dominators in a Flowgraph" by T. Lengauer and R. Tarjan.
-    *
-    * @return A map representing the immediate dominator relation.
     */
-  private def dominators: Map[Block[S, E], Block[S, E]] = {
+  private val dominators: Map[Block[S, E], Block[S, E]] = {
     // initialize and set up data structures
     val n = cfg.blocks.size
     val blocks = Array.ofDim[Block[S, E]](n)
