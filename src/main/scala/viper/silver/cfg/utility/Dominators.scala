@@ -6,7 +6,7 @@
 
 package viper.silver.cfg.utility
 
-import viper.silver.cfg.{Block, Cfg}
+import viper.silver.cfg.{Block, Cfg, Edge}
 
 import scala.collection.mutable
 
@@ -40,6 +40,35 @@ class Dominators[S, E](val cfg: Cfg[S, E]) {
     else dominates(first, dominators(second))
 
   /**
+    * Returns whether the given edge is retrieving, i.e., whether the target has
+    * a smaller index than the source with respect to the depth first order.
+    *
+    * @param edge The edge.
+    * @return True if and only if the given edge is retrieving.
+    */
+  def isRetrieving(edge: Edge[S, E]): Boolean =
+    indices(edge.target) <= indices(edge.source)
+
+  /**
+    * Returns whether the given edge is a backedge of a natural loop, i.e., is
+    * a retrieving edge where the target dominates the source.
+    *
+    * @param edge The edge.
+    * @return True if and only if the given edge is a backedge.
+    */
+  def isBackedge(edge: Edge[S, E]): Boolean =
+    isRetrieving(edge) && dominates(edge.target, edge.source)
+
+  /**
+    * Returns a map holding the indices of all blocks with respect to the depth
+    * first order.
+    *
+    * @return A map holding the indices of all blocks with respect to the depth
+    *         first order.
+    */
+  private def indices = mutable.Map[Block[S, E], Int]()
+
+  /**
     * Returns a map representing the immediate dominator relation for the given
     * control flow graph.
     *
@@ -47,11 +76,12 @@ class Dominators[S, E](val cfg: Cfg[S, E]) {
     *
     * Note: This implementation follows the paper "A Fast Algorithm for Finding
     * Dominators in a Flowgraph" by T. Lengauer and R. Tarjan.
+    *
+    * @return A map representing the immediate dominator relation.
     */
   private def dominators: Map[Block[S, E], Block[S, E]] = {
     // initialize and set up data structures
     val n = cfg.blocks.size
-    val indices = mutable.Map[Block[S, E], Int]()
     val blocks = Array.ofDim[Block[S, E]](n)
     val parents = Array.ofDim[Int](n)
     val ancestors = Array.range(0, n)
