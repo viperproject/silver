@@ -9,7 +9,7 @@ package viper.silver
 import scala.language.implicitConversions
 import org.scalatest.{FunSuite, Matchers}
 import ast._
-import ast.utility.{Strategy, Transformer, Traverse}
+import ast.utility._
 import ast.If
 
 
@@ -17,50 +17,53 @@ import ast.If
 
 class TreeRegexBuilder[N, C] {
 
-
-  def c[NODE <: N](trafo:NODE=>C):Match[NODE, N, C] = ??? // Extract context
-  def n[NODE <: N]():Match[NODE, N, C] = ??? // Node must be there
-  def m[NODE <: N]():Match[NODE, N, C] = ??? // Match on this node
-  def chs[NODE <: N](selector:NODE=>N):Match[NODE, N, C] = ???
-  def ch[NODE <: N](s:Seq[Match[_, N, C]]):Match[NODE, N, C] = ???
-  def >>[NODE <: N](m: Match[_, NODE, C]):Match[NODE, N, C] = ???
-  def ?[NODE <: N]:Match[NODE, N, C] = ???
+  def NoRec[NODE <: N](o: NODE): NODE = ???
 
 
-}
+  def context[NODE <: N](trafo:NODE=>C):Match[NODE, N, C] = ??? // Extract context
+  def node[NODE <: N]():Match[NODE, N, C] = ??? // Node must be there
+  def matchOn[NODE <: N]():Match[NODE, N, C] = ??? // Match on this node
+  def intoChild[NODE <: N](selector:NODE=>N):Match[NODE, N, C] = ???
+  def matchChildren[NODE <: N](s: ChildMatch[_, N, C]*):Match[NODE, N, C] = ???
 
-class Matcher[N, C] {
 
-
-}
-
-class AMatch {
+  def >>[NODE <: N](m: Match[_, NODE, C]):ChildMatch[NODE, N, C] = ???
+  def ?[NODE <: N]:ChildMatch[NODE, N, C] = ???
+  def childNode[NODE <: N]:ChildMatch[NODE, N, C] = ???
 
 }
 
-class Match[NODE <: N, N, C] extends AMatch {
-  def * = ???
-  def + = ???
-  def ^(i: Int) = ???
+class ChildMatch[Node <: N, N, C] {
+
+}
+
+
+
+class Match[NODE <: N, N, C] {
+  def *(): Match[_, N, C] = ???
+  def +(): Match[_, N, C] = ???
+  def ^(i: Int): Match[_, N, C] = ???
 
   def >>(m: Match[_ ,N, C]):Match[_, N, C] = ???
 
+  def >(m:Match[_, N, C]):Match[_, N, C] = ???
+
+  def ->(p: PartialFunction[(N, Seq[C]), N]):Strategy[N, ContextC[N, C]] = ???
+}
+
+class nodeMatch[Node <: N, N, C] extends Match[Node, N, C] {
 
 }
 
-class nodeMatch[Node <: N, N, C] extends Match[N, C] {
+class rewriteMatch[Node <: N, N, C] extends Match[Node, N, C] {
 
 }
 
-class rewriteMatch[Node <: N, N, C] extends Match[N, C] {
+class contextMatch[Node <: N, N, C](val acc:Node=>C) extends Match[Node, N, C] {
 
 }
 
-class contextMatch[Node <: N, N, C](val acc:Node=>C) extends Match[N, C] {
-
-}
-
-class childrenMatch[Node <: N, N, C](selector:Node=>Seq[Match[N, C]]) {
+class childrenMatch[Node <: N, N, C](selector:Node=>Seq[Match[Node, N, C]]) {
 
 }
 
@@ -71,7 +74,7 @@ class childrenMatch[Node <: N, N, C](selector:Node=>Seq[Match[N, C]]) {
 
 class Test {
   val t = new TreeRegexBuilder[Node, Exp]()
-  t.chs[Method](_.pres.head) >> t.n[Implies] >> t.ch[Or](Seq(t >> t.n[TrueLit], t >> t.n[FalseLit]))
-  t.n[Or]
+  (t.intoChild[Method](_.pres.head) >> t.node[Implies] > t.matchChildren[Or](t >> t.node[TrueLit], t >> t.node[FalseLit])) -> { case (o:Or, c) => Or(o.left, c.head)() }
+  t.node[Or]
 
 }
