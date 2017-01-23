@@ -25,11 +25,13 @@ class TreeRegexBuilder[N, C] {
   def matchOn[NODE <: N]():Match[NODE, N, C] = ??? // Match on this node
   def intoChild[NODE <: N](selector:NODE=>N):Match[NODE, N, C] = ???
   def matchChildren[NODE <: N](s: ChildMatch[_, N, C]*):Match[NODE, N, C] = ???
+  def nodePred[NODE <: N](p: NODE=>Boolean):Match[NODE, N, C] = ???
 
 
   def >>[NODE <: N](m: Match[_, NODE, C]):ChildMatch[NODE, N, C] = ???
   def ?[NODE <: N]:ChildMatch[NODE, N, C] = ???
   def childNode[NODE <: N]:ChildMatch[NODE, N, C] = ???
+  def **[NODE <: N]: ChildMatch[NODE, N, C] = ???
 
 }
 
@@ -48,7 +50,7 @@ class Match[NODE <: N, N, C] {
 
   def >(m:Match[_, N, C]):Match[_, N, C] = ???
 
-  def ->(p: PartialFunction[(N, Seq[C]), N]):Strategy[N, ContextC[N, C]] = ???
+  def |->(p: PartialFunction[(N, Seq[C]), N]):Strategy[N, ContextC[N, C]] = ???
 }
 
 class nodeMatch[Node <: N, N, C] extends Match[Node, N, C] {
@@ -67,14 +69,9 @@ class childrenMatch[Node <: N, N, C](selector:Node=>Seq[Match[Node, N, C]]) {
 
 }
 
-
-
-
-
-
 class Test {
   val t = new TreeRegexBuilder[Node, Exp]()
-  (t.intoChild[Method](_.pres.head) >> t.node[Implies] > t.matchChildren[Or](t >> t.node[TrueLit], t >> t.node[FalseLit])) -> { case (o:Or, c) => Or(o.left, c.head)() }
+  t.intoChild[Method](_.pres.head) >> t.node[Implies] > t.matchChildren[Or](t >> t.node[TrueLit], t >> t.node[FalseLit]) |-> { case (o:Or, c) => Or(o.left, c.head)() }
   t.node[Or]
 
 }
