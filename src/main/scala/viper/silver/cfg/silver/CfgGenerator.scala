@@ -68,9 +68,7 @@ object CfgGenerator {
   def statementToCfg(ast: Stmt, simplify: Boolean = true): SilverCfg = {
     val phase1 = new Phase1(ast)
     val phase2 = new Phase2(phase1)
-
-    val (loops, parents) = phase2.loopInfo
-    val cfg = LoopDetector.detect[SilverCfg, Stmt, Exp](phase2.cfg, loops, parents)
+    val cfg = LoopDetector.detect[SilverCfg, Stmt, Exp](phase2.cfg, phase2.loops)
 
     if (simplify) CfgSimplifier.simplify[SilverCfg, Stmt, Exp](cfg)
     else cfg
@@ -290,12 +288,12 @@ object CfgGenerator {
 
     /**
       * The stack used to keep track of the loops. The stack stores tuples where
-      * the first entry is the id of the basic block at the head of the loop and
-      * the second entry is the index in the list of statements right after the
-      * last statement that syntactically belongs to the loop. The second entry
-      * is used to lazily remove the tuples from the stack.
+      * the first entry is the basic block at the head of the loop and the
+      * second entry is the index in the list of statements right after the last
+      * statement that syntactically belongs to the loop. The second entry is
+      * used to lazily remove the tuples from the stack.
       */
-    private val loopStack: mutable.Stack[(Int, Int)] = mutable.Stack()
+    private val loopStack: mutable.Stack[(SilverBlock, Int)] = mutable.Stack()
 
     /**
       * The index of the current block. The index is optional since there might
@@ -304,16 +302,10 @@ object CfgGenerator {
     private var current: Option[Int] = None
 
     /**
-      * The map mapping the ids of basic blocks of a loop to the id of the basic
-      * block at the head of that loop.
+      * The map mapping the blocks to the set of loop heads of all loops the
+      * block belongs to.
       */
-    private val loops: mutable.Map[Int, Int] = mutable.Map()
-
-    /**
-      * The map mapping the ids of basic blocks at the head of a loop to the id
-      * of the basic block that is at head of the parent loop.
-      */
-    private val parents: mutable.Map[Int, Int] = mutable.Map()
+    private val _loops: mutable.Map[SilverBlock, Set[SilverBlock]] = mutable.Map()
 
     run()
 
@@ -325,7 +317,7 @@ object CfgGenerator {
     /**
       * The loop information used for constructing in and out edges.
       */
-    lazy val loopInfo: (Map[Int, Int], Map[Int, Int]) = (loops.toMap, parents.toMap)
+    lazy val loops: Map[SilverBlock, Set[SilverBlock]] = _loops.toMap
 
     private def run(): Unit = {
       for ((stmt, index) <- phase1.stmts.zipWithIndex) {
@@ -353,10 +345,8 @@ object CfgGenerator {
               current = Some(index)
               // create loop head
               val block: SilverBlock = LoopHeadBlock(invs, Nil)
-              // set loop parent information
-              head(index).foreach(old => parents.put(block.id, old))
               // push current loop id block onto stack
-              loopStack.push((block.id, resolve(after)))
+              loopStack.push((block, resolve(after)))
               // add loop head
               addBlock(index, block)
               addTmpEdge(TmpUnconditionalEdge(last, index))
@@ -391,16 +381,16 @@ object CfgGenerator {
             + "This happens, e.g. when jumping out of a constraining-block.")
       }
 
-    private def head(index: Int): Option[Int] = {
+    private def heads(index: Int): Set[SilverBlock] = {
       // lazily pop loops that we left
       while (loopStack.headOption.exists(_._2 <= index)) loopStack.pop()
       // return id of the current loop head
-      loopStack.headOption.map(_._1)
+      loopStack.map(_._1).toSet
     }
 
     private def addBlock(index: Int, block: SilverBlock) = {
       // set loop information
-      head(index).foreach(head => loops.put(block.id, head))
+      _loops.put(block, heads(index))
       blocks.put(index, block)
     }
 
