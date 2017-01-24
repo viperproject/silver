@@ -51,12 +51,12 @@ object StrategyBuilder {
     new Strategy[A, SimpleContext[A]](AddArtificialContext(p)) defaultContext new NoContext[A]
   }
 
-  def AncestorStrategy[A <: Rewritable[A]](p: PartialFunction[(A, ContextA[A]), A]) = {
-    new Strategy[A, ContextA[A]](p) defaultContext new PartialContextA[A]
+  def AncestorStrategy[A <: Rewritable[A]](p: PartialFunction[(A, ContextA[A]), A], t: Traverse = Traverse.TopDown) = {
+    new Strategy[A, ContextA[A]](p) defaultContext new PartialContextA[A] traverse t
   }
 
-  def ContextStrategy[A <: Rewritable[A], C](p: PartialFunction[(A, ContextC[A, C]), A], default: C, updateFunc: PartialFunction[(A, C), C] = PartialFunction.empty) = {
-    new Strategy[A, ContextC[A, C]](p) defaultContext new PartialContextC[A, C](default, updateFunc)
+  def ContextStrategy[A <: Rewritable[A], C](p: PartialFunction[(A, ContextC[A, C]), A], default: C, updateFunc: PartialFunction[(A, C), C] = PartialFunction.empty, t:Traverse = Traverse.TopDown) = {
+    new Strategy[A, ContextC[A, C]](p) defaultContext new PartialContextC[A, C](default, updateFunc) traverse t
   }
 
 }

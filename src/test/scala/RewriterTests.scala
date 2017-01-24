@@ -45,19 +45,19 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\QuantifiedPermissions\\"
     val files = Seq("simple", "allCases")
 
-
     val strat = StrategyBuilder.AncestorStrategy[Node]({
-      case (f@Forall(decl, _, Implies(l, r)), _ ) if r.isPure =>
+      case (f@Forall(decl, _, Implies(l, r)), _) if r.isPure =>
         f
       case (f@Forall(decls, triggers, i@Implies(li, And(l, r))), ass) =>
-        val forall = Forall(decls, triggers, Implies(li, r)(i.pos, i.info))(f.pos, f.info);  ass.transformer.dontRecurse(forall)
+        val forall = Forall(decls, triggers, Implies(li, r)(i.pos, i.info))(f.pos, f.info);
+        ass.transformer.dontRecurse(forall)
         And(Forall(decls, triggers, Implies(li, l)(i.pos, i.info))(f.pos, f.info), forall)(f.pos, f.info)
       case (f@Forall(decls, triggers, i@Implies(li, Implies(l, r))), _) if l.isPure =>
         Forall(decls, triggers, Implies(And(li, l)(i.pos, i.info), r)(i.pos, i.info))(f.pos, f.info)
     })
 
     val frontend = new DummyFrontend
-    files foreach { name => executeTest(filePrefix, name, strat, frontend)}
+    files foreach { name => executeTest(filePrefix, name, strat, frontend) }
 
   }
 
@@ -85,6 +85,7 @@ class RewriterTests extends FunSuite with Matchers {
 
       // We use for NonDet a function that has name NonDet(i) where i is number of arguments
       def NonDet(vars: Seq[LocalVarDecl]): Exp = {
+        if (vars.isEmpty) return TrueLit()()
         val func: Function = targetNode.functions.find(_.name == "NonDet" + vars.size).get
         FuncApp(func, vars.map { x => x.localVar })()
       }
@@ -93,17 +94,9 @@ class RewriterTests extends FunSuite with Matchers {
       //StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](_.variables) >> r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), TRegex.noRec(o))()}
 
       val strat = StrategyBuilder.ContextStrategy[Node, Seq[LocalVarDecl]]({
-        case (Or(l, r), c) =>
-          //val nonDet = NonDet(c, Bool) Cannot use this (silver angelic)
-          c.custom match {
-            case Seq() =>
-              val or = Or(l, r)(); c.transformer.dontRecurse(or)
-              InhaleExhaleExp(CondExp(TrueLit()(), l, r)(), or)()
-            case varDecls =>
-              val vars = varDecls.map { vari => LocalVarDecl(vari.name, vari.typ)(vari.pos, vari.info) }
-              val or = Or(l, r)(); c.transformer.dontRecurse(or)
-              InhaleExhaleExp(CondExp(NonDet(vars), l, r)(), or)()
-          }
+        case (o@Or(l, r), c) =>
+          c.transformer.dontRecurse(o)
+          InhaleExhaleExp(CondExp(NonDet(c.custom), l, r)(), o)()
       }, Seq(), {
         case (q: QuantifiedExp, c) => c ++ q.variables
       })
@@ -121,6 +114,74 @@ class RewriterTests extends FunSuite with Matchers {
     }
     }
   }
+
+  test("OLDDisjunctionToInhaleExhaleTests") {
+    // Is working correctly but rewrites right hand sides of IE expression too. Therefore does not match with more complex testcases
+    // 17 vs 7 line numbers
+    val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
+    val files = Seq("simple", "nested"/*, "functions"*/)
+
+    val frontend = new DummyFrontend
+    files foreach { fileName: String => {
+      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+      assert(fileRes != null, s"File $filePrefix$fileName not found")
+      assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
+      val file = Paths.get(fileRes.toURI)
+      val ref = Paths.get(fileRef.toURI)
+
+
+      var targetNode: Program = null
+      var targetRef: Program = null
+
+      frontend.translate(file) match {
+        case (Some(p), _) => targetNode = p
+        case (None, errors) => println("Problem with program: " + errors)
+      }
+
+      // We use for NonDet a function that has name NonDet(i) where i is number of arguments
+      def NonDet(vars: Seq[LocalVar]): Exp = {
+        if (vars.isEmpty) return TrueLit()()
+        val func: Function = targetNode.functions.find(_.name == "NonDet" + vars.size).get
+        FuncApp(func, vars)()
+      }
+
+      // Regular expression
+      //StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](_.variables) >> r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), TRegex.noRec(o))()}
+
+      frontend.translate(ref) match {
+        case (Some(p), _) => targetRef = p
+        case (None, errors) => println("Problem with program: " + errors)
+      }
+
+      var quantifiedVariables = Seq.empty[ast.LocalVar]
+      val res = targetNode.transform {
+        case q: ast.QuantifiedExp =>
+          quantifiedVariables = quantifiedVariables ++ q.variables.map(_.localVar)
+          q
+      }(recursive = {
+        case _ => true
+      }, post = {
+        case q: ast.QuantifiedExp =>
+          val qvs = q.variables.map(_.localVar)
+          quantifiedVariables = quantifiedVariables filterNot qvs.contains
+          q
+        case e @ ast.Or(e0, e1) =>
+          val cond = NonDet(quantifiedVariables)
+          val condExp = ast.CondExp(cond, e0, e1)(e.pos, e.info)
+          ast.InhaleExhaleExp(condExp, e)(e.pos, e.info)
+      })
+
+
+
+      //  println("Old: " + targetNode.toString())
+      println("New: " + res.toString())
+      println("Reference: " + targetRef.toString())
+      assert(res.toString() == targetRef.toString(), "Files are not equal")
+    }
+    }
+  }
+
 
   test("WhileToIfAndGoto") {
     val filePrefix = "transformations\\WhileToIfAndGoto\\"
@@ -187,7 +248,7 @@ class RewriterTests extends FunSuite with Matchers {
   test("ManyToOneAssert2") {
     val filePrefix = "transformations\\ManyToOneAssert\\"
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
-    var accumulator:mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
+    var accumulator: mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
 
     val strat = StrategyBuilder.AncestorStrategy[Node]({
       case (a: Assert, c) =>
@@ -196,7 +257,7 @@ class RewriterTests extends FunSuite with Matchers {
           case Some(Assert(_)) =>
             Seqn(Seq())()
           case _ =>
-            val result = Assert(accumulator.reduceRight( And(_, _)()) )()
+            val result = Assert(accumulator.reduceRight(And(_, _)()))()
             accumulator.clear()
             result
         }
@@ -209,16 +270,75 @@ class RewriterTests extends FunSuite with Matchers {
     }
   }
 
+  test("OLDManyToOneAssert2") {
+    // 16 lines compared to 12 lines
+    // Need to find successor ourselves
+
+    val filePrefix = "transformations\\ManyToOneAssert\\"
+    val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
+    var accumulator: mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
+
+    val frontend = new DummyFrontend
+    files foreach { fileName: String => {
+      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+      assert(fileRes != null, s"File $filePrefix$fileName not found")
+      val file = Paths.get(fileRes.toURI)
+      var targetNode: Program = null
+      var targetRef: Program = null
+
+      frontend.translate(file) match {
+        case (Some(p), _) => targetNode = p
+        case (None, errors) => println("Problem with program: " + errors)
+      }
+
+      // TODO: Transformer here
+      var enclSeq: Seqn = null
+      val res = targetNode.transform({
+        case a: Assert =>
+          accumulator += a.exp
+
+          val family = enclSeq.getChildren.asInstanceOf[Seq[Node]]
+          val next = family.dropWhile(_ ne a).drop(1).headOption
+
+          next match {
+            case Some(Assert(_)) =>
+              Seqn(Seq())()
+            case _ =>
+              val result = Assert(accumulator.reduceRight(And(_, _)()))()
+              accumulator.clear()
+              result
+          }
+        case (s: Seqn) => enclSeq = s; s
+      })(_ => true)
+
+
+      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+      assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
+
+      val ref = Paths.get(fileRef.toURI)
+      frontend.translate(ref) match {
+        case (Some(p), _) => targetRef = p
+        case (None, errors) => println("Problem with program: " + errors)
+      }
+
+      //  println("Old: " + targetNode.toString())
+      println("New: " + res.toString)
+      println("Reference: " + targetRef.toString())
+      assert(res.toString == targetRef.toString(), "Files are not equal")
+    }
+    }
+  }
+
   test("FoldConstants") {
     val filePrefix = "transformations\\FoldConstants\\"
     val files = Seq("simple", "complex")
 
 
     val strat = StrategyBuilder.SlimStrategy[Node]({
-      case root@Add(i1:IntLit, i2:IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
-      case root@Sub(i1:IntLit, i2:IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
-      case root@Div(i1:IntLit, i2:IntLit) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
-      case root@Mul(i1:IntLit, i2:IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
+      case root@Add(i1: IntLit, i2: IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
+      case root@Sub(i1: IntLit, i2: IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
+      case root@Div(i1: IntLit, i2: IntLit) => if (i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
+      case root@Mul(i1: IntLit, i2: IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
     }) traverse Traverse.BottomUp
 
     val frontend = new DummyFrontend
@@ -236,7 +356,7 @@ class RewriterTests extends FunSuite with Matchers {
     //val t = new TreeRegexBuilder[Node, Node]()
     //nP[FuncApp](_.funcname == "fourAnd") > matchChildren[Exp](**, cN[FalseLit], **) |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
 
-    val strat:StrategyInterface[Node] = StrategyBuilder.AncestorStrategy[Node]({
+    val strat: StrategyInterface[Node] = StrategyBuilder.AncestorStrategy[Node]({
       case (e: Exp, c) => c.parent match {
         case f: FuncApp => if (f.funcname == "fourAnd" && c.siblings.contains(FalseLit()())) {
           FalseLit()(e.pos, e.info)
@@ -286,6 +406,9 @@ class RewriterTests extends FunSuite with Matchers {
   }
 
   test("OLDMethodCallDesugaring") {
+    // Basically the exact same program
+    // No features from strategy used only partial function and go!
+
     val filePrefix = "transformations\\MethodCallDesugaring\\"
     val files = Seq("simple", "withArgs", "withArgsNRes", "withFields")
 
@@ -304,7 +427,25 @@ class RewriterTests extends FunSuite with Matchers {
       }
 
       // TODO: Transformer here
-      val res = null
+      val res = targetNode.transform({
+        case m: MethodCall =>
+          // Get method declaration
+          val mDecl = targetNode.methods.find(_.name == m.methodName).get
+
+          // Create an exhale statement for every precondition and replace parameters with arguments
+          var replacer: Map[LocalVar, Exp] = mDecl.formalArgs.zip(m.args).map(x => x._1.localVar -> x._2).toMap
+          val pfunc: PartialFunction[Node, Node] = {
+            case l: LocalVar => if (replacer.contains(l)) replacer(l) else l
+          }
+          val exPres = mDecl.pres.map(_.transform(pfunc)(_ => true)).map(x => Exhale(x)(m.pos, m.info))
+
+          // Create an inhale statement for every postcondition, replace parameters with arguments and replace result parameters with receivers
+          val replacedArgs = mDecl.posts.map(_.transform(pfunc)(_ => true))
+          replacer = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap
+          val inPosts = replacedArgs.map(_.transform(pfunc)(_ => true)).map(x => Inhale(x)(m.pos, m.info))
+
+          Seqn(exPres ++ inPosts)(m.pos, m.info)
+      })()
 
 
       val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
@@ -332,29 +473,25 @@ class RewriterTests extends FunSuite with Matchers {
 
     val frontend = new DummyFrontend
 
-    val replaceStrat = StrategyBuilder.ContextStrategy[Node, Map[LocalVar, Exp]]({
-      case (l:LocalVar, c) => if (c.custom.contains(l)) c.custom(l) else l
-    }, Map.empty[LocalVar, Exp])
-
     val strat = StrategyBuilder.AncestorStrategy[Node]({
-      case (m:MethodCall, anc) =>
+      case (m: MethodCall, anc) =>
         // Get method declaration
         val mDecl = anc.ancestorList.head.asInstanceOf[Program].methods.find(_.name == m.methodName).get
 
         // Create an exhale statement for every precondition and replace parameters with arguments
-        val replacer:Map[LocalVar, Exp] = mDecl.formalArgs.zip(m.args).map( x => x._1.localVar -> x._2).toMap
-        val context = new PartialContextC[Node, Map[LocalVar, Exp]](replacer)
-        val exPres = mDecl.pres.map( replaceStrat.execute[Exp](_, context)).map( x => Exhale(x)(m.pos, m.info))
+        var replacer: Map[LocalVar, Exp] = mDecl.formalArgs.zip(m.args).map(x => x._1.localVar -> x._2).toMap
+        val replaceStrat = StrategyBuilder.SlimStrategy[Node]({
+          case l: LocalVar => if (replacer.contains(l)) replacer(l) else l
+        })
+        val exPres = mDecl.pres.map(replaceStrat.execute[Exp](_)).map(x => Exhale(x)(m.pos, m.info))
 
         // Create an inhale statement for every postcondition, replace parameters with arguments and replace result parameters with receivers
-        val replacedArgs = mDecl.posts.map(replaceStrat.execute[Exp](_, context) )
-        val replacer2:Map[LocalVar, Exp] = mDecl.formalReturns.zip(m.targets).map( x => x._1.localVar -> x._2).toMap
-        val context2 = new PartialContextC[Node, Map[LocalVar, Exp]](replacer2)
-        val inPosts = replacedArgs.map( replaceStrat.execute[Exp](_, context2) ).map( x => Inhale(x)(m.pos, m.info))
+        val replacedArgs = mDecl.posts.map(replaceStrat.execute[Exp](_))
+        replacer = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap
+        val inPosts = replacedArgs.map(replaceStrat.execute[Exp](_)).map(x => Inhale(x)(m.pos, m.info))
 
         Seqn(exPres ++ inPosts)(m.pos, m.info)
-
-    }) traverse Traverse.Innermost
+    }, Traverse.Innermost)
 
     files foreach { fileName: String => {
       executeTest(filePrefix, fileName, strat, frontend)
@@ -372,19 +509,19 @@ class RewriterTests extends FunSuite with Matchers {
     }) traverse Traverse.BottomUp
 
     val strat2 = StrategyBuilder.SlimStrategy[Node]({
-      case o@Or(Not(f:FalseLit), right) => Or(TrueLit()(f.pos, f.info), right)(o.pos, o.info)
-      case o@Or(Not(f:TrueLit), right) => Or(FalseLit()(f.pos, f.info), right)(o.pos, o.info)
-      case o@Or(left, Not(f:FalseLit)) => Or(left, TrueLit()(f.pos, f.info))(o.pos, o.info)
-      case o@Or(left, Not(f:TrueLit)) => Or(left, FalseLit()(f.pos, f.info))(o.pos, o.info)
+      case o@Or(Not(f: FalseLit), right) => Or(TrueLit()(f.pos, f.info), right)(o.pos, o.info)
+      case o@Or(Not(f: TrueLit), right) => Or(FalseLit()(f.pos, f.info), right)(o.pos, o.info)
+      case o@Or(left, Not(f: FalseLit)) => Or(left, TrueLit()(f.pos, f.info))(o.pos, o.info)
+      case o@Or(left, Not(f: TrueLit)) => Or(left, FalseLit()(f.pos, f.info))(o.pos, o.info)
     })
 
     val strat3 = StrategyBuilder.SlimStrategy[Node]({
-      case o@Or(t:TrueLit, right) => TrueLit()(o.pos, o.info)
-      case o@Or(left, t:TrueLit) => TrueLit()(o.pos, o.info)
+      case o@Or(t: TrueLit, right) => TrueLit()(o.pos, o.info)
+      case o@Or(left, t: TrueLit) => TrueLit()(o.pos, o.info)
     })
 
     val strat4 = StrategyBuilder.SlimStrategy[Node]({
-      case a@Assert(t:TrueLit) => Seqn(Seq())()
+      case a@Assert(t: TrueLit) => Seqn(Seq())()
     })
 
 
@@ -401,28 +538,28 @@ class RewriterTests extends FunSuite with Matchers {
     val frontend = new DummyFrontend
 
     val map = collection.mutable.Map.empty[LocalVar, BigInt]
-    val collect = StrategyBuilder.SlimStrategy[Node]( {
-      case p:Program => map.clear(); p // Reset map at start
-      case ass@LocalVarAssign(l:LocalVar , i:IntLit) => map += (l -> i.i); ass
-    }) recurseFunc { case l:LocalVarAssign => Seq(false, true) }
+    val collect = StrategyBuilder.SlimStrategy[Node]({
+      case p: Program => map.clear(); p // Reset map at start
+      case ass@LocalVarAssign(l: LocalVar, i: IntLit) => map += (l -> i.i); ass
+    }) recurseFunc { case l: LocalVarAssign => Seq(false, true) }
 
-    val replace = StrategyBuilder.SlimStrategy[Node]( {
-      case l:LocalVar =>
+    val replace = StrategyBuilder.SlimStrategy[Node]({
+      case l: LocalVar =>
         map.get(l) match {
           case None => l
-          case Some(i:BigInt) => IntLit(i)(l.pos, l.info)
+          case Some(i: BigInt) => IntLit(i)(l.pos, l.info)
         }
     })
 
     val fold = StrategyBuilder.SlimStrategy[Node]({
-      case root@Add(i1:IntLit, i2:IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
-      case root@Sub(i1:IntLit, i2:IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
-      case root@Div(i1:IntLit, i2:IntLit) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
-      case root@Mul(i1:IntLit, i2:IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
-      case root@Or(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value || b2.value)(root.pos, root.info)
-      case root@And(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value &&  b2.value)(root.pos, root.info)
-      case root@EqCmp(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value == b2.value)(root.pos, root.info)
-      case root@EqCmp(i1:IntLit, i2:IntLit) => BoolLit(i1.i == i2.i)(root.pos, root.info)
+      case root@Add(i1: IntLit, i2: IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
+      case root@Sub(i1: IntLit, i2: IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
+      case root@Div(i1: IntLit, i2: IntLit) => if (i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
+      case root@Mul(i1: IntLit, i2: IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
+      case root@Or(b1: BoolLit, b2: BoolLit) => BoolLit(b1.value || b2.value)(root.pos, root.info)
+      case root@And(b1: BoolLit, b2: BoolLit) => BoolLit(b1.value && b2.value)(root.pos, root.info)
+      case root@EqCmp(b1: BoolLit, b2: BoolLit) => BoolLit(b1.value == b2.value)(root.pos, root.info)
+      case root@EqCmp(i1: IntLit, i2: IntLit) => BoolLit(i1.i == i2.i)(root.pos, root.info)
     }) traverse Traverse.TopDown // Do this top down such that we need to iterate
 
     val combined = (collect + replace) || fold.repeat
@@ -455,8 +592,8 @@ class RewriterTests extends FunSuite with Matchers {
     }
 
     //  println("Old: " + targetNode.toString())
-      println("New: " + res.toString)
-      println("Reference: " + targetRef.toString())
+    println("New: " + res.toString)
+    println("Reference: " + targetRef.toString())
     assert(res.toString == targetRef.toString(), "Files are not equal")
   }
 
