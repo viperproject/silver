@@ -30,8 +30,9 @@ trait StrategyInterface[A <: Rewritable[A]] {
 
   def hasChanged = wasTransformed.nonEmpty
 
-  def transformed(node: Rewritable[A]): Unit = {
+  def transformed(node: Rewritable[A]): Rewritable[A] = {
     wasTransformed.add(node)
+    node
   }
 
   def dontRecurse(node: Rewritable[A]): Unit = {
@@ -77,6 +78,11 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A])
   protected var defaultContxt: Option[C] = None
 
   private var rule: RuleT[A, C] = Rule(p)
+
+  override def transformed(node: Rewritable[A]): A = {
+    super.transformed(node)
+    node.asInstanceOf[A]
+  }
 
   def getRule = rule
   def setRule(r: RuleT[A, C]) = rule = r
@@ -138,6 +144,14 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A])
     selectStrat(node, ctxt.get(this)).asInstanceOf[T]
   }
 
+  /**
+    * This method can be overridden to control the creation of a new node by possibly adding metadata to it
+    * @param old Node before transformation
+    * @param now Node after transformation
+    * @return Node with possibly filled in metadata or other modification
+    */
+  protected def preserveMetaData(old: A, now: A): A = now
+
   def executeTopDown(node: A, context:C): A = {
 
     val contextWithMyself = context.addAncestor(node).asInstanceOf[C]
@@ -148,13 +162,12 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A])
     val updatedContext:C = context.update(newNode).asInstanceOf[C]
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
-    recurseChildren(newNode, executeTopDown(_, updatedContext)) match {
-      case Some(children) =>
-        val dup = newNode.duplicate(children)
-        transformed(dup)
-        dup
+    val res = recurseChildren(newNode, executeTopDown(_, updatedContext)) match {
+      case Some(children) => transformed(newNode.duplicate(children))
       case None => newNode
     }
+    val res2 = preserveMetaData(node, res)
+    res2
   }
 
   def executeBottomUp(node: A, context: C): A = {
@@ -169,13 +182,12 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A])
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     val newNode = recurseChildren(node, executeBottomUp(_, updatedContext)) match {
       case Some(children) =>
-        val dup = node.duplicate(children)
-        transformed(dup)
-        dup
+        transformed(node.duplicate(children))
       case None => node
     }
 
-    rule.execute(newNode, updatedContext).getOrElse(newNode)
+    val res = rule.execute(newNode, updatedContext).getOrElse(newNode)
+    preserveMetaData(node, res)
   }
 
   def executeInnermost(node: A, context: C): A = {
@@ -184,18 +196,17 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A])
     val maybe = rule.execute(node, newC)
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
-    if(maybe.isEmpty) {
+    val res = if(maybe.isEmpty) {
 
       recurseChildren(node, executeInnermost(_, newC)) match {
-        case Some(children) =>
-          val dup = node.duplicate(children)
-          transformed(dup)
-          dup
+        case Some(children) => transformed(node.duplicate(children))
         case None => node
       }
     } else {
       maybe.get
     }
+
+    preserveMetaData(node, res)
   }
 
 

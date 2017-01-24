@@ -30,17 +30,6 @@ trait Rewritable[A <: Rewritable[A]] {
   }
 
   // Duplicate children. Children list must be in the same order as in getChildren
-  def duplicate(children: Seq[Any], metadata: Seq[Any]): A
-
-  def duplicate(children: Seq[Any]) : A = {
-    duplicate(children, getMetadata)
-  }
-
-  def duplicate(metadata: Seq[Any], i:Int): A = {
-    duplicate(getChildren, metadata)
-  }
-
-  // Get access to all metadata
-  def getMetadata:Seq[Any]
+  def duplicate(children: Seq[Any]): A
 
 }

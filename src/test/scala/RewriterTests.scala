@@ -33,7 +33,7 @@ class RewriterTests extends FunSuite with Matchers {
     //StrategyFromRegex[Node, Any] @>> r[Implies] |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = StrategyBuilder.SlimStrategy[Node]({
+    val strat = ViperStrategy.Slim({
       case Implies(left, right) => Or(Not(left)(), right)()
     })
 
@@ -45,7 +45,7 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\QuantifiedPermissions\\"
     val files = Seq("simple", "allCases")
 
-    val strat = StrategyBuilder.AncestorStrategy[Node]({
+    val strat = ViperStrategy.Ancestor({
       case (f@Forall(decl, _, Implies(l, r)), _) if r.isPure =>
         f
       case (f@Forall(decls, triggers, i@Implies(li, And(l, r))), ass) =>
@@ -93,7 +93,7 @@ class RewriterTests extends FunSuite with Matchers {
       // Regular expression
       //StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](_.variables) >> r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), TRegex.noRec(o))()}
 
-      val strat = StrategyBuilder.ContextStrategy[Node, Seq[LocalVarDecl]]({
+      val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
         case (o@Or(l, r), c) =>
           c.transformer.dontRecurse(o)
           InhaleExhaleExp(CondExp(NonDet(c.custom), l, r)(), o)()
@@ -190,7 +190,7 @@ class RewriterTests extends FunSuite with Matchers {
     // Example of how to transform a while loop into if and goto
     // Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
     var count = 0
-    val strat = StrategyBuilder.SlimStrategy[Node]({
+    val strat = ViperStrategy.Slim({
       case w: While =>
         val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
         count = count + 1
@@ -217,7 +217,7 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\ManyToOneAssert\\"
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
 
-    val strat = StrategyBuilder.AncestorStrategy[Node]({
+    val strat = ViperStrategy.Ancestor({
       case (a: Assert, c) =>
         c.previous match {
           case Some(Assert(_)) => Seqn(Seq())() // If previous node is assertion we go to noop
@@ -250,7 +250,7 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
     var accumulator: mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
 
-    val strat = StrategyBuilder.AncestorStrategy[Node]({
+    val strat = ViperStrategy.Ancestor({
       case (a: Assert, c) =>
         accumulator += a.exp
         c.next match {
@@ -334,7 +334,7 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "complex")
 
 
-    val strat = StrategyBuilder.SlimStrategy[Node]({
+    val strat = ViperStrategy.Slim({
       case root@Add(i1: IntLit, i2: IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
       case root@Sub(i1: IntLit, i2: IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
       case root@Div(i1: IntLit, i2: IntLit) => if (i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
@@ -356,7 +356,7 @@ class RewriterTests extends FunSuite with Matchers {
     //val t = new TreeRegexBuilder[Node, Node]()
     //nP[FuncApp](_.funcname == "fourAnd") > matchChildren[Exp](**, cN[FalseLit], **) |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
 
-    val strat: StrategyInterface[Node] = StrategyBuilder.AncestorStrategy[Node]({
+    val strat: StrategyInterface[Node] = ViperStrategy.Ancestor({
       case (e: Exp, c) => c.parent match {
         case f: FuncApp => if (f.funcname == "fourAnd" && c.siblings.contains(FalseLit()())) {
           FalseLit()(e.pos, e.info)
@@ -473,7 +473,7 @@ class RewriterTests extends FunSuite with Matchers {
 
     val frontend = new DummyFrontend
 
-    val strat = StrategyBuilder.AncestorStrategy[Node]({
+    val strat = ViperStrategy.Ancestor({
       case (m: MethodCall, anc) =>
         // Get method declaration
         val mDecl = anc.ancestorList.head.asInstanceOf[Program].methods.find(_.name == m.methodName).get
@@ -504,23 +504,23 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "complex")
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = StrategyBuilder.SlimStrategy[Node]({
+    val strat = ViperStrategy.Slim({
       case i@Implies(left, right) => Or(Not(left)(i.pos, i.info), right)(i.pos, i.info)
     }) traverse Traverse.BottomUp
 
-    val strat2 = StrategyBuilder.SlimStrategy[Node]({
+    val strat2 = ViperStrategy.Slim({
       case o@Or(Not(f: FalseLit), right) => Or(TrueLit()(f.pos, f.info), right)(o.pos, o.info)
       case o@Or(Not(f: TrueLit), right) => Or(FalseLit()(f.pos, f.info), right)(o.pos, o.info)
       case o@Or(left, Not(f: FalseLit)) => Or(left, TrueLit()(f.pos, f.info))(o.pos, o.info)
       case o@Or(left, Not(f: TrueLit)) => Or(left, FalseLit()(f.pos, f.info))(o.pos, o.info)
     })
 
-    val strat3 = StrategyBuilder.SlimStrategy[Node]({
+    val strat3 = ViperStrategy.Slim({
       case o@Or(t: TrueLit, right) => TrueLit()(o.pos, o.info)
       case o@Or(left, t: TrueLit) => TrueLit()(o.pos, o.info)
     })
 
-    val strat4 = StrategyBuilder.SlimStrategy[Node]({
+    val strat4 = ViperStrategy.Slim({
       case a@Assert(t: TrueLit) => Seqn(Seq())()
     })
 
@@ -538,12 +538,12 @@ class RewriterTests extends FunSuite with Matchers {
     val frontend = new DummyFrontend
 
     val map = collection.mutable.Map.empty[LocalVar, BigInt]
-    val collect = StrategyBuilder.SlimStrategy[Node]({
+    val collect = ViperStrategy.Slim({
       case p: Program => map.clear(); p // Reset map at start
       case ass@LocalVarAssign(l: LocalVar, i: IntLit) => map += (l -> i.i); ass
     }) recurseFunc { case l: LocalVarAssign => Seq(false, true) }
 
-    val replace = StrategyBuilder.SlimStrategy[Node]({
+    val replace = ViperStrategy.Slim({
       case l: LocalVar =>
         map.get(l) match {
           case None => l
@@ -551,7 +551,7 @@ class RewriterTests extends FunSuite with Matchers {
         }
     })
 
-    val fold = StrategyBuilder.SlimStrategy[Node]({
+    val fold = ViperStrategy.Slim({
       case root@Add(i1: IntLit, i2: IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
       case root@Sub(i1: IntLit, i2: IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
       case root@Div(i1: IntLit, i2: IntLit) => if (i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
