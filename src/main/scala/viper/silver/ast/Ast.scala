@@ -167,8 +167,8 @@ trait TransformableErrors {
   /* Methods for error handling */
   def errT: ErrorTrafo
 
-  private lazy val nodeTrafoStrat = StrategyBuilder.SimpleStrategy[Node]({
-      case (n:TransformableErrors, x) => { // TODO transformable errors is really ugly. What can i do here?
+  private lazy val nodeTrafoStrat = StrategyBuilder.SlimStrategy[Node]({
+      case n:TransformableErrors => { // TODO transformable errors is really ugly. What can i do here?
         val res = transformNode(n.asInstanceOf[ErrorNode])
         res
       }

@@ -39,7 +39,7 @@ trait StrategyInterface[A <: Rewritable[A]] {
   }
 
 
-  def execute(node: A): A
+  def execute[T <: A](node: A): T
 
   def ||(s: StrategyInterface[A]): ConcatinatedStrategy[A]
 
@@ -47,8 +47,8 @@ trait StrategyInterface[A <: Rewritable[A]] {
 
 object StrategyBuilder {
 
-  def SimpleStrategy[A <: Rewritable[A]](p: PartialFunction[(A, SimpleContext[A]), A]) = {
-    new Strategy[A, SimpleContext[A]](p) defaultContext new NoContext[A]
+  def SlimStrategy[A <: Rewritable[A]](p: PartialFunction[A, A]) = {
+    new Strategy[A, SimpleContext[A]](AddArtificialContext(p)) defaultContext new NoContext[A]
   }
 
   def AncestorStrategy[A <: Rewritable[A]](p: PartialFunction[(A, ContextA[A]), A]) = {
@@ -61,6 +61,13 @@ object StrategyBuilder {
 
 }
 
+case class AddArtificialContext[N <: Rewritable[N]](p: PartialFunction[N, N]) extends PartialFunction[(N, SimpleContext[N]), N] {
+  override def isDefinedAt(x: (N, SimpleContext[N])): Boolean = p.isDefinedAt(x._1)
+
+  override def apply(x: (N, SimpleContext[N])): N = p.apply(x._1)
+}
+
+class SlimStrategy[A <: Rewritable[A]](p: PartialFunction[A, A]) extends Strategy[A, SimpleContext[A]](AddArtificialContext(p)) { }
 
 class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A]) extends StrategyInterface[A] {
   protected var traversionMode: Traverse = Traverse.TopDown
@@ -122,13 +129,13 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A])
     }
   }
 
-  override def execute(node: A): A = {
+  override def execute[T <: A](node: A): T = {
     assert(defaultContxt.isDefined, "Default context not set!")
-    selectStrat(node, defaultContxt.get)
+    selectStrat(node, defaultContxt.get).asInstanceOf[T]
   }
 
-  def execute(node: A, ctxt: PartialContext[A, C]): A = {
-    selectStrat(node, ctxt.get(this))
+  def execute[T <: A](node: A, ctxt: PartialContext[A, C]): T = {
+    selectStrat(node, ctxt.get(this)).asInstanceOf[T]
   }
 
   def executeTopDown(node: A, context:C): A = {
@@ -269,29 +276,29 @@ class ConcatinatedStrategy[A <: Rewritable[A]](s1: StrategyInterface[A], val s2:
     this
   }
 
-  override def execute(node: A): A = strategies.foldLeft(node)((n, strat) => strat.execute(n))
+  override def execute[T <: A](node: A): T = strategies.foldLeft(node)((n, strat) => strat.execute[A](n)).asInstanceOf[T]
 
   override def hasChanged: Boolean = s1.hasChanged || s2.hasChanged
 }
 
 class RepeatedStrategy[A <: Rewritable[A]](s: StrategyInterface[A]) extends StrategyInterface[A] {
-  override def execute(node: A): A = {
-    val result = s.execute(node)
+  override def execute[T <: A](node: A): T = {
+    val result:T = s.execute[T](node)
     if (!s.hasChanged) {
       result
     } else {
-      execute(result)
+      execute[T](result)
     }
   }
 
-  def execute(node: A, i: Int): A = {
+  def execute[T <: A](node: A, i: Int): A = {
     if (i <= 0) node
 
-    val result = s.execute(node)
+    val result = s.execute[T](node)
     if (s.hasChanged) {
       result
     } else {
-      execute(result, i - 1)
+      execute[T](result, i - 1)
     }
   }
 

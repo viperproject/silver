@@ -30,11 +30,11 @@ class RewriterTests extends FunSuite with Matchers {
 
 
     // Regular expression
-    val regexStrat = r[Implies] -> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
+    //StrategyFromRegex[Node, Any] @>> r[Implies] |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = StrategyBuilder.SimpleStrategy[Node]({
-      case (Implies(left, right),_) => Or(Not(left)(), right)()
+    val strat = StrategyBuilder.SlimStrategy[Node]({
+      case Implies(left, right) => Or(Not(left)(), right)()
     })
 
     val frontend = new DummyFrontend
@@ -90,7 +90,7 @@ class RewriterTests extends FunSuite with Matchers {
       }
 
       // Regular expression
-      StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](_.variables) >> r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), TRegex.noRec(o))()}
+      //StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](_.variables) >> r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), TRegex.noRec(o))()}
 
       val strat = StrategyBuilder.ContextStrategy[Node, Seq[LocalVarDecl]]({
         case (Or(l, r), c) =>
@@ -113,7 +113,7 @@ class RewriterTests extends FunSuite with Matchers {
         case (None, errors) => println("Problem with program: " + errors)
       }
 
-      val res = strat.execute(targetNode)
+      val res = strat.execute[Program](targetNode)
       //  println("Old: " + targetNode.toString())
       println("New: " + res.toString())
       println("Reference: " + targetRef.toString())
@@ -129,8 +129,8 @@ class RewriterTests extends FunSuite with Matchers {
     // Example of how to transform a while loop into if and goto
     // Keeping metadata is awful when creating multiple statements from a single one and we need to think about this case, but at least it is possible
     var count = 0
-    val strat = StrategyBuilder.SimpleStrategy[Node]({
-      case (w: While, _) =>
+    val strat = StrategyBuilder.SlimStrategy[Node]({
+      case w: While =>
         val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
         count = count + 1
         Seqn(Seq(
@@ -214,11 +214,11 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "complex")
 
 
-    val strat = StrategyBuilder.SimpleStrategy[Node]({
-      case (root@Add(i1:IntLit, i2:IntLit), _) => IntLit(i1.i + i2.i)(root.pos, root.info)
-      case (root@Sub(i1:IntLit, i2:IntLit), _) => IntLit(i1.i - i2.i)(root.pos, root.info)
-      case (root@Div(i1:IntLit, i2:IntLit), _) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
-      case (root@Mul(i1:IntLit, i2:IntLit), _) => IntLit(i1.i * i2.i)(root.pos, root.info)
+    val strat = StrategyBuilder.SlimStrategy[Node]({
+      case root@Add(i1:IntLit, i2:IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
+      case root@Sub(i1:IntLit, i2:IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
+      case root@Div(i1:IntLit, i2:IntLit) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
+      case root@Mul(i1:IntLit, i2:IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
     }) traverse Traverse.BottomUp
 
     val frontend = new DummyFrontend
@@ -234,7 +234,7 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("fourAnd")
 
     //val t = new TreeRegexBuilder[Node, Node]()
-    nP[FuncApp](_.funcname == "fourAnd") > matchChildren[Exp](**, cN[FalseLit], **) |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
+    //nP[FuncApp](_.funcname == "fourAnd") > matchChildren[Exp](**, cN[FalseLit], **) |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
 
     val strat:StrategyInterface[Node] = StrategyBuilder.AncestorStrategy[Node]({
       case (e: Exp, c) => c.parent match {
@@ -285,6 +285,46 @@ class RewriterTests extends FunSuite with Matchers {
     })
   }
 
+  test("OLDMethodCallDesugaring") {
+    val filePrefix = "transformations\\MethodCallDesugaring\\"
+    val files = Seq("simple", "withArgs", "withArgsNRes", "withFields")
+
+    val frontend = new DummyFrontend
+
+    files foreach { fileName: String => {
+      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+      assert(fileRes != null, s"File $filePrefix$fileName not found")
+      val file = Paths.get(fileRes.toURI)
+      var targetNode: Program = null
+      var targetRef: Program = null
+
+      frontend.translate(file) match {
+        case (Some(p), _) => targetNode = p
+        case (None, errors) => println("Problem with program: " + errors)
+      }
+
+      // TODO: Transformer here
+      val res = null
+
+
+      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+      assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
+
+      val ref = Paths.get(fileRef.toURI)
+      frontend.translate(ref) match {
+        case (Some(p), _) => targetRef = p
+        case (None, errors) => println("Problem with program: " + errors)
+      }
+
+      //  println("Old: " + targetNode.toString())
+      println("New: " + res.toString)
+      println("Reference: " + targetRef.toString())
+      assert(res.toString == targetRef.toString(), "Files are not equal")
+    }
+    }
+
+  }
+
   test("MethodCallDesugaring") {
     // Careful: Don't use old inside postcondition. It is not yet supported. maybe I will update the testcase
     val filePrefix = "transformations\\MethodCallDesugaring\\"
@@ -304,13 +344,13 @@ class RewriterTests extends FunSuite with Matchers {
         // Create an exhale statement for every precondition and replace parameters with arguments
         val replacer:Map[LocalVar, Exp] = mDecl.formalArgs.zip(m.args).map( x => x._1.localVar -> x._2).toMap
         val context = new PartialContextC[Node, Map[LocalVar, Exp]](replacer)
-        val exPres = mDecl.pres.map( replaceStrat.execute(_, context)).map( x => Exhale(x.asInstanceOf[Exp])(m.pos, m.info))
+        val exPres = mDecl.pres.map( replaceStrat.execute[Exp](_, context)).map( x => Exhale(x)(m.pos, m.info))
 
         // Create an inhale statement for every postcondition, replace parameters with arguments and replace result parameters with receivers
-        val replacedArgs = mDecl.posts.map(replaceStrat.execute(_, context) )
+        val replacedArgs = mDecl.posts.map(replaceStrat.execute[Exp](_, context) )
         val replacer2:Map[LocalVar, Exp] = mDecl.formalReturns.zip(m.targets).map( x => x._1.localVar -> x._2).toMap
         val context2 = new PartialContextC[Node, Map[LocalVar, Exp]](replacer2)
-        val inPosts = replacedArgs.map( replaceStrat.execute(_, context2) ).map( x => Inhale(x.asInstanceOf[Exp])(m.pos, m.info))
+        val inPosts = replacedArgs.map( replaceStrat.execute[Exp](_, context2) ).map( x => Inhale(x)(m.pos, m.info))
 
         Seqn(exPres ++ inPosts)(m.pos, m.info)
 
@@ -327,24 +367,24 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "complex")
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = StrategyBuilder.SimpleStrategy[Node]({
-      case (i@Implies(left, right), _) => Or(Not(left)(i.pos, i.info), right)(i.pos, i.info)
+    val strat = StrategyBuilder.SlimStrategy[Node]({
+      case i@Implies(left, right) => Or(Not(left)(i.pos, i.info), right)(i.pos, i.info)
     }) traverse Traverse.BottomUp
 
-    val strat2 = StrategyBuilder.SimpleStrategy[Node]({
-      case (o@Or(Not(f:FalseLit), right), _) => Or(TrueLit()(f.pos, f.info), right)(o.pos, o.info)
-      case (o@Or(Not(f:TrueLit), right), _) => Or(FalseLit()(f.pos, f.info), right)(o.pos, o.info)
-      case (o@Or(left, Not(f:FalseLit)), _) => Or(left, TrueLit()(f.pos, f.info))(o.pos, o.info)
-      case (o@Or(left, Not(f:TrueLit)), _) => Or(left, FalseLit()(f.pos, f.info))(o.pos, o.info)
+    val strat2 = StrategyBuilder.SlimStrategy[Node]({
+      case o@Or(Not(f:FalseLit), right) => Or(TrueLit()(f.pos, f.info), right)(o.pos, o.info)
+      case o@Or(Not(f:TrueLit), right) => Or(FalseLit()(f.pos, f.info), right)(o.pos, o.info)
+      case o@Or(left, Not(f:FalseLit)) => Or(left, TrueLit()(f.pos, f.info))(o.pos, o.info)
+      case o@Or(left, Not(f:TrueLit)) => Or(left, FalseLit()(f.pos, f.info))(o.pos, o.info)
     })
 
-    val strat3 = StrategyBuilder.SimpleStrategy[Node]({
-      case (o@Or(t:TrueLit, right), _) => TrueLit()(o.pos, o.info)
-      case (o@Or(left, t:TrueLit), _) => TrueLit()(o.pos, o.info)
+    val strat3 = StrategyBuilder.SlimStrategy[Node]({
+      case o@Or(t:TrueLit, right) => TrueLit()(o.pos, o.info)
+      case o@Or(left, t:TrueLit) => TrueLit()(o.pos, o.info)
     })
 
-    val strat4 = StrategyBuilder.SimpleStrategy[Node]({
-      case (a@Assert(t:TrueLit), _) => Seqn(Seq())()
+    val strat4 = StrategyBuilder.SlimStrategy[Node]({
+      case a@Assert(t:TrueLit) => Seqn(Seq())()
     })
 
 
@@ -361,28 +401,28 @@ class RewriterTests extends FunSuite with Matchers {
     val frontend = new DummyFrontend
 
     val map = collection.mutable.Map.empty[LocalVar, BigInt]
-    val collect = StrategyBuilder.SimpleStrategy[Node]( {
-      case (p:Program, _) => map.clear(); p // Reset map at start
-      case (ass@LocalVarAssign(l:LocalVar , i:IntLit), _) => map += (l -> i.i); ass
+    val collect = StrategyBuilder.SlimStrategy[Node]( {
+      case p:Program => map.clear(); p // Reset map at start
+      case ass@LocalVarAssign(l:LocalVar , i:IntLit) => map += (l -> i.i); ass
     }) recurseFunc { case l:LocalVarAssign => Seq(false, true) }
 
-    val replace = StrategyBuilder.SimpleStrategy[Node]( {
-      case (l:LocalVar, _) =>
+    val replace = StrategyBuilder.SlimStrategy[Node]( {
+      case l:LocalVar =>
         map.get(l) match {
           case None => l
           case Some(i:BigInt) => IntLit(i)(l.pos, l.info)
         }
     })
 
-    val fold = StrategyBuilder.SimpleStrategy[Node]({
-      case (root@Add(i1:IntLit, i2:IntLit), _) => IntLit(i1.i + i2.i)(root.pos, root.info)
-      case (root@Sub(i1:IntLit, i2:IntLit), _) => IntLit(i1.i - i2.i)(root.pos, root.info)
-      case (root@Div(i1:IntLit, i2:IntLit), _) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
-      case (root@Mul(i1:IntLit, i2:IntLit), _) => IntLit(i1.i * i2.i)(root.pos, root.info)
-      case (root@Or(b1:BoolLit, b2:BoolLit), _) => BoolLit(b1.value || b2.value)(root.pos, root.info)
-      case (root@And(b1:BoolLit, b2:BoolLit), _) => BoolLit(b1.value &&  b2.value)(root.pos, root.info)
-      case (root@EqCmp(b1:BoolLit, b2:BoolLit), _) => BoolLit(b1.value == b2.value)(root.pos, root.info)
-      case (root@EqCmp(i1:IntLit, i2:IntLit), _) => BoolLit(i1.i == i2.i)(root.pos, root.info)
+    val fold = StrategyBuilder.SlimStrategy[Node]({
+      case root@Add(i1:IntLit, i2:IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
+      case root@Sub(i1:IntLit, i2:IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
+      case root@Div(i1:IntLit, i2:IntLit) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
+      case root@Mul(i1:IntLit, i2:IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
+      case root@Or(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value || b2.value)(root.pos, root.info)
+      case root@And(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value &&  b2.value)(root.pos, root.info)
+      case root@EqCmp(b1:BoolLit, b2:BoolLit) => BoolLit(b1.value == b2.value)(root.pos, root.info)
+      case root@EqCmp(i1:IntLit, i2:IntLit) => BoolLit(i1.i == i2.i)(root.pos, root.info)
     }) traverse Traverse.TopDown // Do this top down such that we need to iterate
 
     val combined = (collect + replace) || fold.repeat
@@ -402,7 +442,7 @@ class RewriterTests extends FunSuite with Matchers {
       case (Some(p), _) => targetNode = p
       case (None, errors) => println("Problem with program: " + errors)
     }
-    val res = strat.execute(targetNode)
+    val res = strat.execute[Program](targetNode)
     println("debug:" + res.toString())
 
     val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
