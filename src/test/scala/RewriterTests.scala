@@ -12,6 +12,7 @@ import viper.silver.ast._
 import viper.silver.ast.utility._
 import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silver.verifier.AbstractError
+import viper.silver.TRegex._
 
 import scala.collection.mutable
 import scala.language.implicitConversions
@@ -29,7 +30,7 @@ class RewriterTests extends FunSuite with Matchers {
 
 
     // Regular expression
-    val regex = new TRegex[Node, Exp] % r[Implies] -> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
+    val regexStrat = r[Implies] -> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
     val strat = StrategyBuilder.SimpleStrategy[Node]({
@@ -89,7 +90,7 @@ class RewriterTests extends FunSuite with Matchers {
       }
 
       // Regular expression
-      new TRegex[Node, Seq[LocalVarDecl]] % c[QuantifiedExp](_.variables) >> r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), TRegex.noRec(o))()}
+      StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](_.variables) >> r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), TRegex.noRec(o))()}
 
       val strat = StrategyBuilder.ContextStrategy[Node, Seq[LocalVarDecl]]({
         case (Or(l, r), c) =>
@@ -233,7 +234,7 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("fourAnd")
 
     //val t = new TreeRegexBuilder[Node, Node]()
-    new TRegex[Node, Node] % nP[FuncApp](_.funcname == "fourAnd") > matchChildren[Exp](**, cN[FalseLit], **) |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
+    nP[FuncApp](_.funcname == "fourAnd") > matchChildren[Exp](**, cN[FalseLit], **) |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
 
     val strat:StrategyInterface[Node] = StrategyBuilder.AncestorStrategy[Node]({
       case (e: Exp, c) => c.parent match {

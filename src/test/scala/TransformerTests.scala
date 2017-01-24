@@ -52,6 +52,10 @@ class TRegex[N <: Rewritable[N] ,C] {
 
 }
 
+case class StrategyFromRegex[N <: Rewritable[N], C]() {
+  def @>>(m:Match[N]): TRegex[N, C] = ???
+}
+
 class Match[+N] {
   def *(): Match[N] = ???
   def +(): Match[N] = ???
@@ -74,6 +78,9 @@ case class nP[N](p: N=>Boolean) extends Match[N] {}
 
 object TRegex {
   def noRec[N](n: N): N = ???
+  implicit def viperRegex(m: Match[Node]): TRegex[Node, Any] = {
+    new TRegex[Node, Any] % m
+  }
 }
 
 
@@ -81,6 +88,6 @@ object TRegex {
 
 class Test {
   //val t = new TreeRegexBuilder[Node, Exp]()
-  new TRegex[Node, Exp] % intoChild[Method](_.pres.head) >> n[Implies] > matchChildren[Or](**).* >> n[Implies] |-> { case (o:Or, c) => Or(o.left, c.head)() }
+  StrategyFromRegex[Node, Exp] @>> intoChild[Method](_.pres.head) >> n[Implies] > matchChildren[Or](**).* >> n[Implies] |-> { case (o:Or, c) => Or(o.left, c.head)() }
 
 }
