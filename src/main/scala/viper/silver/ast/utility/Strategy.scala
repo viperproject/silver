@@ -1,6 +1,5 @@
 package viper.silver.ast.utility
 
-import org.omg.PortableServer.CurrentPackage.NoContext
 import viper.silver.ast.utility.Traverse.Traverse
 
 /**

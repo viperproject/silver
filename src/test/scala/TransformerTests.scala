@@ -14,7 +14,7 @@ import ast.If
 
 
 
-
+/*
 class TreeRegexBuilder[N, C] {
 
   def NoRec[NODE <: N](o: NODE): NODE = ???
@@ -34,44 +34,53 @@ class TreeRegexBuilder[N, C] {
   def **[NODE <: N]: ChildMatch[NODE, N, C] = ???
 
 }
+*/
+class ChildMatch[+N]() {
 
-class ChildMatch[Node <: N, N, C] {
+}
 
+case class cN[N]() extends ChildMatch[N] {}
+object ** extends ChildMatch
+object ? extends ChildMatch
+
+class TRegex[N <: Rewritable[N] ,C] {
+  def |->(p: PartialFunction[(N, Seq[C]), N]): Strategy[N, ContextC[N, Seq[C]]] = ???
+  def %(m:Match[N]): TRegex[N, C] = ???
+
+  def >>(m: Match[N]):TRegex[N, C] = ???
+  def >(m:Match[N]):TRegex[N, C] = ???
+
+}
+
+class Match[+N] {
+  def *(): Match[N] = ???
+  def +(): Match[N] = ???
+
+  def ^(i: Int): Match[N] = ???
+
+}
+
+case class n[N]() extends Match[N] { }
+
+case class r[N]() extends Match[N] { }
+
+case class c[N](acc:N=>Any) extends Match[N] { }
+
+case class intoChild[N](selector:N=>Node) extends Match[N] {}
+
+case class matchChildren[N](s: ChildMatch[N]*) extends Match[N] { }
+
+case class nP[N](p: N=>Boolean) extends Match[N] {}
+
+object TRegex {
+  def noRec[N](n: N): N = ???
 }
 
 
 
-class Match[NODE <: N, N, C] {
-  def *(): Match[_, N, C] = ???
-  def +(): Match[_, N, C] = ???
-  def ^(i: Int): Match[_, N, C] = ???
-
-  def >>(m: Match[_ ,N, C]):Match[_, N, C] = ???
-
-  def >(m:Match[_, N, C]):Match[_, N, C] = ???
-
-  def |->(p: PartialFunction[(N, Seq[C]), N]):Strategy[N, ContextC[N, C]] = ???
-}
-
-class nodeMatch[Node <: N, N, C] extends Match[Node, N, C] {
-
-}
-
-class rewriteMatch[Node <: N, N, C] extends Match[Node, N, C] {
-
-}
-
-class contextMatch[Node <: N, N, C](val acc:Node=>C) extends Match[Node, N, C] {
-
-}
-
-class childrenMatch[Node <: N, N, C](selector:Node=>Seq[Match[Node, N, C]]) {
-
-}
 
 class Test {
-  val t = new TreeRegexBuilder[Node, Exp]()
-  t.intoChild[Method](_.pres.head) >> t.node[Implies] > t.matchChildren[Or](t >> t.node[TrueLit], t >> t.node[FalseLit]) |-> { case (o:Or, c) => Or(o.left, c.head)() }
-  t.node[Or]
+  //val t = new TreeRegexBuilder[Node, Exp]()
+  new TRegex[Node, Exp] % intoChild[Method](_.pres.head) >> n[Implies] > matchChildren[Or](**).* >> n[Implies] |-> { case (o:Or, c) => Or(o.left, c.head)() }
 
 }

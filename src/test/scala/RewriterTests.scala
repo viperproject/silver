@@ -7,7 +7,7 @@
 import java.nio.file.{Path, Paths}
 
 import org.scalatest.{FunSuite, Matchers}
-import viper.silver.TreeRegexBuilder
+import viper.silver._
 import viper.silver.ast._
 import viper.silver.ast.utility._
 import viper.silver.frontend.{SilFrontend, TranslatorState}
@@ -29,8 +29,7 @@ class RewriterTests extends FunSuite with Matchers {
 
 
     // Regular expression
-    val t = new TreeRegexBuilder[Node, Any]()
-    val regex = t.matchOn[Implies] -> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
+    val regex = new TRegex[Node, Exp] % r[Implies] -> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
     val strat = StrategyBuilder.SimpleStrategy[Node]({
@@ -90,8 +89,7 @@ class RewriterTests extends FunSuite with Matchers {
       }
 
       // Regular expression
-      val t = new TreeRegexBuilder[Node, Seq[LocalVarDecl]]()
-      t.context[QuantifiedExp](_.variables).* >> t.matchOn[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), t.NoRec(o))()}
+      new TRegex[Node, Seq[LocalVarDecl]] % c[QuantifiedExp](_.variables) >> r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), TRegex.noRec(o))()}
 
       val strat = StrategyBuilder.ContextStrategy[Node, Seq[LocalVarDecl]]({
         case (Or(l, r), c) =>
@@ -215,14 +213,6 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("simple", "complex")
 
 
-    // Only implemented int trasformations. its enough for the test
-    val t = new TreeRegexBuilder[Node, Seq[LocalVarDecl]]()
-    (t.matchOn[Add] |-> {case (root@Add(i1:IntLit, i2:IntLit), _) => IntLit(i1.i + i2.i)(root.pos, root.info)}) +
-      (t.matchOn[Sub] |-> {case (root@Sub(i1:IntLit, i2:IntLit), _) => IntLit(i1.i - i2.i)(root.pos, root.info)}) +
-      (t.matchOn[Div] |-> { case (root@Div(i1:IntLit, i2:IntLit), _) => if(i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root }) +
-      (t.matchOn[Mul] |-> {  case (root@Mul(i1:IntLit, i2:IntLit), _) => IntLit(i1.i * i2.i)(root.pos, root.info) })
-
-
     val strat = StrategyBuilder.SimpleStrategy[Node]({
       case (root@Add(i1:IntLit, i2:IntLit), _) => IntLit(i1.i + i2.i)(root.pos, root.info)
       case (root@Sub(i1:IntLit, i2:IntLit), _) => IntLit(i1.i - i2.i)(root.pos, root.info)
@@ -242,8 +232,8 @@ class RewriterTests extends FunSuite with Matchers {
     val filePrefix = "transformations\\UnfoldedChildren\\"
     val files = Seq("fourAnd")
 
-    val t = new TreeRegexBuilder[Node, Node]()
-    (t.nodePred[FuncApp](_.funcname == "fourAnd") > t.matchChildren[Exp](t.**, t.childNode[FalseLit], t.**)) -> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
+    //val t = new TreeRegexBuilder[Node, Node]()
+    new TRegex[Node, Node] % nP[FuncApp](_.funcname == "fourAnd") > matchChildren[Exp](**, cN[FalseLit], **) |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
 
     val strat:StrategyInterface[Node] = StrategyBuilder.AncestorStrategy[Node]({
       case (e: Exp, c) => c.parent match {
