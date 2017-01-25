@@ -118,16 +118,16 @@ trait Cfg[S, E] {
     val blocks: Seq[Block[S2, E2]] = blockMap.values.toList
     // map all edges
     val edges: Seq[Edge[S2, E2]] = this.edges.map { edge =>
-      val mappedSource = blockMap.get(edge.source).get
-      val mappedTarget = blockMap.get(edge.target).get
+      val mappedSource = blockMap(edge.source)
+      val mappedTarget = blockMap(edge.target)
       edge match {
         case UnconditionalEdge(_, _, kind) => UnconditionalEdge(mappedSource, mappedTarget, kind)
         case ConditionalEdge(cond, _, _, kind) => ConditionalEdge(expMap(cond), mappedSource, mappedTarget, kind)
       }
     }
     // get mapped entry and exit block
-    val entry = blockMap.get(this.entry).get
-    val exit = blockMap.get(this.exit).get
+    val entry = blockMap(this.entry)
+    val exit = blockMap(this.exit)
 
     factory.copy(blocks, edges, entry, exit).asInstanceOf[C]
   }
