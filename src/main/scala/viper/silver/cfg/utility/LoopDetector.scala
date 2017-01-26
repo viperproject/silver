@@ -40,9 +40,7 @@ object LoopDetector {
           val updated = allLoops(block) + head
           allLoops.put(block, updated)
         }
-      } else {
-        // TODO: Report that the control flow graph is not reducible.
-      }
+      } else throw new IllegalArgumentException("The control flow graph is not reducible")
     }
 
     val queue = mutable.Queue[Block[S, E]]()
