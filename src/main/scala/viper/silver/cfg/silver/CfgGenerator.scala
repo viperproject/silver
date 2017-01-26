@@ -68,10 +68,13 @@ object CfgGenerator {
   def statementToCfg(ast: Stmt, simplify: Boolean = true): SilverCfg = {
     val phase1 = new Phase1(ast)
     val phase2 = new Phase2(phase1)
-    val cfg = LoopDetector.detect[SilverCfg, Stmt, Exp](phase2.cfg, phase2.loops)
 
-    if (simplify) CfgSimplifier.simplify[SilverCfg, Stmt, Exp](cfg)
-    else cfg
+    val cfg = phase2.cfg
+    val pruned = CfgSimplifier.pruneUnreachable[SilverCfg, Stmt, Exp](cfg)
+    val detected = LoopDetector.detect[SilverCfg, Stmt, Exp](pruned, phase2.loops)
+
+    if (simplify) CfgSimplifier.simplify[SilverCfg, Stmt, Exp](detected)
+    else detected
   }
 
   /**

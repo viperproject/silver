@@ -15,6 +15,46 @@ import scala.collection.mutable
   */
 object CfgSimplifier {
   /**
+    * Removes all blocks from the control flow graph that are not reachable from
+    * the entry block.
+    *
+    * @param cfg The control flow graph.
+    * @tparam C The type of the control flow graph.
+    * @tparam S The type of the statements in the control flow graph.
+    * @tparam E The type of the expressions in the control flow graph.
+    * @return The control flow graph after the unreachable blocks were pruned.
+    */
+  def pruneUnreachable[C <: Cfg[S, E], S, E](cfg: C): C = {
+    val entry = cfg.entry
+    val exit = cfg.exit
+
+    val queue = mutable.Queue[Block[S, E]]()
+
+    val blocks = mutable.Set[Block[S, E]]()
+    val edges = mutable.Set[Edge[S, E]]()
+
+    queue.enqueue(entry)
+    blocks.add(entry)
+
+    while (queue.nonEmpty) {
+      val block = queue.dequeue()
+      for (edge <- cfg.outEdges(block)) {
+        edges.add(edge)
+        val target = edge.target
+        if (!blocks.contains(target)) {
+          queue.enqueue(target)
+          blocks.add(target)
+        }
+      }
+    }
+
+    // add exit block (in case it has not been added already)
+    blocks.add(exit)
+
+    cfg.copy(blocks.toList, edges.toList, entry, exit).asInstanceOf[C]
+  }
+
+  /**
     * Simplifies the given control flow graph.
     *
     * Assumptions:
