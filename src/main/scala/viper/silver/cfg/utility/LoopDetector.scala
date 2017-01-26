@@ -44,6 +44,7 @@ object LoopDetector {
     }
 
     val queue = mutable.Queue[Block[S, E]]()
+    val heads = mutable.Map[Block[S, E], Block[S, E]]()
     val blocks = mutable.Set[Block[S, E]]()
     val edges = mutable.Set[Edge[S, E]]()
 
@@ -54,6 +55,8 @@ object LoopDetector {
     blocks.add(entry)
 
     while (queue.nonEmpty) {
+      // Note: In case a block has been turned into a loop head, this is still
+      // the original block.
       val block = queue.dequeue()
 
       for (edge <- cfg.outEdges(block)) {
@@ -63,17 +66,30 @@ object LoopDetector {
         val in = (after -- before).size
         val mid = Math.max(out + in - 1, 0)
 
+        // get source
+        val first = heads.getOrElse(edge.source, edge.source)
+        // turn target into loop head if edge is an in-edge
+        val last = if (0 < in && out == 0) edge.target match {
+          case head@LoopHeadBlock(_, _) => head
+          case block@StatementBlock(stmts) =>
+            val head: Block[S, E] = LoopHeadBlock(stmts = stmts)
+            heads.put(block, head)
+            head
+          case ConstrainingBlock(_, _) => ??? // TODO:
+          case _ => ??? // We don't expect this to happen.
+        } else heads.getOrElse(edge.target, edge.target)
+
         if (mid == 0) {
           // update edge
           val kind = if (out > 0) Kind.Out else if (in > 0) Kind.In else Kind.Normal
           val updated = edge match {
-            case UnconditionalEdge(source, target, _) => UnconditionalEdge(source, target, kind)
-            case ConditionalEdge(condition, source, target, _) => ConditionalEdge(condition, source, target, kind)
+            case UnconditionalEdge(_, _, _) => UnconditionalEdge(first, last, kind)
+            case ConditionalEdge(condition, _, _, _) => ConditionalEdge(condition, first, last, kind)
           }
           edges.add(updated)
         } else {
           // set source and condition for the first edge
-          var source = edge.source
+          var source = first
           var condition = edge match {
             case ConditionalEdge(c, _, _, _) => Some(c)
             case _ => None
@@ -81,8 +97,8 @@ object LoopDetector {
           // create edges and intermediate blocks
           for (index <- 0 to mid) {
             // set target and kind of current edge
-            val target = if (index == mid) edge.target else {
-              val intermediate: Block[S, E] = StatementBlock()
+            val target = if (index == mid) last else {
+              val intermediate: Block[S, E] = if (index < in) LoopHeadBlock() else StatementBlock()
               blocks.add(intermediate)
               intermediate
             }
@@ -99,9 +115,9 @@ object LoopDetector {
           }
         }
 
-        if (!blocks.contains(edge.target)) {
+        if (!blocks.contains(last)) {
           queue.enqueue(edge.target)
-          blocks.add(edge.target)
+          blocks.add(last)
         }
       }
     }

@@ -124,7 +124,7 @@ final class LoopHeadBlock[S, E] private(val id: Int, val invs: Seq[E], val stmts
 }
 
 object LoopHeadBlock {
-  def apply[S, E](invs: Seq[E], stmts: Seq[S]): LoopHeadBlock[S, E] =
+  def apply[S, E](invs: Seq[E] = Nil, stmts: Seq[S] = Nil): LoopHeadBlock[S, E] =
     new LoopHeadBlock(Block.nextId(), invs, stmts)
 
   def unapply[S, E](block: LoopHeadBlock[S, E]): Option[(Seq[E], Seq[S])] =
