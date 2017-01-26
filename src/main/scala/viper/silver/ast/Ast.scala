@@ -166,48 +166,33 @@ trait TransformableErrors {
   def errT: ErrorTrafo
 
   private lazy val nodeTrafoStrat = StrategyBuilder.SlimStrategy[Node]({
-      case n:TransformableErrors => { // TODO transformable errors is really ugly. What can i do here?
+      case n:TransformableErrors => {
         val res = transformNode(n.asInstanceOf[ErrorNode])
         res
       }
     })
 
+  private def foldfunc[E](tr: PartialFunction[E, E], nd: E): E = {
+    if (tr.isDefinedAt(nd)) {
+      tr(nd)
+    } else {
+      nd
+    }
+  }
 
   def transformError(e: AbstractVerificationError): AbstractVerificationError = {
-    def foldfunc(tr: PartialFunction[AbstractVerificationError, AbstractVerificationError], er: AbstractVerificationError): AbstractVerificationError = {
-      if (tr.isDefinedAt(er)) {
-        tr(er)
-      } else {
-        er
-      }
-    }
-    val res = errT.Etransformations.foldRight(e)(foldfunc)
-    res
+    errT.Etransformations.foldRight(e)(foldfunc)
+    val transformedNode = nodeTrafoStrat.execute[ErrorNode](e.offendingNode)
+    e.withNode(transformedNode).asInstanceOf[AbstractVerificationError]
   }
 
   def transformReason(e: ErrorReason): ErrorReason = {
-    def foldfunc(tr: PartialFunction[ErrorReason, ErrorReason], er: ErrorReason): ErrorReason = {
-      if (tr.isDefinedAt(er)) {
-        tr(er)
-      } else {
-        er
-      }
-    }
-
     val reason = errT.Rtransformations.foldRight(e)(foldfunc)
     val transformedNode = nodeTrafoStrat.execute(reason.offendingNode).asInstanceOf[ErrorNode]
     reason.withNode(transformedNode).asInstanceOf[ErrorReason]
   }
 
   def transformNode(n: ErrorNode): ErrorNode = {
-    def foldfunc(tr: PartialFunction[ErrorNode, ErrorNode], nd: ErrorNode): ErrorNode = {
-      if (tr.isDefinedAt(nd)) {
-        tr(nd)
-      } else {
-        nd
-      }
-    }
-
     n.errT.Ntransformations.foldRight(n)(foldfunc)
   }
 }
@@ -222,7 +207,6 @@ case class Trafos(error: List[PartialFunction[AbstractVerificationError, Abstrac
   val Etransformations = error
   val Rtransformations = reason
   val Ntransformations = node
-
 }
 
 case class ErrTrafo(error:PartialFunction[AbstractVerificationError, AbstractVerificationError]) extends ErrorTrafo {

@@ -13,8 +13,7 @@ trait Rewritable[A <: Rewritable[A]] {
     * @return
     */
   def getChildren: Seq[Any] = {
-    val thisNode = this
-    val childs: Seq[Any] = thisNode match {
+    this match {
       case p: Product =>
         ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
           case s: Seq[Rewritable[A]] => s
@@ -25,8 +24,21 @@ trait Rewritable[A <: Rewritable[A]] {
         println("We do not support nodes that don't implement product")
         Seq()
     }
+  }
 
-    childs
+  def getFlatChildren: Seq[Rewritable[A]] = {
+    val children: Seq[Seq[Rewritable[A]]] = this match {
+      case p: Product =>
+        ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
+          case s: Seq[Rewritable[A]] => s.asInstanceOf[Seq[Rewritable[A]]]
+          case o: Option[Rewritable[A]] => if(o.isDefined) Seq(o.get) else Seq[Rewritable[A]]()
+          case i: Rewritable[A] => Seq(i)
+        }
+      case rest =>
+        println("We do not support nodes that don't implement product")
+        Seq()
+    }
+    children.foldLeft[Seq[Rewritable[A]]](Seq[Rewritable[A]]())(_ ++ _)
   }
 
   // Duplicate children. Children list must be in the same order as in getChildren

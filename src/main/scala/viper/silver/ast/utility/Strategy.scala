@@ -35,14 +35,17 @@ trait StrategyInterface[A <: Rewritable[A]] {
     node
   }
 
-  def dontRecurse(node: Rewritable[A]): Unit = {
+  def noRec[T <: A](node: Rewritable[A]): T = {
     noRecursion.add(node)
+    node.asInstanceOf[T]
   }
 
 
   def execute[T <: A](node: A): T
 
-  def ||(s: StrategyInterface[A]): ConcatinatedStrategy[A]
+  def ||(s: StrategyInterface[A]): ConcatinatedStrategy[A] = {
+    new ConcatinatedStrategy[A](this, s)
+  }
 
 }
 
@@ -102,10 +105,6 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A,C),A])
   def defaultContext(pC: PartialContext[A, C]): Strategy[A, C] = {
     defaultContxt = Some(pC.get(this))
     this
-  }
-
-  def ||(s: StrategyInterface[A]): ConcatinatedStrategy[A] = {
-    new ConcatinatedStrategy[A](this, s)
   }
 
   def +(s: Strategy[A,C]): Strategy[A, C] = {
