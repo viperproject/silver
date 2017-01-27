@@ -11,7 +11,7 @@ package viper.silver.parser
 import scala.language.implicitConversions
 import scala.collection.mutable
 import viper.silver.ast._
-import viper.silver.ast.utility.{Consistency, Visitor, Statements, QuantifiedPermissions}
+import viper.silver.ast.utility._
 import viper.silver.FastMessaging
 
 
@@ -53,7 +53,7 @@ case class Translator(program: PProgram) {
   private def translate(m: PMethod): Method = m match {
     case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
       val m = findMethod(name)
-      val plocals = Visitor.shallowCollect(body.childStmts, Nodes.subnodes)({
+      val plocals = Visitorr.shallowCollect(body.childStmts, Nodes.subnodes)({
         case l: PLocalVarDecl => Some(l)
         case w: PWhile => None
       }).flatten // only collect declarations at top-level, not from nested loop bodies

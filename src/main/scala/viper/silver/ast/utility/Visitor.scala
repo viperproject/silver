@@ -7,7 +7,7 @@
 package viper.silver.ast.utility
 
 /** Implements various visiting strategies that can be applied to trees. */
-object Visitor {
+object Visitorr {
 
   /* Visit a tree for side-effects */
 

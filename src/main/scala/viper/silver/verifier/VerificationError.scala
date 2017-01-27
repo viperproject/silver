@@ -95,7 +95,7 @@ abstract class AbstractErrorReason extends ErrorReason {
 }
 
 object errors {
-  type ErrorNode = Node with Positioned with TransformableErrors with Rewritable[Node]
+  type ErrorNode = Node with Positioned with TransformableErrors with Rewritable
 
   case class Internal(offendingNode: ErrorNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "internal"

@@ -62,7 +62,7 @@ object Triggers {
     protected def Exp_type(exp: Exp) = exp.typ
 
     protected def Exp_shallowCollect[R](node: Exp)(f: PartialFunction[Exp, R]) =
-      Visitor.shallowCollect[Exp, R](Seq(node), Expressions.subExps)(f)
+      Visitorr.shallowCollect[Exp, R](Seq(node), Expressions.subExps)(f)
 
     protected def Exp_contains(node: Exp, other: Exp) = node.contains(other)
     protected def Exp_replace(node: Exp, original: Exp, replacement: Exp) = node.replace(original, replacement)
@@ -111,7 +111,7 @@ object Triggers {
     protected def Exp_type(exp: Exp) = exp.typ
 
     protected def Exp_deepCollect[R](node: Exp)(f: PartialFunction[Exp, R]) =
-      Visitor.deepCollect[Exp, R](Seq(node), Expressions.subExps)(f)
+      Visitorr.deepCollect[Exp, R](Seq(node), Expressions.subExps)(f)
 
     protected def Exp_contains(node: Exp, other: Exp) = node.contains(other)
 

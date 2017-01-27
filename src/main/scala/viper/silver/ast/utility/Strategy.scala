@@ -21,21 +21,21 @@ object Traverse extends Enumeration {
 /**
   * Trait that encapsulates all fields and Setter/Getter that are used in every Strategy
   *
-  * @tparam A with Rewritable[A][N] Supertype of every node we want to rewrite
+  * @tparam A with Rewritable[N] Supertype of every node we want to rewrite
   */
-trait StrategyInterface[A <: Rewritable[A]] {
+trait StrategyInterface[A <: Rewritable] {
 
-  protected var noRecursion = collection.mutable.HashSet.empty[Rewritable[A]]
-  protected var wasTransformed = collection.mutable.HashSet.empty[Rewritable[A]]
+  protected var noRecursion = collection.mutable.HashSet.empty[Rewritable]
+  protected var wasTransformed = collection.mutable.HashSet.empty[Rewritable]
 
   def hasChanged = wasTransformed.nonEmpty
 
-  def transformed(node: Rewritable[A]): Rewritable[A] = {
+  def transformed(node: Rewritable): Rewritable = {
     wasTransformed.add(node)
     node
   }
 
-  def noRec[T <: A](node: Rewritable[A]): T = {
+  def noRec[T <: A](node: Rewritable): T = {
     noRecursion.add(node)
     node.asInstanceOf[T]
   }
@@ -51,29 +51,41 @@ trait StrategyInterface[A <: Rewritable[A]] {
 
 object StrategyBuilder {
 
-  def SlimStrategy[A <: Rewritable[A]](p: PartialFunction[A, A]) = {
+  def SlimStrategy[A <: Rewritable](p: PartialFunction[A, A]) = {
     new Strategy[A, SimpleContext[A]](AddArtificialContext(p)) defaultContext new NoContext[A]
   }
 
-  def AncestorStrategy[A <: Rewritable[A]](p: PartialFunction[(A, ContextA[A]), A], t: Traverse = Traverse.TopDown) = {
+  def AncestorStrategy[A <: Rewritable](p: PartialFunction[(A, ContextA[A]), A], t: Traverse = Traverse.TopDown) = {
     new Strategy[A, ContextA[A]](p) defaultContext new PartialContextA[A] traverse t
   }
 
-  def ContextStrategy[A <: Rewritable[A], C](p: PartialFunction[(A, ContextC[A, C]), A], default: C, updateFunc: PartialFunction[(A, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
+  def ContextStrategy[A <: Rewritable, C](p: PartialFunction[(A, ContextC[A, C]), A], default: C, updateFunc: PartialFunction[(A, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
     new Strategy[A, ContextC[A, C]](p) defaultContext new PartialContextC[A, C](default, updateFunc) traverse t
+  }
+
+  def SlimVisitor[A <: Rewritable](f: A => Unit) = {
+    new StrategyVisitor[A, SimpleContext[A]]({ (a: A, c: SimpleContext[A]) => f(a) })
+  }
+
+  def AncestorVisitor[A <: Rewritable](f: (A, ContextA[A]) => Unit) = {
+    new StrategyVisitor[A, ContextA[A]](f) defaultContext new PartialContextA[A]
+  }
+
+  def ContextVisitor[A <: Rewritable, C](f: (A, ContextC[A, C]) => Unit, default: C, updateFunc: PartialFunction[(A, C), C] = PartialFunction.empty) = {
+    new StrategyVisitor[A, ContextC[A, C]](f) defaultContext new PartialContextC[A, C](default, updateFunc)
   }
 
 }
 
-case class AddArtificialContext[N <: Rewritable[N]](p: PartialFunction[N, N]) extends PartialFunction[(N, SimpleContext[N]), N] {
+case class AddArtificialContext[N <: Rewritable](p: PartialFunction[N, N]) extends PartialFunction[(N, SimpleContext[N]), N] {
   override def isDefinedAt(x: (N, SimpleContext[N])): Boolean = p.isDefinedAt(x._1)
 
   override def apply(x: (N, SimpleContext[N])): N = p.apply(x._1)
 }
 
-class SlimStrategy[A <: Rewritable[A]](p: PartialFunction[A, A]) extends Strategy[A, SimpleContext[A]](AddArtificialContext(p)) {}
+class SlimStrategy[A <: Rewritable](p: PartialFunction[A, A]) extends Strategy[A, SimpleContext[A]](AddArtificialContext(p)) {}
 
-class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A, C), A]) extends StrategyInterface[A] {
+class Strategy[A <: Rewritable, C <: Context[A]](p: PartialFunction[(A, C), A]) extends StrategyInterface[A] {
   protected var traversionMode: Traverse = Traverse.TopDown
   protected var recursionFunc: PartialFunction[A, Seq[Boolean]] = PartialFunction.empty
 
@@ -82,7 +94,7 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A, C), A
 
   private var rule: RuleT[A, C] = Rule(p)
 
-  override def transformed(node: Rewritable[A]): A = {
+  override def transformed(node: Rewritable): A = {
     super.transformed(node)
     node.asInstanceOf[A]
   }
@@ -164,7 +176,7 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A, C), A
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     val res = recurseChildren(newNode, executeTopDown(_, updatedContext)) match {
-      case Some(children) => transformed(newNode.duplicate(children))
+      case Some(children) => transformed(newNode.duplicate(children).asInstanceOf[A])
       case None => newNode
     }
     val res2 = preserveMetaData(node, res)
@@ -183,7 +195,7 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A, C), A
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     val newNode = recurseChildren(node, executeBottomUp(_, updatedContext)) match {
       case Some(children) =>
-        transformed(node.duplicate(children))
+        transformed(node.duplicate(children).asInstanceOf[A])
       case None => node
     }
 
@@ -200,7 +212,7 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A, C), A
     val res = if (maybe.isEmpty) {
 
       recurseChildren(node, executeInnermost(_, newC)) match {
-        case Some(children) => transformed(node.duplicate(children))
+        case Some(children) => transformed(node.duplicate(children).asInstanceOf[A])
         case None => node
       }
     } else {
@@ -229,26 +241,26 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A, C), A
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     val newChildren: Seq[Any] = children.zip(childrenSelect) map {
-      case (o: Option[Rewritable[A]], true) => o match {
+      case (o: Option[Rewritable], true) => o match {
         case None => None
-        case Some(x: Rewritable[A]) => if (!noRecursion.contains(x)) Some(recurse(x.asInstanceOf[A])) else x
+        case Some(x: Rewritable) => if (!noRecursion.contains(x)) Some(recurse(x.asInstanceOf[A])) else x
       }
-      case (s: Seq[Rewritable[A]], true) => s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[A]) else x }
-      case (n: Rewritable[A], true) => if (!noRecursion.contains(n)) recurse(n.asInstanceOf[A]) else n
+      case (s: Seq[Rewritable], true) => s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[A]) else x }
+      case (n: Rewritable, true) => if (!noRecursion.contains(n)) recurse(n.asInstanceOf[A]) else n
       case (old, false) => old
     }
 
 
     val hasChanged: Boolean = newChildren.foldLeft(false)((b1, elem) => {
       val b2 = elem match {
-        case seq: Seq[Rewritable[A]] => seq.map {
+        case seq: Seq[Rewritable] => seq.map {
           wasTransformed.contains(_)
         }.fold(false)(_ || _)
-        case opt: Option[Rewritable[A]] => opt match {
+        case opt: Option[Rewritable] => opt match {
           case Some(x) => wasTransformed.contains(x)
           case None => false // No empty child can be generated from existing child => if None is new child it was already None in old child => no change
         }
-        case node: Rewritable[A] => wasTransformed.contains(node)
+        case node: Rewritable => wasTransformed.contains(node)
       }
       b1 || b2
     })
@@ -268,7 +280,7 @@ class Strategy[A <: Rewritable[A], C <: Context[A]](p: PartialFunction[(A, C), A
   * @param s1 strategy 1
   * @param s2 strategy 2
   */
-class ConcatinatedStrategy[A <: Rewritable[A]](s1: StrategyInterface[A], val s2: StrategyInterface[A]) extends StrategyInterface[A] {
+class ConcatinatedStrategy[A <: Rewritable](s1: StrategyInterface[A], val s2: StrategyInterface[A]) extends StrategyInterface[A] {
   private var strategies = collection.mutable.ListBuffer.empty[StrategyInterface[A]]
 
   strategies.append(s1)
@@ -290,7 +302,7 @@ class ConcatinatedStrategy[A <: Rewritable[A]](s1: StrategyInterface[A], val s2:
   override def hasChanged: Boolean = s1.hasChanged || s2.hasChanged
 }
 
-class RepeatedStrategy[A <: Rewritable[A]](s: StrategyInterface[A]) extends StrategyInterface[A] {
+class RepeatedStrategy[A <: Rewritable](s: StrategyInterface[A]) extends StrategyInterface[A] {
   override def execute[T <: A](node: A): T = {
     val result: T = s.execute[T](node)
     if (!s.hasChanged) {
@@ -319,7 +331,7 @@ class RepeatedStrategy[A <: Rewritable[A]](s: StrategyInterface[A]) extends Stra
 }
 
 
-trait Context[A <: Rewritable[A]] {
+trait Context[A <: Rewritable] {
   def transformer: StrategyInterface[A]
 
   def addAncestor(node: A): Context[A]
@@ -329,7 +341,7 @@ trait Context[A <: Rewritable[A]] {
   def update(node: A): Context[A]
 }
 
-class SimpleContext[A <: Rewritable[A]](val transformer: StrategyInterface[A]) extends Context[A] {
+class SimpleContext[A <: Rewritable](val transformer: StrategyInterface[A]) extends Context[A] {
   override def addAncestor(node: A): SimpleContext[A] = this
 
   override def replaceNode(node: A): SimpleContext[A] = this
@@ -342,7 +354,7 @@ class SimpleContext[A <: Rewritable[A]](val transformer: StrategyInterface[A]) e
   *
   * @param ancestorList List of all ancestors
   */
-class ContextA[A <: Rewritable[A]](val ancestorList: Seq[A], val transformer: StrategyInterface[A]) extends Context[A] {
+class ContextA[A <: Rewritable](val ancestorList: Seq[A], val transformer: StrategyInterface[A]) extends Context[A] {
 
   def addAncestor(n: A): ContextA[A] = {
     new ContextA[A](ancestorList ++ Seq(n), transformer)
@@ -409,7 +421,7 @@ class ContextA[A <: Rewritable[A]](val ancestorList: Seq[A], val transformer: St
 
 }
 
-class ContextC[A <: Rewritable[A], C](aList: Seq[A], val custom: C, override val transformer: StrategyInterface[A], val upContext: PartialFunction[(A, C), C]) extends ContextA[A](aList, transformer) {
+class ContextC[A <: Rewritable, C](aList: Seq[A], val custom: C, override val transformer: StrategyInterface[A], val upContext: PartialFunction[(A, C), C]) extends ContextA[A](aList, transformer) {
   override def addAncestor(n: A): ContextC[A, C] = {
     new ContextC(ancestorList ++ Seq(n), custom, transformer, upContext)
   }
@@ -428,19 +440,19 @@ class ContextC[A <: Rewritable[A], C](aList: Seq[A], val custom: C, override val
   }
 }
 
-trait PartialContext[A <: Rewritable[A], C <: Context[A]] {
+trait PartialContext[A <: Rewritable, C <: Context[A]] {
   def get(transformer: StrategyInterface[A]): C
 }
 
-class NoContext[A <: Rewritable[A]] extends PartialContext[A, SimpleContext[A]] {
+class NoContext[A <: Rewritable] extends PartialContext[A, SimpleContext[A]] {
   override def get(transformer: StrategyInterface[A]): SimpleContext[A] = new SimpleContext[A](transformer)
 }
 
-class PartialContextA[A <: Rewritable[A]](val aList: Seq[A] = Seq()) extends PartialContext[A, ContextA[A]] {
+class PartialContextA[A <: Rewritable](val aList: Seq[A] = Seq()) extends PartialContext[A, ContextA[A]] {
   override def get(transformer: StrategyInterface[A]): ContextA[A] = new ContextA[A](aList, transformer)
 }
 
-class PartialContextC[A <: Rewritable[A], C](val custom: C, val upContext: PartialFunction[(A, C), C] = PartialFunction.empty, val aList: Seq[A] = Seq()) extends PartialContext[A, ContextC[A, C]] {
+class PartialContextC[A <: Rewritable, C](val custom: C, val upContext: PartialFunction[(A, C), C] = PartialFunction.empty, val aList: Seq[A] = Seq()) extends PartialContext[A, ContextC[A, C]] {
   def get(list: Seq[A], upC: PartialFunction[(A, C), C], transformer: StrategyInterface[A]): ContextC[A, C] = new ContextC[A, C](list, custom, transformer, upC)
 
   def get(list: Seq[A], transformer: StrategyInterface[A]): ContextC[A, C] = get(list, upContext, transformer)
@@ -449,17 +461,19 @@ class PartialContextC[A <: Rewritable[A], C](val custom: C, val upContext: Parti
 }
 
 
-class Visitor[A <: Rewritable[A], C <: Context[A]](val visitNode: (A, C) => Unit) extends StrategyInterface[A] {
+class StrategyVisitor[A <: Rewritable, C <: Context[A]](val visitNode: (A, C) => Unit) extends StrategyInterface[A] {
+
+
   protected var recursionFunc: PartialFunction[A, Seq[Boolean]] = PartialFunction.empty
   protected var defaultContxt: Option[C] = None
 
 
-  def recurseFunc(r: PartialFunction[A, Seq[Boolean]]): Visitor[A, C] = {
+  def recurseFunc(r: PartialFunction[A, Seq[Boolean]]): StrategyVisitor[A, C] = {
     recursionFunc = r
     this
   }
 
-  def defaultContext(pC: PartialContext[A, C]): Visitor[A, C] = {
+  def defaultContext(pC: PartialContext[A, C]): StrategyVisitor[A, C] = {
     defaultContxt = Some(pC.get(this))
     this
   }
@@ -470,11 +484,19 @@ class Visitor[A <: Rewritable[A], C <: Context[A]](val visitNode: (A, C) => Unit
     node.asInstanceOf[T]
   }
 
+
+  def visit(node: A):Unit = {
+    execute[A](node)
+  }
+
   def visitContext(node: A, context: C): Unit = {
 
     val contextWithMyself = context.addAncestor(node).asInstanceOf[C]
     // Check which node we get from rewriting
     visitNode(node, contextWithMyself)
+
+    // Create the new Context for children recursion
+    val updatedContext: C = context.update(node).asInstanceOf[C]
 
     val children = node.getChildren
 
@@ -487,12 +509,12 @@ class Visitor[A <: Rewritable[A], C <: Context[A]](val visitNode: (A, C) => Unit
     children.zip(childrenSelect) foreach {
       case (child, b) => if (b) {
         child match {
-          case o: Option[Rewritable[A]] => o match {
+          case o: Option[Rewritable] => o match {
             case None => None
-            case Some(node: Rewritable[A]) => visitContext(node.asInstanceOf[A], contextWithMyself)
+            case Some(node: Rewritable) => if (!noRecursion.contains(node)) visitContext(node.asInstanceOf[A], updatedContext)
           }
-          case s: Seq[Rewritable[A]] => s foreach { x => visitContext(x.asInstanceOf[A], contextWithMyself) }
-          case n: Rewritable[A] => visitContext(n.asInstanceOf[A], contextWithMyself)
+          case s: Seq[Rewritable] => s foreach { x => if (!noRecursion.contains(x)) visitContext(x.asInstanceOf[A], updatedContext) }
+          case n: Rewritable => if (!noRecursion.contains(n)) visitContext(n.asInstanceOf[A], updatedContext)
         }
       }
     }
@@ -501,7 +523,7 @@ class Visitor[A <: Rewritable[A], C <: Context[A]](val visitNode: (A, C) => Unit
 
 }
 
-class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) {
+class Query[A <: Rewritable, B](val getInfo: PartialFunction[A, B]) {
 
   protected var accumulator: Seq[B] => B = (x: Seq[B]) => x.head
   protected var nElement: Option[B] = None
@@ -557,12 +579,12 @@ class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) {
     val seqResults: Seq[Option[B]] = children.zip(childrenSelect) collect {
       case (child, b) => if (b) {
         child match {
-          case o: Option[Rewritable[A]] => o match {
+          case o: Option[Rewritable] => o match {
             case None => None
-            case Some(node: Rewritable[A]) => Some(execute(node.asInstanceOf[A]))
+            case Some(node: Rewritable) => Some(execute(node.asInstanceOf[A]))
           }
-          case s: Seq[Rewritable[A]] => Some(accumulator(s map { x => execute(x.asInstanceOf[A]) }))
-          case n: Rewritable[A] => Some(execute(n.asInstanceOf[A]))
+          case s: Seq[Rewritable] => Some(accumulator(s map { x => execute(x.asInstanceOf[A]) }))
+          case n: Rewritable => Some(execute(n.asInstanceOf[A]))
         }
       } else {
         None
@@ -580,7 +602,7 @@ class Query[A <: Rewritable[A], B](val getInfo: PartialFunction[A, B]) {
   * A trait that is used for providing an interface for rules. We need the contravariance parameter to create the relationship:
   * RuleC < RuleA < Rule that proves helpful when combining those rules
   */
-private[utility] trait RuleT[A <: Rewritable[A], C <: Context[A]] {
+private[utility] trait RuleT[A <: Rewritable, C <: Context[A]] {
   def execute(node: A, context: C): Option[A]
 }
 
@@ -589,7 +611,7 @@ private[utility] trait RuleT[A <: Rewritable[A], C <: Context[A]] {
   *
   * @param r The partial function
   */
-private case class Rule[A <: Rewritable[A], C <: Context[A]](r: PartialFunction[(A, C), A]) extends RuleT[A, C] {
+private case class Rule[A <: Rewritable, C <: Context[A]](r: PartialFunction[(A, C), A]) extends RuleT[A, C] {
   override def execute(node: A, context: C): Option[A] = {
     if (r.isDefinedAt(node, context)) {
       val res = r((node, context))
@@ -607,7 +629,7 @@ private case class Rule[A <: Rewritable[A], C <: Context[A]](r: PartialFunction[
   * @param r1 First rule
   * @param r2 Second rule
   */
-private case class Append[A <: Rewritable[A], C <: Context[A]](r1: RuleT[A, C], r2: RuleT[A, C]) extends RuleT[A, C] {
+private case class Append[A <: Rewritable, C <: Context[A]](r1: RuleT[A, C], r2: RuleT[A, C]) extends RuleT[A, C] {
 
   override def execute(node: A, context: C): Option[A] = {
     val res1 = r1.execute(node, context)
@@ -627,7 +649,7 @@ private case class Append[A <: Rewritable[A], C <: Context[A]](r1: RuleT[A, C], 
   * @param r2 Second rule
   *
   */
-private case class CondAppend[A <: Rewritable[A], C <: Context[A]](r1: RuleT[A, C], r2: RuleT[A, C]) extends RuleT[A, C] {
+private case class CondAppend[A <: Rewritable, C <: Context[A]](r1: RuleT[A, C], r2: RuleT[A, C]) extends RuleT[A, C] {
 
   override def execute(node: A, context: C): Option[A] = {
     val res1 = r1.execute(node, context)
@@ -648,7 +670,7 @@ private case class CondAppend[A <: Rewritable[A], C <: Context[A]](r1: RuleT[A, 
   * @param r2 Rule in case defined
   * @param r3 Rule in case not defined
   */
-private case class Ternary[A <: Rewritable[A], C <: Context[A]](r1: RuleT[A, C], r2: RuleT[A, C], r3: RuleT[A, C]) extends RuleT[A, C] {
+private case class Ternary[A <: Rewritable, C <: Context[A]](r1: RuleT[A, C], r2: RuleT[A, C], r3: RuleT[A, C]) extends RuleT[A, C] {
 
   override def execute(node: A, context: C): Option[A] = {
     val res1 = r1.execute(node, context)
@@ -663,7 +685,7 @@ private case class Ternary[A <: Rewritable[A], C <: Context[A]](r1: RuleT[A, C],
 }
 
 // Three partial ternary classes one for each strategy to make it typesafe
-case class PartialTernary[A <: Rewritable[A], C <: Context[A]](s: Strategy[A, C], r2: RuleT[A, C]) {
+case class PartialTernary[A <: Rewritable, C <: Context[A]](s: Strategy[A, C], r2: RuleT[A, C]) {
   def |(s2: Strategy[A, C]): Strategy[A, C] = {
     s.setRule(Ternary(s.getRule, r2, s2.getRule))
     s

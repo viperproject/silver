@@ -47,57 +47,57 @@ Some design choices:
   * - LocalVarDecl
   * - Trigger
   */
-trait Node extends Traversable[Node] with Rewritable[Node] {
+trait Node extends Traversable[Node] with Rewritable {
 
   /** @see [[Nodes.subnodes()]]*/
   def subnodes = Nodes.subnodes(this)
 
-  /** @see [[Visitor.reduceTree()]]*/
-  def reduceTree[A](f: (Node, Seq[A]) => A) = Visitor.reduceTree(this, Nodes.subnodes)(f)
+  /** @see [[Visitorr.reduceTree()]]*/
+  def reduceTree[A](f: (Node, Seq[A]) => A) = Visitorr.reduceTree(this, Nodes.subnodes)(f)
 
-  /** @see [[Visitor.reduceWithContext()]]*/
+  /** @see [[Visitorr.reduceWithContext()]]*/
   def reduceWithContext[C, R](context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R) = {
-    Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
+    Visitorr.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
 
   /** Applies the function `f` to the AST node, then visits all subnodes. */
-  def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
+  def foreach[A](f: Node => A) = Visitorr.visit(this, Nodes.subnodes) { case a: Node => f(a) }
 
-  /** @see [[Visitor.visit()]]*/
+  /** @see [[Visitorr.visit()]]*/
   def visit[A](f: PartialFunction[Node, A]) {
-    Visitor.visit(this, Nodes.subnodes)(f)
+    Visitorr.visit(this, Nodes.subnodes)(f)
   }
 
-  /** @see [[Visitor.visitWithContext()]]*/
+  /** @see [[Visitorr.visitWithContext()]]*/
   def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]) {
-    Visitor.visitWithContext(this, Nodes.subnodes, c)(f)
+    Visitorr.visitWithContext(this, Nodes.subnodes, c)(f)
   }
 
-  /** @see [[Visitor.visitWithContextManually()]]*/
+  /** @see [[Visitorr.visitWithContextManually()]]*/
   def visitWithContextManually[C, A](c: C)(f: C => PartialFunction[Node, A]) {
-    Visitor.visitWithContextManually(this, Nodes.subnodes, c)(f)
+    Visitorr.visitWithContextManually(this, Nodes.subnodes, c)(f)
   }
 
-  //** @see [[Visitor.visit()]] */
+  //** @see [[Visitorr.visit()]] */
   def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
-    Visitor.visit(this, Nodes.subnodes, f1, f2)
+    Visitorr.visit(this, Nodes.subnodes, f1, f2)
   }
 
-  /** @see [[Visitor.visitOpt()]]*/
+  /** @see [[Visitorr.visitOpt()]]*/
   def visitOpt(f: Node => Boolean) {
-    Visitor.visitOpt(this, Nodes.subnodes)(f)
+    Visitorr.visitOpt(this, Nodes.subnodes)(f)
   }
 
-  /** @see [[Visitor.visitOpt()]]*/
+  /** @see [[Visitorr.visitOpt()]]*/
   def visitOpt[A](f1: Node => Boolean, f2: Node => A) {
-    Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
+    Visitorr.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 
-  /** @see [[Visitor.existsDefined()]]*/
-  def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitor.existsDefined(this, Nodes.subnodes)(f)
+  /** @see [[Visitorr.existsDefined()]]*/
+  def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitorr.existsDefined(this, Nodes.subnodes)(f)
 
-  /** @see [[Visitor.hasSubnode()]]*/
-  def hasSubnode(toFind: Node): Boolean = Visitor.hasSubnode(this, toFind, Nodes.subnodes)
+  /** @see [[Visitorr.hasSubnode()]]*/
+  def hasSubnode(toFind: Node): Boolean = Visitorr.hasSubnode(this, toFind, Nodes.subnodes)
 
   override def toString() = FastPrettyPrinter.pretty(this)
 
@@ -112,13 +112,13 @@ trait Node extends Traversable[Node] with Rewritable[Node] {
   def replace(original: Node, replacement: Node): this.type =
     this.transform { case `original` => replacement }()
 
-  /** @see [[Visitor.deepCollect()]]*/
+  /** @see [[Visitorr.deepCollect()]]*/
   def deepCollect[A](f: PartialFunction[Node, A]): Seq[A] =
-  Visitor.deepCollect(Seq(this), Nodes.subnodes)(f)
+  Visitorr.deepCollect(Seq(this), Nodes.subnodes)(f)
 
-  /** @see [[Visitor.shallowCollect()]]*/
+  /** @see [[Visitorr.shallowCollect()]]*/
   def shallowCollect[R](f: PartialFunction[Node, R]): Seq[R] =
-  Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
+  Visitorr.shallowCollect(Seq(this), Nodes.subnodes)(f)
 
   def contains(n: Node): Boolean = this.existsDefined {
     case `n` =>
@@ -138,7 +138,7 @@ trait Node extends Traversable[Node] with Rewritable[Node] {
     Transformer.viperDuplicator(this, children, getPrettyMetadata)
   }
 
-  def duplicateMeta(Nmeta: (Position, Info, ErrorTrafo)) = {
+  def duplicateMeta(Nmeta: (Position, Info, ErrorTrafo)):Node = {
     val ch = getChildren
     Transformer.viperDuplicator(this, ch, Nmeta)
   }

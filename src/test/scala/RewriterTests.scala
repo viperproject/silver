@@ -26,16 +26,16 @@ class RewriterTests extends FunSuite with Matchers {
 
   test("ImplicationToDisjunctionTests") {
     val filePrefix = "transformations\\ImplicationsToDisjunction\\"
-    val files = Seq("simple", "nested", "traverseEverything")
+    val files = Seq(/*"simple",*/ "nested"/*, "traverseEverything"*/)
 
 
     // Regular expression
-    //val strat2 = r[Implies] |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
+    val strat = StrategyFromRegex[Node, Any] @>> r(Implies).* |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = ViperStrategy.Slim({
+    /*val strat = ViperStrategy.Slim({
       case Implies(left, right) => Or(Not(left)(), right)()
-    })
+    })*/
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
@@ -49,7 +49,7 @@ class RewriterTests extends FunSuite with Matchers {
       case (f@Forall(decl, _, Implies(l, r)), _) if r.isPure =>
         f
       case (f@Forall(decls, triggers, i@Implies(li, And(l, r))), ass) =>
-        val forall = Forall(decls, triggers, Implies(li, r)(i.pos, i.info))(f.pos, f.info);
+        val forall = Forall(decls, triggers, Implies(li, r)(i.pos, i.info))(f.pos, f.info)
         And(Forall(decls, triggers, Implies(li, l)(i.pos, i.info))(f.pos, f.info), ass.transformer.noRec[Forall](forall))(f.pos, f.info)
       case (f@Forall(decls, triggers, i@Implies(li, Implies(l, r))), _) if l.isPure =>
         Forall(decls, triggers, Implies(And(li, l)(i.pos, i.info), r)(i.pos, i.info))(f.pos, f.info)
@@ -90,7 +90,7 @@ class RewriterTests extends FunSuite with Matchers {
       }
 
       // Regular expression
-      val strat2 = StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](_.variables) >> r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.custom.flatten), o.left, o.right)(), c.transformer.noRec[Or](o))()}
+      val strat2 = StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](QuantifiedExp, _.variables) >> r(Or) |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.custom.flatten), o.left, o.right)(), c.transformer.noRec[Or](o))()}
 
 
       val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
