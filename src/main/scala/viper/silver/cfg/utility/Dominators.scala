@@ -40,16 +40,6 @@ class Dominators[S, E](val cfg: Cfg[S, E]) {
     else dominates(first, dominators(second))
 
   /**
-    * Returns whether the given edge is retrieving, i.e., whether the target has
-    * a smaller index than the source with respect to the depth first order.
-    *
-    * @param edge The edge.
-    * @return True if and only if the given edge is retrieving.
-    */
-  def isRetrieving(edge: Edge[S, E]): Boolean =
-    indices(edge.target) <= indices(edge.source)
-
-  /**
     * Returns whether the given edge is a backedge of a natural loop, i.e., is
     * a retrieving edge where the target dominates the source.
     *
@@ -57,7 +47,7 @@ class Dominators[S, E](val cfg: Cfg[S, E]) {
     * @return True if and only if the given edge is a backedge.
     */
   def isBackedge(edge: Edge[S, E]): Boolean =
-    isRetrieving(edge) && dominates(edge.target, edge.source)
+    indices(edge.target) <= indices(edge.source) && dominates(edge.target, edge.source)
 
   /**
     * Returns a map holding the indices of all blocks with respect to the depth
@@ -182,4 +172,9 @@ class Dominators[S, E](val cfg: Cfg[S, E]) {
     }
     relation.toMap
   }
+}
+
+object Dominators {
+  def apply[S, E](cfg: Cfg[S, E] ): Dominators[S, E] =
+    new Dominators(cfg)
 }

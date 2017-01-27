@@ -31,16 +31,17 @@ object LoopDetector {
     val allLoops = mutable.Map[Block[S, E], Set[Block[S, E]]](loops.toSeq: _*).withDefault(_ => Set())
     val dominators = new Dominators(cfg)
 
-    for (edge <- cfg.edges if dominators.isRetrieving(edge)) {
-      if (dominators.isBackedge(edge)) {
-        val head = edge.target
-        val blocks = collectBlocks(cfg, edge)
-        //blocks.map(loops).foreach(_.add(head))t
-        for (block <- blocks) {
-          val updated = allLoops(block) + head
-          allLoops.put(block, updated)
-        }
-      } else throw new IllegalArgumentException("The control flow graph is not reducible")
+    if (!isReducible(cfg, dominators))
+      throw new IllegalArgumentException("Control flow graph is not reducible.")
+
+    for (edge <- cfg.edges if dominators.isBackedge(edge)) {
+      val head = edge.target
+      val blocks = collectBlocks(cfg, edge)
+      //blocks.map(loops).foreach(_.add(head))t
+      for (block <- blocks) {
+        val updated = allLoops(block) + head
+        allLoops.put(block, updated)
+      }
     }
 
     val queue = mutable.Queue[Block[S, E]]()
@@ -123,6 +124,45 @@ object LoopDetector {
     }
 
     cfg.copy(blocks.toList, edges.toList, entry, exit).asInstanceOf[C]
+  }
+
+  def isReducible[S, E](cfg: Cfg[S, E]): Boolean =
+    isReducible(cfg, Dominators(cfg))
+
+  def isReducible[S, E](cfg: Cfg[S, E], dominators: Dominators[S, E]): Boolean = {
+
+    val n = cfg.blocks.size
+    val indices = mutable.Map[Block[S, E], Int]()
+    val low = Array.range(0, n)
+
+    def dfs(block: Block[S, E], index: Int = 0): (Int, Boolean) = {
+      indices.put(block, index)
+      val edges = cfg.outEdges(block)
+      val (lastIndex, lastLow, lastReducible) = edges.foldLeft((index, index, true)) {
+        case ((currentIndex, currentLow, currentReducible), edge) =>
+          val successor = edge.target
+          if (!currentReducible || dominators.isBackedge(edge)) {
+            (currentIndex, currentLow, currentReducible)
+          } else if (indices.contains(successor)) {
+            val successorIndex = indices(successor)
+            val successorLow = low(successorIndex)
+            val nextLow = Math.min(currentLow, successorLow)
+            (currentIndex, nextLow, currentReducible)
+          } else {
+            val successorIndex = currentIndex + 1
+            val (nextIndex, successorReducible) = dfs(successor, successorIndex)
+            val nextLow = Math.min(currentLow, low(successorIndex))
+            val nextReducible = currentReducible && successorReducible
+            low(successorIndex) = Int.MaxValue
+            (nextIndex, nextLow, nextReducible)
+          }
+      }
+      val reducible = index <= lastLow
+      (lastIndex, lastReducible && reducible)
+    }
+
+    val (_, reducible) = dfs(cfg.entry)
+    reducible
   }
 
   /**
