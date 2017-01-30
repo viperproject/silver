@@ -24,22 +24,7 @@ class RewriterTests extends FunSuite with Matchers {
 
   }
 
-  test("ImplicationToDisjunctionTests") {
-    val filePrefix = "transformations\\ImplicationsToDisjunction\\"
-    val files = Seq("simple", "nested", "traverseEverything")
 
-
-    // Regular expression
-    val strat = StrategyFromRegex[Node, Any] @>> r(Implies) |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
-
-    // Create new strategy. Parameter is the partial function that is applied on all nodes
-    /*val strat = ViperStrategy.Slim({
-      case Implies(left, right) => Or(Not(left)(), right)()
-    })*/
-
-    val frontend = new DummyFrontend
-    files foreach { name => executeTest(filePrefix, name, strat, frontend) }
-  }
 
   test("QuantifiedPermissions") {
     val filePrefix = "transformations\\QuantifiedPermissions\\"
@@ -50,7 +35,7 @@ class RewriterTests extends FunSuite with Matchers {
         f
       case (f@Forall(decls, triggers, i@Implies(li, And(l, r))), ass) =>
         val forall = Forall(decls, triggers, Implies(li, r)(i.pos, i.info))(f.pos, f.info)
-        And(Forall(decls, triggers, Implies(li, l)(i.pos, i.info))(f.pos, f.info), ass.transformer.noRec[Forall](forall))(f.pos, f.info)
+        And(Forall(decls, triggers, Implies(li, l)(i.pos, i.info))(f.pos, f.info), ass.noRec[Forall](forall))(f.pos, f.info)
       case (f@Forall(decls, triggers, i@Implies(li, Implies(l, r))), _) if l.isPure =>
         Forall(decls, triggers, Implies(And(li, l)(i.pos, i.info), r)(i.pos, i.info))(f.pos, f.info)
     })
@@ -90,12 +75,12 @@ class RewriterTests extends FunSuite with Matchers {
       }
 
       // Regular expression
-      val strat2 = StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](QuantifiedExp, _.variables) >> r(Or) |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.custom.flatten), o.left, o.right)(), c.transformer.noRec[Or](o))()}
+      val strat2 = StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](QuantifiedExp, _.variables).* >> r(Or) |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.c.flatten), o.left, o.right)(), c.noRec[Or](o))()}
 
 
       val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
         case (o@Or(l, r), c) =>
-          InhaleExhaleExp(CondExp(NonDet(c.custom), l, r)(), c.transformer.noRec[Or](o))()
+          InhaleExhaleExp(CondExp(NonDet(c.c), l, r)(), c.noRec[Or](o))()
       }, Seq(), {
         case (q: QuantifiedExp, c) => c ++ q.variables
       })
@@ -145,9 +130,6 @@ class RewriterTests extends FunSuite with Matchers {
         FuncApp(func, vars)()
       }
 
-      // Regular expression
-      //StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](_.variables) >> r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), TRegex.noRec(o))()}
-
       frontend.translate(ref) match {
         case (Some(p), _) => targetRef = p
         case (None, errors) => println("Problem with program: " + errors)
@@ -179,6 +161,23 @@ class RewriterTests extends FunSuite with Matchers {
       assert(res.toString() == targetRef.toString(), "Files are not equal")
     }
     }
+  }
+
+  test("ImplicationToDisjunctionTests") {
+    val filePrefix = "transformations\\ImplicationsToDisjunction\\"
+    val files = Seq("simple", "nested", "traverseEverything")
+
+
+    // Regular expression
+    val strat = StrategyFromRegex[Node, Any] @>> r(Implies) |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
+
+    // Create new strategy. Parameter is the partial function that is applied on all nodes
+    /*val strat = ViperStrategy.Slim({
+      case Implies(left, right) => Or(Not(left)(), right)()
+    })*/
+
+    val frontend = new DummyFrontend
+    files foreach { name => executeTest(filePrefix, name, strat, frontend) }
   }
 
 

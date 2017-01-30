@@ -40,7 +40,6 @@ trait StrategyInterface[A <: Rewritable] {
     node.asInstanceOf[T]
   }
 
-
   def execute[T <: A](node: A): T
 
   def ||(s: StrategyInterface[A]): ConcatinatedStrategy[A] = {
@@ -332,7 +331,13 @@ class RepeatedStrategy[A <: Rewritable](s: StrategyInterface[A]) extends Strateg
 
 
 trait Context[A <: Rewritable] {
-  def transformer: StrategyInterface[A]
+  protected def transformer:StrategyInterface[A]
+
+  def noRec[T <: A](node: Rewritable): T = {
+    transformer.noRec[T](node)
+  }
+
+  def getTransformer:StrategyInterface[A] = transformer
 
   def addAncestor(node: A): Context[A]
 
@@ -341,7 +346,7 @@ trait Context[A <: Rewritable] {
   def update(node: A): Context[A]
 }
 
-class SimpleContext[A <: Rewritable](val transformer: StrategyInterface[A]) extends Context[A] {
+class SimpleContext[A <: Rewritable](protected val transformer: StrategyInterface[A]) extends Context[A] {
   override def addAncestor(node: A): SimpleContext[A] = this
 
   override def replaceNode(node: A): SimpleContext[A] = this
@@ -354,7 +359,7 @@ class SimpleContext[A <: Rewritable](val transformer: StrategyInterface[A]) exte
   *
   * @param ancestorList List of all ancestors
   */
-class ContextA[A <: Rewritable](val ancestorList: Seq[A], val transformer: StrategyInterface[A]) extends Context[A] {
+class ContextA[A <: Rewritable](val ancestorList: Seq[A], protected val transformer: StrategyInterface[A]) extends Context[A] {
 
   def addAncestor(n: A): ContextA[A] = {
     new ContextA[A](ancestorList ++ Seq(n), transformer)
@@ -421,17 +426,17 @@ class ContextA[A <: Rewritable](val ancestorList: Seq[A], val transformer: Strat
 
 }
 
-class ContextC[A <: Rewritable, C](aList: Seq[A], val custom: C, override val transformer: StrategyInterface[A], val upContext: PartialFunction[(A, C), C]) extends ContextA[A](aList, transformer) {
+class ContextC[A <: Rewritable, C](aList: Seq[A], val c: C, transformer: StrategyInterface[A], val upContext: PartialFunction[(A, C), C]) extends ContextA[A](aList, transformer) {
   override def addAncestor(n: A): ContextC[A, C] = {
-    new ContextC(ancestorList ++ Seq(n), custom, transformer, upContext)
+    new ContextC(ancestorList ++ Seq(n), c, transformer, upContext)
   }
 
   override def replaceNode(n: A): ContextC[A, C] = {
-    new ContextC(ancestorList.dropRight(1) ++ Seq(n), custom, transformer, upContext)
+    new ContextC(ancestorList.dropRight(1) ++ Seq(n), c, transformer, upContext)
   }
 
   def updateCustom(): ContextC[A, C] = {
-    val cust = if (upContext.isDefinedAt((node, custom))) upContext(node, custom) else custom
+    val cust = if (upContext.isDefinedAt((node, c))) upContext(node, c) else c
     new ContextC[A, C](ancestorList, cust, transformer, upContext)
   }
 
@@ -615,7 +620,7 @@ private case class Rule[A <: Rewritable, C <: Context[A]](r: PartialFunction[(A,
   override def execute(node: A, context: C): Option[A] = {
     if (r.isDefinedAt(node, context)) {
       val res = r((node, context))
-      context.transformer.transformed(res)
+      context.getTransformer.transformed(res)
       Some(res)
     } else {
       None

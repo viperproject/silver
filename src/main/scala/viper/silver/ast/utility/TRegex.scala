@@ -23,7 +23,7 @@ object ? extends ChildMatch
 
 object Nesting extends Enumeration {
   type Nesting = Value
-  val Start, Deep, Direct = Value
+  val StartNested, StartDirect, Deep, Direct = Value
 }
 
 case class Quantity(q: Int = 1) {}
@@ -64,7 +64,7 @@ class RegexStrategy[N <: Rewritable, C](private val matchSeq: Seq[(Nesting, Matc
   override def execute[T <: N](startNode: N): T = {
     val findStarts = StrategyBuilder.ContextVisitor[N, RegexContext]({
       case (node, context) =>
-        if (goFurther(node, context.custom._1.head._2)) {
+        if (goFurther(node, context.c._1.head._2)) {
           checkPath(node)
         }
     }, (matchSeq, Seq.empty[C], Seq.empty[nodeWithContext]))
@@ -77,7 +77,7 @@ class RegexStrategy[N <: Rewritable, C](private val matchSeq: Seq[(Nesting, Matc
         val nodeOption = allMatches.find(_.node eq n)
         if (nodeOption.isDefined) {
           val node2Replace = nodeOption.get
-          val context = new ContextC[N, Seq[C]](c.ancestorList, node2Replace.context, c.transformer, PartialFunction.empty)
+          val context = new ContextC[N, Seq[C]](c.ancestorList, node2Replace.context, c.getTransformer, PartialFunction.empty)
           if (p.isDefinedAt((n, context))) {
             p((n, context))
           } else {
@@ -129,7 +129,7 @@ class RegexStrategy[N <: Rewritable, C](private val matchSeq: Seq[(Nesting, Matc
 
             // Decide what happens next
             nextMatch._1 match {
-              case Nesting.Direct | Nesting.Start =>
+              case Nesting.Direct | Nesting.StartDirect =>
                 if (goFurther(node, nextMatch._2)) {
                   // Find out if we match on the current node or not
                   // Match succeeded. Consume it and recurse with following matches
@@ -139,7 +139,7 @@ class RegexStrategy[N <: Rewritable, C](private val matchSeq: Seq[(Nesting, Matc
                   // Return empty sequence because match failed. Nothing will change in further  recursion
                   (Seq.empty[(Nesting, Match)], context, newNodes)
                 }
-              case Nesting.Deep =>
+              case Nesting.Deep | Nesting.StartNested =>
                 if (goFurther(node, nextMatch._2)) {
                   // Match succeeded. Consume it and recurse with following matches
                   (matches.drop(1), newContext, newNodes)
@@ -161,9 +161,9 @@ class RegexStrategy[N <: Rewritable, C](private val matchSeq: Seq[(Nesting, Matc
 
     // This function performs actions of the according matches
     val actionFunc: (N, ContextC[N, RegexContext]) => Unit = (curNode, context) => {
-      if (context.custom._1.nonEmpty) {
-        val nextMatch = context.custom._1.head._2
-        val ctxt = context.custom._2
+      if (context.c._1.nonEmpty) {
+        val nextMatch = context.c._1.head._2
+        val ctxt = context.c._2
 
         nextMatch match {
           case enterChild: intoChild[N] =>
@@ -171,7 +171,7 @@ class RegexStrategy[N <: Rewritable, C](private val matchSeq: Seq[(Nesting, Matc
             if (childA.isDefined) {
               assert(childA.get.isInstanceOf[N], "Child from intoChild does not extend node")
               val child = childA.get.asInstanceOf[Rewritable]
-              curNode.getChildren foreach { n => if (child ne n.asInstanceOf[Rewritable]) context.transformer.noRec[N](child) }
+              curNode.getChildren foreach { n => if (child ne n.asInstanceOf[Rewritable]) context.getTransformer.noRec[N](child) }
             }
           case _ =>
         }
@@ -193,9 +193,19 @@ class TRegex[N <: Rewritable, C](private val matchers: Seq[(Nesting, Match)] = S
     new RegexStrategy[N, C](matchers, p)
   }
 
-  def %(m: Match): TRegex[N, C] = {
+  def initDirect(m: Match): TRegex[N, C] = {
     if (matchers.isEmpty) {
-      new TRegex(matchers ++ Seq((Nesting.Start, m)))
+      new TRegex(matchers ++ Seq((Nesting.StartDirect, m)))
+    }
+    else {
+      println("Only use % for starting a regex")
+      this
+    }
+  }
+
+  def initNested(m: Match): TRegex[N, C] = {
+    if (matchers.isEmpty) {
+      new TRegex(matchers ++ Seq((Nesting.StartNested, m)))
     }
     else {
       println("Only use % for starting a regex")
@@ -220,12 +230,22 @@ class SlimRegex[N <: Rewritable](private val matchers: Seq[(Nesting, Match)] = S
     StrategyBuilder.SlimStrategy[N](p)
   }
 
-  def %(m: Match): SlimRegex[N] = {
+  def initNested(m: Match): SlimRegex[N] = {
     if (matchers.isEmpty) {
-      new SlimRegex(matchers ++ Seq((Nesting.Start, m)))
+      new SlimRegex(matchers ++ Seq((Nesting.StartNested, m)))
     }
     else {
-      println("Only use % for starting a regex")
+      println("Only use init methods or implicit for starting a regex")
+      this
+    }
+  }
+
+  def initDirect(m: Match): SlimRegex[N] = {
+    if (matchers.isEmpty) {
+      new SlimRegex(matchers ++ Seq((Nesting.StartDirect, m)))
+    }
+    else {
+      println("Only use init methods or implicit for starting a regex")
       this
     }
   }
@@ -237,7 +257,8 @@ class SlimRegex[N <: Rewritable](private val matchers: Seq[(Nesting, Match)] = S
 }
 
 case class StrategyFromRegex[N <: Rewritable, C]() {
-  def @>>(m: Match): TRegex[N, C] = new TRegex[N, C] % m
+  def @>>(m: Match): TRegex[N, C] = new TRegex[N, C].initNested(m)
+  def @>(m: Match): TRegex[N, C] = new TRegex[N, C].initDirect(m)
 }
 
 class Match() {
@@ -316,7 +337,7 @@ case class nP[N <: Rewritable](r: RewritableCompanion, p: N => Boolean) extends 
 object TRegex {
 
   implicit def viperRegex(m: Match): SlimRegex[Node] = {
-    new SlimRegex[Node] % m
+    new SlimRegex[Node].initNested(m)
   }
 
 }
