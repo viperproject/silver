@@ -26,11 +26,11 @@ class RewriterTests extends FunSuite with Matchers {
 
   test("ImplicationToDisjunctionTests") {
     val filePrefix = "transformations\\ImplicationsToDisjunction\\"
-    val files = Seq(/*"simple",*/ "nested"/*, "traverseEverything"*/)
+    val files = Seq("simple", "nested", "traverseEverything")
 
 
     // Regular expression
-    val strat = StrategyFromRegex[Node, Any] @>> r(Implies).* |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
+    val strat = StrategyFromRegex[Node, Any] @>> r(Implies) |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
     /*val strat = ViperStrategy.Slim({

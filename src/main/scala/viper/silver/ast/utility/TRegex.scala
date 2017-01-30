@@ -27,6 +27,8 @@ object Nesting extends Enumeration {
 }
 
 case class Quantity(q: Int = 1) {}
+object PLUS extends Quantity(-2)
+object STAR extends Quantity(-1)
 
 object Quantity {
   def star = Quantity(-1)
@@ -35,8 +37,6 @@ object Quantity {
 }
 
 class RegexStrategy[N <: Rewritable, C](private val matchSeq: Seq[(Nesting, Match)], private val p: PartialFunction[(N, ContextC[N, Seq[C]]), N]) extends StrategyInterface[N] {
-
-  val matchedNodes = collection.mutable.HashSet.empty[(C, N)]
 
   def goFurther(node: N, m: Match): Boolean = m match {
     case nodeMatch: n => nodeMatch.valid(node)
@@ -47,96 +47,38 @@ class RegexStrategy[N <: Rewritable, C](private val matchSeq: Seq[(Nesting, Matc
     case _ => true
   }
 
-  override def execute[T <: N](node: N): T = {
-    // First element represents the matches, second is for having the context present in case of a rewrite match
-    type RegexContext = (Seq[(Nesting, Match)], Seq[C])
+  val allMatches = collection.mutable.HashSet.empty[nodeWithContext]
 
-    // The update function specifies if we can consume a match and go further or if we continue with the current match
-    val updateFunc: PartialFunction[(N, RegexContext), RegexContext] = {
-      case (node, (matches, context)) => {
-        if (matches.isEmpty) {
-          // If matches is empty we have nothing to do. Just return and go on
-          (matches, context)
-        } else {
-          val nextMatch = matches.head
-          var newContext = context
+  // This hash set holds node context pairs that we will use to replace every matched node
 
-          // Context update done here, execute possible other actions that have to be performed in updateFunc here too
-          nextMatch._2 match {
-            case contextMatch: c[N] => {
-              // Context update in case it is defined here
-              val candContext = contextMatch.valid(node)
-              if (candContext.isDefined) {
-                assert(candContext.isInstanceOf[C], "Context match from regex did not return the correct type")
-                newContext = newContext ++ Seq(candContext.asInstanceOf[C])
-              }
-            }
-            case _ => {}
-          }
 
-          // Decide what happens next
-          nextMatch._1 match {
-            case Nesting.Direct => {
-              if (goFurther(node, nextMatch._2)) {
-                // Find out if we match on the current node or not
-                // Match succeeded. Consume it and recurse with following matches
-                (matches.drop(1), newContext)
-              } else {
-                // Return empty sequence because match failed. Nothing will change in further  recursion
-                (Seq.empty[(Nesting, Match)], context)
-              }
-            }
-            case Nesting.Deep | Nesting.Start => {
-              if (goFurther(node, nextMatch._2)) {
-                // Match succeeded. Consume it and recurse with following matches
-                (matches.drop(1), newContext)
-              } else {
-                // Match did not succeed. Maybe it will later
-                (matches, newContext)
-              }
-            }
-          }
+  class nodeWithContext(val node: N, val context: Seq[C]) {
+    /*override def equals(o: Any) = o match {
+      case that: nodeWithContext => that.node eq node
+      case _ => false
+    }*/
+  }
+
+  type RegexContext = (Seq[(Nesting, Match)], Seq[C], Seq[nodeWithContext])
+
+  override def execute[T <: N](startNode: N): T = {
+    val findStarts = StrategyBuilder.ContextVisitor[N, RegexContext]({
+      case (node, context) =>
+        if (goFurther(node, context.custom._1.head._2)) {
+          checkPath(node)
         }
-      }
-    }
+    }, (matchSeq, Seq.empty[C], Seq.empty[nodeWithContext]))
 
-    val nodesToUpdate = collection.mutable.ListBuffer.empty[(N, Seq[C])] // This hash set holds node context pairs that we will use to replace every matched node
-
-    // This function performs actions of the according matches
-    val actionFunc: (N, ContextC[N, RegexContext]) => Unit = (curNode, context) => {
-      if (context.custom._1.nonEmpty) {
-        // If matches is empty we have nothing to do. Just return and go on
-        val nextMatch = context.custom._1.head._2
-        val ctxt = context.custom._2
-        nextMatch match {
-          case rewriteMatch: r => {
-            if (rewriteMatch.valid(curNode)) {
-              nodesToUpdate.append((curNode, ctxt))
-            }
-          }
-          case enterChild: intoChild[N] => {
-            val childA = enterChild.valid(curNode)
-            if (childA.isDefined) {
-              assert(childA.get.isInstanceOf[N], "Child from intoChild does not extend node")
-              val child = childA.get.asInstanceOf[Rewritable]
-              node.getChildren foreach { n => if (child ne n.asInstanceOf[Rewritable]) context.transformer.noRec[N](child) }
-            }
-          }
-        }
-      }
-    }
-
-    val node2RewriteStrat = StrategyBuilder.ContextVisitor[N, RegexContext](actionFunc, (matchSeq, Seq.empty[C]), updateFunc)
-    node2RewriteStrat.visit(node)
+    findStarts.visit(startNode)
 
     //HashSet is now filled with nodes to replace. Go do it!!
     val replaceStrat = StrategyBuilder.AncestorStrategy[N]({
-      case (n, c) => {
-        val nodeOption = nodesToUpdate.find( _._1 eq n )
-        if(nodeOption.isDefined) {
+      case (n, c) =>
+        val nodeOption = allMatches.find(_.node eq n)
+        if (nodeOption.isDefined) {
           val node2Replace = nodeOption.get
-          val context = new ContextC[N, Seq[C]](c.ancestorList, node2Replace._2, c.transformer, PartialFunction.empty)
-          if(p.isDefinedAt((n, context))) {
+          val context = new ContextC[N, Seq[C]](c.ancestorList, node2Replace.context, c.transformer, PartialFunction.empty)
+          if (p.isDefinedAt((n, context))) {
             p((n, context))
           } else {
             n
@@ -144,12 +86,105 @@ class RegexStrategy[N <: Rewritable, C](private val matchSeq: Seq[(Nesting, Matc
         } else {
           n
         }
-      }
     })
 
-    val result = replaceStrat.execute[T](node)
+    val result = replaceStrat.execute[T](startNode)
     result
   }
+
+  // Check if a concrete path is a valid match
+  def checkPath(StartNode: N): Unit = {
+    // First element represents the matches, second is for having the context present in case of a rewrite match
+
+
+    val nodesToUpdate = collection.mutable.HashSet.empty[nodeWithContext]
+
+    // The update function specifies if we can consume a match and go further or if we continue with the current match
+    val updateFunc: PartialFunction[(N, RegexContext), RegexContext] = {
+      case (node, (matches, context, nodes)) =>
+        if (matches.isEmpty) {
+          // If matches is empty we have nothing to do. Just return and go on
+          (matches, context, nodes)
+        } else {
+          val result = {
+            val nextMatch = matches.head
+            var newContext = context
+            var newNodes = nodes
+
+            // Context update done here, execute possible other actions that have to be performed in updateFunc here too
+            nextMatch._2 match {
+              case contextMatch: c[N] =>
+                // Context update in case it is defined here
+                val candContext = contextMatch.valid(node)
+                if (candContext.isDefined) {
+                  assert(candContext.isInstanceOf[C], "Context match from regex did not return the correct type")
+                  newContext = newContext ++ Seq(candContext.asInstanceOf[C])
+                }
+              case rewriteMatch: r =>
+                if (rewriteMatch.valid(node)) {
+                  newNodes = newNodes ++ Seq(new nodeWithContext(node, newContext))
+                }
+              case _ =>
+            }
+
+            // Decide what happens next
+            nextMatch._1 match {
+              case Nesting.Direct | Nesting.Start =>
+                if (goFurther(node, nextMatch._2)) {
+                  // Find out if we match on the current node or not
+                  // Match succeeded. Consume it and recurse with following matches
+                  val newMatch = nextMatch._2.reduceQuantity()
+                  if (newMatch.isDefined) (Seq((nextMatch._1, newMatch.get)) ++ matches.drop(1), newContext, newNodes) else (matches.drop(1), newContext, newNodes)
+                } else {
+                  // Return empty sequence because match failed. Nothing will change in further  recursion
+                  (Seq.empty[(Nesting, Match)], context, newNodes)
+                }
+              case Nesting.Deep =>
+                if (goFurther(node, nextMatch._2)) {
+                  // Match succeeded. Consume it and recurse with following matches
+                  (matches.drop(1), newContext, newNodes)
+                } else {
+                  // Match did not succeed. Maybe it will later
+                  (matches, newContext, newNodes)
+                }
+            }
+          }
+          if (result._1.isEmpty) {
+            // We now have an empty match but did not have one before.
+            // This means that this path matches the whole regex and all nodes marked as rewritable on this path can be added to the rewriter
+            result._3.foreach(nodesToUpdate.add)
+          }
+          result
+        }
+
+    }
+
+    // This function performs actions of the according matches
+    val actionFunc: (N, ContextC[N, RegexContext]) => Unit = (curNode, context) => {
+      if (context.custom._1.nonEmpty) {
+        val nextMatch = context.custom._1.head._2
+        val ctxt = context.custom._2
+
+        nextMatch match {
+          case enterChild: intoChild[N] =>
+            val childA = enterChild.valid(curNode)
+            if (childA.isDefined) {
+              assert(childA.get.isInstanceOf[N], "Child from intoChild does not extend node")
+              val child = childA.get.asInstanceOf[Rewritable]
+              curNode.getChildren foreach { n => if (child ne n.asInstanceOf[Rewritable]) context.transformer.noRec[N](child) }
+            }
+          case _ =>
+        }
+      }
+    }
+
+    val getMatchesStrat = StrategyBuilder.ContextVisitor[N, RegexContext](actionFunc, (matchSeq, Seq.empty[C], Seq.empty[nodeWithContext]), updateFunc)
+    getMatchesStrat.visit(StartNode)
+
+    nodesToUpdate.map( allMatches.add )
+
+  }
+
 }
 
 class TRegex[N <: Rewritable, C](private val matchers: Seq[(Nesting, Match)] = Seq.empty[(Nesting, Match)]) {
@@ -208,13 +243,27 @@ case class StrategyFromRegex[N <: Rewritable, C]() {
 class Match() {
   var quantity: Quantity = Quantity(1)
 
+  def reduceQuantity(): Option[Match] = {
+    quantity match {
+      case Quantity(1) => None
+      case Quantity(x) if x > 1 =>
+        quantity = Quantity(x - 1)
+        Some(this)
+      case PLUS =>
+        quantity = Quantity.star
+        Some(this)
+      case STAR => Some(this)
+      case _ => println("Invalid Quantity of Match: " + quantity); None
+    }
+  }
+
   def *(): Match = {
-    quantity = Quantity.star
+    quantity = STAR
     this
   }
 
   def +(): Match = {
-    quantity = Quantity.plus
+    quantity = PLUS
     this
   }
 
@@ -224,17 +273,17 @@ class Match() {
   }
 }
 
-case class n(instanceMatch:Any=>Boolean ) extends Match {
-  def valid(n: Any): Boolean = instanceMatch(n)
+case class n(r: RewritableCompanion) extends Match {
+  def valid(n: Any): Boolean = r.isMyType(n)
 }
 
-case class r(instanceMatch:Any=>Boolean) extends Match {
-  def valid(n: Any): Boolean = instanceMatch(n)
+case class r(r: RewritableCompanion) extends Match {
+  def valid(n: Any): Boolean = r.isMyType(n)
 }
 
-case class c[N <: Rewritable](instanceMatch:Any=>Boolean, acc: N => Any) extends Match {
+case class c[N <: Rewritable](r: RewritableCompanion, acc: N => Any) extends Match {
   def valid(n: Any): Option[Any] = {
-    if (instanceMatch(n)) {
+    if (r.isMyType(n)) {
       Some(acc(n.asInstanceOf[N]))
     } else {
       None
@@ -242,9 +291,9 @@ case class c[N <: Rewritable](instanceMatch:Any=>Boolean, acc: N => Any) extends
   }
 }
 
-case class intoChild[N <: Rewritable](instanceMatch:Any=>Boolean, selector: N => Any) extends Match {
+case class intoChild[N <: Rewritable](r: RewritableCompanion, selector: N => Any) extends Match {
   def valid(n: Any): Option[Any] = {
-    if (instanceMatch(n)) {
+    if (r.isMyType(n)) {
       Some(selector(n.asInstanceOf[N]))
     } else {
       None
@@ -252,11 +301,11 @@ case class intoChild[N <: Rewritable](instanceMatch:Any=>Boolean, selector: N =>
   }
 }
 
-case class matchChildren[N <: Rewritable](instanceMatch:Any=>Boolean, s: ChildMatch[N]*) extends Match {}
+case class matchChildren[N <: Rewritable](r: RewritableCompanion, s: ChildMatch[N]*) extends Match {}
 
-case class nP[N <: Rewritable](instanceMatch:Any=>Boolean, p: N => Boolean) extends Match {
+case class nP[N <: Rewritable](r: RewritableCompanion, p: N => Boolean) extends Match {
   def valid(n: Any): Boolean = {
-    if (instanceMatch(n)) {
+    if (r.isMyType(n)) {
       p(n.asInstanceOf[N])
     } else {
       false
@@ -270,9 +319,6 @@ object TRegex {
     new SlimRegex[Node] % m
   }
 
-  implicit def instanceMatch(r: RewritableCompanion):Any=>Boolean = {
-    x => r.isMyType(x)
-  }
 }
 
 
