@@ -71,8 +71,8 @@ object Expressions {
 
   /** In an expression, rename a list (domain) of variables with given (range) variables. */
   def renameVariables[E <: Exp]
-  (exp: E, domain: Seq[AbstractLocalVar], range: Seq[AbstractLocalVar])
-  : E = {
+                     (exp: E, domain: Seq[AbstractLocalVar], range: Seq[AbstractLocalVar])
+                     : E = {
 
     val argNames = (domain map (_.name)).zipWithIndex
 
@@ -210,7 +210,7 @@ object Expressions {
     leftConds ++ guardedRightConds
   }
 
-  /** See [[TriggerGeneration.generateTriggerSetGroups]] */
+  /** See [[viper.silver.ast.utility.Triggers.TriggerGeneration.generateTriggerSetGroups]] */
   def generateTriggerGroups(exp: QuantifiedExp): Seq[(Seq[TriggerGeneration.TriggerSet], Seq[LocalVarDecl])] = {
     TriggerGeneration.generateTriggerSetGroups(exp.variables map (_.localVar), exp.exp)
                      .map{case (triggers, vars) => (triggers, vars map (v => LocalVarDecl(v.name, v.typ)()))}
@@ -242,5 +242,11 @@ object Expressions {
       }
     else
       None
+  }
+
+  /** Returns the top-level conjuncts of the given expression. */
+  def topLevelConjuncts(e: Exp): Seq[Exp] = e match {
+    case And(e1, e2) => topLevelConjuncts(e1) ++ topLevelConjuncts(e2)
+    case _ => Seq(e)
   }
 }
