@@ -12,7 +12,6 @@ import viper.silver.ast._
 import viper.silver.ast.utility._
 import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silver.verifier.AbstractError
-import viper.silver.ast.utility.TRegex._
 
 import scala.collection.mutable
 import scala.language.implicitConversions
@@ -75,7 +74,7 @@ class RewriterTests extends FunSuite with Matchers {
       }
 
       // Regular expression
-      val strat2 = StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](QuantifiedExp, _.variables).* >> r(Or) |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.c.flatten), o.left, o.right)(), c.noRec[Or](o))()}
+      // val strat2 = StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](QuantifiedExp, _.variables).* >> r(Or) |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.c.flatten), o.left, o.right)(), c.noRec[Or](o))()}
 
 
       val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
@@ -169,12 +168,12 @@ class RewriterTests extends FunSuite with Matchers {
 
 
     // Regular expression
-    val strat = StrategyFromRegex[Node, Any] @>> r(Implies) |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
+    //val strat = StrategyFromRegex[Node, Any] @>> r(Implies) |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
-    /*val strat = ViperStrategy.Slim({
+    val strat = ViperStrategy.Slim({
       case Implies(left, right) => Or(Not(left)(), right)()
-    })*/
+    })
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }

@@ -45,7 +45,3 @@ trait Rewritable {
   def duplicate(children: Seq[Any]): Any
 
 }
-
-trait RewritableCompanion {
-  def isMyType(a: Any): Boolean
-}

@@ -73,18 +73,13 @@ case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: I
   Consistency.checkNoPositiveOnly(left)
   Consistency.checkNoPositiveOnly(right)
 }
-object Or extends RewritableCompanion {
-  override def isMyType(a: Any): Boolean = a.isInstanceOf[Or]
-}
 
 case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT:ErrorTrafo = NoTrafos) extends DomainBinExp(AndOp)
 
 case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT:ErrorTrafo = NoTrafos) extends DomainBinExp(ImpliesOp) {
   Consistency.checkNoPositiveOnly(left)
 }
-object Implies extends RewritableCompanion {
-  override def isMyType(a: Any): Boolean = a.isInstanceOf[Implies]
-}
+
 
 case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT:ErrorTrafo = NoTrafos)
     extends DomainBinExp(MagicWandOp) {
@@ -438,9 +433,7 @@ sealed trait QuantifiedExp extends Exp {
   }
 }
 
-object QuantifiedExp extends RewritableCompanion {
-  override def isMyType(a: Any): Boolean = a.isInstanceOf[QuantifiedExp]
-
+object QuantifiedExp {
   def unapply(q: QuantifiedExp): Option[(Seq[LocalVarDecl], Exp)] = Some(q.variables, q.exp)
 }
 
