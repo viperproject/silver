@@ -1,3 +1,5 @@
+//:: IgnoreFile(/silicon/issue/266/)
+
 predicate access(a:IArray, i:Int) {
     (i % 2 == 0)  ==> acc(loc(a, i).val) && acc(loc(a, i+1).val)
 }
