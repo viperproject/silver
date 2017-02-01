@@ -44,15 +44,20 @@ object CfgGenerator {
     // generate cfg for the body
     val bodyCfg = method.body.toCfg(simplify = false)
 
+    // create block for local variables
+    val locals = method.locals.map { local => LocalVarDeclStmt(local)(local.pos) }
+    val localBlock: SilverBlock = StatementBlock(locals)
+    val localEdge: SilverEdge = UnconditionalEdge(localBlock, bodyCfg.entry, Kind.Normal)
+
     // create blocks and corresponding edges for pre and postconditions
     val preBlock: SilverBlock = PreconditionBlock(method.pres)
     val postBlock: SilverBlock = PostconditionBlock(method.posts)
-    val preEdge: SilverEdge = UnconditionalEdge(preBlock, bodyCfg.entry, Kind.Normal)
+    val preEdge: SilverEdge = UnconditionalEdge(preBlock, localBlock, Kind.Normal)
     val postEdge: SilverEdge = UnconditionalEdge(bodyCfg.exit, postBlock, Kind.Normal)
 
-    // create cfg with pre and postconditions
-    val blocks = preBlock :: postBlock :: bodyCfg.blocks.toList
-    val edges = preEdge :: postEdge :: bodyCfg.edges.toList
+    // create cfg with pre and postconditions and local variables
+    val blocks = preBlock :: postBlock :: localBlock :: bodyCfg.blocks.toList
+    val edges = preEdge :: postEdge :: localEdge :: bodyCfg.edges.toList
     val cfg = SilverCfg(blocks, edges, preBlock, postBlock)
 
     if (simplify) CfgSimplifier.simplify[SilverCfg, Stmt, Exp](cfg)
@@ -422,4 +427,5 @@ object CfgGenerator {
       }
     }
   }
+
 }
