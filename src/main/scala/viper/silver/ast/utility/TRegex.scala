@@ -12,15 +12,6 @@ import scala.language.implicitConversions
 import scala.reflect.ClassTag
 
 
-
-
-
-
-
-
-
-
-
 // Core of the Regex AST
 trait Match {
 }
@@ -77,33 +68,21 @@ class Questionmark(m: Match) extends Match {
 }
 
 
-
 // Frontend of the Regex AST
 trait FrontendRegex {
   def getAST: Match
 
-  // a >> b == a > _* > b
-  def >>(m: FrontendRegex) = {
-    NestedF(NestedF(this, Wild.*), m)
-  }
+  def >>(m: FrontendRegex) = DeepNestedF(this, m)
 
-  def >(m: FrontendRegex) = {
-    new Nested(this.getAST, m.getAST)
-  }
+  def >(m: FrontendRegex) = NestedF(this, m)
 
-  def ?  = {
-    QuestionmarkF(this)
-  }
+  def ? = QuestionmarkF(this)
 
-  def * = {
-    StarF(this)
-  }
+  def * = StarF(this)
 
+  def ** = DoubleStarF(this)
 
-  // a+ == a > a*
-  def + = {
-    PlusF(this)
-  }
+  def + = PlusF(this)
 
 }
 
@@ -111,7 +90,7 @@ case class n[N <: Rewritable : ClassTag[N]]() extends FrontendRegex {
   override def getAST: Match = new NMatch[N]()
 }
 
-case class nP[N <: Rewritable : ClassTag[N]](p: N => Boolean ) extends FrontendRegex {
+case class nP[N <: Rewritable : ClassTag[N]](p: N => Boolean) extends FrontendRegex {
   override def getAST: Match = new PredicateNMatch[N](p)
 }
 
@@ -135,8 +114,12 @@ case class StarF(m: FrontendRegex) extends FrontendRegex {
   override def getAST: Match = new Star(m.getAST)
 }
 
+case class DoubleStarF(m: FrontendRegex) extends FrontendRegex {
+  override def getAST: Match = new Star(new Nested(m.*.getAST, Wild.*.getAST))
+}
 
 case class PlusF(m: FrontendRegex) extends FrontendRegex {
+  // Reduction: a+ == a > a*
   override def getAST: Match = new Nested(m.getAST, m.*.getAST)
 }
 
@@ -148,7 +131,12 @@ case class NestedF(m1: FrontendRegex, m2: FrontendRegex) extends FrontendRegex {
   override def getAST: Match = new Nested(m1.getAST, m2.getAST)
 }
 
+case class DeepNestedF(m1: FrontendRegex, m2: FrontendRegex) extends FrontendRegex {
+  // a >> b == a > _* > b
+  override def getAST: Match = new Nested(new Nested(m1.getAST, Wild.*.getAST), m2.getAST)
+}
+
 class Test {
-  c[QuantifiedExp](_.variables).* >> r[Or]
+  c[QuantifiedExp](_.variables).** >> r[Or]
 
 }
