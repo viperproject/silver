@@ -5,8 +5,7 @@ method test01(x1: Ref, x2: Ref)
   requires acc(x1.g) && acc(x1.g.f)
   requires acc(x2.g) && acc(x2.g.f)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g)
-  //:: UnexpectedOutput(postcondition.violated:receiver.not.injective, /silicon/issue/149/)
-  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f)
+  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f) /* Failed previously */
 {
 //  assert x1 != x2       // Any of these two assert makes ...
 //  assert x1.g != x2.g   // ... the postcondition verify
@@ -16,8 +15,7 @@ method test02(x1: Ref, x2: Ref)
   requires acc(x1.g) && acc(x1.g.f, 2/3)
   requires acc(x2.g) && acc(x2.g.f, 2/3)
   ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g, 2/3)
-  //:: UnexpectedOutput(postcondition.violated:receiver.not.injective, /silicon/issue/149/)
-  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, 2/3)
+  ensures  forall x: Ref :: x in Set(x1, x2) ==> acc(x.g.f, 2/3) /* Failed previously */
 {
 //  assert x1 != x2       // Any of these two assert makes ...
 //  assert x1.g != x2.g   // ... the postcondition verify
@@ -35,7 +33,7 @@ method test03(xs: Seq[Ref])
 
 method test04(xs: Seq[Ref], ys: Seq[Ref])
   requires |xs| > 0
-  requires |ys| > 0 
+  requires |ys| > 0
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f, 2/3)
   requires forall i: Int :: 0 <= i && i < |ys| ==> acc(ys[i].f, 2/3)
 {
