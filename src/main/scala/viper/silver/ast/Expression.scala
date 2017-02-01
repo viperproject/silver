@@ -28,6 +28,9 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
   /** Returns the subexpressions of this expression */
   lazy val subExps = Expressions.subExps(this)
 
+  /** @inheritdoc */
+  lazy val topLevelConjuncts = Expressions.topLevelConjuncts(this)
+
   // AS: experimenting with removing this code...
   /**
    * Returns a conjunction of all proof obligations in this expression, e.g. rcv != null for all field accesses rcv.f,
