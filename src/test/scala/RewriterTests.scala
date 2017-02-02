@@ -20,10 +20,7 @@ import scala.language.implicitConversions
 class RewriterTests extends FunSuite with Matchers {
 
   test("TestingStuff") {
-
   }
-
-
 
   test("QuantifiedPermissions") {
     val filePrefix = "transformations\\QuantifiedPermissions\\"
@@ -74,7 +71,7 @@ class RewriterTests extends FunSuite with Matchers {
       }
 
       // Regular expression
-      // val strat2 = StrategyFromRegex[Node, Seq[LocalVarDecl]] @>> c[QuantifiedExp](QuantifiedExp, _.variables).* >> r(Or) |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.c.flatten), o.left, o.right)(), c.noRec[Or](o))()}
+      c[QuantifiedExp]( _.variables).** >> r[Or] //|-[Node, LocalVarDecl] -> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.c.flatten), o.left, o.right)(), c.noRec[Or](o))()}
 
 
       val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
@@ -140,7 +137,7 @@ class RewriterTests extends FunSuite with Matchers {
           quantifiedVariables = quantifiedVariables ++ q.variables.map(_.localVar)
           q
       }(recursive = {
-        case _ => true
+        _ => true
       }, post = {
         case q: ast.QuantifiedExp =>
           val qvs = q.variables.map(_.localVar)
@@ -168,7 +165,7 @@ class RewriterTests extends FunSuite with Matchers {
 
 
     // Regular expression
-    //val strat = StrategyFromRegex[Node, Any] @>> r(Implies) |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
+    r[Implies] // |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
     val strat = ViperStrategy.Slim({
@@ -351,7 +348,7 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("fourAnd")
 
     //val t = new TreeRegexBuilder[Node, Node]()
-    //nP[FuncApp](_.funcname == "fourAnd") > matchChildren[Exp](**, cN[FalseLit], **) |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
+    nP[FuncApp](f => f.funcname == "fourAnd" && f.args.contains(FalseLit()())) > r[Exp] // |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
 
     val strat: StrategyInterface[Node] = ViperStrategy.Ancestor({
       case (e: Exp, c) => c.parent match {
@@ -460,7 +457,6 @@ class RewriterTests extends FunSuite with Matchers {
       assert(res.toString == targetRef.toString(), "Files are not equal")
     }
     }
-
   }
 
   test("MethodCallDesugaring") {

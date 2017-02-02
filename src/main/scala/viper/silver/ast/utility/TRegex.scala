@@ -16,28 +16,30 @@ import scala.reflect.ClassTag
 trait Match {
 }
 
+trait Predicate[T] {
+  def pred:T=>Boolean
+
+  def holds(node: T): Boolean = pred(node)
+}
+
 // Matches on nodes directly
-class NMatch[N <: Rewritable : ClassTag[N]] extends Match {
+class NMatch[N <: Rewritable : ClassTag](val pred:N=>Boolean) extends Match with Predicate[N] {
 
 }
 
-class PredicateNMatch[N <: Rewritable : ClassTag[N]](p: N => Boolean) extends NMatch {
+class ContextNMatch[N <: Rewritable : ClassTag](c: N => Any, predi:N=>Boolean) extends NMatch[N](predi) {
 
 }
 
-class ContextNMatch[N <: Rewritable : ClassTag[N]](c: N => Any) extends NMatch {
+class RewriteNMatch[N <: Rewritable : ClassTag](predi:N=>Boolean) extends NMatch[N](predi) {
 
 }
 
-class RewriteNMatch[N <: Rewritable : ClassTag[N]] extends NMatch {
+class ChildSelectNMatch[N <: Rewritable : ClassTag](ch: N => Rewritable, predi:N=>Boolean) extends NMatch[N](predi) {
 
 }
 
-class ChildSelectNMatch[N <: Rewritable : ClassTag[N]](ch: N => Rewritable) extends NMatch {
-
-}
-
-class WildNMatch extends NMatch {
+class WildNMatch[N <: Rewritable : ClassTag](predi:N=>Boolean) extends NMatch[N](predi) {
 
 }
 
@@ -46,7 +48,7 @@ class CombinatorMatch(val m1: Match, val m2: Match) extends Match {
 
 }
 
-class Or(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
+class OrMatch(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
 
 }
 
@@ -84,30 +86,49 @@ trait FrontendRegex {
 
   def + = PlusF(this)
 
+  def |(m: FrontendRegex) = OrF(this, m)
+
 }
 
-case class n[N <: Rewritable : ClassTag[N]]() extends FrontendRegex {
-  override def getAST: Match = new NMatch[N]()
+case class n[N <: Rewritable : ClassTag]() extends FrontendRegex {
+  override def getAST: Match = new NMatch[N](_ => true)
 }
 
-case class nP[N <: Rewritable : ClassTag[N]](p: N => Boolean) extends FrontendRegex {
-  override def getAST: Match = new PredicateNMatch[N](p)
+case class nP[N <: Rewritable : ClassTag](predicate: N => Boolean) extends FrontendRegex {
+  override def getAST: Match = new NMatch[N](predicate)
 }
 
-case class c[N <: Rewritable : ClassTag[N]](con: N => Any) extends FrontendRegex {
-  override def getAST: Match = new ContextNMatch[N](con)
+case class c[N <: Rewritable : ClassTag](con: N => Any) extends FrontendRegex {
+  override def getAST: Match = new ContextNMatch[N](con, _ => true)
 }
 
-case class r[N <: Rewritable : ClassTag[N]]() extends FrontendRegex {
-  override def getAST: Match = new RewriteNMatch[N]()
+case class cP[N <: Rewritable : ClassTag](con: N => Any, predicate: N => Boolean) extends FrontendRegex {
+  override def getAST: Match = new ContextNMatch[N](con, predicate)
 }
 
-case class inCh[N <: Rewritable : ClassTag[N]](ch: N => Rewritable) extends FrontendRegex {
-  override def getAST: Match = new ChildSelectNMatch[N](ch)
+case class r[N <: Rewritable : ClassTag]() extends FrontendRegex {
+  override def getAST: Match = new RewriteNMatch[N](_ => true)
 }
 
+case class rP[N <: Rewritable : ClassTag](predicate: N => Boolean) extends FrontendRegex {
+  override def getAST: Match = new RewriteNMatch[N](predicate)
+}
+
+case class inCh[N <: Rewritable : ClassTag](ch: N => Rewritable) extends FrontendRegex {
+  override def getAST: Match = new ChildSelectNMatch[N](ch, _ => true)
+}
+
+case class inChP[N <: Rewritable : ClassTag](ch: N => Rewritable, predicate: N => Boolean) extends FrontendRegex {
+  override def getAST: Match = new ChildSelectNMatch[N](ch, predicate)
+}
+
+case class WildP[N <: Rewritable : ClassTag](predicate: N => Boolean) extends FrontendRegex {
+  override def getAST: Match = new WildNMatch[N](predicate)
+}
+
+// Needs to be object because Wild alone without type parameters and no constructor call does not define a case class instance
 object Wild extends FrontendRegex {
-  override def getAST: Match = new WildNMatch()
+  override def getAST: Match = new WildNMatch[Rewritable](_ => true)
 }
 
 case class StarF(m: FrontendRegex) extends FrontendRegex {
@@ -131,12 +152,15 @@ case class NestedF(m1: FrontendRegex, m2: FrontendRegex) extends FrontendRegex {
   override def getAST: Match = new Nested(m1.getAST, m2.getAST)
 }
 
+case class OrF(m1: FrontendRegex, m2: FrontendRegex) extends FrontendRegex {
+  override def getAST: Match = new OrMatch(m1.getAST, m2.getAST)
+}
+
 case class DeepNestedF(m1: FrontendRegex, m2: FrontendRegex) extends FrontendRegex {
   // a >> b == a > _* > b
   override def getAST: Match = new Nested(new Nested(m1.getAST, Wild.*.getAST), m2.getAST)
 }
 
 class Test {
-  c[QuantifiedExp](_.variables).** >> r[Or]
-
+  c[QuantifiedExp](_.variables).** >> nP[Or](_.left eq TrueLit()())
 }
