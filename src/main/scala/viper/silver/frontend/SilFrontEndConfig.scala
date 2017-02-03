@@ -7,26 +7,22 @@
 package viper.silver.frontend
 
 import collection._
-import org.rogach.scallop.LazyScallopConf
+import org.rogach.scallop.ScallopConf
+import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
 
 /**
  * The configuration of a SIL front-end.
  */
-class SilFrontendConfig(args: Seq[String], private var projectName: String) extends LazyScallopConf(args) {
+abstract class SilFrontendConfig(args: Seq[String], private var projectName: String) extends ScallopConf(args) {
   /* Attention: projectName must be an explicit field, otherwise it cannot be
-    * used in an interpolated string!
-    */
+   * used in an interpolated string!
+   */
 
   /** None if there has no error occurred during command-line parsing, and an error message otherwise. */
   var error: Option[String] = None
 
   /** True if (after command-line parsing) we should exit. */
   var exit: Boolean = false
-
-  /** Should be true after `LazyScallopConf.initialize` has been called,
-    * i.e., it should be set to true by the closure passed to `LazyScallopConf.initialize`.
-    */
-  var initialized: Boolean = false
 
   val file = trailArg[String]("file", "The file to verify.")/*, (x: String) => {
     val f = new java.io.File(x)
@@ -100,6 +96,16 @@ class SilFrontendConfig(args: Seq[String], private var projectName: String) exte
        * (in which optFile == None) should never occur.
        */
       sys.error(s"Unexpected combination of $optFile and $optIgnoreFile")
+  }
+
+  override def onError(e: Throwable): Unit = {
+    exit = true
+
+    e match {
+      case Version => println(builder.vers.get)
+      case Help(_) => printHelp()
+      case ScallopException(message) => error = Some(message)
+    }
   }
 
   banner(s"""Usage: $projectName [options] <file>
