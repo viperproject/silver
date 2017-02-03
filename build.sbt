@@ -5,17 +5,17 @@ organization  := "viper"
 
 version := "0.1-SNAPSHOT"
 
-scalaVersion := "2.11.7"
+scalaVersion := "2.11.8"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1"
 
-libraryDependencies += "org.rogach" %% "scallop" % "0.9.5"
+libraryDependencies += "org.rogach" %% "scallop" % "2.0.7"
 
-libraryDependencies += "org.jgrapht" % "jgrapht-core" % "0.9.0"
+libraryDependencies += "org.jgrapht" % "jgrapht-core" % "0.9.1"
 
-libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.2"
+libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.5"
 
-libraryDependencies += "commons-io" % "commons-io" % "2.4"
+libraryDependencies += "commons-io" % "commons-io" % "2.5"
 
 libraryDependencies += "com.lihaoyi" %% "fastparse" % "0.3.7"
 libraryDependencies +=  "com.google.guava" % "guava" % "17.0"
