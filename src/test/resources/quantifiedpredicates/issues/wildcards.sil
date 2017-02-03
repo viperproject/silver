@@ -15,6 +15,7 @@ method test02(x: Ref)
 
   var xs: Set[Ref]
 
+  //:: UnexpectedOutput(exhale.failed:negative.permission, /carbon/issue/180/)
   exhale forall r: Ref :: r in xs ==> acc(P(r, 0), perm(P(r, 0)))
 }
 
