@@ -10,54 +10,103 @@ import viper.silver.ast._
 import viper.silver.ast.utility._
 
 import scala.language.implicitConversions
-import scala.reflect.ClassTag
+import scala.reflect.runtime.universe._
+
+
+
 
 
 // Core of the Regex AST
 trait Match {
-}
-
-trait NodePredicate[T] {
-  def pred:T=>Boolean
-
-  def holds(node: T): Boolean = pred(node)
+  def createAutomaton(): TRegexAutomaton
 }
 
 // Matches on nodes directly
-class NMatch[N <: Rewritable : ClassTag](val pred:N=>Boolean, val rewrite:Boolean) extends Match with NodePredicate[N] {
+class NMatch[N <: Rewritable : TypeTag](val pred:N=>Boolean, val rewrite:Boolean) extends Match {
+  def matches[T: TypeTag](n: T) =
+    typeOf[T] <:< typeOf[N]
+
+  def holds(node: Rewritable): Boolean = {
+    if(matches(node)) {
+      pred(node.asInstanceOf[N])
+    } else {
+      false
+    }
+  }
+
+  override def createAutomaton() = {
+    val start = new State()
+    val end = new State()
+
+    start.to(end, this)
+
+    new TRegexAutomaton(start, end)
+  }
+
 }
 
-class ContextNMatch[N <: Rewritable : ClassTag](c: N => Any, predi:N=>Boolean, rewrite:Boolean) extends NMatch[N](predi, rewrite) {
+class ContextNMatch[N <: Rewritable : TypeTag](c: N => Any, predi:N=>Boolean, rewrite:Boolean) extends NMatch[N](predi, rewrite) {
 
 }
 
-class ChildSelectNMatch[N <: Rewritable : ClassTag](ch: N => Rewritable, predi:N=>Boolean, rewrite:Boolean) extends NMatch[N](predi, rewrite) {
+class ChildSelectNMatch[N <: Rewritable : TypeTag](ch: N => Rewritable, predi:N=>Boolean, rewrite:Boolean) extends NMatch[N](predi, rewrite) {
 
 }
 
 // Combine node matches together
-class CombinatorMatch(val m1: Match, val m2: Match) extends Match {
+abstract class CombinatorMatch(val m1: Match, val m2: Match) extends Match {
 
 }
 
 class OrMatch(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
+  override def createAutomaton(): TRegexAutomaton = {
+    val a1 = m1.createAutomaton()
+    val a2 = m2.createAutomaton()
 
+    val start = new State
+    val end = new State
+
+    start.to(a1.start)
+    start.to(a2.start)
+    a1.end.to(end)
+    a2.end.to(end)
+
+    new TRegexAutomaton(start, end)
+  }
 }
 
 class Nested(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
+  override def createAutomaton(): TRegexAutomaton = {
+    val a1 = m1.createAutomaton()
+    val a2 = m2.createAutomaton()
 
-}
-
-// Qantify how often we macht on a node
-class QuantifierMatch(m: Match) extends Match {
-
+    a1.end.to(a2.start)
+    new TRegexAutomaton(a1.start, a2.end)
+  }
 }
 
 class Star(m: Match) extends Match {
+  override def createAutomaton(): TRegexAutomaton = {
+    val a = m.createAutomaton()
+    val out = new State()
 
+    a.start.to(out)
+    a.end.to(a.start)
+
+    a
+  }
 }
 
 class Questionmark(m: Match) extends Match {
+  override def createAutomaton(): TRegexAutomaton = {
+    val a = m.createAutomaton()
+
+    val start = a.start
+    val end = a.end
+    start.to(end)
+
+    a
+  }
 
 }
 
@@ -79,67 +128,66 @@ trait FrontendRegex {
   def + = PlusF(this)
 
   def |(m: FrontendRegex) = OrF(this, m)
-
 }
 
 // Simple node match
-case class n[N <: Rewritable : ClassTag]() extends FrontendRegex {
+case class n[N <: Rewritable : TypeTag]() extends FrontendRegex {
   override def getAST: Match = new NMatch[N](_ => true, false)
 }
 
 // Match node in case predicate holds
-case class nP[N <: Rewritable : ClassTag](predicate: N => Boolean) extends FrontendRegex {
+case class nP[N <: Rewritable : TypeTag](predicate: N => Boolean) extends FrontendRegex {
   override def getAST: Match = new NMatch[N](predicate, true)
 }
 
 // Match node and mark rewritable
-case class r[N <: Rewritable : ClassTag]() extends FrontendRegex {
+case class r[N <: Rewritable : TypeTag]() extends FrontendRegex {
   override def getAST: Match = new NMatch[N](_ => true, true)
 }
 
 // Match node and mark rewritable in case predicate holds
-case class rP[N <: Rewritable : ClassTag](predicate: N => Boolean) extends FrontendRegex {
+case class rP[N <: Rewritable : TypeTag](predicate: N => Boolean) extends FrontendRegex {
   override def getAST: Match = new NMatch[N](predicate, true)
 }
 
 
 // match context
-case class c[N <: Rewritable : ClassTag](con: N => Any) extends FrontendRegex {
+case class c[N <: Rewritable : TypeTag](con: N => Any) extends FrontendRegex {
   override def getAST: Match = new ContextNMatch[N](con, _ => true, false)
 }
 
 // match context and mark node for rewriting
-case class cr[N <: Rewritable : ClassTag](con: N => Any) extends FrontendRegex {
+case class cr[N <: Rewritable : TypeTag](con: N => Any) extends FrontendRegex {
   override def getAST: Match = new ContextNMatch[N](con, _ => true, true)
 }
 
 // match context in case predicate holds
-case class cP[N <: Rewritable : ClassTag](con: N => Any, predicate: N => Boolean) extends FrontendRegex {
+case class cP[N <: Rewritable : TypeTag](con: N => Any, predicate: N => Boolean) extends FrontendRegex {
   override def getAST: Match = new ContextNMatch[N](con, predicate, false)
 }
 
 // match context in case predicate holds and mark node for rewriting
-case class cPr[N <: Rewritable : ClassTag](con: N => Any, predicate: N => Boolean) extends FrontendRegex {
+case class cPr[N <: Rewritable : TypeTag](con: N => Any, predicate: N => Boolean) extends FrontendRegex {
   override def getAST: Match = new ContextNMatch[N](con, predicate, true)
 }
 
 // match node and select the child for futher recursion
-case class inCh[N <: Rewritable : ClassTag](ch: N => Rewritable) extends FrontendRegex {
+case class inCh[N <: Rewritable : TypeTag](ch: N => Rewritable) extends FrontendRegex {
   override def getAST: Match = new ChildSelectNMatch[N](ch, _ => true, false)
 }
 
 // match node and select the child for futher recursion and mark as rewritable
-case class iCr[N <: Rewritable : ClassTag](ch: N => Rewritable) extends FrontendRegex {
+case class iCr[N <: Rewritable : TypeTag](ch: N => Rewritable) extends FrontendRegex {
   override def getAST: Match = new ChildSelectNMatch[N](ch, _ => true, true)
 }
 
 // match node in case predicate holds and select the child for futher recursion
-case class inChP[N <: Rewritable : ClassTag](ch: N => Rewritable, predicate: N => Boolean) extends FrontendRegex {
+case class inChP[N <: Rewritable : TypeTag](ch: N => Rewritable, predicate: N => Boolean) extends FrontendRegex {
   override def getAST: Match = new ChildSelectNMatch[N](ch, predicate, false)
 }
 
 // match node in case predicate holds and select the child for futher recursion and mark as rewritable
-case class inChPr[N <: Rewritable : ClassTag](ch: N => Rewritable, predicate: N => Boolean) extends FrontendRegex {
+case class inChPr[N <: Rewritable : TypeTag](ch: N => Rewritable, predicate: N => Boolean) extends FrontendRegex {
   override def getAST: Match = new ChildSelectNMatch[N](ch, predicate, true)
 }
 

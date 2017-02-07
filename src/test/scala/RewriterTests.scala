@@ -78,7 +78,7 @@ class RewriterTests extends FunSuite with Matchers {
       val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
         case (o@Or(l, r), c) =>
           InhaleExhaleExp(CondExp(NonDet(c.c), l, r)(), c.noRec[Or](o))()
-      }, Seq(), {
+      }, Seq.empty, {
         case (q: QuantifiedExp, c) => c ++ q.variables
       })
 
