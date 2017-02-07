@@ -1,4 +1,4 @@
-package viper.silver.ast.utility
+package viper.silver.ast.utility.Rewriter
 
 /**
   * Created by simonfri on 20.12.2016.

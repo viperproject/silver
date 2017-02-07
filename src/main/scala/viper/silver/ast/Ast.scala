@@ -9,6 +9,7 @@ package viper.silver.ast
 import scala.reflect.ClassTag
 import pretty.FastPrettyPrinter
 import utility._
+import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ErrorReason}
 

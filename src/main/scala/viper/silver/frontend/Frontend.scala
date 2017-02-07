@@ -11,7 +11,7 @@ import java.nio.file.{Files, Path}
 
 import scala.io.Source
 import viper.silver.ast._
-import viper.silver.ast.utility.Strategy
+import viper.silver.ast.utility.Rewriter.Strategy
 import viper.silver.verifier.errors.{AssertFailed, ExhaleFailed}
 import viper.silver.verifier.reasons.AssertionFalse
 import viper.silver.verifier._

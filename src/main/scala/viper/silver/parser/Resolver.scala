@@ -9,7 +9,7 @@ package viper.silver.parser
 import scala.collection.mutable
 import scala.reflect._
 import viper.silver.ast.MagicWandOp
-import viper.silver.ast.utility.{StrategyVisitor, Visitorr}
+import viper.silver.ast.utility.Visitorr
 import viper.silver.FastMessaging
 
 /**

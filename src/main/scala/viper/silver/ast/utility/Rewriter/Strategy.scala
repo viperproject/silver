@@ -1,6 +1,7 @@
-package viper.silver.ast.utility
+package viper.silver.ast.utility.Rewriter
 
-import viper.silver.ast.utility.Traverse.Traverse
+import viper.silver.ast.utility.Rewriter.Traverse.Traverse
+import viper.silver.ast.utility._
 
 /**
   * Created by simonfri on 05.12.2016.

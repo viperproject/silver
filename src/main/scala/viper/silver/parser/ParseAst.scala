@@ -9,7 +9,7 @@ package viper.silver.parser
 import scala.collection.GenTraversable
 import scala.language.implicitConversions
 import scala.util.parsing.input.Position
-import viper.silver.ast.utility.{Rewritable, Visitorr}
+import viper.silver.ast.utility.Visitorr
 import viper.silver.ast.MagicWandOp
 import viper.silver.FastPositions
 import viper.silver.parser.TypeHelper._

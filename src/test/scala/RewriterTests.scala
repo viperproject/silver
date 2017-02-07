@@ -9,6 +9,7 @@ import java.nio.file.{Path, Paths}
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver._
 import viper.silver.ast._
+import viper.silver.ast.utility.Rewriter._
 import viper.silver.ast.utility._
 import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silver.verifier.AbstractError

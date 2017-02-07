@@ -1,7 +1,8 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
-import viper.silver.ast.utility.Traverse.Traverse
+import viper.silver.ast.utility.Rewriter._
+import viper.silver.ast.utility.Rewriter.Traverse.Traverse
 import viper.silver.verifier.errors.ErrorNode
 
 /**
