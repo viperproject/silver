@@ -12,11 +12,15 @@ object GenericTriggerGenerator {
   case class TriggerSet[E](exps: Seq[E])
 }
 
+/** Attention: The trigger generator is *not* thread-safe, among other things because its
+  * filters for accepting/rejecting possible triggers can be changed
+  * (see, e.g. [[GenericTriggerGenerator.setCustomIsForbiddenInTrigger]]).
+  */
 abstract class GenericTriggerGenerator[Node <: AnyRef,
                                        Type <: AnyRef,
                                        Exp  <: Node : ClassTag,
                                        Var <: Node : ClassTag,
-                                       Quantification <: Exp : ClassTag] {
+                                       Quantification <: Exp : ClassTag] extends Mutable {
   /* 2014-09-22 Malte: I tried to use abstract type members instead of type
    * parameters, but that resulted in the warning "The outer reference in this
    * type test cannot be checked at run time.".
@@ -51,7 +55,7 @@ abstract class GenericTriggerGenerator[Node <: AnyRef,
   protected def getArgs(e: Exp): Seq[Exp]
 
   /* True iff the given node is not allowed in triggers */
-  protected def isForbiddenInTrigger(e: Exp): Boolean
+  def isForbiddenInTrigger(e: Exp): Boolean
 
   protected var customIsPossibleTrigger: PartialFunction[Exp, Boolean] = PartialFunction.empty
   def setCustomIsPossibleTrigger(f: PartialFunction[Exp, Boolean]) { customIsPossibleTrigger = f }
