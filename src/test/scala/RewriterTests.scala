@@ -72,7 +72,7 @@ class RewriterTests extends FunSuite with Matchers {
       }
 
       // Regular expression
-      c[QuantifiedExp]( _.variables).** >> r[Or] //|-[Node, LocalVarDecl] -> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.c.flatten), o.left, o.right)(), c.noRec[Or](o))()}
+      (c[QuantifiedExp]( _.variables).** >> r[Or]).|->[Node, Seq[LocalVarDecl]] { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), o)()}
 
 
       val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
