@@ -47,6 +47,15 @@ trait StrategyInterface[A <: Rewritable] {
     new ConcatinatedStrategy[A](this, s)
   }
 
+  /**
+    * This method can be overridden to control the creation of a new node by possibly adding metadata to it
+    *
+    * @param old Node before transformation
+    * @param now Node after transformation
+    * @return Node with possibly filled in metadata or other modification
+    */
+  protected def preserveMetaData(old: A, now: A): A = now
+
 }
 
 object StrategyBuilder {
@@ -155,15 +164,6 @@ class Strategy[A <: Rewritable, C <: Context[A]](p: PartialFunction[(A, C), A]) 
   def execute[T <: A](node: A, ctxt: PartialContext[A, C]): T = {
     selectStrat(node, ctxt.get(this)).asInstanceOf[T]
   }
-
-  /**
-    * This method can be overridden to control the creation of a new node by possibly adding metadata to it
-    *
-    * @param old Node before transformation
-    * @param now Node after transformation
-    * @return Node with possibly filled in metadata or other modification
-    */
-  protected def preserveMetaData(old: A, now: A): A = now
 
   def executeTopDown(node: A, context: C): A = {
 

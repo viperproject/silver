@@ -14,14 +14,14 @@ class MatchState() extends State {
     matchTransition = Some(new Transition(this, target, Some(onInput)))
   }
 
-  def performTransition(input: Rewritable): (List[MatchState], TransitionInfo) = {
+  def performTransition(input: Rewritable): (List[MatchState], Seq[TransitionInfo]) = {
     matchTransition match {
-      case None => (eTransitions.map( _.target).flatMap( closure ), NoTransInfo())
+      case None => (eTransitions.map( _.target).flatMap( closure ), Seq(NoTransInfo()))
       case Some(t) => {
         if(t.onInput.isDefined && t.onInput.get.holds(input)) {
-          (t.target.performTransition()._1, t.onInput.get.getTransitionInfo(input))
+          (t.target.performTransition(), t.onInput.get.getTransitionInfo(input))
         } else {
-          (Nil, NoTransInfo())
+          (Nil, Seq(NoTransInfo()))
         }
       }
     }
@@ -48,9 +48,9 @@ abstract class State() {
 
 
 
-  def performTransition(): (List[MatchState], TransitionInfo) = {
+  def performTransition(): List[MatchState] = {
     val transitionTargets:List[State] = eTransitions.collect { case t:Transition => t.target }
-    (transitionTargets.flatMap( closure ), NoTransInfo())
+    transitionTargets.flatMap( closure )
   }
 
   protected def closure(state: State): List[MatchState] = {
