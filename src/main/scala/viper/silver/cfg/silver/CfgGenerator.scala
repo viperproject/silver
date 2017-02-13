@@ -196,7 +196,6 @@ object CfgGenerator {
         val target = TmpLabel(name)
         addStatement(JumpStmt(target))
       case Label(name, invs) =>
-        // TODO: Handle invariants.
         val label = TmpLabel(name)
         addLabel(label)
         addStatement(WrappedStmt(stmt))
@@ -413,8 +412,14 @@ object CfgGenerator {
 
     private def finalizeBlock() = {
       current.foreach { index =>
-        val stmts = tmpStmts.toList
-        addBlock(index, StatementBlock(stmts))
+        val block: SilverBlock = tmpStmts.toList match {
+          case (l@Label(_, invs)) :: rest if invs.nonEmpty =>
+            val label = Label(l.name, Nil)(pos = l.pos, l.info)
+            LoopHeadBlock(invs, label :: rest)
+          case stmts =>
+            StatementBlock(stmts)
+        }
+        addBlock(index, block)
       }
       tmpStmts.clear()
     }
