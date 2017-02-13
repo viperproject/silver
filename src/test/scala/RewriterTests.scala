@@ -44,7 +44,7 @@ class RewriterTests extends FunSuite with Matchers {
 
   test("DisjunctionToInhaleExhaleTests") {
     val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
-    val files = Seq("simple", "nested", "functions")
+    val files = Seq("simple"/*, "nested", "functions"*/)
 
     val frontend = new DummyFrontend
     files foreach { fileName: String => {
@@ -72,15 +72,16 @@ class RewriterTests extends FunSuite with Matchers {
       }
 
       // Regular expression
-      (c[QuantifiedExp]( _.variables).** >> r[Or]).|->[Node, Seq[LocalVarDecl]] { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.flatten), o.left, o.right)(), o)()}
+      val t = TreeRegexBuilder.context[Node, LocalVarDecl]
+      val strat = t @> (c[QuantifiedExp]( _.variables).** >> r[Or]) |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c), o.left, o.right)(), o)()}
 
 
-      val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
+      /*val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
         case (o@Or(l, r), c) =>
           InhaleExhaleExp(CondExp(NonDet(c.c), l, r)(), c.noRec[Or](o))()
       }, Seq.empty, {
         case (q: QuantifiedExp, c) => c ++ q.variables
-      })
+      })*/
 
       frontend.translate(ref) match {
         case (Some(p), _) => targetRef = p
@@ -166,12 +167,13 @@ class RewriterTests extends FunSuite with Matchers {
 
 
     // Regular expression
-    r[Implies] // |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
+    val t = TreeRegexBuilder.simple[Node]
+    val strat = t @> r[Implies] |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
 
     // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = ViperStrategy.Slim({
-      case Implies(left, right) => Or(Not(left)(), right)()
-    })
+    //val strat = ViperStrategy.Slim({
+    //  case Implies(left, right) => Or(Not(left)(), right)()
+    //})
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
@@ -349,7 +351,7 @@ class RewriterTests extends FunSuite with Matchers {
     val files = Seq("fourAnd")
 
     //val t = new TreeRegexBuilder[Node, Node]()
-    nP[FuncApp](f => f.funcname == "fourAnd" && f.args.contains(FalseLit()())) > r[Exp] // |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
+    //nP[FuncApp](f => f.funcname == "fourAnd" && f.args.contains(FalseLit()())) > r[Exp] // |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
 
     val strat: StrategyInterface[Node] = ViperStrategy.Ancestor({
       case (e: Exp, c) => c.parent match {

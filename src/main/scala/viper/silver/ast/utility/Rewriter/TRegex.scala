@@ -10,6 +10,7 @@ import viper.silver.ast._
 import viper.silver.ast.utility._
 
 import scala.language.implicitConversions
+import scala.reflect.api
 import scala.reflect.runtime.universe._
 
 
@@ -20,8 +21,26 @@ trait Match {
 
 // Matches on nodes directly
 class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boolean) extends Match {
-  def matches[T: TypeTag](n: T) =
-    typeOf[T] <:< typeOf[N]
+
+  // Im not happy with this method. It is basically: n.isInstanceOf[N] that works around type erasure
+  def matches[T: TypeTag](n: T):Boolean = {
+    // TODO: This code works but im not really familiar with reflection. Is there a better solution?
+    val mirror = runtimeMirror(n.getClass.getClassLoader)  // obtain runtime mirror
+    val sym = mirror.staticClass(n.getClass.getName)  // obtain class symbol for `n`
+    val tpe = sym.selfType  // obtain type object for `n`
+
+    // create a type tag which contains above type object
+    val t1 = TypeTag(mirror, new api.TypeCreator {
+      def apply[U <: api.Universe with Singleton](m: api.Mirror[U]) =
+        if (m eq mirror) tpe.asInstanceOf[U # Type]
+        else throw new IllegalArgumentException(s"Type tag defined in $mirror cannot be migrated to other mirrors.")
+    }).tpe
+
+
+    val t2 = typeOf[N]
+    val bres =  t1 <:< t2
+    bres
+  }
 
   def holds(node: Rewritable): Boolean = {
     if (matches(node)) {
@@ -32,15 +51,14 @@ class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boo
   }
 
   override def createAutomaton() = {
-    val start = new MatchState()
-    val end = new EpsilonState()
+    val start = new State
+    val end = new State
 
-    start.toMatch(end, this)
-
+    start.setMTrans(end, this)
     new TRegexAutomaton(start, end)
   }
 
-  def getTransitionInfo(n: Rewritable): Seq[TransitionInfo] = Seq(NoTransInfo()) ++ (if(rewrite) Seq(MarkedForRewrite()) else Nil)
+  def getTransitionInfo(n: Rewritable): Seq[TransitionInfo] = Seq.empty[TransitionInfo] ++ (if(rewrite) Seq(MarkedForRewrite()) else Nil)
 
 }
 
@@ -66,47 +84,50 @@ class OrMatch(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
     val a1 = m1.createAutomaton()
     val a2 = m2.createAutomaton()
 
-    val start = new EpsilonState
-    val end = new EpsilonState
+    val start = new State
+    val end = new State
 
-    start.to(a1.start)
-    start.to(a2.start)
-    a1.end.to(end)
-    a2.end.to(end)
+    start.addETrans(a1.start)
+    start.addETrans(a2.start)
+    a1.end.addETrans(end)
+    a2.end.addETrans(end)
 
     new TRegexAutomaton(start, end)
   }
 }
 
+// Put the two automatas one after the other
 class Nested(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
   override def createAutomaton(): TRegexAutomaton = {
     val a1 = m1.createAutomaton()
     val a2 = m2.createAutomaton()
 
-    a1.end.to(a2.start)
+    a1.end.addETrans(a2.start)
     new TRegexAutomaton(a1.start, a2.end)
   }
 }
 
+// Allow to skip or iterate on the automaton indefinitely
 class Star(m: Match) extends Match {
   override def createAutomaton(): TRegexAutomaton = {
     val a = m.createAutomaton()
-    val out = new EpsilonState
+    val out = new State
 
-    a.start.to(out)
-    a.end.to(a.start)
+    a.start.addETrans(out)
+    a.end.addETrans(a.start)
 
-    a
+    new TRegexAutomaton(a.start, out)
   }
 }
 
+// 0 or 1 occurence. Simply connect start node with end node with an epsilon transformation.
 class Questionmark(m: Match) extends Match {
   override def createAutomaton(): TRegexAutomaton = {
     val a = m.createAutomaton()
 
     val start = a.start
     val end = a.end
-    start.to(end)
+    start.addETrans(end)
 
     a
   }
@@ -114,12 +135,11 @@ class Questionmark(m: Match) extends Match {
 }
 
 class TreeRegexBuilder[N <: Rewritable, C, S](val accumulator:(S, C)=>S) {
-  var regex: Option[FrontendRegex] = None
+  def @>(f: FrontendRegex) = new TreeRegexBuilderWithMatch[N, C, S](accumulator, f)
+}
 
-  def matcher(f: FrontendRegex) = regex = Some(f)
-  def transform(p: PartialFunction[(N, Seq[C]), N]) = new RegexStrategy[N, C](regex.get.getAST.createAutomaton(), p)
-
-
+class TreeRegexBuilderWithMatch[N <: Rewritable, C, S](val accumulator:(S, C) => S, regex: FrontendRegex) {
+  def |->(p: PartialFunction[(N, Seq[C]), N]) = new RegexStrategy[N, C](regex.getAST.createAutomaton(), p)
 }
 
 object TreeRegexBuilder {
@@ -259,11 +279,11 @@ class RegexStrategy[N <: Rewritable, C](a: TRegexAutomaton, p: PartialFunction[(
     val matches = collection.mutable.ListBuffer.empty[(N, Seq[C])]
 
     // Recursively matches on the AST by iterating through the automaton
-    def recurse(n: Rewritable, s:MatchState, ctxt:Seq[C],  marked:Seq[(N, Seq[C])]): Unit = {
-
+    def recurse(n: Rewritable, s:State, ctxt:Seq[C],  marked:Seq[(N, Seq[C])]): Unit = {
       // Base case: if we reach accepting state we matched and can add all marked nodes to the list
       if(s.isAccepting) {
         marked.foreach( matches.append(_) )
+        return
       }
 
       // Perform possible transition and obtain actions.
@@ -294,8 +314,6 @@ class RegexStrategy[N <: Rewritable, C](a: TRegexAutomaton, p: PartialFunction[(
         case ContextInfo(c:Any) => newCtxt = ctxt ++ Seq(c.asInstanceOf[C])
         // Only recurse if we are the selected child
         case ChildSelectInfo(r:Rewritable) => newChildren.filter( _ eq r )
-        // Do nothing
-        case NoTransInfo() =>
       }
 
       // Perform further recursion for each child and for each state
@@ -305,6 +323,19 @@ class RegexStrategy[N <: Rewritable, C](a: TRegexAutomaton, p: PartialFunction[(
         })
       })
     }
+
+    // Use the recurse function to match paths that start at a point where the first pattern matches
+    val startStates = a.start.effective
+    val visitor = StrategyBuilder.SlimVisitor[N]( n => {
+      // Start recursion if any of the start states is valid for recursion
+      startStates.foreach( s => {
+        if(s.isValidInput(n))
+          recurse(n, s, Seq.empty[C], Seq.empty[(N, Seq[C])])
+      } )
+    })
+
+    visitor.visit(node)
+
 
     // Replace matches with product nodes
     val replacer = StrategyBuilder.SlimStrategy[N]({

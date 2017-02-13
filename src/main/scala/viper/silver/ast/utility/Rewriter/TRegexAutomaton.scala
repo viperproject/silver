@@ -7,76 +7,88 @@ package viper.silver.ast.utility.Rewriter
 // Encapsulation of start and end state in an automaton to make it expandable
 class TRegexAutomaton(val start:State, val end:State)
 
-class MatchState() extends State {
-  var matchTransition: Option[Transition] = None
+class State(private var mTrans:Option[MTransition] = None, private var eTrans:Seq[ETransition] = Seq.empty[ETransition]) {
 
-  def toMatch(target: EpsilonState, onInput: NMatch[_ <: Rewritable]): Unit = {
-    matchTransition = Some(new Transition(this, target, Some(onInput)))
+  // Don't make this immutable because constructing a circle out of immutable objects is cumbersome
+  def setMTrans(to: State, matcher: NMatch[_]) = {
+    mTrans = Some(new MTransition(this, to, matcher))
   }
 
-  def performTransition(input: Rewritable): (List[MatchState], Seq[TransitionInfo]) = {
-    matchTransition match {
-      case None => (eTransitions.map( _.target).flatMap( closure ), Seq(NoTransInfo()))
-      case Some(t) => {
-        if(t.onInput.isDefined && t.onInput.get.holds(input)) {
-          (t.target.performTransition(), t.onInput.get.getTransitionInfo(input))
-        } else {
-          (Nil, Seq(NoTransInfo()))
-        }
-      }
+  def addETrans(to: State) = {
+    eTrans ++= Seq(new ETransition(this, to))
+    effectiveCache = Set.empty[State]
+  }
+  // Epsilon state denotes that we will only be passed through and don't really exist in the reduced state machine
+  def isEpsilonState = mTrans.isEmpty
+
+  def isEffectiveState = !isEpsilonState || isAccepting
+  // A state is accepting if it does not have any further transitions. Then the Regex is recognized
+  def isAccepting = eTrans.isEmpty && mTrans.isEmpty
+
+  def isValidInput(input: Rewritable): Boolean = {
+    mTrans match {
+      case None => false
+      case Some(m) => m.matcher.holds(input)
     }
   }
 
-}
-
-class EpsilonState extends State {}
-
-abstract class State() {
-  var eTransitions = List.empty[Transition]
-
-  var accept = false
-
-  def accepting() = accept = true
-  def notAccepting() = accept = false
-  def isAccepting = accept
-
-
-
-  def to(target: State): Unit = {
-    eTransitions = new Transition(this, target, None) :: eTransitions
-  }
-
-
-
-  def performTransition(): List[MatchState] = {
-    val transitionTargets:List[State] = eTransitions.collect { case t:Transition => t.target }
-    transitionTargets.flatMap( closure )
-  }
-
-  protected def closure(state: State): List[MatchState] = {
-    state match {
-      case m:MatchState => List(m)
-      case s:State => {
-        eTransitions.map( _.target).flatMap( closure )
-      }
+  def performTransition(n: Rewritable):(Set[State], Seq[TransitionInfo]) = {
+    mTrans match {
+      case None =>
+        println("Error. Cannot perform transition with input on an epsilon state")
+        (Set.empty[State], Seq.empty[TransitionInfo])
+      case Some(t) if !t.matcher.holds(n) =>
+        (Set.empty[State], Seq.empty[TransitionInfo])
+      case Some(t) =>
+        val infos = t.matcher.getTransitionInfo(n)
+        val states = t.target.effective
+        (states ,infos)
     }
   }
 
+  // Effective is every state that includes at least one match transition
+  // Find out every effective state that is reachable from this state. Cache the computed result
+  private var effectiveCache: Set[State] = Set.empty[State]
+  def effective: Set[State] = {
+    if(effectiveCache.isEmpty) {
+      effectiveCache = allStates(Set.empty[State]).filter( _.isEffectiveState)
+    }
+    effectiveCache
+  }
+
+  def allStates(collected: Set[State]): Set[State] = {
+    if(collected.contains(this)) {
+      collected
+    } else if(eTrans.isEmpty) {
+      Set(this) ++ collected
+    }
+    else {
+      eTrans.map({ eT => eT.target.allStates(Set(this) ++ collected) }).foldLeft(Set.empty[State])( (s, set) => set ++ s)
+    }
+  }
 }
 
-class Transition(val source: State, val target: State, val onInput: Option[NMatch[_]]) {
+abstract class Transition {
+  def source: State
+  def target: State
 
+  def getActions(n: Rewritable): Seq[TransitionInfo]
+}
+
+class ETransition(val source: State, val target: State) extends Transition {
+  override def getActions(n: Rewritable): Seq[TransitionInfo] = Seq.empty[TransitionInfo]
+}
+
+class MTransition(val source: State, val target: State, val matcher: NMatch[_]) extends Transition {
+  override def getActions(n: Rewritable): Seq[TransitionInfo] = matcher.getTransitionInfo(n)
 }
 
 
-class TransitionInfo {
 
-}
+class TransitionInfo
 
 case class ChildSelectInfo(ch: Rewritable) extends TransitionInfo {}
 
 case class MarkedForRewrite() extends TransitionInfo {}
 
 case class ContextInfo(c: Any) extends TransitionInfo {}
-
-case class NoTransInfo() extends TransitionInfo {}

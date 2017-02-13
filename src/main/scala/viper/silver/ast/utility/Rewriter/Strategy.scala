@@ -73,7 +73,7 @@ object StrategyBuilder {
   }
 
   def SlimVisitor[A <: Rewritable](f: A => Unit) = {
-    new StrategyVisitor[A, SimpleContext[A]]({ (a: A, c: SimpleContext[A]) => f(a) })
+    new StrategyVisitor[A, SimpleContext[A]]({ (a: A, c: SimpleContext[A]) => f(a) }) defaultContext new NoContext[A]
   }
 
   def AncestorVisitor[A <: Rewritable](f: (A, ContextA[A]) => Unit) = {
