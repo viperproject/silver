@@ -199,6 +199,7 @@ object CfgGenerator {
         // TODO: Handle invariants.
         val label = TmpLabel(name)
         addLabel(label)
+        addStatement(WrappedStmt(stmt))
       case _: LocalVarAssign |
            _: FieldAssign |
            _: Inhale |
