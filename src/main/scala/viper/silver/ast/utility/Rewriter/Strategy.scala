@@ -172,7 +172,7 @@ class Strategy[A <: Rewritable, C <: Context[A]](p: PartialFunction[(A, C), A]) 
     val newNode: A = rule.execute(node, contextWithMyself).getOrElse(node)
 
     // Create the new Context for children recursion
-    val updatedContext: C = context.update(newNode).asInstanceOf[C]
+    val updatedContext: C = contextWithMyself.update(newNode).asInstanceOf[C]
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     val res = recurseChildren(newNode, executeTopDown(_, updatedContext)) match {
@@ -502,7 +502,7 @@ class StrategyVisitor[A <: Rewritable, C <: Context[A]](val visitNode: (A, C) =>
     visitNode(node, contextWithMyself)
 
     // Create the new Context for children recursion
-    val updatedContext: C = context.update(node).asInstanceOf[C]
+    val updatedContext: C = contextWithMyself.update(node).asInstanceOf[C]
 
     val children = node.getChildren
 

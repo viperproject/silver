@@ -134,18 +134,17 @@ class Questionmark(m: Match) extends Match {
 
 }
 
-class TreeRegexBuilder[N <: Rewritable, C, S](val accumulator:(S, C)=>S) {
-  def @>(f: FrontendRegex) = new TreeRegexBuilderWithMatch[N, C, S](accumulator, f)
+class TreeRegexBuilder[N <: Rewritable, COLL](val accumulator:(COLL, COLL)=>COLL, val comparator:(COLL, COLL)=>Boolean, default: COLL) {
+  def &>(f: FrontendRegex) = new TreeRegexBuilderWithMatch[N, COLL](accumulator, comparator, f, default)
 }
 
-class TreeRegexBuilderWithMatch[N <: Rewritable, C, S](val accumulator:(S, C) => S, regex: FrontendRegex) {
-  def |->(p: PartialFunction[(N, Seq[C]), N]) = new RegexStrategy[N, C](regex.getAST.createAutomaton(), p)
+class TreeRegexBuilderWithMatch[N <: Rewritable, COLL](val accumulator:(COLL, COLL) => COLL, val comparator:(COLL, COLL)=>Boolean, regex: FrontendRegex, default: COLL) {
+  def |->(p: PartialFunction[(N, RegexContext[N, COLL]), N]) = new RegexStrategy[N, COLL](regex.getAST.createAutomaton(), p, new PartialContextR(default, accumulator, comparator))
 }
 
 object TreeRegexBuilder {
-  def collector[N <: Rewritable, C, S](accumulator: (S, C) => S) = new TreeRegexBuilder[N, C, S](accumulator)
-  def context[N <: Rewritable, C]() = collector[N, C, Seq[C]]( (s, c) => s ++ Seq(c) )
-  def simple[N <: Rewritable]() = context[N, Any]()
+  def context[N <: Rewritable, COLL](accumulator: (COLL, COLL) => COLL, comparator: (COLL, COLL)=>Boolean, default: COLL) = new TreeRegexBuilder[N, COLL](accumulator, comparator, default)
+  def simple[N <: Rewritable] = new TreeRegexBuilder[N, Any]( (x, y) => x, (x,y)=> true, 1)
 }
 
 
@@ -166,11 +165,6 @@ trait FrontendRegex {
   def + = PlusF(this)
 
   def |(m: FrontendRegex) = OrF(this, m)
-
-  def |->[N <: Rewritable](p: PartialFunction[N, N]) = ???
-
-  def |->[N <: Rewritable, C](p: PartialFunction[(N, Seq[C]), N]) = new RegexStrategy[N, C](getAST.createAutomaton(), p)
-
 
 }
 
@@ -271,18 +265,77 @@ class Test {
 }
 
 
-class RegexStrategy[N <: Rewritable, C](a: TRegexAutomaton, p: PartialFunction[(N, Seq[C]), N]) extends StrategyInterface[N] {
+
+
+
+class RegexContext[A <: Rewritable, COLL](aList: Seq[A], val c: COLL, transformer: StrategyInterface[A], val upContext: (COLL, COLL) => COLL, val comp:(COLL, COLL)=>Boolean) extends ContextA[A](aList, transformer) {
+  override def addAncestor(n: A): RegexContext[A, COLL] = {
+    new RegexContext(ancestorList ++ Seq(n), c, transformer, upContext, comp)
+  }
+
+  override def replaceNode(n: A): RegexContext[A, COLL] = {
+    new RegexContext(ancestorList.dropRight(1) ++ Seq(n), c, transformer, upContext, comp)
+  }
+
+  def update(con: COLL): RegexContext[A, COLL] = {
+    new RegexContext(ancestorList, upContext(c, con), transformer, upContext, comp)
+  }
+
+  def compare(other: RegexContext[A, COLL]): Boolean = {
+    comp(this.c, other.c)
+  }
+}
+
+class PartialContextR[A <: Rewritable, COLL](val c: COLL, val upContext: (COLL, COLL) => COLL, val comp:(COLL, COLL)=>Boolean) extends PartialContext[A, ContextA[A]] {
+  def get(anc: Seq[A], transformer: StrategyInterface[A]): RegexContext[A, COLL] = new RegexContext[A, COLL](anc, c, transformer, upContext, comp)
+  override def get(transformer: StrategyInterface[A]): RegexContext[A, COLL] = new RegexContext[A, COLL](Seq(), c, transformer, upContext, comp)
+}
+
+
+class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), N], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
+  type CTXT = RegexContext[N, COLL]
+
+  override def transformed(node: Rewritable): N = {
+    super.transformed(node)
+    node.asInstanceOf[N]
+  }
+
+  // Custom data structure for keeping the node context pairs
+  class MatchSet {
+    var map = collection.mutable.ListBuffer.empty[(N, CTXT)]
+
+    def put(tuple: (N, CTXT)) = {
+      val node = tuple._1
+      val context = tuple._2
+      map.zipWithIndex.find( _._1._1 eq node) match {
+        case None => map.append((node, context))
+        case Some(tup) =>
+          val better = (node, if (tup._1._2.compare(context)) tup._1._2 else context)
+          map.remove(tup._2)
+          map.append(better)
+      }
+    }
+
+    def get(node: N): Option[CTXT] = {
+      map.find( _._1 eq node) match {
+        case None => None
+        case Some(t) => Some(t._2)
+      }
+    }
+
+  }
+
 
 
   override def execute[T <: N](node: N): T = {
     // Store found matches here
-    val matches = collection.mutable.ListBuffer.empty[(N, Seq[C])]
+    val matches = new MatchSet
 
     // Recursively matches on the AST by iterating through the automaton
-    def recurse(n: Rewritable, s:State, ctxt:Seq[C],  marked:Seq[(N, Seq[C])]): Unit = {
+    def recurse(n: N, s:State, ctxt:CTXT,  marked:Seq[(N, CTXT)]): Unit = {
       // Base case: if we reach accepting state we matched and can add all marked nodes to the list
       if(s.isAccepting) {
-        marked.foreach( matches.append(_) )
+        marked.foreach( matches.put )
         return
       }
 
@@ -304,14 +357,14 @@ class RegexStrategy[N <: Rewritable, C](a: TRegexAutomaton, p: PartialFunction[(
       // Actions may or may not change marked nodes, children or context
       var newMarked = marked
       var newChildren = children
-      var newCtxt = ctxt
+      var newCtxt = ctxt.addAncestor(n)
 
       // Apply actions
       action foreach {
         // Marked for rewrite TODO: error handling in case node casting fails
-        case MarkedForRewrite() => newMarked = newMarked ++ Seq((n.asInstanceOf[N], ctxt))
+        case MarkedForRewrite() => newMarked = newMarked ++ Seq((n.asInstanceOf[N], newCtxt))
         // Context update TODO: error handling in case context casting fails
-        case ContextInfo(c:Any) => newCtxt = ctxt ++ Seq(c.asInstanceOf[C])
+        case ContextInfo(c:Any) => newCtxt = ctxt.update(c.asInstanceOf[COLL])
         // Only recurse if we are the selected child
         case ChildSelectInfo(r:Rewritable) => newChildren.filter( _ eq r )
       }
@@ -319,51 +372,44 @@ class RegexStrategy[N <: Rewritable, C](a: TRegexAutomaton, p: PartialFunction[(
       // Perform further recursion for each child and for each state
       newChildren.foreach( child => {
         states.foreach( state => {
-          recurse(child, state, newCtxt, newMarked )
+          recurse(child.asInstanceOf[N], state, newCtxt, newMarked )
         })
       })
     }
 
     // Use the recurse function to match paths that start at a point where the first pattern matches
     val startStates = a.start.effective
-    val visitor = StrategyBuilder.SlimVisitor[N]( n => {
+    val visitor = StrategyBuilder.AncestorStrategy[N]( {case (n,c) => {
       // Start recursion if any of the start states is valid for recursion
       startStates.foreach( s => {
         if(s.isValidInput(n))
-          recurse(n, s, Seq.empty[C], Seq.empty[(N, Seq[C])])
+        recurse(n, s, default.get(c.ancestorList.dropRight(1), this), Seq.empty[(N, CTXT)])
       } )
-    })
+      n
+    }})
 
-    visitor.visit(node)
+    visitor.execute(node)
 
-
-    // Replace matches with product nodes
-    val replacer = StrategyBuilder.SlimStrategy[N]({
-      case n =>
-        // Get node context pair and the index of it (_._1._1 corresponds to the node)
-        val replaceInfo = matches.zipWithIndex.find(_._1._1 eq n)
-        replaceInfo match {
-          // Node was not marked for replacement, do nothing
-          case None => n
-          // Node was marked. Replace it
-          case Some(elem) =>
-            // Extract the information into more readable variable names
-            val index = elem._2
-            val node = elem._1._1
-            val context = elem._1._2
-
-            // Remove the element from the list buffer (if we don't do this we run into problem with multiple matches on the same node)
-            matches.remove(elem._2)
-
-            // Produce new version of the node
-            val newNode = p(node, context)
-
-            // User defined function that updates metadata
-            preserveMetaData(node, newNode)
-        }
-    })
-    val result = replacer.execute[T](node)
-    result
+    val result = replaceTopDown(node, matches)
+    result.asInstanceOf[T]
   }
 
+  // Replace matches with product nodes
+  def replaceTopDown(n: N, matches: MatchSet): N = {
+    // Find out if this node is going to be replaced
+    val replaceInfo = matches.get(n)
+
+    // get resulting node from rewriting
+    val resultNode = replaceInfo match {
+      case None => n
+      case Some(elem) => transformed(p(n, elem))
+    }
+
+    val res = recurseChildren(resultNode, replaceTopDown(_, matches)) match {
+      case Some(children) => transformed(resultNode.duplicate(children).asInstanceOf[N])
+      case None => resultNode
+    }
+    val res2 = preserveMetaData(n, res)
+    res2
+  }
 }
