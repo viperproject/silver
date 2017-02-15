@@ -33,6 +33,31 @@ class RewriterTests extends FunSuite with Matchers {
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
   }
 
+  test("Performance_EncodingADTs") {
+    val fileName = "transformations\\Performance\\EncodingADTs"
+
+    val strat = ViperStrategy.Slim({
+      case Implies(left, right) => Or(Not(left)(), right)()
+    })
+
+    val frontend = new DummyFrontend
+
+    val fileRes = getClass.getResource(fileName + ".sil")
+    assert(fileRes != null, s"File $fileName not found")
+    val file = Paths.get(fileRes.toURI)
+    var targetNode: Node = null
+
+    frontend.translate(file) match {
+      case (Some(p), _) => targetNode = p
+      case (None, errors) => println("Problem with program: " + errors)
+    }
+
+
+    val res = time(strat.execute[Program](targetNode))
+
+    assert(true)
+  }
+
 
   test("QuantifiedPermissions") {
     val filePrefix = "transformations\\QuantifiedPermissions\\"
@@ -562,6 +587,15 @@ class RewriterTests extends FunSuite with Matchers {
     val combined = (collect + replace) || fold.repeat
 
     files foreach { name => executeTest(filePrefix, name, combined, frontend) }
+  }
+
+  // From: http://biercoff.com/easily-measuring-code-execution-time-in-scala/
+  def time[R](block: => R): R = {
+    val t0 = System.nanoTime()
+    val result = block    // call-by-name
+    val t1 = System.nanoTime()
+    println("Elapsed time: " + (t1 - t0) + "ns")
+    result
   }
 
   def executeTest(filePrefix: String, fileName: String, strat: StrategyInterface[Node], frontend: DummyFrontend): Unit = {

@@ -35,6 +35,32 @@ class RegexTests extends FunSuite with Matchers {
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
   }
 
+  test("Performance_EncodingADTs") {
+    val fileName = "transformations\\Performance\\EncodingADTs"
+
+    // Regular expression
+    val t = TreeRegexBuilder.simple[Node]
+    // TOO LONG :(
+    val strat = t &> (n[Node].* >> n[Node].*).* >> n[Node].* >> r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
+
+    val frontend = new DummyFrontend
+
+    val fileRes = getClass.getResource(fileName + ".sil")
+    assert(fileRes != null, s"File $fileName not found")
+    val file = Paths.get(fileRes.toURI)
+    var targetNode: Node = null
+
+    frontend.translate(file) match {
+      case (Some(p), _) => targetNode = p
+      case (None, errors) => println("Problem with program: " + errors)
+    }
+
+
+    val res = time(strat.execute[Program](targetNode))
+
+    assert(true)
+  }
+
 
   test("DisjunctionToInhaleExhaleTests") {
     val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
@@ -84,6 +110,21 @@ class RegexTests extends FunSuite with Matchers {
   }
 
 
+  test("PresentationSlides") {
+
+    val filePrefix = "transformations\\PresentationSlides\\"
+    val files = Seq("simple")
+
+    // Regular expression
+    val t = TreeRegexBuilder.simple[Node]
+    val strat = t &> iC[Implies](_.right) > n[Or].+ >> r[TrueLit] |-> { case t:TrueLit => FalseLit()()}
+
+    val frontend = new DummyFrontend
+    files foreach { name => executeTest(filePrefix, name, strat, frontend)}
+
+  }
+
+
   test("ImplicationToDisjunctionTests") {
     val filePrefix = "transformations\\ImplicationsToDisjunction\\"
     val files = Seq("simple", "nested", "traverseEverything")
@@ -91,12 +132,11 @@ class RegexTests extends FunSuite with Matchers {
 
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
-    val strat = t &> r[Implies] |-> { case (i:Implies, c) => Or(Not(i.left)(), i.right)()}
+    val strat = t &> r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
   }
-
 
   test("WhileToIfAndGoto") {
     val filePrefix = "transformations\\WhileToIfAndGoto\\"
@@ -106,7 +146,7 @@ class RegexTests extends FunSuite with Matchers {
     val t = TreeRegexBuilder.simple[Node]
     var count = 0
     val strat = t &> r[While] |-> {
-      case (w: While, _) =>
+      case (w: While) =>
         val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
         count = count + 1
         Seqn(Seq(
@@ -134,7 +174,7 @@ class RegexTests extends FunSuite with Matchers {
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
     var accumulator: mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
 
-    val t = TreeRegexBuilder.simple[Node]
+    val t = TreeRegexBuilder.ancestor[Node]
     val strat = t &> r[Assert] |-> {
       case (a: Assert, c) =>
         accumulator += a.exp
@@ -155,44 +195,13 @@ class RegexTests extends FunSuite with Matchers {
     }
   }
 
-  /*
-  test("FoldConstants") {
-    val filePrefix = "transformations\\FoldConstants\\"
-    val files = Seq("simple", "complex")
-
-
-    val strat = ViperStrategy.Slim({
-      case root@Add(i1: IntLit, i2: IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
-      case root@Sub(i1: IntLit, i2: IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
-      case root@Div(i1: IntLit, i2: IntLit) => if (i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
-      case root@Mul(i1: IntLit, i2: IntLit) => IntLit(i1.i * i2.i)(root.pos, root.info)
-    }) traverse Traverse.BottomUp
-
-    val frontend = new DummyFrontend
-    files foreach { fileName: String => {
-      executeTest(filePrefix, fileName, strat, frontend)
-    }
-    }
-
-  }
 
   test("UnfoldedChildren") {
     val filePrefix = "transformations\\UnfoldedChildren\\"
     val files = Seq("fourAnd")
 
-    //val t = new TreeRegexBuilder[Node, Node]()
-    //nP[FuncApp](f => f.funcname == "fourAnd" && f.args.contains(FalseLit()())) > r[Exp] // |-> { case (e:Exp, _) => FalseLit()(e.pos, e.info, e.errT) }
-
-    val strat: StrategyInterface[Node] = ViperStrategy.Ancestor({
-      case (e: Exp, c) => c.parent match {
-        case f: FuncApp => if (f.funcname == "fourAnd" && c.siblings.contains(FalseLit()())) {
-          FalseLit()(e.pos, e.info)
-        } else {
-          e
-        }
-        case _ => e
-      }
-    }) traverse Traverse.BottomUp
+    val t = TreeRegexBuilder.ancestor[Node]
+    val strat = t &> nP[FuncApp](_.funcname == "fourAnd") > r[Exp] |-> { case (e:Exp, c) => if(c.siblings.contains(FalseLit()())) FalseLit()() else e }
 
     val frontend = new DummyFrontend
     files foreach { fileName: String => {
@@ -208,7 +217,9 @@ class RegexTests extends FunSuite with Matchers {
 
     val frontend = new DummyFrontend
 
-    val strat = ViperStrategy.Ancestor({
+
+    val t = TreeRegexBuilder.ancestor[Node]
+    val strat = t &> r[MethodCall] |-> {
       case (m: MethodCall, anc) =>
         // Get method declaration
         val mDecl = anc.ancestorList.head.asInstanceOf[Program].methods.find(_.name == m.methodName).get
@@ -226,7 +237,7 @@ class RegexTests extends FunSuite with Matchers {
         val inPosts = replacedArgs.map(replaceStrat.execute[Exp](_)).map(x => Inhale(x)(m.pos, m.info))
 
         Seqn(exPres ++ inPosts)(m.pos, m.info)
-    }, Traverse.Innermost)
+    }
 
     files foreach { fileName: String => {
       executeTest(filePrefix, fileName, strat, frontend)
@@ -234,37 +245,6 @@ class RegexTests extends FunSuite with Matchers {
     }
   }
 
-  test("ImplicationSimplification") {
-    val filePrefix = "transformations\\ImplicationSimplification\\"
-    val files = Seq("simple", "complex")
-
-    // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = ViperStrategy.Slim({
-      case i@Implies(left, right) => Or(Not(left)(i.pos, i.info), right)(i.pos, i.info)
-    }) traverse Traverse.BottomUp
-
-    val strat2 = ViperStrategy.Slim({
-      case o@Or(Not(f: FalseLit), right) => Or(TrueLit()(f.pos, f.info), right)(o.pos, o.info)
-      case o@Or(Not(f: TrueLit), right) => Or(FalseLit()(f.pos, f.info), right)(o.pos, o.info)
-      case o@Or(left, Not(f: FalseLit)) => Or(left, TrueLit()(f.pos, f.info))(o.pos, o.info)
-      case o@Or(left, Not(f: TrueLit)) => Or(left, FalseLit()(f.pos, f.info))(o.pos, o.info)
-    })
-
-    val strat3 = ViperStrategy.Slim({
-      case o@Or(t: TrueLit, right) => TrueLit()(o.pos, o.info)
-      case o@Or(left, t: TrueLit) => TrueLit()(o.pos, o.info)
-    })
-
-    val strat4 = ViperStrategy.Slim({
-      case a@Assert(t: TrueLit) => Seqn(Seq())()
-    })
-
-
-    val combined = strat < (strat2 + strat3) || strat4 // TODO continue here
-
-    val frontend = new DummyFrontend
-    files foreach { name => executeTest(filePrefix, name, combined, frontend) }
-  }
 
   test("CopyPropagation") {
     val filePrefix = "transformations\\CopyPropagation\\"
@@ -286,7 +266,8 @@ class RegexTests extends FunSuite with Matchers {
         }
     })
 
-    val fold = ViperStrategy.Slim({
+    val t = TreeRegexBuilder.simple[Node]
+    val fold = t &> r[BinExp] |-> {
       case root@Add(i1: IntLit, i2: IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
       case root@Sub(i1: IntLit, i2: IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
       case root@Div(i1: IntLit, i2: IntLit) => if (i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root
@@ -295,12 +276,12 @@ class RegexTests extends FunSuite with Matchers {
       case root@And(b1: BoolLit, b2: BoolLit) => BoolLit(b1.value && b2.value)(root.pos, root.info)
       case root@EqCmp(b1: BoolLit, b2: BoolLit) => BoolLit(b1.value == b2.value)(root.pos, root.info)
       case root@EqCmp(i1: IntLit, i2: IntLit) => BoolLit(i1.i == i2.i)(root.pos, root.info)
-    }) traverse Traverse.TopDown // Do this top down such that we need to iterate
+    }
 
     val combined = (collect + replace) || fold.repeat
 
     files foreach { name => executeTest(filePrefix, name, combined, frontend) }
-  }*/
+  }
 
   def executeTest(filePrefix: String, fileName: String, strat: StrategyInterface[Node], frontend: DummyFrontend): Unit = {
 
@@ -331,6 +312,14 @@ class RegexTests extends FunSuite with Matchers {
     assert(res.toString == targetRef.toString(), "Files are not equal")
   }
 
+  // From: http://biercoff.com/easily-measuring-code-execution-time-in-scala/
+  def time[R](block: => R): R = {
+    val t0 = System.nanoTime()
+    val result = block    // call-by-name
+    val t1 = System.nanoTime()
+    println("Elapsed time: " + (t1 - t0) + "ns")
+    result
+  }
 
   class DummyFrontend extends SilFrontend {
     def createVerifier(fullCmd: _root_.scala.Predef.String) = ???

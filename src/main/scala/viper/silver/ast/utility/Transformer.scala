@@ -652,8 +652,8 @@ object Transformer {
     case (l: LocalVarAssign, Seq(variable: LocalVar, value: Exp), meta) =>
       LocalVarAssign(variable, value)(meta._1, meta._2, meta._3)
 
-    case (m: MethodCall, Seq(methodname: Method, arguments: Seq[Exp], variables: Seq[LocalVar]), meta) =>
-      MethodCall(methodname, arguments, variables)(meta._1, meta._2, meta._3)
+    case (m: MethodCall, Seq(arguments: Seq[Exp], variables: Seq[LocalVar]), meta) =>
+      MethodCall(m.methodName, arguments, variables)(meta._1, meta._2, meta._3)
 
     case (n: NewStmt, Seq(target: LocalVar, fields: Seq[Field]), meta) =>
       NewStmt(target, fields)(meta._1, meta._2, meta._3)
@@ -675,6 +675,14 @@ object Transformer {
 
     case (t: Trigger, Seq(expressions: Seq[Exp]), meta) =>
       Trigger(expressions)(meta._1, meta._2, meta._3)
+
+    case (n, args, meta) => {
+      println("node: " + n)
+      println("args: " + args)
+      println("meta info: " + meta)
+      println("does not match anything inside the viper duplicator")
+      throw new Exception
+    }
   }
 
   //</editor-fold>

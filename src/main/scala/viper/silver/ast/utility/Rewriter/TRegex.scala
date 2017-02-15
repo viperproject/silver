@@ -142,9 +142,18 @@ class TreeRegexBuilderWithMatch[N <: Rewritable, COLL](val accumulator:(COLL, CO
   def |->(p: PartialFunction[(N, RegexContext[N, COLL]), N]) = new RegexStrategy[N, COLL](regex.getAST.createAutomaton(), p, new PartialContextR(default, accumulator, comparator))
 }
 
+class SimpleRegexBuilder[N <: Rewritable]() {
+  def &>(f: FrontendRegex) = new SimpleRegexBuilderWithMatch[N](f)
+}
+
+class SimpleRegexBuilderWithMatch[N <: Rewritable](regex: FrontendRegex) {
+  def |->(p: PartialFunction[N, N]) = new SlimRegexStrategy[N](regex.getAST.createAutomaton(), p)
+}
+
 object TreeRegexBuilder {
   def context[N <: Rewritable, COLL](accumulator: (COLL, COLL) => COLL, comparator: (COLL, COLL)=>Boolean, default: COLL) = new TreeRegexBuilder[N, COLL](accumulator, comparator, default)
-  def simple[N <: Rewritable] = new TreeRegexBuilder[N, Any]( (x, y) => x, (x,y)=> true, 1)
+  def ancestor[N <: Rewritable] = new TreeRegexBuilder[N, Any]((x,y)=>x, (x,y) => true, null)
+  def simple[N <: Rewritable] = new SimpleRegexBuilder[N]
 }
 
 
@@ -175,7 +184,7 @@ case class n[N <: Rewritable : TypeTag]() extends FrontendRegex {
 
 // Match node in case predicate holds
 case class nP[N <: Rewritable : TypeTag](predicate: N => Boolean) extends FrontendRegex {
-  override def getAST: Match = new NMatch[N](predicate, true)
+  override def getAST: Match = new NMatch[N](predicate, false)
 }
 
 // Match node and mark rewritable
@@ -210,7 +219,7 @@ case class cPr[N <: Rewritable : TypeTag](con: N => Any, predicate: N => Boolean
 }
 
 // match node and select the child for futher recursion
-case class inCh[N <: Rewritable : TypeTag](ch: N => Rewritable) extends FrontendRegex {
+case class iC[N <: Rewritable : TypeTag](ch: N => Rewritable) extends FrontendRegex {
   override def getAST: Match = new ChildSelectNMatch[N](ch, _ => true, false)
 }
 
@@ -220,12 +229,12 @@ case class iCr[N <: Rewritable : TypeTag](ch: N => Rewritable) extends FrontendR
 }
 
 // match node in case predicate holds and select the child for futher recursion
-case class inChP[N <: Rewritable : TypeTag](ch: N => Rewritable, predicate: N => Boolean) extends FrontendRegex {
+case class iCP[N <: Rewritable : TypeTag](ch: N => Rewritable, predicate: N => Boolean) extends FrontendRegex {
   override def getAST: Match = new ChildSelectNMatch[N](ch, predicate, false)
 }
 
 // match node in case predicate holds and select the child for futher recursion and mark as rewritable
-case class inChPr[N <: Rewritable : TypeTag](ch: N => Rewritable, predicate: N => Boolean) extends FrontendRegex {
+case class iCPr[N <: Rewritable : TypeTag](ch: N => Rewritable, predicate: N => Boolean) extends FrontendRegex {
   override def getAST: Match = new ChildSelectNMatch[N](ch, predicate, true)
 }
 
@@ -291,6 +300,13 @@ class PartialContextR[A <: Rewritable, COLL](val c: COLL, val upContext: (COLL, 
   override def get(transformer: StrategyInterface[A]): RegexContext[A, COLL] = new RegexContext[A, COLL](Seq(), c, transformer, upContext, comp)
 }
 
+case class SimpleRegexContext[N <: Rewritable](p: PartialFunction[N, N]) extends PartialFunction[(N, RegexContext[N, Any]), N] {
+  override def isDefinedAt(x: (N, RegexContext[N, Any])): Boolean = p.isDefinedAt(x._1)
+
+  override def apply(x: (N, RegexContext[N, Any])): N = p.apply(x._1)
+}
+
+class SlimRegexStrategy[N <: Rewritable](a: TRegexAutomaton, p:PartialFunction[N, N]) extends RegexStrategy[N, Any](a, SimpleRegexContext(p), new PartialContextR(null, (x,y)=>x, (x,y) => true))
 
 class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), N], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
   type CTXT = RegexContext[N, COLL]
@@ -328,16 +344,12 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
 
 
   override def execute[T <: N](node: N): T = {
+    wasTransformed.clear()
     // Store found matches here
     val matches = new MatchSet
 
     // Recursively matches on the AST by iterating through the automaton
     def recurse(n: N, s:State, ctxt:CTXT,  marked:Seq[(N, CTXT)]): Unit = {
-      // Base case: if we reach accepting state we matched and can add all marked nodes to the list
-      if(s.isAccepting) {
-        marked.foreach( matches.put )
-        return
-      }
 
       // Perform possible transition and obtain actions.
       // If no transition is possible (error state) states will be empty after this call and the recursion will stop
@@ -369,12 +381,22 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
         case ChildSelectInfo(r:Rewritable) => newChildren.filter( _ eq r )
       }
 
-      // Perform further recursion for each child and for each state
-      newChildren.foreach( child => {
-        states.foreach( state => {
-          recurse(child.asInstanceOf[N], state, newCtxt, newMarked )
+      // If we reach an accepting state put it into matches
+      if(states.exists( _.isAccepting)) {
+        newMarked.foreach( matches.put )
+      }
+
+      if(newChildren.nonEmpty) {
+        // Perform further recursion for each child and for each state that is not already accepting
+        newChildren.foreach( child => {
+          states.filter(!_.isAccepting).foreach( state => {
+            recurse(child.asInstanceOf[N], state, newCtxt, newMarked )
+          })
         })
-      })
+      } else {
+
+      }
+
     }
 
     // Use the recurse function to match paths that start at a point where the first pattern matches
@@ -402,7 +424,11 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
     // get resulting node from rewriting
     val resultNode = replaceInfo match {
       case None => n
-      case Some(elem) => transformed(p(n, elem))
+      case Some(elem) =>
+        if(p.isDefinedAt(n, elem))
+          transformed(p(n, elem))
+        else
+          n
     }
 
     val res = recurseChildren(resultNode, replaceTopDown(_, matches)) match {

@@ -621,7 +621,7 @@ private case class Rule[A <: Rewritable, C <: Context[A]](r: PartialFunction[(A,
   override def execute(node: A, context: C): Option[A] = {
     if (r.isDefinedAt(node, context)) {
       val res = r((node, context))
-      context.getTransformer.transformed(res)
+      if(node ne res) context.getTransformer.transformed(res)
       Some(res)
     } else {
       None
