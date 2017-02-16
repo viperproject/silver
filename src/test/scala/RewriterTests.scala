@@ -58,6 +58,31 @@ class RewriterTests extends FunSuite with Matchers {
     assert(true)
   }
 
+  test("Performance_BinomialHeap") {
+    val fileName = "transformations\\Performance\\BinomialHeap"
+
+    val strat = ViperStrategy.Slim({
+      case Implies(left, right) => Or(Not(left)(), right)()
+    })
+
+    val frontend = new DummyFrontend
+
+    val fileRes = getClass.getResource(fileName + ".sil")
+    assert(fileRes != null, s"File $fileName not found")
+    val file = Paths.get(fileRes.toURI)
+    var targetNode: Node = null
+
+    frontend.translate(file) match {
+      case (Some(p), _) => targetNode = p
+      case (None, errors) => println("Problem with program: " + errors)
+    }
+
+
+    val res = time(strat.execute[Program](targetNode))
+
+    assert(true)
+  }
+
 
   test("QuantifiedPermissions") {
     val filePrefix = "transformations\\QuantifiedPermissions\\"

@@ -41,7 +41,32 @@ class RegexTests extends FunSuite with Matchers {
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
     // TOO LONG :(
-    val strat = t &> (n[Node].* >> n[Node].*).* >> n[Node].* >> r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
+    val strat = t &> r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
+
+    val frontend = new DummyFrontend
+
+    val fileRes = getClass.getResource(fileName + ".sil")
+    assert(fileRes != null, s"File $fileName not found")
+    val file = Paths.get(fileRes.toURI)
+    var targetNode: Node = null
+
+    frontend.translate(file) match {
+      case (Some(p), _) => targetNode = p
+      case (None, errors) => println("Problem with program: " + errors)
+    }
+
+
+    val res = time(strat.execute[Program](targetNode))
+    assert(true)
+  }
+
+  test("Performance_BinomialHeap") {
+    val fileName = "transformations\\Performance\\BinomialHeap"
+
+    // Regular expression
+    val t = TreeRegexBuilder.simple[Node]
+    // TOO LONG :(
+    val strat = t &> n[Program] >> iC[Method](_.body) >>  r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
 
     val frontend = new DummyFrontend
 
@@ -109,6 +134,17 @@ class RegexTests extends FunSuite with Matchers {
     }
   }
 
+  test("ComplexMatching") {
+    val filePrefix = "transformations\\ComplexMatching\\"
+    val files = Seq("simple", "complex")
+
+    // Regular expression
+    val t = TreeRegexBuilder.context[Node, Int](_ + _, _ > _, 0)
+    val strat = t &> iCP[Method](_.body, _.name == "here") >> (n[Inhale] | n[Exhale]) >> (c[Or]( _ => 1 )  | c[And]( _ => 1)).* >> rP[LocalVar](v => v.typ == Int && v.name.contains("x")) |-> { case (n:LocalVar, c) => IntLit(c.c)(n.pos, n.info, n.errT)}
+
+    val frontend = new DummyFrontend
+    files foreach { name => executeTest(filePrefix, name, strat, frontend)}
+  }
 
   test("PresentationSlides") {
 
