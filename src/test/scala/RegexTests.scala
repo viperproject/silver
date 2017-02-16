@@ -9,7 +9,6 @@
 import java.nio.file.{Path, Paths}
 
 import org.scalatest.{FunSuite, Matchers}
-import viper.silver._
 import viper.silver.ast._
 import viper.silver.ast.utility.Rewriter._
 import viper.silver.ast.utility._
@@ -41,7 +40,7 @@ class RegexTests extends FunSuite with Matchers {
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
     // TOO LONG :(
-    val strat = t &> r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
+    val strat = t &> n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
 
     val frontend = new DummyFrontend
 
@@ -66,7 +65,7 @@ class RegexTests extends FunSuite with Matchers {
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
     // TOO LONG :(
-    val strat = t &> n[Program] >> iC[Method](_.body) >>  r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
+    val strat = t &> n[Program] >> iC[Method](_.body) >>  n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
 
     val frontend = new DummyFrontend
 
@@ -118,7 +117,7 @@ class RegexTests extends FunSuite with Matchers {
 
       // Regular expression
       val t = TreeRegexBuilder.context[Node, Seq[LocalVarDecl]]( _ ++ _ , _.size > _.size, Seq.empty[LocalVarDecl])
-      val strat = t &> c[QuantifiedExp]( _.variables).** >> r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.c), o.left, o.right)(), c.noRec[Or](o))() }
+      val strat = t &> c[QuantifiedExp]( _.variables).** >> n.r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.c), o.left, o.right)(), c.noRec[Or](o))() }
 
       frontend.translate(ref) match {
         case (Some(p), _) => targetRef = p
@@ -140,7 +139,7 @@ class RegexTests extends FunSuite with Matchers {
 
     // Regular expression
     val t = TreeRegexBuilder.context[Node, Int](_ + _, _ > _, 0)
-    val strat = t &> iCP[Method](_.body, _.name == "here") >> (n[Inhale] | n[Exhale]) >> (c[Or]( _ => 1 )  | c[And]( _ => 1)).* >> rP[LocalVar](v => v.typ == Int && v.name.contains("x")) |-> { case (n:LocalVar, c) => IntLit(c.c)(n.pos, n.info, n.errT)}
+    val strat = t &> iC[Method](_.body, _.name == "here") >> (n[Inhale] | n[Exhale]) >> (c[Or]( _ => 1 )  | c[And]( _ => 1)).* >> n.r[LocalVar]((v:LocalVar) => v.typ == Int && v.name.contains("x")) |-> { case (n:LocalVar, c) => IntLit(c.c)(n.pos, n.info, n.errT)}
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend)}
@@ -153,7 +152,7 @@ class RegexTests extends FunSuite with Matchers {
 
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
-    val strat = t &> iC[Implies](_.right) > n[Or].+ >> r[TrueLit] |-> { case t:TrueLit => FalseLit()()}
+    val strat = t &> iC[Implies](_.right) > n[Or].+ >> n.r[TrueLit] |-> { case t:TrueLit => FalseLit()()}
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend)}
@@ -168,7 +167,7 @@ class RegexTests extends FunSuite with Matchers {
 
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
-    val strat = t &> r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
+    val strat = t &> n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
@@ -181,7 +180,7 @@ class RegexTests extends FunSuite with Matchers {
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
     var count = 0
-    val strat = t &> r[While] |-> {
+    val strat = t &> n.r[While] |-> {
       case (w: While) =>
         val invars: Exp = w.invs.reduce((x: Exp, y: Exp) => And(x, y)())
         count = count + 1
@@ -211,7 +210,7 @@ class RegexTests extends FunSuite with Matchers {
     var accumulator: mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
 
     val t = TreeRegexBuilder.ancestor[Node]
-    val strat = t &> r[Assert] |-> {
+    val strat = t &> n.r[Assert] |-> {
       case (a: Assert, c) =>
         accumulator += a.exp
         c.next match {
@@ -237,7 +236,7 @@ class RegexTests extends FunSuite with Matchers {
     val files = Seq("fourAnd")
 
     val t = TreeRegexBuilder.ancestor[Node]
-    val strat = t &> nP[FuncApp](_.funcname == "fourAnd") > r[Exp] |-> { case (e:Exp, c) => if(c.siblings.contains(FalseLit()())) FalseLit()() else e }
+    val strat = t &> n.P[FuncApp]( _.funcname == "fourAnd") > n.r[Exp] |-> { case (e:Exp, c) => if(c.siblings.contains(FalseLit()())) FalseLit()() else e }
 
     val frontend = new DummyFrontend
     files foreach { fileName: String => {
@@ -255,7 +254,7 @@ class RegexTests extends FunSuite with Matchers {
 
 
     val t = TreeRegexBuilder.ancestor[Node]
-    val strat = t &> r[MethodCall] |-> {
+    val strat = t &> n.r[MethodCall] |-> {
       case (m: MethodCall, anc) =>
         // Get method declaration
         val mDecl = anc.ancestorList.head.asInstanceOf[Program].methods.find(_.name == m.methodName).get
@@ -303,7 +302,7 @@ class RegexTests extends FunSuite with Matchers {
     })
 
     val t = TreeRegexBuilder.simple[Node]
-    val fold = t &> r[BinExp] |-> {
+    val fold = t &> n.r[BinExp] |-> {
       case root@Add(i1: IntLit, i2: IntLit) => IntLit(i1.i + i2.i)(root.pos, root.info)
       case root@Sub(i1: IntLit, i2: IntLit) => IntLit(i1.i - i2.i)(root.pos, root.info)
       case root@Div(i1: IntLit, i2: IntLit) => if (i2.i != 0) IntLit(i1.i / i2.i)(root.pos, root.info) else root

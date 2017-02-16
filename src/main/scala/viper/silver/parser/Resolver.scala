@@ -9,7 +9,7 @@ package viper.silver.parser
 import scala.collection.mutable
 import scala.reflect._
 import viper.silver.ast.MagicWandOp
-import viper.silver.ast.utility.Visitorr
+import viper.silver.ast.utility.Visitor
 import viper.silver.FastMessaging
 
 /**
@@ -825,7 +825,7 @@ case class NameAnalyser() {
     }
 
     def containsSubnode(container : PNode, toFind : PNode) : Boolean = {
-      Visitorr.existsDefined(container, Nodes.subnodes){ case found if (found eq toFind) && found != container => }
+      Visitor.existsDefined(container, Nodes.subnodes){ case found if (found eq toFind) && found != container => }
     }
 
     def containsSubnodeBefore(container: PNode, toFind: PNode, before: PNode) : Boolean = {
@@ -842,7 +842,7 @@ case class NameAnalyser() {
 
         def apply(node: PNode) = node
       }
-      Visitorr.existsDefined(container, Nodes.subnodes)(pred)
+      Visitor.existsDefined(container, Nodes.subnodes)(pred)
     }
 
     def getContainingMethod(node : PNode) : Option[PMethod] = {

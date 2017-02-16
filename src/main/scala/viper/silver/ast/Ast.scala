@@ -53,52 +53,52 @@ trait Node extends Traversable[Node] with Rewritable {
   /** @see [[Nodes.subnodes()]]*/
   def subnodes = Nodes.subnodes(this)
 
-  /** @see [[Visitorr.reduceTree()]]*/
-  def reduceTree[A](f: (Node, Seq[A]) => A) = Visitorr.reduceTree(this, Nodes.subnodes)(f)
+  /** @see [[Visitor.reduceTree()]]*/
+  def reduceTree[A](f: (Node, Seq[A]) => A) = Visitor.reduceTree(this, Nodes.subnodes)(f)
 
-  /** @see [[Visitorr.reduceWithContext()]]*/
+  /** @see [[Visitor.reduceWithContext()]]*/
   def reduceWithContext[C, R](context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R) = {
-    Visitorr.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
+    Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
 
   /** Applies the function `f` to the AST node, then visits all subnodes. */
-  def foreach[A](f: Node => A) = Visitorr.visit(this, Nodes.subnodes) { case a: Node => f(a) }
+  def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
 
-  /** @see [[Visitorr.visit()]]*/
+  /** @see [[Visitor.visit()]]*/
   def visit[A](f: PartialFunction[Node, A]) {
-    Visitorr.visit(this, Nodes.subnodes)(f)
+    Visitor.visit(this, Nodes.subnodes)(f)
   }
 
-  /** @see [[Visitorr.visitWithContext()]]*/
+  /** @see [[Visitor.visitWithContext()]]*/
   def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]) {
-    Visitorr.visitWithContext(this, Nodes.subnodes, c)(f)
+    Visitor.visitWithContext(this, Nodes.subnodes, c)(f)
   }
 
-  /** @see [[Visitorr.visitWithContextManually()]]*/
+  /** @see [[Visitor.visitWithContextManually()]]*/
   def visitWithContextManually[C, A](c: C)(f: C => PartialFunction[Node, A]) {
-    Visitorr.visitWithContextManually(this, Nodes.subnodes, c)(f)
+    Visitor.visitWithContextManually(this, Nodes.subnodes, c)(f)
   }
 
   //** @see [[Visitorr.visit()]] */
   def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
-    Visitorr.visit(this, Nodes.subnodes, f1, f2)
+    Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
 
-  /** @see [[Visitorr.visitOpt()]]*/
+  /** @see [[Visitor.visitOpt()]]*/
   def visitOpt(f: Node => Boolean) {
-    Visitorr.visitOpt(this, Nodes.subnodes)(f)
+    Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
-  /** @see [[Visitorr.visitOpt()]]*/
+  /** @see [[Visitor.visitOpt()]]*/
   def visitOpt[A](f1: Node => Boolean, f2: Node => A) {
-    Visitorr.visitOpt(this, Nodes.subnodes, f1, f2)
+    Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 
-  /** @see [[Visitorr.existsDefined()]]*/
-  def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitorr.existsDefined(this, Nodes.subnodes)(f)
+  /** @see [[Visitor.existsDefined()]]*/
+  def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitor.existsDefined(this, Nodes.subnodes)(f)
 
-  /** @see [[Visitorr.hasSubnode()]]*/
-  def hasSubnode(toFind: Node): Boolean = Visitorr.hasSubnode(this, toFind, Nodes.subnodes)
+  /** @see [[Visitor.hasSubnode()]]*/
+  def hasSubnode(toFind: Node): Boolean = Visitor.hasSubnode(this, toFind, Nodes.subnodes)
 
   override def toString() = FastPrettyPrinter.pretty(this)
 
@@ -113,13 +113,13 @@ trait Node extends Traversable[Node] with Rewritable {
   def replace(original: Node, replacement: Node): this.type =
     this.transform { case `original` => replacement }()
 
-  /** @see [[Visitorr.deepCollect()]]*/
+  /** @see [[Visitor.deepCollect()]]*/
   def deepCollect[A](f: PartialFunction[Node, A]): Seq[A] =
-  Visitorr.deepCollect(Seq(this), Nodes.subnodes)(f)
+  Visitor.deepCollect(Seq(this), Nodes.subnodes)(f)
 
-  /** @see [[Visitorr.shallowCollect()]]*/
+  /** @see [[Visitor.shallowCollect()]]*/
   def shallowCollect[R](f: PartialFunction[Node, R]): Seq[R] =
-  Visitorr.shallowCollect(Seq(this), Nodes.subnodes)(f)
+  Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
 
   def contains(n: Node): Boolean = this.existsDefined {
     case `n` =>

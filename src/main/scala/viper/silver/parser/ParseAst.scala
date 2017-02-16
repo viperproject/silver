@@ -9,7 +9,7 @@ package viper.silver.parser
 import scala.collection.GenTraversable
 import scala.language.implicitConversions
 import scala.util.parsing.input.Position
-import viper.silver.ast.utility.Visitorr
+import viper.silver.ast.utility.Visitor
 import viper.silver.ast.MagicWandOp
 import viper.silver.FastPositions
 import viper.silver.parser.TypeHelper._
@@ -69,32 +69,32 @@ sealed trait PNode extends FastPositioned with Product {
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
 
-  /** @see [[Visitorr.reduceTree()]] */
-  def reduceTree[T](f: (PNode, Seq[T]) => T) = Visitorr.reduceTree(this, Nodes.subnodes)(f)
+  /** @see [[Visitor.reduceTree()]] */
+  def reduceTree[T](f: (PNode, Seq[T]) => T) = Visitor.reduceTree(this, Nodes.subnodes)(f)
 
-  /** @see [[Visitorr.reduceWithContext()]] */
+  /** @see [[Visitor.reduceWithContext()]] */
   def reduceWithContext[C, R](context: C, enter: (PNode, C) => C, combine: (PNode, C, Seq[R]) => R) = {
-    Visitorr.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
+    Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
 
-  /** @see [[Visitorr.visit()]] */
+  /** @see [[Visitor.visit()]] */
   def visit(f: PartialFunction[PNode, Unit]) {
-    Visitorr.visit(this, Nodes.subnodes)(f)
+    Visitor.visit(this, Nodes.subnodes)(f)
   }
 
-  /** @see [[Visitorr.visit()]] */
+  /** @see [[Visitor.visit()]] */
   def visit(f1: PartialFunction[PNode, Unit], f2: PartialFunction[PNode, Unit]) {
-    Visitorr.visit(this, Nodes.subnodes, f1, f2)
+    Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
 
-  /** @see [[Visitorr.visitOpt()]] */
+  /** @see [[Visitor.visitOpt()]] */
   def visitOpt(f: PNode => Boolean) {
-    Visitorr.visitOpt(this, Nodes.subnodes)(f)
+    Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
-  /** @see [[Visitorr.visitOpt()]] */
+  /** @see [[Visitor.visitOpt()]] */
   def visitOpt(f1: PNode => Boolean, f2: PNode => Unit) {
-    Visitorr.visitOpt(this, Nodes.subnodes, f1, f2)
+    Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 
   /** @see [[Transformer.transform()]]  */
@@ -107,13 +107,13 @@ sealed trait PNode extends FastPositioned with Product {
 
     Transformer.transform[this.type](this, pre)(recursive, post, allowChangingNodeType, resultCheck)
 
-  /** @see [[Visitorr.deepCollect()]] */
+  /** @see [[Visitor.deepCollect()]] */
   def deepCollect[A](f: PartialFunction[PNode, A]) : Seq[A] =
-    Visitorr.deepCollect(Seq(this), Nodes.subnodes)(f)
+    Visitor.deepCollect(Seq(this), Nodes.subnodes)(f)
 
-  /** @see [[Visitorr.shallowCollect()]] */
+  /** @see [[Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[PNode, R]): Seq[R] =
-    Visitorr.shallowCollect(Seq(this), Nodes.subnodes)(f)
+    Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
 
   private val _children = scala.collection.mutable.ListBuffer[PNode] ()
 

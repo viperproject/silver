@@ -6,42 +6,79 @@ package viper.silver.ast.utility.Rewriter
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-import viper.silver.ast._
-import viper.silver.ast.utility._
-
 import scala.language.implicitConversions
 import scala.reflect.api
 import scala.reflect.runtime.universe._
 
 
-// Core of the Regex AST
+/**
+  * Base trait of the matching AST. Contains functions used for the DSL and creates the Regex Syntax Tree.
+  */
 trait Match {
+
+  /**
+    * Create a finite automaton out of this matcher
+    *
+    * @return The generated automaton
+    */
   def createAutomaton(): TRegexAutomaton
+
+  // Basic operators
+
+  // Appends one match to the other
+  def >(m: Match) = new Nested(this, m)
+
+  // Conditional between two matches
+  def |(m: Match) = new OrMatch(this, m)
+
+  // 0 or 1 occurences of the match
+  def ? = new Questionmark(this)
+
+  // O or more occurences of the match (directly after each other)
+  def * = new Star(this)
+
+  // Second level operators (can be expressed with basic operators)
+
+  // 1 or more occurences of the match (directly after each other)
+  def + = this > this.*
+
+  // Match occurs arbitrarily deep down a tree
+  def >>(m: Match) = this > n.Wildcard.* > m
+
+  // 0 or more occurences of the match (not necessarily directly after each other)
+  def ** = (this.* > n.Wildcard.*).*
 }
 
-// Matches on nodes directly
+
+// Following classes instantiate the Match trait and provide different matches
+
+
+// NMatch is the basis of all node matches. It matches on all nodes that are a subclass of N and where predicate pred holds
+// If flag rewrite is set, the matched node is marked for rewriting
 class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boolean) extends Match {
 
-  // Im not happy with this method. It is basically: n.isInstanceOf[N] that works around type erasure
-  def matches[T: TypeTag](n: T):Boolean = {
+  // Checks if node n (of type T) is a valid subtype of generic parameter N
+  protected def matches[T: TypeTag](n: T): Boolean = {
     // TODO: This code works but im not really familiar with reflection. Is there a better solution?
-    val mirror = runtimeMirror(n.getClass.getClassLoader)  // obtain runtime mirror
-    val sym = mirror.staticClass(n.getClass.getName)  // obtain class symbol for `n`
-    val tpe = sym.selfType  // obtain type object for `n`
+    val mirror = runtimeMirror(n.getClass.getClassLoader) // obtain runtime mirror
+    val sym = mirror.staticClass(n.getClass.getName) // obtain class symbol for `n`
+    val tpe = sym.selfType // obtain type object for `n`
 
     // create a type tag which contains above type object
     val t1 = TypeTag(mirror, new api.TypeCreator {
       def apply[U <: api.Universe with Singleton](m: api.Mirror[U]) =
-        if (m eq mirror) tpe.asInstanceOf[U # Type]
+        if (m eq mirror) tpe.asInstanceOf[U#Type]
         else throw new IllegalArgumentException(s"Type tag defined in $mirror cannot be migrated to other mirrors.")
     }).tpe
 
 
     val t2 = typeOf[N]
-    val bres =  t1 <:< t2
+    val bres = t1 <:< t2
     bres
   }
 
+
+  // Method that checks if parameter node is a match
   def holds(node: Rewritable): Boolean = {
     if (matches(node)) {
       pred(node.asInstanceOf[N])
@@ -50,6 +87,7 @@ class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boo
     }
   }
 
+  // Create a finite automaton out of this matcher
   override def createAutomaton() = {
     val start = new State
     val end = new State
@@ -58,28 +96,40 @@ class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boo
     new TRegexAutomaton(start, end)
   }
 
-  def getTransitionInfo(n: Rewritable): Seq[TransitionInfo] = Seq.empty[TransitionInfo] ++ (if(rewrite) Seq(MarkedForRewrite()) else Nil)
+  // Provide information about the actions that occur if node n matches on this matcher
+  def getTransitionInfo(n: Rewritable): Seq[TransitionInfo] = if (rewrite) Seq(MarkedForRewrite()) else Seq.empty[TransitionInfo]
 
 }
 
+// A match that provides context for the rewriter.
+// Function c extracts the context from a node.
+// The rest is inherited from NMatch
 class ContextNMatch[N <: Rewritable : TypeTag](c: N => Any, predi: N => Boolean, rewrite: Boolean) extends NMatch[N](predi, rewrite) {
 
+  // Provide information about the actions that occur if node n matches on this matcher
   override def getTransitionInfo(n: Rewritable) = {
-    Seq(ContextInfo(c(n.asInstanceOf[N]))) ++ (if(rewrite) Seq(MarkedForRewrite()) else Nil)
+    Seq(ContextInfo(c(n.asInstanceOf[N]))) ++ super.getTransitionInfo(n)
   }
 }
 
+// A match that allows to express recursion control by limiting the recursion on certain children
+// Function ch extracts the selected children from a node
+// Rest is inherited from NMatch
 class ChildSelectNMatch[N <: Rewritable : TypeTag](ch: N => Rewritable, predi: N => Boolean, rewrite: Boolean) extends NMatch[N](predi, rewrite) {
 
+  // Provide information about the actions that occur if node n matches on this matcher
   override def getTransitionInfo(n: Rewritable): Seq[TransitionInfo] = {
-    Seq(ChildSelectInfo(ch(n.asInstanceOf[N]))) ++ (if(rewrite) Seq(MarkedForRewrite()) else Nil)
+    Seq(ChildSelectInfo(ch(n.asInstanceOf[N]))) ++ super.getTransitionInfo(n)
   }
 }
 
-// Combine node matches together
+//Upper bound for all matches that take two matches and combine them to one
 abstract class CombinatorMatch(val m1: Match, val m2: Match) extends Match
 
+// Either m1 or m2 need to hold in order to match
 class OrMatch(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
+
+  // Create a finite automaton out of this matcher
   override def createAutomaton(): TRegexAutomaton = {
     val a1 = m1.createAutomaton()
     val a2 = m2.createAutomaton()
@@ -96,8 +146,10 @@ class OrMatch(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
   }
 }
 
-// Put the two automatas one after the other
+// Either m1 needs to hold directly before m2 in order to match
 class Nested(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
+
+  // Create a finite automaton out of this matcher
   override def createAutomaton(): TRegexAutomaton = {
     val a1 = m1.createAutomaton()
     val a2 = m2.createAutomaton()
@@ -107,8 +159,10 @@ class Nested(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
   }
 }
 
-// Allow to skip or iterate on the automaton indefinitely
+// m has to match 0 or more times in order to match
 class Star(m: Match) extends Match {
+
+  // Create a finite automaton out of this matcher
   override def createAutomaton(): TRegexAutomaton = {
     val a = m.createAutomaton()
     val out = new State
@@ -120,8 +174,10 @@ class Star(m: Match) extends Match {
   }
 }
 
-// 0 or 1 occurence. Simply connect start node with end node with an epsilon transformation.
+// m has to match 0 or 1 time in order to match
 class Questionmark(m: Match) extends Match {
+
+  // Create a finite automaton out of this matcher
   override def createAutomaton(): TRegexAutomaton = {
     val a = m.createAutomaton()
 
@@ -134,308 +190,88 @@ class Questionmark(m: Match) extends Match {
 
 }
 
-class TreeRegexBuilder[N <: Rewritable, COLL](val accumulator:(COLL, COLL)=>COLL, val comparator:(COLL, COLL)=>Boolean, default: COLL) {
-  def &>(f: FrontendRegex) = new TreeRegexBuilderWithMatch[N, COLL](accumulator, comparator, f, default)
+// The follwing classes help in building a complete Regular expression strategy by allowing it to be filled incrementally with:
+//  1. Regular expression 2. Rewriting function
+
+// Encapsulates information about the nodes we rewrite and the way we gather the context
+// accumulator: Describes how we put the contexts together into one object
+// comparator: Imposes an ordering on the contexts => in case a node matches in two ways on two different contexts the bigger one is taken (true = first param, false = second param)
+// default: The default context we start with
+class TreeRegexBuilder[N <: Rewritable, COLL](val accumulator: (COLL, COLL) => COLL, val comparator: (COLL, COLL) => Boolean, default: COLL) {
+
+  // Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
+  def &>(f: Match) = new TreeRegexBuilderWithMatch[N, COLL](accumulator, comparator, f, default)
 }
 
-class TreeRegexBuilderWithMatch[N <: Rewritable, COLL](val accumulator:(COLL, COLL) => COLL, val comparator:(COLL, COLL)=>Boolean, regex: FrontendRegex, default: COLL) {
-  def |->(p: PartialFunction[(N, RegexContext[N, COLL]), N]) = new RegexStrategy[N, COLL](regex.getAST.createAutomaton(), p, new PartialContextR(default, accumulator, comparator))
+// Encapsulates the information of TreeRegexBuilder + matching information. Used to generate the regex strategy
+class TreeRegexBuilderWithMatch[N <: Rewritable, COLL](val accumulator: (COLL, COLL) => COLL, val comparator: (COLL, COLL) => Boolean, regex: Match, default: COLL) {
+
+  // Generate the regex strategy by adding the rewriting function into the mix
+  def |->(p: PartialFunction[(N, RegexContext[N, COLL]), N]) = new RegexStrategy[N, COLL](regex.createAutomaton(), p, new PartialContextR(default, accumulator, comparator))
 }
 
+// Same as TreeRegexBuilder just without context
 class SimpleRegexBuilder[N <: Rewritable]() {
-  def &>(f: FrontendRegex) = new SimpleRegexBuilderWithMatch[N](f)
+  def &>(f: Match) = new SimpleRegexBuilderWithMatch[N](f)
 }
 
-class SimpleRegexBuilderWithMatch[N <: Rewritable](regex: FrontendRegex) {
-  def |->(p: PartialFunction[N, N]) = new SlimRegexStrategy[N](regex.getAST.createAutomaton(), p)
+// Same as TreeRegexBuilderWithMatch just without context
+class SimpleRegexBuilderWithMatch[N <: Rewritable](regex: Match) {
+  def |->(p: PartialFunction[N, N]) = new SlimRegexStrategy[N](regex.createAutomaton(), p)
 }
 
+// A companion object with useful factory methods to create a rewriting strategy
 object TreeRegexBuilder {
-  def context[N <: Rewritable, COLL](accumulator: (COLL, COLL) => COLL, comparator: (COLL, COLL)=>Boolean, default: COLL) = new TreeRegexBuilder[N, COLL](accumulator, comparator, default)
-  def ancestor[N <: Rewritable] = new TreeRegexBuilder[N, Any]((x,y)=>x, (x,y) => true, null)
+
+  // full control of all the parameters: see TreeRegexBuilder for explanations
+  def context[N <: Rewritable, COLL](accumulator: (COLL, COLL) => COLL, comparator: (COLL, COLL) => Boolean, default: COLL) = new TreeRegexBuilder[N, COLL](accumulator, comparator, default)
+
+  // don't care about the custom context but want ancestor/sibling information
+  def ancestor[N <: Rewritable] = new TreeRegexBuilder[N, Any]((x, y) => x, (x, y) => true, null)
+
+  // don't care about context at all
   def simple[N <: Rewritable] = new SimpleRegexBuilder[N]
 }
 
 
-// Frontend of the Regex AST
-trait FrontendRegex {
-  def getAST: Match
+// This is the frontend of the DSL. Here we create the regular expression AST
 
-  def >>(m: FrontendRegex) = DeepNestedF(this, m)
 
-  def >(m: FrontendRegex) = NestedF(this, m)
+// Node matches
+object n {
 
-  def ? = QuestionmarkF(this)
+  // Only a node match nothing else
+  def apply[N <: Rewritable : TypeTag]() = new NMatch[N]((x: N) => true, false)
 
-  def * = StarF(this)
+  // Node match with a predicate that needs to hold in order to match
+  def P[N <: Rewritable : TypeTag](p: N => Boolean = (x: N) => true) = new NMatch[N](p, false)
 
-  def ** = DoubleStarF(this)
+  // Node match and mark the matched node for rewriting
+  def r[N <: Rewritable : TypeTag]() = new NMatch[N]((x: N) => true, true)
 
-  def + = PlusF(this)
+  // Node match with a predicate that needs to hold in order to match. Mark the matched node for rewriting
+  def r[N <: Rewritable : TypeTag](p: N => Boolean) = new NMatch[N](p, true)
 
-  def |(m: FrontendRegex) = OrF(this, m)
-
+  // This matches on every node
+  def Wildcard = new NMatch[Rewritable]((x: Rewritable) => true, false)
 }
 
-// Simple node match
-case class n[N <: Rewritable : TypeTag]() extends FrontendRegex {
-  override def getAST: Match = new NMatch[N](_ => true, false)
+// Match node and extract context information
+object c {
+
+  // In case the node matches extract context information from the node by applying function con. Only if predicate p holds
+  def apply[N <: Rewritable : TypeTag](con: N => Any, p: N => Boolean = (x: N) => true) = new ContextNMatch[N](con, p, false)
+
+  // Same as apply but in addition mark the matched node for rewriting
+  def r[N <: Rewritable : TypeTag](con: N => Any, p: N => Boolean = (x: N) => true) = new ContextNMatch[N](con, p, true)
 }
 
-// Match node in case predicate holds
-case class nP[N <: Rewritable : TypeTag](predicate: N => Boolean) extends FrontendRegex {
-  override def getAST: Match = new NMatch[N](predicate, false)
-}
+// Match node and select children for further recursion
+object iC {
 
-// Match node and mark rewritable
-case class r[N <: Rewritable : TypeTag]() extends FrontendRegex {
-  override def getAST: Match = new NMatch[N](_ => true, true)
-}
+  // In case the node matches extract the children we want to recurse on. Only if predicate p holds
+  def apply[N <: Rewritable : TypeTag](ch: N => Rewritable, p: N => Boolean = (x: N) => true): Match = new ChildSelectNMatch[N](ch, p, false)
 
-// Match node and mark rewritable in case predicate holds
-case class rP[N <: Rewritable : TypeTag](predicate: N => Boolean) extends FrontendRegex {
-  override def getAST: Match = new NMatch[N](predicate, true)
-}
-
-
-// match context
-case class c[N <: Rewritable : TypeTag](con: N => Any) extends FrontendRegex {
-  override def getAST: Match = new ContextNMatch[N](con, _ => true, false)
-}
-
-// match context and mark node for rewriting
-case class cr[N <: Rewritable : TypeTag](con: N => Any) extends FrontendRegex {
-  override def getAST: Match = new ContextNMatch[N](con, _ => true, true)
-}
-
-// match context in case predicate holds
-case class cP[N <: Rewritable : TypeTag](con: N => Any, predicate: N => Boolean) extends FrontendRegex {
-  override def getAST: Match = new ContextNMatch[N](con, predicate, false)
-}
-
-// match context in case predicate holds and mark node for rewriting
-case class cPr[N <: Rewritable : TypeTag](con: N => Any, predicate: N => Boolean) extends FrontendRegex {
-  override def getAST: Match = new ContextNMatch[N](con, predicate, true)
-}
-
-// match node and select the child for futher recursion
-case class iC[N <: Rewritable : TypeTag](ch: N => Rewritable) extends FrontendRegex {
-  override def getAST: Match = new ChildSelectNMatch[N](ch, _ => true, false)
-}
-
-// match node and select the child for futher recursion and mark as rewritable
-case class iCr[N <: Rewritable : TypeTag](ch: N => Rewritable) extends FrontendRegex {
-  override def getAST: Match = new ChildSelectNMatch[N](ch, _ => true, true)
-}
-
-// match node in case predicate holds and select the child for futher recursion
-case class iCP[N <: Rewritable : TypeTag](ch: N => Rewritable, predicate: N => Boolean) extends FrontendRegex {
-  override def getAST: Match = new ChildSelectNMatch[N](ch, predicate, false)
-}
-
-// match node in case predicate holds and select the child for futher recursion and mark as rewritable
-case class iCPr[N <: Rewritable : TypeTag](ch: N => Rewritable, predicate: N => Boolean) extends FrontendRegex {
-  override def getAST: Match = new ChildSelectNMatch[N](ch, predicate, true)
-}
-
-
-case class StarF(m: FrontendRegex) extends FrontendRegex {
-  override def getAST: Match = new Star(m.getAST)
-}
-
-case class DoubleStarF(m: FrontendRegex) extends FrontendRegex {
-  override def getAST: Match = new Star(new Nested(m.*.getAST, n[Rewritable].*.getAST))
-}
-
-case class PlusF(m: FrontendRegex) extends FrontendRegex {
-  // Reduction: a+ == a > a*
-  override def getAST: Match = new Nested(m.getAST, m.*.getAST)
-}
-
-case class QuestionmarkF(m: FrontendRegex) extends FrontendRegex {
-  override def getAST: Match = new Questionmark(m.getAST)
-}
-
-case class NestedF(m1: FrontendRegex, m2: FrontendRegex) extends FrontendRegex {
-  override def getAST: Match = new Nested(m1.getAST, m2.getAST)
-}
-
-case class OrF(m1: FrontendRegex, m2: FrontendRegex) extends FrontendRegex {
-  override def getAST: Match = new OrMatch(m1.getAST, m2.getAST)
-}
-
-case class DeepNestedF(m1: FrontendRegex, m2: FrontendRegex) extends FrontendRegex {
-  // a >> b == a > _* > b
-  override def getAST: Match = new Nested(new Nested(m1.getAST, n[Rewritable].*.getAST), m2.getAST)
-}
-
-class Test {
-  c[QuantifiedExp](_.variables).** >> nP[Or](_.left eq TrueLit()())
-}
-
-
-
-
-
-class RegexContext[A <: Rewritable, COLL](aList: Seq[A], val c: COLL, transformer: StrategyInterface[A], val upContext: (COLL, COLL) => COLL, val comp:(COLL, COLL)=>Boolean) extends ContextA[A](aList, transformer) {
-  override def addAncestor(n: A): RegexContext[A, COLL] = {
-    new RegexContext(ancestorList ++ Seq(n), c, transformer, upContext, comp)
-  }
-
-  override def replaceNode(n: A): RegexContext[A, COLL] = {
-    new RegexContext(ancestorList.dropRight(1) ++ Seq(n), c, transformer, upContext, comp)
-  }
-
-  def update(con: COLL): RegexContext[A, COLL] = {
-    new RegexContext(ancestorList, upContext(c, con), transformer, upContext, comp)
-  }
-
-  def compare(other: RegexContext[A, COLL]): Boolean = {
-    comp(this.c, other.c)
-  }
-}
-
-class PartialContextR[A <: Rewritable, COLL](val c: COLL, val upContext: (COLL, COLL) => COLL, val comp:(COLL, COLL)=>Boolean) extends PartialContext[A, ContextA[A]] {
-  def get(anc: Seq[A], transformer: StrategyInterface[A]): RegexContext[A, COLL] = new RegexContext[A, COLL](anc, c, transformer, upContext, comp)
-  override def get(transformer: StrategyInterface[A]): RegexContext[A, COLL] = new RegexContext[A, COLL](Seq(), c, transformer, upContext, comp)
-}
-
-case class SimpleRegexContext[N <: Rewritable](p: PartialFunction[N, N]) extends PartialFunction[(N, RegexContext[N, Any]), N] {
-  override def isDefinedAt(x: (N, RegexContext[N, Any])): Boolean = p.isDefinedAt(x._1)
-
-  override def apply(x: (N, RegexContext[N, Any])): N = p.apply(x._1)
-}
-
-class SlimRegexStrategy[N <: Rewritable](a: TRegexAutomaton, p:PartialFunction[N, N]) extends RegexStrategy[N, Any](a, SimpleRegexContext(p), new PartialContextR(null, (x,y)=>x, (x,y) => true))
-
-class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), N], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
-  type CTXT = RegexContext[N, COLL]
-
-  override def transformed(node: Rewritable): N = {
-    super.transformed(node)
-    node.asInstanceOf[N]
-  }
-
-  // Custom data structure for keeping the node context pairs
-  class MatchSet {
-    var map = collection.mutable.ListBuffer.empty[(N, CTXT)]
-
-    def put(tuple: (N, CTXT)) = {
-      val node = tuple._1
-      val context = tuple._2
-      map.zipWithIndex.find( _._1._1 eq node) match {
-        case None => map.append((node, context))
-        case Some(tup) =>
-          val better = (node, if (tup._1._2.compare(context)) tup._1._2 else context)
-          map.remove(tup._2)
-          map.append(better)
-      }
-    }
-
-    def get(node: N): Option[CTXT] = {
-      map.find( _._1 eq node) match {
-        case None => None
-        case Some(t) => Some(t._2)
-      }
-    }
-
-  }
-
-
-
-  override def execute[T <: N](node: N): T = {
-    wasTransformed.clear()
-    // Store found matches here
-    val matches = new MatchSet
-
-    // Recursively matches on the AST by iterating through the automaton
-    def recurse(n: N, s:State, ctxt:CTXT,  marked:Seq[(N, CTXT)]): Unit = {
-
-      // Perform possible transition and obtain actions.
-      // If no transition is possible (error state) states will be empty after this call and the recursion will stop
-      val (states, action) = s.performTransition(n)
-
-      // Get all the children to recurse further
-      val children: Seq[Rewritable] = n.getChildren.foldLeft( Seq.empty[Rewritable] )({
-        case (seq, o: Option[Rewritable]) => o match {
-          case None => seq
-          case Some(x: Rewritable) => seq ++ Seq(x)
-        }
-        case (seq, s: Seq[Rewritable]) => seq ++ s
-        case (seq, r: Rewritable) => seq ++ Seq(r)
-        case (seq, _) => seq
-      })
-
-      // Actions may or may not change marked nodes, children or context
-      var newMarked = marked
-      var newChildren = children
-      var newCtxt = ctxt.addAncestor(n)
-
-      // Apply actions
-      action foreach {
-        // Marked for rewrite TODO: error handling in case node casting fails
-        case MarkedForRewrite() => newMarked = newMarked ++ Seq((n.asInstanceOf[N], newCtxt))
-        // Context update TODO: error handling in case context casting fails
-        case ContextInfo(c:Any) => newCtxt = ctxt.update(c.asInstanceOf[COLL])
-        // Only recurse if we are the selected child
-        case ChildSelectInfo(r:Rewritable) => newChildren.filter( _ eq r )
-      }
-
-      // If we reach an accepting state put it into matches
-      if(states.exists( _.isAccepting)) {
-        newMarked.foreach( matches.put )
-      }
-
-      if(newChildren.nonEmpty) {
-        // Perform further recursion for each child and for each state that is not already accepting
-        newChildren.foreach( child => {
-          states.filter(!_.isAccepting).foreach( state => {
-            recurse(child.asInstanceOf[N], state, newCtxt, newMarked )
-          })
-        })
-      } else {
-
-      }
-
-    }
-
-    // Use the recurse function to match paths that start at a point where the first pattern matches
-    val startStates = a.start.effective
-    val visitor = StrategyBuilder.AncestorStrategy[N]( {case (n,c) => {
-      // Start recursion if any of the start states is valid for recursion
-      startStates.foreach( s => {
-        if(s.isValidInput(n))
-        recurse(n, s, default.get(c.ancestorList.dropRight(1), this), Seq.empty[(N, CTXT)])
-      } )
-      n
-    }})
-
-    visitor.execute(node)
-
-    val result = replaceTopDown(node, matches)
-    result.asInstanceOf[T]
-  }
-
-  // Replace matches with product nodes
-  def replaceTopDown(n: N, matches: MatchSet): N = {
-    // Find out if this node is going to be replaced
-    val replaceInfo = matches.get(n)
-
-    // get resulting node from rewriting
-    val resultNode = replaceInfo match {
-      case None => n
-      case Some(elem) =>
-        if(p.isDefinedAt(n, elem))
-          transformed(p(n, elem))
-        else
-          n
-    }
-
-    val res = recurseChildren(resultNode, replaceTopDown(_, matches)) match {
-      case Some(children) => transformed(resultNode.duplicate(children).asInstanceOf[N])
-      case None => resultNode
-    }
-    val res2 = preserveMetaData(n, res)
-    res2
-  }
+  // Same as apply but in addition mark the matched node for rewriting
+  def r[N <: Rewritable : TypeTag](ch: N => Rewritable, p: N => Boolean = (x: N) => true): Match = new ChildSelectNMatch[N](ch, p, true)
 }

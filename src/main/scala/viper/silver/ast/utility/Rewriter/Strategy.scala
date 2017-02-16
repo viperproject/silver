@@ -1,11 +1,6 @@
 package viper.silver.ast.utility.Rewriter
 
 import viper.silver.ast.utility.Rewriter.Traverse.Traverse
-import viper.silver.ast.utility._
-
-/**
-  * Created by simonfri on 05.12.2016.
-  */
 
 /**
   * An enumeration that represents traversion modes:
@@ -19,78 +14,88 @@ object Traverse extends Enumeration {
   val TopDown, BottomUp, Innermost, Outermost = Value
 }
 
-/**
-  * Trait that encapsulates all fields and Setter/Getter that are used in every Strategy
-  *
-  * @tparam A with Rewritable[N] Supertype of every node we want to rewrite
-  */
+// Trait that encapsulates information and functionality for all Strategy types
 trait StrategyInterface[A <: Rewritable] {
 
+  // Store every special node we don't want to recurse on
   protected var noRecursion = collection.mutable.HashSet.empty[Rewritable]
+
+  // Store every node we transformed
   protected var wasTransformed = collection.mutable.HashSet.empty[Rewritable]
 
+  // AST has changes if no node was transformed
   def hasChanged = wasTransformed.nonEmpty
 
-  def transformed(node: Rewritable): Rewritable = {
+  // Setter for nodes that were transformed
+  def transformed(node: A): A = {
     wasTransformed.add(node)
-    node
+    node.asInstanceOf[A]
   }
 
+  // Prevent a node from being rewritten
   def noRec[T <: A](node: Rewritable): T = {
     noRecursion.add(node)
     node.asInstanceOf[T]
   }
 
+  // Execute the rewriting on node
+  // Type T: The type you want the result to be in
   def execute[T <: A](node: A): T
 
+  // Create a new strategy by executing strategy s after this strategy
   def ||(s: StrategyInterface[A]): ConcatinatedStrategy[A] = {
     new ConcatinatedStrategy[A](this, s)
   }
 
-  /**
-    * This method can be overridden to control the creation of a new node by possibly adding metadata to it
-    *
-    * @param old Node before transformation
-    * @param now Node after transformation
-    * @return Node with possibly filled in metadata or other modification
-    */
+  // This method can be overridden to control the creation of a new node by possibly adding metadata to it
+  // old: Node before rewriting
+  // now: Node after rewriting
   protected def preserveMetaData(old: A, now: A): A = now
 
 }
 
+// An object to provide useful predefined settings for new Strategies
 object StrategyBuilder {
 
+  // Create a strategy without context
   def SlimStrategy[A <: Rewritable](p: PartialFunction[A, A]) = {
     new Strategy[A, SimpleContext[A]](AddArtificialContext(p)) defaultContext new NoContext[A]
   }
 
+  // Create a strategy without custom context but with information about ancestors and siblings
   def AncestorStrategy[A <: Rewritable](p: PartialFunction[(A, ContextA[A]), A], t: Traverse = Traverse.TopDown) = {
     new Strategy[A, ContextA[A]](p) defaultContext new PartialContextA[A] traverse t
   }
 
+  // Create a strategy with context
   def ContextStrategy[A <: Rewritable, C](p: PartialFunction[(A, ContextC[A, C]), A], default: C, updateFunc: PartialFunction[(A, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
     new Strategy[A, ContextC[A, C]](p) defaultContext new PartialContextC[A, C](default, updateFunc) traverse t
   }
 
+  // Create a visitor without context
   def SlimVisitor[A <: Rewritable](f: A => Unit) = {
     new StrategyVisitor[A, SimpleContext[A]]({ (a: A, c: SimpleContext[A]) => f(a) }) defaultContext new NoContext[A]
   }
 
+  // Create a visitor without custom context but with information about ancestors and siblings
   def AncestorVisitor[A <: Rewritable](f: (A, ContextA[A]) => Unit) = {
     new StrategyVisitor[A, ContextA[A]](f) defaultContext new PartialContextA[A]
   }
 
+  // Create a visitor with context
   def ContextVisitor[A <: Rewritable, C](f: (A, ContextC[A, C]) => Unit, default: C, updateFunc: PartialFunction[(A, C), C] = PartialFunction.empty) = {
     new StrategyVisitor[A, ContextC[A, C]](f) defaultContext new PartialContextC[A, C](default, updateFunc)
   }
 
 }
 
+// A class that helps with providing dummy context in a rewriting function. Used to make SlimStrategy compatible with RegexStrategy
 case class AddArtificialContext[N <: Rewritable](p: PartialFunction[N, N]) extends PartialFunction[(N, SimpleContext[N]), N] {
   override def isDefinedAt(x: (N, SimpleContext[N])): Boolean = p.isDefinedAt(x._1)
 
   override def apply(x: (N, SimpleContext[N])): N = p.apply(x._1)
 }
+
 
 class SlimStrategy[A <: Rewritable](p: PartialFunction[A, A]) extends Strategy[A, SimpleContext[A]](AddArtificialContext(p)) {}
 
@@ -102,11 +107,6 @@ class Strategy[A <: Rewritable, C <: Context[A]](p: PartialFunction[(A, C), A]) 
   protected var defaultContxt: Option[C] = None
 
   private var rule: RuleT[A, C] = Rule(p)
-
-  override def transformed(node: Rewritable): A = {
-    super.transformed(node)
-    node.asInstanceOf[A]
-  }
 
   def getRule = rule
 
