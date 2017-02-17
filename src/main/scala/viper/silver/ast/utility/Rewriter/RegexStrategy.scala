@@ -1,56 +1,98 @@
 package viper.silver.ast.utility.Rewriter
 
-// Extension of the Strategy context. Encapsulates all the required information for the rewriting
-// aList: List of all the ancestors
-// c: context information
-// t: the transformer we run on
-// upContext: Function that describes how we update the context in case new context information comes in
-// comp: Function that evaluates which context to take in case a node is in two possible contexts at the same time (true = first param, false = second param)
-class RegexContext[A <: Rewritable, COLL](aList: Seq[A], val c: COLL, transformer: StrategyInterface[A], val upContext: (COLL, COLL) => COLL, val comp: (COLL, COLL) => Boolean) extends ContextA[A](aList, transformer) {
+//
+// aList:
+// c:
+// t:
+// upContext:
+// comp:
+
+/**
+  * Extension of the Strategy context. Encapsulates all the required information for the rewriting
+  * @param aList List of all the ancestors
+  * @param c context information
+  * @param transformer current transformer
+  * @param upContext Function that describes how we update the context in case new context information comes in
+  * @param comp Function that evaluates which context to take in case a node is in two possible contexts at the same time (true = first param, false = second param)
+  * @tparam N Type of all AST nodes
+  * @tparam COLL Type of custom context
+  */
+class RegexContext[N <: Rewritable, COLL](aList: Seq[N], val c: COLL, transformer: StrategyInterface[N], private val upContext: (COLL, COLL) => COLL, val comp: (COLL, COLL) => Boolean) extends ContextA[N](aList, transformer) {
 
   // Add an ancestor
-  override def addAncestor(n: A): RegexContext[A, COLL] = {
+  override def addAncestor(n: N): RegexContext[N, COLL] = {
     new RegexContext(ancestorList ++ Seq(n), c, transformer, upContext, comp)
   }
 
   // Replace the current node
-  override def replaceNode(n: A): RegexContext[A, COLL] = {
+  override def replaceNode(n: N): RegexContext[N, COLL] = {
     new RegexContext(ancestorList.dropRight(1) ++ Seq(n), c, transformer, upContext, comp)
   }
 
   // Update the context with new information
-  def update(con: COLL): RegexContext[A, COLL] = {
+  def update(con: COLL): RegexContext[N, COLL] = {
     new RegexContext(ancestorList, upContext(c, con), transformer, upContext, comp)
   }
 
   // Compare the context in order decide which one to take
-  def compare(other: RegexContext[A, COLL]): Boolean = {
+  def compare(other: RegexContext[N, COLL]): Boolean = {
     comp(this.c, other.c)
   }
 }
 
-// A class that misses some information in order to be a full RegexContext. Provides methods to create a complete one
-class PartialContextR[A <: Rewritable, COLL](val c: COLL, val upContext: (COLL, COLL) => COLL, val comp: (COLL, COLL) => Boolean) extends PartialContext[A, ContextA[A]] {
+/**
+  * A class that misses some information in order to be a full RegexContext. Provides methods to create a complete one
+  * @param c Custom context
+  * @param upContext Function that describes how we update the context in case new context information comes in
+  * @param comp Function that evaluates which context to take in case a node is in two possible contexts at the same time (true = first param, false = second param)
+  * @tparam N Common supertype of every node in the tree
+  * @tparam COLL Type of custom context
+  */
+class PartialContextR[N <: Rewritable, COLL](val c: COLL, val upContext: (COLL, COLL) => COLL, val comp: (COLL, COLL) => Boolean) extends PartialContext[N, ContextA[N]] {
 
-  def get(anc: Seq[A], transformer: StrategyInterface[A]): RegexContext[A, COLL] = new RegexContext[A, COLL](anc, c, transformer, upContext, comp)
+  /**
+    * Complete the Partial context by providing the missing information for a RegexContext
+    * @param anc List of ancestors
+    * @param transformer current transformer
+    * @return complete RegexContext object
+    */
+  def get(anc: Seq[N], transformer: StrategyInterface[N]): RegexContext[N, COLL] = new RegexContext[N, COLL](anc, c, transformer, upContext, comp)
 
-  override def get(transformer: StrategyInterface[A]): RegexContext[A, COLL] = new RegexContext[A, COLL](Seq(), c, transformer, upContext, comp)
+  /**
+    * Provide the transformer for the real context
+    * @param transformer current transformer
+    * @return A complete Context object
+    */
+  override def get(transformer: StrategyInterface[N]): RegexContext[N, COLL] = new RegexContext[N, COLL](Seq(), c, transformer, upContext, comp)
 }
 
-// A class that helps with providing dummy context in a rewriting function. Used to make SlimRegexStrategy compatible with RegexStrategy
+/**
+  * A class that helps with providing dummy context in a rewriting function. Used to make SlimRegexStrategy compatible with RegexStrategy
+  * @param p Partial function that describes the rewriting
+  * @tparam N Common supertype of every node in the tree
+  */
 case class SimpleRegexContext[N <: Rewritable](p: PartialFunction[N, N]) extends PartialFunction[(N, RegexContext[N, Any]), N] {
   override def isDefinedAt(x: (N, RegexContext[N, Any])): Boolean = p.isDefinedAt(x._1)
 
   override def apply(x: (N, RegexContext[N, Any])): N = p.apply(x._1)
 }
 
-// A regex strategy that does not include context (convenience)
+/**
+  * A regex strategy that does not include context (convenience)
+  * @param a Matching regex converted into an automaton
+  * @param p Partial function used for rewriting
+  * @tparam N Common supertype of every node in the tree
+  */
 class SlimRegexStrategy[N <: Rewritable](a: TRegexAutomaton, p: PartialFunction[N, N]) extends RegexStrategy[N, Any](a, SimpleRegexContext(p), new PartialContextR(null, (x, y) => x, (x, y) => true))
 
-// A strategy that performs rewriting according to the Regex and Rewriting function specified
-// a: The automaton generated from the regular expression
-// p: PartialFunction that describes rewriting
-// default: The context we start with
+/**
+  * A strategy that performs rewriting according to the Regex and Rewriting function specified
+  * @param a The automaton generated from the regular expression
+  * @param p PartialFunction that describes rewriting
+  * @param default The context we start with
+  * @tparam N Common supertype of every node in the tree
+  * @tparam COLL Type of custom context
+  */
 class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), N], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
 
   type CTXT = RegexContext[N, COLL]
@@ -82,7 +124,12 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
 
   }
 
-  // Execute the rewriting
+  /**
+    * Execute the rewriting specified by the regular expression
+    * @param node Root of the NST you want to rewrite
+    * @tparam T Type of the rewritten root
+    * @return rewritten root
+    */
   override def execute[T <: N](node: N): T = {
     wasTransformed.clear()
 

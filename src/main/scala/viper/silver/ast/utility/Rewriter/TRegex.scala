@@ -25,27 +25,51 @@ trait Match {
 
   // Basic operators
 
-  // Appends one match to the other
+  /**
+    * Appends one match to the other
+    * @param m match
+    * @return combined match
+    */
   def >(m: Match) = new Nested(this, m)
 
-  // Conditional between two matches
+  /**
+    * Disjunction of two matches
+    * @param m match
+    * @return combined match
+    */
   def |(m: Match) = new OrMatch(this, m)
 
-  // 0 or 1 occurences of the match
+  /**
+    * 0 or 1 occurences of the match
+    * @return enhanced match
+    */
   def ? = new Questionmark(this)
 
-  // O or more occurences of the match (directly after each other)
+  /**
+    * O or more occurences of the match (directly after each other)
+    * @return enhanced match
+    */
   def * = new Star(this)
 
   // Second level operators (can be expressed with basic operators)
 
-  // 1 or more occurences of the match (directly after each other)
+  /**
+    * 1 or more occurences of the match (directly after each other)
+    * @return combined match
+    */
   def + = this > this.*
 
-  // Match occurs arbitrarily deep down a tree
+  /**
+    * Match occurs arbitrarily deep down a tree
+    * @param m match
+    * @return combined match
+    */
   def >>(m: Match) = this > n.Wildcard.* > m
 
-  // 0 or more occurences of the match (not necessarily directly after each other)
+  /**
+    * 0 or more occurences of the match (not necessarily directly after each other)
+    * @return combined match
+    */
   def ** = (this.* > n.Wildcard.*).*
 }
 
@@ -53,8 +77,12 @@ trait Match {
 // Following classes instantiate the Match trait and provide different matches
 
 
-// NMatch is the basis of all node matches. It matches on all nodes that are a subclass of N and where predicate pred holds
-// If flag rewrite is set, the matched node is marked for rewriting
+/**
+  * Class for all kinds of node matches
+  * @param pred Predicate that needs to hold in order to match
+  * @param rewrite Flag to indicate if we want to rewrite this node
+  * @tparam N type of all AST nodes
+  */
 class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boolean) extends Match {
 
   // Checks if node n (of type T) is a valid subtype of generic parameter N
@@ -78,7 +106,11 @@ class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boo
   }
 
 
-  // Method that checks if parameter node is a match
+  /**
+    * Method that checks if parameter node is a match
+    * @param node node to match
+    * @return true if node matches, false otherwise
+    */
   def holds(node: Rewritable): Boolean = {
     if (matches(node)) {
       pred(node.asInstanceOf[N])
@@ -87,7 +119,10 @@ class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boo
     }
   }
 
-  // Create a finite automaton out of this matcher
+  /**
+    * Create a finite automaton out of this matcher
+    * @return The generated automaton
+    */
   override def createAutomaton() = {
     val start = new State
     val end = new State
@@ -96,14 +131,22 @@ class NMatch[N <: Rewritable : TypeTag](val pred: N => Boolean, val rewrite: Boo
     new TRegexAutomaton(start, end)
   }
 
-  // Provide information about the actions that occur if node n matches on this matcher
+  /**
+    * Provide information about the actions that occur if node n matches on this matcher
+    * @param n node used for traversion
+    * @return list of traversion infos
+    */
   def getTransitionInfo(n: Rewritable): Seq[TransitionInfo] = if (rewrite) Seq(MarkedForRewrite()) else Seq.empty[TransitionInfo]
 
 }
 
-// A match that provides context for the rewriter.
-// Function c extracts the context from a node.
-// The rest is inherited from NMatch
+/**
+  * A match that provides context for the rewriter
+  * @param c Extracts context from the node
+  * @param predi Predicate that needs to hold in order to match
+  * @param rewrite Flag to indicate if we want to rewrite this node
+  * @tparam N type of all AST nodes
+  */
 class ContextNMatch[N <: Rewritable : TypeTag](c: N => Any, predi: N => Boolean, rewrite: Boolean) extends NMatch[N](predi, rewrite) {
 
   // Provide information about the actions that occur if node n matches on this matcher
@@ -112,9 +155,13 @@ class ContextNMatch[N <: Rewritable : TypeTag](c: N => Any, predi: N => Boolean,
   }
 }
 
-// A match that allows to express recursion control by limiting the recursion on certain children
-// Function ch extracts the selected children from a node
-// Rest is inherited from NMatch
+/**
+  * A match that allows to express recursion control by limiting the recursion on certain children
+  * @param ch Extracts children from the node
+  * @param predi Predicate that needs to hold in order to match
+  * @param rewrite Flag to indicate if we want to rewrite this node
+  * @tparam N type of all AST nodes
+  */
 class ChildSelectNMatch[N <: Rewritable : TypeTag](ch: N => Rewritable, predi: N => Boolean, rewrite: Boolean) extends NMatch[N](predi, rewrite) {
 
   // Provide information about the actions that occur if node n matches on this matcher
@@ -123,13 +170,24 @@ class ChildSelectNMatch[N <: Rewritable : TypeTag](ch: N => Rewritable, predi: N
   }
 }
 
-//Upper bound for all matches that take two matches and combine them to one
+/**
+  * Upper bound for all matches that take two matches and combine them to one
+  * @param m1 match 1
+  * @param m2 match 2
+  */
 abstract class CombinatorMatch(val m1: Match, val m2: Match) extends Match
 
-// Either m1 or m2 need to hold in order to match
+/**
+  * Either match 1 or match 2 need to hold in order to match
+  * @param m1 match1
+  * @param m2 match2
+  */
 class OrMatch(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
 
-  // Create a finite automaton out of this matcher
+  /**
+    * Create a finite automaton out of this matcher
+    * @return The generated automaton
+    */
   override def createAutomaton(): TRegexAutomaton = {
     val a1 = m1.createAutomaton()
     val a2 = m2.createAutomaton()
@@ -146,10 +204,17 @@ class OrMatch(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
   }
 }
 
-// Either m1 needs to hold directly before m2 in order to match
+/**
+  * Either match 1 needs to hold directly before match 2 in order to match
+  * @param m1 match 1
+  * @param m2 match 2
+  */
 class Nested(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
 
-  // Create a finite automaton out of this matcher
+  /**
+    * Create a finite automaton out of this matcher
+    * @return The generated automaton
+    */
   override def createAutomaton(): TRegexAutomaton = {
     val a1 = m1.createAutomaton()
     val a2 = m2.createAutomaton()
@@ -159,10 +224,16 @@ class Nested(m1: Match, m2: Match) extends CombinatorMatch(m1, m2) {
   }
 }
 
-// m has to match 0 or more times in order to match
+/**
+  * m has to match 0 or more times in order to match
+  * @param m match
+  */
 class Star(m: Match) extends Match {
 
-  // Create a finite automaton out of this matcher
+  /**
+    * Create a finite automaton out of this matcher
+    * @return The generated automaton
+    */
   override def createAutomaton(): TRegexAutomaton = {
     val a = m.createAutomaton()
     val out = new State
@@ -174,10 +245,16 @@ class Star(m: Match) extends Match {
   }
 }
 
-// m has to match 0 or 1 time in order to match
+/**
+  * m has to match 0 or 1 time in order to match
+  * @param m match
+  */
 class Questionmark(m: Match) extends Match {
 
-  // Create a finite automaton out of this matcher
+  /**
+    * Create a finite automaton out of this matcher
+    * @return The generated automaton
+    */
   override def createAutomaton(): TRegexAutomaton = {
     val a = m.createAutomaton()
 
@@ -190,46 +267,100 @@ class Questionmark(m: Match) extends Match {
 
 }
 
-// The follwing classes help in building a complete Regular expression strategy by allowing it to be filled incrementally with:
-//  1. Regular expression 2. Rewriting function
-
-// Encapsulates information about the nodes we rewrite and the way we gather the context
-// accumulator: Describes how we put the contexts together into one object
-// comparator: Imposes an ordering on the contexts => in case a node matches in two ways on two different contexts the bigger one is taken (true = first param, false = second param)
-// default: The default context we start with
+/**
+  * Helps in building a complete Regular expression strategy by allowing it to be filled incrementally with: 1. Regular expression 2. Rewriting function
+  * @param accumulator Describes how we put the contexts together into one object
+  * @param comparator Imposes an ordering on the contexts => in case a node matches in two ways on two different contexts the bigger one is taken (true = first param, false = second param)
+  * @param default The default context we start with
+  * @tparam N Type of the AST
+  * @tparam COLL Type of the context
+  */
 class TreeRegexBuilder[N <: Rewritable, COLL](val accumulator: (COLL, COLL) => COLL, val comparator: (COLL, COLL) => Boolean, default: COLL) {
 
-  // Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
+  /**
+    * Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
+    * @param f Regular expression
+    * @return TregexBuilderWithMatch that contains regex `f`
+    */
   def &>(f: Match) = new TreeRegexBuilderWithMatch[N, COLL](accumulator, comparator, f, default)
 }
 
-// Encapsulates the information of TreeRegexBuilder + matching information. Used to generate the regex strategy
+/**
+  * Encapsulates the information of TreeRegexBuilder + matching information. Used to generate the regex strategy
+  * @param accumulator Describes how we put the contexts together into one object
+  * @param comparator Imposes an ordering on the contexts => in case a node matches in two ways on two different contexts the bigger one is taken (true = first param, false = second param)
+  * @param regex Regular expression used for matching
+  * @param default The default context we start with
+  * @tparam N Type of the AST
+  * @tparam COLL Type of the context
+  */
 class TreeRegexBuilderWithMatch[N <: Rewritable, COLL](val accumulator: (COLL, COLL) => COLL, val comparator: (COLL, COLL) => Boolean, regex: Match, default: COLL) {
 
-  // Generate the regex strategy by adding the rewriting function into the mix
+  /**
+    * Generate the regex strategy by adding the rewriting function into the mix
+    * @param p partial function used for rewriting
+    * @return complete RegexStrategy
+    */
   def |->(p: PartialFunction[(N, RegexContext[N, COLL]), N]) = new RegexStrategy[N, COLL](regex.createAutomaton(), p, new PartialContextR(default, accumulator, comparator))
 }
 
-// Same as TreeRegexBuilder just without context
+/**
+  * Same as TreeRegexBuilder just without context
+  * @tparam N Type of all AST nodes
+  */
 class SimpleRegexBuilder[N <: Rewritable]() {
+
+  /**
+    * Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
+    * @param f Regular expression
+    * @return SimpleTregexBuilderWithMatch that contains regex `f`
+    */
   def &>(f: Match) = new SimpleRegexBuilderWithMatch[N](f)
 }
 
-// Same as TreeRegexBuilderWithMatch just without context
+/**
+  * Same as TreeRegexBuilderWithMatch just without context
+  * @param regex Regular expression used for matching
+  * @tparam N Type of all AST nodes
+  */
 class SimpleRegexBuilderWithMatch[N <: Rewritable](regex: Match) {
+
+  /**
+    * Generate the regex strategy by adding the rewriting function into the mix
+    * @param p partial function used for rewriting
+    * @return complete SlimRegexStrategy
+    */
   def |->(p: PartialFunction[N, N]) = new SlimRegexStrategy[N](regex.createAutomaton(), p)
 }
 
-// A companion object with useful factory methods to create a rewriting strategy
+/**
+  * A companion object with useful factory methods to create a rewriting strategy
+  */
 object TreeRegexBuilder {
 
-  // full control of all the parameters: see TreeRegexBuilder for explanations
+  /**
+    * Constructs a TreeRegexBuilder
+    * @param accumulator Describes how we put the contexts together into one object
+    * @param comparator Imposes an ordering on the contexts => in case a node matches in two ways on two different contexts the bigger one is taken (true = first param, false = second param)
+    * @param default The default context we start with
+    * @tparam N Type of the AST
+    * @tparam COLL Type of the context
+    * @return
+    */
   def context[N <: Rewritable, COLL](accumulator: (COLL, COLL) => COLL, comparator: (COLL, COLL) => Boolean, default: COLL) = new TreeRegexBuilder[N, COLL](accumulator, comparator, default)
 
-  // don't care about the custom context but want ancestor/sibling information
+  /**
+    * Don't care about the custom context but want ancestor/sibling information
+    * @tparam N Type of the AST
+    * @return TreeRegexBuilder object
+    */
   def ancestor[N <: Rewritable] = new TreeRegexBuilder[N, Any]((x, y) => x, (x, y) => true, null)
 
-  // don't care about context at all
+  /**
+    * Don't care about context at all
+    * @tparam N Type of the AST
+    * @return SimpleRegexBuilder
+    */
   def simple[N <: Rewritable] = new SimpleRegexBuilder[N]
 }
 
@@ -237,41 +368,91 @@ object TreeRegexBuilder {
 // This is the frontend of the DSL. Here we create the regular expression AST
 
 
-// Node matches
+/**
+  * Object to generate Simple Node matches
+  */
 object n {
 
-  // Only a node match nothing else
+  /**
+    * Only a node match nothing else
+    * @tparam N Type of the AST
+    * @return Node Match
+    */
   def apply[N <: Rewritable : TypeTag]() = new NMatch[N]((x: N) => true, false)
 
-  // Node match with a predicate that needs to hold in order to match
+  /**
+    * Node match with a predicate that needs to hold in order to match
+    * @param p Predicate for matching
+    * @tparam N Type of the AST
+    * @return Node match with predicate
+    */
   def P[N <: Rewritable : TypeTag](p: N => Boolean = (x: N) => true) = new NMatch[N](p, false)
 
-  // Node match and mark the matched node for rewriting
+  /**
+    * Node match and mark the matched node for rewriting
+    * @tparam N Type of the AST
+    * @return Node match marked for rewriting
+    */
   def r[N <: Rewritable : TypeTag]() = new NMatch[N]((x: N) => true, true)
 
-  // Node match with a predicate that needs to hold in order to match. Mark the matched node for rewriting
+  /**
+    * Node match with a predicate that needs to hold in order to match. Mark the matched node for rewriting
+    * @param p Predicate for matching
+    * @tparam N Type of the AST
+    * @return Node match with predicate marked for rewriting
+    */
   def r[N <: Rewritable : TypeTag](p: N => Boolean) = new NMatch[N](p, true)
 
-  // This matches on every node
+  /**
+    * @return Convenient matcher that matches on every node
+    */
   def Wildcard = new NMatch[Rewritable]((x: Rewritable) => true, false)
 }
 
-// Match node and extract context information
+/**
+  * Object to generate matches that provide context
+  */
 object c {
 
-  // In case the node matches extract context information from the node by applying function con. Only if predicate p holds
+  /**
+    * In case the node matches extract context information from the node by applying function con. Only if predicate p holds
+    * @param con Context extractor
+    * @param p Predicate for matching
+    * @tparam N Type of the AST
+    * @return Context match
+    */
   def apply[N <: Rewritable : TypeTag](con: N => Any, p: N => Boolean = (x: N) => true) = new ContextNMatch[N](con, p, false)
 
-  // Same as apply but in addition mark the matched node for rewriting
+  /**
+    * In case the node matches extract context information from the node by applying function con and mark the node for rewriting. Only if predicate p holds
+    * @param con Context extractor
+    * @param p Predicate for matching
+    * @tparam N Type of the AST
+    * @return Context match
+    */
   def r[N <: Rewritable : TypeTag](con: N => Any, p: N => Boolean = (x: N) => true) = new ContextNMatch[N](con, p, true)
 }
 
-// Match node and select children for further recursion
+/**
+  * Object to generate node matches that select children for further recursion
+  */
 object iC {
 
-  // In case the node matches extract the children we want to recurse on. Only if predicate p holds
+  /**
+    * In case the node matches extract the children we want to recurse on. Only if predicate `p` holds
+    * @param ch Child extractor
+    * @param p Predicate for matching
+    * @tparam N Type of the AST
+    * @return Children Match
+    */
   def apply[N <: Rewritable : TypeTag](ch: N => Rewritable, p: N => Boolean = (x: N) => true): Match = new ChildSelectNMatch[N](ch, p, false)
 
-  // Same as apply but in addition mark the matched node for rewriting
+  /**
+    * In case the node matches extract the children we want to recurse on and mark the node for rewriting. Only if predicate `p` holds
+    * @param ch Child extractor
+    * @param p Predicate for matching
+    * @tparam N Type of the AST
+    * @return Children Match
+    */
   def r[N <: Rewritable : TypeTag](ch: N => Rewritable, p: N => Boolean = (x: N) => true): Match = new ChildSelectNMatch[N](ch, p, true)
 }
