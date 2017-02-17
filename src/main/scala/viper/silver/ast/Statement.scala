@@ -141,7 +141,7 @@ case class Apply(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoIn
 /** A sequence of statements. */
 case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
 
-  // Only take the children that are in the leaves of a possilby nestes Seqn structure
+  // Interprete leaves of a possibly nested Seqn structure as its children
   override def getChildren: Seq[Any] = {
     def seqFlat(ss: Seq[Stmt]): Seq[Stmt] = {
       val result = ss.foldLeft(Seq.empty[Stmt])((x: Seq[Stmt], y: Stmt) => {

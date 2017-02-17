@@ -78,6 +78,7 @@ abstract class AbstractVerificationError extends VerificationError {
     s"$idStr$text ${reason.readableMessage}$posStr"
   }
 
+  /** Transform the error back according to the specified error transformations */
   def transformedError(): AbstractVerificationError = {
     val errorT = offendingNode.transformError(this)
     val reasonT:ErrorReason = errorT.reason.offendingNode.transformReason(errorT.reason)
