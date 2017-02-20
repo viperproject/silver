@@ -7,6 +7,7 @@
 package viper.silver.parser
 
 import viper.silver.FastPositions
+import viper.silver.verifier.ParseReport
 
 /* TODO: This is basically a copy of silver.ast.utility.Transformer. Can we share code?
  *       This could be done by using tree visiting and rewriting functionality from Kiama,
@@ -18,10 +19,10 @@ object Transformer {
   /* Attention: You most likely want to call initTree on the transformed node. */
   def transform[A <: PNode](node: A,
                             pre: PartialFunction[PNode, PNode] = PartialFunction.empty)(
-                            recursive: PNode => Boolean = !pre.isDefinedAt(_),
-                            post: PartialFunction[PNode, PNode] = PartialFunction.empty,
-                            allowChangingNodeType: Boolean = false,
-                            resultCheck : PartialFunction[(PNode, PNode), Unit] = PartialFunction.empty): A = {
+                             recursive: PNode => Boolean = !pre.isDefinedAt(_),
+                             post: PartialFunction[PNode, PNode] = PartialFunction.empty,
+                             allowChangingNodeType: Boolean = false,
+                             resultCheck: PartialFunction[(PNode, PNode), Unit] = PartialFunction.empty): A = {
 
     @inline
     def go[B <: PNode](root: B): B = {
@@ -41,7 +42,7 @@ object Transformer {
         case PSetType(elementType) => PSetType(go(elementType))
         case PMultisetType(elementType) => PMultisetType(go(elementType))
         case _: PUnknown => parent
-        case  _: PPredicateType | _: PWandType => parent
+        case _: PPredicateType | _: PWandType => parent
 
         case PBinExp(left, op, right) => PBinExp(go(left), op, go(right))
         case PUnExp(op, exp) => PUnExp(op, go(exp))
@@ -50,9 +51,12 @@ object Transformer {
         case _: PBoolLit => parent
         case _: PNullLit => parent
         case PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))
-        case PPredicateAccess(args, idnuse) => PPredicateAccess( args map go, go(idnuse))
+        case PPredicateAccess(args, idnuse) => PPredicateAccess(args map go, go(idnuse))
         case PCall(func, args, explicitType) => {
-          PCall(go(func), args map go, ( explicitType match {case Some(t) => Some(go(t)) case None => None}))
+          PCall(go(func), args map go, (explicitType match {
+            case Some(t) => Some(go(t))
+            case None => None
+          }))
         }
 
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
@@ -64,7 +68,7 @@ object Transformer {
 
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map (_ map go), go(exp))
-        case PForPerm(v, fields, exp) => PForPerm(go(v),fields map go, go(exp))
+        case PForPerm(v, fields, exp) => PForPerm(go(v), fields map go, go(exp))
         case PCondExp(cond, thn, els) => PCondExp(go(cond), go(thn), go(els))
         case PInhaleExhaleExp(in, ex) => PInhaleExhaleExp(go(in), go(ex))
         case PCurPerm(loc) => PCurPerm(go(loc))
@@ -74,7 +78,7 @@ object Transformer {
         case _: PEpsilon => parent
         case PAccPred(loc, perm) => PAccPred(go(loc), go(perm))
         case POld(e) => POld(go(e))
-        case PLabelledOld(lbl,e) => PLabelledOld(go(lbl),go(e))
+        case PLabelledOld(lbl, e) => PLabelledOld(go(lbl), go(e))
         case PApplyOld(e) => PApplyOld(go(e))
         case PEmptySeq(t) => PEmptySeq(go(t))
         case PExplicitSeq(elems) => PExplicitSeq(elems map go)
@@ -85,10 +89,10 @@ object Transformer {
         case PSeqUpdate(seq, idx, elem) => PSeqUpdate(go(seq), go(idx), go(elem))
         case PSize(seq) => PSize(go(seq))
         case PEmptySet(t) => PEmptySet(go(t))
-          //        case _: PEmptySet => parent
+        //        case _: PEmptySet => parent
         case PExplicitSet(elems) => PExplicitSet(elems map go)
         case PEmptyMultiset(t) => PEmptyMultiset(go(t))
-//        case _: PEmptyMultiset => parent
+        //        case _: PEmptyMultiset => parent
         case PExplicitMultiset(elems) => PExplicitMultiset(elems map go)
 
         case PSeqn(ss) => PSeqn(ss map go)
@@ -99,11 +103,11 @@ object Transformer {
         case PExhale(e) => PExhale(go(e))
         case PAssert(e) => PAssert(go(e))
         case PInhale(e) => PInhale(go(e))
-        case PNewStmt(target, fields) => PNewStmt(go(target), fields map (_.map (go)))
+        case PNewStmt(target, fields) => PNewStmt(go(target), fields map (_.map(go)))
         case PVarAssign(idnuse, rhs) => PVarAssign(go(idnuse), go(rhs))
         case PFieldAssign(fieldAcc, rhs) => PFieldAssign(go(fieldAcc), go(rhs))
         case PIf(cond, thn, els) => PIf(go(cond), go(thn), go(els))
-        case PWhile(cond, invs, body) => PWhile(go(cond), invs  map go, go(body))
+        case PWhile(cond, invs, body) => PWhile(go(cond), invs map go, go(body))
         case PFresh(vars) => PFresh(vars map go)
         case PConstraining(vars, stmt) => PConstraining(vars map go, go(stmt))
         case PLocalVarDecl(idndef, typ, init) => PLocalVarDecl(go(idndef), go(typ), init map go)
@@ -111,7 +115,7 @@ object Transformer {
         case PLabel(idndef, invs) => PLabel(go(idndef), invs map go)
         case PGoto(target) => PGoto(go(target))
         case PLetWand(idndef, wand) => PLetWand(go(idndef), go(wand))
-        case PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))
+        case PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go), go(exp))
         case PLet(exp, nestedScope) => PLet(go(exp), go(nestedScope))
         case PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))
         case _: PSkip => parent
@@ -148,4 +152,100 @@ object Transformer {
     post.applyOrElse(afterRecursion, identity[PNode]).asInstanceOf[A]
   }
 
+  def parseTreeDuplicator: PartialFunction[(PNode, Seq[Any]), PNode] = {
+    case (p: PMacroRef, Seq(idndef: PIdnUse)) => PMacroRef(idndef)
+    case (p: PIdnDef, _) => p
+    case (p: PIdnUse, _) => p
+    case (p: PFormalArgDecl, Seq(idndef: PIdnDef, typ: PType)) => PFormalArgDecl(idndef, typ)
+    case (p: PTypeVarDecl, Seq(idndef: PIdnDef)) => PTypeVarDecl(idndef)
+    case (p: PPrimitiv, _) => p
+    case (p: PDomainType, Seq(domain: PIdnUse, args: Seq[PType])) => PDomainType(domain, args)
+    case (p: PSeqType, Seq(elementType: PType)) => PSeqType(elementType)
+    case (p: PSetType, Seq(elementType: PType)) => PSetType(elementType)
+    case (p: PMultisetType, Seq(elementType: PType)) => PMultisetType(elementType)
+    case (p: PUnknown, _) => p
+    case (p: PPredicateType, _) => p
+    case (p: PWandType, _) => p
+
+    case (p: PBinExp, Seq(left: PExp, right: PExp)) => PBinExp(left, p.opName, right)
+    case (p: PUnExp, Seq(exp: PExp)) => PUnExp(p.opName, exp)
+    case (p: PIntLit, _) => p
+    case (p: PResultLit, _) => p
+    case (p: PBoolLit, _) => p
+    case (p: PNullLit, _) => p
+    case (p: PFieldAccess, Seq(rcv: PExp, idnuse: PIdnUse)) => PFieldAccess(rcv, idnuse)
+    case (p: PPredicateAccess, Seq(args: Seq[PExp], idnuse: PIdnUse)) => PPredicateAccess(args, idnuse)
+    case (p: PCall, Seq(func: PIdnUse, args: Seq[PExp], explicitType: Option[PType])) => PCall(func, args, explicitType)
+
+    case (p: PUnfolding, Seq(acc: PAccPred, exp: PExp)) => PUnfolding(acc, exp)
+
+    case (p: PUnfoldingGhostOp, Seq(acc: PAccPred, exp: PExp)) => PUnfoldingGhostOp(acc, exp)
+    case (p: PFoldingGhostOp, Seq(acc: PAccPred, exp: PExp)) => PFoldingGhostOp(acc, exp)
+    case (p: PApplyingGhostOp, Seq(wand: PExp, exp: PExp)) => PApplyingGhostOp(wand, exp)
+    case (p: PPackagingGhostOp, Seq(wand: PExp, exp: PExp)) => PPackagingGhostOp(wand, exp)
+
+    case (p: PExists, Seq(vars: Seq[PFormalArgDecl], exp: PExp)) => PExists(vars, exp)
+    case (p: PForall, Seq(vars: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp)) => PForall(vars, triggers, exp)
+    case (p: PForPerm, Seq(v: PFormalArgDecl, fields: Seq[PIdnUse], exp: PExp)) => PForPerm(v, fields, exp)
+    case (p: PCondExp, Seq(cond: PExp, thn: PExp, els: PExp)) => PCondExp(cond, thn, els)
+    case (p: PInhaleExhaleExp, Seq(in: PExp, ex: PExp)) => PInhaleExhaleExp(in, ex)
+    case (p: PCurPerm, Seq(loc: PLocationAccess)) => PCurPerm(loc)
+    case (p: PNoPerm, _) => p
+    case (p: PFullPerm, _) => p
+    case (p: PWildcard, _) => p
+    case (p: PEpsilon, _) => p
+    case (p: PAccPred, Seq(loc: PLocationAccess, perm: PExp)) => PAccPred(loc, perm)
+    case (p: POld, Seq(e: PExp)) => POld(e)
+    case (p: PLabelledOld, Seq(lbl: PIdnUse, e: PExp)) => PLabelledOld(lbl, e)
+    case (p: PApplyOld, Seq(e: PExp)) => PApplyOld(e)
+    case (p: PEmptySeq, Seq(t: PType)) => PEmptySeq(t)
+    case (p: PExplicitSeq, Seq(elems: Seq[PExp])) => PExplicitSeq(elems)
+    case (p: PRangeSeq, Seq(low: PExp, high: PExp)) => PRangeSeq(low, high)
+    case (p: PSeqIndex, Seq(seq: PExp, idx: PExp)) => PSeqIndex(seq, idx)
+    case (p: PSeqTake, Seq(seq: PExp, n: PExp)) => PSeqTake(seq, n)
+    case (p: PSeqDrop, Seq(seq: PExp, n: PExp)) => PSeqDrop(seq, n)
+    case (p: PSeqUpdate, Seq(seq: PExp, idx: PExp, elem: PExp)) => PSeqUpdate(seq, idx, elem)
+    case (p: PSize, Seq(seq: PExp)) => PSize(seq)
+    case (p: PEmptySet, Seq(t: PType)) => PEmptySet(t)
+    case (p: PExplicitSet, Seq(elems: Seq[PExp])) => PExplicitSet(elems)
+    case (p: PEmptyMultiset, Seq(t: PType)) => PEmptyMultiset(t)
+    case (p: PExplicitMultiset, Seq(elems: Seq[PExp])) => PExplicitMultiset(elems)
+
+    case (p: PSeqn, Seq(ss: Seq[PStmt])) => PSeqn(ss)
+    case (p: PFold, Seq(e: PExp)) => PFold(e)
+    case (p: PUnfold, Seq(e: PExp)) => PUnfold(e)
+    case (p: PPackageWand, Seq(e: PExp)) => PPackageWand(e)
+    case (p: PApplyWand, Seq(e: PExp)) => PApplyWand(e)
+    case (p: PExhale, Seq(e: PExp)) => PExhale(e)
+    case (p: PAssert, Seq(e: PExp)) => PAssert(e)
+    case (p: PInhale, Seq(e: PExp)) => PInhale(e)
+    case (p: PNewStmt, Seq(target: PIdnUse, fields: Option[Seq[PIdnUse]])) => PNewStmt(target, fields)
+    case (p: PVarAssign, Seq(idnuse: PIdnUse, rhs: PExp)) => PVarAssign(idnuse, rhs)
+    case (p: PFieldAssign, Seq(fieldAcc: PFieldAccess, rhs: PExp)) => PFieldAssign(fieldAcc, rhs)
+    case (p: PIf, Seq(cond: PExp, thn: PStmt, els: PStmt)) => PIf(cond, thn, els)
+    case (p: PWhile, Seq(cond: PExp, invs: Seq[PExp], body: PStmt)) => PWhile(cond, invs, body)
+    case (p: PFresh, Seq(vars: Seq[PIdnUse])) => PFresh(vars)
+    case (p: PConstraining, Seq(vars: Seq[PIdnUse], stmt: PStmt)) => PConstraining(vars, stmt)
+    case (p: PLocalVarDecl, Seq(idndef: PIdnDef, typ: PType, init: Option[PExp])) => PLocalVarDecl(idndef, typ, init)
+    case (p: PMethodCall, Seq(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp])) => PMethodCall(targets, method, args)
+    case (p: PLabel, Seq(idndef: PIdnDef, invs: Seq[PExp])) => PLabel(idndef, invs)
+    case (p: PGoto, Seq(target: PIdnUse)) => PGoto(target)
+    case (p: PLetWand, Seq(idndef: PIdnDef, wand: PExp)) => PLetWand(idndef, wand)
+    case (p: PDefine, Seq(idndef: PIdnDef, optArgs: Option[Seq[PIdnDef]], exp: PExp)) => PDefine(idndef, optArgs, exp)
+    case (p: PLet, Seq(exp: PExp, nestedScope: PLetNestedScope)) => PLet(exp, nestedScope)
+    case (p: PLetNestedScope, Seq(idndef: PFormalArgDecl, body: PExp)) => PLetNestedScope(idndef, body)
+    case (p: PSkip, _) => p
+
+    case (p: PProgram, Seq(files: Seq[PImport], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]))
+    => PProgram(files, domains, fields, functions, predicates, methods, p.errors)
+
+    case (p: PImport, _) => p
+    case (p: PMethod, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt)) => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
+    case (p: PDomain, Seq(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom])) => PDomain(idndef, typVars, funcs, axioms)
+    case (p: PField, Seq(idndef: PIdnDef, typ:PType)) => PField(idndef, typ)
+    case (p: PFunction, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp])) => PFunction(idndef, formalArgs, typ, pres, posts, body)
+    case (p: PDomainFunction, Seq(idndef : PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType)) => PDomainFunction(idndef, formalArgs, typ, p.unique)(domainName = p.domainName)
+    case (p: PPredicate, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp])) => PPredicate(idndef, formalArgs, body)
+    case (p: PAxiom, Seq(idndef : PIdnDef, exp: PExp)) => PAxiom(idndef, exp) (domainName = p.domainName)
+  }
 }
