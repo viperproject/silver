@@ -275,33 +275,31 @@ class Questionmark(m: Match) extends Match {
   * @tparam N Type of the AST
   * @tparam COLL Type of the context
   */
-class TreeRegexBuilder[N <: Rewritable, COLL](val accumulator: (COLL, COLL) => COLL, val comparator: (COLL, COLL) => Boolean, default: COLL) {
+class TreeRegexBuilder[N <: Rewritable, COLL](val accumulator: (COLL, COLL) => COLL, val comparator: (COLL, COLL) => Boolean, val default: COLL) {
 
   /**
     * Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
-    * @param f Regular expression
+    * @param m Regular expression
     * @return TregexBuilderWithMatch that contains regex `f`
     */
-  def &>(f: Match) = new TreeRegexBuilderWithMatch[N, COLL](accumulator, comparator, f, default)
+  def &>(m: Match) = new TreeRegexBuilderWithMatch[N, COLL](this, m)
 }
 
 /**
   * Encapsulates the information of TreeRegexBuilder + matching information. Used to generate the regex strategy
-  * @param accumulator Describes how we put the contexts together into one object
-  * @param comparator Imposes an ordering on the contexts => in case a node matches in two ways on two different contexts the bigger one is taken (true = first param, false = second param)
+  * @param tbuilder Tree regex builder
   * @param regex Regular expression used for matching
-  * @param default The default context we start with
   * @tparam N Type of the AST
   * @tparam COLL Type of the context
   */
-class TreeRegexBuilderWithMatch[N <: Rewritable, COLL](val accumulator: (COLL, COLL) => COLL, val comparator: (COLL, COLL) => Boolean, regex: Match, default: COLL) {
+class TreeRegexBuilderWithMatch[N <: Rewritable, COLL](tbuilder: TreeRegexBuilder[N, COLL], regex: Match) {
 
   /**
     * Generate the regex strategy by adding the rewriting function into the mix
     * @param p partial function used for rewriting
     * @return complete RegexStrategy
     */
-  def |->(p: PartialFunction[(N, RegexContext[N, COLL]), N]) = new RegexStrategy[N, COLL](regex.createAutomaton(), p, new PartialContextR(default, accumulator, comparator))
+  def |->(p: PartialFunction[(N, RegexContext[N, COLL]), N]) = new RegexStrategy[N, COLL](regex.createAutomaton(), p, new PartialContextR(tbuilder.default, tbuilder.accumulator, tbuilder.comparator))
 }
 
 /**

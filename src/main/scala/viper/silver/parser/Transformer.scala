@@ -6,8 +6,6 @@
 
 package viper.silver.parser
 
-import viper.silver.FastPositions
-import viper.silver.verifier.ParseReport
 
 /* TODO: This is basically a copy of silver.ast.utility.Transformer. Can we share code?
  *       This could be done by using tree visiting and rewriting functionality from Kiama,
@@ -52,12 +50,12 @@ object Transformer {
         case _: PNullLit => parent
         case PFieldAccess(rcv, idnuse) => PFieldAccess(go(rcv), go(idnuse))
         case PPredicateAccess(args, idnuse) => PPredicateAccess(args map go, go(idnuse))
-        case PCall(func, args, explicitType) => {
-          PCall(go(func), args map go, (explicitType match {
+        case PCall(func, args, explicitType) =>
+          PCall(go(func), args map go, explicitType match {
             case Some(t) => Some(go(t))
             case None => None
-          }))
-        }
+          })
+
 
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
 
@@ -247,5 +245,8 @@ object Transformer {
     case (p: PDomainFunction, Seq(idndef : PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType)) => PDomainFunction(idndef, formalArgs, typ, p.unique)(domainName = p.domainName)
     case (p: PPredicate, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp])) => PPredicate(idndef, formalArgs, body)
     case (p: PAxiom, Seq(idndef : PIdnDef, exp: PExp)) => PAxiom(idndef, exp) (domainName = p.domainName)
+
+
+    case (p:PNode, s) => println("Not able to duplicate: " + p + " with children: " + s); p
   }
 }

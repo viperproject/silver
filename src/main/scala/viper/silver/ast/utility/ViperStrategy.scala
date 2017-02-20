@@ -8,31 +8,68 @@ import viper.silver.verifier.errors.ErrorNode
 /**
   * Viper specific Wrapper for the rewriting Strategies
   * Provides automatic back transformations for Node rewrites
+  *
   * @param p Partial function to perform rewritings
   * @tparam C Type of context
   */
 class ViperStrategy[C <: Context[Node]](p: PartialFunction[(Node, C), Node]) extends Strategy[Node, C](p) {
   override def preserveMetaData(old: Node, now: Node): Node = {
-    old match {
-      case n:TransformableErrors => {
-        val OldMetaData = old.getPrettyMetadata
-        var NewMetaData = now.getPrettyMetadata
-
-        if((NewMetaData._1 eq NoPosition) && (NewMetaData._2 eq NoInfo) && (NewMetaData._3 eq NoTrafos)) {
-          NewMetaData = (OldMetaData._1, OldMetaData._2, OldMetaData._3)
-        }
-
-        // Only duplicate if old and new are actually different
-        if(old ne now) {
-          NewMetaData = (NewMetaData._1, NewMetaData._2, NewMetaData._3 ++ NodeTrafo({ case _ => n.asInstanceOf[ErrorNode] }))
-          transformed(now.duplicateMeta(NewMetaData))
-        } else {
-          now
-        }
-      }
-      case _ => now
-    }
+    ViperStrategy.preserveMetaData(old, now, this)
   }
+}
+
+/**
+  * Viper specific Wrapper for Regex Strategies
+  * Provides automatic back transformations for Node to Node rewrites
+  *
+  * @param a The automaton generated from the regular expression
+  * @param p PartialFunction that describes rewriting
+  * @param d Default context
+  * @tparam C Type of context
+  */
+class ViperRegexStrategy[C](a: TRegexAutomaton, p:PartialFunction[(Node, RegexContext[Node, C]), Node], d: PartialContextR[Node, C]) extends RegexStrategy[Node, C](a, p, d) {
+
+  override def preserveMetaData(old: Node, now: Node): Node = {
+    ViperStrategy.preserveMetaData(old, now, this)
+  }
+}
+
+class SlimViperRegexStrategy[C](a: TRegexAutomaton, p:PartialFunction[Node, Node]) extends SlimRegexStrategy[Node](a, p) {
+
+  override def preserveMetaData(old: Node, now: Node): Node = {
+    ViperStrategy.preserveMetaData(old, now, this)
+  }
+}
+
+// TODO add viper regex strategy and builder here
+class ViperRegexBuilder[C](acc: (C, C) => C, comp: (C, C) => Boolean, dflt: C) extends TreeRegexBuilder[Node, C](acc, comp, dflt) {
+
+  /**
+    * Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
+    *
+    * @param m Regular expression
+    * @return TregexBuilderWithMatch that contains regex `f`
+    */
+  override def &>(m: Match): ViperRegexBuilderWithMatch[C] = new ViperRegexBuilderWithMatch[C](this, m)
+}
+
+
+
+
+class ViperRegexBuilderWithMatch[C](v: ViperRegexBuilder[C], m: Match) extends TreeRegexBuilderWithMatch[Node, C](v, m) {
+
+  override def |->(p: PartialFunction[(Node, RegexContext[Node, C]), Node]): ViperRegexStrategy[C] = new ViperRegexStrategy[C](m.createAutomaton(), p, new PartialContextR[Node, C](v.default, v.accumulator, v.comparator))
+}
+
+
+class SlimViperRegexBuilder {
+
+  def &>(m: Match) = new SlimViperRegexBuilderWithMatch(m)
+}
+
+class SlimViperRegexBuilderWithMatch(regex: Match) {
+
+  def |->(p: PartialFunction[Node, Node]) = new SlimViperRegexStrategy[Node](regex.createAutomaton(), p)
 }
 
 /**
@@ -40,8 +77,17 @@ class ViperStrategy[C <: Context[Node]](p: PartialFunction[(Node, C), Node]) ext
   */
 object ViperStrategy {
 
+  def SlimRegex(m:Match, p: PartialFunction[Node, Node]) = {
+    new SlimViperRegexBuilder &> m |-> p
+  }
+
+  def Regex[C](m:Match, p: PartialFunction[(Node, RegexContext[Node, C]), Node], default: C, acc: (C, C) => C, comp: (C, C) => Boolean) = {
+    new ViperRegexBuilder[C](acc, comp, default) &> m |-> p
+  }
+
   /**
     * Strategy without context
+    *
     * @param p Partial function to perform rewriting
     * @param t Traversion mode
     * @return ViperStrategy
@@ -52,6 +98,7 @@ object ViperStrategy {
 
   /**
     * Strategy with context about ancestors and siblings
+    *
     * @param p Partial function to perform rewriting
     * @param t Traversion mode
     * @return ViperStrategy
@@ -62,28 +109,56 @@ object ViperStrategy {
 
   /**
     * Strategy with context about ancestors, siblings and custom context
-    * @param p Partial function to perform rewriting
-    * @param default Default context
+    *
+    * @param p          Partial function to perform rewriting
+    * @param default    Default context
     * @param updateFunc Function that specifies how to update the custom context
-    * @param t Traversion mode
+    * @param t          Traversion mode
     * @tparam C Type of custom context
     * @return ViperStrategy
     */
-  def Context[C](p: PartialFunction[(Node, ContextC[Node, C]), Node], default: C, updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, t:Traverse = Traverse.TopDown) = {
+  def Context[C](p: PartialFunction[(Node, ContextC[Node, C]), Node], default: C, updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
     new ViperStrategy[ContextC[Node, C]](p) defaultContext new PartialContextC[Node, C](default, updateFunc) traverse t
   }
 
   //<editor-fold desc="Simons Master Thesis Methods">
 
   /**
+    * Function for automatic Error back transformation of nodes and conservation of metadata
+    */
+  def preserveMetaData(old: Node, now: Node, si: StrategyInterface[Node]): Node = {
+    old match {
+      case n: TransformableErrors =>
+        val OldMetaData = old.getPrettyMetadata
+        var NewMetaData = now.getPrettyMetadata
+
+        if ((NewMetaData._1 eq NoPosition) && (NewMetaData._2 eq NoInfo) && (NewMetaData._3 eq NoTrafos)) {
+          NewMetaData = (OldMetaData._1, OldMetaData._2, OldMetaData._3)
+        }
+
+        // Only duplicate if old and new are actually different
+        if (old ne now) {
+          NewMetaData = (NewMetaData._1, NewMetaData._2, NewMetaData._3 ++ NodeTrafo({ case _ => n.asInstanceOf[ErrorNode] }))
+          si.transformed(now.duplicateMeta(NewMetaData))
+        } else {
+          now
+        }
+
+      case _ => now
+    }
+  }
+
+
+  /**
     * Duplicator for every interesting node of the viper AST
+    *
     * @return Duplicated node
     */
   def viperDuplicator: PartialFunction[(Node, Seq[Any], (Position, Info, ErrorTrafo)), Node] = {
     case (il: IntLit, Seq(), meta) => IntLit(il.i)(meta._1, meta._2, meta._3)
     case (bl: BoolLit, Seq(), meta) => BoolLit(bl.value)(meta._1, meta._2, meta._3)
     case (nl: NullLit, _, meta) => NullLit()(meta._1, meta._2, meta._3)
-    case (lv:LocalVar, _, meta) => LocalVar(lv.name)(lv.typ, meta._1, meta._2, meta._3)
+    case (lv: LocalVar, _, meta) => LocalVar(lv.name)(lv.typ, meta._1, meta._2, meta._3)
     case (alv: AbstractLocalVar, _, meta) => alv
     // AS: added recursion on field: this was previously missing (as for all "shared" nodes in AST). But this could lead to the type of the field not being transformed consistently with its declaration (if the whole program is transformed)
     case (fa: FieldAccess, Seq(rcv: Exp, field: Field), meta) => FieldAccess(rcv, field)(meta._1, meta._2, meta._3)
@@ -197,7 +272,7 @@ object ViperStrategy {
       Field(f.name, singleType)(meta._1, meta._2, meta._3)
 
     case (f: Function, Seq(parameters: Seq[LocalVarDecl], aType: Type, preconditions: Seq[Exp],
-    postconditions:Seq[Exp], body:Option[Exp]), meta) =>
+    postconditions: Seq[Exp], body: Option[Exp]), meta) =>
       Function(f.name, parameters, aType,
         preconditions,
         postconditions,
@@ -216,10 +291,10 @@ object ViperStrategy {
 
 
     case (da: DomainAxiom, Seq(body: Exp), meta) =>
-      DomainAxiom(da.name, body)(meta._1, meta._2, da.domainName, meta._3  )
+      DomainAxiom(da.name, body)(meta._1, meta._2, da.domainName, meta._3)
 
     case (df: DomainFunc, Seq(parameters: Seq[LocalVarDecl], aType: Type), meta) =>
-      DomainFunc(df.name, parameters, aType, df.unique)(meta._1, meta._2, df.domainName, meta._3  )
+      DomainFunc(df.name, parameters, aType, df.unique)(meta._1, meta._2, df.domainName, meta._3)
 
     case (Bool, _, meta) => Bool
     case (dt: DomainType, Seq(domainName: Domain, typeVariables: Map[TypeVar, Type]), meta) =>
@@ -276,7 +351,7 @@ object ViperStrategy {
     case (n: NewStmt, Seq(target: LocalVar, fields: Seq[Field]), meta) =>
       NewStmt(target, fields)(meta._1, meta._2, meta._3)
 
-    case (s: Seqn, x:Seq[Stmt], meta) =>
+    case (s: Seqn, x: Seq[Stmt], meta) =>
       Seqn(x)(meta._1, meta._2, meta._3)
 
     case (u: Unfold, Seq(predicate: PredicateAccessPredicate), meta) =>
@@ -294,13 +369,13 @@ object ViperStrategy {
     case (t: Trigger, Seq(expressions: Seq[Exp]), meta) =>
       Trigger(expressions)(meta._1, meta._2, meta._3)
 
-    case (n, args, meta) => {
+    case (n, args, meta) =>
       println("node: " + n)
       println("args: " + args)
       println("meta info: " + meta)
       println("does not match anything inside the viper duplicator")
-      throw new Exception
-    }
+      n
+
   }
 
   //</editor-fold>
