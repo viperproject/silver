@@ -1,5 +1,7 @@
 package viper.silver.ast.utility.Rewriter
 
+import viper.silver.ast.QuantifiedExp
+
 //
 // aList:
 // c:
@@ -99,27 +101,45 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
 
   // Custom data structure for keeping the node context pairs
   class MatchSet {
-    var map = collection.mutable.ListBuffer.empty[(N, CTXT)]
+    var map = collection.mutable.ListBuffer.empty[(N, CTXT, Int)]
 
     // Put a new tuple into the data structure. If an entry for the node already exists keep the tuple with bigger context according to the regex context
     def put(tuple: (N, CTXT)) = {
       val node = tuple._1
       val context = tuple._2
       // Check if we have this node already in the list. NOTE: A node is different from an other node if the node itself differs Or one of the ancestors differs (sharing)
-      map.zipWithIndex.find( elem => (elem._1._1 eq node) && cmpAncs(elem._1._2.ancestorList, context.ancestorList) ) match {
-        case None => map.append((node, context))
-        case Some(tup) =>
-          val better = (node, if (tup._1._2.compare(context)) tup._1._2 else context)
-          map.remove(tup._2)
-          map.append(better)
-      }
-    }
+      val matchingNodes = map.zipWithIndex.filter( _._1._1 eq node )
 
+      if(matchingNodes.isEmpty)
+        // We don't have it already. Insert it as first node seen (index 0)
+        map.append((node, context, 0))
+      else {
+        val exactlyMatchingNodes = matchingNodes.filter( elem => cmpAncs(elem._1._2.ancestorList, context.ancestorList ))
+        exactlyMatchingNodes.length match {
+          case 0 => map.append((node, context, matchingNodes.length))
+          case 1 =>
+            val tup = exactlyMatchingNodes.head // Got only 1 element
+            val better = (node, if (tup._1._2.compare(context)) tup._1._2 else context, tup._1._3)
+            map.remove(tup._2)
+            map.append(better)
+          case _ => println("Multiple entries for same node: " + node)
+        }
+      }
+
+    }
     // Get the tuple that matches parameter node
     def get(node: N, ancList:Seq[N]): Option[CTXT] = {
-      map.find(elem => (elem._1 eq node) && cmpAncs(elem._2.ancestorList, ancList)) match {
-        case None => None
-        case Some(t) => Some(t._2)
+      // Get all matching nodes together with their index (only way to delete them later)
+      val candidates = map.zipWithIndex.filter( _._1._1 eq node )
+
+      if(candidates.isEmpty)
+        // No match found
+        None
+      else {
+        // Found a match. Make sure to get the minimum index (next in traversal order) and delete it such that the next index will be the minimum
+        val mini = candidates.min(Ordering.by((t:((N, CTXT, Int), Int)) => t._1._3))
+        map.remove(mini._2)
+        Some(mini._1._2)
       }
     }
 
@@ -146,6 +166,10 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
       // If no transition is possible (error state) states will be empty after this call and the recursion will stop
       val (states, action) = s.performTransition(n)
 
+      if(n.isInstanceOf[QuantifiedExp] && action.filter( el => el.isInstanceOf[ContextInfo] ).nonEmpty) {
+        println()
+      }
+
       // Get all the children to recurse further
       val children: Seq[Rewritable] = n.getChildren.foldLeft(Seq.empty[Rewritable])({
         case (seq, o: Option[Rewritable]) => o match {
@@ -159,14 +183,14 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
 
       // Actions may or may not change marked nodes, children or context
       var newMarked = marked
-      var newChildren = children
+      val newChildren = children
       var newCtxt = ctxt.addAncestor(n)
 
       // Apply actions
       action foreach {
-        // Marked for rewrite TODO: error handling in case node casting fails
+        // Marked for rewrite
         case MarkedForRewrite() => newMarked = newMarked ++ Seq((n.asInstanceOf[N], newCtxt))
-        // Context update TODO: error handling in case context casting fails
+        // Context update
         case ContextInfo(c: Any) => newCtxt = newCtxt.update(c.asInstanceOf[COLL])
         // Only recurse if we are the selected child
         case ChildSelectInfo(r: Rewritable) => newChildren.filter(_ eq r)
@@ -225,7 +249,9 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
 
     // Recurse into children
     val res = recurseChildren(resultNode, replaceTopDown(_, matches, newAncList)) match {
-      case Some(children) => transformed(resultNode.duplicate(children).asInstanceOf[N])
+      case Some(children) => {
+        transformed(resultNode.duplicate(children).asInstanceOf[N])
+      }
       case None => resultNode
     }
 

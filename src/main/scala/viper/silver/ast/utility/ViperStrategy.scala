@@ -351,8 +351,10 @@ object ViperStrategy {
     case (n: NewStmt, Seq(target: LocalVar, fields: Seq[Field]), meta) =>
       NewStmt(target, fields)(meta._1, meta._2, meta._3)
 
-    case (s: Seqn, x: Seq[Stmt], meta) =>
+    case (s: Seqn, x: Seq[Stmt], meta) => {
+
       Seqn(x)(meta._1, meta._2, meta._3)
+    }
 
     case (u: Unfold, Seq(predicate: PredicateAccessPredicate), meta) =>
       Unfold(predicate)(meta._1, meta._2, meta._3)
