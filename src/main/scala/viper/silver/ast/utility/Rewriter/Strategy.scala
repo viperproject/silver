@@ -376,6 +376,9 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     * Following methods are helper methods for the other Strategy implementations
     */
   protected def recurseChildren(node: N, recurse: N => N): Option[Seq[Any]] = {
+    // Make sure recursion on this node is valid
+    if(noRecursion.contains(node)) return None
+
     // Get the children of node
     val children = node.getChildren
 

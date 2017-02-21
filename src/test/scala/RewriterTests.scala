@@ -18,7 +18,7 @@ import scala.collection.mutable
 import scala.language.implicitConversions
 
 
-class RewriterTests extends FunSuite with Matchers {
+class RewriterTests extends FunSuite {
 
   // First test always takes a longer time. Just put a dummy testcase in front such that the rest of the runtimes are consistent. TODO Remove it after evaluation
   test("DummytestToWasteSetupTime") {
