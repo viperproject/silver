@@ -11,6 +11,9 @@ import viper.silver.ast._
 
 /** Utility methods for triggers */
 object Triggers {
+  /** Attention: The trigger generator is *not* thread-safe, because its super class
+    * [[GenericTriggerGenerator]] is not.
+    */
   object TriggerGeneration extends GenericTriggerGenerator[Node, Type, Exp, LocalVar, QuantifiedExp] {
     protected def hasSubnode(root: Node, child: Node) = root.hasSubnode(child)
     protected def visit[A](root: Node)(f: PartialFunction[Node, A]) = root.visit(f)
@@ -50,6 +53,9 @@ object Triggers {
     }
   }
 
+  /** Attention: The axiom rewriter is *not* thread-safe, because it makes use of the
+    * [[TriggerGeneration]], which is not thread-safe.
+    */
   object AxiomRewriter extends GenericAxiomRewriter[Type, Exp, LocalVar, Forall, EqCmp, And, Implies, Add, Sub,
                                                     Trigger] {
 
