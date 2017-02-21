@@ -158,7 +158,7 @@ trait Cfg[S, E] {
       case PostconditionBlock(posts) =>
         block.toString + "|" + posts.map(_.toString).map(escape).mkString("|")
       case LoopHeadBlock(invs, stmts) =>
-§        block.toString + "|" + invs.map(inv => "invariant " + escape(inv.toString)).mkString("|") + "|" + stmts.map(_.toString).map(escape).mkString("|")
+        block.toString + "|" + invs.map(inv => "invariant " + escape(inv.toString)).mkString("|") + "|" + stmts.map(_.toString).map(escape).mkString("|")
       case ConstrainingBlock(_, _) =>
         block.toString
     }
