@@ -41,7 +41,7 @@ class SlimViperRegexStrategy[C](a: TRegexAutomaton, p:PartialFunction[Node, Node
   }
 }
 
-// TODO add viper regex strategy and builder here
+
 class ViperRegexBuilder[C](acc: (C, C) => C, comp: (C, C) => Boolean, dflt: C) extends TreeRegexBuilder[Node, C](acc, comp, dflt) {
 
   /**
@@ -375,7 +375,6 @@ object ViperStrategy {
       println("meta info: " + meta)
       println("does not match anything inside the viper duplicator")
       n
-
   }
 
   //</editor-fold>

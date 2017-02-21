@@ -84,6 +84,25 @@ class RewriterTests extends FunSuite with Matchers {
   }
 
 
+  test("Sharing") {
+    val shared = FalseLit()()
+    val sharedAST = And(Not(shared)(), shared)()
+
+    val strat = ViperStrategy.Context[Int]({ case (FalseLit(), c) => if(c.c == 1) TrueLit()() else FalseLit()()}, 0, { case (Not(_), i) => i + 1 })
+
+    val res = strat.execute[Exp](sharedAST)
+
+    // Check that both true lits are no longer of the same instance
+    res match {
+      case And(Not(t1), t2) => {
+        assert(t1 == TrueLit()())
+        assert(t2 == FalseLit()())
+      }
+      case _ => assert(false)
+    }
+  }
+
+
   test("QuantifiedPermissions") {
     val filePrefix = "transformations\\QuantifiedPermissions\\"
     val files = Seq("simple", "allCases")

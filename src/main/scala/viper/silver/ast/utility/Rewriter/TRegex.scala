@@ -376,7 +376,7 @@ object n {
     * @tparam N Type of the AST
     * @return Node Match
     */
-  def apply[N <: Rewritable : TypeTag]() = new NMatch[N]((x: N) => true, false)
+  def apply[N <: Rewritable : TypeTag] = new NMatch[N]((x: N) => true, false)
 
   /**
     * Node match with a predicate that needs to hold in order to match
@@ -391,7 +391,7 @@ object n {
     * @tparam N Type of the AST
     * @return Node match marked for rewriting
     */
-  def r[N <: Rewritable : TypeTag]() = new NMatch[N]((x: N) => true, true)
+  def r[N <: Rewritable : TypeTag] = new NMatch[N]((x: N) => true, true)
 
   /**
     * Node match with a predicate that needs to hold in order to match. Mark the matched node for rewriting

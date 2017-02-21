@@ -34,12 +34,30 @@ class RegexTests extends FunSuite with Matchers {
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
   }
 
+  test("Sharing") {
+    val shared = FalseLit()()
+    val sharedAST = And(Not(shared)(), shared)()
+
+    val t = TreeRegexBuilder.context[Node, Int](_ + _, _ > _, 0)
+    val strat = t &> c[Not](_ => 1) > n.r[FalseLit] |-> { case (FalseLit(), c) => if(c.c == 1) TrueLit()() else FalseLit()()}
+
+    val res = strat.execute[Exp](sharedAST)
+
+    // Check that both true lits are no longer of the same instance
+    res match {
+      case And(Not(t1), t2) => {
+        assert(t1 == TrueLit()())
+        assert(t2 == FalseLit()())
+      }
+      case _ => assert(false)
+    }
+  }
+
   test("Performance_EncodingADTs") {
     val fileName = "transformations\\Performance\\EncodingADTs"
 
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
-    // TOO LONG :(
     val strat = t &> n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
 
     val frontend = new DummyFrontend

@@ -105,7 +105,8 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
     def put(tuple: (N, CTXT)) = {
       val node = tuple._1
       val context = tuple._2
-      map.zipWithIndex.find(_._1._1 eq node) match {
+      // Check if we have this node already in the list. NOTE: A node is different from an other node if the node itself differs Or one of the ancestors differs (sharing)
+      map.zipWithIndex.find( elem => (elem._1._1 eq node) && cmpAncs(elem._1._2.ancestorList, context.ancestorList) ) match {
         case None => map.append((node, context))
         case Some(tup) =>
           val better = (node, if (tup._1._2.compare(context)) tup._1._2 else context)
@@ -115,13 +116,15 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
     }
 
     // Get the tuple that matches parameter node
-    def get(node: N): Option[CTXT] = {
-      map.find(_._1 eq node) match {
+    def get(node: N, ancList:Seq[N]): Option[CTXT] = {
+      map.find(elem => (elem._1 eq node) && cmpAncs(elem._2.ancestorList, ancList)) match {
         case None => None
         case Some(t) => Some(t._2)
       }
     }
 
+    // Compare two ancestor lists for equality
+    def cmpAncs(s1: Seq[N], s2: Seq[N]): Boolean = s1.zip(s2).forall(nodes => nodes._1 eq nodes._2)
   }
 
   /**
@@ -164,7 +167,7 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
         // Marked for rewrite TODO: error handling in case node casting fails
         case MarkedForRewrite() => newMarked = newMarked ++ Seq((n.asInstanceOf[N], newCtxt))
         // Context update TODO: error handling in case context casting fails
-        case ContextInfo(c: Any) => newCtxt = ctxt.update(c.asInstanceOf[COLL])
+        case ContextInfo(c: Any) => newCtxt = newCtxt.update(c.asInstanceOf[COLL])
         // Only recurse if we are the selected child
         case ChildSelectInfo(r: Rewritable) => newChildren.filter(_ eq r)
       }
@@ -177,7 +180,7 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
 
       // Perform further recursion for each child and for each state that is not already accepting
       newChildren.foreach(child => {
-        states.filter(!_.isAccepting).foreach(state => {
+        states.filter( s1 => !s1.isAccepting).foreach(state => {
           recurse(child.asInstanceOf[N], state, newCtxt, newMarked)
         })
       })
@@ -199,14 +202,16 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
 
     visitor.execute(node)
 
-    val result = replaceTopDown(node, matches)
+    val result = replaceTopDown(node, matches, Seq())
     result.asInstanceOf[T]
   }
 
   // Replace the marked nodes with the transformed nodes
-  def replaceTopDown(n: N, matches: MatchSet): N = {
+  def replaceTopDown(n: N, matches: MatchSet, ancList:Seq[N]): N = {
+    val newAncList = ancList ++ Seq(n)
+
     // Find out if this node is going to be replaced
-    val replaceInfo = matches.get(n)
+    val replaceInfo = matches.get(n, newAncList)
 
     // get resulting node from rewriting
     val resultNode = replaceInfo match {
@@ -219,7 +224,7 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
     }
 
     // Recurse into children
-    val res = recurseChildren(resultNode, replaceTopDown(_, matches)) match {
+    val res = recurseChildren(resultNode, replaceTopDown(_, matches, newAncList)) match {
       case Some(children) => transformed(resultNode.duplicate(children).asInstanceOf[N])
       case None => resultNode
     }
