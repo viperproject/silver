@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/182/)
+
 field f: Int
 
 method test01(x: Ref)

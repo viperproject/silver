@@ -31,6 +31,7 @@ method test01(x: Ref) returns (b: Bool)
 {
   while (b)
     //:: ExpectedOutput(not.wellformed:insufficient.permission)
+    //:: MissingOutput(not.wellformed:insufficient.permission, /carbon/issue/70/)
     invariant x.f > 0
   {
     inhale acc(x.f, 1/2)
