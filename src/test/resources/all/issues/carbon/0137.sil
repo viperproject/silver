@@ -1,0 +1,12 @@
+//:: IgnoreFile(/carbon/issue/137/)
+method test()
+{
+    while (true)
+    {
+        while (true)
+        {
+            var x: Perm
+        }
+    }
+}
+

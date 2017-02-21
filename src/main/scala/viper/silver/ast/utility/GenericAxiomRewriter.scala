@@ -268,8 +268,10 @@ abstract class GenericAxiomRewriter[Type <: AnyRef,
       if (equalityComponents.tail.isEmpty) Nil
       else equalityComponents.sliding(2).map{case Seq(t1: Exp, t2: Exp) => Eq(t1, t2)}
 
+    /* Attention: Changing the structure of the body of a quantifier might interfere with
+     * recognising valid quantified permission assertions.
+     */
     rewrittenBody = Implies(And(equalities.toSeq), rewrittenBody)
-
 
     /* Step 5 - Create rewritten quantification */
 

@@ -41,13 +41,13 @@ trait SilFrontend extends DefaultFrontend {
 
   /** The SIL verifier to be used for verification (after it has been initialized). */
   def verifier: Verifier = _ver
-  protected var _ver: Verifier = null
+  protected var _ver: Verifier = _
 
   override protected type ParserResult = PProgram
   override protected type TypecheckerResult = Program
 
   /** The current configuration. */
-  protected var _config: SilFrontendConfig = null
+  protected var _config: SilFrontendConfig = _
   def config = _config
 
   protected var _startTime: Long = _
@@ -70,11 +70,6 @@ trait SilFrontend extends DefaultFrontend {
 
     /* Parse command line arguments and populate _config */
     parseCommandLine(args)
-
-    /* Must be executed before reading any value from _config!
-     * If parsing failed, _config.error should be defined afterwards.
-     */
-    initializeLazyScallopConfig()
 
     /* Handle errors occurred while parsing of command-line options */
     if (_config.error.isDefined) {
@@ -127,20 +122,6 @@ trait SilFrontend extends DefaultFrontend {
     _config = configureVerifier(args)
   }
 
-  protected def initializeLazyScallopConfig() {
-    _config.initialize {
-      case Version =>
-        _config.exit = true
-        println(_config.builder.vers.get)
-      case Help(_) =>
-        _config.exit = true
-        _config.printHelp()
-      case ScallopException(message) =>
-        _config.exit = true
-        _config.error = Some(message)
-    }
-  }
-
   /** Prints a header that does **not** depend on any command line argument.
     * This method is thus safe to call even if parsing the command line
     * arguments failed.
@@ -181,7 +162,7 @@ trait SilFrontend extends DefaultFrontend {
     val timeMs = System.currentTimeMillis() - _startTime
     val time = f"${timeMs / 1000.0}%.3f seconds"
     if(config.ideMode()) {
-      println(s"""{"type":"End","time":"${time}"}\r\n""")
+      println(s"""{"type":"End","time":"$time"}\r\n""")
     }else {
       println(s"${_ver.name} finished in $time.")
     }
@@ -214,7 +195,7 @@ trait SilFrontend extends DefaultFrontend {
 
      result match {
       case Parsed.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
-        if (err_list.isEmpty || err_list.forall{ case p => p.isInstanceOf[ParseWarning] })
+        if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning]))
 
         Succ({ e.initProperties(); e })
       else Fail(err_list)
@@ -239,25 +220,21 @@ trait SilFrontend extends DefaultFrontend {
     r.run match {
       case Some(modifiedInput) =>
         Translator(modifiedInput).translate match {
-          case Some(program) =>{
+          case Some(program) =>
             Succ(program)
-          }
-
 
           case None => // then these are translation messages
-            Fail(FastMessaging.sortmessages(Consistency.messages) map (m =>
-              {
-                TypecheckerError(
-                // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
+            Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
+              TypecheckerError(
+              // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
 
-                m.label, m.pos match {
-                  case fp: FilePosition =>
-                    SourcePosition(fp.file, m.pos.line, m.pos.column)
-                  case _ =>
-                    SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-                })
-
-              }))
+              m.label, m.pos match {
+                case fp: FilePosition =>
+                  SourcePosition(fp.file, m.pos.line, m.pos.column)
+                case _ =>
+                  SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
+              })
+            }))
         }
 
       case None =>
@@ -311,7 +288,7 @@ trait SilFrontend extends DefaultFrontend {
     lazy val shortFileStr = fileOpt.map(f => FilenameUtils.getName(f.toString)).getOrElse("<unknown file>")
     lazy val startStr = startOpt.map(toStr).getOrElse("<unknown start line>:<unknown start column>")
     lazy val endStr = endOpt.map(toStr).getOrElse("<unknown end line>:<unknown end column>")
-    
+
     lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
     lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
 

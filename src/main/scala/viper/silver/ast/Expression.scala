@@ -31,6 +31,8 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Transf
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
+  /** @inheritdoc */
+  lazy val topLevelConjuncts = Expressions.topLevelConjuncts(this)
 
   // AS: experimenting with removing this code...
   /**
