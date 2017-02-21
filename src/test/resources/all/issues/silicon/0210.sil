@@ -10,6 +10,7 @@ function silver_length(this: Ref): Int
 method length_iter(list$1: Ref, rd$1: Perm) returns (res$1: Int)
   requires none < rd$1 && rd$1 < write
   requires acc(valid__List(list$1), rd$1)
+  //:: ExpectedOutput(postcondition.violated:insufficient.permission)
   ensures acc(valid__List(list$1), rd$1)
 {
     var current$1: Ref
