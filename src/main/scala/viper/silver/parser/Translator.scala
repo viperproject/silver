@@ -193,10 +193,11 @@ case class Translator(program: PProgram) {
       case PConstraining(vars, ss) =>
         Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss))(pos)
       case PWhile(cond, invs, body) =>
-        val plocals = body.deepCollect({ // Note: this will collect declarations from nested loops
-          case l: PLocalVarDecl => l
-        })
-        val locals = plocals map {
+        val plocals = body.shallowCollect {
+          case l: PLocalVarDecl => Some(l)
+          case _: PWhile => None
+        }
+        val locals = plocals.flatten.map {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos)

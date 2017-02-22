@@ -135,6 +135,7 @@ object Consistency {
 
   /**
    * Does this boolean expression contain no subexpressions that can appear in positive positions only?
+ *
    * @param exceptInhaleExhale Are inhale-exhale expressions possible?
    *                           Default: false.
    */
@@ -208,53 +209,6 @@ object Consistency {
       case Old(nested) => validTrigger(nested) // case corresponds to OldTrigger node
       case _ : PossibleTrigger | _: FieldAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
       case _ => false
-    }
-  }
-
-  /**
-   * Is the control flow graph starting at `start` well-formed.  That is, does it have the following
-   * properties:
-   * <ul>
-   * <li>It is acyclic.
-   * <li>It has exactly one final block that all paths end in and that has no successors.
-   * <li>Jumps are only within a loop, or out of (one or several) loops.
-   * </ul>
-   */
-  // TODO: The last property about jumps is not checked as stated, but a stronger property (essentially forbidding many interesting jumps is checked)
-  def isWellformedCfg(start: Block): Boolean = {
-    val (ok, acyclic, terminalBlocks) = isWellformedCfgImpl(start)
-    ok && acyclic && terminalBlocks.size == 1
-  }
-
-  /**
-   * Implementation of well-formedness check. Returns (ok, acyclic, terminalBlocks) where `ok` refers
-   * to the full graph and `acyclic` and `terminalBlocks` only to the outer-most graph (not any loops with nested
-   * graphs).
-   */
-  private def isWellformedCfgImpl(start: Block, seenSoFar: Set[Block] = Set(), okSoFar: Boolean = true): (Boolean, Boolean, Set[TerminalBlock]) = {
-    var ok = okSoFar
-    start match {
-      case t: TerminalBlock => (okSoFar, true, Set(t))
-      case _ =>
-        start match {
-          case LoopBlock(body, cond, invs, locals, succ) =>
-            val (loopok, acyclic, terminalBlocks) = isWellformedCfgImpl(body)
-            ok = okSoFar && loopok && acyclic && terminalBlocks.size == 1
-          case _ =>
-        }
-        val seen = seenSoFar union Set(start)
-        var terminals = Set[TerminalBlock]()
-        var acyclic = true
-        for (b <- start.succs) {
-          if (seen contains b.dest) {
-            acyclic = false
-          }
-          val (okrec, a, t) = isWellformedCfgImpl(b.dest, seen, ok)
-          ok = ok && okrec
-          acyclic = acyclic && a
-          terminals = terminals union t
-        }
-        (ok, acyclic, terminals)
     }
   }
 

@@ -71,6 +71,7 @@ object Nodes {
           case Goto(target) => Nil
           case Fresh(vars) => vars
           case Constraining(vars, body) => vars ++ Seq(body)
+          case LocalVarDeclStmt(decl) => Seq(decl)
         }
       case vd: LocalVarDecl => Nil
       case e: Exp =>

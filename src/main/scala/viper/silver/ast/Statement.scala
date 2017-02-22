@@ -12,7 +12,8 @@
 
 package viper.silver.ast
 
-import viper.silver.ast.utility.{Consistency, Statements, CfgGenerator}
+import viper.silver.ast.utility.{Consistency, Statements}
+import viper.silver.cfg.silver.CfgGenerator
 
 // --- Statements
 
@@ -29,7 +30,7 @@ sealed trait Stmt extends Node with Infoed with Positioned with TransformableErr
   /**
     * Returns a control flow graph that corresponds to this statement.
     */
-  def toCfg = CfgGenerator.toCFG(this)
+  def toCfg(simplify: Boolean = true) = CfgGenerator.statementToCfg(this, simplify)
 
   /**
     * Returns a list of all undeclared local variables contained in this statement and
@@ -203,3 +204,11 @@ case class Constraining(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoP
 
   require(vars forall (_ isSubtype Perm))
 }
+
+/** Local variable declaration statement.
+  *
+  * [2016-12-22 Malte] Introduced so that local variables can be declared inside loops in the
+  * CFG-representation. This decision should be reevaluated when we consider introducing proper
+  * scopes.
+  */
+case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
