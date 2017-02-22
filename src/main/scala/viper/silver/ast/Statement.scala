@@ -211,4 +211,4 @@ case class Constraining(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoP
   * CFG-representation. This decision should be reevaluated when we consider introducing proper
   * scopes.
   */
-case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Stmt
+case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt

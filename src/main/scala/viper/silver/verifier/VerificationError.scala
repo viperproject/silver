@@ -201,7 +201,7 @@ object errors {
     val id = "while.failed"
     val text = "While statement might fail."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = WhileFailed(offendingNode.asInstanceOf[While], this.reason)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = WhileFailed(offendingNode.asInstanceOf[Exp], this.reason)
     def withReason(r: ErrorReason) = WhileFailed(offendingNode, r)
   }
 
