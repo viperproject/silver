@@ -16,33 +16,25 @@ object Traverse extends Enumeration {
 
 /**
   * Trait that encapsulates information and functionality for all Strategy types
+  *
   * @tparam N Type of the AST nodes
   */
 trait StrategyInterface[N <: Rewritable] {
 
   // Store every special node we don't want to recurse on
   protected var noRecursion = collection.mutable.HashSet.empty[Rewritable]
-
-  // Store every node we transformed
-  protected var wasTransformed = collection.mutable.HashSet.empty[Rewritable]
+  protected var changed = false
 
   /**
-    * @return Has the AST changed during rewriting?
+    * A flag that indicates whether the last AST transformed by this transformer was changed
+    *
+    * @return
     */
-  def hasChanged = wasTransformed.nonEmpty
-
-  /**
-    * Indicate to the transformer that a node has changed during rewriting
-    * @param node candidate node
-    * @return return the node again (convenience)
-    */
-  def transformed(node: N): N = {
-    wasTransformed.add(node)
-    node.asInstanceOf[N]
-  }
+  def hasChanged: Boolean = changed
 
   /**
     * Prevent recursion on special nodes
+    *
     * @param node node to prevent recursion on
     * @tparam T type of the node
     * @return return the node again (convenience)
@@ -54,6 +46,7 @@ trait StrategyInterface[N <: Rewritable] {
 
   /**
     * Execute strategy on AST
+    *
     * @param node root node of the AST
     * @tparam T type of the rewritten root
     * @return rewritten root
@@ -62,6 +55,7 @@ trait StrategyInterface[N <: Rewritable] {
 
   /**
     * Append two strategies. `s` is executed after `this` has finished
+    *
     * @param s strategy to combine with
     * @return combined strategy
     */
@@ -71,6 +65,7 @@ trait StrategyInterface[N <: Rewritable] {
 
   /**
     * This method can be overridden to control the creation of a new node by possibly adding metadata to it
+    *
     * @param old Node before rewriting
     * @param now Node after rewriting
     * @return Updated node that will be built into the AST
@@ -86,6 +81,7 @@ object StrategyBuilder {
 
   /**
     * Create a strategy without context just node to node
+    *
     * @param p Partial function that transforms the input node into the output node
     * @tparam N Common supertype of every node in the tree
     * @return Strategy object ready to execute on a tree
@@ -96,6 +92,7 @@ object StrategyBuilder {
 
   /**
     * Strategy that allows access to ancestors and siblings
+    *
     * @param p Partial function that transforms input (node, context) into a new node
     * @param t Traversial direction
     * @tparam N Common supertype of every node in the tree
@@ -107,10 +104,11 @@ object StrategyBuilder {
 
   /**
     * Strategy that allows access to ancestors, siblings and a custom defined context
-    * @param p Partial function that transforms input (node, context) into a new node
-    * @param default Default context value (in case no context is present)
+    *
+    * @param p          Partial function that transforms input (node, context) into a new node
+    * @param default    Default context value (in case no context is present)
     * @param updateFunc Function that extracts context out of nodes and combines it with existing context
-    * @param t Traversial direction
+    * @param t          Traversial direction
     * @tparam N Common supertype of every node in the tree
     * @tparam C Type of the context
     * @return Strategy object ready to execute on a tree
@@ -121,6 +119,7 @@ object StrategyBuilder {
 
   /**
     * Visitor analogous to SlimStrategy just with no new node as return type
+    *
     * @param f Function to execute on every node
     * @tparam N Common supertype of every node in the tree
     * @return Visitor object ready to use
@@ -131,6 +130,7 @@ object StrategyBuilder {
 
   /**
     * Visitor analogous to AncestorStrategy just with no new node as return type
+    *
     * @param f Function to execute on every node
     * @tparam N Common supertype of every node in the tree
     * @return Visitor object ready to use
@@ -141,8 +141,9 @@ object StrategyBuilder {
 
   /**
     * Visitor analogous to ContextStrategy just with no new node as return type
-    * @param f Function to execute on every node
-    * @param default Default context value (in case no context is present)
+    *
+    * @param f          Function to execute on every node
+    * @param default    Default context value (in case no context is present)
     * @param updateFunc Function that extracts context out of nodes and combines it with existing context
     * @tparam N Common supertype of every node in the tree
     * @tparam C Type of the context
@@ -156,6 +157,7 @@ object StrategyBuilder {
 
 /**
   * A class that helps with providing dummy context in a rewriting function. Used to make SlimStrategy compatible with RegexStrategy
+  *
   * @param p partial function from node to node
   * @tparam N type of the AST nodes
   */
@@ -167,6 +169,7 @@ class AddArtificialContext[N <: Rewritable](p: PartialFunction[N, N]) extends Pa
 
 /**
   * Strategy that provides node to node replacement without depending on contexts
+  *
   * @param p Partial function from node to node
   * @tparam N Type of the
   */
@@ -183,12 +186,14 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
   /**
     * Access to the current traversion mode
+    *
     * @return Traversion mode
     */
   def getTraversionMode = traversionMode
 
   /**
     * Define the traversion mode
+    *
     * @param t Traversion mode
     * @return Strategy itself (convenience)
     */
@@ -202,6 +207,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
   /**
     * Define the function that specifies the children we recurse on
+    *
     * @param r Recursion function
     * @return Strategy itself (convenience)
     */
@@ -225,18 +231,21 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
   /**
     * Access to the rule used for rewriting
+    *
     * @return Rule
     */
   def getRule = rule
 
   /**
     * Set the rule used for rewriting
+    *
     * @param r Rule
     */
   def setRule(r: RuleT[N, C]) = rule = r
 
   /**
     * Append rule of s to the rule of this. Rule of s will be executed directly after rule of this for every node
+    *
     * @param s strategy for combining rules
     * @return strategy with combined rules
     */
@@ -247,6 +256,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
   /**
     * Conditionally append rule of s to the rule of this. Rule of s will be executed directly after rule of this for every node in case rule of this was applied
+    *
     * @param s strategy for combining rules
     * @return strategy with combined rules
     */
@@ -257,6 +267,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
   /**
     * First part of the ternary operator in case rule this is applied. apply rule s too
+    *
     * @param s strategy for combining rules
     * @return Partial ternary object
     */
@@ -266,6 +277,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
   /**
     * Lift this strategy to an iterative strategy
+    *
     * @return iterative strategy
     */
   def repeat: RepeatedStrategy[N] = {
@@ -274,16 +286,23 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
   // Select the execution function based on the traversion mode
   protected def selectStrat(node: N, contextUsed: C): N = {
-    wasTransformed.clear()
-    traversionMode match {
+    changed = false
+    val result = traversionMode match {
       case Traverse.TopDown => executeTopDown(node, contextUsed)
       case Traverse.BottomUp => executeBottomUp(node, contextUsed)
       case Traverse.Innermost => executeInnermost(node, contextUsed)
+    }
+    result match {
+      case Some(tree) =>
+        changed = true
+        tree
+      case None => node
     }
   }
 
   /**
     * Execute the Strategy
+    *
     * @param node Root of the NST you want to rewrite
     * @tparam T Type of the rewritten root
     * @return rewritten NST
@@ -295,6 +314,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
   /**
     * Same as simple execute. Allows to define the default context here
+    *
     * @param node Root of the AST we want to rewrite
     * @param ctxt Default context for execution
     * @tparam T Type of the rewritten root
@@ -305,28 +325,29 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
   }
 
   // Method to execute the rewriting top down
-  def executeTopDown(node: N, context: C): N = {
+  def executeTopDown(node: N, context: C): Option[N] = {
     // Put ourselves into the ancestor list first
     val contextWithMyself = context.addAncestor(node).asInstanceOf[C]
 
     // Perform the rewriting
-    val newNode: N = rule.execute(node, contextWithMyself).getOrElse(node)
+    val newNodeO = rule.execute(node, contextWithMyself)
+    val newNode: N = newNodeO.getOrElse(node)
 
     // Create the new Context for children recursion
     val updatedContext: C = contextWithMyself.update(newNode).asInstanceOf[C]
 
     // Recurse on children. If we get None from the recursion we know that nothing was replaced and we keep the old node
-    val res = recurseChildren(newNode, executeTopDown(_, updatedContext)) match {
-      case Some(children) => transformed(newNode.duplicate(children).asInstanceOf[N])
-      case None => newNode
+    recurseChildren(newNode, executeTopDown(_, updatedContext)) match {
+      case Some(children) =>
+        val dup = newNode.duplicate(children).asInstanceOf[N]
+        Some(preserveMetaData(node, dup))
+      case None =>
+        newNodeO
     }
-
-
-    preserveMetaData(node, res)
   }
 
   // Method to execute the rewriting bottom up
-  def executeBottomUp(node: N, context: C): N = {
+  def executeBottomUp(node: N, context: C): Option[N] = {
 
     // Put ourselves into the ancestor list first and update the context at the same time
     val updatedContext: C = context match {
@@ -335,21 +356,22 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
       case nC: SimpleContext[N] => nC.asInstanceOf[C]
     }
 
-    // Recurse on children. If we get None from the recursion we know that nothing was replaced and we keep the old node
-    val newNode = recurseChildren(node, executeBottomUp(_, updatedContext)) match {
-      case Some(children) =>
-        transformed(node.duplicate(children).asInstanceOf[N])
+    // Recurse on children. If we get None from the recursion we know that nothing was replaced and we keep the old children
+    val childRec = recurseChildren(node, executeBottomUp(_, updatedContext))
+    val nodeToTransform = childRec match {
+      case Some(c) => node.duplicate(c).asInstanceOf[N]
       case None => node
     }
 
-    // Perform the rewriting
-    val res = rule.execute(newNode, updatedContext).getOrElse(newNode)
-
-    preserveMetaData(node, res)
+    rule.execute(nodeToTransform, updatedContext) match {
+      case Some(transformed) => Some(preserveMetaData(node, transformed))
+      case None if nodeToTransform eq node => None
+      case None => Some(preserveMetaData(node, nodeToTransform))
+    }
   }
 
   // Method to execute the rewriting as innermost
-  def executeInnermost(node: N, context: C): N = {
+  def executeInnermost(node: N, context: C): Option[N] = {
     // Put ourselves into the ancestor list first
     val newC = context.addAncestor(node).asInstanceOf[C]
 
@@ -357,27 +379,27 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     val maybe = rule.execute(node, newC)
 
     // Recurse on children. If we get None from the recursion we know that nothing was replaced and we keep the old node
-    val res = if (maybe.isEmpty) {
+    if (maybe.isEmpty) {
       // No rewriting -> recurse further
       recurseChildren(node, executeInnermost(_, newC)) match {
-        case Some(children) => transformed(node.duplicate(children).asInstanceOf[N])
-        case None => node
+        case Some(children) =>
+          val res = node.duplicate(children).asInstanceOf[N]
+          Some(preserveMetaData(node, res))
+        case None => None
       }
     } else {
       // Rewriting happended stop recursion (according to innermost policy)
-      maybe.get
+      maybe
     }
-
-    preserveMetaData(node, res)
   }
 
 
   /**
     * Following methods are helper methods for the other Strategy implementations
     */
-  protected def recurseChildren(node: N, recurse: N => N): Option[Seq[Any]] = {
+  protected def recurseChildren(node: N, recurse: N => Option[N]): Option[Seq[Any]] = {
     // Make sure recursion on this node is valid
-    if(noRecursion.contains(node)) return None
+    if (noRecursion.contains(node)) return None
 
     // Get the children of node
     val children = node.getChildren
@@ -391,34 +413,45 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     assert(childrenSelect.length == children.length, "Incorrect number of children in recursion")
 
     // Recurse on children if the according (same index) flag in childrenSelect is set. If it is not set, leave child untouched
-    val newChildren: Seq[Any] = children.zip(childrenSelect) map {
+    val newChildren: Seq[Option[Any]] = children.zip(childrenSelect) map {
       case (o: Option[Rewritable], true) => o match {
         case None => None
-        case Some(x: Rewritable) => if (!noRecursion.contains(x)) Some(recurse(x.asInstanceOf[N])) else x
+        case Some(x: Rewritable) =>
+          if (!noRecursion.contains(x)) {
+            recurse(x.asInstanceOf[N]) match {
+              case None => None
+              case Some(x) => Some(Some(x))
+            }
+          }
+          else {
+            None
+          }
       }
-      case (s: Seq[Rewritable], true) => s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else x }
-      case (n: Rewritable, true) => if (!noRecursion.contains(n)) recurse(n.asInstanceOf[N]) else n
-      case (old, false) => old
+      case (s: Seq[Rewritable], true) =>
+        val newSeq = s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else None }
+        if (newSeq.forall(_.isEmpty)) {
+          None
+        } else {
+          val seqWithChildren: Seq[Any] = newSeq.zip(s) map { elem => elem._1 match {
+            case None => elem._2
+            case Some(x) => x
+          }
+          }
+          Some(seqWithChildren)
+        }
+      case (n: Rewritable, true) => if (!noRecursion.contains(n)) recurse(n.asInstanceOf[N]) else None
+      case (old, false) => None
     }
 
     // Find out if one of the children was changed.
-    val hasChanged: Boolean = newChildren.foldLeft(false)((accumulator, elem) => {
-      val childChanged = elem match {
-        case seq: Seq[Rewritable] => seq.map {
-          wasTransformed.contains(_)
-        }.fold(false)(_ || _)
-        case opt: Option[Rewritable] => opt match {
-          case Some(x) => wasTransformed.contains(x)
-          case None => false // No empty child can be generated from existing child => if None is new child it was already None in old child => no change
-        }
-        case node: Rewritable => wasTransformed.contains(node)
-      }
-      accumulator || childChanged
-    })
+    val hasChanged: Boolean = newChildren.exists( _.isDefined)
 
     // Convention: If something changed -> return new children, otherwise return nothing
     if (hasChanged) {
-      Some(newChildren)
+      Some(newChildren.zip(children).map( elem => elem._1 match {
+        case None => elem._2
+        case Some(x) => x
+      }))
     } else {
       None
     }
@@ -450,12 +483,11 @@ class ConcatinatedStrategy[N <: Rewritable](s1: StrategyInterface[N], val s2: St
   }
 
   override def execute[T <: N](node: N): T = strategies.foldLeft(node)((n, strat) => strat.execute[N](n)).asInstanceOf[T]
-
-  override def hasChanged: Boolean = s1.hasChanged || s2.hasChanged
 }
 
 /**
   * This class encapsulates strategies that should be iterative. The execute method allows for execution until fixed point or a fixed number of executions
+  *
   * @param s The strategy to iterate
   * @tparam N Type of the AST nodes
   */
@@ -463,6 +495,7 @@ class RepeatedStrategy[N <: Rewritable](s: StrategyInterface[N]) extends Strateg
 
   /**
     * Execute strategy until fixed point is reached
+    *
     * @param node root node of the AST
     * @tparam T type of the rewritten root
     * @return rewritten root
@@ -478,8 +511,9 @@ class RepeatedStrategy[N <: Rewritable](s: StrategyInterface[N]) extends Strateg
 
   /**
     * Execute strategy a fixed number of times
+    *
     * @param node root node of the AST
-    * @param i number of iterations
+    * @param i    number of iterations
     * @tparam T Type of the result node
     * @return rewritten root
     */
@@ -499,13 +533,15 @@ class RepeatedStrategy[N <: Rewritable](s: StrategyInterface[N]) extends Strateg
 
 /**
   * Base trait for all Strategy contexts
+  *
   * @tparam N Common supertype of every node in the tree
   */
 trait Context[N <: Rewritable] {
-  protected def transformer:StrategyInterface[N]
+  protected def transformer: StrategyInterface[N]
 
   /**
     * Shortcut to define nodes that should not be recursed on
+    *
     * @param node node to prevent recursion on
     * @tparam T type of the node
     * @return return the node again (convenience)
@@ -516,9 +552,10 @@ trait Context[N <: Rewritable] {
 
   /**
     * Get access to the transformer object itself
+    *
     * @return the current transformer
     */
-  def getTransformer:StrategyInterface[N] = transformer
+  def getTransformer: StrategyInterface[N] = transformer
 
   // Add an ancestor to the context
   private[Rewriter] def addAncestor(node: N): Context[N]
@@ -532,6 +569,7 @@ trait Context[N <: Rewritable] {
 
 /**
   * Encapsulates context information without ancestors or custom context
+  *
   * @param transformer current transformer
   * @tparam N Common supertype of every node in the tree
   */
@@ -545,8 +583,9 @@ class SimpleContext[N <: Rewritable](protected val transformer: StrategyInterfac
 
 /**
   * Encapsulates context information with ancestors but no custom context
+  *
   * @param ancestorList List of ancestors
-  * @param transformer current transformer
+  * @param transformer  current transformer
   * @tparam N Common supertype of every node in the tree
   */
 class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transformer: StrategyInterface[N]) extends Context[N] {
@@ -626,11 +665,12 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
 
 /**
   * Encapsulates context information with ancestors and custom context
-  * @param aList List of ancestors
-  * @param c custom context object
+  *
+  * @param aList       List of ancestors
+  * @param c           custom context object
   * @param transformer current transformer
-  * @param upContext Function to update the context
-  * @tparam N Common supertype of every node in the tree
+  * @param upContext   Function to update the context
+  * @tparam N      Common supertype of every node in the tree
   * @tparam CUSTOM Type of custom context
   */
 class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transformer: StrategyInterface[N], private val upContext: PartialFunction[(N, CUSTOM), CUSTOM]) extends ContextA[N](aList, transformer) {
@@ -659,6 +699,7 @@ class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transforme
 
 /**
   * Context object that does not contain all information yet. Provides functions to lift the object into a full context
+  *
   * @tparam N Common supertype of every node in the tree
   * @tparam C Type of context
   */
@@ -666,6 +707,7 @@ trait PartialContext[N <: Rewritable, C <: Context[N]] {
 
   /**
     * Provide the transformer for the real context
+    *
     * @param transformer current transformer
     * @return A complete Context object
     */
@@ -674,11 +716,13 @@ trait PartialContext[N <: Rewritable, C <: Context[N]] {
 
 /**
   * Partial context for SimpleContext.
+  *
   * @tparam N Common supertype of every node in the tree
   */
 class NoContext[N <: Rewritable] extends PartialContext[N, SimpleContext[N]] {
   /**
     * Provide the transformer for the real context
+    *
     * @param transformer current transformer
     * @return A complete SimpleContext object
     */
@@ -687,6 +731,7 @@ class NoContext[N <: Rewritable] extends PartialContext[N, SimpleContext[N]] {
 
 /**
   * Partial context for ContextA
+  *
   * @param aList List of ancestors
   * @tparam N Common supertype of every node in the tree
   */
@@ -694,6 +739,7 @@ class PartialContextA[N <: Rewritable](val aList: Seq[N] = Seq()) extends Partia
 
   /**
     * Provide the transformer for the real context
+    *
     * @param transformer current transformer
     * @return A complete ContextA object
     */
@@ -702,18 +748,20 @@ class PartialContextA[N <: Rewritable](val aList: Seq[N] = Seq()) extends Partia
 
 /**
   * Partial context for ContextC
-  * @param custom Custom context object
+  *
+  * @param custom    Custom context object
   * @param upContext Function to update the context
-  * @param aList List of ancestors
-  * @tparam N Common supertype of every node in the tree
+  * @param aList     List of ancestors
+  * @tparam N      Common supertype of every node in the tree
   * @tparam CUSTOM Type of custom context
   */
 class PartialContextC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContext: PartialFunction[(N, CUSTOM), CUSTOM] = PartialFunction.empty, val aList: Seq[N] = Seq()) extends PartialContext[N, ContextC[N, CUSTOM]] {
 
   /**
     * Provide information to complete ContextC object
-    * @param list List of ancestors
-    * @param upC Update function for custom context
+    *
+    * @param list        List of ancestors
+    * @param upC         Update function for custom context
     * @param transformer Current transformer
     * @return A complete ContextC object
     */
@@ -721,7 +769,8 @@ class PartialContextC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContext
 
   /**
     * Provide information to complete ContextC object
-    * @param list List of ancestors
+    *
+    * @param list        List of ancestors
     * @param transformer Current transformer
     * @return A complette ContextC object
     */
@@ -729,6 +778,7 @@ class PartialContextC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContext
 
   /**
     * Provide the transformer for the real context
+    *
     * @param transformer current transformer
     * @return A complete ContextC object
     */
@@ -737,6 +787,7 @@ class PartialContextC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContext
 
 /**
   * A visitor that executes a unit-result function on every node
+  *
   * @param visitNode Function used for visiting every node
   * @tparam N Type of the AST nodes
   * @tparam C Type of context
@@ -748,6 +799,7 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
 
   /**
     * Define the recursion function
+    *
     * @param r recursion function
     * @return Visitor
     */
@@ -761,6 +813,7 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
 
   /**
     * Define the default context
+    *
     * @param pC Partial context (transformer will be filled in)
     * @return visitor itself (convenience)
     */
@@ -771,6 +824,7 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
 
   /**
     * Execute the visitor on an object (execute to allow compatibility with other rewriting strategies)
+    *
     * @param node root node of the AST
     * @tparam T type of the rewritten root
     * @return rewritten root
@@ -783,9 +837,10 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
 
   /**
     * Visit the AST  at the root node. Basicall execute with no return value
+    *
     * @param node root node of the AST
     */
-  def visit(node: N):Unit = {
+  def visit(node: N): Unit = {
     execute[N](node)
   }
 
@@ -830,6 +885,7 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
 
 /**
   * Query a Tree for useful information
+  *
   * @param getInfo Extractor used to get information from a node
   * @tparam N Type of the AST nodes
   * @tparam B Result type of the Query
@@ -841,12 +897,14 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
 
   /**
     * Acces the accumulator function
+    *
     * @return The accumulator function
     */
   def getAccumulator = accumulator
 
   /**
     * Define the accumulator that combines the results of all children together into one
+    *
     * @param a Accumulator function
     * @return Query itself (convenience)
     */
@@ -860,12 +918,14 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
 
   /**
     * Access the neutral element
+    *
     * @return Neutral element
     */
   def getNeutralElement = nElement
 
   /**
     * Define the default value for the query result (like the default value in fold)
+    *
     * @param ne Neutral element
     * @return Query itself (convenience)
     */
@@ -889,6 +949,7 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
 
   /**
     * Execute the Query
+    *
     * @param node Root of the AST
     * @return Query result
     */
@@ -955,8 +1016,10 @@ private case class Rule[N <: Rewritable, C <: Context[N]](r: PartialFunction[(N,
   override def execute(node: N, context: C): Option[N] = {
     if (r.isDefinedAt(node, context)) {
       val res = r((node, context))
-      if(node ne res) context.getTransformer.transformed(res)
-      Some(res)
+      if (node eq res)
+        None
+      else
+        Some(res)
     } else {
       None
     }
@@ -1026,7 +1089,8 @@ private case class Ternary[N <: Rewritable, C <: Context[N]](r1: RuleT[N, C], r2
 
 /**
   * Helper class to allow the construction of the ternary construct. We already specified S1 and S2 from: S1 ? S2 : S3 and need S3
-  * @param s the base strategy S1
+  *
+  * @param s  the base strategy S1
   * @param r2 rule of strategy S2
   * @tparam N type of all AST nodes
   * @tparam C type of context

@@ -656,7 +656,6 @@ class RewriterTests extends FunSuite {
       case (None, errors) => println("Problem with program: " + errors)
     }
     val res = strat.execute[Program](targetNode)
-    println("debug:" + res.toString())
 
     val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
     assert(fileRef != null, s"File $filePrefix$fileName Ref not found")

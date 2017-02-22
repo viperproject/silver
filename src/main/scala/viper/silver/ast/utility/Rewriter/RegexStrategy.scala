@@ -154,7 +154,7 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
     * @return rewritten root
     */
   override def execute[T <: N](node: N): T = {
-    wasTransformed.clear()
+    changed = false
 
     // Store found matches here
     val matches = new MatchSet
@@ -165,10 +165,6 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
       // Perform possible transition and obtain actions.
       // If no transition is possible (error state) states will be empty after this call and the recursion will stop
       val (states, action) = s.performTransition(n)
-
-      if(n.isInstanceOf[QuantifiedExp] && action.filter( el => el.isInstanceOf[ContextInfo] ).nonEmpty) {
-        println()
-      }
 
       // Get all the children to recurse further
       val children: Seq[Rewritable] = n.getChildren.foldLeft(Seq.empty[Rewritable])({
@@ -227,35 +223,41 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
     visitor.execute(node)
 
     val result = replaceTopDown(node, matches, Seq())
-    result.asInstanceOf[T]
+    result match {
+      case Some(tree) =>
+        changed = true
+        tree.asInstanceOf[T]
+      case None => node.asInstanceOf[T]
+    }
+
   }
 
   // Replace the marked nodes with the transformed nodes
-  def replaceTopDown(n: N, matches: MatchSet, ancList:Seq[N]): N = {
+  def replaceTopDown(n: N, matches: MatchSet, ancList:Seq[N]): Option[N] = {
     val newAncList = ancList ++ Seq(n)
 
     // Find out if this node is going to be replaced
     val replaceInfo = matches.get(n, newAncList)
 
     // get resulting node from rewriting
-    val resultNode = replaceInfo match {
-      case None => n
+    val resultNodeO = replaceInfo match {
+      case None => None
       case Some(elem) =>
         if (p.isDefinedAt(n, elem))
-          transformed(p(n, elem))
+          Some(p(n, elem))
         else
-          n
+          None
     }
+    val resultNode = resultNodeO.getOrElse(n)
 
     // Recurse into children
-    val res = recurseChildren(resultNode, replaceTopDown(_, matches, newAncList)) match {
+    recurseChildren(resultNode, replaceTopDown(_, matches, newAncList)) match {
       case Some(children) => {
-        transformed(resultNode.duplicate(children).asInstanceOf[N])
+        val res = resultNode.duplicate(children).asInstanceOf[N]
+        Some(preserveMetaData(n, res))
       }
-      case None => resultNode
+      case None => resultNodeO
     }
 
-    // Call preserve metadata to allow possible extensions to do their work
-    preserveMetaData(n, res)
   }
 }
