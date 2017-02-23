@@ -686,14 +686,14 @@ class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transforme
   }
 
   // Perform the custom update part of the update
-  def updateCustom(): ContextC[N, CUSTOM] = {
-    val cust = if (upContext.isDefinedAt((node, c))) upContext(node, c) else c
+  def updateCustom(n: N): ContextC[N, CUSTOM] = {
+    val cust = if (upContext.isDefinedAt((n, c))) upContext(n, c) else c
     new ContextC[N, CUSTOM](ancestorList, cust, transformer, upContext)
   }
 
   // Update the context with node and custom context
   override def update(n: N): ContextC[N, CUSTOM] = {
-    replaceNode(n).updateCustom()
+    replaceNode(n).updateCustom(node)
   }
 }
 

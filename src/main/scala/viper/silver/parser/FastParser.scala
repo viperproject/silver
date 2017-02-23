@@ -21,6 +21,7 @@ import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
+import viper.silver.ast.utility.Rewriter.StrategyBuilder
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 
 import scala.util.parsing.input.NoPosition
@@ -99,7 +100,110 @@ object FastParser extends PosParser{
     obj.isInstanceOf[PFieldAccess]
   }
 
+  def newExpandDefine(defines: Seq[PDefine], toExpand:Seq[PDefine]): Seq[PDefine] = {
+
+    def getMacroByName(name: String): PDefine = defines.find( _.idndef.name == name) match {
+      case Some(mac) => mac
+      case None => throw ParseException("Macro " + name + " used but not present in scope", NoPosition)
+    }
+
+    def isMacro(name: String): Boolean = defines.exists( _.idndef.name == name)
+
+
+    val expander = StrategyBuilder.ContextStrategy[PNode, (Seq[String], Map[String, String])]({
+      case (pMacro:PMacroRef, ctxt) => {
+        val name = pMacro.idnuse.name
+
+        if( ctxt.c._1.contains(name) )
+          throw ParseException("Recursive macro declaration found", NoPosition)
+
+        val body = getMacroByName(name).body
+
+        if(!body.isInstanceOf[PStmt])
+          throw ParseException("Expression macro used as statement", NoPosition)
+
+        body
+      }
+      case(pMacro:PIdnUse, ctxt) if isMacro(pMacro.name) => {
+        val name = pMacro.name
+
+        if(ctxt.c._1.contains(name))
+          throw ParseException("Recursive macro declaration found", NoPosition)
+
+        val body = getMacroByName(name).body
+
+        if(!body.isInstanceOf[PExp])
+          throw ParseException("Statement macro used as expression", NoPosition)
+
+        body
+      }
+      case(pMacro:PMethodCall, ctxt) if isMacro(pMacro.method.name) => {
+        val name = pMacro.method.name
+
+        if(ctxt.c._1.contains(name))
+          throw ParseException("Recursive macro declaration found", NoPosition)
+
+        val realMacro = getMacroByName(name)
+        val body = realMacro.body
+
+        if(pMacro.args.length != realMacro.args.getOrElse(Seq()).length) // Would not be a PMethodCall in case of no arguments
+          throw ParseException("Number of arguments does not match", NoPosition)
+
+        if(!body.isInstanceOf[PStmt])
+          throw ParseException("Statement macro used as expression", NoPosition)
+
+        body
+      }
+      case(pMacro:PCall, ctxt) if isMacro(pMacro.func.name) => {
+        val name = pMacro.func.name
+
+        if(ctxt.c._1.contains(name))
+          throw ParseException("Recursive macro declaration found", NoPosition)
+
+        val realMacro = getMacroByName(name)
+        val body = realMacro.body
+
+        if(pMacro.args.length != realMacro.args.getOrElse(Seq()).length) // Would not be a PMethodCall in case of no arguments
+          throw ParseException("Number of arguments does not match", NoPosition)
+
+        if(!body.isInstanceOf[PStmt])
+          throw ParseException("Expression macro used as statement", NoPosition)
+
+        body
+      }
+      case(ident:PIdnUse, ctxt) => {
+        ctxt.c._2.get(ident.name) match {
+          case Some(id) => PIdnUse(id)
+          case None => ident
+        }
+      }
+    }, (Seq(), Map()), {
+      case (pMacro:PMacroRef, c) => {
+        val realMacro = getMacroByName(pMacro.idnuse.name)
+        (c._1 ++  Seq(realMacro.idndef.name), c._2 )
+      }
+      case (pMacro:PIdnUse, c) if isMacro(pMacro.name) => {
+        val realMacro = getMacroByName(pMacro.name)
+        (c._1 ++ Seq(realMacro.idndef.name), c._2)
+      }
+      case(pMacro:PMethodCall, c) if isMacro(pMacro.method.name) => {
+        val realMacro = getMacroByName(pMacro.method.name)
+        // TODO add arguments here
+        (c._1 ++ Seq(realMacro.idndef.name), c._2)
+      }
+      case(pMacro:PCall, c) if isMacro(pMacro.func.name) => {
+        val realMacro = getMacroByName(pMacro.func.name)
+        (c._1 ++ Seq(realMacro.idndef.name), c._2)
+      }
+    })
+
+    toExpand.map { defi => PDefine(defi.idndef, defi.args, expander.execute[PNode](defi.body)) }
+  }
+
+
+
   def expandDefines(defines: Seq[PDefine], toExpand: Seq[PDefine]): Seq[PDefine] = {
+
     val maxCount = 25
     /* TODO: Totally arbitrary cycle breaker. We should properly detect
      * (mutually) recursive named assertions.
@@ -128,6 +232,8 @@ object FastParser extends PosParser{
   }
 
   def doExpandDefines[N <: PNode](defines: Seq[PDefine], node: N): Option[N] = {
+
+
     var expanded = false
 
     def checkMacroType(oldNode: PNode, newNode: PNode): Unit = {
@@ -598,7 +704,9 @@ object FastParser extends PosParser{
   lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl).rep).map {
     case decls =>
       var globalDefines: Seq[PDefine] = decls.collect { case d: PDefine => d }
-      globalDefines = expandDefines(globalDefines, globalDefines)
+
+      globalDefines = newExpandDefine(globalDefines, globalDefines)
+      //globalDefines = expandDefines(globalDefines, globalDefines)
 
       val imports: Seq[PImport] = decls.collect { case i: PImport => i }
 
@@ -682,6 +790,8 @@ object FastParser extends PosParser{
           decls.collect {
             case meth: PMethod =>
               var localDefines = meth.deepCollect { case n: PDefine => n }
+
+
               localDefines = expandDefines(localDefines ++ globalDefines, localDefines)
 
               val methWithoutDefines =

@@ -12,8 +12,9 @@ import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.MagicWandOp
 import viper.silver.FastPositions
+import viper.silver.ast.utility.Rewriter.Rewritable
 import viper.silver.parser.TypeHelper._
-import viper.silver.verifier.{ParseReport}
+import viper.silver.verifier.ParseReport
 
 
 trait FastPositioned {
@@ -64,7 +65,7 @@ trait FastPositioned {
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual SIL abstract syntax tree.
  */
-sealed trait PNode extends FastPositioned with Product{
+sealed trait PNode extends FastPositioned with Product with Rewritable {
 
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
@@ -154,6 +155,10 @@ sealed trait PNode extends FastPositioned with Product{
     for (c <- productIterator)
       setNodeChildConnections (c)
 
+  }
+
+  override def duplicate(children: scala.Seq[Any]): Any = {
+    Transformer.parseTreeDuplicator(this, children)
   }
 
 }

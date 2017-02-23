@@ -175,7 +175,7 @@ trait TransformableErrors {
         val res = transformNode(n.asInstanceOf[ErrorNode])
         res
       }
-    })
+    }).repeat
 
   // Helper function for applying the transformations
   private def foldfunc[E](tr: PartialFunction[E, E], nd: E): E = {
@@ -188,9 +188,9 @@ trait TransformableErrors {
 
   /** Transform error `e` back according to the transformations in backwards chronological order */
   def transformError(e: AbstractVerificationError): AbstractVerificationError = {
-    errT.Etransformations.foldRight(e)(foldfunc)
-    val transformedNode = nodeTrafoStrat.execute[ErrorNode](e.offendingNode)
-    e.withNode(transformedNode).asInstanceOf[AbstractVerificationError]
+    val newError = errT.Etransformations.foldRight(e)(foldfunc)
+    val transformedNode = nodeTrafoStrat.execute[ErrorNode](newError.offendingNode)
+    newError.withNode(transformedNode).asInstanceOf[AbstractVerificationError]
   }
 
   /** Transform reason `e` back according to the transformations in backwards chronological order */
