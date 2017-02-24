@@ -16,7 +16,7 @@ import scala.language.implicitConversions
 class ParseTreeTests extends FunSuite {
   test("CyclicMacroDetection") {
     val filePrefix = "parsertests\\cyclicMacros\\"
-    val files = Seq("simple", "complex")
+    val files = Seq("simple", "complex", "complexExp")
 
     val frontend = new DummyFrontend
 
@@ -28,7 +28,7 @@ class ParseTreeTests extends FunSuite {
 
       frontend.translate(file) match {
         case (Some(p), _) => println("Everything ok, but we expected cyclic error!"); assert(false)
-        case (None, errors) => errors.foreach( e => assert(e.readableMessage.contains("Recursive macro declaration found")))
+        case (None, errors) => errors.foreach( e => { println("Error: " + e); assert(e.readableMessage.contains("Recursive macro declaration found")) })
       }
     }
     }
@@ -36,8 +36,8 @@ class ParseTreeTests extends FunSuite {
 
   test("MacroExpansion") {
     val filePrefix = "parsertests\\macroExpansion\\"
-    //val files = Seq("simple1", "simple2", "simpleExp")
-    val files = Seq("simpleArgs")
+    //val files = Seq("simple", "simple2", "simpleExp", "simpleArgs", "simpleArgs2", "simpleArgsExp", "simpleMethod", "simpleMethodExp")
+    val files = Seq("simple2")
 
     val frontend = new DummyFrontend
 

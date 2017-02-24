@@ -27,14 +27,13 @@ import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 import scala.util.parsing.input.NoPosition
 
 
-case class ParseException(msg: String, pos: scala.util.parsing.input.Position)  extends Exception
+case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
 
 
-
-object FastParser extends PosParser{
+object FastParser extends PosParser {
 
   var _imports: mutable.HashMap[Path, Boolean] = null
-  var _lines : Array[Int] = null
+  var _lines: Array[Int] = null
 
 
   def parse(s: String, f: Path) = {
@@ -53,11 +52,11 @@ object FastParser extends PosParser{
       case e@ParseException(msg, pos) => {
         var line = 0
         var column = 0
-        if (pos != null){
+        if (pos != null) {
           line = pos.line
           column = pos.column
         }
-        new ParseError(msg , SourcePosition(_file, line, column))
+        new ParseError(msg, SourcePosition(_file, line, column))
       }
 
 
@@ -83,11 +82,12 @@ object FastParser extends PosParser{
 
   // Actual Parser starts from here
   def identContinues = CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "$_")
+
   def keyword(check: String) = check ~~ !identContinues
 
   def parens[A](p: fastparse.noApi.Parser[A]) = "(" ~ p ~ ")"
 
-  def quoted[A](p:fastparse.noApi.Parser[A]) = "\"" ~ p ~ "\""
+  def quoted[A](p: fastparse.noApi.Parser[A]) = "\"" ~ p ~ "\""
 
   def foldPExp[E <: PExp](e: PExp, es: Seq[PExp => E]): E =
     es.foldLeft(e) { (t, a) =>
@@ -100,106 +100,110 @@ object FastParser extends PosParser{
     obj.isInstanceOf[PFieldAccess]
   }
 
-  def newExpandDefine(defines: Seq[PDefine], toExpand:Seq[PDefine]): Seq[PDefine] = {
+  def newExpandDefine[T <: PNode](defines: Seq[PDefine], toExpand: T): T = {
 
-    def getMacroByName(name: String): PDefine = defines.find( _.idndef.name == name) match {
+    def getMacroByName(name: String): PDefine = defines.find(_.idndef.name == name) match {
       case Some(mac) => mac
-      case None => throw ParseException("Macro " + name + " used but not present in scope", NoPosition)
+      case None => throw ParseException("Macro " + name + " used but not present in scope", FastPositions.getStart(name))
     }
 
-    def isMacro(name: String): Boolean = defines.exists( _.idndef.name == name)
+    def isMacro(name: String): Boolean = defines.exists(_.idndef.name == name)
 
 
-    val expander = StrategyBuilder.ContextStrategy[PNode, (Seq[String], Map[String, String])]({
-      case (pMacro:PMacroRef, ctxt) => {
+    val expander = StrategyBuilder.ContextStrategy[PNode, (Seq[String], Map[String, PExp])]({
+      case (pMacro: PMacroRef, ctxt) => {
         val name = pMacro.idnuse.name
 
-        if( ctxt.c._1.contains(name) )
-          throw ParseException("Recursive macro declaration found", NoPosition)
+        if (ctxt.c._1.contains(name))
+          throw ParseException("Recursive macro declaration found", FastPositions.getStart(pMacro.idnuse))
 
         val body = getMacroByName(name).body
 
-        if(!body.isInstanceOf[PStmt])
-          throw ParseException("Expression macro used as statement", NoPosition)
+        if (!body.isInstanceOf[PStmt])
+          throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro.idnuse))
 
-        body
+        body: PNode
       }
-      case(pMacro:PIdnUse, ctxt) if isMacro(pMacro.name) => {
+      case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) => {
         val name = pMacro.name
 
-        if(ctxt.c._1.contains(name))
-          throw ParseException("Recursive macro declaration found", NoPosition)
+        if (ctxt.c._1.contains(name))
+          throw ParseException("Recursive macro declaration found", FastPositions.getStart(pMacro))
 
         val body = getMacroByName(name).body
 
-        if(!body.isInstanceOf[PExp])
-          throw ParseException("Statement macro used as expression", NoPosition)
+        if (!body.isInstanceOf[PExp])
+          throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro))
 
-        body
+        body: PNode
       }
-      case(pMacro:PMethodCall, ctxt) if isMacro(pMacro.method.name) => {
+      case (pMacro: PMethodCall, ctxt) if isMacro(pMacro.method.name) => {
         val name = pMacro.method.name
 
-        if(ctxt.c._1.contains(name))
-          throw ParseException("Recursive macro declaration found", NoPosition)
+        if (ctxt.c._1.contains(name))
+          throw ParseException("Recursive macro declaration found", FastPositions.getStart(pMacro.method))
 
         val realMacro = getMacroByName(name)
         val body = realMacro.body
 
-        if(pMacro.args.length != realMacro.args.getOrElse(Seq()).length) // Would not be a PMethodCall in case of no arguments
-          throw ParseException("Number of arguments does not match", NoPosition)
+        if (pMacro.args.length != realMacro.args.getOrElse(Seq()).length) // Would not be a PMethodCall in case of no arguments
+          throw ParseException("Number of arguments does not match", FastPositions.getStart(pMacro.method))
 
-        if(!body.isInstanceOf[PStmt])
-          throw ParseException("Statement macro used as expression", NoPosition)
+        if (!body.isInstanceOf[PStmt])
+          throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro.method))
 
-        body
+        body: PNode
       }
-      case(pMacro:PCall, ctxt) if isMacro(pMacro.func.name) => {
+      case (pMacro: PCall, ctxt) if isMacro(pMacro.func.name) => {
         val name = pMacro.func.name
 
-        if(ctxt.c._1.contains(name))
-          throw ParseException("Recursive macro declaration found", NoPosition)
+        if (ctxt.c._1.contains(name))
+          throw ParseException("Recursive macro declaration found", FastPositions.getStart(pMacro))
 
         val realMacro = getMacroByName(name)
         val body = realMacro.body
 
-        if(pMacro.args.length != realMacro.args.getOrElse(Seq()).length) // Would not be a PMethodCall in case of no arguments
-          throw ParseException("Number of arguments does not match", NoPosition)
+        if (pMacro.args.length != realMacro.args.getOrElse(Seq()).length) // Would not be a PMethodCall in case of no arguments
+          throw ParseException("Number of arguments does not match", FastPositions.getStart(pMacro))
 
-        if(!body.isInstanceOf[PStmt])
-          throw ParseException("Expression macro used as statement", NoPosition)
+        if (!body.isInstanceOf[PExp])
+          throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro))
 
-        body
+        body: PNode
       }
-      case(ident:PIdnUse, ctxt) => {
-        ctxt.c._2.get(ident.name) match {
-          case Some(id) => PIdnUse(id)
-          case None => ident
+      case (ident: PIdnUse, ctxt) => {
+        def repIter(id: PIdnUse): PExp = {
+          ctxt.c._2.get(id.name) match {
+            case None => id
+            case Some(nId: PIdnUse) => repIter(nId)
+            case Some(e: PExp) => e
+            case Some(e) => throw ParseException("Unexpected identifier as macro argument", FastPositions.getStart(e))
+          }
         }
+        repIter(ident): PNode
       }
     }, (Seq(), Map()), {
-      case (pMacro:PMacroRef, c) => {
+      case (pMacro: PMacroRef, c) => {
         val realMacro = getMacroByName(pMacro.idnuse.name)
-        (c._1 ++  Seq(realMacro.idndef.name), c._2 )
+        (c._1 ++ Seq(realMacro.idndef.name), c._2)
       }
-      case (pMacro:PIdnUse, c) if isMacro(pMacro.name) => {
+      case (pMacro: PIdnUse, c) if isMacro(pMacro.name) => {
         val realMacro = getMacroByName(pMacro.name)
         (c._1 ++ Seq(realMacro.idndef.name), c._2)
       }
-      case(pMacro:PMethodCall, c) if isMacro(pMacro.method.name) => {
+      case (pMacro: PMethodCall, c) if isMacro(pMacro.method.name) => {
         val realMacro = getMacroByName(pMacro.method.name)
-        // TODO add arguments here
-        (c._1 ++ Seq(realMacro.idndef.name), c._2)
+        val argMap = realMacro.args.get.zip(pMacro.args).map(pair => pair._1.name -> pair._2)
+        (c._1 ++ Seq(realMacro.idndef.name), c._2 ++ argMap)
       }
-      case(pMacro:PCall, c) if isMacro(pMacro.func.name) => {
+      case (pMacro: PCall, c) if isMacro(pMacro.func.name) => {
         val realMacro = getMacroByName(pMacro.func.name)
-        (c._1 ++ Seq(realMacro.idndef.name), c._2)
+        val argMap = realMacro.args.get.zip(pMacro.args).map(pair => pair._1.name -> pair._2)
+        (c._1 ++ Seq(realMacro.idndef.name), c._2 ++ argMap)
       }
     })
-
-    toExpand.map { defi => PDefine(defi.idndef, defi.args, expander.execute[PNode](defi.body)) }
+    expander.execute[T](toExpand)
   }
-
 
 
   def expandDefines(defines: Seq[PDefine], toExpand: Seq[PDefine]): Seq[PDefine] = {
@@ -275,8 +279,8 @@ object FastParser extends PosParser{
               n
             }
           }, resultCheck = {
-            case (o,n) => checkMacroType(o, n)
-          }) : PNode /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
+            case (o, n) => checkMacroType(o, n)
+          }): PNode /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
       })
     }
     val potentiallyExpandedNode =
@@ -290,7 +294,7 @@ object FastParser extends PosParser{
            */
           lookupOrElse(piu, piu)(define => {
             expanded = true
-            if(define.args.isDefined && !define.args.get.isEmpty) {
+            if (define.args.isDefined && !define.args.get.isEmpty) {
               throw new ParseException("Number of arguments does not match", FastPositions.getStart(piu))
             }
             define.body.transform()(post = {
@@ -300,7 +304,7 @@ object FastParser extends PosParser{
                 n
               }
             }, resultCheck = {
-              case (o,n) => checkMacroType(o, n)
+              case (o, n) => checkMacroType(o, n)
             })
           })
 
@@ -309,7 +313,7 @@ object FastParser extends PosParser{
             /* Same as expanding named assertion in previous case for PIdnUse*/
             lookupOrElse(piu, pmac)(define => {
               expanded = true
-              if(define.args.isDefined && !define.args.get.isEmpty) {
+              if (define.args.isDefined && !define.args.get.isEmpty) {
                 throw new ParseException("Number of arguments does not match", FastPositions.getStart(piu))
               }
               define.body.transform()(post = {
@@ -319,7 +323,7 @@ object FastParser extends PosParser{
                   n
                 }
               }, resultCheck = {
-                case (o,n) => checkMacroType(o, n)
+                case (o, n) => checkMacroType(o, n)
               })
             })
         }
@@ -332,7 +336,7 @@ object FastParser extends PosParser{
         }
       }(recursive = _ => true,
         resultCheck = {
-          case (o,n) => checkMacroType(o, n)
+          case (o, n) => checkMacroType(o, n)
         })
 
     if (expanded) Some(potentiallyExpandedNode)
@@ -404,7 +408,7 @@ object FastParser extends PosParser{
 
   lazy val identifier: P[Unit] = P(CharIn('A' to 'Z', 'a' to 'z', "$_") ~~ CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "$_").repX)
 
-  lazy val ident: P[String] = P(identifier.!).filter{case a => !keywords.contains(a)}.opaque("invalid identifier (could be a keyword)")
+  lazy val ident: P[String] = P(identifier.!).filter { case a => !keywords.contains(a) }.opaque("invalid identifier (could be a keyword)")
 
   lazy val idnuse: P[PIdnUse] = P(ident).map(PIdnUse)
 
@@ -412,28 +416,28 @@ object FastParser extends PosParser{
 
   lazy val applyOld: P[PExp] = P((StringIn("lhs") ~ parens(exp)).map(PApplyOld))
 
-  lazy val magicWandExp: P[PExp] = P(orExp ~ ("--*".! ~   exp ).?).map{ case(a, b) => b match {
-      case Some(c) => PBinExp(a, c._1,c._2 )
-      case None => a
-    }
+  lazy val magicWandExp: P[PExp] = P(orExp ~ ("--*".! ~ exp).?).map { case (a, b) => b match {
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }
   }
 
   lazy val realMagicWandExp: P[PExp] = P((orExp ~ "--*".! ~ magicWandExp).map { case (a, b, c) => PBinExp(a, b, c) })
 
-  lazy val implExp: P[PExp] = P(magicWandExp ~ (StringIn("==>").! ~ implExp).?).map{ case(a, b) => b match {
-      case Some(c) => PBinExp(a, c._1,c._2 )
-      case None => a
-    }
+  lazy val implExp: P[PExp] = P(magicWandExp ~ (StringIn("==>").! ~ implExp).?).map { case (a, b) => b match {
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
   }
-  lazy val iffExp: P[PExp] = P(implExp ~ ("<==>".! ~ iffExp).?).map{ case(a, b) => b match {
-      case Some(c) => PBinExp(a, c._1,c._2 )
-      case None => a
-    }
   }
-  lazy val iteExpr: P[PExp] = P(iffExp ~ ("?" ~ iteExpr ~ ":" ~ iteExpr).?).map{ case(a, b) => b match {
-      case Some(c) => PCondExp(a, c._1,c._2 )
-      case None => a
-    }
+  lazy val iffExp: P[PExp] = P(implExp ~ ("<==>".! ~ iffExp).?).map { case (a, b) => b match {
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }
+  }
+  lazy val iteExpr: P[PExp] = P(iffExp ~ ("?" ~ iteExpr ~ ":" ~ iteExpr).?).map { case (a, b) => b match {
+    case Some(c) => PCondExp(a, c._1, c._2)
+    case None => a
+  }
   }
   lazy val exp: P[PExp] = P(iteExpr)
 
@@ -463,28 +467,28 @@ object FastParser extends PosParser{
 
   lazy val cmpOp = P(StringIn("<=", ">=", "<", ">").! | keyword("in").!)
 
-  lazy val cmpExp: P[PExp] = P(sum ~ (cmpOp ~ cmpExp).?).map{ case(a, b) => b match {
-      case Some(c) => PBinExp(a, c._1,c._2 )
-      case None => a
-    }
+  lazy val cmpExp: P[PExp] = P(sum ~ (cmpOp ~ cmpExp).?).map { case (a, b) => b match {
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }
   }
 
   lazy val eqOp = P(StringIn("==", "!=").!)
 
   lazy val eqExp: P[PExp] = P(cmpExp ~ (eqOp ~ eqExp).?).map { case (a, b) => b match {
-        case Some(c) => PBinExp(a, c._1, c._2 )
-        case None => a
-      }
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }
   }
   lazy val andExp: P[PExp] = P(eqExp ~ ("&&".! ~ andExp).?).map { case (a, b) => b match {
-      case Some(c) => PBinExp(a, c._1, c._2 )
-      case None => a
-    }
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }
   }
   lazy val orExp: P[PExp] = P(andExp ~ ("||".! ~ orExp).?).map { case (a, b) => b match {
-      case Some(c) => PBinExp(a, c._1, c._2 )
-      case None => a
-    }
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }
   }
 
   lazy val accessPredImpl: P[PAccPred] = P((keyword("acc") ~/ "(" ~ locAcc ~ ("," ~ exp).? ~ ")").map {
@@ -494,7 +498,7 @@ object FastParser extends PosParser{
   lazy val accessPred: P[PAccPred] = P(accessPredImpl.map {
     case acc => {
       val perm = acc.perm
-      if (FastPositions.getStart(perm) == NoPosition){
+      if (FastPositions.getStart(perm) == NoPosition) {
         FastPositions.setStart(perm, acc.start)
         FastPositions.setFinish(perm, acc.finish)
       }
@@ -551,7 +555,7 @@ object FastParser extends PosParser{
   lazy val multisetType: P[PType] = P(keyword("Multiset") ~/ "[" ~ typ ~ "]").map(PMultisetType)
 
   lazy val primitiveTyp: P[PType] = P(keyword("Rational").map { case _ => PPrimitiv("Perm") }
-                                      | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
+    | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
 
   lazy val trigger: P[Seq[PExp]] = P("{" ~/ exp.rep(sep = ",", min = 1) ~ "}")
 
@@ -573,20 +577,21 @@ object FastParser extends PosParser{
   lazy val folding: P[PExp] = P(keyword("folding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PFoldingGhostOp(a, b) }
 
   lazy val applying: P[PExp] =
-  /**
-   * We must be careful here to not create ambiguities in our grammar.
-   * when 'magicWandExp' is used instead of the more specific
-   * 'realMagicWandExp | idnuse', then the following problem can occur:
-   * Consider an expression such as "applying w in A". The parser
-   * will interpret "w in A" as a set-contains expression, which is
-   * fine according to our rules.
-   * The outer applying-rule will fail.
-   * Possible solution is that we should backtrack enough
-   * to reparse "w in A", but this time as desired, not as a
-   * set-contains expression.
-   */
 
-  P("applying" ~ ("(" ~ realMagicWandExp ~ ")" | idnuse) ~ ("in" ~ exp)).map { case (a, b) => PApplyingGhostOp(a, b) }
+  /**
+    * We must be careful here to not create ambiguities in our grammar.
+    * when 'magicWandExp' is used instead of the more specific
+    * 'realMagicWandExp | idnuse', then the following problem can occur:
+    * Consider an expression such as "applying w in A". The parser
+    * will interpret "w in A" as a set-contains expression, which is
+    * fine according to our rules.
+    * The outer applying-rule will fail.
+    * Possible solution is that we should backtrack enough
+    * to reparse "w in A", but this time as desired, not as a
+    * set-contains expression.
+    */
+
+    P("applying" ~ ("(" ~ realMagicWandExp ~ ")" | idnuse) ~ ("in" ~ exp)).map { case (a, b) => PApplyingGhostOp(a, b) }
 
 
   lazy val packaging: P[PExp] = /* See comment on applying */
@@ -594,7 +599,7 @@ object FastParser extends PosParser{
 
   lazy val setTypedEmpty: P[PExp] = P("Set" ~ "[" ~ typ ~ "]" ~ "(" ~ ")").map { case a => PEmptySet(a) }
 
-  lazy val explicitSetNonEmpty: P[PExp] = P("Set"  ~ "(" ~/ exp.rep(sep = ",", min = 1) ~ ")").map(PExplicitSet)
+  lazy val explicitSetNonEmpty: P[PExp] = P("Set" ~ "(" ~/ exp.rep(sep = ",", min = 1) ~ ")").map(PExplicitSet)
 
   lazy val explicitMultisetNonEmpty: P[PExp] = P("Multiset" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map { case elems => PExplicitMultiset(elems) }
 
@@ -609,7 +614,10 @@ object FastParser extends PosParser{
     case elems => PExplicitSeq(elems)
   }
 
-  lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => { PRangeSeq(a, b) } }
+  lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => {
+    PRangeSeq(a, b)
+  }
+  }
 
   lazy val fapp: P[PCall] = P(idnuse ~ parens(actualArgList)).map {
     case (func, args) => PCall(func, args, None)
@@ -620,16 +628,15 @@ object FastParser extends PosParser{
   }
 
 
-
   lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | letwandDecl | newstmt | fresh | constrainingBlock |
-    methodCall | goto | lbl | packageWand | applyWand| macroref)
-
-  lazy val nodefinestmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | whle | varDecl  | letwandDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand | macroref)
 
-  lazy val macroref: P[PMacroRef] = P(idnuse).map{ case(a) => PMacroRef(a)}
+  lazy val nodefinestmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
+    inhale | assume | ifthnels | whle | varDecl | letwandDecl | newstmt | fresh | constrainingBlock |
+    methodCall | goto | lbl | packageWand | applyWand | macroref)
+
+  lazy val macroref: P[PMacroRef] = P(idnuse).map { case (a) => PMacroRef(a) }
 
   lazy val fieldassign: P[PFieldAssign] = P(fieldAcc ~ ":=" ~ exp).map { case (a, b) => PFieldAssign(a, b) }
 
@@ -671,10 +678,10 @@ object FastParser extends PosParser{
 
   lazy val varDecl: P[PLocalVarDecl] = P(keyword("var") ~/ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map { case (a, b, c) => PLocalVarDecl(a, b, c) }
 
-  lazy val defineDecl: P[PDefine] = P(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ (exp|"{"~ (nodefinestmt ~ ";".?).rep ~ "}")).map {
+  lazy val defineDecl: P[PDefine] = P(keyword("define") ~/ idndef ~ ("(" ~ idndef.rep(sep = ",") ~ ")").? ~ (exp | "{" ~ (nodefinestmt ~ ";".?).rep ~ "}")).map {
     case (a, b, c) => c match {
-      case e: PExp => PDefine(a,b,e)
-      case ss: Seq[PStmt] @unchecked => PDefine(a,b,PSeqn(ss))
+      case e: PExp => PDefine(a, b, e)
+      case ss: Seq[PStmt]@unchecked => PDefine(a, b, PSeqn(ss))
     }
   }
 
@@ -695,7 +702,7 @@ object FastParser extends PosParser{
 
   lazy val goto: P[PGoto] = P("goto" ~/ idnuse).map(PGoto)
 
-  lazy val lbl: P[PLabel] = P(keyword("label") ~/ idndef ~ (keyword("invariant") ~/ exp).rep ).map{ case (name, invs) => PLabel(name, invs)}
+  lazy val lbl: P[PLabel] = P(keyword("label") ~/ idndef ~ (keyword("invariant") ~/ exp).rep).map { case (name, invs) => PLabel(name, invs) }
 
   lazy val packageWand: P[PPackageWand] = P("package" ~/ magicWandExp).map(PPackageWand)
 
@@ -705,8 +712,9 @@ object FastParser extends PosParser{
     case decls =>
       var globalDefines: Seq[PDefine] = decls.collect { case d: PDefine => d }
 
-      globalDefines = newExpandDefine(globalDefines, globalDefines)
-      //globalDefines = expandDefines(globalDefines, globalDefines)
+
+
+      globalDefines = globalDefines.map { defi => PDefine(defi.idndef, defi.args, newExpandDefine[PNode](globalDefines, defi.body)) }
 
       val imports: Seq[PImport] = decls.collect { case i: PImport => i }
 
@@ -791,8 +799,7 @@ object FastParser extends PosParser{
             case meth: PMethod =>
               var localDefines = meth.deepCollect { case n: PDefine => n }
 
-
-              localDefines = expandDefines(localDefines ++ globalDefines, localDefines)
+              localDefines = localDefines.map { defi => PDefine(defi.idndef, defi.args, newExpandDefine[PNode](localDefines ++ globalDefines, defi.body)) }
 
               val methWithoutDefines =
                 if (localDefines.isEmpty)
@@ -800,36 +807,10 @@ object FastParser extends PosParser{
                 else
                   meth.transform { case la: PDefine => PSkip().setPos(la) }()
 
-              expandDefines(localDefines ++ globalDefines, methWithoutDefines)
+              newExpandDefine[PMethod](localDefines ++ globalDefines, methWithoutDefines)
+            //expandDefines(localDefines ++ globalDefines, methWithoutDefines)
           }
 
-
-      /*val strat = new StrategyC[PNode, Seq[PDefine]]({
-        case (d:PDomain, defines) => {
-          expandDefines(defines.custom, d)
-        }
-        case (f:PFunction, defines) => {
-          expandDefines(defines.custom, f)
-        }
-        case (p:PPredicate, defines) => {
-          expandDefines(defines.custom, p)
-        }
-        case (meth:PMethod, defines) => {
-          var localDefines = meth.deepCollect { case n: PDefine => n }
-          localDefines = expandDefines(localDefines ++ defines.custom, localDefines)
-
-          val methWithoutDefines =
-            if (localDefines.isEmpty)
-              meth
-            else
-              meth.transform { case la: PDefine => PSkip().setPos(la) }()
-
-          expandDefines(localDefines ++ defines.custom, methWithoutDefines)
-        }
-      }) defaultContext globalDefines
-
-      val res = strat.execute(PProgram(files, domains, fields, functions, predicates, methods, imp_reports)).asInstanceOf[PProgram]
-      res*/
       PProgram(files, domains, fields, functions, predicates, methods, imp_reports)
   }
 
@@ -842,8 +823,8 @@ object FastParser extends PosParser{
   lazy val domainDecl: P[PDomain] = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
     "}").map {
     case (name, typparams, members) =>
-      val funcs = members collect { case m: PDomainFunction1 => m}
-      val axioms = members collect { case m: PAxiom1 => m}
+      val funcs = members collect { case m: PDomainFunction1 => m }
+      val axioms = members collect { case m: PAxiom1 => m }
       PDomain(
         name,
         typparams.getOrElse(Nil),
@@ -861,7 +842,7 @@ object FastParser extends PosParser{
 
   lazy val functionSignature = P("function" ~ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ)
 
-  lazy val formalArgList: P[Seq[PFormalArgDecl]] = P( formalArg.rep(sep = ","))
+  lazy val formalArgList: P[Seq[PFormalArgDecl]] = P(formalArg.rep(sep = ","))
 
   lazy val axiomDecl: P[PAxiom1] = P(keyword("axiom") ~ idndef ~ "{" ~ exp ~ "}" ~ ";".?).map { case (a, b) => PAxiom1(a, b) }
 
@@ -886,8 +867,7 @@ object FastParser extends PosParser{
 
   lazy val methodSignature = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")").?)
 
-  lazy val fastparser: P[PProgram] = P( Start ~ programDecl ~ End)
-
+  lazy val fastparser: P[PProgram] = P(Start ~ programDecl ~ End)
 
 
 }
