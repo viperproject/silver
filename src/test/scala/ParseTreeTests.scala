@@ -37,7 +37,7 @@ class ParseTreeTests extends FunSuite {
   test("MacroExpansion") {
     val filePrefix = "parsertests\\macroExpansion\\"
     //val files = Seq("simple", "simple2", "simpleExp", "simpleArgs", "simpleArgs2", "simpleArgsExp", "simpleMethod", "simpleMethodExp")
-    val files = Seq("simple2")
+    val files = Seq("simpleMethodExp")
 
     val frontend = new DummyFrontend
 

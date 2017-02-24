@@ -10,7 +10,7 @@ define macro2(z) {
 method main()
 {
     assert(true)
-    assert(1+1 + (1+2) == 5)
-    assert(1+2 == 3)
+    assert(2 + (3) == 5)
+    assert(3 == 3)
 }
 

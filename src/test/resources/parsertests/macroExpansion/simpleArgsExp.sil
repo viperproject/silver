@@ -6,7 +6,7 @@ define macro3(a, b) a * b
 
 method main()
 {
-    while(macro(1, 2+2) == 18) {
+    while(macro(1, 4) == 18) {
         
     }
     assert(false)

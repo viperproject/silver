@@ -1,15 +1,12 @@
 define macro(x) {
-    var y:Bool := true
-    macro2(assert(true))
+    assert(x > 5)
 }
 
-define macro2(y) {
-    y
-}
+define 
 
 method main()
 {
     assert(true)
-    macro(true)
+    macro(1 + 6)
 }
 

@@ -10,6 +10,6 @@ define macro2(z) {
 method main()
 {
     assert(true)
-    macro(1+1, 1+2)
+    macro(2, 3)
 }
 
