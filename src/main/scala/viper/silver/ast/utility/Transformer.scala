@@ -7,12 +7,13 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
+import viper.silver.ast.utility.Rewriter._
 
 /**
  * An implementation for transformers of the SIL AST.
  */
 object Transformer {
-
+  /*
   /** Transforms the tree rooted at this node using the partial function `pre`,
     * recursing on the subnodes and finally using the partial function `post`.
     *
@@ -345,7 +346,7 @@ object Transformer {
       transform(root, replace)()
     }
     recurse(node)
-  }
+  }*/
 
   /**
    * Simplify `expression`, in particular by making use of literals. For
@@ -355,7 +356,7 @@ object Transformer {
    */
   def simplify(expression: Exp): Exp = {
     /* Always simplify children first, then treat parent. */
-    transform(expression)(_ => true, {
+    ViperStrategy.Slim({
       case root @ Not(BoolLit(literal)) =>
         BoolLit(!literal)(root.pos, root.info)
       case Not(Not(single)) => single
@@ -444,7 +445,7 @@ object Transformer {
         IntLit(left / right)(root.pos, root.info)
       case root @ Mod(IntLit(left), IntLit(right)) if right != bigIntZero =>
         IntLit(left % right)(root.pos, root.info)
-    })
+    }, Traverse.BottomUp) execute[Exp](expression)
   }
 
   private val bigIntZero = BigInt(0)

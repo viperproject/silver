@@ -21,7 +21,7 @@ define macro3 {
 method main()
 {
     assert(true)
-    macro1
+    macro3
     macro
 }
 

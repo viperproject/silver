@@ -22,7 +22,9 @@ object Traverse extends Enumeration {
 trait StrategyInterface[N <: Rewritable] {
 
   // Store every special node we don't want to recurse on
-  protected var noRecursion = collection.mutable.HashSet.empty[Rewritable]
+  // A hash map would be more efficient but then we get problems with circular dependencies (calculating hash never terminates)
+  protected var noRecursion = collection.mutable.ListBuffer.empty[Rewritable]
+
   protected var changed = false
 
   /**
@@ -40,7 +42,7 @@ trait StrategyInterface[N <: Rewritable] {
     * @return return the node again (convenience)
     */
   def noRec[T <: N](node: Rewritable): T = {
-    noRecursion.add(node)
+    noRecursion.append(node)
     node.asInstanceOf[T]
   }
 
@@ -414,41 +416,47 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
     // Recurse on children if the according (same index) flag in childrenSelect is set. If it is not set, leave child untouched
     val newChildren: Seq[Option[Any]] = children.zip(childrenSelect) map {
-      case (o: Option[Rewritable], true) => o match {
-        case None => None
-        case Some(x: Rewritable) =>
-          if (!noRecursion.contains(x)) {
-            recurse(x.asInstanceOf[N]) match {
-              case None => None
-              case Some(x) => Some(Some(x))
+      x => {
+        val res = x match {
+          case (o: Option[Rewritable], true) => o match {
+            case None => None
+            case Some(x: Rewritable) =>
+              if (!noRecursion.contains(x)) {
+                recurse(x.asInstanceOf[N]) match {
+                  case None => None
+                  case Some(x) => Some(Some(x))
+                }
+              }
+              else {
+                None
+              }
+          }
+          case (s: Seq[Rewritable], true) =>
+            val newSeq = s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else None }
+            if (newSeq.forall(_.isEmpty)) {
+              None
+            } else {
+              val seqWithChildren: Seq[Any] = newSeq.zip(s) map { elem => elem._1 match {
+                case None => elem._2
+                case Some(x) => x
+              }
+              }
+              Some(seqWithChildren)
             }
-          }
-          else {
-            None
-          }
-      }
-      case (s: Seq[Rewritable], true) =>
-        val newSeq = s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else None }
-        if (newSeq.forall(_.isEmpty)) {
-          None
-        } else {
-          val seqWithChildren: Seq[Any] = newSeq.zip(s) map { elem => elem._1 match {
-            case None => elem._2
-            case Some(x) => x
-          }
-          }
-          Some(seqWithChildren)
+          case (n: Rewritable, true) =>
+            if (!noRecursion.contains(n)) recurse(n.asInstanceOf[N]) else None
+          case (old, false) => None
         }
-      case (n: Rewritable, true) => if (!noRecursion.contains(n)) recurse(n.asInstanceOf[N]) else None
-      case (old, false) => None
+        res
+      }
     }
 
     // Find out if one of the children was changed.
-    val hasChanged: Boolean = newChildren.exists( _.isDefined)
+    val hasChanged: Boolean = newChildren.exists(_.isDefined)
 
     // Convention: If something changed -> return new children, otherwise return nothing
     if (hasChanged) {
-      Some(newChildren.zip(children).map( elem => elem._1 match {
+      Some(newChildren.zip(children).map(elem => elem._1 match {
         case None => elem._2
         case Some(x) => x
       }))

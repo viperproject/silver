@@ -37,7 +37,6 @@ class RewriteWithCycles extends FunSuite {
 
     // we visit c twice (intended because it is a shared node)
     assert( res == 3933)
-
   }
 
 
@@ -63,6 +62,7 @@ class RewriteWithCycles extends FunSuite {
 case class SlimGraph[I](var info: I, var children: Seq[SlimGraph[I]] = Seq()) extends Rewritable {
   def addChildren(ch: SlimGraph[I]*) = children ++= ch
 
+  // duplicate must not create a new node but update the old node to keep the circular dependencies
   override def duplicate(childr: Seq[Any]): Any = {
     info = children.collect {case i:I => i }.head
     children = childr.collect {  case s:SlimGraph[I] => s }
@@ -72,6 +72,4 @@ case class SlimGraph[I](var info: I, var children: Seq[SlimGraph[I]] = Seq()) ex
   // Otherwise toString crashes from infinite recursion
   override def toString: String = info.toString
 
-  // Work around. Infinite hash code calculation is problem!
-  override def hashCode(): Int = info.hashCode()
 }

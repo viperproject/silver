@@ -19,7 +19,7 @@ object Triggers {
     protected def visit[A](root: Node)(f: PartialFunction[Node, A]) = root.visit(f)
     protected def deepCollect[A](root: Node)(f: PartialFunction[Node, A]) = root.deepCollect(f)
     protected def reduceTree[A](root: Node)(f: (Node, Seq[A]) => A) = root.reduceTree(f)
-    protected def transform[N <: Node](root: N)(f: PartialFunction[Node, Node]) = root.transform(f)()
+    protected def transform[N <: Node](root: N)(f: PartialFunction[Node, Node]) = root.transform(f)
     protected def Quantification_vars(q: QuantifiedExp) = q.variables map (_.localVar)
     protected def Exp_typ(exp: Exp) = exp.typ
     protected def Trigger_exps(t: Trigger) = t.exps

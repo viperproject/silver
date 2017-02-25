@@ -5,7 +5,8 @@
  */
 
 package viper.silver.ast
-import viper.silver.ast.pretty.{PrettyExpression, PrettyBinaryExpression, PrettyOperatorExpression, PrettyUnaryExpression, Infix, LeftAssociative, RightAssociative, NonAssociative}
+import viper.silver.ast.pretty.{Infix, LeftAssociative, NonAssociative, PrettyBinaryExpression, PrettyExpression, PrettyOperatorExpression, PrettyUnaryExpression, RightAssociative}
+import viper.silver.ast.utility.Rewriter.Traverse
 import viper.silver.ast.utility._
 
 /** Expressions. */
@@ -105,10 +106,10 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
      * predicate to transform that makes transform recurse if the pre-transformer
      * is defined.
      */
-    this.transform()(post = {
+    this.transform({
       case gop: GhostOperation => gop.body
       case let: Let => let.body
-    })
+    }, Traverse.BottomUp)
   }
 
   // maybe rename this sometime

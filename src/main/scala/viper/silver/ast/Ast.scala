@@ -9,7 +9,8 @@ package viper.silver.ast
 import scala.reflect.ClassTag
 import pretty.FastPrettyPrinter
 import utility._
-import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder}
+import viper.silver.ast.utility.Rewriter.Traverse.Traverse
+import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder, Traverse}
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ErrorReason}
 
@@ -102,16 +103,12 @@ trait Node extends Traversable[Node] with Rewritable {
 
   override def toString() = FastPrettyPrinter.pretty(this)
 
-  /** @see [[viper.silver.ast.utility.Transformer.transform()]]*/
-  def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty)
-               (recursive: Node => Boolean = !pre.isDefinedAt(_),
-                post: PartialFunction[Node, Node] = PartialFunction.empty)
-  : this.type =
-
-  Transformer.transform[this.type](this, pre)(recursive, post)
+  /** @see [[viper.silver.ast.utility.ViperStrategy]]*/
+  def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty, recurse:Traverse = Traverse.Innermost)
+  : this.type = ViperStrategy.Slim(pre, recurse) execute[this.type](this)
 
   def replace(original: Node, replacement: Node): this.type =
-    this.transform { case `original` => replacement }()
+    this.transform { case `original` => replacement }
 
   /** @see [[Visitor.deepCollect()]]*/
   def deepCollect[A](f: PartialFunction[Node, A]): Seq[A] =

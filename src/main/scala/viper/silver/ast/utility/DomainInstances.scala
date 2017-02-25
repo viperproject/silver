@@ -1,7 +1,7 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
-
+import viper.silver.ast.utility.Rewriter.Traverse
 import scala.collection.mutable
 
 /**
@@ -11,7 +11,7 @@ object DomainInstances {
   type TypeSubstitution = Map[TypeVar, Type]
 
   def substitute[A <: Node](e: A, s: TypeSubstitution, p: Program): A =
-    Transformer.transform[A](e, {
+    ViperStrategy.Slim({
       case dfa@DomainFuncApp(name, args, ts) =>
         val ts2 = ts.toSeq.map(pair => (pair._1, substitute(pair._2, s, p))).toMap
         val argss = args map (substitute(_, s, p))
@@ -21,7 +21,7 @@ object DomainInstances {
         LocalVar(name)(substitute(lvd.typ, s, p), lvd.pos, lvd.info)
 
       case t: Type => t.substitute(s)
-    })()
+    }, Traverse.Innermost) execute[A](e)
 
   def collectGroundTypes(n: Node, p: Program) = n.deepCollect(
     {

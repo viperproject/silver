@@ -21,7 +21,7 @@ import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
-import viper.silver.ast.utility.Rewriter.StrategyBuilder
+import viper.silver.ast.utility.Rewriter.{ContextC, StrategyBuilder}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 
@@ -110,6 +110,14 @@ object FastParser extends PosParser {
 
     def isMacro(name: String): Boolean = defines.exists(_.idndef.name == name)
 
+    def adaptPositions(body:PNode, f:FastPositioned): Unit = {
+      FastPositions.setStart(body, f.start, true)
+      FastPositions.setFinish(body, f.finish, true)
+    }
+
+    def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]) = {
+      params.zip(args).map(pair => pair._1.name -> pair._2)
+    }
 
     val expander = StrategyBuilder.ContextStrategy[PNode, (Seq[String], Map[String, PExp])]({
       case (pMacro: PMacroRef, ctxt) => {
@@ -123,9 +131,8 @@ object FastParser extends PosParser {
         if (!body.isInstanceOf[PStmt])
           throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro.idnuse))
 
-        FastPositions.setStart(body, pMacro.start, true)
-        FastPositions.setFinish(body, pMacro.finish, true)
-        body: PNode
+        adaptPositions(body, pMacro)
+        body
       }
       case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) => {
         val name = pMacro.name
@@ -138,9 +145,8 @@ object FastParser extends PosParser {
         if (!body.isInstanceOf[PExp])
           throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro))
 
-        FastPositions.setStart(body, pMacro.start, true)
-        FastPositions.setFinish(body, pMacro.finish, true)
-        body: PNode
+        adaptPositions(body, pMacro)
+        body
       }
       case (pMacro: PMethodCall, ctxt) if isMacro(pMacro.method.name) => {
         val name = pMacro.method.name
@@ -157,9 +163,8 @@ object FastParser extends PosParser {
         if (!body.isInstanceOf[PStmt])
           throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro.method))
 
-        FastPositions.setStart(body, pMacro.start, true)
-        FastPositions.setFinish(body, pMacro.finish, true)
-        body: PNode
+        adaptPositions(body, pMacro)
+        body
       }
       case (pMacro: PCall, ctxt) if isMacro(pMacro.func.name) => {
         val name = pMacro.func.name
@@ -176,9 +181,8 @@ object FastParser extends PosParser {
         if (!body.isInstanceOf[PExp])
           throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro))
 
-        FastPositions.setStart(body, pMacro.start, true)
-        FastPositions.setFinish(body, pMacro.finish, true)
-        body: PNode
+        adaptPositions(body, pMacro)
+        body
       }
       case (ident: PIdnUse, ctxt) => {
         def repIter(id: PIdnUse): PExp = {
@@ -190,9 +194,8 @@ object FastParser extends PosParser {
           }
         }
 
-        val res = repIter(ident): PNode
-        FastPositions.setStart(res, ident.start, true)
-        FastPositions.setFinish(res, ident.finish, true)
+        val res = repIter(ident)
+        adaptPositions(res, ident)
         res
       }
     }, (Seq(), Map()), {
@@ -206,13 +209,11 @@ object FastParser extends PosParser {
       }
       case (pMacro: PMethodCall, c) if isMacro(pMacro.method.name) => {
         val realMacro = getMacroByName(pMacro.method.name)
-        val argMap = realMacro.args.get.zip(pMacro.args).map(pair => pair._1.name -> pair._2)
-        (c._1 ++ Seq(realMacro.idndef.name), c._2 ++ argMap)
+        (c._1 ++ Seq(realMacro.idndef.name), c._2 ++ mapParamsToArgs(realMacro.args.get, pMacro.args))
       }
       case (pMacro: PCall, c) if isMacro(pMacro.func.name) => {
         val realMacro = getMacroByName(pMacro.func.name)
-        val argMap = realMacro.args.get.zip(pMacro.args).map(pair => pair._1.name -> pair._2)
-        (c._1 ++ Seq(realMacro.idndef.name), c._2 ++ argMap)
+        (c._1 ++ Seq(realMacro.idndef.name), c._2 ++ mapParamsToArgs(realMacro.args.get, pMacro.args))
       }
     })
     expander.execute[T](toExpand)
@@ -782,44 +783,32 @@ object FastParser extends PosParser {
         imp_progs.collect { case PProgram(_, _, _, _, _, _, e: List[ParseReport]) => e }.flatten ++
         dups
 
-      var files =
+      val files =
         imp_progs.collect { case PProgram(f: Seq[PImport], _, _, _, _, _, _) => f }.flatten ++
           imports
 
-      var domains =
+      val domains =
         imp_progs.collect { case PProgram(_, d: Seq[PDomain], _, _, _, _, _) => d }.flatten ++
           decls.collect { case d: PDomain => expandDefines(globalDefines, d) }
 
-      var fields =
+      val fields =
         imp_progs.collect { case PProgram(_, _, f: Seq[PField], _, _, _, _) => f }.flatten ++
           decls.collect { case f: PField => f }
 
-      var functions =
+      val functions =
         imp_progs.collect { case PProgram(_, _, _, f: Seq[PFunction], _, _, _) => f }.flatten ++
           decls.collect { case d: PFunction => expandDefines(globalDefines, d) }
 
-      var predicates =
+      val predicates =
         imp_progs.collect { case PProgram(_, _, _, _, p: Seq[PPredicate], _, _) => p }.flatten ++
           decls.collect { case d: PPredicate => expandDefines(globalDefines, d) }
 
-      var methods = imp_progs.collect { case PProgram(_, _, _, _, _, m: Seq[PMethod], _) => m }.flatten ++
-        decls.collect { case m: PMethod => }
-
-      val globalIdentifiers = collection.mutable.Set.empty[String]
-      domains.foreach( d => globalIdentifiers.add(d.idndef.name))
-      functions.foreach( f => globalIdentifiers.add(f.idndef.name))
-      predicates.foreach( p => globalIdentifiers.add(p.idndef.name))
-
-
-      methods =
+      val methods =
         imp_progs.collect { case PProgram(_, _, _, _, _, m: Seq[PMethod], _) => m }.flatten ++
           decls.collect {
             case meth: PMethod =>
-              val localDefines = meth.deepCollect { case n: PDefine => n }
-
-              val identifiersUsed = collection.mutable.Set.empty[String]
-              meth.formalArgs.foreach( arg => identifiersUsed.add( arg.idndef.name) )
-              meth.formalReturns.foreach( ret => identifiersUsed.add( ret.idndef.name) )
+              var localDefines = meth.deepCollect { case n: PDefine => n }
+              localDefines = expandDefines(localDefines ++ globalDefines, localDefines)
 
               val methWithoutDefines =
                 if (localDefines.isEmpty)
@@ -827,17 +816,10 @@ object FastParser extends PosParser {
                 else
                   meth.transform { case la: PDefine => PSkip().setPos(la) }()
 
-
-              val one = newExpandDefine[PMethod](localDefines ++ globalDefines, methWithoutDefines, identifiersUsed)
-              //val other = expandDefines(localDefines ++ globalDefines, methWithoutDefines)
-              one
+              expandDefines(localDefines ++ globalDefines, methWithoutDefines)
           }
 
-      val prog = PProgram(files, domains, fields, functions, predicates, methods, imp_reports)
-
-      //println(Translator(prog).translate.get)
-
-      prog
+      PProgram(files, domains, fields, functions, predicates, methods, imp_reports)
   }
 
   lazy val preambleImport: P[PImport] = P(keyword("import") ~/ quoted(relativeFilePath.!)).map {

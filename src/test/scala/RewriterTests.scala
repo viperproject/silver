@@ -173,7 +173,7 @@ class RewriterTests extends FunSuite {
     }
   }
 
-  test("OLDDisjunctionToInhaleExhaleTests") {
+  /*test("OLDDisjunctionToInhaleExhaleTests") {
     // Is working correctly but rewrites right hand sides of IE expression too. Therefore does not match with more complex testcases
     // 17 vs 7 line numbers
     val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
@@ -235,7 +235,7 @@ class RewriterTests extends FunSuite {
       assert(res.toString() == targetRef.toString(), "Files are not equal")
     }
     }
-  }
+  }*/
 
   test("ImplicationToDisjunctionTests") {
     val filePrefix = "transformations\\ImplicationsToDisjunction\\"
@@ -340,7 +340,7 @@ class RewriterTests extends FunSuite {
     }
   }
 
-  test("OLDManyToOneAssert2") {
+  /*test("OLDManyToOneAssert2") {
     // 16 lines compared to 12 lines
     // Need to find successor ourselves
 
@@ -361,7 +361,6 @@ class RewriterTests extends FunSuite {
         case (None, errors) => println("Problem with program: " + errors)
       }
 
-      // TODO: Transformer here
       var enclSeq: Seqn = null
       val res = targetNode.transform({
         case a: Assert =>
@@ -397,7 +396,7 @@ class RewriterTests extends FunSuite {
       assert(res.toString == targetRef.toString(), "Files are not equal")
     }
     }
-  }
+  }*/
 
   test("FoldConstants") {
     val filePrefix = "transformations\\FoldConstants\\"
@@ -473,7 +472,7 @@ class RewriterTests extends FunSuite {
     })
   }
 
-  test("OLDMethodCallDesugaring") {
+  /*test("OLDMethodCallDesugaring") {
     // Basically the exact same program
     // No features from strategy used only partial function and go!
 
@@ -494,7 +493,6 @@ class RewriterTests extends FunSuite {
         case (None, errors) => println("Problem with program: " + errors)
       }
 
-      // TODO: Transformer here
       val res = targetNode.transform({
         case m: MethodCall =>
           // Get method declaration
@@ -531,7 +529,7 @@ class RewriterTests extends FunSuite {
       assert(res.toString == targetRef.toString(), "Files are not equal")
     }
     }
-  }
+  }*/
 
   test("MethodCallDesugaring") {
     // Careful: Don't use old inside postcondition. It is not yet supported. maybe I will update the testcase
@@ -592,7 +590,7 @@ class RewriterTests extends FunSuite {
     })
 
 
-    val combined = strat < (strat2 + strat3) || strat4 // TODO continue here
+    val combined = strat < (strat2 + strat3) || strat4
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, combined, frontend) }
