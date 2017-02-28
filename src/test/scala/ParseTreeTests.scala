@@ -37,7 +37,48 @@ class ParseTreeTests extends FunSuite {
   test("MacroExpansion") {
     val filePrefix = "parsertests\\macroExpansion\\"
     val files = Seq("simple", "simple2", "simpleExp", "simpleArgs", "simpleArgs2", "simpleArgsExp", "simpleMethod", "simpleMethodExp")
-    //val files = Seq("simpleMethodExp")
+    //val files = Seq("simple")
+
+    val frontend = new DummyFrontend
+
+    files foreach { fileName => {
+      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+      assert(fileRes != null, s"File $filePrefix$fileName" + ".sil not found")
+      val file = Paths.get(fileRes.toURI)
+
+      val fileRef = getClass.getResource(filePrefix + fileName + "Ref" + ".sil")
+      assert(fileRef != null, s"File $filePrefix$fileName"+ "Ref.sil not found")
+      val fileR = Paths.get(fileRef.toURI)
+
+      var targetNode: Node = null
+      var targetRef: Node = null
+
+      frontend.translate(file) match {
+        case (Some(p), _) => targetNode = p
+        case (None, errors) => println("error occured during translating: " + errors)
+      }
+
+      frontend.translate(fileR) match {
+        case (Some(p), _) => targetRef = p
+        case (None, errors) => println("error occured during translating: " + errors)
+      }
+
+      println("New: " + targetNode.toString())
+      println("Reference: " + targetRef.toString())
+      assert(targetNode.toString() == targetRef.toString(), "Files are not equal")
+    }
+    }
+
+  }
+
+  test("HygenicMacros") {
+
+  }
+
+  test("Imports") {
+    val filePrefix = "parsertests\\imports\\"
+    val files = Seq("simple", "complex")
+    //val files = Seq("simple")
 
     val frontend = new DummyFrontend
 

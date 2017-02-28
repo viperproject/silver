@@ -1,18 +1,13 @@
 define macro {
     var x: Bool := true
     assert(x)
-    macro2
 }
 
-define macro2 {
-    var y: Bool := true
-    assert(y)
-}
 
 method main()
 {
     var x1: Bool := true
     assert(x1)
-    var x2: Bool := true
-    assert(x2)
+    var x11: Bool := true
+    assert(x11)
 }

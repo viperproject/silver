@@ -34,7 +34,7 @@ case class Translator(program: PProgram) {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
     program match {
-      case PProgram(_, pdomains, pfields, pfunctions, ppredicates, pmethods, _) =>
+      case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, _) =>
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
             pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
 

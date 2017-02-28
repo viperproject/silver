@@ -15,6 +15,9 @@ import fastparse.parsers.Combinators.Rule
 import fastparse.parsers.Terminals.Pass
 import java.nio.file.{Files, Path}
 
+import fastparse.core.Mutable.Success
+import fastparse.core.Parsed.Success
+
 import scala.collection.immutable.Iterable
 import scala.collection.mutable
 import scala.language.implicitConversions
@@ -33,19 +36,52 @@ case class ParseException(msg: String, pos: scala.util.parsing.input.Position) e
 
 object FastParser extends PosParser {
 
-  var _imports: mutable.HashMap[Path, Boolean] = null
   var _lines: Array[Int] = null
-
+  val imported = collection.mutable.Set.empty[String]
 
   def parse(s: String, f: Path) = {
     _file = f
-    _imports = mutable.HashMap((f, true))
     val lines = s.linesWithSeparators
     _lines = lines.map(_.length).toArray
+
+    imported.add(f.toString.split("\\\\").last)
+
+    val importer = StrategyBuilder.SlimStrategy[PProgram]({
+      case p: PProgram => {
+        val firstImport = p.imports.headOption
+
+        if (firstImport.isEmpty) {
+          p
+        }
+        else {
+          val toImport = firstImport.get
+          if(imported.add(toImport.file)) {
+            val newProg = importProgram(toImport)
+
+            PProgram(
+              p.imports.drop(1) ++ newProg.imports,
+              p.macros ++ newProg.macros,
+              p.domains ++ newProg.domains,
+              p.fields ++ newProg.fields,
+              p.functions ++ newProg.functions,
+              p.predicates ++ newProg.predicates,
+              p.methods ++ newProg.methods,
+              p.errors ++ newProg.errors)
+          } else {
+            PProgram(p.imports.drop(1), p.macros, p.domains, p.fields, p.functions, p.predicates, p.methods, p.errors)
+          }
+        }
+      }
+    }) recurseFunc { case p: PProgram => Seq(false, false, false, false, false, false, false, false) } repeat
 
     try {
       val rp = RecParser(f).parses(s)
       rp match {
+        case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, errors), e) => {
+          val importedProgram = importer.execute[PProgram](program)
+          val expandedProgram = expandDefines(importedProgram)
+          Parsed.Success(expandedProgram, e)
+        }
         case _ => rp
       }
     }
@@ -67,8 +103,12 @@ object FastParser extends PosParser {
   }
 
   case class RecParser(file: Path) {
-    def parses(s: String) = fastparser.parse(s)
+
+    def parses(s: String) = {
+      fastparser.parse(s)
+    }
   }
+
 
   val White = PWrapper {
     import fastparse.all._
@@ -101,16 +141,77 @@ object FastParser extends PosParser {
     obj.isInstanceOf[PFieldAccess]
   }
 
-  def newExpandDefine[T <: PNode](defines: Seq[PDefine], toExpand: T, identifiersUsed: collection.mutable.Set[String]): T = {
 
-    def getMacroByName(name: String): PDefine = defines.find(_.idndef.name == name) match {
+  def importProgram(i: PImport): PProgram = {
+    val fileName = i.file
+    val imp_path = file.getParent.resolve(fileName)
+    val imp_pos = i.start.asInstanceOf[viper.silver.ast.Position]
+
+    if (java.nio.file.Files.notExists(imp_path))
+      throw ParseException(s"""file "$imp_path" does not exist""", FastPositions.getStart(i))
+
+
+    val source = scala.io.Source.fromInputStream(Files.newInputStream(imp_path))
+    val buffer = try {
+      source.getLines.toArray
+    } catch {
+      case e@(_: RuntimeException | _: java.io.IOException) =>
+        throw ParseException(s"""could not import file ($e)""", FastPositions.getStart(i))
+    } finally {
+      source.close()
+    }
+    val imported_source = buffer.mkString("\n") + "\n"
+    val p = RecParser(imp_path).parses(imported_source)
+    p match {
+      case fastparse.core.Parsed.Success(prog, _) => prog
+      case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Failure: $msg", FilePosition(imp_path, extra.line, extra.col))
+    }
+  }
+
+  def expandDefines(p: PProgram): PProgram = {
+    val globalMacros = p.macros
+
+    p.domains.foreach( d => globalNames.put(d.idndef.name, 0))
+    p.functions.foreach( f => globalNames.put(f.idndef.name, 0))
+    p.predicates.foreach( p => globalNames.put(p.idndef.name, 0))
+    p.macros.foreach( m => globalNames.put(m.idndef.name, 0))
+    p.methods.foreach(m => globalNames.put(m.idndef.name, 0))
+
+    val domains = p.domains.map(doExpandDefines[PDomain](globalMacros, _))
+
+    val functions = p.functions.map(doExpandDefines[PFunction](globalMacros, _))
+
+    val predicates = p.predicates.map(doExpandDefines[PPredicate](globalMacros, _))
+
+    val methods = p.methods.map(m => {
+      val localMacros = m.deepCollect { case n: PDefine => n }
+
+      val withoutDefines =
+        if (localMacros.isEmpty)
+          m
+        else
+          m.transform { case mac: PDefine => PSkip().setPos(mac) }()
+
+      doExpandDefines(localMacros ++ globalMacros, withoutDefines)
+    })
+
+    PProgram(p.imports, p.macros, p.domains, p.fields, functions, predicates, methods, p.errors)
+  }
+
+  def doExpandDefines[T <: PNode](macros: Seq[PDefine], toExpand: T): T = {
+
+    case class ReplaceContext(macros: Seq[String] = Seq(), replace: Map[String, PExp] = Map()) {
+      def inMacro: Boolean = macros.nonEmpty
+    }
+
+    def getMacroByName(name: String): PDefine = macros.find(_.idndef.name == name) match {
       case Some(mac) => mac
       case None => throw ParseException("Macro " + name + " used but not present in scope", FastPositions.getStart(name))
     }
 
-    def isMacro(name: String): Boolean = defines.exists(_.idndef.name == name)
+    def isMacro(name: String): Boolean = macros.exists(_.idndef.name == name)
 
-    def adaptPositions(body:PNode, f:FastPositioned): Unit = {
+    def adaptPositions(body: PNode, f: FastPositioned): Unit = {
       FastPositions.setStart(body, f.start, true)
       FastPositions.setFinish(body, f.finish, true)
     }
@@ -119,12 +220,26 @@ object FastParser extends PosParser {
       params.zip(args).map(pair => pair._1.name -> pair._2)
     }
 
-    val expander = StrategyBuilder.ContextStrategy[PNode, (Seq[String], Map[String, PExp])]({
+    def getFreshVar(name: String): String = {
+      if (globalNames.contains(name)) {
+        // TODO Continue here
+        name
+      } else {
+        name
+      }
+    }
+
+    def recursionCheck(name: String, ctxt: ReplaceContext) = {
+      if (ctxt.macros.contains(name))
+        throw ParseException("Recursive macro declaration found: " + name, NoPosition)
+    }
+
+    var varReplaceMap = Map.empty[String, PIdnUse]
+
+    val expander = StrategyBuilder.ContextStrategy[PNode, ReplaceContext]({
       case (pMacro: PMacroRef, ctxt) => {
         val name = pMacro.idnuse.name
-
-        if (ctxt.c._1.contains(name))
-          throw ParseException("Recursive macro declaration found", FastPositions.getStart(pMacro.idnuse))
+        recursionCheck(name, ctxt.c)
 
         val body = getMacroByName(name).body
 
@@ -136,9 +251,7 @@ object FastParser extends PosParser {
       }
       case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) => {
         val name = pMacro.name
-
-        if (ctxt.c._1.contains(name))
-          throw ParseException("Recursive macro declaration found", FastPositions.getStart(pMacro))
+        recursionCheck(name, ctxt.c)
 
         val body = getMacroByName(name).body
 
@@ -150,9 +263,7 @@ object FastParser extends PosParser {
       }
       case (pMacro: PMethodCall, ctxt) if isMacro(pMacro.method.name) => {
         val name = pMacro.method.name
-
-        if (ctxt.c._1.contains(name))
-          throw ParseException("Recursive macro declaration found", FastPositions.getStart(pMacro.method))
+        recursionCheck(name, ctxt.c)
 
         val realMacro = getMacroByName(name)
         val body = realMacro.body
@@ -168,9 +279,7 @@ object FastParser extends PosParser {
       }
       case (pMacro: PCall, ctxt) if isMacro(pMacro.func.name) => {
         val name = pMacro.func.name
-
-        if (ctxt.c._1.contains(name))
-          throw ParseException("Recursive macro declaration found", FastPositions.getStart(pMacro))
+        recursionCheck(name, ctxt.c)
 
         val realMacro = getMacroByName(name)
         val body = realMacro.body
@@ -186,183 +295,61 @@ object FastParser extends PosParser {
       }
       case (ident: PIdnUse, ctxt) => {
         def repIter(id: PIdnUse): PExp = {
-          ctxt.c._2.get(id.name) match {
+          ctxt.c.replace.get(id.name) match {
             case None => id
-            case Some(nId: PIdnUse) => repIter(nId)
+            case Some(nId: PIdnUse) => {
+              if(id.name != nId.name)
+                repIter(nId)
+              else
+                PIdnUse(id.name)
+            }
             case Some(e: PExp) => e
             case Some(e) => throw ParseException("Unexpected identifier as macro argument", FastPositions.getStart(e))
           }
         }
 
-        val res = repIter(ident)
-        adaptPositions(res, ident)
+        val newIdent = varReplaceMap.get(ident.name) match {
+          case None => ident
+          case Some(i) => i
+        }
+
+        val res = repIter(newIdent)
+        adaptPositions(res, newIdent)
         res
       }
-    }, (Seq(), Map()), {
+      case (decl: PIdnDef, ctxt) if ctxt.c.inMacro => {
+        val freshName = getFreshVar(decl.name)
+        val freshDecl = PIdnDef(freshName)
+        varReplaceMap += decl.name -> PIdnUse(freshName)
+        adaptPositions(freshDecl, decl)
+        freshDecl
+      }
+    }, ReplaceContext(), {
       case (pMacro: PMacroRef, c) => {
         val realMacro = getMacroByName(pMacro.idnuse.name)
-        (c._1 ++ Seq(realMacro.idndef.name), c._2)
+        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace)
       }
       case (pMacro: PIdnUse, c) if isMacro(pMacro.name) => {
         val realMacro = getMacroByName(pMacro.name)
-        (c._1 ++ Seq(realMacro.idndef.name), c._2)
+        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace)
       }
       case (pMacro: PMethodCall, c) if isMacro(pMacro.method.name) => {
         val realMacro = getMacroByName(pMacro.method.name)
-        (c._1 ++ Seq(realMacro.idndef.name), c._2 ++ mapParamsToArgs(realMacro.args.get, pMacro.args))
+        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace ++ mapParamsToArgs(realMacro.args.get, pMacro.args))
       }
       case (pMacro: PCall, c) if isMacro(pMacro.func.name) => {
         val realMacro = getMacroByName(pMacro.func.name)
-        (c._1 ++ Seq(realMacro.idndef.name), c._2 ++ mapParamsToArgs(realMacro.args.get, pMacro.args))
+        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace ++ mapParamsToArgs(realMacro.args.get, pMacro.args))
       }
     })
-    expander.execute[T](toExpand)
-  }
-
-
-  def expandDefines(defines: Seq[PDefine], toExpand: Seq[PDefine]): Seq[PDefine] = {
-
-    val maxCount = 25
-    /* TODO: Totally arbitrary cycle breaker. We should properly detect
-     * (mutually) recursive named assertions.
-     */
-    var count = 0
-    var definesToExpand = toExpand
-    var expandedIds = Seq[String]()
-
-    do {
-      expandedIds = Seq.empty
-      count += 1
-
-      definesToExpand = definesToExpand.map(define => {
-        val optExpandedDefine = doExpandDefines[PDefine](defines, define)
-        expandedIds = optExpandedDefine.map(_.idndef.name).toSeq ++ expandedIds
-
-        optExpandedDefine.getOrElse(define)
-      })
-    } while (expandedIds.nonEmpty && count <= maxCount)
-
-    if (count > maxCount)
-      sys.error(s"Couldn't expand all named assertions in $maxCount cycles. "
-        + s"Might there be a mutual recursion involving $expandedIds?")
-
-    definesToExpand
-  }
-
-  def doExpandDefines[N <: PNode](defines: Seq[PDefine], node: N): Option[N] = {
-
-
-    var expanded = false
-
-    def checkMacroType(oldNode: PNode, newNode: PNode): Unit = {
-      if (oldNode.isInstanceOf[PStmt] && !newNode.isInstanceOf[PStmt]) {
-        throw new ParseException("Expression macro used as statement", FastPositions.getStart(oldNode))
-      }
-      if (oldNode.isInstanceOf[PExp] && !newNode.isInstanceOf[PExp]) {
-        throw new ParseException("Statement macro used as expression", FastPositions.getStart(oldNode))
-      }
-    }
-
-    def lookupOrElse(piu: PIdnUse, els: PNode) =
-      defines.find(_.idndef.name == piu.name).fold[PNode](els) _
-
-    def expandAllegedInvocation(target: PIdnUse, targetArgs: Seq[PExp], els: PNode): PNode = {
-      /* Potentially expand a named assertion that takes arguments, e.g. A(x, y) */
-      lookupOrElse(target, els)(define => define.args match {
-        case None =>
-          /* There is a named assertion with name `target`, but the named
-           * assertion takes arguments. Hence, `target` cannot denote the
-           * use of a named assertion.
-           */
-          els
-        case Some(args) if targetArgs.length != args.length =>
-          throw new ParseException("Number of arguments does not match", FastPositions.getStart(target))
-        case Some(args) =>
-          expanded = true
-          define.body.transform {
-            /* Expand the named assertion's formal arguments by the given actual arguments */
-            case piu: PIdnUse =>
-              args.indexWhere(_.name == piu.name) match {
-                case -1 => piu
-                case i => targetArgs(i)
-              }
-          }(post = {
-            case n => {
-              FastPositions.setStart(n, target.start, true)
-              FastPositions.setFinish(n, target.finish, true)
-              n
-            }
-          }, resultCheck = {
-            case (o, n) => checkMacroType(o, n)
-          }): PNode /* [2014-06-31 Malte] Type-checker wasn't pleased without it */
-      })
-    }
-    val potentiallyExpandedNode =
-
-      node.transform {
-        case piu: PIdnUse =>
-          /* Potentially expand a named assertion that takes no arguments, e.g. A.
-           * If piu (which is a symbol) denotes a named assertion (i.e. if there
-           * is a define in defines whose name is piu), then it is replaced by
-           * the body of the named assertion.
-           */
-          lookupOrElse(piu, piu)(define => {
-            expanded = true
-            if (define.args.isDefined && !define.args.get.isEmpty) {
-              throw new ParseException("Number of arguments does not match", FastPositions.getStart(piu))
-            }
-            define.body.transform()(post = {
-              case n => {
-                FastPositions.setStart(n, piu.start, true)
-                FastPositions.setFinish(n, piu.finish, true)
-                n
-              }
-            }, resultCheck = {
-              case (o, n) => checkMacroType(o, n)
-            })
-          })
-
-        case pmac: PMacroRef => pmac.idnuse match {
-          case piu: PIdnUse =>
-            /* Same as expanding named assertion in previous case for PIdnUse*/
-            lookupOrElse(piu, pmac)(define => {
-              expanded = true
-              if (define.args.isDefined && !define.args.get.isEmpty) {
-                throw new ParseException("Number of arguments does not match", FastPositions.getStart(piu))
-              }
-              define.body.transform()(post = {
-                case n => {
-                  FastPositions.setStart(n, piu.start, true)
-                  FastPositions.setFinish(n, piu.finish, true)
-                  n
-                }
-              }, resultCheck = {
-                case (o, n) => checkMacroType(o, n)
-              })
-            })
-        }
-
-        case fapp: PCall => {
-          expandAllegedInvocation(fapp.func, fapp.args, fapp)
-        }
-        case call: PMethodCall => {
-          expandAllegedInvocation(call.method, call.args, call)
-        }
-      }(recursive = _ => true,
-        resultCheck = {
-          case (o, n) => checkMacroType(o, n)
-        })
-
-    if (expanded) Some(potentiallyExpandedNode)
-    else None
+    val res = expander.execute[T](toExpand)
+    res
   }
 
   /** The file we are currently parsing (for creating positions later). */
   def file: Path = _file
 
-  def expandDefines[N <: PNode](defines: Seq[PDefine], node: N): N =
-    doExpandDefines(defines, node).getOrElse(node)
-
+  val globalNames = collection.mutable.Map.empty[String, Int]
 
   val keywords = Set("result",
     // types
@@ -723,103 +710,18 @@ object FastParser extends PosParser {
   lazy val applyWand: P[PApplyWand] = P("apply" ~/ magicWandExp).map(PApplyWand)
 
   lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl).rep).map {
-    case decls =>
-      val globalDefines: Seq[PDefine] = decls.collect { case d: PDefine => d }
-
-      val imports: Seq[PImport] = decls.collect { case i: PImport => i }
-
-      val dups: Iterable[viper.silver.verifier.ParseError] = imports.groupBy(identity).collect {
-        case (imp@PImport(x), List(_, _, _*)) =>
-          val dup_pos = imp.start.asInstanceOf[viper.silver.ast.Position]
-          val report = s"""multiple imports of the same file "$x" detected"""
-          viper.silver.verifier.ParseError(report, dup_pos)
-      }
-
-      val imp_progs_results: Seq[Either[ParseReport, Any] with Product with Serializable] = imports.collect {
-        case imp@PImport(imp_file) =>
-          val imp_path = file.getParent.resolve(imp_file)
-          val imp_pos = imp.start.asInstanceOf[viper.silver.ast.Position]
-
-          if (java.nio.file.Files.notExists(imp_path))
-            Left(viper.silver.verifier.ParseError(s"""file "$imp_path" does not exist""", imp_pos))
-
-          else if (java.nio.file.Files.isSameFile(imp_path, file))
-            Left(viper.silver.verifier.ParseError(s"""importing yourself is probably not a good idea!""", imp_pos))
-
-          else if (_imports.put(imp_path, true).isEmpty) {
-            val source = scala.io.Source.fromInputStream(Files.newInputStream(imp_path))
-            val buffer = try {
-              Right(source.getLines.toArray)
-            } catch {
-              case e@(_: RuntimeException | _: java.io.IOException) =>
-                Left(viper.silver.verifier.ParseError(s"""could not import file ($e)""", imp_pos))
-            } finally {
-              source.close()
-            }
-            buffer match {
-              case Left(e) => Left(e)
-              case Right(s) =>
-                //TODO print debug info iff --dbg switch is used
-                val imported_source = s.mkString("\n") + "\n"
-                val p = RecParser(imp_path).parses(imported_source)
-                p match {
-                  case fastparse.core.Parsed.Success(a, _) => Right(a)
-                  case fastparse.core.Parsed.Failure(msg, next, extra) => Left(viper.silver.verifier.ParseError(s"Failure: $msg", FilePosition(imp_path, extra.line, extra.col)))
-                }
-            }
-          }
-
-          else {
-            val report = s"found loop dependency among these imports:\n" +
-              _imports.map { case (k, v) => k }.mkString("\n")
-            println(s"warning: $report\n(loop starts at $imp_pos)")
-            Right(ParseWarning(report, imp_pos))
-          }
-      }
-
-      val imp_progs = imp_progs_results.collect { case Right(p) => p }
-
-      val imp_reports = imp_progs_results.collect { case Left(e) => e } ++
-        imp_progs.collect { case PProgram(_, _, _, _, _, _, e: List[ParseReport]) => e }.flatten ++
-        dups
-
-      val files =
-        imp_progs.collect { case PProgram(f: Seq[PImport], _, _, _, _, _, _) => f }.flatten ++
-          imports
-
-      val domains =
-        imp_progs.collect { case PProgram(_, d: Seq[PDomain], _, _, _, _, _) => d }.flatten ++
-          decls.collect { case d: PDomain => expandDefines(globalDefines, d) }
-
-      val fields =
-        imp_progs.collect { case PProgram(_, _, f: Seq[PField], _, _, _, _) => f }.flatten ++
-          decls.collect { case f: PField => f }
-
-      val functions =
-        imp_progs.collect { case PProgram(_, _, _, f: Seq[PFunction], _, _, _) => f }.flatten ++
-          decls.collect { case d: PFunction => expandDefines(globalDefines, d) }
-
-      val predicates =
-        imp_progs.collect { case PProgram(_, _, _, _, p: Seq[PPredicate], _, _) => p }.flatten ++
-          decls.collect { case d: PPredicate => expandDefines(globalDefines, d) }
-
-      val methods =
-        imp_progs.collect { case PProgram(_, _, _, _, _, m: Seq[PMethod], _) => m }.flatten ++
-          decls.collect {
-            case meth: PMethod =>
-              var localDefines = meth.deepCollect { case n: PDefine => n }
-              localDefines = expandDefines(localDefines ++ globalDefines, localDefines)
-
-              val methWithoutDefines =
-                if (localDefines.isEmpty)
-                  meth
-                else
-                  meth.transform { case la: PDefine => PSkip().setPos(la) }()
-
-              expandDefines(localDefines ++ globalDefines, methWithoutDefines)
-          }
-
-      PProgram(files, domains, fields, functions, predicates, methods, imp_reports)
+    decls => {
+      PProgram(
+        decls.collect { case i: PImport => i }, // Imports
+        decls.collect { case d: PDefine => d }, // Macros
+        decls.collect { case d: PDomain => d }, // Domains
+        decls.collect { case f: PField => f }, // Fields
+        decls.collect { case f: PFunction => f }, // Functions
+        decls.collect { case p: PPredicate => p }, // Predicates
+        decls.collect { case m: PMethod => m }, // Methods
+        Seq() // Parse Errors
+      )
+    }
   }
 
   lazy val preambleImport: P[PImport] = P(keyword("import") ~/ quoted(relativeFilePath.!)).map {

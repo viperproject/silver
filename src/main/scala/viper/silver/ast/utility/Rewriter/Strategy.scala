@@ -183,6 +183,11 @@ class SlimStrategy[N <: Rewritable](p: PartialFunction[N, N]) extends Strategy[N
 // Generic Strategy class. Includes all the required functionality
 class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) extends StrategyInterface[N] {
 
+  protected var duplicateAll = false
+
+  def duplicateEverything = duplicateAll = true
+  def duplicateEfficiently = duplicateAll = false
+
   // Defines the traversion mode
   protected var traversionMode: Traverse = Traverse.TopDown
 
@@ -302,6 +307,17 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     }
   }
 
+  protected def duplicateMode(old: N, cur: Option[N]): Option[N] = {
+    if(duplicateAll) {
+      cur match {
+        case None => Some(old.duplicate(old.getChildren).asInstanceOf[N])
+        case s@Some(node) => s
+      }
+    } else {
+      cur
+    }
+  }
+
   /**
     * Execute the Strategy
     *
@@ -332,7 +348,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     val contextWithMyself = context.addAncestor(node).asInstanceOf[C]
 
     // Perform the rewriting
-    val newNodeO = rule.execute(node, contextWithMyself)
+    val newNodeO = duplicateMode(node, rule.execute(node, contextWithMyself))
     val newNode: N = newNodeO.getOrElse(node)
 
     // Create the new Context for children recursion
@@ -365,7 +381,8 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
       case None => node
     }
 
-    rule.execute(nodeToTransform, updatedContext) match {
+    // Perform the rewriting
+    duplicateMode(node, rule.execute(nodeToTransform, updatedContext)) match {
       case Some(transformed) => Some(preserveMetaData(node, transformed))
       case None if nodeToTransform eq node => None
       case None => Some(preserveMetaData(node, nodeToTransform))
@@ -378,7 +395,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     val newC = context.addAncestor(node).asInstanceOf[C]
 
     // Perform the rewriting
-    val maybe = rule.execute(node, newC)
+    val maybe = duplicateMode(node, rule.execute(node, newC))
 
     // Recurse on children. If we get None from the recursion we know that nothing was replaced and we keep the old node
     if (maybe.isEmpty) {

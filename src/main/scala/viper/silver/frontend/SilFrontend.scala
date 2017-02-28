@@ -194,7 +194,7 @@ trait SilFrontend extends DefaultFrontend {
     val result = FastParser.parse(input, file)
 
      result match {
-      case Parsed.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
+      case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
         if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning]))
 
         Succ({ e.initProperties(); e })

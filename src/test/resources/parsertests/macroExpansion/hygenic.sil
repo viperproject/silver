@@ -3,12 +3,8 @@ define macro {
     assert(x)
 }
 
-method macro() {
-    true
-}
-
 method main()
 {
-    var macro:Int
+    macro
     macro
 }

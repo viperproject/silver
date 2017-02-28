@@ -119,7 +119,7 @@ object Transformer {
         case PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))
         case _: PSkip => parent
 
-        case PProgram(files, domains, fields, functions, predicates, methods, errors) => PProgram(files, domains map go, fields map go, functions map go, predicates map go, methods map go, errors)
+        case PProgram(files, macros, domains, fields, functions, predicates, methods, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, errors)
         case PImport(file) => PImport(file)
         case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go,
           go(body))
@@ -184,7 +184,7 @@ object Transformer {
     case (p: PPackagingGhostOp, Seq(wand: PExp, exp: PExp)) => PPackagingGhostOp(wand, exp)
 
     case (p: PExists, Seq(vars: Seq[PFormalArgDecl], exp: PExp)) => PExists(vars, exp)
-    case (p: PForall, Seq(vars: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], exp: PExp)) => PForall(vars, triggers, exp)
+    case (p: PForall, Seq(vars: Seq[PFormalArgDecl], triggers: Seq[PExp], exp: PExp)) => PForall(vars, Seq(triggers), exp)
     case (p: PForPerm, Seq(v: PFormalArgDecl, fields: Seq[PIdnUse], exp: PExp)) => PForPerm(v, fields, exp)
     case (p: PCondExp, Seq(cond: PExp, thn: PExp, els: PExp)) => PCondExp(cond, thn, els)
     case (p: PInhaleExhaleExp, Seq(in: PExp, ex: PExp)) => PInhaleExhaleExp(in, ex)
@@ -218,7 +218,7 @@ object Transformer {
     case (p: PExhale, Seq(e: PExp)) => PExhale(e)
     case (p: PAssert, Seq(e: PExp)) => PAssert(e)
     case (p: PInhale, Seq(e: PExp)) => PInhale(e)
-    case (p: PNewStmt, Seq(target: PIdnUse, fields: Option[Seq[PIdnUse]])) => PNewStmt(target, fields)
+    case (p: PNewStmt, Seq(target: PIdnUse, fields: Seq[PIdnUse])) => PNewStmt(target, if(fields.length == 0) None else Some(fields))
     case (p: PVarAssign, Seq(idnuse: PIdnUse, rhs: PExp)) => PVarAssign(idnuse, rhs)
     case (p: PFieldAssign, Seq(fieldAcc: PFieldAccess, rhs: PExp)) => PFieldAssign(fieldAcc, rhs)
     case (p: PIf, Seq(cond: PExp, thn: PStmt, els: PStmt)) => PIf(cond, thn, els)
@@ -230,13 +230,13 @@ object Transformer {
     case (p: PLabel, Seq(idndef: PIdnDef, invs: Seq[PExp])) => PLabel(idndef, invs)
     case (p: PGoto, Seq(target: PIdnUse)) => PGoto(target)
     case (p: PLetWand, Seq(idndef: PIdnDef, wand: PExp)) => PLetWand(idndef, wand)
-    case (p: PDefine, Seq(idndef: PIdnDef, optArgs: Option[Seq[PIdnDef]], exp: PExp)) => PDefine(idndef, optArgs, exp)
+    case (p: PDefine, Seq(idndef: PIdnDef, optArgs: Seq[PIdnDef], exp: PExp)) => PDefine(idndef, if(optArgs.length == 0) None else Some(optArgs), exp)
     case (p: PLet, Seq(exp: PExp, nestedScope: PLetNestedScope)) => PLet(exp, nestedScope)
     case (p: PLetNestedScope, Seq(idndef: PFormalArgDecl, body: PExp)) => PLetNestedScope(idndef, body)
     case (p: PSkip, _) => p
 
-    case (p: PProgram, Seq(files: Seq[PImport], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]))
-    => PProgram(files, domains, fields, functions, predicates, methods, p.errors)
+    case (p: PProgram, Seq(files: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod]))
+    => PProgram(files, macros, domains, fields, functions, predicates, methods, p.errors)
 
     case (p: PImport, _) => p
     case (p: PMethod, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt)) => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)

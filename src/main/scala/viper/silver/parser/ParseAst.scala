@@ -721,7 +721,12 @@ sealed trait PQuantifier extends PBinder with PScope{
   def triggers : Seq[Seq[PExp]]
 }
 case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[Seq[PExp]] = Seq()}
-case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], body: PExp) extends PQuantifier
+case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], body: PExp) extends PQuantifier {
+  override def  getChildren: scala.Seq[Any] = {
+    val triggerss = triggers.foldLeft(Seq.empty[PExp])((acc, trg) => acc ++ trg)
+    Seq(vars, triggerss, body)
+  }
+}
 case class PForPerm(variable: PFormalArgDecl, fields: Seq[PIdnUse], body: PExp) extends PQuantifier{
   val triggers : Seq[Seq[PExp]] = Seq()
   override val vars = Seq(variable)
@@ -920,7 +925,17 @@ case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt
 case class PAssume(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
-case class PNewStmt(target: PIdnUse, Fields: Option[Seq[PIdnUse]]) extends PStmt
+
+case class PNewStmt(target: PIdnUse, Fields: Option[Seq[PIdnUse]]) extends PStmt {
+  override def  getChildren: scala.Seq[Any] = {
+    val fields = Fields match {
+      case None => Seq.empty[PIdnUse]
+      case Some(seq) => seq
+    }
+    Seq(target, fields)
+  }
+}
+
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
 case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
@@ -934,7 +949,9 @@ case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 case class PMacroRef(idnuse : PIdnUse) extends PStmt
 case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
-case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
+case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration {
+
+}
 case class PSkip() extends PStmt
 
 sealed trait PScope extends PNode {
@@ -981,7 +998,7 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def formalArgs: Seq[PFormalArgDecl]
   def typ: PType
 }
-case class PProgram(files: Seq[PImport], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
+case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
 case class PImport(file: String) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
@@ -1090,7 +1107,7 @@ object Nodes {
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
       case PFresh(vars) => vars
       case PConstraining(vars, stmt) => vars ++ Seq(stmt)
-      case PProgram(files, domains, fields, functions, predicates, methods, errors) =>
+      case PProgram(files, macros, domains, fields, functions, predicates, methods, errors) =>
         domains ++ fields ++ functions ++ predicates ++ methods
       case PImport(file) =>
         Seq()
