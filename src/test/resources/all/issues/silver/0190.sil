@@ -1,0 +1,4 @@
+method loop () {
+  label hello
+  goto hello
+}
