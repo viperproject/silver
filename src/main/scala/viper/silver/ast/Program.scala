@@ -69,11 +69,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       case Some(f) => f
       case None => sys.error("Domain function " + name + " not found in program.")
     }
-
   }
-
-  DomainInstances.showInstanceMembers(this)
-
 }//class Program
 
 object Program{

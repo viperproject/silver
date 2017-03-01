@@ -5,16 +5,11 @@
  */
 
 import java.nio.file.{Paths, Path}
-
+import scala.language.implicitConversions
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast._
-import viper.silver.ast.utility.DomainInstances
 import viper.silver.frontend.{TranslatorState, SilFrontend}
 import viper.silver.verifier.AbstractError
-
-import scala.language.implicitConversions
-
-
 
 class DomainInstanceTest extends FunSuite with Matchers {
   test("Basic domain instances") {
@@ -22,7 +17,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
     val d = Domain("D", Seq(), Seq(), Seq(t))(NoPosition, NoInfo)
     val r = LocalVarDecl("r", Int)(NoPosition, NoInfo)
     val x = LocalVarDecl("x", DomainType(d, Map(t -> Int)))(NoPosition, NoInfo)
-    val m = Method("m", Seq(x), Seq(r), Seq(), Seq(), Seq(), new Assert(new TrueLit()(NoPosition, NoInfo))(NoPosition, NoInfo))(NoPosition, NoInfo)
+    val m = Method("m", Seq(x), Seq(r), Seq(), Seq(), Seq(), Assert(TrueLit()(NoPosition, NoInfo))(NoPosition, NoInfo))(NoPosition, NoInfo)
     val p = Program(Seq(d), Seq(), Seq(), Seq(), Seq(m))(NoPosition, NoInfo)
 
     p.groundTypeInstances.size should be(3)
@@ -32,35 +27,34 @@ class DomainInstanceTest extends FunSuite with Matchers {
     val frontend = new DummyFrontend
     println(System.getProperty("user.dir"))
     val fileR = getClass.getResource("all/basic/domains2.sil")
+    println(s"fileR = $fileR")
     val fileU = fileR.toURI
     val file = Paths.get(fileU)
 
     frontend.translate(file) match {
-      case (Some(p), _) => {
-//        DomainInstances.showInstanceMembers(p)
+      case (Some(p), _) =>
+        //        DomainInstances.showInstanceMembers(p)
         p.groundTypeInstances.size should be(259)
 
-  //      DomainInstances.showInstanceMembers(p)
+        //      DomainInstances.showInstanceMembers(p)
         for (gi <- p.groundTypeInstances)
           gi match {
-            case dt: DomainType => {
+            case dt: DomainType =>
               dt.domainName should not be "D1"
-            }
             case _ =>
           }
 
-        p.groundTypeInstances.count(
-          _ match { case dt: DomainType => dt.domainName == "D10" && dt.typVarsMap.values.forall(_ == Int)
+        p.groundTypeInstances.count {
+          case dt: DomainType => dt.domainName == "D10" && dt.typVarsMap.values.forall(_ == Int)
           case _ => false
-          }
-        ) should be(1)
-        p.groundTypeInstances.count(
-          _ match { case dt: DomainType => dt.domainName == "D10"
+        } should be(1)
+
+        p.groundTypeInstances.count {
+          case dt: DomainType => dt.domainName == "D10"
           case _ => false
-          }
-        ) should be(256)
-      }
-      case _ => {}
+        } should be(256)
+
+      case _ =>
     }
   }
 
@@ -72,7 +66,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
     val file = Paths.get(fileU)
 
     frontend.translate(file) match {
-      case (Some(p), _) => {
+      case (Some(p), _) =>
 //        DomainInstances.showInstanceMembers(p)
         p.groundTypeInstances.size should be(7)
 
@@ -94,10 +88,9 @@ class DomainInstanceTest extends FunSuite with Matchers {
           case _ => false
           }
         ) should be(256)*/
-      }
-      case _ => {}
-    }
 
+      case _ =>
+    }
   }
 }
 
