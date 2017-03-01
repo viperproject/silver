@@ -168,22 +168,41 @@ object FastParser extends PosParser {
     }
   }
 
+
   def expandDefines(p: PProgram): PProgram = {
+    def putNameMap(nameMap:collection.mutable.Map[String, Int], name: String): Unit = {
+      val split = name.split("\\$")
+      val num = split.last
+      val reducedName = split.dropRight(1).mkString("")
+
+      if (num.forall(_.isDigit)) {
+        val already = nameMap.getOrElse(reducedName, 0)
+        nameMap.put(reducedName, Seq(already, num.toInt+1).max)
+      } else {
+        nameMap.put(name, 0)
+      }
+    }
+
+    val globalNames = collection.mutable.Map.empty[String, Int]
+
     val globalMacros = p.macros
 
-    p.domains.foreach(d => globalNames.put(d.idndef.name, 0))
-    p.functions.foreach(f => globalNames.put(f.idndef.name, 0))
-    p.predicates.foreach(p => globalNames.put(p.idndef.name, 0))
-    p.macros.foreach(m => globalNames.put(m.idndef.name, 0))
-    p.methods.foreach(m => globalNames.put(m.idndef.name, 0))
+    p.domains.foreach(d => putNameMap(globalNames, d.idndef.name))
+    p.functions.foreach(f => putNameMap(globalNames, f.idndef.name))
+    p.predicates.foreach(p => putNameMap(globalNames, p.idndef.name))
+    p.macros.foreach(m => putNameMap(globalNames, m.idndef.name))
+    p.methods.foreach(m => putNameMap(globalNames, m.idndef.name))
 
-    val domains = p.domains.map(doExpandDefines[PDomain](globalMacros, _))
+    val domains = p.domains.map(doExpandDefines[PDomain](globalMacros, _, globalNames))
 
-    val functions = p.functions.map(doExpandDefines[PFunction](globalMacros, _))
+    val functions = p.functions.map(doExpandDefines[PFunction](globalMacros, _, globalNames))
 
-    val predicates = p.predicates.map(doExpandDefines[PPredicate](globalMacros, _))
+    val predicates = p.predicates.map(doExpandDefines[PPredicate](globalMacros, _, globalNames))
 
     val methods = p.methods.map(m => {
+      val localAndGlobalNames = collection.mutable.Map[String, Int]() ++= globalNames
+      m.deepCollect { case d: PLocalVarDecl => d}.foreach{ vari => putNameMap(localAndGlobalNames, vari.idndef.name)}
+
       val localMacros = m.deepCollect { case n: PDefine => n }
 
       val withoutDefines =
@@ -192,13 +211,14 @@ object FastParser extends PosParser {
         else
           m.transform { case mac: PDefine => PSkip().setPos(mac) }()
 
-      doExpandDefines(localMacros ++ globalMacros, withoutDefines)
+      doExpandDefines(localMacros ++ globalMacros, withoutDefines, localAndGlobalNames)
     })
 
     PProgram(p.imports, p.macros, p.domains, p.fields, functions, predicates, methods, p.errors)
   }
 
-  def doExpandDefines[T <: PNode](macros: Seq[PDefine], toExpand: T): T = {
+
+  def doExpandDefines[T <: PNode](macros: Seq[PDefine], toExpand: T, globalNames: collection.mutable.Map[String, Int]): T = {
 
     case class ReplaceContext(macros: Seq[String] = Seq(), replace: Map[String, PExp] = Map()) {
       def inMacro: Boolean = macros.nonEmpty
@@ -214,10 +234,6 @@ object FastParser extends PosParser {
     def adaptPositions(body: PNode, f: FastPositioned): Unit = {
       FastPositions.setStart(body, f.start, true)
       FastPositions.setFinish(body, f.finish, true)
-    }
-
-    def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]) = {
-      params.zip(args).map(pair => pair._1.name -> pair._2)
     }
 
     def getFreshVar(name: String): String = {
@@ -244,6 +260,15 @@ object FastParser extends PosParser {
     }
 
     var varReplaceMap = Map.empty[String, PIdnUse]
+
+    def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]) = {
+      val freshArgs = args.map {
+          case p:PIdnUse =>
+            varReplaceMap.getOrElse(p.name, p)
+          case otherwise => otherwise
+      }
+      params.zip(freshArgs).map(pair => pair._1.name -> pair._2)
+    }
 
     val expander = StrategyBuilder.ContextStrategy[PNode, ReplaceContext]({
       case (pMacro: PMacroRef, ctxt) => {
@@ -358,7 +383,7 @@ object FastParser extends PosParser {
   /** The file we are currently parsing (for creating positions later). */
   def file: Path = _file
 
-  val globalNames = collection.mutable.Map.empty[String, Int]
+
 
   val keywords = Set("result",
     // types

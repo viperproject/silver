@@ -83,8 +83,8 @@ class RegexTests extends FunSuite {
 
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
-    // TOO LONG :(
-    val strat = t &> n[Program] >> iC[Method](_.body) >>  n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
+
+    val strat = t &> n[Program] >> iC[Method](_.body) >> n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
 
     val frontend = new DummyFrontend
 
