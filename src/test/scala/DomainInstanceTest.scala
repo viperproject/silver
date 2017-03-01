@@ -25,9 +25,9 @@ class DomainInstanceTest extends FunSuite with Matchers {
 
   test("Basic domain instances 2") {
     val frontend = new DummyFrontend
-    println(System.getProperty("user.dir"))
-    val fileR = getClass.getResource("all/basic/domains2.sil")
-    println(s"fileR = $fileR")
+    val fileN = "all/domains/domains2.sil"
+    val fileR = getClass.getResource(fileN)
+    assert(fileR != null, s"File $fileN not found")
     val fileU = fileR.toURI
     val file = Paths.get(fileU)
 
@@ -60,8 +60,9 @@ class DomainInstanceTest extends FunSuite with Matchers {
 
   test("Domain instances recursion threshold") {
     val frontend = new DummyFrontend
-    println(System.getProperty("user.dir"))
-    val fileR = getClass.getResource("all/basic/domains_threshold.sil")
+    val fileN = "all/domains/domains_threshold.sil"
+    val fileR = getClass.getResource(fileN)
+    assert(fileR != null, s"File $fileN not found")
     val fileU = fileR.toURI
     val file = Paths.get(fileU)
 
