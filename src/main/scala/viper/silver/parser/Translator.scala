@@ -388,7 +388,7 @@ case class Translator(program: PProgram) {
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>
-        val ts = triggers map (exps => Trigger(exps map exp)(exps.head))
+        val ts = triggers map (t => Trigger(t.exp map exp)(t))
         var fa = Forall(vars map liftVarDecl, ts, exp(e))(pos)
        if (fa.isPure) {
           fa

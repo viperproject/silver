@@ -65,7 +65,8 @@ object Transformer {
         case PPackagingGhostOp(wand, exp) => PPackagingGhostOp(go(wand), go(exp))
 
         case PExists(vars, exp) => PExists(vars map go, go(exp))
-        case PForall(vars, triggers, exp) => PForall(vars map go, triggers map (_ map go), go(exp))
+        case PForall(vars, triggers, exp) => PForall(vars map go, triggers map go, go(exp))
+        case PTrigger(exp) => PTrigger(exp map go)
         case PForPerm(v, fields, exp) => PForPerm(go(v), fields map go, go(exp))
         case PCondExp(cond, thn, els) => PCondExp(go(cond), go(thn), go(els))
         case PInhaleExhaleExp(in, ex) => PInhaleExhaleExp(go(in), go(ex))
@@ -168,6 +169,7 @@ object Transformer {
 
     case (p: PBinExp, Seq(left: PExp, right: PExp)) => PBinExp(left, p.opName, right)
     case (p: PUnExp, Seq(exp: PExp)) => PUnExp(p.opName, exp)
+    case (p: PTrigger, Seq(exp: Seq[PExp])) => PTrigger(exp)
     case (p: PIntLit, _) => p
     case (p: PResultLit, _) => p
     case (p: PBoolLit, _) => p
@@ -184,7 +186,7 @@ object Transformer {
     case (p: PPackagingGhostOp, Seq(wand: PExp, exp: PExp)) => PPackagingGhostOp(wand, exp)
 
     case (p: PExists, Seq(vars: Seq[PFormalArgDecl], exp: PExp)) => PExists(vars, exp)
-    case (p: PForall, Seq(vars: Seq[PFormalArgDecl], triggers: Seq[PExp], exp: PExp)) => PForall(vars, Seq(triggers), exp)
+    case (p: PForall, Seq(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], exp: PExp)) => PForall(vars, triggers, exp)
     case (p: PForPerm, Seq(v: PFormalArgDecl, fields: Seq[PIdnUse], exp: PExp)) => PForPerm(v, fields, exp)
     case (p: PCondExp, Seq(cond: PExp, thn: PExp, els: PExp)) => PCondExp(cond, thn, els)
     case (p: PInhaleExhaleExp, Seq(in: PExp, ex: PExp)) => PInhaleExhaleExp(in, ex)

@@ -6,7 +6,7 @@
 
 package viper.silver.parser
 
-import scala.collection.GenTraversable
+import scala.collection.{GenTraversable, Set}
 import scala.language.implicitConversions
 import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
@@ -537,6 +537,9 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
     args.foreach(_.forceSubstitution(ts))
   }
 }
+
+case class PTrigger(exp: Seq[PExp]) extends PNode
+
 case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
 
   override val args = Seq(left, right)
@@ -718,17 +721,13 @@ sealed trait PBinder extends PExp{
 }
 sealed trait PQuantifier extends PBinder with PScope{
   def vars : Seq[PFormalArgDecl]
-  def triggers : Seq[Seq[PExp]]
+  def triggers : Seq[PTrigger]
 }
-case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[Seq[PExp]] = Seq()}
-case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], body: PExp) extends PQuantifier {
-  override def  getChildren: scala.Seq[Any] = {
-    val triggerss = triggers.foldLeft(Seq.empty[PExp])((acc, trg) => acc ++ trg)
-    Seq(vars, triggerss, body)
-  }
-}
+case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[PTrigger] = Seq()}
+case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp) extends PQuantifier
+
 case class PForPerm(variable: PFormalArgDecl, fields: Seq[PIdnUse], body: PExp) extends PQuantifier{
-  val triggers : Seq[Seq[PExp]] = Seq()
+  val triggers : Seq[PTrigger] = Seq()
   override val vars = Seq(variable)
 }
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
@@ -1046,6 +1045,7 @@ object Nodes {
       case PUnknown() => Nil
       case PBinExp(left, op, right) => Seq(left, right)
       case PUnExp(op, exp) => Seq(exp)
+      case PTrigger(exp) => exp
       case PIntLit(i) => Nil
       case PBoolLit(b) => Nil
       case PNullLit() => Nil
@@ -1063,7 +1063,7 @@ object Nodes {
       case po: POldExp => Seq(po.e)
       case PLet(exp, nestedScope) => Seq(exp, nestedScope)
       case PLetNestedScope(variable, body) => Seq(variable, body)
-      case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
+      case PForall(vars, triggers, exp) => vars ++ triggers ++ Seq(exp)
       case PForPerm(v,fields, expr) => v +: fields :+ expr
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)

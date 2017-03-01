@@ -55,7 +55,7 @@ object FastParser extends PosParser {
         }
         else {
           val toImport = firstImport.get
-          if(imported.add(toImport.file)) {
+          if (imported.add(toImport.file)) {
             val newProg = importProgram(toImport)
 
             PProgram(
@@ -171,10 +171,10 @@ object FastParser extends PosParser {
   def expandDefines(p: PProgram): PProgram = {
     val globalMacros = p.macros
 
-    p.domains.foreach( d => globalNames.put(d.idndef.name, 0))
-    p.functions.foreach( f => globalNames.put(f.idndef.name, 0))
-    p.predicates.foreach( p => globalNames.put(p.idndef.name, 0))
-    p.macros.foreach( m => globalNames.put(m.idndef.name, 0))
+    p.domains.foreach(d => globalNames.put(d.idndef.name, 0))
+    p.functions.foreach(f => globalNames.put(f.idndef.name, 0))
+    p.predicates.foreach(p => globalNames.put(p.idndef.name, 0))
+    p.macros.foreach(m => globalNames.put(m.idndef.name, 0))
     p.methods.foreach(m => globalNames.put(m.idndef.name, 0))
 
     val domains = p.domains.map(doExpandDefines[PDomain](globalMacros, _))
@@ -221,11 +221,20 @@ object FastParser extends PosParser {
     }
 
     def getFreshVar(name: String): String = {
-      if (globalNames.contains(name)) {
-        // TODO Continue here
-        name
+      val num = name.split("$")
+      val realName = if (num.last.forall(_.isDigit)) {
+        num.dropRight(1).mkString("")
       } else {
         name
+      }
+
+      if (globalNames.contains(realName)) {
+        val index: Int = globalNames.get(realName).get
+        globalNames.put(realName, index + 1)
+        realName + "$" + index
+      } else {
+        globalNames.put(realName, 1)
+        realName + "$" + 0
       }
     }
 
@@ -298,7 +307,7 @@ object FastParser extends PosParser {
           ctxt.c.replace.get(id.name) match {
             case None => id
             case Some(nId: PIdnUse) => {
-              if(id.name != nId.name)
+              if (id.name != nId.name)
                 repIter(nId)
               else
                 PIdnUse(id.name)
@@ -558,7 +567,7 @@ object FastParser extends PosParser {
   lazy val primitiveTyp: P[PType] = P(keyword("Rational").map { case _ => PPrimitiv("Perm") }
     | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
 
-  lazy val trigger: P[Seq[PExp]] = P("{" ~/ exp.rep(sep = ",", min = 1) ~ "}")
+  lazy val trigger: P[PTrigger] = P("{" ~/ exp.rep(sep = ",", min = 1) ~ "}").map( s => PTrigger(s))
 
   lazy val forperm: P[PExp] = P(keyword("forperm") ~ "[" ~ idnuse.rep(sep = ",") ~ "]" ~ idndef ~ "::" ~/ exp).map {
     case (ids, id, body) => PForPerm(PFormalArgDecl(id, PPrimitiv("Ref")), ids, body)
