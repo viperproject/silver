@@ -48,10 +48,8 @@ object CfgSimplifier {
       }
     }
 
-    // add exit block (in case it has not been added already)
-    blocks.add(exit)
-
-    cfg.copy(blocks.toList, edges.toList, entry, exit).asInstanceOf[C]
+    val newExit = exit.filter(blocks.contains)
+    cfg.copy(blocks.toList, edges.toList, entry, newExit).asInstanceOf[C]
   }
 
   /**
@@ -125,9 +123,7 @@ object CfgSimplifier {
       }
     }
 
-    // add exit block (in case it has not been added already)
-    blocks.add(exit)
-
-    cfg.copy(blocks.toList, edges.toList, entry, exit).asInstanceOf[C]
+    val newExit = exit.filter(blocks.contains)
+    cfg.copy(blocks.toList, edges.toList, entry, newExit).asInstanceOf[C]
   }
 }

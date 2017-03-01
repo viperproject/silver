@@ -39,9 +39,12 @@ trait Cfg[S, E] {
   val entry: Block[S, E]
 
   /**
-    * The unique exit edge of the control flow graph.
+    * The unique exit block of the control flow graph.
+    *
+    * The exit block is optional since it can be removed in cases where it is
+    * not reachable.
     */
-  val exit: Block[S, E]
+  val exit: Option[Block[S, E]]
 
   /**
     * The map mapping blocks to the set of its ingoing edges.
@@ -127,7 +130,7 @@ trait Cfg[S, E] {
     }
     // get mapped entry and exit block
     val entry = blockMap(this.entry)
-    val exit = blockMap(this.exit)
+    val exit = this.exit.map(blockMap)
 
     factory.copy(blocks, edges, entry, exit).asInstanceOf[C]
   }
@@ -135,7 +138,7 @@ trait Cfg[S, E] {
   def copy(blocks: Seq[Block[S, E]] = blocks,
            edges: Seq[Edge[S, E]] = edges,
            entry: Block[S, E] = entry,
-           exit: Block[S, E] = exit): Cfg[S, E]
+           exit: Option[Block[S, E]] = exit): Cfg[S, E]
 
   /**
     * Returns a DOT representation of the control flow graph that can be
@@ -188,7 +191,7 @@ trait Cfg[S, E] {
             processBlocks(c.body.blocks)
             processEdges(c.body.edges)
             edgeStr.append("  " + id(c) + " -> " + id(c.body.entry) + "[style=dotted];\n")
-            edgeStr.append("  " + id(c.body.exit) + " -> " + id(c) + "[style=dotted];\n")
+            c.body.exit.map(exit => edgeStr.append("  " + id(exit) + " -> " + id(c) + "[style=dotted];\n"))
           case _ =>
         }
       }
