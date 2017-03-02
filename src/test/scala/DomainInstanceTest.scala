@@ -69,7 +69,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
     frontend.translate(file) match {
       case (Some(p), _) =>
 //        DomainInstances.showInstanceMembers(p)
-        p.groundTypeInstances.size should be(7)
+        p.groundTypeInstances.size should be(8)
 
 /*        for (gi <- p.groundTypeInstances)
           gi match {
