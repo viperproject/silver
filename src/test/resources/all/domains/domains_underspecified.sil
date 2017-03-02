@@ -1,4 +1,3 @@
-/*
 domain D[T,S]{
 	function f1(t:T) : S
 	function f2(t:D[T,S]) : D[S,S]
@@ -17,4 +16,3 @@ method m(x:D[Int,Bool]) returns (r:D[Bool,Int])
 
     y := f3(f5(f1(y)))
 }
-*/

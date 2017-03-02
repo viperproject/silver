@@ -1,5 +1,3 @@
-//:: IgnoreFile(/silicon/issue/216/)
-
 domain D1[T]{
 	function g1(t:T) : D1[T]
 	function g2(t:D1[T]) : D1[T]
@@ -10,7 +8,7 @@ domain D1[T]{
 domain D2[A,B]
 {
 //	function h(x:D2[A,B]):D2[D2[A,Bool],B]
-	
+
 	function h2() : D3[A,B]
 }
 
@@ -43,7 +41,7 @@ method m1(x : Int) returns (r : D10[Int,Int,Int,Int,Int,Int,Int,Int])
 {
 }
 
-/*
+
 domain DR[A,B]
 {
 	function fr(x: DD[DR[DD[DD[DD[DD[DD[DR[B,A]]]]]],DD[DD[DR[B,A]]]]]) : DR[DR[A,B],DR[B,A]]
@@ -53,4 +51,4 @@ method m(x:D2[Int,Bool]) returns (r:D3[Bool,Bool])
 {
 	var y : D10[Int,Int,Int,Int,Int,Int,Int,Int]
 }
-*/
+
