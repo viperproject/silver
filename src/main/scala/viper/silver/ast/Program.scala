@@ -220,6 +220,20 @@ case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Se
   def axioms_=(as: Seq[DomainAxiom]) {
     _axioms = as
   }
+
+  def instantiate(instantiateAs: DomainType, program: Program): Domain = {
+    assert(   instantiateAs.domainName == name
+           && instantiateAs.typeParameters == typVars)
+
+    val (instantiatedFunctions, instantiatedAxioms) =
+      utility.DomainInstances.getInstanceMembers(program, instantiateAs)
+
+    Domain(name, instantiatedFunctions, instantiatedAxioms, Nil)(pos, info)
+  }
+
+  def instantiate(subst: Map[TypeVar, Type], program: Program): Domain = {
+    instantiate(DomainType(this, subst), program)
+  }
 }
 
 /** A domain axiom. */
@@ -233,10 +247,6 @@ case class DomainAxiom(name: String, exp: Exp)
   Consistency.checkNoPositiveOnly(exp)
 }
 
-object Substitution{
-  type Substitution = Map[TypeVar,Type]
-  def toString(s : Substitution) : String = s.mkString(",")
-}
 /** Domain function which is not a binary or unary operator. */
 case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String)
