@@ -111,6 +111,10 @@ trait Node extends Traversable[Node] {
   def replace(original: Node, replacement: Node): this.type =
     this.transform{case `original` => replacement}()
 
+  def replace[N <: Node: ClassTag](replacements: Map[N, Node]): this.type =
+    if (replacements.isEmpty) this
+    else this.transform{case t: N if replacements.contains(t) => replacements(t)}()
+
   /** @see [[Visitor.deepCollect()]] */
   def deepCollect[A](f: PartialFunction[Node, A]) : Seq[A] =
     Visitor.deepCollect(Seq(this), Nodes.subnodes)(f)
