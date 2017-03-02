@@ -1,24 +1,32 @@
 package viper.silver.ast.utility
 
+import scala.collection.mutable
 import viper.silver.ast._
 
-import scala.collection.mutable
+/* TODO:
+ *   - Removed commented code
+ *   - Decompose/tidy up method findNecessaryTypeInstances
+ *   - Mark all internal methods as private -> easier for users to find the potentially useful ones
+ *   - Add high-level comments describing how the ground instances are computed
+ */
 
 object DomainInstances {
   type TypeSubstitution = Map[TypeVar, Type]
 
-  def substitute[A <: Node](e: A, s: TypeSubstitution, p: Program): A =
-    Transformer.transform[A](e, {
-      case dfa@DomainFuncApp(_, args, ts) =>
-        val ts2 = ts.toSeq.map(pair => (pair._1, substitute(pair._2, s, p))).toMap
-        val argss = args map (substitute(_, s, p))
-        DomainFuncApp(dfa.func(p), argss, ts2)(dfa.pos, dfa.info)
-      //            )(dfa.pos, dfa.info, substitute(dfa.typ,s), dfa.formalArgs.map(substitute(_,s)))
-      case lvd@LocalVar(name) =>
-        LocalVar(name)(substitute(lvd.typ, s, p), lvd.pos, lvd.info)
+  def getInstanceMembers(p: Program, dt: DomainType): (Seq[DomainFunc], Seq[DomainAxiom]) = {
+    val domain = p.findDomain(dt.domainName)
 
-      case t: Type => t.substitute(s)
-    })()
+    /*      for (a <- domain.axioms){
+        var sa = substitute(a, dt.typVarsMap,p)
+        var types = collectGroundTypes(sa,p)
+        if (!types.subsetOf(p.groundTypeInstances))
+          println("")
+      }*/
+    val functions = domain.functions.map(substitute(_, dt.typVarsMap, p)).filter(collectGroundTypes(_, p).subsetOf(p.groundTypeInstances)).distinct
+    val axioms = domain.axioms.map(substitute(_, dt.typVarsMap, p)).filter(collectGroundTypes(_, p).subsetOf(p.groundTypeInstances)).distinct
+
+    (functions, axioms)
+  }
 
   def collectGroundTypes(n: Node, p: Program): Set[Type] = n.deepCollect {
     case t: Type if t.isConcrete => t
@@ -225,7 +233,6 @@ object DomainInstances {
           val types = gitc.collectTypes(p)
           types.foreach(t => {
             val tc2 = makeTypeCoordinate(t.substitute(gitc.typeSubstitution))
-
             if (!(done contains tc2)) {
               val tc2InflationMap =
                 (t match {
@@ -247,7 +254,6 @@ object DomainInstances {
 
                 assert(tcLuggage contains tc2)
                 ntcs += tc2
-
               }
             }
         })
@@ -257,6 +263,7 @@ object DomainInstances {
         assert(ntc.subTCs.forall(tc=>(done union ntcs).contains(tc)))
         recursiveBottomUpEnqueue(todo, done, ntc)
       }
+
       /*
       ntcs.foreach {
         tc2 =>{
@@ -275,20 +282,19 @@ object DomainInstances {
     result
   }
 
-  def getInstanceMembers(p: Program, dt: DomainType): (Set[DomainFunc], Set[DomainAxiom]) = {
-    val domain = p.findDomain(dt.domainName)
+  def substitute[A <: Node](e: A, s: TypeSubstitution, p: Program): A =
+    Transformer.transform[A](e, {
+      case dfa@DomainFuncApp(_, args, ts) =>
+        val ts2 = ts.toSeq.map(pair => (pair._1, substitute(pair._2, s, p))).toMap
+        val argss = args map (substitute(_, s, p))
+        DomainFuncApp(dfa.func(p), argss, ts2)(dfa.pos, dfa.info)
+      //            )(dfa.pos, dfa.info, substitute(dfa.typ,s), dfa.formalArgs.map(substitute(_,s)))
+      case lvd@LocalVar(name) =>
+        LocalVar(name)(substitute(lvd.typ, s, p), lvd.pos, lvd.info)
 
-    /*      for (a <- domain.axioms){
-        var sa = substitute(a, dt.typVarsMap,p)
-        var types = collectGroundTypes(sa,p)
-        if (!types.subsetOf(p.groundTypeInstances))
-          println("")
-      }*/
-    val functions = domain.functions.map(substitute(_, dt.typVarsMap, p)).filter(collectGroundTypes(_, p).subsetOf(p.groundTypeInstances)).toSet
-    val axioms = domain.axioms.map(substitute(_, dt.typVarsMap, p)).filter(collectGroundTypes(_, p).subsetOf(p.groundTypeInstances)).toSet
-
-    (functions, axioms)
-  }
+      case t: Type =>
+        t.substitute(s)
+    })()
 
 //  def showInstanceMembers(p: Program): Unit = {
 ////    println("================== Domain instances")
@@ -342,12 +348,25 @@ object DomainInstances {
     (if (t.isConcrete) Set(t) else Set()) ++ down1Types(t).flatMap(downClosure)
 
 
-  def collectDomainTypes(n: Node): Set[Type] ={
+  def collectDomainTypes(n: Node, p: Program): Set[Type] ={
   //    d.deepCollect{case t : Type => downClosure(t)}.flatten.toSet
     n.shallowCollect {
-      case t: Type => downClosure(t)
-      case dfa@DomainFuncApp(_,args,ts) =>
-        Set(dfa.typ) ++ (args flatMap (collectDomainTypes(_))) ++ (ts.values flatMap (collectDomainTypes(_)))
+      case t: Type =>
+        downClosure(t)
+      case dfa@DomainFuncApp(_, args, typVarMap) =>
+        /* Given a domain function application, we collect the following types:
+         *   - return type of the function application
+         *   - domain that the applied function belongs to
+         *   - from the provided function arguments
+         *   - from the type variable map used for the application
+         */
+        val d = p.findDomain(dfa.domainName)
+        val m = d.typVars.map(t => t -> dfa.typVarMap.getOrElse(t, Program.defaultType)).toMap
+        val dt = DomainType(d, m)
+
+        (   Set(dfa.typ, dt)
+         ++ (args flatMap (collectDomainTypes(_, p)))
+         ++ (typVarMap.values flatMap (collectDomainTypes(_,p))))
     }.flatten.toSet
   }
 
@@ -420,10 +439,10 @@ object DomainInstances {
     override def typeSubstitution = Map()
   }
   sealed class DomainInstanceTypeCoordinate(val dt: DomainType, typeArgs: Seq[TypeCoordinate])
-    extends GenericInstanceTypeCoordinate(dt.domainName,typeArgs)(dt){
+    extends GenericInstanceTypeCoordinate(dt.domainName, typeArgs)(dt){
     override def collectTypes(p: Program): Set[Type] = {
       val domain = p.findDomain(dt.domainName)
-      collectDomainTypes(domain)
+      collectDomainTypes(domain, p)
     }
     override def typeSubstitution: Map[TypeVar, Type] = dt.typVarsMap
 //    val typeArguments = dt.typeArguments
