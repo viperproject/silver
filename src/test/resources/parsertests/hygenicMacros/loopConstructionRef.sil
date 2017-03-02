@@ -1,0 +1,43 @@
+define increaseFive(x) {
+    var oldX: Int := x
+    var ctr: Int := 0
+    label loop invariant ctr < 5 && x == oldX + ctr
+    x := x + 1
+    ctr := ctr + 1
+    if(ctr < 5) {
+        goto loop
+    }
+    assert(ctr == 5)
+    assert(oldX + 5 == x)
+}
+
+method main()
+{
+    var value:Int
+    var oldX$0: Int
+    var ctr$0: Int
+    var oldX$1: Int
+    var ctr$1: Int
+    value := 0
+    oldX$0 := value
+    ctr$0 := 0
+    label loop$0 invariant ctr$0 < 5 && value == oldX$0 + ctr$0
+    value := value + 1
+    ctr$0 := ctr$0 + 1
+    if(ctr$0 < 5) {
+        goto loop$0
+    }
+    assert(ctr$0 == 5)
+    assert(oldX$0 + 5 == value)
+    oldX$1 := value
+    ctr$1 := 0
+    label loop$1 invariant ctr$1 < 5 && value == oldX$1 + ctr$1
+    value := value + 1
+    ctr$1 := ctr$1 + 1
+    if(ctr$1 < 5) {
+        goto loop$1
+    }
+    assert(ctr$1 == 5)
+    assert(oldX$1 + 5 == value)
+    assert(value == 10)
+}

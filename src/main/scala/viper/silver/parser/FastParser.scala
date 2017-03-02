@@ -344,7 +344,8 @@ object FastParser extends PosParser {
 
         val newIdent = varReplaceMap.get(ident.name) match {
           case None => ident
-          case Some(i) => i
+            // Parameters shadow externally bound variables
+          case Some(i) => if(!ctxt.c.replace.contains(ident.name)) i else ident
         }
 
         val res = repIter(newIdent)
@@ -375,7 +376,8 @@ object FastParser extends PosParser {
         val realMacro = getMacroByName(pMacro.func.name)
         ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace ++ mapParamsToArgs(realMacro.args.get, pMacro.args))
       }
-    })
+    }) duplicateEverything // If we need to duplicate everything because the typechecker has problems with shared nodes
+
     val res = expander.execute[T](toExpand)
     res
   }

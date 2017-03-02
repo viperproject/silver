@@ -185,8 +185,15 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
   protected var duplicateAll = false
 
-  def duplicateEverything = duplicateAll = true
-  def duplicateEfficiently = duplicateAll = false
+  def duplicateEverything:Strategy[N, C]  = {
+    duplicateAll = true
+    this
+  }
+
+  def duplicateEfficiently:Strategy[N, C] = {
+    duplicateAll = false
+    this
+  }
 
   // Defines the traversion mode
   protected var traversionMode: Traverse = Traverse.TopDown

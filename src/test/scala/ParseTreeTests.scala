@@ -73,8 +73,7 @@ class ParseTreeTests extends FunSuite {
 
   test("HygenicMacros") {
     val filePrefix = "parsertests\\hygenicMacros\\"
-    //val files = Seq("simple", "nested")
-    val files = Seq("collision")
+    val files = Seq("simple", "nested", "collision", "collision2", "forall", "loopConstruction")
 
     val frontend = new DummyFrontend
 
@@ -111,9 +110,7 @@ class ParseTreeTests extends FunSuite {
 
   test("Imports") {
     val filePrefix = "parsertests\\imports\\"
-    val files = Seq("simple", "complex")
-    // TODO add cyclic
-    //val files = Seq("simple")
+    val files = Seq("simple", "complex", "cyclic")
 
     val frontend = new DummyFrontend
 
