@@ -1,5 +1,6 @@
 //:: IgnoreFile(/carbon/issue/102/)
 //:: IgnoreFile(/carbon/issue/103/)
+//:: IgnoreFile(/silicon/issue/274/)
 /* See list_insert.sil */
 
 field __CONFIG_HEURISTICS: Bool /* Activates heuristics */
