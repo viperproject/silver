@@ -1,29 +1,15 @@
 package viper.silver.parser
 
-/**
-  * Created by sahil on 24.05.16.
-  */
-
-
-import java.io.File
-
-import fastparse.all._
-import fastparse.core.{Mutable, ParseCtx, Parser}
-import fastparse.Implicits.{Repeater, Sequencer}
-import fastparse.WhitespaceApi
-import fastparse.parsers.Combinators.Rule
-import fastparse.parsers.Terminals.Pass
 import java.nio.file.{Files, Path}
-
 import scala.collection.immutable.Iterable
 import scala.collection.mutable
 import scala.language.implicitConversions
 import scala.language.reflectiveCalls
+import scala.util.parsing.input.NoPosition
 import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 
-import scala.util.parsing.input.NoPosition
 
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position)  extends Exception
@@ -280,7 +266,7 @@ object FastParser extends PosParser{
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old | applyOld
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding | applying
-    | packaging | setTypedEmpty | explicitSetNonEmpty | explicitMultisetNonEmpty | multiSetTypedEmpty | seqTypedEmpty
+    | packaging | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
     | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
 
 
@@ -467,43 +453,41 @@ object FastParser extends PosParser{
   lazy val folding: P[PExp] = P(keyword("folding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PFoldingGhostOp(a, b) }
 
   lazy val applying: P[PExp] =
-  /**
-   * We must be careful here to not create ambiguities in our grammar.
-   * when 'magicWandExp' is used instead of the more specific
-   * 'realMagicWandExp | idnuse', then the following problem can occur:
-   * Consider an expression such as "applying w in A". The parser
-   * will interpret "w in A" as a set-contains expression, which is
-   * fine according to our rules.
-   * The outer applying-rule will fail.
-   * Possible solution is that we should backtrack enough
-   * to reparse "w in A", but this time as desired, not as a
-   * set-contains expression.
-   */
-
-  P("applying" ~ ("(" ~ realMagicWandExp ~ ")" | idnuse) ~ ("in" ~ exp)).map { case (a, b) => PApplyingGhostOp(a, b) }
-
+    /**
+     * We must be careful here to not create ambiguities in our grammar.
+     * when 'magicWandExp' is used instead of the more specific
+     * 'realMagicWandExp | idnuse', then the following problem can occur:
+     * Consider an expression such as "applying w in A". The parser
+     * will interpret "w in A" as a set-contains expression, which is
+     * fine according to our rules.
+     * The outer applying-rule will fail.
+     * Possible solution is that we should backtrack enough
+     * to reparse "w in A", but this time as desired, not as a
+     * set-contains expression.
+     */
+    P("applying" ~ ("(" ~ realMagicWandExp ~ ")" | idnuse) ~ ("in" ~ exp)).map { case (a, b) => PApplyingGhostOp(a, b) }
 
   lazy val packaging: P[PExp] = /* See comment on applying */
     P("packaging" ~ ("(" ~ realMagicWandExp ~ ")" | idnuse) ~ "in" ~ exp).map { case (a, b) => PPackagingGhostOp(a, b) }
 
-  lazy val setTypedEmpty: P[PExp] = P("Set" ~ "[" ~ typ ~ "]" ~ "(" ~ ")").map { case a => PEmptySet(a) }
+  lazy val setTypedEmpty: P[PExp] = collectionTypedEmpty("Set", PEmptySet)
 
   lazy val explicitSetNonEmpty: P[PExp] = P("Set"  ~ "(" ~/ exp.rep(sep = ",", min = 1) ~ ")").map(PExplicitSet)
 
-  lazy val explicitMultisetNonEmpty: P[PExp] = P("Multiset" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map { case elems => PExplicitMultiset(elems) }
+  lazy val explicitMultisetNonEmpty: P[PExp] = P("Multiset" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map(PExplicitMultiset)
 
-  lazy val multiSetTypedEmpty: P[PExp] = P("Multiset" ~ "[" ~/ typ ~ "]" ~ "(" ~ ")").map(PEmptyMultiset)
+  lazy val multiSetTypedEmpty: P[PExp] = collectionTypedEmpty("Multiset", PEmptyMultiset)
 
-  lazy val seqTypedEmpty: P[PExp] = P("Seq[" ~ typ ~ "]()").map(PEmptySeq)
+  lazy val seqTypedEmpty: P[PExp] = collectionTypedEmpty("Seq", PEmptySeq)
 
   lazy val seqLength: P[PExp] = P("|" ~ exp ~ "|").map(PSize)
 
-  lazy val explicitSeqNonEmpty: P[PExp] = P("Seq(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map {
-    //      case Nil => PEmptySeq(PUnknown())
-    case elems => PExplicitSeq(elems)
-  }
+  lazy val explicitSeqNonEmpty: P[PExp] = P("Seq" ~ "(" ~/ exp.rep(min = 1, sep = ",") ~ ")").map(PExplicitSeq)
 
-  lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => { PRangeSeq(a, b) } }
+  private def collectionTypedEmpty(name: String, typeConstructor: PType => PExp): P[PExp] =
+    P(`name` ~ ("[" ~/ typ ~ "]").? ~ "(" ~ ")").map(typ => typeConstructor(typ.getOrElse(PTypeVar("#E"))))
+
+  lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map(PRangeSeq.tupled)
 
   lazy val fapp: P[PCall] = P(idnuse ~ parens(actualArgList)).map {
     case (func, args) => PCall(func, args, None)

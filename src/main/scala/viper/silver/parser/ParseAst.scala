@@ -236,6 +236,8 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
     args.forall(_.isValidAndResolved)
 
 
+  def isResolved = kind != PDomainTypeKinds.Unresolved
+
   def isUndeclared = kind == PDomainTypeKinds.Undeclared
 
   override def isGround: Boolean = {
@@ -260,7 +262,6 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
   }
 
   override def toString = domain.name + (if (args.isEmpty) "" else s"[${args.mkString(", ")}]")
-
 }
 
 object PDomainTypeKinds {
@@ -789,9 +790,15 @@ sealed trait PCollectionLiteral extends POpApp{
 }
 
 sealed trait PEmptyCollectionLiteral extends PCollectionLiteral {
-  override def signatures : Set[PTypeSubstitution] = Set(
-    Map(POpApp.pResS -> pCollectionType(pElementType))
-  )
+  override val extraLocalTypeVariables: Set[PDomainType] =
+    pElementType match {
+      case pdt: PDomainType if pdt.isTypeVar => Set(pdt)
+      case _ => Set()
+    }
+
+  override def signatures: Set[PTypeSubstitution] =
+    Set(Map(POpApp.pResS -> pCollectionType(pElementType)))
+
   override val args = Seq()
 }
 sealed trait PExplicitCollectionLiteral extends PCollectionLiteral {
@@ -807,9 +814,7 @@ sealed trait PSeqLiteral extends PCollectionLiteral{
   override val opName = "Seq#Seq"
   def pCollectionType(pType:PType) = if (pType.isUnknown) PUnknown() else PSeqType(pType)
 }
-
-case class PEmptySeq(pElementType : PType) extends PSeqLiteral with PEmptyCollectionLiteral{
-}
+case class PEmptySeq(pElementType : PType) extends PSeqLiteral with PEmptyCollectionLiteral
 case class PExplicitSeq(override val args: Seq[PExp]) extends PSeqLiteral with PExplicitCollectionLiteral
 case class PRangeSeq(low: PExp, high: PExp) extends POpApp{
   override val opName = "Seq#RangeSeq"
