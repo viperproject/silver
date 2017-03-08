@@ -356,7 +356,7 @@ object Transformer {
    */
   def simplify(expression: Exp): Exp = {
     /* Always simplify children first, then treat parent. */
-    ViperStrategy.Slim({
+    StrategyBuilder.SlimStrategy[Node]({
       case root @ Not(BoolLit(literal)) =>
         BoolLit(!literal)(root.pos, root.info)
       case Not(Not(single)) => single

@@ -6,12 +6,14 @@
 
 import java.nio.file.{Path, Paths}
 
+import fastparse.core.Parsed
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver._
 import viper.silver.ast._
 import viper.silver.ast.utility.Rewriter._
 import viper.silver.ast.utility._
 import viper.silver.frontend.{SilFrontend, TranslatorState}
+import viper.silver.parser.PProgram
 import viper.silver.verifier.AbstractError
 
 import scala.collection.mutable
@@ -596,6 +598,23 @@ class RewriterTests extends FunSuite {
     files foreach { name => executeTest(filePrefix, name, combined, frontend) }
   }
 
+  test("ContextCombination") {
+    val filePrefix = "transformations\\ContextCombination\\"
+    val files = Seq("simple")
+
+
+    val strat = ViperStrategy.Context[Seq[LocalVar]]({
+      case (p, _) => p
+    }, Seq())
+
+    val strat2  = ViperStrategy.Slim({
+      case p => p
+    })
+
+    //strat + strat2
+
+  }
+
   test("CopyPropagation") {
     val filePrefix = "transformations\\CopyPropagation\\"
     val files = Seq("simple", "complex")
@@ -675,6 +694,11 @@ class RewriterTests extends FunSuite {
     def createVerifier(fullCmd: _root_.scala.Predef.String) = ???
 
     def configureVerifier(args: Seq[String]) = ???
+
+    def typeCheckCustom(p: PProgram): Boolean = {
+      doTypecheck(p)
+      true
+    }
 
     def translate(silverFile: Path): (Option[Program], Seq[AbstractError]) = {
       _verifier = None

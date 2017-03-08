@@ -170,14 +170,14 @@ object FastParser extends PosParser {
 
 
   def expandDefines(p: PProgram): PProgram = {
-    def putNameMap(nameMap:collection.mutable.Map[String, Int], name: String): Unit = {
+    def putNameMap(nameMap: collection.mutable.Map[String, Int], name: String): Unit = {
       val split = name.split("\\$")
       val num = split.last
       val reducedName = split.dropRight(1).mkString("")
 
       if (num.forall(_.isDigit)) {
         val already = nameMap.getOrElse(reducedName, 0)
-        nameMap.put(reducedName, Seq(already, num.toInt+1).max)
+        nameMap.put(reducedName, Seq(already, num.toInt + 1).max)
       } else {
         nameMap.put(name, 0)
       }
@@ -201,7 +201,7 @@ object FastParser extends PosParser {
 
     val methods = p.methods.map(m => {
       val localAndGlobalNames = collection.mutable.Map[String, Int]() ++= globalNames
-      m.deepCollect { case d: PLocalVarDecl => d}.foreach{ vari => putNameMap(localAndGlobalNames, vari.idndef.name)}
+      m.deepCollect { case d: PLocalVarDecl => d }.foreach { vari => putNameMap(localAndGlobalNames, vari.idndef.name) }
 
       val localMacros = m.deepCollect { case n: PDefine => n }
 
@@ -261,11 +261,12 @@ object FastParser extends PosParser {
 
     var varReplaceMap = Map.empty[String, PIdnUse]
 
-    def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]) = {
+    def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp], replace: Map[String, PExp]) = {
       val freshArgs = args.map {
-          case p:PIdnUse =>
-            varReplaceMap.getOrElse(p.name, p)
-          case otherwise => otherwise
+        case p: PIdnUse =>
+          val replacedVar = varReplaceMap.getOrElse(p.name, p)
+          replace.getOrElse(replacedVar.name, replacedVar)
+        case otherwise => otherwise
       }
       params.zip(freshArgs).map(pair => pair._1.name -> pair._2)
     }
@@ -344,8 +345,8 @@ object FastParser extends PosParser {
 
         val newIdent = varReplaceMap.get(ident.name) match {
           case None => ident
-            // Parameters shadow externally bound variables
-          case Some(i) => if(!ctxt.c.replace.contains(ident.name)) i else ident
+          // Parameters shadow externally bound variables
+          case Some(i) => if (!ctxt.c.replace.contains(ident.name)) i else ident
         }
 
         val res = repIter(newIdent)
@@ -370,13 +371,13 @@ object FastParser extends PosParser {
       }
       case (pMacro: PMethodCall, c) if isMacro(pMacro.method.name) => {
         val realMacro = getMacroByName(pMacro.method.name)
-        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace ++ mapParamsToArgs(realMacro.args.get, pMacro.args))
+        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace ++ mapParamsToArgs(realMacro.args.get, pMacro.args, c.replace))
       }
       case (pMacro: PCall, c) if isMacro(pMacro.func.name) => {
         val realMacro = getMacroByName(pMacro.func.name)
-        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace ++ mapParamsToArgs(realMacro.args.get, pMacro.args))
+        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace ++ mapParamsToArgs(realMacro.args.get, pMacro.args, c.replace))
       }
-    }) duplicateEverything // If we need to duplicate everything because the typechecker has problems with shared nodes
+    }) duplicateEverything // We need to duplicate everything because the typechecker has problems with shared nodes
 
     val res = expander.execute[T](toExpand)
     res
@@ -384,7 +385,6 @@ object FastParser extends PosParser {
 
   /** The file we are currently parsing (for creating positions later). */
   def file: Path = _file
-
 
 
   val keywords = Set("result",
@@ -594,7 +594,7 @@ object FastParser extends PosParser {
   lazy val primitiveTyp: P[PType] = P(keyword("Rational").map { case _ => PPrimitiv("Perm") }
     | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
 
-  lazy val trigger: P[PTrigger] = P("{" ~/ exp.rep(sep = ",", min = 1) ~ "}").map( s => PTrigger(s))
+  lazy val trigger: P[PTrigger] = P("{" ~/ exp.rep(sep = ",", min = 1) ~ "}").map(s => PTrigger(s))
 
   lazy val forperm: P[PExp] = P(keyword("forperm") ~ "[" ~ idnuse.rep(sep = ",") ~ "]" ~ idndef ~ "::" ~/ exp).map {
     case (ids, id, body) => PForPerm(PFormalArgDecl(id, PPrimitiv("Ref")), ids, body)

@@ -1,7 +1,8 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter.Traverse
+import viper.silver.ast.utility.Rewriter._
+
 import scala.collection.mutable
 
 /**
@@ -11,7 +12,7 @@ object DomainInstances {
   type TypeSubstitution = Map[TypeVar, Type]
 
   def substitute[A <: Node](e: A, s: TypeSubstitution, p: Program): A =
-    ViperStrategy.Slim({
+    StrategyBuilder.SlimStrategy[Node]({
       case dfa@DomainFuncApp(name, args, ts) =>
         val ts2 = ts.toSeq.map(pair => (pair._1, substitute(pair._2, s, p))).toMap
         val argss = args map (substitute(_, s, p))

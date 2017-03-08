@@ -2,14 +2,11 @@
 import java.nio.file.{Path, Paths}
 
 import org.scalatest.{FunSuite, Matchers}
-import viper.silver._
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter._
-import viper.silver.ast.utility._
 import viper.silver.frontend.{SilFrontend, TranslatorState}
+import viper.silver.parser._
 import viper.silver.verifier.AbstractError
 
-import scala.collection.mutable
 import scala.language.implicitConversions
 
 
@@ -18,7 +15,7 @@ class ParseTreeTests extends FunSuite {
     val filePrefix = "parsertests\\cyclicMacros\\"
     val files = Seq("simple", "complex", "complexExp")
 
-    val frontend = new DummyFrontend
+    val frontend = new CustomFrontend
 
     files foreach { fileName => {
       val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
@@ -37,9 +34,9 @@ class ParseTreeTests extends FunSuite {
   test("MacroExpansion") {
     val filePrefix = "parsertests\\macroExpansion\\"
     val files = Seq("simple", "simple2", "simpleExp", "simpleArgs", "simpleArgs2", "simpleArgsExp", "simpleMethod", "simpleMethodExp")
-    //val files = Seq("simple")
+    //val files = Seq("broken")
 
-    val frontend = new DummyFrontend
+    val frontend = new CustomFrontend
 
     files foreach { fileName => {
       val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
@@ -75,7 +72,7 @@ class ParseTreeTests extends FunSuite {
     val filePrefix = "parsertests\\hygenicMacros\\"
     val files = Seq("simple", "nested", "collision", "collision2", "forall", "loopConstruction")
 
-    val frontend = new DummyFrontend
+    val frontend = new CustomFrontend
 
     files foreach { fileName => {
       val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
@@ -112,7 +109,7 @@ class ParseTreeTests extends FunSuite {
     val filePrefix = "parsertests\\imports\\"
     val files = Seq("simple", "complex", "cyclic")
 
-    val frontend = new DummyFrontend
+    val frontend = new CustomFrontend
 
     files foreach { fileName => {
       val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
@@ -142,6 +139,32 @@ class ParseTreeTests extends FunSuite {
     }
     }
 
+  }
+
+  class CustomFrontend extends SilFrontend {
+    def createVerifier(fullCmd: _root_.scala.Predef.String) = ???
+
+    def configureVerifier(args: Seq[String]) = ???
+
+    def typeCheckCustom(p: PProgram): Boolean = {
+        doTypecheck(p) match {
+        case Succ(_) => true
+        case Fail(_) => false
+      }
+    }
+
+    def translate(silverFile: Path): (Option[Program], Seq[AbstractError]) = {
+      _verifier = None
+      _state = TranslatorState.Initialized
+
+      reset(silverFile) //
+      translate()
+
+      //println(s"_program = ${_program}") /* Option[Program], set if parsing and translating worked */
+      //println(s"_errors = ${_errors}")   /*  Seq[AbstractError], contains errors, if encountered */
+
+      (_program, _errors)
+    }
   }
 
 }
