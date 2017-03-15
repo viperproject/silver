@@ -22,44 +22,6 @@ import scala.language.implicitConversions
 
 class RewriterTests extends FunSuite {
 
-  // First test always takes a longer time. Just put a dummy testcase in front such that the rest of the runtimes are consistent. TODO Remove it after evaluation
-  test("DummytestToWasteSetupTime") {
-    val filePrefix = "transformations\\ImplicationsToDisjunction\\"
-    val files = Seq("simple", "nested", "traverseEverything")
-
-    // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = ViperStrategy.Slim({
-      case Implies(left, right) => Or(Not(left)(), right)()
-    })
-
-    val frontend = new DummyFrontend
-    files foreach { name => executeTest(filePrefix, name, strat, frontend) }
-  }
-
-  test("Performance_EncodingADTs") {
-    val fileName = "transformations\\Performance\\EncodingADTs"
-
-    val strat = ViperStrategy.Slim({
-      case Implies(left, right) => Or(Not(left)(), right)()
-    })
-
-    val frontend = new DummyFrontend
-
-    val fileRes = getClass.getResource(fileName + ".sil")
-    assert(fileRes != null, s"File $fileName not found")
-    val file = Paths.get(fileRes.toURI)
-    var targetNode: Node = null
-
-    frontend.translate(file) match {
-      case (Some(p), _) => targetNode = p
-      case (None, errors) => println("Problem with program: " + errors)
-    }
-
-
-    val res = time(strat.execute[Program](targetNode))
-
-    assert(true)
-  }
 
   test("Performance_BinomialHeap") {
     val fileName = "transformations\\Performance\\BinomialHeap"
@@ -176,6 +138,8 @@ class RewriterTests extends FunSuite {
   }
 
   /*test("OLDDisjunctionToInhaleExhaleTests") {
+    // Code is commented out because the old rewriter was removed from the project and replaced with the new rewriter
+
     // Is working correctly but rewrites right hand sides of IE expression too. Therefore does not match with more complex testcases
     // 17 vs 7 line numbers
     val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
@@ -254,7 +218,6 @@ class RewriterTests extends FunSuite {
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
   }
 
-
   test("WhileToIfAndGoto") {
     val filePrefix = "transformations\\WhileToIfAndGoto\\"
     val files = Seq("simple", "nested")
@@ -320,17 +283,17 @@ class RewriterTests extends FunSuite {
   test("ManyToOneAssert2") {
     val filePrefix = "transformations\\ManyToOneAssert\\"
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
-    var accumulator: mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
 
+    var accumulator: List[Exp] = List.empty[Exp]
     val strat = ViperStrategy.Ancestor({
       case (a: Assert, c) =>
-        accumulator += a.exp
+        accumulator ++= List(a.exp)
         c.next match {
           case Some(Assert(_)) =>
             Seqn(Seq())()
           case _ =>
             val result = Assert(accumulator.reduceRight(And(_, _)()))()
-            accumulator.clear()
+            accumulator = List.empty[Exp]
             result
         }
     })
@@ -343,6 +306,7 @@ class RewriterTests extends FunSuite {
   }
 
   /*test("OLDManyToOneAssert2") {
+    // Code is commented out because the old rewriter was removed from the project and replaced with the new rewriter
     // 16 lines compared to 12 lines
     // Need to find successor ourselves
 
@@ -547,7 +511,7 @@ class RewriterTests extends FunSuite {
 
         // Create an exhale statement for every precondition and replace parameters with arguments
         var replacer: Map[LocalVar, Exp] = mDecl.formalArgs.zip(m.args).map(x => x._1.localVar -> x._2).toMap
-        val replaceStrat = StrategyBuilder.SlimStrategy[Node]({
+        val replaceStrat = StrategyBuilder.Slim[Node]({
           case l: LocalVar => if (replacer.contains(l)) replacer(l) else l
         })
         val exPres = mDecl.pres.map(replaceStrat.execute[Exp](_)).map(x => Exhale(x)(m.pos, m.info))
@@ -695,6 +659,7 @@ class RewriterTests extends FunSuite {
 
     def configureVerifier(args: Seq[String]) = ???
 
+    // Included to test for the typechecker bug
     def typeCheckCustom(p: PProgram): Boolean = {
       doTypecheck(p)
       true

@@ -46,7 +46,7 @@ object FastParser extends PosParser {
 
     imported.add(f.toString.split("\\\\").last)
 
-    val importer = StrategyBuilder.SlimStrategy[PProgram]({
+    val importer = StrategyBuilder.Slim[PProgram]({
       case p: PProgram => {
         val firstImport = p.imports.headOption
 
@@ -271,7 +271,7 @@ object FastParser extends PosParser {
       params.zip(freshArgs).map(pair => pair._1.name -> pair._2)
     }
 
-    val expander = StrategyBuilder.ContextStrategy[PNode, ReplaceContext]({
+    val expander = StrategyBuilder.Context[PNode, ReplaceContext]({
       case (pMacro: PMacroRef, ctxt) => {
         val name = pMacro.idnuse.name
         recursionCheck(name, ctxt.c)

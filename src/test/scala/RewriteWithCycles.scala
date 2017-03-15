@@ -43,7 +43,7 @@ class RewriteWithCycles extends FunSuite {
 
   // Visit all reachable nodes in the graph and call func on them.
   def visitAll[I](s:SlimGraph[I], func:I=>I) = {
-    val strat = StrategyBuilder.AncestorStrategy[SlimGraph[I]]({
+    val strat = StrategyBuilder.Ancestor[SlimGraph[I]]({
       case (sG, c) => {
         if(c.ancestorList.dropRight(1).contains(sG))
           c.noRec(sG)

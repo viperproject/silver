@@ -12,7 +12,7 @@ object DomainInstances {
   type TypeSubstitution = Map[TypeVar, Type]
 
   def substitute[A <: Node](e: A, s: TypeSubstitution, p: Program): A =
-    StrategyBuilder.SlimStrategy[Node]({
+    StrategyBuilder.Slim[Node]({
       case dfa@DomainFuncApp(name, args, ts) =>
         val ts2 = ts.toSeq.map(pair => (pair._1, substitute(pair._2, s, p))).toMap
         val argss = args map (substitute(_, s, p))

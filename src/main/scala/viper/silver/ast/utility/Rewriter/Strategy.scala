@@ -88,7 +88,7 @@ object StrategyBuilder {
     * @tparam N Common supertype of every node in the tree
     * @return Strategy object ready to execute on a tree
     */
-  def SlimStrategy[N <: Rewritable](p: PartialFunction[N, N], t: Traverse = Traverse.TopDown) = {
+  def Slim[N <: Rewritable](p: PartialFunction[N, N], t: Traverse = Traverse.TopDown) = {
     new SlimStrategy[N](p) defaultContext new NoContext[N] traverse t
   }
 
@@ -100,7 +100,7 @@ object StrategyBuilder {
     * @tparam N Common supertype of every node in the tree
     * @return Strategy object ready to execute on a tree
     */
-  def AncestorStrategy[N <: Rewritable](p: PartialFunction[(N, ContextA[N]), N], t: Traverse = Traverse.TopDown) = {
+  def Ancestor[N <: Rewritable](p: PartialFunction[(N, ContextA[N]), N], t: Traverse = Traverse.TopDown) = {
     new Strategy[N, ContextA[N]](p) defaultContext new PartialContextA[N] traverse t
   }
 
@@ -115,7 +115,7 @@ object StrategyBuilder {
     * @tparam C Type of the context
     * @return Strategy object ready to execute on a tree
     */
-  def ContextStrategy[N <: Rewritable, C](p: PartialFunction[(N, ContextC[N, C]), N], default: C, updateFunc: PartialFunction[(N, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
+  def Context[N <: Rewritable, C](p: PartialFunction[(N, ContextC[N, C]), N], default: C, updateFunc: PartialFunction[(N, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
     new Strategy[N, ContextC[N, C]](p) defaultContext new PartialContextC[N, C](default, updateFunc) traverse t
   }
 
@@ -328,9 +328,9 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
   /**
     * Execute the Strategy
     *
-    * @param node Root of the NST you want to rewrite
+    * @param node Root of the AST you want to rewrite
     * @tparam T Type of the rewritten root
-    * @return rewritten NST
+    * @return rewritten AST
     */
   override def execute[T <: N](node: N): T = {
     assert(defaultContxt.isDefined, "Default context not set!")
@@ -348,6 +348,17 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
   def execute[T <: N](node: N, ctxt: PartialContext[N, C]): T = {
     selectStrat(node, ctxt.get(this)).asInstanceOf[T]
   }
+
+  /**
+    * Execute the Strategy
+    * Same as simple execute just without requiring a type parameter
+    * Type of the result node will be the generic type of the AST
+    *
+    * @param node Root of the AST you want to rewrite
+    * @param ctxt Type of the rewritten root
+    * @return rewritten AST
+    */
+  def executeT(node: N, ctxt: PartialContext[N, C]): N = execute[N](node, ctxt)
 
   // Method to execute the rewriting top down
   def executeTopDown(node: N, context: C): Option[N] = {

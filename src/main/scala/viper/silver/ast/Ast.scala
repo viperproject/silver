@@ -105,7 +105,7 @@ trait Node extends Traversable[Node] with Rewritable {
 
   /** @see [[viper.silver.ast.utility.ViperStrategy]]*/
   def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty, recurse:Traverse = Traverse.Innermost)
-  : this.type = StrategyBuilder.SlimStrategy[Node](pre, recurse) execute[this.type](this)
+  : this.type = StrategyBuilder.Slim[Node](pre, recurse) execute[this.type](this)
 
   def replace(original: Node, replacement: Node): this.type =
     this.transform { case `original` => replacement }
@@ -167,7 +167,7 @@ trait TransformableErrors {
   def errT: ErrorTrafo
 
   // Rewriting strategy to transform every node back that has a back transformation specified
-  private lazy val nodeTrafoStrat = StrategyBuilder.SlimStrategy[Node]({
+  private lazy val nodeTrafoStrat = StrategyBuilder.Slim[Node]({
       case n:TransformableErrors => {
         val res = transformNode(n.asInstanceOf[ErrorNode])
         res

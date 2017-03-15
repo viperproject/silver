@@ -21,20 +21,6 @@ import scala.language.implicitConversions
 
 class RegexTests extends FunSuite {
 
-  // First test always takes a longer time. Just put a dummy testcase in front such that the rest of the runtimes are consistent. TODO Remove it after evaluation
-  test("DummytestToWasteSetupTime") {
-    val filePrefix = "transformations\\ImplicationsToDisjunction\\"
-    val files = Seq("simple", "nested", "traverseEverything")
-
-    // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = ViperStrategy.Slim({
-      case Implies(left, right) => Or(Not(left)(), right)()
-    })
-
-    val frontend = new DummyFrontend
-    files foreach { name => executeTest(filePrefix, name, strat, frontend) }
-  }
-
   test("Sharing") {
     val shared = FalseLit()()
     val sharedAST = And(Not(shared)(), shared)()
@@ -54,36 +40,13 @@ class RegexTests extends FunSuite {
     }
   }
 
-  test("Performance_EncodingADTs") {
-    val fileName = "transformations\\Performance\\EncodingADTs"
-
-    // Regular expression
-    val t = TreeRegexBuilder.simple[Node]
-    val strat = t &> n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
-
-    val frontend = new DummyFrontend
-
-    val fileRes = getClass.getResource(fileName + ".sil")
-    assert(fileRes != null, s"File $fileName not found")
-    val file = Paths.get(fileRes.toURI)
-    var targetNode: Node = null
-
-    frontend.translate(file) match {
-      case (Some(p), _) => targetNode = p
-      case (None, errors) => println("Problem with program: " + errors)
-    }
-
-
-    val res = time(strat.execute[Program](targetNode))
-    assert(true)
-  }
-
   test("Performance_BinomialHeap") {
     val fileName = "transformations\\Performance\\BinomialHeap"
 
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
 
+    // Arbitrary regex to observe how much the matching slows down the program
     val strat = t &> n[Program] >> iC[Method](_.body) >> n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
 
     val frontend = new DummyFrontend
@@ -265,7 +228,7 @@ class RegexTests extends FunSuite {
   }
 
   test("MethodCallDesugaring") {
-    // Careful: Don't use old inside postcondition. It is not yet supported. maybe I will update the testcase
+    // Careful: Don't use old inside postcondition. It is not yet supported. maybe I will update the testcase (or not)
     val filePrefix = "transformations\\MethodCallDesugaring\\"
     val files = Seq("simple", "withArgs", "withArgsNRes", "withFields")
 
@@ -280,7 +243,7 @@ class RegexTests extends FunSuite {
 
         // Create an exhale statement for every precondition and replace parameters with arguments
         var replacer: Map[LocalVar, Exp] = mDecl.formalArgs.zip(m.args).map(x => x._1.localVar -> x._2).toMap
-        val replaceStrat = StrategyBuilder.SlimStrategy[Node]({
+        val replaceStrat = StrategyBuilder.Slim[Node]({
           case l: LocalVar => if (replacer.contains(l)) replacer(l) else l
         })
         val exPres = mDecl.pres.map(replaceStrat.execute[Exp](_)).map(x => Exhale(x)(m.pos, m.info))
