@@ -5,7 +5,7 @@
  */
 
 import java.nio.file.{Path, Paths}
-
+import scala.language.implicitConversions
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast._
 import viper.silver.ast.utility._
@@ -21,7 +21,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
     val d = Domain("D", Seq(), Seq(), Seq(t))(NoPosition, NoInfo)
     val r = LocalVarDecl("r", Int)(NoPosition, NoInfo)
     val x = LocalVarDecl("x", DomainType(d, Map(t -> Int)))(NoPosition, NoInfo)
-    val m = Method("m", Seq(x), Seq(r), Seq(), Seq(), Seq(), new Assert(new TrueLit()(NoPosition, NoInfo))(NoPosition, NoInfo))(NoPosition, NoInfo)
+    val m = Method("m", Seq(x), Seq(r), Seq(), Seq(), Seq(), Assert(TrueLit()(NoPosition, NoInfo))(NoPosition, NoInfo))(NoPosition, NoInfo)
     val p = Program(Seq(d), Seq(), Seq(), Seq(), Seq(m))(NoPosition, NoInfo)
 
     p.groundTypeInstances.size should be(3)
@@ -29,51 +29,51 @@ class DomainInstanceTest extends FunSuite with Matchers {
 
   test("Basic domain instances 2") {
     val frontend = new DummyFrontend
-    println(System.getProperty("user.dir"))
-    val fileR = getClass.getResource("all/basic/domains2.sil")
+    val fileN = "all/domains/domains2.sil"
+    val fileR = getClass.getResource(fileN)
+    assert(fileR != null, s"File $fileN not found")
     val fileU = fileR.toURI
     val file = Paths.get(fileU)
 
     frontend.translate(file) match {
-      case (Some(p), _) => {
+      case (Some(p), _) =>
         //        DomainInstances.showInstanceMembers(p)
         p.groundTypeInstances.size should be(259)
 
         //      DomainInstances.showInstanceMembers(p)
         for (gi <- p.groundTypeInstances)
           gi match {
-            case dt: DomainType => {
+            case dt: DomainType =>
               dt.domainName should not be "D1"
-            }
             case _ =>
           }
 
-        p.groundTypeInstances.count(
-          _ match { case dt: DomainType => dt.domainName == "D10" && dt.typVarsMap.values.forall(_ == Int)
+        p.groundTypeInstances.count {
+          case dt: DomainType => dt.domainName == "D10" && dt.typVarsMap.values.forall(_ == Int)
           case _ => false
-          }
-        ) should be(1)
-        p.groundTypeInstances.count(
-          _ match { case dt: DomainType => dt.domainName == "D10"
+        } should be(1)
+
+        p.groundTypeInstances.count {
+          case dt: DomainType => dt.domainName == "D10"
           case _ => false
-          }
-        ) should be(256)
-      }
-      case _ => {}
+        } should be(256)
+
+      case _ =>
     }
   }
 
   test("Domain instances recursion threshold") {
     val frontend = new DummyFrontend
-    println(System.getProperty("user.dir"))
-    val fileR = getClass.getResource("all/basic/domains_threshold.sil")
+    val fileN = "all/domains/domains_threshold.sil"
+    val fileR = getClass.getResource(fileN)
+    assert(fileR != null, s"File $fileN not found")
     val fileU = fileR.toURI
     val file = Paths.get(fileU)
 
     frontend.translate(file) match {
-      case (Some(p), _) => {
+      case (Some(p), _) =>
         //        DomainInstances.showInstanceMembers(p)
-        p.groundTypeInstances.size should be(7)
+        p.groundTypeInstances.size should be(8)
 
         for (gi <- p.groundTypeInstances)
           gi match {
@@ -93,10 +93,9 @@ class DomainInstanceTest extends FunSuite with Matchers {
           case _ => false
           }
         ) should be(256)
-      }
-      case _ => {}
-    }
 
+      case _ =>
+    }
   }
 }
 

@@ -69,11 +69,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       case Some(f) => f
       case None => sys.error("Domain function " + name + " not found in program.")
     }
-
   }
-
-  DomainInstances.showInstanceMembers(this)
-
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
@@ -249,6 +245,19 @@ case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Se
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
+  }
+  def instantiate(instantiateAs: DomainType, program: Program): Domain = {
+    assert(   instantiateAs.domainName == name
+           && instantiateAs.typeParameters == typVars)
+
+    val (instantiatedFunctions, instantiatedAxioms) =
+      utility.DomainInstances.getInstanceMembers(program, instantiateAs)
+
+    Domain(name, instantiatedFunctions, instantiatedAxioms, Nil)(pos, info)
+  }
+
+  def instantiate(subst: Map[TypeVar, Type], program: Program): Domain = {
+    instantiate(DomainType(this, subst), program)
   }
 }
 

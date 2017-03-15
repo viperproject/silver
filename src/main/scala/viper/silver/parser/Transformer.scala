@@ -35,7 +35,10 @@ object Transformer {
         case PFormalArgDecl(idndef, typ) => PFormalArgDecl(go(idndef), go(typ))
         case PTypeVarDecl(idndef) => PTypeVarDecl(go(idndef))
         case _: PPrimitiv => parent
-        case PDomainType(domain, args) => PDomainType(go(domain), args map go)
+        case pdt@PDomainType(domain, args) =>
+          val newPdt = PDomainType(go(domain), args map go)
+          newPdt.kind = pdt.kind
+          newPdt
         case PSeqType(elementType) => PSeqType(go(elementType))
         case PSetType(elementType) => PSetType(go(elementType))
         case PMultisetType(elementType) => PMultisetType(go(elementType))

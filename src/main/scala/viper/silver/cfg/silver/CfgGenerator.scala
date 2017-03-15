@@ -49,16 +49,26 @@ object CfgGenerator {
     val localBlock: SilverBlock = StatementBlock(locals)
     val localEdge: SilverEdge = UnconditionalEdge(localBlock, bodyCfg.entry, Kind.Normal)
 
-    // create blocks and corresponding edges for pre and postconditions
+    // create precondition block and corresponding edge
     val preBlock: SilverBlock = PreconditionBlock(method.pres)
-    val postBlock: SilverBlock = PostconditionBlock(method.posts)
     val preEdge: SilverEdge = UnconditionalEdge(preBlock, localBlock, Kind.Normal)
-    val postEdge: SilverEdge = UnconditionalEdge(bodyCfg.exit, postBlock, Kind.Normal)
 
-    // create cfg with pre and postconditions and local variables
-    val blocks = preBlock :: postBlock :: localBlock :: bodyCfg.blocks.toList
-    val edges = preEdge :: postEdge :: localEdge :: bodyCfg.edges.toList
-    val cfg = SilverCfg(blocks, edges, preBlock, postBlock)
+    // create cfg
+    val cfg = bodyCfg.exit match {
+      case Some(exit) =>
+        // create postcondition block and corresponding edge
+        val postBlock: SilverBlock = PostconditionBlock(method.posts)
+        val postEdge: SilverEdge = UnconditionalEdge(exit, postBlock, Kind.Normal)
+        // create cfg with pre- and postconditions and local variables
+        val blocks = preBlock :: localBlock :: postBlock :: bodyCfg.blocks.toList
+        val edges = preEdge :: localEdge :: postEdge :: bodyCfg.edges.toList
+        SilverCfg(blocks, edges, preBlock, Some(postBlock))
+      case None =>
+        // create cfg with preconditions and local variables but no postconditions
+        val blocks = preBlock :: localBlock :: bodyCfg.blocks.toList
+        val edges = preEdge :: localEdge :: bodyCfg.edges.toList
+        SilverCfg(blocks, edges, preBlock, None)
+    }
 
     if (simplify) CfgSimplifier.simplify[SilverCfg, Stmt, Exp](cfg)
     else cfg
@@ -320,7 +330,7 @@ object CfgGenerator {
     /**
       * The cfg.
       */
-    lazy val cfg: SilverCfg = SilverCfg(blocks.values.toList, edges.toList, entry, exit)
+    lazy val cfg: SilverCfg = SilverCfg(blocks.values.toList, edges.toList, entry, Some(exit))
 
     /**
       * The loop information used for constructing in and out edges.

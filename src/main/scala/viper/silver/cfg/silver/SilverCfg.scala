@@ -16,7 +16,7 @@ import scala.collection.mutable.ListBuffer
 /**
   * A silver control flow graph.
   */
-class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val entry: SilverBlock, val exit: SilverBlock)
+class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val entry: SilverBlock, val exit: Option[SilverBlock])
   extends Cfg[Stmt, Exp] {
 
   private val cache: mutable.Map[SilverLoopHeadBlock, Seq[LocalVar]] = mutable.Map()
@@ -80,7 +80,7 @@ class SilverCfg(val blocks: Seq[SilverBlock], val edges: Seq[SilverEdge], val en
   override def copy(blocks: Seq[SilverBlock] = blocks,
                     edges: Seq[SilverEdge] = edges,
                     entry: SilverBlock = entry,
-                    exit: SilverBlock = exit): SilverCfg =
+                    exit: Option[SilverBlock] = exit): SilverCfg =
     SilverCfg(blocks, edges, entry, exit)
 }
 
@@ -89,9 +89,9 @@ object SilverCfg {
   type SilverLoopHeadBlock = LoopHeadBlock[Stmt, Exp]
   type SilverEdge = Edge[Stmt, Exp]
 
-  def apply(blocks: Seq[SilverBlock], edges: Seq[SilverEdge], entry: SilverBlock, exit: SilverBlock) =
+  def apply(blocks: Seq[SilverBlock], edges: Seq[SilverEdge], entry: SilverBlock, exit: Option[SilverBlock]) =
     new SilverCfg(blocks, edges, entry, exit)
 
-  def unapply(cfg: SilverCfg): Option[(Seq[SilverBlock], Seq[SilverEdge], SilverBlock, SilverBlock)] =
+  def unapply(cfg: SilverCfg): Option[(Seq[SilverBlock], Seq[SilverEdge], SilverBlock, Option[SilverBlock])] =
     Some((cfg.blocks, cfg.edges, cfg.entry, cfg.exit))
 }

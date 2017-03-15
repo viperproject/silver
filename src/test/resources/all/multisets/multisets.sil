@@ -60,20 +60,24 @@ method test05(B: Multiset[Int], n: Int, x: Int)
   assert |B1| == 2*n
 }
 
-method test06(B: Multiset[Int], n: Int, x: Int, b:Bool)
+method test06a(B: Multiset[Int], n: Int, x: Int, b:Bool)
   requires |B| == n
 {
   var B1: Multiset[Int] := B intersection B
-  if(b) {
-    // NOTE: cardinality for multisets has no strong axioms, but equality can be used
-    assert B1 == B
-    assert |B1| == n
-  } else {
-    // NOTE: cardinality for multisets has no strong axioms
-    //:: ExpectedOutput(assert.failed:assertion.false)
-    assert |B1| == n
-    assert B1 == B
-  }
+
+  // NOTE: cardinality for multisets has no strong axioms
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert |B1| == n
+}
+
+method test06b(B: Multiset[Int], n: Int, x: Int, b:Bool)
+  requires |B| == n
+{
+  var B1: Multiset[Int] := B intersection B
+  // NOTE: cardinality for multisets has no strong axioms
+  // But equality can be used to overcome this incompleteness
+  assert B1 == B
+  assert |B1| == n
 }
 
 method test07(B: Multiset[Int], n: Int, x: Int, y: Int)
