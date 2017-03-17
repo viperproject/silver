@@ -39,7 +39,7 @@ class PositionMap {
 
 object FastPositions {
 
-    val MapStart = new PositionMap
+    private val MapStart = new PositionMap
     private val MapFinish = new PositionMap
 
 
