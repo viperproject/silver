@@ -203,21 +203,6 @@ class RewriterTests extends FunSuite {
     }
   }*/
 
-  test("trialAndError") {
-    val filePrefix = "mine\\"
-    val files = Seq("mytest")
-
-
-
-    // Create new strategy. Parameter is the partial function that is applied on all nodes
-    val strat = ViperStrategy.Slim({
-      case n => n
-    })
-
-    val frontend = new DummyFrontend
-    files foreach { name => executeTest(filePrefix, name, strat, frontend) }
-  }
-
   test("ImplicationToDisjunctionTests") {
     val filePrefix = "transformations\\ImplicationsToDisjunction\\"
     val files = Seq("simple", "nested", "traverseEverything")

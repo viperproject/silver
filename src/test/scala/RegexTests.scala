@@ -30,7 +30,7 @@ class RegexTests extends FunSuite {
 
     val res = strat.execute[Exp](sharedAST)
 
-    // Check that both true lits are no longer of the same instance
+    // Check that both FalseLits were differently transformed
     res match {
       case And(Not(t1), t2) => {
         assert(t1 == TrueLit()())
