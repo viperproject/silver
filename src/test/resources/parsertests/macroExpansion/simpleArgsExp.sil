@@ -1,6 +1,6 @@
-define macro(x, y) x + macro2(y)
+define macro(x, y) x + macro2(y, x)
 
-define macro2(z) x + macro3(z, z)
+define macro2(z, x) x + macro3(z, z)
 
 define macro3(a, b) a * b
 

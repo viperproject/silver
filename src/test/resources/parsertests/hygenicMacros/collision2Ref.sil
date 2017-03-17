@@ -9,10 +9,10 @@ define macro2(x, y) {
 
 method main()
 {
+    var x: Bool
     var x$0: Bool
-    var x$1: Bool
+    x := true
+    assert((true && true) && x)
     x$0 := true
     assert((true && true) && x$0)
-    x$1 := true
-    assert((true && true) && x$1)
 }

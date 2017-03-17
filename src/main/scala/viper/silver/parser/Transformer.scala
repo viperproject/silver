@@ -222,6 +222,7 @@ object Transformer {
     case (p: PApplyWand, Seq(e: PExp)) => PApplyWand(e)
     case (p: PExhale, Seq(e: PExp)) => PExhale(e)
     case (p: PAssert, Seq(e: PExp)) => PAssert(e)
+    case (p: PAssume, Seq(e: PExp)) => PAssume(e)
     case (p: PInhale, Seq(e: PExp)) => PInhale(e)
     case (p: PNewStmt, Seq(target: PIdnUse, fields: Seq[PIdnUse])) => PNewStmt(target, if(fields.length == 0) None else Some(fields))
     case (p: PVarAssign, Seq(idnuse: PIdnUse, rhs: PExp)) => PVarAssign(idnuse, rhs)
@@ -253,6 +254,8 @@ object Transformer {
     case (p: PAxiom, Seq(idndef : PIdnDef, exp: PExp)) => PAxiom(idndef, exp) (domainName = p.domainName)
 
 
-    case (p:PNode, s) => println("Not able to duplicate: " + p + " with children: " + s); p
+    case (p:PNode, s) => {
+      println("Not able to duplicate: " + p + " with children: " + s)
+    }; p
   }
 }

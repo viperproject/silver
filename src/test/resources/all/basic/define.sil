@@ -62,7 +62,7 @@ define swap(x, y, t) {
 
 field g: Int
 
-method test06() {
+/*method test06() {
   var x: Ref; inhale acc(x.g); x.g := 1
   var y: Ref; inhale acc(y.g); y.g := 2
   var t: Ref; inhale acc(t.g)
@@ -70,7 +70,7 @@ method test06() {
   assert x.g == 2 && y.g == 1 && t.g == 1
   swap(y, t, x)
   assert x.g == 1 && y.g == 1 && t.g == 1
-}
+}*/
 
 method test07(x: Ref)
   requires acc(x.g)

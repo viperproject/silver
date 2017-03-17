@@ -13,7 +13,7 @@ import scala.language.reflectiveCalls
 import scala.util.parsing.input.NoPosition
 import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
-import viper.silver.ast.utility.Rewriter.{ContextC, StrategyBuilder}
+import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder, Traverse}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 
@@ -31,8 +31,6 @@ object FastParser extends PosParser {
     _file = f
     val lines = s.linesWithSeparators
     _lines = lines.map(_.length).toArray
-
-    imported.add(f.toString.split("\\\\").last)
 
     val importer = StrategyBuilder.Slim[PProgram]({
       case p: PProgram => {
@@ -66,6 +64,8 @@ object FastParser extends PosParser {
       val rp = RecParser(f).parses(s)
       rp match {
         case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, errors), e) => {
+          imported.clear() // Don't keep state in between parsing programs
+          imported.add(f.toString.split("\\\\").last) // Add the current program to already imported
           val importedProgram = importer.execute[PProgram](program)
           val expandedProgram = expandDefines(importedProgram)
           Parsed.Success(expandedProgram, e)
@@ -83,11 +83,7 @@ object FastParser extends PosParser {
         }
         new ParseError(msg, SourcePosition(_file, line, column))
       }
-
-
     }
-
-
   }
 
   case class RecParser(file: Path) {
@@ -129,7 +125,6 @@ object FastParser extends PosParser {
     obj.isInstanceOf[PFieldAccess]
   }
 
-
   def importProgram(i: PImport): PProgram = {
     val fileName = i.file
     val imp_path = file.getParent.resolve(fileName)
@@ -137,7 +132,6 @@ object FastParser extends PosParser {
 
     if (java.nio.file.Files.notExists(imp_path))
       throw ParseException(s"""file "$imp_path" does not exist""", FastPositions.getStart(i))
-
 
     val source = scala.io.Source.fromInputStream(Files.newInputStream(imp_path))
     val buffer = try {
@@ -158,28 +152,15 @@ object FastParser extends PosParser {
 
 
   def expandDefines(p: PProgram): PProgram = {
-    def putNameMap(nameMap: collection.mutable.Map[String, Int], name: String): Unit = {
-      val split = name.split("\\$")
-      val num = split.last
-      val reducedName = split.dropRight(1).mkString("")
-
-      if (num.forall(_.isDigit)) {
-        val already = nameMap.getOrElse(reducedName, 0)
-        nameMap.put(reducedName, Seq(already, num.toInt + 1).max)
-      } else {
-        nameMap.put(name, 0)
-      }
-    }
-
-    val globalNames = collection.mutable.Map.empty[String, Int]
+    val globalNames = collection.mutable.Set.empty[String]
 
     val globalMacros = p.macros
 
-    p.domains.foreach(d => putNameMap(globalNames, d.idndef.name))
-    p.functions.foreach(f => putNameMap(globalNames, f.idndef.name))
-    p.predicates.foreach(p => putNameMap(globalNames, p.idndef.name))
-    p.macros.foreach(m => putNameMap(globalNames, m.idndef.name))
-    p.methods.foreach(m => putNameMap(globalNames, m.idndef.name))
+    p.domains.foreach(d => globalNames.add(d.idndef.name))
+    p.functions.foreach(f => globalNames.add(f.idndef.name))
+    p.predicates.foreach(p => globalNames.add(p.idndef.name))
+    p.macros.foreach(m => globalNames.add(m.idndef.name))
+    p.methods.foreach(m => globalNames.add(m.idndef.name))
 
     val domains = p.domains.map(doExpandDefines[PDomain](globalMacros, _, globalNames))
 
@@ -188,8 +169,8 @@ object FastParser extends PosParser {
     val predicates = p.predicates.map(doExpandDefines[PPredicate](globalMacros, _, globalNames))
 
     val methods = p.methods.map(m => {
-      val localAndGlobalNames = collection.mutable.Map[String, Int]() ++= globalNames
-      m.deepCollect { case d: PLocalVarDecl => d }.foreach { vari => putNameMap(localAndGlobalNames, vari.idndef.name) }
+      val localAndGlobalNames = collection.mutable.Set[String]() ++= globalNames
+      m.deepCollect { case d: PLocalVarDecl => d }.foreach { vari => localAndGlobalNames.add(vari.idndef.name) }
 
       val localMacros = m.deepCollect { case n: PDefine => n }
 
@@ -206,11 +187,13 @@ object FastParser extends PosParser {
   }
 
 
-  def doExpandDefines[T <: PNode](macros: Seq[PDefine], toExpand: T, globalNames: collection.mutable.Map[String, Int]): T = {
+  def doExpandDefines[T <: PNode](macros: Seq[PDefine], toExpand: T, globalNames: collection.mutable.Set[String]): T = {
 
-    case class ReplaceContext(macros: Seq[String] = Seq(), replace: Map[String, PExp] = Map()) {
+    case class ReplaceContext(replace: Map[String, PExp] = Map()) {
       def inMacro: Boolean = macros.nonEmpty
     }
+
+    case class ExpandContext(macros: Seq[String] = Seq())
 
     def getMacroByName(name: String): PDefine = macros.find(_.idndef.name == name) match {
       case Some(mac) => mac
@@ -220,46 +203,72 @@ object FastParser extends PosParser {
     def isMacro(name: String): Boolean = macros.exists(_.idndef.name == name)
 
     def adaptPositions(body: PNode, f: FastPositioned): Unit = {
-      FastPositions.setStart(body, f.start, true)
-      FastPositions.setFinish(body, f.finish, true)
+      val adapter = StrategyBuilder.Slim[PNode]({
+        case n: PNode => {
+          FastPositions.setStart(n, f.start, force = true)
+          FastPositions.setFinish(n, f.finish, force = true)
+          val map = FastPositions.MapStart
+          n
+        }
+      })
+      adapter.execute[PNode](body)
     }
 
-    def getFreshVar(name: String): String = {
-      val num = name.split("$")
-      val realName = if (num.last.forall(_.isDigit)) {
-        num.dropRight(1).mkString("")
-      } else {
-        name
-      }
 
-      if (globalNames.contains(realName)) {
-        val index: Int = globalNames.get(realName).get
-        globalNames.put(realName, index + 1)
-        realName + "$" + index
+    var varReplaceMap = Map.empty[String, PIdnUse]
+
+    def getFreshVar(name: String, suffix: Option[Int] = None): String = {
+      val newName = if(suffix.isDefined) name + "$" + suffix.get else name
+      if(globalNames.contains(newName)) {
+        getFreshVar(name, Some(suffix.getOrElse(-1)+1))
       } else {
-        globalNames.put(realName, 1)
-        realName + "$" + 0
+        globalNames.add(newName)
+        varReplaceMap = varReplaceMap ++ Seq(name -> PIdnUse(newName))
+        newName
       }
     }
 
-    def recursionCheck(name: String, ctxt: ReplaceContext) = {
+    def recursionCheck(name: String, ctxt: ExpandContext) = {
       if (ctxt.macros.contains(name))
         throw ParseException("Recursive macro declaration found: " + name, NoPosition)
     }
 
-    var varReplaceMap = Map.empty[String, PIdnUse]
-
-    def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp], replace: Map[String, PExp]) = {
+    def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]) = {
       val freshArgs = args.map {
-        case p: PIdnUse =>
-          val replacedVar = varReplaceMap.getOrElse(p.name, p)
-          replace.getOrElse(replacedVar.name, replacedVar)
+        case p: PIdnUse => varReplaceMap.getOrElse(p.name, p)
         case otherwise => otherwise
       }
       params.zip(freshArgs).map(pair => pair._1.name -> pair._2)
     }
 
-    val expander = StrategyBuilder.Context[PNode, ReplaceContext]({
+    val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
+      case (varDecl: PIdnDef, ctxt) => {
+        val freshDecl = PIdnDef(getFreshVar(varDecl.name))
+        adaptPositions(freshDecl, varDecl)
+        freshDecl
+      }
+      case (ident: PIdnUse, ctxt) => {
+        val newIdent = varReplaceMap.get(ident.name) match {
+          case None => ident
+          // Parameters shadow externally bound variables
+          case Some(i) => if (!ctxt.c.replace.contains(ident.name)) i else ident
+        }
+
+        val replaceParam = ctxt.c.replace.getOrElse(newIdent.name, newIdent)
+        replaceParam
+      }
+    }, ReplaceContext()).duplicateEverything
+
+    def replacerOnBody(body: PNode, p2a: Map[String, PExp], pos: FastPositioned): PNode = {
+      varReplaceMap = Map.empty[String, PIdnUse] // Should not be neccessary
+      val res = replacer.execute[PNode](body, new PartialContextC[PNode, ReplaceContext](ReplaceContext(p2a)))
+      varReplaceMap = Map.empty[String, PIdnUse]
+      adaptPositions(res, pos)
+      val map = FastPositions.MapStart
+      res
+    }
+
+    val expander = StrategyBuilder.Context[PNode, ExpandContext]({
       case (pMacro: PMacroRef, ctxt) => {
         val name = pMacro.idnuse.name
         recursionCheck(name, ctxt.c)
@@ -269,8 +278,7 @@ object FastParser extends PosParser {
         if (!body.isInstanceOf[PStmt])
           throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro.idnuse))
 
-        adaptPositions(body, pMacro)
-        body
+        replacerOnBody(body, Map(), pMacro)
       }
       case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) => {
         val name = pMacro.name
@@ -281,8 +289,7 @@ object FastParser extends PosParser {
         if (!body.isInstanceOf[PExp])
           throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro))
 
-        adaptPositions(body, pMacro)
-        body
+        replacerOnBody(body, Map(), pMacro)
       }
       case (pMacro: PMethodCall, ctxt) if isMacro(pMacro.method.name) => {
         val name = pMacro.method.name
@@ -297,8 +304,7 @@ object FastParser extends PosParser {
         if (!body.isInstanceOf[PStmt])
           throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro.method))
 
-        adaptPositions(body, pMacro)
-        body
+        replacerOnBody(body, Map[String,PExp]() ++ mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
       }
       case (pMacro: PCall, ctxt) if isMacro(pMacro.func.name) => {
         val name = pMacro.func.name
@@ -313,59 +319,26 @@ object FastParser extends PosParser {
         if (!body.isInstanceOf[PExp])
           throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro))
 
-        adaptPositions(body, pMacro)
-        body
+        replacerOnBody(body, Map[String,PExp]() ++ mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
       }
-      case (ident: PIdnUse, ctxt) => {
-        def repIter(id: PIdnUse): PExp = {
-          ctxt.c.replace.get(id.name) match {
-            case None => id
-            case Some(nId: PIdnUse) => {
-              if (id.name != nId.name)
-                repIter(nId)
-              else
-                PIdnUse(id.name)
-            }
-            case Some(e: PExp) => e
-            case Some(e) => throw ParseException("Unexpected identifier as macro argument", FastPositions.getStart(e))
-          }
-        }
-
-        val newIdent = varReplaceMap.get(ident.name) match {
-          case None => ident
-          // Parameters shadow externally bound variables
-          case Some(i) => if (!ctxt.c.replace.contains(ident.name)) i else ident
-        }
-
-        val res = repIter(newIdent)
-        adaptPositions(res, newIdent)
-        res
-      }
-      case (decl: PIdnDef, ctxt) if ctxt.c.inMacro => {
-        val freshName = getFreshVar(decl.name)
-        val freshDecl = PIdnDef(freshName)
-        varReplaceMap += decl.name -> PIdnUse(freshName)
-        adaptPositions(freshDecl, decl)
-        freshDecl
-      }
-    }, ReplaceContext(), {
+    }, ExpandContext(), {
       case (pMacro: PMacroRef, c) => {
         val realMacro = getMacroByName(pMacro.idnuse.name)
-        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace)
+        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
       }
       case (pMacro: PIdnUse, c) if isMacro(pMacro.name) => {
         val realMacro = getMacroByName(pMacro.name)
-        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace)
+        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
       }
       case (pMacro: PMethodCall, c) if isMacro(pMacro.method.name) => {
         val realMacro = getMacroByName(pMacro.method.name)
-        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace ++ mapParamsToArgs(realMacro.args.get, pMacro.args, c.replace))
+        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
       }
       case (pMacro: PCall, c) if isMacro(pMacro.func.name) => {
         val realMacro = getMacroByName(pMacro.func.name)
-        ReplaceContext(c.macros ++ Seq(realMacro.idndef.name), c.replace ++ mapParamsToArgs(realMacro.args.get, pMacro.args, c.replace))
+        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
       }
-    }) duplicateEverything // We need to duplicate everything because the typechecker has problems with shared nodes
+    }, Traverse.TopDown).repeat // We need to duplicate everything because the typechecker has problems with shared nodes
 
     val res = expander.execute[T](toExpand)
     res

@@ -10,14 +10,14 @@ define macro2(y) {
 
 method main()
 {
-    var x$0: Bool
+    var x: Bool
+    var x$0: Bool 
     var x$1: Bool 
     var x$2: Bool 
-    var x$3: Bool 
-    x$0 := true
-    x$1 := false
-    assert(x$0 || x$1)
-    x$2 := true
-    x$3 := false
-    assert(x$2 || x$3)
+    x := true
+    x$0 := false
+    assert(x || x$0)
+    x$1 := true
+    x$2 := false
+    assert(x$1 || x$2)
 }
