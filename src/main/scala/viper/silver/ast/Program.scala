@@ -298,13 +298,6 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
 sealed trait Member extends Node with Positioned with Infoed with TransformableErrors {
   require(Consistency.validUserDefinedIdentifier(name))
   def name: String
-
-  // we override the definition of hashCode/equals to avoid unbounded recursion
-  override def hashCode = name.hashCode
-  override def equals(o: Any) = o match {
-    case m: Member => name == m.name
-    case _ => false
-  }
 }
 
 /** Common ancestor for domain members. */
@@ -316,14 +309,6 @@ sealed trait DomainMember extends Node with Positioned with Infoed with Transfor
 
   /** See [[viper.silver.ast.utility.Types.freeTypeVariables]]. */
   lazy val freeTypeVariables = Types.freeTypeVariables(this)
-
-  // we override the definition of hashCode/equals to avoid unbounded recursion
-  override def hashCode = name.hashCode
-
-  override def equals(o: Any) = o match {
-    case m: DomainMember => name == m.name
-    case _ => false
-  }
 }
 
 /** Common ancestor for things with formal arguments. */
