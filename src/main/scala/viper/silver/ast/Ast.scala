@@ -104,8 +104,11 @@ trait Node extends Traversable[Node] with Rewritable {
   override def toString() = FastPrettyPrinter.pretty(this)
 
   /** @see [[viper.silver.ast.utility.ViperStrategy]]*/
-  def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty, recurse:Traverse = Traverse.Innermost)
-  : this.type = StrategyBuilder.Slim[Node](pre, recurse) execute[this.type](this)
+  def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty,
+                recurse: Traverse = Traverse.Innermost)
+               : this.type =
+
+    StrategyBuilder.Slim[Node](pre, recurse) execute[this.type](this)
 
   def replace(original: Node, replacement: Node): this.type =
     this.transform { case `original` => replacement }
