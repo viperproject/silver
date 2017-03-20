@@ -23,6 +23,19 @@ import scala.language.implicitConversions
 class RewriterTests extends FunSuite {
 
 
+  test("asdf") {
+    val dec = LocalVarDecl("name", Bool)()
+    val dec1 = LocalVarDecl("name", Int)()
+
+    val f1 = DomainFunc("ID", Seq(dec), Bool)(NoPosition, NoInfo, "asdf")
+    val f2 = DomainFunc("ID", Seq(), Int)(NoPosition, NoInfo, "asdf")
+
+    val b = f1 == f2
+    val b2 = dec == dec1
+
+    assert(true)
+  }
+
   test("Performance_BinomialHeap") {
     val fileName = "transformations\\Performance\\BinomialHeap"
 
