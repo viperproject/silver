@@ -181,6 +181,14 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
+  protected def printOutline(program: Program) {
+    if (config.ideMode()) {
+      //output a JSON representation of the Outline for the IDE
+      val members = program.members.map(m => s"""{"type":"${m.getClass().getName()}","name":"${m.name}","location":"${m.pos.toString()}"}""").mkString(",")
+      println(s"""{"type":"Outline","members":[$members]}""")
+    }
+  }
+
   protected def printSuccess() {
     if (config.ideMode()) {
       printf("""{"type":"Success"}""")
