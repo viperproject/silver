@@ -141,7 +141,8 @@ sealed case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type]
                       (val typeParameters: Seq[TypeVar])
     extends GenericType {
 
-  require(typeParameters.toSet == typVarsMap.keys.toSet)
+  require(typeParameters.toSet == typVarsMap.keys.toSet,
+          s"${typeParameters.toSet} doesn't equal ${typVarsMap.keys.toSet}")
 
   override val genericName = domainName
   override type MyType = DomainType
