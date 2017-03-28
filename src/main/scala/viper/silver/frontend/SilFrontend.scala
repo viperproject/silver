@@ -127,7 +127,7 @@ trait SilFrontend extends DefaultFrontend {
     */
   protected def printFallbackHeader() {
     if(config.ideMode()) {
-      logger.info(s"""{"type":"Start","backendType":"${_ver.name}"}\r\n""")
+      loggerForIde.info(s"""{"type":"Start","backendType":"${_ver.name}"}\r\n""")
     }else {
       logger.info(s"${_ver.name} ${_ver.version}")
       logger.info(s"${_ver.copyright}\n")
@@ -146,7 +146,7 @@ trait SilFrontend extends DefaultFrontend {
     if (!_config.exit) {
       if (_config.noTiming()) {
         if(config.ideMode()) {
-          logger.info(s"""{"type":"End"}\r\n""")
+          loggerForIde.info(s"""{"type":"End"}\r\n""")
         }else {
           logger.info(s"${_ver.name} finished.")
         }
@@ -160,7 +160,7 @@ trait SilFrontend extends DefaultFrontend {
     val timeMs = System.currentTimeMillis() - _startTime
     val time = f"${timeMs / 1000.0}%.3f seconds"
     if(config.ideMode()) {
-      logger.info(s"""{"type":"End","time":"$time"}\r\n""")
+      loggerForIde.info(s"""{"type":"End","time":"$time"}\r\n""")
     }else {
       logger.info(s"${_ver.name} finished in $time.")
     }
@@ -171,7 +171,7 @@ trait SilFrontend extends DefaultFrontend {
       //output a JSON representation of the errors for the IDE
       val ideModeErrors = errors.map(e => new IdeModeErrorRepresentation(e))
       val jsonErrors = ideModeErrors.map(e => e.jsonError).mkString(",")
-      logger.info(s"""{"type":"Error","file":"${ideModeErrors.head.shortFileStr}","errors":[$jsonErrors]}""")
+      loggerForIde.info(s"""{"type":"Error","file":"${ideModeErrors.head.shortFileStr}","errors":[$jsonErrors]}""")
     } else {
       logger.info("The following errors were found:")
 
@@ -183,13 +183,13 @@ trait SilFrontend extends DefaultFrontend {
     if (config.ideMode()) {
       //output a JSON representation of the Outline for the IDE
       val members = program.members.map(m => s"""{"type":"${m.getClass().getName()}","name":"${m.name}","location":"${m.pos.toString()}"}""").mkString(",")
-      logger.info(s"""{"type":"Outline","members":[$members]}""")
+      loggerForIde.info(s"""{"type":"Outline","members":[$members]}""")
     }
   }
 
   protected def printSuccess() {
     if (config.ideMode()) {
-      logger.info("""{"type":"Success"}""")
+      loggerForIde.info("""{"type":"Success"}""")
     } else {
       logger.info("No errors found.")
     }

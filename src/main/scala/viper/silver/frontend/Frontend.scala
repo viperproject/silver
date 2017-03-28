@@ -57,6 +57,9 @@ trait Frontend {
 
   val logger = org.apache.log4j.Logger.getLogger(this.getClass.getName)
   logger.setLevel(org.apache.log4j.Level.INFO)
+
+  val loggerForIde = org.apache.log4j.Logger.getLogger(this.getClass.getName+"_IDE")
+  loggerForIde.setLevel(org.apache.log4j.Level.INFO)
 }
 
 trait SinglePhase extends Frontend {
