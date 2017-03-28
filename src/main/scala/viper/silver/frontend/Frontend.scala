@@ -6,7 +6,7 @@
 
 package viper.silver.frontend
 
-import java.io.{BufferedWriter, FileWriter}
+import org.apache.log4j.Logger
 import java.nio.file.{Files, Path}
 import scala.io.Source
 import viper.silver.ast.Program
@@ -54,6 +54,9 @@ trait Frontend {
    * verify have been called).
    */
   def result: VerificationResult
+
+  val logger = org.apache.log4j.Logger.getLogger(this.getClass.getName)
+  logger.setLevel(org.apache.log4j.Level.INFO)
 }
 
 trait SinglePhase extends Frontend {

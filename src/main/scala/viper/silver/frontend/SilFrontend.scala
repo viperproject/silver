@@ -78,7 +78,7 @@ trait SilFrontend extends DefaultFrontend {
        */
       printFallbackHeader()
       printErrors(CliOptionError(_config.error.get + "."))
-      println()
+      logger.info("\n")
       _config.printHelp()
       return
     } else if (_config.exit) {
@@ -95,9 +95,8 @@ trait SilFrontend extends DefaultFrontend {
       val s = (_ver.dependencies map (dep => {
         s"  ${dep.name} ${dep.version}, located at ${dep.location}."
       })).mkString("\n")
-      println("The following dependencies are used:")
-      println(s)
-      println()
+      logger.info("The following dependencies are used:")
+      logger.info(s+"\n")
     }
 
     // initialize the translator
@@ -128,11 +127,10 @@ trait SilFrontend extends DefaultFrontend {
     */
   protected def printFallbackHeader() {
     if(config.ideMode()) {
-      println(s"""{"type":"Start","backendType":"${_ver.name}"}\r\n""")
+      logger.info(s"""{"type":"Start","backendType":"${_ver.name}"}\r\n""")
     }else {
-      println(s"${_ver.name} ${_ver.version}")
-      println(s"${_ver.copyright}")
-      println()
+      logger.info(s"${_ver.name} ${_ver.version}")
+      logger.info(s"${_ver.copyright}\n")
     }
   }
 
@@ -148,9 +146,9 @@ trait SilFrontend extends DefaultFrontend {
     if (!_config.exit) {
       if (_config.noTiming()) {
         if(config.ideMode()) {
-          println(s"""{"type":"End"}\r\n""")
+          logger.info(s"""{"type":"End"}\r\n""")
         }else {
-          println(s"${_ver.name} finished.")
+          logger.info(s"${_ver.name} finished.")
         }
       } else {
         printFinishHeaderWithTime()
@@ -162,9 +160,9 @@ trait SilFrontend extends DefaultFrontend {
     val timeMs = System.currentTimeMillis() - _startTime
     val time = f"${timeMs / 1000.0}%.3f seconds"
     if(config.ideMode()) {
-      println(s"""{"type":"End","time":"$time"}\r\n""")
+      logger.info(s"""{"type":"End","time":"$time"}\r\n""")
     }else {
-      println(s"${_ver.name} finished in $time.")
+      logger.info(s"${_ver.name} finished in $time.")
     }
   }
 
@@ -173,11 +171,11 @@ trait SilFrontend extends DefaultFrontend {
       //output a JSON representation of the errors for the IDE
       val ideModeErrors = errors.map(e => new IdeModeErrorRepresentation(e))
       val jsonErrors = ideModeErrors.map(e => e.jsonError).mkString(",")
-      println(s"""{"type":"Error","file":"${ideModeErrors.head.shortFileStr}","errors":[$jsonErrors]}""")
+      logger.info(s"""{"type":"Error","file":"${ideModeErrors.head.shortFileStr}","errors":[$jsonErrors]}""")
     } else {
-      println("The following errors were found:")
+      logger.info("The following errors were found:")
 
-      errors.foreach(e => println(s"  ${e.readableMessage}"))
+      errors.foreach(e => logger.info(s"  ${e.readableMessage}"))
     }
   }
 
@@ -185,15 +183,15 @@ trait SilFrontend extends DefaultFrontend {
     if (config.ideMode()) {
       //output a JSON representation of the Outline for the IDE
       val members = program.members.map(m => s"""{"type":"${m.getClass().getName()}","name":"${m.name}","location":"${m.pos.toString()}"}""").mkString(",")
-      println(s"""{"type":"Outline","members":[$members]}""")
+      logger.info(s"""{"type":"Outline","members":[$members]}""")
     }
   }
 
   protected def printSuccess() {
     if (config.ideMode()) {
-      printf("""{"type":"Success"}""")
+      logger.info("""{"type":"Success"}""")
     } else {
-      println("No errors found.")
+      logger.info("No errors found.")
     }
   }
 
