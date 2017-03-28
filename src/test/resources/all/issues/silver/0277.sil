@@ -1,0 +1,10 @@
+method test(i: Int) {
+
+  var x: Int := 0
+
+  while(x < 4)
+  {
+    while(x < i) {
+    }   
+  }
+}
