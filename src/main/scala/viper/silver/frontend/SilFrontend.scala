@@ -180,7 +180,7 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   protected def printOutline(program: Program) {
-    if (config.ideMode()) {
+    if (config != null && config.ideMode()) {
       //output a JSON representation of the Outline for the IDE
       val members = program.members.map(m => s"""{"type":"${m.getClass().getName()}","name":"${m.name}","location":"${m.pos.toString()}"}""").mkString(",")
       loggerForIde.info(s"""{"type":"Outline","members":[$members]}""")
