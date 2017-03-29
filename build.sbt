@@ -23,8 +23,6 @@ libraryDependencies += "com.google.guava" % "guava" % "17.0"
 libraryDependencies += "org.slf4s" %% "slf4s-api" % "1.7.12"
 libraryDependencies += "org.slf4j" % "slf4j-log4j12" % "1.7.22"
 
-libraryDependencies += "org.apache.commons" % "commons-pool2" % "2.4.2"
-
 scalacOptions += "-deprecation"
 
 scalacOptions += "-feature"

@@ -6,7 +6,6 @@
 
 package viper.silver.frontend
 
-import org.apache.log4j.Logger
 import java.nio.file.{Files, Path}
 import scala.io.Source
 import viper.silver.ast.Program
