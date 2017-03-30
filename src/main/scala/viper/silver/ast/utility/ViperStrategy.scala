@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package viper.silver.ast.utility
 
 import viper.silver.ast._
@@ -27,14 +33,14 @@ class ViperStrategy[C <: Context[Node]](p: PartialFunction[(Node, C), Node]) ext
   * @param d Default context
   * @tparam C Type of context
   */
-class ViperRegexStrategy[C](a: TRegexAutomaton, p:PartialFunction[(Node, RegexContext[Node, C]), Node], d: PartialContextR[Node, C]) extends RegexStrategy[Node, C](a, p, d) {
+class ViperRegexStrategy[C](a: TRegexAutomaton, p: PartialFunction[(Node, RegexContext[Node, C]), Node], d: PartialContextR[Node, C]) extends RegexStrategy[Node, C](a, p, d) {
 
   override def preserveMetaData(old: Node, now: Node): Node = {
     ViperStrategy.preserveMetaData(old, now, this)
   }
 }
 
-class SlimViperRegexStrategy[C](a: TRegexAutomaton, p:PartialFunction[Node, Node]) extends SlimRegexStrategy[Node](a, p) {
+class SlimViperRegexStrategy[C](a: TRegexAutomaton, p: PartialFunction[Node, Node]) extends SlimRegexStrategy[Node](a, p) {
 
   override def preserveMetaData(old: Node, now: Node): Node = {
     ViperStrategy.preserveMetaData(old, now, this)
@@ -52,8 +58,6 @@ class ViperRegexBuilder[C](acc: (C, C) => C, comp: (C, C) => Boolean, dflt: C) e
     */
   override def &>(m: Match): ViperRegexBuilderWithMatch[C] = new ViperRegexBuilderWithMatch[C](this, m)
 }
-
-
 
 
 class ViperRegexBuilderWithMatch[C](v: ViperRegexBuilder[C], m: Match) extends TreeRegexBuilderWithMatch[Node, C](v, m) {
@@ -77,11 +81,11 @@ class SlimViperRegexBuilderWithMatch(regex: Match) {
   */
 object ViperStrategy {
 
-  def SlimRegex(m:Match, p: PartialFunction[Node, Node]) = {
+  def SlimRegex(m: Match, p: PartialFunction[Node, Node]) = {
     new SlimViperRegexBuilder &> m |-> p
   }
 
-  def Regex[C](m:Match, p: PartialFunction[(Node, RegexContext[Node, C]), Node], default: C, acc: (C, C) => C, comp: (C, C) => Boolean) = {
+  def Regex[C](m: Match, p: PartialFunction[(Node, RegexContext[Node, C]), Node], default: C, acc: (C, C) => C, comp: (C, C) => Boolean) = {
     new ViperRegexBuilder[C](acc, comp, default) &> m |-> p
   }
 
@@ -121,8 +125,6 @@ object ViperStrategy {
     new ViperStrategy[ContextC[Node, C]](p) defaultContext new PartialContextC[Node, C](default, updateFunc) traverse t
   }
 
-  //<editor-fold desc="Simons Master Thesis Methods">
-
   /**
     * Function for automatic Error back transformation of nodes and conservation of metadata
     */
@@ -132,7 +134,7 @@ object ViperStrategy {
         val OldMetaData = old.getPrettyMetadata
         var NewMetaData = now.getPrettyMetadata
 
-        if ((NewMetaData._1 eq NoPosition) && (NewMetaData._2 eq NoInfo) && (NewMetaData._3 eq NoTrafos)) {
+        if ((NewMetaData._1 == NoPosition) && (NewMetaData._2 == NoInfo) && (NewMetaData._3 == NoTrafos)) {
           NewMetaData = (OldMetaData._1, OldMetaData._2, OldMetaData._3)
         }
 
@@ -162,7 +164,7 @@ object ViperStrategy {
     case (alv: AbstractLocalVar, _, meta) => alv
     // AS: added recursion on field: this was previously missing (as for all "shared" nodes in AST). But this could lead to the type of the field not being transformed consistently with its declaration (if the whole program is transformed)
     case (fa: FieldAccess, Seq(rcv: Exp, field: Field), meta) => FieldAccess(rcv, field)(meta._1, meta._2, meta._3)
-    case (pa: PredicateAccess, Seq(params: Seq[Exp]), meta) =>
+    case (pa: PredicateAccess, Seq(params: Seq[Exp@unchecked]), meta) =>
       PredicateAccess(params, pa.predicateName)(meta._1, meta._2, meta._3)
 
     case (u: Unfolding, Seq(acc: PredicateAccessPredicate, e: Exp), meta) => Unfolding(acc, e)(meta._1, meta._2, meta._3)
@@ -178,10 +180,10 @@ object ViperStrategy {
     case (c: CondExp, Seq(cond: Exp, thn: Exp, els: Exp), meta) =>
       CondExp(cond, thn, els)(meta._1, meta._2, meta._3)
     case (l: Let, Seq(v: LocalVarDecl, exp1: Exp, body: Exp), meta) => Let(v, exp1, body)(meta._1, meta._2, meta._3)
-    case (ex: Exists, Seq(v: Seq[LocalVarDecl], e: Exp), meta) => Exists(v, e)(meta._1, meta._2, meta._3)
-    case (f: Forall, Seq(v: Seq[LocalVarDecl], triggers: Seq[Trigger], e: Exp), meta) =>
+    case (ex: Exists, Seq(v: Seq[LocalVarDecl@unchecked], e: Exp), meta) => Exists(v, e)(meta._1, meta._2, meta._3)
+    case (f: Forall, Seq(v: Seq[LocalVarDecl@unchecked], triggers: Seq[Trigger@unchecked], e: Exp), meta) =>
       Forall(v, triggers, e)(meta._1, meta._2, meta._3)
-    case (f: ForPerm, Seq(v: LocalVarDecl, fields: Seq[Location], e: Exp), meta) =>
+    case (f: ForPerm, Seq(v: LocalVarDecl, fields: Seq[Location@unchecked], e: Exp), meta) =>
       ForPerm(v, fields, e)(meta._1, meta._2, meta._3)
     case (ie: InhaleExhaleExp, Seq(in: Exp, ex: Exp), meta) =>
       InhaleExhaleExp(in, ex)(meta._1, meta._2, meta._3)
@@ -198,9 +200,9 @@ object ViperStrategy {
       FieldAccessPredicate(loc, perm)(meta._1, meta._2, meta._3)
     case (p: PredicateAccessPredicate, Seq(loc: PredicateAccess, perm: Exp), meta) =>
       PredicateAccessPredicate(loc, perm)(meta._1, meta._2, meta._3)
-    case (fa: FuncApp, Seq(args: Seq[Exp]), meta) =>
+    case (fa: FuncApp, Seq(args: Seq[Exp@unchecked]), meta) =>
       FuncApp(fa.funcname, args)(meta._1, meta._2, fa.typ, fa.formalArgs, meta._3)
-    case (df: DomainFuncApp, Seq(args: Seq[Exp]), meta) =>
+    case (df: DomainFuncApp, Seq(args: Seq[Exp@unchecked]), meta) =>
       DomainFuncApp(df.funcname, args, df.typVarMap)(meta._1, meta._2, df.typ, df.formalArgs, df.domainName, meta._3)
 
     case (m: Minus, Seq(e: Exp), meta) => Minus(e)(meta._1, meta._2, meta._3)
@@ -237,7 +239,7 @@ object ViperStrategy {
     case (pc: PermGeCmp, Seq(l: Exp, r: Exp), meta) => PermGeCmp(l, r)(meta._1, meta._2, meta._3)
 
     case (es: EmptySeq, Seq(elemTyp: Type), meta) => EmptySeq(elemTyp)(meta._1, meta._2, meta._3)
-    case (es: ExplicitSeq, Seq(elems: Seq[Exp]), meta) => ExplicitSeq(elems)(meta._1, meta._2, meta._3)
+    case (es: ExplicitSeq, Seq(elems: Seq[Exp@unchecked]), meta) => ExplicitSeq(elems)(meta._1, meta._2, meta._3)
     case (rs: RangeSeq, Seq(low: Exp, high: Exp), meta) => RangeSeq(low, high)(meta._1, meta._2, meta._3)
     case (sa: SeqAppend, Seq(left: Exp, right: Exp), meta) => SeqAppend(left, right)(meta._1, meta._2, meta._3)
     case (si: SeqIndex, Seq(seq: Exp, idx: Exp), meta) => SeqIndex(seq, idx)(meta._1, meta._2, meta._3)
@@ -249,9 +251,9 @@ object ViperStrategy {
     case (sl: SeqLength, Seq(seq: Exp), meta) => SeqLength(seq)(meta._1, meta._2, meta._3)
 
     case (e: EmptySet, Seq(elemTyp: Type), meta) => EmptySet(elemTyp)(meta._1, meta._2, meta._3)
-    case (e: ExplicitSet, Seq(elems: Seq[Exp]), meta) => ExplicitSet(elems)(meta._1, meta._2, meta._3)
+    case (e: ExplicitSet, Seq(elems: Seq[Exp@unchecked]), meta) => ExplicitSet(elems)(meta._1, meta._2, meta._3)
     case (e: EmptyMultiset, Seq(elemTyp: Type), meta) => EmptyMultiset(elemTyp)(meta._1, meta._2, meta._3)
-    case (e: ExplicitMultiset, Seq(elems: Seq[Exp]), meta) => ExplicitMultiset(elems)(meta._1, meta._2, meta._3)
+    case (e: ExplicitMultiset, Seq(elems: Seq[Exp@unchecked]), meta) => ExplicitMultiset(elems)(meta._1, meta._2, meta._3)
     case (a: AnySetUnion, Seq(left: Exp, right: Exp), meta) => AnySetUnion(left, right)(meta._1, meta._2, meta._3)
     case (a: AnySetIntersection, Seq(left: Exp, right: Exp), meta) => AnySetIntersection(left, right)(meta._1, meta._2, meta._3)
     case (a: AnySetSubset, Seq(left: Exp, right: Exp), meta) => AnySetSubset(left, right)(meta._1, meta._2, meta._3)
@@ -259,45 +261,36 @@ object ViperStrategy {
     case (a: AnySetContains, Seq(elem: Exp, s: Exp), meta) => AnySetContains(elem, s)(meta._1, meta._2, meta._3)
     case (a: AnySetCardinality, Seq(s: Exp), meta) => AnySetCardinality(s)(meta._1, meta._2, meta._3)
 
-    case (p: Program, Seq(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method]), meta) =>
+    case (p: Program, Seq(domains: Seq[Domain@unchecked], fields: Seq[Field@unchecked], functions: Seq[Function@unchecked], predicates: Seq[Predicate@unchecked], methods: Seq[Method@unchecked]), meta) =>
       Program(domains, fields, functions,
         predicates, methods)(meta._1, meta._2, meta._3)
 
 
-    case (d: Domain, Seq(functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typeVariables: Seq[TypeVar]), meta) =>
+    case (d: Domain, Seq(functions: Seq[DomainFunc@unchecked], axioms: Seq[DomainAxiom@unchecked], typeVariables: Seq[TypeVar@unchecked]), meta) =>
       Domain(d.name, functions, axioms,
         typeVariables)(meta._1, meta._2, meta._3)
 
     case (f: Field, Seq(singleType: Type), meta) =>
       Field(f.name, singleType)(meta._1, meta._2, meta._3)
 
-    case (f: Function, Seq(parameters: Seq[LocalVarDecl], aType: Type, preconditions: Seq[Exp],
-    postconditions: Seq[Exp], body: Option[Exp]), meta) =>
-      Function(f.name, parameters, aType,
-        preconditions,
-        postconditions,
-        body)(meta._1, meta._2, meta._3)
+    case (f: Function, Seq(parameters: Seq[LocalVarDecl@unchecked], aType: Type, preconditions: Seq[Exp@unchecked], postconditions: Seq[Exp@unchecked], body: Option[Exp@unchecked]), meta) =>
+      Function(f.name, parameters, aType, preconditions, postconditions, body)(meta._1, meta._2, meta._3)
 
-    case (p: Predicate, Seq(parameters: Seq[LocalVarDecl], body: Option[Exp]), meta) =>
-      Predicate(p.name, parameters,
-        body)(meta._1, meta._2, meta._3)
+    case (p: Predicate, Seq(parameters: Seq[LocalVarDecl@unchecked], body: Option[Exp@unchecked]), meta) =>
+      Predicate(p.name, parameters, body)(meta._1, meta._2, meta._3)
 
-    case (m: Method, Seq(parameters: Seq[LocalVarDecl], results: Seq[LocalVarDecl], preconditions: Seq[Exp],
-    postconditions: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt), meta) =>
-      Method(m.name, parameters, results,
-        preconditions,
-        postconditions,
-        locals, body)(meta._1, meta._2, meta._3)
+    case (m: Method, Seq(parameters: Seq[LocalVarDecl@unchecked], results: Seq[LocalVarDecl@unchecked], preconditions: Seq[Exp@unchecked], postconditions: Seq[Exp@unchecked], locals: Seq[LocalVarDecl@unchecked], body: Stmt), meta) =>
+      Method(m.name, parameters, results, preconditions, postconditions, locals, body)(meta._1, meta._2, meta._3)
 
 
     case (da: DomainAxiom, Seq(body: Exp), meta) =>
       DomainAxiom(da.name, body)(meta._1, meta._2, da.domainName, meta._3)
 
-    case (df: DomainFunc, Seq(parameters: Seq[LocalVarDecl], aType: Type), meta) =>
+    case (df: DomainFunc, Seq(parameters: Seq[LocalVarDecl@unchecked], aType: Type), meta) =>
       DomainFunc(df.name, parameters, aType, df.unique)(meta._1, meta._2, df.domainName, meta._3)
 
     case (Bool, _, meta) => Bool
-    case (dt: DomainType, Seq(domainName: Domain, typeVariables: Map[TypeVar, Type]), meta) =>
+    case (dt: DomainType, Seq(domainName: Domain, typeVariables: Map[TypeVar@unchecked, Type@unchecked]), meta) =>
       DomainType(domainName, typeVariables)
 
     case (Int, _, meta) => Int
@@ -325,10 +318,10 @@ object ViperStrategy {
     case (f: Fold, Seq(accessPredicate: PredicateAccessPredicate), meta) =>
       Fold(accessPredicate)(meta._1, meta._2, meta._3)
 
-    case (f: Fresh, Seq(variables: Seq[LocalVar]), meta) =>
+    case (f: Fresh, Seq(variables: Seq[LocalVar@unchecked]), meta) =>
       Fresh(variables)(meta._1, meta._2, meta._3)
 
-    case (c: Constraining, Seq(variables: Seq[LocalVar], body: Stmt), meta) =>
+    case (c: Constraining, Seq(variables: Seq[LocalVar@unchecked], body: Stmt), meta) =>
       Constraining(variables, body)(meta._1, meta._2, meta._3)
 
     // We dont recurse on goto
@@ -340,21 +333,19 @@ object ViperStrategy {
     case (i: Inhale, Seq(expression: Exp), meta) =>
       Inhale(expression)(meta._1, meta._2, meta._3)
 
-    case (l: Label, invars: Seq[Exp], meta) => Label(l.name, invars)(meta._1, meta._2, meta._3)
+    case (l: Label, invars: Seq[Exp@unchecked], meta) => Label(l.name, invars)(meta._1, meta._2, meta._3)
 
     case (l: LocalVarAssign, Seq(variable: LocalVar, value: Exp), meta) =>
       LocalVarAssign(variable, value)(meta._1, meta._2, meta._3)
 
-    case (m: MethodCall, Seq(arguments: Seq[Exp], variables: Seq[LocalVar]), meta) =>
+    case (m: MethodCall, Seq(arguments: Seq[Exp@unchecked], variables: Seq[LocalVar@unchecked]), meta) =>
       MethodCall(m.methodName, arguments, variables)(meta._1, meta._2, meta._3)
 
-    case (n: NewStmt, Seq(target: LocalVar, fields: Seq[Field]), meta) =>
+    case (n: NewStmt, Seq(target: LocalVar, fields: Seq[Field@unchecked]), meta) =>
       NewStmt(target, fields)(meta._1, meta._2, meta._3)
 
-    case (s: Seqn, x: Seq[Stmt], meta) => {
-
+    case (s: Seqn, x: Seq[Stmt@unchecked], meta) =>
       Seqn(x)(meta._1, meta._2, meta._3)
-    }
 
     case (u: Unfold, Seq(predicate: PredicateAccessPredicate), meta) =>
       Unfold(predicate)(meta._1, meta._2, meta._3)
@@ -365,20 +356,14 @@ object ViperStrategy {
     case (a: Apply, Seq(wand: MagicWand), meta) =>
       Apply(wand)(meta._1, meta._2, meta._3)
 
-    case (w: While, Seq(condition: Exp, invariants: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt), meta) =>
+    case (w: While, Seq(condition: Exp, invariants: Seq[Exp@unchecked], locals: Seq[LocalVarDecl@unchecked], body: Stmt), meta) =>
       While(condition, invariants, locals, body)(meta._1, meta._2, meta._3)
 
-    case (t: Trigger, Seq(expressions: Seq[Exp]), meta) =>
+    case (t: Trigger, Seq(expressions: Seq[Exp@unchecked]), meta) =>
       Trigger(expressions)(meta._1, meta._2, meta._3)
 
     case (n, args, meta) =>
-      println("node: " + n)
-      println("args: " + args)
-      println("meta info: " + meta)
-      println("does not match anything inside the viper duplicator")
-      n
+      throw new Exception("node: " + n + " with args: " + args + " and meta info: " + meta + " does not match anything inside the viper duplicator")
   }
-
-  //</editor-fold>
 
 }

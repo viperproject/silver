@@ -147,7 +147,7 @@ case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = 
     def seqFlat(ss: Seq[Stmt]): Seq[Stmt] = {
       val result = ss.foldLeft(Seq.empty[Stmt])((x: Seq[Stmt], y: Stmt) => {
         y match {
-          case elems: Seq[Stmt] => x ++ seqFlat(elems)
+          case elems: Seq[Stmt @unchecked] => x ++ seqFlat(elems)
           case elemS: Seqn => x ++ seqFlat(elemS.ss)
           case elem: Stmt => x ++ Seq(elem)
         }

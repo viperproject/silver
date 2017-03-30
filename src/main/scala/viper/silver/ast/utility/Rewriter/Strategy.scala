@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package viper.silver.ast.utility.Rewriter
 
 import viper.silver.ast.utility.Rewriter.Traverse.Traverse
@@ -453,7 +459,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     val newChildren: Seq[Option[Any]] = children.zip(childrenSelect) map {
       x => {
         val res = x match {
-          case (o: Option[Rewritable], true) => o match {
+          case (o: Option[Rewritable @unchecked], true) => o match {
             case None => None
             case Some(x: Rewritable) =>
               if (!noRecursion.contains(x)) {
@@ -466,7 +472,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
                 None
               }
           }
-          case (s: Seq[Rewritable], true) =>
+          case (s: Seq[Rewritable @unchecked], true) =>
             val newSeq = s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else None }
             if (newSeq.forall(_.isEmpty)) {
               None
@@ -481,6 +487,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
           case (n: Rewritable, true) =>
             if (!noRecursion.contains(n)) recurse(n.asInstanceOf[N]) else None
           case (old, false) => None
+          case (c, _) => throw new Exception(c + "is not a valid child of a rewritable node")
         }
         res
       }
@@ -912,11 +919,11 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
     children.zip(childrenSelect) foreach {
       case (child, b) => if (b) {
         child match {
-          case o: Option[Rewritable] => o match {
+          case o: Option[Rewritable @unchecked] => o match {
             case None => None
             case Some(node: Rewritable) => if (!noRecursion.contains(node)) visitTopDown(node.asInstanceOf[N], updatedContext)
           }
-          case s: Seq[Rewritable] => s foreach { x => if (!noRecursion.contains(x)) visitTopDown(x.asInstanceOf[N], updatedContext) }
+          case s: Seq[Rewritable @unchecked] => s foreach { x => if (!noRecursion.contains(x)) visitTopDown(x.asInstanceOf[N], updatedContext) }
           case n: Rewritable => if (!noRecursion.contains(n)) visitTopDown(n.asInstanceOf[N], updatedContext)
         }
       }
@@ -1023,11 +1030,11 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
     val seqResults: Seq[Option[B]] = children.zip(childrenSelect) collect {
       case (child, b) => if (b) {
         child match {
-          case o: Option[Rewritable] => o match {
+          case o: Option[Rewritable @unchecked] => o match {
             case None => None
             case Some(node: Rewritable) => Some(execute(node.asInstanceOf[N]))
           }
-          case s: Seq[Rewritable] => Some(accumulator(s map { x => execute(x.asInstanceOf[N]) }))
+          case s: Seq[Rewritable @unchecked] => Some(accumulator(s map { x => execute(x.asInstanceOf[N]) }))
           case n: Rewritable => Some(execute(n.asInstanceOf[N]))
         }
       } else {
@@ -1036,7 +1043,7 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
     }
 
     // Accumulate query results from children
-    accumulator(Seq(qResult) ++ (seqResults collect { case Some(x: B) => x }))
+    accumulator(Seq(qResult) ++ (seqResults collect { case Some(x: B @unchecked) => x }))
   }
 
 }

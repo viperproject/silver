@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package viper.silver.ast.utility.Rewriter
 
 /**
@@ -14,8 +20,8 @@ trait Rewritable {
     this match {
       case p: Product =>
         ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
-          case s: Seq[Rewritable] => s
-          case o: Option[Rewritable] => o
+          case s: Seq[Rewritable @unchecked] => s
+          case o: Option[Rewritable @unchecked] => o
           case i: Rewritable => i
         }
       case rest =>

@@ -62,7 +62,7 @@ object FastParser extends PosParser {
           }
         }
       } // Stop recursion at the program node already. Nodes other than PProgram are not interesting for our transformation
-    }) recurseFunc { case p: PProgram => Seq(false, false, false, false, false, false, false, false) } repeat
+    }).recurseFunc({ case p: PProgram => Seq(false, false, false, false, false, false, false, false) }).repeat
 
     try {
       val rp = RecParser(f).parses(s)
@@ -205,7 +205,7 @@ object FastParser extends PosParser {
       doExpandDefines(localMacros ++ globalMacros, withoutDefines, localAndGlobalNames)
     })
 
-    PProgram(p.imports, p.macros, p.domains, p.fields, functions, predicates, methods, p.errors)
+    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.errors)
   }
 
 
@@ -243,12 +243,12 @@ object FastParser extends PosParser {
 
     // The position of every node inside the macro is the position where the macro is "called"
     def adaptPositions(body: PNode, f: FastPositioned): Unit = {
-      val adapter = StrategyBuilder.SlimVisitor[PNode]({
+      val adapter = StrategyBuilder.SlimVisitor[PNode] {
         n => {
           FastPositions.setStart(n, f.start, force = true)
           FastPositions.setFinish(n, f.finish, force = true)
         }
-      })
+      }
       adapter.execute[PNode](body)
     }
 
@@ -286,22 +286,20 @@ object FastParser extends PosParser {
     // Strategy that replaces every formal parameter occurence in the macro body with the corresponding actual parameter
     // Also makes the macro call hygenic by creating a unique variable name vor every newly declared variable
     val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
-      case (varDecl: PIdnDef, ctxt) => {
+      case (varDecl: PIdnDef, ctxt) =>
         val freshDecl = PIdnDef(getFreshVar(varDecl.name))
         adaptPositions(freshDecl, varDecl)
         freshDecl
-      }
-      case (ident: PIdnUse, ctxt) => {
 
+      case (ident: PIdnUse, ctxt) =>
         val newIdent = varReplaceMap.get(ident.name) match {
           case None => ident
           // Parameters shadow externally bound variables
           case Some(i) => if (!ctxt.c.replace.contains(ident.name)) i else ident
         }
-
         val replaceParam = ctxt.c.replace.getOrElse(newIdent.name, newIdent)
         replaceParam
-      }
+
     }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid typechecker bug with sharing
 
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
@@ -315,7 +313,7 @@ object FastParser extends PosParser {
 
     // Strategy that expands the macros and checks for infinite recursion in the expansion process
     val expander = StrategyBuilder.Context[PNode, ExpandContext]({
-      case (pMacro: PMacroRef, ctxt) => {
+      case (pMacro: PMacroRef, ctxt) =>
         val name = pMacro.idnuse.name
         recursionCheck(name, ctxt.c)
 
@@ -325,8 +323,8 @@ object FastParser extends PosParser {
           throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro.idnuse))
 
         replacerOnBody(body, Map(), pMacro)
-      }
-      case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) => {
+
+      case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) =>
         val name = pMacro.name
         recursionCheck(name, ctxt.c)
 
@@ -336,8 +334,8 @@ object FastParser extends PosParser {
           throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro))
 
         replacerOnBody(body, Map(), pMacro)
-      }
-      case (pMacro: PMethodCall, ctxt) if isMacro(pMacro.method.name) => {
+
+      case (pMacro: PMethodCall, ctxt) if isMacro(pMacro.method.name) =>
         val name = pMacro.method.name
         recursionCheck(name, ctxt.c)
 
@@ -351,8 +349,8 @@ object FastParser extends PosParser {
           throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro.method))
 
         replacerOnBody(body, Map[String, PExp]() ++ mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
-      }
-      case (pMacro: PCall, ctxt) if isMacro(pMacro.func.name) => {
+
+      case (pMacro: PCall, ctxt) if isMacro(pMacro.func.name) =>
         val name = pMacro.func.name
         recursionCheck(name, ctxt.c)
 
@@ -366,24 +364,24 @@ object FastParser extends PosParser {
           throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro))
 
         replacerOnBody(body, Map[String, PExp]() ++ mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
-      }
+
     }, ExpandContext(), {
-      case (pMacro: PMacroRef, c) => {
+      case (pMacro: PMacroRef, c) =>
         val realMacro = getMacroByName(pMacro.idnuse.name)
         ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-      }
-      case (pMacro: PIdnUse, c) if isMacro(pMacro.name) => {
+
+      case (pMacro: PIdnUse, c) if isMacro(pMacro.name) =>
         val realMacro = getMacroByName(pMacro.name)
         ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-      }
-      case (pMacro: PMethodCall, c) if isMacro(pMacro.method.name) => {
+
+      case (pMacro: PMethodCall, c) if isMacro(pMacro.method.name) =>
         val realMacro = getMacroByName(pMacro.method.name)
         ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-      }
-      case (pMacro: PCall, c) if isMacro(pMacro.func.name) => {
+
+      case (pMacro: PCall, c) if isMacro(pMacro.func.name) =>
         val realMacro = getMacroByName(pMacro.func.name)
         ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-      }
+
     }).repeat
 
     val res = expander.execute[T](toExpand)
@@ -657,10 +655,8 @@ object FastParser extends PosParser {
     P(`name` ~ ("[" ~/ typ ~ "]").? ~ "(" ~ ")").map(typ => typeConstructor(typ.getOrElse(PTypeVar("#E"))))
 
 
-  lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => {
-    PRangeSeq(a, b)
-  }
-  }
+  lazy val seqRange: P[PExp] = P("[" ~ exp ~ ".." ~ exp ~ ")").map { case (a, b) => PRangeSeq(a, b) }
+
 
   lazy val fapp: P[PCall] = P(idnuse ~ parens(actualArgList)).map {
     case (func, args) => PCall(func, args, None)

@@ -1,13 +1,12 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package viper.silver.ast.utility.Rewriter
 
 import viper.silver.ast.QuantifiedExp
-
-//
-// aList:
-// c:
-// t:
-// upContext:
-// comp:
 
 /**
   * Extension of the Strategy context. Encapsulates all the required information for the rewriting
@@ -168,11 +167,11 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
 
       // Get all the children to recurse further
       val children: Seq[Rewritable] = n.getChildren.foldLeft(Seq.empty[Rewritable])({
-        case (seq, o: Option[Rewritable]) => o match {
+        case (seq, o: Option[Rewritable @unchecked]) => o match {
           case None => seq
           case Some(x: Rewritable) => seq ++ Seq(x)
         }
-        case (seq, s: Seq[Rewritable]) => seq ++ s
+        case (seq, s: Seq[Rewritable @unchecked]) => seq ++ s
         case (seq, r: Rewritable) => seq ++ Seq(r)
         case (seq, _) => seq
       })

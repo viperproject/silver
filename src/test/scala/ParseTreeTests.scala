@@ -1,3 +1,8 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
 
 import java.nio.file.{Path, Paths}
 
@@ -19,17 +24,21 @@ class ParseTreeTests extends FunSuite {
 
     val frontend = new CustomFrontend
 
-    files foreach { fileName => {
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-      assert(fileRes != null, s"File $filePrefix$fileName not found")
-      val file = Paths.get(fileRes.toURI)
-      var targetNode: Node = null
+    files foreach {
+      fileName => {
+        val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+        assert(fileRes != null, s"File $filePrefix$fileName not found")
+        val file = Paths.get(fileRes.toURI)
+        var targetNode: Node = null
 
-      frontend.translate(file) match {
-        case (Some(p), _) => println("Everything ok, but we expected cyclic error!"); assert(false)
-        case (None, errors) => errors.foreach( e => { println("Error: " + e); assert(e.readableMessage.contains("Recursive macro declaration found")) })
+        frontend.translate(file) match {
+          case (Some(p), _) => println("Everything ok, but we expected cyclic error!"); assert(false)
+          case (None, errors) => errors.foreach(e => {
+            println("Error: " + e);
+            assert(e.readableMessage.contains("Recursive macro declaration found"))
+          })
+        }
       }
-    }
     }
   }
 
@@ -40,32 +49,33 @@ class ParseTreeTests extends FunSuite {
 
     val frontend = new CustomFrontend
 
-    files foreach { fileName => {
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-      assert(fileRes != null, s"File $filePrefix$fileName" + ".sil not found")
-      val file = Paths.get(fileRes.toURI)
+    files foreach {
+      fileName => {
+        val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+        assert(fileRes != null, s"File $filePrefix$fileName" + ".sil not found")
+        val file = Paths.get(fileRes.toURI)
 
-      val fileRef = getClass.getResource(filePrefix + fileName + "Ref" + ".sil")
-      assert(fileRef != null, s"File $filePrefix$fileName"+ "Ref.sil not found")
-      val fileR = Paths.get(fileRef.toURI)
+        val fileRef = getClass.getResource(filePrefix + fileName + "Ref" + ".sil")
+        assert(fileRef != null, s"File $filePrefix$fileName" + "Ref.sil not found")
+        val fileR = Paths.get(fileRef.toURI)
 
-      var targetNode: Node = null
-      var targetRef: Node = null
+        var targetNode: Node = null
+        var targetRef: Node = null
 
-      frontend.translate(file) match {
-        case (Some(p), _) => targetNode = p
-        case (None, errors) => println("error occured during translating: " + errors)
+        frontend.translate(file) match {
+          case (Some(p), _) => targetNode = p
+          case (None, errors) => println("error occured during translating: " + errors)
+        }
+
+        frontend.translate(fileR) match {
+          case (Some(p), _) => targetRef = p
+          case (None, errors) => println("error occured during translating: " + errors)
+        }
+
+        println("New: " + targetNode.toString())
+        println("Reference: " + targetRef.toString())
+        assert(targetNode.toString() == targetRef.toString(), "Files are not equal")
       }
-
-      frontend.translate(fileR) match {
-        case (Some(p), _) => targetRef = p
-        case (None, errors) => println("error occured during translating: " + errors)
-      }
-
-      println("New: " + targetNode.toString())
-      println("Reference: " + targetRef.toString())
-      assert(targetNode.toString() == targetRef.toString(), "Files are not equal")
-    }
     }
 
   }
@@ -77,32 +87,33 @@ class ParseTreeTests extends FunSuite {
 
     val frontend = new CustomFrontend
 
-    files foreach { fileName => {
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-      assert(fileRes != null, s"File $filePrefix$fileName" + ".sil not found")
-      val file = Paths.get(fileRes.toURI)
+    files foreach {
+      fileName => {
+        val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+        assert(fileRes != null, s"File $filePrefix$fileName" + ".sil not found")
+        val file = Paths.get(fileRes.toURI)
 
-      val fileRef = getClass.getResource(filePrefix + fileName + "Ref" + ".sil")
-      assert(fileRef != null, s"File $filePrefix$fileName"+ "Ref.sil not found")
-      val fileR = Paths.get(fileRef.toURI)
+        val fileRef = getClass.getResource(filePrefix + fileName + "Ref" + ".sil")
+        assert(fileRef != null, s"File $filePrefix$fileName" + "Ref.sil not found")
+        val fileR = Paths.get(fileRef.toURI)
 
-      var targetNode: Node = null
-      var targetRef: Node = null
+        var targetNode: Node = null
+        var targetRef: Node = null
 
-      frontend.translate(file) match {
-        case (Some(p), _) => targetNode = p
-        case (None, errors) => println("error occured during translating: " + errors)
+        frontend.translate(file) match {
+          case (Some(p), _) => targetNode = p
+          case (None, errors) => println("error occured during translating: " + errors)
+        }
+
+        frontend.translate(fileR) match {
+          case (Some(p), _) => targetRef = p
+          case (None, errors) => println("error occured during translating: " + errors)
+        }
+
+        println("New: " + targetNode.toString())
+        println("Reference: " + targetRef.toString())
+        assert(targetNode.toString() == targetRef.toString(), "Files are not equal")
       }
-
-      frontend.translate(fileR) match {
-        case (Some(p), _) => targetRef = p
-        case (None, errors) => println("error occured during translating: " + errors)
-      }
-
-      println("New: " + targetNode.toString())
-      println("Reference: " + targetRef.toString())
-      assert(targetNode.toString() == targetRef.toString(), "Files are not equal")
-    }
     }
 
   }
@@ -114,32 +125,33 @@ class ParseTreeTests extends FunSuite {
 
     val frontend = new CustomFrontend
 
-    files foreach { fileName => {
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-      assert(fileRes != null, s"File $filePrefix$fileName" + ".sil not found")
-      val file = Paths.get(fileRes.toURI)
+    files foreach {
+      fileName => {
+        val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+        assert(fileRes != null, s"File $filePrefix$fileName" + ".sil not found")
+        val file = Paths.get(fileRes.toURI)
 
-      val fileRef = getClass.getResource(filePrefix + fileName + "Ref" + ".sil")
-      assert(fileRef != null, s"File $filePrefix$fileName"+ "Ref.sil not found")
-      val fileR = Paths.get(fileRef.toURI)
+        val fileRef = getClass.getResource(filePrefix + fileName + "Ref" + ".sil")
+        assert(fileRef != null, s"File $filePrefix$fileName" + "Ref.sil not found")
+        val fileR = Paths.get(fileRef.toURI)
 
-      var targetNode: Node = null
-      var targetRef: Node = null
+        var targetNode: Node = null
+        var targetRef: Node = null
 
-      frontend.translate(file) match {
-        case (Some(p), _) => targetNode = p
-        case (None, errors) => println("error occured during translating: " + errors)
+        frontend.translate(file) match {
+          case (Some(p), _) => targetNode = p
+          case (None, errors) => println("error occured during translating: " + errors)
+        }
+
+        frontend.translate(fileR) match {
+          case (Some(p), _) => targetRef = p
+          case (None, errors) => println("error occured during translating: " + errors)
+        }
+
+        println("New: " + targetNode.toString())
+        println("Reference: " + targetRef.toString())
+        assert(targetNode.toString() == targetRef.toString(), "Files are not equal")
       }
-
-      frontend.translate(fileR) match {
-        case (Some(p), _) => targetRef = p
-        case (None, errors) => println("error occured during translating: " + errors)
-      }
-
-      println("New: " + targetNode.toString())
-      println("Reference: " + targetRef.toString())
-      assert(targetNode.toString() == targetRef.toString(), "Files are not equal")
-    }
     }
 
   }
@@ -150,7 +162,7 @@ class ParseTreeTests extends FunSuite {
     def configureVerifier(args: Seq[String]) = ???
 
     def typeCheckCustom(p: PProgram): Boolean = {
-        doTypecheck(p) match {
+      doTypecheck(p) match {
         case Succ(_) => true
         case Fail(_) => false
       }

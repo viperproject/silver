@@ -66,16 +66,15 @@ class RewriterTests extends FunSuite {
     val shared = FalseLit()()
     val sharedAST = And(Not(shared)(), shared)()
 
-    val strat = ViperStrategy.Context[Int]({ case (FalseLit(), c) => if(c.c == 1) TrueLit()() else FalseLit()()}, 0, { case (Not(_), i) => i + 1 })
+    val strat = ViperStrategy.Context[Int]({ case (FalseLit(), c) => if (c.c == 1) TrueLit()() else FalseLit()() }, 0, { case (Not(_), i) => i + 1 })
 
     val res = strat.execute[Exp](sharedAST)
 
     // Check that both true lits are no longer of the same instance
     res match {
-      case And(Not(t1), t2) => {
+      case And(Not(t1), t2) =>
         assert(t1 == TrueLit()())
         assert(t2 == FalseLit()())
-      }
       case _ => assert(false)
     }
   }
@@ -105,116 +104,51 @@ class RewriterTests extends FunSuite {
     val files = Seq("simple", "nested", "functions")
 
     val frontend = new DummyFrontend
-    files foreach { fileName: String => {
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
-      assert(fileRes != null, s"File $filePrefix$fileName not found")
-      assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
-      val file = Paths.get(fileRes.toURI)
-      val ref = Paths.get(fileRef.toURI)
+    files foreach {
+      fileName: String => {
+        val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+        val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+        assert(fileRes != null, s"File $filePrefix$fileName not found")
+        assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
+        val file = Paths.get(fileRes.toURI)
+        val ref = Paths.get(fileRef.toURI)
 
 
-      var targetNode: Program = null
-      var targetRef: Program = null
+        var targetNode: Program = null
+        var targetRef: Program = null
 
-      frontend.translate(file) match {
-        case (Some(p), _) => targetNode = p
-        case (None, errors) => println("Problem with program: " + errors)
+        frontend.translate(file) match {
+          case (Some(p), _) => targetNode = p
+          case (None, errors) => println("Problem with program: " + errors)
+        }
+
+        // We use for NonDet a function that has name NonDet(i) where i is number of arguments
+        def NonDet(vars: Seq[LocalVarDecl]): Exp = {
+          if (vars.isEmpty) return TrueLit()()
+          val func: Function = targetNode.functions.find(_.name == "NonDet" + vars.size).get
+          FuncApp(func, vars.map { x => x.localVar })()
+        }
+
+        val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
+          case (o@Or(l, r), c) =>
+            InhaleExhaleExp(CondExp(NonDet(c.c), l, r)(), c.noRec[Or](o))()
+        }, Seq.empty, {
+          case (q: QuantifiedExp, c) => c ++ q.variables
+        })
+
+        frontend.translate(ref) match {
+          case (Some(p), _) => targetRef = p
+          case (None, errors) => println("Problem with program: " + errors)
+        }
+
+        val res = strat.execute[Program](targetNode)
+        //  println("Old: " + targetNode.toString())
+        println("New: " + res.toString())
+        println("Reference: " + targetRef.toString())
+        assert(res.toString() == targetRef.toString(), "Files are not equal")
       }
-
-      // We use for NonDet a function that has name NonDet(i) where i is number of arguments
-      def NonDet(vars: Seq[LocalVarDecl]): Exp = {
-        if (vars.isEmpty) return TrueLit()()
-        val func: Function = targetNode.functions.find(_.name == "NonDet" + vars.size).get
-        FuncApp(func, vars.map { x => x.localVar })()
-      }
-
-      val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
-        case (o@Or(l, r), c) =>
-          InhaleExhaleExp(CondExp(NonDet(c.c), l, r)(), c.noRec[Or](o))()
-      }, Seq.empty, {
-        case (q: QuantifiedExp, c) => c ++ q.variables
-      })
-
-      frontend.translate(ref) match {
-        case (Some(p), _) => targetRef = p
-        case (None, errors) => println("Problem with program: " + errors)
-      }
-
-      val res = strat.execute[Program](targetNode)
-      //  println("Old: " + targetNode.toString())
-      println("New: " + res.toString())
-      println("Reference: " + targetRef.toString())
-      assert(res.toString() == targetRef.toString(), "Files are not equal")
-    }
     }
   }
-
-  /*test("OLDDisjunctionToInhaleExhaleTests") {
-    // Code is commented out because the old rewriter was removed from the project and replaced with the new rewriter
-
-    // Is working correctly but rewrites right hand sides of IE expression too. Therefore does not match with more complex testcases
-    // 17 vs 7 line numbers
-    val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
-    val files = Seq("simple", "nested"/*, "functions"*/)
-
-    val frontend = new DummyFrontend
-    files foreach { fileName: String => {
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
-      assert(fileRes != null, s"File $filePrefix$fileName not found")
-      assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
-      val file = Paths.get(fileRes.toURI)
-      val ref = Paths.get(fileRef.toURI)
-
-
-      var targetNode: Program = null
-      var targetRef: Program = null
-
-      frontend.translate(file) match {
-        case (Some(p), _) => targetNode = p
-        case (None, errors) => println("Problem with program: " + errors)
-      }
-
-      // We use for NonDet a function that has name NonDet(i) where i is number of arguments
-      def NonDet(vars: Seq[LocalVar]): Exp = {
-        if (vars.isEmpty) return TrueLit()()
-        val func: Function = targetNode.functions.find(_.name == "NonDet" + vars.size).get
-        FuncApp(func, vars)()
-      }
-
-      frontend.translate(ref) match {
-        case (Some(p), _) => targetRef = p
-        case (None, errors) => println("Problem with program: " + errors)
-      }
-
-      var quantifiedVariables = Seq.empty[ast.LocalVar]
-      val res = targetNode.transform {
-        case q: ast.QuantifiedExp =>
-          quantifiedVariables = quantifiedVariables ++ q.variables.map(_.localVar)
-          q
-      }(recursive = {
-        _ => true
-      }, post = {
-        case q: ast.QuantifiedExp =>
-          val qvs = q.variables.map(_.localVar)
-          quantifiedVariables = quantifiedVariables filterNot qvs.contains
-          q
-        case e @ ast.Or(e0, e1) =>
-          val cond = NonDet(quantifiedVariables)
-          val condExp = ast.CondExp(cond, e0, e1)(e.pos, e.info)
-          ast.InhaleExhaleExp(condExp, e)(e.pos, e.info)
-      })
-
-
-
-      //  println("Old: " + targetNode.toString())
-      println("New: " + res.toString())
-      println("Reference: " + targetRef.toString())
-      assert(res.toString() == targetRef.toString(), "Files are not equal")
-    }
-    }
-  }*/
 
   test("ImplicationToDisjunctionTests") {
     val filePrefix = "transformations\\ImplicationsToDisjunction\\"
@@ -254,10 +188,11 @@ class RewriterTests extends FunSuite {
     })
 
     val frontend = new DummyFrontend
-    files foreach { fileName: String => {
-      count = 0
-      executeTest(filePrefix, fileName, strat, frontend)
-    }
+    files foreach {
+      fileName: String => {
+        count = 0
+        executeTest(filePrefix, fileName, strat, frontend)
+      }
     }
   }
 
@@ -287,9 +222,8 @@ class RewriterTests extends FunSuite {
     })
 
     val frontend = new DummyFrontend
-    files foreach { fileName: String => {
-      executeTest(filePrefix, fileName, strat, frontend)
-    }
+    files foreach {
+      fileName: String => executeTest(filePrefix, fileName, strat, frontend)
     }
   }
 
@@ -312,70 +246,10 @@ class RewriterTests extends FunSuite {
     })
 
     val frontend = new DummyFrontend
-    files foreach { fileName: String => {
-      executeTest(filePrefix, fileName, strat, frontend)
-    }
+    files foreach {
+      fileName: String => executeTest(filePrefix, fileName, strat, frontend)
     }
   }
-
-  /*test("OLDManyToOneAssert2") {
-    // Code is commented out because the old rewriter was removed from the project and replaced with the new rewriter
-    // 16 lines compared to 12 lines
-    // Need to find successor ourselves
-
-    val filePrefix = "transformations\\ManyToOneAssert\\"
-    val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
-    var accumulator: mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
-
-    val frontend = new DummyFrontend
-    files foreach { fileName: String => {
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-      assert(fileRes != null, s"File $filePrefix$fileName not found")
-      val file = Paths.get(fileRes.toURI)
-      var targetNode: Program = null
-      var targetRef: Program = null
-
-      frontend.translate(file) match {
-        case (Some(p), _) => targetNode = p
-        case (None, errors) => println("Problem with program: " + errors)
-      }
-
-      var enclSeq: Seqn = null
-      val res = targetNode.transform({
-        case a: Assert =>
-          accumulator += a.exp
-
-          val family = enclSeq.getChildren.asInstanceOf[Seq[Node]]
-          val next = family.dropWhile(_ ne a).drop(1).headOption
-
-          next match {
-            case Some(Assert(_)) =>
-              Seqn(Seq())()
-            case _ =>
-              val result = Assert(accumulator.reduceRight(And(_, _)()))()
-              accumulator.clear()
-              result
-          }
-        case (s: Seqn) => enclSeq = s; s
-      })(_ => true)
-
-
-      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
-      assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
-
-      val ref = Paths.get(fileRef.toURI)
-      frontend.translate(ref) match {
-        case (Some(p), _) => targetRef = p
-        case (None, errors) => println("Problem with program: " + errors)
-      }
-
-      //  println("Old: " + targetNode.toString())
-      println("New: " + res.toString)
-      println("Reference: " + targetRef.toString())
-      assert(res.toString == targetRef.toString(), "Files are not equal")
-    }
-    }
-  }*/
 
   test("FoldConstants") {
     val filePrefix = "transformations\\FoldConstants\\"
@@ -390,9 +264,8 @@ class RewriterTests extends FunSuite {
     }) traverse Traverse.BottomUp
 
     val frontend = new DummyFrontend
-    files foreach { fileName: String => {
-      executeTest(filePrefix, fileName, strat, frontend)
-    }
+    files foreach {
+      fileName: String => executeTest(filePrefix, fileName, strat, frontend)
     }
 
   }
@@ -414,9 +287,8 @@ class RewriterTests extends FunSuite {
     }) traverse Traverse.BottomUp
 
     val frontend = new DummyFrontend
-    files foreach { fileName: String => {
-      executeTest(filePrefix, fileName, strat, frontend)
-    }
+    files foreach {
+      fileName: String => executeTest(filePrefix, fileName, strat, frontend)
     }
   }
 
@@ -451,65 +323,6 @@ class RewriterTests extends FunSuite {
     })
   }
 
-  /*test("OLDMethodCallDesugaring") {
-    // Basically the exact same program
-    // No features from strategy used only partial function and go!
-
-    val filePrefix = "transformations\\MethodCallDesugaring\\"
-    val files = Seq("simple", "withArgs", "withArgsNRes", "withFields")
-
-    val frontend = new DummyFrontend
-
-    files foreach { fileName: String => {
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-      assert(fileRes != null, s"File $filePrefix$fileName not found")
-      val file = Paths.get(fileRes.toURI)
-      var targetNode: Program = null
-      var targetRef: Program = null
-
-      frontend.translate(file) match {
-        case (Some(p), _) => targetNode = p
-        case (None, errors) => println("Problem with program: " + errors)
-      }
-
-      val res = targetNode.transform({
-        case m: MethodCall =>
-          // Get method declaration
-          val mDecl = targetNode.methods.find(_.name == m.methodName).get
-
-          // Create an exhale statement for every precondition and replace parameters with arguments
-          var replacer: Map[LocalVar, Exp] = mDecl.formalArgs.zip(m.args).map(x => x._1.localVar -> x._2).toMap
-          val pfunc: PartialFunction[Node, Node] = {
-            case l: LocalVar => if (replacer.contains(l)) replacer(l) else l
-          }
-          val exPres = mDecl.pres.map(_.transform(pfunc)(_ => true)).map(x => Exhale(x)(m.pos, m.info))
-
-          // Create an inhale statement for every postcondition, replace parameters with arguments and replace result parameters with receivers
-          val replacedArgs = mDecl.posts.map(_.transform(pfunc)(_ => true))
-          replacer = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap
-          val inPosts = replacedArgs.map(_.transform(pfunc)(_ => true)).map(x => Inhale(x)(m.pos, m.info))
-
-          Seqn(exPres ++ inPosts)(m.pos, m.info)
-      })()
-
-
-      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
-      assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
-
-      val ref = Paths.get(fileRef.toURI)
-      frontend.translate(ref) match {
-        case (Some(p), _) => targetRef = p
-        case (None, errors) => println("Problem with program: " + errors)
-      }
-
-      //  println("Old: " + targetNode.toString())
-      println("New: " + res.toString)
-      println("Reference: " + targetRef.toString())
-      assert(res.toString == targetRef.toString(), "Files are not equal")
-    }
-    }
-  }*/
-
   test("MethodCallDesugaring") {
     // Careful: Don't use old inside postcondition. It is not yet supported. maybe I will update the testcase
     val filePrefix = "transformations\\MethodCallDesugaring\\"
@@ -537,9 +350,8 @@ class RewriterTests extends FunSuite {
         Seqn(exPres ++ inPosts)(m.pos, m.info)
     }, Traverse.Innermost)
 
-    files foreach { fileName: String => {
-      executeTest(filePrefix, fileName, strat, frontend)
-    }
+    files foreach {
+      fileName: String => executeTest(filePrefix, fileName, strat, frontend)
     }
   }
 
@@ -573,23 +385,6 @@ class RewriterTests extends FunSuite {
 
     val frontend = new DummyFrontend
     files foreach { name => executeTest(filePrefix, name, combined, frontend) }
-  }
-
-  test("ContextCombination") {
-    val filePrefix = "transformations\\ContextCombination\\"
-    val files = Seq("simple")
-
-
-    val strat = ViperStrategy.Context[Seq[LocalVar]]({
-      case (p, _) => p
-    }, Seq())
-
-    val strat2  = ViperStrategy.Slim({
-      case p => p
-    })
-
-    //strat + strat2
-
   }
 
   test("CopyPropagation") {
@@ -631,7 +426,7 @@ class RewriterTests extends FunSuite {
   // From: http://biercoff.com/easily-measuring-code-execution-time-in-scala/
   def time[R](block: => R): R = {
     val t0 = System.nanoTime()
-    val result = block    // call-by-name
+    val result = block // call-by-name
     val t1 = System.nanoTime()
     println("Elapsed time: " + (t1 - t0) + "ns")
     result

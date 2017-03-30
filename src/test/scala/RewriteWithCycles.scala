@@ -1,10 +1,11 @@
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast.utility.Rewriter.{Query, Rewritable, StrategyBuilder}
-import viper.silver.ast.utility.ViperStrategy
 
-/**
-  * Created by simonfri on 21.02.2017.
-  */
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
 class RewriteWithCycles extends FunSuite {
 
 
@@ -64,7 +65,7 @@ case class SlimGraph[I](var info: I, var children: Seq[SlimGraph[I]] = Seq()) ex
 
   // duplicate must not create a new node but update the old node to keep the circular dependencies
   override def duplicate(childr: Seq[Any]): Any = {
-    info = children.collect {case i:I => i }.head
+    info = children.collect {case i:I @unchecked => i }.head
     children = childr.collect {  case s:SlimGraph[I] => s }
     this
   }
