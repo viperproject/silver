@@ -427,4 +427,20 @@ object reasons {
 
     def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
   }
+
+  case class SeqIndexNegative(seq: Exp, offendingNode: Exp) extends AbstractErrorReason {
+    val id = "seq.index.negative"
+    def readableMessage = s"Index $offendingNode into $seq might be negative."
+
+    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) =
+      SeqIndexNegative(seq, offendingNode.asInstanceOf[Exp])
+  }
+
+  case class SeqIndexExceedsLength(seq: Exp, offendingNode: Exp) extends AbstractErrorReason {
+    val id = "seq.index.length"
+    def readableMessage = s"Index $offendingNode into $seq might exceed sequence length."
+
+    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) =
+      SeqIndexExceedsLength(seq, offendingNode.asInstanceOf[Exp])
+  }
 }
