@@ -10,7 +10,7 @@ at ETH Zürich, Department of Computer Science.
 Quick Start
 ===========
 
-Instructions how to get started with Viper can be found at: <http://www.pm.inf.ethz.ch/research/viper/downloads.html>
+Instructions how to get started with Viper can be found `here. <http://www.pm.inf.ethz.ch/research/viper/downloads.html>`
 
 
 
