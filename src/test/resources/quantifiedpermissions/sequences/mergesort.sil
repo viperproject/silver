@@ -12,6 +12,7 @@ method parallel_mergesort(a:Ref, b:Ref, start:Int, end:Int)
   requires forall i:Int :: i in [start..end) ==> acc(b.array[i].value, write)
   ensures acc(a.array, wildcard)
   ensures acc(b.array, wildcard)
+  ensures start >= 0 && end <= |a.array| && |a.array| == |b.array|
   ensures forall i:Int :: i in [start..end) ==> acc(a.array[i].value, write)
   ensures forall i:Int :: i in [start..end) ==> acc(b.array[i].value, write)
   ensures a.array == old(a.array)

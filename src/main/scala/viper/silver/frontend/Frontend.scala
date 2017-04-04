@@ -6,7 +6,6 @@
 
 package viper.silver.frontend
 
-import java.io.{BufferedWriter, FileWriter}
 import java.nio.file.{Files, Path}
 
 import scala.io.Source
@@ -58,6 +57,12 @@ trait Frontend {
     * verify have been called).
     */
   def result: VerificationResult
+
+  val logger = org.apache.log4j.Logger.getLogger(this.getClass.getName)
+  logger.setLevel(org.apache.log4j.Level.INFO)
+
+  val loggerForIde = org.apache.log4j.Logger.getLogger(this.getClass.getName+"_IDE")
+  loggerForIde.setLevel(org.apache.log4j.Level.INFO)
 }
 
 trait SinglePhase extends Frontend {
@@ -158,6 +163,8 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   protected def doTranslate(input: TypecheckerResult): Result[Program]
 
+  protected def printOutline(program: Program)
+
   override def parse() {
     if (state < TranslatorState.InputSet) sys.error("The translator has not been initialized, or there is no input set.")
     if (state >= TranslatorState.Parsed) return
@@ -212,6 +219,8 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     assert(_verificationResult != null)
 
     //    _verifier.get.stop()
+
+    printOutline(_program.get)
 
     _state = TranslatorState.Verified
   }

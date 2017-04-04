@@ -11,6 +11,7 @@ field f:Int
   }
 
   function get_val(xs:Seq[Ref], i:Int):Ref
+      requires 0 <= i && i < |xs|
   {
       xs[i]
   }
