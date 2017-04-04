@@ -154,6 +154,7 @@ method Ref__histogram(diz: Ref, current_thread_id: Int, M: Int, N: Int, matrix: 
   requires (forall i1: Int :: (0 <= i1) && (i1 < P) ==> acc(hist[i1].Ref__Integer_value, write))
   ensures (forall j1: Int :: (0 <= j1) && (j1 < M * N) ==> acc(matrix[j1].Ref__Integer_value, 1 / 2))
   ensures (forall i1: Int :: (0 <= i1) && (i1 < P) ==> acc(hist[i1].Ref__Integer_value, write))
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/280/)
   ensures (forall k: Int :: (0 <= k) && (k < P) ==> (hist[k].Ref__Integer_value == count_array(0, M * N, matrix, k)))
   ensures (forall i1: Int, j1: Int :: (0 <= i1) && (i1 < M) && (0 <= j1) && (j1 < N) ==> (matrix[Ref__multidim_index_2(M, N, i1, j1)].Ref__Integer_value == old(matrix[Ref__multidim_index_2(M, N, i1, j1)].Ref__Integer_value)))
 {
