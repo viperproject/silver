@@ -28,6 +28,7 @@ method test05(xs: Seq[Ref])
 method test10(xs: Seq[Ref], a: Int, b: Int, n: Int)
   requires 0 <= a && 0 <= b && 0 <= n
   requires a * (n - 1) + b <= |xs|
+  //:: UnexpectedOutput(not.wellformed:seq.index.length, /silver/issue/194/)
   requires forall i: Int :: i in [0..n) ==> acc(xs[a * i + b].f)
 {}
 
@@ -36,5 +37,7 @@ method test11(xs: Seq[Ref], a: Int, b: Int, n: Int, ss: Set[Int])
   requires a * (n - 1) + b <= |xs|
   requires |ss| == n
   requires forall i: Int :: i in [0..n) ==> (a * i + b) in ss
+  requires forall i: Int :: i in ss ==> 0 <= i
+  //:: UnexpectedOutput(not.wellformed:seq.index.length, /silver/issue/194/)
   requires forall i: Int :: i in ss ==> acc(xs[i].f)
 {}

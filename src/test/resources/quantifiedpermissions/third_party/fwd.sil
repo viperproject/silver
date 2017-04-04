@@ -6,6 +6,7 @@
 field Integer_value: Int
 
 method loop_main_54(this: Ref, len: Int, ar: Seq[Ref], br: Seq[Ref], cr: Seq[Ref])
+  requires 0 < len
   requires |ar| == len
   requires (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))
   requires |br| == len
@@ -25,12 +26,14 @@ method loop_main_54(this: Ref, len: Int, ar: Seq[Ref], br: Seq[Ref], cr: Seq[Ref
 }
 
 method send_body_100(this: Ref, ar: Seq[Ref], i: Int)
+  requires 0 <= i && i < |ar|
   requires acc(ar[i].Integer_value, 1 / 2)
 {
   inhale false
 }
 
 method recv_body_102(this: Ref, ar: Seq[Ref], i: Int)
+  requires 0 < i && i-1 < |ar|
   ensures acc(ar[i - 1].Integer_value, 1 / 2)
 {
   inhale false
@@ -65,6 +68,7 @@ method loop_body_54(this: Ref, len: Int, ar: Seq[Ref], br: Seq[Ref], i: Int, cr:
 }
 
 method zero_array(this: Ref, ar: Seq[Ref], br: Seq[Ref], cr: Seq[Ref], len: Int) returns (sys__result: Int)
+  requires 0 < len
   requires |ar| == len
   requires (forall i: Int :: (i in [0..len)) ==> acc(ar[i].Integer_value, write))
   requires |br| == len

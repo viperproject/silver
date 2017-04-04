@@ -9,6 +9,7 @@ function sum_list(i: Int, hi: Int, ar: Seq[Int]): Int
 
 function sum_array(i: Int, lo: Int, hi: Int, ar: Seq[Ref]): Int
   requires (0 <= lo) && (lo <= i) && (i <= hi)
+  requires hi <= |ar|
   requires (forall k: Int :: (lo <= k) && (k < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < hi ? ar[i].Ref__Integer_value + sum_array(i + 1, lo, hi, ar) : 0)
@@ -17,6 +18,7 @@ function sum_array(i: Int, lo: Int, hi: Int, ar: Seq[Ref]): Int
 function sum_square(i: Int, lo: Int, hi: Int, step: Int, min: Int, max: Int, ar: Seq[Ref]): Int
   requires (0 <= lo) && (lo <= hi) && (hi <= step) && (step > 0)
   requires (0 <= min) && (min <= i) && (i <= max)
+  requires max <= |ar|
   requires (forall k: Int :: (min <= k) && (k < max) && (lo <= k % step) && (k % step < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < max ? ((lo <= i % step) && (i % step < hi) ? ar[i].Ref__Integer_value : 0) + sum_square(i + 1, lo, hi, step, min, max, ar) : 0)
@@ -25,6 +27,7 @@ function sum_square(i: Int, lo: Int, hi: Int, step: Int, min: Int, max: Int, ar:
 function count_square(i: Int, lo: Int, hi: Int, step: Int, min: Int, max: Int, ar: Seq[Ref], v: Int): Int
   requires (0 <= lo) && (lo <= hi) && (hi <= step) && (step > 0)
   requires (0 <= min) && (min <= i) && (i <= max)
+  requires max <= |ar|
   requires (forall k: Int :: (min <= k) && (k < max) && (lo <= k % step) && (k % step < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < max ? ((lo <= i % step) && (i % step < hi) && (ar[i].Ref__Integer_value == v) ? 1 : 0) + count_square(i + 1, lo, hi, step, min, max, ar, v) : 0)
@@ -39,6 +42,7 @@ function count_list(i: Int, hi: Int, ar: Seq[Int], v: Int): Int
 
 function count_array(i: Int, hi: Int, ar: Seq[Ref], v: Int): Int
   requires (0 <= i) && (i <= hi)
+  requires hi <= |ar|
   requires (forall k: Int :: (0 <= k) && (k < hi) ==> acc(ar[k].Ref__Integer_value, wildcard))
 {
   (i < hi ? (ar[i].Ref__Integer_value == v ? 1 : 0) + count_array(i + 1, hi, ar, v) : 0)
@@ -68,6 +72,7 @@ method Ref__loop_main_54(diz: Ref, current_thread_id: Int, b: Seq[Ref], len: Int
 method Ref__recv_body_145(diz: Ref, current_thread_id: Int, a: Seq[Ref], i: Int)
   requires diz != null
   requires current_thread_id >= 0
+  requires 0 <= i && i < |a|
   ensures acc(a[i].Ref__Integer_value, 1 / 2)
 {
   inhale false
@@ -76,6 +81,7 @@ method Ref__recv_body_145(diz: Ref, current_thread_id: Int, a: Seq[Ref], i: Int)
 method Ref__send_body_152(diz: Ref, current_thread_id: Int, a: Seq[Ref], i: Int)
   requires diz != null
   requires current_thread_id >= 0
+  requires -1 <= i && i+1 < |a|
   requires acc(a[i + 1].Ref__Integer_value, 1 / 2)
 {
   inhale false
@@ -111,7 +117,7 @@ method Ref__loop_body_54(diz: Ref, current_thread_id: Int, len: Int, b: Seq[Ref]
   __flatten_6 := b[i]
   __flatten_5 := __flatten_6.Ref__Integer_value + 1
     //:: ExpectedOutput(assignment.failed:insufficient.permission)
-    // confirmed by Stefan Blom    
+    // confirmed by Stefan Blom
   __flatten_4.Ref__Integer_value := __flatten_5
   if (i > 0) {
     Ref__recv_body_145(diz, current_thread_id, a, i)
@@ -141,6 +147,7 @@ method Ref__resource_check_S2_S1(diz: Ref, current_thread_id: Int, len: Int, b: 
   requires (0 <= i) && (i < len)
   requires i - 1 < len - 1
   requires i > 0
+  requires len <= |a|
   requires acc(a[i - 1 + 1].Ref__Integer_value, 1 / 2)
   ensures i - 1 < len - 1
   ensures acc(a[i].Ref__Integer_value, 1 / 2)
