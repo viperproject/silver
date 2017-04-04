@@ -10,11 +10,9 @@ at ETH Zürich, Department of Computer Science.
 Quick Start
 ===========
 
-Instructions how to get started with Viper:
+Instructions for how to get started with Viper can be found `here. <http://www.pm.inf.ethz.ch/research/viper/downloads.html>`_
 
-+   `Linux <https://bitbucket.org/viperproject/viper-linux-dev/>`_
-+   `Mac OS X <https://bitbucket.org/viperproject/documentation/wiki/InstallOSX>`_
-+   `Viper-Sublime-IDE <https://bitbucket.org/viperproject/viper-sublime-ide/>`_
+
 
 
 Syntax Highlighting
