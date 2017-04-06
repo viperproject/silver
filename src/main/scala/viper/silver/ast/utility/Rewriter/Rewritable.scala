@@ -16,7 +16,7 @@ trait Rewritable {
     * Method that accesses all children of a node. If a child is a collection of AST nodes we only allow Seq or Option as collections.
     * @return Sequence of children
     */
-  def getChildren: Seq[Any] = {
+  def getChildren: Seq[AnyRef] = {
     this match {
       case p: Product =>
         ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
@@ -35,6 +35,6 @@ trait Rewritable {
     * @param children New children for this node
     * @return Duplicated node
     */
-  def duplicate(children: Seq[Any]): Any
+  def duplicate(children: Seq[AnyRef]): Rewritable
 
 }

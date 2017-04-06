@@ -181,10 +181,7 @@ class AddArtificialContext[N <: Rewritable](p: PartialFunction[N, N]) extends Pa
   * @param p Partial function from node to node
   * @tparam N Type of the
   */
-class SlimStrategy[N <: Rewritable](p: PartialFunction[N, N]) extends Strategy[N, SimpleContext[N]](new AddArtificialContext(p)) {
-
-
-}
+class SlimStrategy[N <: Rewritable](p: PartialFunction[N, N]) extends Strategy[N, SimpleContext[N]](new AddArtificialContext(p)) { }
 
 // Generic Strategy class. Includes all the required functionality
 class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) extends StrategyInterface[N] {
@@ -222,8 +219,9 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     this
   }
 
-  // Selects the children on which we recurse.
-  protected var recursionFunc: PartialFunction[N, Seq[Boolean]] = PartialFunction.empty
+  // Selects the children on which we recurse. Wondering about type Any?
+  /** @see [[Rewritable.getChildren]]*/
+  protected var recursionFunc: PartialFunction[N, Seq[AnyRef]] = PartialFunction.empty
 
   /**
     * Define the function that specifies the children we recurse on
@@ -231,7 +229,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     * @param r Recursion function
     * @return Strategy itself (convenience)
     */
-  def recurseFunc(r: PartialFunction[N, Seq[Boolean]]): Strategy[N, C] = {
+  def recurseFunc(r: PartialFunction[N, Seq[AnyRef]]): Strategy[N, C] = {
     recursionFunc = r
     this
   }
@@ -440,7 +438,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
   /**
     * Following methods are helper methods for the other Strategy implementations
     */
-  protected def recurseChildren(node: N, recurse: N => Option[N]): Option[Seq[Any]] = {
+  protected def recurseChildren(node: N, recurse: N => Option[N]): Option[Seq[AnyRef]] = {
     // Make sure recursion on this node is valid
     if (noRecursion.contains(node)) return None
 
@@ -448,18 +446,15 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     val children = node.getChildren
 
     // Get the indices of the sequence that we perform recursion on and check if it is well formed. Default case is all children
-    val childrenSelect = recursionFunc.applyOrElse(node, (node: N) => {
-      children.indices map { x => true }
-    })
+    val childrenSelect:Seq[AnyRef] = recursionFunc.applyOrElse(node, (x:AnyRef) => node.getChildren)
 
-    // Check whether the list of indices is of correct length
-    assert(childrenSelect.length == children.length, "Incorrect number of children in recursion")
+    def selected(ch:AnyRef) = childrenSelect.exists( _ eq ch)
 
     // Recurse on children if the according (same index) flag in childrenSelect is set. If it is not set, leave child untouched
-    val newChildren: Seq[Option[Any]] = children.zip(childrenSelect) map {
+    val newChildren: Seq[Option[AnyRef]] = children map {
       x => {
         val res = x match {
-          case (o: Option[Rewritable @unchecked], true) => o match {
+          case o: Option[Rewritable @unchecked] if selected(o) => o match {
             case None => None
             case Some(x: Rewritable) =>
               if (!noRecursion.contains(x)) {
@@ -472,22 +467,21 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
                 None
               }
           }
-          case (s: Seq[Rewritable @unchecked], true) =>
+          case s: Seq[Rewritable @unchecked] if selected(s) =>
             val newSeq = s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else None }
             if (newSeq.forall(_.isEmpty)) {
               None
             } else {
-              val seqWithChildren: Seq[Any] = newSeq.zip(s) map { elem => elem._1 match {
+              val seqWithChildren: Seq[AnyRef] = newSeq.zip(s) map { elem => elem._1 match {
                 case None => elem._2
                 case Some(x) => x
               }
               }
               Some(seqWithChildren)
             }
-          case (n: Rewritable, true) =>
+          case n: Rewritable if selected(n) =>
             if (!noRecursion.contains(n)) recurse(n.asInstanceOf[N]) else None
-          case (old, false) => None
-          case (c, _) => throw new Exception(c + "is not a valid child of a rewritable node")
+          case old => None
         }
         res
       }
@@ -663,40 +657,40 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
   /**
     * The predecessor child of the parent that follows the node itself
     */
-  lazy val previous: Option[Any] = predecessors.lastOption
+  lazy val previous: Option[N] = predecessors.lastOption
 
   /**
     * All children of the parent of a node that precede the node itself
     */
-  lazy val predecessors: Seq[Any] = family.takeWhile(!isEqualNode(_))
+  lazy val predecessors: Seq[N] = family.takeWhile(!isEqualNode(_))
 
   /**
     * The successor child of the parent that follows the node itself
     */
-  lazy val next: Option[Any] = successors.headOption
+  lazy val next: Option[N] = successors.headOption
 
   /**
     * All children of the parent of a node that follow the node itself
     */
-  lazy val successors: Seq[Any] = family.dropWhile(!isEqualNode(_)).drop(1)
+  lazy val successors: Seq[N] = family.dropWhile(!isEqualNode(_)).drop(1)
 
 
   /**
     * All children of the parent without the node itself
     */
-  lazy val siblings: Seq[Any] = family.filter(!isEqualNode(_))
+  lazy val siblings: Seq[N] = family.filter(!isEqualNode(_))
 
 
   /**
     * All children of the parent. Sequence of nodes and options of nodes will be unfolded and the node itself is included in the list
     */
-  lazy val family: Seq[Any] = parent.getChildren.foldLeft(Seq.empty[Any])((children: Seq[Any], y: Any) => y match {
-    case elem: Seq[N] => children ++ elem
-    case elem: Option[N] => children ++ (elem match {
+  lazy val family: Seq[N] = parent.getChildren.foldLeft(Seq.empty[N])((children: Seq[N], y: AnyRef) => y match {
+    case elem: Seq[N @unchecked] => children ++ elem
+    case elem: Option[N @unchecked] => children ++ (elem match {
       case Some(x) => Seq(x)
-      case None => Seq.empty[Any]
+      case None => Seq.empty[N]
     })
-    case elem => children ++ Seq(elem)
+    case elem: N => children ++ Seq(elem)
   })
 
   /**
@@ -705,7 +699,7 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
   lazy val parent: N = ancestorList.dropRight(1).last
 
   // Equality between nodes
-  private def isEqualNode(elem: Any): Boolean = elem match {
+  private def isEqualNode(elem: AnyRef): Boolean = elem match {
     case Some(x: AnyRef) => x eq node.asInstanceOf[AnyRef]
     case Seq(_) => false
     case p: AnyRef => p eq node.asInstanceOf[AnyRef]

@@ -62,7 +62,7 @@ object FastParser extends PosParser {
           }
         }
       } // Stop recursion at the program node already. Nodes other than PProgram are not interesting for our transformation
-    }).recurseFunc({ case p: PProgram => Seq(false, false, false, false, false, false, false, false) }).repeat
+    }).recurseFunc({ case p: PProgram => Seq() }).repeat
 
     try {
       val rp = RecParser(f).parses(s)

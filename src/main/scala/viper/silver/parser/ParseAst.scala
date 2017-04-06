@@ -157,7 +157,7 @@ sealed trait PNode extends FastPositioned with Product with Rewritable {
 
   }
 
-  override def duplicate(children: scala.Seq[Any]): Rewritable = {
+  override def duplicate(children: scala.Seq[AnyRef]): Rewritable = {
     val dup = Transformer.parseTreeDuplicator(this, children)
     dup.setPos(this)
   }
@@ -932,7 +932,7 @@ case class PAssume(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
 
 case class PNewStmt(target: PIdnUse, Fields: Option[Seq[PIdnUse]]) extends PStmt {
-  override def  getChildren: scala.Seq[Any] = {
+  override def  getChildren: scala.Seq[AnyRef] = {
     val fields = Fields match {
       case None => Seq.empty[PIdnUse]
       case Some(seq) => seq
