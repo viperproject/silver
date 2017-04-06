@@ -140,7 +140,7 @@ object ViperStrategy {
 
         // Only duplicate if old and new are actually different
         if (old ne now) {
-          NewMetaData = (NewMetaData._1, NewMetaData._2, NewMetaData._3 ++ NodeTrafo({ case _ => n.asInstanceOf[ErrorNode] }))
+          NewMetaData = (NewMetaData._1, NewMetaData._2, NewMetaData._3 ++ NodeTrafo(n.asInstanceOf[ErrorNode]))
           now.duplicateMeta(NewMetaData)
         } else {
           now

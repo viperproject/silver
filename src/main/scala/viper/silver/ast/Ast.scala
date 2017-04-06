@@ -204,9 +204,9 @@ trait TransformableErrors {
     reason.withNode(transformedNode).asInstanceOf[ErrorReason]
   }
 
-  /** Transform node `n` back according to the transformations in backwards chronological order */
+  /** Transform node `n` back according to the specified node */
   def transformNode(n: ErrorNode): ErrorNode = {
-    n.errT.Ntransformations.foldRight(n)(foldfunc)
+    n.errT.Ntransformation.getOrElse(n)
   }
 }
 
@@ -214,35 +214,35 @@ trait TransformableErrors {
 case object NoTrafos extends ErrorTrafo {
   val Etransformations = Nil
   val Rtransformations = Nil
-  val Ntransformations = Nil
+  val Ntransformation = None
 }
 
 /** Class that allows generation of all transformations */
-case class Trafos(error: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]], reason: List[PartialFunction[ErrorReason, ErrorReason]], node: List[PartialFunction[ErrorNode, ErrorNode]]) extends ErrorTrafo {
+case class Trafos(error: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]], reason: List[PartialFunction[ErrorReason, ErrorReason]], node: Option[ErrorNode]) extends ErrorTrafo {
   val Etransformations = error
   val Rtransformations = reason
-  val Ntransformations = node
+  val Ntransformation = node
 }
 
 /** Create new error transformation */
 case class ErrTrafo(error:PartialFunction[AbstractVerificationError, AbstractVerificationError]) extends ErrorTrafo {
   val Etransformations = List(error)
   val Rtransformations = Nil
-  val Ntransformations = Nil
+  val Ntransformation = None
 }
 
 /** Create new reason transformation */
 case class ReTrafo(reason:PartialFunction[ErrorReason, ErrorReason]) extends ErrorTrafo {
   val Etransformations = Nil
   val Rtransformations = List(reason)
-  val Ntransformations = Nil
+  val Ntransformation = None
 }
 
 /** Create new node transformation */
-case class NodeTrafo(node:PartialFunction[ErrorNode, ErrorNode]) extends ErrorTrafo {
+case class NodeTrafo(node:ErrorNode) extends ErrorTrafo {
   val Etransformations = Nil
   val Rtransformations = Nil
-  val Ntransformations = List(node)
+  val Ntransformation = Some(node)
 }
 
 /** Base trait for error transformation objects */
@@ -251,10 +251,10 @@ trait ErrorTrafo {
 
   def Rtransformations: List[PartialFunction[ErrorReason, ErrorReason]]
 
-  def Ntransformations: List[PartialFunction[ErrorNode, ErrorNode]]
+  def Ntransformation: Option[ErrorNode]
 
   def ++(t: ErrorTrafo): Trafos = {
-    Trafos(Etransformations ++ t.Etransformations, Rtransformations ++ t.Rtransformations, Ntransformations ++ t.Ntransformations)
+    Trafos(Etransformations ++ t.Etransformations, Rtransformations ++ t.Rtransformations, if(t.Ntransformation.isDefined) t.Ntransformation else Ntransformation)
   }
 }
 

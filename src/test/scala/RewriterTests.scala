@@ -61,7 +61,6 @@ class RewriterTests extends FunSuite {
     assert(true)
   }
 
-
   test("Sharing") {
     val shared = FalseLit()()
     val sharedAST = And(Not(shared)(), shared)()
