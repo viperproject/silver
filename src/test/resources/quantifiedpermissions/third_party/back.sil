@@ -26,12 +26,14 @@ method loop_main_54(this: Ref, len: Int, ar: Seq[Ref], br: Seq[Ref], cr: Seq[Ref
 }
 
 method recv_body_96(this: Ref, ar: Seq[Ref], i: Int)
+  requires 0 <= i && i < |ar|
   ensures acc(ar[i].Integer_value, 1 / 2)
 {
   inhale false
 }
 
 method send_body_106(this: Ref, ar: Seq[Ref], i: Int)
+  requires -1 <= i && i+1 < |ar|
   requires acc(ar[i + 1].Integer_value, 1 / 2)
 {
   inhale false

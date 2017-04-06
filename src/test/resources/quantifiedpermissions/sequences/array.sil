@@ -15,6 +15,7 @@ requires acc(this.array, wildcard)
 requires 0 <= i && i < |this.array|
 requires acc(this.array[i].value, write)
 ensures acc(this.array, wildcard)
+ensures 0 <= i && i < |this.array|
 ensures acc(this.array[i].value, write)
 ensures 0 <= i && i < |this.array|
 ensures this.array[i].value == val

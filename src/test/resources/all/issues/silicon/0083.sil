@@ -1,0 +1,39 @@
+field f: Int
+
+method test1(xs: Seq[Int])
+  //:: ExpectedOutput(not.wellformed:seq.index.negative)
+  //:: MissingOutput(not.wellformed:seq.index.negative, /carbon/issue/191/)
+  requires xs[-1] != 0
+
+method test10(xs: Seq[Int])
+  //:: ExpectedOutput(not.wellformed:seq.index.length)
+  //:: MissingOutput(not.wellformed:seq.index.length, /carbon/issue/191/)
+  ensures xs[1] != 0
+
+method test2(xs: Seq[Int], n: Int)
+  requires 5 < n
+  //:: ExpectedOutput(not.wellformed:seq.index.length)
+  //:: MissingOutput(not.wellformed:seq.index.length, /carbon/issue/191/)
+  requires forall i: Int :: i in [0..n) ==> xs[i] != 0
+{
+  assert xs[3] != 0
+}
+
+method test3(xs: Seq[Ref], n: Int)
+  requires 5 < n && n < |xs|
+  requires xs[0] != null
+  requires forall i: Int :: i in [0..n) ==> acc(xs[i].f)
+{
+  var y: Int := xs[3].f
+}
+
+function fun(i: Int): Bool
+
+method test20(xs: Seq[Int], i: Int) {
+  //:: ExpectedOutput(assignment.failed:seq.index.negative)
+  //:: MissingOutput(assignment.failed:seq.index.negative, /carbon/issue/191/)
+  //:: ExpectedOutput(assignment.failed:seq.index.length)
+  //:: MissingOutput(assignment.failed:seq.index.length, /silicon/issue/34/)
+  //:: MissingOutput(assignment.failed:seq.index.length, /carbon/issue/191/)
+  var b: Bool := fun(xs[i])
+}

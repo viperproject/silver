@@ -550,7 +550,11 @@ object FastParser extends PosParser {
 
   lazy val locAcc: P[PLocationAccess] = P(fieldAcc | predAcc)
 
-  lazy val fieldAcc: P[PFieldAccess] = P(realSuffixExpr.filter(isFieldAccess).map { case fa: PFieldAccess => fa })
+  lazy val fieldAcc: P[PFieldAccess] =
+    P(realSuffixExpr.filter(isFieldAccess).map {
+      case fa: PFieldAccess => fa
+      case other => sys.error(s"Unexpectedly found $other")
+    })
 
   lazy val predAcc: P[PLocationAccess] = P(fapp)
 
