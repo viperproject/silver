@@ -64,8 +64,7 @@ case class SlimGraph[I](var info: I, var children: Seq[SlimGraph[I]] = Seq()) ex
   def addChildren(ch: SlimGraph[I]*) = children ++= ch
 
   // duplicate must not create a new node but update the old node to keep the circular dependencies
-  override def duplicate(childr: Seq[Any]): Any = {
-    info = children.collect {case i:I @unchecked => i }.head
+  override def duplicate(childr: Seq[Any]): Rewritable = {
     children = childr.collect {  case s:SlimGraph[I] => s }
     this
   }

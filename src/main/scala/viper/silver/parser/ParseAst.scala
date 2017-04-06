@@ -157,7 +157,7 @@ sealed trait PNode extends FastPositioned with Product with Rewritable {
 
   }
 
-  override def duplicate(children: scala.Seq[Any]): Any = {
+  override def duplicate(children: scala.Seq[Any]): Rewritable = {
     val dup = Transformer.parseTreeDuplicator(this, children)
     dup.setPos(this)
   }
