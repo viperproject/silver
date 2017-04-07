@@ -13,6 +13,7 @@ import viper.silver.ast.utility.Rewriter._
  * An implementation for transformers of the SIL AST.
  */
 object Transformer {
+
   /**
    * Simplify `expression`, in particular by making use of literals. For
    * example, `!true` is replaced by `false`. Division and modulo with divisor

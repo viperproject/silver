@@ -140,7 +140,7 @@ object ViperStrategy {
 
         // Only duplicate if old and new are actually different
         if (old ne now) {
-          NewMetaData = (NewMetaData._1, NewMetaData._2, NewMetaData._3 ++ NodeTrafo(n.asInstanceOf[ErrorNode]))
+          NewMetaData = (NewMetaData._1, NewMetaData._2, NewMetaData._3 + NodeTrafo(n.asInstanceOf[ErrorNode]))
           now.duplicateMeta(NewMetaData)
         } else {
           now
@@ -262,13 +262,11 @@ object ViperStrategy {
     case (a: AnySetCardinality, Seq(s: Exp), meta) => AnySetCardinality(s)(meta._1, meta._2, meta._3)
 
     case (p: Program, Seq(domains: Seq[Domain@unchecked], fields: Seq[Field@unchecked], functions: Seq[Function@unchecked], predicates: Seq[Predicate@unchecked], methods: Seq[Method@unchecked]), meta) =>
-      Program(domains, fields, functions,
-        predicates, methods)(meta._1, meta._2, meta._3)
+      Program(domains, fields, functions, predicates, methods)(meta._1, meta._2, meta._3)
 
 
     case (d: Domain, Seq(functions: Seq[DomainFunc@unchecked], axioms: Seq[DomainAxiom@unchecked], typeVariables: Seq[TypeVar@unchecked]), meta) =>
-      Domain(d.name, functions, axioms,
-        typeVariables)(meta._1, meta._2, meta._3)
+      Domain(d.name, functions, axioms, typeVariables)(meta._1, meta._2, meta._3)
 
     case (f: Field, Seq(singleType: Type), meta) =>
       Field(f.name, singleType)(meta._1, meta._2, meta._3)
@@ -282,7 +280,6 @@ object ViperStrategy {
     case (m: Method, Seq(parameters: Seq[LocalVarDecl@unchecked], results: Seq[LocalVarDecl@unchecked], preconditions: Seq[Exp@unchecked], postconditions: Seq[Exp@unchecked], locals: Seq[LocalVarDecl@unchecked], body: Stmt), meta) =>
       Method(m.name, parameters, results, preconditions, postconditions, locals, body)(meta._1, meta._2, meta._3)
 
-
     case (da: DomainAxiom, Seq(body: Exp), meta) =>
       DomainAxiom(da.name, body)(meta._1, meta._2, da.domainName, meta._3)
 
@@ -290,6 +287,7 @@ object ViperStrategy {
       DomainFunc(df.name, parameters, aType, df.unique)(meta._1, meta._2, df.domainName, meta._3)
 
     case (Bool, _, meta) => Bool
+
     case (dt: DomainType, Seq(domainName: Domain, typeVariables: Map[TypeVar@unchecked, Type@unchecked]), meta) =>
       DomainType(domainName, typeVariables)
 

@@ -80,7 +80,7 @@ trait Node extends Traversable[Node] with Rewritable {
     Visitor.visitWithContextManually(this, Nodes.subnodes, c)(f)
   }
 
-  //** @see [[Visitorr.visit()]] */
+  /** @see [[Visitor.visit()]] */
   def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
     Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
@@ -145,9 +145,9 @@ trait Node extends Traversable[Node] with Rewritable {
   }
 
   // Duplicate this node with new metadata
-  def duplicateMeta(Nmeta: (Position, Info, ErrorTrafo)): Node = {
+  def duplicateMeta(newMeta: (Position, Info, ErrorTrafo)): Node = {
     val ch = getChildren
-    ViperStrategy.viperDuplicator(this, ch, Nmeta)
+    ViperStrategy.viperDuplicator(this, ch, newMeta)
   }
 
   // Get metadata with correct types
@@ -188,7 +188,7 @@ trait TransformableErrors {
       val res = transformNode(n.asInstanceOf[ErrorNode])
       res
     }
-  }).repeat
+  }).repeat // Repeat because if a back-transformed node can have a back-transformation again
 
   // Helper function for applying the transformations
   private def foldfunc[E](tr: PartialFunction[E, E], nd: E): E = {
@@ -201,69 +201,69 @@ trait TransformableErrors {
 
   /** Transform error `e` back according to the transformations in backwards chronological order */
   def transformError(e: AbstractVerificationError): AbstractVerificationError = {
-    val newError = errT.Etransformations.foldRight(e)(foldfunc)
+    val newError = errT.eTransformations.foldRight(e)(foldfunc)
     val transformedNode = nodeTrafoStrat.execute[ErrorNode](newError.offendingNode)
     newError.withNode(transformedNode).asInstanceOf[AbstractVerificationError]
   }
 
   /** Transform reason `e` back according to the transformations in backwards chronological order */
   def transformReason(e: ErrorReason): ErrorReason = {
-    val reason = errT.Rtransformations.foldRight(e)(foldfunc)
+    val reason = errT.rTransformations.foldRight(e)(foldfunc)
     val transformedNode = nodeTrafoStrat.execute(reason.offendingNode).asInstanceOf[ErrorNode]
     reason.withNode(transformedNode).asInstanceOf[ErrorReason]
   }
 
   /** Transform node `n` back according to the specified node */
   def transformNode(n: ErrorNode): ErrorNode = {
-    n.errT.Ntransformation.getOrElse(n)
+    n.errT.nTransformations.getOrElse(n)
   }
 }
 
 /** In case no error transformation is specified */
 case object NoTrafos extends ErrorTrafo {
-  val Etransformations = Nil
-  val Rtransformations = Nil
-  val Ntransformation = None
+  val eTransformations = Nil
+  val rTransformations = Nil
+  val nTransformations = None
 }
 
 /** Class that allows generation of all transformations */
 case class Trafos(error: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]], reason: List[PartialFunction[ErrorReason, ErrorReason]], node: Option[ErrorNode]) extends ErrorTrafo {
-  val Etransformations = error
-  val Rtransformations = reason
-  val Ntransformation = node
+  val eTransformations = error
+  val rTransformations = reason
+  val nTransformations = node
 }
 
 /** Create new error transformation */
 case class ErrTrafo(error: PartialFunction[AbstractVerificationError, AbstractVerificationError]) extends ErrorTrafo {
-  val Etransformations = List(error)
-  val Rtransformations = Nil
-  val Ntransformation = None
+  val eTransformations = List(error)
+  val rTransformations = Nil
+  val nTransformations = None
 }
 
 /** Create new reason transformation */
 case class ReTrafo(reason: PartialFunction[ErrorReason, ErrorReason]) extends ErrorTrafo {
-  val Etransformations = Nil
-  val Rtransformations = List(reason)
-  val Ntransformation = None
+  val eTransformations = Nil
+  val rTransformations = List(reason)
+  val nTransformations = None
 }
 
 /** Create new node transformation */
 case class NodeTrafo(node: ErrorNode) extends ErrorTrafo {
-  val Etransformations = Nil
-  val Rtransformations = Nil
-  val Ntransformation = Some(node)
+  val eTransformations = Nil
+  val rTransformations = Nil
+  val nTransformations = Some(node)
 }
 
 /** Base trait for error transformation objects */
 trait ErrorTrafo {
-  def Etransformations: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]]
+  def eTransformations: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]]
 
-  def Rtransformations: List[PartialFunction[ErrorReason, ErrorReason]]
+  def rTransformations: List[PartialFunction[ErrorReason, ErrorReason]]
 
-  def Ntransformation: Option[ErrorNode]
+  def nTransformations: Option[ErrorNode]
 
-  def ++(t: ErrorTrafo): Trafos = {
-    Trafos(Etransformations ++ t.Etransformations, Rtransformations ++ t.Rtransformations, if (t.Ntransformation.isDefined) t.Ntransformation else Ntransformation)
+  def +(t: ErrorTrafo): Trafos = {
+    Trafos(eTransformations ++ t.eTransformations, rTransformations ++ t.rTransformations, if (t.nTransformations.isDefined) t.nTransformations else nTransformations)
   }
 }
 

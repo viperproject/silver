@@ -209,14 +209,13 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
 
     // Efficiency: Only start if the first match matches
     val startStates = a.start.effective
-    val visitor = StrategyBuilder.Ancestor[N]({ case (n, c) => {
+    val visitor = StrategyBuilder.Ancestor[N]({ case (n, c) =>
       // Start recursion if any of the start states is valid for recursion
       startStates.foreach(s => {
         if (s.isValidInput(n))
           recurse(n, s, default.get(c.ancestorList.dropRight(1), this), Seq.empty[(N, CTXT)])
       })
       n
-    }
     })
 
     visitor.execute(node)
@@ -242,8 +241,9 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
     val resultNodeO = replaceInfo match {
       case None => None
       case Some(elem) =>
-        if (p.isDefinedAt(n, elem))
-          Some(p(n, elem))
+        val temp = p.applyOrElse((n, elem), (x:(N, CTXT)) => x._1)
+        if (temp eq n)
+          Some(temp)
         else
           None
     }
@@ -251,10 +251,10 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
 
     // Recurse into children
     recurseChildren(resultNode, replaceTopDown(_, matches, newAncList)) match {
-      case Some(children) => {
+      case Some(children) =>
         val res = resultNode.duplicate(children).asInstanceOf[N]
         Some(preserveMetaData(n, res))
-      }
+
       case None => resultNodeO
     }
 
