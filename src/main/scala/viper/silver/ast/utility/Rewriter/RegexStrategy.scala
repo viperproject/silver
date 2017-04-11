@@ -241,7 +241,7 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
     val resultNodeO = replaceInfo match {
       case None => None
       case Some(elem) =>
-        val temp = p.applyOrElse((n, elem), (x:(N, CTXT)) => x._1)
+        val temp = p.applyOrElse((n, elem), (els:(N, CTXT)) => els._1)
         if (temp eq n)
           Some(temp)
         else

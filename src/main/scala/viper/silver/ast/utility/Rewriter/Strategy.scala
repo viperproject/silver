@@ -448,7 +448,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     val children = node.getChildren
 
     // Get the indices of the sequence that we perform recursion on and check if it is well formed. Default case is all children
-    val childrenSelect: Seq[AnyRef] = recursionFunc.applyOrElse(node, (x: AnyRef) => node.getChildren)
+    val childrenSelect: Seq[AnyRef] = recursionFunc.applyOrElse(node, (ignore: AnyRef) => node.getChildren)
 
     def selected(ch: AnyRef) = childrenSelect.exists(_ eq ch)
 
@@ -734,7 +734,7 @@ class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transforme
 
   // Perform the custom update part of the update
   def updateCustom(n: N): ContextC[N, CUSTOM] = {
-    val cust = upContext.applyOrElse((n, c), (x:(N, CUSTOM)) => x._2)
+    val cust = upContext.applyOrElse((n, c), (els:(N, CUSTOM)) => els._2)
     new ContextC[N, CUSTOM](ancestorList, cust, transformer, upContext)
   }
 
@@ -907,7 +907,7 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
     val children = node.getChildren
 
     // Basically a reduced version of the children recursion from Strategy
-    val childrenSelect = recursionFunc.applyOrElse(node, (x:N) => x.getChildren)
+    val childrenSelect = recursionFunc.applyOrElse(node, (n:N) => n.getChildren)
 
     children.zip(childrenSelect) foreach {
       case (child, b) => if (childrenSelect.exists(_ eq child)) {
@@ -999,8 +999,8 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
   def execute(node: N): B = {
 
     // Get the query result for the current node
-    val qResult: B = getInfo.applyOrElse(node, (x:N) => {
-      assert(nElement.isDefined, "Node " + x + "does not define a result. Either define it in query or specify neutral element")
+    val qResult: B = getInfo.applyOrElse(node, (n:N) => {
+      assert(nElement.isDefined, "Node " + n + "does not define a result. Either define it in query or specify neutral element")
       nElement.get
     })
 
@@ -1008,7 +1008,7 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
     val children = node.getChildren
 
     // Get the indices of the sequence that we perform recursion on and check if it is well formed. Default case is all children
-    val childrenSelect = recursionFunc.applyOrElse(node, (x:N) => x.getChildren)
+    val childrenSelect = recursionFunc.applyOrElse(node, (n:N) => n.getChildren)
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     val seqResults: Seq[Option[B]] = children.zip(childrenSelect) collect {
@@ -1049,7 +1049,7 @@ private[utility] trait RuleT[N <: Rewritable, C <: Context[N]] {
   */
 private case class Rule[N <: Rewritable, C <: Context[N]](r: PartialFunction[(N, C), N]) extends RuleT[N, C] {
   override def execute(node: N, context: C): Option[N] = {
-    val res = r.applyOrElse((node, context), (x:(N, C)) => x._1)
+    val res = r.applyOrElse((node, context), (els:(N, C)) => els._1)
     if (node eq res) {
       None
     } else {
