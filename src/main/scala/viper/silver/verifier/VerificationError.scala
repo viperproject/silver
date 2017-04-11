@@ -469,7 +469,7 @@ object reasons {
     val id = "seq.index.negative"
     def readableMessage = s"Index $offendingNode into $seq might be negative."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) =
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
       SeqIndexNegative(seq, offendingNode.asInstanceOf[Exp])
   }
 
@@ -477,7 +477,7 @@ object reasons {
     val id = "seq.index.length"
     def readableMessage = s"Index $offendingNode into $seq might exceed sequence length."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) =
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
       SeqIndexExceedsLength(seq, offendingNode.asInstanceOf[Exp])
   }
 }
