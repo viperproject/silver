@@ -51,13 +51,13 @@ Some design choices:
   */
 trait Node extends Traversable[Node] with Rewritable {
 
-  /** @see [[Nodes.subnodes()]]*/
+  /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
 
-  /** @see [[Visitor.reduceTree()]]*/
+  /** @see [[Visitor.reduceTree()]] */
   def reduceTree[A](f: (Node, Seq[A]) => A) = Visitor.reduceTree(this, Nodes.subnodes)(f)
 
-  /** @see [[Visitor.reduceWithContext()]]*/
+  /** @see [[Visitor.reduceWithContext()]] */
   def reduceWithContext[C, R](context: C, enter: (Node, C) => C, combine: (Node, C, Seq[R]) => R) = {
     Visitor.reduceWithContext(this, Nodes.subnodes)(context, enter, combine)
   }
@@ -65,63 +65,63 @@ trait Node extends Traversable[Node] with Rewritable {
   /** Applies the function `f` to the AST node, then visits all subnodes. */
   def foreach[A](f: Node => A) = Visitor.visit(this, Nodes.subnodes) { case a: Node => f(a) }
 
-  /** @see [[Visitor.visit()]]*/
+  /** @see [[Visitor.visit()]] */
   def visit[A](f: PartialFunction[Node, A]) {
     Visitor.visit(this, Nodes.subnodes)(f)
   }
 
-  /** @see [[Visitor.visitWithContext()]]*/
+  /** @see [[Visitor.visitWithContext()]] */
   def visitWithContext[C](c: C)(f: C => PartialFunction[Node, C]) {
     Visitor.visitWithContext(this, Nodes.subnodes, c)(f)
   }
 
-  /** @see [[Visitor.visitWithContextManually()]]*/
+  /** @see [[Visitor.visitWithContextManually()]] */
   def visitWithContextManually[C, A](c: C)(f: C => PartialFunction[Node, A]) {
     Visitor.visitWithContextManually(this, Nodes.subnodes, c)(f)
   }
 
-  //** @see [[Visitorr.visit()]] */
+  /** @see [[Visitor.visit()]] */
   def visit[A](f1: PartialFunction[Node, A], f2: PartialFunction[Node, A]) {
     Visitor.visit(this, Nodes.subnodes, f1, f2)
   }
 
-  /** @see [[Visitor.visitOpt()]]*/
+  /** @see [[Visitor.visitOpt()]] */
   def visitOpt(f: Node => Boolean) {
     Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
-  /** @see [[Visitor.visitOpt()]]*/
+  /** @see [[Visitor.visitOpt()]] */
   def visitOpt[A](f1: Node => Boolean, f2: Node => A) {
     Visitor.visitOpt(this, Nodes.subnodes, f1, f2)
   }
 
-  /** @see [[Visitor.existsDefined()]]*/
+  /** @see [[Visitor.existsDefined()]] */
   def existsDefined[A](f: PartialFunction[Node, A]): Boolean = Visitor.existsDefined(this, Nodes.subnodes)(f)
 
-  /** @see [[Visitor.hasSubnode()]]*/
+  /** @see [[Visitor.hasSubnode()]] */
   def hasSubnode(toFind: Node): Boolean = Visitor.hasSubnode(this, toFind, Nodes.subnodes)
 
   override def toString() = FastPrettyPrinter.pretty(this)
 
-  /** @see [[viper.silver.ast.utility.ViperStrategy]]*/
+  /** @see [[viper.silver.ast.utility.ViperStrategy]] */
   def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty,
                 recurse: Traverse = Traverse.Innermost)
-               : this.type =
+  : this.type =
 
-    StrategyBuilder.Slim[Node](pre, recurse) execute[this.type](this)
+  StrategyBuilder.Slim[Node](pre, recurse) execute[this.type] (this)
 
   def replace(original: Node, replacement: Node): this.type =
     this.transform { case `original` => replacement }
 
-  def replace[N <: Node: ClassTag](replacements: Map[N, Node]): this.type =
+  def replace[N <: Node : ClassTag](replacements: Map[N, Node]): this.type =
     if (replacements.isEmpty) this
-    else this.transform{case t: N if replacements.contains(t) => replacements(t)}
+    else this.transform { case t: N if replacements.contains(t) => replacements(t) }
 
-  /** @see [[Visitor.deepCollect()]]*/
+  /** @see [[Visitor.deepCollect()]] */
   def deepCollect[A](f: PartialFunction[Node, A]): Seq[A] =
   Visitor.deepCollect(Seq(this), Nodes.subnodes)(f)
 
-  /** @see [[Visitor.shallowCollect()]]*/
+  /** @see [[Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[Node, R]): Seq[R] =
   Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
 
@@ -140,28 +140,37 @@ trait Node extends Traversable[Node] with Rewritable {
   def isValid: Boolean = true
 
   // Duplicate this node with new children
-  def duplicate(children: Seq[Any]): Node = {
+  def duplicate(children: Seq[AnyRef]): Node = {
     ViperStrategy.viperDuplicator(this, children, getPrettyMetadata)
   }
 
   // Duplicate this node with new metadata
-  def duplicateMeta(Nmeta: (Position, Info, ErrorTrafo)):Node = {
+  def duplicateMeta(newMeta: (Position, Info, ErrorTrafo)): Node = {
     val ch = getChildren
-    ViperStrategy.viperDuplicator(this, ch, Nmeta)
+    ViperStrategy.viperDuplicator(this, ch, newMeta)
   }
 
   // Get metadata with correct types
-  def getPrettyMetadata:(Position, Info, ErrorTrafo) = {
+  def getPrettyMetadata: (Position, Info, ErrorTrafo) = {
     val metadata = getMetadata
-    if(metadata.size != 3) println("Invalid number of metadata fields for Node:" + this)
-    val pos = metadata(0) match { case p:Position => p case _ => println("Invalid Info of Node: " + this); NoPosition }
-    val info = metadata(1) match { case i:Info => i case _ => println("Invalid Position of Node: " + this); NoInfo }
-    val errorT = metadata(2) match { case e:ErrorTrafo => e case _ => println("Invalid ErrorTrafo of Node: " + this); NoTrafos}
+    if (metadata.size != 3) println("Invalid number of metadata fields for Node:" + this)
+    val pos = metadata(0) match {
+      case p: Position => p
+      case _ => println("Invalid Info of Node: " + this); NoPosition
+    }
+    val info = metadata(1) match {
+      case i: Info => i
+      case _ => println("Invalid Position of Node: " + this); NoInfo
+    }
+    val errorT = metadata(2) match {
+      case e: ErrorTrafo => e
+      case _ => println("Invalid ErrorTrafo of Node: " + this); NoTrafos
+    }
     (pos, info, errorT)
   }
 
   // Default if no metadata present. Let subclasses override it if they specify position, info or Transformation
-  def getMetadata:Seq[Any] = {
+  def getMetadata: Seq[Any] = {
     Seq(NoPosition, NoInfo, NoTrafos)
   }
 
@@ -175,11 +184,11 @@ trait TransformableErrors {
 
   // Rewriting strategy to transform every node back that has a back transformation specified
   private lazy val nodeTrafoStrat = StrategyBuilder.Slim[Node]({
-      case n:TransformableErrors => {
-        val res = transformNode(n.asInstanceOf[ErrorNode])
-        res
-      }
-    }).repeat
+    case n: TransformableErrors => {
+      val res = transformNode(n.asInstanceOf[ErrorNode])
+      res
+    }
+  }).repeat // Repeat because if a back-transformed node can have a back-transformation again
 
   // Helper function for applying the transformations
   private def foldfunc[E](tr: PartialFunction[E, E], nd: E): E = {
@@ -192,69 +201,69 @@ trait TransformableErrors {
 
   /** Transform error `e` back according to the transformations in backwards chronological order */
   def transformError(e: AbstractVerificationError): AbstractVerificationError = {
-    val newError = errT.Etransformations.foldRight(e)(foldfunc)
+    val newError = errT.eTransformations.foldRight(e)(foldfunc)
     val transformedNode = nodeTrafoStrat.execute[ErrorNode](newError.offendingNode)
     newError.withNode(transformedNode).asInstanceOf[AbstractVerificationError]
   }
 
   /** Transform reason `e` back according to the transformations in backwards chronological order */
   def transformReason(e: ErrorReason): ErrorReason = {
-    val reason = errT.Rtransformations.foldRight(e)(foldfunc)
+    val reason = errT.rTransformations.foldRight(e)(foldfunc)
     val transformedNode = nodeTrafoStrat.execute(reason.offendingNode).asInstanceOf[ErrorNode]
     reason.withNode(transformedNode).asInstanceOf[ErrorReason]
   }
 
-  /** Transform node `n` back according to the transformations in backwards chronological order */
+  /** Transform node `n` back according to the specified node */
   def transformNode(n: ErrorNode): ErrorNode = {
-    n.errT.Ntransformations.foldRight(n)(foldfunc)
+    n.errT.nTransformations.getOrElse(n)
   }
 }
 
 /** In case no error transformation is specified */
 case object NoTrafos extends ErrorTrafo {
-  val Etransformations = Nil
-  val Rtransformations = Nil
-  val Ntransformations = Nil
+  val eTransformations = Nil
+  val rTransformations = Nil
+  val nTransformations = None
 }
 
 /** Class that allows generation of all transformations */
-case class Trafos(error: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]], reason: List[PartialFunction[ErrorReason, ErrorReason]], node: List[PartialFunction[ErrorNode, ErrorNode]]) extends ErrorTrafo {
-  val Etransformations = error
-  val Rtransformations = reason
-  val Ntransformations = node
+case class Trafos(error: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]], reason: List[PartialFunction[ErrorReason, ErrorReason]], node: Option[ErrorNode]) extends ErrorTrafo {
+  val eTransformations = error
+  val rTransformations = reason
+  val nTransformations = node
 }
 
 /** Create new error transformation */
-case class ErrTrafo(error:PartialFunction[AbstractVerificationError, AbstractVerificationError]) extends ErrorTrafo {
-  val Etransformations = List(error)
-  val Rtransformations = Nil
-  val Ntransformations = Nil
+case class ErrTrafo(error: PartialFunction[AbstractVerificationError, AbstractVerificationError]) extends ErrorTrafo {
+  val eTransformations = List(error)
+  val rTransformations = Nil
+  val nTransformations = None
 }
 
 /** Create new reason transformation */
-case class ReTrafo(reason:PartialFunction[ErrorReason, ErrorReason]) extends ErrorTrafo {
-  val Etransformations = Nil
-  val Rtransformations = List(reason)
-  val Ntransformations = Nil
+case class ReTrafo(reason: PartialFunction[ErrorReason, ErrorReason]) extends ErrorTrafo {
+  val eTransformations = Nil
+  val rTransformations = List(reason)
+  val nTransformations = None
 }
 
 /** Create new node transformation */
-case class NodeTrafo(node:PartialFunction[ErrorNode, ErrorNode]) extends ErrorTrafo {
-  val Etransformations = Nil
-  val Rtransformations = Nil
-  val Ntransformations = List(node)
+case class NodeTrafo(node: ErrorNode) extends ErrorTrafo {
+  val eTransformations = Nil
+  val rTransformations = Nil
+  val nTransformations = Some(node)
 }
 
 /** Base trait for error transformation objects */
 trait ErrorTrafo {
-  def Etransformations: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]]
+  def eTransformations: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]]
 
-  def Rtransformations: List[PartialFunction[ErrorReason, ErrorReason]]
+  def rTransformations: List[PartialFunction[ErrorReason, ErrorReason]]
 
-  def Ntransformations: List[PartialFunction[ErrorNode, ErrorNode]]
+  def nTransformations: Option[ErrorNode]
 
-  def ++(t: ErrorTrafo): Trafos = {
-    Trafos(Etransformations ++ t.Etransformations, Rtransformations ++ t.Rtransformations, Ntransformations ++ t.Ntransformations)
+  def +(t: ErrorTrafo): Trafos = {
+    Trafos(eTransformations ++ t.eTransformations, rTransformations ++ t.rTransformations, if (t.nTransformations.isDefined) t.nTransformations else nTransformations)
   }
 }
 

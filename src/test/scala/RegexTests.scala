@@ -273,7 +273,7 @@ class RegexTests extends FunSuite {
     val collect = ViperStrategy.Slim({
       case p: Program => map.clear(); p // Reset map at start
       case ass@LocalVarAssign(l: LocalVar, i: IntLit) => map += (l -> i.i); ass
-    }) recurseFunc { case l: LocalVarAssign => Seq(false, true) }
+    }) recurseFunc { case l: LocalVarAssign => Seq(l.rhs) }
 
     val replace = ViperStrategy.Slim({
       case l: LocalVar =>

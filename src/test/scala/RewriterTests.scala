@@ -22,20 +22,6 @@ import scala.language.implicitConversions
 
 class RewriterTests extends FunSuite {
 
-
-  test("asdf") {
-    val dec = LocalVarDecl("name", Bool)()
-    val dec1 = LocalVarDecl("name", Int)()
-
-    val f1 = DomainFunc("ID", Seq(dec), Bool)(NoPosition, NoInfo, "asdf")
-    val f2 = DomainFunc("ID", Seq(), Int)(NoPosition, NoInfo, "asdf")
-
-    val b = f1 == f2
-    val b2 = dec == dec1
-
-    assert(true)
-  }
-
   test("Performance_BinomialHeap") {
     val fileName = "transformations\\Performance\\BinomialHeap"
 
@@ -60,7 +46,6 @@ class RewriterTests extends FunSuite {
 
     assert(true)
   }
-
 
   test("Sharing") {
     val shared = FalseLit()()
@@ -387,6 +372,31 @@ class RewriterTests extends FunSuite {
     files foreach { name => executeTest(filePrefix, name, combined, frontend) }
   }
 
+  test("IfThenElseTest") {
+    val filePrefix = "transformations\\IfThenElseTest\\"
+    val files = Seq("complex")
+
+    // Create new strategy. Replace even integers with variable x and odd integers with variable y
+    val strat = ViperStrategy.Slim({
+      case i:IntLit if i.i % 2 == 0 => IntLit(i.i)()
+    }) traverse Traverse.BottomUp recurseFunc({
+      case l:LocalVarAssign => Seq() // Don't modify anything during assignments
+    })
+
+    val strat2 = ViperStrategy.Slim({
+      case i:IntLit => LocalVar("x")(i.typ)
+    })
+
+    val strat3 = ViperStrategy.Slim({
+      case i:IntLit => LocalVar("y")(i.typ)
+    })
+
+    val combined = strat ? strat2 | strat3
+
+    val frontend = new DummyFrontend
+    files foreach { name => executeTest(filePrefix, name, combined, frontend) }
+  }
+
   test("CopyPropagation") {
     val filePrefix = "transformations\\CopyPropagation\\"
     val files = Seq("simple", "complex")
@@ -397,7 +407,7 @@ class RewriterTests extends FunSuite {
     val collect = ViperStrategy.Slim({
       case p: Program => map.clear(); p // Reset map at start
       case ass@LocalVarAssign(l: LocalVar, i: IntLit) => map += (l -> i.i); ass
-    }) recurseFunc { case l: LocalVarAssign => Seq(false, true) }
+    }) recurseFunc { case l: LocalVarAssign => Seq(l.rhs) }
 
     val replace = ViperStrategy.Slim({
       case l: LocalVar =>

@@ -34,7 +34,7 @@ class ParseTreeTests extends FunSuite {
         frontend.translate(file) match {
           case (Some(p), _) => println("Everything ok, but we expected cyclic error!"); assert(false)
           case (None, errors) => errors.foreach(e => {
-            println("Error: " + e);
+            println("Error: " + e)
             assert(e.readableMessage.contains("Recursive macro declaration found"))
           })
         }
