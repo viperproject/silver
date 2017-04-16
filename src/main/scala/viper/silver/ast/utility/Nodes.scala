@@ -12,8 +12,9 @@
 
 package viper.silver.ast.utility
 
-import scala.collection.mutable
 import viper.silver.ast._
+
+import scala.collection.mutable
 
 /** Utility methods for AST nodes. */
 object Nodes {
@@ -58,7 +59,7 @@ object Nodes {
           case FieldAssign(lhs, rhs) => Seq(lhs, rhs)
           case Fold(e) => Seq(e)
           case Unfold(e) => Seq(e)
-          case Package(e) => Seq(e)
+          case Package(e, proofScript) => Seq(e, proofScript)
           case Apply(e) => Seq(e)
           case Inhale(e) => Seq(e)
           case Exhale(e) => Seq(e)
@@ -85,8 +86,6 @@ object Nodes {
           case Unfolding(acc, body) => Seq(acc, body)
           case UnfoldingGhostOp(acc, body) => Seq(acc, body)
           case FoldingGhostOp(acc, body) => Seq(acc, body)
-          case ApplyingGhostOp(wand, in) => Seq(wand, in)
-          case PackagingGhostOp(wand, in) => Seq(wand, in)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
           case Let(v, exp, body) => Seq(v, exp, body)

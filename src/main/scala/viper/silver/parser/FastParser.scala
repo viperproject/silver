@@ -1,14 +1,15 @@
 package viper.silver.parser
 
 import java.nio.file.{Files, Path}
+
+import viper.silver.FastPositions
+import viper.silver.ast.SourcePosition
+import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
+
 import scala.collection.immutable.Iterable
 import scala.collection.mutable
-import scala.language.implicitConversions
-import scala.language.reflectiveCalls
+import scala.language.{implicitConversions, reflectiveCalls}
 import scala.util.parsing.input.NoPosition
-import viper.silver.ast.SourcePosition
-import viper.silver.FastPositions
-import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
 
 
 
@@ -61,9 +62,8 @@ object FastParser extends PosParser{
     NoTrace((("/*" ~ (AnyChar ~ !StringIn("*/")).rep ~ AnyChar ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
 
-  import fastparse.noApi._
-
   import White._
+  import fastparse.noApi._
 
 
   // Actual Parser starts from here
@@ -250,7 +250,7 @@ object FastParser extends PosParser{
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
     // prover hint expressions
-    "unfolding", "in", "folding", "applying", "packaging",
+    "unfolding", "in", "folding",
     // old expression
     "old", "lhs",
     // other expressions
@@ -265,8 +265,8 @@ object FastParser extends PosParser{
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old | applyOld
     | result | unExp
-    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding | applying
-    | packaging | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
+    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding
+    | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
     | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
 
 
@@ -292,7 +292,7 @@ object FastParser extends PosParser{
 
   lazy val applyOld: P[PExp] = P((StringIn("lhs") ~ parens(exp)).map(PApplyOld))
 
-  lazy val magicWandExp: P[PExp] = P(orExp ~ ("--*".! ~   exp ).?).map{ case(a, b) => b match {
+  lazy val magicWandExp: P[PExp] = P(orExp ~ ("--*".! ~ exp).?).map{ case(a, b) => b match {
       case Some(c) => PBinExp(a, c._1,c._2 )
       case None => a
     }
@@ -456,24 +456,6 @@ object FastParser extends PosParser{
 
   lazy val folding: P[PExp] = P(keyword("folding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PFoldingGhostOp(a, b) }
 
-  lazy val applying: P[PExp] =
-    /**
-     * We must be careful here to not create ambiguities in our grammar.
-     * when 'magicWandExp' is used instead of the more specific
-     * 'realMagicWandExp | idnuse', then the following problem can occur:
-     * Consider an expression such as "applying w in A". The parser
-     * will interpret "w in A" as a set-contains expression, which is
-     * fine according to our rules.
-     * The outer applying-rule will fail.
-     * Possible solution is that we should backtrack enough
-     * to reparse "w in A", but this time as desired, not as a
-     * set-contains expression.
-     */
-    P("applying" ~ ("(" ~ realMagicWandExp ~ ")" | idnuse) ~ ("in" ~ exp)).map { case (a, b) => PApplyingGhostOp(a, b) }
-
-  lazy val packaging: P[PExp] = /* See comment on applying */
-    P("packaging" ~ ("(" ~ realMagicWandExp ~ ")" | idnuse) ~ "in" ~ exp).map { case (a, b) => PPackagingGhostOp(a, b) }
-
   lazy val setTypedEmpty: P[PExp] = collectionTypedEmpty("Set", PEmptySet)
 
   lazy val explicitSetNonEmpty: P[PExp] = P("Set"  ~ "(" ~/ exp.rep(sep = ",", min = 1) ~ ")").map(PExplicitSet)
@@ -500,8 +482,6 @@ object FastParser extends PosParser{
   lazy val typedFapp: P[PExp] = P(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map {
     case (func, args, typeGiven) => PCall(func, args, Some(typeGiven))
   }
-
-
 
   lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | letwandDecl | newstmt | fresh | constrainingBlock |
@@ -579,7 +559,17 @@ object FastParser extends PosParser{
 
   lazy val lbl: P[PLabel] = P(keyword("label") ~/ idndef ~ (keyword("invariant") ~/ exp).rep ).map{ case (name, invs) => PLabel(name, invs)}
 
-  lazy val packageWand: P[PPackageWand] = P("package" ~/ magicWandExp).map(PPackageWand)
+  lazy val magicWandProofStatement: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
+    inhale | assume | ifthnels | varDecl | defineDecl | letwandDecl | newstmt | methodCall | goto | lbl | packageWand | applyWand| macroref)
+
+  lazy val magicWandProofStatements: P[Seq[PStmt]] = P(magicWandProofStatement ~/ ";".?).rep
+
+  lazy val magicWandProofScript: P[Seq[PStmt]] = P("{" ~ magicWandProofStatements ~ "}")
+
+  lazy val packageWand: P[PPackageWand] = P("package" ~/ magicWandExp ~ magicWandProofScript.?).map {
+    case (wand, Some(proofScript)) => PPackageWand(wand, PSeqn(proofScript))
+    case (wand, None) => PPackageWand(wand, PSeqn(Seq()))
+  }
 
   lazy val applyWand: P[PApplyWand] = P("apply" ~/ magicWandExp).map(PApplyWand)
 

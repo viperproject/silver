@@ -53,7 +53,9 @@ method tree_delete_min(x: Ref) returns (z: Ref)
 
     assert vals(x.l) == Seq[Int]() /* TODO: Required by Silicon for POST2 */
   } else {
-    package A --* folding acc(Tree(p)) in B
+    package A --* B {
+        fold acc(Tree(p))
+    }
 
     while (unfolding acc(Tree(p.l)) in p.l.l != null)
       invariant p != null && acc(p.l) && acc(Tree(p.l)) && p.l != null
@@ -66,7 +68,10 @@ method tree_delete_min(x: Ref) returns (z: Ref)
       p := p.l
       plvs := vals(p.l)
 
-      package A --* folding Tree(p) in applying w in B
+      package A --* B {
+        fold Tree(p)
+        apply w
+      }
     }
 
     unfold acc(Tree(p.l))

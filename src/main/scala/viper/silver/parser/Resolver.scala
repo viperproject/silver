@@ -6,11 +6,12 @@
 
 package viper.silver.parser
 
-import scala.collection.mutable
-import scala.reflect._
+import viper.silver.FastMessaging
 import viper.silver.ast.MagicWandOp
 import viper.silver.ast.utility.Visitor
-import viper.silver.FastMessaging
+
+import scala.collection.mutable
+import scala.reflect._
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.
@@ -160,9 +161,10 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnfold(e) =>
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be unfolded")
         check(e, Bool)
-      case PPackageWand(e) =>
+      case PPackageWand(e, proofScript) =>
         check(e,Wand)
         checkMagicWand(e, allowWandRefs = false)
+        check(proofScript)
       case PApplyWand(e) =>
         check(e,Wand)
         checkMagicWand(e, allowWandRefs = true)
@@ -618,13 +620,6 @@ case class TypeChecker(names: NameAnalyser) {
                 else
                   ppa.predicate = predicate
               }
-
-            case PPackagingGhostOp(wand, in) =>
-              checkMagicWand(wand, allowWandRefs = false)
-
-            case PApplyingGhostOp(wand, in) =>
-              checkMagicWand(wand, allowWandRefs = true)
-
             case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidAndResolved =>
               check(pecl.pElementType)
 

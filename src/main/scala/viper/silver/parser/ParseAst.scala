@@ -6,14 +6,15 @@
 
 package viper.silver.parser
 
+import viper.silver.FastPositions
+import viper.silver.ast.MagicWandOp
+import viper.silver.ast.utility.Visitor
+import viper.silver.parser.TypeHelper._
+import viper.silver.verifier.ParseReport
+
 import scala.collection.GenTraversable
 import scala.language.implicitConversions
 import scala.util.parsing.input.Position
-import viper.silver.ast.utility.Visitor
-import viper.silver.ast.MagicWandOp
-import viper.silver.FastPositions
-import viper.silver.parser.TypeHelper._
-import viper.silver.verifier.{ParseReport}
 
 
 trait FastPositioned {
@@ -687,20 +688,6 @@ case class PFoldingGhostOp(acc: PAccPred, exp: PExp) extends PUnFoldingExp {
   override final val opName = "folding"
 }
 
-case class PApplyingGhostOp(wand: PExp, exp: PExp) extends PHeapOpApp {
-  override final val opName = "applying"
-  override final val args = Seq(wand,exp)
-  val signatures : Set[PTypeSubstitution] = Set(
-    Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1))
-  )
-}
-case class PPackagingGhostOp(wand: PExp, exp: PExp) extends PHeapOpApp{
-  override final val opName = "packaging"
-  override final val args = Seq(wand,exp)
-  val signatures : Set[PTypeSubstitution]  = Set(
-    Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1))
-  )
-}
 
 sealed trait PBinder extends PExp{
   def body:PExp
@@ -914,7 +901,7 @@ sealed trait PStmt extends PNode {
 case class PSeqn(ss: Seq[PStmt]) extends PStmt
 case class PFold(e: PExp) extends PStmt
 case class PUnfold(e: PExp) extends PStmt
-case class PPackageWand(wand: PExp) extends PStmt
+case class PPackageWand(wand: PExp, proofScript: PSeqn) extends PStmt
 case class PApplyWand(e: PExp) extends PStmt
 case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt
@@ -1039,8 +1026,6 @@ object Nodes {
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
       case PCall(func, args, optType) => Seq(func) ++ args ++ (optType match { case Some(t) => Seq(t) case None => Nil})
       case e: PUnFoldingExp => Seq(e.acc, e.exp)
-      case PApplyingGhostOp(wand, in) => Seq(wand, in)
-      case PPackagingGhostOp(wand, in) => Seq(wand, in)
       case PExists(vars, exp) => vars ++ Seq(exp)
       case PLabelledOld(id, e) => Seq(id, e)
       case po: POldExp => Seq(po.e)
@@ -1073,7 +1058,7 @@ object Nodes {
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)
-      case PPackageWand(exp) => Seq(exp)
+      case PPackageWand(exp, proofScript) => Seq(exp, proofScript)
       case PApplyWand(exp) => Seq(exp)
       case PExhale(exp) => Seq(exp)
       case PAssert(exp) => Seq(exp)

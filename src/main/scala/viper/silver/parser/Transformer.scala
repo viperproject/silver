@@ -6,8 +6,6 @@
 
 package viper.silver.parser
 
-import viper.silver.FastPositions
-
 /* TODO: This is basically a copy of silver.ast.utility.Transformer. Can we share code?
  *       This could be done by using tree visiting and rewriting functionality from Kiama,
   *      or to implement something generic ourselves. Shapeless or Scala Macros might be
@@ -62,8 +60,6 @@ object Transformer {
 
         case PUnfoldingGhostOp(acc, exp) => PUnfoldingGhostOp(go(acc), go(exp))
         case PFoldingGhostOp(acc, exp) => PFoldingGhostOp(go(acc), go(exp))
-        case PApplyingGhostOp(wand, exp) => PApplyingGhostOp(go(wand), go(exp))
-        case PPackagingGhostOp(wand, exp) => PPackagingGhostOp(go(wand), go(exp))
 
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map (_ map go), go(exp))
@@ -97,7 +93,7 @@ object Transformer {
         case PSeqn(ss) => PSeqn(ss map go)
         case PFold(e) => PFold(go(e))
         case PUnfold(e) => PUnfold(go(e))
-        case PPackageWand(e) => PPackageWand(go(e))
+        case PPackageWand(e, proofScript) => PPackageWand(go(e), go(proofScript))
         case PApplyWand(e) => PApplyWand(go(e))
         case PExhale(e) => PExhale(go(e))
         case PAssert(e) => PAssert(go(e))

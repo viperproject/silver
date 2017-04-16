@@ -67,8 +67,6 @@ object Transformer {
 
             case UnfoldingGhostOp(acc, e) => UnfoldingGhostOp(go(acc), go(e))(p, i)
             case FoldingGhostOp(acc, e) => FoldingGhostOp(go(acc), go(e))(p, i)
-            case ApplyingGhostOp(wand, in) => ApplyingGhostOp(go(wand), go(in))(p, i)
-            case PackagingGhostOp(wand, in) => PackagingGhostOp(go(wand), go(in))(p, i)
 
             case Old(e) => Old(go(e))(p, i)
             case LabelledOld(e,lbl) => LabelledOld(go(e),lbl)(p,i)
@@ -271,8 +269,8 @@ object Transformer {
             case Unfold(predicate) =>
               Unfold(go(predicate))(statement.pos, statement.info)
 
-            case Package(wand) =>
-              Package(go(wand))(statement.pos, statement.info)
+            case Package(wand, proofScript) =>
+              Package(go(wand), go(proofScript))(statement.pos, statement.info)
 
             case Apply(wand) =>
               Apply(go(wand))(statement.pos, statement.info)

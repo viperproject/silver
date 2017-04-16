@@ -84,7 +84,10 @@ method insert(xs: Ref, x:Int) returns (i: Int)
     nxt := nxt.next
     i := i + 1
 
-   package A --* folding List(prev) in applying w in B
+   package A --* B {
+    fold List(prev)
+    apply w
+   }
   }
 
 	/* Create a new node with value x and append the list tail starting at nxt to it. */

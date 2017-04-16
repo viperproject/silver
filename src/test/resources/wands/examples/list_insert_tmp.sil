@@ -82,7 +82,10 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     i := i + 1
 
     //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/190/)
-    package A --* folding List(prev) in applying w in B
+    package A --* B {
+        fold List(prev)
+        apply w
+    }
   }
 
   assert

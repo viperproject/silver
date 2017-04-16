@@ -81,7 +81,10 @@ method sum_it(ys: Ref) returns (sum: Int)
      */
     old_sum_xs := (xs == null ? 0 : sum_rec(xs))
 
-    package A --* folding List(zs) in applying w in B
+    package A --* B {
+        fold List(zs)
+        apply w
+    }
   }
 
   /* Use the promise to get back the unchanged list starting at ys.

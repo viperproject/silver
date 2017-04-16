@@ -6,9 +6,10 @@
 
 package viper.silver.ast.utility
 
-import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast._
 import viper.silver.{FastMessage, FastMessaging}
+
+import scala.util.parsing.input.{NoPosition, Position}
 
 /** An utility object for consistency checking. */
 object Consistency {
@@ -65,7 +66,7 @@ object Consistency {
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
     // prover hint expressions
-    "unfolding", "in", "folding", "applying", "packaging",
+    "unfolding", "in", "folding",
     // old expression
     "old", "lhs",
     // other expressions
@@ -288,17 +289,18 @@ object Consistency {
       c.copy(insidePackageStmt = true)
 
     case ghop: GhostOperation =>
-      recordIfNot(ghop, c.insideWandStatus.isInside, "Ghost operations may only be used when packaging magic wands.")
+      //TODO: cleanup
+      recordIfNot(ghop, c.insideWandStatus.isInside || c.insidePackageStmt, "Ghost operations may not be used inside magic wands.")
 
-      c.copy(insidePackageStmt = c.insidePackageStmt || ghop.isInstanceOf[PackagingGhostOp])
+      c.copy(insidePackageStmt = c.insidePackageStmt)
 
     case mw @ MagicWand(lhs, rhs) =>
       checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
 
       recordIfNot(lhs, noGhostOperations(lhs), "Ghost operations may not occur on the left of wands.")
 
-      if (!c.insidePackageStmt)
-        recordIfNot(rhs, noGhostOperations(rhs), "Ghost operations may only occur inside wands when these are packaged.")
+      //TODO: cleanup
+      recordIfNot(rhs, noGhostOperations(rhs), "Ghost operations may not occur inside wands.")
 
       checkIfValidChainOfGhostOperations(rhs, mw)
 

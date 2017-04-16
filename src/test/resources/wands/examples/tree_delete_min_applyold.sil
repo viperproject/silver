@@ -43,7 +43,7 @@ method tree_delete_min(x: Ref) returns (z: Ref)
 {
   var p: Ref := x
 
-  define A acc(p.l) && acc(Tree(p.l)) && vals(p.l) == now(vals(p.l))[1..] // && acc(p.v) && p.v == now(p.v) && (p.l != null ==> val(p.l) <= p.v)
+  define A acc(p.l) && acc(Tree(p.l)) && vals(p.l) == vals(p.l)[1..] // && acc(p.v) && p.v == now(p.v) && (p.l != null ==> val(p.l) <= p.v)
   define B acc(Tree(x)) && vals(x) == old(vals(x))[1..]
 
   unfold acc(Tree(p))
@@ -54,7 +54,9 @@ method tree_delete_min(x: Ref) returns (z: Ref)
 
     z := p.r
   } else {
-    package A --* folding acc(Tree(p)) in B
+    package A --* B {
+        fold acc(Tree(p))
+    }
 
     while (unfolding acc(Tree(p.l)) in p.l.l != null)
       invariant p != null && acc(p.l) && acc(Tree(p.l)) && p.l != null
@@ -65,7 +67,10 @@ method tree_delete_min(x: Ref) returns (z: Ref)
       unfold acc(Tree(p.l))
       p := p.l
 
-      package A --* folding Tree(p) in applying w in B
+      package A --* B {
+        fold Tree(p)
+        apply w
+      }
     }
 
     assert vals(p.l) == unfolding acc(Tree(p.l)) in vals(p.l.l) ++ Seq(p.l.v) ++ vals(p.l.r)

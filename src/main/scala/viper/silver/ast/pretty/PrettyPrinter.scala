@@ -1,11 +1,11 @@
 package viper.silver.ast.pretty
 
-import scala.language.implicitConversions
-import scala.collection.immutable.Queue
-import scala.collection.immutable.Queue.{empty => emptyDq}
 import viper.silver.ast._
 
 import scala.annotation.tailrec
+import scala.collection.immutable.Queue
+import scala.collection.immutable.Queue.{empty => emptyDq}
+import scala.language.implicitConversions
 
 
 /**
@@ -629,7 +629,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case FieldAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case Fold(e) => text("fold") <+> show(e)
       case Unfold(e) => text("unfold") <+> show(e)
-      case Package(e) => text("package") <+> show(e)
+      case Package(e, proofScript) => text("package") <+> show(e) <+> showBlock(proofScript)
       case Apply(e) => text("apply") <+> show(e)
       case Inhale(e) => text("inhale") <+> show(e)
       case Exhale(e) => text("exhale") <+> show(e)
@@ -707,10 +707,6 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       parens(text("unfolding") <+> show(acc) <+> "in" <+> show(exp))
     case FoldingGhostOp(acc, exp) =>
       parens(text("folding") <+> show(acc) <+> "in" <+> show(exp))
-    case PackagingGhostOp(wand, in) =>
-      parens(text("packaging") <+> show(wand) <+> "in" <+> show(in))
-    case ApplyingGhostOp(wand, in) =>
-      parens(text("applying") <+> show(wand) <+> "in" <+> show(in))
     case Old(exp) =>
       text("old") <> parens(show(exp))
     case LabelledOld(exp,label) =>

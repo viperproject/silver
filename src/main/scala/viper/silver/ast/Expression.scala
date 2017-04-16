@@ -5,7 +5,7 @@
  */
 
 package viper.silver.ast
-import viper.silver.ast.pretty.{PrettyExpression, PrettyBinaryExpression, PrettyOperatorExpression, PrettyUnaryExpression, Infix, LeftAssociative, RightAssociative, NonAssociative}
+import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 
 /** Expressions. */
@@ -81,30 +81,6 @@ case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
     extends DomainBinExp(MagicWandOp) {
 
-  /** Erases all ghost operations such as unfolding from this wand.
-    * For example (let A, B and C be free of ghost operations, let P be a predicates,
-    * and let W be a wand):
-    *
-    *     A && unfolding P in B && applying W in C
-    *
-    * will be transformed into
-    *
-    *     A && B && C
-    *
-    * @return The ghost-operations-free version of this wand.
-    */
-  lazy val withoutGhostOperations: MagicWand = {
-    /* We use the post-transformer instead of the pre-transformer in order to
-     * perform bottom-up transformation.
-     * An alternative would be a pre-transformer and passing a 'recursive'
-     * predicate to transform that makes transform recurse if the pre-transformer
-     * is defined.
-     */
-    this.transform()(post = {
-      case gop: GhostOperation => gop.body
-      case let: Let => let.body
-    })
-  }
 
   // maybe rename this sometime
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
@@ -378,13 +354,6 @@ sealed trait GhostOperation extends Exp {
 case class UnfoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
 case class FoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
 
-case class ApplyingGhostOp(exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
-  require(exp isSubtype Wand, s"Expected wand but found ${exp.typ} ($exp)")
-}
-
-case class PackagingGhostOp(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation {
-  require(wand isSubtype Wand, s"Expected wand but found ${wand.typ} ($wand)")
-}
 
 // --- Old expressions
 
