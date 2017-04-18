@@ -149,6 +149,7 @@ trait Info {
         case Some(t) => Some(t) // assumes we don't have more than one Info entry of the desired type (somewhere nested in the ConsInfo structure)
         case None => tl.getUniqueInfo[T]
       }
+      case _ => None
     }
   }
 }
