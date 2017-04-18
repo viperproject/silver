@@ -123,6 +123,8 @@ method Ref__loop_body_54(diz: Ref, current_thread_id: Int, len: Int, ar: Seq[Ref
   if (i > 0) {
     Ref__recv_body_148(diz, current_thread_id, ar, i)
     __flatten_9 := cr[i]
+    //:: ExpectedOutput(assignment.failed:seq.index.length)
+    //:: MissingOutput(assignment.failed:seq.index.length, /silicon/issue/283/)
     __flatten_11 := ar[i + 1]
         // confirmed by Stefan Blom
     //:: ExpectedOutput(assignment.failed:insufficient.permission)

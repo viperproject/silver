@@ -90,11 +90,15 @@ method test04(xs: Seq[Ref]) {
 function fun05(x: Ref, xs: Seq[Ref]): Int
   requires acc(x.g)
   requires 2 <= |xs|
+  //:: ExpectedOutput(not.wellformed:seq.index.length)
+  //:: MissingOutput(not.wellformed:insufficient.permission, /silicon/issue/283/)
   requires forall k: Int :: 0 <= k && k < 3 ==> acc(xs[k].f)
 
 method test05(x: Ref, xs: Seq[Ref]) {
   inhale acc(x.g)
   inhale 2 <= |xs|
+  //:: ExpectedOutput(inhale.failed:seq.index.length)
+  //:: MissingOutput(inhale.failed:seq.index.length, /silicon/issue/283/)
   inhale forall k: Int :: 0 <= k && k < 3 ==> acc(xs[k].f)
 
   inhale 10 == fun05(x, xs)

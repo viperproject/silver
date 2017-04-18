@@ -78,6 +78,8 @@ method Ref__loop_body_33(diz: Ref, current_thread_id: Int, matrix: Seq[Ref], j: 
   requires current_thread_id >= 0
   requires (0 <= i) && (i < M) && ((0 <= j) && (j < N))
   requires Ref__multidim_index_2(M, N, i, j) <= |matrix|
+  //:: ExpectedOutput(not.wellformed:seq.index.length)
+  //:: MissingOutput(not.wellformed:seq.index.length, /silicon/issue/283/)  
   requires acc(matrix[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value, write)
   ensures (0 <= i) && (i < M) && ((0 <= j) && (j < N))
   ensures acc(matrix[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value, write)
