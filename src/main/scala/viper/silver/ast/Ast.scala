@@ -142,7 +142,7 @@ trait Node extends Traversable[Node] {
 trait Info {
   // A list of comments.
   def comment: Seq[String]
-  def getUniqueInfo[T <: Info] : Option[T] = {
+  def getUniqueInfo[T <: Info:ClassTag] : Option[T] = {
     this match {
       case t:T => Some(t)
       case ConsInfo(hd,tl) => hd.getUniqueInfo[T] match {
