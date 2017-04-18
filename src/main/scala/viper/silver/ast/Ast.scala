@@ -142,13 +142,14 @@ trait Node extends Traversable[Node] {
 trait Info {
   // A list of comments.
   def comment: Seq[String]
-  def getUniqueInfo[T <: Info] : Option[T] = {
+  def getUniqueInfo[T <: Info:ClassTag] : Option[T] = {
     this match {
       case t:T => Some(t)
       case ConsInfo(hd,tl) => hd.getUniqueInfo[T] match {
         case Some(t) => Some(t) // assumes we don't have more than one Info entry of the desired type (somewhere nested in the ConsInfo structure)
         case None => tl.getUniqueInfo[T]
       }
+      case _ => None
     }
   }
 }
