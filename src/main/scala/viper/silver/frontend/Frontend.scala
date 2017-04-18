@@ -7,6 +7,11 @@
 package viper.silver.frontend
 
 import java.nio.file.{Files, Path}
+
+import org.slf4j.LoggerFactory
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+
 import scala.io.Source
 import viper.silver.ast.Program
 import viper.silver.verifier.{AbstractError, Failure, VerificationResult, Verifier}
@@ -54,11 +59,11 @@ trait Frontend {
    */
   def result: VerificationResult
 
-  val logger = org.apache.log4j.Logger.getLogger(this.getClass.getName)
-  logger.setLevel(org.apache.log4j.Level.INFO)
+  val logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
+  logger.setLevel(Level.INFO)
 
-  val loggerForIde = org.apache.log4j.Logger.getLogger(this.getClass.getName+"_IDE")
-  loggerForIde.setLevel(org.apache.log4j.Level.INFO)
+  val loggerForIde = LoggerFactory.getLogger(getClass.getName+"_IDE").asInstanceOf[Logger]
+  loggerForIde.setLevel(Level.INFO)
 }
 
 trait SinglePhase extends Frontend {
