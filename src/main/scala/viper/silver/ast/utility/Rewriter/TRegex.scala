@@ -270,12 +270,12 @@ class Questionmark(m: Match) extends Match {
 /**
   * Helps in building a complete Regular expression strategy by allowing it to be filled incrementally with: 1. Regular expression 2. Rewriting function
   * @param accumulator Describes how we put the contexts together into one object
-  * @param comparator Imposes an ordering on the contexts => in case a node matches in two ways on two different contexts the bigger one is taken (true = first param, false = second param)
+  * @param combinator Imposes an ordering on the contexts => in case a node matches in two ways on two different contexts the bigger one is taken (true = first param, false = second param)
   * @param default The default context we start with
   * @tparam N Type of the AST
   * @tparam COLL Type of the context
   */
-class TreeRegexBuilder[N <: Rewritable, COLL](val accumulator: (COLL, COLL) => COLL, val comparator: (COLL, COLL) => Boolean, val default: COLL) {
+class TreeRegexBuilder[N <: Rewritable, COLL](val accumulator: (COLL, COLL) => COLL, val combinator: (COLL, COLL) => COLL, val default: COLL) {
 
   /**
     * Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
@@ -299,7 +299,7 @@ class TreeRegexBuilderWithMatch[N <: Rewritable, COLL](tbuilder: TreeRegexBuilde
     * @param p partial function used for rewriting
     * @return complete RegexStrategy
     */
-  def |->(p: PartialFunction[(N, RegexContext[N, COLL]), N]) = new RegexStrategy[N, COLL](regex.createAutomaton(), p, new PartialContextR(tbuilder.default, tbuilder.accumulator, tbuilder.comparator))
+  def |->(p: PartialFunction[(N, RegexContext[N, COLL]), N]) = new RegexStrategy[N, COLL](regex.createAutomaton(), p, new PartialContextR(tbuilder.default, tbuilder.accumulator, tbuilder.combinator))
 }
 
 /**
@@ -339,13 +339,13 @@ object TreeRegexBuilder {
   /**
     * Constructs a TreeRegexBuilder
     * @param accumulator Describes how we put the contexts together into one object
-    * @param comparator Imposes an ordering on the contexts => in case a node matches in two ways on two different contexts the bigger one is taken (true = first param, false = second param)
+    * @param combinator Imposes an ordering on the contexts => in case a node matches in two ways on two different contexts merge it together
     * @param default The default context we start with
     * @tparam N Type of the AST
     * @tparam COLL Type of the context
     * @return
     */
-  def context[N <: Rewritable, COLL](accumulator: (COLL, COLL) => COLL, comparator: (COLL, COLL) => Boolean, default: COLL) = new TreeRegexBuilder[N, COLL](accumulator, comparator, default)
+  def context[N <: Rewritable, COLL](accumulator: (COLL, COLL) => COLL, combinator: (COLL, COLL) => COLL, default: COLL) = new TreeRegexBuilder[N, COLL](accumulator, combinator, default)
 
   /**
     * Don't care about the custom context but want ancestor/sibling information

@@ -25,17 +25,16 @@ class RegexTests extends FunSuite {
     val shared = FalseLit()()
     val sharedAST = And(Not(shared)(), shared)()
 
-    val t = TreeRegexBuilder.context[Node, Int](_ + _, _ > _, 0)
+    val t = TreeRegexBuilder.context[Node, Int](_ + _, math.max , 0)
     val strat = t &> c[Not](_ => 1) > n.r[FalseLit] |-> { case (FalseLit(), c) => if(c.c == 1) TrueLit()() else FalseLit()()}
 
     val res = strat.execute[Exp](sharedAST)
 
     // Check that both FalseLits were differently transformed
     res match {
-      case And(Not(t1), t2) => {
+      case And(Not(t1), t2) =>
         assert(t1 == TrueLit()())
         assert(t2 == FalseLit()())
-      }
       case _ => assert(false)
     }
   }
@@ -60,7 +59,6 @@ class RegexTests extends FunSuite {
       case (Some(p), _) => targetNode = p
       case (None, errors) => println("Problem with program: " + errors)
     }
-
 
     val res = time(strat.execute[Program](targetNode))
 
@@ -98,7 +96,7 @@ class RegexTests extends FunSuite {
       }
 
       // Regular expression
-      val t = TreeRegexBuilder.context[Node, Seq[LocalVarDecl]]( _ ++ _ , _.size > _.size, Seq.empty[LocalVarDecl])
+      val t = TreeRegexBuilder.context[Node, Seq[LocalVarDecl]]( _ ++ _, (x,y) => (x ++ y).distinct, Seq.empty[LocalVarDecl])
       val strat = t &> c[QuantifiedExp]( _.variables).** >> n.r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.c), o.left, o.right)(), c.noRec[Or](o))() }
 
       frontend.translate(ref) match {
@@ -120,7 +118,7 @@ class RegexTests extends FunSuite {
     val files = Seq("simple", "complex")
 
     // Regular expression
-    val t = TreeRegexBuilder.context[Node, Int](_ + _, _ > _, 0)
+    val t = TreeRegexBuilder.context[Node, Int](_ + _, math.max, 0)
     val strat = t &> iC[Method](_.body, _.name == "here") >> (n[Inhale] | n[Exhale]) >> (c[Or]( _ => 1 )  | c[And]( _ => 1)).* >> n.r[LocalVar]((v:LocalVar) => v.typ == Int && v.name.contains("x")) |-> { case (n:LocalVar, c) => IntLit(c.c)(n.pos, n.info, n.errT)}
 
     val frontend = new DummyFrontend

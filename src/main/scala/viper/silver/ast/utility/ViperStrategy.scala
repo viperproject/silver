@@ -48,7 +48,7 @@ class SlimViperRegexStrategy[C](a: TRegexAutomaton, p: PartialFunction[Node, Nod
 }
 
 
-class ViperRegexBuilder[C](acc: (C, C) => C, comp: (C, C) => Boolean, dflt: C) extends TreeRegexBuilder[Node, C](acc, comp, dflt) {
+class ViperRegexBuilder[C](acc: (C, C) => C, comp: (C, C) => C, dflt: C) extends TreeRegexBuilder[Node, C](acc, comp, dflt) {
 
   /**
     * Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
@@ -62,7 +62,7 @@ class ViperRegexBuilder[C](acc: (C, C) => C, comp: (C, C) => Boolean, dflt: C) e
 
 class ViperRegexBuilderWithMatch[C](v: ViperRegexBuilder[C], m: Match) extends TreeRegexBuilderWithMatch[Node, C](v, m) {
 
-  override def |->(p: PartialFunction[(Node, RegexContext[Node, C]), Node]): ViperRegexStrategy[C] = new ViperRegexStrategy[C](m.createAutomaton(), p, new PartialContextR[Node, C](v.default, v.accumulator, v.comparator))
+  override def |->(p: PartialFunction[(Node, RegexContext[Node, C]), Node]): ViperRegexStrategy[C] = new ViperRegexStrategy[C](m.createAutomaton(), p, new PartialContextR[Node, C](v.default, v.accumulator, v.combinator))
 }
 
 
@@ -85,8 +85,8 @@ object ViperStrategy {
     new SlimViperRegexBuilder &> m |-> p
   }
 
-  def Regex[C](m: Match, p: PartialFunction[(Node, RegexContext[Node, C]), Node], default: C, acc: (C, C) => C, comp: (C, C) => Boolean) = {
-    new ViperRegexBuilder[C](acc, comp, default) &> m |-> p
+  def Regex[C](m: Match, p: PartialFunction[(Node, RegexContext[Node, C]), Node], default: C, acc: (C, C) => C, comb: (C, C) => C) = {
+    new ViperRegexBuilder[C](acc, comb, default) &> m |-> p
   }
 
   /**
