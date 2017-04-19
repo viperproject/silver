@@ -25,7 +25,7 @@ method test01(y: Ref) {
                   //       repo in docs/logs/).
 
   // false can be proven because of the inclusion of null in the range of the above quantifiers
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/61/)
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
 

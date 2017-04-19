@@ -20,8 +20,9 @@ libraryDependencies += "commons-io" % "commons-io" % "2.5"
 libraryDependencies += "com.lihaoyi" %% "fastparse" % "0.3.7"
 libraryDependencies += "com.google.guava" % "guava" % "17.0"
 
-libraryDependencies += "org.slf4s" %% "slf4s-api" % "1.7.12"
-libraryDependencies += "org.slf4j" % "slf4j-log4j12" % "1.7.22"
+libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.12"
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7" // Logging Backend
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0" // Logging Frontend
 
 scalacOptions += "-deprecation"
 
