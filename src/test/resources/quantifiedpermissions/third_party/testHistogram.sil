@@ -117,7 +117,7 @@ method Ref__loop_body_96(diz: Ref, current_thread_id: Int, matrix: Seq[Ref], j: 
   requires P <= |hist|
   requires (forall k: Int :: (0 <= k) && (k < P) ==> acc(hist[k].Ref__Integer_value, write))
   requires (forall k: Int :: (0 <= k) && (k < P) ==> (hist[k].Ref__Integer_value == 0))
-  requires Ref__multidim_index_2(M, N, i, j) <= |matrix|
+  requires Ref__multidim_index_2(M, N, i, j) < |matrix|
   requires acc(matrix[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value, 1 / 4)
   requires (0 <= matrix[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value) && (matrix[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value < P)
   ensures (M > 0) && (N > 0) && (P > 0)
