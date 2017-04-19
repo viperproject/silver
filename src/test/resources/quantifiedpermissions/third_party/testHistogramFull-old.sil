@@ -98,9 +98,7 @@ method Ref__loop_body_113(diz: Ref, step: Int, j: Int, i: Int, P: Int, N: Int, M
   requires P <= |hist|
   requires (forall k: Int :: (k in [0..P)) ==> acc(hist[k].Ref__Integer_value, write))
   requires (forall k: Int :: (k in [0..P)) ==> (hist[k].Ref__Integer_value == 0))
-  requires i * step + j <= |matrix|
-  //:: ExpectedOutput(not.wellformed:seq.index.length)
-  //:: MissingOutput(not.wellformed:seq.index.length, /silicon/issue/283/)
+  requires i * step + j < |matrix|
   requires acc(matrix[i * step + j].Ref__Integer_value, 1 / 4)
   requires (matrix[i * step + j].Ref__Integer_value in [0..P))
   ensures (M > 0) && (N > 0) && (step >= N) && (P > 0)
