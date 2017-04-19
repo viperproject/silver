@@ -57,16 +57,11 @@ trait SilFrontend extends DefaultFrontend {
     Consistency.resetMessages()
   }
 
-  /**
-   * Main method that parses command-line arguments, parses the input file and passes
-   * the SIL program to the verifier.  The resulting error messages (if any) will be
-   * shown in a user-friendly fashion.
-   */
-  def execute(args: Seq[String]) {
-    _startTime = System.currentTimeMillis()
+  def setVerifier(verifier:Verifier): Unit ={
+    _ver = verifier
+  }
 
-    /* Create the verifier */
-    _ver = createVerifier(args.mkString(" "))
+  def prepare(args: Seq[String]): Boolean ={
 
     /* Parse command line arguments and populate _config */
     parseCommandLine(args)
@@ -80,12 +75,12 @@ trait SilFrontend extends DefaultFrontend {
       printErrors(CliOptionError(_config.error.get + "."))
       logger.info("\n")
       _config.printHelp()
-      return
+      return false
     } else if (_config.exit) {
       /* Parsing succeeded, but the frontend should exit immediately never the less. */
       printHeader()
       printFinishHeader()
-      return
+      return false
     }
 
     printHeader()
@@ -98,6 +93,21 @@ trait SilFrontend extends DefaultFrontend {
       logger.info("The following dependencies are used:")
       logger.info(s+"\n")
     }
+    return true
+  }
+
+  /**
+   * Main method that parses command-line arguments, parses the input file and passes
+   * the SIL program to the verifier.  The resulting error messages (if any) will be
+   * shown in a user-friendly fashion.
+   */
+  def execute(args: Seq[String]) {
+    setStartTime()
+
+    /* Create the verifier */
+    _ver = createVerifier(args.mkString(" "))
+
+    if (!prepare(args)) return
 
     // initialize the translator
     init(_ver)
@@ -108,6 +118,14 @@ trait SilFrontend extends DefaultFrontend {
     // run the parser, typechecker, and verifier
     verify()
 
+    finish()
+  }
+
+  def setStartTime(): Unit ={
+    _startTime = System.currentTimeMillis()
+  }
+
+  def finish(): Unit ={
     // print the result
     printFinishHeader()
 
@@ -210,9 +228,6 @@ trait SilFrontend extends DefaultFrontend {
      }
 
   }
-
-
-
 
   /* TODO: Naming of doTypecheck and doTranslate isn't ideal.
            doTypecheck already translated the program, whereas doTranslate doesn't actually translate

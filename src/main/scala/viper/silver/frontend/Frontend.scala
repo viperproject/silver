@@ -207,10 +207,14 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     }
 //    _verifier.get.start()
 
+    doVerify()
+  }
+
+  def doVerify() {
     _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
     assert(_verificationResult != null)
 
-//    _verifier.get.stop()
+    //    _verifier.get.stop()
 
     printOutline(_program.get)
 
