@@ -205,7 +205,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
       _state = TranslatorState.Verified
       return
     }
-//    _verifier.get.start()
+    printOutline(_program.get)
 
     doVerify()
   }
@@ -213,10 +213,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   def doVerify() {
     _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
     assert(_verificationResult != null)
-
-    //    _verifier.get.stop()
-
-    printOutline(_program.get)
 
     _state = TranslatorState.Verified
   }

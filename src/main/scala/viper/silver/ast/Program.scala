@@ -6,7 +6,9 @@
 
 package viper.silver.ast
 
-import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
+import java.security.MessageDigest
+
+import viper.silver.ast.pretty._
 import utility.{Consistency, DomainInstances, Types}
 import viper.silver.cfg.silver.CfgGenerator
 
@@ -100,9 +102,26 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _b
   }
 }
 
+trait Cachable extends Node{
+  def entityHash = {
+    val node = FastPrettyPrinter.pretty(this)
+    new String(MessageDigest.getInstance("MD5").digest(node.getBytes))
+  }
+
+  def dependencyHash = {
+    val dependencies:String = getDependencies().map(m =>m.entityHash).mkString("")
+    new String(MessageDigest.getInstance("MD5").digest(dependencies.getBytes))
+  }
+
+  //TODO: implement
+  def getDependencies():List[Method] = {
+    List()
+  }
+}
+
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], private var _body: Stmt)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted {
+                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted with Cachable {
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
   if (_posts != null) _posts foreach Consistency.checkPost
   if (_body != null) Consistency.checkNoArgsReassigned(formalArgs, _body)
@@ -130,7 +149,6 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     Consistency.checkNoArgsReassigned(formalArgs, b)
     _body = b
   }
-
   /**
     * Returns a control flow graph that corresponds to this method.
     */
