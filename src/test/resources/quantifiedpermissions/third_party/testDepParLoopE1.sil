@@ -91,14 +91,14 @@ method Ref__loop_body_54(diz: Ref, current_thread_id: Int, len: Int, ar: Seq[Ref
   requires diz != null
   requires current_thread_id >= 0
   requires (0 <= i) && (i < len)
-  requires |ar| == len
+  requires |ar| == len + 1
   requires acc(ar[i].Ref__Integer_value, write)
   requires |br| == len
   requires acc(br[i].Ref__Integer_value, 1 / 2)
   requires |cr| == len
   requires acc(cr[i].Ref__Integer_value, write)
   ensures (0 <= i) && (i < len)
-  ensures |ar| == len
+  ensures |ar| == len + 1
   ensures acc(ar[i].Ref__Integer_value, 1 / 2)
   ensures |br| == len
   ensures acc(br[i].Ref__Integer_value, 1 / 2)
@@ -123,8 +123,6 @@ method Ref__loop_body_54(diz: Ref, current_thread_id: Int, len: Int, ar: Seq[Ref
   if (i > 0) {
     Ref__recv_body_148(diz, current_thread_id, ar, i)
     __flatten_9 := cr[i]
-    //:: ExpectedOutput(assignment.failed:seq.index.length)
-    //:: MissingOutput(assignment.failed:seq.index.length, /silicon/issue/283/)
     __flatten_11 := ar[i + 1]
         // confirmed by Stefan Blom
     //:: ExpectedOutput(assignment.failed:insufficient.permission)

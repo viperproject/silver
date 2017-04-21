@@ -15,7 +15,8 @@ predicate lseg(this: Ref, end: Ref)
 function contentNodes(this: Ref, end: Ref): Seq[Int]
   requires acc(lseg(this, end))
   ensures  this == end ==> result == Seq[Int]()
-  ensures  this != end ==> result[0] == unfolding acc(lseg(this, end)) in this.data
+  ensures  this != end ==>
+              0 < |result| && result[0] == unfolding acc(lseg(this, end)) in this.data
   ensures  forall i: Int, j: Int :: 0 <= i && i < j && j < |result| ==> result[i] <= result[j]
 {
   this == end ? Seq[Int]() :
