@@ -690,7 +690,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     else {
       val comment = n.info.comment
       if (comment.nonEmpty) {
-        val docs = comment map (c => if (c.isEmpty) linebreak else text("//") <+> c)
+        val docs = comment map (c => if (c.isEmpty) nil else text("//") <+> c)
         ssep(docs, line) <> line
       }
       else nil
