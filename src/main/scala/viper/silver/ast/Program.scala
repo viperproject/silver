@@ -102,26 +102,9 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _b
   }
 }
 
-trait Cachable extends Node{
-  def entityHash = {
-    val node = FastPrettyPrinter.pretty(this)
-    new String(MessageDigest.getInstance("MD5").digest(node.getBytes))
-  }
-
-  def dependencyHash = {
-    val dependencies:String = getDependencies().map(m =>m.entityHash).mkString("")
-    new String(MessageDigest.getInstance("MD5").digest(dependencies.getBytes))
-  }
-
-  //TODO: implement
-  def getDependencies():List[Method] = {
-    List()
-  }
-}
-
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], private var _body: Stmt)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted with Cachable {
+                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted with DependencyAware{
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
   if (_posts != null) _posts foreach Consistency.checkPost
   if (_body != null) Consistency.checkNoArgsReassigned(formalArgs, _body)
@@ -153,6 +136,11 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     * Returns a control flow graph that corresponds to this method.
     */
   def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
+
+  def dependencyHash(m:Method) = {
+    val dependencies:String = getDependencies(m).map(m =>m.entityHash).mkString(" ")
+    buildHash(dependencies)
+  }
 }
 
 /** A function declaration */

@@ -6,10 +6,11 @@
 
 package viper.silver.ast
 
-import scala.reflect.ClassTag
+import java.security.MessageDigest
 
+import scala.reflect.ClassTag
 import pretty.FastPrettyPrinter
-import utility.{Visitor, Nodes, Transformer}
+import utility.{Nodes, Transformer, Visitor}
 
 /*
 
@@ -46,7 +47,7 @@ Some design choices:
  * - LocalVarDecl
  * - Trigger
  */
-trait Node extends Traversable[Node] {
+trait Node extends Traversable[Node] with Cachable {
 
   /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
@@ -196,4 +197,21 @@ trait Typed {
   // for convenience when checking subtyping
   def isSubtype(other: Type) = typ isSubtype other
   def isSubtype(other: Typed) = typ isSubtype other.typ
+}
+
+trait Cachable{
+  var entityHash : String = _
+
+  def buildHash(s:String): String = {
+    new String(MessageDigest.getInstance("MD5").digest(s.getBytes))
+  }
+}
+
+trait DependencyAware{
+  def dependencyHash(m:Method): String
+
+  //TODO: implement
+  def getDependencies(m: Method): List[Method] = {
+    List()
+  }
 }
