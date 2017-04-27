@@ -207,8 +207,8 @@ trait Cachable{
   }
 }
 
-trait DependencyAware{
-  def dependencyHash(m:Method): String
+trait DependencyAware extends Cachable{
+  val dependencyHash: String
 
   //TODO: implement
   def getDependencies(m: Method): List[Method] = {

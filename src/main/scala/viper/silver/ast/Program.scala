@@ -72,6 +72,26 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       case None => sys.error("Domain function " + name + " not found in program.")
     }
   }
+
+  def computeEntityHashes(): Unit = {
+    methods.foreach(m => {
+      var counter = 0
+      m.subnodes.foreach(node => {
+        node.visit({ case (n: Node) => {
+          n.entityHash = computeEntityHash("" + counter, n)
+          counter += 1
+        }
+        })
+      })
+      m.entityHash = computeEntityHash("", m)
+    })
+  }
+
+  private def computeEntityHash(prefix: String, astNode: Node): String = {
+    val node = prefix + "_" + FastPrettyPrinter.pretty(astNode)
+    astNode.buildHash(node)
+  }
+
 }//class Program
 
 object Program{
@@ -137,8 +157,8 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     */
   def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
 
-  def dependencyHash(m:Method) = {
-    val dependencies:String = getDependencies(m).map(m =>m.entityHash).mkString(" ")
+  override lazy val dependencyHash = {
+    val dependencies:String = this.entityHash + " " + getDependencies(this).map(m =>m.entityHash).mkString(" ")
     buildHash(dependencies)
   }
 }

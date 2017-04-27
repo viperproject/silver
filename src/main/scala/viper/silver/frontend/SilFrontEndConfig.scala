@@ -66,6 +66,14 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
+  val useCaching = opt[Boolean]("useCaching",
+    descr = (  "Used for ViperServer. Cache verification errors to speed up the"
+      + "verification process"),
+    default = Some(true),
+    noshort = true,
+    hidden = true
+  )
+
   val ideModeAdvanced = opt[Boolean]("ideModeAdvanced",
     descr = (  "Used for VS Code IDE. Write symbolic execution log into .vscode/executionTreeData.js file, "
             + "write execution tree graph into .vscode/dot_input.dot, "
