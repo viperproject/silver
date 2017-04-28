@@ -186,8 +186,8 @@ object BoolLit {
   def unapply(b: BoolLit) = Some(b.value)
   def apply(b: Boolean)(pos: Position = NoPosition, info: Info = new NoInfo, errT: ErrorTrafo = NoTrafos) = if (b) TrueLit()(pos, info, errT) else FalseLit()(pos, info, errT)
 }
-case class TrueLit()(val pos: Position = NoPosition, val info: new Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends BoolLit(true)
-case class FalseLit()(val pos: Position = NoPosition, val info: new Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends BoolLit(false)
+case class TrueLit()(val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends BoolLit(true)
+case class FalseLit()(val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends BoolLit(false)
 
 case class NullLit()(val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends Literal {
   lazy val typ = Ref
@@ -211,7 +211,7 @@ object AccessPredicate {
 case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate
 
 /** An accessibility predicate for a predicate location. */
-case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: new Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate
+case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate
 
 // --- Inhale exhale expressions.
 

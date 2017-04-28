@@ -161,7 +161,7 @@ trait Node extends Traversable[Node] with Rewritable {
     }
     val info = metadata(1) match {
       case i: Info => i
-      case _ => println("Invalid Position of Node: " + this); NoInfo
+      case _ => println("Invalid Position of Node: " + this); new NoInfo
     }
     val errorT = metadata(2) match {
       case e: ErrorTrafo => e
@@ -172,7 +172,7 @@ trait Node extends Traversable[Node] with Rewritable {
 
   // Default if no metadata present. Let subclasses override it if they specify position, info or Transformation
   def getMetadata: Seq[Any] = {
-    Seq(NoPosition, NoInfo, NoTrafos)
+    Seq(NoPosition, new NoInfo, NoTrafos)
   }
 
 }

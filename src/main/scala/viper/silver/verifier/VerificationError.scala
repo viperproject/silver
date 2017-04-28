@@ -149,7 +149,7 @@ object errors {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ContractNotWellformed(offendingNode.asInstanceOf[Exp], this.reason)
     def withReason(r: ErrorReason) = ContractNotWellformed(offendingNode, r)
 
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       ContractNotWellformed(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -163,7 +163,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PreconditionInCallFalse(offendingNode.asInstanceOf[MethodCall], this.reason)
     def withReason(r: ErrorReason) = PreconditionInCallFalse(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       PreconditionInCallFalse(offendingNode.asInstanceOf[MethodCall], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -177,7 +177,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PreconditionInAppFalse(offendingNode.asInstanceOf[FuncApp], this.reason)
     def withReason(r: ErrorReason) = PreconditionInAppFalse(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       PreconditionInAppFalse(offendingNode.asInstanceOf[FuncApp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -191,7 +191,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason)
     def withReason(r: ErrorReason) = ExhaleFailed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -205,7 +205,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason)
     def withReason(r: ErrorReason) = InhaleFailed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -219,7 +219,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = IfFailed(offendingNode.asInstanceOf[Exp], this.reason)
     def withReason(r: ErrorReason) = IfFailed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       IfFailed(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -233,7 +233,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = WhileFailed(offendingNode.asInstanceOf[Exp], this.reason)
     def withReason(r: ErrorReason) = WhileFailed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       WhileFailed(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -247,7 +247,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Assert], this.reason)
     def withReason(r: ErrorReason) = AssertFailed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       AssertFailed(offendingNode.asInstanceOf[Assert], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -261,7 +261,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PostconditionViolated(offendingNode.asInstanceOf[Exp], this.member, this.reason)
     def withReason(r: ErrorReason) = PostconditionViolated(offendingNode, member, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       PostconditionViolated(offendingNode.asInstanceOf[Exp], this.member, this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -275,7 +275,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = FoldFailed(offendingNode.asInstanceOf[Fold], this.reason)
     def withReason(r: ErrorReason) = FoldFailed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       FoldFailed(offendingNode.asInstanceOf[Fold], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -289,7 +289,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = UnfoldFailed(offendingNode.asInstanceOf[Unfold], this.reason)
     def withReason(r: ErrorReason) = UnfoldFailed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       UnfoldFailed(offendingNode.asInstanceOf[Unfold], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -303,7 +303,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PackageFailed(offendingNode.asInstanceOf[Package], this.reason)
     def withReason(r: ErrorReason) = PackageFailed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       PackageFailed(offendingNode.asInstanceOf[Package], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -317,7 +317,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ApplyFailed(offendingNode.asInstanceOf[Apply], this.reason)
     def withReason(r: ErrorReason) = ApplyFailed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       ApplyFailed(offendingNode.asInstanceOf[Apply], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -331,7 +331,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LoopInvariantNotPreserved(offendingNode.asInstanceOf[Exp], this.reason)
     def withReason(r: ErrorReason) = LoopInvariantNotPreserved(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       LoopInvariantNotPreserved(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -345,7 +345,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LoopInvariantNotEstablished(offendingNode.asInstanceOf[Exp], this.reason)
     def withReason(r: ErrorReason) = LoopInvariantNotEstablished(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       LoopInvariantNotEstablished(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -359,7 +359,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = FunctionNotWellformed(offendingNode.asInstanceOf[Function], this.reason)
     def withReason(r: ErrorReason) = FunctionNotWellformed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       FunctionNotWellformed(offendingNode.asInstanceOf[Function], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -373,7 +373,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PredicateNotWellformed(offendingNode.asInstanceOf[Predicate], this.reason)
     def withReason(r: ErrorReason) = PredicateNotWellformed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       PredicateNotWellformed(offendingNode.asInstanceOf[Predicate], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -387,7 +387,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = MagicWandNotWellformed(offendingNode.asInstanceOf[MagicWand], this.reason)
     def withReason(r: ErrorReason) = MagicWandNotWellformed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       MagicWandNotWellformed(offendingNode.asInstanceOf[MagicWand], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -401,7 +401,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LetWandFailed(offendingNode.asInstanceOf[LocalVarAssign], this.reason)
     def withReason(r: ErrorReason) = LetWandFailed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       LetWandFailed(offendingNode.asInstanceOf[LocalVarAssign], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -415,7 +415,7 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HeuristicsFailed(offendingNode, this.reason)
     def withReason(r: ErrorReason) = HeuristicsFailed(offendingNode, r)
-    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
       HeuristicsFailed(offendingNode, this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
@@ -425,23 +425,23 @@ object errors {
 }
 
 object reasons {
-  type PositionedNode = errors.ErrorNode
+  type ErrorNode = errors.ErrorNode
 
-  case class InternalReason(offendingNode: PositionedNode, explanation: String) extends AbstractErrorReason {
+  case class InternalReason(offendingNode: ErrorNode, explanation: String) extends AbstractErrorReason {
     val id = "internal"
     val readableMessage = explanation
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InternalReason(offendingNode, this.explanation)
   }
 
-  case class FeatureUnsupported(offendingNode: PositionedNode, explanation: String) extends AbstractErrorReason {
+  case class FeatureUnsupported(offendingNode: ErrorNode, explanation: String) extends AbstractErrorReason {
     val id = "feature.unsupported"
     def readableMessage = s"$offendingNode is not supported. $explanation"
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = FeatureUnsupported(offendingNode, this.explanation)
   }
 
-  case class UnexpectedNode(offendingNode: PositionedNode, explanation: String, stackTrace: Seq[StackTraceElement])
+  case class UnexpectedNode(offendingNode: ErrorNode, explanation: String, stackTrace: Seq[StackTraceElement])
       extends AbstractErrorReason {
 
     val id = "unexpected.node"

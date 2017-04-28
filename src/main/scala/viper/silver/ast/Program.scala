@@ -137,7 +137,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _b
 
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], private var _body: Stmt)
-                 (val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted {
+                 (val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted with DependencyAware{
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
   if (_posts != null) _posts foreach Consistency.checkPost
   if (_body != null) Consistency.checkNoArgsReassigned(formalArgs, _body)
