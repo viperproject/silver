@@ -7,8 +7,11 @@
 package viper.silver.testing
 
 import java.nio.file.Path
+
 import org.scalatest.Tag
 import org.scalatest.events.TestIgnored
+import viper.silver.verifier.errors.{AssertFailed, LoopInvariantNotPreserved}
+import viper.silver.verifier.reasons.AssertionFalse
 
 /**
  * End-to-end test suite that extracts [[viper.silver.testing.TestAnnotations]]
@@ -44,6 +47,7 @@ abstract class AnnotationBasedTestSuite extends ResourceBasedTestSuite {
       // Match expected outputs with actual outputs
       val actualOutputs = system.run(input)
       val expectedOutputs = input.annotations.outputAnnotations
+
       val matcher = OutputMatcher(actualOutputs, expectedOutputs)
       val unexpectedAnnotations = input.annotations.outputAnnotations.filter(annotationShouldLeadToTestCancel)
       val outputErrors = matcher.errors

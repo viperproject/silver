@@ -6,7 +6,7 @@
 
 package viper.silver.parser
 
-import scala.collection.mutable
+import scala.collection.{Set, mutable}
 import scala.reflect._
 import viper.silver.ast.MagicWandOp
 import viper.silver.ast.utility.Visitor
@@ -479,6 +479,7 @@ case class TypeChecker(names: NameAnalyser) {
     check(exp,PTypeSubstitution.id)
   }
 
+
   def check(exp: PExp, s : PTypeSubstitution) : Unit = {
     /**
      * Set the type of 'exp', and check that the actual type is allowed by one of the expected types.
@@ -691,7 +692,7 @@ case class TypeChecker(names: NameAnalyser) {
         curMember = pq
         pq.vars foreach (v => check(v.typ))
         check(pq.body,Bool)
-        pq.triggers foreach (_ foreach (tpe=>checkTopTyped(tpe,None)))
+        pq.triggers foreach (_.exp foreach (tpe=>checkTopTyped(tpe,None)))
         pq._typeSubstitutions = pq.body.typeSubstitutions.toSet
         pq.typ = Bool
         curMember = oldCurMember

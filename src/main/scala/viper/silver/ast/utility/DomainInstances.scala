@@ -1,5 +1,8 @@
 package viper.silver.ast.utility
 
+import viper.silver.ast._
+import viper.silver.ast.utility.Rewriter._
+
 import scala.collection.mutable
 import viper.silver.ast._
 
@@ -27,6 +30,7 @@ object DomainInstances {
 
     (functions, axioms)
   }
+
 
   def collectGroundTypes(n: Node, p: Program): Set[Type] = n.deepCollect {
     case t: Type if t.isConcrete => t
@@ -111,6 +115,7 @@ object DomainInstances {
     val allGroundDFAs = p.deepCollect{
       case dfa: DomainFuncApp if dfa.typVarMap.values.forall(_.isConcrete) => dfa
     }
+
 
     def tryUnify(t1: Type, t2: Type, s: TypeSubstitution): Option[TypeSubstitution] = {
       assert(t2.isConcrete)
@@ -283,7 +288,7 @@ object DomainInstances {
   }
 
   def substitute[A <: Node](e: A, s: TypeSubstitution, p: Program): A =
-    Transformer.transform[A](e, {
+    e.transform {
       case dfa@DomainFuncApp(_, args, ts) =>
         val ts2 = ts.toSeq.map(pair => (pair._1, substitute(pair._2, s, p))).toMap
         val argss = args map (substitute(_, s, p))
@@ -294,7 +299,7 @@ object DomainInstances {
 
       case t: Type =>
         t.substitute(s)
-    })()
+    }
 
 //  def showInstanceMembers(p: Program): Unit = {
 ////    println("================== Domain instances")

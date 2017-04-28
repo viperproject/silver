@@ -4,12 +4,16 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-import java.nio.file.{Paths, Path}
+import java.nio.file.{Path, Paths}
 import scala.language.implicitConversions
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast._
-import viper.silver.frontend.{TranslatorState, SilFrontend}
+import viper.silver.ast.utility._
+import viper.silver.frontend.{SilFrontend, TranslatorState}
 import viper.silver.verifier.AbstractError
+
+import scala.language.implicitConversions
+
 
 class DomainInstanceTest extends FunSuite with Matchers {
   test("Basic domain instances") {
@@ -68,18 +72,18 @@ class DomainInstanceTest extends FunSuite with Matchers {
 
     frontend.translate(file) match {
       case (Some(p), _) =>
-//        DomainInstances.showInstanceMembers(p)
+        //        DomainInstances.showInstanceMembers(p)
         p.groundTypeInstances.size should be(8)
 
-/*        for (gi <- p.groundTypeInstances)
+        for (gi <- p.groundTypeInstances)
           gi match {
             case dt: DomainType => {
               dt.domainName should not be "D1"
             }
             case _ =>
           }
-  */
-/*        p.groundTypeInstances.count(
+
+        p.groundTypeInstances.count(
           _ match { case dt: DomainType => dt.domainName == "D10" && dt.typVarsMap.values.forall(_ == Int)
           case _ => false
           }
@@ -88,7 +92,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
           _ match { case dt: DomainType => dt.domainName == "D10"
           case _ => false
           }
-        ) should be(256)*/
+        ) should be(256)
 
       case _ =>
     }
@@ -98,13 +102,14 @@ class DomainInstanceTest extends FunSuite with Matchers {
 
 class DummyFrontend extends SilFrontend {
   def createVerifier(fullCmd: _root_.scala.Predef.String) = ???
+
   def configureVerifier(args: Seq[String]) = ???
 
-  def translate(silverFile: Path): (Option[Program],Seq[AbstractError]) = {
+  def translate(silverFile: Path): (Option[Program], Seq[AbstractError]) = {
     _verifier = None
     _state = TranslatorState.Initialized
 
-    reset(silverFile)               //
+    reset(silverFile) //
     translate()
 
     //println(s"_program = ${_program}") /* Option[Program], set if parsing and translating worked */

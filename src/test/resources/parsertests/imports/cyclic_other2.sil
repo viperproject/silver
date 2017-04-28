@@ -1,0 +1,7 @@
+import "cyclic.sil"
+
+method mainOther2()
+{
+    assertion()
+}
+

@@ -1,0 +1,16 @@
+predicate outer(r: Ref) {inner(r)}
+predicate inner(r: Ref) {true}
+
+function req(r: Ref): Bool
+
+function actual(r: Ref): Int
+    requires req(r)
+
+method m(r: Ref)
+    requires outer(r)
+    requires unfolding acc(outer(r), 1/2) in req(r) // remove 1/2 here to make it work
+{
+    unfold acc(outer(r), 1/2)
+    //:: UnexpectedOutput(application.precondition:assertion.false, /carbon/issue/181/)
+    var i: Int := actual(r) // fails
+}

@@ -14,7 +14,7 @@ import viper.silver.cfg.silver.CfgGenerator
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
-                  (val pos: Position = NoPosition, val info: Info = new NoInfo) extends Node with Positioned with Infoed {
+                  (val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node with Positioned with Infoed with TransformableErrors {
   require(
     Consistency.noDuplicates(
       (members map (_.name)) ++
@@ -72,6 +72,10 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       case None => sys.error("Domain function " + name + " not found in program.")
     }
   }
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
+
 
   def computeEntityHashes(): Unit = {
     methods.foreach(m => {
@@ -102,12 +106,16 @@ object Program{
 // --- Program members
 
 /** A field declaration. */
-case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = new NoInfo) extends Location with Typed {
+case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location with Typed {
   require(typ.isConcrete, "Type of field " + name + ":" + typ + " must be concrete!")
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 /** A predicate declaration. */
-case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _body: Option[Exp])(val pos: Position = NoPosition, val info: Info = new NoInfo) extends Location {
+case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _body: Option[Exp])(val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location {
   if (body != null) body foreach Consistency.checkNonPostContract
   def body = _body
   def body_=(b: Option[Exp]) {
@@ -121,11 +129,15 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _b
     case Some(e) if e.contains[ForPerm] => false
     case _ => true
   }
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], private var _body: Stmt)
-                 (val pos: Position = NoPosition, val info: Info = new NoInfo) extends Member with Callable with Contracted with DependencyAware{
+                 (val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted {
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
   if (_posts != null) _posts foreach Consistency.checkPost
   if (_body != null) Consistency.checkNoArgsReassigned(formalArgs, _body)
@@ -153,6 +165,10 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     Consistency.checkNoArgsReassigned(formalArgs, b)
     _body = b
   }
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
   /**
     * Returns a control flow graph that corresponds to this method.
     */
@@ -172,7 +188,7 @@ object CacheHelper{
 
 /** A function declaration */
 case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _body: Option[Exp])
-                   (val pos: Position = NoPosition, val info: Info = new NoInfo) extends Member with FuncLike with Contracted {
+                   (val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with FuncLike with Contracted {
   require(_posts == null || (_posts forall Consistency.noOld))
   require(_body == null || (_body map (_ isSubtype typ) getOrElse true))
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
@@ -220,6 +236,9 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
     case _ => true
   }
 
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 
@@ -229,13 +248,17 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
  * Local variable declaration.  Note that these are not statements in the AST, but
  * rather occur as part of a method, loop, function, etc.
  */
-case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = new NoInfo) extends Node with Positioned with Infoed with Typed {
+case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node with Positioned with Infoed with Typed with TransformableErrors {
   require(Consistency.validUserDefinedIdentifier(name))
 
   /**
    * Returns a local variable with equivalent information
    */
-  lazy val localVar = LocalVar(name)(typ, pos, info)
+  lazy val localVar = LocalVar(name)(typ, pos, info, errT)
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 
@@ -243,7 +266,7 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
 
 /** A user-defined domain. */
 case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil)
-                 (val pos: Position = NoPosition, val info: Info = new NoInfo) extends Member with Positioned with Infoed {
+                 (val pos: Position = NoPosition, val info: Info = new NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Positioned with Infoed with TransformableErrors {
   require(Consistency.validUserDefinedIdentifier(name))
   def functions = _functions
   def functions_=(fs: Seq[DomainFunc]) {
@@ -254,6 +277,9 @@ case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Se
     _axioms = as
   }
 
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
   def instantiate(instantiateAs: DomainType, program: Program): Domain = {
     assert(   instantiateAs.domainName == name
            && instantiateAs.typeParameters == typVars)
@@ -271,33 +297,45 @@ case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Se
 
 /** A domain axiom. */
 case class DomainAxiom(name: String, exp: Exp)
-                      (val pos: Position = NoPosition, val info: Info = new NoInfo,val domainName : String)
+                      (val pos: Position = NoPosition, val info: Info = new NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
   extends DomainMember {
   require(Consistency.noResult(exp), "Axioms can never contain result variables.")
   require(Consistency.noOld(exp), "Axioms can never contain old expressions.")
   require(Consistency.noAccessLocation(exp), "Axioms can never contain access locations.")
   require(exp isSubtype Bool)
   Consistency.checkNoPositiveOnly(exp)
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
+object Substitution{
+  type Substitution = Map[TypeVar,Type]
+  def toString(s : Substitution) : String = s.mkString(",")
+}
 /** Domain function which is not a binary or unary operator. */
 case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
-                     (val pos: Position = NoPosition, val info: Info = new NoInfo,val domainName : String)
+                     (val pos: Position = NoPosition, val info: Info = new NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
                       extends AbstractDomainFunc with DomainMember {
   require(!unique || formalArgs.isEmpty, "Only constants, i.e. nullary domain functions can be unique.")
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 
 // --- Common functionality
 
 /** Common ancestor for members of a program. */
-sealed trait Member extends Node with Positioned with Infoed {
+sealed trait Member extends Node with Positioned with Infoed with TransformableErrors {
   require(Consistency.validUserDefinedIdentifier(name))
   def name: String
 }
 
 /** Common ancestor for domain members. */
-sealed trait DomainMember extends Node with Positioned with Infoed {
+sealed trait DomainMember extends Node with Positioned with Infoed with TransformableErrors {
   require(Consistency.validUserDefinedIdentifier(name))
 
   def name: String
@@ -329,7 +367,7 @@ sealed trait Contracted extends Member {
 sealed trait Location extends Member
 
 /** Common superclass for domain functions and binary/unary operators. */
-sealed trait AbstractDomainFunc extends FuncLike with Positioned with Infoed
+sealed trait AbstractDomainFunc extends FuncLike with Positioned with Infoed with TransformableErrors
 
 
 // --- Built-in domain functions and operators
@@ -338,6 +376,7 @@ sealed trait AbstractDomainFunc extends FuncLike with Positioned with Infoed
 sealed trait BuiltinDomainFunc extends AbstractDomainFunc {
   lazy val info = new NoInfo
   lazy val pos = NoPosition
+  lazy val errT = NoTrafos
 }
 
 /** Domain functions which are written as infix or prefix operators. */

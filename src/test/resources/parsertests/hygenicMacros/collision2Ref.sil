@@ -1,0 +1,18 @@
+define macro {
+    var x: Bool := true
+    macro2(true && true, x)
+}
+
+define macro2(x, y) {
+    assert(x && y)
+}
+
+method main()
+{
+    var x: Bool
+    var x$0: Bool
+    x := true
+    assert((true && true) && x)
+    x$0 := true
+    assert((true && true) && x$0)
+}

@@ -1,6 +1,6 @@
 define pre1(a, l, r) 0 <= l && l < r && r <= len(a)
 define pre2(a, l, r) forall i: Int :: l <= i && i < r ==> acc(loc(a, i).val)
-define post1(a, l, r) pre2(a, l, r)
+define post1(a, l, r) pre2(a, l, r) && true
 define post2(a, l, r) forall i: Int :: l <= i && i < r ==>
                           (old(loc(a, i).val == from)
                             ? loc(a, i).val == to

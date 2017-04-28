@@ -145,9 +145,9 @@ import viper.silver.ast._
   }
 
   private def quantifiedPredicates(toVisit: mutable.Queue[Member],
-                               collected: mutable.LinkedHashSet[Predicate],
-                               visited: mutable.Set[Member],
-                               program: Program) {
+                                   collected: mutable.LinkedHashSet[Predicate],
+                                   visited: mutable.Set[Member],
+                                   program: Program) {
 
     while (toVisit.nonEmpty) {
       val root = toVisit.dequeue()

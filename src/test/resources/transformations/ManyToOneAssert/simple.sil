@@ -1,0 +1,7 @@
+method main()
+{
+    var b: Bool := true
+    assert(true)
+    assert(true)
+}
+
