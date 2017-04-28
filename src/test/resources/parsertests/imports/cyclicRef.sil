@@ -1,0 +1,19 @@
+method main()
+{
+    mainOther1()
+}
+
+method assertion() {
+    assert(true)
+}
+
+method mainOther1()
+{
+    mainOther2()
+}
+
+method mainOther2()
+{
+    assertion()
+}
+

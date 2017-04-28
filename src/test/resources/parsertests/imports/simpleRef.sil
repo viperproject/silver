@@ -1,0 +1,11 @@
+method main()
+{
+    assert(true)
+    asdf()
+}
+
+method asdf()
+{
+    assert(true)
+}
+

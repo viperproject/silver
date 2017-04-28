@@ -6,14 +6,15 @@
 
 package viper.silver.parser
 
-import scala.collection.GenTraversable
+import scala.collection.{GenTraversable, Set}
 import scala.language.implicitConversions
 import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.MagicWandOp
 import viper.silver.FastPositions
+import viper.silver.ast.utility.Rewriter.Rewritable
 import viper.silver.parser.TypeHelper._
-import viper.silver.verifier.{ParseReport}
+import viper.silver.verifier.ParseReport
 
 
 trait FastPositioned {
@@ -64,7 +65,7 @@ trait FastPositioned {
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual SIL abstract syntax tree.
  */
-sealed trait PNode extends FastPositioned with Product{
+sealed trait PNode extends FastPositioned with Product with Rewritable {
 
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
@@ -154,6 +155,11 @@ sealed trait PNode extends FastPositioned with Product{
     for (c <- productIterator)
       setNodeChildConnections (c)
 
+  }
+
+  override def duplicate(children: scala.Seq[AnyRef]): Rewritable = {
+    val dup = Transformer.parseTreeDuplicator(this, children)
+    dup.setPos(this)
   }
 
 }
@@ -533,6 +539,9 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
     args.foreach(_.forceSubstitution(ts))
   }
 }
+
+case class PTrigger(exp: Seq[PExp]) extends PNode
+
 case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
 
   override val args = Seq(left, right)
@@ -714,12 +723,13 @@ sealed trait PBinder extends PExp{
 }
 sealed trait PQuantifier extends PBinder with PScope{
   def vars : Seq[PFormalArgDecl]
-  def triggers : Seq[Seq[PExp]]
+  def triggers : Seq[PTrigger]
 }
-case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[Seq[PExp]] = Seq()}
-case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[Seq[PExp]], body: PExp) extends PQuantifier
+case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[PTrigger] = Seq()}
+case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp) extends PQuantifier
+
 case class PForPerm(variable: PFormalArgDecl, fields: Seq[PIdnUse], body: PExp) extends PQuantifier{
-  val triggers : Seq[Seq[PExp]] = Seq()
+  val triggers : Seq[PTrigger] = Seq()
   override val vars = Seq(variable)
 }
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
@@ -920,7 +930,17 @@ case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt
 case class PAssume(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
-case class PNewStmt(target: PIdnUse, Fields: Option[Seq[PIdnUse]]) extends PStmt
+
+case class PNewStmt(target: PIdnUse, Fields: Option[Seq[PIdnUse]]) extends PStmt {
+  override def  getChildren: scala.Seq[AnyRef] = {
+    val fields = Fields match {
+      case None => Seq.empty[PIdnUse]
+      case Some(seq) => seq
+    }
+    Seq(target, fields)
+  }
+}
+
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
 case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
@@ -934,7 +954,9 @@ case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 case class PMacroRef(idnuse : PIdnUse) extends PStmt
 case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
-case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
+case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration {
+
+}
 case class PSkip() extends PStmt
 
 sealed trait PScope extends PNode {
@@ -981,7 +1003,7 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def formalArgs: Seq[PFormalArgDecl]
   def typ: PType
 }
-case class PProgram(files: Seq[PImport], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
+case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
 case class PImport(file: String) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
@@ -1029,6 +1051,7 @@ object Nodes {
       case PUnknown() => Nil
       case PBinExp(left, op, right) => Seq(left, right)
       case PUnExp(op, exp) => Seq(exp)
+      case PTrigger(exp) => exp
       case PIntLit(i) => Nil
       case PBoolLit(b) => Nil
       case PNullLit() => Nil
@@ -1046,7 +1069,7 @@ object Nodes {
       case po: POldExp => Seq(po.e)
       case PLet(exp, nestedScope) => Seq(exp, nestedScope)
       case PLetNestedScope(variable, body) => Seq(variable, body)
-      case PForall(vars, triggers, exp) => vars ++ triggers.flatten ++ Seq(exp)
+      case PForall(vars, triggers, exp) => vars ++ triggers ++ Seq(exp)
       case PForPerm(v,fields, expr) => v +: fields :+ expr
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)
@@ -1090,7 +1113,7 @@ object Nodes {
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
       case PFresh(vars) => vars
       case PConstraining(vars, stmt) => vars ++ Seq(stmt)
-      case PProgram(files, domains, fields, functions, predicates, methods, errors) =>
+      case PProgram(files, macros, domains, fields, functions, predicates, methods, errors) =>
         domains ++ fields ++ functions ++ predicates ++ methods
       case PImport(file) =>
         Seq()

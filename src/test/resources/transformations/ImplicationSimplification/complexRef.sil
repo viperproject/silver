@@ -1,0 +1,15 @@
+method main() returns ()
+{
+   var i: Bool := true
+   var j: Bool := false
+   var x: Int := 5
+
+   
+   assert(!false)
+}
+
+method foo(b: Bool)
+    requires !!b || false
+    ensures true
+{
+}

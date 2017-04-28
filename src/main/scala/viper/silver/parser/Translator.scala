@@ -11,7 +11,7 @@ package viper.silver.parser
 import scala.language.implicitConversions
 import scala.collection.mutable
 import viper.silver.ast._
-import viper.silver.ast.utility.{Consistency, Visitor, Statements, QuantifiedPermissions}
+import viper.silver.ast.utility.{Rewriter, _}
 import viper.silver.FastMessaging
 
 
@@ -34,7 +34,7 @@ case class Translator(program: PProgram) {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
     program match {
-      case PProgram(_, pdomains, pfields, pfunctions, ppredicates, pmethods, _) =>
+      case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, _) =>
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
             pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
 
@@ -388,7 +388,7 @@ case class Translator(program: PProgram) {
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>
-        val ts = triggers map (exps => Trigger(exps map exp)(exps.head))
+        val ts = triggers map (t => Trigger(t.exp map exp)(t))
         var fa = Forall(vars map liftVarDecl, ts, exp(e))(pos)
        if (fa.isPure) {
           fa
