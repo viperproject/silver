@@ -47,7 +47,7 @@ Some design choices:
  * - LocalVarDecl
  * - Trigger
  */
-trait Node extends Traversable[Node] with Cachable {
+trait Node extends Traversable[Node] {
 
   /** @see [[Nodes.subnodes()]] */
   def subnodes = Nodes.subnodes(this)
@@ -153,17 +153,19 @@ trait Info {
       case _ => None
     }
   }
+
+  var entityHash: String = null
 }
 
 /** A default `Info` that is empty. */
-case object NoInfo extends Info {
+  class NoInfo extends Info {
   lazy val comment = Nil
 }
 /** A simple `Info` that contains a list of comments. */
-case class SimpleInfo(comment: Seq[String]) extends Info
+class SimpleInfo(val comment: Seq[String]) extends Info
 
 /** An `Info` instance for labelling a quantifier as auto-triggered. */
-case object AutoTriggered extends Info {
+class AutoTriggered extends Info {
   lazy val comment = Nil
 }
 
@@ -175,7 +177,7 @@ case class ConsInfo(head: Info, tail:Info) extends Info {
 /** Build a `ConsInfo` instance out of two `Info`s, unless the latter is `NoInfo` (which can be dropped) */
 object MakeInfoPair {
   def apply(head:Info, tail:Info) = tail match {
-    case NoInfo => head
+    case info:NoInfo => head
     case _ => ConsInfo(head,tail)
   }
 }
@@ -199,15 +201,7 @@ trait Typed {
   def isSubtype(other: Typed) = typ isSubtype other.typ
 }
 
-trait Cachable{
-  var entityHash : String = _
-
-  def buildHash(s:String): String = {
-    new String(MessageDigest.getInstance("MD5").digest(s.getBytes))
-  }
-}
-
-trait DependencyAware extends Cachable{
+trait DependencyAware{
   val dependencyHash: String
 
   //TODO: implement

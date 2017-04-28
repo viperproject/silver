@@ -14,11 +14,11 @@ import viper.silver.verifier.AbstractError
 class DomainInstanceTest extends FunSuite with Matchers {
   test("Basic domain instances") {
     val t = TypeVar("T")
-    val d = Domain("D", Seq(), Seq(), Seq(t))(NoPosition, NoInfo)
-    val r = LocalVarDecl("r", Int)(NoPosition, NoInfo)
-    val x = LocalVarDecl("x", DomainType(d, Map(t -> Int)))(NoPosition, NoInfo)
-    val m = Method("m", Seq(x), Seq(r), Seq(), Seq(), Seq(), Assert(TrueLit()(NoPosition, NoInfo))(NoPosition, NoInfo))(NoPosition, NoInfo)
-    val p = Program(Seq(d), Seq(), Seq(), Seq(), Seq(m))(NoPosition, NoInfo)
+    val d = Domain("D", Seq(), Seq(), Seq(t))(NoPosition, new NoInfo)
+    val r = LocalVarDecl("r", Int)(NoPosition, new NoInfo)
+    val x = LocalVarDecl("x", DomainType(d, Map(t -> Int)))(NoPosition, new NoInfo)
+    val m = Method("m", Seq(x), Seq(r), Seq(), Seq(), Seq(), Assert(TrueLit()(NoPosition, new NoInfo))(NoPosition, new NoInfo))(NoPosition, new NoInfo)
+    val p = Program(Seq(d), Seq(), Seq(), Seq(), Seq(m))(NoPosition, new NoInfo)
 
     p.groundTypeInstances.size should be(3)
   }

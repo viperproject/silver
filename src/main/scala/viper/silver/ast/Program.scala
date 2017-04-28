@@ -14,7 +14,7 @@ import viper.silver.cfg.silver.CfgGenerator
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
-                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
+                  (val pos: Position = NoPosition, val info: Info = new NoInfo) extends Node with Positioned with Infoed {
   require(
     Consistency.noDuplicates(
       (members map (_.name)) ++
@@ -77,19 +77,20 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     methods.foreach(m => {
       var counter = 0
       m.subnodes.foreach(node => {
-        node.visit({ case (n: Node) => {
-          n.entityHash = computeEntityHash("" + counter, n)
+        node.visit({ case (n: Node with Infoed) => {
+          val hash = computeEntityHash("" + counter, n)
+          n.info.entityHash = hash
           counter += 1
         }
         })
       })
-      m.entityHash = computeEntityHash("", m)
+      m.info.entityHash = computeEntityHash("", m)
     })
   }
 
   private def computeEntityHash(prefix: String, astNode: Node): String = {
     val node = prefix + "_" + FastPrettyPrinter.pretty(astNode)
-    astNode.buildHash(node)
+    CacheHelper.buildHash(node)
   }
 
 }//class Program
@@ -101,12 +102,12 @@ object Program{
 // --- Program members
 
 /** A field declaration. */
-case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location with Typed {
+case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = new NoInfo) extends Location with Typed {
   require(typ.isConcrete, "Type of field " + name + ":" + typ + " must be concrete!")
 }
 
 /** A predicate declaration. */
-case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Location {
+case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _body: Option[Exp])(val pos: Position = NoPosition, val info: Info = new NoInfo) extends Location {
   if (body != null) body foreach Consistency.checkNonPostContract
   def body = _body
   def body_=(b: Option[Exp]) {
@@ -124,7 +125,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _b
 
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _locals: Seq[LocalVarDecl], private var _body: Stmt)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Callable with Contracted with DependencyAware{
+                 (val pos: Position = NoPosition, val info: Info = new NoInfo) extends Member with Callable with Contracted with DependencyAware{
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
   if (_posts != null) _posts foreach Consistency.checkPost
   if (_body != null) Consistency.checkNoArgsReassigned(formalArgs, _body)
@@ -157,15 +158,21 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     */
   def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
 
-  override lazy val dependencyHash = {
-    val dependencies:String = this.entityHash + " " + getDependencies(this).map(m =>m.entityHash).mkString(" ")
-    buildHash(dependencies)
+  override lazy val dependencyHash:String = {
+    val dependencies:String = this.info.entityHash + " " + getDependencies(this).map(m =>m.info.entityHash).mkString(" ")
+    CacheHelper.buildHash(dependencies)
+  }
+}
+
+object CacheHelper{
+  def buildHash(s:String): String = {
+    new String(MessageDigest.getInstance("MD5").digest(s.getBytes))
   }
 }
 
 /** A function declaration */
 case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _body: Option[Exp])
-                   (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with FuncLike with Contracted {
+                   (val pos: Position = NoPosition, val info: Info = new NoInfo) extends Member with FuncLike with Contracted {
   require(_posts == null || (_posts forall Consistency.noOld))
   require(_body == null || (_body map (_ isSubtype typ) getOrElse true))
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
@@ -222,7 +229,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
  * Local variable declaration.  Note that these are not statements in the AST, but
  * rather occur as part of a method, loop, function, etc.
  */
-case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed with Typed {
+case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = new NoInfo) extends Node with Positioned with Infoed with Typed {
   require(Consistency.validUserDefinedIdentifier(name))
 
   /**
@@ -236,7 +243,7 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
 
 /** A user-defined domain. */
 case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo) extends Member with Positioned with Infoed {
+                 (val pos: Position = NoPosition, val info: Info = new NoInfo) extends Member with Positioned with Infoed {
   require(Consistency.validUserDefinedIdentifier(name))
   def functions = _functions
   def functions_=(fs: Seq[DomainFunc]) {
@@ -264,7 +271,7 @@ case class Domain(name: String, var _functions: Seq[DomainFunc], var _axioms: Se
 
 /** A domain axiom. */
 case class DomainAxiom(name: String, exp: Exp)
-                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String)
+                      (val pos: Position = NoPosition, val info: Info = new NoInfo,val domainName : String)
   extends DomainMember {
   require(Consistency.noResult(exp), "Axioms can never contain result variables.")
   require(Consistency.noOld(exp), "Axioms can never contain old expressions.")
@@ -275,7 +282,7 @@ case class DomainAxiom(name: String, exp: Exp)
 
 /** Domain function which is not a binary or unary operator. */
 case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, unique: Boolean = false)
-                     (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String)
+                     (val pos: Position = NoPosition, val info: Info = new NoInfo,val domainName : String)
                       extends AbstractDomainFunc with DomainMember {
   require(!unique || formalArgs.isEmpty, "Only constants, i.e. nullary domain functions can be unique.")
 }
@@ -329,7 +336,7 @@ sealed trait AbstractDomainFunc extends FuncLike with Positioned with Infoed
 
 /** Built-in domain functions  */
 sealed trait BuiltinDomainFunc extends AbstractDomainFunc {
-  lazy val info = NoInfo
+  lazy val info = new NoInfo
   lazy val pos = NoPosition
 }
 

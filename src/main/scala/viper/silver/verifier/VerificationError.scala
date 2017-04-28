@@ -10,7 +10,7 @@ import viper.silver.ast._
 
 trait ErrorMessage {
   def id: String
-  def offendingNode: errors.PositionedNode
+  def offendingNode: errors.PositionedNode with Infoed
   def pos: Position
   def readableMessage: String
 
@@ -24,7 +24,7 @@ trait VerificationError extends AbstractError with ErrorMessage {
   override def readableMessage = readableMessage(false, true)
   def fullId = s"$id:${reason.id}"
 
-  def updateNode(offendingNode: errors.PositionedNode): VerificationError
+  def updateNode(offendingNode: errors.PositionedNode, reasonOffendingNode: errors.PositionedNode): VerificationError
 }
 
 trait ErrorReason extends ErrorMessage
@@ -36,8 +36,9 @@ trait PartialVerificationError {
     val id = "?"
     val readableMessage = "?"
 
-    val offendingNode = new Node with Positioned {
+    val offendingNode = new Node with Positioned with Infoed {
       val pos = NoPosition
+      val info = new NoInfo
     }
 
     def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = DummyReason
@@ -84,15 +85,15 @@ abstract class AbstractErrorReason extends ErrorReason {
 }
 
 object errors {
-  type PositionedNode = Node with Positioned
+  type PositionedNode = Node with Positioned with Infoed
 
   case class Internal(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "internal"
     val text = "An internal error occurred."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = Internal(offendingNode, this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      Internal(offendingNode, this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = Internal(offendingNode, this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      Internal(offendingNode, this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -103,9 +104,9 @@ object errors {
     val id = "assignment.failed"
     val text = "Assignment might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = AssignmentFailed(offendingNode.asInstanceOf[AbstractAssign], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      AssignmentFailed(offendingNode.asInstanceOf[AbstractAssign], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = AssignmentFailed(offendingNode.asInstanceOf[AbstractAssign], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      AssignmentFailed(offendingNode.asInstanceOf[AbstractAssign], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -116,9 +117,9 @@ object errors {
     val id = "call.failed"
     val text = "Method call might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = CallFailed(offendingNode.asInstanceOf[MethodCall], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      CallFailed(offendingNode.asInstanceOf[MethodCall], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = CallFailed(offendingNode.asInstanceOf[MethodCall], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      CallFailed(offendingNode.asInstanceOf[MethodCall], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -129,10 +130,10 @@ object errors {
     val id = "not.wellformed"
     val text = s"Contract might not be well-formed."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = ContractNotWellformed(offendingNode.asInstanceOf[Exp], this.reason)
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = ContractNotWellformed(offendingNode.asInstanceOf[Exp], this.reason)
 
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      ContractNotWellformed(offendingNode.asInstanceOf[Exp], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      ContractNotWellformed(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -143,10 +144,10 @@ object errors {
     val id = "call.precondition"
     val text = s"The precondition of method ${offendingNode.methodName} might not hold."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = PreconditionInCallFalse(offendingNode.asInstanceOf[MethodCall], this.reason)
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = PreconditionInCallFalse(offendingNode.asInstanceOf[MethodCall], this.reason)
 
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      PreconditionInCallFalse(offendingNode.asInstanceOf[MethodCall], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      PreconditionInCallFalse(offendingNode.asInstanceOf[MethodCall], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -157,9 +158,9 @@ object errors {
     val id = "application.precondition"
     val text = s"Precondition of function ${offendingNode.funcname} might not hold."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = PreconditionInAppFalse(offendingNode.asInstanceOf[FuncApp], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      PreconditionInAppFalse(offendingNode.asInstanceOf[FuncApp], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = PreconditionInAppFalse(offendingNode.asInstanceOf[FuncApp], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      PreconditionInAppFalse(offendingNode.asInstanceOf[FuncApp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -170,9 +171,9 @@ object errors {
     val id = "exhale.failed"
     val text = "Exhale might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -183,9 +184,9 @@ object errors {
     val id = "inhale.failed"
     val text = "Inhale might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -196,9 +197,9 @@ object errors {
     val id = "if.failed"
     val text = "Conditional statement might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = IfFailed(offendingNode.asInstanceOf[Exp], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      IfFailed(offendingNode.asInstanceOf[Exp], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = IfFailed(offendingNode.asInstanceOf[Exp], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      IfFailed(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -209,9 +210,9 @@ object errors {
     val id = "while.failed"
     val text = "While statement might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = WhileFailed(offendingNode.asInstanceOf[Exp], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      WhileFailed(offendingNode.asInstanceOf[Exp], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = WhileFailed(offendingNode.asInstanceOf[Exp], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      WhileFailed(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -222,9 +223,9 @@ object errors {
     val id = "assert.failed"
     val text = "Assert might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Assert], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      AssertFailed(offendingNode.asInstanceOf[Assert], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Assert], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      AssertFailed(offendingNode.asInstanceOf[Assert], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -235,9 +236,9 @@ object errors {
     val id = "postcondition.violated"
     val text = s"Postcondition of ${member.name} might not hold."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = PostconditionViolated(offendingNode.asInstanceOf[Exp], this.member, this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      PostconditionViolated(offendingNode.asInstanceOf[Exp], this.member, this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = PostconditionViolated(offendingNode.asInstanceOf[Exp], this.member, this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      PostconditionViolated(offendingNode.asInstanceOf[Exp], this.member, this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -248,9 +249,9 @@ object errors {
     val id = "fold.failed"
     val text = s"Folding ${offendingNode.acc.loc} might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = FoldFailed(offendingNode.asInstanceOf[Fold], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      FoldFailed(offendingNode.asInstanceOf[Fold], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = FoldFailed(offendingNode.asInstanceOf[Fold], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      FoldFailed(offendingNode.asInstanceOf[Fold], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -261,9 +262,9 @@ object errors {
     val id = "unfold.failed"
     val text = s"Unfolding ${offendingNode.acc.loc} might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = UnfoldFailed(offendingNode.asInstanceOf[Unfold], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      UnfoldFailed(offendingNode.asInstanceOf[Unfold], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = UnfoldFailed(offendingNode.asInstanceOf[Unfold], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      UnfoldFailed(offendingNode.asInstanceOf[Unfold], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -274,9 +275,9 @@ object errors {
     val id = "package.failed"
     val text = s"Packaging wand might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = PackageFailed(offendingNode.asInstanceOf[Package], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      PackageFailed(offendingNode.asInstanceOf[Package], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = PackageFailed(offendingNode.asInstanceOf[Package], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      PackageFailed(offendingNode.asInstanceOf[Package], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -287,9 +288,9 @@ object errors {
     val id = "apply.failed"
     val text = s"Applying wand might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = ApplyFailed(offendingNode.asInstanceOf[Apply], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      ApplyFailed(offendingNode.asInstanceOf[Apply], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = ApplyFailed(offendingNode.asInstanceOf[Apply], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      ApplyFailed(offendingNode.asInstanceOf[Apply], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -300,9 +301,9 @@ object errors {
     val id = "invariant.not.preserved"
     val text = s"Loop invariant $offendingNode might not be preserved."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = LoopInvariantNotPreserved(offendingNode.asInstanceOf[Exp], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      LoopInvariantNotPreserved(offendingNode.asInstanceOf[Exp], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = LoopInvariantNotPreserved(offendingNode.asInstanceOf[Exp], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      LoopInvariantNotPreserved(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -313,9 +314,9 @@ object errors {
     val id = "invariant.not.established"
     val text = s"Loop invariant $offendingNode might not hold on entry."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = LoopInvariantNotEstablished(offendingNode.asInstanceOf[Exp], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      LoopInvariantNotEstablished(offendingNode.asInstanceOf[Exp], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = LoopInvariantNotEstablished(offendingNode.asInstanceOf[Exp], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      LoopInvariantNotEstablished(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -326,9 +327,9 @@ object errors {
     val id = "function.not.wellformed"
     val text = s"Function might not be well-formed."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = FunctionNotWellformed(offendingNode.asInstanceOf[Function], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      FunctionNotWellformed(offendingNode.asInstanceOf[Function], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = FunctionNotWellformed(offendingNode.asInstanceOf[Function], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      FunctionNotWellformed(offendingNode.asInstanceOf[Function], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -339,9 +340,9 @@ object errors {
     val id = "predicate.not.wellformed"
     val text = s"Predicate might not be well-formed."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = PredicateNotWellformed(offendingNode.asInstanceOf[Predicate], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      PredicateNotWellformed(offendingNode.asInstanceOf[Predicate], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = PredicateNotWellformed(offendingNode.asInstanceOf[Predicate], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      PredicateNotWellformed(offendingNode.asInstanceOf[Predicate], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -352,9 +353,9 @@ object errors {
     val id = "wand.not.wellformed"
     val text = s"Magic wand might not be well-formed."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = MagicWandNotWellformed(offendingNode.asInstanceOf[MagicWand], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      MagicWandNotWellformed(offendingNode.asInstanceOf[MagicWand], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = MagicWandNotWellformed(offendingNode.asInstanceOf[MagicWand], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      MagicWandNotWellformed(offendingNode.asInstanceOf[MagicWand], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -365,9 +366,9 @@ object errors {
     val id = "letwand.failed"
     val text = s"Referencing a wand might fail."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = LetWandFailed(offendingNode.asInstanceOf[LocalVarAssign], this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      LetWandFailed(offendingNode.asInstanceOf[LocalVarAssign], this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = LetWandFailed(offendingNode.asInstanceOf[LocalVarAssign], this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      LetWandFailed(offendingNode.asInstanceOf[LocalVarAssign], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -378,9 +379,9 @@ object errors {
     val id = "heuristics.failed"
     val text = "Applying heuristics failed."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = HeuristicsFailed(offendingNode, this.reason)
-    def updateNode(offendingNode: errors.PositionedNode) = {
-      HeuristicsFailed(offendingNode, this.reason.withNode(offendingNode).asInstanceOf[ErrorReason])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = HeuristicsFailed(offendingNode, this.reason)
+    def updateNode(offendingNode: PositionedNode, reasonOffendingNode: PositionedNode) = {
+      HeuristicsFailed(offendingNode, this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
     }
   }
 
@@ -395,14 +396,14 @@ object reasons {
     val id = "internal"
     val readableMessage = explanation
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = InternalReason(offendingNode, this.explanation)
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = InternalReason(offendingNode, this.explanation)
   }
 
   case class FeatureUnsupported(offendingNode: PositionedNode, explanation: String) extends AbstractErrorReason {
     val id = "feature.unsupported"
     def readableMessage = s"$offendingNode is not supported. $explanation"
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = FeatureUnsupported(offendingNode, this.explanation)
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = FeatureUnsupported(offendingNode, this.explanation)
   }
 
   case class UnexpectedNode(offendingNode: PositionedNode, explanation: String, stackTrace: Seq[StackTraceElement])
@@ -411,14 +412,14 @@ object reasons {
     val id = "unexpected.node"
     def readableMessage = s"$offendingNode occurred unexpectedly. $explanation"
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = UnexpectedNode(offendingNode, this.explanation, this.stackTrace)
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = UnexpectedNode(offendingNode, this.explanation, this.stackTrace)
   }
 
   case class AssertionFalse(offendingNode: Exp) extends AbstractErrorReason {
     val id = "assertion.false"
     def readableMessage = s"Assertion $offendingNode might not hold."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = AssertionFalse(offendingNode.asInstanceOf[Exp])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = AssertionFalse(offendingNode.asInstanceOf[Exp])
   }
 
   // Note: this class should be deprecated/removed - we no longer support epsilon permissions in the language
@@ -426,56 +427,56 @@ object reasons {
     val id = "epsilon.as.param"
     def readableMessage = s"The parameter $offendingNode might be an epsilon permission, which is not allowed for method parameters."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = EpsilonAsParam(offendingNode.asInstanceOf[Exp])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = EpsilonAsParam(offendingNode.asInstanceOf[Exp])
   }
 
   case class ReceiverNull(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "receiver.null"
     def readableMessage = s"Receiver of $offendingNode might be null."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = ReceiverNull(offendingNode.asInstanceOf[LocationAccess])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = ReceiverNull(offendingNode.asInstanceOf[LocationAccess])
   }
 
   case class DivisionByZero(offendingNode: Exp) extends AbstractErrorReason {
     val id = "division.by.zero"
     def readableMessage = s"Divisor $offendingNode might be zero."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = DivisionByZero(offendingNode.asInstanceOf[Exp])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = DivisionByZero(offendingNode.asInstanceOf[Exp])
   }
 
   case class NegativePermission(offendingNode: Exp) extends AbstractErrorReason {
     val id = "negative.permission"
     def readableMessage = s"Fraction $offendingNode might be negative."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = NegativePermission(offendingNode.asInstanceOf[Exp])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = NegativePermission(offendingNode.asInstanceOf[Exp])
   }
 
   case class InsufficientPermission(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "insufficient.permission"
     def readableMessage = s"There might be insufficient permission to access $offendingNode."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = InsufficientPermission(offendingNode.asInstanceOf[LocationAccess])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = InsufficientPermission(offendingNode.asInstanceOf[LocationAccess])
   }
 
   case class InvalidPermMultiplication(offendingNode: PermMul) extends AbstractErrorReason {
     val id = "invalid.perm.multiplication"
     def readableMessage = s"Permission multiplication might not be possible, as an operand might contain epsilons."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = InvalidPermMultiplication(offendingNode.asInstanceOf[PermMul])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = InvalidPermMultiplication(offendingNode.asInstanceOf[PermMul])
   }
 
   case class MagicWandChunkNotFound(offendingNode: MagicWand) extends AbstractErrorReason {
     val id = "wand.not.found"
     def readableMessage = s"Magic wand instance not found."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = MagicWandChunkNotFound(offendingNode.asInstanceOf[MagicWand])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = MagicWandChunkNotFound(offendingNode.asInstanceOf[MagicWand])
   }
 
   case class NamedMagicWandChunkNotFound(offendingNode: AbstractLocalVar) extends AbstractErrorReason {
     val id = "wand.not.found"
     def readableMessage = s"Magic wand instance not found."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = NamedMagicWandChunkNotFound(offendingNode.asInstanceOf[AbstractLocalVar])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = NamedMagicWandChunkNotFound(offendingNode.asInstanceOf[AbstractLocalVar])
   }
 
   // AS: not sure why/if we need this as a special case
@@ -483,14 +484,14 @@ object reasons {
     val id = "wand.outdated"
     def readableMessage = s"Found magic wand instance, but now-expressions might not match."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = MagicWandChunkOutdated(offendingNode.asInstanceOf[MagicWand])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = MagicWandChunkOutdated(offendingNode.asInstanceOf[MagicWand])
   }
 
   case class ReceiverNotInjective(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "receiver.not.injective"
     def readableMessage = s"Receiver of $offendingNode [$pos]  might not be injective."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = ReceiverNotInjective(offendingNode.asInstanceOf[LocationAccess])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = ReceiverNotInjective(offendingNode.asInstanceOf[LocationAccess])
   }
 
   case class LabelledStateNotReached(offendingNode: LabelledOld) extends AbstractErrorReason {
@@ -498,14 +499,14 @@ object reasons {
     val lbl = offendingNode.oldLabel
     def readableMessage = s"Did not reach labelled state $lbl required to evaluate $offendingNode."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
+    def withNode(offendingNode: PositionedNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
   }
 
   case class SeqIndexNegative(seq: Exp, offendingNode: Exp) extends AbstractErrorReason {
     val id = "seq.index.negative"
     def readableMessage = s"Index $offendingNode into $seq might be negative."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) =
+    def withNode(offendingNode: PositionedNode = this.offendingNode) =
       SeqIndexNegative(seq, offendingNode.asInstanceOf[Exp])
   }
 
@@ -513,7 +514,7 @@ object reasons {
     val id = "seq.index.length"
     def readableMessage = s"Index $offendingNode into $seq might exceed sequence length."
 
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) =
+    def withNode(offendingNode: PositionedNode = this.offendingNode) =
       SeqIndexExceedsLength(seq, offendingNode.asInstanceOf[Exp])
   }
 }
