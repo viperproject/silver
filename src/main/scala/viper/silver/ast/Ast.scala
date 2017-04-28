@@ -106,7 +106,7 @@ trait Node extends Traversable[Node] with Rewritable {
   /** @see [[viper.silver.ast.utility.ViperStrategy]] */
   def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty,
                 recurse: Traverse = Traverse.Innermost)
-  : this.type =
+               : this.type =
 
   StrategyBuilder.Slim[Node](pre, recurse) execute[this.type] (this)
 
