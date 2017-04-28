@@ -624,7 +624,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   def showStmt(stmt: Stmt): Cont = {
     val stmtDoc = stmt match {
       case NewStmt(target, fields) =>
-        show(target) <+> ":=" <+> "new(" <> ssep(fields map (f => value(f.name)), char(',') <> space) <>")"
+        show(target) <+> ":=" <+> "new(" <> ssep(fields map (f => value(f.name)), char(',') <> space) <> ")"
       case LocalVarAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case FieldAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case Fold(e) => text("fold") <+> show(e)
@@ -635,20 +635,24 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Exhale(e) => text("exhale") <+> show(e)
       case Assert(e) => text("assert") <+> show(e)
       case Fresh(vars) =>
-        text("fresh") <+> ssep(vars map show, char (',') <> space)
+        text("fresh") <+> ssep(vars map show, char(',') <> space)
       case Constraining(vars, body) =>
-        text("constraining") <> parens(ssep(vars map show, char (',') <> space)) <+> showBlock(body)
+        text("constraining") <> parens(ssep(vars map show, char(',') <> space)) <+> showBlock(body)
       case MethodCall(mname, args, targets) =>
-        val call = text(mname) <> parens(ssep(args map show, char (',') <> space))
+        val call = text(mname) <> parens(ssep(args map show, char(',') <> space))
         targets match {
           case Nil => call
-          case _ => ssep(targets map show, char (',') <> space) <+> ":=" <+> call
+          case _ => ssep(targets map show, char(',') <> space) <+> ":=" <+> call
         }
-      case Seqn(ss) =>
-        if (ss.isEmpty && stmt.info.comment.isEmpty)
+      case seqn@Seqn(stmts) =>
+        if (stmts.isEmpty && seqn.info.comment.isEmpty)
           nil
-        else
-          ssep(ss map show, line)
+        else {
+          val stmtsToShow =
+            stmts filterNot (s => s.isInstanceOf[Seqn] && s.info.comment.isEmpty && s.children.isEmpty)
+
+          ssep(stmtsToShow map show, line)
+        }
       case While(cond, invs, locals, body) =>
         text("while") <+> parens(show(cond)) <>
           nest(defaultIndent,
