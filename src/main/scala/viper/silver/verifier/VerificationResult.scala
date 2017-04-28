@@ -50,7 +50,7 @@ trait AbstractError {
     if (msg contains posStr) s"$msg"
     else s"$msg ($posStr)"
   }
-  var cached:Boolean = false
+  var cached: Boolean = false
 }
 
 abstract class ParseReport(message: String, pos: Position) extends AbstractError

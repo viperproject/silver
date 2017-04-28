@@ -311,7 +311,7 @@ trait SilFrontend extends DefaultFrontend {
     lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
     lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
 
-    lazy val jsonError = s"""{"tag":"${error.fullId}","message":"$escapedMessageStr","start":"$startStr","end":"$endStr"}"""
+    lazy val jsonError = s"""{"cached":${error.cached},"tag":"${error.fullId}","message":"$escapedMessageStr","start":"$startStr","end":"$endStr"}"""
 
     @inline
     private def extractMessage(error: AbstractError) = {

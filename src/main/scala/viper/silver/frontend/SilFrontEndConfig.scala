@@ -66,10 +66,10 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
-  val useCaching = opt[Boolean]("useCaching",
+  val disableCaching = opt[Boolean]("disableCaching",
     descr = (  "Used for ViperServer. Cache verification errors to speed up the"
       + "verification process"),
-    default = Some(true),
+    default = Some(false),
     noshort = true,
     hidden = true
   )
