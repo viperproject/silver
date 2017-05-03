@@ -23,11 +23,11 @@ class CfgTests extends FunSuite {
       assert(resource != null, s"File $prefix$filename not found")
       val file = Paths.get(resource.toURI)
 
-      val frontend = new MockSilFrontend
-      frontend.translate(file) match {
-        case (Some(program), _) =>
-          for (method <- program.methods) {
-            repeat(count) {
+      repeat(count) {
+        val frontend = new MockSilFrontend
+        frontend.translate(file) match {
+          case (Some(program), _) =>
+            for (method <- program.methods) {
               val cfg = method.toCfg()
               for (block <- cfg.blocks) {
                 cfg.outEdges(block).toList match {
@@ -38,9 +38,10 @@ class CfgTests extends FunSuite {
                   case _ => fail("Problem with control flow graph structure")
                 }
               }
+
             }
-          }
-        case (None, errors) => fail("Problem with program: " + errors)
+          case (None, errors) => fail("Problem with program: " + errors)
+        }
       }
     }
   }
