@@ -30,6 +30,8 @@ object CfgSimplifier {
 
     val queue = mutable.Queue[Block[S, E]]()
 
+    // we use linked hash sets to preserve the insertion order of blocks and
+    // edges since we want the result of the simplifier to be deterministic
     val blocks = mutable.LinkedHashSet[Block[S, E]]()
     val edges = mutable.LinkedHashSet[Edge[S, E]]()
 
@@ -68,6 +70,8 @@ object CfgSimplifier {
     val queue = mutable.Queue[Edge[S, E]]()
     val visited = mutable.Set[Block[S, E]]()
 
+    // we use linked hash sets to preserve the insertion order of blocks and
+    // edges since we want the result of the simplifier to be deterministic
     val blocks = mutable.LinkedHashSet[Block[S, E]]()
     val edges = mutable.LinkedHashSet[Edge[S, E]]()
 
