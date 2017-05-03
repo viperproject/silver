@@ -1,32 +1,34 @@
 package viper.silver.parser
 
 import java.nio.file.{Files, Path}
-
-import fastparse.core.Mutable.Success
-import fastparse.core.Parsed
-import fastparse.core.Parsed.Success
-
-import scala.collection.immutable.Iterable
-import scala.collection.mutable
 import scala.language.implicitConversions
 import scala.language.reflectiveCalls
 import scala.util.parsing.input.NoPosition
+import fastparse.core.Parsed
 import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
-import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder, Traverse}
-import viper.silver.ast.utility.ViperStrategy
-import viper.silver.verifier.{ParseError, ParseReport, ParseWarning}
-
+import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
+import viper.silver.verifier.ParseError
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
-
 
 object FastParser extends PosParser {
 
   var _lines: Array[Int] = null
 
-  // Set of already imported files
-  val imported = collection.mutable.Set.empty[String]
+  /** Set of already imported files.
+    *
+    * Only absolute paths should be recorded in order to prevent that different relative paths
+    * (referencing the same file) result in importing files more than once.
+    * Hence, the two methods [[isAlreadyImported]] and [[addToImported]] below.
+    */
+  private val _imported = collection.mutable.Set.empty[Path]
+
+  private def isAlreadyImported(path: Path): Boolean =
+    _imported.contains(path.toAbsolutePath)
+
+  private def addToImported(path: Path): Boolean =
+    _imported.add(path.toAbsolutePath)
 
   def parse(s: String, f: Path) = {
     _file = f
@@ -37,15 +39,14 @@ object FastParser extends PosParser {
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
     //       iterate until no new imports are present.
     val importer = StrategyBuilder.Slim[PProgram]({
-      case p: PProgram => {
+      case p: PProgram =>
         val firstImport = p.imports.headOption
 
         if (firstImport.isEmpty) {
           p
-        }
-        else {
+        } else {
           val toImport = firstImport.get
-          if (imported.add(toImport.file)) {
+          if (addToImported(pathFromImport(toImport))) {
             val newProg = importProgram(toImport)
 
             PProgram(
@@ -61,32 +62,31 @@ object FastParser extends PosParser {
             PProgram(p.imports.drop(1), p.macros, p.domains, p.fields, p.functions, p.predicates, p.methods, p.errors)
           }
         }
-      } // Stop recursion at the program node already. Nodes other than PProgram are not interesting for our transformation
+        // Stop recursion at the program node already. Nodes other than PProgram are not
+        // interesting for our transformation
     }).recurseFunc({ case p: PProgram => Seq() }).repeat
 
     try {
       val rp = RecParser(f).parses(s)
       rp match {
-        case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, errors), e) => {
-          imported.clear() // Don't keep state in between parsing programs (same parse instance might be reused)
-          imported.add(f.toString.split("\\\\").last) // Add the current program to already imported
+        case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, errors), e) =>
+          _imported.clear() // Don't keep state in between parsing programs (same parse instance might be reused)
+          addToImported(f) // Add the current program to already imported
           val importedProgram = importer.execute[PProgram](program) // Import programs
           val expandedProgram = expandDefines(importedProgram) // Expand macros
           Parsed.Success(expandedProgram, e)
-        }
         case _ => rp
       }
     }
     catch {
-      case e@ParseException(msg, pos) => {
+      case e@ParseException(msg, pos) =>
         var line = 0
         var column = 0
         if (pos != null) {
           line = pos.line
           column = pos.column
         }
-        new ParseError(msg, SourcePosition(_file, line, column))
-      }
+        ParseError(msg, SourcePosition(_file, line, column))
     }
   }
 
@@ -132,34 +132,38 @@ object FastParser extends PosParser {
   /**
     * Function that parses a file and converts it into a program
     *
-    * @param i File to parse
-    * @return PProgram node generated from i
+    * @param importStmt Import statement.
+    * @return `PProgram` node corresponding to the imported program.
     */
-  def importProgram(i: PImport): PProgram = {
-    val fileName = i.file
-    val imp_path = file.getParent.resolve(fileName)
-    val imp_pos = i.start.asInstanceOf[viper.silver.ast.Position]
+  def importProgram(importStmt: PImport): PProgram = {
+    val path = pathFromImport(importStmt)
 
-    if (java.nio.file.Files.notExists(imp_path))
-      throw ParseException(s"""file "$imp_path" does not exist""", FastPositions.getStart(i))
+    if (java.nio.file.Files.notExists(path))
+      throw ParseException(s"""file "$path" does not exist""", FastPositions.getStart(importStmt))
 
-    val source = scala.io.Source.fromInputStream(Files.newInputStream(imp_path))
+    val source = scala.io.Source.fromInputStream(Files.newInputStream(path))
     val buffer = try {
       source.getLines.toArray
     } catch {
       case e@(_: RuntimeException | _: java.io.IOException) =>
-        throw ParseException(s"""could not import file ($e)""", FastPositions.getStart(i))
+        throw ParseException(s"""could not import file ($e)""", FastPositions.getStart(importStmt))
     } finally {
       source.close()
     }
     val imported_source = buffer.mkString("\n") + "\n"
-    val p = RecParser(imp_path).parses(imported_source)
+    val p = RecParser(path).parses(imported_source)
     p match {
       case fastparse.core.Parsed.Success(prog, _) => prog
-      case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Failure: $msg", FilePosition(imp_path, extra.line, extra.col))
+      case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Failure: $msg", FilePosition(path, extra.line, extra.col))
     }
   }
 
+  def pathFromImport(importStmt: PImport): Path = {
+    val fileName = importStmt.file
+    val path = file.getParent.resolve(fileName)
+
+    path
+  }
 
   /**
     * Expands the macros of a PProgram
