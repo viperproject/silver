@@ -1,26 +1,23 @@
-/**
-  * Created by simonfri on 14.02.2017.
-  *
+/*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
-*/
+ */
 
-import java.nio.file.{Path, Paths}
+import java.nio.file.Paths
 
-import org.scalatest.{FunSuite, Matchers}
+import TestHelpers.{FileComparisonHelper, MockSilFrontend}
+import org.scalatest.FunSuite
 import viper.silver.ast._
 import viper.silver.ast.utility.Rewriter._
 import viper.silver.ast.utility._
-import viper.silver.frontend.{SilFrontend, TranslatorState}
-import viper.silver.verifier.AbstractError
 
+import scala.collection.immutable.ListSet
 import scala.collection.mutable
 import scala.language.implicitConversions
 
 
-class RegexTests extends FunSuite {
-
+class RegexTests extends FunSuite with FileComparisonHelper {
   test("Sharing") {
     val shared = FalseLit()()
     val sharedAST = And(Not(shared)(), shared)()
@@ -40,7 +37,7 @@ class RegexTests extends FunSuite {
   }
 
   test("Performance_BinomialHeap") {
-    val fileName = "transformations\\Performance\\BinomialHeap"
+    val fileName = "transformations/Performance/BinomialHeap"
 
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
@@ -48,7 +45,7 @@ class RegexTests extends FunSuite {
     // Arbitrary regex to observe how much the matching slows down the program
     val strat = t &> n[Program] >> iC[Method](_.body) >> n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
 
-    val frontend = new DummyFrontend
+    val frontend = new MockSilFrontend
 
     val fileRes = getClass.getResource(fileName + ".sil")
     assert(fileRes != null, s"File $fileName not found")
@@ -57,21 +54,20 @@ class RegexTests extends FunSuite {
 
     frontend.translate(file) match {
       case (Some(p), _) => targetNode = p
-      case (None, errors) => println("Problem with program: " + errors)
+      case (None, errors) => fail("Problem with program: " + errors)
     }
 
-    val res = time(strat.execute[Program](targetNode))
-
-    assert(true)
+//    time(strat.execute[Program](targetNode))
+    strat.execute[Program](targetNode)
   }
 
 
   test("DisjunctionToInhaleExhaleTests") {
-    val filePrefix = "transformations\\DisjunctionToInhaleExhale\\"
+    val filePrefix = "transformations/DisjunctionToInhaleExhale/"
     val files = Seq("simple", "nested", "functions")
 
-    val frontend = new DummyFrontend
-    files foreach { fileName: String => {
+    val frontend = new MockSilFrontend
+    files foreach (fileName => {
       val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
       val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
       assert(fileRes != null, s"File $filePrefix$fileName not found")
@@ -79,69 +75,95 @@ class RegexTests extends FunSuite {
       val file = Paths.get(fileRes.toURI)
       val ref = Paths.get(fileRef.toURI)
 
-
       var targetNode: Program = null
       var targetRef: Program = null
 
       frontend.translate(file) match {
         case (Some(p), _) => targetNode = p
-        case (None, errors) => println("Problem with program: " + errors)
+        case (None, errors) => fail("Problem with program: " + errors)
       }
 
       // We use for NonDet a function that has name NonDet(i) where i is number of arguments
-      def NonDet(vars: Seq[LocalVarDecl]): Exp = {
+      def NonDet(_vars: Seq[LocalVarDecl]): Exp = {
+        /* 2017-04-28 Malte:
+         *   The order of the `vars` is nondeterministic, which sometimes makes the comparison
+         *   with the expected output program fail.
+         *   As a work around, we order the variables, see below.
+         *   One source of non-determinism seems to be the use of `SeqLike.distinct` (see below),
+         *   which internally uses a `HashSet`, which presumably does not have a deterministic
+         *   traversal order.
+         *   Another source seems to be the RegexStrategy itself: even without the use of
+         *   distinct (i.e. just using `x ++ y`), the final sequence of variables passed to
+         *   `NonDet` seems to be in nondeterministic order.
+         */
+        val vars = _vars.map(_.localVar).sortBy(_.name)
         if (vars.isEmpty) return TrueLit()()
         val func: Function = targetNode.functions.find(_.name == "NonDet" + vars.size).get
-        FuncApp(func, vars.map { x => x.localVar })()
+        FuncApp(func, vars)()
       }
 
       // Regular expression
-      val t = TreeRegexBuilder.context[Node, Seq[LocalVarDecl]]( _ ++ _, (x,y) => (x ++ y).distinct, Seq.empty[LocalVarDecl])
-      val strat = t &> c[QuantifiedExp]( _.variables).** >> n.r[Or] |-> { case (o:Or, c) => InhaleExhaleExp(CondExp(NonDet(c.c), o.left, o.right)(), c.noRec[Or](o))() }
+      val t = TreeRegexBuilder.context[Node, Seq[LocalVarDecl]](
+        _ ++ _,
+        (x,y) => (x ++ y).distinct,
+        Seq.empty)
+
+      val strat = (
+        t &> c[QuantifiedExp]( _.variables).** >> n.r[Or]
+          |-> { case (o:Or, c) =>
+                  InhaleExhaleExp(
+                    CondExp(
+                      NonDet(c.c), o.left, o.right)(), c.noRec[Or](o))()
+              })
 
       frontend.translate(ref) match {
         case (Some(p), _) => targetRef = p
-        case (None, errors) => println("Problem with program: " + errors)
+        case (None, errors) => fail("Problem with program: " + errors)
       }
 
       val res = strat.execute[Program](targetNode)
-      //  println("Old: " + targetNode.toString())
-      println("New: " + res.toString())
-      println("Reference: " + targetRef.toString())
-      assert(res.toString() == targetRef.toString(), "Files are not equal")
-    }
-    }
+
+      val obtainedOutput = res.toString()
+      val expectedOutput = targetRef.toString()
+
+      assert(obtainedOutput == expectedOutput,
+             s"""Transformation of program $fileRes did not yield expected program $fileRef:
+                |------Got ------
+                |$obtainedOutput
+                |--- Expected ---
+                |$expectedOutput
+              """.stripMargin)
+    })
   }
 
   test("ComplexMatching") {
-    val filePrefix = "transformations\\ComplexMatching\\"
+    val filePrefix = "transformations/ComplexMatching/"
     val files = Seq("simple", "complex")
 
     // Regular expression
     val t = TreeRegexBuilder.context[Node, Int](_ + _, math.max, 0)
     val strat = t &> iC[Method](_.body, _.name == "here") >> (n[Inhale] | n[Exhale]) >> (c[Or]( _ => 1 )  | c[And]( _ => 1)).* >> n.r[LocalVar]((v:LocalVar) => v.typ == Int && v.name.contains("x")) |-> { case (n:LocalVar, c) => IntLit(c.c)(n.pos, n.info, n.errT)}
 
-    val frontend = new DummyFrontend
+    val frontend = new MockSilFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend)}
   }
 
   test("PresentationSlides") {
 
-    val filePrefix = "transformations\\PresentationSlides\\"
+    val filePrefix = "transformations/PresentationSlides/"
     val files = Seq("simple")
 
     // Regular expression
     val t = TreeRegexBuilder.simple[Node]
-    val strat = t &> iC[Implies](_.right) > n[Or].+ >> n.r[TrueLit] |-> { case t:TrueLit => FalseLit()()}
+    val strat = t &> iC[Implies](_.right) > n[Or].+ >> n.r[TrueLit] |-> { case _: TrueLit => FalseLit()()}
 
-    val frontend = new DummyFrontend
+    val frontend = new MockSilFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend)}
-
   }
 
 
   test("ImplicationToDisjunctionTests") {
-    val filePrefix = "transformations\\ImplicationsToDisjunction\\"
+    val filePrefix = "transformations/ImplicationsToDisjunction/"
     val files = Seq("simple", "nested", "traverseEverything")
 
 
@@ -149,12 +171,12 @@ class RegexTests extends FunSuite {
     val t = TreeRegexBuilder.simple[Node]
     val strat = t &> n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
 
-    val frontend = new DummyFrontend
+    val frontend = new MockSilFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend) }
   }
 
   test("WhileToIfAndGoto") {
-    val filePrefix = "transformations\\WhileToIfAndGoto\\"
+    val filePrefix = "transformations/WhileToIfAndGoto/"
     val files = Seq("simple", "nested")
 
     // Regular expression
@@ -175,7 +197,7 @@ class RegexTests extends FunSuite {
         ))(w.pos, w.info)
     }
 
-    val frontend = new DummyFrontend
+    val frontend = new MockSilFrontend
     files foreach { fileName: String => {
       count = 0
       executeTest(filePrefix, fileName, strat, frontend)
@@ -185,7 +207,7 @@ class RegexTests extends FunSuite {
 
 
   test("ManyToOneAssert") {
-    val filePrefix = "transformations\\ManyToOneAssert\\"
+    val filePrefix = "transformations/ManyToOneAssert/"
     val files = Seq("simple", "interrupted", "nested", "nestedBlocks")
     var accumulator: mutable.ListBuffer[Exp] = mutable.ListBuffer.empty[Exp]
 
@@ -203,7 +225,7 @@ class RegexTests extends FunSuite {
         }
     }
 
-    val frontend = new DummyFrontend
+    val frontend = new MockSilFrontend
     files foreach { fileName: String => {
       executeTest(filePrefix, fileName, strat, frontend)
     }
@@ -212,13 +234,13 @@ class RegexTests extends FunSuite {
 
 
   test("UnfoldedChildren") {
-    val filePrefix = "transformations\\UnfoldedChildren\\"
+    val filePrefix = "transformations/UnfoldedChildren/"
     val files = Seq("fourAnd")
 
     val t = TreeRegexBuilder.ancestor[Node]
     val strat = t &> n.P[FuncApp]( _.funcname == "fourAnd") > n.r[Exp] |-> { case (e:Exp, c) => if(c.siblings.contains(FalseLit()())) FalseLit()() else e }
 
-    val frontend = new DummyFrontend
+    val frontend = new MockSilFrontend
     files foreach { fileName: String => {
       executeTest(filePrefix, fileName, strat, frontend)
     }
@@ -227,10 +249,10 @@ class RegexTests extends FunSuite {
 
   test("MethodCallDesugaring") {
     // Careful: Don't use old inside postcondition. It is not yet supported. maybe I will update the testcase (or not)
-    val filePrefix = "transformations\\MethodCallDesugaring\\"
+    val filePrefix = "transformations/MethodCallDesugaring/"
     val files = Seq("simple", "withArgs", "withArgsNRes", "withFields")
 
-    val frontend = new DummyFrontend
+    val frontend = new MockSilFrontend
 
 
     val t = TreeRegexBuilder.ancestor[Node]
@@ -262,10 +284,10 @@ class RegexTests extends FunSuite {
 
 
   test("CopyPropagation") {
-    val filePrefix = "transformations\\CopyPropagation\\"
+    val filePrefix = "transformations/CopyPropagation/"
     val files = Seq("simple", "complex")
 
-    val frontend = new DummyFrontend
+    val frontend = new MockSilFrontend
 
     val map = collection.mutable.Map.empty[LocalVar, BigInt]
     val collect = ViperStrategy.Slim({
@@ -297,62 +319,4 @@ class RegexTests extends FunSuite {
 
     files foreach { name => executeTest(filePrefix, name, combined, frontend) }
   }
-
-  def executeTest(filePrefix: String, fileName: String, strat: StrategyInterface[Node], frontend: DummyFrontend): Unit = {
-
-    val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-    assert(fileRes != null, s"File $filePrefix$fileName not found")
-    val file = Paths.get(fileRes.toURI)
-    var targetNode: Node = null
-    var targetRef: Node = null
-
-    frontend.translate(file) match {
-      case (Some(p), _) => targetNode = p
-      case (None, errors) => println("Problem with program: " + errors)
-    }
-    val res = strat.execute[Program](targetNode)
-
-    val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
-    assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
-
-    val ref = Paths.get(fileRef.toURI)
-    frontend.translate(ref) match {
-      case (Some(p), _) => targetRef = p
-      case (None, errors) => println("Problem with program: " + errors)
-    }
-
-    //  println("Old: " + targetNode.toString())
-    println("New: " + res.toString)
-    println("Reference: " + targetRef.toString())
-    assert(res.toString == targetRef.toString(), "Files are not equal")
-  }
-
-  // From: http://biercoff.com/easily-measuring-code-execution-time-in-scala/
-  def time[R](block: => R): R = {
-    val t0 = System.nanoTime()
-    val result = block    // call-by-name
-    val t1 = System.nanoTime()
-    println("Elapsed time: " + (t1 - t0) + "ns")
-    result
-  }
-
-  class DummyFrontend extends SilFrontend {
-    def createVerifier(fullCmd: _root_.scala.Predef.String) = ???
-
-    def configureVerifier(args: Seq[String]) = ???
-
-    def translate(silverFile: Path): (Option[Program], Seq[AbstractError]) = {
-      _verifier = None
-      _state = TranslatorState.Initialized
-
-      reset(silverFile) //
-      translate()
-
-      //println(s"_program = ${_program}") /* Option[Program], set if parsing and translating worked */
-      //println(s"_errors = ${_errors}")   /*  Seq[AbstractError], contains errors, if encountered */
-
-      (_program, _errors)
-    }
-  }
-
 }

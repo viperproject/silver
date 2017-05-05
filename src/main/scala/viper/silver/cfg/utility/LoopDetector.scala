@@ -46,8 +46,10 @@ object LoopDetector {
 
     val queue = mutable.Queue[Block[S, E]]()
     val heads = mutable.Map[Block[S, E], Block[S, E]]()
-    val blocks = mutable.Set[Block[S, E]]()
-    val edges = mutable.Set[Edge[S, E]]()
+    // we use linked hash sets to preserve the insertion order of blocks and
+    // edges since we want the result of the loop detector to be deterministic
+    val blocks = mutable.LinkedHashSet[Block[S, E]]()
+    val edges = mutable.LinkedHashSet[Edge[S, E]]()
 
     val entry = cfg.entry
     val exit = cfg.exit

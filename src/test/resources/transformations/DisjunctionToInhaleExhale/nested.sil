@@ -5,7 +5,7 @@ function NonDet1(vari: Bool):Bool {
 method main() returns ()
 {
    var i: Bool := true
-   var j: Bool := true
+   var m: Bool := true
 
-   assert(exists k: Bool :: (i && (k || j)))
+   assert(exists k: Bool :: (i && (k || m)))
 }

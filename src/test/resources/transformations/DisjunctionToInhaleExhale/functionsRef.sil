@@ -7,12 +7,12 @@ function NonDet2(vari1:Bool, vari2:Bool): Bool {
 }
 
 function func(b: Bool): Bool
-  ensures exists k: Bool :: 
-      [NonDet1(k) ? true : (b && 
-          [NonDet1(k) ? k : (exists j: Bool :: 
-              [NonDet2(k, j) ? true : j, true || j])
-          , k || exists j: Bool :: true || j]),
-      true || (b && (k || exists j: Bool :: true || j))] {
+  ensures exists k: Bool ::
+      [NonDet1(k) ? true : (b &&
+          [NonDet1(k) ? k : (exists m: Bool ::
+              [NonDet2(k, m) ? true : m, true || m])
+          , k || exists m: Bool :: true || m]),
+      true || (b && (k || exists m: Bool :: true || m))] {
       true
   }
 

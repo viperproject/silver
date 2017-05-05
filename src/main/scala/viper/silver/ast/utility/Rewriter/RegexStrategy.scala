@@ -6,8 +6,6 @@
 
 package viper.silver.ast.utility.Rewriter
 
-import viper.silver.ast.QuantifiedExp
-
 /**
   * Extension of the Strategy context. Encapsulates all the required information for the rewriting
  *
@@ -187,7 +185,7 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
         // Marked for rewrite
         case MarkedForRewrite() => newMarked = newMarked ++ Seq((n.asInstanceOf[N], newCtxt))
         // Context update
-        case ContextInfo(c: Any) => newCtxt = newCtxt.update(c.asInstanceOf[COLL])
+        case ContextInfo(c: Any) => newCtxt = newCtxt.update(c.asInstanceOf[COLL]) /* TODO: This cast is *not* guaranteed to succeed! */
         // Only recurse if we are the selected child
         case ChildSelectInfo(r: Rewritable) => newChildren.filter(_ eq r)
       }

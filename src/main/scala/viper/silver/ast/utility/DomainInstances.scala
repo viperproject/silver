@@ -301,32 +301,31 @@ object DomainInstances {
         t.substitute(s)
     }
 
-//  def showInstanceMembers(p: Program): Unit = {
-////    println("================== Domain instances")
-//    for (ti <- p.groundTypeInstances) {
-///*      ti match {
-//        case dt: DomainType =>
-//          println("Members for Domain type " + dt.toString())
-//          val domain = p.findDomain(dt.domainName)
-//          val (fs, as) = getInstanceMembers(p, dt)
-//          //          val sfs = domain.functions.map(substitute(_,dt.typVarsMap,p))
-//          for (f <- fs)
-//            println("   " + f.toString())
-//          for (a <- as)
-//            println("   " + a.toString())
-//          for (rf <- domain.functions.filter(f => fs.forall((ff) => ff.name != f.name)))
-//            println("   Rejected " + substitute(rf, dt.typVarsMap, p).toString())
-//          for (ra <- domain.axioms.filter(a => as.forall((aa) => aa.name != a.name)))
-//            println("   Rejected " + substitute(ra, dt.typVarsMap, p).toString())
-//      case _ =>
-//      }
-//*/
-//    }
-////    println("================== Domain instances done")
-//    /*    val allTypes = collectGroundTypes(p,p)
-//    for (t <- allTypes)
-//      println(t.toString())*/
-//  }
+  def showInstanceMembers(p: Program): Unit = {
+    println("================== Domain instances")
+    for (ti <- p.groundTypeInstances) {
+      ti match {
+        case dt: DomainType =>
+          println("Members for Domain type " + dt.toString())
+          val domain = p.findDomain(dt.domainName)
+          val (fs, as) = getInstanceMembers(p, dt)
+          //          val sfs = domain.functions.map(substitute(_,dt.typVarsMap,p))
+          for (f <- fs)
+            println("   " + f.toString())
+          for (a <- as)
+            println("   " + a.toString())
+          for (rf <- domain.functions.filter(f => fs.forall((ff) => ff.name != f.name)))
+            println("   Rejected " + substitute(rf, dt.typVarsMap, p).toString())
+          for (ra <- domain.axioms.filter(a => as.forall((aa) => aa.name != a.name)))
+            println("   Rejected " + substitute(ra, dt.typVarsMap, p).toString())
+      case _ =>
+      }
+    }
+    println("================== Domain instances done")
+    val allTypes = collectGroundTypes(p,p)
+    for (t <- allTypes)
+      println(t.toString())
+  }
 
   def getFTVDepths(t: Type): Map[TypeVar, Int] = t match {
     case dt: DomainType =>
