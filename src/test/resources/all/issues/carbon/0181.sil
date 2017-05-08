@@ -11,6 +11,13 @@ method m(r: Ref)
     requires unfolding acc(outer(r), 1/2) in req(r) // remove 1/2 here to make it work
 {
     unfold acc(outer(r), 1/2)
-    //:: UnexpectedOutput(application.precondition:assertion.false, /carbon/issue/181/)
-    var i: Int := actual(r) // fails
+    var i: Int := actual(r)
+}
+
+method m2(r: Ref)
+    requires outer(r)
+    requires unfolding acc(outer(r)) in req(r) // remove 1/2 here to make it work
+{
+    unfold acc(outer(r), 1/2)
+    var i: Int := actual(r)
 }

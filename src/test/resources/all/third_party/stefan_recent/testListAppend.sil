@@ -443,7 +443,6 @@ method List__append_iter(diz: Ref, current_thread_id: Int, l: Ref, L1: Seq[Int],
     invariant prefix ++ suffix == L1
     invariant l != null
     invariant acc(List__state(l), write)
-    //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /Carbon/issue/77/)
     invariant List__contents(l) == L2
     invariant vwand != null
     invariant acc(Wand_list_for_list__valid_wand(vwand), write)
