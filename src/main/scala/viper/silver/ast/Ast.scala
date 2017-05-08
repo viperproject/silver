@@ -161,7 +161,7 @@ trait Node extends Traversable[Node] with Rewritable {
     }
     val info = metadata(1) match {
       case i: Info => i
-      case _ => println("Invalid Position of Node: " + this); new NoInfo
+      case _ => println("Invalid Position of Node: " + this); NoInfo
     }
     val errorT = metadata(2) match {
       case e: ErrorTrafo => e
@@ -172,7 +172,7 @@ trait Node extends Traversable[Node] with Rewritable {
 
   // Default if no metadata present. Let subclasses override it if they specify position, info or Transformation
   def getMetadata: Seq[Any] = {
-    Seq(NoPosition, new NoInfo, NoTrafos)
+    Seq(NoPosition, NoInfo, NoTrafos)
   }
 
 }
@@ -282,12 +282,10 @@ trait Info {
       case _ => None
     }
   }
-
-  var entityHash: String = null
 }
 
 /** A default `Info` that is empty. */
-  class NoInfo extends Info {
+case object NoInfo extends Info {
   lazy val comment = Nil
 }
 
@@ -307,7 +305,7 @@ case class ConsInfo(head: Info, tail: Info) extends Info {
 /** Build a `ConsInfo` instance out of two `Info`s, unless the latter is `NoInfo` (which can be dropped) */
 object MakeInfoPair {
   def apply(head: Info, tail: Info) = tail match {
-    case info:NoInfo => head
+    case NoInfo => head
     case _ => ConsInfo(head, tail)
   }
 }
@@ -336,7 +334,7 @@ trait DependencyAware{
   val dependencyHash: String
 
   //TODO: implement
-  def getDependencies(m: Method): List[Method] = {
+  def getDependencies(m: Method): List[Member] = {
     List()
   }
 }

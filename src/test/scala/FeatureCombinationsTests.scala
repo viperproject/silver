@@ -44,7 +44,7 @@ class FeatureCombinationsTests extends FunSuite with Matchers {
   }
 
   test("Forall with predicate application in body expression") {
-    val pred = PredicateAccess(Seq(LocalVar("x")(Ref)), "pred")(NoPosition, new NoInfo, NoTrafos)
+    val pred = PredicateAccess(Seq(LocalVar("x")(Ref)), "pred")(NoPosition, NoInfo, NoTrafos)
     val perm = FullPerm()()
     val q1 = Forall(Seq(LocalVarDecl("i", Int)()), Seq(), PredicateAccessPredicate(pred, perm)())()
 
@@ -90,7 +90,7 @@ class FeatureCombinationsTests extends FunSuite with Matchers {
 
   /** predicate tests */
   test("Predicate with perm") {
-    val pred_acc = PredicateAccess(Seq(LocalVar("x")(Ref)), "pred")(NoPosition, new NoInfo, NoTrafos)
+    val pred_acc = PredicateAccess(Seq(LocalVar("x")(Ref)), "pred")(NoPosition, NoInfo, NoTrafos)
     val perm = CurrentPerm(pred_acc)()
     val pred2 = Predicate("foo", Seq(LocalVarDecl("x", Ref)()), Option(perm))()
 
@@ -142,7 +142,7 @@ class FeatureCombinationsTests extends FunSuite with Matchers {
   }
 
   test("Function with perm expression") {
-    val pred_acc = PredicateAccess(Seq(LocalVar("x")(Ref)), "pred")(NoPosition, new NoInfo, NoTrafos)
+    val pred_acc = PredicateAccess(Seq(LocalVar("x")(Ref)), "pred")(NoPosition, NoInfo, NoTrafos)
     val perm = CurrentPerm(pred_acc)()
 
     val body_exp = PermGeCmp(perm, NoPerm()())()

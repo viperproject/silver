@@ -40,7 +40,7 @@ trait PartialVerificationError {
 
     val offendingNode = new Node with Positioned with TransformableErrors with Infoed {
       val pos = NoPosition
-      val info = new NoInfo
+      val info = NoInfo
       val errT = NoTrafos
     }
 

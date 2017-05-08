@@ -134,7 +134,7 @@ object ViperStrategy {
         val OldMetaData = old.getPrettyMetadata
         var NewMetaData = now.getPrettyMetadata
 
-        if ((NewMetaData._1 == NoPosition) && (NewMetaData._2 == new NoInfo) && (NewMetaData._3 == NoTrafos)) {
+        if ((NewMetaData._1 == NoPosition) && (NewMetaData._2 == NoInfo) && (NewMetaData._3 == NoTrafos)) {
           NewMetaData = (OldMetaData._1, OldMetaData._2, OldMetaData._3)
         }
 
