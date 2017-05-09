@@ -24,9 +24,6 @@ trait VerificationError extends AbstractError with ErrorMessage {
   def readableMessage(withId: Boolean = false, withPosition: Boolean = true): String
   override def readableMessage = readableMessage(false, true)
   def fullId = s"$id:${reason.id}"
-
-
-  def updateNode(offendingNode: errors.ErrorNode, reasonOffendingNode: errors.ErrorNode): VerificationError
 }
 
 trait ErrorReason extends ErrorMessage
@@ -106,9 +103,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = Internal(offendingNode, this.reason)
     def withReason(r: ErrorReason) = Internal(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      Internal(offendingNode, this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def Internal(offendingNode: ErrorNode): PartialVerificationError =
@@ -120,9 +114,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssignmentFailed(offendingNode.asInstanceOf[AbstractAssign], this.reason)
     def withReason(r: ErrorReason) = AssignmentFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      AssignmentFailed(offendingNode.asInstanceOf[AbstractAssign], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def AssignmentFailed(offendingNode: AbstractAssign): PartialVerificationError =
@@ -134,9 +125,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CallFailed(offendingNode.asInstanceOf[MethodCall], this.reason)
     def withReason(r: ErrorReason) = CallFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      CallFailed(offendingNode.asInstanceOf[MethodCall], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def CallFailed(offendingNode: MethodCall): PartialVerificationError =
@@ -148,10 +136,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ContractNotWellformed(offendingNode.asInstanceOf[Exp], this.reason)
     def withReason(r: ErrorReason) = ContractNotWellformed(offendingNode, r)
-
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      ContractNotWellformed(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def ContractNotWellformed(offendingNode: Exp): PartialVerificationError =
@@ -163,9 +147,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PreconditionInCallFalse(offendingNode.asInstanceOf[MethodCall], this.reason)
     def withReason(r: ErrorReason) = PreconditionInCallFalse(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      PreconditionInCallFalse(offendingNode.asInstanceOf[MethodCall], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def PreconditionInCallFalse(offendingNode: MethodCall): PartialVerificationError =
@@ -177,9 +158,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PreconditionInAppFalse(offendingNode.asInstanceOf[FuncApp], this.reason)
     def withReason(r: ErrorReason) = PreconditionInAppFalse(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      PreconditionInAppFalse(offendingNode.asInstanceOf[FuncApp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def PreconditionInAppFalse(offendingNode: FuncApp): PartialVerificationError =
@@ -191,9 +169,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason)
     def withReason(r: ErrorReason) = ExhaleFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      ExhaleFailed(offendingNode.asInstanceOf[Exhale], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def ExhaleFailed(offendingNode: Exhale): PartialVerificationError =
@@ -205,9 +180,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason)
     def withReason(r: ErrorReason) = InhaleFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      InhaleFailed(offendingNode.asInstanceOf[Inhale], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def InhaleFailed(offendingNode: Inhale): PartialVerificationError =
@@ -219,9 +191,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = IfFailed(offendingNode.asInstanceOf[Exp], this.reason)
     def withReason(r: ErrorReason) = IfFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      IfFailed(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def IfFailed(offendingNode: Exp): PartialVerificationError =
@@ -233,9 +202,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = WhileFailed(offendingNode.asInstanceOf[Exp], this.reason)
     def withReason(r: ErrorReason) = WhileFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      WhileFailed(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def WhileFailed(offendingNode: Exp): PartialVerificationError =
@@ -247,9 +213,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertFailed(offendingNode.asInstanceOf[Assert], this.reason)
     def withReason(r: ErrorReason) = AssertFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      AssertFailed(offendingNode.asInstanceOf[Assert], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def AssertFailed(offendingNode: Assert): PartialVerificationError =
@@ -261,9 +224,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PostconditionViolated(offendingNode.asInstanceOf[Exp], this.member, this.reason)
     def withReason(r: ErrorReason) = PostconditionViolated(offendingNode, member, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      PostconditionViolated(offendingNode.asInstanceOf[Exp], this.member, this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def PostconditionViolated(offendingNode: Exp, member: Contracted): PartialVerificationError =
@@ -275,9 +235,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = FoldFailed(offendingNode.asInstanceOf[Fold], this.reason)
     def withReason(r: ErrorReason) = FoldFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      FoldFailed(offendingNode.asInstanceOf[Fold], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def FoldFailed(offendingNode: Fold): PartialVerificationError =
@@ -289,9 +246,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = UnfoldFailed(offendingNode.asInstanceOf[Unfold], this.reason)
     def withReason(r: ErrorReason) = UnfoldFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      UnfoldFailed(offendingNode.asInstanceOf[Unfold], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def UnfoldFailed(offendingNode: Unfold): PartialVerificationError =
@@ -303,9 +257,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PackageFailed(offendingNode.asInstanceOf[Package], this.reason)
     def withReason(r: ErrorReason) = PackageFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      PackageFailed(offendingNode.asInstanceOf[Package], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def PackageFailed(offendingNode: Package): PartialVerificationError =
@@ -317,9 +268,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ApplyFailed(offendingNode.asInstanceOf[Apply], this.reason)
     def withReason(r: ErrorReason) = ApplyFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      ApplyFailed(offendingNode.asInstanceOf[Apply], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def ApplyFailed(offendingNode: Apply): PartialVerificationError =
@@ -331,9 +279,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LoopInvariantNotPreserved(offendingNode.asInstanceOf[Exp], this.reason)
     def withReason(r: ErrorReason) = LoopInvariantNotPreserved(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      LoopInvariantNotPreserved(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def LoopInvariantNotPreserved(offendingNode: Exp): PartialVerificationError =
@@ -345,9 +290,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LoopInvariantNotEstablished(offendingNode.asInstanceOf[Exp], this.reason)
     def withReason(r: ErrorReason) = LoopInvariantNotEstablished(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      LoopInvariantNotEstablished(offendingNode.asInstanceOf[Exp], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def LoopInvariantNotEstablished(offendingNode: Exp): PartialVerificationError =
@@ -359,9 +301,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = FunctionNotWellformed(offendingNode.asInstanceOf[Function], this.reason)
     def withReason(r: ErrorReason) = FunctionNotWellformed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      FunctionNotWellformed(offendingNode.asInstanceOf[Function], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def FunctionNotWellformed(offendingNode: Function): PartialVerificationError =
@@ -373,9 +312,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = PredicateNotWellformed(offendingNode.asInstanceOf[Predicate], this.reason)
     def withReason(r: ErrorReason) = PredicateNotWellformed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      PredicateNotWellformed(offendingNode.asInstanceOf[Predicate], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def PredicateNotWellformed(offendingNode: Predicate): PartialVerificationError =
@@ -387,9 +323,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = MagicWandNotWellformed(offendingNode.asInstanceOf[MagicWand], this.reason)
     def withReason(r: ErrorReason) = MagicWandNotWellformed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      MagicWandNotWellformed(offendingNode.asInstanceOf[MagicWand], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def MagicWandNotWellformed(offendingNode: MagicWand): PartialVerificationError =
@@ -401,9 +334,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LetWandFailed(offendingNode.asInstanceOf[LocalVarAssign], this.reason)
     def withReason(r: ErrorReason) = LetWandFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      LetWandFailed(offendingNode.asInstanceOf[LocalVarAssign], this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def LetWandFailed(offendingNode: LocalVarAssign): PartialVerificationError =
@@ -415,9 +345,6 @@ object errors {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = HeuristicsFailed(offendingNode, this.reason)
     def withReason(r: ErrorReason) = HeuristicsFailed(offendingNode, r)
-    def updateNode(offendingNode: ErrorNode, reasonOffendingNode: ErrorNode) = {
-      HeuristicsFailed(offendingNode, this.reason.withNode(reasonOffendingNode).asInstanceOf[ErrorReason])
-    }
   }
 
   def HeuristicsFailed(offendingNode: ErrorNode): PartialVerificationError =
