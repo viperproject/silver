@@ -11,7 +11,7 @@ import viper.silver.ast.utility.Rewriter.Rewritable
 
 trait ErrorMessage {
   def id: String
-  def offendingNode: errors.ErrorNode with Infoed
+  def offendingNode: errors.ErrorNode
   def pos: Position
   def readableMessage: String
 

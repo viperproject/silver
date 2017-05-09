@@ -290,10 +290,10 @@ case object NoInfo extends Info {
 }
 
 /** A simple `Info` that contains a list of comments. */
-class SimpleInfo(val comment: Seq[String]) extends Info
+case class SimpleInfo(comment: Seq[String]) extends Info
 
 /** An `Info` instance for labelling a quantifier as auto-triggered. */
-class AutoTriggered extends Info {
+case object AutoTriggered extends Info {
   lazy val comment = Nil
 }
 

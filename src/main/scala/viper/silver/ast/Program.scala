@@ -7,7 +7,6 @@
 package viper.silver.ast
 
 import java.security.MessageDigest
-
 import viper.silver.ast.pretty._
 import utility.{Consistency, DomainInstances, Types}
 import viper.silver.cfg.silver.CfgGenerator

@@ -231,6 +231,9 @@ trait SilFrontend extends DefaultFrontend {
 
   }
 
+
+
+
   /* TODO: Naming of doTypecheck and doTranslate isn't ideal.
            doTypecheck already translated the program, whereas doTranslate doesn't actually translate
            anything, but instead filters members.

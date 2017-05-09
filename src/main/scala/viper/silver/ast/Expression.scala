@@ -451,7 +451,7 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
     if (triggers.isEmpty) {
       Expressions.generateTriggerSet(this) match {
         case Some((vars, triggerSets)) =>
-          Forall(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, MakeInfoPair(new AutoTriggered,info))
+          Forall(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, MakeInfoPair(AutoTriggered,info))
         case None =>
           /* Couldn't generate triggers */
           this
