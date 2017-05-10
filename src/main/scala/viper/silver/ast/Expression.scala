@@ -301,6 +301,12 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs,domainName, errT)
   def asManifestation = this
+
+  //Strangely, the copy method is not a member of the DomainFuncApp case class,
+  //therefore, We need this method that does the copying manually
+  def updatePosition(pos:Position): DomainFuncApp ={
+    DomainFuncApp(this.funcname,args,typVarMap)(pos, this.info, this.typPassed, this.formalArgsPassed, this.domainName, this.errT)
+  }
 }
 object DomainFuncApp {
   def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : DomainFuncApp =
