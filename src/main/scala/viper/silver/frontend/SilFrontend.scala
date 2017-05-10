@@ -8,9 +8,10 @@ package viper.silver.frontend
 
 import fastparse.core.Parsed
 import java.nio.file.{Path, Paths}
+
 import org.apache.commons.io.FilenameUtils
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
-import viper.silver.ast.{AbstractSourcePosition, HasLineColumn, Position, Program, SourcePosition}
+import viper.silver.ast.{Node, Position, _}
 import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
 import viper.silver.parser._
@@ -19,6 +20,8 @@ import viper.silver.verifier.CliOptionError
 import viper.silver.verifier.Failure
 import viper.silver.verifier.ParseError
 import viper.silver.verifier.TypecheckerError
+
+import scala.collection.mutable
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
@@ -202,6 +205,48 @@ trait SilFrontend extends DefaultFrontend {
       //output a JSON representation of the Outline for the IDE
       val members = program.members.map(m => s"""{"type":"${m.getClass().getName()}","name":"${m.name}","location":"${m.pos.toString()}"}""").mkString(",")
       loggerForIde.info(s"""{"type":"Outline","members":[$members]}""")
+    }
+  }
+
+  case class Definition(name:String, typ: String, location:Position, scope: AbstractSourcePosition = null) {}
+
+  private def addDecl(definitions: mutable.ListBuffer[Definition], typ: String, name:String, pos:Position, enclosingNode: Node with Positioned): Unit ={
+    enclosingNode.pos match {
+    case position: AbstractSourcePosition =>
+    definitions += Definition(name, typ, pos, position)
+    case _ =>
+    }
+  }
+
+  protected def printDefinitions(program: Program) {
+    //This works, as the scope of all LocalVarDecls is the enclosing Member
+    if (config != null && config.ideMode()) {
+      val definitions = mutable.ListBuffer[Definition]()
+      program.members.foreach{
+        case t: Field =>
+            definitions += Definition(t.name, "Field", t.pos) //global
+        case t: Function =>
+          definitions += Definition(t.name, "Function", t.pos)
+          t.formalArgs.foreach(arg =>addDecl(definitions,"Argument",arg.name,arg.pos,t))
+        case t: Method =>
+          definitions += Definition(t.name, "Method", t.pos)
+          t.formalArgs.foreach(arg =>addDecl(definitions,"Argument",arg.name,arg.pos,t))
+          t.formalReturns.foreach(arg =>addDecl(definitions,"Return",arg.name,arg.pos,t))
+          t.locals.foreach(arg =>addDecl(definitions,"Local",arg.name,arg.pos,t))
+        case t: Predicate =>
+          definitions += Definition(t.name, "Predicate", t.pos)
+          t.formalArgs.foreach(arg =>addDecl(definitions,"Argument",arg.name,arg.pos,t))
+        case t: Domain =>
+          definitions += Definition(t.name, "Domain", t.pos)
+          t.functions.foreach(func => {
+            definitions += Definition(func.name, "Function", func.pos)
+            func.formalArgs.foreach(arg => addDecl(definitions, "Argument", arg.name, arg.pos, t))
+          })
+          t.axioms.foreach(axiom =>addDecl(definitions,"Axiom",axiom.name,axiom.pos,t))
+      }
+      //output a JSON representation of the Outline for the IDE
+      val defs = definitions.map(d => s"""{"type":"${d.typ}","name":"${d.name}","location":"${d.location.toString}","scopeStart":"${if(d.scope != null) d.scope.start.line + ":" + d.scope.start.column else "global"}","scopeEnd":"${if(d.scope != null && d.scope.end.isDefined) d.scope.end.get.line + ":" + d.scope.end.get.column else "global"}"}""").mkString(",")
+      loggerForIde.info(s"""{"type":"Definitions","definitions":[$defs]}""")
     }
   }
 
