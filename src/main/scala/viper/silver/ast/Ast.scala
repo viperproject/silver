@@ -6,7 +6,6 @@
 
 package viper.silver.ast
 
-import java.security.MessageDigest
 import scala.reflect.ClassTag
 import pretty.FastPrettyPrinter
 import utility._
@@ -328,13 +327,4 @@ trait Typed {
   def isSubtype(other: Type) = typ isSubtype other
 
   def isSubtype(other: Typed) = typ isSubtype other.typ
-}
-
-trait DependencyAware{
-  val dependencyHash: String
-
-  //TODO: implement
-  def getDependencies(m: Method): List[Member] = {
-    List()
-  }
 }

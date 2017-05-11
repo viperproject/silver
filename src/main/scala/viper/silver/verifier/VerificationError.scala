@@ -97,7 +97,7 @@ abstract class AbstractErrorReason extends ErrorReason {
 object errors {
   type ErrorNode = Node with Positioned with TransformableErrors with Rewritable with Infoed
 
-  case class Internal(offendingNode: ErrorNode, reason: ErrorReason) extends AbstractVerificationError {
+  case class Internal(offendingNode: ErrorNode, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "internal"
     val text = "An internal error occurred."
 
@@ -108,7 +108,7 @@ object errors {
   def Internal(offendingNode: ErrorNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => Internal(offendingNode, reason))
 
-  case class AssignmentFailed(offendingNode: AbstractAssign, reason: ErrorReason) extends AbstractVerificationError {
+  case class AssignmentFailed(offendingNode: AbstractAssign, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "assignment.failed"
     val text = "Assignment might fail."
 
@@ -119,7 +119,7 @@ object errors {
   def AssignmentFailed(offendingNode: AbstractAssign): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => AssignmentFailed(offendingNode, reason))
 
-  case class CallFailed(offendingNode: MethodCall, reason: ErrorReason) extends AbstractVerificationError {
+  case class CallFailed(offendingNode: MethodCall, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "call.failed"
     val text = "Method call might fail."
 
@@ -130,7 +130,7 @@ object errors {
   def CallFailed(offendingNode: MethodCall): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => CallFailed(offendingNode, reason))
 
-  case class ContractNotWellformed(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
+  case class ContractNotWellformed(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "not.wellformed"
     val text = s"Contract might not be well-formed."
 
@@ -141,7 +141,7 @@ object errors {
   def ContractNotWellformed(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => ContractNotWellformed(offendingNode, reason))
 
-  case class PreconditionInCallFalse(offendingNode: MethodCall, reason: ErrorReason) extends AbstractVerificationError {
+  case class PreconditionInCallFalse(offendingNode: MethodCall, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "call.precondition"
     val text = s"The precondition of method ${offendingNode.methodName} might not hold."
 
@@ -152,7 +152,7 @@ object errors {
   def PreconditionInCallFalse(offendingNode: MethodCall): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PreconditionInCallFalse(offendingNode, reason))
 
-  case class PreconditionInAppFalse(offendingNode: FuncApp, reason: ErrorReason) extends AbstractVerificationError {
+  case class PreconditionInAppFalse(offendingNode: FuncApp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "application.precondition"
     val text = s"Precondition of function ${offendingNode.funcname} might not hold."
 
@@ -163,7 +163,7 @@ object errors {
   def PreconditionInAppFalse(offendingNode: FuncApp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PreconditionInAppFalse(offendingNode, reason))
 
-  case class ExhaleFailed(offendingNode: Exhale, reason: ErrorReason) extends AbstractVerificationError {
+  case class ExhaleFailed(offendingNode: Exhale, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "exhale.failed"
     val text = "Exhale might fail."
 
@@ -174,7 +174,7 @@ object errors {
   def ExhaleFailed(offendingNode: Exhale): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => ExhaleFailed(offendingNode, reason))
 
-  case class InhaleFailed(offendingNode: Inhale, reason: ErrorReason) extends AbstractVerificationError {
+  case class InhaleFailed(offendingNode: Inhale, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "inhale.failed"
     val text = "Inhale might fail."
 
@@ -185,7 +185,7 @@ object errors {
   def InhaleFailed(offendingNode: Inhale): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => InhaleFailed(offendingNode, reason))
 
-  case class IfFailed(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
+  case class IfFailed(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "if.failed"
     val text = "Conditional statement might fail."
 
@@ -196,7 +196,7 @@ object errors {
   def IfFailed(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => IfFailed(offendingNode, reason))
 
-  case class WhileFailed(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
+  case class WhileFailed(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "while.failed"
     val text = "While statement might fail."
 
@@ -207,7 +207,7 @@ object errors {
   def WhileFailed(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => WhileFailed(offendingNode, reason))
 
-  case class AssertFailed(offendingNode: Assert, reason: ErrorReason) extends AbstractVerificationError {
+  case class AssertFailed(offendingNode: Assert, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "assert.failed"
     val text = "Assert might fail."
 
@@ -218,7 +218,7 @@ object errors {
   def AssertFailed(offendingNode: Assert): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => AssertFailed(offendingNode, reason))
 
-  case class PostconditionViolated(offendingNode: Exp, member: Contracted, reason: ErrorReason) extends AbstractVerificationError {
+  case class PostconditionViolated(offendingNode: Exp, member: Contracted, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "postcondition.violated"
     val text = s"Postcondition of ${member.name} might not hold."
 
@@ -229,7 +229,7 @@ object errors {
   def PostconditionViolated(offendingNode: Exp, member: Contracted): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PostconditionViolated(offendingNode, member, reason))
 
-  case class FoldFailed(offendingNode: Fold, reason: ErrorReason) extends AbstractVerificationError {
+  case class FoldFailed(offendingNode: Fold, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "fold.failed"
     val text = s"Folding ${offendingNode.acc.loc} might fail."
 
@@ -240,7 +240,7 @@ object errors {
   def FoldFailed(offendingNode: Fold): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => FoldFailed(offendingNode, reason))
 
-  case class UnfoldFailed(offendingNode: Unfold, reason: ErrorReason) extends AbstractVerificationError {
+  case class UnfoldFailed(offendingNode: Unfold, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "unfold.failed"
     val text = s"Unfolding ${offendingNode.acc.loc} might fail."
 
@@ -251,7 +251,7 @@ object errors {
   def UnfoldFailed(offendingNode: Unfold): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => UnfoldFailed(offendingNode, reason))
 
-  case class PackageFailed(offendingNode: Package, reason: ErrorReason) extends AbstractVerificationError {
+  case class PackageFailed(offendingNode: Package, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "package.failed"
     val text = s"Packaging wand might fail."
 
@@ -262,7 +262,7 @@ object errors {
   def PackageFailed(offendingNode: Package): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PackageFailed(offendingNode, reason))
 
-  case class ApplyFailed(offendingNode: Apply, reason: ErrorReason) extends AbstractVerificationError {
+  case class ApplyFailed(offendingNode: Apply, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "apply.failed"
     val text = s"Applying wand might fail."
 
@@ -273,7 +273,7 @@ object errors {
   def ApplyFailed(offendingNode: Apply): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => ApplyFailed(offendingNode, reason))
 
-  case class LoopInvariantNotPreserved(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
+  case class LoopInvariantNotPreserved(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "invariant.not.preserved"
     val text = s"Loop invariant $offendingNode might not be preserved."
 
@@ -284,7 +284,7 @@ object errors {
   def LoopInvariantNotPreserved(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LoopInvariantNotPreserved(offendingNode, reason))
 
-  case class LoopInvariantNotEstablished(offendingNode: Exp, reason: ErrorReason) extends AbstractVerificationError {
+  case class LoopInvariantNotEstablished(offendingNode: Exp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "invariant.not.established"
     val text = s"Loop invariant $offendingNode might not hold on entry."
 
@@ -295,7 +295,7 @@ object errors {
   def LoopInvariantNotEstablished(offendingNode: Exp): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LoopInvariantNotEstablished(offendingNode, reason))
 
-  case class FunctionNotWellformed(offendingNode: Function, reason: ErrorReason) extends AbstractVerificationError {
+  case class FunctionNotWellformed(offendingNode: Function, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "function.not.wellformed"
     val text = s"Function might not be well-formed."
 
@@ -306,7 +306,7 @@ object errors {
   def FunctionNotWellformed(offendingNode: Function): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => FunctionNotWellformed(offendingNode, reason))
 
-  case class PredicateNotWellformed(offendingNode: Predicate, reason: ErrorReason) extends AbstractVerificationError {
+  case class PredicateNotWellformed(offendingNode: Predicate, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "predicate.not.wellformed"
     val text = s"Predicate might not be well-formed."
 
@@ -317,7 +317,7 @@ object errors {
   def PredicateNotWellformed(offendingNode: Predicate): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => PredicateNotWellformed(offendingNode, reason))
 
-  case class MagicWandNotWellformed(offendingNode: MagicWand, reason: ErrorReason) extends AbstractVerificationError {
+  case class MagicWandNotWellformed(offendingNode: MagicWand, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "wand.not.wellformed"
     val text = s"Magic wand might not be well-formed."
 
@@ -328,7 +328,7 @@ object errors {
   def MagicWandNotWellformed(offendingNode: MagicWand): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => MagicWandNotWellformed(offendingNode, reason))
 
-  case class LetWandFailed(offendingNode: LocalVarAssign, reason: ErrorReason) extends AbstractVerificationError {
+  case class LetWandFailed(offendingNode: LocalVarAssign, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "letwand.failed"
     val text = s"Referencing a wand might fail."
 
@@ -339,7 +339,7 @@ object errors {
   def LetWandFailed(offendingNode: LocalVarAssign): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => LetWandFailed(offendingNode, reason))
 
-  case class HeuristicsFailed(offendingNode: ErrorNode, reason: ErrorReason) extends AbstractVerificationError {
+  case class HeuristicsFailed(offendingNode: ErrorNode, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "heuristics.failed"
     val text = "Applying heuristics failed."
 

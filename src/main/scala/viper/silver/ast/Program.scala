@@ -6,10 +6,10 @@
 
 package viper.silver.ast
 
-import java.security.MessageDigest
 import viper.silver.ast.pretty._
 import utility.{Consistency, DomainInstances, Types}
 import viper.silver.cfg.silver.CfgGenerator
+import viper.silver.utility.{CacheHelper, DependencyAware}
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
@@ -77,21 +77,8 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   def computeEntityHashes(): Unit = {
     members.foreach((m:Member) => {
-      /*var counter = 0
-      m.subnodes.foreach(node => {
-        node.visit({ case (n: Node with Infoed) =>
-          val hash = computeEntityHash("" + counter, n)
-          n.info.entityHash = hash
-          counter += 1
-        })
-      })*/
-      m.entityHash = computeEntityHash("", m)
+      m.entityHash = CacheHelper.computeEntityHash("", m)
     })
-  }
-
-  private def computeEntityHash(prefix: String, astNode: Node): String = {
-    val node = prefix + "_" + FastPrettyPrinter.pretty(astNode)
-    CacheHelper.buildHash(node)
   }
 
 }//class Program
@@ -174,12 +161,6 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   override lazy val dependencyHash:String = {
     val dependencies:String = this.entityHash + " " + getDependencies(this).map(m =>m.entityHash).mkString(" ")
     CacheHelper.buildHash(dependencies)
-  }
-}
-
-object CacheHelper{
-  def buildHash(s:String): String = {
-    new String(MessageDigest.getInstance("MD5").digest(s.getBytes))
   }
 }
 
@@ -329,6 +310,8 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
 sealed trait Member extends Node with Positioned with Infoed with TransformableErrors {
   require(Consistency.validUserDefinedIdentifier(name))
   def name: String
+  //the entityHash needs to be mutable as long as the body of members are mutable,
+  //as it depends on the prettyPrint which depends on the body.
   var entityHash: String = null
 }
 

@@ -6,8 +6,6 @@
 
 package viper.silver.verifier
 
-import java.util.Calendar
-
 import viper.silver.ast._
 
 /** Describes the outcome of a verification attempt of a SIL program.
@@ -52,9 +50,8 @@ trait AbstractError {
     if (msg contains posStr) s"$msg"
     else s"$msg ($posStr)"
   }
-  var cached: Boolean = false
 
-  def timestamp = Calendar.getInstance().getTime()
+  def cached: Boolean = false
 }
 
 abstract class ParseReport(message: String, pos: Position) extends AbstractError
