@@ -38,3 +38,14 @@ scalacOptions ++= Seq("-Ypatmat-exhaust-depth", "off")
 // allows them to access the Sil test suite.
 publishArtifact in Test := true
 //(Test, packageBin) := true
+
+// Avoid problems with racy initialisation of SLF4J:
+//    http://stackoverflow.com/a/12095245
+//    https://github.com/typesafehub/scalalogging/issues/23
+testOptions in Test += Tests.Setup(classLoader =>
+  classLoader
+    .loadClass("org.slf4j.LoggerFactory")
+    .getMethod("getLogger", classLoader.loadClass("java.lang.String"))
+    .invoke(null, "ROOT"))
+
+parallelExecution in Test := false

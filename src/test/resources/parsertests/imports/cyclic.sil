@@ -1,0 +1,10 @@
+import "cyclic_other.sil"
+
+method main()
+{
+    mainOther1()
+}
+
+method assertion() {
+    assert(true)
+}

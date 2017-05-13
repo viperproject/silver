@@ -107,7 +107,6 @@ method NodeaddAtEnd$(this$_5: Ref, k$_1: Perm, v: Int)
   while (cur.Nodenext$ != null)
     invariant acc(cur.Nodenext$, write) && acc(cur.Nodeval$, write) && acc(cur.Nodelength$, write)
     invariant (this$_5 != cur) ==> acc(Nodelseg$(this$_5), write) && (Nodeend$(this$_5) == cur)
-    //:: UnexpectedOutput(invariant.not.preserved:assertion.false, /Carbon/issue/10/)
     invariant (cur.Nodelength$ > 0) && ((cur.Nodelength$ > 1) ==> (cur.Nodenext$ != null) && acc(Nodelseg$(cur.Nodenext$), write)) && ((cur.Nodelength$ == 1 ? cur.Nodenext$ : Nodeend$(cur.Nodenext$)) == null)
   {
     temp := cur

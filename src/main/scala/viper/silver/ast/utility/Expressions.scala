@@ -8,6 +8,7 @@ package viper.silver.ast.utility
 
 import scala.reflect.ClassTag
 import viper.silver.ast._
+import viper.silver.ast.utility.Rewriter.Traverse
 import viper.silver.ast.utility.Triggers.TriggerGeneration
 
 /** Utility methods for expressions. */
@@ -54,16 +55,16 @@ object Expressions {
       case _: AccessPredicate | _: MagicWand => TrueLit()()
       case fa@Forall(vs,ts,body) => Forall(vs,ts,asBooleanExp(body))(fa.pos,fa.info)
       case Unfolding(predicate, exp) => asBooleanExp(exp)
-    })()
+    })
   }
 
-  def whenInhaling(e: Exp) = e.transform()(post = {
+  def whenInhaling(e: Exp) = e.transform({
     case InhaleExhaleExp(in, _) => in
-  })
+  }, Traverse.BottomUp)
 
-  def whenExhaling(e: Exp) = e.transform()(post = {
+  def whenExhaling(e: Exp) = e.transform({
     case InhaleExhaleExp(_, ex) => ex
-  })
+  }, Traverse.BottomUp)
 
   def contains[T <: Node : ClassTag](expressions: Seq[Exp]) = {
     expressions.exists(_.contains[T])
@@ -85,7 +86,7 @@ object Expressions {
     val res = exp.transform {
       case AbstractLocalVar(name) if actualArg(name).isDefined => actualArg(name).get
       case orig@LocalVarDecl(name,typ) if actualArg(name).isDefined => LocalVarDecl(actualArg(name).get.name,typ)(orig.pos,orig.info)
-    }()
+    }
     res
   }
 
@@ -104,7 +105,7 @@ object Expressions {
 
     val res = exp.transform {
       case AbstractLocalVar(name) if actualArg(name).isDefined => actualArg(name).get
-    }()
+    }
     res
   }
 

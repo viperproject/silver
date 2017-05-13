@@ -38,5 +38,6 @@ method test04(xs: Seq[Ref], ys: Seq[Ref])
   requires forall i: Int :: 0 <= i && i < |ys| ==> acc(ys[i].f, 2/3)
 {
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/149/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/198/)
   assert xs[0] != ys[0]
 }
