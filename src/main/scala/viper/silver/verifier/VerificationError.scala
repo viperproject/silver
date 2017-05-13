@@ -84,14 +84,20 @@ abstract class AbstractErrorReason extends ErrorReason {
 object errors {
   type PositionedNode = Node with Positioned
 
+  // used when an error/reason has no sensible node to use
+  object DummyNode extends Node with Positioned {
+    val pos = NoPosition
+  }
+
   case class Internal(offendingNode: PositionedNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "internal"
     val text = "An internal error occurred."
 
     def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = Internal(offendingNode, this.reason)
   }
-
-  def Internal(offendingNode: PositionedNode): PartialVerificationError =
+  // internal errors can be created with dummy nodes
+  def Internal(reason: ErrorReason) : Internal = Internal(DummyNode, reason)
+  def Internal(offendingNode: PositionedNode = DummyNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => Internal(offendingNode, reason))
 
   case class AssignmentFailed(offendingNode: AbstractAssign, reason: ErrorReason) extends AbstractVerificationError {
