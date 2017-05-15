@@ -21,23 +21,3 @@ method m2(r: Ref)
     unfold acc(outer(r), 1/2)
     var i: Int := actual(r)
 }
-
-function SCIONPath_get_hof(self: Ref): Ref
-  requires acc(outone(self), wildcard)
-{
-  (
-  let idx_0 == 
-  (unfolding acc(outone(self), wildcard) in self.whatever) 
-  in 
-  (unbox(box(false)) ? null : null))
-}
-
-predicate outone(r: Ref) {acc(r.whatever)}
-
-function isBool(r: Ref): Bool
-function box(b: Bool): Ref
-    ensures isBool(result)
-function unbox(r: Ref): Bool
-    requires isBool(r)
-
-field whatever: Int
