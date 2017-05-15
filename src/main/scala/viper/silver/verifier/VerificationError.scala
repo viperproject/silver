@@ -98,6 +98,12 @@ abstract class AbstractErrorReason extends ErrorReason {
 object errors {
   type ErrorNode = Node with Positioned with TransformableErrors with Rewritable
 
+  // used when an error/reason has no sensible node to use
+  object DummyNode extends Node with Positioned with TransformableErrors with Rewritable {
+    val pos = NoPosition
+    val errT = NoTrafos
+  }
+
   case class Internal(offendingNode: ErrorNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "internal"
     val text = "An internal error occurred."
@@ -105,8 +111,9 @@ object errors {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = Internal(offendingNode, this.reason)
     def withReason(r: ErrorReason) = Internal(offendingNode, r)
   }
-
-  def Internal(offendingNode: ErrorNode): PartialVerificationError =
+  // internal errors can be created with dummy nodes
+  def Internal(reason: ErrorReason) : Internal = Internal(DummyNode, reason)
+  def Internal(offendingNode: ErrorNode = DummyNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => Internal(offendingNode, reason))
 
   case class AssignmentFailed(offendingNode: AbstractAssign, reason: ErrorReason) extends AbstractVerificationError {
@@ -353,23 +360,23 @@ object errors {
 }
 
 object reasons {
-  type PositionedNode = errors.ErrorNode
+  type ErrorNode = errors.ErrorNode
 
-  case class InternalReason(offendingNode: PositionedNode, explanation: String) extends AbstractErrorReason {
+  case class InternalReason(offendingNode: ErrorNode, explanation: String) extends AbstractErrorReason {
     val id = "internal"
     val readableMessage = explanation
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = InternalReason(offendingNode, this.explanation)
   }
 
-  case class FeatureUnsupported(offendingNode: PositionedNode, explanation: String) extends AbstractErrorReason {
+  case class FeatureUnsupported(offendingNode: ErrorNode, explanation: String) extends AbstractErrorReason {
     val id = "feature.unsupported"
     def readableMessage = s"$offendingNode is not supported. $explanation"
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = FeatureUnsupported(offendingNode, this.explanation)
   }
 
-  case class UnexpectedNode(offendingNode: PositionedNode, explanation: String, stackTrace: Seq[StackTraceElement])
+  case class UnexpectedNode(offendingNode: ErrorNode, explanation: String, stackTrace: Seq[StackTraceElement])
       extends AbstractErrorReason {
 
     val id = "unexpected.node"
