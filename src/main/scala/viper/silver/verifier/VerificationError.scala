@@ -33,7 +33,7 @@ trait ErrorReason extends ErrorMessage
 trait PartialVerificationError {
   def f: ErrorReason => VerificationError
 
-  private object DummyReason extends AbstractErrorReason {
+  private case object DummyReason extends AbstractErrorReason {
     val id = "?"
     val readableMessage = "?"
 
@@ -99,7 +99,7 @@ object errors {
   type ErrorNode = Node with Positioned with TransformableErrors with Rewritable
 
   // used when an error/reason has no sensible node to use
-  object DummyNode extends Node with Positioned with TransformableErrors with Rewritable {
+  case object DummyNode extends Node with Positioned with TransformableErrors with Rewritable {
     val pos = NoPosition
     val errT = NoTrafos
   }
