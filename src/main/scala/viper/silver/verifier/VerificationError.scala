@@ -37,7 +37,7 @@ trait PartialVerificationError {
     val id = "?"
     val readableMessage = "?"
 
-    val offendingNode = new Node with Positioned with TransformableErrors {
+    case object offendingNode extends Node with Positioned with TransformableErrors {
       val pos = NoPosition
       val errT = NoTrafos
     }
