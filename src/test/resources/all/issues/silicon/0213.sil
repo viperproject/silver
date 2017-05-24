@@ -21,7 +21,9 @@ method silicon_fail(x: Ref) returns (res: Ref)
 {
     unfold acc(Foo(x), write)
     res := x.f1
-    package A(res) --* folding acc(Foo(x)) in B1(x)
+    package (A(res)) --* B1(x) {
+        fold acc(Foo(x))
+    }
 }
 
 define B2(x) (
@@ -39,7 +41,9 @@ method silicon_ok1(x: Ref) returns (res: Ref)
     unfold acc(Foo(x), write)
     res := x.f1
     x.val := 10
-    package A(res) --* folding acc(Foo(x)) in B2(x)
+    package (A(res)) --* B2(x) {
+        fold acc(Foo(x))
+    }
 }
 
 define B3(x) (

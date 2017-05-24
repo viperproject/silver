@@ -27,7 +27,9 @@ requires acc(x.f)
 method test03(x: Ref)
 requires acc(x.f)
 {
-  package (acc(x.f)&&x.f==2&&x.f==3) --* packaging (true --* false) in false
+  package (acc(x.f)&&x.f==2&&x.f==3) --* false {
+      package (true --* false)
+  }
 
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
@@ -35,15 +37,19 @@ requires acc(x.f)
 
 method test05(x:Ref)
 {
-  //:: ExpectedOutput(package.failed:assertion.false)
-  package true --* packaging (true --* false) in true
+  package (true) --* true {
+      //:: ExpectedOutput(package.failed:assertion.false)
+      package (true --* false)
+  }
   //fails since inner package fails even though true --* true always holds in any footprint
 }
 
 method test04(x:Ref)
 {
-  //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/188/)
-  package (acc(x.f)&&acc(x.f)) --* packaging (true --* false) in false
+  package (acc(x.f)&&acc(x.f)) --* false {
+      //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/188/)
+      package (true --* false)
+  }
 
   //:: ExpectedOutput(assert.failed:assertion.false)
   //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)

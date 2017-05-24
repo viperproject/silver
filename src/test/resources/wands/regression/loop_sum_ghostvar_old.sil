@@ -59,14 +59,10 @@ method sum_it(ys: Ref) returns (sum: Int)
 
     package
       ((xs != null) ==> (acc(List(xs)) && sum_rec(xs) == oldsum_xs))
-        --*
-      folding List(prev_xs) in
-        (applying
-          (((prev_xs != null) ==> (acc(List(prev_xs)) && sum_rec(prev_xs) == oldoldsum_xs))
-            --*
-          (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))))
-        in
-          (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))));
+        --* (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))) {
+            fold List(prev_xs)
+            apply ((prev_xs != null) ==> (acc(List(prev_xs)) && sum_rec(prev_xs) == oldoldsum_xs)) --* (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
+          }
   }
 
   apply

@@ -63,10 +63,13 @@ method test06(r: Ref) {
   var y: Ref
 
   inhale acc(P(x)) --* true
-  wand w := acc(P(x)) --* true
+  var oldX: Ref := x
 
   y := x
   x := r
 
-  package true --* folding P(y) in applying w in true
+  package (true) --* true {
+      fold P(y)
+      apply acc(P(oldX)) --* true
+  }
 }

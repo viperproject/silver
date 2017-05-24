@@ -50,7 +50,7 @@ method tree_delete_min(x: Ref) returns (z: Ref)
     define A acc(p.l) && (p.l != null ==> acc(Tree(p.l))) && ((p.l==null ? Seq[Int]() : vals(p.l)) == plvs[1..])
     define B acc(Tree(x)) && vals(x) == old(vals(x))[1..]
 
-    package A --* B {// NOT removable with heuristics
+    package (A) --* B {
         fold acc(Tree(p))
     }
 

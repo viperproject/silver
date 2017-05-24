@@ -3,15 +3,19 @@ field g: Ref
 field h: Ref
 
 method test01(x: Ref) {
-  package true --* packaging (false --* true) in true
+  package (true) --* true {
+      package (false --* true)
+  }
 
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
 
 method test02(x:Ref) {
-  //:: UnexpectedOutput(package.failed:wand.not.found, /silicon/issue/188/)
-  package false --* applying (false --* true) in true
+  package (false) --* true {
+      //:: UnexpectedOutput(apply.failed:wand.not.found, /silicon/issue/188/)
+      apply false --* true
+  }
 
   //:: ExpectedOutput(assert.failed:assertion.false)
   //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)

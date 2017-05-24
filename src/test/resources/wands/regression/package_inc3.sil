@@ -3,7 +3,9 @@ field g: Ref
 field h: Ref
 
 method test01(x: Ref) {
-  package acc(x.f) --* packaging (acc(x.f) --* acc(x.f)) in acc(x.f) --* acc(x.f)
+  package (acc(x.f)) --* (acc(x.f) --* acc(x.f)) {
+      package (acc(x.f) --* acc(x.f))
+  }
   inhale(acc(x.f))
   apply acc(x.f) --* (acc(x.f) --* acc(x.f))
 
@@ -13,7 +15,9 @@ method test01(x: Ref) {
 
 method test02(x: Ref) {
   //:: UnexpectedOutput(package.failed:wand.not.found, /silicon/issue/188/)
-  package false --* packaging (acc(x.f) --* acc(x.f)) in acc(x.f) --* acc(x.g)
+  package (false) --* (acc(x.f) --* acc(x.g)) {
+      package (acc(x.f) --* acc(x.f))
+  }
 
   //:: ExpectedOutput(assert.failed:assertion.false)
   //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)

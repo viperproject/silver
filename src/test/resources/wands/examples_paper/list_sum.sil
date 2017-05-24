@@ -64,8 +64,8 @@ method sum_it(ys: Ref) returns (sum: Int)
     invariant sum == old(sum_rec(ys)) - old_sum_xs;
     invariant A --* B
   {
-    /* Bind w to the magic wand instance that we currently hold in our state */
-    wand w := A --* B
+    var oldXs: Ref := xs
+    var oldOld_sum_xs: Int := old_sum_xs
 
     /* Let zs point to the *current* current node, update the sum and advance
      * the current node pointer.
@@ -81,9 +81,10 @@ method sum_it(ys: Ref) returns (sum: Int)
      */
     old_sum_xs := (xs == null ? 0 : sum_rec(xs))
 
-    package A --* B {
+    package (A) --* B {
         fold List(zs)
-        apply w
+        apply (oldXs != null ==> acc(List(oldXs)) && sum_rec(oldXs) == oldOld_sum_xs) --*
+        (acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys)))
     }
   }
 

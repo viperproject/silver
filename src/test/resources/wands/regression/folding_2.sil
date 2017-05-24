@@ -5,7 +5,10 @@ field h: Ref
 method test01(x:Ref) 
 requires acc(x.f,1/2)
 {
-  package acc(x.f,1/2) --* (folding P(x) in (folding Q(x) in acc(P(x))&&acc(Q(x))))
+  package (acc(x.f,1/2)) --* acc(P(x))&&acc(Q(x)) {
+      fold P(x)
+      fold Q(x)
+  }
   
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
   exhale(acc(x.f,1/2)) //should fail
@@ -15,7 +18,10 @@ requires acc(x.f,1/2)
 method test02(x:Ref) 
 requires acc(x.f)
 {
-  package acc(x.f,1/2) --* (folding P(x) in (folding Q(x) in acc(P(x))&&acc(Q(x))))
+  package (acc(x.f,1/2)) --* acc(P(x))&&acc(Q(x)) {
+      fold P(x)
+      fold Q(x)
+  }
   exhale(acc(x.f,1/2)) //should succeed
      
   //:: ExpectedOutput(assert.failed:assertion.false)
@@ -25,7 +31,11 @@ requires acc(x.f)
 method test03(x:Ref,y:Ref) 
 requires acc(x.f,1/2) && acc(y.f,1/2)
 {
-  package acc(x.f,1/2) --* (folding P(x) in (folding Q(x) in (folding P(y) in acc(P(x))&&acc(Q(x))&&acc(P(y)))))
+  package (acc(x.f,1/2)) --* acc(P(x))&&acc(Q(x))&&acc(P(y)) {
+      fold P(x)
+      fold Q(x)
+      fold P(y)
+  }
   
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false

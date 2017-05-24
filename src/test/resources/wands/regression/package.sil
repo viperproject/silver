@@ -94,10 +94,9 @@ method test13(x: Ref)
   requires acc(x.f)
 {
   //:: ExpectedOutput(package.failed:assertion.false)
-  package acc(x.f)
-            --*
-          (packaging (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
-          false)
+  package (acc(x.f)) --* false {
+      package (acc(x.f) --* acc(x.f) && acc(x.f) && false)
+  }
 }
 
 method test14(x: Ref) {
@@ -112,10 +111,9 @@ method test15(x: Ref)
   requires acc(x.f)
 {
   /* yields acc(x.f) --* true */
-  package acc(x.f)
-            --*
-          (packaging (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
-          true)
+  package (acc(x.f)) --* true {
+      package (acc(x.f) --* acc(x.f) && acc(x.f) && false)
+  }
 
   assert acc(x.f) --* true
   //:: ExpectedOutput(assert.failed:assertion.false)
@@ -126,11 +124,10 @@ method test16(x: Ref)
   requires acc(x.f)
 {
   /* yields acc(x.f) --* false */
-  package acc(x.f)
-            --*
-          (packaging (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
-          (applying (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
-           false))
+  package (acc(x.f)) --* false {
+      package (acc(x.f) --* acc(x.f) && acc(x.f) && false)
+      apply (acc(x.f) --* acc(x.f) && acc(x.f) && false)
+  }
 
 //  assert acc(x.f) --* false
   //:: ExpectedOutput(assert.failed:assertion.false)
@@ -141,11 +138,10 @@ method test17(x: Ref)
   requires acc(x.f)
 {
   /* yields acc(x.f) --* false */
-  package acc(x.f)
-            --*
-          (packaging (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
-          (applying (acc(x.f) --* acc(x.f) && acc(x.f) && false) in
-          false))
+  package (acc(x.f)) --* false {
+      package (acc(x.f) --* acc(x.f) && acc(x.f) && false)
+      apply (acc(x.f) --* acc(x.f) && acc(x.f) && false)
+  }
 
   //:: ExpectedOutput(apply.failed:insufficient.permission)
   apply acc(x.f) --* false

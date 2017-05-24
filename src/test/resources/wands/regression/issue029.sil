@@ -76,7 +76,9 @@ method test08(x: Ref) {
 
 method test02(b: Bool) {
   inhale acc(P())
-  package true --* folding Q(b) in acc(Q(b))
+  package (true) --* acc(Q(b)) {
+      fold Q(b)
+  }
 
   assert !b ==> acc(P())
 

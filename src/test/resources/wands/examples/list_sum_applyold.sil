@@ -35,7 +35,7 @@ method sum_it(ys: Ref) returns (sum: Int)
   sum := 0          /* Sum computed so far*/
 
   /* Short-hands to keep the specifications concise */
-  define A xs != null ==> acc(List(xs)) && sum_rec(xs) == sum_rec(xs)
+  define A xs != null ==> acc(List(xs)) && sum_rec(xs) == now(sum_rec(xs))
   define B acc(List(ys)) && sum_rec(ys) == old(sum_rec(ys))
 
   /* (Trivially) establish the promise that giving up the list starting from
@@ -76,7 +76,7 @@ method sum_it(ys: Ref) returns (sum: Int)
      * current node zs, and the magic wand instance w, since they belong to the
      * footprint of the packaged magic wand instance.
      */
-    package A --* B {
+    package (A) --* B {
         fold List(zs)
         apply w
     }

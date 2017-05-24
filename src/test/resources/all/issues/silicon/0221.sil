@@ -1,7 +1,9 @@
 predicate P(x: Ref) { true }
 
 method test01(x: Ref) {
-  package acc(P(x)) --* unfolding acc(P(x)) in true
+  package (acc(P(x))) --* true {
+      unfold acc(P(x))
+  }
   assert  acc(P(x)) --* true
 }
 
@@ -12,7 +14,10 @@ method test02(x: Ref) {
 
 method test03(x: Ref, y: Ref, z: Ref) {
   inhale  acc(P(x)) && acc(P(y)) && acc(P(z))
-  package acc(P(y)) && acc(P(z)) --* unfolding acc(P(x)) in unfolding acc(P(y)) in (acc(P(z)) && unfolding acc(P(z)) in true)
+  package (acc(P(y)) && acc(P(z))) --* acc(P(z)) && unfolding acc(P(z)) in true {
+      unfold acc(P(x))
+      unfold acc(P(y))
+  }
   assert  acc(P(y)) && acc(P(z)) --* acc(P(z)) && unfolding acc(P(z)) in true
   assert  acc(P(y)) && acc(P(z))
 

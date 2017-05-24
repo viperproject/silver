@@ -61,7 +61,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   {
     // assert old(elems(xs))[i+1] == elems(nxt)[0]
 
-    wand w := A --* B
+    var oldCrt: Ref := crt
     var prev: Ref := crt
 
     unfold List(nxt)
@@ -69,9 +69,9 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     nxt := nxt.next
     i := i + 1
 
-    package A --* B {
+    package (A) --* B {
         fold List(prev)
-        apply w
+        apply acc(List(oldCrt)) --* acc(List(xs))
     }
   }
 

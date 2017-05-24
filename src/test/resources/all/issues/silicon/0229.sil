@@ -33,7 +33,9 @@ method test4(x$1: Ref, rd$1: Perm) returns (res$1: Ref)
     unfold acc(valid__Foo(x$1), write)
     res$1 := x$1.Foo__v1
 
-  package acc(res$1.Int__v, write) --* folding acc(valid__Foo(x$1), write) in RHS
+  package (acc(res$1.Int__v, write)) --* RHS {
+      fold acc(valid__Foo(x$1), write)
+  }
 }
 
 field Foo__v1: Ref

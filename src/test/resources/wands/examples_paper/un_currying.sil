@@ -35,22 +35,25 @@ define B acc(Q())
 define C acc(R())
 
 /* A --* B --* C  ==>  A * B --* C */
-method uncurry()
-requires A --* (B --* C)
-ensures A && B --* C {
-    package A && B --* C {
-        apply A --* (B --* C)
-        apply B --* C
-    }
+method uncurry() 
+  requires A --* (B --* C)
+  ensures A && B --* C
+{
+  package (A && B) --* C {
+      apply A --* (B --* C)
+      apply B --* C
+  }
 }
 
 /* A * B --* C  ==>  A --* B --* C */
 method curry()
-requires A && B --* C
-ensures A --* (B --* C) {
-    package A --* (B --* C) {
-        package B --* C {
-            apply A && B --* C
-        }
-    }
+  requires A && B --* C
+  ensures A --* (B --* C)
+{
+  package (A) --* B --* C {
+      package (B --* C) {
+          apply A && B --* C
+      }
+
+  }
 }

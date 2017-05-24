@@ -71,8 +71,9 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   {
     assert old(elems(xs))[i+1] == elems(nxt)[0]
 
-    wand w := A --* B
     var prev: Ref := crt
+    var oElems: Seq[Int] := crtElems
+    var oi: Int := i
 
     /* LHS */ crtElems := elems(nxt)
 
@@ -81,10 +82,10 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     nxt := nxt.next
     i := i + 1
 
-    //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/190/)
-    package A --* B {
+    package (A) --* B {
         fold List(prev)
-        apply w
+        //:: UnexpectedOutput(apply.failed:assertion.false, /silicon/issue/190/)
+        apply (acc(List(prev)) && elems(prev) == Seq(x) ++ oElems) --*  (acc(List(xs)) && elems(xs) == old(elems(xs))[0..oi] ++ (Seq(x) ++ oElems))
     }
   }
 

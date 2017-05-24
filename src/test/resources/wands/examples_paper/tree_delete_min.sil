@@ -53,7 +53,7 @@ method tree_delete_min(x: Ref) returns (z: Ref)
 
     assert vals(x.l) == Seq[Int]() /* TODO: Required by Silicon for POST2 */
   } else {
-    package A --* B {
+    package (A) --* B {
         fold acc(Tree(p))
     }
 
@@ -62,15 +62,17 @@ method tree_delete_min(x: Ref) returns (z: Ref)
       invariant plvs == vals(p.l)
       invariant A --* B
     {
-      wand w := A --* B
+      var oldP: Ref := p
+      var oldPlvs: Seq[Int] := plvs
 
       unfold acc(Tree(p.l))
       p := p.l
       plvs := vals(p.l)
 
-      package A --* B {
-        fold Tree(p)
-        apply w
+      package (A) --* B {
+          fold Tree(p)
+          apply acc(oldP.l) && acc(Tree(oldP.l)) && vals(oldP.l) == oldPlvs[1..] --*
+          acc(Tree(x)) && vals(x) == old(vals(x))[1..]
       }
     }
 

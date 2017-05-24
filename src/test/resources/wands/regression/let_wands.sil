@@ -83,7 +83,9 @@ method test08(x: Ref)
   define A acc(x.f)
   define B acc(Pair(x)) && sum(x) == (lhs(x.f) + old(x.g))
 
-  package A --* folding acc(Pair(x)) in B
+  package (A) --* B {
+      fold acc(Pair(x))
+  }
   apply A --* B
 
   unfold acc(Pair(x))
@@ -138,9 +140,7 @@ method test12(x: Ref, y: Ref)
   var w: Int := sum(x)
 
   //:: ExpectedOutput(package.failed:insufficient.permission)
-  package
-    acc(Pair(x)) && sum(x) == w
-      --*
-    applying (acc(Pair(x)) && sum(x) == w --* acc(y.f)) in
-    acc(y.f) && acc(y.g) // No access to y.g
+  package (acc(Pair(x)) && sum(x) == w) --* acc(y.f) && acc(y.g) {
+      apply acc(Pair(x)) && sum(x) == w --* acc(y.f)
+  }
 }

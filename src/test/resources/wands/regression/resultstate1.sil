@@ -7,7 +7,10 @@ predicate Q(x: Ref) { acc(x.h) && x.h != null }
 
 
 method test05(l: Ref) {
-  package acc(P(l)) --* unfolding P(l) in folding Q(l) in acc(Q(l))
+  package (acc(P(l))) --* acc(Q(l)) {
+      unfold P(l)
+      fold Q(l)
+  }
   
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false

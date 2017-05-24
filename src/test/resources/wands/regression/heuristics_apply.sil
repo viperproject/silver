@@ -1,4 +1,5 @@
 //:: IgnoreFile(/carbon/issue/103/)
+//:: IgnoreFile(/silicon/issue/0000000000000000/)
 
 field __CONFIG_HEURISTICS: Bool
 
@@ -95,7 +96,9 @@ method test07(x: Ref) {
 method test08(x: Ref) {
   inhale true --* (B --* true)
 
-  package B --* applying (B --* true) in true
+  package (B) --* true {
+      apply B --* true
+  }
 
   exhale B --* true
 }

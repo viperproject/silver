@@ -142,7 +142,10 @@ method insert(this: Ref, elem: Int) returns (index: Int)
       index := index + 1
       ptr := ptr.next
 
-      package A --* folding acc(lseg(prev, null)) in applying w in B
+      package (A) --* B {
+          fold acc(lseg(prev, null))
+          apply w
+      }
     }
 
     tmp := new(*)

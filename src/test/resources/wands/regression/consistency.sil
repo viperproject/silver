@@ -1,3 +1,4 @@
+//:: IgnoreFile(/silicon/issue/0000000000000000000/)
 /* Consistency checks (performed on the real Silver AST, not the parser AST) */
 
 field f: Int

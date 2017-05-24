@@ -6,12 +6,10 @@ predicate Q(y: Ref) { acc(y.f) }
 method test01(z: Ref)
   requires acc(P(z))
 {
-  package
-    acc(P(z))
-      --*
-    unfolding acc(P(z)) in
-    folding acc(Q(z.f)) in
-    acc(z.f) && acc(Q(z.f))
+  package (acc(P(z))) --* acc(z.f) && acc(Q(z.f)) {
+      unfold acc(P(z))
+      fold acc(Q(z.f))
+  }
 }
 
 //method test02(z: Ref)
