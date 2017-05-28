@@ -8,9 +8,7 @@ method test01(x: Ref)
 {
   package true --* acc(x.f, write)
 
-  wand w := true --* acc(x.f, write)
-
-  apply w
+  apply true --* acc(x.f, write)
 }
 
 method test02(x: Ref)
@@ -21,23 +19,20 @@ method test02(x: Ref)
   define B acc(x.f, write)
 
   package A --* B
-  wand w := A --* B
 
-  apply w
+  apply A --* B
 }
 
 method test03(xs: Ref) {
   while (xs != null) {
     package true --* true
-    wand w := true --* true
   }
 }
 
 method test04(xs: Ref) {
-  wand w := true --* true
 
   //:: ExpectedOutput(apply.failed:wand.not.found)
-  apply w
+  apply true --* true
 }
 
 predicate P(x: Ref) { true }
@@ -47,7 +42,8 @@ method test05(r: Ref) {
   var y: Ref
 
   inhale acc(P(x)) --* true
-  wand w := acc(P(x)) --* true
+
+  var ox: Ref := x
 
   inhale acc(P(x))
 
@@ -55,7 +51,7 @@ method test05(r: Ref) {
   x := r
 
   assert acc(P(y))
-  apply w
+  apply acc(P(ox)) --* true
 }
 
 method test06(r: Ref) {

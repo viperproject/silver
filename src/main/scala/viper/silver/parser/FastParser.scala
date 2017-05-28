@@ -484,11 +484,11 @@ object FastParser extends PosParser{
   }
 
   lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | whle | varDecl | defineDecl | letwandDecl | newstmt | fresh | constrainingBlock |
+    inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand| macroref)
 
   lazy val nodefinestmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | whle | varDecl  | letwandDecl | newstmt | fresh | constrainingBlock |
+    inhale | assume | ifthnels | whle | varDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand | macroref)
 
   lazy val macroref: P[PMacroRef] = P(idnuse).map{ case(a) => PMacroRef(a)}
@@ -540,8 +540,6 @@ object FastParser extends PosParser{
     }
   }
 
-  lazy val letwandDecl: P[PLetWand] = P(keyword("wand") ~/ idndef ~ ":=" ~ exp).map { case (a, b) => PLetWand(a, b) }
-
   lazy val newstmt: P[PNewStmt] = P(idnuse ~ ":=" ~ "new" ~ "(" ~ starOrFields ~ ")").map { case (a, b) => PNewStmt(a, b) }
 
   lazy val starOrFields: P[Option[Seq[PIdnUse]]] = P(("*").!.map { _ => None } | (idnuse.rep(sep = ",").map { fields => Some(fields) }))
@@ -560,7 +558,7 @@ object FastParser extends PosParser{
   lazy val lbl: P[PLabel] = P(keyword("label") ~/ idndef ~ (keyword("invariant") ~/ exp).rep ).map{ case (name, invs) => PLabel(name, invs)}
 
   lazy val magicWandProofStatement: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | varDecl | defineDecl | letwandDecl | newstmt | methodCall | goto | lbl | packageWand | applyWand| macroref)
+    inhale | assume | ifthnels | varDecl | defineDecl | newstmt | methodCall | goto | lbl | packageWand | applyWand| macroref)
 
   lazy val magicWandProofStatements: P[Seq[PStmt]] = P(magicWandProofStatement ~/ ";".?).rep
 

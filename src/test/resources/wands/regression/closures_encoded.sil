@@ -81,7 +81,6 @@ method call_triple_nested() {
 //  wand w := acc(x.f) && x.f == a + 1 --* acc(x.f) && x.f > 0
 
   package true --* true
-  wand w := true --* true
-  package true --* w
+  package true --* (true --* true)
 //  package acc(x.f) && x.f == a - 2 --* acc(x.f) && w
 }

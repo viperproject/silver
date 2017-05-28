@@ -202,8 +202,6 @@ case class Translator(program: PProgram) {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }
         While(exp(cond), invs map exp, locals, stmt(body))(pos)
-      case PLetWand(idndef, wand) =>
-        LocalVarAssign(LocalVar(idndef.name)(Wand, pos), exp(wand))(pos)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
@@ -220,9 +218,6 @@ case class Translator(program: PProgram) {
             /* A malformed AST where a field is dereferenced without a receiver */
             Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
-          case _: PLetWand =>
-            /* TODO: We might want to differentiate between magic wand references and regular local variables. */
-            LocalVar(name)(ttyp(pexp.typ), pos)
           case other =>
             sys.error("should not occur in type-checked program")
         }

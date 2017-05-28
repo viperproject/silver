@@ -398,13 +398,6 @@ object reasons {
     def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = MagicWandChunkNotFound(offendingNode.asInstanceOf[MagicWand])
   }
 
-  case class NamedMagicWandChunkNotFound(offendingNode: AbstractLocalVar) extends AbstractErrorReason {
-    val id = "wand.not.found"
-    def readableMessage = s"Magic wand instance not found."
-
-    def withNode(offendingNode: errors.PositionedNode = this.offendingNode) = NamedMagicWandChunkNotFound(offendingNode.asInstanceOf[AbstractLocalVar])
-  }
-
   // AS: not sure why/if we need this as a special case
   case class MagicWandChunkOutdated(offendingNode: MagicWand) extends AbstractErrorReason {
     val id = "wand.outdated"

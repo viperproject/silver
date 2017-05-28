@@ -6,9 +6,10 @@
 
 package viper.silver.ast.utility
 
-import scala.reflect.ClassTag
 import viper.silver.ast._
 import viper.silver.ast.utility.Triggers.TriggerGeneration
+
+import scala.reflect.ClassTag
 
 /** Utility methods for expressions. */
 object Expressions {
@@ -16,8 +17,6 @@ object Expressions {
     case   _: AccessPredicate
          | _: MagicWand
          => false
-
-    case lv: AbstractLocalVar if lv.typ == Wand => false
 
     case UnExp(e0) => isPure(e0)
     case InhaleExhaleExp(in, ex) => isPure(in) && isPure(ex)

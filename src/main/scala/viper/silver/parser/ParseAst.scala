@@ -920,7 +920,6 @@ case class PLabel(idndef: PIdnDef, invs: Seq[PExp]) extends PStmt with PLocalDec
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 case class PMacroRef(idnuse : PIdnUse) extends PStmt
-case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
 case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
@@ -1091,7 +1090,6 @@ object Nodes {
         Seq(name) ++ args ++ body
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
-      case PLetWand(idndef, wand) => Seq(idndef, wand)
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case _: PSkip => Nil
     }
