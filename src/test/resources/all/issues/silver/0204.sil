@@ -1,13 +1,10 @@
 field val: Int
 
-predicate Node(this: Ref)
-
 define NodeSeg() (
     (forall n: Ref :: acc(n.val))
 )
 
 method test1(head: Ref)
-    requires Node(head)
 {
 	package (NodeSeg()) --* true
 	//:: UnexpectedOutput(exhale.failed:wand.not.found, /silver/issue/204/)
@@ -15,7 +12,6 @@ method test1(head: Ref)
 }
 
 method test2(head: Ref)
-    requires Node(head)
 {
 	package (forall n: Ref :: acc(n.val)) --* true
 	exhale  (forall n: Ref :: acc(n.val)) --* true
