@@ -1,14 +1,5 @@
 //:: IgnoreFile(/silver/issue/202/)
-define SortedRange() (
-    (forall i: Int :: {i+1} true)
-)
-
-method test1()
-{
-    assert SortedRange()
-}
-
-method test2()
+method test()
 {
     assert (forall i: Int :: {i+1} true)    
 }
