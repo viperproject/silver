@@ -1,0 +1,10 @@
+//:: IgnoreFile(/silver/issue/205/)
+
+define D1() ( true )
+
+define D2() (D1())
+
+method test()
+{
+    assert D2()
+}
