@@ -120,7 +120,7 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
             val better:(N, CTXT, Int) = (node, tup._1._2.combinate(context), tup._1._3)
             map.remove(tup._2)
             map.append(better)
-          case _ => println("Multiple entries for same node: " + node)
+          case _ => throw new AssertionError("Multiple entries for same node: " + node)
         }
       }
 

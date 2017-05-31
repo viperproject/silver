@@ -12,7 +12,7 @@ import viper.silver.ast.utility.Visitor
   * Trait Rewritable provides an interface that specifies which methods are required for the rewriter to work with.
   * For classes that implement product (especially case classes) everything is already implemented here and one only has to extend this base class
   */
-trait Rewritable {
+trait Rewritable extends Product {
 
   /**
     * Method that accesses all children of a node.
@@ -21,16 +21,10 @@ trait Rewritable {
     * @return Sequence of children
     */
   def getChildren: Seq[AnyRef] = {
-    this match {
-      case p: Product =>
-        ((0 until p.productArity) map { x: Int => p.productElement(x) }) collect {
-          case s: Seq[Rewritable @unchecked] => s
-          case o: Option[Rewritable @unchecked] => o
-          case i: Rewritable => i
-        }
-      case rest =>
-        println("We do not support nodes that don't implement product")
-        Seq()
+    ((0 until productArity) map { x: Int => productElement(x) }) collect {
+      case s: Seq[Rewritable @unchecked] => s
+      case o: Option[Rewritable @unchecked] => o
+      case i: Rewritable => i
     }
   }
 
