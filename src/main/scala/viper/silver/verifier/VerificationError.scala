@@ -24,8 +24,20 @@ trait VerificationError extends AbstractError with ErrorMessage {
   def readableMessage(withId: Boolean = false, withPosition: Boolean = true): String
   override def readableMessage = readableMessage(false, true)
   def fullId = s"$id:${reason.id}"
+}
 
+/// used when an error/reason has no sensible node to use
+case object DummyNode extends Node with Positioned with TransformableErrors with Rewritable {
+  val pos = NoPosition
+  val errT = NoTrafos
+}
 
+/// used when an error has no sensible reason
+case object DummyReason extends AbstractErrorReason {
+  val id = "?"
+  val readableMessage = "?"
+  val offendingNode = DummyNode
+  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = DummyReason
 }
 
 trait ErrorReason extends ErrorMessage
@@ -33,22 +45,15 @@ trait ErrorReason extends ErrorMessage
 trait PartialVerificationError {
   def f: ErrorReason => VerificationError
 
-  private case object DummyReason extends AbstractErrorReason {
-    val id = "?"
-    val readableMessage = "?"
-
-    val offendingNode = new Node with Positioned with TransformableErrors {
-      val pos = NoPosition
-      val errT = NoTrafos
-    }
-
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = DummyReason
-  }
-
   def dueTo(reason: ErrorReason) = f(reason)
 
   // apply a transformation to the node attached to the eventually-supplied error reason (note: not currently to other parameters, nor to the node attached to the error itself)
-  def withReasonNodeTransformed(t : errors.ErrorNode => errors.ErrorNode) = PartialVerificationError((r:ErrorReason) => f(r.withNode(t(r.offendingNode)).asInstanceOf[ErrorReason]))
+  def withReasonNodeTransformed(t : errors.ErrorNode => errors.ErrorNode) = {
+    PartialVerificationError(
+      (r:ErrorReason) =>
+      f(r.withNode(t(r.offendingNode)).asInstanceOf[ErrorReason])
+    )
+  }
 
   override lazy val toString = f(DummyReason).readableMessage(true, true)
 }
@@ -97,12 +102,6 @@ abstract class AbstractErrorReason extends ErrorReason {
 
 object errors {
   type ErrorNode = Node with Positioned with TransformableErrors with Rewritable
-
-  // used when an error/reason has no sensible node to use
-  case object DummyNode extends Node with Positioned with TransformableErrors with Rewritable {
-    val pos = NoPosition
-    val errT = NoTrafos
-  }
 
   case class Internal(offendingNode: ErrorNode, reason: ErrorReason) extends AbstractVerificationError {
     val id = "internal"

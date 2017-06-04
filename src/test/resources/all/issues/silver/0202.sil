@@ -1,0 +1,5 @@
+//:: IgnoreFile(/silver/issue/202/)
+method test()
+{
+    assert (forall i: Int :: {i+1} true)    
+}

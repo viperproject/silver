@@ -50,8 +50,7 @@ class State(private var mTrans:Option[MTransition] = None, private var eTrans:Se
     mTrans match {
       case None =>
         // We should never get here if everything works as intended
-        println("Error. Cannot perform transition with input on an epsilon state")
-        (Set.empty[State], Seq.empty[TransitionInfo])
+        throw new AssertionError("Cannot perform transition with input on an epsilon state")
       case Some(t) if !t.matcher.holds(n) =>
         // If matcher does not hold we are in no state anymore and done (kind of the error state)
         (Set.empty[State], Seq.empty[TransitionInfo])

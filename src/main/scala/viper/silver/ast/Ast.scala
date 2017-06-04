@@ -153,18 +153,18 @@ trait Node extends Traversable[Node] with Rewritable {
   // Get metadata with correct types
   def getPrettyMetadata: (Position, Info, ErrorTrafo) = {
     val metadata = getMetadata
-    if (metadata.size != 3) println("Invalid number of metadata fields for Node:" + this)
-    val pos = metadata(0) match {
+    assert(metadata.size == 3, "Invalid number of metadata fields for Node:" + this)
+    val pos = metadata.head match {
       case p: Position => p
-      case _ => println("Invalid Info of Node: " + this); NoPosition
+      case _ => throw new AssertionError("Invalid Info of Node: " + this)
     }
     val info = metadata(1) match {
       case i: Info => i
-      case _ => println("Invalid Position of Node: " + this); NoInfo
+      case _ => throw new AssertionError("Invalid Position of Node: " + this)
     }
     val errorT = metadata(2) match {
       case e: ErrorTrafo => e
-      case _ => println("Invalid ErrorTrafo of Node: " + this); NoTrafos
+      case _ => throw new AssertionError("Invalid ErrorTrafo of Node: " + this)
     }
     (pos, info, errorT)
   }
