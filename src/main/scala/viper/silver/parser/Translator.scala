@@ -390,10 +390,12 @@ case class Translator(program: PProgram) {
       case PForall(vars, triggers, e) =>
         val ts = triggers map (t => Trigger(t.exp map exp)(t))
         var fa = Forall(vars map liftVarDecl, ts, exp(e))(pos)
-       if (fa.isPure) {
+        if (fa.isPure) {
           fa
         } else {
-          QuantifiedPermissions.rewriteForall(fa)
+          val desugaredForalls = QuantifiedPermissions.desugareSourceSyntax(fa)
+          desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
+            And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
       case f@PForPerm(v, args, e) =>
 
