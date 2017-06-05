@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/205/)
+
 field f: Int
 
 function rcvr(i: Int, j: Int): Ref
