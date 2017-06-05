@@ -1,0 +1,73 @@
+import "tuple.vpr"
+
+domain SizeOrder[T]{
+    function size(arg1:T):Int
+}
+
+domain Size_integers{
+	//Integers
+    axiom integer_ax{
+        forall int: Int ::
+        size(int) == int 
+    }
+}
+
+domain Size_booleans{
+    //Booleans
+    axiom bool_ax{
+        forall bool: Bool ::
+        bool ? size(bool) == 0 : size(bool) == 1
+    }
+}
+
+domain Size_references{
+    //References
+	axiom ref_ax{
+        forall ref: Ref :: 
+        ref == null ? size(ref) == 0 : size(ref) == 1
+    }
+}
+
+//Rationals //TODO?
+    
+domain Size_sequences[S]{
+    //Sequences
+    axiom seq_ax{
+       forall seq: Seq[S] ::
+       |seq| == size(seq)
+    }
+}
+
+domain Size_sets[S]{
+    //Sets
+    axiom set_ax{
+        forall set: Set[S] :: 
+        |set| == size(set)
+        }
+}
+
+domain Size_multiSets[S]{
+    //MultiSet
+    axiom multiSet_ax{
+        forall mSet: Multiset[S] ::
+        |mSet| == size(mSet)
+    }
+}
+
+//TODO
+domain PermTerminationOrder{  
+    //permission
+    axiom perm_ax{
+        forall permiss: Perm :: //What is perm / Perm?
+        true
+        //|permiss| == size(permiss)
+    }
+}
+
+domain TupleTerminationOrder[A,B]{
+    //2 Tuples
+    axiom tuple_ax{
+         forall t: Tuple2[A,B] ::
+         size(t) == size(first(t)) + size(second(t))
+    }
+}

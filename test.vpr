@@ -1,0 +1,15 @@
+import "decreaseOrder/decrease_order.vpr"
+
+function fun(a: Int, x: Int, k: Int, y:Int, z:Int): Int
+requires x>0
+ensures true
+decreases x+y+z
+{
+  x > 0 ? fun(x, x-1, x, y-1, z) : 6
+}
+
+//field i:Int
+
+//decr(expr[x = x-1], x+6
+
+

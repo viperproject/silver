@@ -161,7 +161,6 @@ object FastParser extends PosParser {
   def pathFromImport(importStmt: PImport): Path = {
     val fileName = importStmt.file
     val path = file.getParent.resolve(fileName)
-
     path
   }
 
@@ -408,7 +407,7 @@ object FastParser extends PosParser {
     // declaration keywords
     "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "wand",
     // specifications
-    "requires", "ensures", "invariant",
+    "requires", "ensures", "decreases", "invariant",
     // statements
     "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
     // control flow
@@ -805,12 +804,15 @@ object FastParser extends PosParser {
   lazy val fieldDecl: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map { case (a, b) => PField(a, b) }
 
   lazy val functionDecl: P[PFunction] = P("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-    post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f) => PFunction(a, b, c, d, e, f) }
+    post.rep ~ dec.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f, g) => PFunction(a, b, c, d, e, f, g) }
 
 
   lazy val pre: P[PExp] = P("requires" ~/ exp ~ ";".?)
 
   lazy val post: P[PExp] = P("ensures" ~/ exp ~ ";".?)
+
+  //  lazy val dec: P[PDeclause] = P("decreasing" ~/ exp.rep ~ ";".?).map {case (a) => PDeclause(a)}
+  lazy val dec: P[PExp] = P("decreases" ~/ exp ~ ";".?) ///pege
 
   lazy val predicateDecl: P[PPredicate] = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }
 

@@ -91,6 +91,11 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
   }
 }
 
+/** A decreas Clause declaration. */
+case class DecClause(e: Seq[Exp]) { //TODO stored twice
+  val exp: Seq[Exp] = e
+}
+
 /** A predicate declaration. */
 case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], private var _body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location {
   if (body != null) body foreach Consistency.checkNonPostContract
@@ -153,11 +158,12 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 }
 
 /** A function declaration */
-case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _body: Option[Exp])
+case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _decs: Seq[Exp], private var _body: Option[Exp])
                    (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with FuncLike with Contracted {
   require(_posts == null || (_posts forall Consistency.noOld))
   require(_body == null || (_body map (_ isSubtype typ) getOrElse true))
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
+  if (_decs != null) _decs foreach Consistency.checkNonPostContract //TODO pege
   if (_posts != null) _posts foreach Consistency.checkPost
   if (_body != null) _body foreach Consistency.checkFunctionBody
   def pres = _pres
@@ -170,6 +176,11 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
     require(s forall Consistency.noOld)
     s foreach Consistency.checkPost
     _posts = s
+  }
+  def decs = _decs
+  def decs_=(s: Seq[Exp]) {
+    //s foreach Consistency.checkPost //TODO pege
+    _decs = s
   }
   def body = _body
   def body_=(b: Option[Exp]) {
@@ -205,6 +216,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
+
 }
 
 

@@ -1,0 +1,72 @@
+//import "decreaseOrder/decrease_order.vpr" //verifies
+//import "decreaseOrder/decrease_order_size.vpr" //cant verify
+
+/////////////////////////////////////////////////////////////////////////
+//Override Verification
+import "size_order_withoutTuple.vpr"
+
+domain TerminationOrderTuple[A,B]{
+    function decreases(arg1:Tuple2[A,B], arg2:Tuple2[A,B]):Bool
+    
+    axiom tuple_ax{
+         forall t1: Tuple2[A,B], t2: Tuple2[A,B] ::
+         (size(first(t1)) < size(first(t2)) || (size(first(t1)) == size(first(t2)) && size(second(t1)) < size(second(t2)))) ==> decreases(t1,t2)
+    }
+}
+/////////////////////////////////////////////////////////////////////////
+
+
+function ack(m:Int, n:Int):Int
+requires m >= 0
+requires n >= 0
+//decreases m,n
+//decreases Tuple2(m,n)
+{
+  m==0 ? n+1 :
+    n==0 ?
+      ack(m-1,1) :
+      ack(m,n-1) 
+}
+
+method ack_termination_proof(m:Int, n:Int)
+requires m >= 0
+requires n >= 0
+{
+    var t1:Tuple2[Int, Int]
+    var t2:Tuple2[Int, Int]
+    t1 := tuple2Conn(m,n)
+    
+    if(m == 0){}
+    elseif (n == 0){
+        t2 := tuple2Conn(m-1,1)
+        assert decreases(t2,t1) //Dont verify with size() because it could be that t2.b > t1.b (1>0)
+    }
+    else{
+        t2 := tuple2Conn(m,n-1)
+        assert decreases(t2,t1)
+
+    }
+}
+
+function ackTuple(t: Tuple2[Int,Int]):Int
+requires first(t) >= 0
+requires second(t) >= 0
+//decreases Tuple2(m,n)
+{
+  first(t)==0 ? second(t)+1 :
+    second(t)==0 ?
+      ackTuple(tuple2Conn(first(t)-1,1)) :
+      ackTuple(tuple2Conn(first(t),second(t)-1)) 
+}
+
+method ackTuple_termination_proof(t: Tuple2[Int,Int])
+requires first(t) >= 0
+requires second(t) >= 0
+{
+    if (first(t)==0){}
+    elseif(second(t)==0){
+        assert decreases(tuple2Conn(first(t)-1,1),t)
+    }else{
+        assert decreases(tuple2Conn(first(t),second(t)-1),t)
+    }
+}

@@ -1,0 +1,16 @@
+import "./decrease_order.vpr"
+
+function mc(n:Int): Int
+//decreases 100-n
+{
+	(n>100) ? n-10 : mc(mc(n+11)) //mc(mc(n+11)) fails in silicon
+}
+
+method mc_termination_proof(n:Int)
+{
+    if(n>100){}
+    else{
+        //assert decreases(100 - mc(n+11) + 11,100 - n + 11)
+        assert decreases(100-(n+11) + 11,100-n + 11) //complicated
+    }
+}

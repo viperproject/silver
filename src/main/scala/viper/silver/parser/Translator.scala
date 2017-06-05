@@ -40,9 +40,16 @@ case class Translator(program: PProgram) {
 
         val domain = pdomains map (translate(_))
         val fields = pfields map (translate(_))
-        val functions = pfunctions map (translate(_))
         val predicates = ppredicates map (translate(_))
-        val methods = pmethods map (translate(_))
+        var methods = pmethods map (translate(_))
+        var functions = pfunctions map (translate(_))
+
+
+
+        methods = methods ++ DecreasesClause.addMethod(functions, members) //Add Methods needed for proving decreasing functions
+
+        functions = DecreasesClause.rewriteForAll(functions) //Delete Decrease Clause //TODO
+
         val prog = Program(domain, fields, functions, predicates, methods)(program)
 
         if (Consistency.messages.isEmpty) Some(prog) // all error messages generated during translation should be Consistency messages
@@ -51,20 +58,20 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(m: PMethod): Method = m match {
-    case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
-      val m = findMethod(name)
-      val plocals = Visitor.shallowCollect(body.childStmts, Nodes.subnodes)({
-        case l: PLocalVarDecl => Some(l)
-        case w: PWhile => None
-      }).flatten // only collect declarations at top-level, not from nested loop bodies
-      val locals = plocals map {
-        case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
-      }
-      m.locals = locals
-      m.pres = pres map exp
-      m.posts = posts map exp
-      m.body = stmt(body)
-      m
+        case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
+          val m = findMethod(name)
+          val plocals = Visitor.shallowCollect(body.childStmts, Nodes.subnodes)({
+            case l: PLocalVarDecl => Some(l)
+            case w: PWhile => None
+          }).flatten // only collect declarations at top-level, not from nested loop bodies
+        val locals = plocals map {
+          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
+        }
+          m.locals = locals
+          m.pres = pres map exp
+          m.posts = posts map exp
+          m.body = stmt(body)
+          m
   }
 
   private def translate(d: PDomain): Domain = d match {
@@ -81,10 +88,11 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(f: PFunction) = f match {
-    case PFunction(name, formalArgs, typ, pres, posts, body) =>
+    case PFunction(name, formalArgs, typ, pres, posts, decs, body) =>
       val f = findFunction(name)
       f.pres = pres map exp
       f.posts = posts map exp
+      f.decs = decs map exp
       f.body = body map exp
       f
   }
@@ -108,8 +116,8 @@ case class Translator(program: PProgram) {
     val t = p match {
       case PField(_, typ) =>
         Field(name, ttyp(typ))(pos)
-      case PFunction(_, formalArgs, typ, _, _, _) =>
-        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
+      case PFunction(_, formalArgs, typ, _, _, _, _) =>
+        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null, null)(pos)
       case pdf@ PDomainFunction(_, args, typ, unique) =>
         DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
       case PDomain(_, typVars, funcs, axioms) =>
@@ -207,6 +215,13 @@ case class Translator(program: PProgram) {
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
   }
+
+  /** Takes a `PDecreasesClause` and turns it into an `DecClause`. */
+
+//  private def dec(pdec : PDeclause) : DecClause = {
+//    DecClause(pdec.decs map exp)
+//  }
+
 
   /** Takes a `PExp` and turns it into an `Exp`. */
   private def exp(pexp: PExp): Exp = {
@@ -390,12 +405,12 @@ case class Translator(program: PProgram) {
       case PForall(vars, triggers, e) =>
         val ts = triggers map (t => Trigger(t.exp map exp)(t))
         var fa = Forall(vars map liftVarDecl, ts, exp(e))(pos)
-        if (fa.isPure) {
+       if (fa.isPure) {
           fa
         } else {
-          val desugaredForalls = QuantifiedPermissions.desugareSourceSyntax(fa)
-          desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
-            And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
+         val desugaredForalls = QuantifiedPermissions.desugareSourceSyntax(fa)
+         desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
+           And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
       case f@PForPerm(v, args, e) =>
 

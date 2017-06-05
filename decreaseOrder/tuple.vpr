@@ -1,0 +1,20 @@
+domain Tuple2[A,B]{
+    function tuple2Conn(a:A, b:B): Tuple2[A,B]
+    
+    function first(t: Tuple2[A,B]): A
+    function second(t: Tuple2[A,B]): B
+
+    //unique function type_first():A
+
+    axiom conn{
+        forall t: Tuple2[A,B] :: {first(t)} {second(t)}
+        t == tuple2Conn(first(t), second(t))       
+    }
+
+    axiom deConn{
+        forall a: A, b:B :: {tuple2Conn(a,b)}
+        first(tuple2Conn(a,b)) == a &&  
+        second(tuple2Conn(a,b)) == b      
+    }
+
+}

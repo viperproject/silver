@@ -29,7 +29,7 @@ object Nodes {
     *
     * As a consequence, it is not sufficient to compare the subnodes of two
     * nodes for equality if one has to compare those two nodes for equality.
-   */
+    */
   def subnodes(n: Node): Seq[Node] = {
     val subnodesWithType: Seq[Node] = n match {
       case Trigger(exps) => exps
@@ -38,7 +38,7 @@ object Nodes {
       case m: Member =>
         m match {
           case Field(name, typ) => Nil
-          case Function(name, formalArgs, typ, pres, posts, body) =>
+          case Function(name, formalArgs, typ, pres, decs, posts, body) =>
             formalArgs ++ pres ++ posts ++ body
           case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ locals ++ Seq(body)
@@ -171,7 +171,7 @@ object Nodes {
     }).toSeq
 
     relevantChildren.partition(_.isInstanceOf[Node])
-                    .asInstanceOf[(Seq[Node], Seq[Any])]
+      .asInstanceOf[(Seq[Node], Seq[Any])]
   }
 
   /** Returns all subnodes of `root` that reference (other) Silver member.

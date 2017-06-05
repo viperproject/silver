@@ -1,0 +1,79 @@
+import "decreaseOrder/tuple.vpr"
+
+domain TerminationOrder[T]{
+    function decreasing(arg1:T, arg2:T):Bool
+    
+}
+
+domain IntTerminationOrder{
+	//Integers
+    axiom integer_ax{
+        forall int1: Int, int2: Int :: //{decreasing(int1, int2)}
+        (int1 >= 0 && int1 < int2) ==> decreasing(int1, int2)
+        //false ==> decreasing(int1, int2)
+    }
+}
+
+domain BoolTerminationOrder{
+    //Booleans
+    axiom bool_ax{
+        forall bool1: Bool ::
+        bool1 != false ==> decreasing(bool1, false)
+    }
+}
+
+domain RefTerminationOrder{
+    //References
+	axiom ref_ax{
+        forall ref1: Ref :: 
+        ref1 != null ==> decreasing(null, ref1)
+    }
+}
+
+//Rationals
+// axiom rational_ax{
+//     forall rat1: Rational, rat2: Rational :: {decreasing(rat1, rat2)}
+//     (rat1 >= 0 && rat1 < rat2) ==> decreasing(rat1, rat2)
+// }
+    
+domain SeqTerminationOrder[S]{
+    //Sequences
+    axiom seq_ax{
+       forall seq1: Seq[S], seq2: Seq[S] :: //{decreasing(seq1,seq2)}
+       (|seq1| >= 0 && |seq1| < |seq2|) ==> decreasing(seq1, seq2)
+    }
+}
+
+domain SetTerminationOrder[S]{
+    //Sets
+    axiom set_ax{
+        forall set1: Set[S], set2: Set[S] :: {decreasing(set1, set2)}
+        ((forall s:S :: s in set1 ==> s in set2) && (|set1| < |set2|)) ==> decreasing(set1, set2)
+        }
+}
+
+domain MuliSetTerminationOrder[S]{
+    //MultiSet
+    axiom multiSet_ax{
+        forall mSet1: Multiset[S], mSet2: Multiset[S] :: {decreasing(mSet1, mSet2)}
+        ((forall s:S :: (s in mSet1) <= (s in mSet2)) && (|mSet1| < |mSet2|)) ==> decreasing(mSet1, mSet2)
+    }
+}
+
+domain PermTerminationOrder{  
+    //permission
+    axiom perm_ax{
+        forall perm1: Perm, perm2: Perm :: {decreasing(perm1, perm2)}
+        (perm1 < perm2) ==> decreasing(perm1, perm2)
+    }  
+}
+
+domain TupleTerminationOrder[A,B]{
+    //2 Tuples
+    axiom tuple_ax{
+         forall t1: Tuple2[A,B], t2: Tuple2[A,B] :: {decreasing(t1,t2)}
+         (decreasing(first(t1),first(t2)) ||
+         (first(t1) == first(t2) && decreasing(second(t1),second(t2))))
+         ==> decreasing(t1,t2)
+     }
+}
