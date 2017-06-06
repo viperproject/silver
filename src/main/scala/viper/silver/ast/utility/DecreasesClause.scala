@@ -7,6 +7,8 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
+import viper.silver.verifier.errors.{AssertFailed, TerminationFailed}
+import viper.silver.verifier.reasons.TerminationMeasure
 
 //import viper.silver.verifier.errors.{AssertFailed, PreconditionInCallFalse, TerminationFailed}
 
@@ -58,11 +60,6 @@ import scala.collection.mutable
         members.get("decreasing").get match {
           case df: DomainFunc =>
 
-            val paramTypes = (df.formalArgs map (_.typ))
-            val argTypes = (callee.getArgs map (_.typ))
-            val argTypeVars = paramTypes.flatMap(p => p.typeVariables)
-            val map = (argTypeVars zip argTypes).toMap
-
             val decClause = func.decs
 
             //Assume only one decreasesClause
@@ -80,10 +77,22 @@ import scala.collection.mutable
               val smallerExpression = rewriteExpr(decClause.head, rewriteExprMap)
               val biggerExpression = decClause.head
 
-              //val e = body.errT
-              // ErrTrafo({case AssertFailed(_, r) => TerminationFailed(f,r)}
+              val pos = body.pos
+              val info = SimpleInfo(Seq("TerminationCheck"))
 
-              Assert(DomainFuncApp(df, Seq(smallerExpression,biggerExpression), map)(df.pos))(body.pos)
+              val errT = ErrTrafo({case AssertFailed(_, r) => TerminationFailed(callee, TerminationMeasure(decClause.head))})
+              //val errT = ErrTrafo({case AssertFailed(_, r) => TerminationFailed(callee, r)})
+
+              val paramTypes = (df.formalArgs map (_.typ))
+              val argTypeVars = paramTypes.flatMap(p => p.typeVariables)
+
+              //val argTypes = (callee.getArgs map (_.typ))
+              //val map = (argTypeVars zip argTypes).toMap
+
+              val map = Map(argTypeVars.head -> decClause.head.typ)
+
+              Assert(DomainFuncApp(df, Seq(smallerExpression,biggerExpression), map)(df.pos))(pos, info, errT)
+
             } else { //Tuple
               println("Tuple - TODO")
               Statements.EmptyStmt

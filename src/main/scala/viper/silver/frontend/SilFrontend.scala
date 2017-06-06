@@ -113,7 +113,14 @@ trait SilFrontend extends DefaultFrontend {
 
     result match {
       case Success => printSuccess()
-      case Failure(errors) => printErrors(errors: _*)
+      case Failure(errors) =>
+        val errorsT = errors map {
+          case e: AbstractVerificationError =>
+            e.transformedError()
+          case rest: AbstractError => rest
+        }
+        printErrors(errorsT: _*)
+
     }
   }
 

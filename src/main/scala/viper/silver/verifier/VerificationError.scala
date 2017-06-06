@@ -225,6 +225,17 @@ object errors {
   def AssertFailed(offendingNode: Assert): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => AssertFailed(offendingNode, reason))
 
+  case class TerminationFailed(offendingNode: FuncApp, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "termination.failed"
+    val text = s"Termination might not hold."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationFailed(offendingNode.asInstanceOf[FuncApp], this.reason)
+    def withReason(r: ErrorReason) = TerminationFailed(offendingNode, r)
+  }
+
+  def TerminationFailed(offendingNode: FuncApp): PartialVerificationError =
+    PartialVerificationError((r: ErrorReason) => TerminationFailed(offendingNode, r))
+
   case class PostconditionViolated(offendingNode: Exp, member: Contracted, reason: ErrorReason) extends AbstractVerificationError {
     val id = "postcondition.violated"
     val text = s"Postcondition of ${member.name} might not hold."
@@ -389,6 +400,20 @@ object reasons {
     def readableMessage = s"Assertion $offendingNode might not hold."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertionFalse(offendingNode.asInstanceOf[Exp])
+  }
+
+  case class TerminationMeasure(offendingNode: Exp) extends AbstractErrorReason {
+    val id = "termination.measure"
+    override def readableMessage = s"Termination Measure $offendingNode might not decrease."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationMeasure(offendingNode.asInstanceOf[Exp])
+  }
+
+  case class TerminationNoBound(offendingNode: Exp) extends AbstractErrorReason {
+    val id = "termination.no.bound"
+    override def readableMessage = s"decreases expression $offendingNode might not be bounded."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(offendingNode.asInstanceOf[Exp])
   }
 
   // Note: this class should be deprecated/removed - we no longer support epsilon permissions in the language
