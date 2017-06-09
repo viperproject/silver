@@ -60,19 +60,23 @@ case class Translator(program: PProgram) {
       val locals = plocals map {
         case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
       }
-      m.locals = locals
-      m.pres = pres map exp
-      m.posts = posts map exp
-      m.body = stmt(body)
-      m
+//      m.locals = locals
+//      m.pres = pres map exp
+//      m.posts = posts map exp
+//      m.body = stmt(body)
+      val mm = Method(m.name, m.formalArgs, m.formalReturns, pres map exp, posts map exp,
+        locals, stmt(body))(m.pos, m.info, m.errT)
+      mm
   }
 
   private def translate(d: PDomain): Domain = d match {
     case PDomain(name, typVars, functions, axioms) =>
       val d = findDomain(name)
-      d.functions = functions map (f => findDomainFunction(f.idndef))
-      d.axioms = axioms map (translate(_))
-      d
+//      d.functions = functions map (f => findDomainFunction(f.idndef))
+//      d.axioms = axioms map (translate(_))
+      val dd = Domain(d.name, functions map (f => findDomainFunction(f.idndef)),
+        axioms map (translate(_)), d.typVars)(d.pos, d.info, d.errT)
+      dd
   }
 
   private def translate(a: PAxiom): DomainAxiom = a match {
@@ -83,17 +87,20 @@ case class Translator(program: PProgram) {
   private def translate(f: PFunction) = f match {
     case PFunction(name, formalArgs, typ, pres, posts, body) =>
       val f = findFunction(name)
-      f.pres = pres map exp
-      f.posts = posts map exp
-      f.body = body map exp
-      f
+//      f.pres = pres map exp
+//      f.posts = posts map exp
+//      f.body = body map exp
+//      f
+      val ff = Function(f.name, f.formalArgs, f.typ, pres map exp, posts map exp, body map exp)(f.pos, f.info, f.errT)
+      ff
   }
 
   private def translate(p: PPredicate) = p match {
     case PPredicate(name, formalArgs, body) =>
       val p = findPredicate(name)
-      p.body = body map exp
-      p
+      //p.body = body map exp
+      val pp = Predicate(p.name, p.formalArgs, body map exp)(p.pos, p.info, p.errT)
+      pp
   }
 
   private def translate(f: PField) = findField(f.idndef)
