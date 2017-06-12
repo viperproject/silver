@@ -6,11 +6,7 @@
 
 package viper.silver.utility
 
-import java.io.{
-  File => JFile,
-  PrintWriter => JPrintWriter,
-  BufferedWriter => JBufferedWriter,
-  FileWriter => JFileWriter}
+import java.io.{BufferedWriter => JBufferedWriter, File => JFile, FileWriter => JFileWriter, PrintWriter => JPrintWriter}
 
 /** Utilities that are not tied to Silver itself.
   *

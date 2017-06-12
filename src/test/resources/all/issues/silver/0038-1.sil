@@ -1,0 +1,8 @@
+//:: IgnoreFile(/silver/issue/38/)
+//:: ExpectedOutput(typechecker.error)
+function f(): MultiSet[Int]
+
+method test()
+{
+    assert f() == Set[Ref]()
+}

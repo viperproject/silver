@@ -1,0 +1,6 @@
+
+define macro(x) x-1
+
+function bar(y: Int): Int {
+    y - 2
+}

@@ -9,7 +9,7 @@ import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 
 /** Expressions. */
-sealed trait Exp extends Node with Typed with Positioned with Infoed with PrettyExpression {
+sealed trait Exp extends Node with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
 
@@ -28,6 +28,9 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
   /** Returns the subexpressions of this expression */
   lazy val subExps = Expressions.subExps(this)
 
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
   /** @inheritdoc */
   lazy val topLevelConjuncts = Expressions.topLevelConjuncts(this)
 
@@ -43,42 +46,44 @@ sealed trait Exp extends Node with Typed with Positioned with Infoed with Pretty
 // --- Simple integer and boolean expressions (binary and unary operations, literals)
 
 // Arithmetic expressions
-case class Add(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(AddOp)
-case class Sub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(SubOp)
-case class Mul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(MulOp)
-case class Div(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(DivOp)
-case class Mod(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(ModOp)
+case class Add(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(AddOp)
+case class Sub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(SubOp)
+case class Mul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(MulOp)
+case class Div(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(DivOp)
+case class Mod(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(ModOp)
 
 // Integer comparison expressions
-case class LtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(LtOp)
-case class LeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(LeOp)
-case class GtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(GtOp)
-case class GeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(GeOp)
+case class LtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(LtOp)
+case class LeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(LeOp)
+case class GtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(GtOp)
+case class GeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(GeOp)
 
 // Equality and non-equality (defined for all types)
-case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends EqualityCmp("==")
-case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends EqualityCmp("!=")
+case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("==")
+case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("!=")
 
 /** Integer literal. */
-case class IntLit(i: BigInt)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Literal {
+case class IntLit(i: BigInt)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Literal {
   lazy val typ = Int
 }
 
 /** Integer unary minus. */
-case class Minus(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NegOp)
+case class Minus(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainUnExp(NegOp)
 
 // Boolean expressions
-case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(OrOp) {
+case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(OrOp) {
   Consistency.checkNoPositiveOnly(left)
   Consistency.checkNoPositiveOnly(right)
 }
-case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(AndOp)
 
-case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(ImpliesOp) {
+case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(AndOp)
+
+case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(ImpliesOp) {
   Consistency.checkNoPositiveOnly(left)
 }
 
-case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
+
+case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
     extends DomainBinExp(MagicWandOp) {
 
 
@@ -144,7 +149,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 }
 
 /** Boolean negation. */
-case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(NotOp) {
+case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainUnExp(NotOp) {
   Consistency.checkNoPositiveOnly(exp)
 }
 
@@ -154,12 +159,12 @@ sealed abstract class BoolLit(val value: Boolean) extends Literal {
 }
 object BoolLit {
   def unapply(b: BoolLit) = Some(b.value)
-  def apply(b: Boolean)(pos: Position = NoPosition, info: Info = NoInfo) = if (b) TrueLit()(pos, info) else FalseLit()(pos, info)
+  def apply(b: Boolean)(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) = if (b) TrueLit()(pos, info, errT) else FalseLit()(pos, info, errT)
 }
-case class TrueLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends BoolLit(true)
-case class FalseLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends BoolLit(false)
+case class TrueLit()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends BoolLit(true)
+case class FalseLit()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends BoolLit(false)
 
-case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo) extends Literal {
+case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Literal {
   lazy val typ = Ref
 }
 
@@ -178,10 +183,10 @@ object AccessPredicate {
 }
 
 /** An accessibility predicate for a field location. */
-case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AccessPredicate
+case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate
 
 /** An accessibility predicate for a predicate location. */
-case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AccessPredicate
+case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate
 
 // --- Inhale exhale expressions.
 
@@ -189,7 +194,7 @@ case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Po
  * This is a special expression that is treated as `in` if it appears as an assumption and as `ex` if
  * it appears as a proof obligation.
  */
-case class InhaleExhaleExp(in: Exp, ex: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class InhaleExhaleExp(in: Exp, ex: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
   require(in.typ isSubtype Bool)
   require(ex.typ isSubtype Bool)
   val typ = Bool
@@ -203,65 +208,65 @@ sealed trait PermExp extends Exp {
 }
 
 /** A wild card permission. Has an unknown value, but there are no guarantees that it will be the same inside one method. */
-case class WildcardPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
+case class WildcardPerm()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends PermExp
 
 /** The full permission. */
-case class FullPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractConcretePerm(1, 1)
+case class FullPerm()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractConcretePerm(1, 1)
 
 /** No permission. */
-case class NoPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractConcretePerm(0, 1)
+case class NoPerm()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractConcretePerm(0, 1)
 
 /** An epsilon permission. */
-case class EpsilonPerm()(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
+case class EpsilonPerm()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends PermExp
 
 /** A concrete fraction as permission amount. */
-case class FractionalPerm(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(FracOp) with PermExp
+case class FractionalPerm(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(FracOp) with PermExp
 {
   require(left.typ==Int)
   require(right.typ==Int)
 }
 
-case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermDivOp) with PermExp
+case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermDivOp) with PermExp
 {
   require(left.typ==Perm)
   require(right.typ==Int)
 }
 /** The permission currently held for a given location. */
-case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo) extends PermExp
+case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends PermExp
 
 // Arithmetic expressions
-case class PermMinus(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainUnExp(PermNegOp) with PermExp
-case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermAddOp) with PermExp
-case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermSubOp) with PermExp
-case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermMulOp) with PermExp
-case class IntPermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(IntPermMulOp) with PermExp
+case class PermMinus(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainUnExp(PermNegOp) with PermExp
+case class PermAdd(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermAddOp) with PermExp
+case class PermSub(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermSubOp) with PermExp
+case class PermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermMulOp) with PermExp
+case class IntPermMul(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(IntPermMulOp) with PermExp
 
 // Comparison expressions
-case class PermLtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermLtOp)
-case class PermLeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermLeOp)
-case class PermGtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermGtOp)
-case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends DomainBinExp(PermGeOp)
+case class PermLtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermLtOp)
+case class PermLeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermLeOp)
+case class PermGtCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermGtOp)
+case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermGeOp)
 
 // --- Function application (domain and normal)
 
 /** Function application. */
-case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl]) extends FuncLikeApp with PossibleTrigger {
+case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl], val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
   args foreach Consistency.checkNoPositiveOnly
 //  args foreach (_.isPure)
 
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos,info,typ,formalArgs)
+  def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos, info, typ, formalArgs, errT)
   def asManifestation = this
 }
 // allows a FuncApp to be created directly from a Function node (but only stores its name)
 object FuncApp {
-  def apply(func: Function, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo) : FuncApp = FuncApp(func.name, args)(pos,info,func.typ,func.formalArgs)
+  def apply(func: Function, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : FuncApp = FuncApp(func.name, args)(pos,info,func.typ,func.formalArgs, errT)
 }
 
 /** User-defined domain function application. */
 case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])
-                        (val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl],val domainName:String)
+                        (val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl],val domainName:String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp with PossibleTrigger {
   args foreach Consistency.checkNoPositiveOnly
 //  args foreach (_.isPure)
@@ -269,16 +274,16 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
   def formalArgs = formalArgsPassed
   def func = (p:Program) => p.findDomainFunction(funcname)
   def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs,domainName)
+  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs,domainName, errT)
   def asManifestation = this
 }
 object DomainFuncApp {
-  def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo) : DomainFuncApp =
-    DomainFuncApp(func.name,args,typVarMap)(pos,info,func.typ.substitute(typVarMap),func.formalArgs map {
+  def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : DomainFuncApp =
+    DomainFuncApp(func.name,args,typVarMap)(pos, info, func.typ.substitute(typVarMap), func.formalArgs map {
     fa =>
       // substitute parameter types
       LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
-  },func.domainName)
+  },func.domainName, errT)
 }
 
 // --- Field and predicate accesses
@@ -295,19 +300,19 @@ object LocationAccess {
 
 /** A field access expression. */
 case class FieldAccess(rcv: Exp, field: Field)
-                      (val pos: Position = NoPosition, val info: Info = NoInfo)
+                      (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
     extends LocationAccess with Lhs /*with PossibleTrigger*/ {
 
   def loc(p : Program) = field
   lazy val typ = field.typ
 
   def getArgs: Seq[Exp] = Seq(rcv)
-  def withArgs(args: Seq[Exp]): FieldAccess = copy(rcv = args.head, field)(pos, info)
+  def withArgs(args: Seq[Exp]): FieldAccess = copy(rcv = args.head, field)(pos, info, errT)
 //  def asManifestation: Exp = this
 }
 
 /** A predicate access expression. See also companion object below for an alternative creation signature */
-case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Position, val info: Info) extends LocationAccess {
+case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Position, val info: Info, val errT: ErrorTrafo) extends LocationAccess {
   def loc(p:Program) = p.findPredicate(predicateName)
   lazy val typ = Bool
 
@@ -319,13 +324,13 @@ case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Posit
 }
 // allows PredicateAccess to be created from a predicate directly, in which case only the name is kept
 object PredicateAccess {
-  def apply(args: Seq[Exp], predicate:Predicate)(pos: Position = NoPosition, info: Info = NoInfo) : PredicateAccess = PredicateAccess(args, predicate.name)(pos, info)
+  def apply(args: Seq[Exp], predicate:Predicate)(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : PredicateAccess = PredicateAccess(args, predicate.name)(pos, info, errT)
 }
 
 // --- Conditional expression
 
 /** A conditional expressions. */
-case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo)
+case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
     extends Exp with ForbiddenInTrigger {
 
   require(cond isSubtype Bool)
@@ -336,7 +341,7 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
 
 // --- Prover hint expressions
 
-case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
   Consistency.checkNoPositiveOnly(body)
   lazy val typ = body.typ
 }
@@ -351,8 +356,8 @@ sealed trait GhostOperation extends Exp {
 //  val acc: PredicateAccessPredicate
 //}
 
-case class UnfoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
-case class FoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends GhostOperation
+case class UnfoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends GhostOperation
+case class FoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends GhostOperation
 
 
 // --- Old expressions
@@ -361,12 +366,12 @@ sealed trait OldExp extends UnExp {
   lazy val typ = exp.typ
 }
 
-case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
-case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
+case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
+case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
 
 /** Old expression that references a particular state earlier in the program that has been given a name.
   * Evaluates expression in that state. */
-case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo) extends OldExp {
+case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
   require(oldLabel != null, "LabelledOld(exp, _): exp cannot be null")
   require(oldLabel != null, "LabelledOld(_, oldLabel): oldLabel cannot be null")
   Consistency.checkNoPositiveOnly(exp)
@@ -374,7 +379,7 @@ case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPositio
 
 // --- Other expressions
 
-case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp {
+case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
   require(exp.typ isSubtype variable.typ,
           s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}")
 
@@ -404,7 +409,7 @@ object QuantifiedExp {
 }
 
 /** Universal quantification. */
-case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp {
+case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   //require(isValid, s"Invalid quantifier: { $this } .")
 
   /** Returns an identical forall quantification that has some automatically generated triggers
@@ -427,14 +432,14 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 }
 
 /** Existential quantification. */
-case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends QuantifiedExp {
+case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   Consistency.checkNoPositiveOnlyExceptInhaleExhale(exp)
 }
 
 
 /** Quantification over heap chunks with positive permission in any of the listed fields */
 case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
-                  (val pos: Position = NoPosition, val info: Info = NoInfo) extends Exp with QuantifiedExp {
+                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with QuantifiedExp {
   require(body isSubtype Bool)
   Consistency.checkNoPositiveOnly(body)
   Consistency.recordIfNot(body, Consistency.noPerm(body),
@@ -457,9 +462,13 @@ case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
 
 
 /** A trigger for a universally quantified formula. */
-case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends Node with Positioned with Infoed {
+case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node with Positioned with Infoed {
   require(exps forall Consistency.validTrigger, s"The trigger { ${exps.mkString(", ")} } is not valid.")
   exps foreach Consistency.checkNoPositiveOnly
+
+  override def getMetadata:Seq[Any] = {
+    Seq(pos, info, errT)
+  }
 }
 
 // --- Variables, this, result
@@ -474,13 +483,13 @@ object AbstractLocalVar {
 }
 
 /** A normal local variable. */
-case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar with Lhs {
+case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
   require(Consistency.validUserDefinedIdentifier(name))
   require(typ != null)
 }
 
 /** A special local variable for the result of a function. */
-case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo) extends AbstractLocalVar {
+case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
   lazy val name = "result"
 }
 
@@ -493,14 +502,14 @@ case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Inf
 sealed trait SeqExp extends Exp with PossibleTrigger
 
 /** The empty sequence of a given element type. */
-case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
+case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   lazy val typ = SeqType(elemTyp)
   def getArgs = Seq()
   def withArgs(newArgs: Seq[Exp]) = this
 }
 
 /** An explicit, non-empty sequence. */
-case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
+case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   require(elems.nonEmpty)
   require(elems.tail.forall(e => e.typ == elems.head.typ))
   elems foreach Consistency.checkNoPositiveOnly
@@ -510,66 +519,66 @@ case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info
       case Nil => sys.error("did not expect empty sequence")
       case _ :: Nil => this
       case a :: as => // desugar into singleton sequences and appends
-        as.foldLeft[SeqExp](ExplicitSeq(Seq(a))(pos,info)) {
-          (bs:SeqExp, b:Exp) => SeqAppend(bs,ExplicitSeq(Seq(b))(pos,info))(pos, info)
+        as.foldLeft[SeqExp](ExplicitSeq(Seq(a))(pos, info, errT)) {
+          (bs:SeqExp, b:Exp) => SeqAppend(bs,ExplicitSeq(Seq(b))(pos, info, errT))(pos, info, errT)
         }
     }
   }
   def getArgs = elems
-  def withArgs(newArgs: Seq[Exp]) = ExplicitSeq(newArgs)(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = ExplicitSeq(newArgs)(pos, info, errT)
 }
 
 /** A range of integers from 'low' to 'high', not including 'high', but including 'low'. */
-case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
+case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   require((low isSubtype Int) && (high isSubtype Int))
   lazy val typ = SeqType(Int)
   def getArgs = Seq(low,high)
-  def withArgs(newArgs: Seq[Exp]) = RangeSeq(newArgs.head,newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = RangeSeq(newArgs.head,newArgs(1))(pos, info, errT)
 }
 
 /** Appending two sequences of the same type. */
-case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp with PrettyBinaryExpression {
+case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyBinaryExpression {
   require(left.typ == right.typ)
   lazy val priority = 8
   lazy val fixity = Infix(LeftAssociative)
   lazy val op = "++"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = SeqAppend(newArgs.head,newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqAppend(newArgs.head,newArgs(1))(pos, info, errT)
 
 }
 
 /** Access to an element of a sequence at a given index position (starting at 0). */
-case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
+case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   require(s.typ.isInstanceOf[SeqType])
   require(idx isSubtype Int)
   lazy val typ = s.typ.asInstanceOf[SeqType].elementType
   def getArgs = Seq(s,idx)
-  def withArgs(newArgs: Seq[Exp]) = SeqIndex(newArgs.head,newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqIndex(newArgs.head,newArgs(1))(pos, info, errT)
 }
 
 /** Take the first 'n' elements of the sequence 'seq'. */
-case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
+case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   require(s.typ.isInstanceOf[SeqType])
   require(n isSubtype Int)
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
-  def withArgs(newArgs: Seq[Exp]) = SeqTake(newArgs.head,newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqTake(newArgs.head,newArgs(1))(pos, info, errT)
 
 }
 
 /** Drop the first 'n' elements of the sequence 'seq'. */
-case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
+case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   require(s.typ.isInstanceOf[SeqType])
   require(n isSubtype Int)
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
-  def withArgs(newArgs: Seq[Exp]) = SeqDrop(newArgs.head,newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqDrop(newArgs.head,newArgs(1))(pos, info, errT)
 
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
-case class SeqContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp with PrettyBinaryExpression {
+case class SeqContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyBinaryExpression {
   require(s.typ.isInstanceOf[SeqType])
   require(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)
   lazy val priority = 7
@@ -579,30 +588,30 @@ case class SeqContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val in
   lazy val right: PrettyExpression = s
   lazy val typ = Bool
   def getArgs = Seq(elem,s)
-  def withArgs(newArgs: Seq[Exp]) = SeqContains(newArgs.head,newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqContains(newArgs.head,newArgs(1))(pos, info, errT)
 }
 
 /** The same sequence as 'seq', but with the element at index 'idx' replaced with 'elem'. */
-case class SeqUpdate(s: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
+case class SeqUpdate(s: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   require(s.typ.isInstanceOf[SeqType])
   require(idx isSubtype Int)
   require(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)
   Consistency.checkNoPositiveOnly(elem)
   lazy val desugaredAssumingIndexInRange : SeqExp = {
-    SeqAppend(SeqTake(s,idx)(pos,info),SeqAppend(ExplicitSeq(List(elem))(pos,info),SeqDrop(s,Add(idx,IntLit(1)(pos,info))(pos,info))(pos,info))(pos,info))(pos,info)
+    SeqAppend(SeqTake(s,idx)(pos, info, errT),SeqAppend(ExplicitSeq(List(elem))(pos, info, errT),SeqDrop(s,Add(idx,IntLit(1)(pos, info,errT))(pos, info, errT))(pos, info, errT))(pos, info, errT))(pos, info, errT)
   }
   lazy val typ = s.typ
   def getArgs = Seq(s,idx,elem)
-  def withArgs(newArgs: Seq[Exp]) = SeqUpdate(newArgs.head,newArgs(1),newArgs(2))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqUpdate(newArgs.head,newArgs(1),newArgs(2))(pos, info, errT)
 
 }
 
 /** The length of a sequence. */
-case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SeqExp {
+case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   require(s.typ.isInstanceOf[SeqType])
   lazy val typ = Int
   def getArgs = Seq(s)
-  def withArgs(newArgs: Seq[Exp]) = SeqLength(newArgs.head)(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = SeqLength(newArgs.head)(pos, info, errT)
 
 }
 
@@ -629,25 +638,25 @@ sealed trait AnySetUnExp extends AnySetExp with UnExp
 sealed trait AnySetBinExp extends AnySetExp with PrettyBinaryExpression with BinExp
 
 /** The empty set of a given element type. */
-case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
+case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SetExp {
   lazy val typ = SetType(elemTyp)
   def getArgs = Seq()
   def withArgs(newArgs: Seq[Exp]) = this
 }
 
 /** An explicit, non-empty set. */
-case class ExplicitSet(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends SetExp {
+case class ExplicitSet(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SetExp {
   require(elems.nonEmpty)
   require(elems.tail.forall(e => e.typ == elems.head.typ))
   elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = SetType(elems.head.typ)
   def getArgs = elems
-  def withArgs(newArgs: Seq[Exp]) = ExplicitSet(newArgs)(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = ExplicitSet(newArgs)(pos, info, errT)
 
 }
 
 /** The empty multiset of a given element type. */
-case class EmptyMultiset(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo) extends MultisetExp {
+case class EmptyMultiset(elemTyp: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MultisetExp {
   lazy val typ = MultisetType(elemTyp)
   def getArgs = Seq()
   def withArgs(newArgs: Seq[Exp]) = this
@@ -655,18 +664,18 @@ case class EmptyMultiset(elemTyp: Type)(val pos: Position = NoPosition, val info
 }
 
 /** An explicit, non-empty multiset. */
-case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo) extends MultisetExp {
+case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MultisetExp {
   require(elems.nonEmpty)
   require(elems.tail.forall(e => e.typ == elems.head.typ))
   elems foreach Consistency.checkNoPositiveOnly
   lazy val typ = MultisetType(elems.head.typ)
   def getArgs = elems
-  def withArgs(newArgs: Seq[Exp]) = ExplicitMultiset(newArgs)(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = ExplicitMultiset(newArgs)(pos, info, errT)
 
 }
 
 /** Union of two sets or two multisets. */
-case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
+case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 8
@@ -674,11 +683,11 @@ case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   lazy val op = "union"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetUnion(newArgs.head,newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetUnion(newArgs.head,newArgs(1))(pos, info, errT)
 }
 
 /** Intersection of two sets or two multisets. */
-case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
+case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 8
@@ -686,11 +695,11 @@ case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosit
   lazy val op = "intersection"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetIntersection(newArgs.head,newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetIntersection(newArgs.head,newArgs(1))(pos, info, errT)
 }
 
 /** Subset relation of two sets or two multisets. */
-case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
+case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 8
@@ -698,11 +707,11 @@ case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, v
   lazy val op = "subset"
   lazy val typ = Bool
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetSubset(newArgs.head,newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetSubset(newArgs.head,newArgs(1))(pos, info, errT)
 }
 
 /** Set difference. */
-case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
+case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   require(left.typ == right.typ)
   require(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])
   lazy val priority = 8
@@ -710,11 +719,11 @@ case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   lazy val op = "setminus"
   lazy val typ = left.typ
   def getArgs = Seq(left,right)
-  def withArgs(newArgs: Seq[Exp]) = AnySetMinus(newArgs.head,newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetMinus(newArgs.head,newArgs(1))(pos, info, errT)
 }
 
 /** Is the element 'elem' contained in the sequence 'seq'? */
-case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetBinExp {
+case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   require((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SetType].elementType)) ||
     (s.typ.isInstanceOf[MultisetType] && (elem isSubtype s.typ.asInstanceOf[MultisetType].elementType)))
   lazy val priority = 7
@@ -724,16 +733,16 @@ case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val
   lazy val right = s
   lazy val typ = if (s.typ.isInstanceOf[SetType]) Bool else Int
   def getArgs = Seq(elem,s)
-  def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs.head,newArgs(1))(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetContains(newArgs.head,newArgs(1))(pos, info, errT)
 }
 
 /** The length of a sequence. */
-case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo) extends AnySetUnExp {
+case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetUnExp {
   require(s.typ.isInstanceOf[SetType] || s.typ.isInstanceOf[MultisetType])
   val exp = s
   lazy val typ = Int
   def getArgs = Seq(s)
-  def withArgs(newArgs: Seq[Exp]) = AnySetCardinality(newArgs.head)(pos,info)
+  def withArgs(newArgs: Seq[Exp]) = AnySetCardinality(newArgs.head)(pos, info, errT)
 }
 
 // --- Common functionality

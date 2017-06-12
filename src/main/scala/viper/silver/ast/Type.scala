@@ -12,7 +12,7 @@
 
 package viper.silver.ast
 
-import utility.Types
+import viper.silver.ast.utility.Types
 
 /** Silver types. */
 sealed trait Type extends Node {

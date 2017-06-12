@@ -6,8 +6,10 @@
 
 package viper.silver.testing
 
+import java.nio.file.{Files, Path}
+
 import org.scalatest._
-import java.nio.file.{Path, Files}
+
 import scala.collection.JavaConversions._
 
 /** A test suite for end-to-end toolchain testing that operates on source files

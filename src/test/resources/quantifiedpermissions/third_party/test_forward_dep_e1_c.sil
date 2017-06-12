@@ -91,14 +91,14 @@ method Ref__loop_body_54(diz: Ref, current_thread_id: Int, len: Int, b: Seq[Ref]
   requires diz != null
   requires current_thread_id >= 0
   requires (0 <= i) && (i < len)
-  requires |a| == len
+  requires |a| == len + 1
   requires acc(a[i].Ref__Integer_value, write)
   requires |b| == len
   requires acc(b[i].Ref__Integer_value, 1 / 2)
   requires |c| == len
   requires acc(c[i].Ref__Integer_value, write)
   ensures (0 <= i) && (i < len)
-  ensures |a| == len
+  ensures |a| == len + 1
   ensures acc(a[i].Ref__Integer_value, 1 / 2)
   ensures |b| == len
   ensures acc(b[i].Ref__Integer_value, 1 / 2)

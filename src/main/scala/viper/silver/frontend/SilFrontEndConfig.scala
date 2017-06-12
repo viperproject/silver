@@ -6,9 +6,10 @@
 
 package viper.silver.frontend
 
-import collection._
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
+
+import scala.collection._
 
 /**
  * The configuration of a SIL front-end.

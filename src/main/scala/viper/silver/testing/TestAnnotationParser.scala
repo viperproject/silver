@@ -7,6 +7,7 @@
 package viper.silver.testing
 
 import java.nio.file.{Files, Path}
+
 import scala.io.Source
 
 /**

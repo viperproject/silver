@@ -1,15 +1,17 @@
 package viper.silver.parser
 
 import java.nio.file.Path
-import scala.annotation.tailrec
-import scala.language.implicitConversions
-import fastparse.{Implicits, WhitespaceApi}
+
 import fastparse.Implicits.{Repeater, Sequencer}
 import fastparse.all._
 import fastparse.core.{Mutable, ParseCtx, Parser}
 import fastparse.parsers.Combinators.{Repeat, Rule}
 import fastparse.parsers.Terminals.Pass
+import fastparse.{Implicits, WhitespaceApi}
 import viper.silver.ast.HasLineColumn
+
+import scala.annotation.tailrec
+import scala.language.implicitConversions
 
 /**
   * Created by sahil on 21.07.16.

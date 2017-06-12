@@ -6,12 +6,11 @@
 
 package viper.silver
 
-import org.scalatest.{BeforeAndAfter, FunSuite}
-import org.scalatest.Matchers
-import viper.silver.testing._
 import java.nio.file.{FileSystems, Path}
-import viper.silver.testing.OutputAnnotationId
-import viper.silver.testing.ExpectedOutput
+
+import org.scalatest.{BeforeAndAfter, FunSuite, Matchers}
+import viper.silver.testing.{ExpectedOutput, OutputAnnotationId, _}
+
 import scala.collection.immutable.Nil
 
 object TestFixtures {

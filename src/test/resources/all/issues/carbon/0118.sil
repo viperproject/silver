@@ -13,8 +13,6 @@ method bar(S: Seq[Ref])
 {
   inhale forall r:Ref :: r in S ==> acc(r.f,1/2)
   //:: ExpectedOutput(exhale.failed:receiver.not.injective)
-  //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  //:: MissingOutput(exhale.failed:insufficient.permission, /Silicon/issue/34/)
   exhale forall i:Int :: 0 <= i && i < |S| ==> acc(S[i].f,1/2)
 }
 

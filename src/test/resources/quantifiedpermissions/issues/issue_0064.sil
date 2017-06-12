@@ -3,8 +3,8 @@ field f: Int
 method m01(S1: Seq[Ref], S2: Set[Ref], x: Ref)
   requires S1 == Seq(x) && S2 == Set(x)
   requires forall i: Int :: i in [0..|S1|) ==> acc(S1[i].f)
+  // This also used to fail in Carbon, but doesn't with the latest Z3 build
   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /silicon/issue/64/)
-  //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /carbon/issue/117/)
   ensures  forall y: Ref :: y in S2 ==> acc(y.f) /* y in Set fails */
 {}
 
@@ -18,8 +18,8 @@ method m02(S1: Seq[Ref], S2: Set[Ref], x: Ref)
 method m03(S1: Seq[Ref], S2: Set[Ref], x: Ref)
   requires S1 == Seq(x) && S2 == Set(x)
   requires forall i: Int :: i in [0..|S1|) ==> S1[i] != null
+  // This also used to fail in Carbon, but doesn't with the latest Z3 build
   //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/150/)
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /carbon/issue/117/)
   ensures  forall y: Ref :: y in S2 ==> y != null
 {}
 
@@ -50,9 +50,7 @@ method test01(s:Seq[Ref])
 method reprotwo(s:Seq[Ref])
 {
   inhale (forall x: Ref :: x in s ==> acc(x.f))
-  //:: UnexpectedOutput(inhale.failed:insufficient.permission, /carbon/issue/1/)
   inhale (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].f == 0))
-  //:: UnexpectedOutput(assert.failed:insufficient.permission, /carbon/issue/1/)
   assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].f == 0))
 }
 
@@ -61,8 +59,7 @@ method reprothree(s:Seq[Ref])
   inhale (forall x: Ref :: x in s ==> acc(x.f))
   inhale (forall x: Ref :: x in s ==> (x.f == 0))
   // // :: UnexpectedOutput(assert.failed:receiver.null, /silicon/issue/64/)
-  //:: UnexpectedOutput(assert.failed:insufficient.permission, /carbon/issue/1/)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/1/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/198/)
   assert (forall x: Int :: (0 <= x) && (x < |s|) ==> (s[x].f == 0))
     // Fails in Silicon when using Z3 4.5.0 (and earlier)
     // Works in Silicon when using Z3 4.5.1 (https://github.com/Z3Prover/z3/issues/935)
@@ -74,7 +71,6 @@ method reprofour(s:Seq[Ref])
   inhale (forall x: Ref :: x in s ==> (x.f == 0))
   assert (forall x: Ref :: x in s ==> (x.f == 0))
   // // :: UnexpectedOutput(assert.failed:receiver.null, /silicon/issue/64/)
-  //:: UnexpectedOutput(assert.failed:insufficient.permission, /carbon/issue/1/)
   assert |s|>0 ==> s[0].f == 0
     // Fails in Silicon when using Z3 4.5.0 (and earlier)
     // Works in Silicon when using Z3 4.5.1 (https://github.com/Z3Prover/z3/issues/935)

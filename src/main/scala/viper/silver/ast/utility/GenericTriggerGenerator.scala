@@ -6,7 +6,7 @@
 
 package viper.silver.ast.utility
 
-import reflect.ClassTag
+import scala.reflect.ClassTag
 
 object GenericTriggerGenerator {
   case class TriggerSet[E](exps: Seq[E])

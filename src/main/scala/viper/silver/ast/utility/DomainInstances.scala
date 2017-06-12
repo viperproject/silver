@@ -1,7 +1,8 @@
 package viper.silver.ast.utility
 
-import scala.collection.mutable
 import viper.silver.ast._
+
+import scala.collection.mutable
 
 /* TODO:
  *   - Removed commented code
@@ -27,6 +28,7 @@ object DomainInstances {
 
     (functions, axioms)
   }
+
 
   def collectGroundTypes(n: Node, p: Program): Set[Type] = n.deepCollect {
     case t: Type if t.isConcrete => t
@@ -111,6 +113,7 @@ object DomainInstances {
     val allGroundDFAs = p.deepCollect{
       case dfa: DomainFuncApp if dfa.typVarMap.values.forall(_.isConcrete) => dfa
     }
+
 
     def tryUnify(t1: Type, t2: Type, s: TypeSubstitution): Option[TypeSubstitution] = {
       assert(t2.isConcrete)
@@ -283,7 +286,7 @@ object DomainInstances {
   }
 
   def substitute[A <: Node](e: A, s: TypeSubstitution, p: Program): A =
-    Transformer.transform[A](e, {
+    e.transform {
       case dfa@DomainFuncApp(_, args, ts) =>
         val ts2 = ts.toSeq.map(pair => (pair._1, substitute(pair._2, s, p))).toMap
         val argss = args map (substitute(_, s, p))
@@ -294,34 +297,33 @@ object DomainInstances {
 
       case t: Type =>
         t.substitute(s)
-    })()
+    }
 
-//  def showInstanceMembers(p: Program): Unit = {
-////    println("================== Domain instances")
-//    for (ti <- p.groundTypeInstances) {
-///*      ti match {
-//        case dt: DomainType =>
-//          println("Members for Domain type " + dt.toString())
-//          val domain = p.findDomain(dt.domainName)
-//          val (fs, as) = getInstanceMembers(p, dt)
-//          //          val sfs = domain.functions.map(substitute(_,dt.typVarsMap,p))
-//          for (f <- fs)
-//            println("   " + f.toString())
-//          for (a <- as)
-//            println("   " + a.toString())
-//          for (rf <- domain.functions.filter(f => fs.forall((ff) => ff.name != f.name)))
-//            println("   Rejected " + substitute(rf, dt.typVarsMap, p).toString())
-//          for (ra <- domain.axioms.filter(a => as.forall((aa) => aa.name != a.name)))
-//            println("   Rejected " + substitute(ra, dt.typVarsMap, p).toString())
-//      case _ =>
-//      }
-//*/
-//    }
-////    println("================== Domain instances done")
-//    /*    val allTypes = collectGroundTypes(p,p)
-//    for (t <- allTypes)
-//      println(t.toString())*/
-//  }
+  def showInstanceMembers(p: Program): Unit = {
+    println("================== Domain instances")
+    for (ti <- p.groundTypeInstances) {
+      ti match {
+        case dt: DomainType =>
+          println("Members for Domain type " + dt.toString())
+          val domain = p.findDomain(dt.domainName)
+          val (fs, as) = getInstanceMembers(p, dt)
+          //          val sfs = domain.functions.map(substitute(_,dt.typVarsMap,p))
+          for (f <- fs)
+            println("   " + f.toString())
+          for (a <- as)
+            println("   " + a.toString())
+          for (rf <- domain.functions.filter(f => fs.forall((ff) => ff.name != f.name)))
+            println("   Rejected " + substitute(rf, dt.typVarsMap, p).toString())
+          for (ra <- domain.axioms.filter(a => as.forall((aa) => aa.name != a.name)))
+            println("   Rejected " + substitute(ra, dt.typVarsMap, p).toString())
+      case _ =>
+      }
+    }
+    println("================== Domain instances done")
+    val allTypes = collectGroundTypes(p,p)
+    for (t <- allTypes)
+      println(t.toString())
+  }
 
   def getFTVDepths(t: Type): Map[TypeVar, Int] = t match {
     case dt: DomainType =>

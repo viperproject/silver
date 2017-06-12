@@ -35,7 +35,7 @@ case class Translator(program: PProgram) {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
     program match {
-      case PProgram(_, pdomains, pfields, pfunctions, ppredicates, pmethods, _) =>
+      case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, _) =>
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
             pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
 
@@ -379,12 +379,14 @@ case class Translator(program: PProgram) {
       case PExists(vars, e) =>
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>
-        val ts = triggers map (exps => Trigger(exps map exp)(exps.head))
+        val ts = triggers map (t => Trigger(t.exp map exp)(t))
         var fa = Forall(vars map liftVarDecl, ts, exp(e))(pos)
-       if (fa.isPure) {
+        if (fa.isPure) {
           fa
         } else {
-          QuantifiedPermissions.rewriteForall(fa)
+          val desugaredForalls = QuantifiedPermissions.desugareSourceSyntax(fa)
+          desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
+            And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
       case f@PForPerm(v, args, e) =>
 

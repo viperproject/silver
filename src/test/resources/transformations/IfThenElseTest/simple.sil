@@ -1,0 +1,8 @@
+method main() returns ()
+{
+   var x: Int := 0
+   var y: Int := 1
+
+   assert(10 + 11 >= 0)
+   assert(0+1 == x+y)
+}

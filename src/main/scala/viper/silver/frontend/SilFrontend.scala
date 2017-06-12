@@ -6,19 +6,15 @@
 
 package viper.silver.frontend
 
-import fastparse.core.Parsed
 import java.nio.file.{Path, Paths}
+
+import fastparse.core.Parsed
 import org.apache.commons.io.FilenameUtils
-import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
-import viper.silver.ast.{AbstractSourcePosition, HasLineColumn, Position, Program, SourcePosition}
-import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
+import viper.silver.ast.utility.Consistency
+import viper.silver.ast._
 import viper.silver.parser._
-import viper.silver.verifier._
-import viper.silver.verifier.CliOptionError
-import viper.silver.verifier.Failure
-import viper.silver.verifier.ParseError
-import viper.silver.verifier.TypecheckerError
+import viper.silver.verifier.{CliOptionError, Failure, ParseError, TypecheckerError, _}
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
@@ -198,9 +194,11 @@ trait SilFrontend extends DefaultFrontend {
   override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
     val result = FastParser.parse(input, file)
+
      result match {
-      case Parsed.Success(e@ PProgram(_, _, _, _, _, _, err_list), _) =>
+      case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
         if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning]))
+
         Succ({ e.initProperties(); e })
       else Fail(err_list)
       case Parsed.Failure(msg, next, extra) =>

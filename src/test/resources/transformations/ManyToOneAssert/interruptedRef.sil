@@ -1,0 +1,7 @@
+method main()
+{
+    var b: Bool := false
+    assert(true && true)
+    inhale b == true
+    assert(b && b && true)
+}

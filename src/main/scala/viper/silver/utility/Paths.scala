@@ -8,6 +8,7 @@ package viper.silver.utility
 
 import java.net.{URI, URL}
 import java.nio.file.{FileSystem, FileSystems, Path}
+
 import scala.collection.JavaConversions._
 
 /**

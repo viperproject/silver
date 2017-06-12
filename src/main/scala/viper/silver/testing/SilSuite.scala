@@ -7,11 +7,13 @@
 package viper.silver.testing
 
 import java.nio.file._
-import collection.mutable
-import org.scalatest.{ConfigMap, BeforeAndAfterAll}
-import viper.silver.verifier._
-import viper.silver.ast.{TranslatedPosition, SourcePosition}
+
+import org.scalatest.{BeforeAndAfterAll, ConfigMap}
+import viper.silver.ast.{SourcePosition, TranslatedPosition}
 import viper.silver.frontend.Frontend
+import viper.silver.verifier._
+
+import scala.collection.mutable
 
 /** A test suite for verification toolchains that use SIL. */
 abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll {
@@ -29,7 +31,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
     * Silver is always included - this means that e.g. IgnoreFile annotations
     * for Silver project will cause the file to be ignored by all verifiers
     */
-   def projectInfo: ProjectInfo = new ProjectInfo(List("Silver"))
+  def projectInfo: ProjectInfo = new ProjectInfo(List("Silver"))
 
   /** Populated by splitting the (key, values) in `configMap` (which is
     * expected to be non-null) into (prefix, actual key, value) triples such
@@ -39,7 +41,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
     * prefix. Each key in `configMap` may have at least one colon.
     */
   lazy val prefixSpecificConfigMap: Map[String, Map[String, Any]] =
-    splitConfigMap(configMap)
+  splitConfigMap(configMap)
 
   /** Invoked by ScalaTest before any test of the current suite is run.
     * Starts all verifiers specified by `verifiers`.
@@ -59,7 +61,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
   }
 
   def systemsUnderTest: Seq[SystemUnderTest] =
-   verifiers.map(VerifierUnderTest)
+    verifiers.map(VerifierUnderTest)
 
   val defaultKeyPrefix = ""
 
@@ -100,22 +102,27 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
       info(s"Time required: $tPhases.")
       val actualErrors = fe.result match {
         case Success => Nil
-        case Failure(es) => es
+        case Failure(es) => es collect {
+          case e: AbstractVerificationError =>
+            e.transformedError()
+          case rest: AbstractError => rest
+        }
       }
       actualErrors.map(SilOutput)
     }
   }
+
 }
 
 /**
- * Simple adapter for outputs produced by the SIL toolchain, i.e.,
- * [[viper.silver.verifier.AbstractError]]s.
- *
- * The advantage is that it allows [[viper.silver.testing.AbstractOutput]]
- * to be independent from the SIL AST.
- *
- * @param error the error produced by the SIL toolchain.
- */
+  * Simple adapter for outputs produced by the SIL toolchain, i.e.,
+  * [[viper.silver.verifier.AbstractError]]s.
+  *
+  * The advantage is that it allows [[viper.silver.testing.AbstractOutput]]
+  * to be independent from the SIL AST.
+  *
+  * @param error the error produced by the SIL toolchain.
+  */
 case class SilOutput(error: AbstractError) extends AbstractOutput {
   def isSameLine(file: Path, lineNr: Int): Boolean = error.pos match {
     case p: SourcePosition => lineNr == p.line
@@ -136,9 +143,9 @@ trait TimingUtils {
   }
 
   /**
-   * Measures the time it takes to execute `f` and returns the result of `f`
-   * as well as the required time.
-   */
+    * Measures the time it takes to execute `f` and returns the result of `f`
+    * as well as the required time.
+    */
   def time[T](f: () => T): (T, String) = {
     val start = System.currentTimeMillis()
     val r = f.apply()

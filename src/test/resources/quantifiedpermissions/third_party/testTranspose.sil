@@ -81,9 +81,9 @@ method Ref__loop_body_68(diz: Ref, current_thread_id: Int, j: Int, out: Seq[Ref]
   requires diz != null
   requires current_thread_id >= 0
   requires (0 <= i) && (i < M) && ((0 <= j) && (j < N))
-  requires Ref__multidim_index_2(M, N, i, j) <= |out|
+  requires Ref__multidim_index_2(M, N, i, j) < |out|
   requires acc(out[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value, write)
-  requires Ref__multidim_index_2(N, M, j, i) <= |inp|
+  requires Ref__multidim_index_2(N, M, j, i) < |inp|
   requires acc(inp[Ref__multidim_index_2(N, M, j, i)].Ref__Integer_value, 1 / 4)
   ensures (0 <= i) && (i < M) && ((0 <= j) && (j < N))
   ensures acc(out[Ref__multidim_index_2(M, N, i, j)].Ref__Integer_value, write)

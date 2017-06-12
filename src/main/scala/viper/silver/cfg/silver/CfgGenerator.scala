@@ -112,8 +112,7 @@ object CfgGenerator {
     * An temporary statement that is used during the translation of an AST to a
     * CFG.
     */
-  sealed trait TmpStmt {
-  }
+  sealed trait TmpStmt
 
   final case class WrappedStmt(stmt: Stmt)
     extends TmpStmt
@@ -200,8 +199,8 @@ object CfgGenerator {
         val cfg = statementToCfg(body)
         addStatement(ConstrainingStmt(vars, cfg, after))
         addLabel(after)
-      case Seqn(stmts) =>
-        stmts.foreach(run)
+      case Seqn(ss) =>
+        ss.foreach(run)
       case Goto(name) =>
         val target = TmpLabel(name)
         addStatement(JumpStmt(target))
@@ -263,10 +262,10 @@ object CfgGenerator {
     def target: Int
   }
 
-  final case class TmpUnconditionalEdge(source: Int, target: Int)
+  case class TmpUnconditionalEdge(source: Int, target: Int)
     extends TmpEdge
 
-  final case class TmpConditionalEdge(cond: Exp, source: Int, target: Int)
+  case class TmpConditionalEdge(cond: Exp, source: Int, target: Int)
     extends TmpEdge
 
   class Phase2(phase1: Phase1) {

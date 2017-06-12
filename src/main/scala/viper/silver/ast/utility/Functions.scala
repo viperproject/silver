@@ -12,12 +12,13 @@
 
 package viper.silver.ast.utility
 
-import scala.collection.JavaConversions._
-import org.jgrapht.{DirectedGraph, EdgeFactory}
 import org.jgrapht.alg.{CycleDetector, StrongConnectivityInspector}
 import org.jgrapht.graph.DefaultDirectedGraph
 import org.jgrapht.traverse.TopologicalOrderIterator
+import org.jgrapht.{DirectedGraph, EdgeFactory}
 import viper.silver.ast._
+
+import scala.collection.JavaConversions._
 
 /**
  * Utility methods for functions.

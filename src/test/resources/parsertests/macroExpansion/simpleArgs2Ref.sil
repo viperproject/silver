@@ -1,0 +1,16 @@
+define macro(x, y) {
+    assert(x + y == 5)
+    macro2(y)
+}
+
+define macro2(z) {
+    assert(z == 3)
+}
+
+method main()
+{
+    assert(true)
+    assert(2 + (3) == 5)
+    assert(3 == 3)
+}
+

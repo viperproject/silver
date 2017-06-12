@@ -1,0 +1,23 @@
+define macro {
+    var x: Bool := true
+    macro2(x)
+}
+
+define macro2(y) {
+    var x: Bool := false
+    assert(y || x) 
+}
+
+method main()
+{
+    var x: Bool
+    var x$0: Bool 
+    var x$1: Bool 
+    var x$2: Bool 
+    x := true
+    x$0 := false
+    assert(x || x$0)
+    x$1 := true
+    x$2 := false
+    assert(x$1 || x$2)
+}
