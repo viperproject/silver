@@ -343,8 +343,8 @@ object ViperStrategy {
     case (u: Unfold, Seq(predicate: PredicateAccessPredicate), meta) =>
       Unfold(predicate)(meta._1, meta._2, meta._3)
 
-    case (p: Package, Seq(wand: MagicWand, proofScript: Seqn), meta) =>
-      Package(wand, proofScript)(meta._1, meta._2, meta._3)
+    case (p: Package, Seq(wand: MagicWand, proofScript: Seqn, locals: Seq[LocalVarDecl]), meta) =>
+      Package(wand, proofScript, locals)(meta._1, meta._2, meta._3)
 
     case (a: Apply, Seq(wand: MagicWand), meta) =>
       Apply(wand)(meta._1, meta._2, meta._3)

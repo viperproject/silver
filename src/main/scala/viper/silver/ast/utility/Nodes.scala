@@ -59,7 +59,7 @@ object Nodes {
           case FieldAssign(lhs, rhs) => Seq(lhs, rhs)
           case Fold(e) => Seq(e)
           case Unfold(e) => Seq(e)
-          case Package(e, proofScript) => Seq(e, proofScript)
+          case Package(e, proofScript, locals) => Seq(e, proofScript) ++ locals.asInstanceOf[Seq[Node]]
           case Apply(e) => Seq(e)
           case Inhale(e) => Seq(e)
           case Exhale(e) => Seq(e)

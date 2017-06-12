@@ -629,7 +629,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case FieldAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case Fold(e) => text("fold") <+> show(e)
       case Unfold(e) => text("unfold") <+> show(e)
-      case Package(e, proofScript) => text("package") <+> show(e) <+> showBlock(proofScript)
+      case Package(e, proofScript, _) => text("package") <+> show(e) <+> showBlock(proofScript)
       case Apply(e) => text("apply") <+> show(e)
       case Inhale(e) => text("inhale") <+> show(e)
       case Exhale(e) => text("exhale") <+> show(e)
