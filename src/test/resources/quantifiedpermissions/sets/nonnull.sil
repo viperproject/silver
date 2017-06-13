@@ -37,7 +37,6 @@ method test05(xs: Set[Ref], ys: Set[Ref], x: Ref, y: Ref)
   requires forall z: Ref :: z in (xs union ys) ==> acc(z.f)
   requires x in xs && y in ys
 {
-  // :: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/61/)
   //:: UnexpectedOutput(assert.failed:assertion.false, /silver/issue/80/)
   assert x != null && y != null
   // the set axiomatisation doesn't trigger the "in ... union ..." property needed
