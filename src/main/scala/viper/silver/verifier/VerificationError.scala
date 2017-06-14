@@ -411,7 +411,7 @@ object reasons {
 
   case class TerminationNoBound(offendingNode: Exp) extends AbstractErrorReason {
     val id = "termination.no.bound"
-    override def readableMessage = s"decreases expression $offendingNode might not be bounded."
+    override def readableMessage = s"Decreases expression $offendingNode might not be bounded below 0."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(offendingNode.asInstanceOf[Exp])
   }

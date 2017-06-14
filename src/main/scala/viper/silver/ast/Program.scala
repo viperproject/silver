@@ -163,8 +163,8 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   require(_posts == null || (_posts forall Consistency.noOld))
   require(_body == null || (_body map (_ isSubtype typ) getOrElse true))
   if (_pres != null) _pres foreach Consistency.checkNonPostContract
-  if (_decs != null) _decs foreach Consistency.checkNonPostContract //TODO pege
   if (_posts != null) _posts foreach Consistency.checkPost
+  //if (_decs != null) _decs foreach Consistency.checkNonPostContract //TODO pege
   if (_body != null) _body foreach Consistency.checkFunctionBody
   def pres = _pres
   def pres_=(s: Seq[Exp]) {
@@ -179,7 +179,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
   }
   def decs = _decs
   def decs_=(s: Seq[Exp]) {
-    //s foreach Consistency.checkPost //TODO pege
+    //s foreach Consistency. //TODO checks pege
     _decs = s
   }
   def body = _body

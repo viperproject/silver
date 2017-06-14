@@ -101,7 +101,7 @@ case class TypeChecker(names: NameAnalyser) {
       curFunction=f
       f.pres foreach (check(_, Bool))
       resultAllowed=true
-      f.decs foreach (check(_,Int))
+      f.decs foreach (d => check(d,d.typ)) //TODO pege
       f.posts foreach (check(_, Bool))
       f.body.foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
       resultAllowed=false

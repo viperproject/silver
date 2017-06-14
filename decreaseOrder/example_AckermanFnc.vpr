@@ -1,18 +1,18 @@
-//import "decreaseOrder/decrease_order.vpr" //verifies
+import "./decrease_order.vpr" //verifies
 //import "decreaseOrder/decrease_order_size.vpr" //cant verify
 
 /////////////////////////////////////////////////////////////////////////
 //Override Verification
-import "size_order_withoutTuple.vpr"
+// import "size_order_withoutTuple.vpr"
 
-domain TerminationOrderTuple[A,B]{
-    function decreases(arg1:Tuple2[A,B], arg2:Tuple2[A,B]):Bool
+// domain TerminationOrderTuple[A,B]{
+//     function decreases(arg1:Tuple2[A,B], arg2:Tuple2[A,B]):Bool
     
-    axiom tuple_ax{
-         forall t1: Tuple2[A,B], t2: Tuple2[A,B] ::
-         (size(first(t1)) < size(first(t2)) || (size(first(t1)) == size(first(t2)) && size(second(t1)) < size(second(t2)))) ==> decreases(t1,t2)
-    }
-}
+//     axiom tuple_ax{
+//          forall t1: Tuple2[A,B], t2: Tuple2[A,B] ::
+//          (size(first(t1)) < size(first(t2)) || (size(first(t1)) == size(first(t2)) && size(second(t1)) < size(second(t2)))) ==> decreases(t1,t2)
+//     }
+// }
 /////////////////////////////////////////////////////////////////////////
 
 
@@ -39,11 +39,11 @@ requires n >= 0
     if(m == 0){}
     elseif (n == 0){
         t2 := tuple2Conn(m-1,1)
-        assert decreases(t2,t1) //Dont verify with size() because it could be that t2.b > t1.b (1>0)
+        assert decreasing(t2,t1) //Dont verify with size() because it could be that t2.b > t1.b (1>0)
     }
     else{
         t2 := tuple2Conn(m,n-1)
-        assert decreases(t2,t1)
+        assert decreasing(t2,t1)
 
     }
 }
@@ -62,11 +62,13 @@ requires second(t) >= 0
 method ackTuple_termination_proof(t: Tuple2[Int,Int])
 requires first(t) >= 0
 requires second(t) >= 0
-{
+{ 
     if (first(t)==0){}
     elseif(second(t)==0){
-        assert decreases(tuple2Conn(first(t)-1,1),t)
+        assert bounded(tuple2Conn(first(t)-1,1))
+        assert decreasing(tuple2Conn(first(t)-1,1),t)
     }else{
-        assert decreases(tuple2Conn(first(t),second(t)-1),t)
+        assert bounded(tuple2Conn(first(t),second(t)-1))
+        assert decreasing(tuple2Conn(first(t),second(t)-1),t)
     }
 }

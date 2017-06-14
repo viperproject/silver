@@ -804,15 +804,16 @@ object FastParser extends PosParser {
   lazy val fieldDecl: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map { case (a, b) => PField(a, b) }
 
   lazy val functionDecl: P[PFunction] = P("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-    post.rep ~ dec.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f, g) => PFunction(a, b, c, d, e, f, g) }
+    post.rep ~ dec.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f, g) => PFunction(a, b, c, d, e, f.flatten, g) }
 
 
   lazy val pre: P[PExp] = P("requires" ~/ exp ~ ";".?)
 
   lazy val post: P[PExp] = P("ensures" ~/ exp ~ ";".?)
 
-  //  lazy val dec: P[PDeclause] = P("decreasing" ~/ exp.rep ~ ";".?).map {case (a) => PDeclause(a)}
-  lazy val dec: P[PExp] = P("decreases" ~/ exp ~ ";".?) ///pege
+  lazy val dec: P[Seq[PExp]] = P("decreases" ~/ decCl ~ ";".?) //pege
+
+  lazy val decCl: P[Seq[PExp]] = P(exp.rep(sep = ","))
 
   lazy val predicateDecl: P[PPredicate] = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }
 
