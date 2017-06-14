@@ -418,8 +418,6 @@ case class Translator(program: PProgram) {
         Old(exp(e))(pos)
       case PLabelledOld(lbl,e) =>
         LabelledOld(exp(e),lbl.name)(pos)
-      case PApplyOld(e) =>
-        ApplyOld(exp(e))(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
       case PCurPerm(loc) => {

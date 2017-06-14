@@ -109,7 +109,7 @@ method insert(this: Ref, elem: Int) returns (index: Int)
     index := index + 1
 
     define A acc(lseg(ptr, null)) && contentNodes(ptr, null)[0] == old(content(this))[index-1]
-    define B acc(lseg(hd, null)) && contentNodes(hd, null) == old(content(this))[0..index-1] ++ lhs(contentNodes(ptr, null))
+    define B acc(lseg(hd, null)) && contentNodes(hd, null) == old(content(this))[0..index-1] ++ old[lhs](contentNodes(ptr, null))
       /* In a wand such as
        *   A --* ... lhs(e)
        * lhs(e) means that expression e is evaluated in the state in which the wand will have

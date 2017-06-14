@@ -91,6 +91,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
     this.shallowCollect {
       case old: Old => Some(old)
+      case LabelledOld(_, "lhs") => None
       case lo: LabelledOld => Some(lo)
       case q: QuantifiedExp if q.isHeapDependent(p) => None
       case e: Exp if !e.isHeapDependent(p) => Some(e)
@@ -367,12 +368,11 @@ sealed trait OldExp extends UnExp {
 }
 
 case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
-case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp { Consistency.checkNoPositiveOnly(exp) }
 
 /** Old expression that references a particular state earlier in the program that has been given a name.
   * Evaluates expression in that state. */
 case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
-  require(oldLabel != null, "LabelledOld(exp, _): exp cannot be null")
+  require(exp != null, "LabelledOld(exp, _): exp cannot be null")
   require(oldLabel != null, "LabelledOld(_, oldLabel): oldLabel cannot be null")
   Consistency.checkNoPositiveOnly(exp)
 }

@@ -433,7 +433,7 @@ object FastParser extends PosParser {
     "unique")
 
 
-  lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old | applyOld
+  lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
@@ -458,9 +458,10 @@ object FastParser extends PosParser {
 
   lazy val idnuse: P[PIdnUse] = P(ident).map(PIdnUse)
 
-  lazy val old: P[PExp] = P(StringIn("old") ~ (parens(exp).map(POld) | ("[" ~ idnuse ~ "]" ~ parens(exp)).map { case (a, b) => PLabelledOld(a, b) }))
+  lazy val oldLabel: P[PIdnUse] = P(idnuse | "lhs".!).map { case idnuse: PIdnUse => idnuse
+  case "lhs" => PIdnUse("lhs")}
 
-  lazy val applyOld: P[PExp] = P((StringIn("lhs") ~ parens(exp)).map(PApplyOld))
+  lazy val old: P[PExp] = P(StringIn("old") ~ (parens(exp).map(POld) | ("[" ~ oldLabel ~ "]" ~ parens(exp)).map { case (a, b) => PLabelledOld(a, b) }))
 
   lazy val magicWandExp: P[PExp] = P(orExp ~ ("--*".! ~ exp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)

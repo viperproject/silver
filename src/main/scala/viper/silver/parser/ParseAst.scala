@@ -776,10 +776,6 @@ case class POld(e: PExp) extends POldExp{
 case class PLabelledOld(label: PIdnUse, e: PExp) extends POldExp{
   override val opName = "old#labeled"
 }
-case class PApplyOld(e: PExp) extends POldExp{
-  override val opName = "old#apply"
-}
-
 
 sealed trait PCollectionLiteral extends POpApp{
   def pElementType : PType

@@ -720,8 +720,6 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       text("old") <> parens(show(exp))
     case LabelledOld(exp,label) =>
       text("old") <> brackets(label) <> parens(show(exp))
-    case ApplyOld(exp) =>
-      text("given") <> parens(show(exp))
     case Let(v, exp, body) =>
       parens(text("let") <+> text(v.name) <+> "==" <+> parens(show(exp)) <+> "in" <+> show(body))
     case CondExp(cond, thn, els) =>

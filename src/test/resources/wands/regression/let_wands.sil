@@ -81,7 +81,7 @@ method test08(x: Ref)
   requires acc(x.f) && acc(x.g)
 {
   define A acc(x.f)
-  define B acc(Pair(x)) && sum(x) == (lhs(x.f) + old(x.g))
+  define B acc(Pair(x)) && sum(x) == (old[lhs](x.f) + old(x.g))
 
   package (A) --* B {
       fold acc(Pair(x))

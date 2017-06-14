@@ -53,7 +53,7 @@ method insert(xs: Ref, x:Int) returns (i: Int)
   i := 0
 
   define A acc(List(crt))
-  define B acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ lhs(elems(crt))
+  define B acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ old[lhs](elems(crt))
 
   unfold List(xs)
   crt := xs
@@ -86,7 +86,7 @@ method insert(xs: Ref, x:Int) returns (i: Int)
 
    package (A) --* B {
        fold List(prev)
-       apply acc(List(prev)) --* acc(List(xs)) && elems(xs) == old(elems(xs))[0..oi] ++ lhs(elems(prev))
+       apply acc(List(prev)) --* acc(List(xs)) && elems(xs) == old(elems(xs))[0..oi] ++ old[lhs](elems(prev))
    }
   }
 

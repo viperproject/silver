@@ -171,7 +171,6 @@ object ViperStrategy {
 
     case (o: Old, Seq(e: Exp), meta) => Old(e)(meta._1, meta._2, meta._3)
     case (l: LabelledOld, Seq(e: Exp), meta) => LabelledOld(e, l.oldLabel)(meta._1, meta._2, meta._3)
-    case (a: ApplyOld, Seq(e: Exp), meta) => ApplyOld(e)(meta._1, meta._2, meta._3)
     case (c: CondExp, Seq(cond: Exp, thn: Exp, els: Exp), meta) =>
       CondExp(cond, thn, els)(meta._1, meta._2, meta._3)
     case (l: Let, Seq(v: LocalVarDecl, exp1: Exp, body: Exp), meta) => Let(v, exp1, body)(meta._1, meta._2, meta._3)

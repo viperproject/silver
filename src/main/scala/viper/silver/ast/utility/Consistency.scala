@@ -306,8 +306,8 @@ object Consistency {
 
       c.copy(insideWandStatus = InsideWandStatus.Yes)
 
-    case po: ApplyOld =>
-      recordIfNot(po, c.insideWandStatus.isInside, "given-expressions may only occur inside wands.")
+    case po @ LabelledOld(_, "lhs") =>
+      //recordIfNot(po, c.insideWandStatus.isInside, "labelled old expressions with \"lhs\" label may only occur inside wands.")
 
       c
   })
@@ -318,10 +318,10 @@ object Consistency {
         checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
         checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
 
-      case po: ApplyOld =>
-        recordIfNot(po,
+      case po @ LabelledOld(_, "lhs") =>
+        /*recordIfNot(po,
                     c.insideWandStatus.isRight,
-                    "Wands may contain given-expressions on the rhs only.")
+                    "Wands may use the \"lhs\" label on the rhs only.")*/
     })
   }
 
