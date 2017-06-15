@@ -175,7 +175,8 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
 /** Boolean negation. */
 case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainUnExp(NotOp) {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnly(exp)
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnly(exp) ++
+    (if(!Consistency.areAssignable(args, formalArgs)) Seq(ConsistencyError( s"$args vs $formalArgs for callee: $callee", pos)) else Seq())
 }
 
 /** Boolean literals. */
@@ -250,15 +251,15 @@ case class EpsilonPerm()(val pos: Position = NoPosition, val info: Info = NoInfo
 case class FractionalPerm(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(FracOp) with PermExp
 {
   override lazy val check : Seq[ConsistencyError] =
-    (if(left.typ != Int) Seq(ConsistencyError("Left type must be Int", pos)) else Seq()) ++
-      (if(right.typ != Int) Seq(ConsistencyError("Right type must be Int", pos)) else Seq())
+    (if(left.typ != Int) Seq(ConsistencyError("Left type must be Int", left.pos)) else Seq()) ++
+      (if(right.typ != Int) Seq(ConsistencyError("Right type must be Int", right.pos)) else Seq())
 }
 
 case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermDivOp) with PermExp
 {
   override lazy val check : Seq[ConsistencyError] =
-  (if(left.typ != Perm) Seq(ConsistencyError("Left type must be Perm", pos)) else Seq()) ++
-    (if(right.typ != Int) Seq(ConsistencyError("Right type must be Int", pos)) else Seq())
+  (if(left.typ != Perm) Seq(ConsistencyError("Left type must be Perm", left.pos)) else Seq()) ++
+    (if(right.typ != Int) Seq(ConsistencyError("Right type must be Int", right.pos)) else Seq())
 }
 /** The permission currently held for a given location. */
 case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends PermExp
@@ -280,7 +281,9 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
 /** Function application. */
 case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl], val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
-  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkNoPositiveOnly)
+  override lazy val check : Seq[ConsistencyError] =
+    args.flatMap(Consistency.checkNoPositiveOnly) ++
+      (if(!Consistency.areAssignable(args, formalArgs)) Seq(ConsistencyError( s"$args vs $formalArgs for callee: $callee", pos)) else Seq())
 
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
@@ -296,7 +299,9 @@ object FuncApp {
 case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])
                         (val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl],val domainName:String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp with PossibleTrigger {
-  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkNoPositiveOnly)
+  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkNoPositiveOnly) ++
+    (if(!Consistency.areAssignable(args, formalArgs)) Seq(ConsistencyError( s"$args vs $formalArgs for callee: $callee", pos)) else Seq())
+
   def typ = typPassed
   def formalArgs = formalArgsPassed
   def func = (p:Program) => p.findDomainFunction(funcname)
@@ -454,7 +459,25 @@ object QuantifiedExp {
 /** Universal quantification. */
 case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   //require(isValid, s"Invalid quantifier: { $this } .")
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError("Forall exp must be of bool type.", pos)) else Seq()) ++
+  checkAllVarsMentionedInTriggers
 
+  lazy val checkAllVarsMentionedInTriggers : Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    val varsInTriggers : Seq[Seq[LocalVar]] = triggers map(t=>{
+      t.deepCollect({case lv: LocalVar => lv})
+    })
+    variables.foreach(v=>{
+      varsInTriggers.foreach(varList=>{
+        varList.find(_.name == v.name) match {
+          case Some(tr) =>
+          case None => s :+= ConsistencyError("Variable " + v.name + " is not mentioned in trigger", v.pos)
+        }
+      })
+    })
+    s
+  }
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.
     */
@@ -476,7 +499,8 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 
 /** Existential quantification. */
 case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnlyExceptInhaleExhale(exp)
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnlyExceptInhaleExhale(exp) ++
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError("exists exp must be of bool type.", pos)) else Seq())
 }
 
 

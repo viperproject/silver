@@ -1,3 +1,4 @@
+
 predicate P(r: Ref)
 
 method test01(this: Ref)

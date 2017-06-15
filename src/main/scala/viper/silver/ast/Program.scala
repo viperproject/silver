@@ -22,9 +22,72 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
         (domains flatMap (d => (d.axioms map (_.name)) ++ (d.functions map (_.name))))))
     Seq(ConsistencyError("names of members must be distinct", pos)) else Seq()) ++
       Consistency.checkContextDependentConsistency(this) ++
-      Consistency.checkNoFunctionRecursesViaPreconditions(this)
-  
+      Consistency.checkNoFunctionRecursesViaPreconditions(this) ++
+      checkMethodCallsAreValid ++
+      checkFuncAppsAreValid ++
+      checkDomainFuncAppsAreValid ++
+      checkGotoLabelsExist
+
 //  visit { case wand: MagicWand => Consistency.checkNoImpureConditionals(wand, this) }
+
+  /** checks that each MethodCall calls an existing method and if so, checks that formalReturns are assignable to targets */
+  def checkMethodCallsAreValid: Seq[ConsistencyError] = methods.flatMap(m=> {
+    var s = Seq.empty[ConsistencyError]
+    for (c@MethodCall(name, args, targets) <- m.body) {
+      methods.find(_.name == name) match{
+        case Some(existingMethod) =>
+          if(!Consistency.areAssignable(existingMethod.formalReturns, targets))
+            s :+= ConsistencyError("Formal returns of method " + name + " are not assignable to targets.", c.pos)
+          if(!Consistency.areAssignable(args, existingMethod.formalArgs))
+            s :+= ConsistencyError("Arguments are not assignable to formal arguments of method " + name, c.pos)
+        case None =>
+          s :+= ConsistencyError("Method name " + name + " not found in program", c.pos)
+      }
+    }
+    s
+  })
+
+  /** checks that each FuncApp calls an existing function */
+  def checkFuncAppsAreValid: Seq[ConsistencyError] = {
+    val nodes: Seq[Node] = functions ++ predicates ++ methods
+    val funcApps: Seq[FuncApp] =
+      nodes.flatMap(_.deepCollect({case fa: FuncApp => fa}))
+
+    funcApps.flatMap (fa => {
+      functions.find(_.name == fa.funcname) match{
+        case Some(existingFunction) => Seq()
+        case None => Seq(ConsistencyError("Function name " + fa.funcname + " not found in program", fa.pos))
+      }
+    })
+  }
+
+  /** checks that each DomainFuncApp calls an existing domain function */
+  def checkDomainFuncAppsAreValid: Seq[ConsistencyError] = {
+    val nodes: Seq[Node] = domains ++ functions ++ predicates ++ methods
+    val domainFuncs: Seq[DomainFunc] = domains flatMap { _.functions }
+    val domainFuncApps: Seq[DomainFuncApp] =
+      nodes.flatMap(_.deepCollect({case fa: DomainFuncApp => fa}))
+
+    domainFuncApps.flatMap (fa => {
+        domainFuncs.find(_.name == fa.funcname) match{
+          case Some(existingDomainFunction) => Seq()
+          case None => Seq(ConsistencyError("Domain Function name " + fa.funcname + " not found in program", fa.pos))
+        }
+    })
+  }
+
+  /** checks that all goto targets are existing labels */
+  def checkGotoLabelsExist: Seq[ConsistencyError] = methods.flatMap(m=> {
+    val gotos : Seq[Goto] = m.body.deepCollect({case g: Goto => g})
+    val labels : Seq[Label] = m.body.deepCollect({case l: Label => l})
+    gotos.flatMap(g=> {
+      labels.find(_.name == g.target) match {
+        case Some(existingLabel) => Seq()
+        case None => Seq(ConsistencyError("Label " + g.target + "not found.", g.pos))
+      }
+    })
+  })
+
 
   lazy val groundTypeInstances = DomainInstances.findNecessaryTypeInstances(this)
 
@@ -100,7 +163,7 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Predicate name must be a valid identifier.", pos)) else Seq()) ++
-      (if (body != null && body.isDefined) Consistency.checkNonPostContract(body.get) else Seq())
+      (if (body.isDefined) Consistency.checkNonPostContract(body.get) else Seq())
 
   def isAbstract = body.isEmpty
 
@@ -118,13 +181,13 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted {
-//
+
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Method name must be a valid identifier.", pos)) else Seq()) ++
-      (if(pres != null) pres.flatMap(Consistency.checkNonPostContract) else Seq()) ++
-      (if(posts != null) posts.flatMap(Consistency.checkPost) else Seq()) ++
-      (if(posts != null && !(posts forall Consistency.noResult)) Seq(ConsistencyError("Method postconditions must have no result variables.", pos)) else Seq()) ++
-      (if(body != null) Consistency.checkNoArgsReassigned(formalArgs, body) else Seq()) ++
+      pres.flatMap(Consistency.checkPre) ++
+      posts.flatMap(Consistency.checkPost) ++
+      (if(!(posts forall Consistency.noResult)) Seq(ConsistencyError("Method postconditions must have no result variables.", pos)) else Seq()) ++
+      Consistency.checkNoArgsReassigned(formalArgs, body) ++
       (if(!noDuplicates) Seq(ConsistencyError("There must be no duplicates in names of local variables and formal args.", pos)) else Seq()) ++
       (if (!((formalArgs ++ formalReturns) forall (_.typ.isConcrete))) Seq(ConsistencyError("Formal args and returns must have concrete types.", pos)) else Seq())
 
@@ -144,11 +207,12 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
                    (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with FuncLike with Contracted {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Function name must be a valid identifier.", pos)) else Seq()) ++
-      (if(!(posts == null || (posts forall Consistency.noOld))) Seq(ConsistencyError("Function postconditions must not have Old expressions.", pos)) else Seq()) ++
-      (if(!(body == null || (body map (_ isSubtype typ) getOrElse true))) Seq(ConsistencyError("//TODO: put suitable error string", pos)) else Seq() ) ++
-      (if(pres != null) pres.flatMap(Consistency.checkNonPostContract) else Seq()) ++
-      (if(posts != null) posts.flatMap(Consistency.checkPost) else Seq()) ++
-      (if(body != null && body.isDefined) Consistency.checkFunctionBody(body.get) else Seq())
+      (if(!(posts forall Consistency.noOld)) Seq(ConsistencyError("Function post-conditions must not have labelled-old expressions.", pos)) else Seq()) ++
+      (if(!(body map (_ isSubtype typ) getOrElse true)) Seq(ConsistencyError("Type of function body must match function type.", pos)) else Seq() ) ++
+      pres.flatMap(Consistency.checkPre) ++
+      posts.flatMap(Consistency.checkPost) ++
+      (if(body.isDefined) Consistency.checkFunctionBody(body.get) else Seq()) ++
+      (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq())
 
   /**
    * The result variable of this function (without position or info).
@@ -233,10 +297,10 @@ case class DomainAxiom(name: String, exp: Exp)
   extends DomainMember {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("DomainAxiom name must be valid identifier", pos)) else Seq()) ++
-      (if(!Consistency.noResult(exp)) Seq(ConsistencyError("Axioms can never contain result variables.", pos)) else Seq()) ++
-      (if(!Consistency.noOld(exp)) Seq(ConsistencyError("Axioms can never contain old expressions.", pos)) else Seq()) ++
-      (if(!Consistency.noAccessLocation(exp)) Seq(ConsistencyError("Axioms can never contain access locations.", pos)) else Seq()) ++
-      (if(!(exp isSubtype Bool)) Seq(ConsistencyError("Axiom expression must be of bool type", pos)) else Seq()) ++
+      (if(!Consistency.noResult(exp)) Seq(ConsistencyError("Axioms can never contain result variables.", exp.pos)) else Seq()) ++
+      (if(!Consistency.noOld(exp)) Seq(ConsistencyError("Axioms can never contain old expressions.", exp.pos)) else Seq()) ++
+      (if(!Consistency.noAccessLocation(exp)) Seq(ConsistencyError("Axioms can never contain access locations.", exp.pos)) else Seq()) ++
+      (if(!(exp isSubtype Bool)) Seq(ConsistencyError("Axiom expression must be of bool type", exp.pos)) else Seq()) ++
       Consistency.checkNoPositiveOnly(exp)
 
   override def getMetadata:Seq[Any] = {
@@ -254,13 +318,13 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
                       extends AbstractDomainFunc with DomainMember {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("DomainFunc name must be valid identifier", pos)) else Seq()) ++
-      (if(unique && !formalArgs.isEmpty) Seq(ConsistencyError("Only constants, i.e. nullary domain functions can be unique.", pos)) else Seq())
+      (if(unique && formalArgs.nonEmpty) Seq(ConsistencyError("Only constants, i.e. nullary domain functions can be unique.", pos)) else Seq()) ++
+  (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq())
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
 }
-
 
 // --- Common functionality
 
@@ -286,7 +350,6 @@ sealed trait DomainMember extends Node with Positioned with Infoed with Transfor
 
 /** Common ancestor for things with formal arguments. */
 sealed trait Callable {
-  require(Consistency.noDuplicates(formalArgs))
   def formalArgs: Seq[LocalVarDecl]
   def name: String
 }
@@ -299,8 +362,8 @@ sealed trait Contracted extends Member {
 
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Member name must be a valid identifier.", pos)) else Seq()) ++
-      (if(pres != null) pres.flatMap(Consistency.checkNonPostContract) else Seq()) ++
-      (if(posts != null) posts.flatMap(Consistency.checkPost) else Seq())
+      pres.flatMap(Consistency.checkPre) ++
+      posts.flatMap(Consistency.checkPost)
 
   def pres: Seq[Exp]
   def posts: Seq[Exp]

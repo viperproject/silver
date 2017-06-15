@@ -110,6 +110,9 @@ object Consistency {
   /** Returns true if the given node contains no old expression. */
   def noOld(n: Node) = !n.existsDefined { case _: Old => }
 
+  /** Returns true if the given node contains no labelled-old expression. */
+  def noLabelledOld(n: Node) = !n.existsDefined { case _: LabelledOld => }
+
   /** Returns true if the given node contains no result. */
   def noResult(n: Node) = !n.existsDefined { case _: Result => }
 
@@ -193,21 +196,22 @@ object Consistency {
   }
   /** Check all properties required for a precondition. */
   def checkPre(e: Exp): Seq[ConsistencyError] = {
-    var s = Seq.empty[ConsistencyError]
-    if(!noOld(e)) s :+= ConsistencyError("Old expressions are not allowed in preconditions.", e.pos)
-    if(!noResult(e)) s:+= ConsistencyError("Result variables are not allowed in preconditions.", e.pos)
-    s ++= checkNonPostContract(e)
-    s
+    (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Precondition $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
+      (if(!noOld(e)) Seq(ConsistencyError("Old expressions are not allowed in preconditions.", e.pos)) else Seq()) ++
+      (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in preconditions.", e.pos)) else Seq()) ++
+      (if(!noResult(e)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", e.pos)) else Seq())
   }
 
   /** Check all properties required for a contract expression that is not a postcondition (precondition, invariant, predicate) */
   def checkNonPostContract(e: Exp) : Seq[ConsistencyError]  = {
-    (if(!noResult(e)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", e.pos)) else Seq()) ++
-      checkPost(e)
+    (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Contract $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
+      (if(!noResult(e)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", e.pos)) else Seq())
   }
 
+  /** Check all properties required for a postcondition */
   def checkPost(e: Exp) : Seq[ConsistencyError]  = {
-    if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Contract $e: ${e.typ} must be boolean.", e.pos)) else Seq()
+    (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Postcondition $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
+      (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
   }
 
   def noGhostOperations(n: Node) = !n.existsDefined {
@@ -315,7 +319,7 @@ object Consistency {
           s :+= ConsistencyError("Ghost operations may not occur on the left of wands.", lhs.pos)
         if (!c.insidePackageStmt && !noGhostOperations(rhs))
           s :+= ConsistencyError("Ghost operations may only occur inside wands when these are packaged.", rhs.pos)
-          
+
         s ++= checkIfValidChainOfGhostOperations(rhs, mw)
 
         c.copy(insideWandStatus = InsideWandStatus.Yes)
@@ -323,7 +327,6 @@ object Consistency {
       case po: ApplyOld =>
         if(!c.insideWandStatus.isInside)
           s :+= ConsistencyError("given-expressions may only occur inside wands.", po.pos)
-
         c
     })
     s

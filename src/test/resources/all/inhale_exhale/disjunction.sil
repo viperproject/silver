@@ -1,5 +1,5 @@
 method test()
 {
-  //:: ExpectedOutput(typechecker.error)
+  //:: ExpectedOutput(consistency.error)
   assert [false, true] || [true, false]
 }

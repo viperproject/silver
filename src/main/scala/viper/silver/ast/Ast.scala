@@ -176,13 +176,13 @@ trait Node extends Traversable[Node] with Rewritable {
 
   //returns a list of consistency errors in the node
   lazy val check : Seq[ConsistencyError] = Seq()
-
   //returns a list of consistency errors in the node as well as all its children nodes
   lazy val checkTransitively : Seq[ConsistencyError] =
     check ++
       productIterator.flatMap{
       case n: Node => n.checkTransitively;
       case s: Seq[Node] => s.flatMap(_.checkTransitively)
+      case o: Option[Node] => if(o.isDefined) o.get.checkTransitively else Seq()
       case _ => Seq()
     }
 

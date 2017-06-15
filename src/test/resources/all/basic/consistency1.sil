@@ -4,7 +4,7 @@ field next: Ref
 predicate deeper(r:Ref) {
      acc(r.f)
   && acc(r.next)
-    //:: ExpectedOutput(typechecker.error)
+    //:: ExpectedOutput(consistency.error)
   && ((r.next != null) ==> acc(deeper(r.next)) && (unfolding deeper(r.next) in (acc(r.next.f) && acc(r.next.next))))
 }
 
@@ -15,6 +15,6 @@ predicate deeper(r:Ref) {
 predicate strange(r:Ref) {
      acc(r.f)
   && acc(r.next)
-  //:: ExpectedOutput(typechecker.error)
+  //:: ExpectedOutput(consistency.error)
   && ((r.next != null) ==> acc(strange(r)) && (unfolding deeper(r) in (acc(r.next.f) && acc(r.next.next))))
 }
