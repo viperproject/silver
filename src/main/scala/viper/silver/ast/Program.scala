@@ -20,7 +20,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     (if(!Consistency.noDuplicates(
       (members map (_.name)) ++
         (domains flatMap (d => (d.axioms map (_.name)) ++ (d.functions map (_.name))))))
-    Seq(ConsistencyError("names of members must be distinct", pos)) else Seq()) ++
+    Seq(ConsistencyError("Names of members must be distinct.", pos)) else Seq()) ++
       Consistency.checkContextDependentConsistency(this) ++
       Consistency.checkNoFunctionRecursesViaPreconditions(this) ++
       checkMethodCallsAreValid ++
@@ -41,7 +41,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
           if(!Consistency.areAssignable(args, existingMethod.formalArgs))
             s :+= ConsistencyError("Arguments are not assignable to formal arguments of method " + name, c.pos)
         case None =>
-          s :+= ConsistencyError("Method name " + name + " not found in program", c.pos)
+          s :+= ConsistencyError("Method name " + name + " not found in program.", c.pos)
       }
     }
     s
@@ -56,7 +56,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     funcApps.flatMap (fa => {
       functions.find(_.name == fa.funcname) match{
         case Some(existingFunction) => Seq()
-        case None => Seq(ConsistencyError("Function name " + fa.funcname + " not found in program", fa.pos))
+        case None => Seq(ConsistencyError("Function name " + fa.funcname + " not found in program.", fa.pos))
       }
     })
   }
@@ -71,7 +71,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     domainFuncApps.flatMap (fa => {
         domainFuncs.find(_.name == fa.funcname) match{
           case Some(existingDomainFunction) => Seq()
-          case None => Seq(ConsistencyError("Domain Function name " + fa.funcname + " not found in program", fa.pos))
+          case None => Seq(ConsistencyError("Domain Function name " + fa.funcname + " not found in program.", fa.pos))
         }
     })
   }
@@ -83,7 +83,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     gotos.flatMap(g=> {
       labels.find(_.name == g.target) match {
         case Some(existingLabel) => Seq()
-        case None => Seq(ConsistencyError("Label " + g.target + "not found.", g.pos))
+        case None => Seq(ConsistencyError("Label " + g.target + " not found in program.", g.pos))
       }
     })
   })

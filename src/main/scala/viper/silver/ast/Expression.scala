@@ -6,6 +6,7 @@
 
 package viper.silver.ast
 import viper.silver.ast.pretty.{Infix, LeftAssociative, NonAssociative, PrettyBinaryExpression, PrettyExpression, PrettyOperatorExpression, PrettyUnaryExpression, RightAssociative}
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility.Rewriter.Traverse
 import viper.silver.ast.utility._
 import viper.silver.verifier.ConsistencyError
@@ -461,8 +462,10 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
   //require(isValid, s"Invalid quantifier: { $this } .")
   override lazy val check : Seq[ConsistencyError] =
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError("Forall exp must be of bool type.", pos)) else Seq()) ++
-  checkAllVarsMentionedInTriggers
+  checkAllVarsMentionedInTriggers ++
+  checkNoNestedQuantsForQuantPermissions
 
+  /** checks that all quantified variables appears in all triggers */
   lazy val checkAllVarsMentionedInTriggers : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
     val varsInTriggers : Seq[Seq[LocalVar]] = triggers map(t=>{
@@ -477,6 +480,14 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
       })
     })
     s
+  }
+  /** checks against nested quantification for quantified permissions */
+  lazy val checkNoNestedQuantsForQuantPermissions : Seq[ConsistencyError] = {
+    QuantifiedPermissionAssertion.unapply(this) match {
+      case None => Seq()
+      case Some((_, exp, _)) => if(exp.existsDefined({case _: Forall => }) && !exp.isPure)
+        Seq(ConsistencyError("Nested quantifiers are not allowed for quantified permissions.", exp.pos)) else Seq()
+    }
   }
   /** Returns an identical forall quantification that has some automatically generated triggers
     * if necessary and possible.
