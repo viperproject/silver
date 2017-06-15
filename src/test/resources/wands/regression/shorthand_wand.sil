@@ -1,5 +1,5 @@
 //:: IgnoreFile(/carbon/issue/102/)
-
+// 17.07.2017 This test used to test magic wand variables that were removed with the new syntax for magic wands
 field f: Int
 
 method test01(x: Ref)

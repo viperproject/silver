@@ -621,7 +621,7 @@ case class TypeChecker(names: NameAnalyser) {
             case po: POldExp =>
               // For labelled old expressions, ensure that they refer to a state label
               po match {
-                case PLabelledOld(lbl, _) if lbl.name != "lhs" =>
+                case PLabelledOld(lbl, _) if lbl.name != FastParser.LHS_OLD_LABEL =>
                   names.definition(curMember)(lbl) match {
                     case PLabel(_, _) => ()
                     case _ => messages ++= FastMessaging.message(po, "expected state label")
@@ -877,7 +877,7 @@ case class NameAnalyser() {
         getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
           case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
-            if (!i.parent.isInstanceOf[PDomainType] && !(name == "lhs" && i.parent.isInstanceOf[PLabelledOld])) {
+            if (!i.parent.isInstanceOf[PDomainType] && !(name == FastParser.LHS_OLD_LABEL && i.parent.isInstanceOf[PLabelledOld])) {
               messages ++= FastMessaging.message(i, s"identifier $name not defined.")
             }
           case localVar : PLocalVarDecl =>

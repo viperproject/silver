@@ -7,6 +7,7 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
+import viper.silver.parser.FastParser
 import viper.silver.{FastMessage, FastMessaging}
 
 import scala.util.parsing.input.{NoPosition, Position}
@@ -68,7 +69,7 @@ object Consistency {
     // prover hint expressions
     "unfolding", "in", "folding",
     // old expression
-    "old", "lhs",
+    "old", FastParser.LHS_OLD_LABEL,
     // other expressions
     "let",
     // quantification
@@ -306,7 +307,7 @@ object Consistency {
 
       c.copy(insideWandStatus = InsideWandStatus.Yes)
 
-    case po @ LabelledOld(_, "lhs") =>
+    case po @ LabelledOld(_, FastParser.LHS_OLD_LABEL) =>
       //recordIfNot(po, c.insideWandStatus.isInside, "labelled old expressions with \"lhs\" label may only occur inside wands.")
 
       c
@@ -318,7 +319,7 @@ object Consistency {
         checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
         checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
 
-      case po @ LabelledOld(_, "lhs") =>
+      case po @ LabelledOld(_, FastParser.LHS_OLD_LABEL) =>
         /*recordIfNot(po,
                     c.insideWandStatus.isRight,
                     "Wands may use the \"lhs\" label on the rhs only.")*/

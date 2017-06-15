@@ -396,6 +396,8 @@ object FastParser extends PosParser {
   def file: Path = _file
 
 
+  val LHS_OLD_LABEL = "lhs"
+
   val keywords = Set("result",
     // types
     "Int", "Perm", "Bool", "Ref", "Rational",
@@ -422,7 +424,7 @@ object FastParser extends PosParser {
     // prover hint expressions
     "unfolding", "in", "folding",
     // old expression
-    "old", "lhs",
+    "old", LHS_OLD_LABEL,
     // other expressions
     "let",
     // quantification
@@ -458,8 +460,8 @@ object FastParser extends PosParser {
 
   lazy val idnuse: P[PIdnUse] = P(ident).map(PIdnUse)
 
-  lazy val oldLabel: P[PIdnUse] = P(idnuse | "lhs".!).map { case idnuse: PIdnUse => idnuse
-  case "lhs" => PIdnUse("lhs")}
+  lazy val oldLabel: P[PIdnUse] = P(idnuse | LHS_OLD_LABEL.!).map { case idnuse: PIdnUse => idnuse
+  case LHS_OLD_LABEL => PIdnUse(LHS_OLD_LABEL)}
 
   lazy val old: P[PExp] = P(StringIn("old") ~ (parens(exp).map(POld) | ("[" ~ oldLabel ~ "]" ~ parens(exp)).map { case (a, b) => PLabelledOld(a, b) }))
 
@@ -730,8 +732,8 @@ object FastParser extends PosParser {
 
   lazy val lbl: P[PLabel] = P(keyword("label") ~/ idndef ~ (keyword("invariant") ~/ exp).rep).map { case (name, invs) => PLabel(name, invs) }
 
-  lazy val magicWandProofStatement: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | varDecl | defineDecl | newstmt | methodCall | goto | lbl | packageWand | applyWand| macroref)
+  lazy val magicWandProofStatement: P[PStmt] = P(localassign | fold | unfold | exhale | assertP |
+    inhale | assume | ifthnels | varDecl | methodCall | goto | lbl | packageWand | applyWand| macroref) //fieldassign | defineDecl | newstmt | whle
 
   lazy val magicWandProofStatements: P[Seq[PStmt]] = P(magicWandProofStatement ~/ ";".?).rep
 

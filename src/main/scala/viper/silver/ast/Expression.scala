@@ -7,6 +7,7 @@
 package viper.silver.ast
 import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
+import viper.silver.parser.FastParser
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
@@ -91,7 +92,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
     this.shallowCollect {
       case old: Old => Some(old)
-      case LabelledOld(_, "lhs") => None
+      case LabelledOld(_, FastParser.LHS_OLD_LABEL) => None
       case lo: LabelledOld => Some(lo)
       case q: QuantifiedExp if q.isHeapDependent(p) => None
       case e: Exp if !e.isHeapDependent(p) => Some(e)
@@ -372,7 +373,7 @@ case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo
 /** Old expression that references a particular state earlier in the program that has been given a name.
   * Evaluates expression in that state. */
 case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
-  require(exp != null, "LabelledOld(exp, _): exp cannot be null")
+  require(oldLabel != null, "LabelledOld(exp, _): exp cannot be null")
   require(oldLabel != null, "LabelledOld(_, oldLabel): oldLabel cannot be null")
   Consistency.checkNoPositiveOnly(exp)
 }
