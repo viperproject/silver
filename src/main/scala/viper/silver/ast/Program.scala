@@ -152,7 +152,7 @@ object Program{
 case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location with Typed {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Field name must be a valid identifier.", pos)) else Seq()) ++
-      (if(!typ.isConcrete) Seq(ConsistencyError("\"Type of field \" + name + \":\" + typ + \" must be concrete!\"", pos)) else Seq())
+      (if(!typ.isConcrete) Seq(ConsistencyError("Type of field " + name + ":" + typ + " must be concrete!", pos)) else Seq())
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
