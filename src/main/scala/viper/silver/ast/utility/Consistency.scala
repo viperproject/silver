@@ -163,6 +163,19 @@ object Consistency {
   def checkNoPositiveOnlyExceptInhaleExhale(e: Exp): Seq[ConsistencyError] = {
     if(!(hasNoPositiveOnly(e, true))) Seq(ConsistencyError(s"$e is non pure and appears where only pure expressions are allowed.", e.pos)) else Seq()
   }
+
+  /** Checks that no perm or forperm expression occurs in a node, except inside inhale/exhale statements */
+  def checkNoPermForpermExceptInhaleExhale(e: Exp) : Seq[ConsistencyError] = {
+    val permsAndForperms: Seq[Node] = e.deepCollect({case p: CurrentPerm => p; case fp: ForPerm => fp})
+    val inhalesExhales: Seq[Node] = e.deepCollect({case ie: InhaleExhaleExp => ie})
+    permsAndForperms.flatMap(p=>{
+      inhalesExhales.find(_.contains(p)) match {
+        case Some(node) => Seq()
+        case None => Seq(ConsistencyError("Perm and forperm in this context are only allowed in inhale/exhale statements.", p.asInstanceOf[Positioned].pos))
+      }
+    })
+  }
+
   /** Check all properties required for a function body. */
 
   def checkFunctionBody(e: Exp) : Seq[ConsistencyError] = {

@@ -4,8 +4,8 @@ field f2: Ref
 
 method test1(a: Ref)
     requires acc(a.f2, write)
-    ensures acc(a.f2, write - perm(a.f1))
-    ensures (forperm [f2] r :: false)
+    ensures [true, acc(a.f2, write - perm(a.f1))]
+    ensures [true, (forperm [f2] r :: false)]
 {
 }
 

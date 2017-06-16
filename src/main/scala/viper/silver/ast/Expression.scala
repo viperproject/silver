@@ -177,7 +177,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 /** Boolean negation. */
 case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainUnExp(NotOp) {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnly(exp) ++
-    (if(!Consistency.areAssignable(args, formalArgs)) Seq(ConsistencyError( s"$args vs $formalArgs for callee: $callee", pos)) else Seq())
+    (if(!Consistency.areAssignable(args, formalArgs)) Seq(ConsistencyError( s"Actual argument list ($args) and formal argument list ($formalArgs) are not assignable.", args(0).pos)) else Seq())
 }
 
 /** Boolean literals. */
@@ -201,7 +201,7 @@ case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo, va
 // Note: adding extra instances of AccessPredicate will require adding cases to viper.silver.ast.utility.multiplyExpByPerm method
 sealed trait AccessPredicate extends Exp {
   override lazy val check : Seq[ConsistencyError] =
-    if(!(perm isSubtype Perm)) Seq(ConsistencyError("AccessPredicate must be of Perm type.", pos)) else Seq()
+    if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()
   def loc: LocationAccess
   def perm: Exp
   lazy val typ = Bool
@@ -224,8 +224,8 @@ case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Po
  */
 case class InhaleExhaleExp(in: Exp, ex: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(in.typ isSubtype Bool)) Seq(ConsistencyError("Inhale expression must be of bool type.", pos)) else Seq()) ++
-      (if(!(ex.typ isSubtype Bool)) Seq(ConsistencyError("Exhale expression must be of bool type.", pos)) else Seq())
+    (if(!(in.typ isSubtype Bool)) Seq(ConsistencyError(s"First parameter to inhale-exhale expression must be of bool type, but found ${in.typ}", in.pos)) else Seq()) ++
+      (if(!(ex.typ isSubtype Bool)) Seq(ConsistencyError(s"Second parameter to inhale-exhale expression must be of bool type, but found ${ex.typ}", ex.pos)) else Seq())
   val typ = Bool
 }
 
@@ -252,15 +252,15 @@ case class EpsilonPerm()(val pos: Position = NoPosition, val info: Info = NoInfo
 case class FractionalPerm(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(FracOp) with PermExp
 {
   override lazy val check : Seq[ConsistencyError] =
-    (if(left.typ != Int) Seq(ConsistencyError("Left type must be Int", left.pos)) else Seq()) ++
-      (if(right.typ != Int) Seq(ConsistencyError("Right type must be Int", right.pos)) else Seq())
+    (if(left.typ != Int) Seq(ConsistencyError(s"Numerator type of fractional permission must be Int, but found ${left.typ}", left.pos)) else Seq()) ++
+      (if(right.typ != Int) Seq(ConsistencyError(s"Denominator type of fractional permission must be Int, but found ${right.typ}", right.pos)) else Seq())
 }
 
 case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermDivOp) with PermExp
 {
   override lazy val check : Seq[ConsistencyError] =
-  (if(left.typ != Perm) Seq(ConsistencyError("Left type must be Perm", left.pos)) else Seq()) ++
-    (if(right.typ != Int) Seq(ConsistencyError("Right type must be Int", right.pos)) else Seq())
+  (if(left.typ != Perm) Seq(ConsistencyError(s"First parameter of permission division expression must be Perm, but found ${left.typ}", left.pos)) else Seq()) ++
+    (if(right.typ != Int) Seq(ConsistencyError(s"Second parameter of permission division expression must be Int, but found ${right.typ}", right.pos)) else Seq())
 }
 /** The permission currently held for a given location. */
 case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends PermExp
@@ -284,7 +284,8 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl], val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
   override lazy val check : Seq[ConsistencyError] =
     args.flatMap(Consistency.checkNoPositiveOnly) ++
-      (if(!Consistency.areAssignable(args, formalArgs)) Seq(ConsistencyError( s"$args vs $formalArgs for callee: $callee", pos)) else Seq())
+      (if(!Consistency.areAssignable(args, formalArgs))
+        Seq(ConsistencyError(s"Actual argument list ($args) and formal argument list ($formalArgs) for Function: $callee are not assignable.", args.head.pos)) else Seq())
 
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
@@ -301,7 +302,8 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
                         (val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl],val domainName:String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp with PossibleTrigger {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkNoPositiveOnly) ++
-    (if(!Consistency.areAssignable(args, formalArgs)) Seq(ConsistencyError( s"$args vs $formalArgs for callee: $callee", pos)) else Seq())
+    (if(!Consistency.areAssignable(args, formalArgs))
+      Seq(ConsistencyError(s"Actual argument list ($args) and formal argument list ($formalArgs) for DomainFunction: $callee are not assignable.", args.head.pos)) else Seq())
 
   def typ = typPassed
   def formalArgs = formalArgsPassed
@@ -367,9 +369,9 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
     extends Exp with ForbiddenInTrigger {
 
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(cond isSubtype Bool)) Seq(ConsistencyError("Condition must be of bool type", pos)) else Seq()) ++
+    (if(!(cond isSubtype Bool)) Seq(ConsistencyError(s"Condition must be of bool type, but found ${cond.typ}", cond.pos)) else Seq()) ++
       Consistency.checkNoPositiveOnly(cond) ++
-      (if(thn.typ != els.typ) Seq(ConsistencyError("Then and Else type of If expression must match", pos)) else Seq())
+      (if(thn.typ != els.typ) Seq(ConsistencyError(s"Second and third parameter types of conditional expression must match, but found ${thn.typ} and ${els.typ}", thn.pos)) else Seq())
 
   lazy val typ = thn.typ
 }
@@ -396,12 +398,12 @@ case class FoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Pos
 
 case class ApplyingGhostOp(exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends GhostOperation {
   override lazy val check : Seq[ConsistencyError] =
-    if(!(exp isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${exp.typ} ($exp)", pos)) else Seq()
+    if(!(exp isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${exp.typ} ($exp)", exp.pos)) else Seq()
 }
 
 case class PackagingGhostOp(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends GhostOperation {
   override lazy val check : Seq[ConsistencyError] =
-    if(!(wand isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${wand.typ} ($wand)", pos)) else Seq()
+    if(!(wand isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${wand.typ} ($wand)", wand.pos)) else Seq()
 }
 
 // --- Old expressions
@@ -421,8 +423,8 @@ case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = N
   * Evaluates expression in that state. */
 case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(exp == null) Seq(ConsistencyError("LabelledOld(exp, _): exp cannot be null", pos)) else Seq()) ++
-      (if(oldLabel == null) Seq(ConsistencyError("LabelledOld(_, oldLabel): oldLabel cannot be null", pos)) else Seq()) ++
+//    (if(exp == null) Seq(ConsistencyError("LabelledOld(exp, _): exp cannot be null", pos)) else Seq()) ++
+//      (if(oldLabel == null) Seq(ConsistencyError("LabelledOld(_, oldLabel): oldLabel cannot be null", pos)) else Seq()) ++
       Consistency.checkNoPositiveOnly(exp)
 }
 
@@ -439,7 +441,7 @@ case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = 
 /** A common trait for quantified expressions. */
 sealed trait QuantifiedExp extends Exp {
   override lazy val check : Seq[ConsistencyError] =
-    if(!(exp isSubtype Bool)) Seq(ConsistencyError("Quantified exp must be of bool type.", pos)) else Seq()
+    if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Quantified expression must be of bool type, but found ${exp.typ}", exp.pos)) else Seq()
   def variables: Seq[LocalVarDecl]
   def exp: Exp
   lazy val typ = Bool
@@ -461,7 +463,7 @@ object QuantifiedExp {
 case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   //require(isValid, s"Invalid quantifier: { $this } .")
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(exp isSubtype Bool)) Seq(ConsistencyError("Forall exp must be of bool type.", pos)) else Seq()) ++
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Quantifier(Forall) body must be of bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
   checkAllVarsMentionedInTriggers ++
   checkNoNestedQuantsForQuantPermissions
 
@@ -511,7 +513,7 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 /** Existential quantification. */
 case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnlyExceptInhaleExhale(exp) ++
-    (if(!(exp isSubtype Bool)) Seq(ConsistencyError("exists exp must be of bool type.", pos)) else Seq())
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Quantifier(exists) body must be of bool type, but found ${exp.typ}", exp.pos)) else Seq())
 }
 
 
@@ -519,7 +521,7 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
 case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
                   (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(body isSubtype Bool)) Seq(ConsistencyError("forperm expression body must be of bool type.", body.pos)) else Seq()) ++
+    (if(!(body isSubtype Bool)) Seq(ConsistencyError(s"Quantifier(forperm) body must be of bool type, but found ${body.typ}", body.pos)) else Seq()) ++
       Consistency.checkNoPositiveOnly(body) ++
       (if(!Consistency.noPerm(body)) Seq(ConsistencyError("forperm expression is not allowed to contain perm expressions", body.pos)) else Seq()) ++
       (if(!Consistency.noForPerm(body)) Seq(ConsistencyError("forperm expression is not allowed to contain nested forperm expressions", body.pos)) else Seq())
@@ -590,7 +592,7 @@ case class EmptySeq(elemTyp: Type)(val pos: Position = NoPosition, val info: Inf
 case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   override lazy val check : Seq[ConsistencyError] =
     (if(elems.isEmpty) Seq(ConsistencyError("Explicit sequence must be non-empty.", pos)) else Seq()) ++
-      (if(!elems.tail.forall(e => e.typ == elems.head.typ)) Seq(ConsistencyError("All elements of sequence must have same type.", pos)) else Seq()) ++
+      (if(!elems.tail.forall(e => e.typ == elems.head.typ)) Seq(ConsistencyError("All elements of sequence must have same type.", elems.head.pos)) else Seq()) ++
       elems.flatMap(Consistency.checkNoPositiveOnly)
 
   lazy val typ = SeqType(elems.head.typ)
@@ -611,7 +613,8 @@ case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info
 /** A range of integers from 'low' to 'high', not including 'high', but including 'low'. */
 case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   override lazy val check : Seq[ConsistencyError] =
-    if(!((low isSubtype Int) && (high isSubtype Int))) Seq(ConsistencyError("Low and high must be Int.", pos)) else Seq()
+    (if(!(low isSubtype Int)) Seq(ConsistencyError(s"First parameter of range-sequence expression must be Int, but found ${low.typ}", low.pos)) else Seq()) ++
+      (if(!(high isSubtype Int)) Seq(ConsistencyError(s"Second parameter of range-sequence expression must be Int, but found ${high.typ}", high.pos)) else Seq())
   lazy val typ = SeqType(Int)
   def getArgs = Seq(low,high)
   def withArgs(newArgs: Seq[Exp]) = RangeSeq(newArgs.head,newArgs(1))(pos, info, errT)
@@ -620,7 +623,7 @@ case class RangeSeq(low: Exp, high: Exp)(val pos: Position = NoPosition, val inf
 /** Appending two sequences of the same type. */
 case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyBinaryExpression {
   override lazy val check : Seq[ConsistencyError] =
-    if(right.typ != left.typ) Seq(ConsistencyError("Left and right sequence types must match.", pos)) else Seq()
+    if(right.typ != left.typ) Seq(ConsistencyError(s"Left and right sequence types of sequence-append expression must match, but found ${left.typ} and ${right.typ}.", left.pos)) else Seq()
   lazy val priority = 8
   lazy val fixity = Infix(LeftAssociative)
   lazy val op = "++"
@@ -633,8 +636,8 @@ case class SeqAppend(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 /** Access to an element of a sequence at a given index position (starting at 0). */
 case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError("Invalid sequence type.", pos)) else Seq()) ++
-      (if(!(idx isSubtype Int)) Seq(ConsistencyError("Sequence idx must be Int", pos)) else Seq())
+    (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
+      (if(!(idx isSubtype Int)) Seq(ConsistencyError(s"Index parameter of sequence-access expression must be Int, but found ${idx.typ}", idx.pos)) else Seq())
   lazy val typ = s.typ.asInstanceOf[SeqType].elementType
   def getArgs = Seq(s,idx)
   def withArgs(newArgs: Seq[Exp]) = SeqIndex(newArgs.head,newArgs(1))(pos, info, errT)
@@ -643,8 +646,8 @@ case class SeqIndex(s: Exp, idx: Exp)(val pos: Position = NoPosition, val info: 
 /** Take the first 'n' elements of the sequence 'seq'. */
 case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError("Invalid sequence type.", pos)) else Seq()) ++
-      (if(!(n isSubtype Int)) Seq(ConsistencyError("n must be Int", pos)) else Seq())
+    (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
+      (if(!(n isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-take expression must be Int, but found ${n.typ}", n.pos)) else Seq())
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
   def withArgs(newArgs: Seq[Exp]) = SeqTake(newArgs.head,newArgs(1))(pos, info, errT)
@@ -654,8 +657,8 @@ case class SeqTake(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Inf
 /** Drop the first 'n' elements of the sequence 'seq'. */
 case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError("Invalid sequence type.", pos)) else Seq()) ++
-      (if(!(n isSubtype Int)) Seq(ConsistencyError("n must be Int", pos)) else Seq())
+    (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
+      (if(!(n isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-drop expression must be Int, but found ${n.typ}", n.pos)) else Seq())
   lazy val typ = s.typ
   def getArgs = Seq(s,n)
   def withArgs(newArgs: Seq[Exp]) = SeqDrop(newArgs.head,newArgs(1))(pos, info, errT)
@@ -665,8 +668,8 @@ case class SeqDrop(s: Exp, n: Exp)(val pos: Position = NoPosition, val info: Inf
 /** Is the element 'elem' contained in the sequence 'seq'? */
 case class SeqContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp with PrettyBinaryExpression {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError("Invalid sequence type.", pos)) else Seq()) ++
-      (if(!(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)) Seq(ConsistencyError("Invalid sequence element type.", pos)) else Seq())
+    (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
+      (if(!(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)) Seq(ConsistencyError(s"Expected type ${s.typ.asInstanceOf[SeqType].elementType} but found ${elem.typ}", elem.pos)) else Seq())
   lazy val priority = 7
   lazy val fixity = Infix(LeftAssociative)
   lazy val left: PrettyExpression = elem
@@ -680,9 +683,9 @@ case class SeqContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val in
 /** The same sequence as 'seq', but with the element at index 'idx' replaced with 'elem'. */
 case class SeqUpdate(s: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError("Invalid sequence type.", pos)) else Seq()) ++
-      (if(!(idx isSubtype Int)) Seq(ConsistencyError("Sequence idx must be Int", pos)) else Seq()) ++
-      (if(!(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)) Seq(ConsistencyError("Invalid sequence element type.", pos)) else Seq()) ++
+    (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
+      (if(!(idx isSubtype Int)) Seq(ConsistencyError(s"Sequence index must be of Int type, but found ${idx.typ}", idx.pos)) else Seq()) ++
+      (if(!(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)) Seq(ConsistencyError(s"Expected type ${s.typ.asInstanceOf[SeqType].elementType} but found ${elem.typ}", elem.pos)) else Seq()) ++
       Consistency.checkNoPositiveOnly(elem)
 
   lazy val desugaredAssumingIndexInRange : SeqExp = {
@@ -697,7 +700,7 @@ case class SeqUpdate(s: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition
 /** The length of a sequence. */
 case class SeqLength(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SeqExp {
   override lazy val check : Seq[ConsistencyError] =
-    if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError("Invalid sequence type.", pos)) else Seq()
+    if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()
   lazy val typ = Int
   def getArgs = Seq(s)
   def withArgs(newArgs: Seq[Exp]) = SeqLength(newArgs.head)(pos, info, errT)
@@ -737,7 +740,7 @@ case class EmptySet(elemTyp: Type)(val pos: Position = NoPosition, val info: Inf
 case class ExplicitSet(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends SetExp {
   override lazy val check : Seq[ConsistencyError] =
     (if(elems.isEmpty) Seq(ConsistencyError("Explicit set must be non-empty.", pos)) else Seq()) ++
-      (if(!elems.tail.forall(e => e.typ == elems.head.typ)) Seq(ConsistencyError("All elements of set must have same type.", pos)) else Seq()) ++
+      (if(!elems.tail.forall(e => e.typ == elems.head.typ)) Seq(ConsistencyError("All elements of set must have same type.", elems.head.pos)) else Seq()) ++
       elems.flatMap(Consistency.checkNoPositiveOnly)
   lazy val typ = SetType(elems.head.typ)
   def getArgs = elems
@@ -757,7 +760,7 @@ case class EmptyMultiset(elemTyp: Type)(val pos: Position = NoPosition, val info
 case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends MultisetExp {
   override lazy val check : Seq[ConsistencyError] =
     (if(elems.isEmpty) Seq(ConsistencyError("Explicit multiset must be non-empty.", pos)) else Seq()) ++
-      (if(!elems.tail.forall(e => e.typ == elems.head.typ)) Seq(ConsistencyError("All elements of multiset must have same type.", pos)) else Seq()) ++
+      (if(!elems.tail.forall(e => e.typ == elems.head.typ)) Seq(ConsistencyError("All elements of multiset must have same type.", elems.head.pos)) else Seq()) ++
       elems.flatMap(Consistency.checkNoPositiveOnly)
   lazy val typ = MultisetType(elems.head.typ)
   def getArgs = elems
@@ -768,8 +771,8 @@ case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val
 /** Union of two sets or two multisets. */
 case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(left.typ != right.typ) Seq(ConsistencyError("Left and right types must match", pos)) else Seq()) ++
-      (if(!(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError("Type must be set or multiset.", pos)) else Seq())
+    (if(left.typ != right.typ) Seq(ConsistencyError("Left and right operand types must match", left.pos)) else Seq()) ++
+      (if(!(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError(s"Expected SetType or MultisetType, but found ${left.typ}", left.pos)) else Seq())
   lazy val priority = 8
   lazy val fixity = Infix(LeftAssociative)
   lazy val op = "union"
@@ -781,8 +784,8 @@ case class AnySetUnion(left: Exp, right: Exp)(val pos: Position = NoPosition, va
 /** Intersection of two sets or two multisets. */
 case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(left.typ != right.typ) Seq(ConsistencyError("Left and right types must match", pos)) else Seq()) ++
-      (if(!(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError("Type must be set or multiset.", pos)) else Seq())
+    (if(left.typ != right.typ) Seq(ConsistencyError("Left and right operand types must match", left.pos)) else Seq()) ++
+      (if(!(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError(s"Expected SetType or MultisetType, but found ${left.typ}", left.pos)) else Seq())
   
   lazy val priority = 8
   lazy val fixity = Infix(LeftAssociative)
@@ -795,8 +798,8 @@ case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosit
 /** Subset relation of two sets or two multisets. */
 case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(left.typ != right.typ) Seq(ConsistencyError("Left and right types must match", pos)) else Seq()) ++
-      (if(!(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError("Type must be set or multiset.", pos)) else Seq())
+    (if(left.typ != right.typ) Seq(ConsistencyError("Left and right operand types must match", left.pos)) else Seq()) ++
+      (if(!(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError(s"Expected SetType or MultisetType, but found ${left.typ}", left.pos)) else Seq())
 
   lazy val priority = 8
   lazy val fixity = Infix(NonAssociative)
@@ -809,8 +812,8 @@ case class AnySetSubset(left: Exp, right: Exp)(val pos: Position = NoPosition, v
 /** Set difference. */
 case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(left.typ != right.typ) Seq(ConsistencyError("Left and right types must match", pos)) else Seq()) ++
-      (if(!(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError("Type must be set or multiset.", pos)) else Seq())
+    (if(left.typ != right.typ) Seq(ConsistencyError("Left and right operand types must match", left.pos)) else Seq()) ++
+      (if(!(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError(s"Expected SetType or MultisetType, but found ${left.typ}", left.pos)) else Seq())
   
   lazy val priority = 8
   lazy val fixity = Infix(NonAssociative)
@@ -824,7 +827,7 @@ case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, va
 case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   override lazy val check : Seq[ConsistencyError] =
     if(!((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SetType].elementType)) ||
-      (s.typ.isInstanceOf[MultisetType] && (elem isSubtype s.typ.asInstanceOf[MultisetType].elementType)))) Seq(ConsistencyError("Set type and element type must be proper.", pos)) else Seq()
+      (s.typ.isInstanceOf[MultisetType] && (elem isSubtype s.typ.asInstanceOf[MultisetType].elementType)))) Seq(ConsistencyError(s"Set type ${s.typ} and element type ${elem.typ} must be compatible.", elem.pos)) else Seq()
     lazy val priority = 7
   lazy val fixity = Infix(NonAssociative)
   lazy val left = elem
@@ -838,7 +841,7 @@ case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val
 /** The length of a sequence. */
 case class AnySetCardinality(s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetUnExp {
   override lazy val check : Seq[ConsistencyError] =
-    if(!(s.typ.isInstanceOf[SetType] || s.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError("Set type must be SetType or MultisetType", pos)) else Seq()
+    if(!(s.typ.isInstanceOf[SetType] || s.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError(s"Set type expected SetType or MultisetType, but found ${s.typ}", s.pos)) else Seq()
   val exp = s
   lazy val typ = Int
   def getArgs = Seq(s)
@@ -895,7 +898,7 @@ sealed trait AbstractDomainFuncApp extends FuncLikeApp {
 sealed abstract class EqualityCmp(val op: String) extends BinExp with PrettyBinaryExpression {
   override lazy val check : Seq[ConsistencyError] =
     Seq(left, right).flatMap(Consistency.checkNoPositiveOnly) ++
-      (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same typ, but got ${left.typ} and ${right.typ}", pos)) else Seq())
+      (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same type, but got ${left.typ} and ${right.typ}", left.pos)) else Seq())
 
   lazy val priority = 6
   lazy val fixity = Infix(NonAssociative)

@@ -25,7 +25,7 @@ class ConsistencyErrorTests extends FunSuite with Matchers {
       Seq(LocalVarDecl("i", Int)(NoPosition, NoInfo, NoTrafos)),
       Seqn(Seq())(NoPosition, NoInfo, NoTrafos))(NoPosition, NoInfo, NoTrafos)
     loop.checkTransitively should be (Seq(
-      ConsistencyError("While loop condition must be of type Bool.", NoPosition)))
+      ConsistencyError("While loop condition must be of type Bool, but found Int", NoPosition)))
   }
 
   test("Program assembly checks"){
@@ -49,7 +49,7 @@ class ConsistencyErrorTests extends FunSuite with Matchers {
       IntLit(5)(NoPosition, NoInfo, NoTrafos), FuncApp("f1", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos))(NoPosition, NoInfo, NoTrafos)
 
     condexp1.checkTransitively should be (Seq(
-      ConsistencyError("Then and Else type of If expression must match", NoPosition)
+      ConsistencyError("Second and third parameter types of conditional expression must match, but found Int and Bool", NoPosition)
     ))
   }
 

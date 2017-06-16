@@ -37,9 +37,9 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       methods.find(_.name == name) match{
         case Some(existingMethod) =>
           if(!Consistency.areAssignable(existingMethod.formalReturns, targets))
-            s :+= ConsistencyError("Formal returns of method " + name + " are not assignable to targets.", c.pos)
+            s :+= ConsistencyError(s"Formal returns (${existingMethod.formalReturns} of method " + name + s" are not assignable to targets ($targets).", c.pos)
           if(!Consistency.areAssignable(args, existingMethod.formalArgs))
-            s :+= ConsistencyError("Arguments are not assignable to formal arguments of method " + name, c.pos)
+            s :+= ConsistencyError(s"Arguments ($args) are not assignable to formal arguments (${existingMethod.formalArgs}) of method " + name, c.pos)
         case None =>
           s :+= ConsistencyError("Method name " + name + " not found in program.", c.pos)
       }
@@ -152,7 +152,7 @@ object Program{
 case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location with Typed {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Field name must be a valid identifier.", pos)) else Seq()) ++
-      (if(!typ.isConcrete) Seq(ConsistencyError("Type of field " + name + ":" + typ + " must be concrete!", pos)) else Seq())
+      (if(!typ.isConcrete) Seq(ConsistencyError("Type of field " + name + ":" + typ + s" must be concrete, but found $typ.", pos)) else Seq())
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
@@ -163,7 +163,9 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Predicate name must be a valid identifier.", pos)) else Seq()) ++
-      (if (body.isDefined) Consistency.checkNonPostContract(body.get) else Seq())
+      (if (body.isDefined) Consistency.checkNonPostContract(body.get) else Seq()) ++
+      (if (body.isDefined && !(Consistency.noPerm(body.get) && Consistency.noForPerm(body.get)))
+        Seq(ConsistencyError("perm and forperm expressions are not allowed in predicate bodies", body.get.pos)) else Seq())
 
   def isAbstract = body.isEmpty
 
@@ -186,10 +188,11 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Method name must be a valid identifier.", pos)) else Seq()) ++
       pres.flatMap(Consistency.checkPre) ++
       posts.flatMap(Consistency.checkPost) ++
-      (if(!(posts forall Consistency.noResult)) Seq(ConsistencyError("Method postconditions must have no result variables.", pos)) else Seq()) ++
+      posts.flatMap(p=>{ if(!Consistency.noResult(p)) Seq(ConsistencyError("Method postconditions must have no result variables.", p.pos)) else Seq()}) ++
       Consistency.checkNoArgsReassigned(formalArgs, body) ++
       (if(!noDuplicates) Seq(ConsistencyError("There must be no duplicates in names of local variables and formal args.", pos)) else Seq()) ++
-      (if (!((formalArgs ++ formalReturns) forall (_.typ.isConcrete))) Seq(ConsistencyError("Formal args and returns must have concrete types.", pos)) else Seq())
+      (if (!((formalArgs ++ formalReturns) forall (_.typ.isConcrete))) Seq(ConsistencyError("Formal args and returns must have concrete types.", pos)) else Seq()) ++
+      (pres ++ posts).flatMap(Consistency.checkNoPermForpermExceptInhaleExhale)
 
   private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
 
@@ -207,7 +210,11 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
                    (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with FuncLike with Contracted {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Function name must be a valid identifier.", pos)) else Seq()) ++
-      (if(!(posts forall Consistency.noOld)) Seq(ConsistencyError("Function post-conditions must not have labelled-old expressions.", pos)) else Seq()) ++
+      posts.flatMap(p=>{ if(!Consistency.noOld(p))
+        Seq(ConsistencyError("Function post-conditions must not have old expressions.", p.pos)) else Seq()}) ++
+      (pres ++ posts).flatMap(p=> {
+        if(!Consistency.noPerm(p) || !Consistency.noForPerm(p))
+          Seq(ConsistencyError("Function contracts must not have perm or forperm expressions.", p.pos)) else Seq()}) ++
       (if(!(body map (_ isSubtype typ) getOrElse true)) Seq(ConsistencyError("Type of function body must match function type.", pos)) else Seq() ) ++
       pres.flatMap(Consistency.checkPre) ++
       posts.flatMap(Consistency.checkPost) ++
@@ -319,7 +326,7 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("DomainFunc name must be valid identifier", pos)) else Seq()) ++
       (if(unique && formalArgs.nonEmpty) Seq(ConsistencyError("Only constants, i.e. nullary domain functions can be unique.", pos)) else Seq()) ++
-  (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq())
+  (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", formalArgs.head.pos)) else Seq())
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
