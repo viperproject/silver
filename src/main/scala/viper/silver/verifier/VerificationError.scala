@@ -402,18 +402,18 @@ object reasons {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertionFalse(offendingNode.asInstanceOf[Exp])
   }
 
-  case class TerminationMeasure(offendingNode: Exp) extends AbstractErrorReason {
+  case class TerminationMeasure(offendingNode: Exp, decClause: Seq[Exp]) extends AbstractErrorReason {
     val id = "termination.measure"
-    override def readableMessage = s"Termination Measure $offendingNode might not decrease."
+    override def readableMessage = s"Termination Measure $decClause might not decrease."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationMeasure(offendingNode.asInstanceOf[Exp])
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationMeasure(offendingNode.asInstanceOf[Exp], decClause)
   }
 
-  case class TerminationNoBound(offendingNode: Exp) extends AbstractErrorReason {
+  case class TerminationNoBound(offendingNode: Exp, decClause: Seq[Exp]) extends AbstractErrorReason {
     val id = "termination.no.bound"
-    override def readableMessage = s"Decreases expression $offendingNode might not be bounded below 0."
+    override def readableMessage = s"Decreases expression $decClause might not be bounded below 0."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(offendingNode.asInstanceOf[Exp])
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(offendingNode.asInstanceOf[Exp], decClause)
   }
 
   // Note: this class should be deprecated/removed - we no longer support epsilon permissions in the language

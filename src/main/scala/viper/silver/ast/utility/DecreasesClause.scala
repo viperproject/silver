@@ -6,16 +6,9 @@
 
 package viper.silver.ast.utility
 
-import org.scalatest.fixture
 import viper.silver.ast._
-import viper.silver.ast.utility.Expressions.{reduceAndProofObs, reduceCondExpProofObs, reduceImpliesProofObs, reduceOrProofObs}
-import viper.silver.verifier.DummyNode
 import viper.silver.verifier.errors.{AssertFailed, TerminationFailed}
 import viper.silver.verifier.reasons.{AssertionFalse, TerminationMeasure, TerminationNoBound}
-
-import scala.reflect.internal.Precedence
-
-//import viper.silver.verifier.errors.{AssertFailed, PreconditionInCallFalse, TerminationFailed}
 
 import scala.collection.mutable
 
@@ -39,29 +32,33 @@ object DecreasesClause {
   // decreases x+y
   // multiple function calls -> multiple assertions
   def addMethod(funcs: Seq[Function], members: mutable.HashMap[String, Node]): Seq[Method] = {
-    val methods = funcs map (addTerminationProof(_, members))
+    val decreasingFunc = members.get("decreasing").get.asInstanceOf[DomainFunc]
+    val boundedFunc = members.get("bounded").get.asInstanceOf[DomainFunc]
+    val methods = funcs map (addTerminationProof(_, decreasingFunc, boundedFunc))
     methods
   }
 
-  private def addTerminationProof(func: Function, members: mutable.HashMap[String, Node]): Method = {
+  private def addTerminationProof(func: Function, decreasingFunc: DomainFunc, boundedFunc:DomainFunc): Method = {
     println("DecClauses: ")
     println(func.decs)
     var m = Method(func.name + "_termination_proof", func.formalArgs, Seq(), func.pres, func.posts, Seq(), Statements.EmptyStmt)(NoPosition, func.info, func.errT)
-    m.body = stmt(func.body.get, members, func)
+    m.body = stmt(func.body.get, decreasingFunc, boundedFunc, func)
     m
   }
 
-  def stmt(body: Exp, members: mutable.HashMap[String, Node], func: Function): Stmt = {
+  def stmt(body: Exp, decreasingFunc: DomainFunc, boundedFunc: DomainFunc, func: Function): Stmt = {
+
+    //TODO replace
 
     body match {
       case _: AccessPredicate => Statements.EmptyStmt
       case InhaleExhaleExp(in, ex) => Statements.EmptyStmt
       case _: PermExp => Statements.EmptyStmt
       case _: LocationAccess => Statements.EmptyStmt
-      case CondExp(cond, thn, els) => If(cond, stmt(thn, members, func), stmt(els, members, func))(body.pos)
+      case CondExp(cond, thn, els) => If(cond, stmt(thn, decreasingFunc, boundedFunc, func), stmt(els, decreasingFunc, boundedFunc, func))(body.pos)
       case Unfolding(acc, body) =>
         val s1 = Unfold(acc)(body.pos)
-        val s2 = stmt(body, members, func)
+        val s2 = stmt(body, decreasingFunc, boundedFunc, func)
         val s3 = Fold(acc)(body.pos)
         val seq = Seq(s1, s2, s3)
         Seqn(seq)(body.pos)
@@ -79,16 +76,24 @@ object DecreasesClause {
       //------------------------------
       //Other Triggers?
       case callee: FuncApp =>
-        val decreasingFunc = members.get("decreasing").get.asInstanceOf[DomainFunc]
-        val boundedFunc = members.get("bounded").get.asInstanceOf[DomainFunc]
+
+        //TODO
+        //check if calledFunc is itself
+        //yes do checks
+        //no look for itself name: look rec and store already discovered
+        //adjust args and give further
+        //if found give arg back with conditions
+
+        //method searchFunctionCall(FuncName : String, args) : //maybe not all args
+        // (new arg, conditions) //errors?
 
         val decClause = func.decs
 
         //Assume only one decreasesClause
         //TODO multiples decreasesClauses
-        if (decClause.size >= 1) { //There is a decrease Clause
+        if (decClause.size >= 0) { //There is a decrease Clause
 
-          var decreasExpr = decClause.head
+          //var decreasExpr = decClause
 
           val paramTypesDecr = decreasingFunc.formalArgs map (_.typ)
           val argTypeVarsDecr = paramTypesDecr.flatMap(p => p.typeVariables)
@@ -96,83 +101,64 @@ object DecreasesClause {
           //val argTypes = (callee.getArgs map (_.typ))
           //val map = (argTypeVars zip argTypes).toMap
 
-          var mapDecr = Map(argTypeVarsDecr.head -> decClause.head.typ)
-
-          if (decClause.size >= 2) { //Tuples
-            //Generate Tuples
-            members.get("tuple" + decClause.size + "Conn").get match {
-              case dfa: DomainFunc =>
-                val paramTypes = dfa.formalArgs map (_.typ)
-                val argTypeVars = paramTypes.flatMap(p => p.typeVariables)
-
-                val argTypes = (decClause map (_.typ))
-                val map = (argTypeVars zip argTypes).toMap
-
-                decreasExpr = DomainFuncApp(dfa, func.decs, map)(dfa.pos)
-
-                mapDecr = Map(argTypeVarsDecr.head -> dfa.typ.substitute(map))
-
-              case _ => throw new Exception("tuple2Conn must be a DomainFunction")
-            }
-          }
+          //var mapDecr = Map(argTypeVarsDecr.head -> decClause.head.typ)
 
           val callerArgs = func.formalArgs
           val calleeArgs = callee.getArgs
 
-          val decreasingVarName = searchVarName(decreasExpr)
-
-          var s = Seq()
-          //val m = decreasExpr.reduceTree[Seq[Exp]]((a:AbstractLocalVar, s) => s :+(a))
-
-//          val m2 = decreasExpr.reduceTree[Seq[Exp]] {
-//            (n: Node, sub: Seq[Seq[Exp]]) =>
-//              val vars = n match {
-//                case a: AbstractLocalVar => Seq(a)
-//                case _ => Nil
-//              }
-//              vars
-//          }
-
-//          val m2 = decreasExpr.deepCollect {
-//            case a:AbstractLocalVar => a
-//          }
+          //Search for VarNames in the decreasing Clausure
+          val decreasingVarName = decClause map (_.deepCollect {
+            case a: AbstractLocalVar => a
+          }.toSet)//TODO toSet? but remain ordering
 
 
+          //Search the arguments in the called Function, which then sould be repwritten
 
+//          val names = decreasingVarName map (s => s map (_.name))
+//          val indexOfDecVar = names map (s => (callerArgs.filter(v => s.contains(v.name))map (callerArgs.indexOf(_))))
+//          val usedCalleeArgs = indexOfDecVar map (s => calleeArgs.filter(e => s.contains(calleeArgs.indexOf(e))))
 
-          //val m2 = decreasExpr.foreach[Seq[Exp]](a:AbstractLocalVar => a)
+          //TODO put this before and then fix the umweg over _.name
+          val callerArgsAsAbstract = callerArgs map (arg => arg match{
+            case l: LocalVarDecl => LocalVar(l.name)(l.typ)//, l.pos, l.info, l.errT)
+            case a => a
+          })
 
-          val m3 = decreasExpr.visitOpt(AbstractLocalVar => true)
-
-          print("==VarName: " + decreasingVarName)
-          val indexOfDecVar = (decreasingVarName map (callerArgs.indexOf(_)))
-          val usedCalleeArgs = calleeArgs.filter(e => indexOfDecVar.contains(calleeArgs.indexOf(e)))
-
-          val rewriteExprMap = (decreasingVarName.map(_.name) zip usedCalleeArgs).toMap
-          print("==rewrite: " + rewriteExprMap)
-          val smallerExpression = rewriteExpr(decreasExpr, rewriteExprMap)
-          val biggerExpression = addOldIfNecessary(decreasExpr)
+          val smallerExpression = decClause map (_.replace((callerArgsAsAbstract zip calleeArgs).toMap))
+          val biggerExpression = decClause map (addOldIfNecessary(_))
 
           val pos = body.pos
           val infoBound = SimpleInfo(Seq("BoundedCheck"))
           val infoDecr = SimpleInfo(Seq("DecreasingCheck"))
 
-          //TODO
-          //val errT = ErrTrafo({case AssertFailed(_, r) => TerminationFailed(callee, TerminationMeasure(decClause.head))})
           val errTBound = ErrTrafo({ case AssertFailed(_, r) => TerminationFailed(callee, r match {
-            case k: AssertionFalse => TerminationNoBound(decreasExpr)
-            case k => k //could not find inherited objects or case classes
+            case k: AssertionFalse => TerminationNoBound(decClause.head, decClause)  //TODO head is not correct
+            case k => k
           })
           })
 
           val errTDecr = ErrTrafo({ case AssertFailed(_, r) => TerminationFailed(callee, r match {
-            case k: AssertionFalse => TerminationMeasure(decreasExpr)
-            case k => k //could not find inherited objects or case classes
+            case k: AssertionFalse => TerminationMeasure(decClause.head, decClause) //TODO head is not correct
+            case k => k
           })
           })
 
-          val boundedAss = Assert(DomainFuncApp(boundedFunc, Seq(smallerExpression), mapDecr)(boundedFunc.pos))(pos, infoBound, errTBound) //TODO mapDecr
-          val decreaseAss = Assert(DomainFuncApp(decreasingFunc, Seq(smallerExpression, biggerExpression), mapDecr)(decreasingFunc.pos))(pos, infoDecr, errTDecr)
+
+          val e = smallerExpression zip biggerExpression
+
+          var decrFunc = Seq.empty[Exp]
+          var boundFunc = Seq.empty[Exp]
+
+          for( i <- e.indices){
+            if(i>0){
+              decrFunc :+= EqCmp(e(i-1)._1,e(i-1)._2)(decreasingFunc.pos)
+            }
+            decrFunc :+= DomainFuncApp(decreasingFunc, Seq(e(i)._1, e(i)._2), Map(argTypeVarsDecr.head -> e(i)._2.typ))(decreasingFunc.pos)
+            boundFunc :+= DomainFuncApp(boundedFunc, Seq(e(i)._1), Map(argTypeVarsDecr.head -> e(i)._1.typ))(boundedFunc.pos)
+          }
+
+          val boundedAss = Assert(buildBoundTree(boundFunc))(pos, infoBound, errTBound)
+          val decreaseAss = Assert(buildDecTree(decrFunc, true))(pos, infoDecr, errTDecr) //TODO mapDecr
 
           Seqn(Seq(boundedAss, decreaseAss))(pos) //TODO Position?
         } else { //No DecClause
@@ -180,8 +166,8 @@ object DecreasesClause {
           Statements.EmptyStmt
         }
 
-      case b: BinExp => Seqn(Seq(stmt(b.left, members, func), stmt(b.right, members, func)))(body.pos)
-      case u: UnExp => stmt(u.exp, members, func)
+      case b: BinExp => Seqn(Seq(stmt(b.left, decreasingFunc, boundedFunc, func), stmt(b.right, decreasingFunc, boundedFunc, func)))(body.pos)
+      case u: UnExp => stmt(u.exp, decreasingFunc, boundedFunc, func)
       case _: Lhs => Statements.EmptyStmt
       case k: ForbiddenInTrigger => k match {
         case CondExp(cond, thn, els) => Statements.EmptyStmt
@@ -356,195 +342,215 @@ object DecreasesClause {
     }
   }
 
-//  def test(body: Exp): Exp = body match {
-//    case a: AccessPredicate => a match {
-//      case a: FieldAccessPredicate => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: PredicateAccessPredicate => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//    }
-//    case a: InhaleExhaleExp => a match {
-//      case _ => //could not find inherited objects or case classes
-//    }
-//    case a: PermExp => a match {
-//      case a: WildcardPerm => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: EpsilonPerm => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: FractionalPerm => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: PermDiv => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: CurrentPerm => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: PermMinus => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: PermAdd => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: PermSub => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: PermMul => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: IntPermMul => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: AbstractConcretePerm => a match {
-//        case a: FullPerm => a match {
-//          case _ => //could not find inherited objects or case classes
-//        }
-//        case a: NoPerm => a match {
-//          case _ => //could not find inherited objects or case classes
-//        }
-//      }
-//    }
-//    case a: LocationAccess => a match {
-//      case FieldAccess(rcv, field) =>
-//      case PredicateAccess(args, predicateName) =>
-//    }
-//    case a: CondExp => a match {
-//      case _ => //could not find inherited objects or case classes
-//    }
-//    case a: Unfolding => a match {
-//      case _ => //could not find inherited objects or case classes
-//    }
-//    case a: GhostOperation => a match {
-//      case a: UnfoldingGhostOp => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: FoldingGhostOp => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: ApplyingGhostOp => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: PackagingGhostOp => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//    }
-//    case a: Let => a match {
-//      case _ => //could not find inherited objects or case classes
-//    }
-//    case a: QuantifiedExp => a match {
-//      case a: Forall => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: Exists => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: ForPerm => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//    }
-//    case a: ForPerm => a match {
-//      case _ => //could not find inherited objects or case classes
-//    }
-//    case a: AbstractLocalVar => a match {
-//      case a: LocalVar => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: Result => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//    }
-//    case a: SeqExp => a match {
-//      case a: EmptySeq => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: ExplicitSeq => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: RangeSeq => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: SeqAppend => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: SeqIndex => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: SeqTake => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: SeqDrop => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: SeqContains => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: SeqUpdate => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//      case a: SeqLength => a match {
-//        case _ => //could not find inherited objects or case classes
-//      }
-//    }
-//    case a: SetExp => a match {
-//      case a: AnySetExp => a match {
-//        case a: AnySetUnExp => a match {
-//          case a: AnySetCardinality => a match {
-//            case _ => //could not find inherited objects or case classes
-//          }
-//        }
-//        case a: AnySetBinExp => a match {
-//          case AnySetUnion(left, right) =>
-//          case AnySetIntersection(left, right) =>
-//          case AnySetSubset(left, right) =>
-//          case AnySetMinus(left, right) =>
-//          case AnySetContains(elem, s) =>
-//        }
-//      }
-//      case a: EmptySet =>
-//      case a: ExplicitSet =>
-//    }
-//    case a: MultisetExp => a match {
-//      case _: AnySetExp =>
-//      case EmptyMultiset(elemTyp) =>
-//      case ExplicitMultiset(elems) =>
-//    }
-//    case a: Literal => a match {
-//      case IntLit(i) =>
-//      case _: BoolLit =>
-//      case NullLit() =>
-//    }
-//    case a: PossibleTrigger => a match {
-//      case FuncApp(funcname, args) =>
-//      case DomainFuncApp(funcname, args, typVarMap) =>
-//      case _: SeqExp =>
-//      case _: SetExp =>
-//      case _: MultisetExp =>
-//    }
-//    case a: ForbiddenInTrigger => a match {
-//      case CondExp(cond, thn, els) =>
-//      case _: DomainOpExp =>
-//    }
-//    case a: FuncLikeApp => a match {
-//      case FuncApp(funcname, args) =>
-//      case _: AbstractDomainFuncApp =>
-//    }
-//    case a: BinExp => a match {
-//      case _: AnySetBinExp =>
-//      case _: EqualityCmp =>
-//      case _: DomainBinExp =>
-//    }
-//    case a: UnExp => a match {
-//      case _: OldExp =>
-//      case _: AnySetUnExp =>
-//      case _: DomainUnExp =>
-//    }
-//    case a: Lhs => a match {
-//      case FieldAccess(rcv, field) =>
-//      case LocalVar(name) =>
-//    }
-//  }
+
+  //conjuction = true => Or
+  //conjuction = false => And
+  def buildDecTree(decrFuncS: Seq[Exp], conj: Boolean): Exp = {
+    if(decrFuncS.size == 1)
+      decrFuncS.head
+    else if(conj)
+      Or(decrFuncS.head, buildDecTree(decrFuncS.tail, false))(decrFuncS.head.pos)
+    else
+      And(decrFuncS.head, buildDecTree(decrFuncS.tail, true))(decrFuncS.head.pos)
+  }
+
+  def buildBoundTree(decrFuncS: Seq[Exp]): Exp = {
+    if(decrFuncS.size == 1)
+      decrFuncS.head
+    else
+      And(decrFuncS.head, buildBoundTree(decrFuncS.tail))(decrFuncS.head.pos)
+  }
+
+
+  //  def test(body: Exp): Exp = body match {
+  //    case a: AccessPredicate => a match {
+  //      case a: FieldAccessPredicate => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: PredicateAccessPredicate => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //    }
+  //    case a: InhaleExhaleExp => a match {
+  //      case _ => //could not find inherited objects or case classes
+  //    }
+  //    case a: PermExp => a match {
+  //      case a: WildcardPerm => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: EpsilonPerm => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: FractionalPerm => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: PermDiv => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: CurrentPerm => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: PermMinus => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: PermAdd => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: PermSub => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: PermMul => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: IntPermMul => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: AbstractConcretePerm => a match {
+  //        case a: FullPerm => a match {
+  //          case _ => //could not find inherited objects or case classes
+  //        }
+  //        case a: NoPerm => a match {
+  //          case _ => //could not find inherited objects or case classes
+  //        }
+  //      }
+  //    }
+  //    case a: LocationAccess => a match {
+  //      case FieldAccess(rcv, field) =>
+  //      case PredicateAccess(args, predicateName) =>
+  //    }
+  //    case a: CondExp => a match {
+  //      case _ => //could not find inherited objects or case classes
+  //    }
+  //    case a: Unfolding => a match {
+  //      case _ => //could not find inherited objects or case classes
+  //    }
+  //    case a: GhostOperation => a match {
+  //      case a: UnfoldingGhostOp => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: FoldingGhostOp => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: ApplyingGhostOp => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: PackagingGhostOp => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //    }
+  //    case a: Let => a match {
+  //      case _ => //could not find inherited objects or case classes
+  //    }
+  //    case a: QuantifiedExp => a match {
+  //      case a: Forall => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: Exists => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: ForPerm => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //    }
+  //    case a: ForPerm => a match {
+  //      case _ => //could not find inherited objects or case classes
+  //    }
+  //    case a: AbstractLocalVar => a match {
+  //      case a: LocalVar => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: Result => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //    }
+  //    case a: SeqExp => a match {
+  //      case a: EmptySeq => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: ExplicitSeq => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: RangeSeq => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: SeqAppend => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: SeqIndex => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: SeqTake => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: SeqDrop => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: SeqContains => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: SeqUpdate => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //      case a: SeqLength => a match {
+  //        case _ => //could not find inherited objects or case classes
+  //      }
+  //    }
+  //    case a: SetExp => a match {
+  //      case a: AnySetExp => a match {
+  //        case a: AnySetUnExp => a match {
+  //          case a: AnySetCardinality => a match {
+  //            case _ => //could not find inherited objects or case classes
+  //          }
+  //        }
+  //        case a: AnySetBinExp => a match {
+  //          case AnySetUnion(left, right) =>
+  //          case AnySetIntersection(left, right) =>
+  //          case AnySetSubset(left, right) =>
+  //          case AnySetMinus(left, right) =>
+  //          case AnySetContains(elem, s) =>
+  //        }
+  //      }
+  //      case a: EmptySet =>
+  //      case a: ExplicitSet =>
+  //    }
+  //    case a: MultisetExp => a match {
+  //      case _: AnySetExp =>
+  //      case EmptyMultiset(elemTyp) =>
+  //      case ExplicitMultiset(elems) =>
+  //    }
+  //    case a: Literal => a match {
+  //      case IntLit(i) =>
+  //      case _: BoolLit =>
+  //      case NullLit() =>
+  //    }
+  //    case a: PossibleTrigger => a match {
+  //      case FuncApp(funcname, args) =>
+  //      case DomainFuncApp(funcname, args, typVarMap) =>
+  //      case _: SeqExp =>
+  //      case _: SetExp =>
+  //      case _: MultisetExp =>
+  //    }
+  //    case a: ForbiddenInTrigger => a match {
+  //      case CondExp(cond, thn, els) =>
+  //      case _: DomainOpExp =>
+  //    }
+  //    case a: FuncLikeApp => a match {
+  //      case FuncApp(funcname, args) =>
+  //      case _: AbstractDomainFuncApp =>
+  //    }
+  //    case a: BinExp => a match {
+  //      case _: AnySetBinExp =>
+  //      case _: EqualityCmp =>
+  //      case _: DomainBinExp =>
+  //    }
+  //    case a: UnExp => a match {
+  //      case _: OldExp =>
+  //      case _: AnySetUnExp =>
+  //      case _: DomainUnExp =>
+  //    }
+  //    case a: Lhs => a match {
+  //      case FieldAccess(rcv, field) =>
+  //      case LocalVar(name) =>
+  //    }
+  //  }
 }
