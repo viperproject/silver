@@ -290,7 +290,7 @@ object FastParser extends PosParser {
     // Strategy that replaces every formal parameter occurrence in the macro body with the corresponding actual parameter
     // Also makes the macro call hygienic by creating a unique variable name vor every newly declared variable
     val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
-      case (varDecl: PIdnDef, ctxt) =>
+      case (varDecl: PIdnDef, _) =>
         val freshDecl = PIdnDef(getFreshVar(varDecl.name))
         adaptPositions(freshDecl, varDecl)
         freshDecl
@@ -328,17 +328,6 @@ object FastParser extends PosParser {
 
         replacerOnBody(body, Map(), pMacro)
 
-      case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) =>
-        val name = pMacro.name
-        recursionCheck(name, ctxt.c)
-
-        val body = getMacroByName(name).body
-
-        if (!body.isInstanceOf[PExp])
-          throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro))
-
-        replacerOnBody(body, Map(), pMacro)
-
       case (pMacro: PMethodCall, ctxt) if isMacro(pMacro.method.name) =>
         val name = pMacro.method.name
         recursionCheck(name, ctxt.c)
@@ -369,13 +358,20 @@ object FastParser extends PosParser {
 
         replacerOnBody(body, Map[String, PExp]() ++ mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
 
+      case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) =>
+        val name = pMacro.name
+        recursionCheck(name, ctxt.c)
+
+        val body = getMacroByName(name).body
+
+        if (!body.isInstanceOf[PExp])
+          throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro))
+
+        replacerOnBody(body, Map(), pMacro)
+
     }, ExpandContext(), {
       case (pMacro: PMacroRef, c) =>
         val realMacro = getMacroByName(pMacro.idnuse.name)
-        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-
-      case (pMacro: PIdnUse, c) if isMacro(pMacro.name) =>
-        val realMacro = getMacroByName(pMacro.name)
         ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
 
       case (pMacro: PMethodCall, c) if isMacro(pMacro.method.name) =>
@@ -386,7 +382,19 @@ object FastParser extends PosParser {
         val realMacro = getMacroByName(pMacro.func.name)
         ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
 
-    }).repeat
+      case (pMacro: PIdnUse, c) if isMacro(pMacro.name) =>
+        val realMacro = getMacroByName(pMacro.name)
+        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
+    }).recurseFunc {
+      /* Don't recurse into the PIdnUse of nodes that themselves could represent macro
+       * applications. Otherwise, the expansion of nested macros will fail due to attempting
+       * to construct invalid AST nodes.
+       * Recursing into such PIdnUse nodes caused Silver issue #205.
+       */
+      case PMacroRef(_) => Seq.empty
+      case PMethodCall(targets, _, args) => Seq(targets, args)
+      case PCall(_, args, typeAnnotated) => Seq(args, typeAnnotated)
+    }.repeat
 
     val res = expander.execute[T](toExpand)
     res
