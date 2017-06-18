@@ -287,8 +287,8 @@ object FastParser extends PosParser {
       params.zip(freshArgs).map(pair => pair._1.name -> pair._2)
     }
 
-    // Strategy that replaces every formal parameter occurence in the macro body with the corresponding actual parameter
-    // Also makes the macro call hygenic by creating a unique variable name vor every newly declared variable
+    // Strategy that replaces every formal parameter occurrence in the macro body with the corresponding actual parameter
+    // Also makes the macro call hygienic by creating a unique variable name vor every newly declared variable
     val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
       case (varDecl: PIdnDef, ctxt) =>
         val freshDecl = PIdnDef(getFreshVar(varDecl.name))
@@ -304,11 +304,11 @@ object FastParser extends PosParser {
         val replaceParam = ctxt.c.replace.getOrElse(newIdent.name, newIdent)
         replaceParam
 
-    }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid typechecker bug with sharing
+    }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid type checker bug with sharing
 
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
     def replacerOnBody(body: PNode, p2a: Map[String, PExp], pos: FastPositioned): PNode = {
-      varReplaceMap = Map.empty[String, PIdnUse] // Should not be neccessary
+      varReplaceMap = Map.empty[String, PIdnUse] // Should not be necessary
       val res = replacer.execute[PNode](body, new PartialContextC[PNode, ReplaceContext](ReplaceContext(p2a)))
       varReplaceMap = Map.empty[String, PIdnUse]
       adaptPositions(res, pos)
