@@ -59,10 +59,7 @@ trait Frontend {
   def result: VerificationResult
 
   val logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
-  logger.setLevel(Level.INFO)
-
   val loggerForIde = LoggerFactory.getLogger(getClass.getName+"_IDE").asInstanceOf[Logger]
-  loggerForIde.setLevel(Level.INFO)
 }
 
 trait SinglePhase extends Frontend {

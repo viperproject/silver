@@ -20,13 +20,11 @@ method t3(xs:Seq[Ref], r: Ref, i:Int)
 
 method t4a(xs:Seq[Ref], r: Ref, i:Int) {
   inhale forall x:Ref :: {fun2(x)} x in xs ==> acc(pred(fun(x, i)))
-  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/282/)
   exhale forall y:Ref :: {fun(y, i)} y in xs ==> acc(pred(fun2(y)))
 }
 
 method t4b(xs:Seq[Ref], r: Ref, i:Int)
   requires forall x:Ref :: {fun2(x)} x in xs ==> acc(pred(fun(x, i)))
-  //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /silicon/issue/282/)
   ensures  forall y:Ref :: {fun(y, i)} y in xs ==> acc(pred(fun2(y)))
 {}
 

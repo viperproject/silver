@@ -6,7 +6,6 @@ predicate Tree_valid(self: Ref) {
 
 method callee(self: Ref)
   requires acc(Tree_valid(self), write)
-  //:: UnexpectedOutput(internal:insufficient.permission, /Carbon/issue/150/)
   requires (unfolding acc(Tree_valid(self), write) in self.Tree_height == 0)
 {
 }
