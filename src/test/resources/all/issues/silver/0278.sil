@@ -1,0 +1,10 @@
+define inRangeUpTo(i, k) 0 < i && i <= k
+
+
+method test(i:Int, j:Int, m:Int)
+{
+  assume i-1 == j
+  assume inRangeUpTo(m,j)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silver/issue/278/)
+  assert inRangeUpTo(m,i-1)
+}
