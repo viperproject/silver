@@ -287,29 +287,44 @@ object FastParser extends PosParser {
       params.zip(freshArgs).map(pair => pair._1.name -> pair._2)
     }
 
-    // Strategy that replaces every formal parameter occurence in the macro body with the corresponding actual parameter
-    // Also makes the macro call hygenic by creating a unique variable name vor every newly declared variable
+    // Strategy that replaces every formal parameter occurrence in the macro body with the corresponding actual parameter
+    // Also makes the macro call hygienic by creating a unique variable name for every newly declared variable
     val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
-      case (varDecl: PIdnDef, ctxt) =>
+      case (varDecl: PIdnDef, _) =>
+        /* Rename newly declared variables to avoid name clashes */
         val freshDecl = PIdnDef(getFreshVar(varDecl.name))
         adaptPositions(freshDecl, varDecl)
         freshDecl
 
-      case (ident: PIdnUse, ctxt) =>
-        val newIdent = varReplaceMap.get(ident.name) match {
-          case None => ident
-          // Parameters shadow externally bound variables
-          case Some(i) => if (!ctxt.c.replace.contains(ident.name)) i else ident
-        }
-        val replaceParam = ctxt.c.replace.getOrElse(newIdent.name, newIdent)
+      case (ident: PIdnUse, ctxt) if ctxt.c.replace.contains(ident.name) =>
+        /* Replace formal with actual argument */
+        val replaceParam = ctxt.c.replace.getOrElse(ident.name, ident)
         replaceParam
 
-    }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid typechecker bug with sharing
+      case (ident: PIdnUse, ctxt) if varReplaceMap.contains(ident.name) =>
+        /* Rename occurrence of a variable whose declaration has been renamed to avoid name
+         * clashes (see above)
+         */
+        val newIdent = varReplaceMap(ident.name)
+//        val replaceParam = ctxt.c.replace.getOrElse(newIdent.name, newIdent)
+        newIdent
+    }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
+
+    val replacerContextUpdater: PartialFunction[(PNode, ReplaceContext), ReplaceContext] =
+      { case (ident: PIdnUse, c) => c.copy(replace = c.replace - ident.name) }
 
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
     def replacerOnBody(body: PNode, p2a: Map[String, PExp], pos: FastPositioned): PNode = {
-      varReplaceMap = Map.empty[String, PIdnUse] // Should not be neccessary
-      val res = replacer.execute[PNode](body, new PartialContextC[PNode, ReplaceContext](ReplaceContext(p2a)))
+      varReplaceMap = Map.empty[String, PIdnUse] // Should not be necessary
+      /* TODO: It would be best if the context updater function were passed as another argument
+       *       to the replacer above. That is already possible, but when the replacer is executed
+       *       and an initial context is passed, that initial context's updater function (which
+       *       defaults to "never update", if left unspecified) replaces the updater function that
+       *       was initially passed to replacer.
+       */
+      val context =
+        new PartialContextC[PNode, ReplaceContext](ReplaceContext(p2a), replacerContextUpdater)
+      val res = replacer.execute[PNode](body, context)
       varReplaceMap = Map.empty[String, PIdnUse]
       adaptPositions(res, pos)
       res
@@ -325,17 +340,6 @@ object FastParser extends PosParser {
 
         if (!body.isInstanceOf[PStmt])
           throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro.idnuse))
-
-        replacerOnBody(body, Map(), pMacro)
-
-      case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) =>
-        val name = pMacro.name
-        recursionCheck(name, ctxt.c)
-
-        val body = getMacroByName(name).body
-
-        if (!body.isInstanceOf[PExp])
-          throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro))
 
         replacerOnBody(body, Map(), pMacro)
 
@@ -369,13 +373,20 @@ object FastParser extends PosParser {
 
         replacerOnBody(body, Map[String, PExp]() ++ mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
 
+      case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) =>
+        val name = pMacro.name
+        recursionCheck(name, ctxt.c)
+
+        val body = getMacroByName(name).body
+
+        if (!body.isInstanceOf[PExp])
+          throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro))
+
+        replacerOnBody(body, Map(), pMacro)
+
     }, ExpandContext(), {
       case (pMacro: PMacroRef, c) =>
         val realMacro = getMacroByName(pMacro.idnuse.name)
-        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-
-      case (pMacro: PIdnUse, c) if isMacro(pMacro.name) =>
-        val realMacro = getMacroByName(pMacro.name)
         ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
 
       case (pMacro: PMethodCall, c) if isMacro(pMacro.method.name) =>
@@ -386,7 +397,19 @@ object FastParser extends PosParser {
         val realMacro = getMacroByName(pMacro.func.name)
         ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
 
-    }).repeat
+      case (pMacro: PIdnUse, c) if isMacro(pMacro.name) =>
+        val realMacro = getMacroByName(pMacro.name)
+        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
+    }).recurseFunc {
+      /* Don't recurse into the PIdnUse of nodes that themselves could represent macro
+       * applications. Otherwise, the expansion of nested macros will fail due to attempting
+       * to construct invalid AST nodes.
+       * Recursing into such PIdnUse nodes caused Silver issue #205.
+       */
+      case PMacroRef(_) => Seq.empty
+      case PMethodCall(targets, _, args) => Seq(targets, args)
+      case PCall(_, args, typeAnnotated) => Seq(args, typeAnnotated)
+    }.repeat
 
     val res = expander.execute[T](toExpand)
     res
