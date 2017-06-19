@@ -185,16 +185,27 @@ object FastParser extends PosParser {
     p.methods.foreach(m => globalNames.add(m.idndef.name))
 
     // Expand defines
-    val domains = p.domains.map(doExpandDefines[PDomain](globalMacros, _, globalNames))
+    val domains = p.domains.map(doExpandDefines[PDomain](globalMacros, _,  globalNames))
 
-    val functions = p.functions.map(doExpandDefines[PFunction](globalMacros, _, globalNames))
+    val functions =
+      p.functions.map(function => {
+        val localAndGlobalNames = function.formalArgs.map(_.idndef.name) ++: globalNames
+        doExpandDefines(globalMacros, function, localAndGlobalNames)
+      })
 
-    val predicates = p.predicates.map(doExpandDefines[PPredicate](globalMacros, _, globalNames))
+    val predicates =
+      p.predicates.map(predicate => {
+        val localAndGlobalNames = predicate.formalArgs.map(_.idndef.name) ++: globalNames
+        doExpandDefines(globalMacros, predicate, localAndGlobalNames)
+      })
 
     val methods = p.methods.map(m => {
       // Methods have local variables that might produce naming collisions as well
       val localAndGlobalNames = collection.mutable.Set[String]() ++= globalNames
-      m.deepCollect { case d: PLocalVarDecl => d }.foreach { vari => localAndGlobalNames.add(vari.idndef.name) }
+      m.deepCollect {
+        case d: PLocalVarDecl => d
+        case d: PFormalArgDecl => d
+      }.foreach { vari => localAndGlobalNames.add(vari.idndef.name) }
 
       // Collect all method local macros and expand them in the method
       // Remove the method local macros from the method for convenience
@@ -306,12 +317,12 @@ object FastParser extends PosParser {
          * clashes (see above)
          */
         val newIdent = varReplaceMap(ident.name)
-//        val replaceParam = ctxt.c.replace.getOrElse(newIdent.name, newIdent)
         newIdent
     }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
 
-    val replacerContextUpdater: PartialFunction[(PNode, ReplaceContext), ReplaceContext] =
-      { case (ident: PIdnUse, c) => c.copy(replace = c.replace - ident.name) }
+    val replacerContextUpdater: PartialFunction[(PNode, ReplaceContext), ReplaceContext] = {
+      case (ident: PIdnUse, c) if c.replace.contains(ident.name) => c.copy(replace = c.replace.empty)
+    }
 
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
     def replacerOnBody(body: PNode, p2a: Map[String, PExp], pos: FastPositioned): PNode = {
