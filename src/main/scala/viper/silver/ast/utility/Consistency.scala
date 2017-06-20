@@ -210,21 +210,21 @@ object Consistency {
   /** Check all properties required for a precondition. */
   def checkPre(e: Exp): Seq[ConsistencyError] = {
     (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Precondition $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
-      (if(!noOld(e)) Seq(ConsistencyError("Old expressions are not allowed in preconditions.", e.pos)) else Seq()) ++
-      (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in preconditions.", e.pos)) else Seq()) ++
-      (if(!noResult(e)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", e.pos)) else Seq())
+    (if(!noOld(e)) Seq(ConsistencyError("Old expressions are not allowed in preconditions.", e.pos)) else Seq()) ++
+    (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in preconditions.", e.pos)) else Seq()) ++
+    (if(!noResult(e)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", e.pos)) else Seq())
   }
 
   /** Check all properties required for a contract expression that is not a postcondition (precondition, invariant, predicate) */
   def checkNonPostContract(e: Exp) : Seq[ConsistencyError]  = {
     (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Contract $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
-      (if(!noResult(e)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", e.pos)) else Seq())
+    (if(!noResult(e)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", e.pos)) else Seq())
   }
 
   /** Check all properties required for a postcondition */
   def checkPost(e: Exp) : Seq[ConsistencyError]  = {
     (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Postcondition $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
-      (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
+    (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
   }
 
   /** checks that all quantified variables appear in all triggers */

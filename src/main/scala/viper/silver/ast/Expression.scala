@@ -382,8 +382,8 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
 
   override lazy val check : Seq[ConsistencyError] =
     (if(!(cond isSubtype Bool)) Seq(ConsistencyError(s"Condition must be of bool type, but found ${cond.typ}", cond.pos)) else Seq()) ++
-      Consistency.checkNoPositiveOnly(cond) ++
-      (if(thn.typ != els.typ) Seq(ConsistencyError(s"Second and third parameter types of conditional expression must match, but found ${thn.typ} and ${els.typ}", thn.pos)) else Seq())
+    Consistency.checkNoPositiveOnly(cond) ++
+    (if(thn.typ != els.typ) Seq(ConsistencyError(s"Second and third parameter types of conditional expression must match, but found ${thn.typ} and ${els.typ}", thn.pos)) else Seq())
 
   lazy val typ = thn.typ
 }
