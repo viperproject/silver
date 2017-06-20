@@ -174,9 +174,9 @@ trait Node extends Traversable[Node] with Rewritable {
     Seq(NoPosition, NoInfo, NoTrafos)
   }
 
-  //returns a list of consistency errors in the node
+  //returns a list of consistency errors in the node. Only concrete classes should implement check.
   lazy val check : Seq[ConsistencyError] = Seq()
-  //returns a list of consistency errors in the node as well as all its children nodes
+  //returns a list of consistency errors in the node as well as all its children nodes.
   lazy val checkTransitively : Seq[ConsistencyError] =
     check ++
       productIterator.flatMap{
@@ -185,7 +185,6 @@ trait Node extends Traversable[Node] with Rewritable {
       case o: Option[Node] => if(o.isDefined) o.get.checkTransitively else Seq()
       case _ => Seq()
     }
-
 }
 
 

@@ -171,7 +171,7 @@ object Consistency {
     permsAndForperms.flatMap(p=>{
       inhalesExhales.find(_.contains(p)) match {
         case Some(node) => Seq()
-        case None => Seq(ConsistencyError("Perm and forperm in this context are only allowed in inhale/exhale statements.", p.asInstanceOf[Positioned].pos))
+        case None => Seq(ConsistencyError("Perm and forperm in this context are only allowed if nested under inhale-exhale assertions.", p.asInstanceOf[Positioned].pos))
       }
     })
   }
@@ -225,6 +225,23 @@ object Consistency {
   def checkPost(e: Exp) : Seq[ConsistencyError]  = {
     (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Postcondition $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
       (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
+  }
+
+  /** checks that all quantified variables appear in all triggers */
+  def checkAllVarsMentionedInTriggers(variables: Seq[LocalVarDecl], triggers: Seq[Trigger]) : Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    val varsInTriggers : Seq[Seq[LocalVar]] = triggers map(t=>{
+      t.deepCollect({case lv: LocalVar => lv})
+    })
+    variables.foreach(v=>{
+      varsInTriggers.foreach(varList=>{
+        varList.find(_.name == v.name) match {
+          case Some(tr) =>
+          case None => s :+= ConsistencyError(s"Variable ${v.name} is not mentioned in one or more triggers.", v.pos)
+        }
+      })
+    })
+    s
   }
 
   def noGhostOperations(n: Node) = !n.existsDefined {
