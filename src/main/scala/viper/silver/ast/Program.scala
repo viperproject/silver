@@ -28,8 +28,6 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     checkDomainFuncAppsAreValid ++
     checkGotoLabelsExist
 
-//  visit { case wand: MagicWand => Consistency.checkNoImpureConditionals(wand, this) }
-
   /** checks that each MethodCall calls an existing method and if so, checks that formalReturns are assignable to targets */
   lazy val checkMethodCallsAreValid: Seq[ConsistencyError] = methods.flatMap(m=> {
     var s = Seq.empty[ConsistencyError]

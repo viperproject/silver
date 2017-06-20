@@ -202,7 +202,8 @@ case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stm
   extends Stmt {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    Consistency.checkNoPositiveOnly(cond) ++ invs.flatMap(Consistency.checkNonPostContract) ++
+    Consistency.checkNoPositiveOnly(cond) ++
+    invs.flatMap(Consistency.checkNonPostContract) ++
     (if (!(cond isSubtype Bool)) Seq(ConsistencyError(s"While loop condition must be of type Bool, but found ${cond.typ}", cond.pos)) else Seq()) ++
     invs.flatMap(Consistency.checkNoPermForpermExceptInhaleExhale)
 }

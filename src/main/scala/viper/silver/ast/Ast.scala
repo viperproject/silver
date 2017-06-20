@@ -180,9 +180,10 @@ trait Node extends Traversable[Node] with Rewritable {
   lazy val checkTransitively : Seq[ConsistencyError] =
     check ++
     productIterator.flatMap{
-      case n: Node => n.checkTransitively;
-      case s: Seq[Node] => s.flatMap(_.checkTransitively)
-      case o: Option[Node] => if(o.isDefined) o.get.checkTransitively else Seq()
+      case n: Node => n.checkTransitively
+      case s: Seq[Node @unchecked] => s.flatMap(_.checkTransitively)
+      case s: Set[Node @unchecked] => s.flatMap(_.checkTransitively)
+      case Some(n: Node) => n.checkTransitively
       case _ => Seq()
     }
 }
