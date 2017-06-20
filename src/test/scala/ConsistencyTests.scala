@@ -59,6 +59,6 @@ class ConsistencyErrorTests extends FunSuite with Matchers {
       BoolLit(false)(NoPosition, NoInfo, NoTrafos))(NoPosition, NoInfo, NoTrafos)
 
     fieldassign1.checkTransitively should be (Seq(
-      ConsistencyError("Bool (false) is not assignable to Int (5.i)", NoPosition)))
+      ConsistencyError("Right-hand side false is not assignable to left-hand side 5.i.", NoPosition)))
   }
 }

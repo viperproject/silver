@@ -236,7 +236,7 @@ case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Po
 case class InhaleExhaleExp(in: Exp, ex: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
   override lazy val check : Seq[ConsistencyError] =
     (if(!(in.typ isSubtype Bool)) Seq(ConsistencyError(s"First parameter to inhale-exhale assertion must be of bool type, but found ${in.typ}", in.pos)) else Seq()) ++
-      (if(!(ex.typ isSubtype Bool)) Seq(ConsistencyError(s"Second parameter to inhale-exhale assertion must be of bool type, but found ${ex.typ}", ex.pos)) else Seq())
+    (if(!(ex.typ isSubtype Bool)) Seq(ConsistencyError(s"Second parameter to inhale-exhale assertion must be of bool type, but found ${ex.typ}", ex.pos)) else Seq())
   val typ = Bool
 }
 
@@ -264,13 +264,13 @@ case class FractionalPerm(left: Exp, right: Exp)(val pos: Position = NoPosition,
 {
   override lazy val check : Seq[ConsistencyError] =
     (if(left.typ != Int) Seq(ConsistencyError(s"Numerator type of fractional permission must be Int, but found ${left.typ}", left.pos)) else Seq()) ++
-      (if(right.typ != Int) Seq(ConsistencyError(s"Denominator type of fractional permission must be Int, but found ${right.typ}", right.pos)) else Seq())
+    (if(right.typ != Int) Seq(ConsistencyError(s"Denominator type of fractional permission must be Int, but found ${right.typ}", right.pos)) else Seq())
 }
 
 case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(PermDivOp) with PermExp
 {
   override lazy val check : Seq[ConsistencyError] =
-  (if(left.typ != Perm) Seq(ConsistencyError(s"First parameter of permission division expression must be Perm, but found ${left.typ}", left.pos)) else Seq()) ++
+    (if(left.typ != Perm) Seq(ConsistencyError(s"First parameter of permission division expression must be Perm, but found ${left.typ}", left.pos)) else Seq()) ++
     (if(right.typ != Int) Seq(ConsistencyError(s"Second parameter of permission division expression must be Int, but found ${right.typ}", right.pos)) else Seq())
 }
 /** The permission currently held for a given location. */
@@ -295,8 +295,8 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl], val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
   override lazy val check : Seq[ConsistencyError] =
     args.flatMap(Consistency.checkNoPositiveOnly) ++
-      (if(!Consistency.areAssignable(args, formalArgs))
-        Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
+    (if(!Consistency.areAssignable(args, formalArgs))
+      Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
 
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
@@ -312,7 +312,8 @@ object FuncApp {
 case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])
                         (val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl],val domainName:String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp with PossibleTrigger {
-  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkNoPositiveOnly) ++
+  override lazy val check : Seq[ConsistencyError] =
+    args.flatMap(Consistency.checkNoPositiveOnly) ++
     (if(!Consistency.areAssignable(args, formalArgs))
       Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
 
