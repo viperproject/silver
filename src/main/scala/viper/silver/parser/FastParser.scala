@@ -172,52 +172,50 @@ object FastParser extends PosParser {
     * @return PProgram with expanded macros
     */
   def expandDefines(p: PProgram): PProgram = {
-    // Find global names so we don't get conflicts
-    val globalNames = collection.mutable.Set.empty[String]
-
     val globalMacros = p.macros
 
     // Collect all global names to avoid conflicts
-    p.domains.foreach(d => globalNames.add(d.idndef.name))
-    p.functions.foreach(f => globalNames.add(f.idndef.name))
-    p.predicates.foreach(p => globalNames.add(p.idndef.name))
-    p.macros.foreach(m => globalNames.add(m.idndef.name))
-    p.methods.foreach(m => globalNames.add(m.idndef.name))
+    val globalNames: Set[String] = (
+         p.domains.map(_.idndef.name).toSet
+      ++ p.functions.map(_.idndef.name).toSet
+      ++ p.predicates.map(_.idndef.name).toSet
+      ++ p.macros.map(_.idndef.name).toSet
+      ++ p.methods.map(_.idndef.name).toSet
+    )
 
     // Expand defines
-    val domains = p.domains.map(doExpandDefines[PDomain](globalMacros, _,  globalNames))
+    val domains =
+      p.domains.map(domain => {
+        val namesInScope = globalNames ++ domain.deepCollect { case d: PIdnDef => d.name }
+        doExpandDefines[PDomain](globalMacros, domain, namesInScope)
+      })
 
     val functions =
       p.functions.map(function => {
-        val localAndGlobalNames = function.formalArgs.map(_.idndef.name) ++: globalNames
-        doExpandDefines(globalMacros, function, localAndGlobalNames)
+        val namesInScope = globalNames ++ function.deepCollect { case d: PIdnDef => d.name }
+        doExpandDefines(globalMacros, function, namesInScope)
       })
 
     val predicates =
       p.predicates.map(predicate => {
-        val localAndGlobalNames = predicate.formalArgs.map(_.idndef.name) ++: globalNames
-        doExpandDefines(globalMacros, predicate, localAndGlobalNames)
+        val namesInScope = globalNames ++ predicate.deepCollect { case d: PIdnDef => d.name }
+        doExpandDefines(globalMacros, predicate, namesInScope)
       })
 
-    val methods = p.methods.map(m => {
-      // Methods have local variables that might produce naming collisions as well
-      val localAndGlobalNames = collection.mutable.Set[String]() ++= globalNames
-      m.deepCollect {
-        case d: PLocalVarDecl => d
-        case d: PFormalArgDecl => d
-      }.foreach { vari => localAndGlobalNames.add(vari.idndef.name) }
+    val methods = p.methods.map(method => {
+      val namesInScope = globalNames ++ method.deepCollect { case d: PIdnDef => d.name }
 
       // Collect all method local macros and expand them in the method
       // Remove the method local macros from the method for convenience
-      val localMacros = m.deepCollect { case n: PDefine => n }
+      val localMacros = method.deepCollect { case n: PDefine => n }
 
       val withoutDefines =
         if (localMacros.isEmpty)
-          m
+          method
         else
-          m.transform { case mac: PDefine => PSkip().setPos(mac) }()
+          method.transform { case mac: PDefine => PSkip().setPos(mac) }()
 
-      doExpandDefines(localMacros ++ globalMacros, withoutDefines, localAndGlobalNames)
+      doExpandDefines(localMacros ++ globalMacros, withoutDefines, namesInScope)
     })
 
     PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.errors)
@@ -229,19 +227,23 @@ object FastParser extends PosParser {
     *
     * @param macros      All macros that could be invoked inside the code
     * @param toExpand    The AST node where we want to expand the macros in
-    * @param globalNames Names where the fresh macro variable names could collide with (will be filled with the generated names)
+    * @param namesInScope Names that are considered to be in scope for all of `toExpand`
     * @tparam T Type of the PNode
     * @return PNode with expanded macros of type T
     */
-  def doExpandDefines[T <: PNode](macros: Seq[PDefine], toExpand: T, globalNames: collection.mutable.Set[String]): T = {
+  def doExpandDefines[T <: PNode]
+                     (macros: Seq[PDefine], toExpand: T, namesInScope: Set[String])
+                     : T = {
+
+    /* Variables currently in scope; locally bound variables must not clash with them */
+    var namesCurrentlyInScope = namesInScope
+
+    /* Store the replacements from normal variable to freshly generated variable */
+    var freshNames = Map.empty[String, String]
 
     // It follows a list of useful helper classes and functions
 
-    // Context class used for variable replacing in macros.
-    // Map replace holds the mapping from formal parameter name to actual parameter expression
-    case class ReplaceContext(replace: Map[String, PExp] = Map()) {
-      def inMacro: Boolean = macros.nonEmpty
-    }
+    case class ReplaceContext(formalArgumentSubstitutions: Map[String, PExp] = Map.empty)
 
     // Context class used for expanding the macros themselves.
     // Seq macros contains the name of every macro we already imported to detect collisions
@@ -250,7 +252,7 @@ object FastParser extends PosParser {
     // Handy method to get a macro from its name string
     def getMacroByName(name: String): PDefine = macros.find(_.idndef.name == name) match {
       case Some(mac) => mac
-      case None => throw ParseException("Macro " + name + " used but not present in scope", FastPositions.getStart(name))
+      case None => throw ParseException(s"Macro " + name + " used but not present in scope", FastPositions.getStart(name))
     }
 
     // Check if a string is a valid macro name
@@ -267,18 +269,22 @@ object FastParser extends PosParser {
       adapter.execute[PNode](body)
     }
 
-    // Store the replacements from normal variable to freshly generated variable
-    var varReplaceMap = Map.empty[String, PIdnUse]
+    def getFreshVar(context: ReplaceContext, name: String): String =
+      getFreshVarWithSuffix(context, name, 0)
 
     // Acquire a fresh variable name for a macro definition
     // Rule: newName = name + $ + x where: x >= 0 and newName does not collide with global name
-    def getFreshVar(name: String, suffix: Option[Int] = None): String = {
-      val newName = if (suffix.isDefined) name + "$" + suffix.get else name
-      if (globalNames.contains(newName)) {
-        getFreshVar(name, Some(suffix.getOrElse(-1) + 1))
+    def getFreshVarWithSuffix(context: ReplaceContext, name: String, counter: Int): String = {
+      val newName = s"$name$$$counter"
+
+      if (namesCurrentlyInScope.contains(newName)) {
+        /* newName would clash with a name already in scope */
+
+        /* TODO: Seems that the implementation could be optimised rather easily to avoid
+         *       the linear search for the next "available" identifier
+         */
+        getFreshVarWithSuffix(context, name, counter + 1)
       } else {
-        globalNames.add(newName)
-        varReplaceMap = varReplaceMap ++ Seq(name -> PIdnUse(newName))
         newName
       }
     }
@@ -290,43 +296,57 @@ object FastParser extends PosParser {
     }
 
     // Create a map that maps the formal parameters to the actual parameters of a macro call
-    def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]) = {
-      val freshArgs = args.map {
-        case p: PIdnUse => varReplaceMap.getOrElse(p.name, p)
-        case otherwise => otherwise
-      }
-      params.zip(freshArgs).map(pair => pair._1.name -> pair._2)
+    def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]): Map[String, PExp] = {
+      params.map(_.name).zip(args).toMap
     }
 
     // Strategy that replaces every formal parameter occurrence in the macro body with the corresponding actual parameter
     // Also makes the macro call hygienic by creating a unique variable name for every newly declared variable
     val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
-      case (varDecl: PIdnDef, _) =>
-        /* Rename newly declared variables to avoid name clashes */
-        val freshDecl = PIdnDef(getFreshVar(varDecl.name))
-        adaptPositions(freshDecl, varDecl)
-        freshDecl
+      case (varDecl: PIdnDef, ctxt) =>
+        /* We found a locally-bound variable (e.g. by a quantifier) */
 
-      case (ident: PIdnUse, ctxt) if ctxt.c.replace.contains(ident.name) =>
+        if (namesCurrentlyInScope.contains(varDecl.name)) {
+          /* Rename locally bound variable to avoid name clashes */
+          val freshName = getFreshVar(ctxt.c, varDecl.name)
+          val freshDecl = PIdnDef(freshName)
+
+          freshNames += varDecl.name -> freshName
+          namesCurrentlyInScope += freshName
+
+          adaptPositions(freshDecl, varDecl)
+
+          freshDecl
+        } else {
+          /* Record locally-bound variable as in scope */
+          namesCurrentlyInScope += varDecl.name
+
+          varDecl
+        }
+
+      case (ident: PIdnUse, ctxt) if ctxt.c.formalArgumentSubstitutions.contains(ident.name) =>
         /* Replace formal with actual argument */
-        val replaceParam = ctxt.c.replace.getOrElse(ident.name, ident)
+        val replaceParam = ctxt.c.formalArgumentSubstitutions(ident.name)
         replaceParam
 
-      case (ident: PIdnUse, ctxt) if varReplaceMap.contains(ident.name) =>
-        /* Rename occurrence of a variable whose declaration has been renamed to avoid name
-         * clashes (see above)
+      case (ident: PIdnUse, ctxt) if freshNames.contains(ident.name) =>
+        /* Rename occurrence of a variable whose declaration has been renamed (case for PIdnDef
+         * above) to avoid name clashes
          */
-        val newIdent = varReplaceMap(ident.name)
-        newIdent
+        PIdnUse(freshNames(ident.name))
     }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
 
     val replacerContextUpdater: PartialFunction[(PNode, ReplaceContext), ReplaceContext] = {
-      case (ident: PIdnUse, c) if c.replace.contains(ident.name) => c.copy(replace = c.replace.empty)
+      case (ident: PIdnUse, c) if c.formalArgumentSubstitutions.contains(ident.name) =>
+        /* Matches case "replace formal with actual argument" above: having replaced a formal
+         * with an actual argument, no further substitutions should be carried out for the
+         * plugged-in actual argument.
+         */
+        c.copy(formalArgumentSubstitutions = c.formalArgumentSubstitutions.empty)
     }
 
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
     def replacerOnBody(body: PNode, p2a: Map[String, PExp], pos: FastPositioned): PNode = {
-      varReplaceMap = Map.empty[String, PIdnUse] // Should not be necessary
       /* TODO: It would be best if the context updater function were passed as another argument
        *       to the replacer above. That is already possible, but when the replacer is executed
        *       and an initial context is passed, that initial context's updater function (which
@@ -336,7 +356,6 @@ object FastParser extends PosParser {
       val context =
         new PartialContextC[PNode, ReplaceContext](ReplaceContext(p2a), replacerContextUpdater)
       val res = replacer.execute[PNode](body, context)
-      varReplaceMap = Map.empty[String, PIdnUse]
       adaptPositions(res, pos)
       res
     }
@@ -367,7 +386,7 @@ object FastParser extends PosParser {
         if (!body.isInstanceOf[PStmt])
           throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro.method))
 
-        replacerOnBody(body, Map[String, PExp]() ++ mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
+        replacerOnBody(body, mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
 
       case (pMacro: PCall, ctxt) if isMacro(pMacro.func.name) =>
         val name = pMacro.func.name
@@ -382,7 +401,7 @@ object FastParser extends PosParser {
         if (!body.isInstanceOf[PExp])
           throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro))
 
-        replacerOnBody(body, Map[String, PExp]() ++ mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
+        replacerOnBody(body, mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
 
       case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) =>
         val name = pMacro.name
