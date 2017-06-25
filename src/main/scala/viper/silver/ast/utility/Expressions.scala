@@ -24,7 +24,6 @@ object Expressions {
     case BinExp(e0, e1) => isPure(e0) && isPure(e1)
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
     case unf: Unfolding => isPure(unf.body)
-    case gop: GhostOperation => false
     case QuantifiedExp(_, e0) => isPure(e0)
     case Let(_, _, body) => isPure(body)
 

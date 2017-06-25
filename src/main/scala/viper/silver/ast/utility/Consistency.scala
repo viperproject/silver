@@ -202,7 +202,6 @@ object Consistency {
 
   def noGhostOperations(n: Node) = !n.existsDefined {
     case u: Unfolding if !u.isPure =>
-    case gop: GhostOperation if !gop.isInstanceOf[Unfolding] =>
   }
 
   /** Returns true iff the given expression is a valid trigger. */
@@ -289,21 +288,9 @@ object Consistency {
     case _: Package =>
       c.copy(insidePackageStmt = true)
 
-    case ghop: GhostOperation =>
-      //TODO: cleanup
-      recordIfNot(ghop, c.insideWandStatus.isInside || c.insidePackageStmt, "Ghost operations may not be used inside magic wands.")
-
-      c.copy(insidePackageStmt = c.insidePackageStmt)
-
-    case mw @ MagicWand(lhs, rhs) =>
+    case mw @ MagicWand(_, rhs) =>
       checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
-
-      recordIfNot(lhs, noGhostOperations(lhs), "Ghost operations may not occur on the left of wands.")
-
-      //TODO: cleanup
-      recordIfNot(rhs, noGhostOperations(rhs), "Ghost operations may not occur inside wands.")
-
-      checkIfValidChainOfGhostOperations(rhs, mw)
+      recordIfNot(mw, noGhostOperations(mw), "Ghost operations may not occur inside of wands.")
 
       c.copy(insideWandStatus = InsideWandStatus.Yes)
 
@@ -324,17 +311,6 @@ object Consistency {
                     c.insideWandStatus.isRight,
                     "Wands may use the \"lhs\" label on the rhs only.")*/
     })
-  }
-
-  private def checkIfValidChainOfGhostOperations(n: Node, root: MagicWand): Unit = n match {
-    case gop: GhostOperation => checkIfValidChainOfGhostOperations(gop.body, root)
-    case let: Let => checkIfValidChainOfGhostOperations(let.body, root)
-
-    case _ =>
-      recordIfNot(root, noGhostOperations(n), "Magic wand has unsupported shape. "
-                                 + "Its RHS must be of the shape 'GOp1 in GOp2 in ... in A', where the GOps are "
-                                 + "(impure) ghost operations, and where the final in-clause assertion A may "
-                                 + "only contain pure unfolding expressions.")
   }
 
   class InsideWandStatus protected[InsideWandStatus](val isInside: Boolean, val isLeft: Boolean, val isRight: Boolean) {

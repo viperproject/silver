@@ -437,7 +437,7 @@ object FastParser extends PosParser {
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old
     | result | unExp
-    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | folding
+    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
     | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
 
@@ -626,8 +626,6 @@ object FastParser extends PosParser {
       PAccPred(loc, perm)
     }
   })
-
-  lazy val folding: P[PExp] = P(keyword("folding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PFoldingGhostOp(a, b) }
 
   lazy val setTypedEmpty: P[PExp] = collectionTypedEmpty("Set", PEmptySet)
 

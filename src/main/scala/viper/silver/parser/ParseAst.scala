@@ -689,15 +689,6 @@ case class PUnfolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp{
   override final val opName = "unfolding"
 }
 
-case class PUnfoldingGhostOp(acc: PAccPred, exp: PExp) extends PUnFoldingExp {
-  override final val opName = "unfolding"
-}
-
-case class PFoldingGhostOp(acc: PAccPred, exp: PExp) extends PUnFoldingExp {
-  override final val opName = "folding"
-}
-
-
 sealed trait PBinder extends PExp{
   def body:PExp
   var _typeSubstitutions : Set[PTypeSubstitution] =  null

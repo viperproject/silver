@@ -712,10 +712,6 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       text(predicateName) <> parens(ssep(params map show, char (',') <> space))
     case Unfolding(acc, exp) =>
       parens(text("unfolding") <+> show(acc) <+> "in" <+> show(exp))
-    case UnfoldingGhostOp(acc, exp) =>
-      parens(text("unfolding") <+> show(acc) <+> "in" <+> show(exp))
-    case FoldingGhostOp(acc, exp) =>
-      parens(text("folding") <+> show(acc) <+> "in" <+> show(exp))
     case Old(exp) =>
       text("old") <> parens(show(exp))
     case LabelledOld(exp,label) =>

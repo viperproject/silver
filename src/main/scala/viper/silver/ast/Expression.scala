@@ -348,20 +348,6 @@ case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position
   lazy val typ = body.typ
 }
 
-/* Ghost operations used when packaging magic wands */
-sealed trait GhostOperation extends Exp {
-  val body: Exp
-  lazy val typ = body.typ
-}
-
-//sealed trait UnFoldingExp extends GhostOperation {
-//  val acc: PredicateAccessPredicate
-//}
-
-case class UnfoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends GhostOperation
-case class FoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends GhostOperation
-
-
 // --- Old expressions
 
 sealed trait OldExp extends UnExp {
