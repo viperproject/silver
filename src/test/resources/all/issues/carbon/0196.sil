@@ -1,5 +1,3 @@
-//:: IgnoreFile(/carbon/issue/196/)
-
 predicate P(r: Ref) {forall e : Ref :: e in refs(r) ==> acc(Q(e), wildcard)}
 predicate P2(r: Ref) {forall e : Ref :: e in refs(r) ==> acc(Q(e), 1/2)}
 predicate R(r: Ref) {forall e : Ref :: e in refs(r) ==> acc(e.q, wildcard)}
