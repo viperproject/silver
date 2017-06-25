@@ -12,7 +12,7 @@ predicate Pair(this: Ref) {
 
 method test06(p: Ref) {
   //:: ExpectedOutput(typechecker.error)
-  apply folding Pair(p) in true --* true
+  apply unfolding Pair(p) in true --* true
     /* Apply accepts magics wands only */
 }
 
@@ -24,7 +24,7 @@ method test06(p: Ref) {
 
 method test07(p: Ref) {
   //:: ExpectedOutput(typechecker.error)
-  package folding Pair(p) in true --* true
+  package unfolding Pair(p) in true --* true
     /* Package accepts magics wands only */
 }
 

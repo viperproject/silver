@@ -1,0 +1,37 @@
+field f: Int
+
+predicate Cell(x: Ref) {
+    acc(x.f)
+}
+
+function getAndTransform(x: Ref): Int
+requires Cell(x) {
+    unfolding Cell(x) in x.f+2 
+}
+
+method test0(x: Ref)
+requires Cell(x)
+ensures Cell(x) {
+    package Cell(x) --* Cell(x) && getAndTransform(x) == 2 {
+        if (getAndTransform(x) != 2) {
+            unfold Cell(x)
+            x.f := 0
+            fold Cell(x)
+        }
+    }
+}
+
+method test1(x: Ref)
+requires Cell(x)
+//:: ExpectedOutput(postcondition.violated:insufficient.permission)
+ensures Cell(x)
+{
+    package true --* Cell(x) && getAndTransform(x) == 2 {
+        assert Cell(x)
+        if (getAndTransform(x) != 2) {
+            unfold Cell(x)
+            x.f := 0
+            fold Cell(x)
+        }
+    }
+}

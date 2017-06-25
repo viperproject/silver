@@ -1,0 +1,25 @@
+//:: IgnoreFile(/silicon/issue/0000000000000000/)
+field f: Int
+
+method test0()
+requires forall x: Ref :: true ==> acc(x.f) {
+    var y: Ref
+    y := new()
+    package true --* true {
+        //:: ExpectedOutput(assert.failed:insufficient.permission)
+        exhale acc(y.f)
+    }
+}
+
+method test1() {
+    var y: Ref
+    y := new()
+    package true --* true {
+        inhale forall x: Ref :: true ==> acc(x.f)
+        assert forall x: Ref :: true ==> acc(x.f)
+        exhale acc(y.f)
+        assert forall x: Ref :: x != y ==> acc(x.f)
+        //:: ExpectedOutput(assert.failed:insufficient.permission)
+        assert forall x: Ref :: true ==> acc(x.f)
+    }
+}

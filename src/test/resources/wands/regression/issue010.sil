@@ -1,7 +1,7 @@
 field v: Bool
 
 method test1(x: Ref) {
-  //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/188/)
+  ////:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/188/)
   package acc(x.v) && acc(x.v) --* false // Fails, but should not
 }
 
@@ -10,7 +10,7 @@ method test1fix(x: Ref) {
 }
 
 method test2(x: Ref, y: Ref) {
-  //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/188/)
+  ////:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/188/)
   package acc(x.v) && acc(y.v) --* x != y // Fails, but should not
 }
 

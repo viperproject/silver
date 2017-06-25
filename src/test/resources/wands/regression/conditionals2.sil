@@ -33,7 +33,7 @@ method test5a(x: Ref)
     // it. This leaves enough uncertainty, however, so that we don't know (yet)
     // whether or not we have permissions to x.g.
 
-  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  ////:: ExpectedOutput(assert.failed:insufficient.permission)
   assert acc(x.g, 1/1000)
 }
 

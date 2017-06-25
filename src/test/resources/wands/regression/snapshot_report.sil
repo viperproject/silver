@@ -12,6 +12,6 @@ method test01(x: Ref)
   assert x.f==1
 
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/110/)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/185/)
+  ////:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/185/)
   assert x.g==1
 }

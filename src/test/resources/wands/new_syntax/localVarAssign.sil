@@ -1,0 +1,12 @@
+field f: Int
+
+method test0(x: Ref) {
+    package acc(x.f) --* acc(x.f) {
+        var i: Int := x.f
+        assert i == x.f
+        if (i < 0) { 
+            i := 0
+        }
+        assert i >= 0
+    }
+}

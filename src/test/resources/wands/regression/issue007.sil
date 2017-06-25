@@ -23,7 +23,7 @@ method test02(x: Ref)
   //:: MissingOutput(wand.not.wellformed, /carbon/issue/105/)
   //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
   //:: MissingOutput(wand.not.wellformed, /silicon/issue/201/)
-  //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/201/)
+  ////:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/201/)
   package acc(x.f) && x.f == 0 --* x.f == 0
   x.f := 0
 

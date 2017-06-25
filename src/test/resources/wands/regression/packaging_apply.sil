@@ -7,7 +7,7 @@ method t04(x:Ref) {
 
   //this package should work, but after the package the current state shouldn't have any permission for x.f anymore
   package (acc(x.f,1/4)&&x.f==2) --* acc(x.f,1/4)&&(acc(x.f,1/4)&&x.f==3 --* acc(x.f)&&false) {
-      //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/188/)
+      //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/0000000000000/)
       package (acc(x.f,1/4)&&x.f==3 --* acc(x.f)&&false)
   }
 
