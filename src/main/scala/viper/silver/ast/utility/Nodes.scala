@@ -84,6 +84,7 @@ object Nodes {
           case FieldAccess(rcv, field) => Seq(rcv)
           case PredicateAccess(params, _) => params
           case Unfolding(acc, body) => Seq(acc, body)
+          case Applying(wand, body) => Seq(wand, body)
           case Old(exp) => Seq(exp)
           case CondExp(cond, thn, els) => Seq(cond, thn, els)
           case Let(v, exp, body) => Seq(v, exp, body)

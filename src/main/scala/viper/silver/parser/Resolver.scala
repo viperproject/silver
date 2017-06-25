@@ -573,11 +573,14 @@ case class TypeChecker(names: NameAnalyser) {
                 }
               }
 
-            case pue: PUnFoldingExp =>
-              if (!isCompatible(pue.acc.loc.typ, Bool)) {
-                messages ++= FastMessaging.message(pue, "expected predicate access")
+            case pu: PUnfolding =>
+              if (!isCompatible(pu.acc.loc.typ, Bool)) {
+                messages ++= FastMessaging.message(pu, "expected predicate access")
               }
-              acceptNonAbstractPredicateAccess(pue.acc, "abstract predicates cannot be (un)folded")
+              acceptNonAbstractPredicateAccess(pu.acc, "abstract predicates cannot be unfolded")
+
+            case app: PApplying =>
+              //TODO: check is wand
 
             case pfa@PFieldAccess(rcv, idnuse) =>
               /* For a field access of the type rcv.fld we have to ensure that the

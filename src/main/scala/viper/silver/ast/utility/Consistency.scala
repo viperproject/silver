@@ -67,7 +67,7 @@ object Consistency {
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
     // prover hint expressions
-    "unfolding", "in", "folding",
+    "unfolding", "in", "applying",
     // old expression
     "old", FastParser.LHS_OLD_LABEL,
     // other expressions
@@ -202,6 +202,7 @@ object Consistency {
 
   def noGhostOperations(n: Node) = !n.existsDefined {
     case u: Unfolding if !u.isPure =>
+    case a: Applying if !a.isPure =>
   }
 
   /** Returns true iff the given expression is a valid trigger. */

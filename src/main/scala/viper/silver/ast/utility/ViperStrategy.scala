@@ -168,6 +168,7 @@ object ViperStrategy {
       PredicateAccess(params, pa.predicateName)(meta._1, meta._2, meta._3)
 
     case (u: Unfolding, Seq(acc: PredicateAccessPredicate, e: Exp), meta) => Unfolding(acc, e)(meta._1, meta._2, meta._3)
+    case (a: Applying, Seq(wand: Exp, e: Exp), meta) => Applying(wand, e)(meta._1, meta._2, meta._3)
 
     case (o: Old, Seq(e: Exp), meta) => Old(e)(meta._1, meta._2, meta._3)
     case (l: LabelledOld, Seq(e: Exp), meta) => LabelledOld(e, l.oldLabel)(meta._1, meta._2, meta._3)

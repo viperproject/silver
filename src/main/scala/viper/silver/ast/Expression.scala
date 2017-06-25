@@ -348,6 +348,11 @@ case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position
   lazy val typ = body.typ
 }
 
+case class Applying(wand: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
+  //TODO: consistency checkt that wand is wand
+  lazy val typ = body.typ
+}
+
 // --- Old expressions
 
 sealed trait OldExp extends UnExp {

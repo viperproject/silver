@@ -1,5 +1,15 @@
 field f: Int
 field g: Int
+field next: Ref
+
+predicate List(x: Ref) {
+    acc(x.f) && acc(x.next) && (x.next != null ==> List(x.next))
+}
+
+function length(x: Ref): Int
+requires List(x) {
+    unfolding List(x) in (x.next == null ? 1 : 1 + length(x.next))
+}
 
 predicate pair(x: Ref) {
     acc(x.f) && acc(x.g)
@@ -38,4 +48,11 @@ requires acc(x.f) && acc(x.g) {
     package true --* pair(x)
     apply true --* pair(x)
     assert sum(x) == 3
+}
+
+method test3(x: Ref)
+requires List(x)
+ensures List(x) && length(x) == old(length(x)) {
+    package List(x) --* List(x)
+    apply List(x) --* List(x)
 }

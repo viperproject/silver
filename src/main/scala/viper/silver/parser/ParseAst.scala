@@ -673,20 +673,22 @@ case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse) extends PLocationA
           (POpApp.pRes.domain.name -> Pred)))
 }
 
-sealed trait PUnFoldingExp extends PHeapOpApp{
-  def acc: PAccPred
-  def exp: PExp
+case class PUnfolding(acc: PAccPred, exp: PExp) extends PHeapOpApp {
+  override final val opName = "unfolding"
   override val args = Seq(acc,exp)
   override val signatures : Set[PTypeSubstitution] =
     Set(Map(POpApp.pArgS(0) -> Bool,POpApp.pResS -> POpApp.pArg(1)))
 
-//  check(e.acc.perm, Perm)
-//  check(e.acc.loc, Pred)
-//  acceptNonAbstractPredicateAccess(e.acc, "abstract predicates cannot be (un)folded")
+  //  check(e.acc.perm, Perm)
+  //  check(e.acc.loc, Pred)
+  //  acceptNonAbstractPredicateAccess(e.acc, "abstract predicates cannot be (un)folded")
 }
 
-case class PUnfolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp{
-  override final val opName = "unfolding"
+case class PApplying(wand: PExp, exp: PExp) extends PHeapOpApp {
+  override val opName = "applying"
+  override val args = Seq(wand, exp)
+  override val signatures : Set[PTypeSubstitution] =
+    Set(Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1)))
 }
 
 sealed trait PBinder extends PExp{
@@ -1032,7 +1034,8 @@ object Nodes {
       case PFieldAccess(rcv, field) => Seq(rcv, field)
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
       case PCall(func, args, optType) => Seq(func) ++ args ++ (optType match { case Some(t) => Seq(t) case None => Nil})
-      case e: PUnFoldingExp => Seq(e.acc, e.exp)
+      case PUnfolding(acc, exp) => Seq(acc, exp)
+      case PApplying(wand, exp) => Seq(wand, exp)
       case PExists(vars, exp) => vars ++ Seq(exp)
       case PLabelledOld(id, e) => Seq(id, e)
       case po: POldExp => Seq(po.e)

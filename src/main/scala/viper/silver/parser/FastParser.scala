@@ -422,7 +422,7 @@ object FastParser extends PosParser {
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
     // prover hint expressions
-    "unfolding", "in", "folding",
+    "unfolding", "in", "applying",
     // old expression
     "old", LHS_OLD_LABEL,
     // other expressions
@@ -437,7 +437,7 @@ object FastParser extends PosParser {
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old
     | result | unExp
-    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding
+    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
     | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
 
@@ -470,8 +470,6 @@ object FastParser extends PosParser {
     case None => a
   }
   }
-
-  lazy val realMagicWandExp: P[PExp] = P((orExp ~ "--*".! ~ magicWandExp).map { case (a, b, c) => PBinExp(a, b, c) })
 
   lazy val implExp: P[PExp] = P(magicWandExp ~ (StringIn("==>").! ~ implExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
@@ -743,6 +741,8 @@ object FastParser extends PosParser {
   }
 
   lazy val applyWand: P[PApplyWand] = P("apply" ~/ magicWandExp).map(PApplyWand)
+
+  lazy val applying: P[PExp] = P(keyword("applying") ~/ "(" ~ magicWandExp ~")" ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
 
   lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl).rep).map {
     decls => {

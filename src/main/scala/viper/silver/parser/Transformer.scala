@@ -60,6 +60,7 @@ object Transformer {
 
 
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
+        case PApplying(wand, exp) => PApplying(go(wand), go(exp))
 
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map go, go(exp))
@@ -174,6 +175,7 @@ object Transformer {
     case (p: PCall, Seq(func: PIdnUse, args: Seq[PExp@unchecked], explicitType: Option[PType@unchecked])) => PCall(func, args, explicitType)
 
     case (p: PUnfolding, Seq(acc: PAccPred, exp: PExp)) => PUnfolding(acc, exp)
+    case (p: PApplying, Seq(wand: PExp, exp: PExp)) => PApplying(wand, exp)
 
     case (p: PExists, Seq(vars: Seq[PFormalArgDecl@unchecked], exp: PExp)) => PExists(vars, exp)
     case (p: PForall, Seq(vars: Seq[PFormalArgDecl@unchecked], triggers: Seq[PTrigger@unchecked], exp: PExp)) => PForall(vars, triggers, exp)
