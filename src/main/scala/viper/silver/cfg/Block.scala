@@ -47,7 +47,8 @@ object Block {
   */
 final class StatementBlock[S, E] private(val id: Int, val stmts: Seq[S])
   extends Block[S, E] {
-  override def elements: Seq[Either[S, E]] = stmts.map(Left(_))
+
+  override lazy val elements: Seq[Either[S, E]] = stmts.map(Left(_))
 
   override def toString: String = s"StatementBlock($id)"
 }
@@ -70,7 +71,7 @@ object StatementBlock {
   */
 final class PreconditionBlock[S, E] private(val id: Int, val pres: Seq[E])
   extends Block[S, E] {
-  override def elements: Seq[Either[S, E]] = pres.map(Right(_))
+  override lazy val elements: Seq[Either[S, E]] = pres.map(Right(_))
 
   override def toString: String = s"PreconditionBlock($id)"
 }
@@ -93,7 +94,7 @@ object PreconditionBlock {
   */
 final class PostconditionBlock[S, E] private(val id: Int, val posts: Seq[E])
   extends Block[S, E] {
-  override def elements: Seq[Either[S, E]] = posts.map(Right(_))
+  override lazy val elements: Seq[Either[S, E]] = posts.map(Right(_))
 
   override def toString: String = s"PostconditionBlock($id)"
 }
@@ -118,7 +119,7 @@ object PostconditionBlock {
   */
 final class LoopHeadBlock[S, E] private(val id: Int, val invs: Seq[E], val stmts: Seq[S])
   extends Block[S, E] {
-  override def elements: Seq[Either[S, E]] = invs.map(Right(_)) ++ stmts.map(Left(_))
+  override lazy val elements: Seq[Either[S, E]] = invs.map(Right(_)) ++ stmts.map(Left(_))
 
   override def toString: String = s"LoopHeadBlock($id)"
 }
@@ -143,7 +144,7 @@ object LoopHeadBlock {
   */
 final class ConstrainingBlock[S, E] private(val id: Int, val vars: Seq[E], val body: Cfg[S, E])
   extends Block[S, E] {
-  override def elements: Seq[Either[S, E]] = vars.map(Right(_))
+  override lazy val elements: Seq[Either[S, E]] = vars.map(Right(_))
 
   override def toString: String = s"ConstrainingBlock($id)"
 }
