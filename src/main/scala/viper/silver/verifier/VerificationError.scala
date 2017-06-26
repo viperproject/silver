@@ -404,14 +404,14 @@ object reasons {
 
   case class TerminationMeasure(offendingNode: Exp, decClause: Seq[Exp]) extends AbstractErrorReason {
     val id = "termination.measure"
-    override def readableMessage = s"Termination Measure $decClause might not decrease."
+    override def readableMessage = s"Termination Measure (${decClause.mkString(", ")}) might not decrease."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationMeasure(offendingNode.asInstanceOf[Exp], decClause)
   }
 
   case class TerminationNoBound(offendingNode: Exp, decClause: Seq[Exp]) extends AbstractErrorReason {
     val id = "termination.no.bound"
-    override def readableMessage = s"Decreases expression $decClause might not be bounded below 0."
+    override def readableMessage = s"Decreases expression (${decClause.mkString(", ")}) might not be bounded below 0."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(offendingNode.asInstanceOf[Exp], decClause)
   }
