@@ -64,12 +64,12 @@ case class GeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info
 // Equality and non-equality (defined for all types)
 case class EqCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("==") {
   override lazy val check : Seq[ConsistencyError] =
-    Seq(left, right).flatMap(Consistency.checkNoPositiveOnly) ++
+    Seq(left, right).flatMap(Consistency.checkPure) ++
     (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same type, but got ${left.typ} and ${right.typ}", left.pos)) else Seq())
 }
 case class NeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends EqualityCmp("!=") {
   override lazy val check : Seq[ConsistencyError] =
-    Seq(left, right).flatMap(Consistency.checkNoPositiveOnly) ++
+    Seq(left, right).flatMap(Consistency.checkPure) ++
     (if(left.typ != right.typ) Seq(ConsistencyError(s"expected the same type, but got ${left.typ} and ${right.typ}", left.pos)) else Seq())
 }
 
@@ -83,13 +83,13 @@ case class Minus(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoIn
 
 // Boolean expressions
 case class Or(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(OrOp) {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnly(left) ++ Consistency.checkNoPositiveOnly(right)
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(left) ++ Consistency.checkPure(right)
 }
 
 case class And(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(AndOp)
 
 case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainBinExp(ImpliesOp) {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnly(left)
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(left)
 }
 
 
@@ -184,7 +184,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
 /** Boolean negation. */
 case class Not(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainUnExp(NotOp) {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnly(exp)
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp)
 }
 
 /** Boolean literals. */
@@ -294,7 +294,7 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 /** Function application. */
 case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl], val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
   override lazy val check : Seq[ConsistencyError] =
-    args.flatMap(Consistency.checkNoPositiveOnly) ++
+    args.flatMap(Consistency.checkPure) ++
     (if(!Consistency.areAssignable(args, formalArgs))
       Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
 
@@ -313,7 +313,7 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
                         (val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl],val domainName:String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp with PossibleTrigger {
   override lazy val check : Seq[ConsistencyError] =
-    args.flatMap(Consistency.checkNoPositiveOnly) ++
+    args.flatMap(Consistency.checkPure) ++
     (if(!Consistency.areAssignable(args, formalArgs))
       Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
 
@@ -382,7 +382,7 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
 
   override lazy val check : Seq[ConsistencyError] =
     (if(!(cond isSubtype Bool)) Seq(ConsistencyError(s"Condition must be of bool type, but found ${cond.typ}", cond.pos)) else Seq()) ++
-    Consistency.checkNoPositiveOnly(cond) ++
+    Consistency.checkPure(cond) ++
     (if(thn.typ != els.typ) Seq(ConsistencyError(s"Second and third parameter types of conditional expression must match, but found ${thn.typ} and ${els.typ}", thn.pos)) else Seq())
 
   lazy val typ = thn.typ
@@ -391,7 +391,7 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
 // --- Prover hint expressions
 
 case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnly(body)
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(body)
   lazy val typ = body.typ
 }
 
@@ -425,17 +425,17 @@ sealed trait OldExp extends UnExp {
 }
 
 case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnly(exp)
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp)
 }
 case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnly(exp)
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp)
 }
 
 /** Old expression that references a particular state earlier in the program that has been given a name.
   * Evaluates expression in that state. */
 case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
   override lazy val check : Seq[ConsistencyError] =
-      Consistency.checkNoPositiveOnly(exp)
+      Consistency.checkPure(exp)
 }
 
 // --- Other expressions
@@ -504,7 +504,7 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 
 /** Existential quantification. */
 case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnlyExceptInhaleExhale(exp) ++
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp) ++
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of bool type, but found ${exp.typ}", exp.pos)) else Seq())
 }
 
@@ -514,7 +514,7 @@ case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
                   (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] =
     (if(!(body isSubtype Bool)) Seq(ConsistencyError(s"Body of forperm quantifier must be of bool type, but found ${body.typ}.", body.pos)) else Seq()) ++
-    Consistency.checkNoPositiveOnly(body) ++
+    Consistency.checkPure(body) ++
     (if(!Consistency.noPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain perm expressions.", body.pos)) else Seq()) ++
     (if(!Consistency.noForPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain nested forperm expressions.", body.pos)) else Seq())
 
@@ -535,7 +535,7 @@ case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
 /** A trigger for a universally quantified formula. */
 case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node with Positioned with Infoed {
   override lazy val check : Seq[ConsistencyError] =
-    exps.flatMap(Consistency.checkNoPositiveOnly) ++
+    exps.flatMap(Consistency.checkPure) ++
     (if(!(exps forall Consistency.validTrigger)) Seq(ConsistencyError( s"The trigger { ${exps.mkString(", ")} } is not valid.", pos)) else Seq())
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
@@ -584,7 +584,7 @@ case class ExplicitSeq(elems: Seq[Exp])(val pos: Position = NoPosition, val info
   override lazy val check : Seq[ConsistencyError] =
     (if(elems.isEmpty) Seq(ConsistencyError("Explicit sequence must be non-empty.", pos)) else Seq()) ++
     (if(!elems.tail.forall(e => e.typ == elems.head.typ)) Seq(ConsistencyError("All elements of sequence must have same type.", elems.head.pos)) else Seq()) ++
-    elems.flatMap(Consistency.checkNoPositiveOnly)
+    elems.flatMap(Consistency.checkPure)
 
   lazy val typ = SeqType(elems.head.typ)
   lazy val desugared : SeqExp = {
@@ -677,7 +677,7 @@ case class SeqUpdate(s: Exp, idx: Exp, elem: Exp)(val pos: Position = NoPosition
     (if(!s.typ.isInstanceOf[SeqType]) Seq(ConsistencyError(s"Expected sequence type but found ${s.typ}", s.pos)) else Seq()) ++
     (if(!(idx isSubtype Int)) Seq(ConsistencyError(s"Second parameter of sequence-update expression must be of Int type, but found ${idx.typ}", idx.pos)) else Seq()) ++
     (if(!(elem isSubtype s.typ.asInstanceOf[SeqType].elementType)) Seq(ConsistencyError(s"Expected type ${s.typ.asInstanceOf[SeqType].elementType} but found ${elem.typ}", elem.pos)) else Seq()) ++
-    Consistency.checkNoPositiveOnly(elem)
+    Consistency.checkPure(elem)
 
   lazy val desugaredAssumingIndexInRange : SeqExp = {
     SeqAppend(SeqTake(s,idx)(pos, info, errT),SeqAppend(ExplicitSeq(List(elem))(pos, info, errT),SeqDrop(s,Add(idx,IntLit(1)(pos, info,errT))(pos, info, errT))(pos, info, errT))(pos, info, errT))(pos, info, errT)
@@ -732,7 +732,7 @@ case class ExplicitSet(elems: Seq[Exp])(val pos: Position = NoPosition, val info
   override lazy val check : Seq[ConsistencyError] =
     (if(elems.isEmpty) Seq(ConsistencyError("Explicit set must be non-empty.", pos)) else Seq()) ++
     (if(!elems.tail.forall(e => e.typ == elems.head.typ)) Seq(ConsistencyError("All elements of set must have same type.", elems.head.pos)) else Seq()) ++
-    elems.flatMap(Consistency.checkNoPositiveOnly)
+    elems.flatMap(Consistency.checkPure)
   lazy val typ = SetType(elems.head.typ)
   def getArgs = elems
   def withArgs(newArgs: Seq[Exp]) = ExplicitSet(newArgs)(pos, info, errT)
@@ -752,7 +752,7 @@ case class ExplicitMultiset(elems: Seq[Exp])(val pos: Position = NoPosition, val
   override lazy val check : Seq[ConsistencyError] =
     (if(elems.isEmpty) Seq(ConsistencyError("Explicit multiset must be non-empty.", pos)) else Seq()) ++
     (if(!elems.tail.forall(e => e.typ == elems.head.typ)) Seq(ConsistencyError("All elements of multiset must have same type.", elems.head.pos)) else Seq()) ++
-    elems.flatMap(Consistency.checkNoPositiveOnly)
+    elems.flatMap(Consistency.checkPure)
   lazy val typ = MultisetType(elems.head.typ)
   def getArgs = elems
   def withArgs(newArgs: Seq[Exp]) = ExplicitMultiset(newArgs)(pos, info, errT)

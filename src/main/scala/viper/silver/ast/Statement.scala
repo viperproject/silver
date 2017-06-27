@@ -77,7 +77,7 @@ object AbstractAssign {
 case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractAssign{
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    Consistency.checkNoPositiveOnly(rhs) ++
+    Consistency.checkPure(rhs) ++
     (if(!Consistency.isAssignable(rhs, lhs)) Seq(ConsistencyError(s"Right-hand side $rhs is not assignable to left-hand side $lhs.", lhs.pos)) else Seq())
 }
 
@@ -85,7 +85,7 @@ case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPositio
 case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractAssign{
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    Consistency.checkNoPositiveOnly(rhs) ++
+    Consistency.checkPure(rhs) ++
     (if(!Consistency.isAssignable(rhs, lhs)) Seq(ConsistencyError(s"Right-hand side $rhs is not assignable to left-hand side $lhs.", lhs.pos)) else Seq())
 }
 
@@ -108,7 +108,7 @@ case class MethodCall(methodName: String, args: Seq[Exp], targets: Seq[LocalVar]
       s :+= ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)
     if (!Consistency.noDuplicates(targets))
       s :+= ConsistencyError("Targets are not allowed to have duplicates", targets.head.pos)
-    s ++= args.flatMap(Consistency.checkNoPositiveOnly)
+    s ++= args.flatMap(Consistency.checkPure)
     s
   }
 }
@@ -191,7 +191,7 @@ case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = 
 
 /** An if control statement. */
 case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkNoPositiveOnly(cond) ++
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(cond) ++
     (if(!(cond isSubtype Bool)) Seq(ConsistencyError(s"If condition must be of type Bool, but found ${cond.typ}", cond.pos)) else Seq()) ++
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq())
 }
@@ -202,7 +202,7 @@ case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stm
   extends Stmt {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    Consistency.checkNoPositiveOnly(cond) ++
+    Consistency.checkPure(cond) ++
     invs.flatMap(Consistency.checkNonPostContract) ++
     (if (!(cond isSubtype Bool)) Seq(ConsistencyError(s"While loop condition must be of type Bool, but found ${cond.typ}", cond.pos)) else Seq()) ++
     invs.flatMap(Consistency.checkNoPermForpermExceptInhaleExhale)

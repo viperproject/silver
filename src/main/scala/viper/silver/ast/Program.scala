@@ -306,7 +306,7 @@ case class DomainAxiom(name: String, exp: Exp)
     (if(!Consistency.noOld(exp)) Seq(ConsistencyError("Axioms can never contain old expressions.", exp.pos)) else Seq()) ++
     (if(!Consistency.noAccessLocation(exp)) Seq(ConsistencyError("Axioms can never contain access locations.", exp.pos)) else Seq()) ++
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError("Axioms must be of bool type", exp.pos)) else Seq()) ++
-    Consistency.checkNoPositiveOnly(exp)
+    Consistency.checkPure(exp)
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)

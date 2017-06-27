@@ -1,5 +1,4 @@
 method test()
 {
-  //:: ExpectedOutput(consistency.error)
   assert [false, true] || [true, false]
 }

@@ -129,39 +129,14 @@ object Consistency {
   def nullValue[T](a: T, b: T) = if (a != null) a else b
 
   /**
-   * Checks that this boolean expression contains no subexpressions that can only appear in positive positions (i.e. in
-   * conjuncts or on the right side of implications or conditional expressions) only, i.e. no access predicates and
-   * no InhaleExhaleExp.
+   * Checks that this boolean expression is pure i.e. it contains no magic wands, access predicates or ghost operations.
    */
-  def checkNoPositiveOnly(e: Exp): Seq[ConsistencyError] = {
-    if(!hasNoPositiveOnly(e)){
+  def checkPure(e: Exp): Seq[ConsistencyError] = {
+    if(!e.isPure){
       Seq(ConsistencyError( s"$e is non pure and appears where only pure expressions are allowed.", e.pos))
     }else{
       Seq()
     }
-  }
-
-  /**
-   * Does this boolean expression contain no subexpressions that can appear in positive positions only?
- *
-   * @param exceptInhaleExhale Are inhale-exhale expressions possible?
-   *                           Default: false.
-   */
-  def hasNoPositiveOnly(e: Exp, exceptInhaleExhale: Boolean = false): Boolean = e match {
-    case _: AccessPredicate => false
-    case InhaleExhaleExp(inhale, exhale) =>
-      exceptInhaleExhale && hasNoPositiveOnly(inhale, exceptInhaleExhale) && hasNoPositiveOnly(exhale, exceptInhaleExhale)
-    case And(left, right) =>
-      hasNoPositiveOnly(left, exceptInhaleExhale) && hasNoPositiveOnly(right, exceptInhaleExhale)
-    case Implies(_, right) =>
-      // The left side is checked during creation of the Implies expression.
-      hasNoPositiveOnly(right, exceptInhaleExhale)
-    case _ => true // All other cases are checked during creation of the expression.
-  }
-
-  /** This is like `checkNoPositiveOnly`, except that inhale-exhale expressions are fine. */
-  def checkNoPositiveOnlyExceptInhaleExhale(e: Exp): Seq[ConsistencyError] = {
-    if(!(hasNoPositiveOnly(e, true))) Seq(ConsistencyError(s"$e is non pure and appears where only pure expressions are allowed.", e.pos)) else Seq()
   }
 
   /** Checks that no perm or forperm expression occurs in a node, except inside inhale/exhale statements */
@@ -184,7 +159,7 @@ object Consistency {
     if(!noResult(e)) s :+= ConsistencyError( "Result expressions are not allowed in functions bodies.", e.pos)
     if(!noForPerm(e)) s :+= ConsistencyError( "Function bodies are not allowed to contain forperm expressions", e.pos)
     if(!noPerm(e)) s :+= ConsistencyError( "Function bodies are not allowed to contain perm expressions", e.pos)
-    s ++= checkNoPositiveOnly(e)
+    s ++= checkPure(e)
     s
   }
   
