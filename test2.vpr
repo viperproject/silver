@@ -1,0 +1,77 @@
+import "decreaseOrder/decrease_order.vpr"
+
+function fun(r: Ref): Int
+  requires acc(List(r))
+  
+  //decreases (unfolding acc(List(r), write) in r.f)
+{
+  unfolding List(r) in (r.next == null ? 0 : fun(r.next))
+}
+
+method fun_termination_proof(r: Ref)
+  requires List(r)
+  
+{
+  label pre_call
+  //unfold acc(List(r), write)
+
+  unfold List(r)
+  if(r.next == null){
+     
+  }else{
+    
+     //assert r.next != null
+     //assert List(r.next)
+
+     assert decreasing(unfolding List(r.next) in r.next.f, unfolding List(r) in r.f)
+  
+    
+     //assert List(r)
+     //assert old(decreasing((unfolding List(r.next) in r.next.f), (unfolding List(r) in r.f)))
+     //--assert decreasing(unfolding List(r.next) in r.next.f, old(unfolding List(r) in r.f))
+     
+     //assert (decreasing(r.next.f, (r.f)))
+  }
+  fold List(r) 
+  //assert decreasing((unfolding List(r.next) in r.next.f), (unfolding List(r) in r.f))
+  
+  //fold acc(List(r), write) 
+}
+
+predicate List(r:Ref) {
+    // && r.f >= 0
+    acc(r.f) && acc(r.next) && (r.next != null ==> List(r.next)) && (r.next != null ==> unfolding List(r.next) in r.f > r.next.f) && r.f > 0// && acc(r.f) && acc(r.next.f)
+}
+
+field f: Int
+field k:Int
+
+field next: Ref
+
+method fun2_termination_proof(r: Ref)
+  requires acc(List(r), write)
+{
+  unfold acc(List(r), write)
+  if (r.next == null) {
+  } else {
+    // BoundedCheck
+    assert bounded((unfolding acc(List(r), write) in r.f))
+    // DecreasingCheck
+    assert decreasing((unfolding acc(List(r), write) in r.f), old((unfolding acc(List(r), write) in r.f)))
+  }
+  fold acc(List(r), write)
+}
+
+method fun2_termination_proof2(r: Ref)
+  requires acc(List(r), write)
+{
+  unfold acc(List(r), write)
+  if (r.next == null) {
+  } else {
+    // BoundedCheck
+    assert bounded((unfolding acc(List(r.next), write) in r.next.f))
+    // DecreasingCheck
+    assert decreasing((unfolding acc(List(r.next), write) in r.next.f), old((unfolding acc(List(r), write) in r.f)))
+  }
+  fold acc(List(r), write)
+}

@@ -535,12 +535,13 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           case None => nil
           case Some(exp) => braces(nest(defaultIndent, line <> show(exp)) <> line)
         })
-      case Function(name, formalArgs, typ, pres, posts, optBody) =>
+      case Function(name, formalArgs, typ, pres, posts, decs, optBody) =>
         text("function") <+> name <> parens(showVars(formalArgs)) <>
           ":" <+> show(typ) <>
           nest(defaultIndent,
             showContracts("requires", pres) <>
-            showContracts("ensures", posts)
+            showContracts("ensures", posts) <>
+            showContracts("decreases", decs)
           ) <>
           line <>
           (optBody match {

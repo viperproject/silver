@@ -1,0 +1,15 @@
+import "decreaseOrder/decrease_order.vpr"
+
+function fun1(x: Int): Int
+decreases x
+{
+  x > -10 ? fun1(x-1) : 6
+}
+
+function fun2(x: Int): Int
+decreases x
+{
+  x > 5 ? (
+    x > 10 ? fun2(x-2) : fun2(x-1))
+  : 1
+}

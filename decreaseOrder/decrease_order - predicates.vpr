@@ -1,0 +1,47 @@
+
+field value: Int
+field next: Ref
+
+predicate list(r : Ref)
+{
+    r != null ==> acc(r.value) && acc(r.next) && list(r.next)
+}
+
+predicate decrList(r1:Ref, r2:Ref)
+{
+    true
+    //list(r1) ==> list(r2)
+}
+
+predicate subList(r1:Ref, r2:Ref) //r1 in r2
+{
+    r2 != null && (r2.next == r1  || subList(r1, r2.next))
+}
+
+
+domain TerminationOrder[T]{
+    function decreases(arg1:T, arg2:T) : Bool
+}
+
+//list(x.next) << list(x)
+
+//x.next in 
+domain PredicatesTermOrder[P]{
+
+    axiom pred_ax{
+
+        forall r1: Ref, r2:Ref ::
+        decreases(r1,r2)
+        //unfolding list(r1) in (list(r1) ==> list(r2)) ==> decreases(r1, r2)
+        //unfolding list(r1) in (list(r1) ==> acc(r)) ==> decreases(r1, r2)
+
+
+        
+    }
+}
+
+function list_sum(x: Ref): Int
+  requires list(x)
+{
+  unfolding list(x) in x == null ? 0 : x.value + list_sum(x.next)
+}

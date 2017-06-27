@@ -1,0 +1,11 @@
+import "decreaseOrder/decrease_order.vpr"
+
+function f(x : Int) : Int
+ {
+     x < 5 ? g(x-1) : g(x+2)
+ }
+
+function g(y : Int) : Int
+ {
+      y < 5 ? f(y-3) : f(y+4)
+ }
