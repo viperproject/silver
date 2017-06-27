@@ -813,6 +813,8 @@ object FastParser extends PosParser {
 
   lazy val dec: P[Seq[PExp]] = P("decreases" ~/ decCl ~ ";".?) //pege
 
+  //lazy val dec2: P[Seq[Char]] = P("decreases" ~/ "*" ~ ";".?) //pege
+
   lazy val decCl: P[Seq[PExp]] = P(exp.rep(sep = ","))
 
   lazy val predicateDecl: P[PPredicate] = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }

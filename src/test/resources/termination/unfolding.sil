@@ -10,3 +10,6 @@ requires List(r)
 predicate List(r:Ref) {
     acc(r.f) && acc(r.next) && (r.next != null ==> List(r.next))// && (r.next != null ==> unfolding List(r.next) in r.f > r.next.f) && r.f > 0
 }
+
+field next : Ref
+field f : Int

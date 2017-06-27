@@ -1,4 +1,4 @@
-import "./decrease_order.vpr" //verifies
+import "decrease_order.vpr" //verifies
 //import "decreaseOrder/decrease_order_size.vpr" //cant verify
 
 /////////////////////////////////////////////////////////////////////////
@@ -49,26 +49,26 @@ requires n >= 0
 }
 
 function ackTuple(t: Tuple2[Int,Int]):Int
-requires first(t) >= 0
-requires second(t) >= 0
+requires first2(t) >= 0
+requires second2(t) >= 0
 //decreases Tuple2(m,n)
 {
-  first(t)==0 ? second(t)+1 :
-    second(t)==0 ?
-      ackTuple(tuple2Conn(first(t)-1,1)) :
-      ackTuple(tuple2Conn(first(t),second(t)-1)) 
+  first2(t)==0 ? second2(t)+1 :
+    second2(t)==0 ?
+      ackTuple(tuple2Conn(first2(t)-1,1)) :
+      ackTuple(tuple2Conn(first2(t),second2(t)-1)) 
 }
 
 method ackTuple_termination_proof(t: Tuple2[Int,Int])
-requires first(t) >= 0
-requires second(t) >= 0
+requires first2(t) >= 0
+requires second2(t) >= 0
 { 
-    if (first(t)==0){}
-    elseif(second(t)==0){
-        assert bounded(tuple2Conn(first(t)-1,1))
-        assert decreasing(tuple2Conn(first(t)-1,1),t)
+    if (first2(t)==0){}
+    elseif(second2(t)==0){
+        assert bounded(tuple2Conn(first2(t)-1,1))
+        assert decreasing(tuple2Conn(first2(t)-1,1),t)
     }else{
-        assert bounded(tuple2Conn(first(t),second(t)-1))
-        assert decreasing(tuple2Conn(first(t),second(t)-1),t)
+        assert bounded(tuple2Conn(first2(t),second2(t)-1))
+        assert decreasing(tuple2Conn(first2(t),second2(t)-1),t)
     }
 }

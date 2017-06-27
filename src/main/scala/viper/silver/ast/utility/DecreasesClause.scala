@@ -15,46 +15,27 @@ import scala.collection.mutable
 /** Utility methods for DecreaseClauses. */
 object DecreasesClause {
 
-  //Delete decClause
-  def rewriteForAll(funcs: Seq[Function]): Seq[Function] = {
-
-    var functions = funcs map (deleteDec(_))
-    functions
-  }
-
-  private def deleteDec(f: Function) = f match {
-    case Function(_, _, _, _, _, decs, _) =>
-      //f.decs = decs map dec
-      f
-  }
-
   //TODO
   // multiple function calls -> multiple assertions
-  def addMethod(funcs: Seq[Function], members: mutable.HashMap[String, Node]): Seq[Method] = {
-    val decreasingFunc = members.get("decreasing").get.asInstanceOf[DomainFunc]
-    val boundedFunc = members.get("bounded").get.asInstanceOf[DomainFunc]
-    val methods = funcs map (addTerminationProof(_, decreasingFunc, boundedFunc, members))
+  def addMethod(funcs: Seq[Function], decreasingFunc : DomainFunc, boundedFunc : DomainFunc, findFnc : (String) => Function): Seq[Method] = {
+    val methods = funcs map (addTerminationProof(_, decreasingFunc, boundedFunc, findFnc))
     methods
   }
 
-  private def addTerminationProof(func: Function, decreasingFunc: DomainFunc, boundedFunc: DomainFunc, members: mutable.HashMap[String, Node]): Method = {
+  private def addTerminationProof(func: Function, decreasingFunc: DomainFunc, boundedFunc: DomainFunc, findFnc: (String) => Function): Method = {
     println("DecClauses: ")
     println(func.decs)
-    var m = Method(func.name + "_termination_proof", func.formalArgs, Seq(), func.pres, func.posts, Seq(), Statements.EmptyStmt)(NoPosition, func.info, func.errT)
+    val m = Method(func.name + "_termination_proof", func.formalArgs, Seq(), func.pres, func.posts, Seq(), Statements.EmptyStmt)(NoPosition, func.info, func.errT)
 
-    val callerArgs = func.formalArgs map (arg => arg match {
-      case l: LocalVarDecl => LocalVar(l.name)(l.typ)//, l.pos, l.info, l.errT)
-      case a => a
-    })
-
-    m.body = stmt(func.body.get, (callerArgs.asInstanceOf[Seq[Exp]] zip callerArgs.asInstanceOf[Seq[Exp]]).toMap, decreasingFunc, boundedFunc, func, Set(), members)
+    m.body = rewriteExpAsStmts(func.body.get, decreasingFunc, boundedFunc, func, Set(), findFnc)
     m
   }
 
-  def stmt(b: Exp, callerArgs: Map[Exp, Exp], decreasingFunc: DomainFunc, boundedFunc: DomainFunc, func: Function, alreadyChecked: Set[String], members: mutable.HashMap[String, Node]): Stmt = {
+  def rewriteExpAsStmts(body: Exp, decreasingFunc: DomainFunc, boundedFunc: DomainFunc, func: Function, alreadyChecked: Set[String], findFnc: (String) => Function): Stmt = {
 
     //Replace all the variables with the called Arguments (Used especially i mutual recursion)
-    val body = b.replace(callerArgs)
+    //TODO replace is only right after a function call -> do it there directly
+    //val body = b.replace(callerArgs)
 
     //TODO replace
     body match {
@@ -62,13 +43,15 @@ object DecreasesClause {
       case InhaleExhaleExp(in, ex) => Statements.EmptyStmt
       case _: PermExp => Statements.EmptyStmt
       case _: LocationAccess => Statements.EmptyStmt
-      case CondExp(cond, thn, els) => If(cond, stmt(thn, callerArgs, decreasingFunc, boundedFunc, func, alreadyChecked, members), stmt(els, callerArgs, decreasingFunc, boundedFunc, func, alreadyChecked, members))(body.pos)
-      case Unfolding(acc, body) =>
-        val s1 = Unfold(acc)(body.pos)
-        val s2 = stmt(body, callerArgs, decreasingFunc, boundedFunc, func, alreadyChecked, members)
-        val s3 = Fold(acc)(body.pos)
-        val seq = Seq(s1, s2, s3)
-        Seqn(seq)(body.pos)
+      case CondExp(cond, thn, els) =>
+        val s1 = rewriteExpAsStmts(cond, decreasingFunc, boundedFunc, func, alreadyChecked, findFnc)
+        val s2 = If(cond, rewriteExpAsStmts(thn, decreasingFunc, boundedFunc, func, alreadyChecked, findFnc), rewriteExpAsStmts(els, decreasingFunc, boundedFunc, func, alreadyChecked, findFnc))(body.pos)
+        Seqn(Seq(s1, s2))(body.pos)
+      case Unfolding(acc, unfBody) =>
+        val s1 = Unfold(acc)(unfBody.pos)
+        val s2 = rewriteExpAsStmts(unfBody, decreasingFunc, boundedFunc, func, alreadyChecked, findFnc)
+        val s3 = Fold(acc)(unfBody.pos)
+        Seqn(Seq(s1, s2, s3))(unfBody.pos)
       case _: GhostOperation => Statements.EmptyStmt
       case Let(variable, exp, body) => Statements.EmptyStmt
       case _: QuantifiedExp => Statements.EmptyStmt
@@ -95,11 +78,21 @@ object DecreasesClause {
         //method searchFunctionCall(FuncName : String, args) : //maybe not all args
         // (new arg, conditions) //errors?
 
-        val decClause = func.decs
+        var decClause = func.decs
+
+        //If no decreasing argument is given, try to proof termination by decreasing the first argument
+        if(decClause.isEmpty){
+          decClause = Seq(LocalVar(func.formalArgs.head.name)(func.formalArgs.head.typ))
+        }
+
+        val calleeArgs = callee.getArgs
+        val termCheckOfArgs = calleeArgs map (rewriteExpAsStmts(_, decreasingFunc, boundedFunc, func, alreadyChecked, findFnc))
+
+
 
         //Assume only one decreasesClause
         //TODO multiples decreasesClauses
-        if (decClause.size >= 1) { //There is a decrease Clause //TODO no decClause size=0
+        if (decClause.nonEmpty) { //There is a decrease Clause //TODO no decClause size=0
 
           val paramTypesDecr = decreasingFunc.formalArgs map (_.typ)
           val argTypeVarsDecr = paramTypesDecr.flatMap(p => p.typeVariables)
@@ -109,45 +102,44 @@ object DecreasesClause {
 
           //var mapDecr = Map(argTypeVarsDecr.head -> decClause.head.typ)
 
-          val calleeArgs = callee.getArgs
-
-          //Search for VarNames in the decreasing Clausure
-          val decreasingVarName = decClause map (_.deepCollect {
-            case a: AbstractLocalVar => a
-          }.toSet) //TODO toSet? but remain ordering
-
-          //Cast arguments to LocalVar
-
-
           ///////
 
+          //Called Function is not the original function (no recursion so far)
           if (callee.funcname != func.name) {
 
-            if(!alreadyChecked.contains(callee.funcname)) {
-              val newFunc = members.get(callee.funcname).get.asInstanceOf[Function]
+            if (!alreadyChecked.contains(callee.funcname)) {
+
+              val newFunc = findFnc(callee.funcname)
               //val m3 = searchMutualRecursion(newFunc, newFunc.body.get, calleeArgs, func.name, TrueLit()(NoPosition), members)
               //val newArgs = callee.getArgs map (_.replace((callee.formalArgs zip callerArgs.values).toMap))
 
-              val newFormalArgs = callee.formalArgs map (arg => arg match {
+              val newFormalArgs = callee.formalArgs map {
                 case l: LocalVarDecl => LocalVar(l.name)(l.typ) //, l.pos, l.info, l.errT)
                 case a => a
-              })
+              }
 
-              stmt(newFunc.body.get, (newFormalArgs.asInstanceOf[Seq[Exp]] zip calleeArgs).toMap, decreasingFunc, boundedFunc, func, alreadyChecked ++ Set(callee.funcname), members)
-            } else{
-              Statements.EmptyStmt
+              var body = newFunc.body.get
+              //body = body.replace((newFormalArgs.asInstanceOf[Seq[Exp]] zip calleeArgs).toMap)
+              body = body.replace((newFormalArgs zip calleeArgs).toMap)
+
+
+              val termCheckOfFuncBody = rewriteExpAsStmts(body, decreasingFunc, boundedFunc, func, alreadyChecked ++ Set(callee.funcname), findFnc)
+              Seqn(termCheckOfArgs ++ Seq(termCheckOfFuncBody))(body.pos)
+            } else {
+              Seqn(termCheckOfArgs)(body.pos)
             }
 
-            } else {
+          //Called Function is the same as the original one => recursion detected
+          } else {
 
-            val formalArgs = func.formalArgs map (arg => arg match {
+            val formalArgs = func.formalArgs map {
               case l: LocalVarDecl => LocalVar(l.name)(l.typ) //, l.pos, l.info, l.errT)
               case a => a
-            })
+            }
 
             //Replace in the decreaseClause every argument with the correct call
-            var smallerExpression = decClause map (_.replace((formalArgs zip calleeArgs).toMap))
-            val biggerExpression = decClause map (addOldIfNecessary(_))
+            val smallerExpression = decClause map (_.replace((formalArgs zip calleeArgs).toMap))
+            val biggerExpression = decClause map addOldIfNecessary
 
             val pos = body.pos
             val infoBound = SimpleInfo(Seq("BoundedCheck"))
@@ -160,7 +152,7 @@ object DecreasesClause {
             })
 
             val errTDecr = ErrTrafo({ case AssertFailed(_, r) => TerminationFailed(callee, r match {
-              case k: AssertionFalse => TerminationMeasure(decClause.head, decClause) //TODO head is not correct
+              case _: AssertionFalse => TerminationMeasure(decClause.head, decClause) //TODO head is not correct
               case k => k
             })
             })
@@ -180,17 +172,17 @@ object DecreasesClause {
             }
 
             val boundedAss = Assert(buildBoundTree(boundFunc))(pos, infoBound, errTBound)
-            val decreaseAss = Assert(buildDecTree(decrFunc, true))(pos, infoDecr, errTDecr) //TODO mapDecr
+            val decreaseAss = Assert(buildDecTree(decrFunc, conj = true))(pos, infoDecr, errTDecr) //TODO mapDecr
 
-            Seqn(Seq(boundedAss, decreaseAss))(pos) //TODO Position?
+            Seqn(termCheckOfArgs ++ Seq(boundedAss, decreaseAss))(pos) //TODO Position?
           }
         } else { //No DecClause
           println("TODO") //TODO should not be called at all / dont create additional method
-          Statements.EmptyStmt
+          Seqn(termCheckOfArgs)(body.pos)
         }
 
-      case b: BinExp => Seqn(Seq(stmt(b.left, callerArgs, decreasingFunc, boundedFunc, func, alreadyChecked, members), stmt(b.right, callerArgs, decreasingFunc, boundedFunc, func, alreadyChecked, members)))(body.pos)
-      case u: UnExp => stmt(u.exp, callerArgs, decreasingFunc, boundedFunc, func, alreadyChecked, members)
+      case b: BinExp => Seqn(Seq(rewriteExpAsStmts(b.left, decreasingFunc, boundedFunc, func, alreadyChecked, findFnc), rewriteExpAsStmts(b.right, decreasingFunc, boundedFunc, func, alreadyChecked, findFnc)))(body.pos)
+      case u: UnExp => rewriteExpAsStmts(u.exp, decreasingFunc, boundedFunc, func, alreadyChecked, findFnc)
       case _: Lhs => Statements.EmptyStmt
       case k: ForbiddenInTrigger => k match {
         case CondExp(cond, thn, els) => Statements.EmptyStmt
@@ -205,159 +197,6 @@ object DecreasesClause {
     }
   }
 
-  def searchVarName(decClause: Exp): Seq[LocalVarDecl] = {
-    decClause match {
-      case a: AbstractLocalVar => Seq(LocalVarDecl(a.name, a.typ)(a.pos, a.info))
-      case e: BinExp => searchVarName(e.left) ++ searchVarName(e.right)
-      case e: UnExp => searchVarName(e.exp)
-      case ap: AccessPredicate => ap match {
-        case FieldAccessPredicate(loc, perm) => searchVarName(ap.loc)
-        case PredicateAccessPredicate(loc, perm) => searchVarName(ap.loc)
-      } //a.subExps a.whenExhaling TODO
-      //    case InhaleExhaleExp(in, ex) =>
-      //    case _: PermExp =>
-      case la: LocationAccess => la match {
-        case FieldAccess(rcv, field) => searchVarName(rcv)
-        case PredicateAccess(args, predicateName) =>
-          //TODO implement better
-          var s = Seq()
-          args.foreach(arg => s ++ searchVarName(arg))
-          s
-      }
-      //    case CondExp(cond, thn, els) =>
-      case Unfolding(acc, body) => searchVarName(acc) ++ searchVarName(body)
-      //    case _: GhostOperation =>
-      //    case Let(variable, exp, body) =>
-      //    case _: QuantifiedExp =>
-      //    case ForPerm(variable, accessList, body) =>
-      //case s: SeqExp => s.
-      //    case _: SetExp =>
-      //    case _: MultisetExp =>
-      //    case _: Literal =>
-      case pt: PossibleTrigger => pt match {
-        case FuncApp(funcname, args) => (args map (a => searchVarName(a))).flatten
-        case DomainFuncApp(funcname, args, typVarMap) => (args map (a => searchVarName(a))).flatten
-        case s: SeqExp =>
-          s match {
-            case _: EmptySeq => Seq()
-            case ExplicitSeq(elems) => (elems map (e => searchVarName(e))).flatten
-            case RangeSeq(low, high) => searchVarName(low) ++ searchVarName(high)
-            case SeqAppend(left, right) => searchVarName(left) ++ searchVarName(right)
-            case SeqIndex(s, idx) => searchVarName(s) ++ searchVarName(idx)
-            case SeqTake(s, n) => searchVarName(s) ++ searchVarName(n)
-            case SeqDrop(s, n) => searchVarName(s) ++ searchVarName(n)
-            case SeqContains(elem, s) => searchVarName(elem) ++ searchVarName(s)
-            case SeqUpdate(s, idx, elem) => searchVarName(s) ++ searchVarName(idx) ++ searchVarName(elem)
-            case SeqLength(s) => searchVarName(s)
-          }
-        case set: SetExp => set match {
-          case _: AnySetExp => throw new Exception("TODO - AnySetExpr")
-          case EmptySet(elemTyp) => Seq()
-          case ExplicitSet(elems) => (elems map (e => searchVarName(e))).flatten
-        }
-        case ms: MultisetExp => ms match {
-          case _: AnySetExp => throw new Exception("TODO - AnySetExpr")
-          case EmptyMultiset(elemTyp) => Seq()
-          case ExplicitMultiset(elems) => (elems map (e => searchVarName(e))).flatten
-        }
-      }
-      //    case _: ForbiddenInTrigger =>
-      //    case _: FuncLikeApp =>
-      //case lhs: Lhs => lhs match {
-      //case FieldAccess(rcv, field) => searchVarName(rcv)
-      //case LocalVar(name) => Seq(LocalVarDecl(a.name, a.typ)(a.pos, a.info))
-      //}
-      case _ => Seq()
-    }
-  }
-
-  def rewriteExpr(expr: Exp, newExpr: Map[String, Exp]): Exp = {
-    expr match {
-      case k: AbstractLocalVar =>
-        newExpr(k.name)
-      case binary: BinExp =>
-        binary match {
-          case e: Add => Add(rewriteExpr(e.left, newExpr), rewriteExpr(e.right, newExpr))(binary.pos)
-          case e: Sub => Sub(rewriteExpr(e.left, newExpr), rewriteExpr(e.right, newExpr))(binary.pos)
-          case e: Mul => Mul(rewriteExpr(e.left, newExpr), rewriteExpr(e.right, newExpr))(binary.pos)
-          case e: Div => Div(rewriteExpr(e.left, newExpr), rewriteExpr(e.right, newExpr))(binary.pos)
-          case e: Mod => Mod(rewriteExpr(e.left, newExpr), rewriteExpr(e.right, newExpr))(binary.pos)
-        }
-      case unary: UnExp =>
-        unary match {
-          case e: Minus => Minus(rewriteExpr(e.exp, newExpr))(unary.pos)
-          //case PermMinus(exp) =>
-        }
-      case a: AccessPredicate => a match {
-        case FieldAccessPredicate(loc, perm) => FieldAccessPredicate(loc, rewriteExpr(perm, newExpr))(a.pos)
-        case PredicateAccessPredicate(loc, perm) =>
-          val predAcc = rewriteExpr(loc, newExpr).asInstanceOf[PredicateAccess]
-          PredicateAccessPredicate(predAcc, perm)(a.pos)
-      }
-      //    case InhaleExhaleExp(in, ex) =>
-      //    case _: PermExp =>
-      case la: LocationAccess => la match {
-        case FieldAccess(rcv, field) => FieldAccess(rewriteExpr(rcv, newExpr), field)(la.pos)
-        case PredicateAccess(args, predicateName) =>
-          val arg = args map (e => rewriteExpr(e, newExpr))
-          PredicateAccess(arg, predicateName)(la.pos, la.info, la.errT) //TODO why info and err?
-      }
-      //    case CondExp(cond, thn, els) =>
-      case u: Unfolding =>
-
-        var body = rewriteExpr(u.body, newExpr)
-        var pred = rewriteExpr(u.acc, newExpr).asInstanceOf[PredicateAccessPredicate]
-        Unfolding(pred, body)(u.pos)
-      //    case _: GhostOperation =>
-      //    case Let(variable, exp, body) =>
-      //    case _: QuantifiedExp =>
-      //    case ForPerm(variable, accessList, body) =>
-      //    case _: AbstractLocalVar =>
-      //    case _: SeqExp =>
-      //    case _: SetExp =>
-      //    case _: MultisetExp =>
-      //    case _: Literal =>
-      case pt: PossibleTrigger => pt match {
-        case fa: FuncApp =>
-          val arg = fa.args map (e => rewriteExpr(e, newExpr))
-          FuncApp(fa.funcname, arg)(fa.pos, fa.info, fa.typ, fa.formalArgs, fa.errT)
-        case dfa: DomainFuncApp =>
-          val arg = dfa.args map (e => rewriteExpr(e, newExpr))
-          DomainFuncApp(dfa.funcname, arg, dfa.typVarMap)(dfa.pos, dfa.info, dfa.typ, dfa.formalArgs, dfa.domainName, dfa.errT)
-        case seq: SeqExp => seq match {
-          case EmptySeq(elemTyp) => EmptySeq(elemTyp)(seq.pos)
-          case ExplicitSeq(elems) => ExplicitSeq(elems map (e => rewriteExpr(e, newExpr)))(seq.pos)
-          case RangeSeq(low, high) => RangeSeq(rewriteExpr(low, newExpr), rewriteExpr(high, newExpr))(seq.pos)
-          case SeqAppend(left, right) => SeqAppend(rewriteExpr(left, newExpr), rewriteExpr(right, newExpr))(seq.pos)
-          case SeqIndex(s, idx) => SeqIndex(rewriteExpr(s, newExpr), rewriteExpr(idx, newExpr))(seq.pos)
-          case SeqTake(s, n) => SeqTake(rewriteExpr(s, newExpr), rewriteExpr(n, newExpr))(seq.pos)
-          case SeqDrop(s, n) => SeqDrop(rewriteExpr(s, newExpr), rewriteExpr(n, newExpr))(seq.pos)
-          case SeqContains(elem, s) => SeqContains(rewriteExpr(elem, newExpr), rewriteExpr(s, newExpr))(seq.pos)
-          case SeqUpdate(s, idx, elem) => SeqUpdate(rewriteExpr(s, newExpr), rewriteExpr(idx, newExpr), rewriteExpr(elem, newExpr))(seq.pos)
-          case SeqLength(s) => SeqLength(rewriteExpr(s, newExpr))(seq.pos)
-        }
-        case set: SetExp => set match {
-          case a: AnySetExp => a
-          case EmptySet(elemTyp) => EmptySet(elemTyp)(set.pos)
-          case ExplicitSet(elems) => ExplicitSet(elems map (e => rewriteExpr(e, newExpr)))(set.pos)
-        }
-        case mSet: MultisetExp => mSet match {
-          case a: AnySetExp => a
-          case EmptyMultiset(elemTyp) => EmptyMultiset(elemTyp)(mSet.pos)
-          case ExplicitMultiset(elems) => ExplicitMultiset(elems map (e => rewriteExpr(e, newExpr)))(mSet.pos)
-        }
-
-
-      }
-      //    case _: ForbiddenInTrigger =>
-      //    case _: FuncLikeApp =>
-      //    case _: BinExp =>
-      //    case _: UnExp =>
-      //    case _: Lhs =>
-      case default => default
-    }
-  }
-
   def addOldIfNecessary(head: Exp): Exp = {
     head match {
       case unfold: Unfolding => Old(unfold)(unfold.pos)
@@ -365,16 +204,15 @@ object DecreasesClause {
     }
   }
 
-
   //conjuction = true => Or
   //conjuction = false => And
   def buildDecTree(decrFuncS: Seq[Exp], conj: Boolean): Exp = {
     if (decrFuncS.size == 1)
       decrFuncS.head
     else if (conj)
-      Or(decrFuncS.head, buildDecTree(decrFuncS.tail, false))(decrFuncS.head.pos)
+      Or(decrFuncS.head, buildDecTree(decrFuncS.tail, conj = false))(decrFuncS.head.pos)
     else
-      And(decrFuncS.head, buildDecTree(decrFuncS.tail, true))(decrFuncS.head.pos)
+      And(decrFuncS.head, buildDecTree(decrFuncS.tail, conj = true))(decrFuncS.head.pos)
   }
 
   def buildBoundTree(decrFuncS: Seq[Exp]): Exp = {
@@ -384,34 +222,4 @@ object DecreasesClause {
       And(decrFuncS.head, buildBoundTree(decrFuncS.tail))(decrFuncS.head.pos)
   }
 
-  def searchMutualRecursion(func: Function, body: Exp, arg: Seq[Exp], goalFunction: String, condition: Exp, members: mutable.HashMap[String, Node]): Map[Exp, Seq[Exp]] = {
-
-    body match {
-      case CondExp(newCond, thn, els) =>
-        val m1 = searchMutualRecursion(func, thn, arg, goalFunction, And(condition, newCond)(newCond.pos), members)
-        val m2 = searchMutualRecursion(func, els, arg, goalFunction, And(condition, Not(newCond)(newCond.pos))(newCond.pos), members)
-        m1 ++ m2
-      case Unfolding(acc, body) =>
-        Map()
-      case callee: FuncApp =>
-        //Cast arguments to LocalVar
-        val callerArgs = func.formalArgs map (arg => arg match {
-          case l: LocalVarDecl => LocalVar(l.name)(l.typ) //, l.pos, l.info, l.errT)
-          case a => a
-        })
-        val newArgs = callee.getArgs map (_.replace((callerArgs zip arg).toMap))
-
-        if (callee.funcname == goalFunction) {
-          Map(condition -> newArgs)
-        }
-        else {
-          val newFunc = members.get(callee.funcname).get.asInstanceOf[Function]
-          searchMutualRecursion(newFunc, newFunc.body.get, newArgs, goalFunction, condition, members)
-        }
-
-
-      //TODO binary?
-      case _ => Map()
-    }
-  }
 }

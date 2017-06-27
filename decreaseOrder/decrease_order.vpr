@@ -99,14 +99,13 @@ domain Tuple2TerminationOrder[A,B]{
     //2 Tuples
     axiom tuple_ax_dec2{
          forall t1: Tuple2[A,B], t2: Tuple2[A,B] :: {decreasing(t1,t2)}
-         (bounded(first2(t1)) && decreasing(first2(t1),first2(t2)) ||
-         //(first2(t1) == first2(t2) && bounded(second2(t1)) &&
-         decreasing(second2(t1),second2(t2)))
+         decreasing(first2(t1),first2(t2)) ||
+         (first2(t1) == first2(t2) && decreasing(second2(t1),second2(t2)))
          ==> decreasing(t1,t2)
     }
     axiom tuple_ax_bound2{
         forall t1: Tuple2[A,B] ::
-        (bounded(first2(t1)) || bounded(second2(t1))) ==> bounded(t1) //TODO not sure
+        (bounded(first2(t1)) && bounded(second2(t1))) ==> bounded(t1) //TODO not sure
     }
 }
 
@@ -114,14 +113,14 @@ domain Tuple3TerminationOrder[A,B,C]{
     //3 Tuples
     axiom tuple_ax_dec3{
          forall t1: Tuple3[A,B,C], t2: Tuple3[A,B,C]:: {decreasing(t1,t2)}
-         (bounded(first3(t1)) && decreasing(first3(t1),first3(t2)) ||
-         (first3(t1) == first3(t2) && bounded(second3(t1)) && decreasing(second3(t1),second3(t2))) ||
-         (first3(t1) == first3(t2) && second3(t1) == second3(t2) && bounded(third3(t1)) && decreasing(second3(t1),second3(t2))))
+         decreasing(first3(t1),first3(t2)) ||
+         (first3(t1) == first3(t2) && decreasing(second3(t1),second3(t2))) ||
+         (first3(t1) == first3(t2) && second3(t1) == second3(t2) && decreasing(second3(t1),second3(t2)))
          ==> decreasing(t1,t2)
     }
-    axiom tuple_ax_bound3{
+    axiom tuple_ax_bound3{ 
         forall t1: Tuple3[A,B,C] ::
-        (bounded(first3(t1)) || bounded(second3(t1)) || bounded(third3(t1))) ==> bounded(t1) //TODO not sure
+        (bounded(first3(t1)) && bounded(second3(t1)) && bounded(third3(t1))) ==> bounded(t1) //TODO not sure
     }
 }
 

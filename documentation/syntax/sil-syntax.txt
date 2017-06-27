@@ -59,7 +59,7 @@ precondition ::=
 	"requires" exp
 
 decreases ::=
-	"decreases" exp
+	"decreases" exp //TODO pege **
 
 postcondition ::=
 	"ensures" exp
