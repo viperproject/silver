@@ -13,5 +13,6 @@ method m (r : Ref)
     var i1 : Int := 4 / 3
     var i2 : Int := i1 / 1
     var i3 : Int := (7/2) / (2/1)
+    //:: ExpectedOutput(assert.failed:assertion.false)
     assert (1/2) * (2/1) == (0/1)
 }

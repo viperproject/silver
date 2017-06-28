@@ -428,11 +428,17 @@ case class TypeChecker(names: NameAnalyser) {
     //_2 is the type of the argument expression
     //_3 is the set of substitutions of the argument expression
       = {
-      argData.foldLeft(rlts)((pss:Seq[PTypeSubstitution],tri:(PType, PType, Seq[PTypeSubstitution]))=>
-        (for (ps:PTypeSubstitution <- pss;aps:PTypeSubstitution <- tri._3)
-        yield composeAndAdd(ps,aps,tri._1,tri._2)).foldLeft(Seq[PTypeSubstitution]())(
-          (a:Seq[PTypeSubstitution], e:Option[PTypeSubstitution])=>if (e.isDefined) a.+:(e.get) else a )
-      )
+    var pss = rlts
+    for (tri <- argData){
+      val current = (for (ps <- pss; aps <- tri._3) yield composeAndAdd(ps, aps, tri._1, tri._2))
+      var a = Seq[PTypeSubstitution]()
+      for (e <- current){
+        if (e.isDefined)
+          a = a.:+(e.get)
+      }
+      pss = a
+    }
+    pss
     //(a:Set[PTypeSubstitution], e:Option[PTypeSubstitution])=>{
   }
 

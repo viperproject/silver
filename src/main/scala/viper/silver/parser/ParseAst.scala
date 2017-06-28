@@ -633,7 +633,7 @@ case class PCondExp(cond: PExp, thn: PExp, els: PExp) extends POpApp
 }
 // Simple literals
 sealed trait PSimpleLiteral extends PExp {
-  override final val typeSubstitutions = List(PTypeSubstitution.id)
+  override final val typeSubstitutions = Seq(PTypeSubstitution.id)
   def forceSubstitution(ts: PTypeSubstitution) = {}
 }
 case class PIntLit(i: BigInt) extends PSimpleLiteral{
