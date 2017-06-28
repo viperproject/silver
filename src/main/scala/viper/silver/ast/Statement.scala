@@ -124,21 +124,21 @@ object MethodCall {
 case class Exhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Assertion to exhale must be of type bool, but found ${exp.typ}", exp.pos)) else Seq())
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Assertion to exhale must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
 }
 
 /** An inhale statement. */
 case class Inhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Assertion to inhale must be of type bool, but found ${exp.typ}", exp.pos)) else Seq())
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Assertion to inhale must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
 }
 
 /** An assert statement. */
 case class Assert(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Assertion to assert must be of type bool, but found ${exp.typ}", exp.pos)) else Seq())
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Assertion to assert must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
 }
 
 /** An fold statement. */
@@ -215,7 +215,7 @@ case class Label(name: String, invs: Seq[Exp])(val pos: Position = NoPosition, v
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Label name must be a valid identifier.", pos)) else Seq()) ++
-    invs.flatMap(i=>{ if(!(i isSubtype Bool)) Seq(ConsistencyError(s"Label invariants must be of type bool, but found ${i.typ}", i.pos)) else Seq()})
+    invs.flatMap(i=>{ if(!(i isSubtype Bool)) Seq(ConsistencyError(s"Label invariants must be of type Bool, but found ${i.typ}", i.pos)) else Seq()})
 }
 
 /**

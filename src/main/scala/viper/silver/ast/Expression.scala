@@ -235,8 +235,8 @@ case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Po
  */
 case class InhaleExhaleExp(in: Exp, ex: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(in.typ isSubtype Bool)) Seq(ConsistencyError(s"First parameter to inhale-exhale assertion must be of bool type, but found ${in.typ}", in.pos)) else Seq()) ++
-    (if(!(ex.typ isSubtype Bool)) Seq(ConsistencyError(s"Second parameter to inhale-exhale assertion must be of bool type, but found ${ex.typ}", ex.pos)) else Seq())
+    (if(!(in.typ isSubtype Bool)) Seq(ConsistencyError(s"First parameter to inhale-exhale assertion must be of Bool type, but found ${in.typ}", in.pos)) else Seq()) ++
+    (if(!(ex.typ isSubtype Bool)) Seq(ConsistencyError(s"Second parameter to inhale-exhale assertion must be of Bool type, but found ${ex.typ}", ex.pos)) else Seq())
   val typ = Bool
 }
 
@@ -381,7 +381,7 @@ case class CondExp(cond: Exp, thn: Exp, els: Exp)(val pos: Position = NoPosition
     extends Exp with ForbiddenInTrigger {
 
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(cond isSubtype Bool)) Seq(ConsistencyError(s"Condition must be of bool type, but found ${cond.typ}", cond.pos)) else Seq()) ++
+    (if(!(cond isSubtype Bool)) Seq(ConsistencyError(s"Condition must be of Bool type, but found ${cond.typ}", cond.pos)) else Seq()) ++
     Consistency.checkPure(cond) ++
     (if(thn.typ != els.typ) Seq(ConsistencyError(s"Second and third parameter types of conditional expression must match, but found ${thn.typ} and ${els.typ}", thn.pos)) else Seq())
 
@@ -471,7 +471,7 @@ object QuantifiedExp {
 case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   //require(isValid, s"Invalid quantifier: { $this } .")
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of universal quantifier must be of bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of universal quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq()) ++
     Consistency.checkAllVarsMentionedInTriggers(variables, triggers) ++
     checkNoNestedQuantsForQuantPermissions
 
@@ -505,7 +505,7 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 /** Existential quantification. */
 case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp) ++
-    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of bool type, but found ${exp.typ}", exp.pos)) else Seq())
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq())
 }
 
 
@@ -513,7 +513,7 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
 case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
                   (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(body isSubtype Bool)) Seq(ConsistencyError(s"Body of forperm quantifier must be of bool type, but found ${body.typ}.", body.pos)) else Seq()) ++
+    (if(!(body isSubtype Bool)) Seq(ConsistencyError(s"Body of forperm quantifier must be of Bool type, but found ${body.typ}.", body.pos)) else Seq()) ++
     Consistency.checkPure(body) ++
     (if(!Consistency.noPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain perm expressions.", body.pos)) else Seq()) ++
     (if(!Consistency.noForPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain nested forperm expressions.", body.pos)) else Seq())
