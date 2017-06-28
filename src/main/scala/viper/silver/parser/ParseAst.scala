@@ -463,9 +463,9 @@ sealed trait POpApp extends PExp{
   private val _typeSubstitutions = new scala.collection.mutable.MutableList[PTypeSubstitution]()
   final override def typeSubstitutions = _typeSubstitutions
   def signatures : List[PTypeSubstitution]
-  def extraLocalTypeVariables : Seq[PDomainType] = Seq()
+  def extraLocalTypeVariables : Set[PDomainType] = Set()
   def localScope : Set[PDomainType] =
-    extraLocalTypeVariables.toSet union
+    extraLocalTypeVariables union
       Set(POpApp.pRes) union
       args.indices.map(POpApp.pArg).toSet
 
@@ -513,7 +513,7 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
   var function : PAnyFunction = null
   var extfunction : PPredicate = null
   override def extraLocalTypeVariables = _extraLocalTypeVariables
-  var _extraLocalTypeVariables : Seq[PDomainType] = Seq()
+  var _extraLocalTypeVariables : Set[PDomainType] = Set()
   var domainTypeRenaming : Option[PTypeRenaming] = None
   def isDomainFunction = domainTypeRenaming.isDefined
   var domainSubstitution : Option[PTypeSubstitution] = None
@@ -546,10 +546,10 @@ case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
 
   override val args = Seq(left, right)
   val extraElementType = PTypeVar("#E")
-  override val extraLocalTypeVariables: Seq[PDomainType] =
+  override val extraLocalTypeVariables: Set[PDomainType] =
     opName match {
-      case "++" | "union" | "intersection" | "setminus" | "subset" => Seq(extraElementType)
-      case _ => Seq()
+      case "++" | "union" | "intersection" | "setminus" | "subset" => Set(extraElementType)
+      case _ => Set()
     }
   val signatures : List[PTypeSubstitution] = opName match {
     case "+" | "-" => List(
@@ -605,10 +605,10 @@ case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
 case class PUnExp(opName: String, exp: PExp) extends POpApp {
   override val args = Seq(exp)
   val extraElementType = PTypeVar("#E")
-  override val extraLocalTypeVariables: Seq[PDomainType] =
+  override val extraLocalTypeVariables: Set[PDomainType] =
     opName match {
-      case "++" | "union" | "intersection" | "setminus" | "subset" => Seq(extraElementType)
-      case _ => Seq()
+      case "++" | "union" | "intersection" | "setminus" | "subset" => Set(extraElementType)
+      case _ => Set()
     }
   override val signatures : List[PTypeSubstitution] = opName match {
     case "-" | "+" => List(
@@ -802,10 +802,10 @@ sealed trait PCollectionLiteral extends POpApp{
 }
 
 sealed trait PEmptyCollectionLiteral extends PCollectionLiteral {
-  override val extraLocalTypeVariables: Seq[PDomainType] =
+  override val extraLocalTypeVariables: Set[PDomainType] =
     pElementType match {
-      case pdt: PDomainType if pdt.isTypeVar => Seq(pdt)
-      case _ => Seq()
+      case pdt: PDomainType if pdt.isTypeVar => Set(pdt)
+      case _ => Set()
     }
 
   override def signatures: List[PTypeSubstitution] =
@@ -846,7 +846,7 @@ case class PSeqIndex(seq: PExp, idx: PExp) extends POpApp{
 case class PSeqTake(seq: PExp, n: PExp) extends POpApp{
   override val opName = "Seq#Take"
   val elementType = PTypeVar("#E")
-  override val extraLocalTypeVariables = Seq(elementType)
+  override val extraLocalTypeVariables = Set(elementType)
   override val args = Seq(seq,n)
   override val signatures : List[PTypeSubstitution]= List(
     Map(
@@ -858,7 +858,7 @@ case class PSeqTake(seq: PExp, n: PExp) extends POpApp{
 case class PSeqDrop(seq: PExp, n: PExp) extends POpApp{
   override val opName = "Seq#Drop"
   val elementType = PTypeVar("#E")
-  override val extraLocalTypeVariables = Seq(elementType)
+  override val extraLocalTypeVariables = Set(elementType)
   override val args = Seq(seq,n)
   override val signatures : List[PTypeSubstitution]= List(
     Map(
@@ -877,13 +877,13 @@ case class PSeqUpdate(seq: PExp, idx: PExp, elem: PExp) extends POpApp{
       POpApp.pArgS(1)->Int,
       POpApp.pResS->PSeqType(elementType)
     ))
-  override val extraLocalTypeVariables = Seq(elementType)
+  override val extraLocalTypeVariables = Set(elementType)
 }
 
 case class PSize(seq: PExp) extends POpApp{
   override val opName = "Seq#size"
   val elementType = PTypeVar("#E")
-  override val extraLocalTypeVariables = Seq(elementType)
+  override val extraLocalTypeVariables = Set(elementType)
   override val args = Seq(seq)
   override val signatures : List[PTypeSubstitution] = List(
     Map(POpApp.pArgS(0)->PSeqType(elementType),POpApp.pResS->Int),

@@ -561,9 +561,9 @@ case class TypeChecker(names: NameAnalyser) {
                       case PFunction(_, _, resultType, _, _, _) =>
                       case pdf@PDomainFunction(_, _, resultType, unique) =>
                         val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
-                        val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).toList.distinct) //fresh domain type variables
+                        val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
                         pfa.domainTypeRenaming = Some(fdtv)
-                        pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toList.distinct
+                        pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
                         extraReturnTypeConstraint = explicitType
                     }
                   case ppa: PPredicate =>
@@ -652,14 +652,14 @@ case class TypeChecker(names: NameAnalyser) {
             val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
             val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
             // the triples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions)
-            poa.typeSubstitutions ++= unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.toList.distinct)) ++
+            poa.typeSubstitutions ++= unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct)) ++
               (
                 extraReturnTypeConstraint match {
                   case None => Nil
                   case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id)))
                 }
                 ))
-            val ts = poa.typeSubstitutions.toList.distinct
+            val ts = poa.typeSubstitutions.distinct
             if (ts.isEmpty)
               typeError(poa)
             poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
