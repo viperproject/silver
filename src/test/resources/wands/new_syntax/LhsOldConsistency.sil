@@ -1,0 +1,4 @@
+method test0() {
+    //:: ExpectedOutput(parser.error)
+    label lhs
+}

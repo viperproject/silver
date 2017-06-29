@@ -66,3 +66,13 @@ ensures acc(x.f) && x.f == 0 {
     package acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f)
     apply acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f)
 }
+
+method test6(x: Ref) {
+    package acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f)
+    //:: ExpectedOutput(assert.failed:labelled.state.not.reached)
+    assert old[lhs](x.f) == 0
+}
+
+method test7()
+//:: ExpectedOutput(not.wellformed:labelled.state.not.reached)
+requires old[lhs](0) == 0
