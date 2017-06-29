@@ -68,9 +68,10 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def checkMember(m: PScope)(fcheck: => Unit) {
+    val oldCurMember = curMember
     curMember = m
     fcheck
-    curMember = null
+    curMember = oldCurMember
   }
 
   def checkDeclaration(m: PMethod) {
@@ -152,8 +153,10 @@ case class TypeChecker(names: NameAnalyser) {
     stmt match {
       case PMacroRef(id) =>
         messages ++= FastMessaging.message(stmt, "unknown macro used: " + id.name )
-      case PSeqn(ss) =>
-        ss foreach check
+      case s@PSeqn(ss) =>
+        checkMember(s.asInstanceOf[PScope]){
+          ss foreach check
+        }
       case PFold(e) =>
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be folded")
         check(e, Bool)
@@ -224,11 +227,6 @@ case class TypeChecker(names: NameAnalyser) {
       case PLabel(name, invs) =>
         invs foreach (check(_, Bool))
       case PGoto(label) =>
-        names.definition(curMember)(label) match {
-          case PLabel(_, _) =>
-          case _ =>
-            messages ++= FastMessaging.message(stmt, "expected a label")
-        }
       case PFieldAssign(field, rhs) =>
         names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
           case PField(_, typ) =>
@@ -239,12 +237,27 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case PIf(cond, thn, els) =>
         check(cond, Bool)
-        check(thn)
-        check(els)
+        if(thn.isInstanceOf[PSeqn])
+          checkMember(thn.asInstanceOf[PScope]){
+            check(thn)
+          }
+        else
+          check(thn)
+        if(els.isInstanceOf[PSeqn])
+          checkMember(els.asInstanceOf[PScope]){
+            check(els)
+          }
+        else
+          check(els)
       case PWhile(cond, invs, body) =>
         check(cond, Bool)
         invs foreach (check(_, Bool))
-        check(body)
+        if(body.isInstanceOf[PSeqn])
+          checkMember(body.asInstanceOf[PScope]){
+            check(body)
+          }
+        else
+          check(body)
       case PLocalVarDecl(idndef, typ, init) =>
         check(typ)
         init match {
@@ -257,7 +270,12 @@ case class TypeChecker(names: NameAnalyser) {
       case PConstraining(vars, s) =>
         val msg = "expected variable in fresh read permission block"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
-        check(s)
+        if(s.isInstanceOf[PSeqn])
+          checkMember(s.asInstanceOf[PScope]) {
+            check(s)
+          }
+        else
+          check(s)
       case plw @ PLetWand(_, wand) =>
         check(wand, Wand)
         wand match {
@@ -629,17 +647,6 @@ case class TypeChecker(names: NameAnalyser) {
             case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidAndResolved =>
               check(pecl.pElementType)
 
-            case po: POldExp =>
-              // For labelled old expressions, ensure that they refer to a state label
-              po match {
-                case PLabelledOld(lbl, _) =>
-                  names.definition(curMember)(lbl) match {
-                    case PLabel(_, _) => ()
-                    case _ => messages ++= FastMessaging.message(po, "expected state label")
-                  }
-                case _ => ()
-              }
-
             case _ =>
           }
 
@@ -889,7 +896,8 @@ case class NameAnalyser() {
         getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
           case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
-            if (!i.parent.isInstanceOf[PDomainType]) {
+            // goto and state labels may exist out of scope (but must exist in method, this is checked in AST consistency check for Method)
+            if (!i.parent.isInstanceOf[PDomainType] && !i.parent.isInstanceOf[PGoto] && !i.parent.isInstanceOf[PLabelledOld]) {
               messages ++= FastMessaging.message(i, s"identifier $name not defined.")
             }
           case localVar : PLocalVarDecl =>
