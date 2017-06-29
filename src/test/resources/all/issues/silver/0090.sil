@@ -1,16 +1,16 @@
 method test(k: Perm)
 {
-    //:: ExpectedOutput(typechecker.error)
+    //:: ExpectedOutput(consistency.error)
     fresh k
 }
 
 method foo(b: Int) returns (r: Int) {
-    //:: ExpectedOutput(typechecker.error)
+    //:: ExpectedOutput(consistency.error)
     b := foo(0)
 }
 
 method bar(r: Ref)
 {
-    //:: ExpectedOutput(typechecker.error)
+    //:: ExpectedOutput(consistency.error)
     r := new(*)
 }

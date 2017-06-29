@@ -1,0 +1,6 @@
+field f: Int
+
+method test() {
+  //:: ExpectedOutput(consistency.error)
+  inhale forall x: Ref :: {3} true
+}

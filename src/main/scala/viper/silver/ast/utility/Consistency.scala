@@ -8,6 +8,7 @@ package viper.silver.ast.utility
 
 import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast._
+import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}
 
 /** An utility object for consistency checking. */
@@ -109,6 +110,9 @@ object Consistency {
   /** Returns true if the given node contains no old expression. */
   def noOld(n: Node) = !n.existsDefined { case _: Old => }
 
+  /** Returns true if the given node contains no labelled-old expression. */
+  def noLabelledOld(n: Node) = !n.existsDefined { case _: LabelledOld => }
+
   /** Returns true if the given node contains no result. */
   def noResult(n: Node) = !n.existsDefined { case _: Result => }
 
@@ -125,77 +129,94 @@ object Consistency {
   def nullValue[T](a: T, b: T) = if (a != null) a else b
 
   /**
-   * Checks that this boolean expression contains no subexpressions that can only appear in positive positions (i.e. in
-   * conjuncts or on the right side of implications or conditional expressions) only, i.e. no access predicates and
-   * no InhaleExhaleExp.
+   * Checks that this boolean expression is pure i.e. it contains no magic wands, access predicates or ghost operations.
    */
-  def checkNoPositiveOnly(e: Exp) = {
-    recordIfNot(e, hasNoPositiveOnly(e), s"$e is non pure and appears where only pure expressions are allowed.")
+  def checkPure(e: Exp): Seq[ConsistencyError] = {
+    if(!e.isPure){
+      Seq(ConsistencyError( s"$e is non pure and appears where only pure expressions are allowed.", e.pos))
+    }else{
+      Seq()
+    }
   }
 
-  /**
-   * Does this boolean expression contain no subexpressions that can appear in positive positions only?
- *
-   * @param exceptInhaleExhale Are inhale-exhale expressions possible?
-   *                           Default: false.
-   */
-  def hasNoPositiveOnly(e: Exp, exceptInhaleExhale: Boolean = false): Boolean = e match {
-    case _: AccessPredicate => false
-    case InhaleExhaleExp(inhale, exhale) =>
-      exceptInhaleExhale && hasNoPositiveOnly(inhale, exceptInhaleExhale) && hasNoPositiveOnly(exhale, exceptInhaleExhale)
-    case And(left, right) =>
-      hasNoPositiveOnly(left, exceptInhaleExhale) && hasNoPositiveOnly(right, exceptInhaleExhale)
-    case Implies(_, right) =>
-      // The left side is checked during creation of the Implies expression.
-      hasNoPositiveOnly(right, exceptInhaleExhale)
-    case _ => true // All other cases are checked during creation of the expression.
+  /** Checks that no perm or forperm expression occurs in a node, except inside inhale/exhale statements */
+  def checkNoPermForpermExceptInhaleExhale(e: Exp) : Seq[ConsistencyError] = {
+    val permsAndForperms: Seq[Node] = e.deepCollect({case p: CurrentPerm => p; case fp: ForPerm => fp})
+    val inhalesExhales: Seq[Node] = e.deepCollect({case ie: InhaleExhaleExp => ie})
+    permsAndForperms.flatMap(p=>{
+      inhalesExhales.find(_.contains(p)) match {
+        case Some(node) => Seq()
+        case None => Seq(ConsistencyError("Perm and forperm in this context are only allowed if nested under inhale-exhale assertions.", p.asInstanceOf[Positioned].pos))
+      }
+    })
   }
-
-  /** This is like `checkNoPositiveOnly`, except that inhale-exhale expressions are fine. */
-  def checkNoPositiveOnlyExceptInhaleExhale(e: Exp): Unit =
-    recordIfNot(e, hasNoPositiveOnly(e, true), s"$e is non pure and appears where only pure expressions are allowed.")
 
   /** Check all properties required for a function body. */
-  def checkFunctionBody(e: Exp) {
-    recordIfNot(e, noOld(e), "Old expressions are not allowed in functions bodies.")
-    recordIfNot(e, noResult(e), "Result variables are not allowed in function bodies.")
-    recordIfNot(e, noForPerm(e), "Function bodies are not allowed to contain forperm expressions")
-    recordIfNot(e, noPerm(e), "Function bodies are not allowed to contain perm expressions")
-    checkNoPositiveOnly(e)
-  }
 
+  def checkFunctionBody(e: Exp) : Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    if(!noOld(e)) s :+= ConsistencyError( "Old expressions are not allowed in functions bodies.", e.pos)
+    if(!noResult(e)) s :+= ConsistencyError( "Result expressions are not allowed in functions bodies.", e.pos)
+    if(!noForPerm(e)) s :+= ConsistencyError( "Function bodies are not allowed to contain forperm expressions", e.pos)
+    if(!noPerm(e)) s :+= ConsistencyError( "Function bodies are not allowed to contain perm expressions", e.pos)
+    s ++= checkPure(e)
+    s
+  }
+  
   /** Checks that none of the given formal arguments are reassigned inside the body. */
-  def checkNoArgsReassigned(args: Seq[LocalVarDecl], b: Stmt) {
+  def checkNoArgsReassigned(args: Seq[LocalVarDecl], b: Stmt): Seq[ConsistencyError] = {
     val argVars = args.map(_.localVar).toSet
+    var s = Seq.empty[ConsistencyError]
+
     for (a@LocalVarAssign(l, _) <- b if argVars.contains(l)) {
-      recordIfNot(a, false, s"$a is a reassignment of formal argument $l.")
+      s :+= ConsistencyError(s"$a is a reassignment of formal argument $l.", a.pos)
     }
     for (f@Fresh(vars) <- b; v <- vars if argVars.contains(v)) {
-      recordIfNot(f, false, s"$f is a reassignment of formal argument $v.")
+      s :+= ConsistencyError(s"$f is a reassignment of formal argument $v.", f.pos)
     }
     for (c@MethodCall(_, _, targets) <- b; t <- targets if argVars.contains(t)) {
-      recordIfNot(c, false, s"$c is a reassignment of formal argument $t.")
+      s :+= ConsistencyError(s"$c is a reassignment of formal argument $t.", c.pos)
     }
     for (n@NewStmt(l, _) <- b if argVars.contains(l)){
-      recordIfNot(n, false, s"$n is a reassignment of formal argument $l.")
+      s :+= ConsistencyError(s"$n is a reassignment of formal argument $l.", n.pos)
     }
+    s
   }
-
   /** Check all properties required for a precondition. */
-  def checkPre(e: Exp) {
-    recordIfNot(e, noOld(e), "Old expressions are not allowed in preconditions.")
-    recordIfNot(e, noResult(e), "Result variables are not allowed in preconditions.")
-    checkNonPostContract(e)
+  def checkPre(e: Exp): Seq[ConsistencyError] = {
+    (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Precondition $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
+    (if(!noOld(e)) Seq(ConsistencyError("Old expressions are not allowed in preconditions.", e.pos)) else Seq()) ++
+    (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in preconditions.", e.pos)) else Seq()) ++
+    (if(!noResult(e)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", e.pos)) else Seq())
   }
 
   /** Check all properties required for a contract expression that is not a postcondition (precondition, invariant, predicate) */
-  def checkNonPostContract(e: Exp) {
-    recordIfNot(e, noResult(e), "Result variables are only allowed in postconditions of functions.")
-    checkPost(e)
+  def checkNonPostContract(e: Exp) : Seq[ConsistencyError]  = {
+    (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Contract $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
+    (if(!noResult(e)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", e.pos)) else Seq())
   }
 
-  def checkPost(e: Exp) {
-    recordIfNot(e, e isSubtype Bool, s"Contract $e: ${e.typ} must be boolean.")
+  /** Check all properties required for a postcondition */
+  def checkPost(e: Exp) : Seq[ConsistencyError]  = {
+    (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Postcondition $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
+    (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
+  }
+
+  /** checks that all quantified variables appear in all triggers */
+  def checkAllVarsMentionedInTriggers(variables: Seq[LocalVarDecl], triggers: Seq[Trigger]) : Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    val varsInTriggers : Seq[Seq[LocalVar]] = triggers map(t=>{
+      t.deepCollect({case lv: LocalVar => lv})
+    })
+    variables.foreach(v=>{
+      varsInTriggers.foreach(varList=>{
+        varList.find(_.name == v.name) match {
+          case Some(tr) =>
+          case None => s :+= ConsistencyError(s"Variable ${v.name} is not mentioned in one or more triggers.", v.pos)
+        }
+      })
+    })
+    s
   }
 
   def noGhostOperations(n: Node) = !n.existsDefined {
@@ -265,7 +286,8 @@ object Consistency {
 //    recordIfNot(wand, ok, s"Conditionals transitively reachable from a magic wand must be pure (see issue 16).")
 //  }
 
-  def checkNoFunctionRecursesViaPreconditions(program: Program): Unit = {
+  def checkNoFunctionRecursesViaPreconditions(program: Program): Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
     Functions.findFunctionCyclesViaPreconditions(program) foreach { case (func, cycleSet) =>
       var msg = s"Function ${func.name} recurses via its precondition"
 
@@ -273,8 +295,9 @@ object Consistency {
         msg = s"$msg: the cycle contains the function(s) ${cycleSet.map(_.name).mkString(", ")}"
       }
 
-      recordIf(func, true, msg)
+      s :+= ConsistencyError(msg, func.pos)
     }
+    s
   }
 
   /** Checks consistency that is depends on some context. For example, that some expression
@@ -283,55 +306,65 @@ object Consistency {
     * @param n The starting node of the consistency check.
     * @param c The initial context (optional).
     */
-  def checkContextDependentConsistency(n: Node, c: Context = Context()) = n.visitWithContext(c) (c => {
-    case _: Package =>
-      c.copy(insidePackageStmt = true)
+  def checkContextDependentConsistency(n: Node, c: Context = Context()) : Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    n.visitWithContext(c) (c => {
+      case _: Package =>
+        c.copy(insidePackageStmt = true)
 
-    case ghop: GhostOperation =>
-      recordIfNot(ghop, c.insideWandStatus.isInside, "Ghost operations may only be used when packaging magic wands.")
+      case ghop: GhostOperation =>
+        if(!c.insideWandStatus.isInside)
+          s :+= ConsistencyError("Ghost operations may only be used when packaging magic wands.", ghop.pos)
+        c.copy(insidePackageStmt = c.insidePackageStmt || ghop.isInstanceOf[PackagingGhostOp])
 
-      c.copy(insidePackageStmt = c.insidePackageStmt || ghop.isInstanceOf[PackagingGhostOp])
+      case mw @ MagicWand(lhs, rhs) =>
+        s ++= checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
 
-    case mw @ MagicWand(lhs, rhs) =>
-      checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
+        if(!noGhostOperations(lhs))
+          s :+= ConsistencyError("Ghost operations may not occur on the left of wands.", lhs.pos)
+        if (!c.insidePackageStmt && !noGhostOperations(rhs))
+          s :+= ConsistencyError("Ghost operations may only occur inside wands when these are packaged.", rhs.pos)
 
-      recordIfNot(lhs, noGhostOperations(lhs), "Ghost operations may not occur on the left of wands.")
+        s ++= checkIfValidChainOfGhostOperations(rhs, mw)
 
-      if (!c.insidePackageStmt)
-        recordIfNot(rhs, noGhostOperations(rhs), "Ghost operations may only occur inside wands when these are packaged.")
-
-      checkIfValidChainOfGhostOperations(rhs, mw)
-
-      c.copy(insideWandStatus = InsideWandStatus.Yes)
-
-    case po: ApplyOld =>
-      recordIfNot(po, c.insideWandStatus.isInside, "given-expressions may only occur inside wands.")
-
-      c
-  })
-
-  private def checkWandRelatedOldExpressions(n: Node, c: Context) {
-    n.visitWithContextManually(c) (c => {
-      case MagicWand(lhs, rhs) =>
-        checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
-        checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
+        c.copy(insideWandStatus = InsideWandStatus.Yes)
 
       case po: ApplyOld =>
-        recordIfNot(po,
-                    c.insideWandStatus.isRight,
-                    "Wands may contain given-expressions on the rhs only.")
+        if(!c.insideWandStatus.isInside)
+          s :+= ConsistencyError("given-expressions may only occur inside wands.", po.pos)
+        c
     })
+    s
   }
 
-  private def checkIfValidChainOfGhostOperations(n: Node, root: MagicWand): Unit = n match {
-    case gop: GhostOperation => checkIfValidChainOfGhostOperations(gop.body, root)
-    case let: Let => checkIfValidChainOfGhostOperations(let.body, root)
 
-    case _ =>
-      recordIfNot(root, noGhostOperations(n), "Magic wand has unsupported shape. "
-                                 + "Its RHS must be of the shape 'GOp1 in GOp2 in ... in A', where the GOps are "
-                                 + "(impure) ghost operations, and where the final in-clause assertion A may "
-                                 + "only contain pure unfolding expressions.")
+  private def checkWandRelatedOldExpressions(n: Node, c: Context): Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    n.visitWithContextManually(c) (c => {
+      case MagicWand(lhs, rhs) =>
+        s ++= checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
+        s ++= checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
+
+      case po: ApplyOld =>
+        if(!c.insideWandStatus.isRight)
+          s :+= ConsistencyError("Wands may contain given-expressions on the rhs only.", po.pos)
+    })
+    s
+  }
+
+  private def checkIfValidChainOfGhostOperations(n: Node, root: MagicWand): Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    n match {
+      case gop: GhostOperation => s ++= checkIfValidChainOfGhostOperations(gop.body, root)
+      case let: Let => s ++= checkIfValidChainOfGhostOperations(let.body, root)
+      case _ =>
+        if(!noGhostOperations(n))
+          s :+= ConsistencyError( "Magic wand has unsupported shape. "
+            + "Its RHS must be of the shape 'GOp1 in GOp2 in ... in A', where the GOps are "
+            + "(impure) ghost operations, and where the final in-clause assertion A may "
+            + "only contain pure unfolding expressions.", root.pos)
+    }
+    s
   }
 
   class InsideWandStatus protected[InsideWandStatus](val isInside: Boolean, val isLeft: Boolean, val isRight: Boolean) {

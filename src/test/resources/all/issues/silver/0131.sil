@@ -1,12 +1,12 @@
-//:: ExpectedOutput(typechecker.error)
+//:: ExpectedOutput(consistency.error)
 function f(x: Int): Bool
   requires x > 0 ==> f(x-1)
 
-//:: ExpectedOutput(typechecker.error)
+//:: ExpectedOutput(consistency.error)
 function f1(x: Int): Bool
   requires x > 0 ==> f2(x-1)
 
-//:: ExpectedOutput(typechecker.error)
+//:: ExpectedOutput(consistency.error)
 function f2(x: Int): Bool
   requires x > 0 ==> f1(x-1)
 
@@ -28,7 +28,7 @@ function h2(x: Int): Bool
   ensures  1 < x ==> h2(x - 1)
 
 
-//:: ExpectedOutput(typechecker.error)
+//:: ExpectedOutput(consistency.error)
 function f10(): Bool
   requires g10()
 

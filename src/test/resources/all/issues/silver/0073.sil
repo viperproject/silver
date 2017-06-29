@@ -1,0 +1,6 @@
+field f: Int
+
+method test() {
+  //:: ExpectedOutput(typechecker.error)
+  inhale forall x: Ref :: {f} true
+}

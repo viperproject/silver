@@ -1,0 +1,11 @@
+field f: Int
+field g: Int
+
+method m1(x: Ref)
+
+//:: ExpectedOutput(consistency.error)
+requires(perm(x.f) == perm(x.g))
+
+//this is fine because perm occurs in inhale/exhale
+requires [perm(x.f) > perm(x.g), true]
+{}

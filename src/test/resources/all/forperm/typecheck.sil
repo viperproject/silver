@@ -13,7 +13,8 @@ predicate P2(this: Ref, x: Int) {
 method permUse()
 {
   var r1: Ref
-  //:: ExpectedOutput(typechecker.error)
+  //no error because final AST is never created (due to type-checker errors),
+  //this check is performed in the AST node
   assert forperm[f1] r :: perm(r.f1) > none
 }
 

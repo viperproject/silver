@@ -14,12 +14,12 @@ package viper.silver.ast
 
 import viper.silver.ast.utility.{Consistency, Statements}
 import viper.silver.cfg.silver.CfgGenerator
+import viper.silver.verifier.ConsistencyError
 
 // --- Statements
 
 /** A common trait for statements. */
 sealed trait Stmt extends Node with Infoed with Positioned with TransformableErrors {
-  require(Consistency.noResult(this), "Result variables are only allowed in postconditions of functions.")
 
   /**
     * Returns a list of all actual statements contained in this statement.  That
@@ -50,13 +50,14 @@ sealed trait Stmt extends Node with Infoed with Positioned with TransformableErr
 
 /** A statement that creates a new object and assigns it to a local variable. */
 case class NewStmt(lhs: LocalVar, fields: Seq[Field])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  require(Ref isSubtype lhs)
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if(!(Ref isSubtype lhs)) Seq(ConsistencyError(s"Left-hand side of New statement must be Ref type, but found ${lhs.typ}", lhs.pos)) else Seq())
+
 }
 
 /** An assignment to a field or a local variable */
 sealed trait AbstractAssign extends Stmt {
-  require(Consistency.isAssignable(rhs, lhs), s"${rhs.typ} ($rhs) is not assignable to ${lhs.typ} ($lhs)")
-  Consistency.checkNoPositiveOnly(rhs)
 
   def lhs: Lhs
 
@@ -73,14 +74,24 @@ object AbstractAssign {
 }
 
 /** An assignment to a local variable. */
-case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractAssign
+case class LocalVarAssign(lhs: LocalVar, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractAssign{
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    Consistency.checkPure(rhs) ++
+    (if(!Consistency.isAssignable(rhs, lhs)) Seq(ConsistencyError(s"Right-hand side $rhs is not assignable to left-hand side $lhs.", lhs.pos)) else Seq())
+}
 
 /** An assignment to a field variable. */
-case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractAssign
+case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractAssign{
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    Consistency.checkPure(rhs) ++
+    (if(!Consistency.isAssignable(rhs, lhs)) Seq(ConsistencyError(s"Right-hand side $rhs is not assignable to left-hand side $lhs.", lhs.pos)) else Seq())
+}
 
 /** A method/function/domain function call. - AS: this comment is misleading - the trait is currently not used for method calls below */
 trait Call {
-  require(Consistency.areAssignable(args, formalArgs), s"$args vs $formalArgs for callee: $callee")
+//  require(Consistency.areAssignable(args, formalArgs), s"$args vs $formalArgs for callee: $callee") <- this check has been moved to case classes
 
   def callee: String
 
@@ -90,15 +101,20 @@ trait Call {
 }
 
 /** A method call. */
-case class MethodCall private[ast](methodName: String, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position, val info: Info, val errT: ErrorTrafo) extends Stmt {
-  // no checks - consistency checks are made below in companion object
+case class MethodCall(methodName: String, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position, val info: Info, val errT: ErrorTrafo) extends Stmt {
+  override lazy val check : Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    if(!Consistency.noResult(this))
+      s :+= ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)
+    if (!Consistency.noDuplicates(targets))
+      s :+= ConsistencyError("Targets are not allowed to have duplicates", targets.head.pos)
+    s ++= args.flatMap(Consistency.checkPure)
+    s
+  }
 }
 
 object MethodCall {
   def apply(method: Method, args: Seq[Exp], targets: Seq[LocalVar])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): MethodCall = {
-    require(Consistency.areAssignable(method.formalReturns, targets))
-    require(Consistency.noDuplicates(targets))
-    args foreach Consistency.checkNoPositiveOnly
     MethodCall(method.name, args, targets)(pos, info, errT)
   }
 }
@@ -106,37 +122,50 @@ object MethodCall {
 
 /** An exhale statement. */
 case class Exhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  require(exp isSubtype Bool)
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Assertion to exhale must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
 }
 
 /** An inhale statement. */
 case class Inhale(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  require(exp isSubtype Bool)
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Assertion to inhale must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
 }
 
 /** An assert statement. */
 case class Assert(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  require(exp isSubtype Bool)
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Assertion to assert must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
 }
 
 /** An fold statement. */
 case class Fold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  require(acc isSubtype Bool)
+  override lazy val check : Seq[ConsistencyError] =
+    if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()
 }
 
 /** An unfold statement. */
 case class Unfold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  require(acc isSubtype Bool)
+  override lazy val check : Seq[ConsistencyError] =
+    if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()
 }
 
 /** Package a magic wand. */
 case class Package(wand: MagicWand)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  require(wand isSubtype Wand, s"Expected wand but found ${wand.typ} ($wand)")
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if(!(wand isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${wand.typ} ($wand)", wand.pos)) else Seq())
 }
 
 /** Apply a magic wand. */
 case class Apply(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  require(exp isSubtype Wand, s"Expected wand but found ${exp.typ} ($exp)")
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if(!(exp isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${exp.typ} ($exp)", exp.pos)) else Seq())
+
 }
 
 /** A sequence of statements. */
@@ -162,22 +191,31 @@ case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = 
 
 /** An if control statement. */
 case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  Consistency.checkNoPositiveOnly(cond)
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(cond) ++
+    (if(!(cond isSubtype Bool)) Seq(ConsistencyError(s"If condition must be of type Bool, but found ${cond.typ}", cond.pos)) else Seq()) ++
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq())
 }
 
 /** A while loop. */
 case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)
                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends Stmt {
-  Consistency.checkNoPositiveOnly(cond)
-  invs foreach Consistency.checkNonPostContract
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    Consistency.checkPure(cond) ++
+    invs.flatMap(Consistency.checkNonPostContract) ++
+    (if (!(cond isSubtype Bool)) Seq(ConsistencyError(s"While loop condition must be of type Bool, but found ${cond.typ}", cond.pos)) else Seq()) ++
+    invs.flatMap(Consistency.checkNoPermForpermExceptInhaleExhale)
 }
 
 /** A named label. Labels can be used by gotos as jump targets, and by labelled old-expressions
   * to refer to the state as it existed at that label.
   */
 case class Label(name: String, invs: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  Consistency.validUserDefinedIdentifier(name)
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Label name must be a valid identifier.", pos)) else Seq()) ++
+    invs.flatMap(i=>{ if(!(i isSubtype Bool)) Seq(ConsistencyError(s"Label invariants must be of type Bool, but found ${i.typ}", i.pos)) else Seq()})
 }
 
 /**
@@ -191,7 +229,9 @@ case class Goto(target: String)(val pos: Position = NoPosition, val info: Info =
   * each of the passed variables.
   */
 case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  require(vars forall (_ isSubtype Perm))
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    vars.flatMap(v=>{ if(!(v isSubtype Perm)) Seq(ConsistencyError(s"Fresh statements can only be used with variables of type Perm, but found ${v.typ}.", v.pos)) else Seq()})
 }
 
 /** A constraining-block takes a sequence of permission-typed variables,
@@ -201,8 +241,9 @@ case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: 
   */
 case class Constraining(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends Stmt {
-
-  require(vars forall (_ isSubtype Perm))
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
+    vars.flatMap(v=>{ if(!(v isSubtype Perm)) Seq(ConsistencyError(s"Constraining statements can only be used with variables of type Perm, but found ${v.typ}.", v.pos)) else Seq()})
 }
 
 /** Local variable declaration statement.
