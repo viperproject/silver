@@ -186,8 +186,14 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     val labels : Seq[Label] = body.deepCollect({case l: Label => l})
     val olds : Seq[LabelledOld] = body.deepCollect({case l: LabelledOld => l})
 
-    if(!Consistency.noDuplicates(labels.map(_.name)))
-      s :+= ConsistencyError(s"Method must not contain duplicate labels.", pos)
+    val labelMap = scala.collection.mutable.HashMap[String, Label]()
+    labels.foreach(l=>{
+      labelMap.get(l.name) match {
+        case Some(existingLabel) => s:+= ConsistencyError(s"Duplicate label ${l.name} found in method.", l.pos)
+        case None => labelMap.put(l.name, l)
+      }
+    })
+
     gotos.foreach(g=> {
       labels.find(_.name == g.target) match {
         case Some(existingLabel) =>

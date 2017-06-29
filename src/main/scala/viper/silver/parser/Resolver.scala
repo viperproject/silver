@@ -154,7 +154,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PMacroRef(id) =>
         messages ++= FastMessaging.message(stmt, "unknown macro used: " + id.name )
       case s@PSeqn(ss) =>
-        checkMember(s.asInstanceOf[PScope]){
+        checkMember(s){
           ss foreach check
         }
       case PFold(e) =>
@@ -237,27 +237,18 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case PIf(cond, thn, els) =>
         check(cond, Bool)
-        if(thn.isInstanceOf[PSeqn])
-          checkMember(thn.asInstanceOf[PScope]){
-            check(thn)
-          }
-        else
+        checkMember(thn){
           check(thn)
-        if(els.isInstanceOf[PSeqn])
-          checkMember(els.asInstanceOf[PScope]){
-            check(els)
-          }
-        else
+        }
+        checkMember(els){
           check(els)
+        }
       case PWhile(cond, invs, body) =>
         check(cond, Bool)
         invs foreach (check(_, Bool))
-        if(body.isInstanceOf[PSeqn])
-          checkMember(body.asInstanceOf[PScope]){
-            check(body)
-          }
-        else
+        checkMember(body){
           check(body)
+        }
       case PLocalVarDecl(idndef, typ, init) =>
         check(typ)
         init match {
@@ -270,12 +261,9 @@ case class TypeChecker(names: NameAnalyser) {
       case PConstraining(vars, s) =>
         val msg = "expected variable in fresh read permission block"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
-        if(s.isInstanceOf[PSeqn])
-          checkMember(s.asInstanceOf[PScope]) {
-            check(s)
-          }
-        else
+        checkMember(s){
           check(s)
+        }
       case plw @ PLetWand(_, wand) =>
         check(wand, Wand)
         wand match {
@@ -899,7 +887,8 @@ case class NameAnalyser() {
           case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
             // goto and state labels may exist out of scope (but must exist in method, this is checked in AST consistency check for Method)
-            if (!i.parent.isInstanceOf[PDomainType] && !i.parent.isInstanceOf[PGoto] && !i.parent.isInstanceOf[PLabelledOld]) {
+            if (!i.parent.isInstanceOf[PDomainType] && !i.parent.isInstanceOf[PGoto] &&
+            !(i.parent.isInstanceOf[PLabelledOld] && i==i.parent.asInstanceOf[PLabelledOld].label)) {
               messages ++= FastMessaging.message(i, s"identifier $name not defined.")
             }
           case localVar : PLocalVarDecl =>

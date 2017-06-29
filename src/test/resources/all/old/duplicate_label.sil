@@ -1,6 +1,5 @@
 field f: Int
 
-//:: ExpectedOutput(consistency.error)
 method main2() {
   var m: Ref
   m := new(f)
@@ -12,6 +11,7 @@ method main2() {
 label initial
   } else {
     m.f := 3;
+//:: ExpectedOutput(consistency.error)
 label initial
   }
 }
