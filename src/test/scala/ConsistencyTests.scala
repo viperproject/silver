@@ -41,7 +41,7 @@ class ConsistencyErrorTests extends FunSuite with Matchers {
       ConsistencyError("Names of members must be distinct.", NoPosition),
       ConsistencyError("Method name m2 not found in program.", NoPosition),
       ConsistencyError("Function name f1 not found in program.", NoPosition),
-      ConsistencyError("Label lbl1 not found in program.", NoPosition)))
+      ConsistencyError("Label lbl1 not found in method.", NoPosition)))
   }
 
   test("Conditional expression"){

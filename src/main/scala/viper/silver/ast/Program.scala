@@ -25,8 +25,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     Consistency.checkNoFunctionRecursesViaPreconditions(this) ++
     checkMethodCallsAreValid ++
     checkFuncAppsAreValid ++
-    checkDomainFuncAppsAreValid ++
-    checkGotoLabelsExist
+    checkDomainFuncAppsAreValid
 
   /** checks that each MethodCall calls an existing method and if so, checks that formalReturns are assignable to targets */
   lazy val checkMethodCallsAreValid: Seq[ConsistencyError] = methods.flatMap(m=> {
@@ -73,19 +72,6 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
         }
     })
   }
-
-  /** checks that all goto targets are existing labels */
-  lazy val checkGotoLabelsExist: Seq[ConsistencyError] = methods.flatMap(m=> {
-    val gotos : Seq[Goto] = m.body.deepCollect({case g: Goto => g})
-    val labels : Seq[Label] = m.body.deepCollect({case l: Label => l})
-    gotos.flatMap(g=> {
-      labels.find(_.name == g.target) match {
-        case Some(existingLabel) => Seq()
-        case None => Seq(ConsistencyError(s"Label ${g.target} not found in program.", g.pos))
-      }
-    })
-  })
-
 
   lazy val groundTypeInstances = DomainInstances.findNecessaryTypeInstances(this)
 
@@ -190,7 +176,32 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     Consistency.checkNoArgsReassigned(formalArgs, body) ++
     (if(!noDuplicates) Seq(ConsistencyError("There must be no duplicates in names of local variables and formal args.", pos)) else Seq()) ++
     (if (!((formalArgs ++ formalReturns) forall (_.typ.isConcrete))) Seq(ConsistencyError("Formal args and returns must have concrete types.", pos)) else Seq()) ++
-    (pres ++ posts).flatMap(Consistency.checkNoPermForpermExceptInhaleExhale)
+    (pres ++ posts).flatMap(Consistency.checkNoPermForpermExceptInhaleExhale) ++
+    checkGotoAndStateLabels
+
+  /** checks that all goto targets and state labels are existing labels and there are no duplicate labels */
+  lazy val checkGotoAndStateLabels: Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    val gotos : Seq[Goto] = body.deepCollect({case g: Goto => g})
+    val labels : Seq[Label] = body.deepCollect({case l: Label => l})
+    val olds : Seq[LabelledOld] = body.deepCollect({case l: LabelledOld => l})
+
+    if(!Consistency.noDuplicates(labels.map(_.name) ++ olds.map(_.oldLabel)))
+      s :+= ConsistencyError(s"Method must not contain duplicate labels.", pos)
+    gotos.foreach(g=> {
+      labels.find(_.name == g.target) match {
+        case Some(existingLabel) =>
+        case None => s :+= ConsistencyError(s"Label ${g.target} not found in method.", g.pos)
+      }
+    })
+    olds.foreach(o=> {
+      labels.find(_.name == o.oldLabel) match {
+        case Some(existingLabel) =>
+        case None => s :+= ConsistencyError(s"Label ${o.oldLabel} not found in method.", o.pos)
+      }
+    })
+    s
+  }
 
   private def noDuplicates = Consistency.noDuplicates(formalArgs ++ Consistency.nullValue(locals, Nil) ++ Seq(LocalVar(name)(Bool)))
 
