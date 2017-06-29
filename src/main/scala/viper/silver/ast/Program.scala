@@ -186,7 +186,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     val labels : Seq[Label] = body.deepCollect({case l: Label => l})
     val olds : Seq[LabelledOld] = body.deepCollect({case l: LabelledOld => l})
 
-    if(!Consistency.noDuplicates(labels.map(_.name) ++ olds.map(_.oldLabel)))
+    if(!Consistency.noDuplicates(labels.map(_.name)))
       s :+= ConsistencyError(s"Method must not contain duplicate labels.", pos)
     gotos.foreach(g=> {
       labels.find(_.name == g.target) match {
