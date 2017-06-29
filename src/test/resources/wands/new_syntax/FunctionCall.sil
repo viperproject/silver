@@ -12,11 +12,9 @@ requires Cell(x) {
 method test0(x: Ref)
 requires Cell(x)
 ensures Cell(x) {
-    package Cell(x) --* Cell(x) && getAndTransform(x) == 2 {
+    package Cell(x) && (unfolding Cell(x) in x.f == 0) --* Cell(x) && getAndTransform(x) == 2 {
         if (getAndTransform(x) != 2) {
-            unfold Cell(x)
-            x.f := 0
-            fold Cell(x)
+            assert false
         }
     }
 }
