@@ -22,7 +22,7 @@ method swap01(a: Array, x: Int, y: Int)
 
    //:: ExpectedOutput(assert.failed:assertion.false)
    assert elements(a) == old(elements(a))
-   assert elements(a) == old[pre](elements(a)
+   assert elements(a) == old[pre](elements(a))
 }
 
 method swap02(a: Array, x: Int, y: Int)

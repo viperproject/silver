@@ -1,0 +1,14 @@
+field f : Int
+field g: Int
+
+predicate p1(x: Ref)
+{
+	//:: ExpectedOutput(consistency.error)
+	perm(x.f) == perm(x.g)
+}
+
+predicate p2(x: Ref)
+{
+	//:: ExpectedOutput(consistency.error)
+	forperm[f] r :: false
+}

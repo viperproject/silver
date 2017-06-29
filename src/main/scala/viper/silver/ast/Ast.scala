@@ -12,7 +12,7 @@ import utility._
 import viper.silver.ast.utility.Rewriter.Traverse.Traverse
 import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder, Traverse}
 import viper.silver.verifier.errors.ErrorNode
-import viper.silver.verifier.{AbstractVerificationError, ErrorReason}
+import viper.silver.verifier.{ConsistencyError, AbstractVerificationError, ErrorReason}
 
 /*
 
@@ -174,6 +174,18 @@ trait Node extends Traversable[Node] with Rewritable {
     Seq(NoPosition, NoInfo, NoTrafos)
   }
 
+  //returns a list of consistency errors in the node. Only concrete classes should implement check.
+  lazy val check : Seq[ConsistencyError] = Seq()
+  //returns a list of consistency errors in the node as well as all its children nodes.
+  lazy val checkTransitively : Seq[ConsistencyError] =
+    check ++
+    productIterator.flatMap{
+      case n: Node => n.checkTransitively
+      case s: Seq[Node @unchecked] => s.flatMap(_.checkTransitively)
+      case s: Set[Node @unchecked] => s.flatMap(_.checkTransitively)
+      case Some(n: Node) => n.checkTransitively
+      case _ => Seq()
+    }
 }
 
 
