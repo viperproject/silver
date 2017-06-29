@@ -905,16 +905,7 @@ case class NameAnalyser() {
           case localVar : PLocalVarDecl =>
             getContainingMethod(localVar) match {
               case Some(PMethod(_, args, returns, pres, posts, body)) =>
-                // local variables must not be used in pre- or postconditions
-                // see Silver issue #56
-                if (pres.exists(pre => containsSubnode(pre, i)) || posts.exists(post => containsSubnode(post, i))){
-                  messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed in pre- or postcondition.")
-                }
                 // Variables must not be used before they are declared
-                // This is a workaround that should work for most cases, but not all, but should be alright
-                // until scopes are supported properly. E.g. it does not prevent using a variable in an else clause
-                // if it has been defined in the respective then-clause.
-                // See Silver issue #116
                 if (containsSubnodeBefore(body, i, localVar)){
                   messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed before it is declared.")
                 }
