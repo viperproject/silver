@@ -1,0 +1,9 @@
+field f : Int
+field g : Int
+
+function f1(x: Ref) : Int
+//:: ExpectedOutput(consistency.error)
+requires(perm(x.f) == perm(x.g))
+//:: ExpectedOutput(consistency.error)
+ensures(forperm[f] r :: false)
+{ 2 }

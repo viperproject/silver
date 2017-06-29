@@ -12,7 +12,8 @@
 
 package viper.silver.ast
 
-import viper.silver.ast.utility.Types
+import utility.Types
+import viper.silver.verifier.ConsistencyError
 
 /** Silver types. */
 sealed trait Type extends Node {
@@ -140,9 +141,8 @@ sealed case class MultisetType(override val  elementType: Type) extends Collecti
 sealed case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
                       (val typeParameters: Seq[TypeVar])
     extends GenericType {
-
-  require(typeParameters.toSet == typVarsMap.keys.toSet,
-          s"${typeParameters.toSet} doesn't equal ${typVarsMap.keys.toSet}")
+  override lazy val check =
+    if(!(typeParameters.toSet == typVarsMap.keys.toSet)) Seq(ConsistencyError(s"${typeParameters.toSet} doesn't equal ${typVarsMap.keys.toSet}", NoPosition)) else Seq()
 
   override val genericName = domainName
   override type MyType = DomainType

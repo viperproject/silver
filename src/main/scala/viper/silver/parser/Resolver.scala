@@ -417,31 +417,33 @@ case class TypeChecker(names: NameAnalyser) {
       cs.add(pt1,pt2)
   }
   def unifySequenceWithSubstitutions(
-    rlts: Set[PTypeSubstitution], //local substitutions, refreshed
-    argData: scala.collection.immutable.Seq[(PType, PType, Set[PTypeSubstitution])]) : Set[PTypeSubstitution]
+    rlts: Seq[PTypeSubstitution], //local substitutions, refreshed
+    argData: scala.collection.immutable.Seq[(PType, PType, Seq[PTypeSubstitution])]) : Seq[PTypeSubstitution]
     // a sequence of triples, one per op arguments, where
     //_1 is the fresh local argument type
     //_2 is the type of the argument expression
     //_3 is the set of substitutions of the argument expression
       = {
-      argData.foldLeft(rlts)((pss:Set[PTypeSubstitution],tri:(PType, PType, Set[PTypeSubstitution]))=>
-        (for (ps:PTypeSubstitution <- pss;aps:PTypeSubstitution <- tri._3)
-        yield composeAndAdd(ps,aps,tri._1,tri._2)).foldLeft(Set[PTypeSubstitution]())(
-          (a:Set[PTypeSubstitution], e:Option[PTypeSubstitution])=>if (e.isDefined) a+e.get else a )
-      )
+    var pss = rlts
+    for (tri <- argData){
+      val current = (for (ps <- pss; aps <- tri._3) yield composeAndAdd(ps, aps, tri._1, tri._2))
+      var a = Seq[PTypeSubstitution]()
+      for (e <- current){
+        if (e.isDefined)
+          a = a.:+(e.get)
+      }
+      pss = a
+    }
+    pss
     //(a:Set[PTypeSubstitution], e:Option[PTypeSubstitution])=>{
   }
 
   def ground(pts: PTypeSubstitution) : PTypeSubstitution =
     pts.m.flatMap(kv=>kv._2.freeTypeVariables &~ pts.m.keySet).foldLeft(pts)((ts,fv)=>ts.add(PTypeVar(fv),PTypeSubstitution.defaultType).get)
 
-  def selectAndGroundTypeSubstitution(etss: collection.Set[PTypeSubstitution]) : PTypeSubstitution = {
+  def selectAndGroundTypeSubstitution(etss: collection.Seq[PTypeSubstitution]) : PTypeSubstitution = {
     require(etss.nonEmpty)
-    ground(
-      if (etss.size==1)
-        ground(etss.head)
-      else
-        etss.min(Ordering.by((ets:PTypeSubstitution)=>ets.toString)))
+    ground(etss.head)
   }
 
   def typeError(exp:PExp) = {
@@ -506,7 +508,7 @@ case class TypeChecker(names: NameAnalyser) {
       piu.decl = entity
     }
 
-    def getFreshTypeSubstitution(tvs : Set[PDomainType]) : PTypeRenaming =
+    def getFreshTypeSubstitution(tvs : Seq[PDomainType]) : PTypeRenaming =
       PTypeVar.freshTypeSubstitutionPTVs(tvs)
 
 
@@ -555,7 +557,7 @@ case class TypeChecker(names: NameAnalyser) {
                       case PFunction(_, _, resultType, _, _, _) =>
                       case pdf@PDomainFunction(_, _, resultType, unique) =>
                         val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
-                        val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).toSet) //fresh domain type variables
+                        val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
                         pfa.domainTypeRenaming = Some(fdtv)
                         pfa._extraLocalTypeVariables = (domain.typVars map (tv => PTypeVar(tv.idndef.name))).toSet
                         extraReturnTypeConstraint = explicitType
@@ -636,20 +638,20 @@ case class TypeChecker(names: NameAnalyser) {
           }
 
           if (poa.signatures.nonEmpty && poa.args.forall(_.typeSubstitutions.nonEmpty) && !nestedTypeError) {
-            val ltr = getFreshTypeSubstitution(poa.localScope) //local type renaming - fresh versions
+            val ltr = getFreshTypeSubstitution(poa.localScope.toList) //local type renaming - fresh versions
             val rlts = poa.signatures map (ts => refreshWith(ts, ltr)) //local substitutions refreshed
             assert(rlts.nonEmpty)
             val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
             val flat = poa.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
             // the triples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions)
-            poa.typeSubstitutions ++= unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.toSet)) ++
+            poa.typeSubstitutions ++= unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), poa.args(i).typ, poa.args(i).typeSubstitutions.distinct)) ++
               (
                 extraReturnTypeConstraint match {
                   case None => Nil
-                  case Some(t) => Seq((rrt, t, Set(PTypeSubstitution.id)))
+                  case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id)))
                 }
                 ))
-            val ts = poa.typeSubstitutions.toSet
+            val ts = poa.typeSubstitutions.distinct
             if (ts.isEmpty)
               typeError(poa)
             poa.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
@@ -675,7 +677,7 @@ case class TypeChecker(names: NameAnalyser) {
         ns.variable.typ = e.typ
         checkInternal(pl.body)
         pl.typ = pl.body.typ
-        pl._typeSubstitutions = (for (ts1 <- pl.body.typeSubstitutions;ts2 <- e.typeSubstitutions) yield ts1*ts2).flatten.toSet
+        pl._typeSubstitutions = (for (ts1 <- pl.body.typeSubstitutions;ts2 <- e.typeSubstitutions) yield ts1*ts2).flatten.toList.distinct
         curMember = oldCurMember
 
       case pq:PQuantifier =>
@@ -684,7 +686,7 @@ case class TypeChecker(names: NameAnalyser) {
         pq.vars foreach (v => check(v.typ))
         check(pq.body,Bool)
         pq.triggers foreach (_.exp foreach (tpe=>checkTopTyped(tpe,None)))
-        pq._typeSubstitutions = pq.body.typeSubstitutions.toSet
+        pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
         curMember = oldCurMember
     }

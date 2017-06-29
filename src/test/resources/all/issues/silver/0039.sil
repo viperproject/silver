@@ -17,15 +17,15 @@ method m(this:Ref,b1:Bool)
     assert acc(this.f)
     assert acc(old(this).f)
     assert acc(old(this.f).f)
-//:: ExpectedOutput(typechecker.error)
+//:: ExpectedOutput(consistency.error)
     assert old(acc(this.f))
 
     var b : Bool
     b := fun(this,b)
- //:: ExpectedOutput(typechecker.error)
+ //:: ExpectedOutput(consistency.error)
    b := fun(this,acc(this.f))
-//:: ExpectedOutput(typechecker.error)
+//:: ExpectedOutput(consistency.error)
     assert df(acc(this.f))>0
-//:: ExpectedOutput(typechecker.error)
+//:: ExpectedOutput(consistency.error)
     m(this,acc(this.f))
 }

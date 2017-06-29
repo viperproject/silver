@@ -209,9 +209,6 @@ trait SilFrontend extends DefaultFrontend {
 
   }
 
-
-
-
   /* TODO: Naming of doTypecheck and doTranslate isn't ideal.
            doTypecheck already translated the program, whereas doTranslate doesn't actually translate
            anything, but instead filters members.
@@ -223,13 +220,12 @@ trait SilFrontend extends DefaultFrontend {
       case Some(modifiedInput) =>
         Translator(modifiedInput).translate match {
           case Some(program) =>
-            Succ(program)
+            val check = program.checkTransitively
+            if(check.isEmpty) Succ(program) else Fail(check)
 
-          case None => // then these are translation messages
+          case None => // then there are translation messages
             Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
               TypecheckerError(
-              // AS: note: m.label may not be the right field here, but I think it is - the interface changed.
-
               m.label, m.pos match {
                 case fp: FilePosition =>
                   SourcePosition(fp.file, m.pos.line, m.pos.column)
@@ -250,6 +246,7 @@ trait SilFrontend extends DefaultFrontend {
         }
         Fail(errors)
     }
+
   }
 
   override def doTranslate(input: TypecheckerResult): Result[Program] = {

@@ -12,10 +12,10 @@ predicate Main$MonitorInvariant(this$_2: Ref) {
 method Main$change(this: Ref, m: Ref, n: Int)
   requires this != null
   requires m != null
-  ensures perm(m.mustReleaseBounded$) == none
-  ensures write - perm(m.mustReleaseBounded$) == write
-  ensures acc(m.mustReleaseUnbounded$, write - perm(m.mustReleaseBounded$)) 
-  ensures (forperm [mustReleaseUnbounded$] r$_15 :: false)
+  ensures [true, perm(m.mustReleaseBounded$) == none]
+  ensures [true, write - perm(m.mustReleaseBounded$) == write]
+  ensures [true, acc(m.mustReleaseUnbounded$, write - perm(m.mustReleaseBounded$))] 
+  ensures [true, (forperm [mustReleaseUnbounded$] r$_15 :: false)]
 {
   assert m != null
   // Check if we already acquired lock
