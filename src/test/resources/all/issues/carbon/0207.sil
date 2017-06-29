@@ -20,8 +20,9 @@ method swap01(a: Array, x: Int, y: Int)
    loc(a,x).val := loc(a,y).val
    loc(a,y).val := tmp
 
-   assert elements(a) == old(elements(a)) // SUCCEEDS
-   assert elements(a) == old[pre](elements(a)) // FAILS
+   //:: ExpectedOutput(assert.failed:assertion.false)
+   assert elements(a) == old(elements(a))
+   assert elements(a) == old[pre](elements(a)
 }
 
 method swap02(a: Array, x: Int, y: Int)
@@ -42,6 +43,7 @@ method swap02(a: Array, x: Int, y: Int)
   loc(a,x).val := loc(a,y).val
   loc(a,y).val := tmp
 
+  //:: ExpectedOutput(assert.failed:assertion.false)
   assert elements(a) == old[pre](elements(a)) // FAILS
 }
 
