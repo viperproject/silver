@@ -237,18 +237,12 @@ case class TypeChecker(names: NameAnalyser) {
         }
       case PIf(cond, thn, els) =>
         check(cond, Bool)
-        checkMember(thn){
-          check(thn)
-        }
-        checkMember(els){
-          check(els)
-        }
+        check(thn)
+        check(els)
       case PWhile(cond, invs, body) =>
         check(cond, Bool)
         invs foreach (check(_, Bool))
-        checkMember(body){
-          check(body)
-        }
+        check(body)
       case PLocalVarDecl(idndef, typ, init) =>
         check(typ)
         init match {
@@ -261,9 +255,7 @@ case class TypeChecker(names: NameAnalyser) {
       case PConstraining(vars, s) =>
         val msg = "expected variable in fresh read permission block"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
-        checkMember(s){
-          check(s)
-        }
+        check(s)
       case plw @ PLetWand(_, wand) =>
         check(wand, Wand)
         wand match {
