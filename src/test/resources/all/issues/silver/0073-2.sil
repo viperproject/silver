@@ -1,8 +1,7 @@
-//:: IgnoreFile(/Carbon/issue/0/)
+//:: IgnoreFile(/silicon/issue/294/)
 field f: Int
 
 method test() {
-  //field access in triggers are only allowed under certain conditions; check in Silicon produces internal error, Carbon verifies
-  //:: ExpectedOutput(internal:feature.unsupported)
+  //Silicon produces internal error
   inhale forall x: Ref :: {x.f} true
 }
