@@ -69,9 +69,10 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def checkMember(m: PScope)(fcheck: => Unit) {
+    val oldCurMember = curMember
     curMember = m
     fcheck
-    curMember = null
+    curMember = oldCurMember
   }
 
   def checkDeclaration(m: PMethod) {
@@ -153,8 +154,10 @@ case class TypeChecker(names: NameAnalyser) {
     stmt match {
       case PMacroRef(id) =>
         messages ++= FastMessaging.message(stmt, "unknown macro used: " + id.name )
-      case PSeqn(ss) =>
-        ss foreach check
+      case s@PSeqn(ss) =>
+        checkMember(s){
+          ss foreach check
+        }
       case PFold(e) =>
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be folded")
         check(e, Bool)
@@ -226,11 +229,6 @@ case class TypeChecker(names: NameAnalyser) {
       case PLabel(name, invs) =>
         invs foreach (check(_, Bool))
       case PGoto(label) =>
-        names.definition(curMember)(label) match {
-          case PLabel(_, _) =>
-          case _ =>
-            messages ++= FastMessaging.message(stmt, "expected a label")
-        }
       case PFieldAssign(field, rhs) =>
         names.definition(curMember)(field.idnuse, Some(PField.getClass)) match {
           case PField(_, typ) =>
@@ -622,17 +620,6 @@ case class TypeChecker(names: NameAnalyser) {
             case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidAndResolved =>
               check(pecl.pElementType)
 
-            case po: POldExp =>
-              // For labelled old expressions, ensure that they refer to a state label
-              po match {
-                case PLabelledOld(lbl, _) if lbl.name != FastParser.LHS_OLD_LABEL =>
-                  names.definition(curMember)(lbl) match {
-                    case PLabel(_, _) => ()
-                    case _ => messages ++= FastMessaging.message(po, "expected state label")
-                  }
-                case _ => ()
-              }
-
             case _ =>
           }
 
@@ -881,22 +868,16 @@ case class NameAnalyser() {
         getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
           case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
-            if (!i.parent.isInstanceOf[PDomainType] && !(name == FastParser.LHS_OLD_LABEL && i.parent.isInstanceOf[PLabelledOld])) {
+            // goto and state labels may exist out of scope (but must exist in method, this is checked in AST consistency check for Method)
+            if (!i.parent.isInstanceOf[PDomainType] && !i.parent.isInstanceOf[PGoto] &&
+            !(i.parent.isInstanceOf[PLabelledOld] && i==i.parent.asInstanceOf[PLabelledOld].label) &&
+            !(name == FastParser.LHS_OLD_LABEL && i.parent.isInstanceOf[PLabelledOld])) {
               messages ++= FastMessaging.message(i, s"identifier $name not defined.")
             }
           case localVar : PLocalVarDecl =>
             getContainingMethod(localVar) match {
               case Some(PMethod(_, args, returns, pres, posts, body)) =>
-                // local variables must not be used in pre- or postconditions
-                // see Silver issue #56
-                if (pres.exists(pre => containsSubnode(pre, i)) || posts.exists(post => containsSubnode(post, i))){
-                  messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed in pre- or postcondition.")
-                }
                 // Variables must not be used before they are declared
-                // This is a workaround that should work for most cases, but not all, but should be alright
-                // until scopes are supported properly. E.g. it does not prevent using a variable in an else clause
-                // if it has been defined in the respective then-clause.
-                // See Silver issue #116
                 if (containsSubnodeBefore(body, i, localVar)){
                   messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed before it is declared.")
                 }

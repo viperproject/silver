@@ -899,7 +899,7 @@ sealed trait PStmt extends PNode {
     }
   }
 }
-case class PSeqn(ss: Seq[PStmt]) extends PStmt
+case class PSeqn(ss: Seq[PStmt]) extends PStmt with PScope
 case class PFold(e: PExp) extends PStmt
 case class PUnfold(e: PExp) extends PStmt
 case class PPackageWand(wand: PExp, proofScript: PSeqn) extends PStmt
@@ -921,10 +921,10 @@ case class PNewStmt(target: PIdnUse, Fields: Option[Seq[PIdnUse]]) extends PStmt
 
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
 case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp) extends PStmt
-case class PIf(cond: PExp, thn: PStmt, els: PStmt) extends PStmt
-case class PWhile(cond: PExp, invs: Seq[PExp], body: PStmt) extends PStmt
+case class PIf(cond: PExp, thn: PSeqn, els: PSeqn) extends PStmt
+case class PWhile(cond: PExp, invs: Seq[PExp], body: PSeqn) extends PStmt
 case class PFresh(vars: Seq[PIdnUse]) extends PStmt
-case class PConstraining(vars: Seq[PIdnUse], stmt: PStmt) extends PStmt
+case class PConstraining(vars: Seq[PIdnUse], stmt: PSeqn) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with PTypedDeclaration with PLocalDeclaration
 case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) extends PStmt
 case class PLabel(idndef: PIdnDef, invs: Seq[PExp]) extends PStmt with PLocalDeclaration
