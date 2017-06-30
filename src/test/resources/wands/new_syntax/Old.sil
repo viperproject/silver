@@ -29,13 +29,6 @@ requires acc(x.f) {
 }
 
 method test1(x: Ref)
-requires acc(x.f) {
-    package acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f)
-    //:: ExpectedOutput(assert.failed:labelled.state.not.reached)
-    assert x.f == old[lhs](x.f)
-}
-
-method test2(x: Ref)
 requires acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f)
 ensures acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f) {
     inhale acc(x.f)
@@ -43,7 +36,7 @@ ensures acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f) {
     package acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f)
 }
 
-method test3(x: Ref)
+method test2(x: Ref)
 requires acc(x.f) && x.f == 0 {
     package true --* acc(x.f) && old[lhs](x.f) == 0 {
         //:: ExpectedOutput(assert.failed:insufficient.permission)
@@ -51,7 +44,7 @@ requires acc(x.f) && x.f == 0 {
     }
 }
 
-method test4(x: Ref)
+method test3(x: Ref)
 requires acc(x.f)
 ensures acc(x.f) && x.f == 0 {
     package acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f)
@@ -59,20 +52,10 @@ ensures acc(x.f) && x.f == 0 {
     apply acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f)
 }
 
-method test5(x: Ref)
+method test4(x: Ref)
 requires acc(x.f)
 //:: ExpectedOutput(postcondition.violated:assertion.false)
 ensures acc(x.f) && x.f == 0 {
     package acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f)
     apply acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f)
 }
-
-method test6(x: Ref) {
-    package acc(x.f) --* acc(x.f) && x.f == old[lhs](x.f)
-    //:: ExpectedOutput(assert.failed:labelled.state.not.reached)
-    assert old[lhs](x.f) == 0
-}
-
-method test7()
-//:: ExpectedOutput(not.wellformed:labelled.state.not.reached)
-requires old[lhs](0) == 0

@@ -781,14 +781,7 @@ object FastParser extends PosParser {
 
   lazy val lbl: P[PLabel] = P(keyword("label") ~/ idndef ~ (keyword("invariant") ~/ exp).rep).map { case (name, invs) => PLabel(name, invs) }
 
-  lazy val magicWandProofStatement: P[PStmt] = P(localassign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | varDecl | methodCall | goto | lbl | packageWand | applyWand| macroref) //fieldassign | defineDecl | newstmt | whle
-
-  lazy val magicWandProofStatements: P[Seq[PStmt]] = P(magicWandProofStatement ~/ ";".?).rep
-
-  lazy val magicWandProofScript: P[Seq[PStmt]] = P("{" ~ magicWandProofStatements ~ "}")
-
-  lazy val packageWand: P[PPackageWand] = P("package" ~/ magicWandExp ~ magicWandProofScript.?).map {
+  lazy val packageWand: P[PPackageWand] = P("package" ~/ magicWandExp ~ block.?).map {
     case (wand, Some(proofScript)) => PPackageWand(wand, PSeqn(proofScript))
     case (wand, None) => PPackageWand(wand, PSeqn(Seq()))
   }

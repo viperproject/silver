@@ -7,8 +7,8 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
-import viper.silver.verifier.ConsistencyError
 import viper.silver.parser.FastParser
+import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}
 
 import scala.util.parsing.input.{NoPosition, Position}
@@ -311,19 +311,38 @@ object Consistency {
   def checkContextDependentConsistency(n: Node, c: Context = Context()) : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
     n.visitWithContext(c)(c => {
-      case _: Package =>
-        c.copy(insidePackageStmt = true)
+      case Package(_, proofScript, locals) =>
+        s ++= checkMagicWandProofScript(proofScript, locals)
+        c.copy(insideWandStatus = InsideWandStatus.Yes)
 
-      case mw@MagicWand(_, rhs) =>
-        checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
-        recordIfNot(mw, noGhostOperations(mw), "Ghost operations may not occur inside of wands.")
+      case mw @ MagicWand(lhs, rhs) =>
+        s ++= checkWandRelatedOldExpressions(lhs, Context(insideWandStatus = InsideWandStatus.Left))
+        s ++= checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
+
+        if(!noGhostOperations(mw))
+          s :+= ConsistencyError("Ghost operations may not occur inside of wands.", mw.pos)
 
         c.copy(insideWandStatus = InsideWandStatus.Yes)
 
-      case po@LabelledOld(_, FastParser.LHS_OLD_LABEL) =>
-        //recordIfNot(po, c.insideWandStatus.isInside, "labelled old expressions with \"lhs\" label may only occur inside wands.")
+      case po@LabelledOld(_, FastParser.LHS_OLD_LABEL) if !c.insideWandStatus.isInside =>
+        s :+= ConsistencyError("Labelled old expressions with \"lhs\" label may only occur inside wands and their proof scripts.", po.pos)
 
         c
+    })
+    s
+  }
+
+  private def checkMagicWandProofScript(script: Stmt, locals: Seq[LocalVarDecl]): Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+    script.visit({
+      case fa: FieldAssign =>
+        s :+= ConsistencyError("Field assignments are not allowed in magic wand proof scripts.", fa.pos)
+      case ne: NewStmt =>
+        s :+= ConsistencyError("New statements statements are not allowed in magic wand proof scripts.", ne.pos)
+      case wh: While =>
+        s :+= ConsistencyError("While statements are not allowed in magic wand proof scripts.", wh.pos)
+      case loc @ LocalVarAssign(LocalVar(varName), _) if !locals.exists(_.name == varName) =>
+        s :+= ConsistencyError("Can only assign to local variables that were declared inside the proof script.", loc.pos)
     })
     s
   }
@@ -335,10 +354,8 @@ object Consistency {
         s ++= checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
         s ++= checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
 
-      case po @ LabelledOld(_, FastParser.LHS_OLD_LABEL) =>
-        /*recordIfNot(po,
-                    c.insideWandStatus.isRight,
-                    "Wands may use the \"lhs\" label on the rhs only.")*/
+      case po @ LabelledOld(_, FastParser.LHS_OLD_LABEL) if !c.insideWandStatus.isRight =>
+          s :+= ConsistencyError("Wands may use the old[lhs]-expression on the rhs and in their proof script only.", po.pos)
     })
     s
   }
@@ -355,6 +372,5 @@ object Consistency {
   }
 
   /** Context for context dependent consistency checking. */
-  case class Context(insidePackageStmt: Boolean = false,
-                     insideWandStatus: InsideWandStatus = InsideWandStatus.No)
+  case class Context(insideWandStatus: InsideWandStatus = InsideWandStatus.No)
 }
