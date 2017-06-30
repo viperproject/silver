@@ -5,12 +5,11 @@
  */
 
 package viper.silver.ast
-import viper.silver.ast.pretty.{Infix, LeftAssociative, NonAssociative, PrettyBinaryExpression, PrettyExpression, PrettyOperatorExpression, PrettyUnaryExpression, RightAssociative}
+import viper.silver.ast.pretty._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.ast.utility.Rewriter.Traverse
 import viper.silver.ast.utility._
-import viper.silver.verifier.ConsistencyError
 import viper.silver.parser.FastParser
+import viper.silver.verifier.ConsistencyError
 
 /** Expressions. */
 sealed trait Exp extends Node with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
@@ -373,8 +372,8 @@ case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position
   lazy val typ = body.typ
 }
 
-case class Applying(wand: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
-  //TODO: consistency checkt that wand is wand
+case class Applying(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
+  override lazy val check : Seq[ConsistencyError] = (if(!(wand isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${wand.typ} ($wand)", wand.pos)) else Seq()) ++ Consistency.checkPure(body)
   lazy val typ = body.typ
 }
 

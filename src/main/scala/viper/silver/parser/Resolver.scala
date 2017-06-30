@@ -10,7 +10,7 @@ import viper.silver.FastMessaging
 import viper.silver.ast.MagicWandOp
 import viper.silver.ast.utility.Visitor
 
-import scala.collection.{Set, mutable}
+import scala.collection.mutable
 import scala.reflect._
 
 /**
@@ -163,11 +163,11 @@ case class TypeChecker(names: NameAnalyser) {
         check(e, Bool)
       case PPackageWand(e, proofScript) =>
         check(e,Wand)
-        checkMagicWand(e, allowWandRefs = false)
+        checkMagicWand(e)
         check(proofScript)
       case PApplyWand(e) =>
         check(e,Wand)
-        checkMagicWand(e, allowWandRefs = true)
+        checkMagicWand(e)
       case PExhale(e) =>
         check(e, Bool)
       case PAssert(e) =>
@@ -289,8 +289,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def checkMagicWand(e: PExp, allowWandRefs: Boolean) = e match {
-    case _: PIdnUse if allowWandRefs =>
+  def checkMagicWand(e: PExp) = e match {
     case PBinExp(_, MagicWandOp.op, _) =>
     case _ =>
       messages ++= FastMessaging.message(e, "expected magic wand")
@@ -581,8 +580,8 @@ case class TypeChecker(names: NameAnalyser) {
               }
               acceptNonAbstractPredicateAccess(pu.acc, "abstract predicates cannot be unfolded")
 
-            case app: PApplying =>
-              //TODO: check is wand
+            case PApplying(wand, _) =>
+              checkMagicWand(wand)
 
             case pfa@PFieldAccess(rcv, idnuse) =>
               /* For a field access of the type rcv.fld we have to ensure that the

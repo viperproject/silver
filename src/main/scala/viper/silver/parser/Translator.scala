@@ -168,7 +168,7 @@ case class Translator(program: PProgram) {
         }
         Package(wand, stmt(proofScript).asInstanceOf[Seqn], locals)(pos)
       case PApplyWand(e) =>
-        Apply(exp(e))(pos)
+        Apply(exp(e).asInstanceOf[MagicWand])(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
       case assume@PAssume(e) =>
@@ -383,7 +383,7 @@ case class Translator(program: PProgram) {
       case PUnfolding(loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
       case PApplying(wand, e) =>
-        Applying(exp(wand), exp(e))(pos)
+        Applying(exp(wand).asInstanceOf[MagicWand], exp(e))(pos)
       case PLet(exp1, PLetNestedScope(variable, body)) =>
         Let(liftVarDecl(variable), exp(exp1), exp(body))(pos)
       case _: PLetNestedScope =>

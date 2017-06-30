@@ -461,7 +461,7 @@ object FastParser extends PosParser {
     // preamble importing
     "import",
     // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "wand",
+    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define",
     // specifications
     "requires", "ensures", "invariant",
     // statements
