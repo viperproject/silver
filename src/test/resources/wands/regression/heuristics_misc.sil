@@ -1,5 +1,4 @@
 //:: IgnoreFile(/Silver/issue/125/)
-//:: IgnoreFile(/Carbon/issue/90/)
 
 field __CONFIG_HEURISTICS: Bool
 

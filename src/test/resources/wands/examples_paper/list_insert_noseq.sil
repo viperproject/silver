@@ -1,5 +1,4 @@
 //:: IgnoreFile(/Silver/issue/125/)
-//:: IgnoreFile(/Carbon/issue/90/)
 
 /* This example is a version of list_insert.sil from which all
  * sequence-related assertions have been erased (in previous versions

@@ -62,14 +62,14 @@ method tree_delete_min(x: Ref) returns (z: Ref)
       invariant p != null && acc(p.l) && acc(Tree(p.l)) && p.l != null
       invariant A --* B
     {
-      wand w := A --* B
+      var oldP: Ref := p
 
       unfold acc(Tree(p.l))
       p := p.l
 
       package (A) --* B {
           fold Tree(p)
-          apply w
+          apply acc(oldP.l) && acc(Tree(oldP.l)) && vals(oldP.l) == now(vals(oldP))[1..] --* B
       }
     }
 

@@ -457,14 +457,6 @@ object reasons {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = MagicWandChunkNotFound(offendingNode.asInstanceOf[MagicWand])
   }
 
-  // AS: not sure why/if we need this as a special case
-  case class MagicWandChunkOutdated(offendingNode: MagicWand) extends AbstractErrorReason {
-    val id = "wand.outdated"
-    def readableMessage = s"Found magic wand instance, but now-expressions might not match."
-
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = MagicWandChunkOutdated(offendingNode.asInstanceOf[MagicWand])
-  }
-
   case class ReceiverNotInjective(offendingNode: LocationAccess) extends AbstractErrorReason {
     val id = "receiver.not.injective"
     def readableMessage = s"Receiver of $offendingNode [$pos]  might not be injective."

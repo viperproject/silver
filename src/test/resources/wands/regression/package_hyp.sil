@@ -5,13 +5,11 @@ field h: Ref
 method test01(x: Ref)
 requires acc(x.f)
 {
-  ////:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/188/)
   package acc(x.f)&&acc(x.f) --* false //theoretically should be packaged since LHS is inconsistent
 
   package acc(x.f)&&acc(x.f) --* acc(x.f)&&acc(x.f)&&false //here inconsistency is also seen in right hand side
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  ////:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 
@@ -47,7 +45,7 @@ method test05(x:Ref)
 method test04(x:Ref)
 {
   package (acc(x.f)&&acc(x.f)) --* false {
-      //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/00000000000000/)
+      //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/0000000000000000/)
       package (true --* false)
   }
 

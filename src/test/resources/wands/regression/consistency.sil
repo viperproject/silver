@@ -1,4 +1,3 @@
-//:: IgnoreFile(/silicon/issue/0000000000000000000/)
 /* Consistency checks (performed on the real Silver AST, not the parser AST) */
 
 field f: Int
@@ -13,26 +12,23 @@ predicate Pair(this: Ref) {
 
 method test01(p: Ref)
   //:: ExpectedOutput(consistency.error)
-  requires acc(p.f) --* folding Pair(p) in true
+  requires acc(p.f) --* unfolding Pair(p) in acc(p.f)
 {}
 
 method test04(p: Ref)
   requires acc(p.f) --* acc(Pair(p))
 {
-  exhale
-    acc(p.f)
-      --*
-    //:: ExpectedOutput(consistency.error)
-    (applying (acc(p.f) --* acc(Pair(p))) in true)
+  //:: ExpectedOutput(consistency.error)
+  exhale acc(p.f) --* (applying (acc(p.f) --* acc(Pair(p))) in acc(p.f))
 }
 
 method test10(p: Ref) {
   //:: ExpectedOutput(consistency.error)
-  assert applying ((folding Pair(p) in true) --* true) in true
+  assert applying ((unfolding Pair(p) in acc(p.f)) --* true) in true
 }
 
 
-/* (Un)folding outside of package/packaging must be pure */
+/* Unfolding outside of package/packaging must be pure */
 
 method test02(p: Ref)
   requires acc(Pair(p))
@@ -46,7 +42,7 @@ method test03() {
   p := new()
 
   //:: ExpectedOutput(consistency.error)
-  assert folding Pair(p) in acc(Pair(p))
+  assert unfolding Pair(p) in acc(Pair(p))
 }
 
 
@@ -55,17 +51,10 @@ method test03() {
 function foobar(x: Ref): Int
   requires true --* acc(x.f)
 {
-  //:: ExpectedOutput(consistency.error)
   applying (true --* acc(x.f)) in x.f
 }
 
-method test17(x: Ref)
-  //:: ExpectedOutput(consistency.error)
-  requires packaging (true --* true) in true
-{}
-
 predicate test18(x: Ref) {
-  //:: ExpectedOutput(consistency.error)
   acc(x.f) && (acc(x.f) --* acc(x.g)) && applying (acc(x.f) --* acc(x.g)) in true
 }
 
@@ -76,90 +65,12 @@ predicate test18(x: Ref) {
 
 method test08(p: Ref) {
   //:: ExpectedOutput(consistency.error)
-  package (folding Pair(p) in true) --* true
+  package (unfolding Pair(p) in acc(p.f)) --* true
 
 }
 
 method test05(p: Ref) {
   //:: ExpectedOutput(consistency.error)
-  apply (folding Pair(p) in true) --* true
+  apply (unfolding Pair(p) in acc(p.f)) --* true
 
-}
-
-method test11(p: Ref) {
-  //:: ExpectedOutput(consistency.error)
-  assert packaging ((folding Pair(p) in true) --* true) in true
-
-}
-
-
-/* RHS of wands inside package/packaging must be a chain of ghost operations
- * with a final in-clause (that may contain pure ghost operations)
- */
-
-method test12(x: Ref)
-  requires acc(x.f)
-  requires true --* acc(x.g)
-{
-  //:: ExpectedOutput(consistency.error)
-  package true --* acc(x.f) && applying (true --* acc(x.g)) in true
-}
-
-method test13(x: Ref)
-  requires acc(x.f)
-  requires true --* acc(x.g)
-{
-  //:: ExpectedOutput(consistency.error)
-  package true --* (applying (true --* acc(x.g)) in true) && acc(x.f)
-}
-
-method test14(x: Ref)
-  requires true --* acc(x.f)
-  requires true --* acc(x.g)
-{
-  //:: ExpectedOutput(consistency.error)
-  package true --* (applying (true --* acc(x.f)) in acc(x.f)) && (applying (true --* acc(x.g)) in acc(x.g))
-}
-
-method test15(x: Ref, b: Bool)
-  requires true --* acc(x.f)
-  requires true --* acc(x.g)
-{
-  //:: ExpectedOutput(consistency.error)
-  package true --* (b ? (applying (true --* acc(x.g)) in acc(x.g)) : (applying (true --* acc(x.f)) in acc(x.f)))
-}
-
-method test16(x: Ref, b: Bool)
-  requires true --* acc(x.f)
-{
-  //:: ExpectedOutput(consistency.error)
-  package true --* (b ==> (applying (true --* acc(x.f)) in acc(x.f)))
-}
-
-/* Was a test in packaging.sil */
-field h: Int
-method test19(x: Ref)
-  requires acc(x.f) && acc(x.g) && acc(x.h)
-{
-  //:: ExpectedOutput(consistency.error)
-  package acc(x.f)
-            --*
-             (acc(x.f)
-          && (packaging
-                (acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h))
-              in
-                acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h)))
-
-/*
-  assert acc(x.f) && acc(x.g)
-  assert acc(x.f) --* (acc(x.f) && (acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h)))
-
-  apply acc(x.f) --* acc(x.f) && (acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h))
-  apply acc(x.f) && acc(x.g) --* acc(x.f) && acc(x.g) && acc(x.h)
-
-  assert acc(x.f) && acc(x.g) && acc(x.h)
-
-  // :: ExpectedOutput(assert.failed:assertion.false)
-  assert false
-*/
 }

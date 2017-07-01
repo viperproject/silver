@@ -158,10 +158,9 @@ case class Translator(program: PProgram) {
       case PUnfold(e) =>
         Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PPackageWand(e, proofScript) =>
-        val wand = exp(e.asInstanceOf[PBinExp]).asInstanceOf[MagicWand]
+        val wand = exp(e).asInstanceOf[MagicWand]
         val plocals = proofScript.shallowCollect {
           case l: PLocalVarDecl => Some(l)
-          case _: PWhile => None
         }
         val locals = plocals.flatten.map {
           case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
