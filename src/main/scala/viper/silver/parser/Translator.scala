@@ -162,7 +162,7 @@ case class Translator(program: PProgram) {
           case l: PLocalVarDecl => Some(l)
         }
         val locals = plocals.flatten.map {
-          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
+          case PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
         }
         Package(wand, stmt(proofScript).asInstanceOf[Seqn], locals)(pos)
       case PApplyWand(e) =>
