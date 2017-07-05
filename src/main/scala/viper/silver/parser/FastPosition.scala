@@ -2,7 +2,6 @@ package viper.silver
 
 
 import com.google.common.cache.{Cache, CacheBuilder}
-
 import scala.util.parsing.input.{NoPosition, Position}
 
 /**

@@ -6,16 +6,15 @@
 
 package viper.silver.parser
 
-import viper.silver.FastPositions
-import viper.silver.ast.MagicWandOp
-import viper.silver.ast.utility.Rewriter.Rewritable
-import viper.silver.ast.utility.Visitor
-import viper.silver.parser.TypeHelper._
-import viper.silver.verifier.ParseReport
-
 import scala.collection.{GenTraversable, Set}
 import scala.language.implicitConversions
 import scala.util.parsing.input.Position
+import viper.silver.ast.utility.Visitor
+import viper.silver.ast.MagicWandOp
+import viper.silver.FastPositions
+import viper.silver.ast.utility.Rewriter.Rewritable
+import viper.silver.parser.TypeHelper._
+import viper.silver.verifier.ParseReport
 
 
 trait FastPositioned {

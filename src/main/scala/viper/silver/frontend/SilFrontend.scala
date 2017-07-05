@@ -6,12 +6,11 @@
 
 package viper.silver.frontend
 
-import java.nio.file.{Path, Paths}
-
 import fastparse.core.Parsed
+import java.nio.file.{Path, Paths}
 import org.apache.commons.io.FilenameUtils
-import viper.silver.FastMessaging
 import viper.silver.ast.utility.Consistency
+import viper.silver.FastMessaging
 import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.verifier.{CliOptionError, Failure, ParseError, TypecheckerError, _}

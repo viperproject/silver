@@ -7,11 +7,9 @@
 package  viper.silver.testing
 
 import java.nio.file.{Files, Path}
-
-import viper.silver.frontend.Frontend
-import viper.silver.verifier.Verifier
-
 import scala.io.Source
+import viper.silver.verifier.Verifier
+import viper.silver.frontend.Frontend
 
 /** A silver suite that can only handle single files. */
 trait SingleFileSilSuite extends SilSuite {

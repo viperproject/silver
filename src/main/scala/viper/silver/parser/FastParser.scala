@@ -2,14 +2,13 @@ package viper.silver.parser
 
 import java.nio.file.{Files, Path}
 
-import fastparse.core.Parsed
-import viper.silver.FastPositions
-import viper.silver.ast.SourcePosition
-import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
-import viper.silver.verifier.ParseError
-
 import scala.language.{implicitConversions, reflectiveCalls}
 import scala.util.parsing.input.NoPosition
+import fastparse.core.Parsed
+import viper.silver.ast.SourcePosition
+import viper.silver.FastPositions
+import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
+import viper.silver.verifier.ParseError
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
 
@@ -105,9 +104,9 @@ object FastParser extends PosParser {
     NoTrace((("/*" ~ (AnyChar ~ !StringIn("*/")).rep ~ AnyChar ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
 
-  import White._
   import fastparse.noApi._
 
+  import White._
 
   // Actual Parser starts from here
   def identContinues = CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "$_")

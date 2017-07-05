@@ -12,9 +12,8 @@
 
 package viper.silver.ast.utility
 
-import viper.silver.ast._
-
 import scala.language.postfixOps
+import viper.silver.ast._
 
 /** Utility methods for types. */
 object Types {

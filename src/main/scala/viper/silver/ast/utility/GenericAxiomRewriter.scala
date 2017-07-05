@@ -6,8 +6,8 @@
 
 package viper.silver.ast.utility
 
-import scala.collection.immutable.ListSet
 import scala.reflect.ClassTag
+import scala.collection.immutable.ListSet
 
 abstract class GenericAxiomRewriter[Type <: AnyRef,
                                     Exp <: AnyRef : ClassTag,

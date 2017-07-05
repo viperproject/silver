@@ -6,9 +6,8 @@
 
 package viper.silver.testing
 
-import java.nio.file.{Files, Path}
-
 import org.scalatest._
+import java.nio.file.{Path, Files}
 
 import scala.collection.JavaConversions._
 

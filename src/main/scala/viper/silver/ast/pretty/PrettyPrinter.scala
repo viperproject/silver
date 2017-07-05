@@ -1,11 +1,11 @@
 package viper.silver.ast.pretty
 
+import scala.language.implicitConversions
+import scala.collection.immutable.Queue
+import scala.collection.immutable.Queue.{empty => emptyDq}
 import viper.silver.ast._
 
 import scala.annotation.tailrec
-import scala.collection.immutable.Queue
-import scala.collection.immutable.Queue.{empty => emptyDq}
-import scala.language.implicitConversions
 
 
 /**

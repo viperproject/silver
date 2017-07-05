@@ -12,9 +12,8 @@
 
 package viper.silver.ast.utility
 
-import viper.silver.ast._
-
 import scala.collection.mutable
+import viper.silver.ast._
 
 /** Utility methods for AST nodes. */
 object Nodes {

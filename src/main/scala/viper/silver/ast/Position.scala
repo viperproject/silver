@@ -13,7 +13,6 @@
 package viper.silver.ast
 
 import java.nio.file.Path
-
 import viper.silver.utility.Common.StructuralEquality
 
 /** A trait describing the position of occurrence of an AST node. */

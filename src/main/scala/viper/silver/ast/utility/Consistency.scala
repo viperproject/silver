@@ -6,12 +6,11 @@
 
 package viper.silver.ast.utility
 
+import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast._
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}
-
-import scala.util.parsing.input.{NoPosition, Position}
 
 /** An utility object for consistency checking. */
 object Consistency {

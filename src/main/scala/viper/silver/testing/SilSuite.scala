@@ -8,12 +8,11 @@ package viper.silver.testing
 
 import java.nio.file._
 
+import scala.collection.mutable
 import org.scalatest.{BeforeAndAfterAll, ConfigMap}
+import viper.silver.verifier._
 import viper.silver.ast.{SourcePosition, TranslatedPosition}
 import viper.silver.frontend.Frontend
-import viper.silver.verifier._
-
-import scala.collection.mutable
 
 /** A test suite for verification toolchains that use SIL. */
 abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll {
