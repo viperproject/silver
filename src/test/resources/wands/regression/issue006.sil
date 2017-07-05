@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field val : Int;
 
 method test03(x: Ref) {

@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 //:: IgnoreFile(/Silver/issue/125/)
 //:: IgnoreFile(/carbon/issue/102/)
 // 17.07.2017 This test used to test magic wand variables that were removed with the new syntax for magic wands

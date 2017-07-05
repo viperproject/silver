@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 //:: IgnoreFile(/carbon/issue/103/)
 
 field __CONFIG_HEURISTICS: Bool
