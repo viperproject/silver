@@ -7,8 +7,8 @@
 package viper.silver.ast
 
 import scala.reflect.ClassTag
-import viper.silver.ast.pretty.FastPrettyPrinter
-import viper.silver.ast.utility._
+import pretty.FastPrettyPrinter
+import utility._
 import viper.silver.ast.utility.Rewriter.Traverse.Traverse
 import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder, Traverse}
 import viper.silver.verifier.errors.ErrorNode
