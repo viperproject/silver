@@ -6,7 +6,7 @@
 
 package viper.silver.utility
 
-import scala.util.matching.Regex
+import util.matching.Regex
 
 /**
  * Interface for a class that can generate unique names.

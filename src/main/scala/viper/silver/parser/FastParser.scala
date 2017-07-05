@@ -1,7 +1,6 @@
 package viper.silver.parser
 
 import java.nio.file.{Files, Path}
-
 import scala.language.{implicitConversions, reflectiveCalls}
 import scala.util.parsing.input.NoPosition
 import fastparse.core.Parsed

@@ -6,7 +6,7 @@
 
 package viper.silver.frontend
 
-import scala.collection._
+import collection._
 import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
 

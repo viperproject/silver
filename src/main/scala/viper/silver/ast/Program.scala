@@ -7,7 +7,7 @@
 package viper.silver.ast
 
 import viper.silver.ast.pretty._
-import viper.silver.ast.utility.{Consistency, DomainInstances, Types}
+import utility.{Consistency, DomainInstances, Types}
 import viper.silver.cfg.silver.CfgGenerator
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError

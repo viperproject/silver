@@ -1,7 +1,6 @@
 package viper.silver.parser
 
 import java.nio.file.Path
-
 import scala.annotation.tailrec
 import scala.language.implicitConversions
 import fastparse.{Implicits, WhitespaceApi}

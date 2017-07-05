@@ -8,8 +8,8 @@ package viper.silver.frontend
 
 import java.nio.file.{Files, Path}
 
-import ch.qos.logback.classic.{Level, Logger}
 import org.slf4j.LoggerFactory
+import ch.qos.logback.classic.{Level, Logger}
 import viper.silver.ast._
 import viper.silver.verifier._
 

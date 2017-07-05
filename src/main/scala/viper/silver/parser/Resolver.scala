@@ -6,12 +6,11 @@
 
 package viper.silver.parser
 
-import viper.silver.FastMessaging
-import viper.silver.ast.MagicWandOp
-import viper.silver.ast.utility.Visitor
-
 import scala.collection.mutable
 import scala.reflect._
+import viper.silver.ast.MagicWandOp
+import viper.silver.ast.utility.Visitor
+import viper.silver.FastMessaging
 
 /**
  * A resolver and type-checker for the intermediate SIL AST.

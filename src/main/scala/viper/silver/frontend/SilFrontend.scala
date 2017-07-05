@@ -13,7 +13,7 @@ import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
 import viper.silver.ast._
 import viper.silver.parser._
-import viper.silver.verifier.{CliOptionError, Failure, ParseError, TypecheckerError, _}
+import viper.silver.verifier._
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait

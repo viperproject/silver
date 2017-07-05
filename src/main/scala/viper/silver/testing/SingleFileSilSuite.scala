@@ -7,7 +7,7 @@
 package  viper.silver.testing
 
 import java.nio.file.{Files, Path}
-import scala.io.Source
+import io.Source
 import viper.silver.verifier.Verifier
 import viper.silver.frontend.Frontend
 
