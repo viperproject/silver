@@ -79,6 +79,8 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
               case m: MethodCall => checkNameUse(m.methodName, m, Method.getClass, declarationMap)
               case f: FuncApp => checkNameUse(f.funcname, f, Function.getClass, declarationMap)
               case f: DomainFuncApp => checkNameUse(f.funcname, f, DomainFunc.getClass, declarationMap)
+              case f: FieldAccess => checkNameUse(f.field.name, f, Field.getClass, declarationMap)
+              case p: PredicateAccess => checkNameUse(p.predicateName, p, Predicate.getClass, declarationMap)
               case g: Goto => checkNameUse(g.target, g, Label.getClass, declarationMap)
               case l: LabelledOld => checkNameUse(l.oldLabel, l, Label.getClass, declarationMap)
               case _ => None
