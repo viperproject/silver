@@ -224,6 +224,7 @@ trait SilFrontend extends DefaultFrontend {
       case Some(modifiedInput) =>
         Translator(modifiedInput).translate match {
           case Some(program) =>
+            println(program)
             val check = program.checkTransitively
             if(check.isEmpty) Succ(program) else Fail(check)
 

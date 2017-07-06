@@ -11,7 +11,7 @@ import viper.silver.ast._
 import org.scalatest.Matchers
 
 
-class ConsistencyErrorTests extends FunSuite with Matchers {
+class ConsistencyTests extends FunSuite with Matchers {
 
     /* These tests invoke errors from consistency checks made at AST nodes.
     At the moment, many of these errors cannot be invoked by parsing a Silver program
@@ -22,26 +22,26 @@ class ConsistencyErrorTests extends FunSuite with Matchers {
 
   test("While loop condition"){
     val loop : While = While(IntLit(1)(NoPosition, NoInfo, NoTrafos), Seq(),
-      Seq(LocalVarDecl("i", Int)(NoPosition, NoInfo, NoTrafos)),
-      Seqn(Seq())(NoPosition, NoInfo, NoTrafos))(NoPosition, NoInfo, NoTrafos)
+      Seqn(Seq(), Seq())(NoPosition, NoInfo, NoTrafos))(NoPosition, NoInfo, NoTrafos)
     loop.checkTransitively should be (Seq(
       ConsistencyError("While loop condition must be of type Bool, but found Int", NoPosition)))
   }
 
-  test("Program assembly checks"){
+  test("Identifier checks"){
     val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, Seq(), NoTrafos)
     val methodcall1: MethodCall = MethodCall("m2", Seq(), Seq())(NoPosition, NoInfo, NoTrafos)
-    val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(), Seq(),
+    val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
       Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i")(Int, NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
-        NoTrafos), Goto("lbl1")(NoPosition, NoInfo, NoTrafos), methodcall1))(NoPosition, NoInfo, NoTrafos))(NoPosition, NoInfo, NoTrafos)
+        NoTrafos), Goto("lbl1")(NoPosition, NoInfo, NoTrafos), methodcall1), Seq())(NoPosition, NoInfo, NoTrafos))(NoPosition, NoInfo, NoTrafos)
     val prog : Program = Program(Seq(), Seq(Field("j", Int)(NoPosition, NoInfo, NoTrafos), Field("j", Bool)(NoPosition, NoInfo, NoTrafos)),
       Seq(), Seq(), Seq(method1))(NoPosition, NoInfo, NoTrafos)
 
     prog.checkTransitively should be (Seq(
-      ConsistencyError("Names of members must be distinct.", NoPosition),
-      ConsistencyError("Method name m2 not found in program.", NoPosition),
-      ConsistencyError("Function name f1 not found in program.", NoPosition),
-      ConsistencyError("Label lbl1 not found in method.", NoPosition)))
+      ConsistencyError("Duplicate identifier j found.", NoPosition),
+      ConsistencyError("Local variable i not found.", NoPosition),
+      ConsistencyError("No matching identifier f1 found with class viper.silver.ast.Function.", NoPosition),
+      ConsistencyError("No matching identifier lbl1 found with class viper.silver.ast.Label.", NoPosition),
+      ConsistencyError("No matching identifier m2 found with class viper.silver.ast.Method.", NoPosition)))
   }
 
   test("Conditional expression"){

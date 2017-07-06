@@ -340,3 +340,13 @@ trait Typed {
 
   def isSubtype(other: Typed) = typ isSubtype other.typ
 }
+
+/** A trait for nodes that are declarations, i.e. functions, methods, local variables etc */
+trait Declaration extends Positioned {
+  def name: String
+}
+
+/** A trait for nodes that define a scope. */
+trait Scope {
+  def locals: Seq[Declaration]
+}

@@ -45,7 +45,7 @@ object CfgGenerator {
     val bodyCfg = method.body.toCfg(simplify = false)
 
     // create block for local variables
-    val locals = method.locals.map { local => LocalVarDeclStmt(local)(local.pos) }
+    val locals = method.locals.collect{ case l: LocalVarDecl => l }.map { local => LocalVarDeclStmt(local)(local.pos) }
     val localBlock: SilverBlock = StatementBlock(locals)
     val localEdge: SilverEdge = UnconditionalEdge(localBlock, bodyCfg.entry, Kind.Normal)
 
@@ -175,7 +175,7 @@ object CfgGenerator {
         addStatement(JumpStmt(afterTarget))
         // set label after if statement
         addLabel(afterTarget)
-      case While(cond, invs, locals, body) =>
+      case While(cond, invs, body) =>
         // create labels
         val headTarget = TmpLabel.generate("head")
         val loopTarget = TmpLabel.generate("loop")
@@ -186,10 +186,6 @@ object CfgGenerator {
         addStatement(ConditionalJumpStmt(cond, loopTarget, afterTarget))
         // process loop body
         addLabel(loopTarget)
-        for (local <- locals) {
-          val decl = LocalVarDeclStmt(local)(pos = local.pos)
-          addStatement(WrappedStmt(decl))
-        }
         run(body)
         addStatement(JumpStmt(headTarget))
         // set label after loop
@@ -199,7 +195,11 @@ object CfgGenerator {
         val cfg = statementToCfg(body)
         addStatement(ConstrainingStmt(vars, cfg, after))
         addLabel(after)
-      case Seqn(ss) =>
+      case Seqn(ss, locals) =>
+        for (local <- locals) {
+          val decl = LocalVarDeclStmt(local)(pos = local.pos)
+          addStatement(WrappedStmt(decl))
+        }
         ss.foreach(run)
       case Goto(name) =>
         val target = TmpLabel(name)

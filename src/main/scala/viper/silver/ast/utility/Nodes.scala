@@ -40,8 +40,8 @@ object Nodes {
           case Field(name, typ) => Nil
           case Function(name, formalArgs, typ, pres, posts, body) =>
             formalArgs ++ pres ++ posts ++ body
-          case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
-            formalArgs ++ formalReturns ++ pres ++ posts ++ locals ++ Seq(body)
+          case Method(name, formalArgs, formalReturns, pres, posts, body) =>
+            formalArgs ++ formalReturns ++ pres ++ posts ++ Seq(body)
           case Predicate(name, formalArg, body) => formalArg ++ body.toSeq
           case Domain(name, functions, axioms, typVars) =>
             functions ++ axioms ++ typVars
@@ -64,8 +64,8 @@ object Nodes {
           case Exhale(e) => Seq(e)
           case Assert(e) => Seq(e)
           case MethodCall(mname, args, targets) => args ++ targets
-          case Seqn(ss) => ss
-          case While(cond, invs, locals, body) => Seq(cond) ++ invs ++ locals ++ Seq(body)
+          case Seqn(ss, locals) => ss ++ locals
+          case While(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
           case If(cond, thn, els) => Seq(cond, thn, els)
           case Label(name, invs) => invs
           case Goto(target) => Nil

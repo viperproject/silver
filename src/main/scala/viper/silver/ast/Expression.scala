@@ -440,19 +440,21 @@ case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPositio
 
 // --- Other expressions
 
-case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
+case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with Scope {
   override lazy val check : Seq[ConsistencyError] =
     if(!(exp.typ isSubtype variable.typ)) Seq(ConsistencyError( s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}", exp.pos)) else Seq()
   val typ = body.typ
+  val locals: Seq[Declaration] = Seq(variable)
 }
 
 // --- Quantifications
 
 /** A common trait for quantified expressions. */
-sealed trait QuantifiedExp extends Exp {
+sealed trait QuantifiedExp extends Exp with Scope {
   def variables: Seq[LocalVarDecl]
   def exp: Exp
   lazy val typ = Bool
+  val locals: Seq[Declaration] = variables
 
   override def isValid : Boolean = this match {
     case _ if contains[MagicWand] => false
