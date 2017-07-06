@@ -348,5 +348,12 @@ trait Declaration extends Positioned {
 
 /** A trait for nodes that define a scope. */
 trait Scope {
-  def locals: Seq[Declaration]
+  val locals: Seq[Declaration]
+
+  // returns locals including those of nested scopes
+  lazy val transitiveLocals: Seq[Declaration] =
+    locals ++
+    this.asInstanceOf[Node].shallowCollect {
+      case s: Scope if(s != this) => s.transitiveLocals
+    }.flatten
 }
