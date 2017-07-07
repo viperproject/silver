@@ -60,7 +60,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }
 
     def checkNamesInScope(currentScope: Scope, declarationMap : mutable.HashMap[String, Declaration]) : Seq[ConsistencyError] = {
-      var s = Seq.empty[ConsistencyError]
+      var s: Seq[ConsistencyError] = Seq.empty[ConsistencyError]
       //check name declarations
       currentScope.locals.foreach(l=> {
         declarationMap.get(l.name) match {
@@ -72,8 +72,23 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       //check name uses
       Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){n=> {
         n match {
-          case sc: Scope => if (sc == currentScope) true else {s ++= checkNamesInScope(sc, declarationMap.clone()); false}
-          case _ => {
+          case sc: Scope => if (sc == currentScope) true else {
+            currentScope match {
+              //fields and predicates in ForPerm's access list need to be treated as uses and not declarations
+              case fp@ForPerm(_, accessList, _) if accessList.contains(sc) =>
+                val optionalError = sc match {
+                  case f: Field => checkNameUse(f.name,fp, Field.getClass, declarationMap)
+                  case p: Predicate => checkNameUse(p.name, fp, Predicate.getClass, declarationMap)
+                }
+                optionalError match {
+                  case Some(error) => s :+= error
+                  case None =>
+                }
+              case _ => s ++= checkNamesInScope(sc, declarationMap.clone())
+            }
+            false
+          }
+          case _ =>
             val optionalError = n match {
               case l: LocalVar => checkLocalVarUse(l.name, l, declarationMap)
               case m: MethodCall => checkNameUse(m.methodName, m, Method.getClass, declarationMap)
@@ -89,7 +104,6 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
               case Some(error) => s :+= error; true
               case None => true
             }
-          }
         }
       }}
       s
