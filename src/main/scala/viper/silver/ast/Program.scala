@@ -101,9 +101,10 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
               case _ => None
             }
             optionalError match {
-              case Some(error) => s :+= error; true
-              case None => true
+              case Some(error) => s :+= error
+              case None =>
             }
+            true
         }
       }}
       s
