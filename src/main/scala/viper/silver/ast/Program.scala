@@ -72,7 +72,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       //check name uses
       Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){n=> {
         n match {
-          case s: Scope => if (s == currentScope) true else false //don't recurse into nested scopes
+          case sc: Scope => if (sc == currentScope) true else {s ++= checkNamesInScope(sc, declarationMap.clone()); false}
           case _ => {
             val optionalError = n match {
               case l: LocalVar => checkLocalVarUse(l.name, l, declarationMap)
@@ -92,11 +92,6 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
           }
         }
       }}
-
-      Nodes.subnodes(currentScope.asInstanceOf[Node]).foreach {
-        case nested: Scope => s ++= checkNamesInScope(nested, declarationMap.clone())
-        case _ =>
-      }
       s
     }
 
