@@ -16,7 +16,7 @@ import scala.collection.mutable
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
                   (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node with Positioned with Infoed with Scope with TransformableErrors {
 
-  val locals: Seq[Declaration] =
+  val scopedDecls: Seq[Declaration] =
     domains ++ fields ++ functions ++ predicates ++ methods ++
     domains.flatMap(d => {d.axioms ++ d.functions})
 
@@ -62,7 +62,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     def checkNamesInScope(currentScope: Scope, declarationMap : mutable.HashMap[String, Declaration]) : Seq[ConsistencyError] = {
       var s: Seq[ConsistencyError] = Seq.empty[ConsistencyError]
       //check name declarations
-      currentScope.locals.foreach(l=> {
+      currentScope.scopedDecls.foreach(l=> {
         declarationMap.get(l.name) match {
           case Some(d: Declaration) => s :+= ConsistencyError(s"Duplicate identifier ${l.name} found.", l.pos)
           case None => declarationMap.put(l.name, l)
@@ -181,7 +181,7 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
-  val locals = Seq() //field is a scope because it is a member; it has no locals
+  val scopedDecls = Seq() //field is a scope because it is a member; it has no locals
 }
 
 /** A predicate declaration. */
@@ -192,7 +192,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
     (if (body.isDefined && !(Consistency.noPerm(body.get) && Consistency.noForPerm(body.get)))
       Seq(ConsistencyError("perm and forperm expressions are not allowed in predicate bodies", body.get.pos)) else Seq())
 
-  val locals: Seq[Declaration] = formalArgs
+  val scopedDecls: Seq[Declaration] = formalArgs
   def isAbstract = body.isEmpty
 
   override def isValid : Boolean = body match {
@@ -210,7 +210,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Seqn)
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted {
 
-  val locals: Seq[Declaration] = formalArgs ++ formalReturns ++ (if(body != null) body.deepCollect({case l: Label => l}) else Seq())
+  val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns ++ (if(body != null) body.deepCollect({case l: Label => l}) else Seq())
 
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Method name must be a valid identifier.", pos)) else Seq()) ++
@@ -245,7 +245,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
     posts.flatMap(Consistency.checkPost) ++
     (if(body.isDefined) Consistency.checkFunctionBody(body.get) else Seq())
 
-  val locals: Seq[Declaration] = formalArgs
+  val scopedDecls: Seq[Declaration] = formalArgs
   /**
    * The result variable of this function (without position or info).
    */
@@ -305,7 +305,7 @@ case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAx
   override lazy val check : Seq[ConsistencyError] =
     if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Domain name must be valid identifier", pos)) else Seq()
 
-  val locals = Seq()
+  val scopedDecls = Seq()
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
@@ -339,7 +339,7 @@ case class DomainAxiom(name: String, exp: Exp)
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
-  val locals = Seq()
+  val scopedDecls = Seq()
 }
 
 object Substitution{
@@ -357,7 +357,7 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
-  val locals: Seq[Declaration] = formalArgs
+  val scopedDecls: Seq[Declaration] = formalArgs
 }
 
 // --- Common functionality

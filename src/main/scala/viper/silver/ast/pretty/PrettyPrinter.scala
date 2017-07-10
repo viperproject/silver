@@ -613,7 +613,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   /** Show some node inside square braces (with nesting). */
   def showBlock(stmt: Stmt): Cont = {
     braces(nest(defaultIndent,
-      lineIfSomeNonEmpty(stmt match {case s: Seqn => s.locals; case _ => Seq()}, stmt.children) <>
+      lineIfSomeNonEmpty(stmt match {case s: Seqn => s.scopedDecls; case _ => Seq()}, stmt.children) <>
         showStmt(stmt)
     ) <> line)
   }
@@ -647,7 +647,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           nil
         else {
           val stmtsToShow =
-            stmts filterNot (s => s.isInstanceOf[Seqn] && s.info.comment.isEmpty && s.children.isEmpty && s.asInstanceOf[Seqn].locals.isEmpty)
+            stmts filterNot (s => s.isInstanceOf[Seqn] && s.info.comment.isEmpty && s.children.isEmpty && s.asInstanceOf[Seqn].scopedDecls.isEmpty)
 
           ssep((if (locals == null) Nil else locals map (text("var") <+> showVar(_))) ++ (stmtsToShow map show), line)
         }
@@ -657,7 +657,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
             showContracts("invariant", invs)
           ) <+> lineIfSomeNonEmpty(invs) <>
           braces(nest(defaultIndent,
-            lineIfSomeNonEmpty(body.locals, body.children) <>
+            lineIfSomeNonEmpty(body.scopedDecls, body.children) <>
               ssep(Seq(showStmt(body)), line)
           ) <> line)
       case If(cond, thn, els) =>

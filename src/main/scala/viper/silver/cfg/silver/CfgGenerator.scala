@@ -45,7 +45,7 @@ object CfgGenerator {
     val bodyCfg = method.body.toCfg(simplify = false)
 
     // create block for local variables
-    val locals = method.locals.collect{ case l: LocalVarDecl => l }.map { local => LocalVarDeclStmt(local)(local.pos) }
+    val locals = method.scopedDecls.collect{ case l: LocalVarDecl => l }.map { local => LocalVarDeclStmt(local)(local.pos) }
     val localBlock: SilverBlock = StatementBlock(locals)
     val localEdge: SilverEdge = UnconditionalEdge(localBlock, bodyCfg.entry, Kind.Normal)
 
