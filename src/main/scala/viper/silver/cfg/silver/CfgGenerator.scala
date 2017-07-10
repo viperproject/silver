@@ -195,7 +195,8 @@ object CfgGenerator {
         val cfg = statementToCfg(body)
         addStatement(ConstrainingStmt(vars, cfg, after))
         addLabel(after)
-      case Seqn(ss, locals) =>
+      case Seqn(ss, scopedDecls) =>
+        val locals = scopedDecls.collect {case l: LocalVarDecl => l}
         for (local <- locals) {
           val decl = LocalVarDeclStmt(local)(pos = local.pos)
           addStatement(WrappedStmt(decl))

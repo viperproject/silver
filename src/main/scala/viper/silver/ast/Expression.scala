@@ -512,6 +512,10 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
 
 
 /** Quantification over heap chunks with positive permission in any of the listed fields */
+/** TODO: Seq[Location] is not ideal for accessList, because it is a seq of uses rather than declarations;
+  * FieldAccess/PredicateAccess (LocationAccess) aren't good alternatives either, because they require
+  * a field receiver/predicate arguments whereas field/predicate id would suffice.
+  */
 case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
                   (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] =

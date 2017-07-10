@@ -10,7 +10,8 @@ import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, 
 import utility.{Consistency, DomainInstances, Types, Nodes, Visitor}
 import viper.silver.cfg.silver.CfgGenerator
 import viper.silver.verifier.ConsistencyError
-import scala.collection.mutable
+import scala.collection.immutable
+import scala.reflect.ClassTag
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
@@ -45,27 +46,31 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   /** checks that all identifier declarations and uses are valid in scope**/
   lazy val checkIdentifiers: Seq[ConsistencyError] = {
 
-    def checkLocalVarUse(name: String, n: Positioned with Typed, declarationMap: mutable.HashMap[String, Declaration]) : Option[ConsistencyError] = {
+    def checkLocalVarUse(name: String, n: Positioned with Typed, declarationMap: immutable.HashMap[String, Declaration]) : Option[ConsistencyError] = {
       declarationMap.get(name) match {
         case Some(d: LocalVarDecl) => if(d.typ == n.typ) None else Some(ConsistencyError(s"No matching local variable $name found with type ${n.typ}, instead found ${d.typ}.", n.pos))
-        case Some(d) => Some(ConsistencyError(s"No matching local variable $name found with type ${n.typ}, instead found other identifier of type ${d.getClass}.", n.pos))
+        case Some(d) => Some(ConsistencyError(s"No matching local variable $name found with type ${n.typ}, instead found other identifier of type ${d.getClass.getSimpleName}.", n.pos))
         case None => Some(ConsistencyError(s"Local variable $name not found.", n.pos))
       }
     }
-    def checkNameUse(name: String, n: Positioned, expected: Class[_], declarationMap: mutable.HashMap[String, Declaration]) : Option[ConsistencyError] = {
+    def checkNameUse[T](name: String, n: Positioned, expected: String, declarationMap: immutable.HashMap[String, Declaration])(implicit tag: ClassTag[T]) : Option[ConsistencyError] = {
       declarationMap.get(name) match {
-        case Some(d) => if(s"$expected".equals(s"${d.getClass}$$")) None else Some(ConsistencyError(s"No matching identifier $name found with ${expected.toString.stripSuffix("$")}, instead found ${d.getClass}.", n.pos))
-        case None => Some(ConsistencyError(s"No matching identifier $name found with ${expected.toString.stripSuffix("$")}.", n.pos))
+        case Some(d) => d match {
+          case _: T => None
+          case _ => Some(ConsistencyError(s"No matching identifier $name found of type $expected, instead found of type ${d.getClass.getSimpleName}.", n.pos))
+        }
+        case None => Some(ConsistencyError(s"No matching identifier $name found of type $expected.", n.pos))
       }
     }
 
-    def checkNamesInScope(currentScope: Scope, declarationMap : mutable.HashMap[String, Declaration]) : Seq[ConsistencyError] = {
+    def checkNamesInScope(currentScope: Scope, dMap: immutable.HashMap[String, Declaration]) : Seq[ConsistencyError] = {
+      var declarationMap = dMap
       var s: Seq[ConsistencyError] = Seq.empty[ConsistencyError]
       //check name declarations
       currentScope.scopedDecls.foreach(l=> {
         declarationMap.get(l.name) match {
           case Some(d: Declaration) => s :+= ConsistencyError(s"Duplicate identifier ${l.name} found.", l.pos)
-          case None => declarationMap.put(l.name, l)
+          case None => declarationMap += (l.name -> l)
         }
       })
 
@@ -74,30 +79,32 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
         n match {
           case sc: Scope => if (sc == currentScope) true else {
             currentScope match {
-              //fields and predicates in ForPerm's access list need to be treated as uses and not declarations
+              /** fields and predicates in ForPerm's access list need to be treated as uses and not declarations
+                * see related TODO in ForPerm definition
+                */
               case fp@ForPerm(_, accessList, _) if accessList.contains(sc) =>
                 val optionalError = sc match {
-                  case f: Field => checkNameUse(f.name,fp, Field.getClass, declarationMap)
-                  case p: Predicate => checkNameUse(p.name, fp, Predicate.getClass, declarationMap)
+                  case f: Field => checkNameUse[Field](f.name,fp, "Field", declarationMap)
+                  case p: Predicate => checkNameUse[Predicate](p.name, fp, "Predicate", declarationMap)
                 }
                 optionalError match {
                   case Some(error) => s :+= error
                   case None =>
                 }
-              case _ => s ++= checkNamesInScope(sc, declarationMap.clone())
+              case _ => s ++= checkNamesInScope(sc, declarationMap)
             }
             false
           }
           case _ =>
             val optionalError = n match {
               case l: LocalVar => checkLocalVarUse(l.name, l, declarationMap)
-              case m: MethodCall => checkNameUse(m.methodName, m, Method.getClass, declarationMap)
-              case f: FuncApp => checkNameUse(f.funcname, f, Function.getClass, declarationMap)
-              case f: DomainFuncApp => checkNameUse(f.funcname, f, DomainFunc.getClass, declarationMap)
-              case f: FieldAccess => checkNameUse(f.field.name, f, Field.getClass, declarationMap)
-              case p: PredicateAccess => checkNameUse(p.predicateName, p, Predicate.getClass, declarationMap)
-              case g: Goto => checkNameUse(g.target, g, Label.getClass, declarationMap)
-              case l: LabelledOld => checkNameUse(l.oldLabel, l, Label.getClass, declarationMap)
+              case m: MethodCall => checkNameUse[Method](m.methodName, m, "Method", declarationMap)
+              case f: FuncApp => checkNameUse[Function](f.funcname, f, "Function", declarationMap)
+              case f: DomainFuncApp => checkNameUse[DomainFunc](f.funcname, f, "DomainFunc", declarationMap)
+              case f: FieldAccess => checkNameUse[Field](f.field.name, f, "Field", declarationMap)
+              case p: PredicateAccess => checkNameUse[Predicate](p.predicateName, p, "Predicate", declarationMap)
+              case g: Goto => checkNameUse[Label](g.target, g, "Label", declarationMap)
+              case l: LabelledOld => checkNameUse[Label](l.oldLabel, l, "Label", declarationMap)
               case _ => None
             }
             optionalError match {
@@ -110,7 +117,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       s
     }
 
-    checkNamesInScope(this, mutable.HashMap.empty[String, Declaration])
+    checkNamesInScope(this, immutable.HashMap.empty[String, Declaration])
   }
 
   lazy val groundTypeInstances = DomainInstances.findNecessaryTypeInstances(this)
@@ -210,7 +217,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Seqn)
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted {
 
-  val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns ++ (if(body != null) body.deepCollect({case l: Label => l}) else Seq())
+  val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns
 
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Method name must be a valid identifier.", pos)) else Seq()) ++

@@ -53,7 +53,10 @@ case class Translator(program: PProgram) {
   private def translate(m: PMethod): Method = m match {
     case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
       val m = findMethod(name)
-      val mm = m.copy(pres = pres map exp, posts = posts map exp, body = stmt(body).asInstanceOf[Seqn])(m.pos, m.info, m.errT)
+      val b = stmt(body).asInstanceOf[Seqn]
+      val newScopedDecls = b.scopedDecls ++ b.deepCollect {case l: Label => l}
+      val newBody = b.copy(scopedDecls = newScopedDecls)(b.pos, b.info, b.errT)
+      val mm = m.copy(pres = pres map exp, posts = posts map exp, body = newBody)(m.pos, m.info, m.errT)
       members(m.name) = mm
       mm
   }

@@ -39,9 +39,9 @@ class ConsistencyTests extends FunSuite with Matchers {
     prog.checkTransitively should be (Seq(
       ConsistencyError("Duplicate identifier j found.", NoPosition),
       ConsistencyError("Local variable i not found.", NoPosition),
-      ConsistencyError("No matching identifier f1 found with class viper.silver.ast.Function.", NoPosition),
-      ConsistencyError("No matching identifier lbl1 found with class viper.silver.ast.Label.", NoPosition),
-      ConsistencyError("No matching identifier m2 found with class viper.silver.ast.Method.", NoPosition)))
+      ConsistencyError("No matching identifier f1 found of type Function.", NoPosition),
+      ConsistencyError("No matching identifier lbl1 found of type Label.", NoPosition),
+      ConsistencyError("No matching identifier m2 found of type Method.", NoPosition)))
   }
 
   test("Conditional expression"){

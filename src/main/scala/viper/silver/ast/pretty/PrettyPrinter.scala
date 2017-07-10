@@ -642,7 +642,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           case Nil => call
           case _ => ssep(targets map show, char(',') <> space) <+> ":=" <+> call
         }
-      case seqn@Seqn(stmts, locals) =>
+      case seqn@Seqn(stmts, scopedDecls) =>
+        val locals = scopedDecls.collect {case l: LocalVarDecl => l}
         if (stmts.isEmpty && locals.isEmpty && seqn.info.comment.isEmpty)
           nil
         else {

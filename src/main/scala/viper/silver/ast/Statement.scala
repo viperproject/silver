@@ -169,7 +169,7 @@ case class Apply(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoIn
 }
 
 /** A sequence of statements. */
-case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[LocalVarDecl])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope {
+case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[Declaration])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope {
 
   // Interprete leaves of a possibly nested Seqn structure as its children
   override lazy val getChildren: Seq[AnyRef] = {
