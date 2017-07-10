@@ -27,7 +27,7 @@ class ConsistencyTests extends FunSuite with Matchers {
       ConsistencyError("While loop condition must be of type Bool, but found Int", NoPosition)))
   }
 
-  test("Identifier checks"){
+  test("Missing and duplicate identifiers"){
     val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, Seq(), NoTrafos)
     val methodcall1: MethodCall = MethodCall("m2", Seq(), Seq())(NoPosition, NoInfo, NoTrafos)
     val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
@@ -42,6 +42,22 @@ class ConsistencyTests extends FunSuite with Matchers {
       ConsistencyError("No matching identifier f1 found of type Function.", NoPosition),
       ConsistencyError("No matching identifier lbl1 found of type Label.", NoPosition),
       ConsistencyError("No matching identifier m2 found of type Method.", NoPosition)))
+  }
+
+  test("Type mismatched identifiers"){
+    val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, Seq(), NoTrafos)
+    val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
+      Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i")(Int, NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
+        NoTrafos), LocalVarAssign(LocalVar("j")(Int, NoPosition, NoInfo, NoTrafos), IntLit(5)(NoPosition))(NoPosition, NoInfo,
+        NoTrafos)), Seq(LocalVarDecl("i", Bool)(NoPosition)))(NoPosition, NoInfo, NoTrafos))(NoPosition, NoInfo, NoTrafos)
+    val method2: Method = Method("j", Seq(), Seq(), Seq(), Seq(), Seqn(Seq(), Seq())(NoPosition))(NoPosition)
+    val prog : Program = Program(Seq(), Seq(Field("f1", Int)(NoPosition, NoInfo, NoTrafos)),
+      Seq(), Seq(), Seq(method1, method2))(NoPosition, NoInfo, NoTrafos)
+
+    prog.checkTransitively should be (Seq(
+      ConsistencyError("No matching local variable i found with type Int, instead found Bool.", NoPosition),
+      ConsistencyError("No matching identifier f1 found of type Function, instead found of type Field.", NoPosition),
+      ConsistencyError("No matching local variable j found with type Int, instead found other identifier of type Method.", NoPosition)))
   }
 
   test("Conditional expression"){
