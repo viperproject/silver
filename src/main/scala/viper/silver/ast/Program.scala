@@ -6,10 +6,10 @@
 
 package viper.silver.ast
 
-import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
+import viper.silver.ast.pretty._
 import utility.{Consistency, DomainInstances, Types}
 import viper.silver.cfg.silver.CfgGenerator
-import viper.silver.verifier.ConsistencyError
+import viper.silver.verifier.{ConsistencyError,CacheHelper, DependencyAware}
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
@@ -124,6 +124,12 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     Seq(pos, info, errT)
   }
 
+  def computeEntityHashes(): Unit = {
+    members.foreach((m:Member) => {
+      m.entityHash = CacheHelper.computeEntityHash("", m)
+    })
+  }
+
 }//class Program
 
 object Program{
@@ -218,6 +224,11 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     * Returns a control flow graph that corresponds to this method.
     */
   def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
+
+  override lazy val dependencyHash:String = {
+    val dependencies:String = this.entityHash + " " + getDependencies(this).map(m =>m.entityHash).mkString(" ")
+    CacheHelper.buildHash(dependencies)
+  }
 }
 
 /** A function declaration */
@@ -353,6 +364,9 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
 /** Common ancestor for members of a program. */
 sealed trait Member extends Node with Positioned with Infoed with TransformableErrors {
   def name: String
+  //the entityHash needs to be mutable as long as the body of members are mutable,
+  //as it depends on the prettyPrint which depends on the body.
+  var entityHash: String = null
 }
 
 /** Common ancestor for domain members. */

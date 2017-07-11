@@ -50,6 +50,8 @@ trait AbstractError {
     if (msg contains posStr) s"$msg"
     else s"$msg ($posStr)"
   }
+
+  def cached: Boolean = false
 }
 
 abstract class ParseReport(message: String, pos: Position) extends AbstractError

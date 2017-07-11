@@ -166,6 +166,8 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   protected def printOutline(program: Program)
 
+  protected def printDefinitions(program: Program)
+
   override def parse() {
     if (state < TranslatorState.InputSet) sys.error("The translator has not been initialized, or there is no input set.")
     if (state >= TranslatorState.Parsed) return
@@ -214,15 +216,17 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
       _state = TranslatorState.Verified
       return
     }
-    //    _verifier.get.start()
+    printOutline(_program.get)
+    printDefinitions(_program.get)
 
+    doVerify()
+  }
+
+  def doVerify() {
     _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
     assert(_verificationResult != null)
 
     //    _verifier.get.stop()
-
-    printOutline(_program.get)
-
     _state = TranslatorState.Verified
   }
 
