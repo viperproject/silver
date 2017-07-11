@@ -151,7 +151,7 @@ case class Translator(program: PProgram) {
           case _ => None
         }
         val locals = plocals.flatten.map {
-          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
+          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
         }
         Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt, locals)(pos)
       case PFold(e) =>

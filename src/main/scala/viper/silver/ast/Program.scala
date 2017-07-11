@@ -48,7 +48,10 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
     def checkLocalVarUse(name: String, n: Positioned with Typed, declarationMap: immutable.HashMap[String, Declaration]) : Option[ConsistencyError] = {
       declarationMap.get(name) match {
-        case Some(d: LocalVarDecl) => if(d.typ == n.typ) None else Some(ConsistencyError(s"No matching local variable $name found with type ${n.typ}, instead found ${d.typ}.", n.pos))
+        case Some(d: LocalVarDecl) =>
+          if(d.typ == n.typ){
+            if(d.pos <= n.pos) None else Some(ConsistencyError(s"Local variable $name cannot be used before it is declared.", n.pos))
+          } else Some(ConsistencyError(s"No matching local variable $name found with type ${n.typ}, instead found ${d.typ}.", n.pos))
         case Some(d) => Some(ConsistencyError(s"No matching local variable $name found with type ${n.typ}, instead found other identifier of type ${d.getClass.getSimpleName}.", n.pos))
         case None => Some(ConsistencyError(s"Local variable $name not found.", n.pos))
       }
@@ -218,7 +221,6 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted {
 
   val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns
-
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Method name must be a valid identifier.", pos)) else Seq()) ++
     pres.flatMap(Consistency.checkPre) ++
@@ -226,7 +228,19 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     posts.flatMap(p=>{ if(!Consistency.noResult(p)) Seq(ConsistencyError("Method postconditions must have no result variables.", p.pos)) else Seq()}) ++
     Consistency.checkNoArgsReassigned(formalArgs, body) ++
     (if (!((formalArgs ++ formalReturns) forall (_.typ.isConcrete))) Seq(ConsistencyError("Formal args and returns must have concrete types.", pos)) else Seq()) ++
-    (pres ++ posts).flatMap(Consistency.checkNoPermForpermExceptInhaleExhale)
+    (pres ++ posts).flatMap(Consistency.checkNoPermForpermExceptInhaleExhale) ++
+    checkReturnsNotUsedInPreconditions
+
+  lazy val checkReturnsNotUsedInPreconditions: Seq[ConsistencyError] = {
+    val varsInPreconditions: Seq[LocalVar] = pres flatMap {_.deepCollect {case l: LocalVar => l}}
+    var s = Seq.empty[ConsistencyError]
+    formalReturns.foreach {f => {
+      varsInPreconditions.filter(v=>{v.name == f.name && v.typ == f.typ}).foreach {v=> {
+        s :+= ConsistencyError(s"Return variable ${v.name} cannot be accessed in precondition.", v.pos)
+      }}
+    }}
+    s
+  }
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)

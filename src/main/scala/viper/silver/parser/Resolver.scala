@@ -832,39 +832,6 @@ case class NameAnalyser() {
       }
     }
 
-    def containsSubnode(container : PNode, toFind : PNode) : Boolean = {
-      Visitor.existsDefined(container, Nodes.subnodes){ case found if (found eq toFind) && found != container => }
-    }
-
-    def containsSubnodeBefore(container: PNode, toFind: PNode, before: PNode) : Boolean = {
-      var beforeFound = false
-      val pred = new PartialFunction[PNode, PNode] {
-        def isDefinedAt(node: PNode): Boolean = {
-          if (!beforeFound){
-            if (node eq before){
-              beforeFound = true
-            }
-          }
-          (node eq toFind) && node != container && !beforeFound
-        }
-
-        def apply(node: PNode) = node
-      }
-      Visitor.existsDefined(container, Nodes.subnodes)(pred)
-    }
-
-    def getContainingMethod(node : PNode) : Option[PMethod] = {
-      node match {
-        case null => None
-        case method : PMethod => Some(method)
-        case nonMethod =>
-          nonMethod.parent match {
-            case parentNode : PNode => getContainingMethod(parentNode)
-            case _ => None
-          }
-      }
-    }
-
     // find all declarations
     p.visit( nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
 
@@ -882,25 +849,6 @@ case class NameAnalyser() {
             if (!i.parent.isInstanceOf[PDomainType] && !i.parent.isInstanceOf[PGoto] &&
             !(i.parent.isInstanceOf[PLabelledOld] && i==i.parent.asInstanceOf[PLabelledOld].label)) {
               messages ++= FastMessaging.message(i, s"identifier $name not defined.")
-            }
-          case localVar : PLocalVarDecl =>
-            getContainingMethod(localVar) match {
-              case Some(PMethod(_, args, returns, pres, posts, body)) =>
-                // Variables must not be used before they are declared
-                if (containsSubnodeBefore(body, i, localVar)){
-                  messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed before it is declared.")
-                }
-              case _ =>
-            }
-          // return parameters must not be used in preconditions
-          // see Silver issue #77
-          case arg : PFormalArgDecl =>
-            getContainingMethod(arg) match {
-              case Some(PMethod(_, args, returns, pres, posts, _)) =>
-                if (returns.contains(arg) && pres.exists(pre => containsSubnode(pre, i))){
-                  messages ++= FastMessaging.message(i, s"return variable $name cannot be accessed in precondition.")
-                }
-              case _ =>
             }
           case _ =>
         }
