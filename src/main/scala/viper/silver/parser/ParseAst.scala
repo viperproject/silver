@@ -370,6 +370,17 @@ sealed trait PExp extends PNode {
   def forceSubstitution(ts: PTypeSubstitution)
 }
 
+sealed trait PDecClause extends PNode {
+}
+
+case class PDecStar() extends PDecClause{
+}
+
+case class PDecTuple (d: Seq[PExp]) extends PDecClause{
+  val decs : Seq[PExp] = d
+}
+
+
 class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
 {
   require(m.values.forall(_.isValidAndResolved))
@@ -1007,17 +1018,13 @@ case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PD
 case class PImport(file: String) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Seq[PExp], body: Option[PExp]) extends PAnyFunction
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecClause], body: Option[PExp]) extends PAnyFunction
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PAnyFunction
 case class PAxiom(idndef: PIdnDef, exp: PExp)(val domainName:PIdnUse) extends PScope with PGlobalDeclaration  //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
 case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
   val typ = PPredicateType()
 }
-
-//case class PDeclause(d: Seq[PExp]) extends PNode{
-//  val decs : Seq[PExp] = d
-//}
 
 case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned
 case class PAxiom1(idndef: PIdnDef, exp: PExp) extends FastPositioned
@@ -1125,15 +1132,16 @@ object Nodes {
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ Seq(body)
-      case PFunction(name, args, typ, pres, posts, decs, body) =>
-        Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ decs ++ body
+      case PFunction(name, args, typ, pres, posts, dec, body) =>
+        Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ dec ++ body
       case PDomainFunction(name, args, typ, unique) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, args, body) =>
         Seq(name) ++ args ++ body
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
-      //case PDeclause(exp) => exp
+      case PDecTuple(exp) => exp
+      case PDecStar() => Nil
       case PLetWand(idndef, wand) => Seq(idndef, wand)
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case _: PSkip => Nil

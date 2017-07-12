@@ -101,7 +101,7 @@ case class TypeChecker(names: NameAnalyser) {
       curFunction=f
       f.pres foreach (check(_, Bool))
       resultAllowed=true
-      f.decs foreach (d => check(d,d.typ)) //TODO pege
+      check(f.decs) //TODO pege necessary?
       f.posts foreach (check(_, Bool))
       f.body.foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
       resultAllowed=false
@@ -147,6 +147,15 @@ case class TypeChecker(names: NameAnalyser) {
   def check(f: PDomainFunction) {
     check(f.typ)
     f.formalArgs foreach (a => check(a.typ))
+  }
+
+  def check(d: Option[PDecClause]): Unit = {
+    d match {
+      case Some(PDecStar()) =>
+      case Some(PDecTuple(exp)) =>
+        exp foreach (e => check(e, e.typ)) //TODO pege, these checks are a bit stupid
+      case None =>
+    }
   }
 
   def check(stmt: PStmt) {

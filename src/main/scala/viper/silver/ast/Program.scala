@@ -92,7 +92,13 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 }
 
 /** A decreas Clause declaration. */
-case class DecClause(e: Seq[Exp]) { //TODO stored twice
+sealed trait DecClause extends Node{ //pege extend correct?
+}
+
+case class DecStar() extends DecClause{
+}
+
+case class DecTuple(e: Seq[Exp]) extends DecClause{
   val exp: Seq[Exp] = e
 }
 
@@ -158,7 +164,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 }
 
 /** A function declaration */
-case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _decs: Seq[Exp], private var _body: Option[Exp])
+case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, private var _pres: Seq[Exp], private var _posts: Seq[Exp], private var _decs: Option[DecClause], private var _body: Option[Exp])
                    (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with FuncLike with Contracted {
   require(_posts == null || (_posts forall Consistency.noOld))
   require(_body == null || (_body map (_ isSubtype typ) getOrElse true))
@@ -178,7 +184,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, priv
     _posts = s
   }
   def decs = _decs
-  def decs_=(s: Seq[Exp]) {
+  def decs_=(s: Option[DecClause]) {
     //s foreach Consistency. //TODO checks pege
     _decs = s
   }

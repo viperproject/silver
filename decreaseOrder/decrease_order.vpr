@@ -3,7 +3,7 @@ import "decreaseOrder/tuple.vpr"
 
 domain TerminationOrder[T]{
     function decreasing(arg1:T, arg2:T):Bool
-    function bounded(arg1:T):Bool 
+    function bounded(arg1:T):Bool
 }
 
 domain IntTerminationOrder{

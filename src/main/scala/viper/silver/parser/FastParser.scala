@@ -857,14 +857,23 @@ object FastParser extends PosParser {
   lazy val fieldDecl: P[PField] = P("field" ~/ idndef ~ ":" ~ typ ~ ";".?).map { case (a, b) => PField(a, b) }
 
   lazy val functionDecl: P[PFunction] = P("function" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-    post.rep ~ dec.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f, g) => PFunction(a, b, c, d, e, f.flatten, g) }
+    post.rep ~ dec.? ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f, g) => PFunction(a, b, c, d, e, f, g) }
 
 
   lazy val pre: P[PExp] = P("requires" ~/ exp ~ ";".?)
 
   lazy val post: P[PExp] = P("ensures" ~/ exp ~ ";".?)
 
-  lazy val dec: P[Seq[PExp]] = P("decreases" ~/ decCl ~ ";".?) //pege
+  //lazy val dec: P[PDecClause] = P("decreases" ~/ ((P(exp.rep(sep = ",")).map { case a => PDecTuple(a)}) | P("*").map(_ => PDecStar())) ~ ";".?) //pege
+  lazy val dec: P[PDecClause] = P("decreases" ~/ (("*").!.map{_ => PDecStar()} | (exp.rep(sep = ",").map { exps => PDecTuple(exps)})) ~ ";".?) //pege
+
+
+  //P(("*").!.map { _ => None } | (idnuse.rep(sep = ",").map { fields => Some(fields) }))
+
+
+  //P(keyword("none").map(_ => PNoPerm())
+
+    //| keyword("*")) ~ ";".?).map { case (a,b) => PDecStar()} //pege
 
   //lazy val dec2: P[Seq[Char]] = P("decreases" ~/ "*" ~ ";".?) //pege
 

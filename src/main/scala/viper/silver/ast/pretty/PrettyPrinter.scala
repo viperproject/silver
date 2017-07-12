@@ -12,41 +12,44 @@ import scala.annotation.tailrec
   * Trampoline implementation based on http://blog.richdougherty.com/2009/04/tail-calls-tailrec-and-trampolines.html,
   * with some extensions from "Stackless Scala with Free Monads" by Runar Oli Bjarnason.
   */
-sealed trait Bounce [+ A] {
+sealed trait Bounce[+A] {
   @tailrec
-  final def runT : A =
+  final def runT: A =
     resume match {
-      case Left (k) => k().runT
-      case Right (v) => v
+      case Left(k) => k().runT
+      case Right(v) => v
     }
 
   @tailrec
-  final def resume : Either[() => Bounce[A], A] =
+  final def resume: Either[() => Bounce[A], A] =
     this match {
-      case Done(v)       => Right (v)
-      case Call(k)       => Left (k)
-      case FlatMap (a,f) =>
+      case Done(v) => Right(v)
+      case Call(k) => Left(k)
+      case FlatMap(a, f) =>
         a match {
-          case Done (v)     => f (v).resume
-          case Call (k)     => Left (() => k () flatMap f)
-          case FlatMap(b,g) => b.flatMap ((x : Any) => g (x) flatMap f).resume
+          case Done(v) => f(v).resume
+          case Call(k) => Left(() => k() flatMap f)
+          case FlatMap(b, g) => b.flatMap((x: Any) => g(x) flatMap f).resume
         }
     }
 
-  def flatMap[B] (f : A => Bounce[B]) : Bounce[B] =
+  def flatMap[B](f: A => Bounce[B]): Bounce[B] =
     this match {
-      case FlatMap (a, g) =>
-        FlatMap (a, (x: Any) => g (x) flatMap f)
+      case FlatMap(a, g) =>
+        FlatMap(a, (x: Any) => g(x) flatMap f)
       case x =>
-        FlatMap (x, f)
+        FlatMap(x, f)
     }
 
-  def map[B] (f : A => B) : Bounce[B] =
-    flatMap (a => Done (f (a)))
+  def map[B](f: A => B): Bounce[B] =
+    flatMap(a => Done(f(a)))
 }
+
 case class Call[+A](k: () => Bounce[A]) extends Bounce[A]
-case class Done [+A](result: A) extends Bounce [A]
-case class FlatMap[A,+B] (ta : Bounce[A], k : A => Bounce[B]) extends Bounce[B]
+
+case class Done[+A](result: A) extends Bounce[A]
+
+case class FlatMap[A, +B](ta: Bounce[A], k: A => Bounce[B]) extends Bounce[B]
 
 
 /**
@@ -92,14 +95,14 @@ trait PrettyPrintPrimitives {
               (r: Remaining) =>
                 Call(() =>
                   for {
-                    t2 <- c (r - l)
+                    t2 <- c(r - l)
                   } yield t +: t2))
-        scan (l, outText)
+        scan(l, outText)
       }
     }
   }
 
-  def line(repl: Layout) : Cont =
+  def line(repl: Layout): Cont =
     (iw: IW) => {
       val (i, w) = iw
       val outLine =
@@ -115,10 +118,10 @@ trait PrettyPrintPrimitives {
                 Call(() =>
                   for {
                     t <- c(w - i)
-                  } yield "\n" +: (" " * i) +: t )
+                  } yield "\n" +: (" " * i) +: t)
               }
             })
-      scan (1, outLine)
+      scan(1, outLine)
     }
 
   def group(d: Cont): Cont =
@@ -126,22 +129,24 @@ trait PrettyPrintPrimitives {
       (c: TreeCont) =>
         Call(() =>
           for {
-            t <- d(iw) (leave (c))
+            t <- d(iw)(leave(c))
           } yield (p: Position) =>
-            (dq: Dq) => { t (p) (dq :+ (p, (_: Horizontal) => (c: Out) => Done(c))) })
+            (dq: Dq) => {
+              t(p)(dq :+ (p, (_: Horizontal) => (c: Out) => Done(c)))
+            })
 
 
-  def nest(j: Indent, d: Cont) : Cont =
+  def nest(j: Indent, d: Cont): Cont =
     (iw: IW) => {
       val (i, w) = iw
-      d ((i+j, w))
+      d((i + j, w))
     }
 
-  def pretty(w: Width, d: Cont) : Layout = {
+  def pretty(w: Width, d: Cont): Layout = {
     val res = for {
-      t <- d((0, w)) ((_: Position) => (_: Dq) => step((_: Remaining) => Done(Seq[String] ())))
-      t2 <- t (0) (emptyDq)
-      t3 <- t2 (w)
+      t <- d((0, w))((_: Position) => (_: Dq) => step((_: Remaining) => Done(Seq[String]())))
+      t2 <- t(0)(emptyDq)
+      t3 <- t2(w)
     } yield t3
     res.runT.mkString
   }
@@ -151,49 +156,49 @@ trait PrettyPrintPrimitives {
       (c: TreeCont) =>
         Done(c)
 
-  def scan(l: Width, out: OutGroup) (c: TreeCont): Bounce[TreeCont] =
+  def scan(l: Width, out: OutGroup)(c: TreeCont): Bounce[TreeCont] =
     step(
       (p: Position) =>
         (dq: Dq) => {
-          if (dq.isEmpty){
+          if (dq.isEmpty) {
             Call(() =>
               for {
                 t <- c(p + l)(emptyDq)
-                t2 <- out(false) (t)
+                t2 <- out(false)(t)
               } yield t2)
-          }else{
+          } else {
             val (s, grp) = dq.last
-            prune (c) (p + l) (dq.init :+ (s, (h: Horizontal) => (o: Out) => Call(() => {
+            prune(c)(p + l)(dq.init :+ (s, (h: Horizontal) => (o: Out) => Call(() => {
               for {
                 t <- out(h)(o)
-                t2 <- grp(h) (t)
+                t2 <- grp(h)(t)
               } yield t2
             })))
           }
         })
 
-  def leave(c: TreeCont) : TreeCont =
+  def leave(c: TreeCont): TreeCont =
     (p: Position) =>
       (dq: Dq) => {
-        if (dq.isEmpty){
+        if (dq.isEmpty) {
           c(p)(emptyDq)
-        }else if (dq.length == 1){
+        } else if (dq.length == 1) {
           val (_, grp1) = dq.last
           Call(() =>
             for {
-              t <- c(p) (emptyDq)
+              t <- c(p)(emptyDq)
               t2 <- grp1(true)(t)
             } yield t2)
-        }else{
+        } else {
           val (s1, grp1) = dq.last
           val (s2, grp2) = dq.init.last
-          c(p) (dq.init.init :+ (s2, (h: Horizontal) => {
+          c(p)(dq.init.init :+ (s2, (h: Horizontal) => {
             (c0: Out) => {
               val t = (r: Remaining) => {
                 Call(() =>
                   for {
                     t <- grp1(p <= s1 + r)(c0)
-                    t2 <- t (r)
+                    t2 <- t(r)
                   } yield t2)
               }
               Call(() =>
@@ -206,17 +211,17 @@ trait PrettyPrintPrimitives {
         }
       }
 
-  def prune(c: TreeCont) : TreeCont =
+  def prune(c: TreeCont): TreeCont =
     (p: Position) =>
       (dq: Dq) => Done(
         (r: Remaining) => {
           if (dq.isEmpty) {
             Call(() =>
               for {
-                t <- c (p) (emptyDq)
+                t <- c(p)(emptyDq)
                 t2 <- t(r)
               } yield t2)
-          }else{
+          } else {
             val (s, grp) = dq.head
             if (p > s + r) {
               Call(() =>
@@ -225,25 +230,25 @@ trait PrettyPrintPrimitives {
                   t2 <- grp(false)(t)
                   t3 <- t2(r)
                 } yield t3)
-            }else{
+            } else {
               Call(() =>
                 for {
                   t <- c(p)(dq)
-                  t2 <- t (r)
+                  t2 <- t(r)
                 } yield t2)
             }
           }
         })
 
-  def step[A] (a : => A) : Bounce[A] =
-    Call (() => Done (a))
+  def step[A](a: => A): Bounce[A] =
+    Call(() => Done(a))
 }
 
 
 /**
- * Pretty printing functions build on the above primtives, aimed to be compatible with Kiama's because the existing
- * pretty printers were built using that.
- */
+  * Pretty printing functions build on the above primtives, aimed to be compatible with Kiama's because the existing
+  * pretty printers were built using that.
+  */
 trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
 
   /**
@@ -262,16 +267,16 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
     */
 
   trait PrettyPrintable {
-    def toDoc : Cont = value (this)
+    def toDoc: Cont = value(this)
   }
 
-  implicit def anyToPrettyPrintable (a : Any) : PrettyPrintable =
+  implicit def anyToPrettyPrintable(a: Any): PrettyPrintable =
     new PrettyPrintable {
-      override def toDoc : Cont = value (a)
+      override def toDoc: Cont = value(a)
     }
 
 
-  def string (s : String) : Cont = {
+  def string(s: String): Cont = {
     if (s == "") {
       nil
     } else if (s.charAt(0) == '\n') {
@@ -285,89 +290,88 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
   /**
     * Convert a character to a document.  The character can be a newline.
     */
-  implicit def char (c : Char) : Cont =
+  implicit def char(c: Char): Cont =
     if (c == '\n')
       line
     else
-      text (c.toString)
+      text(c.toString)
 
-  def any (a : Any) : Cont =
+  def any(a: Any): Cont =
     if (a == null)
       "null"
     else
       a match {
-        case Nil           => "Nil"
-        case (l, r)        => any (l) <+> "->" <+> any (r)
-        case None          => "None"
-        case s : String    => char('\"') <> text (s) <> char('\"')
-        case _             => a.toDoc
+        case Nil => "Nil"
+        case (l, r) => any(l) <+> "->" <+> any(r)
+        case None => "None"
+        case s: String => char('\"') <> text(s) <> char('\"')
+        case _ => a.toDoc
       }
 
 
-  def folddoc (ds : Seq[Cont], f : (Cont, Cont) => Cont) =
+  def folddoc(ds: Seq[Cont], f: (Cont, Cont) => Cont) =
     if (ds.isEmpty)
       nil
     else
-      ds.tail.foldLeft (ds.head) (f)
+      ds.tail.foldLeft(ds.head)(f)
 
-  def ssep (ds : Seq[Cont], sep : Cont) : Cont =
-    folddoc (ds, _ <> sep <> _)
+  def ssep(ds: Seq[Cont], sep: Cont): Cont =
+    folddoc(ds, _ <> sep <> _)
 
 
-  def lsep (ds : Seq[Cont], sep : Cont) : Cont =
+  def lsep(ds: Seq[Cont], sep: Cont): Cont =
     if (ds.isEmpty)
       nil
     else
-      linebreak <> folddoc (ds, _ <> sep <@> _)
+      linebreak <> folddoc(ds, _ <> sep <@> _)
 
 
-  def value (v : Any) : Cont =
+  def value(v: Any): Cont =
     if (v == null)
       "null"
     else
-      string (v.toString)
+      string(v.toString)
 
 
-  def surround (d : Cont, b : Cont) : Cont =
+  def surround(d: Cont, b: Cont): Cont =
     b <> d <> b
 
 
-  def braces (d : Cont) : Cont =
-    char ('{') <> d <> char ('}')
+  def braces(d: Cont): Cont =
+    char('{') <> d <> char('}')
 
 
-  def parens (d : Cont) : Cont =
-    char ('(') <> d <> char (')')
+  def parens(d: Cont): Cont =
+    char('(') <> d <> char(')')
 
 
-
-  def brackets (d : Cont) : Cont =
-    char ('[') <> d <> char (']')
-
-
-  def space : Cont =
-    char (' ')
+  def brackets(d: Cont): Cont =
+    char('[') <> d <> char(']')
 
 
-  def linebreak : Cont =
-    line ("\n")
+  def space: Cont =
+    char(' ')
+
+
+  def linebreak: Cont =
+    line("\n")
 
 
   implicit class ContOps(dl: Cont) {
-    def <>(dr: Cont) : Cont =
+    def <>(dr: Cont): Cont =
       (iw: IW) =>
         (c: TreeCont) => {
           Call(() =>
-          for {
-            t <- dr(iw)(c)
-            t2 <- dl(iw)(t)
-          } yield t2)
+            for {
+              t <- dr(iw)(c)
+              t2 <- dl(iw)(t)
+            } yield t2)
         }
 
-    def <+> (dr : Cont) : Cont =
+    def <+>(dr: Cont): Cont =
       dl <> space <> dr
 
-    def <@> (dr: Cont) : Cont =
+    def <@>(dr: Cont): Cont =
       dl <> line <> dr
   }
 
@@ -383,30 +387,40 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
 abstract class Associativity
 
 trait PrettyExpression
+
 case object LeftAssociative extends Associativity
+
 case object RightAssociative extends Associativity
+
 case object NonAssociative extends Associativity
 
 abstract class Fixity
-case object Prefix extends Fixity
-case object Postfix extends Fixity
-case class Infix (assoc : Associativity) extends Fixity
 
+case object Prefix extends Fixity
+
+case object Postfix extends Fixity
+
+case class Infix(assoc: Associativity) extends Fixity
 
 
 trait PrettyOperatorExpression extends PrettyExpression {
-  def priority : Int
-  def fixity : Fixity
+  def priority: Int
+
+  def fixity: Fixity
 }
 
 trait PrettyBinaryExpression extends PrettyOperatorExpression {
-  def left : PrettyExpression
-  def op : String
-  def right : PrettyExpression
+  def left: PrettyExpression
+
+  def op: String
+
+  def right: PrettyExpression
 }
+
 trait PrettyUnaryExpression extends PrettyOperatorExpression {
-  def op : String
-  def exp : PrettyExpression
+  def op: String
+
+  def exp: PrettyExpression
 }
 
 
@@ -418,15 +432,15 @@ trait BracketPrettyPrinter extends FastPrettyPrinterBase {
   def toParenDoc(e: PrettyExpression): Cont
 
   //uses to implement the paper algo, if sees that it has to be bracketed, brackets else not
-  def bracket (inner : PrettyOperatorExpression, outer : PrettyOperatorExpression,
-               side : Associativity) : Cont = {
-    val d = toParenDoc (inner)
-    if (noparens (inner, outer, side)) d else parens (d)
+  def bracket(inner: PrettyOperatorExpression, outer: PrettyOperatorExpression,
+              side: Associativity): Cont = {
+    val d = toParenDoc(inner)
+    if (noparens(inner, outer, side)) d else parens(d)
   }
 
 
-  def noparens (inner : PrettyOperatorExpression, outer : PrettyOperatorExpression,
-                side : Associativity) : Boolean = {
+  def noparens(inner: PrettyOperatorExpression, outer: PrettyOperatorExpression,
+               side: Associativity): Boolean = {
     val pi = inner.priority
     val po = outer.priority
     lazy val fi = inner.fixity
@@ -437,10 +451,10 @@ trait BracketPrettyPrinter extends FastPrettyPrinterBase {
           true
         case (Prefix, RightAssociative) =>
           true
-        case (Infix (LeftAssociative), LeftAssociative) =>
-          (pi == po) && (fo == Infix (LeftAssociative))
-        case (Infix (RightAssociative), RightAssociative) =>
-          (pi == po) && (fo == Infix (RightAssociative))
+        case (Infix(LeftAssociative), LeftAssociative) =>
+          (pi == po) && (fo == Infix(LeftAssociative))
+        case (Infix(RightAssociative), RightAssociative) =>
+          (pi == po) && (fo == Infix(RightAssociative))
         case (_, NonAssociative) =>
           fi == fo
         case _ =>
@@ -477,8 +491,9 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case m: Member => showMember(m)
     case v: LocalVarDecl => showVar(v)
     case dm: DomainMember => showDomainMember(dm)
+    //case dt: DecClause => showDecClause(dt) //TODO pege better way?
     case Trigger(exps) =>
-      text("{") <+> ssep(exps map show, char (',')) <+> "}"
+      text("{") <+> ssep(exps map show, char(',')) <+> "}"
     case null => uninitialized
   }
 
@@ -492,7 +507,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   /** Show a domain member. */
   def showDomainMember(m: DomainMember): Cont = {
     val memberDoc = m match {
-      case f @ DomainFunc(_, _, _, unique) =>
+      case f@DomainFunc(_, _, _, unique) =>
         if (unique) text("unique") <+> showDomainFunc(f) else showDomainFunc(f)
       case DomainAxiom(name, exp) =>
         text("axiom") <+> name <+>
@@ -521,7 +536,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         } <>
           nest(defaultIndent,
             showContracts("requires", pres) <>
-            showContracts("ensures", posts)
+              showContracts("ensures", posts)
           ) <>
           line <>
           braces(nest(defaultIndent,
@@ -540,8 +555,12 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           ":" <+> show(typ) <>
           nest(defaultIndent,
             showContracts("requires", pres) <>
-            showContracts("ensures", posts) <>
-            showContracts("decreases", decs)
+              showContracts("ensures", posts) <>
+              (decs match {
+                case Some(DecStar()) => line <> text("decreases *") //TODO pege
+                case Some(DecTuple(e)) => line <> text("decreases") <> space <> ssep(e map (show(_)), char(',') <> space)
+                case d => space
+              })
           ) <>
           line <>
           (optBody match {
@@ -574,7 +593,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   }
 
   /** Show a list of formal arguments. */
-  def showVars(vars: Seq[LocalVarDecl]): Cont = ssep(vars map showVar, char (',') <> space)
+  def showVars(vars: Seq[LocalVarDecl]): Cont = ssep(vars map showVar, char(',') <> space)
+
   /** Show a variable name with the type of the variable (e.g. to be used in formal argument lists). */
   def showVar(v: LocalVarDecl): Cont = text(v.name) <> ":" <+> showType(v.typ)
 
@@ -586,7 +606,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     d match {
       case Domain(name, functions, axioms, typVars) =>
         text("domain") <+> name <>
-          (if (typVars.isEmpty) nil else text("[") <> ssep(typVars map show, char (',') <> space) <> "]") <+>
+          (if (typVars.isEmpty) nil else text("[") <> ssep(typVars map show, char(',') <> space) <> "]") <+>
           braces(nest(defaultIndent,
             line <> line <>
               ssep((functions ++ axioms) map show, line <> line)
@@ -609,7 +629,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case TypeVar(v) => v
       case dt@DomainType(domainName, typVarsMap) =>
         val typArgs = dt.typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
-        text(domainName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char (',') <> space)))
+        text(domainName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char(',') <> space)))
     }
   }
 
@@ -710,7 +730,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case FieldAccess(rcv, field) =>
       show(rcv) <> "." <> field.name
     case PredicateAccess(params, predicateName) =>
-      text(predicateName) <> parens(ssep(params map show, char (',') <> space))
+      text(predicateName) <> parens(ssep(params map show, char(',') <> space))
     case Unfolding(acc, exp) =>
       parens(text("unfolding") <+> show(acc) <+> "in" <+> show(exp))
     case UnfoldingGhostOp(acc, exp) =>
@@ -723,7 +743,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       parens(text("applying") <+> show(wand) <+> "in" <+> show(in))
     case Old(exp) =>
       text("old") <> parens(show(exp))
-    case LabelledOld(exp,label) =>
+    case LabelledOld(exp, label) =>
       text("old") <> brackets(label) <> parens(show(exp))
     case ApplyOld(exp) =>
       text("given") <> parens(show(exp))
@@ -739,11 +759,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         show(exp))
     case ForPerm(v, fields, exp) =>
       parens(text("forperm")
-        <+> brackets(ssep(fields map showLocation, char (',') <> space))
+        <+> brackets(ssep(fields map showLocation, char(',') <> space))
         <+> v.name <+> "::" <+> show(exp))
 
     case InhaleExhaleExp(in, ex) =>
-      brackets(show(in) <> char (',') <+> show(ex))
+      brackets(show(in) <> char(',') <+> show(ex))
     case WildcardPerm() =>
       "wildcard"
     case FullPerm() =>
@@ -757,14 +777,14 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case AccessPredicate(loc, perm) =>
       text("acc") <> parens(show(loc) <> "," <+> show(perm))
     case FuncApp(funcname, args) =>
-      text(funcname) <> parens(ssep(args map show, char (',') <> space))
+      text(funcname) <> parens(ssep(args map show, char(',') <> space))
     case DomainFuncApp(funcname, args, _) =>
-      text(funcname) <> parens(ssep(args map show, char (',') <> space))
+      text(funcname) <> parens(ssep(args map show, char(',') <> space))
 
     case EmptySeq(elemTyp) =>
       text("Seq[") <> showType(elemTyp) <> "]()"
     case ExplicitSeq(elems) =>
-      text("Seq") <> parens(ssep(elems map show, char (',') <> space))
+      text("Seq") <> parens(ssep(elems map show, char(',') <> space))
     case RangeSeq(low, high) =>
       text("[") <> show(low) <> ".." <> show(high) <> ")"
     case SeqIndex(seq, idx) =>
@@ -778,18 +798,18 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case SeqUpdate(seq, idx, elem) =>
       show(seq) <> brackets(show(idx) <+> ":=" <+> show(elem))
     case SeqLength(seq) =>
-      surround(show(seq),char ('|'))
+      surround(show(seq), char('|'))
     case SeqContains(elem, seq) =>
       parens(show(elem) <+> "in" <+> show(seq))
 
     case EmptySet(elemTyp) =>
       text("Set[") <> showType(elemTyp) <> "]()"
     case ExplicitSet(elems) =>
-      text("Set") <> parens(ssep(elems map show, char (',') <> space))
+      text("Set") <> parens(ssep(elems map show, char(',') <> space))
     case EmptyMultiset(elemTyp) =>
       text("Multiset[") <> showType(elemTyp) <> "]()"
     case ExplicitMultiset(elems) =>
-      text("Multiset") <> parens(ssep(elems map show, char (',') <> space))
+      text("Multiset") <> parens(ssep(elems map show, char(',') <> space))
     case AnySetUnion(left, right) =>
       show(left) <+> "union" <+> show(right)
     case AnySetIntersection(left, right) =>
@@ -801,7 +821,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case AnySetContains(elem, s) =>
       parens(show(elem) <+> "in" <+> show(s))
     case AnySetCardinality(s) =>
-      surround(show(s),char ('|'))
+      surround(show(s), char('|'))
 
     case null => uninitialized
     case _: PrettyUnaryExpression | _: PrettyBinaryExpression =>

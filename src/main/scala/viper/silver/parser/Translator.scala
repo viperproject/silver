@@ -38,7 +38,7 @@ case class Translator(program: PProgram) {
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
             pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
 
-        val domain = pdomains map (translate(_))
+        var domain = pdomains map (translate(_))
         val fields = pfields map (translate(_))
         val predicates = ppredicates map (translate(_))
         var methods = pmethods map (translate(_))
@@ -46,9 +46,12 @@ case class Translator(program: PProgram) {
 
         def findFnc(name: String) = members.get(name).get.asInstanceOf[Function]
         //Add Methods needed for proving decreasing functions
-        methods = methods ++ DecreasesClause.addMethod(functions, members.get("decreasing").get.asInstanceOf[DomainFunc], members.get("bounded").get.asInstanceOf[DomainFunc], findFnc)
+        //TODO pege, stupid location to do this
+        //domain ++= DecreasesClause.addDomains(predicates, members.get("Loc").get.asInstanceOf[Domain])
+        methods ++= DecreasesClause.addMethods(functions, members.get("decreasing").get.asInstanceOf[DomainFunc], members.get("bounded").get.asInstanceOf[DomainFunc], members.get("nested").get.asInstanceOf[DomainFunc], members.get("Loc").get.asInstanceOf[Domain], findFnc, predicates)
 
         val prog = Program(domain, fields, functions, predicates, methods)(program)
+        println(Consistency.messages) //pege
         if (Consistency.messages.isEmpty) Some(prog) // all error messages generated during translation should be Consistency messages
         else None
     }
@@ -89,7 +92,7 @@ case class Translator(program: PProgram) {
       val f = findFunction(name)
       f.pres = pres map exp
       f.posts = posts map exp
-      f.decs = decs map exp
+      f.decs = decs map dec
       f.body = body map exp
       f
   }
@@ -210,6 +213,14 @@ case class Translator(program: PProgram) {
         LocalVarAssign(LocalVar(idndef.name)(Wand, pos), exp(wand))(pos)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
+    }
+  }
+
+  /** Takes a `PExp` and turns it into an `Exp`. */
+  private def dec(pdec: PDecClause): DecClause = {
+    pdec match {
+      case PDecStar() => DecStar()
+      case PDecTuple(d) => DecTuple(d map exp)
     }
   }
 

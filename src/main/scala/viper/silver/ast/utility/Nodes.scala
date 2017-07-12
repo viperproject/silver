@@ -38,8 +38,8 @@ object Nodes {
       case m: Member =>
         m match {
           case Field(name, typ) => Nil
-          case Function(name, formalArgs, typ, pres, decs, posts, body) =>
-            formalArgs ++ pres ++ posts ++ body
+          case Function(name, formalArgs, typ, pres, posts, decs, body) => //TODO pege decs?
+            formalArgs ++ pres ++ posts ++ decs ++ body
           case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ locals ++ Seq(body)
           case Predicate(name, formalArg, body) => formalArg ++ body.toSeq
@@ -74,6 +74,8 @@ object Nodes {
           case LocalVarDeclStmt(decl) => Seq(decl)
         }
       case vd: LocalVarDecl => Nil
+      case dc: DecTuple => dc.e //TODO pege correct?
+      case ds: DecStar => Nil
       case e: Exp =>
         // Note: If you have to update this pattern match to make it exhaustive, it
         // might also be necessary to update the PrettyPrinter.toParenDoc method.
