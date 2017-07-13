@@ -11,6 +11,10 @@ import viper.silver.verifier.ParseError
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
 
+case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp => PExp) with FastPositioned {
+  override def apply(v1: PExp): E = func(v1)
+}
+
 object FastParser extends PosParser {
 
   var _lines: Array[Int] = null
@@ -116,10 +120,11 @@ object FastParser extends PosParser {
 
   def quoted[A](p: fastparse.noApi.Parser[A]) = "\"" ~ p ~ "\""
 
-  def foldPExp[E <: PExp](e: PExp, es: Seq[PExp => E]): E =
+  def foldPExp[E <: PExp](e: PExp, es: Seq[SuffixedExpressionGenerator[E]]): E =
     es.foldLeft(e) { (t, a) =>
       val result = a(t)
-      result.setPos(t)
+      FastPositions.setStart(result, t.start)
+      FastPositions.setFinish(result, a.finish)
       result
     }.asInstanceOf[E]
 
@@ -539,13 +544,13 @@ object FastParser extends PosParser {
   }
   lazy val exp: P[PExp] = P(iteExpr)
 
-  lazy val suffix: fastparse.noApi.Parser[PExp => PExp] =
-    P(("." ~ idnuse).map { id => (e: PExp) => PFieldAccess(e, id) } |
-      ("[.." ~/ exp ~ "]").map { n => (e: PExp) => PSeqTake(e, n) } |
-      ("[" ~ exp ~ "..]").map { n => (e: PExp) => PSeqDrop(e, n) } |
-      ("[" ~ exp ~ ".." ~ exp ~ "]").map { case (n, m) => (e: PExp) => PSeqDrop(PSeqTake(e, m), n) } |
-      ("[" ~ exp ~ "]").map { e1 => (e0: PExp) => PSeqIndex(e0, e1) } |
-      ("[" ~ exp ~ ":=" ~ exp ~ "]").map { case (i, v) => (e: PExp) => PSeqUpdate(e, i, v) })
+  lazy val suffix: fastparse.noApi.Parser[SuffixedExpressionGenerator[PExp]] =
+    P(("." ~ idnuse).map { id => SuffixedExpressionGenerator[PExp]((e: PExp) => PFieldAccess(e, id)) } |
+      ("[.." ~/ exp ~ "]").map { n => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqTake(e, n)) } |
+      ("[" ~ exp ~ "..]").map { n => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqDrop(e, n)) } |
+      ("[" ~ exp ~ ".." ~ exp ~ "]").map { case (n, m) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqDrop(PSeqTake(e, m), n)) } |
+      ("[" ~ exp ~ "]").map { e1 => SuffixedExpressionGenerator[PExp]((e0: PExp) => PSeqIndex(e0, e1)) } |
+      ("[" ~ exp ~ ":=" ~ exp ~ "]").map { case (i, v) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqUpdate(e, i, v)) })
 
   lazy val suffixExpr: P[PExp] = P((atom ~ suffix.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
 
@@ -555,13 +560,13 @@ object FastParser extends PosParser {
 
   lazy val term: P[PExp] = P((suffixExpr ~ termd.rep).map { case (a, ss) => foldPExp[PExp](a, ss) })
 
-  lazy val termd: P[PExp => PBinExp] = P(termOp ~ suffixExpr).map { case (op, id) => (e: PExp) => PBinExp(e, op, id) }
+  lazy val termd: P[SuffixedExpressionGenerator[PExp]] = P(termOp ~ suffixExpr).map { case (op, id) => SuffixedExpressionGenerator[PExp]((e: PExp) => PBinExp(e, op, id)) }
 
   lazy val sumOp: P[String] = P(StringIn("++", "+", "-").! | keyword("union").! | keyword("intersection").! | keyword("setminus").! | keyword("subset").!)
 
   lazy val sum: P[PExp] = P((term ~ sumd.rep).map { case (a, ss) => foldPExp[PBinExp](a, ss) })
 
-  lazy val sumd: P[PExp => PBinExp] = P(sumOp ~ term).map { case (op, id) => (e: PExp) => PBinExp(e, op, id) }
+  lazy val sumd: P[SuffixedExpressionGenerator[PBinExp]] = P(sumOp ~ term).map { case (op, id) => SuffixedExpressionGenerator[PBinExp]((e: PExp) => PBinExp(e, op, id)) }
 
   lazy val cmpOp = P(StringIn("<=", ">=", "<", ">").! | keyword("in").!)
 
