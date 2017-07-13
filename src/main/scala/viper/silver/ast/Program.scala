@@ -50,8 +50,12 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       declarationMap.get(name) match {
         case Some(d: LocalVarDecl) =>
           if(d.typ == n.typ){
-            if(d.pos <= n.pos) None else Some(ConsistencyError(s"Local variable $name cannot be used before it is declared.", n.pos))
-          } else Some(ConsistencyError(s"No matching local variable $name found with type ${n.typ}, instead found ${d.typ}.", n.pos))
+            if(d.pos.equals(NoPosition) || n.pos.equals(NoPosition) || d.pos <= n.pos)
+              None
+            else
+              Some(ConsistencyError(s"Local variable $name cannot be used before it is declared.", n.pos))
+          }
+          else Some(ConsistencyError(s"No matching local variable $name found with type ${n.typ}, instead found ${d.typ}.", n.pos))
         case Some(d) => Some(ConsistencyError(s"No matching local variable $name found with type ${n.typ}, instead found other identifier of type ${d.getClass.getSimpleName}.", n.pos))
         case None => Some(ConsistencyError(s"Local variable $name not found.", n.pos))
       }

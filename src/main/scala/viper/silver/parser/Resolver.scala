@@ -845,7 +845,7 @@ case class NameAnalyser() {
         getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
           case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
-            // goto and state labels may exist out of scope (but must exist in method, this is checked in AST consistency check for Method)
+            // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)
             if (!i.parent.isInstanceOf[PDomainType] && !i.parent.isInstanceOf[PGoto] &&
             !(i.parent.isInstanceOf[PLabelledOld] && i==i.parent.asInstanceOf[PLabelledOld].label)) {
               messages ++= FastMessaging.message(i, s"identifier $name not defined.")
