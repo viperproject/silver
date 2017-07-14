@@ -102,7 +102,7 @@ abstract class AbstractErrorReason extends ErrorReason {
 }
 
 object errors {
-  type ErrorNode = Node with Positioned with TransformableErrors with Rewritable with Infoed
+  type ErrorNode = Node with Positioned with TransformableErrors with Rewritable
 
   case class Internal(offendingNode: ErrorNode, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "internal"

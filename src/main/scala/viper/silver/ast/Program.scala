@@ -9,7 +9,8 @@ package viper.silver.ast
 import viper.silver.ast.pretty._
 import utility.{Consistency, DomainInstances, Types}
 import viper.silver.cfg.silver.CfgGenerator
-import viper.silver.verifier.{ConsistencyError,CacheHelper, DependencyAware}
+import viper.silver.verifier.ConsistencyError
+import viper.silver.utility.{DependencyAware, CacheHelper}
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
@@ -172,7 +173,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted {
+                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted with DependencyAware {
 
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Method name must be a valid identifier.", pos)) else Seq()) ++
