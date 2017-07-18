@@ -1,8 +1,10 @@
-import "decreaseOrder/decrease_order.vpr"
+import "decreaseOrder/int_decreases.vpr"
+import "decreaseOrder/pred_decreases.vpr"
 
 function fun(r:Ref): Int
 requires List(r)
-//decreases unfolding List(r) in r.f
+decreases unfolding List(r) in r.f
+//decreases List(r)
 {
     unfolding List(r) in r.next == null ? 0 : fun(r.next)
 }

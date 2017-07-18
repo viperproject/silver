@@ -108,6 +108,8 @@ trait SilFrontend extends DefaultFrontend {
     // run the parser, typechecker, and verifier
     verify()
 
+    print(_program)
+
     // print the result
     printFinishHeader()
 

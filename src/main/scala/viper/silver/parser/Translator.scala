@@ -44,11 +44,13 @@ case class Translator(program: PProgram) {
         var methods = pmethods map (translate(_))
         var functions = pfunctions map (translate(_))
 
-        def findFnc(name: String) = members.get(name).get.asInstanceOf[Function]
         //Add Methods needed for proving decreasing functions
         //TODO pege, stupid location to do this
-        //domain ++= DecreasesClause.addDomains(predicates, members.get("Loc").get.asInstanceOf[Domain])
-        methods ++= DecreasesClause.addMethods(functions, members.get("decreasing").get.asInstanceOf[DomainFunc], members.get("bounded").get.asInstanceOf[DomainFunc], members.get("nested").get.asInstanceOf[DomainFunc], members.get("Loc").get.asInstanceOf[Domain], findFnc, predicates)
+        def findFnc(name: String) = members.get(name).get.asInstanceOf[Function]
+        val structureForTermProofs = DecreasesClause.addMethods(functions, predicates, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"), findFnc)
+        domain ++= structureForTermProofs._1
+        functions ++= structureForTermProofs._2
+        methods ++= structureForTermProofs._3
 
         val prog = Program(domain, fields, functions, predicates, methods)(program)
         println(Consistency.messages) //pege

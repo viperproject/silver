@@ -1,0 +1,33 @@
+import "decreaseOrder/int_decreases.vpr"
+import "decreaseOrder/pred_decreases.vpr"
+
+function fun(x:Int, y:Int): Int
+//requires List(r)
+decreases x, Pred(x,y), y
+{
+    x < 5 ? 10 : fun(x+2, y-3)
+    //unfolding Pred(r) in r.next == null ? 0 : fun(r.next)
+}
+
+//predicate List(r:Ref) {
+//    acc(r.f) && acc(r.next) && (r.next != null ==> List(r.next))// && (r.next != null ==> unfolding List(r.next) in r.f > r.next.f) && r.f > 0
+//}
+
+predicate Pred(a:Int, b:Int){
+    a<=b
+}
+
+field next : Ref
+field f : Int
+
+
+//method fun_termination_proof(x: Int, y: Int)
+//{
+//  if (x < 5) {
+//} else {
+//  // BoundedCheck
+//  assert bounded(x + 2) && (bounded(Pred(x + 2, y - 3)) && bounded(y - 3))
+//  // DecreasingCheck
+//  assert decreasing(x + 2, x) || x + 2 == x && (decreasing(Pred(x + 2, y - 3), Pred(x, y)) || Pred(x + 2, y - 3) == Pred(x, y) && decreasing(y - 3, y))
+//}
+//}

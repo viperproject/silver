@@ -1,4 +1,4 @@
-import "decreaseOrder/decrease_order.vpr"
+import "decreaseOrder/int_decreases.vpr"
 
 function fun1(x: Int): Int
 decreases x

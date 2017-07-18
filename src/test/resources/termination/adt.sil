@@ -1,4 +1,4 @@
-import "decreaseOrder/importAllDec.vpr"
+import "decreaseOrder/int_decreases.vpr"
 
 domain list {
 
