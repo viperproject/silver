@@ -1,0 +1,17 @@
+import "decreaseOrder/decrease_order.vpr"
+
+function f(x : Int, s:Seq[Int]) : Int
+    decreases x+5
+ {
+     (x<5) ? 3 : g(x-1, s)
+ }
+
+ function g(y : Int, q: Seq[Int]) : Int
+  {
+      (y < 10) ? f(y+3, q[1..]) : g2(y-5, q[1..])
+  }
+
+ function g2(y : Int, q: Seq[Int]) : Int
+  {
+      g(y,q)
+  }

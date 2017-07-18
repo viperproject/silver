@@ -108,12 +108,21 @@ trait SilFrontend extends DefaultFrontend {
     // run the parser, typechecker, and verifier
     verify()
 
+    print(_program)
+
     // print the result
     printFinishHeader()
 
     result match {
       case Success => printSuccess()
-      case Failure(errors) => printErrors(errors: _*)
+      case Failure(errors) =>
+        val errorsT = errors map {
+          case e: AbstractVerificationError =>
+            e.transformedError()
+          case rest: AbstractError => rest
+        }
+        printErrors(errorsT: _*)
+
     }
   }
 

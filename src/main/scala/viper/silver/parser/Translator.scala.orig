@@ -60,6 +60,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(m: PMethod): Method = m match {
+<<<<<<< local
     case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
       val m = findMethod(name)
       val plocals = Visitor.shallowCollect(body.childStmts, Nodes.subnodes)({
@@ -73,6 +74,22 @@ case class Translator(program: PProgram) {
       val mm = m.copy(pres = pres map exp, posts = posts map exp, locals = locals, body = stmt(body))(m.pos, m.info, m.errT)
       members(m.name) = mm
       mm
+=======
+        case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
+          val m = findMethod(name)
+          val plocals = Visitor.shallowCollect(body.childStmts, Nodes.subnodes)({
+            case l: PLocalVarDecl => Some(l)
+            case w: PWhile => None
+          }).flatten // only collect declarations at top-level, not from nested loop bodies
+        val locals = plocals map {
+          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
+        }
+          m.locals = locals
+          m.pres = pres map exp
+          m.posts = posts map exp
+          m.body = stmt(body)
+          m
+>>>>>>> other
   }
 
   private def translate(d: PDomain): Domain = d match {
@@ -89,12 +106,25 @@ case class Translator(program: PProgram) {
       DomainAxiom(name.name, exp(e))(a,domainName = pa.domainName.name)
   }
 
+<<<<<<< local
   private def translate(f: PFunction): Function = f match {
     case PFunction(name, formalArgs, typ, pres, posts, body) =>
+=======
+  private def translate(f: PFunction) = f match {
+    case PFunction(name, formalArgs, typ, pres, posts, decs, body) =>
+>>>>>>> other
       val f = findFunction(name)
+<<<<<<< local
       val ff = f.copy(pres = pres map exp, posts = posts map exp, body = body map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
+=======
+      f.pres = pres map exp
+      f.posts = posts map exp
+      f.decs = decs map dec
+      f.body = body map exp
+      f
+>>>>>>> other
   }
 
   private def translate(p: PPredicate): Predicate = p match {

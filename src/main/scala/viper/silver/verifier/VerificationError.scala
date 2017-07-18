@@ -225,6 +225,17 @@ object errors {
   def AssertFailed(offendingNode: Assert): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => AssertFailed(offendingNode, reason))
 
+  case class TerminationFailed(offendingNode: FuncApp, reason: ErrorReason) extends AbstractVerificationError {
+    val id = "termination.failed"
+    val text = s"Termination might not hold."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationFailed(offendingNode.asInstanceOf[FuncApp], this.reason)
+    def withReason(r: ErrorReason) = TerminationFailed(offendingNode, r)
+  }
+
+  def TerminationFailed(offendingNode: FuncApp): PartialVerificationError =
+    PartialVerificationError((r: ErrorReason) => TerminationFailed(offendingNode, r))
+
   case class PostconditionViolated(offendingNode: Exp, member: Contracted, reason: ErrorReason) extends AbstractVerificationError {
     val id = "postcondition.violated"
     val text = s"Postcondition of ${member.name} might not hold."
@@ -407,7 +418,37 @@ object reasons {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertionFalse(offendingNode.asInstanceOf[Exp])
   }
 
-  // Note: this class should be deprecated/removed - we no longer support epsilon permissions in the language
+  case class TerminationMeasure(offendingNode: Exp, decClause: Seq[Exp]) extends AbstractErrorReason {
+    val id = "termination.measure"
+    override def readableMessage = s"Termination Measure (${decClause.mkString(", ")}) might not decrease."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationMeasure(offendingNode.asInstanceOf[Exp], decClause)
+  }
+
+  case class TerminationNoBound(offendingNode: Exp, decClause: Seq[Exp]) extends AbstractErrorReason {
+    val id = "termination.no.bound"
+    override def readableMessage = s"Decreases expression (${decClause.mkString(", ")}) might not be bounded below 0."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(offendingNode.asInstanceOf[Exp], decClause)
+  }
+
+  case class CallingNonTerminatingFunction(offendingNode: Exp, caller: String, callee:String) extends AbstractErrorReason {
+    val id = "calling.non.terminating.function"
+
+    override def readableMessage = s"$caller calls (indirect) $callee, which might not terminate."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CallingNonTerminatingFunction(offendingNode.asInstanceOf[Exp], caller, callee)
+  }
+
+  case class NoDecClauseSpecified(offendingNode: Exp, caller: String) extends AbstractErrorReason {
+    val id = "no.decClause.specified"
+
+    override def readableMessage = s"Function $caller is (indirect) recursive but has no decreases clause specified."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = NoDecClauseSpecified(offendingNode.asInstanceOf[Exp], caller)
+  }
+
+    // Note: this class should be deprecated/removed - we no longer support epsilon permissions in the language
   case class EpsilonAsParam(offendingNode: Exp) extends AbstractErrorReason {
     val id = "epsilon.as.param"
     def readableMessage = s"The parameter $offendingNode might be an epsilon permission, which is not allowed for method parameters."

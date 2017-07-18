@@ -23,16 +23,27 @@ object CfgTest {
     val string = Source.fromInputStream(Files.newInputStream(file)).mkString
 
     val parsed = parse(string, file).get
+    println("parsed")
+
     val resolver = Resolver(parsed)
     val resolved = resolver.run.get
+
+    println("resolved")
+
     val translator = Translator(resolved)
     val program = translator.translate.get
 
-    for (method <- program.methods) {
-      val cfg = method.toCfg()
-      println(method.name)
-      println(cfg.toDot)
-    }
+//    for (method <- program.methods) {
+//      val cfg = method.toCfg()
+//      println(method.name)
+//      println(cfg.toDot)
+//    }
+
+    println("translated")
+//    for(function <- program.functions){
+//      println(function)
+//    }
+    println(program)
   }
 
   private def parse(input: String, file: Path): Option[PProgram] = {

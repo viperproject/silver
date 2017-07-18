@@ -1,0 +1,9 @@
+import "decreaseOrder/int_decreases.vpr"
+
+function f(x:Int): Int
+decreases x, x, x+6
+{
+    f(x-1)
+}
+
+//Two errors

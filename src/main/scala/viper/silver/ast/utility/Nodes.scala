@@ -29,7 +29,7 @@ object Nodes {
     *
     * As a consequence, it is not sufficient to compare the subnodes of two
     * nodes for equality if one has to compare those two nodes for equality.
-   */
+    */
   def subnodes(n: Node): Seq[Node] = {
     val subnodesWithType: Seq[Node] = n match {
       case Trigger(exps) => exps
@@ -38,8 +38,8 @@ object Nodes {
       case m: Member =>
         m match {
           case Field(name, typ) => Nil
-          case Function(name, formalArgs, typ, pres, posts, body) =>
-            formalArgs ++ pres ++ posts ++ body
+          case Function(name, formalArgs, typ, pres, posts, decs, body) => //TODO pege decs?
+            formalArgs ++ pres ++ posts ++ decs ++ body
           case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ locals ++ Seq(body)
           case Predicate(name, formalArg, body) => formalArg ++ body.toSeq
@@ -74,6 +74,8 @@ object Nodes {
           case LocalVarDeclStmt(decl) => Seq(decl)
         }
       case vd: LocalVarDecl => Nil
+      case dc: DecTuple => dc.e //TODO pege correct?
+      case ds: DecStar => Nil
       case e: Exp =>
         // Note: If you have to update this pattern match to make it exhaustive, it
         // might also be necessary to update the PrettyPrinter.toParenDoc method.
@@ -171,7 +173,7 @@ object Nodes {
     }).toSeq
 
     relevantChildren.partition(_.isInstanceOf[Node])
-                    .asInstanceOf[(Seq[Node], Seq[Any])]
+      .asInstanceOf[(Seq[Node], Seq[Any])]
   }
 
   /** Returns all subnodes of `root` that reference (other) Silver member.

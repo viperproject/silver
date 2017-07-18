@@ -54,7 +54,7 @@ object Consistency {
     // declaration keywords
     "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "wand",
     // specifications
-    "requires", "ensures", "invariant",
+    "requires", "ensures", "decreases", "invariant",
     // statements
     "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
     // control flow

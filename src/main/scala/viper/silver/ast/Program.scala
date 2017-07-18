@@ -143,6 +143,17 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
   }
 }
 
+/** A decreas Clause declaration. */
+sealed trait DecClause extends Node{ //pege extend correct?
+}
+
+case class DecStar() extends DecClause{
+}
+
+case class DecTuple(e: Seq[Exp]) extends DecClause{
+  val exp: Seq[Exp] = e
+}
+
 /** A predicate declaration. */
 case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location {
   override lazy val check : Seq[ConsistencyError] =
@@ -263,6 +274,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
+
 }
 
 

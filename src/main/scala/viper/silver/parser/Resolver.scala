@@ -102,6 +102,7 @@ case class TypeChecker(names: NameAnalyser) {
       curFunction=f
       f.pres foreach (check(_, Bool))
       resultAllowed=true
+      check(f.decs) //TODO pege necessary?
       f.posts foreach (check(_, Bool))
       f.body.foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
       resultAllowed=false
@@ -147,6 +148,15 @@ case class TypeChecker(names: NameAnalyser) {
   def check(f: PDomainFunction) {
     check(f.typ)
     f.formalArgs foreach (a => check(a.typ))
+  }
+
+  def check(d: Option[PDecClause]): Unit = {
+    d match {
+      case Some(PDecStar()) =>
+      case Some(PDecTuple(exp)) =>
+        exp foreach (e => check(e, e.typ)) //TODO pege, these checks are a bit stupid
+      case None =>
+    }
   }
 
   def check(stmt: PStmt) {
@@ -451,6 +461,8 @@ case class TypeChecker(names: NameAnalyser) {
   def typeError(exp:PExp) = {
     messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.rangeStr}")
   }
+  //def check(dec: PDeclause, expected: PType):Unit = dec.decs.foreach(check(_, expected))
+
   def check(exp: PExp, expected: PType) = checkTopTyped(exp,Some(expected))
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
   {
@@ -478,7 +490,6 @@ case class TypeChecker(names: NameAnalyser) {
   {
     check(exp,PTypeSubstitution.id)
   }
-
 
   def check(exp: PExp, s : PTypeSubstitution) : Unit = {
     /**
@@ -556,7 +567,7 @@ case class TypeChecker(names: NameAnalyser) {
                     pfa.function = fd
                     ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                     fd match {
-                      case PFunction(_, _, resultType, _, _, _) =>
+                      case PFunction(_, _, resultType, _, _, _, _) =>
                       case pdf@PDomainFunction(_, _, resultType, unique) =>
                         val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
                         val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
