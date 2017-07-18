@@ -832,6 +832,35 @@ case class NameAnalyser() {
       }
     }
 
+    def containsSubnodeBefore(container: PNode, toFind: PNode, before: PNode) : Boolean = {
+      var beforeFound = false
+      val pred = new PartialFunction[PNode, PNode] {
+        def isDefinedAt(node: PNode): Boolean = {
+          if (!beforeFound){
+            if (node eq before){
+              beforeFound = true
+            }
+          }
+          (node eq toFind) && node != container && !beforeFound
+        }
+
+        def apply(node: PNode) = node
+      }
+      Visitor.existsDefined(container, Nodes.subnodes)(pred)
+    }
+
+    def getContainingMethod(node : PNode) : Option[PMethod] = {
+      node match {
+        case null => None
+        case method : PMethod => Some(method)
+        case nonMethod =>
+          nonMethod.parent match {
+            case parentNode : PNode => getContainingMethod(parentNode)
+            case _ => None
+          }
+      }
+    }
+
     // find all declarations
     p.visit( nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
 
@@ -849,6 +878,15 @@ case class NameAnalyser() {
             if (!i.parent.isInstanceOf[PDomainType] && !i.parent.isInstanceOf[PGoto] &&
             !(i.parent.isInstanceOf[PLabelledOld] && i==i.parent.asInstanceOf[PLabelledOld].label)) {
               messages ++= FastMessaging.message(i, s"identifier $name not defined.")
+            }
+          case localVar : PLocalVarDecl =>
+            getContainingMethod(localVar) match {
+              case Some(PMethod(_, args, returns, pres, posts, body)) =>
+                // Variables must not be used before they are declared
+                if (containsSubnodeBefore(body, i, localVar)){
+                  messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed before it is declared.")
+                }
+              case _ =>
             }
           case _ =>
         }

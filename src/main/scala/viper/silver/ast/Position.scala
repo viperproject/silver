@@ -16,9 +16,7 @@ import java.nio.file.Path
 import viper.silver.utility.Common.StructuralEquality
 
 /** A trait describing the position of occurrence of an AST node. */
-sealed trait Position {
-  def <=(p: Position): Boolean = ???
-}
+sealed trait Position
 
 /** Describes ''no location'' for cases where a `Position` is expected, but not available. */
 case object NoPosition extends Position {
@@ -30,10 +28,6 @@ trait HasLineColumn extends Position {
   def line: Int
   def column: Int
   override def toString = s"$line.$column"
-  override def <=(p: Position): Boolean = p match {
-    case p: HasLineColumn => (line < p.line) || (line == p.line && column <= p.column)
-    case _ => ???
-  }
 }
 
 /** A position that references an identifier, intended to be used
