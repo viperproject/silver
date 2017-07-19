@@ -33,7 +33,6 @@ method test04(arr: Ref) {
 }
 
 method test05(arr: Ref) {
-  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/217/)
  exhale acc(arr.val, none)
 }
 

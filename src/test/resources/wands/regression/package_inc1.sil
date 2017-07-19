@@ -14,12 +14,10 @@ method test01(x: Ref) {
 
 method test02(x:Ref) {
   package (false) --* true {
-      //:: UnexpectedOutput(apply.failed:wand.not.found, /silicon/issue/0000000000000000/)
       apply false --* true
   }
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 

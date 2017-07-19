@@ -10,11 +10,9 @@ method t01(x:Ref,y:Ref)
   //since inconsistency is noticed before transferring permission to y.f from the state before the package,
   //the verifier can notice that no permission has to be removed from that state to y.f
 
-  //:: UnexpectedOutput(exhale.failed:insufficient.permission, /silicon/issue/0000000000000000/)
   exhale acc(y.f)
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 

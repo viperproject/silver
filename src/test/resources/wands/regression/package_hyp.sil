@@ -46,11 +46,9 @@ method test05(x:Ref)
 method test04(x:Ref)
 {
   package (acc(x.f)&&acc(x.f)) --* false {
-      //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/0000000000000000/)
       package (true --* false)
   }
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }

@@ -15,13 +15,11 @@ method test01(x: Ref) {
 }
 
 method test02(x: Ref) {
-  //:: UnexpectedOutput(package.failed:wand.not.found, /silicon/issue/0000000000000000/)
   package (false) --* (acc(x.f) --* acc(x.g)) {
       package (acc(x.f) --* acc(x.f))
   }
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 
