@@ -57,3 +57,22 @@ ensures List(x) && length(x) == old(length(x)) {
     package List(x) --* List(x)
     apply List(x) --* List(x)
 }
+
+method test4(x: Ref)
+requires acc(x.f) && x.f == 1 {
+    package acc(x.f, 1/2) --* acc(x.f, 1/2)
+    package acc(x.f) --* acc(x.f) && (acc(x.f) --* acc(x.f)) {
+            package acc(x.f, 1/2) --* acc(x.f, 1/2)
+            apply acc(x.f, 1/2) --* acc(x.f, 1/2)
+            package acc(x.f) --* acc(x.f) {
+                apply acc(x.f, 1/2) --* acc(x.f, 1/2)
+            }
+    }
+    apply acc(x.f) --* acc(x.f) && (acc(x.f) --* acc(x.f))
+    x.f := 2
+    apply acc(x.f) --* acc(x.f)
+    assert x.f == 2
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
