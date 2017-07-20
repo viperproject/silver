@@ -760,6 +760,12 @@ object FastParser extends PosParser {
 
   lazy val block: P[Seq[PStmt]] = P("{" ~ stmts ~ "}")
 
+  /**
+    * This parser is wrapped in another parser because otherwise the position
+    * in rules like [[seqn.?]] are not set properly.
+    */
+  lazy val seqn: P[PSeqn] = P(P("{" ~ stmts ~ "}").map(PSeqn))
+
   lazy val stmts: P[Seq[PStmt]] = P(stmt ~/ ";".?).rep
 
   lazy val elsifEls: P[Seq[PStmt]] = P(elsif | els)
@@ -770,8 +776,8 @@ object FastParser extends PosParser {
 
   lazy val els: P[Seq[PStmt]] = (keyword("else") ~/ block).?.map { block => block.getOrElse(Nil) }
 
-  lazy val whle: P[PWhile] = P(keyword("while") ~/ "(" ~ exp ~ ")" ~ inv.rep ~ block).map {
-    case (cond, invs, body) => PWhile(cond, invs, PSeqn(body))
+  lazy val whle: P[PWhile] = P(keyword("while") ~/ "(" ~ exp ~ ")" ~ inv.rep ~ seqn).map {
+    case (cond, invs, body) => PWhile(cond, invs, body)
   }
 
   lazy val inv: P[PExp] = P(keyword("invariant") ~ exp ~ ";".?)
@@ -867,9 +873,9 @@ object FastParser extends PosParser {
 
   lazy val predicateDecl: P[PPredicate] = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }
 
-  lazy val methodDecl: P[PMethod] = P(methodSignature ~/ pre.rep ~ post.rep ~ block.?).map {
+  lazy val methodDecl: P[PMethod] = P(methodSignature ~/ pre.rep ~ post.rep ~ seqn.?).map {
     case (name, args, rets, pres, posts, Some(body)) =>
-      PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
+      PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)
     case (name, args, rets, pres, posts, None) =>
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(Seq(PInhale(PBoolLit(b = false)))))
   }
