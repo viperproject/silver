@@ -758,9 +758,11 @@ object FastParser extends PosParser {
     case (cond, thn, ele) => PIf(cond, thn, ele)
   }
 
-  lazy val block: P[PSeqn] = P("{" ~ stmts ~ "}").map {
-    case (_stmts) => PSeqn(_stmts)
-  }
+  /**
+    * This parser is wrapped in another parser because otherwise the position
+    * in rules like [[block.?]] are not set properly.
+    */
+  lazy val block: P[PSeqn] = P(P("{" ~ stmts ~ "}").map(PSeqn))
 
   lazy val stmts: P[Seq[PStmt]] = P(stmt ~/ ";".?).rep
 
