@@ -68,6 +68,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       var s: Seq[ConsistencyError] = Seq.empty[ConsistencyError]
       //check name declarations
       currentScope.scopedDecls.foreach(l=> {
+        if(!Consistency.validUserDefinedIdentifier(l.name)) s :+= ConsistencyError(s"${l.name} is not a valid identifier.", l.pos)
         declarationMap.get(l.name) match {
           case Some(d: Declaration) => s :+= ConsistencyError(s"Duplicate identifier ${l.name} found.", l.pos)
           case None => declarationMap += (l.name -> l)
@@ -182,8 +183,7 @@ object Program{
 /** A field declaration. */
 case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location with Typed {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Field name must be a valid identifier.", pos)) else Seq()) ++
-    (if(!typ.isConcrete) Seq(ConsistencyError(s"Type of field $name must be concrete, but found $typ.", pos)) else Seq())
+    if(!typ.isConcrete) Seq(ConsistencyError(s"Type of field $name must be concrete, but found $typ.", pos)) else Seq()
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
@@ -194,7 +194,6 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 /** A predicate declaration. */
 case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Predicate name must be a valid identifier.", pos)) else Seq()) ++
     (if (body.isDefined) Consistency.checkNonPostContract(body.get) else Seq()) ++
     (if (body.isDefined && !(Consistency.noPerm(body.get) && Consistency.noForPerm(body.get)))
       Seq(ConsistencyError("perm and forperm expressions are not allowed in predicate bodies", body.get.pos)) else Seq())
@@ -219,7 +218,6 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 
   val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns
   override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Method name must be a valid identifier.", pos)) else Seq()) ++
     pres.flatMap(Consistency.checkPre) ++
     posts.flatMap(Consistency.checkPost) ++
     posts.flatMap(p=>{ if(!Consistency.noResult(p)) Seq(ConsistencyError("Method postconditions must have no result variables.", p.pos)) else Seq()}) ++
@@ -252,7 +250,6 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], body: Option[Exp])
                    (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with FuncLike with Contracted {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Function name must be a valid identifier.", pos)) else Seq()) ++
     posts.flatMap(p=>{ if(!Consistency.noOld(p))
       Seq(ConsistencyError("Function post-conditions must not have old expressions.", p.pos)) else Seq()}) ++
     (pres ++ posts).flatMap(p=> {
@@ -301,9 +298,6 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
  * rather occur as part of a method, loop, function, etc.
  */
 case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node with Positioned with Infoed with Typed with Declaration with TransformableErrors {
-  override lazy val check : Seq[ConsistencyError] =
-    if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Local variable name must be valid identifier.", pos)) else Seq()
-
   /**
    * Returns a local variable with equivalent information
    */
@@ -320,8 +314,6 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
 /** A user-defined domain. */
 case class Domain(name: String, functions: Seq[DomainFunc], axioms: Seq[DomainAxiom], typVars: Seq[TypeVar] = Nil)
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Positioned with Infoed with TransformableErrors {
-  override lazy val check : Seq[ConsistencyError] =
-    if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Domain name must be valid identifier", pos)) else Seq()
 
   val scopedDecls = Seq()
   override def getMetadata:Seq[Any] = {
@@ -347,7 +339,6 @@ case class DomainAxiom(name: String, exp: Exp)
                       (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
   extends DomainMember {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Axiom name must be valid identifier", pos)) else Seq()) ++
     (if(!Consistency.noResult(exp)) Seq(ConsistencyError("Axioms can never contain result variables.", exp.pos)) else Seq()) ++
     (if(!Consistency.noOld(exp)) Seq(ConsistencyError("Axioms can never contain old expressions.", exp.pos)) else Seq()) ++
     (if(!Consistency.noAccessLocation(exp)) Seq(ConsistencyError("Axioms can never contain access locations.", exp.pos)) else Seq()) ++
@@ -369,7 +360,6 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
                       extends AbstractDomainFunc with DomainMember {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Domain function name must be valid identifier", pos)) else Seq()) ++
     (if(unique && formalArgs.nonEmpty) Seq(ConsistencyError("Only constants, i.e. nullary domain functions can be unique.", pos)) else Seq())
 
   override def getMetadata:Seq[Any] = {
