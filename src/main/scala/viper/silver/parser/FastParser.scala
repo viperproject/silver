@@ -712,11 +712,11 @@ object FastParser extends PosParser {
 
   lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | fresh | constrainingBlock |
-    methodCall | goto | lbl | packageWand | applyWand | macroref)
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block)
 
   lazy val nodefinestmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | newstmt | fresh | constrainingBlock |
-    methodCall | goto | lbl | packageWand | applyWand | macroref)
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block)
 
   lazy val macroref: P[PMacroRef] = P(idnuse).map { case (a) => PMacroRef(a) }
 
@@ -737,23 +737,27 @@ object FastParser extends PosParser {
   lazy val assume: P[PAssume] = P(keyword("assume") ~/ exp).map(PAssume)
 
   lazy val ifthnels: P[PIf] = P("if" ~ "(" ~ exp ~ ")" ~ block ~ elsifEls).map {
-    case (cond, thn, ele) => PIf(cond, PSeqn(thn), PSeqn(ele))
+    case (cond, thn, ele) => PIf(cond, thn, ele)
   }
 
-  lazy val block: P[Seq[PStmt]] = P("{" ~ stmts ~ "}")
+  /**
+    * This parser is wrapped in another parser because otherwise the position
+    * in rules like [[block.?]] are not set properly.
+    */
+  lazy val block: P[PSeqn] = P(P("{" ~ stmts ~ "}").map(PSeqn))
 
   lazy val stmts: P[Seq[PStmt]] = P(stmt ~/ ";".?).rep
 
-  lazy val elsifEls: P[Seq[PStmt]] = P(elsif | els)
+  lazy val elsifEls: P[PSeqn] = P(elsif | els)
 
-  lazy val elsif: P[Seq[PStmt]] = P("elseif" ~/ "(" ~ exp ~ ")" ~ block ~ elsifEls).map {
-    case (cond, thn, ele) => Seq(PIf(cond, PSeqn(thn), PSeqn(ele)))
+  lazy val elsif: P[PSeqn] = P("elseif" ~/ "(" ~ exp ~ ")" ~ block ~ elsifEls).map {
+    case (cond, thn, ele) => PSeqn(Seq(PIf(cond, thn, ele)))
   }
 
-  lazy val els: P[Seq[PStmt]] = (keyword("else") ~/ block).?.map { block => block.getOrElse(Nil) }
+  lazy val els: P[PSeqn] = (keyword("else") ~/ block).?.map { block => block.getOrElse(PSeqn(Nil)) }
 
   lazy val whle: P[PWhile] = P(keyword("while") ~/ "(" ~ exp ~ ")" ~ inv.rep ~ block).map {
-    case (cond, invs, body) => PWhile(cond, invs, PSeqn(body))
+    case (cond, invs, body) => PWhile(cond, invs, body)
   }
 
   lazy val inv: P[PExp] = P(keyword("invariant") ~ exp ~ ";".?)
@@ -773,7 +777,7 @@ object FastParser extends PosParser {
 
   lazy val fresh: P[PFresh] = P(keyword("fresh") ~ idnuse.rep(sep = ",")).map { case vars => PFresh(vars) }
 
-  lazy val constrainingBlock: P[PConstraining] = P("constraining" ~ "(" ~ idnuse.rep(sep = ",") ~ ")" ~ block).map { case (vars, s) => PConstraining(vars, PSeqn(s)) }
+  lazy val constrainingBlock: P[PConstraining] = P("constraining" ~ "(" ~ idnuse.rep(sep = ",") ~ ")" ~ block).map { case (vars, s) => PConstraining(vars, s) }
 
   lazy val methodCall: P[PMethodCall] = P((idnuse.rep(sep = ",") ~ ":=").? ~ idnuse ~ parens(exp.rep(sep = ","))).map {
     case (None, method, args) => PMethodCall(Nil, method, args)
@@ -785,7 +789,7 @@ object FastParser extends PosParser {
   lazy val lbl: P[PLabel] = P(keyword("label") ~/ idndef ~ (keyword("invariant") ~/ exp).rep).map { case (name, invs) => PLabel(name, invs) }
 
   lazy val packageWand: P[PPackageWand] = P("package" ~/ magicWandExp ~ block.?).map {
-    case (wand, Some(proofScript)) => PPackageWand(wand, PSeqn(proofScript))
+    case (wand, Some(proofScript)) => PPackageWand(wand, proofScript)
     case (wand, None) => PPackageWand(wand, PSeqn(Seq()))
   }
 
@@ -854,7 +858,7 @@ object FastParser extends PosParser {
 
   lazy val methodDecl: P[PMethod] = P(methodSignature ~/ pre.rep ~ post.rep ~ block.?).map {
     case (name, args, rets, pres, posts, Some(body)) =>
-      PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(body))
+      PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)
     case (name, args, rets, pres, posts, None) =>
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(Seq(PInhale(PBoolLit(b = false)))))
   }

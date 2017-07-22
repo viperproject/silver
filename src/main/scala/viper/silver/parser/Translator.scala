@@ -53,15 +53,10 @@ case class Translator(program: PProgram) {
   private def translate(m: PMethod): Method = m match {
     case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
       val m = findMethod(name)
-      val plocals = Visitor.shallowCollect(body.childStmts, Nodes.subnodes)({
-        case l: PLocalVarDecl => Some(l)
-        case w: PWhile => None
-      }).flatten // only collect declarations at top-level, not from nested loop bodies
-      val locals = plocals map {
-        case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
-      }
-
-      val mm = m.copy(pres = pres map exp, posts = posts map exp, locals = locals, body = stmt(body))(m.pos, m.info, m.errT)
+      val b = stmt(body).asInstanceOf[Seqn]
+      val newScopedDecls = b.scopedDecls ++ b.deepCollect {case l: Label => l}
+      val newBody = b.copy(scopedDecls = newScopedDecls)(b.pos, b.info, b.errT)
+      val mm = m.copy(pres = pres map exp, posts = posts map exp, body = newBody)(m.pos, m.info, m.errT)
       members(m.name) = mm
       mm
   }
@@ -117,7 +112,7 @@ case class Translator(program: PProgram) {
       case PPredicate(_, formalArgs, _) =>
         Predicate(name, formalArgs map liftVarDecl, null)(pos)
       case PMethod(_, formalArgs, formalReturns, _, _, _) =>
-        Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null, null)(pos)
+        Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null)(pos)
     }
     members.put(p.idndef.name, t)
   }
@@ -148,23 +143,24 @@ case class Translator(program: PProgram) {
       case PLocalVarDecl(idndef, t, Some(init)) =>
         LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos), exp(init))(pos)
       case PLocalVarDecl(_, _, None) =>
-        // there are no declarations in the SIL AST; rather they are part of the method signature
+        // there are no declarations in the SIL AST; rather they are part of the scope signature
         Statements.EmptyStmt
       case PSeqn(ss) =>
-        Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt)(pos)
+        val plocals = ss.collect {
+          case l: PLocalVarDecl => Some(l)
+          case _ => None
+        }
+        val locals = plocals.flatten.map {
+          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(p)
+        }
+        Seqn(ss filterNot (_.isInstanceOf[PSkip]) map stmt, locals)(pos)
       case PFold(e) =>
         Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PUnfold(e) =>
         Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PPackageWand(e, proofScript) =>
         val wand = exp(e).asInstanceOf[MagicWand]
-        val plocals = proofScript.shallowCollect {
-          case l: PLocalVarDecl => Some(l)
-        }
-        val locals = plocals.flatten.map {
-          case PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
-        }
-        Package(wand, stmt(proofScript).asInstanceOf[Seqn], locals)(pos)
+        Package(wand, stmt(proofScript).asInstanceOf[Seqn])(pos)
       case PApplyWand(e) =>
         Apply(exp(e).asInstanceOf[MagicWand])(pos)
       case PInhale(e) =>
@@ -194,19 +190,12 @@ case class Translator(program: PProgram) {
       case PGoto(label) =>
         Goto(label.name)(pos)
       case PIf(cond, thn, els) =>
-        If(exp(cond), stmt(thn), stmt(els))(pos)
+        If(exp(cond), stmt(thn).asInstanceOf[Seqn], stmt(els).asInstanceOf[Seqn])(pos)
       case PFresh(vars) => Fresh(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)))(pos)
       case PConstraining(vars, ss) =>
-        Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss))(pos)
+        Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss).asInstanceOf[Seqn])(pos)
       case PWhile(cond, invs, body) =>
-        val plocals = body.shallowCollect {
-          case l: PLocalVarDecl => Some(l)
-          case _: PWhile => None
-        }
-        val locals = plocals.flatten.map {
-          case p@PLocalVarDecl(idndef, t, _) => LocalVarDecl(idndef.name, ttyp(t))(pos)
-        }
-        While(exp(cond), invs map exp, locals, stmt(body))(pos)
+        While(exp(cond), invs map exp, stmt(body).asInstanceOf[Seqn])(pos)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }

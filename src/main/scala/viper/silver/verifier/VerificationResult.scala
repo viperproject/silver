@@ -71,7 +71,7 @@ case class ParseWarning(message: String, override val pos: Position)
 /** An error during consistency-checking an AST node */
 case class ConsistencyError(message: String, pos:Position) extends AbstractError {
   def fullId = "consistency.error"
-  def readableMessage: String = s"AST node inconsistent: $message ($pos)"
+  def readableMessage: String = s"Consistency error: $message ($pos)"
 }
 
 /** A typechecker error. */

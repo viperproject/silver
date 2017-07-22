@@ -272,8 +272,8 @@ object ViperStrategy {
     case (p: Predicate, Seq(parameters: Seq[LocalVarDecl@unchecked], body: Option[Exp@unchecked]), meta) =>
       Predicate(p.name, parameters, body)(meta._1, meta._2, meta._3)
 
-    case (m: Method, Seq(parameters: Seq[LocalVarDecl@unchecked], results: Seq[LocalVarDecl@unchecked], preconditions: Seq[Exp@unchecked], postconditions: Seq[Exp@unchecked], locals: Seq[LocalVarDecl@unchecked], body: Stmt), meta) =>
-      Method(m.name, parameters, results, preconditions, postconditions, locals, body)(meta._1, meta._2, meta._3)
+    case (m: Method, Seq(parameters: Seq[LocalVarDecl@unchecked], results: Seq[LocalVarDecl@unchecked], preconditions: Seq[Exp@unchecked], postconditions: Seq[Exp@unchecked], body: Seqn), meta) =>
+      Method(m.name, parameters, results, preconditions, postconditions, body)(meta._1, meta._2, meta._3)
 
     case (da: DomainAxiom, Seq(body: Exp), meta) =>
       DomainAxiom(da.name, body)(meta._1, meta._2, da.domainName, meta._3)
@@ -314,13 +314,13 @@ object ViperStrategy {
     case (f: Fresh, Seq(variables: Seq[LocalVar@unchecked]), meta) =>
       Fresh(variables)(meta._1, meta._2, meta._3)
 
-    case (c: Constraining, Seq(variables: Seq[LocalVar@unchecked], body: Stmt), meta) =>
+    case (c: Constraining, Seq(variables: Seq[LocalVar@unchecked], body: Seqn), meta) =>
       Constraining(variables, body)(meta._1, meta._2, meta._3)
 
     // We dont recurse on goto
     case (g: Goto, _, meta) => Goto(g.target)(meta._1, meta._2, meta._3)
 
-    case (i: If, Seq(condition: Exp, ifTrue: Stmt, ifFalse: Stmt), meta) =>
+    case (i: If, Seq(condition: Exp, ifTrue: Seqn, ifFalse: Seqn), meta) =>
       If(condition, ifTrue, ifFalse)(meta._1, meta._2, meta._3)
 
     case (i: Inhale, Seq(expression: Exp), meta) =>
@@ -337,20 +337,20 @@ object ViperStrategy {
     case (n: NewStmt, Seq(target: LocalVar, fields: Seq[Field@unchecked]), meta) =>
       NewStmt(target, fields)(meta._1, meta._2, meta._3)
 
-    case (s: Seqn, x: Seq[Stmt@unchecked], meta) =>
-      Seqn(x)(meta._1, meta._2, meta._3)
+    case (s: Seqn, Seq(x: Seq[Stmt@unchecked], locals: Seq[LocalVarDecl@unchecked]), meta) =>
+      Seqn(x, locals)(meta._1, meta._2, meta._3)
 
     case (u: Unfold, Seq(predicate: PredicateAccessPredicate), meta) =>
       Unfold(predicate)(meta._1, meta._2, meta._3)
 
-    case (p: Package, Seq(wand: MagicWand, proofScript: Seqn, locals: Seq[LocalVarDecl@unchecked]), meta) =>
-      Package(wand, proofScript, locals)(meta._1, meta._2, meta._3)
+    case (p: Package, Seq(wand: MagicWand, proofScript: Seqn), meta) =>
+      Package(wand, proofScript)(meta._1, meta._2, meta._3)
 
     case (a: Apply, Seq(wand: MagicWand), meta) =>
       Apply(wand)(meta._1, meta._2, meta._3)
 
-    case (w: While, Seq(condition: Exp, invariants: Seq[Exp@unchecked], locals: Seq[LocalVarDecl@unchecked], body: Stmt), meta) =>
-      While(condition, invariants, locals, body)(meta._1, meta._2, meta._3)
+    case (w: While, Seq(condition: Exp, invariants: Seq[Exp@unchecked], body: Seqn), meta) =>
+      While(condition, invariants, body)(meta._1, meta._2, meta._3)
 
     case (t: Trigger, Seq(expressions: Seq[Exp@unchecked]), meta) =>
       Trigger(expressions)(meta._1, meta._2, meta._3)

@@ -821,10 +821,6 @@ case class NameAnalyser() {
       }
     }
 
-    def containsSubnode(container : PNode, toFind : PNode) : Boolean = {
-      Visitor.existsDefined(container, Nodes.subnodes){ case found if (found eq toFind) && found != container => }
-    }
-
     def containsSubnodeBefore(container: PNode, toFind: PNode, before: PNode) : Boolean = {
       var beforeFound = false
       val pred = new PartialFunction[PNode, PNode] {
@@ -867,7 +863,7 @@ case class NameAnalyser() {
         getCurrentMap.getOrElse(name, globalDeclarationMap.getOrElse(name, PUnknownEntity())) match {
           case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
-            // goto and state labels may exist out of scope (but must exist in method, this is checked in AST consistency check for Method)
+            // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)
             if (!i.parent.isInstanceOf[PDomainType] && !i.parent.isInstanceOf[PGoto] &&
             !(i.parent.isInstanceOf[PLabelledOld] && i==i.parent.asInstanceOf[PLabelledOld].label) &&
             !(name == FastParser.LHS_OLD_LABEL && i.parent.isInstanceOf[PLabelledOld])) {
@@ -879,16 +875,6 @@ case class NameAnalyser() {
                 // Variables must not be used before they are declared
                 if (containsSubnodeBefore(body, i, localVar)){
                   messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed before it is declared.")
-                }
-              case _ =>
-            }
-          // return parameters must not be used in preconditions
-          // see Silver issue #77
-          case arg : PFormalArgDecl =>
-            getContainingMethod(arg) match {
-              case Some(PMethod(_, args, returns, pres, posts, _)) =>
-                if (returns.contains(arg) && pres.exists(pre => containsSubnode(pre, i))){
-                  messages ++= FastMessaging.message(i, s"return variable $name cannot be accessed in precondition.")
                 }
               case _ =>
             }

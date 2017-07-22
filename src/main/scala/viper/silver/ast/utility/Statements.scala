@@ -17,7 +17,7 @@ import viper.silver.ast._
 /** Utility methods for statements. */
 object Statements {
   /** An empty statement. */
-  val EmptyStmt = Seqn(Nil)()
+  val EmptyStmt = Seqn(Nil, Nil)()
 
   /**
    * Returns a list of all actual statements contained in a given statement.  That
@@ -25,9 +25,9 @@ object Statements {
    */
   def children(s: Stmt): Seq[Stmt] = {
     s match {
-      case While(_, _, _, body) => Seq(s) ++ children(body)
+      case While(_, _, body) => Seq(s) ++ children(body)
       case If(_, thn, els) => Seq(s) ++ children(thn) ++ children(els)
-      case Seqn(ss) => ss flatMap children
+      case Seqn(ss, locals) => ss flatMap children
       case _ => List(s)
     }
   }
@@ -56,7 +56,6 @@ object Statements {
       (s1 ++ s2).distinct
     }
     def addDecls(n: Node, decls: Seq[LocalVarDecl]) = n match {
-      case While(_, _, locals, _) => decls ++ locals
       case QuantifiedExp(v, _) => decls ++ v
       case _ => decls
     }
@@ -78,7 +77,7 @@ object Statements {
       case Fresh(vars) => writtenTo = writtenTo ++ vars
       case Constraining(_, body) => writtenTo = writtenTo ++ (writtenVars(body) intersect s.undeclLocalVars)
       case NewStmt(target, _) => writtenTo = target +: writtenTo
-      case While(_, _, locals, body) => writtenTo = writtenTo ++ (writtenVars(body) intersect s.undeclLocalVars)
+      case While(_, _, body) => writtenTo = writtenTo ++ (writtenVars(body) intersect s.undeclLocalVars)
     }
 
     writtenTo.distinct

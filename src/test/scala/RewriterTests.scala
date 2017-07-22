@@ -161,13 +161,13 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
         count = count + 1
         Seqn(Seq(
           Assert(invars)(w.invs.head.pos, w.invs.head.info),
-          If(Not(w.cond)(w.cond.pos, w.cond.info), Goto("skiploop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
+          If(Not(w.cond)(w.cond.pos, w.cond.info), Seqn(Seq(Goto("skiploop" + count)(w.pos, w.info)), Seq())(w.pos, w.info), Seqn(Seq(), Seq())(w.pos, w.info))(w.pos, w.info),
           Label("loop" + count, Seq(TrueLit()()))(w.pos, w.info),
           w.body,
           Assert(invars)(w.invs.head.pos, w.invs.head.info),
-          If(w.cond, Goto("loop" + count)(w.pos, w.info), Seqn(Seq())(w.pos, w.info))(w.pos, w.info),
+          If(w.cond, Seqn(Seq(Goto("loop" + count)(w.pos, w.info)), Seq())(w.pos, w.info), Seqn(Seq(), Seq())(w.pos, w.info))(w.pos, w.info),
           Label("skiploop" + count, Seq(TrueLit()()))(w.pos, w.info)
-        ))(w.pos, w.info)
+        ), Seq())(w.pos, w.info)
     })
 
     val frontend = new MockSilFrontend
@@ -186,7 +186,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     val strat = ViperStrategy.Ancestor({
       case (a: Assert, c) =>
         c.previous match {
-          case Some(Assert(_)) => Seqn(Seq())() // If previous node is assertion we go to noop
+          case Some(Assert(_)) => Seqn(Seq(), Seq())() // If previous node is assertion we go to noop
           case _ =>
             // Otherwise we take all following assertions and merge their expressions into one
             c.successors.takeWhile({
@@ -220,7 +220,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
         accumulator ++= List(a.exp)
         c.next match {
           case Some(Assert(_)) =>
-            Seqn(Seq())()
+            Seqn(Seq(), Seq())()
           case _ =>
             val result = Assert(accumulator.reduceRight(And(_, _)()))()
             accumulator = List.empty[Exp]
@@ -329,7 +329,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
         replacer = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap
         val inPosts = replacedArgs.map(replaceStrat.execute[Exp](_)).map(x => Inhale(x)(m.pos, m.info))
 
-        Seqn(exPres ++ inPosts)(m.pos, m.info)
+        Seqn(exPres ++ inPosts, Seq())(m.pos, m.info)
     }, Traverse.Innermost)
 
     files foreach {
@@ -359,7 +359,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     })
 
     val strat4 = ViperStrategy.Slim({
-      case Assert(_: TrueLit) => Seqn(Seq())()
+      case Assert(_: TrueLit) => Seqn(Seq(), Seq())()
     })
 
 

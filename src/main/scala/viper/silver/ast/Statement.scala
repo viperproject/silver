@@ -154,7 +154,7 @@ case class Unfold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition,
 }
 
 /** Package a magic wand. */
-case class Package(wand: MagicWand, proofScript: Seqn, locals: Seq[LocalVarDecl])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
+case class Package(wand: MagicWand, proofScript: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
     (if(!(wand isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${wand.typ} ($wand)", wand.pos)) else Seq())
@@ -169,7 +169,7 @@ case class Apply(exp: MagicWand)(val pos: Position = NoPosition, val info: Info 
 }
 
 /** A sequence of statements. */
-case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
+case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[Declaration])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope {
 
   // Interprete leaves of a possibly nested Seqn structure as its children
   override lazy val getChildren: Seq[AnyRef] = {
@@ -184,20 +184,20 @@ case class Seqn(ss: Seq[Stmt])(val pos: Position = NoPosition, val info: Info = 
       result
     }
 
-    seqFlat(ss)
+    Seq(seqFlat(ss), scopedDecls)
   }
 
 }
 
 /** An if control statement. */
-case class If(cond: Exp, thn: Stmt, els: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
+case class If(cond: Exp, thn: Seqn, els: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(cond) ++
     (if(!(cond isSubtype Bool)) Seq(ConsistencyError(s"If condition must be of type Bool, but found ${cond.typ}", cond.pos)) else Seq()) ++
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq())
 }
 
 /** A while loop. */
-case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stmt)
+case class While(cond: Exp, invs: Seq[Exp], body: Seqn)
                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends Stmt {
   override lazy val check : Seq[ConsistencyError] =
@@ -211,10 +211,9 @@ case class While(cond: Exp, invs: Seq[Exp], locals: Seq[LocalVarDecl], body: Stm
 /** A named label. Labels can be used by gotos as jump targets, and by labelled old-expressions
   * to refer to the state as it existed at that label.
   */
-case class Label(name: String, invs: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
+case class Label(name: String, invs: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Declaration {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Label name must be a valid identifier.", pos)) else Seq()) ++
     invs.flatMap(i=>{ if(!(i isSubtype Bool)) Seq(ConsistencyError(s"Label invariants must be of type Bool, but found ${i.typ}", i.pos)) else Seq()})
 }
 
@@ -239,7 +238,7 @@ case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: 
   * in the body of the block. Potentially constraining statements are, e.g.,
   * exhale-statements.
   */
-case class Constraining(vars: Seq[LocalVar], body: Stmt)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+case class Constraining(vars: Seq[LocalVar], body: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends Stmt {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++

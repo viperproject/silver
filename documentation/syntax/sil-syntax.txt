@@ -123,6 +123,9 @@ stmt ::=
 	fresh-statement        |
 	wand-statement         |
 	constraining-block     |
+
+	// an arbitrary block of statements
+	block
 		
 if-statement ::=
 	"if" "(" exp ")"

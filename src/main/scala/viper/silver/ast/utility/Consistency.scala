@@ -310,8 +310,10 @@ object Consistency {
   def checkContextDependentConsistency(n: Node, c: Context = Context()) : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
     n.visitWithContext(c)(c => {
-      case Package(_, proofScript, locals) =>
-        s ++= checkMagicWandProofScript(proofScript, locals)
+      case Package(_, proofScript @ Seqn(_, locals)) =>
+        s ++= checkMagicWandProofScript(proofScript, locals.map({
+          case localVar: LocalVarDecl => localVar
+        }))
         c.copy(insideWandStatus = InsideWandStatus.Yes)
 
       case mw @ MagicWand(lhs, rhs) =>
@@ -331,20 +333,18 @@ object Consistency {
     s
   }
 
-  private def checkMagicWandProofScript(script: Stmt, locals: Seq[LocalVarDecl]): Seq[ConsistencyError] = {
-    var s = Seq.empty[ConsistencyError]
-    script.visit({
+  private def checkMagicWandProofScript(script: Stmt, locals: Seq[LocalVarDecl]): Seq[ConsistencyError] =
+    script.shallowCollect({
       case fa: FieldAssign =>
-        s :+= ConsistencyError("Field assignments are not allowed in magic wand proof scripts.", fa.pos)
+        Some(ConsistencyError("Field assignments are not allowed in magic wand proof scripts.", fa.pos))
       case ne: NewStmt =>
-        s :+= ConsistencyError("New statements statements are not allowed in magic wand proof scripts.", ne.pos)
+        Some(ConsistencyError("New statements statements are not allowed in magic wand proof scripts.", ne.pos))
       case wh: While =>
-        s :+= ConsistencyError("While statements are not allowed in magic wand proof scripts.", wh.pos)
+        Some(ConsistencyError("While statements are not allowed in magic wand proof scripts.", wh.pos))
       case loc @ LocalVarAssign(LocalVar(varName), _) if !locals.exists(_.name == varName) =>
-        s :+= ConsistencyError("Can only assign to local variables that were declared inside the proof script.", loc.pos)
-    })
-    s
-  }
+        Some(ConsistencyError("Can only assign to local variables that were declared inside the proof script.", loc.pos))
+      case _: Package => None
+    }).flatten
 
   private def checkWandRelatedOldExpressions(n: Node, c: Context): Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
