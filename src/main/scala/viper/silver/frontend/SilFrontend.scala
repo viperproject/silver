@@ -180,9 +180,9 @@ trait SilFrontend extends DefaultFrontend {
   protected def printFinishHeaderWithTime() {
     val timeMs = System.currentTimeMillis() - _startTime
     val time = f"${timeMs / 1000.0}%.3f seconds"
-    if(config.ideMode()) {
+    if (config.ideMode()) {
       loggerForIde.info(s"""{"type":"End","time":"$time"}\r\n""")
-    }else {
+    } else {
       logger.info(s"${_ver.name} finished in $time.")
     }
   }
@@ -203,49 +203,66 @@ trait SilFrontend extends DefaultFrontend {
   protected def printOutline(program: Program) {
     if (config != null && config.ideMode()) {
       //output a JSON representation of the Outline for the IDE
-      val members = program.members.map(m => s"""{"type":"${m.getClass().getName()}","name":"${m.name}","location":"${m.pos.toString()}"}""").mkString(",")
+      val members = program.members.map(m =>
+        s"""{
+           | "type": "${m.getClass.getName}",
+           | "name": "${m.name}",
+           | "location": "${m.pos.toString}"
+        }""".stripMargin).mkString(",")
+
       loggerForIde.info(s"""{"type":"Outline","members":[$members]}""")
     }
   }
 
-  case class Definition(name:String, typ: String, location:Position, scope: AbstractSourcePosition = null) {}
+  case class Definition(name:String, typ: String, location: Position, scope: Option[AbstractSourcePosition] = None) {}
 
-  private def addDecl(definitions: mutable.ListBuffer[Definition], typ: String, name:String, pos:Position, enclosingNode: Node with Positioned): Unit ={
-    enclosingNode.pos match {
-    case position: AbstractSourcePosition =>
-    definitions += Definition(name, typ, pos, position)
-    case _ =>
+  private def addDecl(definitions: mutable.ListBuffer[Definition], typ: String, name: String, pos: Position,
+                      enclosingNode: Node with Positioned) = enclosingNode.pos match {
+      case position: AbstractSourcePosition =>
+        definitions += Definition(name, typ, pos, Some(position))
+      case _ =>
     }
-  }
 
   protected def printDefinitions(program: Program) {
     //This works, as the scope of all LocalVarDecls is the enclosing Member
     if (config != null && config.ideMode()) {
       val definitions = mutable.ListBuffer[Definition]()
-      program.members.foreach{
+      program.members.foreach {
         case t: Field =>
-            definitions += Definition(t.name, "Field", t.pos) //global
+          definitions += Definition(t.name, "Field", t.pos) //global
         case t: Function =>
           definitions += Definition(t.name, "Function", t.pos)
-          t.formalArgs.foreach(arg =>addDecl(definitions,"Argument",arg.name,arg.pos,t))
+          t.formalArgs.foreach(arg => addDecl(definitions, "Argument", arg.name, arg.pos, t))
         case t: Method =>
           definitions += Definition(t.name, "Method", t.pos)
-          t.formalArgs.foreach(arg =>addDecl(definitions,"Argument",arg.name,arg.pos,t))
-          t.formalReturns.foreach(arg =>addDecl(definitions,"Return",arg.name,arg.pos,t))
-          t.locals.foreach(arg =>addDecl(definitions,"Local",arg.name,arg.pos,t))
+          t.formalArgs.foreach(arg => addDecl(definitions, "Argument", arg.name, arg.pos, t))
+          t.formalReturns.foreach(arg => addDecl(definitions, "Return", arg.name, arg.pos, t))
+          t.locals.foreach(arg => addDecl(definitions, "Local", arg.name, arg.pos, t))
         case t: Predicate =>
           definitions += Definition(t.name, "Predicate", t.pos)
-          t.formalArgs.foreach(arg =>addDecl(definitions,"Argument",arg.name,arg.pos,t))
+          t.formalArgs.foreach(arg => addDecl(definitions,"Argument", arg.name, arg.pos, t))
         case t: Domain =>
           definitions += Definition(t.name, "Domain", t.pos)
           t.functions.foreach(func => {
             definitions += Definition(func.name, "Function", func.pos)
             func.formalArgs.foreach(arg => addDecl(definitions, "Argument", arg.name, arg.pos, t))
           })
-          t.axioms.foreach(axiom =>addDecl(definitions,"Axiom",axiom.name,axiom.pos,t))
+          t.axioms.foreach(axiom => addDecl(definitions, "Axiom", axiom.name, axiom.pos, t))
       }
       //output a JSON representation of the Outline for the IDE
-      val defs = definitions.map(d => s"""{"type":"${d.typ}","name":"${d.name}","location":"${d.location.toString}","scopeStart":"${if(d.scope != null) d.scope.start.line + ":" + d.scope.start.column else "global"}","scopeEnd":"${if(d.scope != null && d.scope.end.isDefined) d.scope.end.get.line + ":" + d.scope.end.get.column else "global"}"}""").mkString(",")
+      val defs = definitions.map(d =>
+        s"""{
+           |"type": "${d.typ}",
+           |"name": "${d.name}",
+           |"location": "${d.location.toString}",
+           |"scopeStart": "${d.scope match {
+              case Some(s) => s.start.line + ":" + s.start.column
+              case _ => "global" }}",
+           |"scopeEnd": "${d.scope match {
+              case Some(s) if s.end.isDefined => s.end.get.line + ":" + s.end.get.column
+              case _ => "global" }}",
+        }""".stripMargin).mkString(",")
+
       loggerForIde.info(s"""{"type":"Definitions","definitions":[$defs]}""")
     }
   }
@@ -324,8 +341,8 @@ trait SilFrontend extends DefaultFrontend {
 
     val methods = input.methods filter (m => verifyMethods.contains(m.name))
     val program = Program(input.domains, input.fields, input.functions, input.predicates, methods)(input.pos, input.info)
-    Succ(program)
 
+    Succ(program)
   }
 
   override def mapVerificationResult(in: VerificationResult) = in
@@ -341,15 +358,18 @@ trait SilFrontend extends DefaultFrontend {
         fileOpt = Some(abs.file)
         startOpt = Some(abs.start)
         endOpt = abs.end
-
       case hlc: HasLineColumn =>
         startOpt = Some(hlc)
-
       case _: Position => /* Position gives us nothing to work with */
     }
 
     lazy val messageStr = extractMessage(error)
-    lazy val escapedMessageStr = messageStr.replaceAll("\\\\","\\\\\\\\").replaceAll("\\\"","\\\\\"").replaceAll("\\n","\\\\n").replaceAll("\\r","\\\\r").replaceAll("\\t","\\\\t")
+    lazy val escapedMessageStr = messageStr.
+      replaceAll("\\\\","\\\\\\\\").
+      replaceAll("\\\"","\\\\\"").
+      replaceAll("\\n","\\\\n").
+      replaceAll("\\r","\\\\r").
+      replaceAll("\\t","\\\\t")
     lazy val longFileStr = fileOpt.map(_.toString).getOrElse("<unknown file>")
     lazy val shortFileStr = fileOpt.map(f => FilenameUtils.getName(f.toString)).getOrElse("<unknown file>")
     lazy val startStr = startOpt.map(toStr).getOrElse("<unknown start line>:<unknown start column>")
@@ -358,7 +378,14 @@ trait SilFrontend extends DefaultFrontend {
     lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
     lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
 
-    lazy val jsonError = s"""{"cached":${error.cached},"tag":"${error.fullId}","message":"$escapedMessageStr","start":"$startStr","end":"$endStr"}"""
+    lazy val jsonError =
+      s"""{
+         |"cached": ${error.cached},
+         |"tag": "${error.fullId}",
+         |"message": "$escapedMessageStr",
+         |"start": "$startStr",
+         |"end": "$endStr"
+      }""".stripMargin
 
     @inline
     private def extractMessage(error: AbstractError) = {

@@ -51,7 +51,7 @@ trait AbstractError {
     else s"$msg ($posStr)"
   }
 
-  def cached: Boolean = false
+  val cached: Boolean = false
 }
 
 abstract class ParseReport(message: String, pos: Position) extends AbstractError

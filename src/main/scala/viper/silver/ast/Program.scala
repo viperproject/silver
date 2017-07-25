@@ -125,12 +125,6 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     Seq(pos, info, errT)
   }
 
-  def computeEntityHashes(): Unit = {
-    members.foreach((m:Member) => {
-      m.entityHash = CacheHelper.computeEntityHash("", m)
-    })
-  }
-
 }//class Program
 
 object Program{
@@ -365,9 +359,7 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
 /** Common ancestor for members of a program. */
 sealed trait Member extends Node with Positioned with Infoed with TransformableErrors {
   def name: String
-  //the entityHash needs to be mutable as long as the body of members are mutable,
-  //as it depends on the prettyPrint which depends on the body.
-  var entityHash: String = null
+  lazy val entityHash: String = CacheHelper.computeEntityHash("", this)
 }
 
 /** Common ancestor for domain members. */
