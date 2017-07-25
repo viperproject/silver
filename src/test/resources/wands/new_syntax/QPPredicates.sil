@@ -19,7 +19,7 @@ requires get(x) == 0 {
     assert forall y: Ref :: y != x ==> Cell(y)
 
     //:: ExpectedOutput(assert.failed:insufficient.permission)
-    assert forall y: Ref :: true ==> acc(y.f)
+    assert forall y: Ref :: true ==> Cell(y)
 }
 
 method test1() {
