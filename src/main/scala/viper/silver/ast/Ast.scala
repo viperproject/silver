@@ -340,3 +340,20 @@ trait Typed {
 
   def isSubtype(other: Typed) = typ isSubtype other.typ
 }
+
+/** A trait for nodes that are declarations, i.e. functions, methods, local variables etc */
+trait Declaration extends Positioned {
+  def name: String
+}
+
+/** A trait for nodes that define a scope. */
+trait Scope {
+  val scopedDecls: Seq[Declaration]
+
+  // returns locals including those of nested scopes
+  lazy val transitiveScopedDecls: Seq[Declaration] =
+    scopedDecls ++
+    this.asInstanceOf[Node].shallowCollect {
+      case s: Scope if (s != this) => s.transitiveScopedDecls
+    }.flatten
+}
