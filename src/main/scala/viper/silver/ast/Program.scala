@@ -10,6 +10,7 @@ import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, 
 import utility.{Consistency, DomainInstances, Types, Nodes, Visitor}
 import viper.silver.cfg.silver.CfgGenerator
 import viper.silver.verifier.ConsistencyError
+import viper.silver.utility.{DependencyAware, CacheHelper}
 import scala.collection.immutable
 import scala.reflect.ClassTag
 
@@ -214,7 +215,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Seqn)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted {
+                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted with DependencyAware {
 
   val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns
   override lazy val check : Seq[ConsistencyError] =
@@ -244,6 +245,11 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     * Returns a control flow graph that corresponds to this method.
     */
   def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
+
+  override lazy val dependencyHash:String = {
+    val dependencies:String = this.entityHash + " " + getDependencies(this).map(m =>m.entityHash).mkString(" ")
+    CacheHelper.buildHash(dependencies)
+  }
 }
 
 /** A function declaration */
@@ -373,6 +379,7 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
 /** Common ancestor for members of a program. */
 sealed trait Member extends Node with Positioned with Infoed with Scope with Declaration with TransformableErrors {
   def name: String
+  lazy val entityHash: String = CacheHelper.computeEntityHash("", this)
 }
 
 /** Common ancestor for domain members. */

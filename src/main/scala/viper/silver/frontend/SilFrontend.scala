@@ -8,9 +8,10 @@ package viper.silver.frontend
 
 import fastparse.core.Parsed
 import java.nio.file.{Path, Paths}
+
 import org.apache.commons.io.FilenameUtils
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
-import viper.silver.ast.{AbstractSourcePosition, HasLineColumn, Position, Program, SourcePosition}
+import viper.silver.ast.{Node, Position, _}
 import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
 import viper.silver.parser._
@@ -19,6 +20,8 @@ import viper.silver.verifier.CliOptionError
 import viper.silver.verifier.Failure
 import viper.silver.verifier.ParseError
 import viper.silver.verifier.TypecheckerError
+
+import scala.collection.mutable
 
 /**
  * Common functionality to implement a command-line verifier for SIL.  This trait
@@ -57,16 +60,11 @@ trait SilFrontend extends DefaultFrontend {
     Consistency.resetMessages()
   }
 
-  /**
-   * Main method that parses command-line arguments, parses the input file and passes
-   * the SIL program to the verifier.  The resulting error messages (if any) will be
-   * shown in a user-friendly fashion.
-   */
-  def execute(args: Seq[String]) {
-    _startTime = System.currentTimeMillis()
+  def setVerifier(verifier:Verifier): Unit ={
+    _ver = verifier
+  }
 
-    /* Create the verifier */
-    _ver = createVerifier(args.mkString(" "))
+  def prepare(args: Seq[String]): Boolean ={
 
     /* Parse command line arguments and populate _config */
     parseCommandLine(args)
@@ -80,12 +78,12 @@ trait SilFrontend extends DefaultFrontend {
       printErrors(CliOptionError(_config.error.get + "."))
       logger.info("\n")
       _config.printHelp()
-      return
+      return false
     } else if (_config.exit) {
       /* Parsing succeeded, but the frontend should exit immediately never the less. */
       printHeader()
       printFinishHeader()
-      return
+      return false
     }
 
     printHeader()
@@ -98,6 +96,21 @@ trait SilFrontend extends DefaultFrontend {
       logger.info("The following dependencies are used:")
       logger.info(s+"\n")
     }
+    return true
+  }
+
+  /**
+   * Main method that parses command-line arguments, parses the input file and passes
+   * the SIL program to the verifier.  The resulting error messages (if any) will be
+   * shown in a user-friendly fashion.
+   */
+  def execute(args: Seq[String]) {
+    setStartTime()
+
+    /* Create the verifier */
+    _ver = createVerifier(args.mkString(" "))
+
+    if (!prepare(args)) return
 
     // initialize the translator
     init(_ver)
@@ -108,6 +121,14 @@ trait SilFrontend extends DefaultFrontend {
     // run the parser, typechecker, and verifier
     verify()
 
+    finish()
+  }
+
+  def setStartTime(): Unit ={
+    _startTime = System.currentTimeMillis()
+  }
+
+  def finish(): Unit ={
     // print the result
     printFinishHeader()
 
@@ -159,9 +180,9 @@ trait SilFrontend extends DefaultFrontend {
   protected def printFinishHeaderWithTime() {
     val timeMs = System.currentTimeMillis() - _startTime
     val time = f"${timeMs / 1000.0}%.3f seconds"
-    if(config.ideMode()) {
+    if (config.ideMode()) {
       loggerForIde.info(s"""{"type":"End","time":"$time"}\r\n""")
-    }else {
+    } else {
       logger.info(s"${_ver.name} finished in $time.")
     }
   }
@@ -182,8 +203,68 @@ trait SilFrontend extends DefaultFrontend {
   protected def printOutline(program: Program) {
     if (config != null && config.ideMode()) {
       //output a JSON representation of the Outline for the IDE
-      val members = program.members.map(m => s"""{"type":"${m.getClass().getName()}","name":"${m.name}","location":"${m.pos.toString()}"}""").mkString(",")
+      val members = program.members.map(m =>
+        s"""{
+           | "type": "${m.getClass.getName}",
+           | "name": "${m.name}",
+           | "location": "${m.pos.toString}"
+        }""".stripMargin).mkString(",")
+
       loggerForIde.info(s"""{"type":"Outline","members":[$members]}""")
+    }
+  }
+
+  case class Definition(name:String, typ: String, location: Position, scope: Option[AbstractSourcePosition] = None) {}
+
+  private def addDecl(definitions: mutable.ListBuffer[Definition], typ: String, name: String, pos: Position,
+                      enclosingNode: Node with Positioned) = enclosingNode.pos match {
+      case position: AbstractSourcePosition =>
+        definitions += Definition(name, typ, pos, Some(position))
+      case _ =>
+    }
+
+  protected def printDefinitions(program: Program) {
+    //This works, as the scope of all LocalVarDecls is the enclosing Member
+    if (config != null && config.ideMode()) {
+      val definitions = mutable.ListBuffer[Definition]()
+      program.members.foreach {
+        case t: Field =>
+          definitions += Definition(t.name, "Field", t.pos) //global
+        case t: Function =>
+          definitions += Definition(t.name, "Function", t.pos)
+          t.formalArgs.foreach(arg => addDecl(definitions, "Argument", arg.name, arg.pos, t))
+        case t: Method =>
+          definitions += Definition(t.name, "Method", t.pos)
+          t.formalArgs.foreach(arg => addDecl(definitions, "Argument", arg.name, arg.pos, t))
+          t.formalReturns.foreach(arg => addDecl(definitions, "Return", arg.name, arg.pos, t))
+          //FIXME
+          //t.locals.foreach(arg => addDecl(definitions, "Local", arg.name, arg.pos, t))
+        case t: Predicate =>
+          definitions += Definition(t.name, "Predicate", t.pos)
+          t.formalArgs.foreach(arg => addDecl(definitions,"Argument", arg.name, arg.pos, t))
+        case t: Domain =>
+          definitions += Definition(t.name, "Domain", t.pos)
+          t.functions.foreach(func => {
+            definitions += Definition(func.name, "Function", func.pos)
+            func.formalArgs.foreach(arg => addDecl(definitions, "Argument", arg.name, arg.pos, t))
+          })
+          t.axioms.foreach(axiom => addDecl(definitions, "Axiom", axiom.name, axiom.pos, t))
+      }
+      //output a JSON representation of the Outline for the IDE
+      val defs = definitions.map(d =>
+        s"""{
+           |"type": "${d.typ}",
+           |"name": "${d.name}",
+           |"location": "${d.location.toString}",
+           |"scopeStart": "${d.scope match {
+              case Some(s) => s.start.line + ":" + s.start.column
+              case _ => "global" }}",
+           |"scopeEnd": "${d.scope match {
+              case Some(s) if s.end.isDefined => s.end.get.line + ":" + s.end.get.column
+              case _ => "global" }}",
+        }""".stripMargin).mkString(",")
+
+      loggerForIde.info(s"""{"type":"Definitions","definitions":[$defs]}""")
     }
   }
 
@@ -261,8 +342,8 @@ trait SilFrontend extends DefaultFrontend {
 
     val methods = input.methods filter (m => verifyMethods.contains(m.name))
     val program = Program(input.domains, input.fields, input.functions, input.predicates, methods)(input.pos, input.info)
-    Succ(program)
 
+    Succ(program)
   }
 
   override def mapVerificationResult(in: VerificationResult) = in
@@ -278,15 +359,18 @@ trait SilFrontend extends DefaultFrontend {
         fileOpt = Some(abs.file)
         startOpt = Some(abs.start)
         endOpt = abs.end
-
       case hlc: HasLineColumn =>
         startOpt = Some(hlc)
-
       case _: Position => /* Position gives us nothing to work with */
     }
 
     lazy val messageStr = extractMessage(error)
-    lazy val escapedMessageStr = messageStr.replaceAll("\\\\","\\\\\\\\").replaceAll("\\\"","\\\\\"").replaceAll("\\n","\\\\n").replaceAll("\\r","\\\\r").replaceAll("\\t","\\\\t")
+    lazy val escapedMessageStr = messageStr.
+      replaceAll("\\\\","\\\\\\\\").
+      replaceAll("\\\"","\\\\\"").
+      replaceAll("\\n","\\\\n").
+      replaceAll("\\r","\\\\r").
+      replaceAll("\\t","\\\\t")
     lazy val longFileStr = fileOpt.map(_.toString).getOrElse("<unknown file>")
     lazy val shortFileStr = fileOpt.map(f => FilenameUtils.getName(f.toString)).getOrElse("<unknown file>")
     lazy val startStr = startOpt.map(toStr).getOrElse("<unknown start line>:<unknown start column>")
@@ -295,7 +379,14 @@ trait SilFrontend extends DefaultFrontend {
     lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
     lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
 
-    lazy val jsonError = s"""{"tag":"${error.fullId}","message":"$escapedMessageStr","start":"$startStr","end":"$endStr"}"""
+    lazy val jsonError =
+      s"""{
+         |"cached": ${error.cached},
+         |"tag": "${error.fullId}",
+         |"message": "$escapedMessageStr",
+         |"start": "$startStr",
+         |"end": "$endStr"
+      }""".stripMargin
 
     @inline
     private def extractMessage(error: AbstractError) = {
