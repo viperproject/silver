@@ -9,14 +9,11 @@ package viper.silver.frontend
 import java.nio.file.{Files, Path}
 
 import org.slf4j.LoggerFactory
-import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.Logger
 
 import scala.io.Source
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter.Strategy
-import viper.silver.verifier.errors.{AssertFailed, ExhaleFailed}
-import viper.silver.verifier.reasons.AssertionFalse
+import viper.silver.reporter.{Reporter, StdIOReporter}
 import viper.silver.verifier._
 
 
@@ -42,6 +39,19 @@ trait Frontend {
     * Reset any messages recorded internally (errors from previous program translations, etc.)
     */
   def resetMessages()
+
+  /**
+    * Reporter is the message interface which enables dynamic feedback from the backend.
+    *
+    * The reporter object can be passed as an argument of the Frontend implementation's constructor.
+    *
+    * The default implementation will print received messages to the standard output stream. The more exciting use case
+    * will be with the ActorReporter implementation which manages a dynamic message queue.
+    *
+    * See https://bitbucket.org/viperproject/viperserver/src for more details.
+    *
+    */
+  protected val reporter: Reporter = new StdIOReporter("default")
 
 
   /**
