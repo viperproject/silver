@@ -410,8 +410,11 @@ sealed trait Contracted extends Member {
   def posts: Seq[Exp]
 }
 
+/** A common trait for resources (fields, predicates and magic wands) */
+trait Resource extends Node with Positioned with Infoed with TransformableErrors
+
 /** A common trait for locations (fields and predicates). */
-sealed trait Location extends Member
+sealed trait Location extends Member with Resource
 
 /** Common superclass for domain functions and binary/unary operators. */
 sealed trait AbstractDomainFunc extends FuncLike with Positioned with Infoed with TransformableErrors

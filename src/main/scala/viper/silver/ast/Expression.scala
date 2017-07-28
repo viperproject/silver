@@ -94,8 +94,9 @@ case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 
 
 case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
-    extends DomainBinExp(MagicWandOp) {
+    extends DomainBinExp(MagicWandOp) with Resource with ResourceAccess {
 
+  override def res(p: Program): Resource = this
 
   // maybe rename this sometime
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
@@ -183,7 +184,8 @@ case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo, va
 
 /** A common trait for accessibility predicates. */
 // Note: adding extra instances of AccessPredicate will require adding cases to viper.silver.ast.utility.multiplyExpByPerm method
-sealed trait AccessPredicate extends Exp {
+sealed trait AccessPredicate extends Exp with ResourceAccess {
+  override def res(p: Program): Resource = loc.loc(p)
   def loc: LocationAccess
   def perm: Exp
   final lazy val typ = Bool
@@ -313,8 +315,13 @@ object DomainFuncApp {
 // --- Field and predicate accesses
 
 /** A common trait for expressions accessing a location. */
-sealed trait LocationAccess extends Exp {
+sealed trait LocationAccess extends Exp with ResourceAccess {
   def loc(p : Program): Location
+  override def res(p: Program): Resource = loc(p)
+}
+
+sealed trait ResourceAccess extends Exp {
+  def res(p: Program): Resource
 }
 
 object LocationAccess {
