@@ -5,9 +5,18 @@ predicate Cell(x: Ref) {
     acc(x.f)
 }
 
+predicate Pair(x: Ref, y: Ref) {
+    acc(x.f) && acc(y.f)
+}
+
 function get(x: Ref): Int
 requires acc(Cell(x), 1/2) {
     unfolding acc(Cell(x), 1/2) in x.f
+}
+
+function sum(x: Ref, y: Ref): Int
+requires Pair(x, y) {
+    unfolding Pair(x, y) in x.f + y.f
 }
 
 method test0(x: Ref)
@@ -138,4 +147,17 @@ requires forall y: Ref :: true ==> acc(Cell(y), 1/2) {
     package (forall y: Ref :: true ==> acc(Cell(y), 1/2)) && get(x) == 0 --* true {
         assert Cell(x) && get(x) == 0
     }
+}
+
+method test13(x0: Ref, x1: Ref)
+requires x0 != x1
+requires forall y0: Ref, y1: Ref :: y0 != y1 ==> Pair(y0, y1)
+requires sum(x0, x1) == 0 {
+    package true --* true {
+        assert Pair(x0, x1) && sum(x0, x1) == 0
+    }
+    assert forall y0: Ref, y1: Ref :: !(y0 in Set(x0, x1)) && !(y1 in Set(x0, x1)) && y0 != y1 ==> Pair(y0, y1)
+
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
+    assert forall y0: Ref, y1: Ref :: y0 != y1 ==> Pair(y0, y1)
 }

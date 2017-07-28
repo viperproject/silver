@@ -89,7 +89,7 @@ requires acc(y.f) {
     assert applying (acc(y.f) --* acc(some.f) && acc(y.f)) in y.f == 1
     assert forall x: Ref :: x in xs[1..] ==> acc(x.f)
 
-    //:: ExpectedOutput(assert.failed:wand.not.found)
+    //:: ExpectedOutput(assert.failed:insufficient.permission)
     assert forall x: Ref :: x in xs ==> acc(x.f)
 }
 
