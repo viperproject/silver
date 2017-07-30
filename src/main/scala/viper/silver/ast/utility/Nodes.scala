@@ -82,6 +82,7 @@ object Nodes {
           case _: AbstractLocalVar => Nil
           case FieldAccess(rcv, field) => Seq(rcv)
           case PredicateAccess(params, _) => params
+          case PredicateAccessPredicate(pred_acc, perm) => Seq(pred_acc, perm)
           case Unfolding(acc, body) => Seq(acc, body)
           case UnfoldingGhostOp(acc, body) => Seq(acc, body)
           case FoldingGhostOp(acc, body) => Seq(acc, body)
