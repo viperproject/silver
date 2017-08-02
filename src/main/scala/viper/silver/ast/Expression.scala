@@ -12,7 +12,7 @@ import viper.silver.ast.utility._
 import viper.silver.verifier.ConsistencyError
 
 /** Expressions. */
-sealed trait Exp extends Node with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
+sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
 
@@ -323,6 +323,12 @@ case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVa
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs,domainName, errT)
   def asManifestation = this
+
+  //Strangely, the copy method is not a member of the DomainFuncApp case class,
+  //therefore, We need this method that does the copying manually
+  def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, => Type, => Seq[LocalVarDecl], String, ErrorTrafo) => DomainFuncApp ={
+    DomainFuncApp(this.funcname,args,typVarMap)
+  }
 }
 object DomainFuncApp {
   def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : DomainFuncApp =
@@ -440,19 +446,21 @@ case class LabelledOld(exp: Exp, oldLabel: String)(val pos: Position = NoPositio
 
 // --- Other expressions
 
-case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
+case class Let(variable: LocalVarDecl, exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with Scope {
   override lazy val check : Seq[ConsistencyError] =
     if(!(exp.typ isSubtype variable.typ)) Seq(ConsistencyError( s"Let-bound variable ${variable.name} is of type ${variable.typ}, but bound expression is of type ${exp.typ}", exp.pos)) else Seq()
   val typ = body.typ
+  val scopedDecls: Seq[Declaration] = Seq(variable)
 }
 
 // --- Quantifications
 
 /** A common trait for quantified expressions. */
-sealed trait QuantifiedExp extends Exp {
+sealed trait QuantifiedExp extends Exp with Scope {
   def variables: Seq[LocalVarDecl]
   def exp: Exp
   lazy val typ = Bool
+  val scopedDecls: Seq[Declaration] = variables
 
   override def isValid : Boolean = this match {
     case _ if contains[MagicWand] => false
@@ -510,6 +518,10 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
 
 
 /** Quantification over heap chunks with positive permission in any of the listed fields */
+/** TODO: Seq[Location] is not ideal for accessList, because it is a seq of uses rather than declarations;
+  * FieldAccess/PredicateAccess (LocationAccess) aren't good alternatives either, because they require
+  * a field receiver/predicate arguments whereas field/predicate id would suffice.
+  */
 case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
                   (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] =

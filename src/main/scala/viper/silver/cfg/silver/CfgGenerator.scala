@@ -44,14 +44,9 @@ object CfgGenerator {
     // generate cfg for the body
     val bodyCfg = method.body.toCfg(simplify = false)
 
-    // create block for local variables
-    val locals = method.locals.map { local => LocalVarDeclStmt(local)(local.pos) }
-    val localBlock: SilverBlock = StatementBlock(locals)
-    val localEdge: SilverEdge = UnconditionalEdge(localBlock, bodyCfg.entry, Kind.Normal)
-
     // create precondition block and corresponding edge
     val preBlock: SilverBlock = PreconditionBlock(method.pres)
-    val preEdge: SilverEdge = UnconditionalEdge(preBlock, localBlock, Kind.Normal)
+    val preEdge: SilverEdge = UnconditionalEdge(preBlock, bodyCfg.entry, Kind.Normal)
 
     // create cfg
     val cfg = bodyCfg.exit match {
@@ -60,13 +55,13 @@ object CfgGenerator {
         val postBlock: SilverBlock = PostconditionBlock(method.posts)
         val postEdge: SilverEdge = UnconditionalEdge(exit, postBlock, Kind.Normal)
         // create cfg with pre- and postconditions and local variables
-        val blocks = preBlock :: localBlock :: postBlock :: bodyCfg.blocks.toList
-        val edges = preEdge :: localEdge :: postEdge :: bodyCfg.edges.toList
+        val blocks = preBlock :: postBlock :: bodyCfg.blocks.toList
+        val edges = preEdge :: postEdge :: bodyCfg.edges.toList
         SilverCfg(blocks, edges, preBlock, Some(postBlock))
       case None =>
         // create cfg with preconditions and local variables but no postconditions
-        val blocks = preBlock :: localBlock :: bodyCfg.blocks.toList
-        val edges = preEdge :: localEdge :: bodyCfg.edges.toList
+        val blocks = preBlock :: bodyCfg.blocks.toList
+        val edges = preEdge :: bodyCfg.edges.toList
         SilverCfg(blocks, edges, preBlock, None)
     }
 
@@ -175,7 +170,7 @@ object CfgGenerator {
         addStatement(JumpStmt(afterTarget))
         // set label after if statement
         addLabel(afterTarget)
-      case While(cond, invs, locals, body) =>
+      case While(cond, invs, body) =>
         // create labels
         val headTarget = TmpLabel.generate("head")
         val loopTarget = TmpLabel.generate("loop")
@@ -186,10 +181,6 @@ object CfgGenerator {
         addStatement(ConditionalJumpStmt(cond, loopTarget, afterTarget))
         // process loop body
         addLabel(loopTarget)
-        for (local <- locals) {
-          val decl = LocalVarDeclStmt(local)(pos = local.pos)
-          addStatement(WrappedStmt(decl))
-        }
         run(body)
         addStatement(JumpStmt(headTarget))
         // set label after loop
@@ -199,7 +190,12 @@ object CfgGenerator {
         val cfg = statementToCfg(body)
         addStatement(ConstrainingStmt(vars, cfg, after))
         addLabel(after)
-      case Seqn(ss) =>
+      case Seqn(ss, scopedDecls) =>
+        val locals = scopedDecls.collect {case l: LocalVarDecl => l}
+        for (local <- locals) {
+          val decl = LocalVarDeclStmt(local)(pos = local.pos)
+          addStatement(WrappedStmt(decl))
+        }
         ss.foreach(run)
       case Goto(name) =>
         val target = TmpLabel(name)

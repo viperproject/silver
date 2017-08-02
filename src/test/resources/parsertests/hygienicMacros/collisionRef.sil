@@ -13,10 +13,14 @@ function x$3() : Bool {
 
 method main()
 {
-    var x: Bool
-    var x$2: Bool
-    x := true
-    assert(x)
-    x$2 := true
-    assert(x$2)
+    {
+        var x: Bool
+        x := true
+        assert(x)
+    }
+    {
+        var x$2: Bool
+        x$2 := true
+        assert(x$2)
+    }
 }
