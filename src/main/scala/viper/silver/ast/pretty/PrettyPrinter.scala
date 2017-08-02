@@ -491,7 +491,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case m: Member => showMember(m)
     case v: LocalVarDecl => showVar(v)
     case dm: DomainMember => showDomainMember(dm)
-    //case dt: DecClause => showDecClause(dt) //TODO pege better way?
+    case dc: DecClause => showDecClause(dc)
     case Trigger(exps) =>
       text("{") <+> ssep(exps map show, char(',')) <+> "}"
     case null => uninitialized
@@ -557,7 +557,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
             showContracts("requires", pres) <>
               showContracts("ensures", posts) <>
               (decs match {
-                case Some(DecStar()) => line <> text("decreases *") //TODO pege
+                case Some(DecStar()) => line <> text("decreases *")
                 case Some(DecTuple(e)) => line <> text("decreases") <> space <> ssep(e map (show(_)), char(',') <> space)
                 case d => space
               })
@@ -600,6 +600,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
   /** Show field name */
   private def showLocation(loc: Location): Cont = loc.name
+
+  private def showDecClause(dt: DecClause): Cont = dt match {
+    case DecStar() => "*"
+    case DecTuple(e) => ssep(e map (toParenDoc(_)), char(',') <> space)
+  }
 
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Cont = {

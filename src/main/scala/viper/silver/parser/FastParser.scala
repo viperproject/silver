@@ -864,18 +864,13 @@ object FastParser extends PosParser {
 
   lazy val post: P[PExp] = P("ensures" ~/ exp ~ ";".?)
 
-  //lazy val dec: P[PDecClause] = P("decreases" ~/ ((P(exp.rep(sep = ",")).map { case a => PDecTuple(a)}) | P("*").map(_ => PDecStar())) ~ ";".?) //pege
-  lazy val dec: P[PDecClause] = P("decreases" ~/ (("*").!.map{_ => PDecStar()} | (exp.rep(sep = ",").map { exps => PDecTuple(exps)})) ~ ";".?) //pege
+  lazy val dec: P[PDecClause] = P("decreases" ~/ (("*").!.map{_ => PDecStar()} | (exp.rep(sep = ",").map { exps => PDecTuple(exps)})) ~ ";".?)
 
 
   //P(("*").!.map { _ => None } | (idnuse.rep(sep = ",").map { fields => Some(fields) }))
 
 
   //P(keyword("none").map(_ => PNoPerm())
-
-    //| keyword("*")) ~ ";".?).map { case (a,b) => PDecStar()} //pege
-
-  //lazy val dec2: P[Seq[Char]] = P("decreases" ~/ "*" ~ ";".?) //pege
 
   lazy val decCl: P[Seq[PExp]] = P(exp.rep(sep = ","))
 

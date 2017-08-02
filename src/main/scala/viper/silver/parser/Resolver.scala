@@ -102,7 +102,7 @@ case class TypeChecker(names: NameAnalyser) {
       curFunction=f
       f.pres foreach (check(_, Bool))
       resultAllowed=true
-      check(f.decs) //TODO pege necessary?
+      check(f.decs)
       f.posts foreach (check(_, Bool))
       f.body.foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
       resultAllowed=false
@@ -154,7 +154,7 @@ case class TypeChecker(names: NameAnalyser) {
     d match {
       case Some(PDecStar()) =>
       case Some(PDecTuple(exp)) =>
-        exp foreach (e => check(e, e.typ)) //TODO pege, these checks are a bit stupid
+        exp foreach (e => check(e, e.typ))
       case None =>
     }
   }

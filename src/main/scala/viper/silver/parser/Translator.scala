@@ -44,16 +44,13 @@ case class Translator(program: PProgram) {
         var methods = pmethods map (translate(_))
         var functions = pfunctions map (translate(_))
 
-        //Add Methods needed for proving decreasing functions
-        //TODO pege, stupid location to do this
-        def findFnc(name: String) = members.get(name).get.asInstanceOf[Function]
-        val structureForTermProofs = DecreasesClause.addMethods(functions, predicates, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"), findFnc)
-        domain ++= structureForTermProofs._1
+        //Add Methods, Domains and functions needed for proving termination
+        val structureForTermProofs = DecreasesClause.addMethods(functions, predicates, domain, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"), members)
+        domain = structureForTermProofs._1
         functions ++= structureForTermProofs._2
         methods ++= structureForTermProofs._3
 
         val prog = Program(domain, fields, functions, predicates, methods)(program)
-        println(Consistency.messages) //pege
         if (Consistency.messages.isEmpty) Some(prog) // all error messages generated during translation should be Consistency messages
         else None
     }
@@ -90,9 +87,9 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(f: PFunction): Function = f match {
-    case PFunction(name, formalArgs, typ, pres, posts, body) =>
+    case PFunction(name, formalArgs, typ, pres, posts, decs, body) =>
       val f = findFunction(name)
-      val ff = f.copy(pres = pres map exp, posts = posts map exp, body = body map exp)(f.pos, f.info, f.errT)
+      val ff = f.copy(pres = pres map exp, posts = posts map exp, decs = decs map dec, body = body map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
   }
@@ -220,8 +217,8 @@ case class Translator(program: PProgram) {
   /** Takes a `PExp` and turns it into an `Exp`. */
   private def dec(pdec: PDecClause): DecClause = {
     pdec match {
-      case PDecStar() => DecStar()
-      case PDecTuple(d) => DecTuple(d map exp)
+      case PDecStar() => DecStar()(pdec)
+      case PDecTuple(d) => DecTuple(d map exp)(pdec)
     }
   }
 

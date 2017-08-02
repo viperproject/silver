@@ -225,15 +225,15 @@ object errors {
   def AssertFailed(offendingNode: Assert): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => AssertFailed(offendingNode, reason))
 
-  case class TerminationFailed(offendingNode: FuncApp, reason: ErrorReason) extends AbstractVerificationError {
+  case class TerminationFailed(offendingNode: Function, reason: ErrorReason) extends AbstractVerificationError {
     val id = "termination.failed"
-    val text = s"Termination might not hold."
+    val text = s"Termination of Function ${offendingNode.name} might not hold."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationFailed(offendingNode.asInstanceOf[FuncApp], this.reason)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationFailed(offendingNode.asInstanceOf[Function], this.reason)
     def withReason(r: ErrorReason) = TerminationFailed(offendingNode, r)
   }
 
-  def TerminationFailed(offendingNode: FuncApp): PartialVerificationError =
+  def TerminationFailed(offendingNode: Function): PartialVerificationError =
     PartialVerificationError((r: ErrorReason) => TerminationFailed(offendingNode, r))
 
   case class PostconditionViolated(offendingNode: Exp, member: Contracted, reason: ErrorReason) extends AbstractVerificationError {
@@ -418,34 +418,34 @@ object reasons {
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = AssertionFalse(offendingNode.asInstanceOf[Exp])
   }
 
-  case class TerminationMeasure(offendingNode: Exp, decClause: Seq[Exp]) extends AbstractErrorReason {
-    val id = "termination.measure"
-    override def readableMessage = s"Termination Measure (${decClause.mkString(", ")}) might not decrease."
+  case class VariantNotDecreasing(offendingNode: FuncApp, decExp: Seq[Exp]) extends AbstractErrorReason {
+    val id = "variant.not.decreasing"
+    override def readableMessage = s"Termination measure (${decExp.mkString(",")}) might not (indirect) decrease at $offendingNode."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationMeasure(offendingNode.asInstanceOf[Exp], decClause)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = VariantNotDecreasing(offendingNode.asInstanceOf[FuncApp], decExp)
   }
 
-  case class TerminationNoBound(offendingNode: Exp, decClause: Seq[Exp]) extends AbstractErrorReason {
+  case class TerminationNoBound(offendingNode: DecTuple, decExp: Exp) extends AbstractErrorReason {
     val id = "termination.no.bound"
-    override def readableMessage = s"Decreases expression (${decClause.mkString(", ")}) might not be bounded below 0."
+    override def readableMessage = s"Decreases expression ($decExp) of the decreasing Clause (${offendingNode.e.mkString(",")}) might not be bounded."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(offendingNode.asInstanceOf[Exp], decClause)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(offendingNode.asInstanceOf[DecTuple], decExp)
   }
 
-  case class CallingNonTerminatingFunction(offendingNode: Exp, caller: String, callee:String) extends AbstractErrorReason {
+  case class CallingNonTerminatingFunction(offendingNode: FuncApp, callee: Function) extends AbstractErrorReason {
     val id = "calling.non.terminating.function"
 
-    override def readableMessage = s"$caller calls (indirect) $callee, which might not terminate."
+    override def readableMessage = s"The function calls with ${offendingNode.funcname} (indirect) Function ${callee.name}, which might not terminate."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CallingNonTerminatingFunction(offendingNode.asInstanceOf[Exp], caller, callee)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CallingNonTerminatingFunction(offendingNode.asInstanceOf[FuncApp], callee)
   }
 
-  case class NoDecClauseSpecified(offendingNode: Exp, caller: String) extends AbstractErrorReason {
+  case class NoDecClauseSpecified(offendingNode: FuncApp) extends AbstractErrorReason {
     val id = "no.decClause.specified"
 
-    override def readableMessage = s"Function $caller is (indirect) recursive but has no decreases clause specified."
+    override def readableMessage = s"The Function is (indirect) via ${offendingNode.funcname} recursive but has no decreases clause specified."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = NoDecClauseSpecified(offendingNode.asInstanceOf[Exp], caller)
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = NoDecClauseSpecified(offendingNode.asInstanceOf[FuncApp])
   }
 
     // Note: this class should be deprecated/removed - we no longer support epsilon permissions in the language

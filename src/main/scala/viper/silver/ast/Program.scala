@@ -144,14 +144,14 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 }
 
 /** A decreas Clause declaration. */
-sealed trait DecClause extends Node{ //pege extend correct?
+sealed trait DecClause extends Node with Positioned with Infoed with TransformableErrors{
 }
 
-case class DecStar() extends DecClause{
+case class DecStar()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DecClause{
 }
 
-case class DecTuple(e: Seq[Exp]) extends DecClause{
-  val exp: Seq[Exp] = e
+case class DecTuple(e: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DecClause{
+  val exp: Seq[Exp] = e //TODO pege exp needed?
 }
 
 /** A predicate declaration. */
@@ -232,7 +232,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 }
 
 /** A function declaration */
-case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], body: Option[Exp])
+case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], decs: Option[DecClause], body: Option[Exp])
                    (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with FuncLike with Contracted {
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Function name must be a valid identifier.", pos)) else Seq()) ++
@@ -244,6 +244,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
     (if(!(body map (_ isSubtype typ) getOrElse true)) Seq(ConsistencyError("Type of function body must match function type.", pos)) else Seq() ) ++
     pres.flatMap(Consistency.checkPre) ++
     posts.flatMap(Consistency.checkPost) ++
+    (if(decs.isDefined) Consistency.checkDecClause(decs.get) else Seq()) ++
     (if(body.isDefined) Consistency.checkFunctionBody(body.get) else Seq()) ++
     (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq())
 

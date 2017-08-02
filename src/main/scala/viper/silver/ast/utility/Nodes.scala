@@ -38,7 +38,7 @@ object Nodes {
       case m: Member =>
         m match {
           case Field(name, typ) => Nil
-          case Function(name, formalArgs, typ, pres, posts, decs, body) => //TODO pege decs?
+          case Function(name, formalArgs, typ, pres, posts, decs, body) =>
             formalArgs ++ pres ++ posts ++ decs ++ body
           case Method(name, formalArgs, formalReturns, pres, posts, locals, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ locals ++ Seq(body)

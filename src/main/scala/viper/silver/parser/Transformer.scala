@@ -44,7 +44,8 @@ object Transformer {
         case PMultisetType(elementType) => PMultisetType(go(elementType))
         case _: PUnknown => parent
         case _: PPredicateType | _: PWandType => parent
-
+        case PDecStar() => parent
+        case PDecTuple(exp) => PDecTuple(exp map go)
         case PBinExp(left, op, right) => PBinExp(go(left), op, go(right))
         case PUnExp(op, exp) => PUnExp(op, go(exp))
         case _: PIntLit => parent
