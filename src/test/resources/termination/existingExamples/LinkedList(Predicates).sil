@@ -21,6 +21,7 @@ function contentNodes(this: Ref, end: Ref): Seq[Int]
              0 < |result| &&
              result[0] == unfolding acc(lseg(this, end)) in this.data
   ensures  forall i: Int, j: Int :: 0 <= i && i < j && j < |result| ==> result[i] <= result[j]
+  decreases acc(lseg(this, end))
 {
   this == end ? Seq[Int]() :
                 unfolding acc(lseg(this, end)) in (

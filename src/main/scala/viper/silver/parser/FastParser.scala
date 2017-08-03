@@ -161,6 +161,7 @@ object FastParser extends PosParser {
   def pathFromImport(importStmt: PImport): Path = {
     val fileName = importStmt.file
     val path = file.getParent.resolve(fileName)
+
     path
   }
 
@@ -869,12 +870,6 @@ object FastParser extends PosParser {
   lazy val post: P[PExp] = P("ensures" ~/ exp ~ ";".?)
 
   lazy val dec: P[PDecClause] = P("decreases" ~/ (("*").!.map{_ => PDecStar()} | (exp.rep(sep = ",").map { exps => PDecTuple(exps)})) ~ ";".?)
-
-
-  //P(("*").!.map { _ => None } | (idnuse.rep(sep = ",").map { fields => Some(fields) }))
-
-
-  //P(keyword("none").map(_ => PNoPerm())
 
   lazy val decCl: P[Seq[PExp]] = P(exp.rep(sep = ","))
 

@@ -40,9 +40,9 @@ case class Translator(program: PProgram) {
 
         var domain = pdomains map (translate(_))
         val fields = pfields map (translate(_))
+        var functions = pfunctions map (translate(_))
         val predicates = ppredicates map (translate(_))
         var methods = pmethods map (translate(_))
-        var functions = pfunctions map (translate(_))
 
         //Add Methods, Domains and functions needed for proving termination
         val structureForTermProofs = DecreasesClause.addMethods(functions, predicates, domain, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"), members)
@@ -51,6 +51,7 @@ case class Translator(program: PProgram) {
         methods ++= structureForTermProofs._3
 
         val prog = Program(domain, fields, functions, predicates, methods)(program)
+
         if (Consistency.messages.isEmpty) Some(prog) // all error messages generated during translation should be Consistency messages
         else None
     }

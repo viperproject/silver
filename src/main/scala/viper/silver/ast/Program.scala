@@ -203,7 +203,7 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
   val scopedDecls = Seq() //field is a scope because it is a member; it has no locals
 }
 
-/** A decreas Clause declaration. */
+/** A decreases-Clause declaration. */
 sealed trait DecClause extends Node with Positioned with Infoed with TransformableErrors{
 }
 
@@ -211,7 +211,7 @@ case class DecStar()(val pos: Position = NoPosition, val info: Info = NoInfo, va
 }
 
 case class DecTuple(e: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DecClause{
-  val exp: Seq[Exp] = e //TODO pege exp needed?
+  val exp: Seq[Exp] = e
 }
 
 /** A predicate declaration. */
@@ -314,7 +314,6 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
-
 }
 
 

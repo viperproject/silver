@@ -23,13 +23,13 @@ decreases r,p,s
 }
 
 function h(b:Bool, m: Multiset[Int], s: Seq[Ref]): Int
-requires p(b)
-decreases m,s,p(b),b
+requires pred(b)
+decreases m,s,pred(b),b
 {
-    unfolding p(b) in b ? h(!b, m, s) : 1
+    unfolding pred(b) in b ? h(!b, m, s) : 1
 }
 
-predicate p(b:Bool)
+predicate pred(b:Bool)
 {
-    b ==> p(!b)
+    b ==> pred(!b)
 }

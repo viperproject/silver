@@ -461,8 +461,6 @@ case class TypeChecker(names: NameAnalyser) {
   def typeError(exp:PExp) = {
     messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.rangeStr}")
   }
-  //def check(dec: PDeclause, expected: PType):Unit = dec.decs.foreach(check(_, expected))
-
   def check(exp: PExp, expected: PType) = checkTopTyped(exp,Some(expected))
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
   {
@@ -490,6 +488,7 @@ case class TypeChecker(names: NameAnalyser) {
   {
     check(exp,PTypeSubstitution.id)
   }
+
 
   def check(exp: PExp, s : PTypeSubstitution) : Unit = {
     /**
