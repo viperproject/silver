@@ -253,14 +253,11 @@ object DecreasesClause {
 
                   var neededArgAssigns: Seq[Stmt] = Nil //Needed for decreasing predicates
 
-                  var varDecls: Seq[Declaration] = Nil
                   //decreasing(smallerExpr, biggerExpr) <==> smallerExpr '<<' biggerExpr
                   val smallerExpression: Seq[Exp] = decreasingExp map {
                     case pap: PredicateAccessPredicate =>
-
                       val varOfCalleePred = uniquePredLocVar(pap.loc, (formalArgs zip calleeArgs).toMap)
 
-                      varDecls :+= LocalVarDecl(varOfCalleePred.name, varOfCalleePred.typ)(varOfCalleePred.pos, varOfCalleePred.info)
                       neededArgAssigns :+= generateAssign(pap, varOfCalleePred, (formalArgs zip calleeArgs).toMap)
                       varOfCalleePred
                     case decC => decC.replace((formalArgs zip calleeArgs).toMap)
@@ -270,7 +267,7 @@ object DecreasesClause {
                     case pap: PredicateAccessPredicate =>
                       assert(locationDomain.isDefined)
                       val varOfCalleePred = uniquePredLocVar(pap.loc)
-                      varDecls :+= LocalVarDecl(varOfCalleePred.name, varOfCalleePred.typ)(varOfCalleePred.pos, varOfCalleePred.info)
+
                       neededArgAssigns :+= generateAssign(pap, varOfCalleePred)
                       varOfCalleePred
                     case d => d match {
@@ -319,7 +316,7 @@ object DecreasesClause {
                   var decrFunc: Seq[Exp] = Nil
                   var boundFunc: Seq[Exp] = Nil
 
-                  //Generation of termination Checks - (Assert decreasing(..,..))
+                  //Generation of termination Assertions - (Assert decreasing(..,..))
                   //Generates (for a decreasing Clause: 'decreases a,b,c') a sequence with the following form: (dec(a,a), a==a, dec(b,b), b==b, dec(c,c))
                   for (i <- argsForTermProof.indices) {
                     if (i > 0) {
@@ -329,11 +326,11 @@ object DecreasesClause {
                     boundFunc :+= replaceExpWithDummyFnc(DomainFuncApp(boundedFunc.get, Seq(argsForTermProof(i)._2), Map(argTypeVarsDecr.head -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos))
                   }
 
-                  //Generate from the Seq the correct Assertions
                   val boundedAss = Assert(buildBoundTree(boundFunc))(callerFunctionInOrigBody.pos, infoBound, errTBound)
                   val decreaseAss = Assert(buildDecTree(decrFunc, conj = true))(callerFunctionInOrigBody.pos, infoDecr, errTDecr)
 
-                  if (funcAppInOrigFunc == null) { //we are in the first called function
+                  if (funcAppInOrigFunc == null) {
+                    //we are in the function we want to check
 
                     val bodyWithArgs = func.body.get.replace((formalArgs zip calleeArgs).toMap)
 
@@ -344,7 +341,6 @@ object DecreasesClause {
                     val inhalePostConds = postConds map (c => Inhale(replaceExpWithDummyFnc(c))(pos))
 
                     val inhaleFuncBody = Inhale(replaceExpWithDummyFnc(EqCmp(FuncApp(func, calleeArgs)(pos), bodyWithArgs)(pos)))(pos)
-                    //varDecls
                     Seqn(termChecksOfArgs ++ neededArgAssigns ++ Seq(boundedAss, decreaseAss, inhaleFuncBody) ++ inhalePostConds, Nil)(pos)
                   } else {
                     Seqn(termChecksOfArgs ++ neededArgAssigns ++ Seq(boundedAss, decreaseAss), Nil)(pos)
@@ -406,9 +402,7 @@ object DecreasesClause {
 
           //Local variables
           val varOfCallerPred: LocalVar = uniquePredLocVar(origPred.loc)
-          val declCaller = LocalVarDecl(varOfCallerPred.name, varOfCallerPred.typ)(varOfCallerPred.pos, varOfCallerPred.info)
           val varOfCalleePred: LocalVar = uniquePredLocVar(calledPred.loc)
-          val declCallee = LocalVarDecl(varOfCalleePred.name, varOfCalleePred.typ)(varOfCalleePred.pos, varOfCalleePred.info)
 
           //Assign
           val assign1 = generateAssign(origPred, varOfCallerPred)
@@ -418,7 +412,6 @@ object DecreasesClause {
           val mapNested: Map[TypeVar, Type] = Map(TypeVar("N1") -> DomainType(domainOfCalleePred, Map()), TypeVar("N2") -> DomainType(domainOfCallerPred, Map()))
           val assume = Inhale(DomainFuncApp(nestedFunc.get, Seq(varOfCalleePred, varOfCallerPred), mapNested)(calledPred.pos))(calledPred.pos)
 
-          //Seq(declCaller, declCallee)
           Seqn(Seq(assign1, assign2, assume), Nil)(calledPred.pos)
       }
       case c: CondExp =>
@@ -497,7 +490,7 @@ object DecreasesClause {
   private def replaceExpWithDummyFnc(exp: Exp): Exp = StrategyBuilder.Slim[Node]({ case fa: FuncApp => uniqueNameGen(fa) }, Traverse.BottomUp).execute[Node](exp).asInstanceOf[Exp]
 
   /**
-    * Checks if a name already is existence in the program and adds a counter to the name until the name is unique
+    * Checks if a name already exists in the program and will add a counter to the name until the name is unique
     *
     * @param oldName name which should be checked
     * @return a name which is not already in the program
@@ -513,9 +506,10 @@ object DecreasesClause {
   }
 
   /** Generator of the dummy-Functions, predicate-Domains and location-Functions
+    * Creates and stores the corresponding dumFunc, predDom or locFunc and returns it
     *
     * @param node function or predicate for which the corresponding structure should be generated
-    * @return the needed dummy-funtion, pred-Domain or loc-Function
+    * @return the needed dummy-function, pred-Domain or loc-Function
     */
   private def uniqueNameGen(node: Node): Node = {
     assert(node.isInstanceOf[Function] || node.isInstanceOf[Predicate] || node.isInstanceOf[FuncApp] || node.isInstanceOf[PredicateAccess] || node.isInstanceOf[PredicateAccessPredicate])
@@ -580,7 +574,7 @@ object DecreasesClause {
   }
 
   /**
-    * Generator of the predicate-variables with the correct type
+    * Generator of the predicate-variables, which represents the type 'predicate'
     *
     * @param p      predicate which defines the type of the variable
     * @param argMap optional replacement for the arguments
@@ -589,7 +583,6 @@ object DecreasesClause {
   private def uniquePredLocVar(p: PredicateAccess, argMap: Map[Exp, Exp] = Map()): LocalVar = {
     val args = p.args map (_.replace(argMap))
     val predVarName = p.predicateName + "_" + args.hashCode().toString.replaceAll("-", "_")
-//    var predVarName = p.predicateName + "_" + counter
     if (neededLocalVars.contains(p.predicateName)) {
       //Variable already exists
       neededLocalVars(p.predicateName).localVar
