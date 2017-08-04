@@ -8,6 +8,7 @@ package viper.silver.ast
 
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
 import utility.{Consistency, DomainInstances, Types, Nodes, Visitor}
+import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.cfg.silver.CfgGenerator
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
@@ -22,6 +23,11 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   val scopedDecls: Seq[Declaration] =
     domains ++ fields ++ functions ++ predicates ++ methods ++
     domains.flatMap(d => {d.axioms ++ d.functions})
+
+  lazy val magicWandStructures: Seq[MagicWandStructure] =
+    this.deepCollect({
+      case wand: MagicWand => wand.structure(this)
+    }).distinct
 
   override lazy val check : Seq[ConsistencyError] =
     Consistency.checkContextDependentConsistency(this) ++

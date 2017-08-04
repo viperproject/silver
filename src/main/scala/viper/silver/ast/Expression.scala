@@ -5,6 +5,7 @@
  */
 
 package viper.silver.ast
+import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.ast.pretty._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility._
@@ -92,6 +93,9 @@ case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(left)
 }
 
+object MagicWandStructure {
+  type MagicWandStructure = String
+}
 
 case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
     extends DomainBinExp(MagicWandOp) with Resource with ResourceAccess {
@@ -109,46 +113,13 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
     }.flatten
   }
 
-  def structurallyMatches(other: MagicWand, p: Program): Boolean = {
-    val ignoreExps1 = this.subexpressionsToEvaluate(p)
-    val ignoreExps2 = other.subexpressionsToEvaluate(p)
-
-//    println(s"\nignoreExps1 = $ignoreExps1")
-//    println(s"ignoreExps2 = $ignoreExps2")
-
-    /* It would suffice to define eq for Exps instead Nodes, but
-     * Nodes.children returns a Seq[Nodes]. */
-    def eq(e1: Node, e2: Node): Boolean = (e1, e2) match {
-      case (`e1`, `e1`) => true
-      case _ =>
-//        println(s"\ne1 = $e1, e2 = $e2")
-        val idx1 = ignoreExps1.indexOf(e1)
-//        println(s"idx1 = $idx1")
-
-        if (idx1 >= 0) {
-//          println(ignoreExps2(idx1))
-//          println(ignoreExps2(idx1) == e2)
-
-          ignoreExps2(idx1) == e2
-        } else {
-          val b0 = e1.getClass == e2.getClass
-//          println(s"  comparing classes: $b0")
-          val (subnodes1, otherChildren1) = Nodes.children(e1)
-          val (subnodes2, otherChildren2) = Nodes.children(e2)
-//          println(s"  subnodes1 = ${subnodes1.toList}\n  otherChildren1 = ${otherChildren1.toList}")
-//          println(s"  subnodes2 = ${subnodes2.toList}\n  otherChildren2 = ${otherChildren2.toList}")
-          val b1 = subnodes1.zip(subnodes2).forall { case (e1i, e2i) => eq(e1i, e2i)}
-//          println(s"  comparing subnodes: $b1")
-          val b2 = otherChildren1 == otherChildren2
-//          println(s"  comparing other children: $b2")
-
-          (   b0
-           && b1
-           && b2)
-        }
-    }
-
-    eq(this.left, other.left) && eq(this.right, other.right)
+  def structure(p: Program): MagicWandStructure = {
+    val subexpressionsToEvaluate = this.subexpressionsToEvaluate(p)
+    val structureWand = this.transform({
+      case exp: Exp if subexpressionsToEvaluate.contains(exp) =>
+        LocalVar(exp.typ.toString())(exp.typ)
+    })
+    structureWand.toString()
   }
 
   override def isValid : Boolean = this match {
