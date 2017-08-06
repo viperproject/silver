@@ -12,10 +12,15 @@ trait Reporter {
   def report(msg: Message): Unit
 }
 
+object NoopReporter extends Reporter {
+  val name: String = "NoopReporter"
+  def report(msg: Message): Unit = ()
+}
+
 class StdIOReporter(val name: String) extends Reporter {
   var counter = 0
 
-  def report(msg: Message) = {
+  def report(msg: Message): Unit = {
     println(s"$name#$counter: $msg")
     counter = counter + 1
   }
