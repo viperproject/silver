@@ -15,6 +15,7 @@ import viper.silver.ast.{Node, Position, _}
 import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
 import viper.silver.parser._
+import viper.silver.reporter.{OverallFailureMessage, OverallSuccessMessage}
 import viper.silver.verifier._
 import viper.silver.verifier.CliOptionError
 import viper.silver.verifier.Failure
@@ -132,9 +133,17 @@ trait SilFrontend extends DefaultFrontend {
     // print the result
     printFinishHeader()
 
+    //TODO: eventually the functionality in the printSuccess and printErrors methods (and possibly other methods in this file)
+    //TODO: could be factored out into the Reporter itself. For the moment, we interact with both functionality, for compatibility
     result match {
-      case Success => printSuccess()
-      case Failure(errors) => printErrors(errors: _*)
+      case Success => {
+        printSuccess();
+        reporter.report(OverallSuccessMessage(System.currentTimeMillis() - _startTime))
+      }
+      case f@Failure(errors) => {
+        printErrors(errors: _*);
+        reporter.report(OverallFailureMessage(System.currentTimeMillis() - _startTime, f))
+      }
     }
   }
 
@@ -166,7 +175,7 @@ trait SilFrontend extends DefaultFrontend {
   protected def printFinishHeader() {
     if (!_config.exit) {
       if (_config.noTiming()) {
-        if(config.ideMode()) {
+        if(_config.ideMode()) {
           loggerForIde.info(s"""{"type":"End"}\r\n""")
         }else {
           logger.info(s"${_ver.name} finished.")
@@ -180,7 +189,7 @@ trait SilFrontend extends DefaultFrontend {
   protected def printFinishHeaderWithTime() {
     val timeMs = System.currentTimeMillis() - _startTime
     val time = f"${timeMs / 1000.0}%.3f seconds"
-    if (config.ideMode()) {
+    if (_config.ideMode()) {
       loggerForIde.info(s"""{"type":"End","time":"$time"}\r\n""")
     } else {
       logger.info(s"${_ver.name} finished in $time.")
