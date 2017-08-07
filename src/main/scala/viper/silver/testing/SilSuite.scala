@@ -16,7 +16,7 @@ import viper.silver.frontend.Frontend
 import viper.silver.utility.TimingUtils
 import viper.silver.verifier.errors.{AssertFailed, LoopInvariantNotPreserved}
 
-/** A test suite for verification toolchains that use SIL. */
+/** A test suite for verification toolchains that use Viper. */
 abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll {
 
   /** The list of verifiers to be used. Should be overridden by a lazy val
@@ -116,13 +116,13 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
 }
 
 /**
-  * Simple adapter for outputs produced by the SIL toolchain, i.e.,
+  * Simple adapter for outputs produced by the Viper toolchain, i.e.,
   * [[viper.silver.verifier.AbstractError]]s.
   *
   * The advantage is that it allows [[viper.silver.testing.AbstractOutput]]
-  * to be independent from the SIL AST.
+  * to be independent from the Viper AST.
   *
-  * @param error the error produced by the SIL toolchain.
+  * @param error the error produced by the Viper toolchain.
   */
 case class SilOutput(error: AbstractError) extends AbstractOutput {
   def isSameLine(file: Path, lineNr: Int): Boolean = error.pos match {

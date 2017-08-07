@@ -18,7 +18,7 @@ import viper.silver.FastMessaging
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
- * a SIL abstract syntax tree.
+ * a Viper abstract syntax tree.
  *
  * [2014-05-08 Malte] The current architecture of the resolver makes it hard
  * to detect all malformed ASTs. It is, for example, hard to detect that an
@@ -143,7 +143,7 @@ case class Translator(program: PProgram) {
       case PLocalVarDecl(idndef, t, Some(init)) =>
         LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos), exp(init))(pos)
       case PLocalVarDecl(_, _, None) =>
-        // there are no declarations in the SIL AST; rather they are part of the scope signature
+        // there are no declarations in the Viper AST; rather they are part of the scope signature
         Statements.EmptyStmt
       case PSeqn(ss) =>
         val plocals = ss.collect {

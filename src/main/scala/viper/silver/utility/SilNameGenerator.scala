@@ -10,7 +10,7 @@ import viper.silver.ast.utility.Consistency
 import viper.silver.parser.FastParser
 
 /**
- * A name generator for SIL.
+ * A name generator for Viper.
  */
 class SilNameGenerator extends DefaultNameGenerator {
   val identFirstLetter = "[a-zA-Z$_]"

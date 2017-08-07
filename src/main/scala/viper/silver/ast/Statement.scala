@@ -218,7 +218,7 @@ case class Label(name: String, invs: Seq[Exp])(val pos: Position = NoPosition, v
 }
 
 /**
-  * A goto statement.  Note that goto's in SIL are limited to forward jumps, and a jump cannot enter
+  * A goto statement.  Note that goto's in Viper are limited to forward jumps, and a jump cannot enter
   * a loop but might leave one or several loops.  This ensures that the only back edges in the
   * control flow graph are due to while loops.
   */

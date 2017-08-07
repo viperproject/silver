@@ -25,7 +25,7 @@ import viper.silver.verifier.TypecheckerError
 import scala.collection.mutable
 
 /**
- * Common functionality to implement a command-line verifier for SIL.  This trait
+ * Common functionality to implement a command-line verifier for Viper.  This trait
  * provides code to invoke the parser, parse common command-line options and print
  * error messages in a user-friendly fashion.
  */
@@ -43,7 +43,7 @@ trait SilFrontend extends DefaultFrontend {
     */
   def configureVerifier(args: Seq[String]): SilFrontendConfig
 
-  /** The SIL verifier to be used for verification (after it has been initialized). */
+  /** The Viper verifier to be used for verification (after it has been initialized). */
   def verifier: Verifier = _ver
   protected var _ver: Verifier = _
 
@@ -102,7 +102,7 @@ trait SilFrontend extends DefaultFrontend {
 
   /**
    * Main method that parses command-line arguments, parses the input file and passes
-   * the SIL program to the verifier.  The resulting error messages (if any) will be
+   * the Viper program to the verifier.  The resulting error messages (if any) will be
    * shown in a user-friendly fashion.
    */
   def execute(args: Seq[String]) {

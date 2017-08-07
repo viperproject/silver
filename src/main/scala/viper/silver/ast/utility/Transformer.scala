@@ -10,7 +10,7 @@ import viper.silver.ast._
 import viper.silver.ast.utility.Rewriter._
 
 /**
- * An implementation for transformers of the SIL AST.
+ * An implementation for transformers of the Viper AST.
  */
 object Transformer {
 

@@ -18,8 +18,8 @@ import viper.silver.verifier._
 /** Represents one phase of a frontend */
 case class Phase(name: String, action: () => Unit)
 
-/** A translator for some programming language that produces a SIL program (which then in turn can be verified using a
-  * SIL verifier).
+/** A translator for some programming language that produces a Viper program (which then in turn can be verified using a
+  * Viper verifier).
   *
   */
 trait Frontend {
@@ -94,10 +94,10 @@ trait DefaultPhases extends Frontend {
   /** Type-check the program. */
   def typecheck()
 
-  /** Translate the program to SIL. */
+  /** Translate the program to Viper. */
   def translate()
 
-  /** Verify the SIL program using the verifier. */
+  /** Verify the Viper program using the verifier. */
   def verify()
 
 }
