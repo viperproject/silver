@@ -13,6 +13,7 @@ import org.scalatest.{BeforeAndAfterAll, ConfigMap}
 import viper.silver.verifier._
 import viper.silver.ast.{IntLit, SourcePosition, TranslatedPosition}
 import viper.silver.frontend.Frontend
+import viper.silver.utility.TimingUtils
 import viper.silver.verifier.errors.{AssertFailed, LoopInvariantNotPreserved}
 
 /** A test suite for verification toolchains that use SIL. */
@@ -135,21 +136,4 @@ case class SilOutput(error: AbstractError) extends AbstractOutput {
   override def toString: String = error.toString
 }
 
-trait TimingUtils {
-  /** Formats a time in milliseconds. */
-  def formatTime(millis: Long): String = {
-    if (millis > 1000) "%.2f sec".format(millis * 1.0 / 1000)
-    else "%s msec".format(millis.toString)
-  }
 
-  /**
-    * Measures the time it takes to execute `f` and returns the result of `f`
-    * as well as the required time.
-    */
-  def time[T](f: () => T): (T, String) = {
-    val start = System.currentTimeMillis()
-    val r = f.apply()
-
-    (r, formatTime(System.currentTimeMillis() - start))
-  }
-}
