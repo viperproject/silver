@@ -27,7 +27,7 @@ method quicksort_rec(a: Array, lo: Int, hi: Int) returns (permutation: Seq[Int])
   requires forall i: Int :: {loc(a, i).val} lo <= i && i <= hi ==> acc(loc(a, i).val)
 
   ensures forall i: Int :: {loc(a, i).val} lo <= i && i <= hi ==> acc(loc(a, i).val)
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/299/)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
   ensures sorted(a, lo, hi)
 {
 }
