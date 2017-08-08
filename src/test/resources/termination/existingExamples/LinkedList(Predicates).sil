@@ -55,7 +55,6 @@ predicate List(this: Ref)
 function content(this: Ref): Seq[Int]
   requires acc(List(this))
   ensures  forall i: Int, j: Int :: 0 <= i && i < j && j < |result| ==> result[i] <= result[j]
-  decreases acc(List(this)) //redundant - no recursion
 {
   unfolding acc(List(this)) in contentNodes(this.head, null)
 }
@@ -63,7 +62,6 @@ function content(this: Ref): Seq[Int]
 function length(this: Ref): Int
   requires acc(List(this))
   ensures result == |content(this)|
-  decreases acc(List(this)) //redundant - no recursion
 {
   unfolding acc(List(this)) in lengthNodes(this.head, null)
 }
@@ -72,7 +70,6 @@ function peek(this: Ref): Int
   requires acc(List(this))
   requires 0 < length(this)
   ensures result == content(this)[0]
-  decreases acc(List(this)) //redundant - no recursion
 {
   unfolding acc(List(this)) in unfolding acc(lseg(this.head, null)) in this.head.data
 }

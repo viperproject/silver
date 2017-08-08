@@ -522,7 +522,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         } <>
           nest(defaultIndent,
             showContracts("requires", pres) <>
-              showContracts("ensures", posts)
+            showContracts("ensures", posts)
           ) <>
           line <>
           braces(nest(defaultIndent,

@@ -13,86 +13,77 @@ import viper.silver.verifier.errors.{AssertFailed, TerminationFailed}
 import viper.silver.verifier.reasons._
 import viper.silver.ast.utility.Statements.EmptyStmt
 
-import scala.collection.mutable
+import scala.collection.immutable.ListMap
 
 /** Utility methods for DecreaseClauses. */
-object DecreasesClause {
+class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
 
   private var decreasingFunc: Option[DomainFunc] = None
   private var boundedFunc: Option[DomainFunc] = None
   private var nestedFunc: Option[DomainFunc] = None
   private var locationDomain: Option[Domain] = None
 
-  private var neededLocalVars = collection.mutable.HashMap[String, LocalVarDecl]()
-  private var neededDummyFncs = collection.mutable.HashMap[String, Function]()
-  private var neededLocFunctions = collection.mutable.HashMap[String, DomainFunc]()
-  private var neededPredDomains = collection.mutable.HashMap[String, Domain]()
-
-  private var members = collection.mutable.HashMap[String, Node]()
+  private var neededLocalVars = collection.mutable.ListMap[String, LocalVarDecl]()
+  private val neededDummyFncs = collection.mutable.ListMap[String, Function]()
+  private val neededLocFunctions = collection.mutable.ListMap[String, DomainFunc]()
+  private val neededPredDomains = collection.mutable.ListMap[String, Domain]()
 
   private def findFnc(name: String) = members(name).asInstanceOf[Function]
 
 
   /**
-    * Adds to a given Program for every function a method, which can be used for verifying the termination of that function.
-    * The methods will be constructed around a given decreases-Clause and will return corresponding error Messages
+    * Adds to a given program for every function a method, which can be used for verifying the termination of that
+    * function. The methods will be constructed around a given decreases-clause and will return corresponding
+    * error messages.
     *
     * @param funcs     all existing functions in a program
     * @param preds     all existing predicates in a program
     * @param doms      all existing domains in a program
-    * @param decFunc   the decreasing Function. It takes two arguments and defines when a value is strictly "smaller"  than another.
-    *                  It is used for proving decreasing values.
+    * @param decFunc   the decreasing function. It takes two arguments and defines when a value is strictly "smaller"
+    *                  than another. It is used for proving decreasing values.
     * @param boundFunc the bounded Function. It takes one argument and defines if a value is bounded.
-    * @param nestFunc  the nested Function. It takes two predicates as arguments, and defines when one predicate is "inside" another one
+    * @param nestFunc  the nested Function. It takes two predicates as arguments, and defines when one predicate is
+    *                  "inside" another one
     * @param locDom    the location Domain. It is used to define a typ "Predicate", for showing decreasing predicates
-    * @param members   a map from String to Node of all the currently existing structures in the Program
-    * @return The necessary components (functions, methods, domains), which should be added in a viper program such that termination of functions can be verified
+    * @return The necessary components (functions, methods, domains), which should be added in a viper program
+    *         such that termination of functions can be verified
     */
-  def addMethods(funcs: Seq[Function], preds: Seq[Predicate], doms: Seq[Domain], decFunc: Option[Node], boundFunc: Option[Node], nestFunc: Option[Node], locDom: Option[Node], members: mutable.HashMap[String, Node]): (Seq[Domain], Seq[Function], Seq[Method]) = {
+  def addMethods(funcs: Seq[Function],
+                 preds: Seq[Predicate],
+                 doms: Seq[Domain],
+                 decFunc: Option[Node],
+                 boundFunc: Option[Node],
+                 nestFunc: Option[Node],
+                 locDom: Option[Node])
+                : (Seq[Domain], Seq[Function], Seq[Method]) = {
 
-    this.members = members
-
-    neededDummyFncs = mutable.HashMap.empty
-    neededLocFunctions = mutable.HashMap.empty
-    neededPredDomains = mutable.HashMap.empty
-
-    decreasingFunc = decFunc match {
-      case Some(x) => Some(x.asInstanceOf[DomainFunc])
-      case None => None
-    }
-    boundedFunc = boundFunc match {
-      case Some(boundF) => Some(boundF.asInstanceOf[DomainFunc])
-      case None => None
-    }
-    locationDomain = locDom match {
-      case Some(locD) => Some(locD.asInstanceOf[Domain])
-      case None => None
-    }
-    nestedFunc = nestFunc match {
-      case Some(nestF) => Some(nestF.asInstanceOf[DomainFunc])
-      case None => None
-    }
+    decreasingFunc = decFunc map (_.asInstanceOf[DomainFunc])
+    boundedFunc = boundFunc map (_.asInstanceOf[DomainFunc])
+    locationDomain = locDom map (_.asInstanceOf[Domain])
+    nestedFunc = nestFunc map (_.asInstanceOf[DomainFunc])
 
     //Create for every Function a method which proofs the termination
-    //Ignore funcions with 'decreases *' or with no body
-    val methods = (funcs.filter(f => f.body.nonEmpty && (f.decs.isEmpty || !f.decs.get.isInstanceOf[DecStar])) map { func =>
-      neededLocalVars = mutable.HashMap.empty
-      val methodBody: Stmt = rewriteFuncBody(func.body.get, func, null, Set(), preds)
+    //Ignore functions with 'decreases *' or with no body
+    val methods = (funcs.filter(f => f.body.nonEmpty && (f.decs.isEmpty || !f.decs.get.isInstanceOf[DecStar])) map {
+      func =>
+        neededLocalVars = collection.mutable.ListMap.empty[String, LocalVarDecl]
+        val methodBody: Stmt = rewriteFuncBody(func.body.get, func, null, Nil, preds)
 
-      val methodName = uniqueName(func.name + "_termination_proof")
+        val methodName = uniqueName(func.name + "_termination_proof")
 
-      val newMethod = Method(methodName, func.formalArgs, Seq(), func.pres, Nil, Seqn(Seq(methodBody), neededLocalVars.values.toIndexedSeq)(methodBody.pos))(NoPosition, func.info, func.errT)
-      members(methodName) = newMethod
-      newMethod
-
+        val newMethod = Method(methodName, func.formalArgs, Seq(), func.pres, Nil, Seqn(Seq(methodBody),
+          neededLocalVars.values.toIndexedSeq)(methodBody.pos))(NoPosition, func.info, func.errT)
+        members(methodName) = newMethod
+        newMethod
     }).filter(_.body != EmptyStmt)
 
     if (neededLocFunctions.nonEmpty) {
-      //There has to be functions in the location Domain. Therefore it deletes the 'old' location Domain and creates it again with now the needed domainfunctions
       assert(locationDomain.isDefined)
       val domainsWLoc = doms.filterNot(_ == locationDomain.get)
-      val newLocDom = Domain(locationDomain.get.name, functions = neededLocFunctions.values.toSeq, locationDomain.get.axioms, locationDomain.get.typVars)(locationDomain.get.pos, locationDomain.get.info, locationDomain.get.errT)
-
+      val newLocDom = Domain(locationDomain.get.name,
+        neededLocFunctions.values.toSeq,
+        locationDomain.get.axioms,
+        locationDomain.get.typVars)(locationDomain.get.pos, locationDomain.get.info, locationDomain.get.errT)
       (domainsWLoc ++ Seq(newLocDom) ++ neededPredDomains.values.toSeq, neededDummyFncs.values.toSeq, methods)
     } else {
       (doms ++ neededPredDomains.values.toSeq, neededDummyFncs.values.toSeq, methods)
@@ -100,20 +91,27 @@ object DecreasesClause {
   }
 
   /**
-    * Transforms the body of a function into Statements, such that the termination of (direct or indirect) recursions can be verified.
+    * Transforms the body of a function into statements, such that the termination of (direct or indirect) recursions
+    * can be verified.
     * The method stores needed domains, functions and local variables in global fields
     *
-    * @param bodyToRewrite     Expression which will be transformed to statements
-    * @param func              original Function
-    * @param funcAppInOrigFunc is the position where the original function calls another Function. It is used for ErrorMeassges
+    * @param bodyToRewrite     expression which will be transformed to statements
+    * @param func              original function
+    * @param funcAppInOrigFunc is the position where the original function calls another function.
+    *                          It is used for ErrorMeassges
     * @param alreadyChecked    set of functions which has been already traversed, to hinder infinity checks
     * @param predicates        set of all predicates, used in proof generation for decreasing predicates
     * @return a (sequence of) statement, which can be used for verifying termination of a given expression
     */
-  private def rewriteFuncBody(bodyToRewrite: Exp, func: Function, funcAppInOrigFunc: FuncApp, alreadyChecked: Set[String], predicates: Seq[Predicate]): Stmt = {
+  private def rewriteFuncBody(bodyToRewrite: Exp,
+                              func: Function,
+                              funcAppInOrigFunc: FuncApp,
+                              alreadyChecked: Seq[String],
+                              predicates: Seq[Predicate])
+                              : Stmt = {
     bodyToRewrite match {
       case pap: PredicateAccessPredicate =>
-        //Add the assumption if the predicate has other predicate inside
+        //Add the nested-assumption if the predicate has another predicate inside of its body
         func.decs match {
           case Some(DecTuple(_)) =>
             val pred: Predicate = predicates.find(_.name == pap.loc.predicateName).get
@@ -121,25 +119,24 @@ object DecreasesClause {
             pred.body match {
               case Some(body) =>
                 if (locationDomain.isDefined && nestedFunc.isDefined) {
-                  //Cast arguments from type LocalVarDecl to LocalVar
-                  val formalArgs = pred.formalArgs map {
-                    varDecl => LocalVar(varDecl.name)(varDecl.typ, varDecl.pos, varDecl.info, varDecl.errT)
-                  }
+                  val formalArgs = pred.formalArgs map (_.localVar)
                   //Generate nested-assumption
-                  rewritePredBodyAsExp(body.replace((formalArgs zip pap.loc.args).toMap), pap)
+                  rewritePredBodyAsExp(body.replace(ListMap(formalArgs.zip(pap.loc.args):_*)), pap)
                 } else {
                   if (locationDomain.isEmpty) {
-                    Consistency.messages ++= FastMessaging.message(func, "missing location-Domain (for assuming nested predicates)")
+                    Consistency.messages ++= FastMessaging.message(
+                      func, "missing location-domain")
                   }
                   if (nestedFunc.isEmpty) {
-                    Consistency.messages ++= FastMessaging.message(func, "missing nested-Relation (for assuming nested predicates)")
+                    Consistency.messages ++= FastMessaging.message(
+                      func, "missing nested-relation")
                   }
                   EmptyStmt
                 }
               //Predicate has no body
               case None => EmptyStmt
             }
-          //No decreasing Clause
+          //No decreasing clause
           case _ => EmptyStmt
         }
 
@@ -150,7 +147,8 @@ object DecreasesClause {
         val elsSt = rewriteFuncBody(els, func, funcAppInOrigFunc, alreadyChecked, predicates)
 
         val wholeCond = if (thnSt == EmptyStmt && elsSt == EmptyStmt) EmptyStmt else {
-          If(replaceExpWithDummyFnc(cond), Seqn(Seq(thnSt), Nil)(bodyToRewrite.pos), Seqn(Seq(elsSt), Nil)(bodyToRewrite.pos))(bodyToRewrite.pos)
+          If(replaceExpWithDummyFnc(cond), Seqn(Seq(thnSt), Nil)(bodyToRewrite.pos),
+            Seqn(Seq(elsSt), Nil)(bodyToRewrite.pos))(bodyToRewrite.pos)
         }
         Seqn(Seq(termCheckInCond, wholeCond), Nil)(bodyToRewrite.pos)
       case Unfolding(acc, unfBody) =>
@@ -171,53 +169,60 @@ object DecreasesClause {
         val termChecksOfArgs = calleeArgs map (rewriteFuncBody(_, func, funcAppInOrigFunc, alreadyChecked, predicates))
 
         if (callee.funcname != func.name) {
-          //Called Function is not the original function => no recursion so far
+          //Called function is not the original function => no recursion so far
           if (!alreadyChecked.contains(callee.funcname)) {
-            //Program didnt check this function for recursion yet
+            //Program didn't check this function for recursion yet
             val calledFunc = findFnc(callee.funcname)
 
             calledFunc.decs match {
               case Some(DecStar()) =>
-                //The called Function might not terminate
+                //The called function might not terminate
                 val functionInOrigBody = if (funcAppInOrigFunc == null) callee else funcAppInOrigFunc
 
-                val errTr = ErrTrafo({ case AssertFailed(_, _, _) => TerminationFailed(func, CallingNonTerminatingFunction(functionInOrigBody, calledFunc)) })
+                val errTr = ErrTrafo({ case AssertFailed(_, _, _) => TerminationFailed(
+                  func,
+                  CallingNonTerminatingFunction(functionInOrigBody, calledFunc)) })
                 val info = SimpleInfo(Seq("Called Fnc (" + callee.funcname + ") does not terminate"))
-                Seqn(termChecksOfArgs ++ Seq(Assert(FalseLit()(func.pos))(pos = func.pos, info, errT = errTr)), Nil)(bodyToRewrite.pos)
+                Seqn(termChecksOfArgs ++ Seq(Assert(FalseLit()(func.pos))(pos = func.pos, info, errT = errTr)),
+                  Nil)(bodyToRewrite.pos)
 
               case _ =>
-                //Check the called Function for recursion
+                //Check the called unction for recursion
 
-                //Cast arguments from type LocalVarDecl to LocalVar
-                val formalArgsOfCallee = calledFunc.formalArgs map {
-                  varDecl => LocalVar(varDecl.name)(varDecl.typ, varDecl.pos, varDecl.info, varDecl.errT)
-                }
+                val formalArgsOfCallee = calledFunc.formalArgs map (_.localVar)
 
                 //Arguments are now checked -> to not check same recursions again, replace them with their dummyFnc
-                val mapFormalArgsToCalledArgs = (formalArgsOfCallee zip (calleeArgs map replaceExpWithDummyFnc)).toMap
+                val mapFormalArgsToCalledArgs = ListMap(formalArgsOfCallee.zip(calleeArgs map replaceExpWithDummyFnc):_*)
 
                 if (calledFunc.body.nonEmpty) {
                   val body = calledFunc.body.get.replace(mapFormalArgsToCalledArgs)
+                  val pos = body.pos
 
                   //Check for recursion in the new function-body
-                  val termCheckOfFuncBody = rewriteFuncBody(body, func, if (funcAppInOrigFunc == null) callee else funcAppInOrigFunc, alreadyChecked ++ Set(callee.funcname), predicates) //canReturn = false,
+                  val termCheckOfFuncBody = rewriteFuncBody(
+                    body,
+                    func,
+                    if (funcAppInOrigFunc == null) callee else funcAppInOrigFunc,
+                    alreadyChecked ++ Seq(callee.funcname),
+                    predicates)
 
                   //Replace 'result' in the postconditions with the function and the correct arguments
-                  val resultNodes = calledFunc.posts flatMap (p => p.deepCollect { case r: Result => r })
-                  val postConds: Seq[Exp] = calledFunc.posts map (p =>
-                    p.replace(mapFormalArgsToCalledArgs).replace((resultNodes zip List.fill(resultNodes.size)(FuncApp(calledFunc, calleeArgs)(body.pos))).toMap))
+                  val resNodes = calledFunc.posts flatMap (p => p.deepCollect { case r: Result => r })
+                  val resMap = ListMap(resNodes.zip(List.fill(resNodes.size)(FuncApp(calledFunc, calleeArgs)(pos))):_*)
+                  val postConds: Seq[Exp] = calledFunc.posts map (p => p.replace(mapFormalArgsToCalledArgs ++ resMap))
 
-                  val inhalePostConds = postConds map (c => Inhale(replaceExpWithDummyFnc(c))(body.pos))
+                  val inhalePostConds = postConds map (c => Inhale(replaceExpWithDummyFnc(c))(pos))
 
-                  val inhaleFuncBody = Inhale(replaceExpWithDummyFnc(EqCmp(FuncApp(calledFunc, calleeArgs)(body.pos), body)(body.pos)))(body.pos)
-                  Seqn(termChecksOfArgs ++ Seq(termCheckOfFuncBody, inhaleFuncBody) ++ inhalePostConds, Nil)(body.pos)
+                  val inhaleFuncBody =
+                    Inhale(replaceExpWithDummyFnc(EqCmp(FuncApp(calledFunc, calleeArgs)(pos), body)(pos)))(pos)
+                  Seqn(termChecksOfArgs ++ Seq(termCheckOfFuncBody, inhaleFuncBody) ++ inhalePostConds, Nil)(pos)
                 } else {
                   //Function has no body
-
                   //Replace 'result' in the postconditions with the function and the correct arguments
-                  val resultNodes = calledFunc.posts flatMap (p => p.deepCollect { case r: Result => r })
-                  val postConds: Seq[Exp] = calledFunc.posts map (p =>
-                    p.replace(mapFormalArgsToCalledArgs).replace((resultNodes zip List.fill(resultNodes.size)(FuncApp(calledFunc, calleeArgs)(bodyToRewrite.pos))).toMap))
+                  val resNodes = calledFunc.posts flatMap (p => p.deepCollect { case r: Result => r })
+                  val resMap =
+                    ListMap(resNodes.zip(List.fill(resNodes.size)(FuncApp(calledFunc, calleeArgs)(bodyToRewrite.pos))):_*)
+                  val postConds: Seq[Exp] = calledFunc.posts map (p => p.replace(mapFormalArgsToCalledArgs ++ resMap))
 
                   val inhalePostConds = postConds map (c => Inhale(replaceExpWithDummyFnc(c))(bodyToRewrite.pos))
                   Seqn(termChecksOfArgs ++ inhalePostConds, Nil)(bodyToRewrite.pos)
@@ -228,39 +233,38 @@ object DecreasesClause {
             Seqn(termChecksOfArgs, Nil)(bodyToRewrite.pos)
           }
         } else {
-          //Called Function is the same as the original one => recursion detected
+          //Called function is the same as the original one => recursion detected
           if (decrClauseOfOrigFnc.isEmpty) {
-            //There is no decrease Clause
+            //There is no decrease clause
             //Give an error, because there is a recursion but no decreases clause
-
             val functionInOrigBody = if (funcAppInOrigFunc == null) callee else funcAppInOrigFunc
-            val errTr = ErrTrafo({ case AssertFailed(_, _, _) => TerminationFailed(func, NoDecClauseSpecified(functionInOrigBody)) })
-            Assert(FalseLit()(func.pos))(pos = func.pos, info = SimpleInfo(Seq("Recursion but no decClause")), errT = errTr)
+            val errTr =
+              ErrTrafo({case AssertFailed(_, _, _) => TerminationFailed(func, NoDecClauseSpecified(functionInOrigBody))})
 
+            Assert(FalseLit()(func.pos))(func.pos, SimpleInfo(Seq("Recursion but no decClause")), errTr)
           } else {
-            //Decrease Clause is defined
+            //Decrease clause is defined
             assert(!decrClauseOfOrigFnc.get.isInstanceOf[DecStar])
             //Replace in the decreaseClause every argument with the correct call
             decrClauseOfOrigFnc match {
 
               case Some(DecTuple(decreasingExp)) =>
-                if (decreasingFunc.isDefined && boundedFunc.isDefined && (decreasingExp.collect { case p: PredicateAccessPredicate => p }.isEmpty || locationDomain.isDefined)) {
+                if (decreasingFunc.isDefined && boundedFunc.isDefined &&
+                   (decreasingExp.collect { case p: PredicateAccessPredicate => p }.isEmpty
+                    || locationDomain.isDefined)) {
 
-                  //Cast Arguments to LocalVariables(Exp)1
-                  val formalArgs: Seq[LocalVar] = func.formalArgs map {
-                    varDecl => LocalVar(varDecl.name)(varDecl.typ, varDecl.pos, varDecl.info, varDecl.errT)
-                  }
+                  val formalArgs: Seq[LocalVar] = func.formalArgs map (_.localVar)
 
                   var neededArgAssigns: Seq[Stmt] = Nil //Needed for decreasing predicates
 
-                  //decreasing(smallerExpr, biggerExpr) <==> smallerExpr '<<' biggerExpr
+                  //Decreasing(smallerExpr, biggerExpr) <==> smallerExpr '<<' biggerExpr
                   val smallerExpression: Seq[Exp] = decreasingExp map {
                     case pap: PredicateAccessPredicate =>
-                      val varOfCalleePred = uniquePredLocVar(pap.loc, (formalArgs zip calleeArgs).toMap)
+                      val varOfCalleePred = uniquePredLocVar(pap.loc, ListMap(formalArgs.zip(calleeArgs): _*))
 
-                      neededArgAssigns :+= generateAssign(pap, varOfCalleePred, (formalArgs zip calleeArgs).toMap)
+                      neededArgAssigns :+= generateAssign(pap, varOfCalleePred, ListMap(formalArgs.zip(calleeArgs):_*))
                       varOfCalleePred
-                    case decC => decC.replace((formalArgs zip calleeArgs).toMap)
+                    case decC => decC.replace(ListMap(formalArgs.zip(calleeArgs):_*))
                   }
 
                   val biggerExpression: Seq[Exp] = decreasingExp map {
@@ -282,14 +286,13 @@ object DecreasesClause {
 
                   val callerFunctionInOrigBody = if (funcAppInOrigFunc == null) callee else funcAppInOrigFunc
 
-                  //Map AssertionErrors to TerminationFailedErrors with noBound - Reason
+                  //Map AssertionErrors to TerminationFailedErrors
                   val errTBound = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(func, reason match {
                     case AssertionFalse(offendingNode) => offendingNode match {
-                      //offendingNode of the Assertion-reason is "bounded(...): DomainFuncApp"
                       case dfa: DomainFuncApp =>
                         assert(dfa.args.size == 1)
                         TerminationNoBound(DecTuple(decreasingExp)(callerFunctionInOrigBody.pos), dfa.args.head match {
-                          case PredicateAccessPredicate(loc, _) => loc //Per default predicates are always bounded -> only used when user rewrites bounded(p: Predicate)
+                          case PredicateAccessPredicate(loc, _) => loc
                           case d => d
                         })
                       case _ => reason
@@ -297,7 +300,7 @@ object DecreasesClause {
                   })
                   })
 
-                  //Map AssertionErrors to TerminationFailedErrors with noBound - Reason
+                  //Map AssertionErrors to TerminationFailedErrors
                   val errTDecr = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(func, reason match {
                     case AssertionFalse(_) =>
                       VariantNotDecreasing(callerFunctionInOrigBody, decreasingExp map {
@@ -317,43 +320,62 @@ object DecreasesClause {
                   var boundFunc: Seq[Exp] = Nil
 
                   //Generation of termination Assertions - (Assert decreasing(..,..))
-                  //Generates (for a decreasing Clause: 'decreases a,b,c') a sequence with the following form: (dec(a,a), a==a, dec(b,b), b==b, dec(c,c))
+                  //Generates (for a decreasing Clause: 'decreases a,b,c') a sequence with the following form:
+                  //(dec(a,a), a==a, dec(b,b), b==b, dec(c,c))
                   for (i <- argsForTermProof.indices) {
                     if (i > 0) {
                       decrFunc :+= EqCmp(argsForTermProof(i - 1)._1, argsForTermProof(i - 1)._2)(decreasingFunc.get.pos)
                     }
-                    decrFunc :+= replaceExpWithDummyFnc(DomainFuncApp(decreasingFunc.get, Seq(argsForTermProof(i)._1, argsForTermProof(i)._2), Map(argTypeVarsDecr.head -> argsForTermProof(i)._1.typ, argTypeVarsDecr.last -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos))
-                    boundFunc :+= replaceExpWithDummyFnc(DomainFuncApp(boundedFunc.get, Seq(argsForTermProof(i)._2), Map(argTypeVarsDecr.head -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos))
+                    decrFunc :+=
+                      replaceExpWithDummyFnc(
+                        DomainFuncApp(decreasingFunc.get,
+                                      Seq(argsForTermProof(i)._1, argsForTermProof(i)._2),
+                                      Map(argTypeVarsDecr.head -> argsForTermProof(i)._1.typ,
+                                      argTypeVarsDecr.last -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos)
+                      )
+                    boundFunc :+= replaceExpWithDummyFnc(
+                      DomainFuncApp(boundedFunc.get,
+                                    Seq(argsForTermProof(i)._2),
+                                    Map(argTypeVarsDecr.head -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos)
+                    )
                   }
 
-                  val boundedAss = Assert(buildBoundTree(boundFunc))(callerFunctionInOrigBody.pos, infoBound, errTBound)
-                  val decreaseAss = Assert(buildDecTree(decrFunc, conj = true))(callerFunctionInOrigBody.pos, infoDecr, errTDecr)
+                  val boundedAss =
+                    Assert(buildBoundTree(boundFunc))(callerFunctionInOrigBody.pos, infoBound, errTBound)
+                  val decreaseAss =
+                    Assert(buildDecTree(decrFunc, conj = true))(callerFunctionInOrigBody.pos, infoDecr, errTDecr)
 
                   if (funcAppInOrigFunc == null) {
-                    //we are in the function we want to check
+                    //We are in the function we want to check
 
-                    val bodyWithArgs = func.body.get.replace((formalArgs zip calleeArgs).toMap)
+                    val bodyWithArgs = func.body.get.replace(ListMap(formalArgs.zip(calleeArgs):_*))
 
                     //Replace 'result' in the postconditions with the dummy-Function and the correct arguments
                     val resultNodes = func.posts flatMap (p => p.deepCollect { case r: Result => r })
+                    val resMap = ListMap(resultNodes.zip(List.fill(resultNodes.size)(FuncApp(func, calleeArgs)(pos))):_*)
                     val postConds = func.posts map (p =>
-                      p.replace((formalArgs zip calleeArgs).toMap).replace((resultNodes zip List.fill(resultNodes.size)(FuncApp(func, calleeArgs)(pos))).toMap))
+                      p.replace(ListMap(formalArgs.zip(calleeArgs):_*) ++ resMap))
                     val inhalePostConds = postConds map (c => Inhale(replaceExpWithDummyFnc(c))(pos))
 
-                    val inhaleFuncBody = Inhale(replaceExpWithDummyFnc(EqCmp(FuncApp(func, calleeArgs)(pos), bodyWithArgs)(pos)))(pos)
-                    Seqn(termChecksOfArgs ++ neededArgAssigns ++ Seq(boundedAss, decreaseAss, inhaleFuncBody) ++ inhalePostConds, Nil)(pos)
+                    val inhaleFuncBody =
+                      Inhale(replaceExpWithDummyFnc(EqCmp(FuncApp(func, calleeArgs)(pos), bodyWithArgs)(pos)))(pos)
+
+                    Seqn(termChecksOfArgs ++ neededArgAssigns ++
+                      Seq(boundedAss, decreaseAss, inhaleFuncBody) ++ inhalePostConds, Nil)(pos)
                   } else {
                     Seqn(termChecksOfArgs ++ neededArgAssigns ++ Seq(boundedAss, decreaseAss), Nil)(pos)
                   }
                 } else {
                   if (decreasingFunc.isEmpty) {
-                    Consistency.messages ++= FastMessaging.message(func, "missing decreasing-Function")
+                    Consistency.messages ++= FastMessaging.message(func, "missing decreasing-function")
                   }
                   if (boundedFunc.isEmpty) {
-                    Consistency.messages ++= FastMessaging.message(func, "missing bounded-Function")
+                    Consistency.messages ++= FastMessaging.message(func, "missing bounded-function")
                   }
-                  if (decreasingExp.collect { case p: PredicateAccessPredicate => p }.nonEmpty && locationDomain.isEmpty) {
-                    Consistency.messages ++= FastMessaging.message(func, "missing location-Domain (needed for proving termination over predicates)")
+                  if (decreasingExp.collect {case p: PredicateAccessPredicate => p}.nonEmpty && locationDomain.isEmpty) {
+                    Consistency.messages ++=
+                      FastMessaging.message(func,
+                                            "missing location-domain (needed for proving termination over predicates)")
                   }
                   EmptyStmt
                 }
@@ -367,11 +389,17 @@ object DecreasesClause {
         //Short circuit evaluation
         b match {
           case _: Or =>
-            Seqn(Seq(left, If(Not(replaceExpWithDummyFnc(b.left))(b.pos), Seqn(Seq(right), Nil)(b.pos), EmptyStmt)(b.pos)), Nil)(b.pos)
+            Seqn(Seq(left,
+                    If(Not(replaceExpWithDummyFnc(b.left))(b.pos), Seqn(Seq(right), Nil)(b.pos), EmptyStmt)(b.pos)),
+                Nil)(b.pos)
           case _: And =>
-            Seqn(Seq(left, If(replaceExpWithDummyFnc(b.left), Seqn(Seq(right), Nil)(b.pos), EmptyStmt)(b.pos)), Nil)(b.pos)
+            Seqn(Seq(left,
+                    If(replaceExpWithDummyFnc(b.left), Seqn(Seq(right), Nil)(b.pos), EmptyStmt)(b.pos)),
+                Nil)(b.pos)
           case _: Implies =>
-            Seqn(Seq(left, If(replaceExpWithDummyFnc(b.left), Seqn(Seq(right), Nil)(b.pos), EmptyStmt)(b.pos)), Nil)(b.pos)
+            Seqn(Seq(left,
+                    If(replaceExpWithDummyFnc(b.left), Seqn(Seq(right), Nil)(b.pos), EmptyStmt)(b.pos)),
+                Nil)(b.pos)
           case _ =>
             Seqn(Seq(left, right), Nil)(b.pos)
         }
@@ -381,13 +409,14 @@ object DecreasesClause {
   }
 
   /**
-    * Traverses a predicate body and adds corresponding inhales of the 'nested'-Relation iff a predicate is inside of this body
+    * Traverses a predicate body and adds corresponding inhales of the 'nested'-Relation
+    * iff a predicate is inside of this body
     *
-    * @param body     The part of the predicate-body which should be analyzed
-    * @param origPred The body of the original predicate which should be analyzed
-    * @return Statements with the generated inhales (Inhale(nested(pred1, pred2)))
+    * @param body     the part of the predicate-body which should be analyzed
+    * @param origPred the body of the original predicate which should be analyzed
+    * @return statements with the generated inhales: (Inhale(nested(pred1, pred2)))
     */
-  private def rewritePredBodyAsExp(body: Exp, origPred: PredicateAccessPredicate): (Stmt) = {
+  private def rewritePredBodyAsExp(body: Exp, origPred: PredicateAccessPredicate): Stmt = {
 
     body match {
       case ap: AccessPredicate => ap match {
@@ -396,21 +425,25 @@ object DecreasesClause {
           assert(locationDomain.isDefined)
           assert(nestedFunc.isDefined)
 
-          //Predicate-Domains (p_PredName)
+          //predicate-Domains (p_PredName)
           val domainOfCallerPred: Domain = uniqueNameGen(origPred.loc).asInstanceOf[Domain]
           val domainOfCalleePred: Domain = uniqueNameGen(calledPred.loc).asInstanceOf[Domain]
 
-          //Local variables
+          //local variables
           val varOfCallerPred: LocalVar = uniquePredLocVar(origPred.loc)
           val varOfCalleePred: LocalVar = uniquePredLocVar(calledPred.loc)
 
-          //Assign
+          //assign
           val assign1 = generateAssign(origPred, varOfCallerPred)
           val assign2 = generateAssign(calledPred, varOfCalleePred)
 
-          //Inhale nested-Relation
-          val mapNested: Map[TypeVar, Type] = Map(TypeVar("N1") -> DomainType(domainOfCalleePred, Map()), TypeVar("N2") -> DomainType(domainOfCallerPred, Map()))
-          val assume = Inhale(DomainFuncApp(nestedFunc.get, Seq(varOfCalleePred, varOfCallerPred), mapNested)(calledPred.pos))(calledPred.pos)
+          //inhale nested-relation
+          val mapNested: Map[TypeVar, Type] =
+            Map(TypeVar("N1") -> DomainType(domainOfCalleePred, Map()),
+                                            TypeVar("N2") -> DomainType(domainOfCallerPred, Map()))
+          val assume = Inhale(DomainFuncApp(nestedFunc.get,
+                                            Seq(varOfCalleePred, varOfCallerPred),
+                                            mapNested)(calledPred.pos))(calledPred.pos)
 
           Seqn(Seq(assign1, assign2, assume), Nil)(calledPred.pos)
       }
@@ -434,8 +467,8 @@ object DecreasesClause {
     * Rewrites given Expression (a,b,c,d,...) into the following form:
     * (a || (b && (c || d)))
     *
-    * @param decrArgs aruments which should be rewritten
-    * @param conj     decides if the return expressions begins with a conjuction of a disjuntion
+    * @param decrArgs arguments which should be rewritten
+    * @param conj     decides if the return expressions begins with a conjunction of a disjunction
     * @return the generated chain of con- and disjunctions
     */
   private def buildDecTree(decrArgs: Seq[Exp], conj: Boolean): Exp = {
@@ -448,11 +481,11 @@ object DecreasesClause {
   }
 
   /**
-    * Does the same as 'buildDecTree(..)' but only with conjuctions
-    * Input a,b,c ==> a && b && c
+    * Does the same as 'buildDecTree(..)' but only with conjunctions
+    * input a,b,c ==> a && b && c
     *
     * @param boundArgs arguments which should be used
-    * @return the chain of conjuctions
+    * @return the chain of conjunctions
     */
   private def buildBoundTree(boundArgs: Seq[Exp]): Exp = {
     if (boundArgs.size == 1)
@@ -462,32 +495,39 @@ object DecreasesClause {
   }
 
   /**
-    * Generates for a predicate and a variable the corresponding Assignment.
-    * It generates the viper-representation of a predicate (via Loc-domain and the proper domain-function) and assign it to the given value
+    * Generates for a predicate and a variable the corresponding assignment
+    * it generates the viper-representation of a predicate (via loc-domain and the proper domain-function)
+    * and assign it to the given value
     *
-    * @param pred        the Predicate which defines the predicate-Domain and predicate-domainFunc
+    * @param pred        the predicate which defines the predicate-Domain and predicate-domainFunc
     * @param assLocation the variable, which should be assigned
     * @param argMap      an optional mapping used for replacing the arguments of the predicate
-    * @return an Assignment of the given variable to the representation of a predicate with the corresponding arguments
+    * @return an assignment of the given variable to the representation of a predicate with the corresponding arguments
     */
-  private def generateAssign(pred: PredicateAccessPredicate, assLocation: LocalVar, argMap: Map[Exp, Exp] = Map()): LocalVarAssign = {
+  private def generateAssign(pred: PredicateAccessPredicate, assLocation: LocalVar, argMap: ListMap[Exp, Exp] = ListMap.empty)
+              : LocalVarAssign = {
     val domainOfPred: Domain = uniqueNameGen(pred.loc).asInstanceOf[Domain]
     val domainFunc = uniqueNameGen(pred).asInstanceOf[DomainFunc]
-    val typVarMap: Map[TypeVar, Type] = Map(TypeVar(locationDomain.get.typVars.head.name) -> DomainType(domainOfPred, Map()))
+    val typVarMap: Map[TypeVar, Type] =
+      Map(TypeVar(locationDomain.get.typVars.head.name) -> DomainType(domainOfPred, Map()))
     val assValue = DomainFuncApp(domainFunc, pred.loc.args.map(_.replace(argMap)), typVarMap)(pred.pos)
     LocalVarAssign(assLocation, assValue)(pred.pos)
   }
 
   /**
-    * Replaces all functions (FuncApp) in a expression with their corresponding dummy-functions
+    * Replaces all functions (FuncApp) in an expression with their corresponding dummy-functions
     *
-    * StrategyBuilder is used instead of replace, due to the fact that the replace-method uses the Innermost-Traverse order, which stops after the first rewrite.
-    * With the StrategyBuilder we can use the bottomUp-traverse-order which e.g. rewrites also function arguments
+    * StrategyBuilder is used instead of replace,
+    * due to the fact that the replace-method uses the Innermost-Traverse order, which stops after the first rewrite.
+    * With the StrategyBuilder we can use the bottomUp-traverse-order which e.g. rewrites also function arguments.
     *
     * @param exp the expression which should be investigated
-    * @return the same expreassion but with all functions replaced
+    * @return the same expression but with all functions replaced
     */
-  private def replaceExpWithDummyFnc(exp: Exp): Exp = StrategyBuilder.Slim[Node]({ case fa: FuncApp => uniqueNameGen(fa) }, Traverse.BottomUp).execute[Node](exp).asInstanceOf[Exp]
+  private def replaceExpWithDummyFnc(exp: Exp): Exp =
+    StrategyBuilder.Slim[Node]({ case fa: FuncApp => uniqueNameGen(fa) }, Traverse.BottomUp)
+      .execute[Node](exp)
+      .asInstanceOf[Exp]
 
   /**
     * Checks if a name already exists in the program and will add a counter to the name until the name is unique
@@ -506,13 +546,17 @@ object DecreasesClause {
   }
 
   /** Generator of the dummy-Functions, predicate-Domains and location-Functions
-    * Creates and stores the corresponding dumFunc, predDom or locFunc and returns it
+    * creates and stores the corresponding dumFunc, predDom or locFunc and returns it
     *
     * @param node function or predicate for which the corresponding structure should be generated
     * @return the needed dummy-function, pred-Domain or loc-Function
     */
   private def uniqueNameGen(node: Node): Node = {
-    assert(node.isInstanceOf[Function] || node.isInstanceOf[Predicate] || node.isInstanceOf[FuncApp] || node.isInstanceOf[PredicateAccess] || node.isInstanceOf[PredicateAccessPredicate])
+    assert(node.isInstanceOf[Function] ||
+          node.isInstanceOf[Predicate] ||
+          node.isInstanceOf[FuncApp] ||
+          node.isInstanceOf[PredicateAccess] ||
+          node.isInstanceOf[PredicateAccessPredicate])
 
     node match {
       case f: Function =>
@@ -562,9 +606,15 @@ object DecreasesClause {
         if (neededLocFunctions.contains(pa.loc.predicateName)) {
           neededLocFunctions(pa.loc.predicateName)
         } else {
-          val uniquePredFuncName = uniqueName("loc_" + pa.loc.args.map(_.typ).mkString("_").replaceAll("\\[", "").replaceAll("\\]", ""))
+          val uniquePredFuncName =
+            uniqueName("loc_" + pa.loc.args.map(_.typ).mkString("_").replaceAll("\\[", "").replaceAll("\\]", ""))
           val pred = members(pa.loc.predicateName).asInstanceOf[Predicate]
-          val newLocFunc = DomainFunc(uniquePredFuncName, pred.formalArgs, DomainType(locationDomain.get, Map(locationDomain.get.typVars.head -> locationDomain.get.typVars.head)))(locationDomain.get.pos, locationDomain.get.info, locationDomain.get.name, locationDomain.get.errT)
+          val newLocFunc =
+            DomainFunc(uniquePredFuncName,
+                      pred.formalArgs,
+                      DomainType(locationDomain.get,
+                                Map(locationDomain.get.typVars.head -> locationDomain.get.typVars.head))
+                      )(locationDomain.get.pos, locationDomain.get.info, locationDomain.get.name, locationDomain.get.errT)
 
           members(uniquePredFuncName) = newLocFunc
           neededLocFunctions(pa.loc.predicateName) = newLocFunc
@@ -578,9 +628,9 @@ object DecreasesClause {
     *
     * @param p      predicate which defines the type of the variable
     * @param argMap optional replacement for the arguments
-    * @return a local Variable with the correct type
+    * @return a local variable with the correct type
     */
-  private def uniquePredLocVar(p: PredicateAccess, argMap: Map[Exp, Exp] = Map()): LocalVar = {
+  private def uniquePredLocVar(p: PredicateAccess, argMap: ListMap[Exp, Exp] = ListMap.empty): LocalVar = {
     val args = p.args map (_.replace(argMap))
     val predVarName = p.predicateName + "_" + args.hashCode().toString.replaceAll("-", "_")
     if (neededLocalVars.contains(p.predicateName)) {
@@ -588,7 +638,11 @@ object DecreasesClause {
       neededLocalVars(p.predicateName).localVar
     } else {
       val info = SimpleInfo(Seq(p.predicateName + "_" + args.mkString(",")))
-      val newLocalVar = LocalVar(predVarName)(DomainType(locationDomain.get, Map(TypeVar(locationDomain.get.typVars.head.name) -> DomainType(uniqueNameGen(p).asInstanceOf[Domain], Map()))), info = info)
+      val newLocalVar =
+        LocalVar(predVarName)(DomainType(locationDomain.get,
+                                        Map(TypeVar(locationDomain.get.typVars.head.name)
+                                            -> DomainType(uniqueNameGen(p).asInstanceOf[Domain], Map()))),
+                              info = info)
       neededLocalVars(predVarName) = LocalVarDecl(newLocalVar.name, newLocalVar.typ)(newLocalVar.pos, info)
       newLocalVar
     }

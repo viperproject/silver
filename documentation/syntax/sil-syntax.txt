@@ -51,8 +51,8 @@ field ::=
 function ::=
 	function-signature
 		precondition*
-		decreases*
 		postcondition*
+		decreases?
 	"{" exp "}" // Semicolon not permitted
 
 precondition ::=

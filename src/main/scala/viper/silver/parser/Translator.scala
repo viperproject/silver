@@ -45,7 +45,8 @@ case class Translator(program: PProgram) {
         var methods = pmethods map (translate(_))
 
         //Add Methods, Domains and functions needed for proving termination
-        val structureForTermProofs = DecreasesClause.addMethods(functions, predicates, domain, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"), members)
+        val termCheck = new DecreasesClause(members)
+        val structureForTermProofs = termCheck.addMethods(functions, predicates, domain, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"))
         domain = structureForTermProofs._1
         functions ++= structureForTermProofs._2
         methods ++= structureForTermProofs._3
@@ -407,12 +408,12 @@ case class Translator(program: PProgram) {
       case PForall(vars, triggers, e) =>
         val ts = triggers map (t => Trigger(t.exp map exp)(t))
         var fa = Forall(vars map liftVarDecl, ts, exp(e))(pos)
-       if (fa.isPure) {
+        if (fa.isPure) {
           fa
         } else {
-         val desugaredForalls = QuantifiedPermissions.desugareSourceSyntax(fa)
-         desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
-           And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
+          val desugaredForalls = QuantifiedPermissions.desugareSourceSyntax(fa)
+          desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
+            And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
       case f@PForPerm(v, args, e) =>
 

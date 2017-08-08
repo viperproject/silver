@@ -204,11 +204,9 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
 }
 
 /** A decreases-Clause declaration. */
-sealed trait DecClause extends Node with Positioned with Infoed with TransformableErrors{
-}
+sealed trait DecClause extends Node with Positioned with Infoed with TransformableErrors
 
-case class DecStar()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DecClause{
-}
+case class DecStar()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DecClause
 
 case class DecTuple(e: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DecClause{
   val exp: Seq[Exp] = e

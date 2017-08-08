@@ -150,12 +150,10 @@ case class TypeChecker(names: NameAnalyser) {
     f.formalArgs foreach (a => check(a.typ))
   }
 
-  def check(d: Option[PDecClause]): Unit = {
-    d match {
-      case Some(PDecStar()) =>
-      case Some(PDecTuple(exp)) =>
-        exp foreach (e => check(e, e.typ))
-      case None =>
+  def check(d: Option[PDecClause]) : Unit = {
+    d foreach {
+      case PDecStar() =>
+      case PDecTuple(exp) => exp foreach (e => check(e, e.typ))
     }
   }
 

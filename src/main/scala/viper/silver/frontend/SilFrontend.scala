@@ -141,7 +141,6 @@ trait SilFrontend extends DefaultFrontend {
           case rest: AbstractError => rest
         }
         printErrors(errorsT: _*)
-
     }
   }
 

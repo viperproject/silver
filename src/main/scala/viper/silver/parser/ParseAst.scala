@@ -370,11 +370,9 @@ sealed trait PExp extends PNode {
   def forceSubstitution(ts: PTypeSubstitution)
 }
 
-sealed trait PDecClause extends PNode {
-}
+sealed trait PDecClause extends PNode
 
-case class PDecStar() extends PDecClause{
-}
+case class PDecStar() extends PDecClause
 
 case class PDecTuple (d: Seq[PExp]) extends PDecClause{
   val decs : Seq[PExp] = d
