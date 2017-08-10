@@ -7,7 +7,7 @@ domain IntTerminationOrder{
         (int1 < int2) ==> decreasing(int1, int2)
     }
     axiom integer_ax_bound{
-        forall int1: Int :: 
+        forall int1: Int ::
         int1 >= 0 ==> bounded(int1)
     }
 }   

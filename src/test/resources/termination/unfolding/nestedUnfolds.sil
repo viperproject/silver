@@ -1,3 +1,5 @@
+//UnexpectedOutput(z3.interaction.failed)(silicon)
+
 import "../decreaseOrder/pred_decreases.vpr"
 
 function f1(r:Ref): Int

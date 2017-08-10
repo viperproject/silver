@@ -65,7 +65,7 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
     //Create for every Function a method which proofs the termination
     //Ignore functions with 'decreases *' or with no body
     val methods = (funcs.filter(f => f.body.nonEmpty && (f.decs.isEmpty || !f.decs.get.isInstanceOf[DecStar])) map {
-      func =>
+      func => {
         neededLocalVars = collection.mutable.ListMap.empty[String, LocalVarDecl]
         val methodBody: Stmt = rewriteFuncBody(func.body.get, func, null, Nil, preds)
 
@@ -75,7 +75,7 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
           neededLocalVars.values.toIndexedSeq)(methodBody.pos))(NoPosition, func.info, func.errT)
         members(methodName) = newMethod
         newMethod
-    }).filter(_.body != EmptyStmt)
+    }}).filter(_.body != EmptyStmt)
 
     if (neededLocFunctions.nonEmpty) {
       assert(locationDomain.isDefined)
@@ -260,9 +260,10 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                   //Decreasing(smallerExpr, biggerExpr) <==> smallerExpr '<<' biggerExpr
                   val smallerExpression: Seq[Exp] = decreasingExp map {
                     case pap: PredicateAccessPredicate =>
-                      val varOfCalleePred = uniquePredLocVar(pap.loc, ListMap(formalArgs.zip(calleeArgs): _*))
+                      val argMap: ListMap[Exp,Exp] = ListMap(formalArgs.zip(calleeArgs): _*)
+                      val varOfCalleePred = uniquePredLocVar(pap.loc, argMap)
 
-                      neededArgAssigns :+= generateAssign(pap, varOfCalleePred, ListMap(formalArgs.zip(calleeArgs):_*))
+                      neededArgAssigns :+= generateAssign(pap, varOfCalleePred, argMap)
                       varOfCalleePred
                     case decC => decC.replace(ListMap(formalArgs.zip(calleeArgs):_*))
                   }
@@ -329,15 +330,17 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                     decrFunc :+=
                       replaceExpWithDummyFnc(
                         DomainFuncApp(decreasingFunc.get,
-                                      Seq(argsForTermProof(i)._1, argsForTermProof(i)._2),
-                                      Map(argTypeVarsDecr.head -> argsForTermProof(i)._1.typ,
-                                      argTypeVarsDecr.last -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos)
+                          Seq(argsForTermProof(i)._1, argsForTermProof(i)._2),
+                          ListMap(argTypeVarsDecr.head -> argsForTermProof(i)._1.typ,
+                            argTypeVarsDecr.last -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos)
                       )
                     boundFunc :+= replaceExpWithDummyFnc(
                       DomainFuncApp(boundedFunc.get,
-                                    Seq(argsForTermProof(i)._2),
-                                    Map(argTypeVarsDecr.head -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos)
+                        Seq(argsForTermProof(i)._2),
+                        ListMap(argTypeVarsDecr.head -> argsForTermProof(i)._1.typ,
+                          argTypeVarsDecr.last -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos)
                     )
+
                   }
 
                   val boundedAss =
@@ -348,13 +351,14 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                   if (funcAppInOrigFunc == null) {
                     //We are in the function we want to check
 
-                    val bodyWithArgs = func.body.get.replace(ListMap(formalArgs.zip(calleeArgs):_*))
+                    val argMap: ListMap[Exp, Exp] = ListMap(formalArgs.zip(calleeArgs):_*)
+                    val bodyWithArgs = func.body.get.replace(argMap)
 
                     //Replace 'result' in the postconditions with the dummy-Function and the correct arguments
                     val resultNodes = func.posts flatMap (p => p.deepCollect { case r: Result => r })
                     val resMap = ListMap(resultNodes.zip(List.fill(resultNodes.size)(FuncApp(func, calleeArgs)(pos))):_*)
                     val postConds = func.posts map (p =>
-                      p.replace(ListMap(formalArgs.zip(calleeArgs):_*) ++ resMap))
+                      p.replace(argMap ++ resMap))
                     val inhalePostConds = postConds map (c => Inhale(replaceExpWithDummyFnc(c))(pos))
 
                     val inhaleFuncBody =
@@ -438,9 +442,11 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
           val assign2 = generateAssign(calledPred, varOfCalleePred)
 
           //inhale nested-relation
-          val mapNested: Map[TypeVar, Type] =
-            Map(TypeVar("N1") -> DomainType(domainOfCalleePred, Map()),
-                                            TypeVar("N2") -> DomainType(domainOfCallerPred, Map()))
+          val params: Seq[TypeVar] = members(nestedFunc.get.domainName).asInstanceOf[Domain].typVars
+          val types: Seq[Type] =
+            Seq(DomainType(domainOfCalleePred, ListMap()), DomainType(domainOfCallerPred, ListMap()), Int)
+
+          val mapNested: ListMap[TypeVar, Type] = ListMap(params.zip(types):_*)
           val assume = Inhale(DomainFuncApp(nestedFunc.get,
                                             Seq(varOfCalleePred, varOfCallerPred),
                                             mapNested)(calledPred.pos))(calledPred.pos)
@@ -508,8 +514,8 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
               : LocalVarAssign = {
     val domainOfPred: Domain = uniqueNameGen(pred.loc).asInstanceOf[Domain]
     val domainFunc = uniqueNameGen(pred).asInstanceOf[DomainFunc]
-    val typVarMap: Map[TypeVar, Type] =
-      Map(TypeVar(locationDomain.get.typVars.head.name) -> DomainType(domainOfPred, Map()))
+    val typVarMap: ListMap[TypeVar, Type] =
+      ListMap(TypeVar(locationDomain.get.typVars.head.name) -> DomainType(domainOfPred, ListMap()))
     val assValue = DomainFuncApp(domainFunc, pred.loc.args.map(_.replace(argMap)), typVarMap)(pred.pos)
     LocalVarAssign(assLocation, assValue)(pred.pos)
   }
@@ -613,7 +619,7 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
             DomainFunc(uniquePredFuncName,
                       pred.formalArgs,
                       DomainType(locationDomain.get,
-                                Map(locationDomain.get.typVars.head -> locationDomain.get.typVars.head))
+                                ListMap(locationDomain.get.typVars.head -> locationDomain.get.typVars.head))
                       )(locationDomain.get.pos, locationDomain.get.info, locationDomain.get.name, locationDomain.get.errT)
 
           members(uniquePredFuncName) = newLocFunc
@@ -640,8 +646,8 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
       val info = SimpleInfo(Seq(p.predicateName + "_" + args.mkString(",")))
       val newLocalVar =
         LocalVar(predVarName)(DomainType(locationDomain.get,
-                                        Map(TypeVar(locationDomain.get.typVars.head.name)
-                                            -> DomainType(uniqueNameGen(p).asInstanceOf[Domain], Map()))),
+                                        ListMap(TypeVar(locationDomain.get.typVars.head.name)
+                                            -> DomainType(uniqueNameGen(p).asInstanceOf[Domain], ListMap()))),
                               info = info)
       neededLocalVars(predVarName) = LocalVarDecl(newLocalVar.name, newLocalVar.typ)(newLocalVar.pos, info)
       newLocalVar

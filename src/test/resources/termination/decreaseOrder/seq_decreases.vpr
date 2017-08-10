@@ -8,6 +8,6 @@ domain SeqTerminationOrder[S]{
     }
     axiom seq_ax_bound{
        forall seq1: Seq[S] ::
-       (|seq1| >= 0) ==> bounded(seq1) //Unnecessary i think
+       (|seq1| >= 0) ==> bounded(seq1)
     }
 }

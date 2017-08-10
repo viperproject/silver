@@ -1,3 +1,5 @@
+//UnexpectedOutput(z3.interaction.failed)(silicon)
+
 import "../decreaseOrder/int_decreases.vpr"
 import "../decreaseOrder/set_decreases.vpr"
 import "../decreaseOrder/perm_decreases.vpr"

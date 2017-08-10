@@ -1,5 +1,6 @@
 import "../decreaseOrder/int_decreases.vpr"
 
+
 function g(x: Int): Int
 ensures result == 1
 decreases x
@@ -9,6 +10,7 @@ decreases x
 
 //:: ExpectedOutput(termination.failed:variant.not.decreasing)
 function h(x: Int): Int
+//:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/247/)
 ensures result == 1
 decreases x
 {
