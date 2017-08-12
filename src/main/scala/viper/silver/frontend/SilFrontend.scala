@@ -73,12 +73,10 @@ trait SilFrontend extends DefaultFrontend {
     /* Handle errors occurred while parsing of command-line options */
     if (_config.error.isDefined) {
       /* The command line arguments could not be parses. Hence, we should not
-       * try to ready any arguments-related value from _config!
+       * ready any arguments-related value from _config!
        */
       printFallbackHeader()
       printErrors(CliOptionError(_config.error.get + "."))
-      logger.info("\n")
-      _config.printHelp()
       return false
     } else if (_config.exit) {
       /* Parsing succeeded, but the frontend should exit immediately never the less. */
@@ -156,7 +154,7 @@ trait SilFrontend extends DefaultFrontend {
     * arguments failed.
     */
   protected def printFallbackHeader() {
-    if(config.ideMode()) {
+    if(config.error.isEmpty && config.ideMode()) {
       loggerForIde.info(s"""{"type":"Start","backendType":"${_ver.name}"}\r\n""")
     }else {
       logger.info(s"${_ver.name} ${_ver.version}")
@@ -197,7 +195,7 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   protected def printErrors(errors: AbstractError*) {
-    if (config.ideMode()) {
+    if (config.error.isEmpty && config.ideMode()) {
       //output a JSON representation of the errors for the IDE
       val ideModeErrors = errors.map(e => new IdeModeErrorRepresentation(e))
       val jsonErrors = ideModeErrors.map(e => e.jsonError).mkString(",")
@@ -206,6 +204,11 @@ trait SilFrontend extends DefaultFrontend {
       logger.info("The following errors were found:")
 
       errors.foreach(e => logger.info(s"  ${e.readableMessage}"))
+
+      if (config.error.nonEmpty) {
+        logger.info("")
+        logger.info("Run with --help for usage and options")
+      }
     }
   }
 
