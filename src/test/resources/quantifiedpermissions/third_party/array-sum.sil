@@ -10,6 +10,7 @@ function sum(diz: Ref, lo: Int, hi: Int, i: Int, ar: Seq[Ref]): Int
   requires (0 <= lo) && (lo <= i) && (i <= hi)
   requires hi <= |ar|
   requires (forall k: Int :: (k in [lo..hi)) ==> acc(ar[k].val, wildcard))
+  decreases *
 {
   (i < hi ? ar[i].val + sum(diz, lo, hi, i + 1, ar) : 0)
 }

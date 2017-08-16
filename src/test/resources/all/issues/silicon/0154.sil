@@ -6,6 +6,7 @@ field Nodenext$: Ref
 function Nodet$(this: Ref): Int
   requires this != null
   requires acc(Nodevalid$(this), wildcard)
+  decreases *
 {
   (unfolding acc(Nodevalid$(this), wildcard) in Nodet$(this))
 }
@@ -13,6 +14,7 @@ function Nodet$(this: Ref): Int
 function Nodet2$(this: Ref): Int
   requires this != null
   requires acc(Nodep$(this), wildcard)
+  decreases *
 {
   //:: UnexpectedOutput(application.precondition:insufficient.permission, /Silicon/issue/154/)
   (unfolding acc(Nodep$(this), wildcard) in Nodet$(this))

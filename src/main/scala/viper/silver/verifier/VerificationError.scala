@@ -436,7 +436,7 @@ object reasons {
   case class CallingNonTerminatingFunction(offendingNode: FuncApp, callee: Function) extends AbstractErrorReason {
     val id = "calling.non.terminating.function"
 
-    override def readableMessage = s"The function calls with ${offendingNode.funcname} (indirect) function ${callee.name}, which might not terminate."
+    override def readableMessage = s"Function ${offendingNode.funcname} (indirectly) calls ${callee.name}, which might not terminate."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CallingNonTerminatingFunction(offendingNode.asInstanceOf[FuncApp], callee)
   }
@@ -444,7 +444,7 @@ object reasons {
   case class NoDecClauseSpecified(offendingNode: FuncApp) extends AbstractErrorReason {
     val id = "no.decClause.specified"
 
-    override def readableMessage = s"The function is (indirect) via ${offendingNode.funcname} recursive but has no decreases clause specified."
+    override def readableMessage = s"${offendingNode.funcname} is (indirectly) recursive but has no decreases clause."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = NoDecClauseSpecified(offendingNode.asInstanceOf[FuncApp])
   }

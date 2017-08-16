@@ -40,6 +40,7 @@ function treeDegree(this: Ref): Int
 
 function treeSize(this: Ref): Int
   requires tree(this)
+  decreases *
 {
   unfolding tree(this) in this.degree == 0 ? 1 : 1 + segSize(this.child, null)
 }
@@ -60,6 +61,7 @@ predicate heapseg(this: Ref, last: Ref) {
 function segLength(this: Ref, last: Ref): Int
   requires heapseg(this, last)
   ensures  0 <= result
+  decreases *
 {
   this == last ? 0 : 1 + unfolding heapseg(this, last) in segLength(this.sibling, last)
 }
@@ -67,6 +69,7 @@ function segLength(this: Ref, last: Ref): Int
 function segSize(this: Ref, last: Ref): Int
   requires heapseg(this, last)
   ensures  this == last ==> result == 0  // this is needed to avoid unfolding empty heapsegs
+  decreases *
 {
   this == last ? 0 : (unfolding heapseg(this, last) in treeSize(this) + segSize(this.sibling, last))
 }
@@ -75,6 +78,7 @@ function segDegree(this: Ref, last: Ref, index: Int): Int
   requires heapseg(this, last)
   requires 0 <= index && index < segLength(this, last)
   ensures  0 <= result
+  decreases *
 {
   unfolding heapseg(this, last) in
   (index == 0 ?  treeDegree(this) : segDegree(this.sibling, last, index - 1))
@@ -89,12 +93,14 @@ function segParent(this: Ref, last: Ref): Ref
 function sorted(this: Ref, last: Ref): Bool
   requires heapseg(this, last)
   ensures  result ==> presorted(this, last)
+  decreases *
 {
   1 < segLength(this, last) ==> unfolding heapseg(this, last) in treeDegree(this) < segDegree(this.sibling, last, 0) && sorted(this.sibling, last)
 }
 
 function presorted(this: Ref, last: Ref): Bool
   requires heapseg(this, last)
+  decreases *
 {
   (1 < segLength(this, last) ==> unfolding heapseg(this, last) in treeDegree(this) <= segDegree(this.sibling, last, 0) && presorted(this.sibling, last)) && 
   (2 < segLength(this, last) && segDegree(this, last, 0) == segDegree(this, last, 1) ==> segDegree(this, last, 1) < segDegree(this, last, 2))
@@ -102,6 +108,7 @@ function presorted(this: Ref, last: Ref): Bool
 
 function validChildren(this: Ref, last: Ref): Bool
   requires heapseg(this, last)
+  decreases *
 {
   1 < segLength(this, last) ==> unfolding heapseg(this, last) in treeDegree(this) == segDegree(this.sibling, last, 0) + 1 && validChildren(this.sibling, last)
 }  

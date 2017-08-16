@@ -32,6 +32,7 @@ predicate P01(x: Ref, b: Bool) {
 
 function fun02(x: Ref, b: Bool): Bool
   requires acc(P01(x, b))
+  decreases *
 {
   unfolding acc(P01(x, b)) in (x.r == null ? b : fun02(x.r, b))
 }
@@ -67,6 +68,7 @@ predicate Tree(x: Ref) {
 
 function vals(x: Ref): Seq[Int]
   requires acc(Tree(x))
+  decreases *
 {
   unfolding acc(Tree(x)) in (x.l == null ? Seq[Int]() : vals(x.l)) ++ Seq(x.v) ++ (x.r == null ? Seq[Int]() : vals(x.r))
 }

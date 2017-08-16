@@ -8,6 +8,7 @@ predicate SL(x: Ref) {
 function SL_length(x: Ref): Int
   requires acc(SL(x))
   ensures result > 0
+  decreases *
 {
   1 + unfolding acc(SL(x)) in
         x.next == null

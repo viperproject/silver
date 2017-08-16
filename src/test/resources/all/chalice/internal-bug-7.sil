@@ -3,6 +3,7 @@
   function length(this: Ref): Int
     requires acc(P(this), write)
     ensures result >= 1
+    decreases *
   { (unfolding acc(P(this), write) in 1 + (((this.n) == (null)) ? 0 : length(this.n))) }
   method test(this: Ref, node: Ref)
     requires ((node) != (null))

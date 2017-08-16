@@ -8,6 +8,7 @@ function Nodelen(this: Ref): Int
   requires this != null
   requires acc(Nodeinv(this), wildcard)
   ensures result > 0
+  decreases *
 {
   (unfolding acc(Nodeinv(this), wildcard) in (this.Noden == null ? 1 : 1 + Nodelen(this.Noden)))
 }
@@ -15,6 +16,7 @@ function Nodelen(this: Ref): Int
 function Nodeget(this: Ref, i: Int): Int
   requires this != null
   requires acc(Nodeinv(this), wildcard) && (0 <= i) && (i < Nodelen(this))
+  decreases *
 {
   (unfolding acc(Nodeinv(this), wildcard) in (i == 0 ? this.Nodev : Nodeget(this.Noden, i - 1)))
 }
@@ -23,6 +25,7 @@ function Listlen(this: Ref): Int
   requires this != null
   requires acc(Listinv(this), wildcard)
   ensures result >= 0
+  decreases *
 {
   (unfolding acc(Listinv(this), wildcard) in (this.Listc == null ? 0 : Nodelen(this.Listc)))
 }

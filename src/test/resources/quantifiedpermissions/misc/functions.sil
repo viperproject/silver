@@ -155,6 +155,7 @@ method test04(x: Ref, n: Int) {
 function fun07(xs: Seq[Ref], j: Int): Int
   requires forall i: Int :: 0 <= i && i < |xs| ==> acc(xs[i].f)
   ensures result >= 0
+  decreases *
 {
     j < 0     ? fun07(xs, j + 1)
   : |xs| <= j ? fun07(xs, j - 1)

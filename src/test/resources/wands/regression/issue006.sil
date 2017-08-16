@@ -58,7 +58,9 @@ method test06(xs: Seq[Int], n: Int)
   apply true --* |ys| == n + 1
 }
 
-function sum(xs: Seq[Int]): Int {
+function sum(xs: Seq[Int]): Int
+  decreases *
+{
   |xs| == 0 ? 0 : xs[0] + sum(xs[1..])
 }
 

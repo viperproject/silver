@@ -374,10 +374,7 @@ sealed trait PDecClause extends PNode
 
 case class PDecStar() extends PDecClause
 
-case class PDecTuple (d: Seq[PExp]) extends PDecClause{
-  val decs : Seq[PExp] = d
-}
-
+case class PDecTuple (decs: Seq[PExp]) extends PDecClause
 
 class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
 {

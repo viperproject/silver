@@ -75,7 +75,7 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
           neededLocalVars.values.toIndexedSeq)(methodBody.pos))(NoPosition, func.info, func.errT)
         members(methodName) = newMethod
         newMethod
-    }}).filter(_.body != EmptyStmt)
+    }}).filter(_.body.collect{case k: Assert => k}.nonEmpty)
 
     if (neededLocFunctions.nonEmpty) {
       assert(locationDomain.isDefined)
@@ -386,7 +386,6 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
             }
           }
         }
-
       case b: BinExp =>
         val left = rewriteFuncBody(b.left, func, funcAppInOrigFunc, alreadyChecked, predicates)
         val right = rewriteFuncBody(b.right, func, funcAppInOrigFunc, alreadyChecked, predicates)
@@ -407,6 +406,39 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
           case _ =>
             Seqn(Seq(left, right), Nil)(b.pos)
         }
+      case sq: SeqExp => sq match {
+        case ExplicitSeq(elems) =>
+          Seqn(elems.map(rewriteFuncBody(_, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+        case RangeSeq(low, high) =>
+          Seqn(Seq(rewriteFuncBody(low, func, funcAppInOrigFunc, alreadyChecked, predicates),
+                  rewriteFuncBody(high, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+        case SeqAppend(left, right) =>
+          Seqn(Seq(rewriteFuncBody(left, func, funcAppInOrigFunc, alreadyChecked, predicates),
+            rewriteFuncBody(right, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+        case SeqIndex(s, idx) =>
+          Seqn(Seq(rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates),
+            rewriteFuncBody(idx, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+        case SeqTake(s, n) =>
+          Seqn(Seq(rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates),
+            rewriteFuncBody(n, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+        case SeqDrop(s, n) =>
+          Seqn(Seq(rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates),
+            rewriteFuncBody(n, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+        case SeqContains(elem, s) =>
+          Seqn(Seq(rewriteFuncBody(elem, func, funcAppInOrigFunc, alreadyChecked, predicates),
+            rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+        case SeqUpdate(s, idx, elem) =>
+          Seqn(Seq(rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates),
+            rewriteFuncBody(idx, func, funcAppInOrigFunc, alreadyChecked, predicates),
+            rewriteFuncBody(elem, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+        case SeqLength(s) =>
+          Seqn(Seq(rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+        case _: Exp => EmptyStmt
+      }
+      case st: ExplicitSet =>
+        Seqn(st.elems.map(rewriteFuncBody(_, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(st.pos)
+      case mst: ExplicitMultiset =>
+        Seqn(mst.elems.map(rewriteFuncBody(_, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(mst.pos)
       case u: UnExp => rewriteFuncBody(u.exp, func, funcAppInOrigFunc, alreadyChecked, predicates)
       case _: Exp => EmptyStmt
     }
@@ -470,11 +502,11 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
   }
 
   /**
-    * Rewrites given Expression (a,b,c,d,...) into the following form:
-    * (a || (b && (c || d)))
-    *
+    * Rewrites given Expression (a,b,c,d,...) into one of the following form:
+    * (a || (b && (c || (d && ... )))) or
+    * (a && (b || (c && (d || ... ))))
     * @param decrArgs arguments which should be rewritten
-    * @param conj     decides if the return expressions begins with a conjunction of a disjunction
+    * @param conj     decides if the return expressions begins with a conjunction or a disjunction
     * @return the generated chain of con- and disjunctions
     */
   private def buildDecTree(decrArgs: Seq[Exp], conj: Boolean): Exp = {
@@ -511,7 +543,7 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
     * @return an assignment of the given variable to the representation of a predicate with the corresponding arguments
     */
   private def generateAssign(pred: PredicateAccessPredicate, assLocation: LocalVar, argMap: ListMap[Exp, Exp] = ListMap.empty)
-              : LocalVarAssign = {
+                            : LocalVarAssign = {
     val domainOfPred: Domain = uniqueNameGen(pred.loc).asInstanceOf[Domain]
     val domainFunc = uniqueNameGen(pred).asInstanceOf[DomainFunc]
     val typVarMap: ListMap[TypeVar, Type] =
@@ -558,11 +590,11 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
     * @return the needed dummy-function, pred-Domain or loc-Function
     */
   private def uniqueNameGen(node: Node): Node = {
-    assert(node.isInstanceOf[Function] ||
-          node.isInstanceOf[Predicate] ||
-          node.isInstanceOf[FuncApp] ||
-          node.isInstanceOf[PredicateAccess] ||
-          node.isInstanceOf[PredicateAccessPredicate])
+    assert( node.isInstanceOf[Function] ||
+            node.isInstanceOf[Predicate] ||
+            node.isInstanceOf[FuncApp] ||
+            node.isInstanceOf[PredicateAccess] ||
+            node.isInstanceOf[PredicateAccessPredicate])
 
     node match {
       case f: Function =>
