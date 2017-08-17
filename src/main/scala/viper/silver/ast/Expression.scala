@@ -94,7 +94,7 @@ case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
 }
 
 object MagicWandStructure {
-  type MagicWandStructure = String
+  type MagicWandStructure = MagicWand
 }
 
 case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
@@ -115,11 +115,10 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
   def structure(p: Program): MagicWandStructure = {
     val subexpressionsToEvaluate = this.subexpressionsToEvaluate(p)
-    val structureWand = this.transform({
+    this.transform({
       case exp: Exp if subexpressionsToEvaluate.contains(exp) =>
         LocalVar(exp.typ.toString())(exp.typ)
     })
-    structureWand.toString()
   }
 
   override def isValid : Boolean = this match {
