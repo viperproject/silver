@@ -89,6 +89,12 @@ object QuantifiedPermissions {
     collected
   }
 
+  def quantifiedMagicWands(root: Node, program: Program): collection.Set[MagicWandStructure.MagicWandStructure] = {
+    root collect {
+      case QuantifiedPermissionAssertion(_, _, wand: MagicWand) => wand.structure(program)
+    } toSet
+  }
+
   private def quantifiedFields(toVisit: mutable.Queue[Member],
                                collected: mutable.LinkedHashSet[Field],
                                visited: mutable.Set[Member],
