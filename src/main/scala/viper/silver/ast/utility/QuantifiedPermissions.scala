@@ -7,6 +7,7 @@
 package viper.silver.ast.utility
 
 import scala.collection.mutable
+import scala.language.postfixOps
 import viper.silver.ast._
 
 /** Utility methods for quantified predicate permissions. */
