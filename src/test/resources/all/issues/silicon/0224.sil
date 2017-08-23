@@ -25,6 +25,7 @@ function f_loop(a: IArray, x: Int, y: Int, n: Int) : Int
 
   ensures 0 <= result && x+result <= length(a) && y+result <= length(a)
   ensures (x+result < length(a) && y+result < length(a)) ==> loc(a,x+result).val != loc(a,y+result).val
+  decreases *
 {
      (x+n < length(a) && y+n < length(a) && loc(a,x+n).val == loc(a,y+n).val) ? f_loop(a,x,y,n+1) : n
 }
@@ -36,6 +37,7 @@ function f_lcp(a : IArray, x : Int, y : Int) : Int
 
 	ensures 0 <= result && x+result <= length(a) && y+result <= length(a)
 	ensures (x+result < length(a) && y+result < length(a)) ==> loc(a,x+result).val != loc(a,y+result).val
+    decreases *
 {
 	f_loop(a,x,y,0)
 }

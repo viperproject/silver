@@ -22,6 +22,7 @@ field par$PseudoListstatic_range_workaround$k$: Perm
 function PseudoListget$(this$_2: Ref, index: Int): Bool
   requires this$_2 != null
   requires acc(PseudoListinv$(this$_2), wildcard)
+  decreases *
 {
   (unfolding acc(PseudoListinv$(this$_2), wildcard) in (index == 0 ? true : PseudoListget$(this$_2.PseudoListnext$, index - 1)))
 }

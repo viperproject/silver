@@ -43,6 +43,7 @@ function Nodelseg_length$(this$_2: Ref): Int
 function Nodeend$(this$_3: Ref): Ref
   requires this$_3 != null
   requires acc(Nodelseg$(this$_3), wildcard)
+  decreases *
 {
   (unfolding acc(Nodelseg$(this$_3), wildcard) in (this$_3.Nodelength$ == 1 ? this$_3.Nodenext$ : Nodeend$(this$_3.Nodenext$)))
 }

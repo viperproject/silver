@@ -4,15 +4,18 @@ field next: Ref
 function length(xs: Ref): Int
 	requires acc(SortedList(xs))
 	ensures result > 0
+    decreases *
 { 1 + unfolding acc(SortedList(xs)) in xs.next == null ? 0 : length(xs.next) }
 
 function itemAt(xs: Ref, i: Int): Int
 	requires acc(SortedList(xs))
 	requires 0 <= i && i < length(xs)
+    decreases *
 { unfolding acc(SortedList(xs)) in i == 0 ? xs.val : itemAt(xs.next, i-1) }
 
 function ascending(xs: Ref): Bool
 	requires acc(SortedList(xs))
+    decreases *
 { forall i: Int, j: Int :: {itemAt(xs, i), itemAt(xs, j)} 0 <= i && i < j && j < length(xs) ==> itemAt(xs, i) <= itemAt(xs, j) }
 
 predicate SortedList(xs: Ref) {

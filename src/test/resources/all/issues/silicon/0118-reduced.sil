@@ -8,6 +8,7 @@ function get(this: Ref, i: Int): Int
   requires acc(Node(this))
   requires 0 <= i
   requires i < length(this)
+  decreases *
     /* Historical comment: Replacing length(this) with the body (i.e., 10) made
      * the example verify. Due to the incorrectly computed heights of the
      * functions the body of length(this) wasn't available to Z3 when verifying

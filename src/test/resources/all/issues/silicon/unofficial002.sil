@@ -13,6 +13,7 @@ predicate lseg(this: Ref, end: Ref) {
 
 function degrees(this: Ref, last: Ref): Seq[Int]
   requires this != null && acc(lseg(this, last));
+  decreases *;
 {
   this == last
     ? Seq[Int]()

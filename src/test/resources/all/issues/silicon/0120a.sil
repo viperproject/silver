@@ -24,6 +24,7 @@ field par$Nodereverse_in_place$k$: Perm
 function Nodevals$(this$_2: Ref): Seq[Int]
   requires this$_2 != null
   requires acc(Nodelist$(this$_2), wildcard)
+  decreases *
 {
   (unfolding acc(Nodelist$(this$_2), wildcard) in (this$_2.Nodenext$ == null ? Seq(this$_2.Nodeval$) : Seq(this$_2.Nodeval$) ++ Nodevals$(this$_2.Nodenext$)))
 }
@@ -31,6 +32,7 @@ function Nodevals$(this$_2: Ref): Seq[Int]
 function Nodereverse_vals$(this$_3: Ref): Seq[Int]
   requires this$_3 != null
   requires acc(Nodelist$(this$_3), wildcard)
+  decreases *
 {
   (unfolding acc(Nodelist$(this$_3), wildcard) in (this$_3.Nodenext$ == null ? Seq(this$_3.Nodeval$) : Nodereverse_vals$(this$_3.Nodenext$) ++ Seq(this$_3.Nodeval$)))
 }

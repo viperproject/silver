@@ -6,6 +6,7 @@ field Listnext$: Ref
 function Listlen$(this$_2: Ref): Int
   requires this$_2 != null
   requires acc(Listinv$(this$_2), wildcard)
+  decreases *
 {
   (unfolding acc(Listinv$(this$_2), wildcard) in (this$_2.Listnext$ == null ? 1 : 1 + Listlen$(this$_2.Listnext$)))
 }
@@ -15,6 +16,7 @@ function Listget$(this$_3: Ref, index: Int): Int
   requires acc(Listinv$(this$_3), wildcard)
   requires 0 <= index
   requires index < Listlen$(this$_3)
+  decreases *
 {
   (unfolding acc(Listinv$(this$_3), wildcard) in (index == 0 ? this$_3.Listvalue$ : Listget$(this$_3.Listnext$, index - 1)))
 }

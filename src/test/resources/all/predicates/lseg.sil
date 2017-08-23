@@ -9,6 +9,7 @@ predicate lseg(this: Ref, end: Ref) {
 function get(this: Ref, i: Int, end: Ref): Int
     requires acc(lseg(this, end), write)
     requires 0 <= i && i < length(this, end)
+    decreases *
 {
     unfolding acc(lseg(this, end), write) in (i == 0 ? this.value : get(this.next, i-1, end))
 }
@@ -16,6 +17,7 @@ function get(this: Ref, i: Int, end: Ref): Int
 function length(this: Ref, end: Ref): Int
     requires acc(lseg(this, end), write)
     ensures result > 0
+    decreases *
 {
     unfolding acc(lseg(this, end), write) in (this.next == end ? 1 : 1 + length(this.next, end))
 }

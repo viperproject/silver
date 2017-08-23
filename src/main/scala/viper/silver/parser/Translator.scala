@@ -38,11 +38,19 @@ case class Translator(program: PProgram) {
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
             pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
 
-        val domain = pdomains map (translate(_))
+        var domain = pdomains map (translate(_))
         val fields = pfields map (translate(_))
-        val functions = pfunctions map (translate(_))
+        var functions = pfunctions map (translate(_))
         val predicates = ppredicates map (translate(_))
-        val methods = pmethods map (translate(_))
+        var methods = pmethods map (translate(_))
+
+        //Add Methods, Domains and functions needed for proving termination
+        val termCheck = new DecreasesClause(members)
+        val structureForTermProofs = termCheck.addMethods(functions, predicates, domain, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"))
+        domain = structureForTermProofs._1
+        functions ++= structureForTermProofs._2
+        methods ++= structureForTermProofs._3
+
         val prog = Program(domain, fields, functions, predicates, methods)(program)
 
         if (Consistency.messages.isEmpty) Some(prog) // all error messages generated during translation should be Consistency messages
@@ -76,9 +84,9 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(f: PFunction): Function = f match {
-    case PFunction(name, formalArgs, typ, pres, posts, body) =>
+    case PFunction(name, formalArgs, typ, pres, posts, decs, body) =>
       val f = findFunction(name)
-      val ff = f.copy(pres = pres map exp, posts = posts map exp, body = body map exp)(f.pos, f.info, f.errT)
+      val ff = f.copy(pres = pres map exp, posts = posts map exp, decs = decs map dec, body = body map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
   }
@@ -103,8 +111,8 @@ case class Translator(program: PProgram) {
     val t = p match {
       case PField(_, typ) =>
         Field(name, ttyp(typ))(pos)
-      case PFunction(_, formalArgs, typ, _, _, _) =>
-        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
+      case PFunction(_, formalArgs, typ, _, _, _, _) =>
+        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null, null)(pos)
       case pdf@ PDomainFunction(_, args, typ, unique) =>
         DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
       case PDomain(_, typVars, funcs, axioms) =>
@@ -200,6 +208,14 @@ case class Translator(program: PProgram) {
         LocalVarAssign(LocalVar(idndef.name)(Wand, pos), exp(wand))(pos)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
+    }
+  }
+
+  /** Takes a `PExp` and turns it into an `Exp`. */
+  private def dec(pdec: PDecClause): DecClause = {
+    pdec match {
+      case PDecStar() => DecStar()(pdec)
+      case PDecTuple(d) => DecTuple(d map exp)(pdec)
     }
   }
 
