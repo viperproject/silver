@@ -1,6 +1,7 @@
 function silver_length(this: Ref): Int
     requires acc(valid__List(this), wildcard)
     ensures result >= 0
+    decreases *
 {
     (unfolding acc(valid__List(this), wildcard) in
         (variantOfList(this.List__variant) == fn$$List__Nil()) ? 0: 1 + silver_length(this.List__Node__1))

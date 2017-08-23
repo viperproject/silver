@@ -18,7 +18,8 @@ import scala.reflect.ClassTag
 
 /** A Silver program. */
 case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
-                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node with Positioned with Infoed with Scope with TransformableErrors {
+                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+  extends Node with DependencyAware with Positioned with Infoed with Scope with TransformableErrors {
 
   val scopedDecls: Seq[Declaration] =
     domains ++ fields ++ functions ++ predicates ++ methods ++
@@ -186,6 +187,12 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       case None => sys.error("Domain function " + name + " not found in program.")
     }
   }
+
+  override lazy val dependencyHashMap: Map[Method, String] = Map(methods.map { m =>
+      val dependencies: String = m.entityHash + " " + getDependencies(this, m).map(_.entityHash).mkString(" ")
+      m -> CacheHelper.buildHash(dependencies)
+    }: _*)
+
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
@@ -194,6 +201,10 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
 object Program{
   val defaultType = Int
+}
+
+trait Hashable extends Node {
+  lazy val entityHash: String = CacheHelper.computeEntityHash("", this)
 }
 
 // --- Program members
@@ -207,6 +218,15 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
     Seq(pos, info, errT)
   }
   val scopedDecls = Seq() //field is a scope because it is a member; it has no locals
+}
+
+/** A decreases-Clause declaration. */
+sealed trait DecClause extends Node with Positioned with Infoed with TransformableErrors
+
+case class DecStar()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DecClause
+
+case class DecTuple(e: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DecClause{
+  val exp: Seq[Exp] = e
 }
 
 /** A predicate declaration. */
@@ -232,7 +252,8 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Seqn)
-                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with Callable with Contracted with DependencyAware {
+                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+  extends Member with Callable with Contracted {
 
   val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns
   override lazy val check : Seq[ConsistencyError] =
@@ -262,15 +283,10 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     * Returns a control flow graph that corresponds to this method.
     */
   def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
-
-  override lazy val dependencyHash:String = {
-    val dependencies:String = this.entityHash + " " + getDependencies(this).map(m =>m.entityHash).mkString(" ")
-    CacheHelper.buildHash(dependencies)
-  }
 }
 
 /** A function declaration */
-case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], body: Option[Exp])
+case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], decs: Option[DecClause], body: Option[Exp])
                    (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Member with FuncLike with Contracted {
   override lazy val check : Seq[ConsistencyError] =
     posts.flatMap(p=>{ if(!Consistency.noOld(p))
@@ -281,7 +297,9 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
     (if(!(body map (_ isSubtype typ) getOrElse true)) Seq(ConsistencyError("Type of function body must match function type.", pos)) else Seq() ) ++
     pres.flatMap(Consistency.checkPre) ++
     posts.flatMap(Consistency.checkPost) ++
-    (if(body.isDefined) Consistency.checkFunctionBody(body.get) else Seq())
+    (if(decs.isDefined) Consistency.checkDecClause(decs.get) else Seq()) ++
+    (if(body.isDefined) Consistency.checkFunctionBody(body.get) else Seq()) ++
+    (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq())
 
   val scopedDecls: Seq[Declaration] = formalArgs
   /**
@@ -320,7 +338,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
  * Local variable declaration.  Note that these are not statements in the AST, but
  * rather occur as part of a method, loop, function, etc.
  */
-case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node with Positioned with Infoed with Typed with Declaration with TransformableErrors {
+case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Hashable with Positioned with Infoed with Typed with Declaration with TransformableErrors {
   /**
    * Returns a local variable with equivalent information
    */
@@ -394,13 +412,12 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
 // --- Common functionality
 
 /** Common ancestor for members of a program. */
-sealed trait Member extends Node with Positioned with Infoed with Scope with Declaration with TransformableErrors {
+sealed trait Member extends Hashable with Positioned with Infoed with Scope with Declaration with TransformableErrors {
   def name: String
-  lazy val entityHash: String = CacheHelper.computeEntityHash("", this)
 }
 
 /** Common ancestor for domain members. */
-sealed trait DomainMember extends Node with Positioned with Infoed with Scope with Declaration with TransformableErrors {
+sealed trait DomainMember extends Hashable with Positioned with Infoed with Scope with Declaration with TransformableErrors {
   def name: String
   def domainName : String //TODO:make names qualified
 

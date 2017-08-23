@@ -10,6 +10,7 @@ predicate list(r: Ref, i:Int)
 function allSet(r: Ref, i: Int, v:Int): Bool
   requires acc(list(r, i))
   //ensures acc(list(r, i))
+  decreases *
 {
   (i <= 0) ? true :
                 unfolding acc(list(r, i)) in (

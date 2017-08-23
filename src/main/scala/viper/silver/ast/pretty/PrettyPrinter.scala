@@ -241,9 +241,9 @@ trait PrettyPrintPrimitives {
 
 
 /**
- * Pretty printing functions build on the above primtives, aimed to be compatible with Kiama's because the existing
- * pretty printers were built using that.
- */
+  * Pretty printing functions build on the above primtives, aimed to be compatible with Kiama's because the existing
+  * pretty printers were built using that.
+  */
 trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
 
   /**
@@ -358,10 +358,10 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
       (iw: IW) =>
         (c: TreeCont) => {
           Call(() =>
-          for {
-            t <- dr(iw)(c)
-            t2 <- dl(iw)(t)
-          } yield t2)
+            for {
+              t <- dr(iw)(c)
+              t2 <- dl(iw)(t)
+            } yield t2)
         }
 
     def <+> (dr : Cont) : Cont =
@@ -477,6 +477,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case m: Member => showMember(m)
     case v: LocalVarDecl => showVar(v)
     case dm: DomainMember => showDomainMember(dm)
+    case dc: DecClause => showDecClause(dc)
     case Trigger(exps) =>
       text("{") <+> ssep(exps map show, char (',')) <+> "}"
     case null => uninitialized
@@ -533,12 +534,17 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           case None => nil
           case Some(exp) => braces(nest(defaultIndent, line <> show(exp)) <> line)
         })
-      case Function(name, formalArgs, typ, pres, posts, optBody) =>
+      case Function(name, formalArgs, typ, pres, posts, decs, optBody) =>
         text("function") <+> name <> parens(showVars(formalArgs)) <>
           ":" <+> show(typ) <>
           nest(defaultIndent,
             showContracts("requires", pres) <>
-            showContracts("ensures", posts)
+              showContracts("ensures", posts) <>
+              (decs match {
+                case Some(DecStar()) => line <> text("decreases *")
+                case Some(DecTuple(e)) => line <> text("decreases") <> space <> ssep(e map (show(_)), char(',') <> space)
+                case d => space
+              })
           ) <>
           line <>
           (optBody match {
@@ -577,6 +583,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
   /** Show field name */
   private def showLocation(loc: Location): Cont = loc.name
+
+  private def showDecClause(dt: DecClause): Cont = dt match {
+    case DecStar() => "*"
+    case DecTuple(e) => ssep(e map (toParenDoc(_)), char(',') <> space)
+  }
 
   /** Show a user-defined domain. */
   def showDomain(d: Domain): Cont = {

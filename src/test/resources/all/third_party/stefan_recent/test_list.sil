@@ -5,6 +5,7 @@ field node__next: Ref
 function node__contents(diz: Ref): Seq[Int]
   requires diz != null
   requires acc(node__state(diz), write)
+  decreases *
 {
   (unfolding acc(node__state(diz), write) in (diz.node__next == null ? Seq(diz.node__val) : Seq(diz.node__val) ++ node__contents(diz.node__next)))
 }

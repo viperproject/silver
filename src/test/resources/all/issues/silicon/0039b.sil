@@ -10,6 +10,7 @@ predicate List_valid(this: Ref) {
 function List_size(this: Ref): Int
 	requires acc(List_valid(this), write)
 	ensures result >= 0
+	decreases *
 {
 	unfolding acc(List_valid(this), write) in (this.List_head == null ? 0 : Node_size(this.List_head))
 }
@@ -46,6 +47,7 @@ function Node_val(this: Ref): Int
 function Node_size(this: Ref): Int
   requires acc(Node_valid(this), write)
   ensures result >= 1
+  decreases *
 {
   1 + unfolding acc(Node_valid(this), write) in this.Node_next != null ? Node_size(this.Node_next) : 0
 }

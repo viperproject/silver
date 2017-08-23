@@ -266,8 +266,8 @@ object ViperStrategy {
     case (f: Field, Seq(singleType: Type), meta) =>
       Field(f.name, singleType)(meta._1, meta._2, meta._3)
 
-    case (f: Function, Seq(parameters: Seq[LocalVarDecl@unchecked], aType: Type, preconditions: Seq[Exp@unchecked], postconditions: Seq[Exp@unchecked], body: Option[Exp@unchecked]), meta) =>
-      Function(f.name, parameters, aType, preconditions, postconditions, body)(meta._1, meta._2, meta._3)
+    case (f: Function, Seq(parameters: Seq[LocalVarDecl@unchecked], aType: Type, preconditions: Seq[Exp@unchecked], postconditions: Seq[Exp@unchecked], decreases: Option[DecClause@unchecked], body: Option[Exp@unchecked]), meta) =>
+      Function(f.name, parameters, aType, preconditions, postconditions, decreases, body)(meta._1, meta._2, meta._3)
 
     case (p: Predicate, Seq(parameters: Seq[LocalVarDecl@unchecked], body: Option[Exp@unchecked]), meta) =>
       Predicate(p.name, parameters, body)(meta._1, meta._2, meta._3)

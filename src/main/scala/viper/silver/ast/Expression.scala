@@ -13,7 +13,7 @@ import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 
 /** Expressions. */
-sealed trait Exp extends Node with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
+sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
 
@@ -815,7 +815,7 @@ object FuncLikeApp {
   def unapply(fa: FuncLikeApp) = Some((fa.funcname, fa.args))
   def apply(f: FuncLike, args: Seq[Exp], typVars: Map[TypeVar, Type]) = {
     f match {
-      case f@Function(_, _, _, _, _, _) => FuncApp(f, args)()
+      case f@Function(_, _, _, _, _, _, _) => FuncApp(f, args)()
       case f@DomainFunc(_, _, _, _) => DomainFuncApp(f, args, typVars)()
       case _ => sys.error(s"should not occur: $f (${f.getClass})")
     }

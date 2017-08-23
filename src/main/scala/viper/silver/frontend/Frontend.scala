@@ -7,13 +7,11 @@
 package viper.silver.frontend
 
 import java.nio.file.{Files, Path}
-
 import org.slf4j.LoggerFactory
 import ch.qos.logback.classic.Logger
-
 import scala.io.Source
 import viper.silver.ast._
-import viper.silver.reporter.{Reporter, StdIOReporter}
+import viper.silver.reporter.{NoopReporter, Reporter}
 import viper.silver.verifier._
 
 
@@ -45,14 +43,12 @@ trait Frontend {
     *
     * The reporter object can be passed as an argument of the Frontend implementation's constructor.
     *
-    * The default implementation will print received messages to the standard output stream. The more exciting use case
-    * will be with the ActorReporter implementation which manages a dynamic message queue.
+    * The default implementation [[viper.silver.reporter.NoopReporter]] will simply swallow all
+    * received messages.
     *
     * See https://bitbucket.org/viperproject/viperserver/src for more details.
-    *
     */
-  protected val reporter: Reporter = new StdIOReporter("default")
-
+  protected val reporter: Reporter = NoopReporter
 
   /**
     * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then

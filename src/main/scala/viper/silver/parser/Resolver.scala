@@ -102,6 +102,7 @@ case class TypeChecker(names: NameAnalyser) {
       curFunction=f
       f.pres foreach (check(_, Bool))
       resultAllowed=true
+      check(f.decs)
       f.posts foreach (check(_, Bool))
       f.body.foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
       resultAllowed=false
@@ -147,6 +148,13 @@ case class TypeChecker(names: NameAnalyser) {
   def check(f: PDomainFunction) {
     check(f.typ)
     f.formalArgs foreach (a => check(a.typ))
+  }
+
+  def check(d: Option[PDecClause]) : Unit = {
+    d foreach {
+      case PDecStar() =>
+      case PDecTuple(exp) => exp foreach (e => check(e, e.typ))
+    }
   }
 
   def check(stmt: PStmt) {
@@ -550,7 +558,7 @@ case class TypeChecker(names: NameAnalyser) {
                     pfa.function = fd
                     ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                     fd match {
-                      case PFunction(_, _, resultType, _, _, _) =>
+                      case PFunction(_, _, resultType, _, _, _, _) =>
                       case pdf@PDomainFunction(_, _, resultType, unique) =>
                         val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
                         val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables

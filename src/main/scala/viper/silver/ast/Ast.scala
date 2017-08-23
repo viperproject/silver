@@ -48,6 +48,9 @@ Some design choices:
   * - Type
   * - LocalVarDecl
   * - Trigger
+  *
+  * Note that all but Program are transitive subtypes of `Node` via `Hashable`. The reason is
+  * that AST node hashes may depend on the entire program, not just their sub-AST.
   */
 trait Node extends Traversable[Node] with Rewritable {
 

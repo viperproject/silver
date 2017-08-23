@@ -19,7 +19,7 @@ import viper.silver.verifier.ConsistencyError
 // --- Statements
 
 /** A common trait for statements. */
-sealed trait Stmt extends Node with Infoed with Positioned with TransformableErrors {
+sealed trait Stmt extends Hashable with Infoed with Positioned with TransformableErrors {
 
   /**
     * Returns a list of all actual statements contained in this statement.  That

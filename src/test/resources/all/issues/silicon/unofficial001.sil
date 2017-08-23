@@ -18,6 +18,7 @@ function last(start: Ref, end: Ref, x: Ref): Ref
 	requires start != end
 	requires acc(P(start,end))
 	requires x != null ==> acc(x.next)
+    decreases *
 {
 	unfolding acc(P(start,end)) in
 		start.next != end ? last(start.next,end, x) : null
