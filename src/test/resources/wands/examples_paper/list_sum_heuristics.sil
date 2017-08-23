@@ -18,6 +18,7 @@ predicate List(ys: Ref) {
 /* Pure function that computes the sum in a straight-forward, recursive way. */
 function sum_rec(ys: Ref): Int
   requires acc(List(ys))
+  decreases *
 { unfolding List(ys) in ys.val + (ys.next == null ? 0 : sum_rec(ys.next)) }
 
 /* Iterative computation of the sum over the linked-list ys. The postcondition
