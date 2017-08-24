@@ -29,6 +29,7 @@ function val(x: Ref): Int
 
 function vals(x: Ref): Seq[Int]
   requires acc(Tree(x))
+  decreases *
 { x == null ? Seq[Int]() : unfolding acc(Tree(x)) in vals(x.l) ++ Seq(x.v) ++ vals(x.r) }
 
 /* Deletes the minimal element of a binary tree, assuming that the
