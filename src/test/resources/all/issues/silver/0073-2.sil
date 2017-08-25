@@ -1,7 +1,0 @@
-//:: IgnoreFile(/silicon/issue/294/)
-field f: Int
-
-method test() {
-  //Silicon produces internal error
-  inhale forall x: Ref :: {x.f} true
-}
