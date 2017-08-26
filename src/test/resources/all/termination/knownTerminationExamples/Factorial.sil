@@ -2,7 +2,7 @@ import "../decreaseOrder/int_decreases.sil"
 
 function fact(x:Int): Int
 requires x>=0
-decreasing x
+decreases x
 {
     x==0 ? 1 : x*fact(x-1)
 }
