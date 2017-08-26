@@ -369,7 +369,7 @@ object errors {
   def HeuristicsFailed(offendingNode: ErrorNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => HeuristicsFailed(offendingNode, reason))
 
-  case class VerificationErrorWithCounterexample(ve: AbstractVerificationError, model: String, symState: String) extends AbstractVerificationError {
+  case class VerificationErrorWithCounterexample(ve: AbstractVerificationError, model: String, symState: String, currentMember: String) extends AbstractVerificationError {
     val id = ve.id
     val text = null // not used since readableMessage is overridden
 
@@ -380,9 +380,9 @@ object errors {
     override def reason = ve.reason
 
     def withNode(offendingNode: errors.ErrorNode) =
-      VerificationErrorWithCounterexample(ve.withNode(offendingNode).asInstanceOf[AbstractVerificationError], model, symState)
+      VerificationErrorWithCounterexample(ve.withNode(offendingNode).asInstanceOf[AbstractVerificationError], model, symState, currentMember)
 
-    def withReason(r: ErrorReason) = VerificationErrorWithCounterexample(ve.withReason(r), model, symState)
+    def withReason(r: ErrorReason) = VerificationErrorWithCounterexample(ve.withReason(r), model, symState, currentMember)
   }
 }
 
