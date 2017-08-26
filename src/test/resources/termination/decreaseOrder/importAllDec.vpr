@@ -1,7 +1,0 @@
-import "../decreaseOrder/int_decreases.vpr"
-import "../decreaseOrder/bool_decreases.vpr"
-import "../decreaseOrder/ref_decreases.vpr"
-import "../decreaseOrder/seq_decreases.vpr"
-import "../decreaseOrder/set_decreases.vpr"
-import "../decreaseOrder/multiSet_decreases.vpr"
-import "../decreaseOrder/pred_decreases.vpr"

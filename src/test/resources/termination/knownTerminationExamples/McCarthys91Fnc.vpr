@@ -1,9 +1,0 @@
-import "../decreaseOrder/int_decreases.vpr"
-
-function mc(n:Int): Int
-ensures n<=100 ==> result == 91 //Postconditin needed for proving termination
-ensures n > 100 ==> result == n-10
-decreases 100-n
-{
-	(n>100) ? n-10 : mc(mc(n+11))
-}
