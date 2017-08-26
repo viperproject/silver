@@ -436,7 +436,9 @@ object reasons {
   case class CallingNonTerminatingFunction(offendingNode: FuncApp, callee: Function) extends AbstractErrorReason {
     val id = "calling.non.terminating.function"
 
-    override def readableMessage = s"Function ${offendingNode.funcname} (indirectly) calls ${callee.name}, which might not terminate."
+    override def readableMessage = if (offendingNode.funcname == callee.name)
+      s"The function calls ${callee.name}, which might not terminate." else
+      s"The function call ${offendingNode} indirectly calls ${callee.name}, which might not terminate."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CallingNonTerminatingFunction(offendingNode.asInstanceOf[FuncApp], callee)
   }
