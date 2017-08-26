@@ -12,3 +12,29 @@ predicate p2(x: Ref)
 	//:: ExpectedOutput(consistency.error)
 	forperm[f] r :: false
 }
+
+predicate p3(x: Ref)
+{
+	//:: ExpectedOutput(consistency.error)
+	[forperm[f] r :: false, true]
+}
+
+
+
+function f1(x: Ref): Bool
+{
+	//:: ExpectedOutput(consistency.error)
+	perm(x.f) == perm(x.g)
+}
+
+function f2(x: Ref): Bool
+{
+	//:: ExpectedOutput(consistency.error)
+	forperm[f] r :: false
+}
+
+function f3(x: Ref): Bool
+{
+	//:: ExpectedOutput(consistency.error)
+	[true, perm(x.f) == perm(x.g)]
+}
