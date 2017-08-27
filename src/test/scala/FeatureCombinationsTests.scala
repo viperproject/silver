@@ -4,11 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-import org.scalatest.{FunSuite, Matchers}
+import scala.language.implicitConversions
+import org.scalatest.{Matchers, FunSuite}
 import viper.silver.ast._
 import viper.silver.ast.utility.Transformer._
-
-import scala.language.implicitConversions
 
 /**
   * Notes from discussing feature unit tests with Malte: 19.02.2016

@@ -7,8 +7,8 @@
 import java.nio.file.{Path, Paths}
 
 import org.scalatest.Suite
-import viper.silver.ast.utility.Rewriter.StrategyInterface
 import viper.silver.ast.{Node, Program}
+import viper.silver.ast.utility.Rewriter.StrategyInterface
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig, TranslatorState}
 import viper.silver.verifier.{AbstractError, Verifier}
 

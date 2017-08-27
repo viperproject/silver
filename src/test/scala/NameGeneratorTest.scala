@@ -6,8 +6,8 @@
 
 package viper.silver
 
+import viper.silver.utility.{SilNameGenerator, NameGenerator}
 import org.scalatest.{BeforeAndAfter, FunSuite}
-import viper.silver.utility.{NameGenerator, SilNameGenerator}
 
 class NameGeneratorTest extends FunSuite with BeforeAndAfter {
   var gen: SilNameGenerator = null

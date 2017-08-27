@@ -39,11 +39,9 @@ requires acc(x.f,1/3) && x.f == 2
 method test04(x: Ref)
 requires acc(x.f,1/3) && x.f == 3
 {
-  //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/0000000000000000/)
   package acc(x.f,1/3) && x.f == 2 --* acc(x.f) //here inconsistency on rhs
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 
