@@ -234,7 +234,8 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
           }
         } else {
           //Called function is the same as the original one => recursion detected
-          if (decrClauseOfOrigFnc.isEmpty) {
+          decrClauseOfOrigFnc match {
+            case None => {
             //There is no decrease clause
             //Give an error, because there is a recursion but no decreases clause
             val functionInOrigBody = if (funcAppInOrigFunc == null) callee else funcAppInOrigFunc
@@ -242,13 +243,9 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
               ErrTrafo({case AssertFailed(_, _, _) => TerminationFailed(func, NoDecClauseSpecified(functionInOrigBody))})
 
             Assert(FalseLit()(func.pos))(func.pos, SimpleInfo(Seq("Recursion but no decClause")), errTr)
-          } else {
-            //Decrease clause is defined
-            assert(!decrClauseOfOrigFnc.get.isInstanceOf[DecStar])
+            }
+            case Some(DecTuple(decreasingExp)) => {
             //Replace in the decreaseClause every argument with the correct call
-            decrClauseOfOrigFnc match {
-
-              case Some(DecTuple(decreasingExp)) =>
                 if (decreasingFunc.isDefined && boundedFunc.isDefined &&
                    (decreasingExp.collect { case p: PredicateAccessPredicate => p }.isEmpty
                     || locationDomain.isDefined)) {
@@ -383,6 +380,11 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                   }
                   EmptyStmt
                 }
+            }
+            case res@Some(DecStar()) => {
+              // Should never happen, because the function 'rewriteFuncBody(_, func, _, _, _)' should only be called
+              // when the decreasing clause of the argument 'func' is not 'decreases *'
+              sys.error(s"Got $res but this isn't supposed to happen")
             }
           }
         }
