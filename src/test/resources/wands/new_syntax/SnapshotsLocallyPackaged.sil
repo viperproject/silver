@@ -77,3 +77,11 @@ requires acc(x.f) && x.f == 1 {
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert false
 }
+
+method test5(x: Ref)
+requires acc(x.f) && x.f == 0 {
+    package acc(x.f, 1/2) && x.f == 1 --* acc(x.f) && false
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
