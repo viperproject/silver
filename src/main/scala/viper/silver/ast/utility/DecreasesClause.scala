@@ -111,6 +111,7 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                               : Stmt = {
     bodyToRewrite match {
       case pap: PredicateAccessPredicate =>
+        val permChecks = rewriteFuncBody(pap.perm, func, funcAppInOrigFunc, alreadyChecked, predicates)
         //Add the nested-assumption if the predicate has another predicate inside of its body
         func.decs match {
           case Some(DecTuple(_)) =>
@@ -121,7 +122,8 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                 if (locationDomain.isDefined && nestedFunc.isDefined) {
                   val formalArgs = pred.formalArgs map (_.localVar)
                   //Generate nested-assumption
-                  rewritePredBodyAsExp(body.replace(ListMap(formalArgs.zip(pap.loc.args):_*)), pap)
+                  val predBody = rewritePredBodyAsExp(body.replace(ListMap(formalArgs.zip(pap.loc.args):_*)), pap)
+                  Seqn(Seq(permChecks, predBody), Nil)(body.pos)
                 } else {
                   if (locationDomain.isEmpty) {
                     Consistency.messages ++= FastMessaging.message(
@@ -131,13 +133,13 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                     Consistency.messages ++= FastMessaging.message(
                       func, "missing nested-relation")
                   }
-                  EmptyStmt
+                  permChecks
                 }
               //Predicate has no body
-              case None => EmptyStmt
+              case None => permChecks
             }
           //No decreasing clause
-          case _ => EmptyStmt
+          case _ => permChecks
         }
 
       case CondExp(cond, thn, els) =>
@@ -333,7 +335,7 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                       )
                     boundFunc :+= replaceExpWithDummyFnc(
                       DomainFuncApp(boundedFunc.get,
-                        Seq(argsForTermProof(i)._2),
+                        Seq(argsForTermProof(i)._1),
                         ListMap(argTypeVarsDecr.head -> argsForTermProof(i)._1.typ,
                           argTypeVarsDecr.last -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos)
                     )
