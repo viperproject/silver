@@ -85,7 +85,6 @@ method t9(r:Ref)
 {
   unfold strange(r)
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/16/)
   assert r.next == null // because otherwise, the predicate instance would be infinite..
 }
 

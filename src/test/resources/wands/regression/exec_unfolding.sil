@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f:Ref
 
 predicate P(x:Ref) {
@@ -5,14 +6,21 @@ predicate P(x:Ref) {
 }
 
 method t01(x:Ref) { 
-  package acc(x.f,1/4)&&acc(P(x.f)) --* (folding P(x) in (unfolding P(x) in (unfolding P(x.f) in acc(x.f,1/4)&&acc(x.f.f,1/4))))
+  package (acc(x.f,1/4)&&acc(P(x.f))) --* acc(x.f,1/4)&&acc(x.f.f,1/4) {
+      fold P(x)
+      unfold P(x)
+      unfold P(x.f)
+  }
   
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
 
 method t02(x:Ref) { 
-  package acc(x.f,1/4) --* (folding P(x) in (unfolding P(x) in acc(x.f,1/4)))
+  package (acc(x.f,1/4)) --* acc(x.f,1/4) {
+      fold P(x)
+      unfold P(x)
+  }
   
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false

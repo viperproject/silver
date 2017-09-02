@@ -5,10 +5,11 @@
  */
 
 package viper.silver.ast
-import viper.silver.ast.pretty.{Infix, LeftAssociative, NonAssociative, PrettyBinaryExpression, PrettyExpression, PrettyOperatorExpression, PrettyUnaryExpression, RightAssociative}
+import viper.silver.ast.MagicWandStructure.MagicWandStructure
+import viper.silver.ast.pretty._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.ast.utility.Rewriter.Traverse
 import viper.silver.ast.utility._
+import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 
 /** Expressions. */
@@ -92,85 +93,32 @@ case class Implies(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(left)
 }
 
+object MagicWandStructure {
+  type MagicWandStructure = MagicWand
+}
 
 case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
-    extends DomainBinExp(MagicWandOp) {
+    extends DomainBinExp(MagicWandOp) with Resource with ResourceAccess {
 
-  /** Erases all ghost operations such as unfolding from this wand.
-    * For example (let A, B and C be free of ghost operations, let P be a predicates,
-    * and let W be a wand):
-    *
-    *     A && unfolding P in B && applying W in C
-    *
-    * will be transformed into
-    *
-    *     A && B && C
-    *
-    * @return The ghost-operations-free version of this wand.
-    */
-  lazy val withoutGhostOperations: MagicWand = {
-    /* We use the post-transformer instead of the pre-transformer in order to
-     * perform bottom-up transformation.
-     * An alternative would be a pre-transformer and passing a 'recursive'
-     * predicate to transform that makes transform recurse if the pre-transformer
-     * is defined.
-     */
-    this.transform({
-      case gop: GhostOperation => gop.body
-      case let: Let => let.body
-    }, Traverse.BottomUp)
-  }
+  override def res(p: Program): Resource = this
 
   // maybe rename this sometime
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
     this.shallowCollect {
       case old: Old => Some(old)
+      case LabelledOld(_, FastParser.LHS_OLD_LABEL) => None
       case lo: LabelledOld => Some(lo)
       case q: QuantifiedExp if q.isHeapDependent(p) => None
       case e: Exp if !e.isHeapDependent(p) => Some(e)
     }.flatten
   }
 
-  def structurallyMatches(other: MagicWand, p: Program): Boolean = {
-    val ignoreExps1 = this.subexpressionsToEvaluate(p)
-    val ignoreExps2 = other.subexpressionsToEvaluate(p)
-
-//    println(s"\nignoreExps1 = $ignoreExps1")
-//    println(s"ignoreExps2 = $ignoreExps2")
-
-    /* It would suffice to define eq for Exps instead Nodes, but
-     * Nodes.children returns a Seq[Nodes]. */
-    def eq(e1: Node, e2: Node): Boolean = (e1, e2) match {
-      case (`e1`, `e1`) => true
-      case _ =>
-//        println(s"\ne1 = $e1, e2 = $e2")
-        val idx1 = ignoreExps1.indexOf(e1)
-//        println(s"idx1 = $idx1")
-
-        if (idx1 >= 0) {
-//          println(ignoreExps2(idx1))
-//          println(ignoreExps2(idx1) == e2)
-
-          ignoreExps2(idx1) == e2
-        } else {
-          val b0 = e1.getClass == e2.getClass
-//          println(s"  comparing classes: $b0")
-          val (subnodes1, otherChildren1) = Nodes.children(e1)
-          val (subnodes2, otherChildren2) = Nodes.children(e2)
-//          println(s"  subnodes1 = ${subnodes1.toList}\n  otherChildren1 = ${otherChildren1.toList}")
-//          println(s"  subnodes2 = ${subnodes2.toList}\n  otherChildren2 = ${otherChildren2.toList}")
-          val b1 = subnodes1.zip(subnodes2).forall { case (e1i, e2i) => eq(e1i, e2i)}
-//          println(s"  comparing subnodes: $b1")
-          val b2 = otherChildren1 == otherChildren2
-//          println(s"  comparing other children: $b2")
-
-          (   b0
-           && b1
-           && b2)
-        }
-    }
-
-    eq(this.left, other.left) && eq(this.right, other.right)
+  def structure(p: Program): MagicWandStructure = {
+    val subexpressionsToEvaluate = this.subexpressionsToEvaluate(p)
+    this.transform({
+      case exp: Exp if subexpressionsToEvaluate.contains(exp) =>
+        LocalVar(exp.typ.toString())(exp.typ)
+    })
   }
 
   override def isValid : Boolean = this match {
@@ -206,7 +154,8 @@ case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo, va
 
 /** A common trait for accessibility predicates. */
 // Note: adding extra instances of AccessPredicate will require adding cases to viper.silver.ast.utility.multiplyExpByPerm method
-sealed trait AccessPredicate extends Exp {
+sealed trait AccessPredicate extends Exp with ResourceAccess {
+  override def res(p: Program): Resource = loc.loc(p)
   def loc: LocationAccess
   def perm: Exp
   final lazy val typ = Bool
@@ -342,8 +291,13 @@ object DomainFuncApp {
 // --- Field and predicate accesses
 
 /** A common trait for expressions accessing a location. */
-sealed trait LocationAccess extends Exp {
+sealed trait LocationAccess extends Exp with ResourceAccess {
   def loc(p : Program): Location
+  override def res(p: Program): Resource = loc(p)
+}
+
+sealed trait ResourceAccess extends Exp {
+  def res(p: Program): Resource
 }
 
 object LocationAccess {
@@ -401,27 +355,9 @@ case class Unfolding(acc: PredicateAccessPredicate, body: Exp)(val pos: Position
   lazy val typ = body.typ
 }
 
-/* Ghost operations used when packaging magic wands */
-sealed trait GhostOperation extends Exp {
-  val body: Exp
+case class Applying(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp {
+  override lazy val check : Seq[ConsistencyError] = (if(!(wand isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${wand.typ} ($wand)", wand.pos)) else Seq()) ++ Consistency.checkPure(body)
   lazy val typ = body.typ
-}
-
-//sealed trait UnFoldingExp extends GhostOperation {
-//  val acc: PredicateAccessPredicate
-//}
-
-case class UnfoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends GhostOperation
-case class FoldingGhostOp(acc: PredicateAccessPredicate, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends GhostOperation
-
-case class ApplyingGhostOp(exp: Exp, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends GhostOperation {
-  override lazy val check : Seq[ConsistencyError] =
-    if(!(exp isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${exp.typ} ($exp)", exp.pos)) else Seq()
-}
-
-case class PackagingGhostOp(wand: MagicWand, body: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends GhostOperation {
-  override lazy val check : Seq[ConsistencyError] =
-    if(!(wand isSubtype Wand)) Seq(ConsistencyError(s"Expected wand but found ${wand.typ} ($wand)", wand.pos)) else Seq()
 }
 
 // --- Old expressions
@@ -431,9 +367,6 @@ sealed trait OldExp extends UnExp {
 }
 
 case class Old(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
-  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp)
-}
-case class ApplyOld(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends OldExp {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp)
 }
 

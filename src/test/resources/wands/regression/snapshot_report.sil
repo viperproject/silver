@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f: Int
 field g: Int
 
@@ -12,6 +13,5 @@ method test01(x: Ref)
   assert x.f==1
 
   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/110/)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/185/)
   assert x.g==1
 }

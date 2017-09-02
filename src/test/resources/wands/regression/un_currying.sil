@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 /* A version of the (un)currying-example with additional sanity checks */
 
 /* The predicate bodies can be arbitrary since the proofs never unfold the
@@ -15,7 +16,10 @@ define C acc(R())
 method uncurry() {
   inhale A --* (B --* C) /* requires */
 
-  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+  package (A && B) --* C {
+      apply A --* (B --* C)
+      apply B --* C
+  }
 
   exhale A && B --* C /* ensures */
 
@@ -27,7 +31,12 @@ method uncurry() {
 method curry() {
   inhale A && B --* C /* requires */
 
-  package A --* packaging (B --* applying (A && B --* C) in C) in B --* C
+  package (A) --* (B --* C) {
+      package (B --* C) {
+          apply A && B --* C
+      }
+
+  }
 
   exhale A --* (B --* C) /* ensures */
 
@@ -56,7 +65,9 @@ method curry_test02(x: Ref)
 {
   inhale acc(P())
 
-  package acc(Q()) --* (applying ((acc(P()) && acc(Q())) --* acc(R())) in acc(R()))
+  package (acc(Q())) --* acc(R()) {
+      apply (acc(P()) && acc(Q())) --* acc(R())
+  }
 
   //:: ExpectedOutput(exhale.failed:insufficient.permission)
   exhale acc(P())
@@ -66,7 +77,12 @@ method curry_test03() {
   inhale C
   inhale true --* C
 
-  package true --* packaging (true --* applying (true --* C) in C) in true
+  package (true) --* true {
+      package (true --* C) {
+          apply true --* C
+      }
+
+  }
 
   exhale true --* true
   exhale C

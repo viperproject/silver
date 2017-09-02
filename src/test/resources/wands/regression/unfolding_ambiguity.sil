@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f: Int
 
 method t(x:Ref,y:Ref) {
@@ -5,11 +6,9 @@ method t(x:Ref,y:Ref) {
   //:: MissingOutput(wand.not.wellformed:insufficient.permission, /carbon/issue/105/)
   //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
   //:: MissingOutput(wand.not.wellformed:insufficient.permission, /silicon/issue/201/)
-  //:: UnexpectedOutput(package.failed:insufficient.permission, /silicon/issue/201/)
   package acc(y.f)&&acc(P(x)) --* acc(y.f)&&(unfolding P(x) in true)
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 

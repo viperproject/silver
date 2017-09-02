@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 /* This example encodes and specifies an iterative computation of the
  * sum of a recursively defined linked-list. Magic wands are used to
  * book-keep permissions in the loop.
@@ -27,7 +28,9 @@ requires acc(List(xs))
   i := sum_rec(xs) 
   unfold List(xs) 
   
-  package true --* (folding List(xs) in acc(List(xs)) && sum_rec(xs)==i)
+  package (true) --* acc(List(xs)) && sum_rec(xs)==i {
+      fold List(xs)
+  }
 
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false  

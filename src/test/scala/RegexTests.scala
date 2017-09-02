@@ -12,7 +12,6 @@ import viper.silver.ast._
 import viper.silver.ast.utility.Rewriter._
 import viper.silver.ast.utility._
 
-import scala.collection.immutable.ListSet
 import scala.collection.mutable
 import scala.language.implicitConversions
 

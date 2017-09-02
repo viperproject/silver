@@ -1,5 +1,5 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 //:: IgnoreFile(/Silver/issue/125/)
-//:: IgnoreFile(/Carbon/issue/90/)
 
 /* This example is a version of list_insert.sil from which all
  * sequence-related assertions have been erased (in previous versions
@@ -62,7 +62,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
   {
     // assert old(elems(xs))[i+1] == elems(nxt)[0]
 
-    wand w := A --* B
+    var oldCrt: Ref := crt
     var prev: Ref := crt
 
     unfold List(nxt)
@@ -70,7 +70,10 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     nxt := nxt.next
     i := i + 1
 
-    package A --* folding List(prev) in applying w in B
+    package (A) --* B {
+        fold List(prev)
+        apply acc(List(oldCrt)) --* acc(List(xs))
+    }
   }
 
 	/* Create a new node with value x and append the list tail starting at nxt to it. */

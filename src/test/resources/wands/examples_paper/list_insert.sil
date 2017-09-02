@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 //:: IgnoreFile(/Silver/issue/125/)
 //:: IgnoreFile(/carbon/issue/102/)
 
@@ -54,7 +55,7 @@ method insert(xs: Ref, x:Int) returns (i: Int)
   i := 0
 
   define A acc(List(crt))
-  define B acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ lhs(elems(crt))
+  define B acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ old[lhs](elems(crt))
 
   unfold List(xs)
   crt := xs
@@ -76,8 +77,8 @@ method insert(xs: Ref, x:Int) returns (i: Int)
     invariant A --* B
   {
     assert old(elems(xs))[i+1] == elems(nxt)[0]
+    var oi: Int := i
 
-    wand w := A --* B
     var prev: Ref := crt
 
     unfold List(nxt)
@@ -85,7 +86,10 @@ method insert(xs: Ref, x:Int) returns (i: Int)
     nxt := nxt.next
     i := i + 1
 
-   package A --* folding List(prev) in applying w in B
+   package (A) --* B {
+       fold List(prev)
+       apply acc(List(prev)) --* acc(List(xs)) && elems(xs) == old(elems(xs))[0..oi] ++ old[lhs](elems(prev))
+   }
   }
 
 	/* Create a new node with value x and append the list tail starting at nxt to it. */

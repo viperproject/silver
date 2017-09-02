@@ -11,9 +11,8 @@ import java.nio.file._
 import collection.mutable
 import org.scalatest.{BeforeAndAfterAll, ConfigMap}
 import viper.silver.verifier._
-import viper.silver.ast.{IntLit, SourcePosition, TranslatedPosition}
+import viper.silver.ast.{SourcePosition, TranslatedPosition}
 import viper.silver.frontend.Frontend
-import viper.silver.verifier.errors.{AssertFailed, LoopInvariantNotPreserved}
 
 /** A test suite for verification toolchains that use SIL. */
 abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll {

@@ -1,0 +1,22 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
+field a: Int
+field b: Int
+
+method test0(x: Ref)
+requires acc(x.a, 1/2) {
+    package acc(x.b, 1/2) --* true {
+        //:: ExpectedOutput(assert.failed:assertion.false)
+        assert perm(x.a) == perm(x.b)
+    }
+    assert acc(x.a, 1/2)
+}
+
+method test1(x: Ref) {
+    package acc(x.a, 1/2) && acc(x.b, 1/2) --* (acc(x.a, 1/2) && acc(x.b) --* true) {
+        assert perm(x.a) == perm(x.b)
+        package acc(x.a, 1/2) && acc(x.b) --* true {
+            //:: ExpectedOutput(assert.failed:assertion.false)
+            assert perm(x.a) == perm(x.b)
+        }
+    }
+}

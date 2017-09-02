@@ -1,10 +1,8 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter._
 
 import scala.collection.mutable
-import viper.silver.ast._
 
 /* TODO:
  *   - Removed commented code

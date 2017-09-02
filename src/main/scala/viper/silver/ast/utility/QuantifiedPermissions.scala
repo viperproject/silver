@@ -7,6 +7,7 @@
 package viper.silver.ast.utility
 
 import scala.collection.mutable
+import scala.language.postfixOps
 import viper.silver.ast._
 
 /** Utility methods for quantified predicate permissions. */
@@ -23,10 +24,10 @@ object QuantifiedPermissions {
     * predicate only, then the returned condition will be a [[TrueLit]].
     */
   object QuantifiedPermissionAssertion {
-    def unapply(forall: Forall): Option[(Forall, Exp, AccessPredicate)] = {
+    def unapply(forall: Forall): Option[(Forall, Exp, ResourceAccess)] = {
       forall match {
-        case SourceQuantifiedPermissionAssertion(`forall`, condition, acc: AccessPredicate) =>
-          Some((forall, condition, acc))
+        case SourceQuantifiedPermissionAssertion(`forall`, condition, res: ResourceAccess) =>
+          Some((forall, condition, res))
         case _ =>
           None
       }
@@ -87,6 +88,12 @@ object QuantifiedPermissions {
     quantifiedPredicates(toVisit, collected, visited, program)
 
     collected
+  }
+
+  def quantifiedMagicWands(root: Node, program: Program): collection.Set[MagicWandStructure.MagicWandStructure] = {
+    root collect {
+      case QuantifiedPermissionAssertion(_, _, wand: MagicWand) => wand.structure(program)
+    } toSet
   }
 
   private def quantifiedFields(toVisit: mutable.Queue[Member],

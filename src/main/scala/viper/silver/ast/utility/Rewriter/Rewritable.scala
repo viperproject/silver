@@ -6,8 +6,6 @@
 
 package viper.silver.ast.utility.Rewriter
 
-import viper.silver.ast.utility.Visitor
-
 /**
   * Trait Rewritable provides an interface that specifies which methods are required for the rewriter to work with.
   * For classes that implement product (especially case classes) everything is already implemented here and one only has to extend this base class

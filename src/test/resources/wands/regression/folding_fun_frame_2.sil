@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f: Int
 field g: Int 
 
@@ -18,7 +19,9 @@ requires acc(Single(xs))
   i := sum(xs) 
    
   unfold Single(xs) 
-  package true --* (folding Single(xs) in acc(Single(xs)) && sum(xs)==i) 
+  package (true) --* acc(Single(xs)) && sum(xs)==i {
+      fold Single(xs)
+  }
   
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false

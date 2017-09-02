@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f: Int
 field g: Int 
 
@@ -20,7 +21,9 @@ requires acc(Single(xs))
   xs.f := 3
   fold Single(xs) 
    
-  package true --* (unfolding acc(Single(xs)) in acc(xs.f)&&xs.f==3) 
+  package (true) --* acc(xs.f)&&xs.f==3 {
+      unfold acc(Single(xs))
+  }
   
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
@@ -32,7 +35,10 @@ method t02(xs:Ref)
 requires acc(Single(xs)) 
 {
    assume sum(xs) == 3
-  package true --* (unfolding acc(Single(xs)) in folding acc(Single(xs)) in acc(Single(xs))&&sum(xs) == 3) 
+  package (true) --* acc(Single(xs))&&sum(xs) == 3 {
+      unfold acc(Single(xs))
+      fold acc(Single(xs))
+  }
   
    //:: ExpectedOutput(assert.failed:assertion.false)
   assert false

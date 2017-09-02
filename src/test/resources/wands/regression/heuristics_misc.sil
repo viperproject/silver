@@ -1,5 +1,5 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 //:: IgnoreFile(/Silver/issue/125/)
-//:: IgnoreFile(/Carbon/issue/90/)
 
 field __CONFIG_HEURISTICS: Bool
 
@@ -65,7 +65,6 @@ method test03() {
   inhale acc(List(nxt))
   inhale A --* B
 
-  wand w := A --* B
   var prev: Ref := crt
   unfold List(nxt)
   crt := nxt
@@ -98,8 +97,6 @@ method test05(x: Ref) {
 
   inhale p != null && acc(p.l) && acc(Tree(p.l)) && p.l != null
   inhale A --* B
-
-  wand w := A --* B
 
   unfold acc(Tree(p.l))
   p := p.l

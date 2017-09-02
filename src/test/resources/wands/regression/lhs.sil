@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 //:: IgnoreFile(/carbon/issue/102/)
 
 field f: Int
@@ -17,15 +18,17 @@ method test1(p: Ref)
 {
   p.f := 10
 
-  package acc(p.g) --* folding Pair(p) in acc(Pair(p)) && sum(p) == 10 + lhs(p.g)
+  package (acc(p.g)) --* acc(Pair(p)) && sum(p) == 10 + old[lhs](p.g) {
+      fold Pair(p)
+  }
   // TODO: package acc(p.g) --* folding Pair(p) in sum(p) == 10 + lhs(p.g)  must be rejected!
 }
 
 method test2(p: Ref)
   requires acc(p.g)
-  requires acc(p.g) --* acc(Pair(p)) && sum(p) == 10 + lhs(p.g)
+  requires acc(p.g) --* acc(Pair(p)) && sum(p) == 10 + old[lhs](p.g)
 {
   p.g := 3
-  apply acc(p.g) --* acc(Pair(p)) && sum(p) == 10 + lhs(p.g)
+  apply acc(p.g) --* acc(Pair(p)) && sum(p) == 10 + old[lhs](p.g)
   assert sum(p) == 13
 }

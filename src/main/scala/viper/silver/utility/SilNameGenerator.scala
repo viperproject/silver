@@ -7,7 +7,6 @@
 package viper.silver.utility
 
 import viper.silver.ast.utility.Consistency
-import viper.silver.parser.FastParser
 
 /**
  * A name generator for SIL.

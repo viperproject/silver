@@ -18,14 +18,12 @@ object Expressions {
          | _: MagicWand
          => false
 
-    case lv: AbstractLocalVar if lv.typ == Wand => false
-
     case UnExp(e0) => isPure(e0)
     case InhaleExhaleExp(in, ex) => isPure(in) && isPure(ex)
     case BinExp(e0, e1) => isPure(e0) && isPure(e1)
     case CondExp(cnd, thn, els) => isPure(cnd) && isPure(thn) && isPure(els)
     case unf: Unfolding => isPure(unf.body)
-    case gop: GhostOperation => false
+    case app: Applying => isPure(app.body)
     case QuantifiedExp(_, e0) => isPure(e0)
     case Let(_, _, body) => isPure(body)
 
@@ -55,6 +53,7 @@ object Expressions {
       case _: AccessPredicate | _: MagicWand => TrueLit()()
       case fa@Forall(vs,ts,body) => Forall(vs,ts,asBooleanExp(body))(fa.pos,fa.info)
       case Unfolding(predicate, exp) => asBooleanExp(exp)
+      case Applying(_, exp) => asBooleanExp(exp)
     })
   }
 

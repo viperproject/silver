@@ -638,7 +638,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case FieldAssign(lhs, rhs) => show(lhs) <+> ":=" <+> show(rhs)
       case Fold(e) => text("fold") <+> show(e)
       case Unfold(e) => text("unfold") <+> show(e)
-      case Package(e) => text("package") <+> show(e)
+      case Package(e, proofScript) => text("package") <+> show(e) <+> showBlock(proofScript)
       case Apply(e) => text("apply") <+> show(e)
       case Inhale(e) => text("inhale") <+> show(e)
       case Exhale(e) => text("exhale") <+> show(e)
@@ -720,20 +720,12 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       text(predicateName) <> parens(ssep(params map show, char (',') <> space))
     case Unfolding(acc, exp) =>
       parens(text("unfolding") <+> show(acc) <+> "in" <+> show(exp))
-    case UnfoldingGhostOp(acc, exp) =>
-      parens(text("unfolding") <+> show(acc) <+> "in" <+> show(exp))
-    case FoldingGhostOp(acc, exp) =>
-      parens(text("folding") <+> show(acc) <+> "in" <+> show(exp))
-    case PackagingGhostOp(wand, in) =>
-      parens(text("packaging") <+> show(wand) <+> "in" <+> show(in))
-    case ApplyingGhostOp(wand, in) =>
-      parens(text("applying") <+> show(wand) <+> "in" <+> show(in))
+    case Applying(wand, exp) =>
+      parens((text("applying") <+> show(wand) <+> "in" <+> show(exp)))
     case Old(exp) =>
       text("old") <> parens(show(exp))
     case LabelledOld(exp,label) =>
       text("old") <> brackets(label) <> parens(show(exp))
-    case ApplyOld(exp) =>
-      text("given") <> parens(show(exp))
     case Let(v, exp, body) =>
       parens(text("let") <+> text(v.name) <+> "==" <+> parens(show(exp)) <+> "in" <+> show(body))
     case CondExp(cond, thn, els) =>

@@ -8,7 +8,9 @@ package viper.silver.ast
 
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
 import utility.{Consistency, DomainInstances, Types, Nodes, Visitor}
+import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.cfg.silver.CfgGenerator
+import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 import viper.silver.utility.{DependencyAware, CacheHelper}
 import scala.collection.immutable
@@ -22,6 +24,11 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   val scopedDecls: Seq[Declaration] =
     domains ++ fields ++ functions ++ predicates ++ methods ++
     domains.flatMap(d => {d.axioms ++ d.functions})
+
+  lazy val magicWandStructures: Seq[MagicWandStructure] =
+    this.deepCollect({
+      case wand: MagicWand => wand.structure(this)
+    }).distinct
 
   override lazy val check : Seq[ConsistencyError] =
     Consistency.checkContextDependentConsistency(this) ++
@@ -59,6 +66,16 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       declarationMap.get(name) match {
         case Some(d) => d match {
           case _: T => None
+          case _ => Some(ConsistencyError(s"No matching identifier $name found of type $expected, instead found of type ${d.getClass.getSimpleName}.", n.pos))
+        }
+        case None => Some(ConsistencyError(s"No matching identifier $name found of type $expected.", n.pos))
+      }
+    }
+    def checkNameUseLabel(name: String, n: Positioned, expected: String, declarationMap: immutable.HashMap[String, Declaration]) : Option[ConsistencyError] = {
+      if (name == FastParser.LHS_OLD_LABEL) None
+      else declarationMap.get(name) match {
+        case Some(d) => d match {
+          case _: Label => None
           case _ => Some(ConsistencyError(s"No matching identifier $name found of type $expected, instead found of type ${d.getClass.getSimpleName}.", n.pos))
         }
         case None => Some(ConsistencyError(s"No matching identifier $name found of type $expected.", n.pos))
@@ -107,7 +124,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
               case f: FieldAccess => checkNameUse[Field](f.field.name, f, "Field", declarationMap)
               case p: PredicateAccess => checkNameUse[Predicate](p.predicateName, p, "Predicate", declarationMap)
               case g: Goto => checkNameUse[Label](g.target, g, "Label", declarationMap)
-              case l: LabelledOld => checkNameUse[Label](l.oldLabel, l, "Label", declarationMap)
+              case l: LabelledOld => checkNameUseLabel(l.oldLabel, l, "Label", declarationMap)
               case _ => None
             }
             optionalError match {
@@ -421,8 +438,11 @@ sealed trait Contracted extends Member {
   def posts: Seq[Exp]
 }
 
+/** A common trait for resources (fields, predicates and magic wands) */
+trait Resource extends Node with Positioned with Infoed with TransformableErrors
+
 /** A common trait for locations (fields and predicates). */
-sealed trait Location extends Member
+sealed trait Location extends Member with Resource
 
 /** Common superclass for domain functions and binary/unary operators. */
 sealed trait AbstractDomainFunc extends FuncLike with Positioned with Infoed with TransformableErrors

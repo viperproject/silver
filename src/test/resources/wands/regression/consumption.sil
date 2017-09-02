@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f: Int
 field g: Int
 field h: Int
@@ -15,9 +16,9 @@ method test00(p: Ref)
   requires acc(p.f) --* acc(p.g)
 {
     // h: p.f * (p.f --* p.g)
-  package true
-            --*
-          applying (acc(p.f) --* acc(p.g)) in true
+  package (true) --* true {
+      apply acc(p.f) --* acc(p.g)
+  }
 
     // h: true --* true
 
@@ -32,11 +33,10 @@ method test01(p: Ref)
   requires acc(p.h) --* acc(p.g)
 {
     // h: p.f * p.h * (p.h --* p.g)
-  package true
-            --*
-          applying (acc(p.h) --* acc(p.g)) in
-            folding acc(Pair(p)) in
-             acc(Pair(p))
+  package (true) --* acc(Pair(p)) {
+      apply acc(p.h) --* acc(p.g)
+      fold acc(Pair(p))
+  }
     // h: (true --* p.Pair)
 
   assert true --* acc(Pair(p));
@@ -59,7 +59,9 @@ method test03(x: Ref)
   requires acc(x.f) && acc(x.g)
 {
   //:: ExpectedOutput(package.failed:insufficient.permission)
-  package true --* folding acc(Pair(x)) in acc(x.f)
+  package (true) --* acc(x.f) {
+      fold acc(Pair(x))
+  }
 }
 
 method test04(x: Ref, y: Ref)
@@ -67,7 +69,9 @@ method test04(x: Ref, y: Ref)
   requires acc(x.f) && acc(x.g)
 {
   //:: ExpectedOutput(package.failed:insufficient.permission)
-  package true --* folding acc(Pair(x)) in acc(y.f)
+  package (true) --* acc(y.f) {
+      fold acc(Pair(x))
+  }
 }
 
 method test05(x: Ref, y: Ref)
@@ -75,5 +79,7 @@ method test05(x: Ref, y: Ref)
   requires acc(x.f) && acc(x.g)
   ensures true --* acc(y.f)
 {
-  package true --* folding acc(Pair(x)) in acc(y.f)
+  package (true) --* acc(y.f) {
+      fold acc(Pair(x))
+  }
 }

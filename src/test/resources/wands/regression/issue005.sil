@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f: Ref
 field g: Ref
 field h: Ref
@@ -19,12 +20,10 @@ method test01(x: Ref)
   requires acc(x.f) --* acc(x.g)
   requires acc(x.g) --* acc(x.h)
 {
-  package
-    acc(x.f)
-      --*
-    applying (acc(x.f) --* acc(x.g))
-    in applying (acc(x.g) --* acc(x.h))
-    in acc(x.h)
+  package (acc(x.f)) --* acc(x.h) {
+      apply acc(x.f) --* acc(x.g)
+      apply acc(x.g) --* acc(x.h)
+  }
 
   exhale acc(x.f) --* acc(x.h)
 

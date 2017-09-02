@@ -1,15 +1,24 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f: Int
 
 method t01(x:Ref) {
-  package acc(x.f)&&x.f==2 --* (folding P(x) in (unfolding P(x) in acc(x.f)&&x.f==2))
+  package (acc(x.f)&&x.f==2) --* acc(x.f)&&x.f==2 {
+      fold P(x)
+      unfold P(x)
+  }
 
    //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
 
 method t02(x:Ref) {
-  package acc(x.f,1/2) --*
-        (packaging (acc(x.f,1/2) --* (folding Q(x) in (folding Q(x) in acc(Q(x),2/1)))) in true)
+  package (acc(x.f,1/2)) --* true {
+      package (acc(x.f,1/2) --* acc(Q(x),2/1)) {
+          fold Q(x)
+          fold Q(x)
+      }
+
+  }
 
    //:: ExpectedOutput(assert.failed:assertion.false)
   assert false

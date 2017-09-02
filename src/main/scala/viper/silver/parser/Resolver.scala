@@ -6,7 +6,7 @@
 
 package viper.silver.parser
 
-import scala.collection.{Set, mutable}
+import scala.collection.mutable
 import scala.reflect._
 import viper.silver.ast.MagicWandOp
 import viper.silver.ast.utility.Visitor
@@ -171,12 +171,13 @@ case class TypeChecker(names: NameAnalyser) {
       case PUnfold(e) =>
         acceptNonAbstractPredicateAccess(e, "abstract predicates cannot be unfolded")
         check(e, Bool)
-      case PPackageWand(e) =>
+      case PPackageWand(e, proofScript) =>
         check(e,Wand)
-        checkMagicWand(e, allowWandRefs = false)
+        checkMagicWand(e)
+        check(proofScript)
       case PApplyWand(e) =>
         check(e,Wand)
-        checkMagicWand(e, allowWandRefs = true)
+        checkMagicWand(e)
       case PExhale(e) =>
         check(e, Bool)
       case PAssert(e) =>
@@ -264,12 +265,6 @@ case class TypeChecker(names: NameAnalyser) {
         val msg = "expected variable in fresh read permission block"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
         check(s)
-      case plw @ PLetWand(_, wand) =>
-        check(wand, Wand)
-        wand match {
-          case pbe: PBinExp if pbe.opName == MagicWandOp.op && pbe.typ == PWandType() => /* Good */
-          case _ => messages ++= FastMessaging.message(plw, s"Expected a wand literal")
-        }
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
@@ -299,8 +294,7 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def checkMagicWand(e: PExp, allowWandRefs: Boolean) = e match {
-    case _: PIdnUse if allowWandRefs =>
+  def checkMagicWand(e: PExp) = e match {
     case PBinExp(_, MagicWandOp.op, _) =>
     case _ =>
       messages ++= FastMessaging.message(e, "expected magic wand")
@@ -585,11 +579,14 @@ case class TypeChecker(names: NameAnalyser) {
                 }
               }
 
-            case pue: PUnFoldingExp =>
-              if (!isCompatible(pue.acc.loc.typ, Bool)) {
-                messages ++= FastMessaging.message(pue, "expected predicate access")
+            case pu: PUnfolding =>
+              if (!isCompatible(pu.acc.loc.typ, Bool)) {
+                messages ++= FastMessaging.message(pu, "expected predicate access")
               }
-              acceptNonAbstractPredicateAccess(pue.acc, "abstract predicates cannot be (un)folded")
+              acceptNonAbstractPredicateAccess(pu.acc, "abstract predicates cannot be unfolded")
+
+            case PApplying(wand, _) =>
+              checkMagicWand(wand)
 
             case pfa@PFieldAccess(rcv, idnuse) =>
               /* For a field access of the type rcv.fld we have to ensure that the
@@ -627,13 +624,6 @@ case class TypeChecker(names: NameAnalyser) {
                 else
                   ppa.predicate = predicate
               }
-
-            case PPackagingGhostOp(wand, in) =>
-              checkMagicWand(wand, allowWandRefs = false)
-
-            case PApplyingGhostOp(wand, in) =>
-              checkMagicWand(wand, allowWandRefs = true)
-
             case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidAndResolved =>
               check(pecl.pElementType)
 
@@ -670,7 +660,6 @@ case class TypeChecker(names: NameAnalyser) {
           case decl @ PFormalArgDecl(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PField(_, typ) => setPIdnUseTypeAndEntity(piu, typ, decl)
           case decl @ PPredicate(_, _, _) => setPIdnUseTypeAndEntity(piu, Pred, decl)
-          case decl: PLetWand => setPIdnUseTypeAndEntity(piu, Wand, decl)
           case x => issueError(piu, s"expected identifier, but got $x")
         }
 
@@ -884,7 +873,8 @@ case class NameAnalyser() {
             // domain types can also be type variables, which need not be declared
             // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)
             if (!i.parent.isInstanceOf[PDomainType] && !i.parent.isInstanceOf[PGoto] &&
-            !(i.parent.isInstanceOf[PLabelledOld] && i==i.parent.asInstanceOf[PLabelledOld].label)) {
+            !(i.parent.isInstanceOf[PLabelledOld] && i==i.parent.asInstanceOf[PLabelledOld].label) &&
+            !(name == FastParser.LHS_OLD_LABEL && i.parent.isInstanceOf[PLabelledOld])) {
               messages ++= FastMessaging.message(i, s"identifier $name not defined.")
             }
           case localVar : PLocalVarDecl =>

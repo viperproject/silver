@@ -8,6 +8,7 @@ package viper.silver.ast.utility
 
 import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast._
+import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}
 
@@ -66,9 +67,9 @@ object Consistency {
     // sets and multisets
     "Set", "Multiset", "union", "intersection", "setminus", "subset",
     // prover hint expressions
-    "unfolding", "in", "folding", "applying", "packaging",
+    "unfolding", "in", "applying",
     // old expression
-    "old", "lhs",
+    "old", FastParser.LHS_OLD_LABEL,
     // other expressions
     "let",
     // quantification
@@ -111,7 +112,7 @@ object Consistency {
   def noOld(n: Node) = !n.existsDefined { case _: Old => }
 
   /** Returns true if the given node contains no labelled-old expression. */
-  def noLabelledOld(n: Node) = !n.existsDefined { case _: LabelledOld => }
+  def noLabelledOld(n: Node) = !n.existsDefined { case LabelledOld(_, label) if label != FastParser.LHS_OLD_LABEL => }
 
   /** Returns true if the given node contains no result. */
   def noResult(n: Node) = !n.existsDefined { case _: Result => }
@@ -233,7 +234,7 @@ object Consistency {
 
   def noGhostOperations(n: Node) = !n.existsDefined {
     case u: Unfolding if !u.isPure =>
-    case gop: GhostOperation if !gop.isInstanceOf[Unfolding] =>
+    case a: Applying if !a.isPure =>
   }
 
   /** Returns true iff the given expression is a valid trigger. */
@@ -320,35 +321,42 @@ object Consistency {
     */
   def checkContextDependentConsistency(n: Node, c: Context = Context()) : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
-    n.visitWithContext(c) (c => {
-      case _: Package =>
-        c.copy(insidePackageStmt = true)
-
-      case ghop: GhostOperation =>
-        if(!c.insideWandStatus.isInside)
-          s :+= ConsistencyError("Ghost operations may only be used when packaging magic wands.", ghop.pos)
-        c.copy(insidePackageStmt = c.insidePackageStmt || ghop.isInstanceOf[PackagingGhostOp])
+    n.visitWithContext(c)(c => {
+      case Package(_, proofScript @ Seqn(_, locals)) =>
+        s ++= checkMagicWandProofScript(proofScript, locals.map({
+          case localVar: LocalVarDecl => localVar
+        }))
+        c.copy(insideWandStatus = InsideWandStatus.Yes)
 
       case mw @ MagicWand(lhs, rhs) =>
+        s ++= checkWandRelatedOldExpressions(lhs, Context(insideWandStatus = InsideWandStatus.Left))
         s ++= checkWandRelatedOldExpressions(rhs, Context(insideWandStatus = InsideWandStatus.Right))
 
-        if(!noGhostOperations(lhs))
-          s :+= ConsistencyError("Ghost operations may not occur on the left of wands.", lhs.pos)
-        if (!c.insidePackageStmt && !noGhostOperations(rhs))
-          s :+= ConsistencyError("Ghost operations may only occur inside wands when these are packaged.", rhs.pos)
-
-        s ++= checkIfValidChainOfGhostOperations(rhs, mw)
+        if(!noGhostOperations(mw))
+          s :+= ConsistencyError("Ghost operations may not occur inside of wands.", mw.pos)
 
         c.copy(insideWandStatus = InsideWandStatus.Yes)
 
-      case po: ApplyOld =>
-        if(!c.insideWandStatus.isInside)
-          s :+= ConsistencyError("given-expressions may only occur inside wands.", po.pos)
+      case po@LabelledOld(_, FastParser.LHS_OLD_LABEL) if !c.insideWandStatus.isInside =>
+        s :+= ConsistencyError("Labelled old expressions with \"lhs\" label may only occur inside wands and their proof scripts.", po.pos)
+
         c
     })
     s
   }
 
+  private def checkMagicWandProofScript(script: Stmt, locals: Seq[LocalVarDecl]): Seq[ConsistencyError] =
+    script.shallowCollect({
+      case fa: FieldAssign =>
+        Some(ConsistencyError("Field assignments are not allowed in magic wand proof scripts.", fa.pos))
+      case ne: NewStmt =>
+        Some(ConsistencyError("New statements statements are not allowed in magic wand proof scripts.", ne.pos))
+      case wh: While =>
+        Some(ConsistencyError("While statements are not allowed in magic wand proof scripts.", wh.pos))
+      case loc @ LocalVarAssign(LocalVar(varName), _) if !locals.exists(_.name == varName) =>
+        Some(ConsistencyError("Can only assign to local variables that were declared inside the proof script.", loc.pos))
+      case _: Package => None
+    }).flatten
 
   private def checkWandRelatedOldExpressions(n: Node, c: Context): Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
@@ -357,25 +365,9 @@ object Consistency {
         s ++= checkWandRelatedOldExpressions(lhs, c.copy(insideWandStatus = InsideWandStatus.Left))
         s ++= checkWandRelatedOldExpressions(rhs, c.copy(insideWandStatus = InsideWandStatus.Right))
 
-      case po: ApplyOld =>
-        if(!c.insideWandStatus.isRight)
-          s :+= ConsistencyError("Wands may contain given-expressions on the rhs only.", po.pos)
+      case po @ LabelledOld(_, FastParser.LHS_OLD_LABEL) if !c.insideWandStatus.isRight =>
+          s :+= ConsistencyError("Wands may use the old[lhs]-expression on the rhs and in their proof script only.", po.pos)
     })
-    s
-  }
-
-  private def checkIfValidChainOfGhostOperations(n: Node, root: MagicWand): Seq[ConsistencyError] = {
-    var s = Seq.empty[ConsistencyError]
-    n match {
-      case gop: GhostOperation => s ++= checkIfValidChainOfGhostOperations(gop.body, root)
-      case let: Let => s ++= checkIfValidChainOfGhostOperations(let.body, root)
-      case _ =>
-        if(!noGhostOperations(n))
-          s :+= ConsistencyError( "Magic wand has unsupported shape. "
-            + "Its RHS must be of the shape 'GOp1 in GOp2 in ... in A', where the GOps are "
-            + "(impure) ghost operations, and where the final in-clause assertion A may "
-            + "only contain pure unfolding expressions.", root.pos)
-    }
     s
   }
 
@@ -391,6 +383,5 @@ object Consistency {
   }
 
   /** Context for context dependent consistency checking. */
-  case class Context(insidePackageStmt: Boolean = false,
-                     insideWandStatus: InsideWandStatus = InsideWandStatus.No)
+  case class Context(insideWandStatus: InsideWandStatus = InsideWandStatus.No)
 }

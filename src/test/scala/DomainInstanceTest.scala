@@ -7,8 +7,6 @@
 import java.nio.file.Paths
 
 import TestHelpers.MockSilFrontend
-
-import scala.language.implicitConversions
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast._
 

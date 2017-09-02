@@ -1,5 +1,5 @@
-import org.scalatest.{FunSuite, Matchers}
-import viper.silver.ast.utility.Rewriter.{Query, Rewritable, StrategyBuilder}
+import org.scalatest.FunSuite
+import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder}
 
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public

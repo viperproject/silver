@@ -6,7 +6,6 @@
 
 package viper.silver.parser
 
-
 /* TODO: This is basically a copy of silver.ast.utility.Transformer. Can we share code?
  *       This could be done by using tree visiting and rewriting functionality from Kiama,
   *      or to implement something generic ourselves. Shapeless or Scala Macros might be
@@ -62,11 +61,7 @@ object Transformer {
 
 
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
-
-        case PUnfoldingGhostOp(acc, exp) => PUnfoldingGhostOp(go(acc), go(exp))
-        case PFoldingGhostOp(acc, exp) => PFoldingGhostOp(go(acc), go(exp))
-        case PApplyingGhostOp(wand, exp) => PApplyingGhostOp(go(wand), go(exp))
-        case PPackagingGhostOp(wand, exp) => PPackagingGhostOp(go(wand), go(exp))
+        case PApplying(wand, exp) => PApplying(go(wand), go(exp))
 
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map go, go(exp))
@@ -82,7 +77,6 @@ object Transformer {
         case PAccPred(loc, perm) => PAccPred(go(loc), go(perm))
         case POld(e) => POld(go(e))
         case PLabelledOld(lbl, e) => PLabelledOld(go(lbl), go(e))
-        case PApplyOld(e) => PApplyOld(go(e))
         case PEmptySeq(t) => PEmptySeq(go(t))
         case PExplicitSeq(elems) => PExplicitSeq(elems map go)
         case PRangeSeq(low, high) => PRangeSeq(go(low), go(high))
@@ -101,7 +95,7 @@ object Transformer {
         case PSeqn(ss) => PSeqn(ss map go)
         case PFold(e) => PFold(go(e))
         case PUnfold(e) => PUnfold(go(e))
-        case PPackageWand(e) => PPackageWand(go(e))
+        case PPackageWand(e, proofScript) => PPackageWand(go(e), go(proofScript))
         case PApplyWand(e) => PApplyWand(go(e))
         case PExhale(e) => PExhale(go(e))
         case PAssert(e) => PAssert(go(e))
@@ -118,8 +112,7 @@ object Transformer {
         case PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)
         case PLabel(idndef, invs) => PLabel(go(idndef), invs map go)
         case PGoto(target) => PGoto(go(target))
-        case PLetWand(idndef, wand) => PLetWand(go(idndef), go(wand))
-        case PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go), go(exp))
+        case PDefine(idndef, optArgs, exp) => PDefine(go(idndef), optArgs map (_ map go) , go(exp))
         case PLet(exp, nestedScope) => PLet(go(exp), go(nestedScope))
         case PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))
         case _: PSkip => parent
@@ -183,11 +176,7 @@ object Transformer {
     case (p: PCall, Seq(func: PIdnUse, args: Seq[PExp@unchecked], explicitType: Option[PType@unchecked])) => PCall(func, args, explicitType)
 
     case (p: PUnfolding, Seq(acc: PAccPred, exp: PExp)) => PUnfolding(acc, exp)
-
-    case (p: PUnfoldingGhostOp, Seq(acc: PAccPred, exp: PExp)) => PUnfoldingGhostOp(acc, exp)
-    case (p: PFoldingGhostOp, Seq(acc: PAccPred, exp: PExp)) => PFoldingGhostOp(acc, exp)
-    case (p: PApplyingGhostOp, Seq(wand: PExp, exp: PExp)) => PApplyingGhostOp(wand, exp)
-    case (p: PPackagingGhostOp, Seq(wand: PExp, exp: PExp)) => PPackagingGhostOp(wand, exp)
+    case (p: PApplying, Seq(wand: PExp, exp: PExp)) => PApplying(wand, exp)
 
     case (p: PExists, Seq(vars: Seq[PFormalArgDecl@unchecked], exp: PExp)) => PExists(vars, exp)
     case (p: PForall, Seq(vars: Seq[PFormalArgDecl@unchecked], triggers: Seq[PTrigger@unchecked], exp: PExp)) => PForall(vars, triggers, exp)
@@ -202,7 +191,6 @@ object Transformer {
     case (p: PAccPred, Seq(loc: PLocationAccess, perm: PExp)) => PAccPred(loc, perm)
     case (p: POld, Seq(e: PExp)) => POld(e)
     case (p: PLabelledOld, Seq(lbl: PIdnUse, e: PExp)) => PLabelledOld(lbl, e)
-    case (p: PApplyOld, Seq(e: PExp)) => PApplyOld(e)
     case (p: PEmptySeq, Seq(t: PType)) => PEmptySeq(t)
     case (p: PExplicitSeq, Seq(elems: Seq[PExp@unchecked])) => PExplicitSeq(elems)
     case (p: PRangeSeq, Seq(low: PExp, high: PExp)) => PRangeSeq(low, high)
@@ -219,7 +207,7 @@ object Transformer {
     case (p: PSeqn, Seq(ss: Seq[PStmt@unchecked])) => PSeqn(ss)
     case (p: PFold, Seq(e: PExp)) => PFold(e)
     case (p: PUnfold, Seq(e: PExp)) => PUnfold(e)
-    case (p: PPackageWand, Seq(e: PExp)) => PPackageWand(e)
+    case (p: PPackageWand, Seq(e: PExp, proofScript: PSeqn)) => PPackageWand(e, proofScript)
     case (p: PApplyWand, Seq(e: PExp)) => PApplyWand(e)
     case (p: PExhale, Seq(e: PExp)) => PExhale(e)
     case (p: PAssert, Seq(e: PExp)) => PAssert(e)
@@ -236,7 +224,6 @@ object Transformer {
     case (p: PMethodCall, Seq(targets: Seq[PIdnUse@unchecked], method: PIdnUse, args: Seq[PExp@unchecked])) => PMethodCall(targets, method, args)
     case (p: PLabel, Seq(idndef: PIdnDef, invs: Seq[PExp@unchecked])) => PLabel(idndef, invs)
     case (p: PGoto, Seq(target: PIdnUse)) => PGoto(target)
-    case (p: PLetWand, Seq(idndef: PIdnDef, wand: PExp)) => PLetWand(idndef, wand)
     case (p: PDefine, Seq(idndef: PIdnDef, optArgs: Seq[PIdnDef@unchecked], exp: PExp)) => PDefine(idndef, if (optArgs.length == 0) None else Some(optArgs), exp)
     case (p: PLet, Seq(exp: PExp, nestedScope: PLetNestedScope)) => PLet(exp, nestedScope)
     case (p: PLetNestedScope, Seq(idndef: PFormalArgDecl, body: PExp)) => PLetNestedScope(idndef, body)

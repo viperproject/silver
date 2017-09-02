@@ -680,43 +680,22 @@ case class PPredicateAccess(args: Seq[PExp], idnuse: PIdnUse) extends PLocationA
           (POpApp.pRes.domain.name -> Pred)))
 }
 
-sealed trait PUnFoldingExp extends PHeapOpApp{
-  def acc: PAccPred
-  def exp: PExp
+case class PUnfolding(acc: PAccPred, exp: PExp) extends PHeapOpApp {
+  override final val opName = "unfolding"
   override val args = Seq(acc,exp)
   override val signatures : List[PTypeSubstitution] =
     List(Map(POpApp.pArgS(0) -> Bool,POpApp.pResS -> POpApp.pArg(1)))
 
-//  check(e.acc.perm, Perm)
-//  check(e.acc.loc, Pred)
-//  acceptNonAbstractPredicateAccess(e.acc, "abstract predicates cannot be (un)folded")
+  //  check(e.acc.perm, Perm)
+  //  check(e.acc.loc, Pred)
+  //  acceptNonAbstractPredicateAccess(e.acc, "abstract predicates cannot be (un)folded")
 }
 
-case class PUnfolding(acc: PAccPred, exp: PExp) extends PUnFoldingExp{
-  override final val opName = "unfolding"
-}
-
-case class PUnfoldingGhostOp(acc: PAccPred, exp: PExp) extends PUnFoldingExp {
-  override final val opName = "unfolding"
-}
-
-case class PFoldingGhostOp(acc: PAccPred, exp: PExp) extends PUnFoldingExp {
-  override final val opName = "folding"
-}
-
-case class PApplyingGhostOp(wand: PExp, exp: PExp) extends PHeapOpApp {
-  override final val opName = "applying"
-  override final val args = Seq(wand,exp)
-  val signatures : List[PTypeSubstitution] = List(
-    Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1))
-  )
-}
-case class PPackagingGhostOp(wand: PExp, exp: PExp) extends PHeapOpApp{
-  override final val opName = "packaging"
-  override final val args = Seq(wand,exp)
-  val signatures : List[PTypeSubstitution]  = List(
-    Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1))
-  )
+case class PApplying(wand: PExp, exp: PExp) extends PHeapOpApp {
+  override val opName = "applying"
+  override val args = Seq(wand, exp)
+  override val signatures : List[PTypeSubstitution] =
+    List(Map(POpApp.pArgS(0) -> Wand, POpApp.pResS -> POpApp.pArg(1)))
 }
 
 sealed trait PBinder extends PExp{
@@ -797,10 +776,6 @@ case class POld(e: PExp) extends POldExp{
 case class PLabelledOld(label: PIdnUse, e: PExp) extends POldExp{
   override val opName = "old#labeled"
 }
-case class PApplyOld(e: PExp) extends POldExp{
-  override val opName = "old#apply"
-}
-
 
 sealed trait PCollectionLiteral extends POpApp{
   def pElementType : PType
@@ -932,7 +907,7 @@ sealed trait PStmt extends PNode {
 case class PSeqn(ss: Seq[PStmt]) extends PStmt with PScope
 case class PFold(e: PExp) extends PStmt
 case class PUnfold(e: PExp) extends PStmt
-case class PPackageWand(wand: PExp) extends PStmt
+case class PPackageWand(wand: PExp, proofScript: PSeqn) extends PStmt
 case class PApplyWand(e: PExp) extends PStmt
 case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt
@@ -961,10 +936,7 @@ case class PLabel(idndef: PIdnDef, invs: Seq[PExp]) extends PStmt with PLocalDec
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 case class PMacroRef(idnuse : PIdnUse) extends PStmt
-case class PLetWand(idndef: PIdnDef, exp: PExp) extends PStmt with PLocalDeclaration
-case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration {
-
-}
+case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
 sealed trait PScope extends PNode {
@@ -1069,9 +1041,8 @@ object Nodes {
       case PFieldAccess(rcv, field) => Seq(rcv, field)
       case PPredicateAccess(args, pred) => args ++ Seq(pred)
       case PCall(func, args, optType) => Seq(func) ++ args ++ (optType match { case Some(t) => Seq(t) case None => Nil})
-      case e: PUnFoldingExp => Seq(e.acc, e.exp)
-      case PApplyingGhostOp(wand, in) => Seq(wand, in)
-      case PPackagingGhostOp(wand, in) => Seq(wand, in)
+      case PUnfolding(acc, exp) => Seq(acc, exp)
+      case PApplying(wand, exp) => Seq(wand, exp)
       case PExists(vars, exp) => vars ++ Seq(exp)
       case PLabelledOld(id, e) => Seq(id, e)
       case po: POldExp => Seq(po.e)
@@ -1104,7 +1075,7 @@ object Nodes {
       case PSeqn(ss) => ss
       case PFold(exp) => Seq(exp)
       case PUnfold(exp) => Seq(exp)
-      case PPackageWand(exp) => Seq(exp)
+      case PPackageWand(exp, proofScript) => Seq(exp, proofScript)
       case PApplyWand(exp) => Seq(exp)
       case PExhale(exp) => Seq(exp)
       case PAssert(exp) => Seq(exp)
@@ -1139,7 +1110,6 @@ object Nodes {
       case PTypeVarDecl(name) => Seq(name)
       case PDecTuple(exp) => exp
       case PDecStar() => Nil
-      case PLetWand(idndef, wand) => Seq(idndef, wand)
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case _: PSkip => Nil
     }

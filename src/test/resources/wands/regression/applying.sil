@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f: Int
 field g: Int
 
@@ -14,7 +15,9 @@ function sum(p: Ref): Int
 method test02(p: Ref)
   requires true --* acc(p.f) && p.f > 0
 {
-  package true --* applying (true --* acc(p.f) && p.f > 0) in acc(p.f) && p.f > 0
+  package (true) --* acc(p.f) && p.f > 0 {
+      apply true --* acc(p.f) && p.f > 0
+  }
   assert true --* acc(p.f) && p.f > 0
 
   //:: ExpectedOutput(assert.failed:assertion.false)
@@ -26,14 +29,18 @@ method test03(p: Ref)
   requires acc(p.g)
 {
     //:: ExpectedOutput(package.failed:assertion.false)
-  package acc(p.f) --* applying (acc(p.f) && acc(p.g) --* acc(p.f) && acc(p.g)) in acc(p.f) && acc(p.g) && false
+  package (acc(p.f)) --* acc(p.f) && acc(p.g) && false {
+      apply acc(p.f) && acc(p.g) --* acc(p.f) && acc(p.g)
+  }
 }
 
 method test04(p: Ref)
   requires acc(p.f) && acc(p.g) --* acc(p.f) && acc(p.g)
   requires acc(p.g)
 {
-  package acc(p.f) --* applying (acc(p.f) && acc(p.g) --* acc(p.f) && acc(p.g)) in acc(p.f) && acc(p.g)
+  package (acc(p.f)) --* acc(p.f) && acc(p.g) {
+      apply acc(p.f) && acc(p.g) --* acc(p.f) && acc(p.g)
+  }
   assert acc(p.f) --* acc(p.f) && acc(p.g)
 
   //:: ExpectedOutput(assert.failed:insufficient.permission)
@@ -47,13 +54,9 @@ method test01(p: Ref)
 {
   p.g := 1;
 
-  package
-    acc(p.g, 1/2) && acc(p.f, 1/2)
-      --*
-    (applying
-      (acc(p.f, 1/2) --* acc(p.f) && p.f > 0)
-     in
-      acc(p.f) && acc(p.g) && p.f + p.g > 0)
+  package (acc(p.g, 1/2) && acc(p.f, 1/2)) --* acc(p.f) && acc(p.g) && p.f + p.g > 0 {
+      apply acc(p.f, 1/2) --* acc(p.f) && p.f > 0
+  }
 
   apply
     acc(p.g, 1/2) && acc(p.f, 1/2)

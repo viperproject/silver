@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 //:: IgnoreFile(/silicon/issue/187/)
 //:: IgnoreFile(/carbon/issue/101/)
 
@@ -61,9 +62,6 @@ method sum_it(ys: Ref) returns (sum: Int)
     invariant sum == old(sum_rec(ys)) - (xs == null ? 0 : sum_rec(xs));
     invariant A --* B
   {
-    /* Bind w to the magic wand instance that we currently hold in our state */
-    wand w := A --* B
-
     /* Let zs point to the *current* current node, update the sum and advance
      * the current node pointer.
      */
@@ -76,7 +74,10 @@ method sum_it(ys: Ref) returns (sum: Int)
      * current node zs, and the magic wand instance w, since they belong to the
      * footprint of the packaged magic wand instance.
      */
-    package A --* folding List(zs) in applying w in B
+    package (A) --* B {
+        fold List(zs)
+        apply zs != null ==> acc(List(zs)) && sum_rec(zs) == now(sum_rec(zs)) --* B
+    }
   }
 
   /* Use the promise to get back the unchanged list starting at ys.

@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 //:: IgnoreFile(/carbon/issue/107/)
 
 field f: Ref
@@ -7,7 +8,9 @@ predicate P(x:Ref) {
 }
 
 method t1(x:Ref) {
-  package acc(P(x)) --* unfolding P(x) in (let y==(x.f) in acc(y.f))
+  package (acc(P(x))) --* let y==(x.f) in acc(y.f) {
+      unfold P(x)
+  }
   
   /*this wand is ill-defined (if we interpret the let as a ghost operation) 
     in Carbon an error is thrown due to this, but the error message needs 

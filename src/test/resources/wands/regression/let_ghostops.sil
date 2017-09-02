@@ -1,5 +1,4 @@
-//:: IgnoreFile(/Carbon/issue/90/)
-
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f: Int
 field g: Int
 field h: Ref
@@ -15,12 +14,14 @@ method test02(x: Ref) {
   package
     acc(Pair(x))
       --*
-    unfolding acc(Pair(x)) in
     let xf == (x.f) in
-    acc(x.f)
+    acc(x.f)  {
+        unfold acc(Pair(x))
+    }
 }
 
-method test00(x: Ref) {
+// Something similar to this test is not possible with the new syntax of package
+/*method test00(x: Ref) {
   package
     acc(Pair(x))
       --*
@@ -28,4 +29,8 @@ method test00(x: Ref) {
     let xf == (x.f) in
     folding acc(F(x)) in
     acc(F(x)) && fun(x) == xf
-}
+  //inhale Pair(x)
+  //var z: Int := unfolding Pair(x) in x.f
+  //apply acc(Pair(x))
+  //    --* acc(F(x)) && fun(x) == z
+}*/

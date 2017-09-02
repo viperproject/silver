@@ -1,9 +1,15 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f: Int
 field g: Ref
 field h: Ref
 
 method test02(x: Ref) {
-  package true --* (packaging (false --* folding P(x) in true) in true)
+  package (true) --* true {
+      package (false --* true) {
+          fold P(x)
+      }
+
+  }
 
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
@@ -16,18 +22,23 @@ method test03(x:Ref)
 }
 
 method test04(x:Ref) {
-  //:: UnexpectedOutput(package.failed:assertion.false, /silicon/issue/183/)
-  package acc(x.f) --* packaging (acc(x.f) --* folding Q(x) in false) in true
+  package (acc(x.f)) --* true {
+      package (acc(x.f) --* false) {
+          fold Q(x)
+      }
+
+  }
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
   assert false
 }
 
 
 method test06(x:Ref) {
   //:: ExpectedOutput(package.failed:insufficient.permission)
-  package acc(x.f) --* folding P(x) in acc(x.f) //should fail
+  package (acc(x.f)) --* acc(x.f) {
+      fold P(x)
+  }
 }
 
 

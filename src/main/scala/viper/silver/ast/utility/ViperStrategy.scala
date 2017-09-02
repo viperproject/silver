@@ -168,15 +168,10 @@ object ViperStrategy {
       PredicateAccess(params, pa.predicateName)(meta._1, meta._2, meta._3)
 
     case (u: Unfolding, Seq(acc: PredicateAccessPredicate, e: Exp), meta) => Unfolding(acc, e)(meta._1, meta._2, meta._3)
-
-    case (u: UnfoldingGhostOp, Seq(acc: PredicateAccessPredicate, e: Exp), meta) => UnfoldingGhostOp(acc, e)(meta._1, meta._2, meta._3)
-    case (f: FoldingGhostOp, Seq(acc: PredicateAccessPredicate, e: Exp), meta) => FoldingGhostOp(acc, e)(meta._1, meta._2, meta._3)
-    case (a: ApplyingGhostOp, Seq(wand: Exp, in: Exp), meta) => ApplyingGhostOp(wand, in)(meta._1, meta._2, meta._3)
-    case (p: PackagingGhostOp, Seq(wand: MagicWand, in: Exp), meta) => PackagingGhostOp(wand, in)(meta._1, meta._2, meta._3)
+    case (a: Applying, Seq(wand: MagicWand, e: Exp), meta) => Applying(wand, e)(meta._1, meta._2, meta._3)
 
     case (o: Old, Seq(e: Exp), meta) => Old(e)(meta._1, meta._2, meta._3)
     case (l: LabelledOld, Seq(e: Exp), meta) => LabelledOld(e, l.oldLabel)(meta._1, meta._2, meta._3)
-    case (a: ApplyOld, Seq(e: Exp), meta) => ApplyOld(e)(meta._1, meta._2, meta._3)
     case (c: CondExp, Seq(cond: Exp, thn: Exp, els: Exp), meta) =>
       CondExp(cond, thn, els)(meta._1, meta._2, meta._3)
     case (l: Let, Seq(v: LocalVarDecl, exp1: Exp, body: Exp), meta) => Let(v, exp1, body)(meta._1, meta._2, meta._3)
@@ -348,8 +343,8 @@ object ViperStrategy {
     case (u: Unfold, Seq(predicate: PredicateAccessPredicate), meta) =>
       Unfold(predicate)(meta._1, meta._2, meta._3)
 
-    case (p: Package, Seq(wand: MagicWand), meta) =>
-      Package(wand)(meta._1, meta._2, meta._3)
+    case (p: Package, Seq(wand: MagicWand, proofScript: Seqn), meta) =>
+      Package(wand, proofScript)(meta._1, meta._2, meta._3)
 
     case (a: Apply, Seq(wand: MagicWand), meta) =>
       Apply(wand)(meta._1, meta._2, meta._3)

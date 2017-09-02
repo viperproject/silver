@@ -1,7 +1,10 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 field f: Int
 
 method t01(x:Ref) {
-  package acc(P(x)) --* unfolding P(x) in acc(x.f)
+  package (acc(P(x))) --* acc(x.f) {
+      unfold P(x)
+  }
 
   exhale (acc(P(x)) --* acc(x.f))
 }
@@ -13,7 +16,9 @@ method t02(x:Ref) {
    * If the unfolding is interpreted just as an unfolding expression then the wand
    * is not well-formed
    */
-  package acc(P(x)) --* unfolding P(x) in true
+  package (acc(P(x))) --* true {
+      unfold P(x)
+  }
 
   exhale (acc(P(x)) --* true)
 }

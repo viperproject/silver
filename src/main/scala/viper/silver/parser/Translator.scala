@@ -11,7 +11,7 @@ package viper.silver.parser
 import scala.language.implicitConversions
 import scala.collection.mutable
 import viper.silver.ast._
-import viper.silver.ast.utility.{Rewriter, _}
+import viper.silver.ast.utility._
 import viper.silver.FastMessaging
 
 
@@ -166,11 +166,11 @@ case class Translator(program: PProgram) {
         Fold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
       case PUnfold(e) =>
         Unfold(exp(e).asInstanceOf[PredicateAccessPredicate])(pos)
-      case PPackageWand(e) =>
-        val wand = translateWandToBePackaged(e.asInstanceOf[PBinExp])
-        Package(wand)(pos)
+      case PPackageWand(e, proofScript) =>
+        val wand = exp(e).asInstanceOf[MagicWand]
+        Package(wand, stmt(proofScript).asInstanceOf[Seqn])(pos)
       case PApplyWand(e) =>
-        Apply(exp(e))(pos)
+        Apply(exp(e).asInstanceOf[MagicWand])(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
       case assume@PAssume(e) =>
@@ -204,8 +204,6 @@ case class Translator(program: PProgram) {
         Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss).asInstanceOf[Seqn])(pos)
       case PWhile(cond, invs, body) =>
         While(exp(cond), invs map exp, stmt(body).asInstanceOf[Seqn])(pos)
-      case PLetWand(idndef, wand) =>
-        LocalVarAssign(LocalVar(idndef.name)(Wand, pos), exp(wand))(pos)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
@@ -231,9 +229,6 @@ case class Translator(program: PProgram) {
             /* A malformed AST where a field is dereferenced without a receiver */
             Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
-          case _: PLetWand =>
-            /* TODO: We might want to differentiate between magic wand references and regular local variables. */
-            LocalVar(name)(ttyp(pexp.typ), pos)
           case other =>
             sys.error("should not occur in type-checked program")
         }
@@ -390,15 +385,8 @@ case class Translator(program: PProgram) {
         }
       case PUnfolding(loc, e) =>
         Unfolding(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
-      case PUnfoldingGhostOp(loc, e) =>
-        UnfoldingGhostOp(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
-      case PFoldingGhostOp(loc, e) =>
-        FoldingGhostOp(exp(loc).asInstanceOf[PredicateAccessPredicate], exp(e))(pos)
-      case PApplyingGhostOp(e, in) =>
-        ApplyingGhostOp(exp(e), exp(in))(pos)
-      case PPackagingGhostOp(e, in) =>
-        val wand = translateWandToBePackaged(e.asInstanceOf[PBinExp])
-        PackagingGhostOp(wand, exp(in))(pos)
+      case PApplying(wand, e) =>
+        Applying(exp(wand).asInstanceOf[MagicWand], exp(e))(pos)
       case PLet(exp1, PLetNestedScope(variable, body)) =>
         Let(liftVarDecl(variable), exp(exp1), exp(body))(pos)
       case _: PLetNestedScope =>
@@ -438,8 +426,6 @@ case class Translator(program: PProgram) {
         Old(exp(e))(pos)
       case PLabelledOld(lbl,e) =>
         LabelledOld(exp(e),lbl.name)(pos)
-      case PApplyOld(e) =>
-        ApplyOld(exp(e))(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
       case PCurPerm(loc) => {
@@ -544,29 +530,5 @@ case class Translator(program: PProgram) {
       sys.error("unknown type unexpected here")
     case PPredicateType() =>
       sys.error("unexpected use of internal typ")
-  }
-
-  private def translateWandToBePackaged(pwand: PBinExp): MagicWand = {
-    /* Translates a PWand and turns expressions such as unfolding into the
-     * corresponding ghost operation.
-     */
-
-    val f: PartialFunction[PNode, PNode] = {
-      /* Make f defined for all ghost operations so that we keep on transforming
-       * down the potential chain of ghost operations
-       */
-      case e: PFoldingGhostOp => e
-      case e: PApplyingGhostOp => e
-      case e: PPackagingGhostOp => e
-      /* Rewrite unfolding expressions to unfolding ghost operations (along the
-       * potential chain of ghost operations)
-       */
-      case unf: PUnfolding => PUnfoldingGhostOp(unf.acc, unf.exp).setPos(unf)
-    }
-
-    val rhs = pwand.right.transform(f)(recursive = f.isDefinedAt, allowChangingNodeType = true)
-    val ghostOpWand = pwand.copy(right = rhs).setPos(pwand)
-
-    exp(ghostOpWand).asInstanceOf[MagicWand]
   }
 }

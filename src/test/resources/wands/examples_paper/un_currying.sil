@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 /* This example shows how our approach to magic wands can be used to
  * prove the property
  *
@@ -39,7 +40,10 @@ method uncurry()
   requires A --* (B --* C)
   ensures A && B --* C
 {
-  package A && B --* applying (A --* (B --* C)) in (applying (B --* C) in C)
+  package (A && B) --* C {
+      apply A --* (B --* C)
+      apply B --* C
+  }
 }
 
 /* A * B --* C  ==>  A --* B --* C */
@@ -47,5 +51,10 @@ method curry()
   requires A && B --* C
   ensures A --* (B --* C)
 {
-  package A --* packaging (B --* applying (A && B --* C) in C) in (B --* C)
+  package (A) --* B --* C {
+      package (B --* C) {
+          apply A && B --* C
+      }
+
+  }
 }

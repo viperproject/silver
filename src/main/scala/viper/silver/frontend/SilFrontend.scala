@@ -10,16 +10,12 @@ import fastparse.core.Parsed
 import java.nio.file.{Path, Paths}
 
 import org.apache.commons.io.FilenameUtils
-import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
 import viper.silver.ast.{Node, Position, _}
 import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
+import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.verifier._
-import viper.silver.verifier.CliOptionError
-import viper.silver.verifier.Failure
-import viper.silver.verifier.ParseError
-import viper.silver.verifier.TypecheckerError
 
 import scala.collection.mutable
 

@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/0000000000000000/)
 //:: IgnoreFile(/silicon/issue/187/)
 //:: IgnoreFile(/carbon/issue/101/)
 
@@ -54,18 +55,23 @@ method tree_delete_min(x: Ref) returns (z: Ref)
 
     z := p.r
   } else {
-    package A --* folding acc(Tree(p)) in B
+    package (A) --* B {
+        fold acc(Tree(p))
+    }
 
     while (unfolding acc(Tree(p.l)) in p.l.l != null)
       invariant p != null && acc(p.l) && acc(Tree(p.l)) && p.l != null
       invariant A --* B
     {
-      wand w := A --* B
+      var oldP: Ref := p
 
       unfold acc(Tree(p.l))
       p := p.l
 
-      package A --* folding Tree(p) in applying w in B
+      package (A) --* B {
+          fold Tree(p)
+          apply acc(oldP.l) && acc(Tree(oldP.l)) && vals(oldP.l) == now(vals(oldP))[1..] --* B
+      }
     }
 
     assert vals(p.l) == unfolding acc(Tree(p.l)) in vals(p.l.l) ++ Seq(p.l.v) ++ vals(p.l.r)
