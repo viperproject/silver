@@ -319,7 +319,10 @@ case class FieldAccess(rcv: Exp, field: Field)
 }
 
 /** A predicate access expression. See also companion object below for an alternative creation signature */
-case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Position, val info: Info, val errT: ErrorTrafo) extends LocationAccess {
+case class PredicateAccess(args: Seq[Exp], predicateName: String)
+                          (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+    extends LocationAccess {
+
   def loc(p:Program) = p.findPredicate(predicateName)
   lazy val typ = Bool
 
@@ -329,9 +332,10 @@ case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Posit
     predicate.body map (Expressions.instantiateVariables(_, predicate.formalArgs, args))
   }
 }
+
 // allows PredicateAccess to be created from a predicate directly, in which case only the name is kept
 object PredicateAccess {
-  def apply(args: Seq[Exp], predicate:Predicate)(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : PredicateAccess = PredicateAccess(args, predicate.name)(pos, info, errT)
+  def apply(args: Seq[Exp], predicate:Predicate)(pos: Position, info: Info, errT: ErrorTrafo): PredicateAccess = PredicateAccess(args, predicate.name)(pos, info, errT)
 }
 
 // --- Conditional expression

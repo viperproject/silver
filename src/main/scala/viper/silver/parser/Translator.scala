@@ -352,7 +352,7 @@ case class Translator(program: PProgram) {
       case p@PFieldAccess(rcv, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos)
       case p@PPredicateAccess(args, idn) =>
-        PredicateAccess(args map exp, findPredicate(idn))(pos)
+        PredicateAccess(args map exp, findPredicate(idn).name)(pos)
       case pfa@PCall(func, args, _) =>
         members.get(func.name).get match {
           case f: Function => FuncApp(f, args map exp)(pos)
@@ -377,7 +377,7 @@ case class Translator(program: PProgram) {
               case _ => sys.error("type unification error - should report and not crash")
             }
           case f: Predicate => {
-            val inner = PredicateAccess(args map exp, findPredicate(func)) (pos)
+            val inner = PredicateAccess(args map exp, findPredicate(func).name) (pos)
             val fullPerm = FullPerm()(pos)
             PredicateAccessPredicate(inner, fullPerm) (pos)
           }
