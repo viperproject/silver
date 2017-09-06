@@ -1,4 +1,4 @@
-//:: IgnoreFile(/carbon/issue/0000000000000000/)
+//:: IgnoreFile(/carbon/issue/216/)
 field f: Ref
 
 predicate P(x: Ref) { acc(x.f) && acc(x.f.f) }

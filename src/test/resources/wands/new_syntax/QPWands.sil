@@ -1,4 +1,4 @@
-//:: IgnoreFile(/carbon/issue/0000000000000000/)
+//:: IgnoreFile(/carbon/issue/216/)
 field f: Int
 
 define injectiveSeq(xs) forall i: Int, j: Int :: 0 <= i && 0 <= j && i < |xs| && j < |xs| && i != j ==> xs[i] != xs[j]
