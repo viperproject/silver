@@ -244,13 +244,9 @@ object FastParser extends PosParser {
     /* Store the replacements from normal variable to freshly generated variable */
     var freshNames = Map.empty[String, String]
 
-    // It follows a list of useful helper classes and functions
+    /**** General helper classes and functions ****/
 
     case class ReplaceContext(formalArgumentSubstitutions: Map[String, PExp] = Map.empty)
-
-    // Context class used for expanding the macros themselves.
-    // Seq macros contains the name of every macro we already imported to detect collisions
-    case class ExpandContext(macros: Seq[String] = Seq())
 
     // Handy method to get a macro from its name string
     def getMacroByName(name: String): PDefine = macros.find(_.idndef.name == name) match {
@@ -292,21 +288,39 @@ object FastParser extends PosParser {
       }
     }
 
-    // Check if the macro name was already expanded => recursion found
-    def recursionCheck(name: String, ctxt: ExpandContext) = {
-      if (ctxt.macros.contains(name)) {
-        val position =
-          macros.find(_.idndef.name == name)
-                .fold[Position](NoPosition)(FastPositions.getStart)
-
-        throw ParseException("Recursive macro declaration found: " + name, position)
-      }
-    }
-
     // Create a map that maps the formal parameters to the actual parameters of a macro call
     def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]): Map[String, PExp] = {
       params.map(_.name).zip(args).toMap
     }
+
+    /**** Detect cyclic macros ****/
+
+    val matchOnMacroApplication: PartialFunction[PNode, String] = {
+      case pMacro: PMacroRef => pMacro.idnuse.name
+      case pMacro: PMethodCall if isMacro(pMacro.method.name) => pMacro.method.name
+      case pMacro: PCall if isMacro(pMacro.func.name) => pMacro.func.name
+      case pMacro: PIdnUse if isMacro(pMacro.name) => pMacro.name
+    }
+
+    def detectCyclicMacros(start: PNode, seen: Set[String]): Unit = {
+      start.visit(
+        matchOnMacroApplication.andThen(name =>
+          if (seen.contains(name)) {
+            val position =
+              macros.find(_.idndef.name == name)
+                    .fold[Position](NoPosition)(FastPositions.getStart)
+
+            throw ParseException("Recursive macro declaration found: " + name, position)
+          } else {
+            detectCyclicMacros(getMacroByName(name).body, seen + name)
+          }
+        )
+      )
+    }
+
+    detectCyclicMacros(toExpand, Set.empty)
+
+    /**** Expand macros ****/
 
     // Strategy that replaces every formal parameter occurrence in the macro body with the corresponding actual parameter
     // Also makes the macro call hygienic by creating a unique variable name for every newly declared variable
@@ -368,12 +382,10 @@ object FastParser extends PosParser {
       res
     }
 
-    // Strategy that expands the macros and checks for infinite recursion in the expansion process
-    val expander = StrategyBuilder.Context[PNode, ExpandContext]({
-      case (pMacro: PMacroRef, ctxt) =>
+    // Strategy that expands macro applications. Relies on all macros being acyclic!
+    val expander = StrategyBuilder.Slim[PNode]({
+      case pMacro: PMacroRef =>
         val name = pMacro.idnuse.name
-        recursionCheck(name, ctxt.c)
-
         val body = getMacroByName(name).body
 
         if (!body.isInstanceOf[PStmt])
@@ -381,10 +393,8 @@ object FastParser extends PosParser {
 
         replacerOnBody(body, Map(), pMacro)
 
-      case (pMacro: PMethodCall, ctxt) if isMacro(pMacro.method.name) =>
+      case pMacro: PMethodCall if isMacro(pMacro.method.name) =>
         val name = pMacro.method.name
-        recursionCheck(name, ctxt.c)
-
         val realMacro = getMacroByName(name)
         val body = realMacro.body
 
@@ -396,10 +406,8 @@ object FastParser extends PosParser {
 
         replacerOnBody(body, mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
 
-      case (pMacro: PCall, ctxt) if isMacro(pMacro.func.name) =>
+      case pMacro: PCall if isMacro(pMacro.func.name) =>
         val name = pMacro.func.name
-        recursionCheck(name, ctxt.c)
-
         val realMacro = getMacroByName(name)
         val body = realMacro.body
 
@@ -411,10 +419,8 @@ object FastParser extends PosParser {
 
         replacerOnBody(body, mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
 
-      case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) =>
+      case pMacro: PIdnUse if isMacro(pMacro.name) =>
         val name = pMacro.name
-        recursionCheck(name, ctxt.c)
-
         val body = getMacroByName(name).body
 
         if (!body.isInstanceOf[PExp])
@@ -422,22 +428,6 @@ object FastParser extends PosParser {
 
         replacerOnBody(body, Map(), pMacro)
 
-    }, ExpandContext(), {
-      case (pMacro: PMacroRef, c) =>
-        val realMacro = getMacroByName(pMacro.idnuse.name)
-        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-
-      case (pMacro: PMethodCall, c) if isMacro(pMacro.method.name) =>
-        val realMacro = getMacroByName(pMacro.method.name)
-        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-
-      case (pMacro: PCall, c) if isMacro(pMacro.func.name) =>
-        val realMacro = getMacroByName(pMacro.func.name)
-        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-
-      case (pMacro: PIdnUse, c) if isMacro(pMacro.name) =>
-        val realMacro = getMacroByName(pMacro.name)
-        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
     }).recurseFunc {
       /* Don't recurse into the PIdnUse of nodes that themselves could represent macro
        * applications. Otherwise, the expansion of nested macros will fail due to attempting
@@ -449,8 +439,7 @@ object FastParser extends PosParser {
       case PCall(_, args, typeAnnotated) => Seq(args, typeAnnotated)
     }.repeat
 
-    val res = expander.execute[T](toExpand)
-    res
+    expander.execute[T](toExpand)
   }
 
   /** The file we are currently parsing (for creating positions later). */
