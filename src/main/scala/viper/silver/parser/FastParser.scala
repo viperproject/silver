@@ -2,7 +2,7 @@ package viper.silver.parser
 
 import java.nio.file.{Files, Path}
 import scala.language.{implicitConversions, reflectiveCalls}
-import scala.util.parsing.input.NoPosition
+import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
@@ -294,8 +294,13 @@ object FastParser extends PosParser {
 
     // Check if the macro name was already expanded => recursion found
     def recursionCheck(name: String, ctxt: ExpandContext) = {
-      if (ctxt.macros.contains(name))
-        throw ParseException("Recursive macro declaration found: " + name, NoPosition)
+      if (ctxt.macros.contains(name)) {
+        val position =
+          macros.find(_.idndef.name == name)
+                .fold[Position](NoPosition)(FastPositions.getStart)
+
+        throw ParseException("Recursive macro declaration found: " + name, position)
+      }
     }
 
     // Create a map that maps the formal parameters to the actual parameters of a macro call
