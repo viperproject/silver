@@ -13,31 +13,8 @@ import viper.silver.ast._
 import scala.language.implicitConversions
 
 class ParseTreeTests extends FunSuite {
-  test("CyclicMacroDetection") {
-    val filePrefix = "parsertests/cyclicMacros/"
-    val files = Seq("simple", "complex", "complexExp")
-
-    val frontend = new MockSilFrontend
-
-    files foreach {
-      fileName => {
-        val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-        assert(fileRes != null, s"File $filePrefix$fileName not found")
-        val file = Paths.get(fileRes.toURI)
-
-        frontend.translate(file) match {
-          case (Some(_), _) =>
-            fail("Expected cyclic macro errors, but gone none")
-          case (None, errors) => errors.foreach(e => {
-            assert(e.readableMessage.contains("Recursive macro declaration found"))
-          })
-        }
-      }
-    }
-  }
-
   test("MacroExpansion") {
-    val filePrefix = "parsertests/macroExpansion/"
+    val filePrefix = "transformations/Macros/Expansion/"
     val files = Seq("simple", "simple2", "simpleExp", "simpleArgs", "simpleArgs2", "simpleArgsExp", "simpleMethod", "simpleMethodExp")
 
     val frontend = new MockSilFrontend
@@ -47,7 +24,7 @@ class ParseTreeTests extends FunSuite {
   }
 
   test("HygienicMacros") {
-    val filePrefix = "parsertests/hygienicMacros/"
+    val filePrefix = "transformations/Macros/Hygienic/"
     val files = Seq("simple", "nested", "collision", "collision2", "forall", "loopConstruction")
 
     val frontend = new MockSilFrontend
@@ -57,7 +34,7 @@ class ParseTreeTests extends FunSuite {
   }
 
   test("Imports") {
-    val filePrefix = "parsertests/imports/"
+    val filePrefix = "transformations/Imports/"
     val files = Seq("simple", "complex", "cyclic")
 
     val frontend = new MockSilFrontend

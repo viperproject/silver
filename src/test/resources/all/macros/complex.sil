@@ -3,6 +3,7 @@ define macro {
     macro2
 }
 
+//:: ExpectedOutput(parser.error)
 define macro2 {
     assert(true)
     macro3

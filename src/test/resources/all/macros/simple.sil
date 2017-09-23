@@ -1,3 +1,4 @@
+//:: ExpectedOutput(parser.error)
 define macro {
     assert(true)
     macro2

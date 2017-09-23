@@ -1,3 +1,4 @@
+//:: ExpectedOutput(parser.error)
 define macro 1 + macro2
 
 method main()
