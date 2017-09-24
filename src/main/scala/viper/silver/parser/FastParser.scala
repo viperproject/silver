@@ -405,7 +405,7 @@ object FastParser extends PosParser {
           case _ => /* All good */
         }
 
-        /* TODO: Unsupported position detection is probably not exhaustive.
+        /* TODO: The current unsupported position detection is probably not exhaustive.
          *       Seems difficult to concisely and precisely match all (il)legal cases, however.
          */
         (ctxt.parent, macroBody) match {
