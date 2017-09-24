@@ -114,7 +114,7 @@ method test1(A: Seq[Int]) {
 	assume forall v1: Int ::
 		(0 <= v1 && v1 < 3 && f2(v1)) ==> (exists j1: Int :: 0 <= j1 && j1 < 3 && j1 == v1)
 
-  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/285/)
 	assert forall v2: Int ::
 		(0 <= v2 && v2 < 3 && f2(v2)) ==> (exists j2: Int :: 0 <= j2 && j2 < 3 && j2 == v2)
     /* 2013-08-05 Malte: Fails, probably due to a triggering problem of Z3.
@@ -148,7 +148,7 @@ method test4(A: Seq[Int]) {
 
 	assume f2(0) ==> (exists j1: Int :: 0 <= j1 && j1 < 3 && j1 > 0)
 
-	//:: ExpectedOutput(assert.failed:assertion.false)
+    //:: UnexpectedOutput(assert.failed:assertion.false, /Silicon/issue/285/)
 	assert f2(0) ==> (exists j2: Int :: 0 <= j2 && j2 < 3 && j2 > 0)
     /* 2013-08-05 Malte: Fails, probably due to a triggering problem of Z3.
      *            Should hold otherwise.
