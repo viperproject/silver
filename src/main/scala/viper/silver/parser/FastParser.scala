@@ -7,6 +7,7 @@ import fastparse.core.Parsed
 import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
+import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.verifier.ParseError
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
@@ -410,11 +411,16 @@ object FastParser extends PosParser {
          */
         (ctxt.parent, macroBody) match {
           case (_: PAccPred, _) | (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
-            throw ParseException("Macro expansion not supported in this position", FastPositions.getStart(app))
+            throw ParseException("Macro expansion would result in invalid code", FastPositions.getStart(app))
           case _ => /* All good */
         }
 
-        replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
+        try {
+          replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
+        } catch {
+          case _: ParseTreeDuplicationError =>
+            throw ParseException("Macro expansion would result in invalid code", FastPositions.getStart(app))
+        }
       }.applyOrElse(currentNode, (_: PNode) => currentNode)
     }.recurseFunc {
       /* Don't recurse into the PIdnUse of nodes that themselves could represent macro

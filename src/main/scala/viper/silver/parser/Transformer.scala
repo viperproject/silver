@@ -241,7 +241,10 @@ object Transformer {
     case (_: PPredicate, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], body: Option[PExp@unchecked])) => PPredicate(idndef, formalArgs, body)
     case (p: PAxiom, Seq(idndef: PIdnDef, exp: PExp)) => PAxiom(idndef, exp)(domainName = p.domainName)
 
-    case (p: PNode, s) =>
-      throw new Exception("Not able to duplicate: " + p + " with children: " + s)
+    case (p: PNode, s) => throw ParseTreeDuplicationError(p, s)
+  }
+
+  case class ParseTreeDuplicationError(original: PNode, newChildren: Seq[Any]) extends RuntimeException {
+    lazy val message: String = s"Cannot duplicate $original with new children $newChildren"
   }
 }
