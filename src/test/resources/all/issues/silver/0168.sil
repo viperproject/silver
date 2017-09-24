@@ -1,0 +1,3 @@
+import "0168_lib.sil"
+
+method test() { assert P() }
