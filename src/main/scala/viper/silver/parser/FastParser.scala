@@ -293,18 +293,21 @@ object FastParser extends PosParser {
       params.map(_.name).zip(args).toMap
     }
 
-    /**** Detect cyclic macros ****/
+    /* Abstraction over several possible `PNode`s that can represent macro applications */
+    case class MacroApp(name: String, arguments: Seq[PExp], node: PNode)
 
-    val matchOnMacroApplication: PartialFunction[PNode, String] = {
-      case pMacro: PMacroRef => pMacro.idnuse.name
-      case pMacro: PMethodCall if isMacro(pMacro.method.name) => pMacro.method.name
-      case pMacro: PCall if isMacro(pMacro.func.name) => pMacro.func.name
-      case pMacro: PIdnUse if isMacro(pMacro.name) => pMacro.name
+    val matchOnMacroApplication: PartialFunction[PNode, MacroApp] = {
+      case app: PMacroRef => MacroApp(app.idnuse.name, Nil, app)
+      case app: PMethodCall if isMacro(app.method.name) => MacroApp(app.method.name, app.args, app)
+      case app: PCall if isMacro(app.func.name) => MacroApp(app.func.name, app.args, app)
+      case app: PIdnUse if isMacro(app.name) => MacroApp(app.name, Nil, app)
     }
+
+    /**** Detect cyclic macros ****/
 
     def detectCyclicMacros(start: PNode, seen: Set[String]): Unit = {
       start.visit(
-        matchOnMacroApplication.andThen(name =>
+        matchOnMacroApplication.andThen { case MacroApp(name, _, _) =>
           if (seen.contains(name)) {
             val position =
               macros.find(_.idndef.name == name)
@@ -314,7 +317,7 @@ object FastParser extends PosParser {
           } else {
             detectCyclicMacros(getMacroByName(name).body, seen + name)
           }
-        )
+        }
       )
     }
 
@@ -382,53 +385,38 @@ object FastParser extends PosParser {
       res
     }
 
-    // Strategy that expands macro applications. Relies on all macros being acyclic!
-    val expander = StrategyBuilder.Slim[PNode]({
-      case pMacro: PMacroRef =>
-        val name = pMacro.idnuse.name
-        val body = getMacroByName(name).body
+    /* Strategy that checks macro applications for legality and then expands them.
+     * Relies on all macros being acyclic!
+     */
+    val expander = StrategyBuilder.Ancestor[PNode] { case (currentNode, ctxt) =>
+      matchOnMacroApplication.andThen { case MacroApp(name, actualArgs, app) =>
+        val appliedMacro = getMacroByName(name)
+        val formalArgs = appliedMacro.args.getOrElse(Nil)
+        val macroBody = appliedMacro.body
 
-        if (!body.isInstanceOf[PStmt])
-          throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro.idnuse))
+        if (actualArgs.length != formalArgs.length)
+          throw ParseException("Number of macro arguments does not match", FastPositions.getStart(app))
 
-        replacerOnBody(body, Map(), pMacro)
+        (app, macroBody) match {
+          case (_: PStmt, _: PExp) =>
+            throw ParseException("Expression macro used in statement position", FastPositions.getStart(app))
+          case (_: PExp, _: PStmt) =>
+            throw ParseException("Statement macro used in expression position", FastPositions.getStart(app))
+          case _ => /* All good */
+        }
 
-      case pMacro: PMethodCall if isMacro(pMacro.method.name) =>
-        val name = pMacro.method.name
-        val realMacro = getMacroByName(name)
-        val body = realMacro.body
+        /* TODO: Unsupported position detection is probably not exhaustive.
+         *       Seems difficult to concisely and precisely match all (il)legal cases, however.
+         */
+        (ctxt.parent, macroBody) match {
+          case (_: PAccPred, _) | (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
+            throw ParseException("Macro expansion not supported in this position", FastPositions.getStart(app))
+          case _ => /* All good */
+        }
 
-        if (pMacro.args.length != realMacro.args.getOrElse(Seq()).length) // Would not be a PMethodCall in case of no arguments
-          throw ParseException("Number of arguments does not match", FastPositions.getStart(pMacro.method))
-
-        if (!body.isInstanceOf[PStmt])
-          throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro.method))
-
-        replacerOnBody(body, mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
-
-      case pMacro: PCall if isMacro(pMacro.func.name) =>
-        val name = pMacro.func.name
-        val realMacro = getMacroByName(name)
-        val body = realMacro.body
-
-        if (pMacro.args.length != realMacro.args.getOrElse(Seq()).length) // Would not be a PMethodCall in case of no arguments
-          throw ParseException("Number of arguments does not match", FastPositions.getStart(pMacro))
-
-        if (!body.isInstanceOf[PExp])
-          throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro))
-
-        replacerOnBody(body, mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
-
-      case pMacro: PIdnUse if isMacro(pMacro.name) =>
-        val name = pMacro.name
-        val body = getMacroByName(name).body
-
-        if (!body.isInstanceOf[PExp])
-          throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro))
-
-        replacerOnBody(body, Map(), pMacro)
-
-    }).recurseFunc {
+        replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
+      }.applyOrElse(currentNode, (_: PNode) => currentNode)
+    }.recurseFunc {
       /* Don't recurse into the PIdnUse of nodes that themselves could represent macro
        * applications. Otherwise, the expansion of nested macros will fail due to attempting
        * to construct invalid AST nodes.
