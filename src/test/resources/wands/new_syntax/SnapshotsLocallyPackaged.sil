@@ -8,8 +8,8 @@ predicate List(x: Ref) {
 }
 
 function length(x: Ref): Int
-requires List(x)
-decreases * {
+  requires List(x)
+{
     unfolding List(x) in (x.next == null ? 1 : 1 + length(x.next))
 }
 

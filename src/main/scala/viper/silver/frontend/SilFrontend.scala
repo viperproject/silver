@@ -308,7 +308,10 @@ trait SilFrontend extends DefaultFrontend {
     val r = Resolver(input)
     r.run match {
       case Some(modifiedInput) =>
-        Translator(modifiedInput).translate match {
+        val enableFunctionTerminationChecks =
+          config != null && config.verified && config.enableFunctionTerminationChecks()
+
+        Translator(modifiedInput, enableFunctionTerminationChecks).translate match {
           case Some(program) =>
             val check = program.checkTransitively
             if(check.isEmpty) Succ(program) else Fail(check)

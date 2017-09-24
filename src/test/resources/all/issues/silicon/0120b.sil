@@ -26,7 +26,6 @@ predicate node(this: Ref) {
 function length(this: Ref): Int
   requires acc(node(this), write)
   ensures result >= 1
-  decreases *
 {
   (unfolding acc(node(this), write) in
     (typeOf(this.next) == B()) ? 1 : 1 + length(this.next.a)

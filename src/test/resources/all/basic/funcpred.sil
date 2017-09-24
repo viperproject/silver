@@ -5,7 +5,6 @@ field f: Int
 
 function itemat(node: Ref, i: Int): Int
     requires acc(valid(node), wildcard) && i >= 0
-    decreases *
 {
     unfolding acc(valid(node), wildcard) in ((i == 0 || node.next == null) ? node.value : itemat(node.next, i-1))
 }

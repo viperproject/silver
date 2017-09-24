@@ -12,7 +12,6 @@ method test02(x: Int) {
 }
 
 function fun01(x: Int): Perm
-decreases *
 { x <= 0 ? fun01(x + 1) : 1 / x }
 
 method test03(x: Int) {

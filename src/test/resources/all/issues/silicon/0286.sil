@@ -9,7 +9,6 @@ predicate list(start : Ref)
 
 function elems(start: Ref) : Seq[Int]
   requires list(start)
-  decreases *
 {
   unfolding list(start) in (
     (start.next == null ?
@@ -27,7 +26,6 @@ predicate lseg(start : Ref, end:Ref)
 
 function lsegelems(start: Ref, end: Ref) : Seq[Int]
   requires lseg(start,end)
-  decreases *
 {
   unfolding lseg(start,end) in (
     (start.next == end ?

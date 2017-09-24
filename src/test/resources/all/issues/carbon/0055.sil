@@ -7,7 +7,6 @@ function Nodesize$(this$_3: Ref): Int
   requires this$_3 != null
   requires acc(Nodevalid$(this$_3), wildcard)
   ensures result > 0
-  decreases *
 {
   (unfolding acc(Nodevalid$(this$_3), wildcard) in (this$_3.Nodenext$ != null ? 1 + Nodesize$(this$_3.Nodenext$) : 1))
 }
@@ -15,7 +14,6 @@ function Nodesize$(this$_3: Ref): Int
 function Nodecontains$(this$_4: Ref, i: Int): Bool
   requires this$_4 != null
   requires acc(Nodevalid$(this$_4), wildcard)
-  decreases *
 {
   (unfolding acc(Nodevalid$(this$_4), wildcard) in (i == this$_4.Nodevalue$) || (this$_4.Nodenext$ != null) && Nodecontains$(this$_4.Nodenext$, i))
 }

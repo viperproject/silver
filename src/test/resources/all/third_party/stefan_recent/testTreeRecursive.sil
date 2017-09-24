@@ -7,7 +7,6 @@ field Tree__right: Ref
 function Tree__contents(t: Ref): Seq[Int]
   requires (t != null) ==> acc(Tree__state(t), write)
   ensures (t != null) ==> (|result| > 0)
-  decreases *
 {
   (t == null ? Seq[Int]() : (unfolding acc(Tree__state(t), write) in Tree__contents(t.Tree__left) ++ Seq(t.Tree__data) ++ Tree__contents(t.Tree__right)))
 }

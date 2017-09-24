@@ -1,6 +1,5 @@
 function zip(xs: Seq[Ref], ys: Seq[Ref]): Seq[Ref]
   requires |xs| == |ys| || |xs| == |ys| + 1
-  decreases *
 {
   (ys == Seq[Ref]())
     ? xs

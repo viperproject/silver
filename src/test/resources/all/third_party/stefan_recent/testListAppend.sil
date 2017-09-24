@@ -67,7 +67,6 @@ function Wand_list_for_list__get_out_1_0(diz: Ref): Seq[Int]
 function List__contents(diz: Ref): Seq[Int]
   requires diz != null
   requires acc(List__state(diz), write)
-  decreases *
 {
   (unfolding acc(List__state(diz), write) in (diz.List__next == null ? Seq(diz.List__val) : Seq(diz.List__val) ++ List__contents(diz.List__next)))
 }

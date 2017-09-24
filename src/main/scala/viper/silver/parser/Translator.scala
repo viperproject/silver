@@ -11,6 +11,7 @@ import scala.collection.mutable
 import viper.silver.ast._
 import viper.silver.ast.utility._
 import viper.silver.FastMessaging
+import viper.silver.frontend.SilFrontendConfig
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -24,8 +25,7 @@ import viper.silver.FastMessaging
  * return a tree, but instead, records error messages using the
  * Messaging feature.
  */
-case class Translator(program: PProgram) {
-
+case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolean) {
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
@@ -40,16 +40,18 @@ case class Translator(program: PProgram) {
         val predicates = ppredicates map translate
         var methods = pmethods map translate
 
-        //Add Methods, Domains and functions needed for proving termination
-        val termCheck = new DecreasesClause(members)
-        val structureForTermProofs = termCheck.addMethods(functions, predicates, domain, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"))
-        domain = structureForTermProofs._1
-        functions ++= structureForTermProofs._2
-        methods ++= structureForTermProofs._3
+        if (enableFunctionTerminationChecks) {
+          // Add methods, domains and functions needed for proving termination
+          val termCheck = new DecreasesClause(members)
+          val structureForTermProofs = termCheck.addMethods(functions, predicates, domain, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"))
+          domain = structureForTermProofs._1
+          functions ++= structureForTermProofs._2
+          methods ++= structureForTermProofs._3
+        }
 
-        val prog = Program(domain, fields, functions, predicates, methods)(program)
+        val finalProgram = Program(domain, fields, functions, predicates, methods)(program)
 
-        if (Consistency.messages.isEmpty) Some(prog) // all error messages generated during translation should be Consistency messages
+        if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
         else None
     }
   }

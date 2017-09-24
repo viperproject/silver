@@ -26,7 +26,6 @@ function val(x: Ref): Int
 
 function vals(x: Ref): Seq[Int]
   requires acc(Tree(x))
-  decreases *
 { unfolding acc(Tree(x)) in (x.l == null ? Seq[Int]() : vals(x.l)) ++ Seq(x.v) ++ (x.r == null ? Seq[Int]() : vals(x.r)) }
 
 define Vals(x) (x==null ? Seq[Int]() : vals(x))

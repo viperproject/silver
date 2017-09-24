@@ -8,7 +8,6 @@ predicate valid(list: Ref) {
 function size(list: Ref): Int
   requires acc(valid(list), wildcard)
   ensures result >= 1
-  decreases *
 {
 	unfolding acc(valid(list), wildcard) in (list.next == null ? 1 : 1 + size(list.next))
 }

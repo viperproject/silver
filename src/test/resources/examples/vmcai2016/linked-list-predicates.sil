@@ -18,7 +18,6 @@ function contentNodes(this: Ref, end: Ref): Seq[Int]
   ensures  this != end ==>
               0 < |result| && result[0] == unfolding acc(lseg(this, end)) in this.data
   ensures  forall i: Int, j: Int :: 0 <= i && i < j && j < |result| ==> result[i] <= result[j]
-  decreases *
 {
   this == end ? Seq[Int]() :
                 unfolding acc(lseg(this, end)) in (
@@ -30,7 +29,6 @@ function contentNodes(this: Ref, end: Ref): Seq[Int]
 function lengthNodes(this: Ref, end: Ref): Int
   requires acc(lseg(this, end))
   ensures  result == |contentNodes(this, end)|
-  decreases *
 {
   unfolding acc(lseg(this, end)) in
   this == end ? 0 :
@@ -52,7 +50,6 @@ predicate List(this: Ref)
 function content(this: Ref): Seq[Int]
   requires acc(List(this))
   ensures  forall i: Int, j: Int :: 0 <= i && i < j && j < |result| ==> result[i] <= result[j]
-  decreases *
 {
   unfolding acc(List(this)) in contentNodes(this.head, null)
 }
@@ -60,7 +57,6 @@ function content(this: Ref): Seq[Int]
 function length(this: Ref): Int
   requires acc(List(this))
   ensures result == |content(this)|
-  decreases *
 {
   unfolding acc(List(this)) in lengthNodes(this.head, null)
 }

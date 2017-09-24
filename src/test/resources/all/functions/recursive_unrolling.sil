@@ -7,7 +7,6 @@ predicate node(this: Ref) {
 function length(this: Ref): Int
   requires acc(node(this))
   ensures  result > 0
-  decreases *
 {
   1 + unfolding acc(node(this)) in
           this.next == null ? 0 : length(this.next)

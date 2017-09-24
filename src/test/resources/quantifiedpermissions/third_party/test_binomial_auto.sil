@@ -8,7 +8,6 @@ function demo__bin(N: Int, k: Int): Int
   requires N >= 0
   requires 0 <= k
   requires k <= N
-  decreases *
 {
   ((k == 0) || (k == N) || (N <= 0) ? 1 : demo__bin(N - 1, k - 1) + demo__bin(N - 1, k))
 }

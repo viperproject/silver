@@ -4,7 +4,6 @@ function fib(n: Int): Int
   requires n >= 0
   ensures (result == 0) == (n == 0)
   ensures result >= 0
-  decreases *
 { n <= 1 ? n : fib(n - 1) + fib(n - 2) }
 
 method test1() {

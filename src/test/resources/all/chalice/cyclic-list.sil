@@ -10,14 +10,12 @@ predicate valid(this: Ref) {
 function length(this: Ref): Int
   requires acc(valid(this), write)
   ensures result > 0
-  decreases *
 { (unfolding acc(valid(this), write) in (((this.next) == (null)) ? 1 : 1 + length(this.next))) }
 
 function itemAt(this: Ref, i: Int): Int
   requires acc(valid(this), write)
   requires 0 <= i
   requires i < length(this)
-  decreases *
 { (unfolding acc(valid(this), write) in (((i) == (0)) || ((this.next) == (null)) ? this.value : itemAt(this.next, i - 1))) }
 
 method test1(this: Ref)

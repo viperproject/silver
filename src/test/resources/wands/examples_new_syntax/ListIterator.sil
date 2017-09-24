@@ -310,8 +310,8 @@ requires Node_reverse(this) {
 
 //finds the first node of a list
 function Node_first(this: Ref): Ref
-requires Node_reverse(this)
-decreases * {
+  requires Node_reverse(this)
+{
   unfolding Node_reverse(this) in (this.Node_prev==null) ? this : Node_first(this.Node_prev)}
 
 //create a new node

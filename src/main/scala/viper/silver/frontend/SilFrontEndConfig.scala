@@ -94,6 +94,13 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
 
   dependsOnAll(ideModeErrorFile, ideMode :: Nil)
 
+  val enableFunctionTerminationChecks = opt[Boolean]("enableFunctionTerminationChecks",
+    descr = "Enable program function termination checks (decreases-clauses)",
+    default = Some(false),
+    noshort = true,
+    hidden = false
+  )
+
   validateOpt(file, ignoreFile) {
     case (_, Some(true)) => Right(Unit)
     case (Some(path), _) =>
