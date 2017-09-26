@@ -178,7 +178,7 @@ object LoopDetector {
     * @return The set of edges belonging to the part of an natural loop in the
     *         given control flow graph defined by the given backedge.
     */
-  private def collectBlocks[S, E](cfg: Cfg[S, E], backedge: Edge[S, E]): Set[Block[S, E]] = {
+  def collectBlocks[S, E](cfg: Cfg[S, E], backedge: Edge[S, E]): Set[Block[S, E]] = {
     // initialize
     val result = mutable.Set[Block[S, E]]()
     val stack = mutable.Stack[Block[S, E]]()
