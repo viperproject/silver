@@ -59,28 +59,28 @@ class MethodDependencyTests extends FunSuite with Matchers {
   val f2: Field = Field("f2", Bool)()
   val f3: Field = Field("f3", Bool)()
   val f4: Field = Field("f4", Bool)()
-  val fun0: Function = Function("fun0", Seq(), Bool, Seq(), Seq(), None)()
-  val fun1: Function = Function("fun1", Seq(), Bool, Seq(), Seq(), None)()
-  val fun2: Function = Function("fun2", Seq(), Bool, Seq(), Seq(), None)()
-  val fun3: Function = Function("fun3", Seq(), Bool, Seq(), Seq(), None)()
-  val fun4: Function = Function("fun4", Seq(LocalVarDecl("x", Ref)()), Bool, Seq(FieldAccessPredicate(FieldAccess(LocalVar("x")(Ref), Field("f4", Bool)())(),FullPerm()())()), Seq(), None)()
+  val fun0: Function = Function("fun0", Seq(), Bool, Seq(), Seq(), None, None)()
+  val fun1: Function = Function("fun1", Seq(), Bool, Seq(), Seq(), None, None)()
+  val fun2: Function = Function("fun2", Seq(), Bool, Seq(), Seq(), None, None)()
+  val fun3: Function = Function("fun3", Seq(), Bool, Seq(), Seq(), None, None)()
+  val fun4: Function = Function("fun4", Seq(LocalVarDecl("x", Ref)()), Bool, Seq(FieldAccessPredicate(FieldAccess(LocalVar("x")(Ref), Field("f4", Bool)())(),FullPerm()())()), Seq(), None, None)()
   val p0: Predicate = Predicate("p0", Seq(), None)()
   val p1: Predicate = Predicate("p1", Seq(), None)()
   val p2: Predicate = Predicate("p2", Seq(), None)()
   val p3: Predicate = Predicate("p3", Seq(), None)()
   val p4: Predicate = Predicate("p4", Seq(LocalVarDecl("x", Ref)()), Some(FuncApp(fun4, Seq(LocalVar("x")(Ref)))()))()
   val m1: Method = Method("m1", Seq(), Seq(), Seq(), Seq(), Seqn(Seq(), Seq())())()
-  val m0: Method = Method("m0", Seq(LocalVarDecl("x", Ref)()), Seq(), Seq(PredicateAccessPredicate(PredicateAccess(Seq(LocalVar("x")(Ref)), p4)(), FullPerm()())()), Seq(), Seqn(Seq(MethodCall(m1,Seq(),Seq())()), Seq())())()
+  val m0: Method = Method("m0", Seq(LocalVarDecl("x", Ref)()), Seq(), Seq(PredicateAccessPredicate(PredicateAccess(Seq(LocalVar("x")(Ref)), p4.name)(), FullPerm()())()), Seq(), Seqn(Seq(MethodCall(m1,Seq(),Seq())()), Seq())())()
   val test: Method = Method("test",
     Seq(LocalVarDecl("x", Ref)()),
     Seq(),
     // preconditions:
-    Seq(And(FieldAccessPredicate(FieldAccess(LocalVar("x")(Ref), f0)(), FullPerm()())(), And(FuncApp(fun0, Seq())(), PredicateAccessPredicate(PredicateAccess(Seq(), p0)(), FullPerm()())())())()),
+    Seq(And(FieldAccessPredicate(FieldAccess(LocalVar("x")(Ref), f0)(), FullPerm()())(), And(FuncApp(fun0, Seq())(), PredicateAccessPredicate(PredicateAccess(Seq(), p0.name)(), FullPerm()())())())()),
     // postconditions:
-    Seq(And(FieldAccessPredicate(FieldAccess(LocalVar("x")(Ref), f1)(), FullPerm()())(), And(FuncApp(fun1, Seq())(), PredicateAccessPredicate(PredicateAccess(Seq(), p1)(), FullPerm()())())())()),
+    Seq(And(FieldAccessPredicate(FieldAccess(LocalVar("x")(Ref), f1)(), FullPerm()())(), And(FuncApp(fun1, Seq())(), PredicateAccessPredicate(PredicateAccess(Seq(), p1.name)(), FullPerm()())())())()),
     // body of the method:
     Seqn(Seq(
-      Unfold(PredicateAccessPredicate(PredicateAccess(Seq(), p2)(), FullPerm()())())(),
+      Unfold(PredicateAccessPredicate(PredicateAccess(Seq(), p2.name)(), FullPerm()())())(),
       While(TrueLit()(), Seq(FieldAccess(LocalVar("x")(Ref), f2)()), Seqn(Seq(
         // body of the outer loop
         While(TrueLit()(), Seq(FuncApp(fun2, Seq())()), Seqn(Seq(
