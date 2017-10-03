@@ -48,7 +48,7 @@ case class FailureMessage(entity: Entity, verificationTime: Time, result: Failur
     extends VerificationResultMessage
 
 // TODO: design the infrastructure for reporting Symbolic Execution info with variable level of detail.
-case class SymbExLogReport(file: File, entity: Entity, timestamp: Time, stuff: Option[Any])
+case class SymbExLogReport(entity: Entity, timestamp: Time, stuff: Option[Any])
     extends Message
 
 // FIXME: for debug purposes only: a pong message can be reported to indicate
