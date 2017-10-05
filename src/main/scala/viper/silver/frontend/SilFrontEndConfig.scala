@@ -11,7 +11,7 @@ import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
 
 /**
- * The configuration of a SIL front-end.
+ * The configuration of a Viper front-end.
  */
 abstract class SilFrontendConfig(args: Seq[String], private var projectName: String) extends ScallopConf(args) {
   /* Attention: projectName must be an explicit field, otherwise it cannot be
@@ -44,7 +44,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val methods = opt[String]("methods",
-    descr = "The SIL methods that should be verified. :all means all methods.",
+    descr = "The Viper methods that should be verified. :all means all methods.",
     default = Some(":all"),
     noshort = true,
     hidden = true

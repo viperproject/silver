@@ -13,7 +13,7 @@ import viper.silver.ast.utility.Visitor
 import viper.silver.FastMessaging
 
 /**
- * A resolver and type-checker for the intermediate SIL AST.
+ * A resolver and type-checker for the intermediate Viper AST.
  */
 case class Resolver(p: PProgram) {
   val names = NameAnalyser()

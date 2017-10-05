@@ -8,7 +8,7 @@ package viper.silver.verifier
 
 import viper.silver.ast._
 
-/** Describes the outcome of a verification attempt of a SIL program.
+/** Describes the outcome of a verification attempt of a Viper program.
 
   */
 sealed trait VerificationResult
@@ -60,20 +60,20 @@ abstract class ParseReport(message: String, pos: Position) extends AbstractError
 case class ParseError(message: String, override val pos: Position)
   extends ParseReport(message, pos) {
   def fullId = "parser.error"
-  def readableMessage = s"Parse error: $message ($pos)"
+  def readableMessage = s"Parse error: $message"
 }
 
 /** A case class used for treating certain parser reports as non-critical. */
 case class ParseWarning(message: String, override val pos: Position)
   extends ParseReport(message, pos) {
   def fullId = "parser.warning"
-  def readableMessage = s"Parse warning: $message ($pos)"
+  def readableMessage = s"Parse warning: $message"
 }
 
 /** An error during consistency-checking an AST node */
 case class ConsistencyError(message: String, pos:Position) extends AbstractError {
   def fullId = "consistency.error"
-  def readableMessage: String = s"Consistency error: $message ($pos)"
+  def readableMessage: String = s"Consistency error: $message"
 }
 
 /** A typechecker error. */

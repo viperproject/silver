@@ -197,7 +197,7 @@ trait SystemUnderTest {
  * An output produced by a system under test.
  *
  * It deliberately does not reference [[viper.silver.ast.Position]],
- * such that the testing infrastructure is independent from SIL's AST.
+ * such that the testing infrastructure is independent from Viper's AST.
  *
  * Its `toString` method will be used to output an error message
  * if the output was not supposed occur.

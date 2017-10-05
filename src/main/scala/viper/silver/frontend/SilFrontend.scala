@@ -15,12 +15,13 @@ import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
 import viper.silver.ast._
 import viper.silver.parser._
+import viper.silver.reporter.{OverallFailureMessage, OverallSuccessMessage}
 import viper.silver.verifier._
 
 import scala.collection.mutable
 
 /**
- * Common functionality to implement a command-line verifier for SIL.  This trait
+ * Common functionality to implement a command-line verifier for Viper.  This trait
  * provides code to invoke the parser, parse common command-line options and print
  * error messages in a user-friendly fashion.
  */
@@ -38,7 +39,7 @@ trait SilFrontend extends DefaultFrontend {
     */
   def configureVerifier(args: Seq[String]): SilFrontendConfig
 
-  /** The SIL verifier to be used for verification (after it has been initialized). */
+  /** The Viper verifier to be used for verification (after it has been initialized). */
   def verifier: Verifier = _ver
   protected var _ver: Verifier = _
 
@@ -95,7 +96,7 @@ trait SilFrontend extends DefaultFrontend {
 
   /**
    * Main method that parses command-line arguments, parses the input file and passes
-   * the SIL program to the verifier.  The resulting error messages (if any) will be
+   * the Viper program to the verifier.  The resulting error messages (if any) will be
    * shown in a user-friendly fashion.
    */
   def execute(args: Seq[String]) {
@@ -126,15 +127,17 @@ trait SilFrontend extends DefaultFrontend {
     // print the result
     printFinishHeader()
 
+    //TODO: eventually the functionality in the printSuccess and printErrors methods (and possibly other methods in this file)
+    //TODO: could be factored out into the Reporter itself. For the moment, we interact with both functionality, for compatibility
     result match {
-      case Success => printSuccess()
-      case Failure(errors) =>
-        val errorsT = errors map {
-          case e: AbstractVerificationError =>
-            e.transformedError()
-          case rest: AbstractError => rest
-        }
-        printErrors(errorsT: _*)
+      case Success => {
+        printSuccess();
+        reporter.report(OverallSuccessMessage(System.currentTimeMillis() - _startTime))
+      }
+      case f@Failure(errors) => {
+        printErrors(errors: _*);
+        reporter.report(OverallFailureMessage(System.currentTimeMillis() - _startTime, f))
+      }
     }
   }
 
@@ -166,7 +169,7 @@ trait SilFrontend extends DefaultFrontend {
   protected def printFinishHeader() {
     if (!_config.exit) {
       if (_config.noTiming()) {
-        if(config.ideMode()) {
+        if(_config.ideMode()) {
           loggerForIde.info(s"""{"type":"End"}\r\n""")
         }else {
           logger.info(s"${_ver.name} finished.")
@@ -180,7 +183,7 @@ trait SilFrontend extends DefaultFrontend {
   protected def printFinishHeaderWithTime() {
     val timeMs = System.currentTimeMillis() - _startTime
     val time = f"${timeMs / 1000.0}%.3f seconds"
-    if (config.ideMode()) {
+    if (_config.ideMode()) {
       loggerForIde.info(s"""{"type":"End","time":"$time"}\r\n""")
     } else {
       logger.info(s"${_ver.name} finished in $time.")
