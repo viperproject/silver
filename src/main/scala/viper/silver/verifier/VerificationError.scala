@@ -369,7 +369,7 @@ object errors {
   def HeuristicsFailed(offendingNode: ErrorNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => HeuristicsFailed(offendingNode, reason))
 
-  case class VerificationErrorWithCounterexample(ve: AbstractVerificationError, model: String, symState: String, currentMember: String, ) extends AbstractVerificationError {
+  case class VerificationErrorWithCounterexample(ve: AbstractVerificationError, model: String, symState: String, currentMember: String, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = ve.id
     val text = null // not used since readableMessage is overridden
 
