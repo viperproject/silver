@@ -119,11 +119,26 @@ trait SilFrontend extends DefaultFrontend {
     finish()
   }
 
-  def setStartTime(): Unit ={
+  def setStartTime(): Unit = {
     _startTime = System.currentTimeMillis()
   }
 
-  def finish(): Unit ={
+  private def getVerifierName: String = {
+    val silicon_pattern = raw"""(?i)(silicon)""".r
+    val carbon_pattern = raw"""(?i)(carbon)""".r
+
+    silicon_pattern.findFirstIn(verifier.name) match {
+      case Some(_) =>
+        return "silicon"
+      case _ =>
+        carbon_pattern.findFirstIn(verifier.name) match {
+          case Some(_) => "carbon"
+          case _ => "<unknown verifier>"
+        }
+    }
+  }
+
+  def finish(): Unit = {
     // print the result
     printFinishHeader()
 
@@ -132,11 +147,11 @@ trait SilFrontend extends DefaultFrontend {
     result match {
       case Success => {
         printSuccess();
-        reporter.report(OverallSuccessMessage(System.currentTimeMillis() - _startTime))
+        reporter.report(OverallSuccessMessage(getVerifierName, System.currentTimeMillis() - _startTime))
       }
       case f@Failure(errors) => {
         printErrors(errors: _*);
-        reporter.report(OverallFailureMessage(System.currentTimeMillis() - _startTime, f))
+        reporter.report(OverallFailureMessage(getVerifierName, System.currentTimeMillis() - _startTime, f))
       }
     }
   }

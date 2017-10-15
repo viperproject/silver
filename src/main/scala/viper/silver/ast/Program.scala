@@ -142,7 +142,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   lazy val groundTypeInstances = DomainInstances.findNecessaryTypeInstances(this)
 
-  lazy val members = domains ++ fields ++ functions ++ predicates ++ methods
+  lazy val members: Seq[Member with Serializable] = domains ++ fields ++ functions ++ predicates ++ methods
 
   def findField(name: String): Field = {
     this.fields.find(_.name == name) match {

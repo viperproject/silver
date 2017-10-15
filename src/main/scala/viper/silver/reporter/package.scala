@@ -9,6 +9,6 @@ package viper.silver
 package object reporter {
   type Time = Long // in milliseconds
   type File = java.nio.file.Path
-  type Entity = viper.silver.ast.Member
+  type Entity = viper.silver.ast.Member with Serializable
   type Position = viper.silver.ast.SourcePosition
 }

@@ -21,7 +21,7 @@ trait ErrorMessage {
 
 trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
-  def readableMessage(withId: Boolean = false, withPosition: Boolean = true): String
+  def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
   override def readableMessage = readableMessage(false, true)
   def fullId = s"$id:${reason.id}"
 }
@@ -373,7 +373,7 @@ object errors {
     val id = ve.id
     val text = null // not used since readableMessage is overridden
 
-    override def readableMessage(withId: Boolean, withPosition: Boolean): String = ve.readableMessage(withId, withPosition)
+    override def readableMessage(withId: Boolean, withPosition: Boolean = false): String = ve.readableMessage(withId, withPosition)
 
     override def offendingNode = ve.offendingNode
 
