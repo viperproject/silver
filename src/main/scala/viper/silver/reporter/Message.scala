@@ -105,8 +105,13 @@ case class StatisticsReport(nOfMethods: Int, nOfFunctions: Int, nOfPredicates: I
 case class ProgramOutlineReport(members: List[Entity]) extends Message {
 
   override def toString: String = s"program_outline_report(members=${members.toString()})"
-
   override val name: String = s"program_outline"
+}
+
+case class ProgramDefinitionsReport(definitions: List[Definition]) extends Message {
+
+  override def toString: String = s"program_definitions_report(definitions=${definitions.toString()}"
+  override val name: String = s"program_definitions"
 }
 
 // TODO: design the infrastructure for reporting Symbolic Execution info with variable level of detail.
@@ -124,6 +129,6 @@ case class SymbExLogReport(entity: Entity, timestamp: Time, stuff: Option[Any])
 // FIXME: that the verification backend is alive.
 case class PongMessage(msg: String) extends Message {
 
-  override def toString: String = s"dbg__pong(msg=${msg})"
+  override def toString: String = s"dbg__pong(msg=$msg)"
   override val name: String = s"dbg__pong"
 }

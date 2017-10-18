@@ -57,15 +57,6 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
-  val ideMode = opt[Boolean]("ideMode",
-    descr = (  "Used for VS Code IDE. Report errors in json format, and write"
-             + "errors in the format '<file>,<line>:<col>,<line>:<col>,<message>' to"
-             + "a file (see option ideModeErrorFile)."),
-    default = Some(false),
-    noshort = true,
-    hidden = true
-  )
-
   val disableCaching = opt[Boolean]("disableCaching",
     descr = (  "Used for ViperServer. Cache verification errors to speed up the"
       + "verification process"),
@@ -75,24 +66,12 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val ideModeAdvanced = opt[Boolean]("ideModeAdvanced",
-    descr = (  "Used for VS Code IDE. Write symbolic execution log into .vscode/executionTreeData.js file, "
-            + "write execution tree graph into .vscode/dot_input.dot, "
-            + "and output z3's counter example models."),
+    descr = (  "Used for symbolic execution debugging in ViperIDE. Write symbolic execution log into "
+            + ".vscode/executionTreeData.js file, and output z3's counterexample models."),
     default = Some(false),
     noshort = true,
     hidden = true
   )
-
-  dependsOnAll(ideModeAdvanced, ideMode :: Nil)
-
-  val ideModeErrorFile = opt[String]("ideModeErrorFile",
-    descr = "File to which errors should be written",
-    default = Some("errors.log"),
-    noshort = true,
-    hidden = true
-  )
-
-  dependsOnAll(ideModeErrorFile, ideMode :: Nil)
 
   val enableFunctionTerminationChecks = opt[Boolean]("enableFunctionTerminationChecks",
     descr = "Enable program function termination checks (decreases-clauses)",

@@ -10,15 +10,12 @@ import fastparse.core.Parsed
 import java.nio.file.{Path, Paths}
 
 import org.apache.commons.io.FilenameUtils
-import viper.silver.ast.{Node, Position, _}
+import viper.silver.ast.Position
 import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
 import viper.silver.ast._
 import viper.silver.parser._
-import viper.silver.reporter.{OverallFailureMessage, OverallSuccessMessage}
 import viper.silver.verifier._
-
-import scala.collection.mutable
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -123,7 +120,7 @@ trait SilFrontend extends DefaultFrontend {
     _startTime = System.currentTimeMillis()
   }
 
-  private def getVerifierName: String = {
+  protected def getVerifierName: String = {
     val silicon_pattern = raw"""(?i)(silicon)""".r
     val carbon_pattern = raw"""(?i)(carbon)""".r
 
@@ -142,17 +139,11 @@ trait SilFrontend extends DefaultFrontend {
     // print the result
     printFinishHeader()
 
-    //TODO: eventually the functionality in the printSuccess and printErrors methods (and possibly other methods in this file)
-    //TODO: could be factored out into the Reporter itself. For the moment, we interact with both functionality, for compatibility
     result match {
-      case Success => {
-        printSuccess();
-        reporter.report(OverallSuccessMessage(getVerifierName, System.currentTimeMillis() - _startTime))
-      }
-      case f@Failure(errors) => {
-        printErrors(errors: _*);
-        reporter.report(OverallFailureMessage(getVerifierName, System.currentTimeMillis() - _startTime, f))
-      }
+      case Success =>
+        printSuccess()
+      case f@Failure(errors) =>
+        printErrors(errors: _*)
     }
   }
 
@@ -165,9 +156,7 @@ trait SilFrontend extends DefaultFrontend {
     * arguments failed.
     */
   protected def printFallbackHeader() {
-    if(config.error.isEmpty && config.ideMode()) {
-      loggerForIde.info(s"""{"type":"Start","backendType":"${_ver.name}"}\r\n""")
-    }else {
+    if(config.error.isDefined) {
       logger.info(s"${_ver.name} ${_ver.version}")
       logger.info(s"${_ver.copyright}\n")
     }
@@ -184,11 +173,7 @@ trait SilFrontend extends DefaultFrontend {
   protected def printFinishHeader() {
     if (!_config.exit) {
       if (_config.noTiming()) {
-        if(_config.ideMode()) {
-          loggerForIde.info(s"""{"type":"End"}\r\n""")
-        }else {
-          logger.info(s"${_ver.name} finished.")
-        }
+        logger.info(s"${_ver.name} finished.")
       } else {
         printFinishHeaderWithTime()
       }
@@ -198,106 +183,21 @@ trait SilFrontend extends DefaultFrontend {
   protected def printFinishHeaderWithTime() {
     val timeMs = System.currentTimeMillis() - _startTime
     val time = f"${timeMs / 1000.0}%.3f seconds"
-    if (_config.ideMode()) {
-      loggerForIde.info(s"""{"type":"End","time":"$time"}\r\n""")
-    } else {
-      logger.info(s"${_ver.name} finished in $time.")
-    }
+    logger.info(s"${_ver.name} finished in $time.")
   }
 
   protected def printErrors(errors: AbstractError*) {
-    if (config.error.isEmpty && config.ideMode()) {
-      //output a JSON representation of the errors for the IDE
-      val ideModeErrors = errors.map(e => new IdeModeErrorRepresentation(e))
-      val jsonErrors = ideModeErrors.map(e => e.jsonError).mkString(",")
-      loggerForIde.info(s"""{"type":"Error","file":"${ideModeErrors.head.shortFileStr}","errors":[$jsonErrors]}""")
-    } else {
-      logger.info("The following errors were found:")
+    logger.info("The following errors were found:")
 
-      errors.foreach(e => logger.info(s"  ${e.readableMessage}"))
+    errors.foreach(e => logger.info(s"  ${e.readableMessage}"))
 
-      if (config.error.nonEmpty) {
-        logger.info("")
-        logger.info("Run with --help for usage and options")
-      }
+    if (config.error.nonEmpty) {
+      logger.info("")
+      logger.info("Run with --help for usage and options")
     }
   }
 
-  protected def printOutline(program: Program) {
-    if (config != null && config.ideMode()) {
-      //output a JSON representation of the Outline for the IDE
-      val members = program.members.map(m =>
-        s"""{
-           | "type": "${m.getClass.getName}",
-           | "name": "${m.name}",
-           | "location": "${m.pos.toString}"
-        }""".stripMargin).mkString(",")
-
-      loggerForIde.info(s"""{"type":"Outline","members":[$members]}""")
-    }
-  }
-
-  case class Definition(name:String, typ: String, location: Position, scope: Option[AbstractSourcePosition] = None) {}
-
-  private def addDecl(definitions: mutable.ListBuffer[Definition], typ: String, name: String, pos: Position,
-                      enclosingNode: Node with Positioned) = enclosingNode.pos match {
-      case position: AbstractSourcePosition =>
-        definitions += Definition(name, typ, pos, Some(position))
-      case _ =>
-    }
-
-  protected def printDefinitions(program: Program) {
-    //This works, as the scope of all LocalVarDecls is the enclosing Member
-    if (config != null && config.ideMode()) {
-      val definitions = mutable.ListBuffer[Definition]()
-      program.members.foreach {
-        case t: Field =>
-          definitions += Definition(t.name, "Field", t.pos) //global
-        case t: Function =>
-          definitions += Definition(t.name, "Function", t.pos)
-          t.formalArgs.foreach(arg => addDecl(definitions, "Argument", arg.name, arg.pos, t))
-        case t: Method =>
-          definitions += Definition(t.name, "Method", t.pos)
-          t.formalArgs.foreach(arg => addDecl(definitions, "Argument", arg.name, arg.pos, t))
-          t.formalReturns.foreach(arg => addDecl(definitions, "Return", arg.name, arg.pos, t))
-          //FIXME
-          //t.locals.foreach(arg => addDecl(definitions, "Local", arg.name, arg.pos, t))
-        case t: Predicate =>
-          definitions += Definition(t.name, "Predicate", t.pos)
-          t.formalArgs.foreach(arg => addDecl(definitions,"Argument", arg.name, arg.pos, t))
-        case t: Domain =>
-          definitions += Definition(t.name, "Domain", t.pos)
-          t.functions.foreach(func => {
-            definitions += Definition(func.name, "Function", func.pos)
-            func.formalArgs.foreach(arg => addDecl(definitions, "Argument", arg.name, arg.pos, t))
-          })
-          t.axioms.foreach(axiom => addDecl(definitions, "Axiom", axiom.name, axiom.pos, t))
-      }
-      //output a JSON representation of the Outline for the IDE
-      val defs = definitions.map(d =>
-        s"""{
-           |"type": "${d.typ}",
-           |"name": "${d.name}",
-           |"location": "${d.location.toString}",
-           |"scopeStart": "${d.scope match {
-              case Some(s) => s.start.line + ":" + s.start.column
-              case _ => "global" }}",
-           |"scopeEnd": "${d.scope match {
-              case Some(s) if s.end.isDefined => s.end.get.line + ":" + s.end.get.column
-              case _ => "global" }}",
-        }""".stripMargin).mkString(",")
-
-      loggerForIde.info(s"""{"type":"Definitions","definitions":[$defs]}""")
-    }
-  }
-
-  protected def printSuccess() {
-    if (config.ideMode()) {
-      loggerForIde.info("""{"type":"Success"}""")
-    } else {
-      logger.info("No errors found.")
-    }
-  }
+  protected def printSuccess() = logger.info("No errors found.")
 
   override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get

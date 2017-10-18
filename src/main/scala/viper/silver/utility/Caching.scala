@@ -56,7 +56,7 @@ trait DependencyAware {
     * - fields are considered as global dependencies (even if they don't influence the method);
     * - concrete predicates used abstractly (w/o unfolding) bring transitive dependencies via their body.
     *
-    * Danger! A bug in this method may lead to unsound caused by caching.
+    * Danger! A bug in this method may lead to unsoundness caused by caching.
     *
     * @param p
     *          The [[Program]] under consideration.
