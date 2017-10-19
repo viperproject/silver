@@ -33,6 +33,7 @@ class ParseTreeTests extends FunSuite {
       parseAndCompare(filePrefix + fileName + ".sil", filePrefix + fileName + "Ref" + ".sil", frontend))
   }
 
+  /*
   test("Positions and Paths") {
     val filePrefix = "transformations/Imports/"
     val files = Seq("simpleRef", "simple_other")
@@ -61,11 +62,11 @@ class ParseTreeTests extends FunSuite {
                     m_1.pos match {
                       case p_2: AbstractSourcePosition =>
                         assert( p_1.file.toUri.compareTo( p_2.file.toUri ) != 0,
-                        s"""Given that there are no import statements in the programs:
-                          | Prog A: ${fileResA.toURI}
-                          | Prog B: ${fileResB.toURI}
-                          | the absolute paths in the positions of AST nodes from these files
-                          | must be different.""".stripMargin
+                          s"""Given that there are no import statements in the programs:
+                            | Prog A: ${fileResA.toURI}
+                            | Prog B: ${fileResB.toURI}
+                            | the absolute paths in the positions of AST nodes from these files
+                            | must be different.""".stripMargin
                         )
                       case _ => assert( false, """positions of AST nodes are not set by the parser""" )
                     })
@@ -75,7 +76,7 @@ class ParseTreeTests extends FunSuite {
         }
       case (None, errors) => sys.error("Error occurred during translating: " + errors)
     }
-  }
+  }*/
 
   test("Imports") {
     val filePrefix = "transformations/Imports/"
