@@ -33,7 +33,6 @@ class ParseTreeTests extends FunSuite {
       parseAndCompare(filePrefix + fileName + ".sil", filePrefix + fileName + "Ref" + ".sil", frontend))
   }
 
-  /*
   test("Positions and Paths") {
     val filePrefix = "transformations/Imports/"
     val files = Seq("simpleRef", "simple_other")
@@ -76,7 +75,7 @@ class ParseTreeTests extends FunSuite {
         }
       case (None, errors) => sys.error("Error occurred during translating: " + errors)
     }
-  }*/
+  }
 
   test("Imports") {
     val filePrefix = "transformations/Imports/"
