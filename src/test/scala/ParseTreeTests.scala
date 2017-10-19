@@ -33,6 +33,50 @@ class ParseTreeTests extends FunSuite {
       parseAndCompare(filePrefix + fileName + ".sil", filePrefix + fileName + "Ref" + ".sil", frontend))
   }
 
+  test("Positions and Paths") {
+    val filePrefix = "transformations/Imports/"
+    val files = Seq("simpleRef", "simple_other")
+
+    val paths: Seq[String] = files.map { f => filePrefix + f + ".sil" }
+
+    val fileResA = getClass.getResource(paths(0))
+    assert(fileResA != null, s"File ${paths(0)} not found")
+    val file_a = Paths.get(fileResA.toURI)
+
+    val fileResB = getClass.getResource(paths(1))
+    assert(fileResB != null, s"File ${paths(1)} not found")
+    val file_b = Paths.get(fileResB.toURI)
+
+    val frontend_a = new MockSilFrontend
+    val frontend_b = new MockSilFrontend
+
+    frontend_a.translate(file_a) match {
+      case (Some(prog_a), _) =>
+        frontend_b.translate(file_b) match {
+          case (Some(prog_b), _) =>
+            prog_a.members.foreach( m_1 =>
+              m_1.pos match {
+                case p_1: AbstractSourcePosition =>
+                  prog_b.members.foreach( m_2 =>
+                    m_1.pos match {
+                      case p_2: AbstractSourcePosition =>
+                        assert( p_1.file.toUri.compareTo( p_2.file.toUri ) != 0,
+                        s"""Given that there are no import statements in the programs:
+                          | Prog A: ${fileResA.toURI}
+                          | Prog B: ${fileResB.toURI}
+                          | the absolute paths in the positions of AST nodes from these files
+                          | must be different.""".stripMargin
+                        )
+                      case _ => assert( false, """positions of AST nodes are not set by the parser""" )
+                    })
+                case _ => assert( false, """positions of AST nodes are not set by the parser""" )
+              })
+          case (None, errors) => sys.error("Error occurred during translating: " + errors)
+        }
+      case (None, errors) => sys.error("Error occurred during translating: " + errors)
+    }
+  }
+
   test("Imports") {
     val filePrefix = "transformations/Imports/"
     val files = Seq("simple", "complex", "cyclic")
