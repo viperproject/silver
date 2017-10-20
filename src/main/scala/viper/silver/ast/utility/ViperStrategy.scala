@@ -272,7 +272,7 @@ object ViperStrategy {
     case (p: Predicate, Seq(parameters: Seq[LocalVarDecl@unchecked], body: Option[Exp@unchecked]), meta) =>
       Predicate(p.name, parameters, body)(meta._1, meta._2, meta._3)
 
-    case (m: Method, Seq(parameters: Seq[LocalVarDecl@unchecked], results: Seq[LocalVarDecl@unchecked], preconditions: Seq[Exp@unchecked], postconditions: Seq[Exp@unchecked], body: Seqn), meta) =>
+    case (m: Method, Seq(parameters: Seq[LocalVarDecl@unchecked], results: Seq[LocalVarDecl@unchecked], preconditions: Seq[Exp@unchecked], postconditions: Seq[Exp@unchecked], body: Option[Seqn@unchecked]), meta) =>
       Method(m.name, parameters, results, preconditions, postconditions, body)(meta._1, meta._2, meta._3)
 
     case (da: DomainAxiom, Seq(body: Exp), meta) =>

@@ -69,8 +69,8 @@ class MethodDependencyTests extends FunSuite with Matchers {
   val p2: Predicate = Predicate("p2", Seq(), None)()
   val p3: Predicate = Predicate("p3", Seq(), None)()
   val p4: Predicate = Predicate("p4", Seq(LocalVarDecl("x", Ref)()), Some(FuncApp(fun4, Seq(LocalVar("x")(Ref)))()))()
-  val m1: Method = Method("m1", Seq(), Seq(), Seq(), Seq(), Seqn(Seq(), Seq())())()
-  val m0: Method = Method("m0", Seq(LocalVarDecl("x", Ref)()), Seq(), Seq(PredicateAccessPredicate(PredicateAccess(Seq(LocalVar("x")(Ref)), p4.name)(), FullPerm()())()), Seq(), Seqn(Seq(MethodCall(m1,Seq(),Seq())()), Seq())())()
+  val m1: Method = Method("m1", Seq(), Seq(), Seq(), Seq(), Some(Seqn(Seq(), Seq())()))()
+  val m0: Method = Method("m0", Seq(LocalVarDecl("x", Ref)()), Seq(), Seq(PredicateAccessPredicate(PredicateAccess(Seq(LocalVar("x")(Ref)), p4.name)(), FullPerm()())()), Seq(), Some(Seqn(Seq(MethodCall(m1,Seq(),Seq())()), Seq())()))()
   val test: Method = Method("test",
     Seq(LocalVarDecl("x", Ref)()),
     Seq(),
@@ -79,7 +79,7 @@ class MethodDependencyTests extends FunSuite with Matchers {
     // postconditions:
     Seq(And(FieldAccessPredicate(FieldAccess(LocalVar("x")(Ref), f1)(), FullPerm()())(), And(FuncApp(fun1, Seq())(), PredicateAccessPredicate(PredicateAccess(Seq(), p1.name)(), FullPerm()())())())()),
     // body of the method:
-    Seqn(Seq(
+    Some(Seqn(Seq(
       Unfold(PredicateAccessPredicate(PredicateAccess(Seq(), p2.name)(), FullPerm()())())(),
       While(TrueLit()(), Seq(FieldAccess(LocalVar("x")(Ref), f2)()), Seqn(Seq(
         // body of the outer loop
@@ -88,7 +88,7 @@ class MethodDependencyTests extends FunSuite with Matchers {
           MethodCall(m0, Seq(LocalVar("x")(Ref)), Seq())()
         ), Seq())())()
       ), Seq())())()
-    ), Seq())())()
+    ), Seq())()))()
 
   val p: Program = Program(Seq(D0), Seq(f0, f1, f2, f3, f4), Seq(fun0, fun1, fun2, fun3, fun4), Seq(p0, p1, p2, p3, p4), Seq(m0, m1, test))()
 
@@ -100,7 +100,7 @@ class MethodDependencyTests extends FunSuite with Matchers {
   val via_body_deps: List[Hashable] = List(fun2, p2) ++ m0.formalArgs ++ m0.formalReturns ++ m0.pres ++ m0.posts
   val transitive_deps: List[Hashable] = List(fun4, p4)
   val must_be_deps: List[Hashable] = global_deps ++ via_pre_deps ++ via_post_deps ++ via_body_deps ++ transitive_deps
-  val must_not_be_deps: List[Hashable] = List(fun3, p3, m0.body, m1)
+  val must_not_be_deps: List[Hashable] = List(fun3, p3, m0.body.get, m1)
 
   val computed_deps = p.getDependencies(p, test)
 

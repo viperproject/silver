@@ -524,11 +524,16 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
             showContracts("requires", pres) <>
             showContracts("ensures", posts)
           ) <>
-          line <>
-          braces(nest(defaultIndent,
-            lineIfSomeNonEmpty(if (body == null) null else body.children) <>
-              ssep(Seq(showStmt(body)), line)
-          ) <> line)
+          line <> (
+          body match {
+            case None =>
+              nil
+            case Some(actualBody) =>
+              braces(nest(defaultIndent,
+                lineIfSomeNonEmpty(actualBody.children) <>
+                ssep(Seq(showStmt(actualBody)), line)
+              ) <> line)
+          })
       case Predicate(name, formalArgs, body) =>
         text("predicate") <+> name <> parens(showVars(formalArgs)) <+> (body match {
           case None => nil

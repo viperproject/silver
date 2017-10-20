@@ -83,7 +83,7 @@ case class TypeChecker(names: NameAnalyser) {
     checkMember(m) {
       m.pres foreach (check(_, Bool))
       m.posts foreach (check(_, Bool))
-      check(m.body)
+      m.body.foreach(check)
     }
   }
 
@@ -879,9 +879,9 @@ case class NameAnalyser() {
             }
           case localVar : PLocalVarDecl =>
             getContainingMethod(localVar) match {
-              case Some(PMethod(_, args, returns, pres, posts, body)) =>
+              case Some(PMethod(_, _, _, _, _, Some(actualBody))) =>
                 // Variables must not be used before they are declared
-                if (containsSubnodeBefore(body, i, localVar)){
+                if (containsSubnodeBefore(actualBody, i, localVar)){
                   messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed before it is declared.")
                 }
               case _ =>

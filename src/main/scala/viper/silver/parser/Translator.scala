@@ -11,7 +11,6 @@ import scala.collection.mutable
 import viper.silver.ast._
 import viper.silver.ast.utility._
 import viper.silver.FastMessaging
-import viper.silver.frontend.SilFrontendConfig
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -59,12 +58,19 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
   private def translate(m: PMethod): Method = m match {
     case PMethod(name, _, _, pres, posts, body) =>
       val m = findMethod(name)
-      val b = stmt(body).asInstanceOf[Seqn]
-      val newScopedDecls = b.scopedDecls ++ b.deepCollect {case l: Label => l}
-      val newBody = b.copy(scopedDecls = newScopedDecls)(b.pos, b.info, b.errT)
-      val mm = m.copy(pres = pres map exp, posts = posts map exp, body = newBody)(m.pos, m.info, m.errT)
-      members(m.name) = mm
-      mm
+
+      val newBody = body.map(actualBody => {
+        val b = stmt(actualBody).asInstanceOf[Seqn]
+        val newScopedDecls = b.scopedDecls ++ b.deepCollect {case l: Label => l}
+
+        b.copy(scopedDecls = newScopedDecls)(b.pos, b.info, b.errT)
+      })
+
+      val finalMethod = m.copy(pres = pres map exp, posts = posts map exp, body = newBody)(m.pos, m.info, m.errT)
+
+      members(m.name) = finalMethod
+
+      finalMethod
   }
 
   private def translate(d: PDomain): Domain = d match {
@@ -100,9 +106,16 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
   private def translate(f: PField) = findField(f.idndef)
 
   private val members = collection.mutable.HashMap[String, Node]()
+
   /**
-   * Translate the signature of a member, so that it can be looked up later.
-   */
+    * Translate the signature of a member, so that it can be looked up later.
+    *
+    * TODO: Get rid of this method!
+    *         - Passing lots of null references is just asking for trouble
+    *         - It should no longer be necessary to have this lookup table because, e.g. a
+    *           method call no longer needs the method node, the method name (as a string)
+    *           suffices
+    */
   private def translateMemberSignature(p: PMember) {
     val pos = p
     val name = p.idndef.name

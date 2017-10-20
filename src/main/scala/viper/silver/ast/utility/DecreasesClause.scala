@@ -71,11 +71,12 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
 
         val methodName = uniqueName(func.name + "_termination_proof")
 
-        val newMethod = Method(methodName, func.formalArgs, Seq(), func.pres, Nil, Seqn(Seq(methodBody),
-          neededLocalVars.values.toIndexedSeq)(methodBody.pos))(NoPosition, func.info, func.errT)
+        val newMethodBody = Seqn(Seq(methodBody), neededLocalVars.values.toIndexedSeq)(methodBody.pos)
+
+        val newMethod = Method(methodName, func.formalArgs, Seq(), func.pres, Nil, Some(newMethodBody))(NoPosition, func.info, func.errT)
         members(methodName) = newMethod
         newMethod
-    }}).filter(_.body.collect{case k: Assert => k}.nonEmpty)
+    }}).filter(_.body.getOrElse(Seq.empty).collect{case k: Assert => k}.nonEmpty)
 
     if (neededLocFunctions.nonEmpty) {
       assert(locationDomain.isDefined)

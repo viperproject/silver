@@ -39,16 +39,22 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   /** checks that formalReturns of method calls are assignable to targets, and arguments are assignable to formalArgs */
   lazy val checkMethodCallsAreValid: Seq[ConsistencyError] = methods.flatMap(m=> {
     var s = Seq.empty[ConsistencyError]
-    for (c@MethodCall(name, args, targets) <- m.body) {
-      methods.find(_.name == name) match{
-        case Some(existingMethod) =>
-          if(!Consistency.areAssignable(existingMethod.formalReturns, targets))
-            s :+= ConsistencyError(s"Formal returns ${existingMethod.formalReturns} of method $name are not assignable to targets $targets.", c.pos)
-          if(!Consistency.areAssignable(args, existingMethod.formalArgs))
-            s :+= ConsistencyError(s"Arguments $args are not assignable to formal arguments ${existingMethod.formalArgs} of method " + name, c.pos)
-        case None =>
-      }
+
+    m.body match {
+      case None => /* Nothing to do */
+      case Some(actualBody) =>
+        for (c@MethodCall(name, args, targets) <- actualBody) {
+          methods.find(_.name == name) match {
+            case Some(existingMethod) =>
+              if(!Consistency.areAssignable(existingMethod.formalReturns, targets))
+                s :+= ConsistencyError(s"Formal returns ${existingMethod.formalReturns} of method $name are not assignable to targets $targets.", c.pos)
+              if(!Consistency.areAssignable(args, existingMethod.formalArgs))
+                s :+= ConsistencyError(s"Arguments $args are not assignable to formal arguments ${existingMethod.formalArgs} of method " + name, c.pos)
+            case None =>
+          }
+        }
     }
+
     s
   })
 
@@ -251,16 +257,30 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 }
 
 /** A method declaration. */
-case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Seqn)
+case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
-  extends Member with Callable with Contracted {
+    extends Member with Callable with Contracted {
+
+  /* TODO: Shouldn't not have to be a lazy val, see also the comment for method
+   *       translateMemberSignature in file parser/Translator.scala
+   */
+  lazy val bodyOrAssumeFalse: Seqn = body match {
+    case Some(actualBody) =>
+      actualBody
+    case None =>
+      Seqn(
+        Vector(Inhale(FalseLit()())()),
+        Vector.empty
+      )()
+  }
 
   val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns
-  override lazy val check : Seq[ConsistencyError] =
+
+  override lazy val check: Seq[ConsistencyError] =
     pres.flatMap(Consistency.checkPre) ++
     posts.flatMap(Consistency.checkPost) ++
     posts.flatMap(p=>{ if(!Consistency.noResult(p)) Seq(ConsistencyError("Method postconditions must have no result variables.", p.pos)) else Seq()}) ++
-    Consistency.checkNoArgsReassigned(formalArgs, body) ++
+    body.fold(Seq.empty[ConsistencyError])(Consistency.checkNoArgsReassigned(formalArgs, _)) ++
     (if (!((formalArgs ++ formalReturns) forall (_.typ.isConcrete))) Seq(ConsistencyError("Formal args and returns must have concrete types.", pos)) else Seq()) ++
     (pres ++ posts).flatMap(Consistency.checkNoPermForpermExceptInhaleExhale) ++
     checkReturnsNotUsedInPreconditions
@@ -276,7 +296,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     s
   }
 
-  override def getMetadata:Seq[Any] = {
+  override def getMetadata: Seq[Any] = {
     Seq(pos, info, errT)
   }
   /**

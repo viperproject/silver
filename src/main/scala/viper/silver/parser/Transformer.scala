@@ -119,8 +119,7 @@ object Transformer {
 
         case PProgram(files, macros, domains, fields, functions, predicates, methods, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, errors)
         case PImport(file) => PImport(file)
-        case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go,
-          go(body))
+        case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, body map go)
         case PDomain(idndef, typVars, funcs, axioms) => PDomain(go(idndef), typVars map go, funcs map go, axioms map go)
         case PField(idndef, typ) => PField(go(idndef), go(typ))
         case PFunction(idndef, formalArgs, typ, pres, posts, decs, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, decs map go, body map go)
@@ -213,7 +212,8 @@ object Transformer {
     case (_: PAssert, Seq(e: PExp)) => PAssert(e)
     case (_: PAssume, Seq(e: PExp)) => PAssume(e)
     case (_: PInhale, Seq(e: PExp)) => PInhale(e)
-    case (_: PNewStmt, Seq(target: PIdnUse, fields: Seq[PIdnUse@unchecked])) => PNewStmt(target, if (fields.isEmpty) None else Some(fields))
+    case (_: PRegularNewStmt, Seq(target: PIdnUse, fields: Seq[PIdnUse@unchecked])) => PRegularNewStmt(target, fields)
+    case (_: PStarredNewStmt, Seq(target: PIdnUse)) => PStarredNewStmt(target)
     case (_: PVarAssign, Seq(idnuse: PIdnUse, rhs: PExp)) => PVarAssign(idnuse, rhs)
     case (_: PFieldAssign, Seq(fieldAcc: PFieldAccess, rhs: PExp)) => PFieldAssign(fieldAcc, rhs)
     case (_: PIf, Seq(cond: PExp, thn: PSeqn, els: PSeqn)) => PIf(cond, thn, els)
@@ -233,7 +233,7 @@ object Transformer {
       PProgram(files, macros, domains, fields, functions, predicates, methods, p.errors)
 
     case (p: PImport, _) => p
-    case (_: PMethod, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], formalReturns: Seq[PFormalArgDecl@unchecked], pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], body: PStmt)) => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
+    case (_: PMethod, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], formalReturns: Seq[PFormalArgDecl@unchecked], pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], body: Option[PStmt@unchecked])) => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
     case (_: PDomain, Seq(idndef: PIdnDef, typVars: Seq[PTypeVarDecl@unchecked], funcs: Seq[PDomainFunction@unchecked], axioms: Seq[PAxiom@unchecked])) => PDomain(idndef, typVars, funcs, axioms)
     case (_: PField, Seq(idndef: PIdnDef, typ: PType)) => PField(idndef, typ)
     case (_: PFunction, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], typ: PType, pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], decs: Option[PDecClause@unchecked], body: Option[PExp@unchecked])) => PFunction(idndef, formalArgs, typ, pres, posts, decs, body)
@@ -244,7 +244,6 @@ object Transformer {
     case (p: PNode, s) => throw ParseTreeDuplicationError(p, s)
   }
 
-  case class ParseTreeDuplicationError(original: PNode, newChildren: Seq[Any]) extends RuntimeException {
-    lazy val message: String = s"Cannot duplicate $original with new children $newChildren"
-  }
+  case class ParseTreeDuplicationError(original: PNode, newChildren: Seq[Any])
+      extends RuntimeException(s"Cannot duplicate $original with new children $newChildren")
 }
