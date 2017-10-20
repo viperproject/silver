@@ -244,7 +244,6 @@ object Transformer {
     case (p: PNode, s) => throw ParseTreeDuplicationError(p, s)
   }
 
-  case class ParseTreeDuplicationError(original: PNode, newChildren: Seq[Any]) extends RuntimeException {
-    lazy val message: String = s"Cannot duplicate $original with new children $newChildren"
-  }
+  case class ParseTreeDuplicationError(original: PNode, newChildren: Seq[Any])
+      extends RuntimeException(s"Cannot duplicate $original with new children $newChildren")
 }
