@@ -851,10 +851,8 @@ object FastParser extends PosParser {
   lazy val predicateDecl: P[PPredicate] = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }
 
   lazy val methodDecl: P[PMethod] = P(methodSignature ~/ pre.rep ~ post.rep ~ block.?).map {
-    case (name, args, rets, pres, posts, Some(body)) =>
+    case (name, args, rets, pres, posts, body) =>
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)
-    case (name, args, rets, pres, posts, None) =>
-      PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(Seq(PInhale(PBoolLit(b = false)))))
   }
 
   lazy val methodSignature = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")").?)

@@ -66,7 +66,7 @@ trait DependencyAware {
     *          List of dependency [[Hashable]]s.
     */
   def getDependencies(p: Program, m: Method): List[Hashable] = p.domains ++ p.fields ++
-  (m.pres ++ m.posts :+ m.body).flatMap {
+  (m.pres ++ m.posts ++ m.body.toSeq).flatMap {
     n => n.deepCollect {
       case method_call: MethodCall =>
         val method = p.findMethod(method_call.methodName)
