@@ -261,7 +261,7 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
     extends Member with Callable with Contracted {
 
-  /* TODO: Shouldn't not have to be a lazy val, see also the comment for method
+  /* TODO: Should not have to be a lazy val, see also the comment for method
    *       translateMemberSignature in file parser/Translator.scala
    */
   lazy val bodyOrAssumeFalse: Seqn = body match {
@@ -272,6 +272,11 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
         Vector(Inhale(FalseLit()())()),
         Vector.empty
       )()
+  }
+
+  def deepCollectInBody[A](f: PartialFunction[Node, A]): Seq[A] = body match {
+    case Some(actualBody) => actualBody.deepCollect(f)
+    case None => Seq()
   }
 
   val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns
