@@ -913,17 +913,6 @@ case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt
 case class PAssume(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
-
-case class PNewStmt(target: PIdnUse, Fields: Option[Seq[PIdnUse]]) extends PStmt {
-  override def  getChildren: scala.Seq[AnyRef] = {
-    val fields = Fields match {
-      case None => Seq.empty[PIdnUse]
-      case Some(seq) => seq
-    }
-    Seq(target, fields)
-  }
-}
-
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
 case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PSeqn, els: PSeqn) extends PStmt
@@ -938,6 +927,32 @@ case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 case class PMacroRef(idnuse : PIdnUse) extends PStmt
 case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
+
+sealed trait PNewStmt extends PStmt {
+  def target: PIdnUse
+}
+
+/* x := new(f1, ..., fn) */
+case class PRegularNewStmt(target: PIdnUse, fields: Seq[PIdnUse]) extends PNewStmt
+
+/* x := new(*) */
+case class PStarredNewStmt(target: PIdnUse) extends PNewStmt
+
+object PNewStmt {
+  def apply(target: PIdnUse): PStarredNewStmt = PStarredNewStmt(target)
+
+  def apply(target: PIdnUse, fields: Seq[PIdnUse]): PRegularNewStmt = PRegularNewStmt(target, fields)
+
+  def apply(target: PIdnUse, fields: Option[Seq[PIdnUse]]): PNewStmt = fields match {
+    case None => PStarredNewStmt(target)
+    case Some(fs) => PRegularNewStmt(target, fs)
+  }
+
+  def unapply(s: PNewStmt): Option[(PIdnUse, Option[Seq[PIdnUse]])] = s match {
+    case PRegularNewStmt(target, fields) => Some((target, Some(fields)))
+    case PStarredNewStmt(target) => Some((s.target, None))
+  }
+}
 
 sealed trait PScope extends PNode {
   val scopeId = PScope.uniqueId()
@@ -1081,7 +1096,8 @@ object Nodes {
       case PAssert(exp) => Seq(exp)
       case PInhale(exp) => Seq(exp)
       case PAssume(exp) => Seq(exp)
-      case PNewStmt(target, fields) => Seq(target) ++ fields.getOrElse(Seq())
+      case PRegularNewStmt(target, fields) => Seq(target) ++ fields
+      case PStarredNewStmt(target) => Seq(target)
       case PMethodCall(targets, method, args) => targets ++ Seq(method) ++ args
       case PLabel(name, invs) => Seq(name) ++ invs
       case PGoto(label) => Seq(label)
