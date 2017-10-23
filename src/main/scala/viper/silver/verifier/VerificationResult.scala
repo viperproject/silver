@@ -60,7 +60,7 @@ abstract class ParseReport(message: String, pos: Position) extends AbstractError
 case class ParseError(message: String, override val pos: Position)
   extends ParseReport(message, pos) {
   def fullId = "parser.error"
-  def readableMessage = s"Parse error: $message"
+  def readableMessage = s"Parse error: Expected $message"
 }
 
 /** A case class used for treating certain parser reports as non-critical. */
