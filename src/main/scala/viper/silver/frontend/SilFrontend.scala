@@ -15,6 +15,7 @@ import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
 import viper.silver.ast._
 import viper.silver.parser._
+import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier._
 
 /**
@@ -46,6 +47,9 @@ trait SilFrontend extends DefaultFrontend {
   /** The current configuration. */
   protected var _config: SilFrontendConfig = _
   def config = _config
+
+  protected var _plugins: SilverPluginManager = _
+  def plugins = _plugins
 
   protected var _startTime: Long = _
   def startTime = _startTime
@@ -104,6 +108,8 @@ trait SilFrontend extends DefaultFrontend {
 
     if (!prepare(args)) return
 
+    _plugins = SilverPluginManager(_config.plugin.getOrElse(""))
+
     // initialize the translator
     init(_ver)
 
@@ -139,7 +145,7 @@ trait SilFrontend extends DefaultFrontend {
     // print the result
     printFinishHeader()
 
-    result match {
+    _plugins.beforeFinish(result) match {
       case Success =>
         printSuccess()
       case f@Failure(errors) =>
@@ -201,7 +207,7 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
-    val result = FastParser.parse(input, file)
+    val result = FastParser.parse(_plugins.beforeParse(input), file)
 
      result match {
       case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
@@ -223,13 +229,13 @@ trait SilFrontend extends DefaultFrontend {
    */
 
   override def doTypecheck(input: ParserResult): Result[TypecheckerResult] = {
-    val r = Resolver(input)
+    val r = Resolver(_plugins.beforeResolve(input))
     r.run match {
       case Some(modifiedInput) =>
         val enableFunctionTerminationChecks =
           config != null && config.verified && config.enableFunctionTerminationChecks()
 
-        Translator(modifiedInput, enableFunctionTerminationChecks).translate match {
+        Translator(_plugins.beforeTranslate(modifiedInput), enableFunctionTerminationChecks).translate match {
           case Some(program) =>
             val check = program.checkTransitively
             if(check.isEmpty) Succ(program) else Fail(check)
@@ -261,15 +267,16 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def doTranslate(input: TypecheckerResult): Result[Program] = {
+    val inputPrime = _plugins.beforeMethodFilter(input)
     // Filter methods according to command-line arguments.
     val verifyMethods =
       if (config != null && config.methods() != ":all") Seq("methods", config.methods())
-      else input.methods map (_.name)
+      else inputPrime.methods map (_.name)
 
-    val methods = input.methods filter (m => verifyMethods.contains(m.name))
-    val program = Program(input.domains, input.fields, input.functions, input.predicates, methods)(input.pos, input.info)
+    val methods = inputPrime.methods filter (m => verifyMethods.contains(m.name))
+    val program = Program(inputPrime.domains, inputPrime.fields, inputPrime.functions, inputPrime.predicates, methods)(inputPrime.pos, inputPrime.info)
 
-    Succ(program)
+    Succ(_plugins.beforeVerify(program))
   }
 
   override def mapVerificationResult(in: VerificationResult) = in
