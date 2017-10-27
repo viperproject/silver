@@ -108,7 +108,7 @@ trait SilFrontend extends DefaultFrontend {
 
     if (!prepare(args)) return
 
-    _plugins = SilverPluginManager(_config.plugin.getOrElse(""))
+    _plugins = SilverPluginManager(_config.plugin.toOption)
 
     // initialize the translator
     init(_ver)

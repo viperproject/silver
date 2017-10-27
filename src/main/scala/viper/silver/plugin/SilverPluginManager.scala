@@ -59,8 +59,13 @@ class SilverPluginManager(plugins: Seq[SilverPlugin]) {
   */
 object SilverPluginManager {
 
-  def apply(pluginArg: String): SilverPluginManager =
-    new SilverPluginManager(resolveAll(pluginArg))
+  def apply(pluginArg: Option[String]): SilverPluginManager =
+    pluginArg match {
+      case Some(plugins) =>
+        new SilverPluginManager(resolveAll(plugins))
+      case None =>
+        new SilverPluginManager(Seq())
+    }
 
   def resolveAll(pluginArg: String): Seq[SilverPlugin] =
     pluginArg.split(":").toSeq.map(resolve).filter(_.isDefined).map(_.get)
