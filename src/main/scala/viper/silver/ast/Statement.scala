@@ -173,18 +173,24 @@ case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[Declaration])(val pos: Position 
 
   // Interprete leaves of a possibly nested Seqn structure as its children
   override lazy val getChildren: Seq[AnyRef] = {
-    def seqFlat(ss: Seq[Stmt]): Seq[Stmt] = {
-      val result = ss.foldLeft(Seq.empty[Stmt])((x: Seq[Stmt], y: Stmt) => {
+    def seqFlat(ss: Seq[Stmt]): (Seq[Stmt], Seq[Declaration]) = {
+      val result = ss.foldLeft((Seq.empty[Stmt], Seq.empty[Declaration]))((x: (Seq[Stmt], Seq[Declaration]), y: Stmt) => {
         y match {
-          case elems: Seq[Stmt @unchecked] => x ++ seqFlat(elems)
-          case elemS: Seqn => x ++ seqFlat(elemS.ss)
-          case elem: Stmt => x ++ Seq(elem)
+          case elems: Seq[Stmt @unchecked] => {
+            val tmp = seqFlat(elems)
+            (x._1 ++ tmp._1, x._2 ++ tmp._2)
+          }
+          case elemS: Seqn => {
+            val tmp = seqFlat(elemS.ss)
+            (x._1 ++ tmp._1, x._2 ++ elemS.scopedDecls ++ tmp._2)
+          }
+          case elem: Stmt => (x._1 ++ Seq(elem), x._2)
         }
       })
       result
     }
-
-    Seq(seqFlat(ss), scopedDecls)
+    val all = seqFlat(ss)
+    Seq(all._1, all._2)
   }
 
 }

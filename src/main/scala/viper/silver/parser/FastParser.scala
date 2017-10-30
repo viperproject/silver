@@ -158,7 +158,7 @@ object FastParser extends PosParser {
     val p = RecParser(path).parses(imported_source)
     p match {
       case fastparse.core.Parsed.Success(prog, _) => prog
-      case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Failure: $msg", FilePosition(path, extra.line, extra.col))
+      case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Expected $msg", FilePosition(path, extra.line, extra.col))
     }
   }
 
