@@ -409,17 +409,17 @@ object FastParser extends PosParser {
         /* TODO: The current unsupported position detection is probably not exhaustive.
          *       Seems difficult to concisely and precisely match all (il)legal cases, however.
          */
-        (ctxt.parent, macroBody) match {
+/*        (ctxt.parent, macroBody) match {
           case (_: PAccPred, _) | (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
-            throw ParseException("Macro expansion would result in invalid code", FastPositions.getStart(app))
+            throw ParseException("Macro expansion would result in invalid code...\n...occurs in position ("+FastPositions.getStart(app).toString()+") where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
           case _ => /* All good */
         }
-
+*/
         try {
           replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
         } catch {
-          case _: ParseTreeDuplicationError =>
-            throw ParseException("Macro expansion would result in invalid code", FastPositions.getStart(app))
+          case problem: ParseTreeDuplicationError =>
+            throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), FastPositions.getStart(app))
         }
       }.applyOrElse(currentNode, (_: PNode) => currentNode)
     }.recurseFunc {
