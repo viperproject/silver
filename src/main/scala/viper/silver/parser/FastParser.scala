@@ -409,12 +409,14 @@ object FastParser extends PosParser {
         /* TODO: The current unsupported position detection is probably not exhaustive.
          *       Seems difficult to concisely and precisely match all (il)legal cases, however.
          */
-/*        (ctxt.parent, macroBody) match {
-          case (_: PAccPred, _) | (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
-            throw ParseException("Macro expansion would result in invalid code...\n...occurs in position ("+FastPositions.getStart(app).toString()+") where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+        (ctxt.parent, macroBody) match {
+          case (PAccPred(loc, _), _) if (loc eq app) && !macroBody.isInstanceOf[PLocationAccess] =>
+            throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+          case (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
+            throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
           case _ => /* All good */
         }
-*/
+
         try {
           replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
         } catch {
@@ -433,7 +435,12 @@ object FastParser extends PosParser {
       case PCall(_, args, typeAnnotated) => Seq(args, typeAnnotated)
     }.repeat
 
-    expander.execute[T](toExpand)
+    try {
+      expander.execute[T](toExpand)
+    } catch {
+      case problem: ParseTreeDuplicationError =>
+        throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), problem.original.start)
+    }
   }
 
   /** The file we are currently parsing (for creating positions later). */
