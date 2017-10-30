@@ -190,7 +190,7 @@ case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[Declaration])(val pos: Position 
       result
     }
     val all = seqFlat(ss)
-    Seq(all._1, all._2)
+    Seq(all._1, scopedDecls ++ all._2)
   }
 
 }
