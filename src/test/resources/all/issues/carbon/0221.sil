@@ -1,0 +1,20 @@
+//:: IgnoreFile(/silicon/issue/271/)
+field val : Int 
+
+function foo(x: Ref) : Int
+  requires [acc(x.val), acc(x.val)]
+  {
+    x.val
+  }
+
+method test(x:Ref)
+  requires acc(x.val)
+{
+  x.val := 4
+  assert foo(x) == 4
+  x.val := 5
+  assert foo(x) == 42
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/221/)
+  assert false
+}
