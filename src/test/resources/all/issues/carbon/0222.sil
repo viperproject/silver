@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/222/)
 field val : Int 
 
 function foo(x: Ref) : Int
