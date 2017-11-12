@@ -108,8 +108,6 @@ trait SilFrontend extends DefaultFrontend {
 
     if (!prepare(args)) return
 
-    _plugins = SilverPluginManager(_config.plugin.toOption)
-
     // initialize the translator
     init(_ver)
 
@@ -120,6 +118,16 @@ trait SilFrontend extends DefaultFrontend {
     verify()
 
     finish()
+  }
+
+
+  override def reset(input: Path): Unit = {
+    super.reset(input)
+
+    if(_config != null) {
+      // reset error messages of plugins
+      _plugins = SilverPluginManager(_config.plugin.toOption)
+    }
   }
 
   def setStartTime(): Unit = {

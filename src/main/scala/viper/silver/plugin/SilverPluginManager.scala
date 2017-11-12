@@ -6,9 +6,9 @@
 
 package viper.silver.plugin
 
-import viper.silver.ast.Program
+import viper.silver.ast._
 import viper.silver.parser.PProgram
-import viper.silver.verifier.VerificationResult
+import viper.silver.verifier.{AbstractError, Failure, Success, VerificationResult}
 
 /** Manage the loaded plugins and execute them during the different hooks (see [[viper.silver.plugin.SilverPlugin]]).
   *
@@ -18,23 +18,49 @@ import viper.silver.verifier.VerificationResult
   */
 class SilverPluginManager(plugins: Seq[SilverPlugin]) {
 
+  var _errors: Seq[AbstractError] = Seq()
+
+  def foldWithError[T](empty: T)(start: T)(f: (T, SilverPlugin) => T): T ={
+    var v: Option[T] = Some(start)
+    plugins.foreach(plugin => {
+      if (v.isDefined){
+        val vprime = f(v.get, plugin)
+        v = if (plugin.errors.isEmpty){
+          Some(vprime)
+        } else {
+          _errors ++= plugin.errors
+          None
+        }
+      }
+    })
+    v.getOrElse(empty)
+  }
+
+  def emptyPProgram = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq())
+  def emptyProgram(pos: Position, info: Info, errT: ErrorTrafo) = Program(Seq(), Seq(), Seq(), Seq(), Seq())(pos, info, errT)
+
   def beforeParse(input: String): String =
-    plugins.foldLeft(input)((inp, plugin) => plugin.beforeParse(inp))
+    foldWithError("")(input)((inp, plugin) => plugin.beforeParse(inp))
 
   def beforeResolve(input: PProgram): PProgram =
-    plugins.foldLeft(input)((inp, plugin) => plugin.beforeResolve(inp))
+    foldWithError(emptyPProgram)(input)((inp, plugin) => plugin.beforeResolve(inp))
 
   def beforeTranslate(input: PProgram): PProgram =
-    plugins.foldLeft(input)((inp, plugin) => plugin.beforeTranslate(inp))
+    foldWithError(emptyPProgram)(input)((inp, plugin) => plugin.beforeTranslate(inp))
 
   def beforeMethodFilter(input: Program): Program =
-    plugins.foldLeft(input)((inp, plugin) => plugin.beforeMethodFilter(inp))
+    foldWithError(emptyProgram(input.pos, input.info, input.errT))(input)((inp, plugin) => plugin.beforeMethodFilter(inp))
 
   def beforeVerify(input: Program): Program =
-    plugins.foldLeft(input)((inp, plugin) => plugin.beforeVerify(inp))
+    foldWithError(emptyProgram(input.pos, input.info, input.errT))(input)((inp, plugin) => plugin.beforeVerify(inp))
 
-  def beforeFinish(input: VerificationResult): VerificationResult =
-    plugins.foldLeft(input)((inp, plugin) => plugin.beforeFinish(inp))
+  def beforeFinish(input: VerificationResult): VerificationResult ={
+    val inputPrime = input match{
+      case Success => if (_errors.isEmpty) Success else Failure(_errors)
+      case Failure(errors) => Failure(errors ++ _errors)
+    }
+    plugins.foldLeft(inputPrime)((inp, plugin) => plugin.beforeFinish(inp))
+  }
 
 }
 

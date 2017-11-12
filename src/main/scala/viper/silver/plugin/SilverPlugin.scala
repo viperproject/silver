@@ -8,12 +8,15 @@ package viper.silver.plugin
 
 import viper.silver.ast.Program
 import viper.silver.parser.PProgram
-import viper.silver.verifier.VerificationResult
+import viper.silver.verifier.{AbstractError, VerificationResult}
 
 /** Trait to be extended by plugins. A plugin can change the current structure of the program under verification
   * at several hooks. The plugin gets the current state and has to return a new (maybe modified) state.
   */
 trait SilverPlugin {
+
+  protected var _errors: Seq[AbstractError] = Seq()
+  def errors: Seq[AbstractError] = _errors
 
   /** Called before any processing happened.
     *
@@ -57,5 +60,9 @@ trait SilverPlugin {
     * @return Modified result
     */
   def beforeFinish(input: VerificationResult) : VerificationResult = input
+
+  def reportError(error: AbstractError): Unit ={
+    _errors :+= error
+  }
 
 }
