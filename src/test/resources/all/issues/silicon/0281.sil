@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/223/)
 field list_acc: Seq[Ref]
 
 predicate ExtensionHeader_State(r: Ref) {true}

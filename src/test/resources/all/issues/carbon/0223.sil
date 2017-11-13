@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/223/)
 field val : Int 
 
 predicate bar(x:Ref) {
