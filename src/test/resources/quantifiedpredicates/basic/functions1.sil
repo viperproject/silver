@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/223/)
 predicate P(x: Ref)
 
 function fun_P(xs: Seq[Ref], j: Int): Int

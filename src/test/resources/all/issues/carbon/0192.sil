@@ -1,3 +1,4 @@
+//:: IgnoreFile(/carbon/issue/223/)
 //:: IgnoreFile(/silicon/issue/281/)
 field list_acc: Seq[Ref]
 
