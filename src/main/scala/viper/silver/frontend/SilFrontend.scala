@@ -48,7 +48,7 @@ trait SilFrontend extends DefaultFrontend {
   protected var _config: SilFrontendConfig = _
   def config = _config
 
-  protected var _plugins: SilverPluginManager = _
+  protected var _plugins: SilverPluginManager = SilverPluginManager(None)
   def plugins = _plugins
 
   protected var _startTime: Long = _
