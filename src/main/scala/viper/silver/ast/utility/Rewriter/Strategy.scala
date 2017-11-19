@@ -452,12 +452,29 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
     def selected(ch: AnyRef) = childrenSelect.exists(_ eq ch)
 
+    def sequence(s: Seq[Rewritable]): Option[Seq[AnyRef]] = {
+      val newSeq = s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else None }
+      if (newSeq.forall(_.isEmpty)) {
+        None
+      } else {
+        val seqWithChildren: Seq[AnyRef] = newSeq.zip(s) map {
+          elem => elem._1 match {
+            case None => elem._2
+            case Some(y) => y
+          }
+        }
+        Some(seqWithChildren)
+      }
+    }
+
     // Recurse on children if the according (same index) flag in childrenSelect is set. If it is not set, leave child untouched
     val newChildren: Seq[Option[AnyRef]] = children map {
       x => {
         val res = x match {
-          case o: Option[Rewritable@unchecked] if selected(o) => o match {
+          case o: Option[AnyRef@unchecked] if selected(o) => o match {
             case None => None
+            case Some(s: Seq[Rewritable@unchecked]) =>
+              sequence(s)
             case Some(x: Rewritable) =>
               if (!noRecursion.contains(x)) {
                 recurse(x.asInstanceOf[N]) match {
@@ -468,20 +485,10 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
               else {
                 None
               }
+            case _ => None
           }
           case s: Seq[Rewritable@unchecked] if selected(s) =>
-            val newSeq = s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else None }
-            if (newSeq.forall(_.isEmpty)) {
-              None
-            } else {
-              val seqWithChildren: Seq[AnyRef] = newSeq.zip(s) map {
-                elem => elem._1 match {
-                  case None => elem._2
-                  case Some(y) => y
-                }
-              }
-              Some(seqWithChildren)
-            }
+            sequence(s)
           case n: Rewritable if selected(n) =>
             if (!noRecursion.contains(n)) recurse(n.asInstanceOf[N]) else None
           case _ => None
