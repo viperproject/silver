@@ -5,10 +5,11 @@
  */
 
 package viper.silver.ast
+
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.ast.pretty._
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility._
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 
@@ -104,13 +105,39 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
   // maybe rename this sometime
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
-    this.shallowCollect {
-      case old: Old => Some(old)
-      case LabelledOld(_, FastParser.LHS_OLD_LABEL) => None
-      case lo: LabelledOld => Some(lo)
-      case q: QuantifiedExp if q.isHeapDependent(p) => None
-      case e: Exp if !e.isHeapDependent(p) => Some(e)
-    }.flatten
+    /* The code collects expressions that can/are to be evaluated in a fixed state, i.e.
+     * a state that is known when this method is called.
+     * Among other things, such expressions may not be heap-dependent (unless they are nested
+     * under old-expressions) and they may not contain bound (e.g. quantified) variables.
+     *
+     * I [Malte] tried using our new AST transformation framework, in particular a Visitor and a
+     * Query, but the former doesn't return anything (it could be executed for its side-effect,
+     * though) and the latter doesn't take a context. We should change that.
+     */
+
+    var collectedExpressions = Vector.empty[Exp]
+
+    def go(root: Exp, boundVariables: Set[LocalVar]): Unit = {
+      root.visitWithContextManually(boundVariables)(boundVariables => {
+        case old: Old => collectedExpressions :+= old
+
+        case LabelledOld(_, FastParser.LHS_OLD_LABEL) => /* Don't descend further */
+        case lo: LabelledOld => collectedExpressions :+= lo
+
+        case quant: QuantifiedExp =>
+          val newContext = boundVariables ++ quant.variables.map(_.localVar)
+
+          quant.getChildren.collect { case e: Exp => e }
+                           .foreach(go(_, newContext))
+
+        case e: Exp if !e.isHeapDependent(p) && !boundVariables.exists(e.contains) =>
+          collectedExpressions :+= e
+      })
+    }
+
+    go(this, Set.empty)
+
+    collectedExpressions
   }
 
   def structure(p: Program): MagicWandStructure = {
