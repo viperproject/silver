@@ -1,0 +1,10 @@
+//:: IgnoreFile(/carbon/issue/216/)
+
+method test(x: Ref) {
+  package true --* true {
+    define P() false
+  }
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert P()
+}
