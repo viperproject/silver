@@ -697,6 +697,7 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
   lazy val family: Seq[N] = parent.getChildren.foldLeft(Seq.empty[N])((children: Seq[N], y: AnyRef) => y match {
     case elem: Seq[N@unchecked] => children ++ elem
     case elem: Option[N@unchecked] => children ++ (elem match {
+      case Some(x: Seq[N@unchecked]) => x
       case Some(x) => Seq(x)
       case None => Seq.empty[N]
     })
@@ -919,9 +920,11 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
     children.zip(childrenSelect) foreach {
       case (child, _) => if (childrenSelect.exists(_ eq child)) {
         child match {
-          case o: Option[Rewritable@unchecked] => o match {
+          case o: Option[AnyRef@unchecked] => o match {
             case None => None
+            case Some(s: Seq[Rewritable@unchecked]) => s foreach { x => if (!noRecursion.contains(x)) visitTopDown(x.asInstanceOf[N], updatedContext) }
             case Some(node: Rewritable) => if (!noRecursion.contains(node)) visitTopDown(node.asInstanceOf[N], updatedContext)
+            case _ => None
           }
           case s: Seq[Rewritable@unchecked] => s foreach { x => if (!noRecursion.contains(x)) visitTopDown(x.asInstanceOf[N], updatedContext) }
           case n: Rewritable => if (!noRecursion.contains(n)) visitTopDown(n.asInstanceOf[N], updatedContext)
@@ -1017,10 +1020,12 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
       case (child, _) =>
        if (childrenSelect.exists(_ eq child)) {
         child match {
-          case o: Option[Rewritable@unchecked] =>
+          case o: Option[AnyRef@unchecked] =>
             o match {
               case None => None
+              case Some(s: Seq[Rewritable@unchecked]) => Some(accumulator(s map { x => execute(x.asInstanceOf[N]) }))
               case Some(node: Rewritable) => Some(execute(node.asInstanceOf[N]))
+              case _ => None
             }
           case s: Seq[Rewritable@unchecked] => Some(accumulator(s map { x => execute(x.asInstanceOf[N]) }))
           case n: Rewritable => Some(execute(n.asInstanceOf[N]))
