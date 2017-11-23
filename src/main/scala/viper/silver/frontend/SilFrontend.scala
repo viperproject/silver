@@ -215,20 +215,21 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
-    val result = FastParser.parse(_plugins.beforeParse(input), file)
+    _plugins.beforeParse(input) match {
+      case Some(inputPlugin) =>
+        val result = FastParser.parse(inputPlugin, file)
+          result match {
+            case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
+              if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning]))
+                Succ({ e.initProperties(); e })
+              else Fail(err_list)
+            case Parsed.Failure(msg, next, extra) =>
+              Fail(List(ParseError(msg.toString, SourcePosition(file, extra.line, extra.col))))
+            case ParseError(msg, pos) => Fail(List(ParseError(msg, pos)))
+          }
 
-     result match {
-      case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
-        if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning]))
-
-        Succ({ e.initProperties(); e })
-      else Fail(err_list)
-      case Parsed.Failure(msg, next, extra) =>
-        Fail(List(ParseError(msg.toString, SourcePosition(file, extra.line, extra.col))))
-      case ParseError(msg, pos) => Fail(List(ParseError(msg, pos)))
-
-     }
-
+      case None => Fail(_plugins.errors)
+    }
   }
 
   /* TODO: Naming of doTypecheck and doTranslate isn't ideal.
@@ -237,54 +238,70 @@ trait SilFrontend extends DefaultFrontend {
    */
 
   override def doTypecheck(input: ParserResult): Result[TypecheckerResult] = {
-    val r = Resolver(_plugins.beforeResolve(input))
-    r.run match {
-      case Some(modifiedInput) =>
-        val enableFunctionTerminationChecks =
-          config != null && config.verified && config.enableFunctionTerminationChecks()
+    _plugins.beforeResolve(input) match {
+      case Some(inputPlugin) =>
+        val r = Resolver(inputPlugin)
+        r.run match {
+          case Some(modifiedInput) =>
+            val enableFunctionTerminationChecks =
+              config != null && config.verified && config.enableFunctionTerminationChecks()
 
-        Translator(_plugins.beforeTranslate(modifiedInput), enableFunctionTerminationChecks).translate match {
-          case Some(program) =>
-            val check = program.checkTransitively
-            if(check.isEmpty) Succ(program) else Fail(check)
+            _plugins.beforeTranslate(modifiedInput) match {
+              case Some(modifiedInputPlugin) =>
+                Translator(modifiedInputPlugin, enableFunctionTerminationChecks).translate match {
+                  case Some(program) =>
+                    val check = program.checkTransitively
+                    if (check.isEmpty) Succ(program) else Fail(check)
 
-          case None => // then there are translation messages
-            Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
-              TypecheckerError(
-              m.label, m.pos match {
+                  case None => // then there are translation messages
+                    Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
+                      TypecheckerError(
+                        m.label, m.pos match {
+                          case fp: FilePosition =>
+                            SourcePosition(fp.file, m.pos.line, m.pos.column)
+                          case _ =>
+                            SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
+                        })
+                    }))
+                }
+
+              case None => Fail(_plugins.errors)
+            }
+
+          case None =>
+            val errors = for (m <- FastMessaging.sortmessages(r.messages)) yield {
+              TypecheckerError(m.label, m.pos match {
                 case fp: FilePosition =>
                   SourcePosition(fp.file, m.pos.line, m.pos.column)
                 case _ =>
                   SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
               })
-            }))
+            }
+            Fail(errors)
         }
 
-      case None =>
-        val errors = for (m <- FastMessaging.sortmessages(r.messages)) yield {
-          TypecheckerError(m.label, m.pos match {
-            case fp: FilePosition =>
-              SourcePosition(fp.file, m.pos.line, m.pos.column)
-            case _ =>
-              SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-          })
-        }
-        Fail(errors)
+      case None => Fail(_plugins.errors)
     }
-
   }
 
   override def doTranslate(input: TypecheckerResult): Result[Program] = {
-    val inputPrime = _plugins.beforeMethodFilter(input)
-    // Filter methods according to command-line arguments.
-    val verifyMethods =
-      if (config != null && config.methods() != ":all") Seq("methods", config.methods())
-      else inputPrime.methods map (_.name)
+    _plugins.beforeMethodFilter(input) match {
+      case Some(inputPlugin) =>
+        // Filter methods according to command-line arguments.
+        val verifyMethods =
+          if (config != null && config.methods() != ":all") Seq("methods", config.methods())
+          else inputPlugin.methods map (_.name)
 
-    val methods = inputPrime.methods filter (m => verifyMethods.contains(m.name))
-    val program = Program(inputPrime.domains, inputPrime.fields, inputPrime.functions, inputPrime.predicates, methods)(inputPrime.pos, inputPrime.info)
+        val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
+        val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods)(inputPlugin.pos, inputPlugin.info)
 
-    Succ(_plugins.beforeVerify(program))
+        _plugins.beforeVerify(program) match {
+          case Some(programPlugin) => Succ(programPlugin)
+          case None => Fail(_plugins.errors)
+        }
+
+      case None => Fail(_plugins.errors)
+    }
   }
 
   override def mapVerificationResult(in: VerificationResult) = in

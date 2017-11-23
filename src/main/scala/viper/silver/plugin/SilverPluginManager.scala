@@ -18,9 +18,10 @@ import viper.silver.verifier.{AbstractError, Failure, Success, VerificationResul
   */
 class SilverPluginManager(plugins: Seq[SilverPlugin]) {
 
-  var _errors: Seq[AbstractError] = Seq()
+  protected var _errors: Seq[AbstractError] = Seq()
+  def errors = _errors
 
-  def foldWithError[T](empty: T)(start: T)(f: (T, SilverPlugin) => T): T ={
+  def foldWithError[T](start: T)(f: (T, SilverPlugin) => T): Option[T] ={
     var v: Option[T] = Some(start)
     plugins.foreach(plugin => {
       if (v.isDefined){
@@ -33,33 +34,26 @@ class SilverPluginManager(plugins: Seq[SilverPlugin]) {
         }
       }
     })
-    v.getOrElse(empty)
+    v
   }
 
-  def emptyPProgram = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq())
-  def emptyProgram(pos: Position, info: Info, errT: ErrorTrafo) = Program(Seq(), Seq(), Seq(), Seq(), Seq())(pos, info, errT)
+  def beforeParse(input: String): Option[String] =
+    foldWithError(input)((inp, plugin) => plugin.beforeParse(inp))
 
-  def beforeParse(input: String): String =
-    foldWithError("")(input)((inp, plugin) => plugin.beforeParse(inp))
+  def beforeResolve(input: PProgram): Option[PProgram] =
+    foldWithError(input)((inp, plugin) => plugin.beforeResolve(inp))
 
-  def beforeResolve(input: PProgram): PProgram =
-    foldWithError(emptyPProgram)(input)((inp, plugin) => plugin.beforeResolve(inp))
+  def beforeTranslate(input: PProgram): Option[PProgram] =
+    foldWithError(input)((inp, plugin) => plugin.beforeTranslate(inp))
 
-  def beforeTranslate(input: PProgram): PProgram =
-    foldWithError(emptyPProgram)(input)((inp, plugin) => plugin.beforeTranslate(inp))
+  def beforeMethodFilter(input: Program): Option[Program] =
+    foldWithError(input)((inp, plugin) => plugin.beforeMethodFilter(inp))
 
-  def beforeMethodFilter(input: Program): Program =
-    foldWithError(emptyProgram(input.pos, input.info, input.errT))(input)((inp, plugin) => plugin.beforeMethodFilter(inp))
-
-  def beforeVerify(input: Program): Program =
-    foldWithError(emptyProgram(input.pos, input.info, input.errT))(input)((inp, plugin) => plugin.beforeVerify(inp))
+  def beforeVerify(input: Program): Option[Program] =
+    foldWithError(input)((inp, plugin) => plugin.beforeVerify(inp))
 
   def beforeFinish(input: VerificationResult): VerificationResult ={
-    val inputPrime = input match{
-      case Success => if (_errors.isEmpty) Success else Failure(_errors)
-      case Failure(errors) => Failure(errors ++ _errors)
-    }
-    plugins.foldLeft(inputPrime)((inp, plugin) => plugin.beforeFinish(inp))
+    plugins.foldLeft(input)((inp, plugin) => plugin.beforeFinish(inp))
   }
 
 }

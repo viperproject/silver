@@ -61,8 +61,16 @@ trait SilverPlugin {
     */
   def beforeFinish(input: VerificationResult) : VerificationResult = input
 
+  /** Can be called by the plugin to report an error while transforming the input.
+    *
+    * The reported error should correspond to the stage in which it is generated (e.g. no ParseError in beforeVerify)
+    *
+    * @param error The error to report
+    */
   def reportError(error: AbstractError): Unit ={
-    _errors :+= error
+    if (!_errors.exists(e => e == error && e.pos == error.pos)) {
+      _errors :+= error
+    }
   }
 
 }
