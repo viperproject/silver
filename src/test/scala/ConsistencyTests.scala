@@ -3,13 +3,11 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
-package viper.silicon.tests
 
 import org.scalatest.FunSuite
 import viper.silver.verifier.ConsistencyError
 import viper.silver.ast._
 import org.scalatest.Matchers
-
 
 class ConsistencyTests extends FunSuite with Matchers {
 
@@ -76,5 +74,53 @@ class ConsistencyTests extends FunSuite with Matchers {
 
     fieldassign1.checkTransitively should be (Seq(
       ConsistencyError("Right-hand side false is not assignable to left-hand side 5.i.", NoPosition)))
+  }
+
+  test("Method arity") {
+    val callee =
+      Method(
+        name          = "callee",
+        formalArgs    = Seq(LocalVarDecl("x", Ref)()),
+        formalReturns = Seq(),
+        pres          = Seq(),
+        posts         = Seq(),
+        body          = None
+      )()
+
+    val callerBody =
+      Seqn(
+        Seq(
+          MethodCall(callee, Seq(), Seq())(), // Wrong: zero arguments
+          MethodCall(callee, Seq(NullLit()(), NullLit()()), Seq())(), // Wrong: two arguments
+          MethodCall(callee, Seq(NullLit()()), Seq())(), // Right: one argument
+          MethodCall(callee, Seq(TrueLit()()), Seq())() // Wrong: incorrect type
+        ),
+        Seq()
+      )()
+
+    val caller =
+      Method(
+        name          = "caller",
+        formalArgs    = Seq(),
+        formalReturns = Seq(),
+        pres          = Seq(),
+        posts         = Seq(),
+        body          = Some(callerBody)
+      )()
+
+    val program =
+      Program(
+        domains    = Seq(),
+        fields     = Seq(),
+        functions  = Seq(),
+        predicates = Seq(),
+        methods    = Seq(callee, caller)
+      )()
+
+    program.checkTransitively shouldBe Seq(
+      ConsistencyError("Arguments List() are not assignable to formal arguments List(x: Ref) of method callee", NoPosition),
+      ConsistencyError("Arguments List(null, null) are not assignable to formal arguments List(x: Ref) of method callee", NoPosition),
+      ConsistencyError("Arguments List(true) are not assignable to formal arguments List(x: Ref) of method callee", NoPosition)
+    )
   }
 }
