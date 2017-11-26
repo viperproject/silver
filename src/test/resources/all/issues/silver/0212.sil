@@ -1,0 +1,8 @@
+method test() {
+  var my_set1: Seq[Int]
+  assume my_set1[..33] == my_set1
+
+  var my_set2: Seq[Int]
+  //:: UnexpectedOutput(parser.error, /silver/issue/212/)
+  assume my_set2[ ..33] == my_set2
+}
