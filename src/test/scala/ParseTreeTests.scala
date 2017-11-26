@@ -5,12 +5,10 @@
  */
 
 import java.nio.file.Paths
-
+import scala.language.implicitConversions
 import TestHelpers.MockSilFrontend
 import org.scalatest.FunSuite
 import viper.silver.ast._
-
-import scala.language.implicitConversions
 
 class ParseTreeTests extends FunSuite {
   test("MacroExpansion") {

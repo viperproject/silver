@@ -1,3 +1,9 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 import org.scalatest._
 import viper.silver.ast.{And, Bool, Domain, Field, FieldAccess, FieldAccessPredicate, FullPerm, FuncApp, Function, Hashable, LocalVar, LocalVarDecl, Method, MethodCall, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Seqn, TrueLit, Unfold, While}
 
