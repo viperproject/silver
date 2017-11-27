@@ -304,7 +304,7 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  override def mapVerificationResult(in: VerificationResult) = in
+  override def mapVerificationResult(in: VerificationResult): VerificationResult = _plugins.mapVerificationResult(in)
 
   private class IdeModeErrorRepresentation(val error: AbstractError) {
     private var fileOpt: Option[Path] = None

@@ -54,7 +54,14 @@ trait SilverPlugin {
     */
   def beforeVerify(input: Program) : Program = input
 
-  /** Called after the verification just before the result is printed. Error transformation should happen here.
+  /** Called after the verification. Error transformation should happen here.
+    *
+    * @param input Result of verification
+    * @return Modified result
+    */
+  def mapVerificationResult(input: VerificationResult): VerificationResult = input
+
+  /** Called after the verification just before the result is printed. Will not be called in tests.
     *
     * @param input Result of verification
     * @return Modified result

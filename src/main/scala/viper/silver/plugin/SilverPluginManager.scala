@@ -52,6 +52,10 @@ class SilverPluginManager(plugins: Seq[SilverPlugin]) {
   def beforeVerify(input: Program): Option[Program] =
     foldWithError(input)((inp, plugin) => plugin.beforeVerify(inp))
 
+  def mapVerificationResult(input: VerificationResult): VerificationResult ={
+    plugins.foldLeft(input)((inp, plugin) => plugin.mapVerificationResult(inp))
+  }
+
   def beforeFinish(input: VerificationResult): VerificationResult ={
     plugins.foldLeft(input)((inp, plugin) => plugin.beforeFinish(inp))
   }
