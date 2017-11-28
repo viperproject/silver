@@ -1,0 +1,2 @@
+//:: ExpectedOutput(parser.error)
+field a : Intmethod b () { }

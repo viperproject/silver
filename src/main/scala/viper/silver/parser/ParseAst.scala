@@ -12,7 +12,7 @@ import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.MagicWandOp
 import viper.silver.FastPositions
-import viper.silver.ast.utility.Rewriter.Rewritable
+import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 
@@ -115,6 +115,21 @@ sealed trait PNode extends FastPositioned with Product with Rewritable {
   /** @see [[Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[PNode, R]): Seq[R] =
     Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
+
+  /** This method clones the pAST starting from the current node.
+   * The pAST is not immutable (certain nodes may have mutable fields).
+   * Therefore, additional initialization may be required for the newly created node.
+   *
+   * The concrete implementations of PNode may introduce [[deepCopy]] methods that would allow
+   * creating pAST nodes based on some prototype pAST node, but with changes to some
+   * of its fields. For example, [[m.deepCopy( idndef = PIdnDef(s"${m.idndef}_new") )]]
+   * will create a pAST node that is identical to [[m]] modulo its [[idndef]] field.
+   * Note that the [[deepCopy]] should not be overridng nor overloading deepCopyAll
+   * (Its implementation(s) depend on the argument list of a concrete PNode type.)
+   *
+   * @see [[PNode.initProperties()]] */
+  def deepCopyAll[A <: PNode]: A =
+    StrategyBuilder.Slim[PNode](PartialFunction.empty).duplicateEverything.execute[A](this)
 
   private val _children = scala.collection.mutable.ListBuffer[PNode] ()
 

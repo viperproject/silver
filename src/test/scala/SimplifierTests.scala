@@ -4,12 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper.silver
-
 import scala.language.implicitConversions
 import org.scalatest.{Matchers, FunSuite}
-import ast._
-import ast.utility.Transformer._
+import viper.silver.ast._
+import viper.silver.ast.utility.Transformer._
 
 class SimplifierTests extends FunSuite with Matchers {
   test("div and mod") {
