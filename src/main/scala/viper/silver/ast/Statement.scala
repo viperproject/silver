@@ -171,7 +171,7 @@ case class Apply(exp: MagicWand)(val pos: Position = NoPosition, val info: Info 
 /** A sequence of statements. */
 case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[Declaration])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope {
 
-  // Interprete leaves of a possibly nested Seqn structure as its children
+  // Interpret leaves of a possibly nested Seqn structure as its children
   override lazy val getChildren: Seq[AnyRef] = {
     def seqFlat(ss: Seq[Stmt]): (Seq[Stmt], Seq[Declaration]) = {
       val result = ss.foldLeft((Seq.empty[Stmt], Seq.empty[Declaration]))((x: (Seq[Stmt], Seq[Declaration]), y: Stmt) => {
