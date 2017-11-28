@@ -49,7 +49,7 @@ object Nodes {
       case dm: DomainMember =>
         dm match {
           case DomainAxiom(_, exp) => Seq(exp)
-          case DomainFunc(_, formalArgs, _, _) => formalArgs
+          case DomainFunc(_, formalArgs, _, _, _) => formalArgs
         }
       case s: Stmt =>
         s match {

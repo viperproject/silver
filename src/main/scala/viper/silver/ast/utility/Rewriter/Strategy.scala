@@ -456,7 +456,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     val newChildren: Seq[Option[AnyRef]] = children map {
       x => {
         val res = x match {
-          case o: Option[Rewritable@unchecked] if selected(o) => o match {
+          case o: Option[_] if selected(o) => o match {
             case None => None
             case Some(x: Rewritable) =>
               if (!noRecursion.contains(x)) {
@@ -468,6 +468,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
               else {
                 None
               }
+            case _ => None
           }
           case s: Seq[Rewritable@unchecked] if selected(s) =>
             val newSeq = s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else None }

@@ -1,0 +1,42 @@
+domain MyFloatStuff {
+    native "(_ int2bv 23)" function toBV23(i: Int): bv23
+
+    native "(_ int2bv 34)" function toBV34(i: Int): bv34
+
+    native "bvxor" function xorBV23(first: bv23, second: bv23): bv23
+
+    native "isbla" function isblu(first: bv23, second: bv23, third: bv23): Bool
+
+    native "(_ to_fp 11 23) " function tofp(i: bv34): float23e11
+
+    native "fp.neg" function negfp(a: float23e11): float23e11
+
+    native "fp.abs" function absfp(a: float23e11): float23e11
+
+    native "fp.add RNE" function addfp(a: float23e11, b: float23e11): float23e11
+
+    native "fp.eq" function eqfp(a: float23e11, b: float23e11): Bool
+
+}
+
+method mbv(four: bv23)
+{
+    var one: bv23
+    var two: bv23
+    var three: bv23
+    one := toBV23(2)
+    two := toBV23(3)
+    three := toBV23(1)
+    assert three == xorBV23(one, two)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert four == three
+}
+
+method mfl(two: float23e11) returns (one: float23e11, three: float23e11)
+{
+    one := tofp(toBV34(8581545984))
+    three := tofp(toBV34(0))
+    assert eqfp(one, addfp(one, three))
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert eqfp(three,  one)
+}

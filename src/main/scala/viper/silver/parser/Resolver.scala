@@ -349,6 +349,8 @@ case class TypeChecker(names: NameAnalyser) {
         sys.error("unexpected use of internal typ")
       case PPrimitiv(_) =>
         /* Nothing to type check (or resolve) */
+      case PBVType(_) =>
+      case PFloatType(_, _) =>
       case dt@PDomainType(domain, args) if dt.isResolved =>
         /* Already resolved, nothing left to do */
       case dt@PDomainType(domain, args) =>
@@ -559,7 +561,7 @@ case class TypeChecker(names: NameAnalyser) {
                     ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                     fd match {
                       case PFunction(_, _, resultType, _, _, _, _) =>
-                      case pdf@PDomainFunction(_, _, resultType, unique) =>
+                      case pdf@PDomainFunction(_, _, resultType, unique, _) =>
                         val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
                         val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
                         pfa.domainTypeRenaming = Some(fdtv)

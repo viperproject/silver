@@ -124,8 +124,8 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         Field(name, ttyp(typ))(pos)
       case PFunction(_, formalArgs, typ, _, _, _, _) =>
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null, null)(pos)
-      case pdf@ PDomainFunction(_, args, typ, unique) =>
-        DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
+      case pdf@ PDomainFunction(_, args, typ, unique, backendFunc) =>
+        DomainFunc(name, args map liftVarDecl, ttyp(typ), unique, backendFunc)(pos,NoInfo,pdf.domainName.name)
       case PDomain(_, typVars, _, _) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)))(pos)
       case PPredicate(_, formalArgs, _) =>
@@ -366,7 +366,7 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
       case pfa@PCall(func, args, _) =>
         members(func.name) match {
           case f: Function => FuncApp(f, args map exp)(pos)
-          case f @ DomainFunc(_, _, _, _) =>
+          case f @ DomainFunc(_, _, _, _, _) =>
             val actualArgs = args map exp
             /* TODO: Not used - problem?*/
             type TypeSubstitution = Map[TypeVar, Type]
@@ -512,6 +512,8 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
       case "Ref" => Ref
       case "Perm" => Perm
     }
+    case PBVType(length) => BackendType(Some(s"bv${length}"), Some(s"(_ BitVec ${length})"))
+    case PFloatType(mant, exp) => BackendType(Some(s"float${mant}e${exp}"), Some(s"(_ FloatingPoint ${exp} ${mant})"))
     case PSeqType(elemType) =>
       SeqType(ttyp(elemType))
     case PSetType(elemType) =>

@@ -72,6 +72,8 @@ case object InternalType extends AtomicType
 /** Type for letwand-declared variables. */
 case object Wand extends AtomicType
 
+case class BackendType(boogieName: Option[String], smtName: Option[String]) extends AtomicType
+
 //Base type for collections and domain types
 sealed trait GenericType extends Type
 {

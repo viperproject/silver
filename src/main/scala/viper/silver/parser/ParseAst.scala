@@ -227,6 +227,20 @@ case class PPrimitiv(name: String) extends PType {
   override def isValidAndResolved = true
 }
 
+case class PBVType(length: Integer) extends PType {
+  override def substitute(ts:PTypeSubstitution) : PType = this
+  override val subNodes = Seq()
+  override def toString = "bv" + length
+  override def isValidAndResolved = true
+}
+
+case class PFloatType(mant: Integer, exp: Integer) extends PType {
+  override def substitute(ts:PTypeSubstitution) : PType = this
+  override val subNodes = Seq()
+  override def toString = "float" + mant + "e" + exp
+  override def isValidAndResolved = true
+}
+
 case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
   val genericName = domain.name
   override val typeArguments = args //if (kind==PDomainTypeKinds.Domain)
@@ -251,7 +265,7 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
   }
 
   override def substitute(ts: PTypeSubstitution): PType = {
-    require(kind==PDomainTypeKinds.Domain || kind==PDomainTypeKinds.TypeVar)
+    //require(kind==PDomainTypeKinds.Domain || kind==PDomainTypeKinds.TypeVar)
     if (isTypeVar)
       if (ts.isDefinedAt(domain.name))
         return ts.get(domain.name).get
@@ -378,7 +392,7 @@ case class PDecTuple (decs: Seq[PExp]) extends PDecClause
 
 class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
 {
-  require(m.values.forall(_.isValidAndResolved))
+ // require(m.values.forall(_.isValidAndResolved))
   def -(key: String) = new PTypeSubstitution(m.-(key))
   def get(key: String) : Option[PType] = m.get(key)
   private def +(kv: (String, PType)): PTypeSubstitution = new PTypeSubstitution(m + kv)
@@ -1003,14 +1017,14 @@ case class PImport(file: String) extends PNode
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt]) extends PMember with PGlobalDeclaration
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
 case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecClause], body: Option[PExp]) extends PAnyFunction
-case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PAnyFunction
+case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean, backendFunc: Option[String])(val domainName:PIdnUse) extends PAnyFunction
 case class PAxiom(idndef: PIdnDef, exp: PExp)(val domainName:PIdnUse) extends PScope with PGlobalDeclaration  //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
 case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Option[PExp]) extends PMember with PTypedDeclaration with PGlobalDeclaration{
   val typ = PPredicateType()
 }
 
-case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned
+case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean, backendDef: Option[String]) extends FastPositioned
 case class PAxiom1(idndef: PIdnDef, exp: PExp) extends FastPositioned
 
 /**
@@ -1039,6 +1053,8 @@ object Nodes {
       case PIdnUse(name) => Nil
       case PFormalArgDecl(idndef, typ) => Seq(idndef, typ)
       case PPrimitiv(name) => Nil
+      case PBVType(_) => Nil
+      case PFloatType(_, _) => Nil
       case PDomainType(domain, args) => Seq(domain) ++ args
       case PSeqType(elemType) => Seq(elemType)
       case PSetType(elemType) => Seq(elemType)
@@ -1118,7 +1134,7 @@ object Nodes {
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ body.toSeq
       case PFunction(name, args, typ, pres, posts, dec, body) =>
         Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ dec ++ body
-      case PDomainFunction(name, args, typ, unique) =>
+      case PDomainFunction(name, args, typ, unique, _) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, args, body) =>
         Seq(name) ++ args ++ body

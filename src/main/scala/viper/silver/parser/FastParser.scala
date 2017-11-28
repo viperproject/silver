@@ -642,7 +642,7 @@ object FastParser extends PosParser {
 
   lazy val formalArg: P[PFormalArgDecl] = P(idndef ~ ":" ~ typ).map { case (a, b) => PFormalArgDecl(a, b) }
 
-  lazy val typ: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType)
+  lazy val typ: P[PType] = P(primitiveTyp | bitvectorTyp | floatTyp | domainTyp | seqType | setType | multisetType)
 
   lazy val domainTyp: P[PDomainType] = P((idnuse ~ "[" ~ typ.rep(sep = ",") ~ "]").map { case (a, b) => PDomainType(a, b) } |
     idnuse.map {
@@ -658,6 +658,14 @@ object FastParser extends PosParser {
 
   lazy val primitiveTyp: P[PType] = P(keyword("Rational").map { case _ => PPrimitiv("Perm") }
     | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
+
+  lazy val bitvectorTyp: P[PType] = P("bv" ~~ (CharIn('1' to '9') ~~ CharIn('0' to '9').repX).!).map{
+    s => PBVType(Integer.parseInt(s))
+  }
+
+  lazy val floatTyp: P[PType] = P("float" ~~ (CharIn('1' to '9') ~~ CharIn('0' to '9').repX).! ~~ "e" ~~ (CharIn('1' to '9') ~~ CharIn('0' to '9').repX).!).map{
+    s => PFloatType(Integer.parseInt(s._1), Integer.parseInt(s._2))
+  }
 
   lazy val trigger: P[PTrigger] = P("{" ~/ exp.rep(sep = ",", min = 1) ~ "}").map(s => PTrigger(s))
 
@@ -823,15 +831,17 @@ object FastParser extends PosParser {
       PDomain(
         name,
         typparams.getOrElse(Nil),
-        funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique)(PIdnUse(name.name)).setPos(f)),
+        funcs map (f => PDomainFunction(f.idndef, f.formalArgs, f.typ, f.unique, f.backendDef)(PIdnUse(name.name)).setPos(f)),
         axioms map (a => PAxiom(a.idndef, a.exp)(PIdnUse(name.name)).setPos(a)))
   }
 
   lazy val domainTypeVarDecl: P[PTypeVarDecl] = P(idndef).map(PTypeVarDecl)
 
-  lazy val domainFunctionDecl: P[PDomainFunction1] = P("unique".!.? ~ functionSignature ~ ";".?).map {
-    case (unique, fdecl) => fdecl match {
-      case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined)
+  lazy val backendFunctionDecl = P(("native" ~ ("\"" ~~ CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "$_ ()#.").repX.! ~~ "\"")).? ~ functionSignature)
+
+  lazy val domainFunctionDecl: P[PDomainFunction1] = P("unique".!.? ~ backendFunctionDecl ~ ";".?).map {
+    case (unique, (native, fdecl)) => fdecl match {
+      case (name, formalArgs, t) => PDomainFunction1(name, formalArgs, t, unique.isDefined, native)
     }
   }
 

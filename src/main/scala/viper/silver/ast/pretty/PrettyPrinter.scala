@@ -493,7 +493,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   /** Show a domain member. */
   def showDomainMember(m: DomainMember): Cont = {
     val memberDoc = m match {
-      case f @ DomainFunc(_, _, _, unique) =>
+      case f @ DomainFunc(_, _, _, unique, _) =>
         if (unique) text("unique") <+> showDomainFunc(f) else showDomainFunc(f)
       case DomainAxiom(name, exp) =>
         text("axiom") <+> name <+>
@@ -506,7 +506,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
 
 
   def showDomainFunc(f: DomainFunc) = {
-    val DomainFunc(name, formalArgs, typ, _) = f
+    val DomainFunc(name, formalArgs, typ, _, _) = f
     text("function") <+> name <> parens(showVars(formalArgs)) <> ":" <+> show(typ)
   }
 
@@ -610,6 +610,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   /** Show a type. */
   def showType(typ: Type): Cont = {
     typ match {
+      case BackendType(boogieName, _) => boogieName.get
       case Bool => "Bool"
       case Int => "Int"
       case Ref => "Ref"

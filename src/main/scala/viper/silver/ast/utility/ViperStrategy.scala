@@ -278,8 +278,8 @@ object ViperStrategy {
     case (da: DomainAxiom, Seq(body: Exp), meta) =>
       DomainAxiom(da.name, body)(meta._1, meta._2, da.domainName, meta._3)
 
-    case (df: DomainFunc, Seq(parameters: Seq[LocalVarDecl@unchecked], aType: Type), meta) =>
-      DomainFunc(df.name, parameters, aType, df.unique)(meta._1, meta._2, df.domainName, meta._3)
+    case (df: DomainFunc, Seq(parameters: Seq[LocalVarDecl@unchecked], aType: Type, backendFunc: Option[String@unchecked]), meta) =>
+      DomainFunc(df.name, parameters, aType, df.unique, backendFunc)(meta._1, meta._2, df.domainName, meta._3)
 
     case (Bool, _, meta) => Bool
 
