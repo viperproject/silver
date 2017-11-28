@@ -879,7 +879,7 @@ case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   def withArgs(newArgs: Seq[Exp]) = AnySetMinus(newArgs.head,newArgs(1))(pos, info, errT)
 }
 
-/** Is the element 'elem' contained in the sequence 'seq'? */
+/** Is the element 'elem' contained in the set 's'? */
 case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   override lazy val check : Seq[ConsistencyError] =
     if(!((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SetType].elementType)) ||
