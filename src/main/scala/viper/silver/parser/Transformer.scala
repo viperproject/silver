@@ -6,6 +6,8 @@
 
 package viper.silver.parser
 
+import viper.silver.verifier.ParseReport
+
 /* TODO: This is basically a copy of silver.ast.utility.Transformer. Can we share code?
  *       This could be done by using tree visiting and rewriting functionality from Kiama,
   *      or to implement something generic ourselves. Shapeless or Scala Macros might be
@@ -229,8 +231,8 @@ object Transformer {
     case (_: PLetNestedScope, Seq(idndef: PFormalArgDecl, body: PExp)) => PLetNestedScope(idndef, body)
     case (p: PSkip, _) => p
 
-    case (p: PProgram, Seq(files: Seq[PImport@unchecked], macros: Seq[PDefine@unchecked], domains: Seq[PDomain@unchecked], fields: Seq[PField@unchecked], functions: Seq[PFunction@unchecked], predicates: Seq[PPredicate@unchecked], methods: Seq[PMethod@unchecked])) =>
-      PProgram(files, macros, domains, fields, functions, predicates, methods, p.errors)
+    case (p: PProgram, Seq(files: Seq[PImport@unchecked], macros: Seq[PDefine@unchecked], domains: Seq[PDomain@unchecked], fields: Seq[PField@unchecked], functions: Seq[PFunction@unchecked], predicates: Seq[PPredicate@unchecked], methods: Seq[PMethod@unchecked], errors: Seq[ParseReport@unchecked])) =>
+      PProgram(files, macros, domains, fields, functions, predicates, methods, errors)
 
     case (p: PImport, _) => p
     case (_: PMethod, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], formalReturns: Seq[PFormalArgDecl@unchecked], pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], body: Option[PStmt@unchecked])) => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)

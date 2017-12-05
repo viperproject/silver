@@ -158,7 +158,7 @@ object FastParser extends PosParser {
     val p = RecParser(path).parses(imported_source)
     p match {
       case fastparse.core.Parsed.Success(prog, _) => prog
-      case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Failure: $msg", FilePosition(path, extra.line, extra.col))
+      case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Expected $msg", FilePosition(path, extra.line, extra.col))
     }
   }
 
@@ -410,16 +410,18 @@ object FastParser extends PosParser {
          *       Seems difficult to concisely and precisely match all (il)legal cases, however.
          */
         (ctxt.parent, macroBody) match {
-          case (_: PAccPred, _) | (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
-            throw ParseException("Macro expansion would result in invalid code", FastPositions.getStart(app))
+          case (PAccPred(loc, _), _) if (loc eq app) && !macroBody.isInstanceOf[PLocationAccess] =>
+            throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+          case (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
+            throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
           case _ => /* All good */
         }
 
         try {
           replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
         } catch {
-          case _: ParseTreeDuplicationError =>
-            throw ParseException("Macro expansion would result in invalid code", FastPositions.getStart(app))
+          case problem: ParseTreeDuplicationError =>
+            throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), FastPositions.getStart(app))
         }
       }.applyOrElse(currentNode, (_: PNode) => currentNode)
     }.recurseFunc {
@@ -433,7 +435,12 @@ object FastParser extends PosParser {
       case PCall(_, args, typeAnnotated) => Seq(args, typeAnnotated)
     }.repeat
 
-    expander.execute[T](toExpand)
+    try {
+      expander.execute[T](toExpand)
+    } catch {
+      case problem: ParseTreeDuplicationError =>
+        throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), problem.original.start)
+    }
   }
 
   /** The file we are currently parsing (for creating positions later). */

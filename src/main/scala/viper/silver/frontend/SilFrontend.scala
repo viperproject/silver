@@ -10,10 +10,9 @@ import fastparse.core.Parsed
 import java.nio.file.{Path, Paths}
 
 import org.apache.commons.io.FilenameUtils
-import viper.silver.ast.Position
+import viper.silver.ast.{Position, SourcePosition, _}
 import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
-import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.verifier._
 
@@ -189,7 +188,7 @@ trait SilFrontend extends DefaultFrontend {
   protected def printErrors(errors: AbstractError*) {
     logger.info("The following errors were found:")
 
-    errors.foreach(e => logger.info(s"  ${e.readableMessage}"))
+    errors.foreach(e => logger.info(s"  ${e.toString}"))
 
     if (config.error.nonEmpty) {
       logger.info("")
@@ -209,8 +208,8 @@ trait SilFrontend extends DefaultFrontend {
 
         Succ({ e.initProperties(); e })
       else Fail(err_list)
-      case Parsed.Failure(msg, next, extra) =>
-        Fail(List(ParseError(msg.toString, SourcePosition(file, extra.line, extra.col))))
+      case Parsed.Failure(msg, next, extra) => Fail(List(ParseError("Expected " + msg.toString, SourcePosition(file, extra.line, extra.col))))
+
       case ParseError(msg, pos) => Fail(List(ParseError(msg, pos)))
 
      }
