@@ -9,7 +9,7 @@ package viper.silver
 import scala.language.implicitConversions
 import org.scalatest.{Matchers, FunSuite}
 import ast._
-import ast.utility.Transformer._
+import ast.utility.Simplifier._
 
 class SimplifierTests extends FunSuite with Matchers {
   test("div and mod") {
