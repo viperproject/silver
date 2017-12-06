@@ -120,10 +120,10 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
     def go(root: Exp, boundVariables: Set[LocalVar]): Unit = {
       root.visitWithContextManually(boundVariables)(boundVariables => {
-        case old: Old => collectedExpressions :+= old
-
         case LabelledOld(_, FastParser.LHS_OLD_LABEL) => /* Don't descend further */
-        case lo: LabelledOld => collectedExpressions :+= lo
+
+        case old: OldExp if !boundVariables.exists(old.contains)=>
+          collectedExpressions :+= old
 
         case quant: QuantifiedExp =>
           val newContext = boundVariables ++ quant.variables.map(_.localVar)

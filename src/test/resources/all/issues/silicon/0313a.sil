@@ -1,0 +1,8 @@
+field value: Int;
+field next: Ref;
+
+function foo(count: Int): Int
+
+method test(list: Ref) {
+  inhale (forall i: Int :: 2 == old(foo(i))) --* true
+}
