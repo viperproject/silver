@@ -4,8 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper.silver
-
 import viper.silver.utility.{SilNameGenerator, NameGenerator}
 import org.scalatest.{BeforeAndAfter, FunSuite}
 

@@ -17,6 +17,5 @@ method test(x: Ref) {
   inhale acc(P(x)) && unfolding acc(P(x)) in true
   v2 := fun(x)
     
-  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/122/)
   assert v1 == v2 // Fails in Carbon, verifies in Silicon
 }

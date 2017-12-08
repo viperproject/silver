@@ -10,7 +10,7 @@ import fastparse.core.Parsed
 import java.nio.file.{Path, Paths}
 
 import org.apache.commons.io.FilenameUtils
-import viper.silver.ast.Position
+import viper.silver.ast.{Position, SourcePosition, _}
 import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
 import viper.silver.ast._
@@ -223,8 +223,7 @@ trait SilFrontend extends DefaultFrontend {
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning]))
                 Succ({ e.initProperties(); e })
               else Fail(err_list)
-            case Parsed.Failure(msg, next, extra) =>
-              Fail(List(ParseError(msg.toString, SourcePosition(file, extra.line, extra.col))))
+            case Parsed.Failure(msg, next, extra) => Fail(List(ParseError("Expected " + msg.toString, SourcePosition(file, extra.line, extra.col))))
             case ParseError(msg, pos) => Fail(List(ParseError(msg, pos)))
           }
 
@@ -280,7 +279,16 @@ trait SilFrontend extends DefaultFrontend {
             Fail(errors)
         }
 
-      case None => Fail(_plugins.errors)
+      case None =>
+        val errors = for (m <- FastMessaging.sortmessages(r.messages)) yield {
+          TypecheckerError(m.label, m.pos match {
+            case fp: FilePosition =>
+              SourcePosition(fp.file, m.pos.line, m.pos.column)
+            case _ =>
+              SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
+          })
+        }
+        Fail(errors)
     }
   }
 
