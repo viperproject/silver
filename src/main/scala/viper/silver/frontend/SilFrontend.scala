@@ -279,16 +279,7 @@ trait SilFrontend extends DefaultFrontend {
             Fail(errors)
         }
 
-      case None =>
-        val errors = for (m <- FastMessaging.sortmessages(r.messages)) yield {
-          TypecheckerError(m.label, m.pos match {
-            case fp: FilePosition =>
-              SourcePosition(fp.file, m.pos.line, m.pos.column)
-            case _ =>
-              SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-          })
-        }
-        Fail(errors)
+      case None => Fail(_plugins.errors)
     }
   }
 
