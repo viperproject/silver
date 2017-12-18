@@ -253,7 +253,8 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
    */
   def isTypeVar = kind == PDomainTypeKinds.TypeVar
 
-  override def isValidAndResolved = (isTypeVar || kind==PDomainTypeKinds.Domain) &&
+  override def isValidAndResolved =
+    (isTypeVar || kind==PDomainTypeKinds.Domain || kind==PDomainTypeKinds.Undeclared) &&
     args.forall(_.isValidAndResolved)
 
 
@@ -266,7 +267,7 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
   }
 
   override def substitute(ts: PTypeSubstitution): PType = {
-    require(kind==PDomainTypeKinds.Domain || kind==PDomainTypeKinds.TypeVar)
+    require(kind==PDomainTypeKinds.Domain || kind==PDomainTypeKinds.TypeVar || kind==PDomainTypeKinds.Undeclared)
     if (isTypeVar)
       if (ts.isDefinedAt(domain.name))
         return ts.get(domain.name).get
