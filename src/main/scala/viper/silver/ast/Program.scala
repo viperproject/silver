@@ -187,8 +187,10 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     }
   }
 
+  def findDomainFunctionOptionally(name: String): Option[DomainFunc] = this.domains.flatMap(_.functions).find(_.name == name)
+
   def findDomainFunction(name: String): DomainFunc = {
-    this.domains.flatMap(_.functions).find(_.name == name) match {
+    findDomainFunctionOptionally(name) match {
       case Some(f) => f
       case None => sys.error("Domain function " + name + " not found in program.")
     }
