@@ -99,6 +99,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
       case Version => println(builder.vers.get)
       case Help(_) => printHelp()
       case ScallopException(message) => error = Some(message)
+      case unhandled => throw unhandled
     }
   }
 
