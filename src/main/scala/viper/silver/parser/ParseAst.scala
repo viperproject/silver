@@ -208,7 +208,7 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
 //case class PLocalVar
 
 /* Formal arguments.
- * [2014-11-13 Malte] Changed typ to be a var, so that it can be updated
+ * [2014-11-13 Malte] Changed type to be a var, so that it can be updated
  * during type-checking. The use-case are let-expressions, where requiring an
  * explicit type in the binding of the variable, i.e., "let x: T = e1 in e2",
  * would be rather cumbersome.
@@ -218,7 +218,7 @@ case class PFormalArgDecl(idndef: PIdnDef, var typ: PType) extends PNode with PT
 // Types
 sealed trait PType extends PNode {
   def isUnknown: Boolean = this.isInstanceOf[PUnknown]
-  def isValidAndResolved : Boolean
+  def isValidOrUndeclared : Boolean
   def isGround : Boolean = true
 //  def substitute(newTypVarsMap: Map[String, PType]): PType = this
   def substitute(ts:PTypeSubstitution) : PType
@@ -239,7 +239,7 @@ case class PPrimitiv(name: String) extends PType {
   override def substitute(ts:PTypeSubstitution) : PType = this
   override val subNodes = Seq()
   override def toString = name
-  override def isValidAndResolved = true
+  override def isValidOrUndeclared = true
 }
 
 case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
@@ -253,9 +253,9 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
    */
   def isTypeVar = kind == PDomainTypeKinds.TypeVar
 
-  override def isValidAndResolved =
+  override def isValidOrUndeclared =
     (isTypeVar || kind==PDomainTypeKinds.Domain || kind==PDomainTypeKinds.Undeclared) &&
-    args.forall(_.isValidAndResolved)
+    args.forall(_.isValidOrUndeclared)
 
 
   def isResolved = kind != PDomainTypeKinds.Unresolved
@@ -336,7 +336,7 @@ sealed trait PGenericCollectionType extends PGenericType{
   override val typeArguments = Seq(elementType)
   override def toString = genericName + s"[$elementType]"
   override val subNodes = Seq(elementType)
-  override def isValidAndResolved = typeArguments.forall(_.isValidAndResolved)
+  override def isValidOrUndeclared = typeArguments.forall(_.isValidOrUndeclared)
 }
 
 case class PSeqType(elementType: PType) extends PType with PGenericCollectionType {
@@ -363,17 +363,17 @@ sealed trait PInternalType extends PType{
 // for resolving if something cannot be typed
 case class PUnknown() extends PInternalType {
   override def toString = "<error type>"
-  override def isValidAndResolved = false
+  override def isValidOrUndeclared = false
 }
 // used during resolving for predicate accesses
 case class PPredicateType() extends PInternalType {
   override def toString = "$predicate"
-  override def isValidAndResolved = true
+  override def isValidOrUndeclared = true
 }
 
 case class PWandType() extends PInternalType {
   override def toString = "$wand"
-  override def isValidAndResolved = true
+  override def isValidOrUndeclared = true
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -394,7 +394,7 @@ case class PDecTuple (decs: Seq[PExp]) extends PDecClause
 
 class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
 {
-  require(m.values.forall(_.isValidAndResolved))
+  require(m.values.forall(_.isValidOrUndeclared))
   def -(key: String) = new PTypeSubstitution(m.-(key))
   def get(key: String) : Option[PType] = m.get(key)
   private def +(kv: (String, PType)): PTypeSubstitution = new PTypeSubstitution(m + kv)
@@ -681,7 +681,7 @@ case class PFieldAccess(rcv: PExp, idnuse: PIdnUse) extends PLocationAccess{
   override final val opName = "."
   override final val args = Seq(rcv)
   override def signatures =
-    if (Set(rcv.typ,idnuse.typ).forall(_.isValidAndResolved))
+    if (Set(rcv.typ,idnuse.typ).forall(_.isValidOrUndeclared))
       List(PTypeSubstitution(Map(POpApp.pArgS(0) -> Ref,POpApp.pResS -> idnuse.typ)))
     else
       List()

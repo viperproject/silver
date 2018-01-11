@@ -1,8 +1,9 @@
-//:: IgnoreFile(/silver/issue/38/)
 //:: ExpectedOutput(typechecker.error)
-function f(): MultiSet[Int]
+function f(): Edge
 
 method test()
 {
-    assert f() == Set[Ref]()
+//:: ExpectedOutput(typechecker.error)
+    assert f()
 }
+
