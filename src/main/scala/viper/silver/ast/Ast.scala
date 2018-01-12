@@ -89,7 +89,8 @@ trait Node extends Traversable[Node] with Rewritable {
   }
 
   /** @see [[Visitor.visitOpt()]] */
-  def visitOpt(f: Node => Boolean) { Visitor.visitOpt(this, Nodes.subnodes)(f)
+  def visitOpt(f: Node => Boolean) {
+    Visitor.visitOpt(this, Nodes.subnodes)(f)
   }
 
   /** @see [[Visitor.visitOpt()]] */
