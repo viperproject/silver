@@ -457,9 +457,9 @@ case class TypeChecker(names: NameAnalyser) {
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
   {
     check(exp,PTypeSubstitution.id)
-    if (exp.typ.isValidAndResolved && exp.typeSubstitutions.nonEmpty){
+    if (exp.typ.isValidOrUndeclared && exp.typeSubstitutions.nonEmpty){
       val etss = oexpected match{
-        case Some(expected) if expected.isValidAndResolved => exp.typeSubstitutions.flatMap(_.add(exp.typ,expected))
+        case Some(expected) if expected.isValidOrUndeclared => exp.typeSubstitutions.flatMap(_.add(exp.typ,expected))
         case _ => exp.typeSubstitutions
       }
       if (etss.nonEmpty) {
@@ -540,14 +540,14 @@ case class TypeChecker(names: NameAnalyser) {
       case poa: POpApp =>
         assert(poa.typeSubstitutions.isEmpty)
         poa.args.foreach(checkInternal)
-        var nestedTypeError = !poa.args.forall(a => a.typ.isValidAndResolved)
+        var nestedTypeError = !poa.args.forall(a => a.typ.isValidOrUndeclared)
         if (!nestedTypeError) {
           poa match {
             case pfa@PCall(func, args, explicitType) =>
               explicitType match {
                 case Some(t) =>
                   check(t)
-                  if (!t.isValidAndResolved) nestedTypeError = true
+                  if (!t.isValidOrUndeclared) nestedTypeError = true
                 case None =>
               }
 
@@ -624,7 +624,7 @@ case class TypeChecker(names: NameAnalyser) {
                 else
                   ppa.predicate = predicate
               }
-            case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidAndResolved =>
+            case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidOrUndeclared =>
               check(pecl.pElementType)
 
             case _ =>

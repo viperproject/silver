@@ -496,7 +496,11 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
     pos.start match {
       case fp: FilePosition => SourcePosition(fp.file, start, end)
-      case _ => SourcePosition(null, start, end)
+      case _ =>
+        //FIXME Do we really need to construct an instance of SourcePosition with undefined file field?
+        //FIXME One would expect to have a well-defined file path once a position pattern matched this type.
+        //FIXME @see https://bitbucket.org/viperproject/silver/issues/232
+        SourcePosition(null, start, end)
     }
   }
 
