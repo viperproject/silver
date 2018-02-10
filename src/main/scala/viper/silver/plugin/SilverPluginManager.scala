@@ -16,7 +16,7 @@ import viper.silver.verifier.{AbstractError, Failure, Success, VerificationResul
   *
   * @param plugins The plugins to load.
   */
-class SilverPluginManager(plugins: Seq[SilverPlugin]) {
+class SilverPluginManager(val plugins: Seq[SilverPlugin]) {
 
   protected var _errors: Seq[AbstractError] = Seq()
   def errors = _errors
@@ -37,8 +37,8 @@ class SilverPluginManager(plugins: Seq[SilverPlugin]) {
     v
   }
 
-  def beforeParse(input: String): Option[String] =
-    foldWithError(input)((inp, plugin) => plugin.beforeParse(inp))
+  def beforeParse(input: String, isImported: Boolean): Option[String] =
+    foldWithError(input)((inp, plugin) => plugin.beforeParse(inp, isImported))
 
   def beforeResolve(input: PProgram): Option[PProgram] =
     foldWithError(input)((inp, plugin) => plugin.beforeResolve(inp))
@@ -71,15 +71,8 @@ class SilverPluginManager(plugins: Seq[SilverPlugin]) {
   * <br>
   * The plugins to load have to be on the classpath.
   * The name of the plugin should be the fully qualified name of the class.
-  * If the class is not found, the following names will be tried as well:
-  * <ul>
-  *   <li>viper.PluginName</li>
-  *   <li>viper.silver.PluginName</li>
-  *   <li>viper.silver.plugin.PluginName</li>
-  * </ul>
-  * <br>
   * Assuming two plugins called viper.silver.plugin.ARP and ch.ethz.inf.pm.SamplePlugin the SilverPluginManager
-  * can be constructed as: {{{SilverPluginManager("ARP:ch.ethz.inf.pm.SamplePlugin")}}}
+  * can be constructed as: {{{SilverPluginManager("viper.silver.plugin.ARP:ch.ethz.inf.pm.SamplePlugin")}}}
   */
 object SilverPluginManager {
 
@@ -95,21 +88,28 @@ object SilverPluginManager {
     pluginArg.split(":").toSeq.map(resolve).filter(_.isDefined).map(_.get)
 
   def resolve(clazzName: String): Option[SilverPlugin] = {
-    Seq("", "viper.", "viper.silver.", "viper.silver.plugin.").map(prefix =>
-      try {
-        Some(Class.forName(prefix + clazzName).newInstance())
-      } catch {
-        case e: ClassNotFoundException => None
-      }
-    ).find(_.isDefined).map(_.get) match {
+    val clazz = try {
+      Some(Class.forName(clazzName).newInstance())
+    } catch {
+      case e: ClassNotFoundException => None
+    }
+    clazz match {
       case Some(instance) if instance.isInstanceOf[SilverPlugin] =>
         Some(instance.asInstanceOf[SilverPlugin])
       case Some(instance) =>
-        println("Warning: Plugin '" + instance.getClass.getName + "' has wrong type")
-        None
+        throw PluginWrongTypeException(instance.getClass.getName)
       case None =>
-        println("Warning: Plugin '" + clazzName + "' not found")
-        None
+        throw PluginNotFoundException(clazzName)
     }
+  }
+
+  class PluginException extends Exception
+
+  case class PluginNotFoundException(name: String) extends PluginException {
+    override def toString: String = s"Plugin $name not found."
+  }
+
+  case class PluginWrongTypeException(name: String) extends PluginException {
+    override def toString: String = s"Plugin $name has wrong type."
   }
 }

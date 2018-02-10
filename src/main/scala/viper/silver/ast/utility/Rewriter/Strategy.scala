@@ -458,10 +458,8 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
         None
       } else {
         val seqWithChildren: Seq[AnyRef] = newSeq.zip(s) map {
-          elem => elem._1 match {
-            case None => elem._2
-            case Some(y) => y
-          }
+          case (None, e2) => e2
+          case (Some(y), _) => y
         }
         Some(seqWithChildren)
       }

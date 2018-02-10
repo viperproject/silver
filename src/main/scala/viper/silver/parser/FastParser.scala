@@ -1,6 +1,7 @@
 package viper.silver.parser
 
 import java.nio.file.{Files, Path}
+
 import scala.language.{implicitConversions, reflectiveCalls}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
@@ -8,6 +9,7 @@ import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
+import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier.ParseError
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
@@ -34,7 +36,7 @@ object FastParser extends PosParser {
   private def addToImported(path: Path): Boolean =
     _imported.add(path.toAbsolutePath)
 
-  def parse(s: String, f: Path) = {
+  def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None) = {
     _file = f
     val lines = s.linesWithSeparators
     _lines = lines.map(_.length).toArray
@@ -51,7 +53,7 @@ object FastParser extends PosParser {
         } else {
           val toImport = firstImport.get
           if (addToImported(pathFromImport(toImport))) {
-            val newProg = importProgram(toImport)
+            val newProg = importProgram(toImport, plugins)
 
             PProgram(
               p.imports.drop(1) ++ newProg.imports,
@@ -139,7 +141,7 @@ object FastParser extends PosParser {
     * @param importStmt Import statement.
     * @return `PProgram` node corresponding to the imported program.
     */
-  def importProgram(importStmt: PImport): PProgram = {
+  def importProgram(importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
     val path = pathFromImport(importStmt)
 
     if (java.nio.file.Files.notExists(path))
@@ -155,7 +157,15 @@ object FastParser extends PosParser {
       source.close()
     }
     val imported_source = buffer.mkString("\n") + "\n"
-    val p = RecParser(path).parses(imported_source)
+    val transformed_source = if (plugins.isDefined){
+      plugins.get.beforeParse(imported_source, isImported = true) match {
+        case Some(transformed) => transformed
+        case None => throw ParseException(s"Plugin failed: ${plugins.get.errors.map(_.toString).mkString(", ")}", importStmt.start)
+      }
+    } else {
+      imported_source
+    }
+    val p = RecParser(path).parses(transformed_source)
     p match {
       case fastparse.core.Parsed.Success(prog, _) => prog
       case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Expected $msg", FilePosition(path, extra.line, extra.col))

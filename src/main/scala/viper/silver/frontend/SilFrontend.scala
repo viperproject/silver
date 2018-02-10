@@ -16,6 +16,7 @@ import viper.silver.FastMessaging
 import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.SilverPluginManager
+import viper.silver.plugin.SilverPluginManager.{PluginException, PluginNotFoundException, PluginWrongTypeException}
 import viper.silver.verifier._
 
 /**
@@ -112,7 +113,14 @@ trait SilFrontend extends DefaultFrontend {
     init(_ver)
 
     // set the file we want to verify
-    reset(Paths.get(_config.file()))
+    try {
+      reset(Paths.get(_config.file()))
+    } catch {
+      case exception: PluginException =>
+        printFallbackHeader()
+        printErrors(CliOptionError(exception.toString))
+        return
+    }
 
     // run the parser, typechecker, and verifier
     verify()
@@ -215,9 +223,9 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
-    _plugins.beforeParse(input) match {
+    _plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
-        val result = FastParser.parse(inputPlugin, file)
+        val result = FastParser.parse(inputPlugin, file, Some(_plugins))
           result match {
             case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning]))

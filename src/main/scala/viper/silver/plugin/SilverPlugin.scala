@@ -21,11 +21,12 @@ trait SilverPlugin {
   /** Called before any processing happened.
     *
     * @param input Source code as read from file
+    * @param isImported Whether the current input is an imported file or the main file
     * @return Modified source code
     */
-  def beforeParse(input: String) : String = input
+  def beforeParse(input: String, isImported: Boolean) : String = input
 
-  /** Called after parse AST has been constructed but before identifiers are resolved.
+  /** Called after parse AST has been constructed but before identifiers are resolved and the program is type checked.
     *
     * @param input Parse AST
     * @return Modified Parse AST
@@ -55,6 +56,7 @@ trait SilverPlugin {
   def beforeVerify(input: Program) : Program = input
 
   /** Called after the verification. Error transformation should happen here.
+    * This will only be called if verification took place.
     *
     * @param input Result of verification
     * @return Modified result
@@ -62,6 +64,7 @@ trait SilverPlugin {
   def mapVerificationResult(input: VerificationResult): VerificationResult = input
 
   /** Called after the verification just before the result is printed. Will not be called in tests.
+    * This will also be called even if verification did not take place (i.e. an error during parsing/translation occurred).
     *
     * @param input Result of verification
     * @return Modified result

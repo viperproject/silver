@@ -81,9 +81,8 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val plugin = opt[String]("plugin",
-    descr = "Load plugin(s) with given class name(s). Several plugins can be split by ':'. " +
-      "The fully qualified class name of the plugin should be specified. If a class is not found, the following " +
-      "names will be tried: viper.PluginName, viper.silver.PluginName, viper.silver.plugin.PluginName",
+    descr = "Load plugin(s) with given class name(s). Several plugins can be separated by ':'. " +
+      "The fully qualified class name of the plugin should be specified.",
     default = None,
     noshort = true,
     hidden = false
