@@ -60,20 +60,20 @@ abstract class ParseReport(message: String, pos: Position) extends AbstractError
 case class ParseError(message: String, override val pos: Position)
   extends ParseReport(message, pos) {
   def fullId = "parser.error"
-  def readableMessage = s"Parse error: $message"
+  def readableMessage = s"Parse error: $message ($pos)"
 }
 
 /** A case class used for treating certain parser reports as non-critical. */
 case class ParseWarning(message: String, override val pos: Position)
   extends ParseReport(message, pos) {
   def fullId = "parser.warning"
-  def readableMessage = s"Parse warning: $message"
+  def readableMessage = s"Parse warning: $message ($pos)"
 }
 
 /** An error during consistency-checking an AST node */
 case class ConsistencyError(message: String, pos:Position) extends AbstractError {
   def fullId = "consistency.error"
-  def readableMessage: String = s"Consistency error: $message"
+  def readableMessage: String = s"Consistency error: $message ($pos)"
 }
 
 /** A typechecker error. */
