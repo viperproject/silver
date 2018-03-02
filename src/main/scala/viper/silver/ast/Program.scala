@@ -322,6 +322,8 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
     (if(!(body forall (_ isSubtype typ))) Seq(ConsistencyError("Type of function body must match function type.", pos)) else Seq() ) ++
     pres.flatMap(Consistency.checkPre) ++
     posts.flatMap(Consistency.checkPost) ++
+    posts.flatMap(p => if (!Consistency.noPermissions(p))
+      Seq(ConsistencyError("Function post-conditions must not contain permissions.", p.pos)) else Seq()) ++
     (if(decs.isDefined) Consistency.checkDecClause(decs.get) else Seq()) ++
     (if(body.isDefined) Consistency.checkFunctionBody(body.get) else Seq()) ++
     (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq())

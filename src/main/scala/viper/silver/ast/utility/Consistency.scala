@@ -8,6 +8,7 @@ package viper.silver.ast.utility
 
 import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast._
+import viper.silver.ast.utility.Rewriter.Traverse
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}
@@ -125,6 +126,31 @@ object Consistency {
 
   /** Returns true if the given node contains no location accesses. */
   def noLocationAccesses(n: Node) = !n.existsDefined { case _: LocationAccess => }
+
+  /** Returns true if the given node contains no accessibility predicates (unfolding predicates is
+    * allowed) and no magic wands (applying wands is allowed).
+    */
+  def noPermissions(n: Node) = {
+    /* TODO: The rewriter framework currently doesn't support visitors or collectors,
+     *       i.e. strategies that executed for their side-effects or results, but that don't
+     *       modify the visited AST.
+     */
+
+    var found = false
+
+    val findPermissions = ViperStrategy.Ancestor({
+      case (acc: AccessPredicate, c) if c.parentOption.fold(true)(!_.isInstanceOf[Unfolding]) =>
+        found = true
+        acc
+      case (mw: MagicWand, c) if c.parentOption.fold(true)(!_.isInstanceOf[Applying]) =>
+        found = true
+        mw
+    }).traverse(Traverse.Innermost)
+
+    findPermissions.execute[Exp](n)
+
+    !found
+  }
 
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
   def nullValue[T](a: T, b: T) = if (a != null) a else b
