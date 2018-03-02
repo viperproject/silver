@@ -123,8 +123,8 @@ object Consistency {
   /** Returns true if the given node contains no forperm expression.*/
   def noForPerm(n: Node)  = !n.existsDefined { case _: ForPerm => }
 
-  /** Returns true if the given node contains no access locations. */
-  def noAccessLocation(n: Node) = !n.existsDefined { case _: LocationAccess => }
+  /** Returns true if the given node contains no location accesses. */
+  def noLocationAccesses(n: Node) = !n.existsDefined { case _: LocationAccess => }
 
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
   def nullValue[T](a: T, b: T) = if (a != null) a else b
