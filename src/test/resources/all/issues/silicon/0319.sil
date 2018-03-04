@@ -5,6 +5,5 @@ method client(x: Ref, n: Int)
 {
   inhale n > 0
   inhale (-n < 0 ? n : -n) * globalRd() < write
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/319/)
-  assert (-n < 0 ? n : -n) * globalRd() < write // fails
+  assert (-n < 0 ? n : -n) * globalRd() < write // failed (at least previously; not sure why no longer)
 }
