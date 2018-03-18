@@ -708,7 +708,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       val comment = n.info.comment
       if (comment.nonEmpty) {
         val docs = comment map (c => if (c.isEmpty) nil else text("//") <+> c)
-        ssep(docs, line) <> line
+        ssep(docs, line)
       }
       else nil
     }
@@ -726,7 +726,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case Unfolding(acc, exp) =>
       parens(text("unfolding") <+> show(acc) <+> "in" <+> show(exp))
     case Applying(wand, exp) =>
-      parens((text("applying") <+> show(wand) <+> "in" <+> show(exp)))
+      parens(text("applying") <+> show(wand) <+> "in" <+> show(exp))
     case Old(exp) =>
       text("old") <> parens(show(exp))
     case LabelledOld(exp,label) =>

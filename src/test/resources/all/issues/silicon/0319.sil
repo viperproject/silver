@@ -1,0 +1,9 @@
+function globalRd(): Perm
+  ensures none < result && result < write
+
+method client(x: Ref, n: Int)
+{
+  inhale n > 0
+  inhale (-n < 0 ? n : -n) * globalRd() < write
+  assert (-n < 0 ? n : -n) * globalRd() < write // failed (at least previously; not sure why no longer)
+}

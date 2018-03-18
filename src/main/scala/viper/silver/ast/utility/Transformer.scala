@@ -43,6 +43,7 @@ object Transformer {
         FalseLit()(root.pos, root.info)
       case Implies(TrueLit(), consequent) => consequent
 
+      case root @ EqCmp(left, right) if left == right => TrueLit()(root.pos, root.info)
       case root @ EqCmp(BoolLit(left), BoolLit(right)) =>
         BoolLit(left == right)(root.pos, root.info)
       case root @ EqCmp(FalseLit(), right) => Not(right)(root.pos, root.info)
