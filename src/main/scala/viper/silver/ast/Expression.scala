@@ -122,6 +122,8 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
       root.visitWithContextManually(boundVariables)(boundVariables => {
         case LabelledOld(_, FastParser.LHS_OLD_LABEL) => /* Don't descend further */
 
+        case Let(v, e, body) => go(body.replace(v.localVar, e), boundVariables)
+
         case old: OldExp if !boundVariables.exists(old.contains)=>
           collectedExpressions :+= old
 
