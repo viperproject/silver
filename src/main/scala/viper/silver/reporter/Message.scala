@@ -125,7 +125,7 @@ case class SymbExLogReport(entity: Entity, timestamp: Time, stuff: Option[Any])
   override val name: String = s"symbolic_execution_logger_report"
 }
 
-case class ExceptionReport(e: java.lang.Throwable) extends Message {
+case class ExceptionReport(e: java.lang.Exception) extends Message {
 
   override def toString: String = s"exception_report(e=${e.toString()})"
 
