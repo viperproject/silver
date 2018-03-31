@@ -125,13 +125,6 @@ case class SymbExLogReport(entity: Entity, timestamp: Time, stuff: Option[Any])
   override val name: String = s"symbolic_execution_logger_report"
 }
 
-case class ExceptionReport(e: java.lang.Exception) extends Message {
-
-  override def toString: String = s"exception_report(e=${e.toString()})"
-
-  override val name: String = s"exception_report"
-}
-
 // FIXME: for debug purposes only: a pong message can be reported to indicate
 // FIXME: that the verification backend is alive.
 case class PongMessage(msg: String) extends Message {
