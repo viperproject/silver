@@ -10,40 +10,38 @@ import org.slf4j.LoggerFactory
 /**
   * Factory for [[Logger]] instances.
   *
-  * @param  name  the name of the logger
-  * @param  file  either [[Some]] file to which the logger will be written,
+  * @param  name  The name of the logger.
+  * @param  file  Either [[Some]] file to which the logger will be written,
   *               or [[None]], if which case logs will be written to STDOUT.
-  * @param  level the level of detail for this logger (should be one of the
+  * @param  level The level of detail for this logger (should be one of the
   *               following values:
   *               @see [[ch.qos.logback.classic.Level.toLevel]])
   *
-  * @return       the logger factory that will lazily produce a singleton
+  * @return       The logger factory that will lazily produce a singleton
   *               logger once [[viper.silver.logger.ViperLogger.get]] is evaluated.
+  *
+  * @author       Based on https://stackoverflow.com/questions/16910955/programmatically-configure-logback-appender
   */
 class ViperLogger(val name: String, val file: Option[String], val level: String) {
 
   lazy val get: Logger = createLoggerFor(name, file, level)
 
-  /** Borrowed from https://stackoverflow.com/questions/16910955/programmatically-configure-logback-appender */
+  /** Borrowed from  */
   private def createLoggerFor(string: String, file: Option[String], str_level: String) = {
     val lc = LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext]
-    val ple = new PatternLayoutEncoder
-    ple.setPattern("%date %level [%thread] %logger{10} [%file:%line] %msg%n")
-    ple.setContext(lc)
-    ple.start()
     val logger = LoggerFactory.getLogger(string).asInstanceOf[Logger]
     file match {
       case Some(f_name) =>
         val fileAppender: FileAppender[ILoggingEvent] = new FileAppender[ILoggingEvent]
         fileAppender.setFile(f_name)
-        fileAppender.setEncoder(ple)
+        fileAppender.setEncoder( createEncoder(lc, "%date %level [%thread] %logger{10} [%file:%line] %msg%n") )
         fileAppender.setContext(lc)
         fileAppender.start()
         logger.addAppender(fileAppender)
       case None =>
         val stdOutApender = new ConsoleAppender[ILoggingEvent]
         stdOutApender.setTarget("System.out")
-        stdOutApender.setEncoder(ple)
+        stdOutApender.setEncoder( createEncoder(lc, "%msg%n") )
         stdOutApender.setContext(lc)
         stdOutApender.start()
         logger.addAppender(stdOutApender)
@@ -51,6 +49,14 @@ class ViperLogger(val name: String, val file: Option[String], val level: String)
     logger.setLevel(toLevel(str_level))
     logger.setAdditive(false) /* set to true if root should log too */
     logger
+  }
+
+  private def createEncoder(lc: LoggerContext, pattern: String): PatternLayoutEncoder = {
+    val ple = new PatternLayoutEncoder
+    ple.setPattern(pattern)
+    ple.setContext(lc)
+    ple.start()
+    ple
   }
 }
 
