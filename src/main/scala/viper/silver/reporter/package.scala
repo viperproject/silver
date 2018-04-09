@@ -7,8 +7,11 @@
 package viper.silver
 
 package object reporter {
-  type Time = Long
+  type Time = Long // in milliseconds
   type File = java.nio.file.Path
-  type Entity = viper.silver.ast.Member
+  type Entity = viper.silver.ast.Member with Serializable
   type Position = viper.silver.ast.SourcePosition
+
+  // The following case classes are essentially named tuple wrappers.
+  case class Definition(name: String, typ: String, location: viper.silver.ast.Position, scope: Option[viper.silver.ast.AbstractSourcePosition] = None)
 }

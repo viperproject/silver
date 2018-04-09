@@ -4,8 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-package viper.silver
-
 import org.scalatest.{BeforeAndAfter, FunSuite, Matchers}
 import viper.silver.testing._
 import java.nio.file.{FileSystems, Path}

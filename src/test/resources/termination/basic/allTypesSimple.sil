@@ -1,4 +1,4 @@
-import "../decreaseOrder/importAllDec.vpr"
+import "../decreaseOrder/importAllDec.sil"
 
 //Example decreasing Int
 function fact(x:Int): Int

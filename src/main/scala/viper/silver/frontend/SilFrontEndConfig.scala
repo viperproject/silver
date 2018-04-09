@@ -11,7 +11,7 @@ import org.rogach.scallop.ScallopConf
 import org.rogach.scallop.exceptions.{Help, ScallopException, Version}
 
 /**
- * The configuration of a SIL front-end.
+ * The configuration of a Viper front-end.
  */
 abstract class SilFrontendConfig(args: Seq[String], private var projectName: String) extends ScallopConf(args) {
   /* Attention: projectName must be an explicit field, otherwise it cannot be
@@ -44,7 +44,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val methods = opt[String]("methods",
-    descr = "The SIL methods that should be verified. :all means all methods.",
+    descr = "The Viper methods that should be verified. :all means all methods.",
     default = Some(":all"),
     noshort = true,
     hidden = true
@@ -52,15 +52,6 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
 
   val ignoreFile = opt[Boolean]("ignoreFile",
     descr = "Ignore the file (in particular, don't check that it can actually be read).",
-    default = Some(false),
-    noshort = true,
-    hidden = true
-  )
-
-  val ideMode = opt[Boolean]("ideMode",
-    descr = (  "Used for VS Code IDE. Report errors in json format, and write"
-             + "errors in the format '<file>,<line>:<col>,<line>:<col>,<message>' to"
-             + "a file (see option ideModeErrorFile)."),
     default = Some(false),
     noshort = true,
     hidden = true
@@ -75,24 +66,27 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val ideModeAdvanced = opt[Boolean]("ideModeAdvanced",
-    descr = (  "Used for VS Code IDE. Write symbolic execution log into .vscode/executionTreeData.js file, "
-            + "write execution tree graph into .vscode/dot_input.dot, "
-            + "and output z3's counter example models."),
+    descr = (  "Used for symbolic execution debugging in ViperIDE. Write symbolic execution log into "
+            + ".vscode/executionTreeData.js file, and output z3's counterexample models."),
     default = Some(false),
     noshort = true,
     hidden = true
   )
 
-  dependsOnAll(ideModeAdvanced, ideMode :: Nil)
-
-  val ideModeErrorFile = opt[String]("ideModeErrorFile",
-    descr = "File to which errors should be written",
-    default = Some("errors.log"),
+  val enableFunctionTerminationChecks = opt[Boolean]("enableFunctionTerminationChecks",
+    descr = "Enable program function termination checks (decreases-clauses)",
+    default = Some(false),
     noshort = true,
-    hidden = true
+    hidden = false
   )
 
-  dependsOnAll(ideModeErrorFile, ideMode :: Nil)
+  val plugin = opt[String]("plugin",
+    descr = "Load plugin(s) with given class name(s). Several plugins can be separated by ':'. " +
+      "The fully qualified class name of the plugin should be specified.",
+    default = None,
+    noshort = true,
+    hidden = false
+  )
 
   validateOpt(file, ignoreFile) {
     case (_, Some(true)) => Right(Unit)
@@ -113,6 +107,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
       case Version => println(builder.vers.get)
       case Help(_) => printHelp()
       case ScallopException(message) => error = Some(message)
+      case unhandled => throw unhandled
     }
   }
 

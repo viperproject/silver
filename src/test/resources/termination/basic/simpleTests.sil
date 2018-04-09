@@ -1,4 +1,4 @@
-import "../decreaseOrder/int_decreases.vpr"
+import "../decreaseOrder/int_decreases.sil"
 
 function fun1(x: Int): Int
 decreases x+10
@@ -28,7 +28,7 @@ decreases x,y
 }
 
 function fun5(x:Int): Int
-decreases -x+10
+decreases -x+12
 {
     x<10 ? fun5(x+2) : 7
 }

@@ -41,7 +41,7 @@ object Nodes {
           case Function(name, formalArgs, typ, pres, posts, decs, body) =>
             formalArgs ++ pres ++ posts ++ decs ++ body
           case Method(name, formalArgs, formalReturns, pres, posts, body) =>
-            formalArgs ++ formalReturns ++ pres ++ posts ++ Seq(body)
+            formalArgs ++ formalReturns ++ pres ++ posts ++ body.toSeq
           case Predicate(name, formalArg, body) => formalArg ++ body.toSeq
           case Domain(name, functions, axioms, typVars) =>
             functions ++ axioms ++ typVars

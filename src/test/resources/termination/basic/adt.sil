@@ -1,4 +1,4 @@
-import "../decreaseOrder/int_decreases.vpr"
+import "../decreaseOrder/int_decreases.sil"
 
 domain list {
 

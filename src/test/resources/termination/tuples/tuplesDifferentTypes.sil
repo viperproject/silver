@@ -1,13 +1,13 @@
-//UnexpectedOutput(z3.interaction.failed)(silicon)
+//:: IgnoreFile(/silicon/issue/297/)
 
-import "../decreaseOrder/int_decreases.vpr"
-import "../decreaseOrder/set_decreases.vpr"
-import "../decreaseOrder/perm_decreases.vpr"
-import "../decreaseOrder/ref_decreases.vpr"
-import "../decreaseOrder/bool_decreases.vpr"
-import "../decreaseOrder/multiSet_decreases.vpr"
-import "../decreaseOrder/seq_decreases.vpr"
-import "../decreaseOrder/pred_decreases.vpr"
+import "../decreaseOrder/int_decreases.sil"
+import "../decreaseOrder/set_decreases.sil"
+import "../decreaseOrder/perm_decreases.sil"
+import "../decreaseOrder/ref_decreases.sil"
+import "../decreaseOrder/bool_decreases.sil"
+import "../decreaseOrder/multiSet_decreases.sil"
+import "../decreaseOrder/seq_decreases.sil"
+import "../decreaseOrder/pred_decreases.sil"
 
 function f(i:Int, s: Set[Int], p:Perm, r:Ref): Bool
 requires i>=0

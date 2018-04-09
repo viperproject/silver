@@ -1,0 +1,18 @@
+//:: ExpectedOutput(parser.error)
+define macro {
+    assert(true)
+    macro2
+}
+
+define macro2 {
+    assert(true)
+    macro
+}
+
+method main()
+{
+    var b: Bool := true
+    assert(true)
+    macro
+}
+

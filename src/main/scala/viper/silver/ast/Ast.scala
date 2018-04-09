@@ -16,7 +16,7 @@ import viper.silver.verifier.{ConsistencyError, AbstractVerificationError, Error
 
 /*
 
-This is the SIL abstract syntax description.
+This is the Viper abstract syntax description.
 
 Some design choices:
 - Everything is either a trait, an abstract class, a case class or a case object.  Everything that we

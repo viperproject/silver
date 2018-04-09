@@ -8,7 +8,6 @@
   }
   function itemAt(this: Ref, i: Int): Int
     requires acc(valid(this), write) && 0 <= i
-    decreases *
   { (unfolding acc(valid(this), write) in (((i) == (0)) || ((this.next) == (null)) ? this.value : itemAt(this.next, i - 1))) }
   method M(this: Ref, x: Ref, y: Ref)
     requires ((x) != (null)) && ((y) != (null)) && ((x) != (y)) && acc(valid(x), write) && acc(valid(y), write)

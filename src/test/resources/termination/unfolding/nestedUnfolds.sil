@@ -1,6 +1,6 @@
-//UnexpectedOutput(z3.interaction.failed)(silicon)
+//:: IgnoreFile(/silicon/issue/297/)
 
-import "../decreaseOrder/pred_decreases.vpr"
+import "../decreaseOrder/pred_decreases.sil"
 
 function f1(r:Ref): Int
 requires p1(r)

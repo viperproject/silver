@@ -1,4 +1,4 @@
-import "../decreaseOrder/pred_decreases.vpr"
+import "../decreaseOrder/pred_decreases.sil"
 
 field next: Ref
 field val: Int

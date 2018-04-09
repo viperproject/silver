@@ -9,7 +9,6 @@ function size(this: Ref): Int
   requires this != null
   requires acc(valid(this), write)
   ensures result >= 1
-  decreases *
 { unfolding acc(valid(this), write) in (this.next == null ? 1 : 1 + size(this.next)) }
 
 method unfoldOnce(this: Ref)
@@ -52,7 +51,6 @@ function size_0(this: Ref): Int
   requires this != null
   requires acc(valid(this), write)
   ensures result >= 1
-  decreases *
 {
   unfolding acc(valid(this), write) in (
     this.next == null

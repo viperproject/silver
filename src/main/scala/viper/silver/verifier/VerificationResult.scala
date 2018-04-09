@@ -8,7 +8,7 @@ package viper.silver.verifier
 
 import viper.silver.ast._
 
-/** Describes the outcome of a verification attempt of a SIL program.
+/** Describes the outcome of a verification attempt of a Viper program.
 
   */
 sealed trait VerificationResult

@@ -116,7 +116,7 @@ object StrategyBuilder {
     * @param p          Partial function that transforms input (node, context) into a new node
     * @param default    Default context value (in case no context is present)
     * @param updateFunc Function that extracts context out of nodes and combines it with existing context
-    * @param t          Traversial direction
+    * @param t          Traversal direction
     * @tparam N Common supertype of every node in the tree
     * @tparam C Type of the context
     * @return Strategy object ready to execute on a tree
@@ -133,7 +133,7 @@ object StrategyBuilder {
     * @return Visitor object ready to use
     */
   def SlimVisitor[N <: Rewritable](f: N => Unit) = {
-    new StrategyVisitor[N, SimpleContext[N]]({ (a: N, c: SimpleContext[N]) => f(a) }) defaultContext new NoContext[N]
+    new StrategyVisitor[N, SimpleContext[N]]({ (a: N, _: SimpleContext[N]) => f(a) }) defaultContext new NoContext[N]
   }
 
   /**
@@ -322,7 +322,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     if (duplicateAll) {
       cur match {
         case None => Some(old.duplicate(old.getChildren).asInstanceOf[N])
-        case s@Some(node) => s
+        case some => some
       }
     } else {
       cur
@@ -448,43 +448,48 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     val children = node.getChildren
 
     // Get the indices of the sequence that we perform recursion on and check if it is well formed. Default case is all children
-    val childrenSelect: Seq[AnyRef] = recursionFunc.applyOrElse(node, (ignore: AnyRef) => node.getChildren)
+    val childrenSelect: Seq[AnyRef] = recursionFunc.applyOrElse(node, (_: AnyRef) => node.getChildren)
 
     def selected(ch: AnyRef) = childrenSelect.exists(_ eq ch)
+
+    def sequence(s: Seq[Rewritable]): Option[Seq[AnyRef]] = {
+      val newSeq = s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else None }
+      if (newSeq.forall(_.isEmpty)) {
+        None
+      } else {
+        val seqWithChildren: Seq[AnyRef] = newSeq.zip(s) map {
+          case (None, e2) => e2
+          case (Some(y), _) => y
+        }
+        Some(seqWithChildren)
+      }
+    }
 
     // Recurse on children if the according (same index) flag in childrenSelect is set. If it is not set, leave child untouched
     val newChildren: Seq[Option[AnyRef]] = children map {
       x => {
         val res = x match {
-          case o: Option[Rewritable@unchecked] if selected(o) => o match {
+          case o: Option[AnyRef@unchecked] if selected(o) => o match {
             case None => None
+            case Some(s: Seq[Rewritable@unchecked]) =>
+              sequence(s)
             case Some(x: Rewritable) =>
               if (!noRecursion.contains(x)) {
                 recurse(x.asInstanceOf[N]) match {
                   case None => None
-                  case Some(x) => Some(Some(x))
+                  case Some(y) => Some(Some(y))
                 }
               }
               else {
                 None
               }
+            case _ => None
           }
           case s: Seq[Rewritable@unchecked] if selected(s) =>
-            val newSeq = s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else None }
-            if (newSeq.forall(_.isEmpty)) {
-              None
-            } else {
-              val seqWithChildren: Seq[AnyRef] = newSeq.zip(s) map {
-                elem => elem._1 match {
-                  case None => elem._2
-                  case Some(x) => x
-                }
-              }
-              Some(seqWithChildren)
-            }
+            sequence(s)
           case n: Rewritable if selected(n) =>
             if (!noRecursion.contains(n)) recurse(n.asInstanceOf[N]) else None
-          case old => None
+          case _ => None
         }
         res
       }
@@ -565,7 +570,7 @@ class RepeatedStrategy[N <: Rewritable](s: StrategyInterface[N]) extends Strateg
     * @return rewritten root
     */
   def execute[T <: N](node: N, i: Int): N = {
-    if (i <= 0) node
+    if (i <= 0) return node
 
     val result = s.execute[T](node)
     if (s.hasChanged) {
@@ -690,16 +695,20 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
   lazy val family: Seq[N] = parent.getChildren.foldLeft(Seq.empty[N])((children: Seq[N], y: AnyRef) => y match {
     case elem: Seq[N@unchecked] => children ++ elem
     case elem: Option[N@unchecked] => children ++ (elem match {
+      case Some(x: Seq[N@unchecked]) => x
       case Some(x) => Seq(x)
       case None => Seq.empty[N]
     })
     case elem: N @unchecked => children ++ Seq(elem)
   })
 
-  /**
-    * Parent of node
+  /** Parent of node.
+    * Will result in a `java.util.NoSuchElementException` if no parent is available.
     */
   lazy val parent: N = ancestorList.dropRight(1).last
+
+  /** Parent of node, if available. */
+  lazy val parentOption: Option[N] = ancestorList.dropRight(1).lastOption
 
   // Equality between nodes
   private def isEqualNode(elem: AnyRef): Boolean = elem match {
@@ -910,11 +919,13 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
     val childrenSelect = recursionFunc.applyOrElse(node, (n:N) => n.getChildren)
 
     children.zip(childrenSelect) foreach {
-      case (child, b) => if (childrenSelect.exists(_ eq child)) {
+      case (child, _) => if (childrenSelect.exists(_ eq child)) {
         child match {
-          case o: Option[Rewritable@unchecked] => o match {
+          case o: Option[AnyRef@unchecked] => o match {
             case None => None
+            case Some(s: Seq[Rewritable@unchecked]) => s foreach { x => if (!noRecursion.contains(x)) visitTopDown(x.asInstanceOf[N], updatedContext) }
             case Some(node: Rewritable) => if (!noRecursion.contains(node)) visitTopDown(node.asInstanceOf[N], updatedContext)
+            case _ => None
           }
           case s: Seq[Rewritable@unchecked] => s foreach { x => if (!noRecursion.contains(x)) visitTopDown(x.asInstanceOf[N], updatedContext) }
           case n: Rewritable => if (!noRecursion.contains(n)) visitTopDown(n.asInstanceOf[N], updatedContext)
@@ -980,11 +991,6 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
   // Function that defines the recursion
   protected var recursionFunc: PartialFunction[N, Seq[AnyRef]] = PartialFunction.empty
 
-  /**
-    *
-    * @param r
-    * @return
-    */
   def recurseFunc(r: PartialFunction[N, Seq[AnyRef]]): Query[N, B] = {
     recursionFunc = r
     this
@@ -1012,13 +1018,15 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
 
     // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
     val seqResults: Seq[Option[B]] = children.zip(childrenSelect) collect {
-      case (child, b) =>
+      case (child, _) =>
        if (childrenSelect.exists(_ eq child)) {
         child match {
-          case o: Option[Rewritable@unchecked] =>
+          case o: Option[AnyRef@unchecked] =>
             o match {
               case None => None
+              case Some(s: Seq[Rewritable@unchecked]) => Some(accumulator(s map { x => execute(x.asInstanceOf[N]) }))
               case Some(node: Rewritable) => Some(execute(node.asInstanceOf[N]))
+              case _ => None
             }
           case s: Seq[Rewritable@unchecked] => Some(accumulator(s map { x => execute(x.asInstanceOf[N]) }))
           case n: Rewritable => Some(execute(n.asInstanceOf[N]))

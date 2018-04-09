@@ -12,7 +12,7 @@ import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.MagicWandOp
 import viper.silver.FastPositions
-import viper.silver.ast.utility.Rewriter.Rewritable
+import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 
@@ -63,7 +63,7 @@ trait FastPositioned {
 
 /**
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
- * with the actual SIL abstract syntax tree.
+ * with the actual Viper abstract syntax tree.
  */
 sealed trait PNode extends FastPositioned with Product with Rewritable {
 
@@ -115,6 +115,21 @@ sealed trait PNode extends FastPositioned with Product with Rewritable {
   /** @see [[Visitor.shallowCollect()]] */
   def shallowCollect[R](f: PartialFunction[PNode, R]): Seq[R] =
     Visitor.shallowCollect(Seq(this), Nodes.subnodes)(f)
+
+  /** This method clones the pAST starting from the current node.
+   * The pAST is not immutable (certain nodes may have mutable fields).
+   * Therefore, additional initialization may be required for the newly created node.
+   *
+   * The concrete implementations of PNode may introduce [[deepCopy]] methods that would allow
+   * creating pAST nodes based on some prototype pAST node, but with changes to some
+   * of its fields. For example, [[m.deepCopy( idndef = PIdnDef(s"${m.idndef}_new") )]]
+   * will create a pAST node that is identical to [[m]] modulo its [[idndef]] field.
+   * Note that the [[deepCopy]] should not be overridng nor overloading deepCopyAll
+   * (Its implementation(s) depend on the argument list of a concrete PNode type.)
+   *
+   * @see [[PNode.initProperties()]] */
+  def deepCopyAll[A <: PNode]: A =
+    StrategyBuilder.Slim[PNode](PartialFunction.empty).duplicateEverything.execute[A](this)
 
   private val _children = scala.collection.mutable.ListBuffer[PNode] ()
 
@@ -193,7 +208,7 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
 //case class PLocalVar
 
 /* Formal arguments.
- * [2014-11-13 Malte] Changed typ to be a var, so that it can be updated
+ * [2014-11-13 Malte] Changed type to be a var, so that it can be updated
  * during type-checking. The use-case are let-expressions, where requiring an
  * explicit type in the binding of the variable, i.e., "let x: T = e1 in e2",
  * would be rather cumbersome.
@@ -203,7 +218,7 @@ case class PFormalArgDecl(idndef: PIdnDef, var typ: PType) extends PNode with PT
 // Types
 sealed trait PType extends PNode {
   def isUnknown: Boolean = this.isInstanceOf[PUnknown]
-  def isValidAndResolved : Boolean
+  def isValidOrUndeclared : Boolean
   def isGround : Boolean = true
 //  def substitute(newTypVarsMap: Map[String, PType]): PType = this
   def substitute(ts:PTypeSubstitution) : PType
@@ -224,7 +239,7 @@ case class PPrimitiv(name: String) extends PType {
   override def substitute(ts:PTypeSubstitution) : PType = this
   override val subNodes = Seq()
   override def toString = name
-  override def isValidAndResolved = true
+  override def isValidOrUndeclared = true
 }
 
 case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
@@ -238,8 +253,9 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
    */
   def isTypeVar = kind == PDomainTypeKinds.TypeVar
 
-  override def isValidAndResolved = (isTypeVar || kind==PDomainTypeKinds.Domain) &&
-    args.forall(_.isValidAndResolved)
+  override def isValidOrUndeclared =
+    (isTypeVar || kind==PDomainTypeKinds.Domain || kind==PDomainTypeKinds.Undeclared) &&
+    args.forall(_.isValidOrUndeclared)
 
 
   def isResolved = kind != PDomainTypeKinds.Unresolved
@@ -251,7 +267,7 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
   }
 
   override def substitute(ts: PTypeSubstitution): PType = {
-    require(kind==PDomainTypeKinds.Domain || kind==PDomainTypeKinds.TypeVar)
+    require(kind==PDomainTypeKinds.Domain || kind==PDomainTypeKinds.TypeVar || kind==PDomainTypeKinds.Undeclared)
     if (isTypeVar)
       if (ts.isDefinedAt(domain.name))
         return ts.get(domain.name).get
@@ -320,7 +336,7 @@ sealed trait PGenericCollectionType extends PGenericType{
   override val typeArguments = Seq(elementType)
   override def toString = genericName + s"[$elementType]"
   override val subNodes = Seq(elementType)
-  override def isValidAndResolved = typeArguments.forall(_.isValidAndResolved)
+  override def isValidOrUndeclared = typeArguments.forall(_.isValidOrUndeclared)
 }
 
 case class PSeqType(elementType: PType) extends PType with PGenericCollectionType {
@@ -347,17 +363,17 @@ sealed trait PInternalType extends PType{
 // for resolving if something cannot be typed
 case class PUnknown() extends PInternalType {
   override def toString = "<error type>"
-  override def isValidAndResolved = false
+  override def isValidOrUndeclared = false
 }
 // used during resolving for predicate accesses
 case class PPredicateType() extends PInternalType {
   override def toString = "$predicate"
-  override def isValidAndResolved = true
+  override def isValidOrUndeclared = true
 }
 
 case class PWandType() extends PInternalType {
   override def toString = "$wand"
-  override def isValidAndResolved = true
+  override def isValidOrUndeclared = true
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -378,7 +394,7 @@ case class PDecTuple (decs: Seq[PExp]) extends PDecClause
 
 class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
 {
-  require(m.values.forall(_.isValidAndResolved))
+  require(m.values.forall(_.isValidOrUndeclared))
   def -(key: String) = new PTypeSubstitution(m.-(key))
   def get(key: String) : Option[PType] = m.get(key)
   private def +(kv: (String, PType)): PTypeSubstitution = new PTypeSubstitution(m + kv)
@@ -665,7 +681,7 @@ case class PFieldAccess(rcv: PExp, idnuse: PIdnUse) extends PLocationAccess{
   override final val opName = "."
   override final val args = Seq(rcv)
   override def signatures =
-    if (Set(rcv.typ,idnuse.typ).forall(_.isValidAndResolved))
+    if (Set(rcv.typ,idnuse.typ).forall(_.isValidOrUndeclared))
       List(PTypeSubstitution(Map(POpApp.pArgS(0) -> Ref,POpApp.pResS -> idnuse.typ)))
     else
       List()
@@ -913,17 +929,6 @@ case class PExhale(e: PExp) extends PStmt
 case class PAssert(e: PExp) extends PStmt
 case class PAssume(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
-
-case class PNewStmt(target: PIdnUse, Fields: Option[Seq[PIdnUse]]) extends PStmt {
-  override def  getChildren: scala.Seq[AnyRef] = {
-    val fields = Fields match {
-      case None => Seq.empty[PIdnUse]
-      case Some(seq) => seq
-    }
-    Seq(target, fields)
-  }
-}
-
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
 case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PSeqn, els: PSeqn) extends PStmt
@@ -938,6 +943,32 @@ case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 case class PMacroRef(idnuse : PIdnUse) extends PStmt
 case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
+
+sealed trait PNewStmt extends PStmt {
+  def target: PIdnUse
+}
+
+/* x := new(f1, ..., fn) */
+case class PRegularNewStmt(target: PIdnUse, fields: Seq[PIdnUse]) extends PNewStmt
+
+/* x := new(*) */
+case class PStarredNewStmt(target: PIdnUse) extends PNewStmt
+
+object PNewStmt {
+  def apply(target: PIdnUse): PStarredNewStmt = PStarredNewStmt(target)
+
+  def apply(target: PIdnUse, fields: Seq[PIdnUse]): PRegularNewStmt = PRegularNewStmt(target, fields)
+
+  def apply(target: PIdnUse, fields: Option[Seq[PIdnUse]]): PNewStmt = fields match {
+    case None => PStarredNewStmt(target)
+    case Some(fs) => PRegularNewStmt(target, fs)
+  }
+
+  def unapply(s: PNewStmt): Option[(PIdnUse, Option[Seq[PIdnUse]])] = s match {
+    case PRegularNewStmt(target, fields) => Some((target, Some(fields)))
+    case PStarredNewStmt(target) => Some((s.target, None))
+  }
+}
 
 sealed trait PScope extends PNode {
   val scopeId = PScope.uniqueId()
@@ -985,9 +1016,29 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
 }
 case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
 case class PImport(file: String) extends PNode
-case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: PStmt) extends PMember with PGlobalDeclaration
+case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt]) extends PMember with PGlobalDeclaration {
+  def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body): PMethod = {
+    StrategyBuilder.Slim[PNode]({
+      case m: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
+    }).duplicateEverything.execute[PMethod](this)
+  }
+  def deepCopyWithNameSubstitution(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body)
+                                  (idn_generic_name: String, idn_substitution: String): PMethod = {
+    StrategyBuilder.Slim[PNode]({
+      case m: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
+      case PIdnDef(name) if name == idn_generic_name => PIdnDef(idn_substitution)
+      case PIdnUse(name) if name == idn_generic_name => PIdnUse(idn_substitution)
+    }).duplicateEverything.execute[PMethod](this)
+  }
+}
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecClause], body: Option[PExp]) extends PAnyFunction
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecClause], body: Option[PExp]) extends PAnyFunction {
+  def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, decs: Option[PDecClause] = this.decs, body: Option[PExp] = this.body): PFunction = {
+    StrategyBuilder.Slim[PNode]({
+      case f: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, decs, body)
+    }).duplicateEverything.execute[PFunction](this)
+  }
+}
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PAnyFunction
 case class PAxiom(idndef: PIdnDef, exp: PExp)(val domainName:PIdnUse) extends PScope with PGlobalDeclaration  //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
@@ -1081,7 +1132,8 @@ object Nodes {
       case PAssert(exp) => Seq(exp)
       case PInhale(exp) => Seq(exp)
       case PAssume(exp) => Seq(exp)
-      case PNewStmt(target, fields) => Seq(target) ++ fields.getOrElse(Seq())
+      case PRegularNewStmt(target, fields) => Seq(target) ++ fields
+      case PStarredNewStmt(target) => Seq(target)
       case PMethodCall(targets, method, args) => targets ++ Seq(method) ++ args
       case PLabel(name, invs) => Seq(name) ++ invs
       case PGoto(label) => Seq(label)
@@ -1099,7 +1151,7 @@ object Nodes {
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
-        Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ Seq(body)
+        Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ body.toSeq
       case PFunction(name, args, typ, pres, posts, dec, body) =>
         Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ dec ++ body
       case PDomainFunction(name, args, typ, unique) =>

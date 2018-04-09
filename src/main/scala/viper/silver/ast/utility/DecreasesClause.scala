@@ -71,11 +71,12 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
 
         val methodName = uniqueName(func.name + "_termination_proof")
 
-        val newMethod = Method(methodName, func.formalArgs, Seq(), func.pres, Nil, Seqn(Seq(methodBody),
-          neededLocalVars.values.toIndexedSeq)(methodBody.pos))(NoPosition, func.info, func.errT)
+        val newMethodBody = Seqn(Seq(methodBody), neededLocalVars.values.toIndexedSeq)(methodBody.pos)
+
+        val newMethod = Method(methodName, func.formalArgs, Seq(), func.pres, Nil, Some(newMethodBody))(NoPosition, func.info, func.errT)
         members(methodName) = newMethod
         newMethod
-    }}).filter(_.body.collect{case k: Assert => k}.nonEmpty)
+    }}).filter(_.body.getOrElse(Seq.empty).collect{case k: Assert => k}.nonEmpty)
 
     if (neededLocFunctions.nonEmpty) {
       assert(locationDomain.isDefined)
@@ -111,6 +112,7 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                               : Stmt = {
     bodyToRewrite match {
       case pap: PredicateAccessPredicate =>
+        val permChecks = rewriteFuncBody(pap.perm, func, funcAppInOrigFunc, alreadyChecked, predicates)
         //Add the nested-assumption if the predicate has another predicate inside of its body
         func.decs match {
           case Some(DecTuple(_)) =>
@@ -121,7 +123,8 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                 if (locationDomain.isDefined && nestedFunc.isDefined) {
                   val formalArgs = pred.formalArgs map (_.localVar)
                   //Generate nested-assumption
-                  rewritePredBodyAsExp(body.replace(ListMap(formalArgs.zip(pap.loc.args):_*)), pap)
+                  val predBody = rewritePredBodyAsExp(body.replace(ListMap(formalArgs.zip(pap.loc.args):_*)), pap)
+                  Seqn(Seq(permChecks, predBody), Nil)(body.pos)
                 } else {
                   if (locationDomain.isEmpty) {
                     Consistency.messages ++= FastMessaging.message(
@@ -131,13 +134,13 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                     Consistency.messages ++= FastMessaging.message(
                       func, "missing nested-relation")
                   }
-                  EmptyStmt
+                  permChecks
                 }
               //Predicate has no body
-              case None => EmptyStmt
+              case None => permChecks
             }
           //No decreasing clause
-          case _ => EmptyStmt
+          case _ => permChecks
         }
 
       case CondExp(cond, thn, els) =>
@@ -234,7 +237,8 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
           }
         } else {
           //Called function is the same as the original one => recursion detected
-          if (decrClauseOfOrigFnc.isEmpty) {
+          decrClauseOfOrigFnc match {
+            case None => {
             //There is no decrease clause
             //Give an error, because there is a recursion but no decreases clause
             val functionInOrigBody = if (funcAppInOrigFunc == null) callee else funcAppInOrigFunc
@@ -242,13 +246,9 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
               ErrTrafo({case AssertFailed(_, _, _) => TerminationFailed(func, NoDecClauseSpecified(functionInOrigBody))})
 
             Assert(FalseLit()(func.pos))(func.pos, SimpleInfo(Seq("Recursion but no decClause")), errTr)
-          } else {
-            //Decrease clause is defined
-            assert(!decrClauseOfOrigFnc.get.isInstanceOf[DecStar])
+            }
+            case Some(DecTuple(decreasingExp)) => {
             //Replace in the decreaseClause every argument with the correct call
-            decrClauseOfOrigFnc match {
-
-              case Some(DecTuple(decreasingExp)) =>
                 if (decreasingFunc.isDefined && boundedFunc.isDefined &&
                    (decreasingExp.collect { case p: PredicateAccessPredicate => p }.isEmpty
                     || locationDomain.isDefined)) {
@@ -336,7 +336,7 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                       )
                     boundFunc :+= replaceExpWithDummyFnc(
                       DomainFuncApp(boundedFunc.get,
-                        Seq(argsForTermProof(i)._2),
+                        Seq(argsForTermProof(i)._1),
                         ListMap(argTypeVarsDecr.head -> argsForTermProof(i)._1.typ,
                           argTypeVarsDecr.last -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos)
                     )
@@ -383,6 +383,11 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                   }
                   EmptyStmt
                 }
+            }
+            case res@Some(DecStar()) => {
+              // Should never happen, because the function 'rewriteFuncBody(_, func, _, _, _)' should only be called
+              // when the decreasing clause of the argument 'func' is not 'decreases *'
+              sys.error(s"Got $res but this isn't supposed to happen")
             }
           }
         }

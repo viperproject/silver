@@ -1,7 +1,7 @@
-//UnexpectedOutput(z3.interaction.failed)(silicon)
+//:: IgnoreFile(/silicon/issue/297/)
 
-import "../decreaseOrder/int_decreases.vpr"
-import "../decreaseOrder/pred_decreases.vpr"
+import "../decreaseOrder/int_decreases.sil"
+import "../decreaseOrder/pred_decreases.sil"
 
 function f1(b:Bool): Bool
 requires p(b)

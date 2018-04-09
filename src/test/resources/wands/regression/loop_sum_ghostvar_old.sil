@@ -1,4 +1,4 @@
-//:: IgnoreFile(/carbon/issue/0000000000000000/)
+//:: IgnoreFile(/carbon/issue/216/)
 field v: Int
 field n: Ref
 
@@ -8,7 +8,6 @@ predicate List(this: Ref) {
 
 function sum_rec(this: Ref): Int
 	requires acc(List(this))
-    decreases *
 { unfolding List(this) in (this.v + (this.n == null ? 0 : sum_rec(this.n))) }
 
 method sum_it(ys: Ref) returns (sum: Int)

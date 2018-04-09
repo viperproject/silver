@@ -6,19 +6,15 @@
 
 package viper.silver.parser
 
-
-
 import scala.language.implicitConversions
 import scala.collection.mutable
 import viper.silver.ast._
 import viper.silver.ast.utility._
 import viper.silver.FastMessaging
 
-
-
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
- * a SIL abstract syntax tree.
+ * a Viper abstract syntax tree.
  *
  * [2014-05-08 Malte] The current architecture of the resolver makes it hard
  * to detect all malformed ASTs. It is, for example, hard to detect that an
@@ -28,8 +24,7 @@ import viper.silver.FastMessaging
  * return a tree, but instead, records error messages using the
  * Messaging feature.
  */
-case class Translator(program: PProgram) {
-
+case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolean) {
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
@@ -38,42 +33,51 @@ case class Translator(program: PProgram) {
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
             pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
 
-        var domain = pdomains map (translate(_))
-        val fields = pfields map (translate(_))
-        var functions = pfunctions map (translate(_))
-        val predicates = ppredicates map (translate(_))
-        var methods = pmethods map (translate(_))
+        var domain = pdomains map translate
+        val fields = pfields map translate
+        var functions = pfunctions map translate
+        val predicates = ppredicates map translate
+        var methods = pmethods map translate
 
-        //Add Methods, Domains and functions needed for proving termination
-        val termCheck = new DecreasesClause(members)
-        val structureForTermProofs = termCheck.addMethods(functions, predicates, domain, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"))
-        domain = structureForTermProofs._1
-        functions ++= structureForTermProofs._2
-        methods ++= structureForTermProofs._3
+        if (enableFunctionTerminationChecks) {
+          // Add methods, domains and functions needed for proving termination
+          val termCheck = new DecreasesClause(members)
+          val structureForTermProofs = termCheck.addMethods(functions, predicates, domain, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"))
+          domain = structureForTermProofs._1
+          functions ++= structureForTermProofs._2
+          methods ++= structureForTermProofs._3
+        }
 
-        val prog = Program(domain, fields, functions, predicates, methods)(program)
+        val finalProgram = Program(domain, fields, functions, predicates, methods)(program)
 
-        if (Consistency.messages.isEmpty) Some(prog) // all error messages generated during translation should be Consistency messages
+        if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
         else None
     }
   }
 
   private def translate(m: PMethod): Method = m match {
-    case PMethod(name, formalArgs, formalReturns, pres, posts, body) =>
+    case PMethod(name, _, _, pres, posts, body) =>
       val m = findMethod(name)
-      val b = stmt(body).asInstanceOf[Seqn]
-      val newScopedDecls = b.scopedDecls ++ b.deepCollect {case l: Label => l}
-      val newBody = b.copy(scopedDecls = newScopedDecls)(b.pos, b.info, b.errT)
-      val mm = m.copy(pres = pres map exp, posts = posts map exp, body = newBody)(m.pos, m.info, m.errT)
-      members(m.name) = mm
-      mm
+
+      val newBody = body.map(actualBody => {
+        val b = stmt(actualBody).asInstanceOf[Seqn]
+        val newScopedDecls = b.scopedDecls ++ b.deepCollect {case l: Label => l}
+
+        b.copy(scopedDecls = newScopedDecls)(b.pos, b.info, b.errT)
+      })
+
+      val finalMethod = m.copy(pres = pres map exp, posts = posts map exp, body = newBody)(m.pos, m.info, m.errT)
+
+      members(m.name) = finalMethod
+
+      finalMethod
   }
 
   private def translate(d: PDomain): Domain = d match {
-    case PDomain(name, typVars, functions, axioms) =>
+    case PDomain(name, _, functions, axioms) =>
       val d = findDomain(name)
       val dd = d.copy(functions = functions map (f => findDomainFunction(f.idndef)),
-        axioms = axioms map (translate(_)))(d.pos, d.info, d.errT)
+        axioms = axioms map translate)(d.pos, d.info, d.errT)
       members(d.name) = dd
       dd
   }
@@ -84,7 +88,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(f: PFunction): Function = f match {
-    case PFunction(name, formalArgs, typ, pres, posts, decs, body) =>
+    case PFunction(name, _, _, pres, posts, decs, body) =>
       val f = findFunction(name)
       val ff = f.copy(pres = pres map exp, posts = posts map exp, decs = decs map dec, body = body map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
@@ -92,7 +96,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(p: PPredicate): Predicate = p match {
-    case PPredicate(name, formalArgs, body) =>
+    case PPredicate(name, _, body) =>
       val p = findPredicate(name)
       val pp = p.copy(body = body map exp)(p.pos, p.info, p.errT)
       members(p.name) = pp
@@ -102,9 +106,16 @@ case class Translator(program: PProgram) {
   private def translate(f: PField) = findField(f.idndef)
 
   private val members = collection.mutable.HashMap[String, Node]()
+
   /**
-   * Translate the signature of a member, so that it can be looked up later.
-   */
+    * Translate the signature of a member, so that it can be looked up later.
+    *
+    * TODO: Get rid of this method!
+    *         - Passing lots of null references is just asking for trouble
+    *         - It should no longer be necessary to have this lookup table because, e.g. a
+    *           method call no longer needs the method node, the method name (as a string)
+    *           suffices
+    */
   private def translateMemberSignature(p: PMember) {
     val pos = p
     val name = p.idndef.name
@@ -115,7 +126,7 @@ case class Translator(program: PProgram) {
         Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null, null)(pos)
       case pdf@ PDomainFunction(_, args, typ, unique) =>
         DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
-      case PDomain(_, typVars, funcs, axioms) =>
+      case PDomain(_, typVars, _, _) =>
         Domain(name, null, null, typVars map (t => TypeVar(t.idndef.name)))(pos)
       case PPredicate(_, formalArgs, _) =>
         Predicate(name, formalArgs map liftVarDecl, null)(pos)
@@ -126,18 +137,18 @@ case class Translator(program: PProgram) {
   }
 
   // helper methods that can be called if one knows what 'id' refers to
-  private def findDomain(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Domain]
-  private def findField(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Field]
-  private def findFunction(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Function]
-  private def findDomainFunction(id: PIdentifier) = members.get(id.name).get.asInstanceOf[DomainFunc]
-  private def findPredicate(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Predicate]
-  private def findMethod(id: PIdentifier) = members.get(id.name).get.asInstanceOf[Method]
+  private def findDomain(id: PIdentifier) = members(id.name).asInstanceOf[Domain]
+  private def findField(id: PIdentifier) = members(id.name).asInstanceOf[Field]
+  private def findFunction(id: PIdentifier) = members(id.name).asInstanceOf[Function]
+  private def findDomainFunction(id: PIdentifier) = members(id.name).asInstanceOf[DomainFunc]
+  private def findPredicate(id: PIdentifier) = members(id.name).asInstanceOf[Predicate]
+  private def findMethod(id: PIdentifier) = members(id.name).asInstanceOf[Method]
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */
   private def stmt(s: PStmt): Stmt = {
     val pos = s
     s match {
-      case PVarAssign(idnuse, PCall(func, args, _)) if members.get(func.name).get.isInstanceOf[Method] =>
+      case PVarAssign(idnuse, PCall(func, args, _)) if members(func.name).isInstanceOf[Method] =>
         /* This is a method call that got parsed in a slightly confusing way.
          * TODO: Get rid of this case! There is a matching case in the resolver.
          */
@@ -151,7 +162,7 @@ case class Translator(program: PProgram) {
       case PLocalVarDecl(idndef, t, Some(init)) =>
         LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos), exp(init))(pos)
       case PLocalVarDecl(_, _, None) =>
-        // there are no declarations in the SIL AST; rather they are part of the scope signature
+        // there are no declarations in the Viper AST; rather they are part of the scope signature
         Statements.EmptyStmt
       case PSeqn(ss) =>
         val plocals = ss.collect {
@@ -183,7 +194,7 @@ case class Translator(program: PProgram) {
         Assert(exp(e))(pos)
       case PNewStmt(target, fieldsOpt) =>
         val fields = fieldsOpt match {
-          case None => program.fields map (translate(_))
+          case None => program.fields map translate
             /* Slightly redundant since we already translated the fields when we
              * translated the PProgram at the beginning of this class.
              */
@@ -229,7 +240,7 @@ case class Translator(program: PProgram) {
             /* A malformed AST where a field is dereferenced without a receiver */
             Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
             LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
-          case other =>
+          case _ =>
             sys.error("should not occur in type-checked program")
         }
       case pbe @ PBinExp(left, op, right) =>
@@ -267,13 +278,12 @@ case class Translator(program: PProgram) {
             assert(r.typ==Int)
             l.typ match {
               case Perm => PermDiv(l, r)(pos)
-              case Int  => {
+              case Int  =>
                 assert (r.typ==Int)
                 if (ttyp(pbe.typ) == Int)
                   Div(l, r)(pos)
                 else
                   FractionalPerm(l, r)(pos)
-              }
               case _    => sys.error("should not occur in type-checked program")
             }
           case "\\" => Div(l, r)(pos)
@@ -349,38 +359,34 @@ case class Translator(program: PProgram) {
         if (b) TrueLit()(pos) else FalseLit()(pos)
       case PNullLit() =>
         NullLit()(pos)
-      case p@PFieldAccess(rcv, idn) =>
+      case PFieldAccess(rcv, idn) =>
         FieldAccess(exp(rcv), findField(idn))(pos)
-      case p@PPredicateAccess(args, idn) =>
-        PredicateAccess(args map exp, findPredicate(idn))(pos)
+      case PPredicateAccess(args, idn) =>
+        PredicateAccess(args map exp, findPredicate(idn).name)(pos)
       case pfa@PCall(func, args, _) =>
-        members.get(func.name).get match {
+        members(func.name) match {
           case f: Function => FuncApp(f, args map exp)(pos)
-          case f @ DomainFunc(name, formalArgs, typ, _) =>
+          case f @ DomainFunc(_, _, _, _) =>
             val actualArgs = args map exp
-            val translatedTyp = ttyp(pexp.typ)
+            /* TODO: Not used - problem?*/
             type TypeSubstitution = Map[TypeVar, Type]
-            //Type unification - the range of the result is only the downward closure of t2 (i.e. assumes t2 is ground)
-            val paramTypes = (formalArgs map (_.typ)) :+ typ
-            val argTypes = (actualArgs map (_.typ)) :+ translatedTyp
             val so : Option[TypeSubstitution] = pfa.domainSubstitution match{
               case Some(ps) => Some(ps.m.map(kv=>TypeVar(kv._1)->ttyp(kv._2)))
               case None => None
             }
             so match {
               case Some(s) =>
-                val d = members.get(f.domainName).get.asInstanceOf[Domain]
+                val d = members(f.domainName).asInstanceOf[Domain]
                 assert(s.keys.toSet.subsetOf(d.typVars.toSet))
                 val sp = s //completeWithDefault(d.typVars,s)
                 assert(sp.keys.toSet == d.typVars.toSet)
                 DomainFuncApp(f, actualArgs, sp)(pos)
               case _ => sys.error("type unification error - should report and not crash")
             }
-          case f: Predicate => {
-            val inner = PredicateAccess(args map exp, findPredicate(func)) (pos)
+          case _: Predicate =>
+            val inner = PredicateAccess(args map exp, findPredicate(func).name) (pos)
             val fullPerm = FullPerm()(pos)
             PredicateAccessPredicate(inner, fullPerm) (pos)
-          }
           case _ => sys.error("unexpected reference to non-function")
         }
       case PUnfolding(loc, e) =>
@@ -395,7 +401,7 @@ case class Translator(program: PProgram) {
         Exists(vars map liftVarDecl, exp(e))(pos)
       case PForall(vars, triggers, e) =>
         val ts = triggers map (t => Trigger(t.exp map exp)(t))
-        var fa = Forall(vars map liftVarDecl, ts, exp(e))(pos)
+        val fa = Forall(vars map liftVarDecl, ts, exp(e))(pos)
         if (fa.isPure) {
           fa
         } else {
@@ -403,18 +409,18 @@ case class Translator(program: PProgram) {
           desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
-      case f@PForPerm(v, args, e) =>
+      case f@PForPerm(_, args, e) =>
 
         //val args = fields map findField
 
         //check that the arguments contain only fields and predicates
-        args.foreach(a => Consistency.checkForPermArguments(members.get(a.name).get))
+        args.foreach(a => Consistency.checkForPermArguments(members(a.name)))
 
         val argAccess = mutable.Buffer[Location]()
         for (a <- args) {
 
           //we are either dealing with predicates, or fields!
-          members.get(a.name).get match {
+          members(a.name) match {
             case f : Field => argAccess += f
             case p : Predicate => argAccess += p
             case _ => sys.error("Internal Error: Can only handle fields and predicates in forperm")
@@ -428,14 +434,13 @@ case class Translator(program: PProgram) {
         LabelledOld(exp(e),lbl.name)(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
-      case PCurPerm(loc) => {
+      case PCurPerm(loc) =>
         exp(loc) match {
-          case loc@PredicateAccessPredicate(inner, args) => CurrentPerm(inner.asInstanceOf[LocationAccess])(pos)
+          case PredicateAccessPredicate(inner, _) => CurrentPerm(inner.asInstanceOf[LocationAccess])(pos)
           case x: FieldAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
           case x: PredicateAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
           case other => sys.error(s"Unexpectedly found $other")
         }
-      }
       case PNoPerm() =>
         NoPerm()(pos)
       case PFullPerm() =>
@@ -447,11 +452,11 @@ case class Translator(program: PProgram) {
       case PAccPred(loc, perm) =>
         val p = exp(perm)
         exp(loc) match {
-          case loc@FieldAccess(rcv, field) =>
+          case loc@FieldAccess(_, _) =>
             FieldAccessPredicate(loc, p)(pos)
-          case loc@PredicateAccess(rcv, pred) =>
+          case loc@PredicateAccess(_, _) =>
             PredicateAccessPredicate(loc, p)(pos)
-          case loc@PredicateAccessPredicate(inner, args) => PredicateAccessPredicate(inner, p)(pos)
+          case PredicateAccessPredicate(inner, _) => PredicateAccessPredicate(inner, p)(pos)
           case _ =>
             sys.error("unexpected location")
         }
@@ -491,7 +496,11 @@ case class Translator(program: PProgram) {
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
     pos.start match {
       case fp: FilePosition => SourcePosition(fp.file, start, end)
-      case _ => SourcePosition(null, start, end)
+      case _ =>
+        //FIXME Do we really need to construct an instance of SourcePosition with undefined file field?
+        //FIXME One would expect to have a well-defined file path once a position pattern matched this type.
+        //FIXME @see https://bitbucket.org/viperproject/silver/issues/232
+        SourcePosition(null, start, end)
     }
   }
 

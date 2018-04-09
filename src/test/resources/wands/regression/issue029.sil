@@ -1,4 +1,4 @@
-//:: IgnoreFile(/carbon/issue/0000000000000000/)
+//:: IgnoreFile(/carbon/issue/216/)
 predicate P()
 predicate Q(b: Bool) { b ==> acc(P()) }
 
@@ -50,7 +50,7 @@ method test06(x: Ref) {
   inhale A1 --* B1
   apply A1 --* B1
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/0000000000000000/)
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/304/)
   assert unfolding LL(x) in x.next != null ==> unfolding LL(x.next) in x.next.val == 2 * x.val
 }
 

@@ -9,7 +9,7 @@ package viper.silver.verifier
 import viper.silver.ast.Program
 import viper.silver.components.LifetimeComponent
 
-/** An abstract class for verifiers of SIL programs.
+/** An abstract class for verifiers of Viper programs.
   *
   * The lifetime of a verifier is as follows.  After the object has been created, `commandLineArgs` is called
   * at most once to set the command line arguments.  Similarly for `debugInfo` which is also called
@@ -76,7 +76,7 @@ trait Verifier extends LifetimeComponent {
     */
   def start()
 
-  /** Verifies a given SIL program and returns a sequence of ''verification errors''.
+  /** Verifies a given Viper program and returns a sequence of ''verification errors''.
     * Is expected to be preceded by a call to `start`.
     *
     * @param program The program to be verified.

@@ -1,5 +1,5 @@
-import "../decreaseOrder/int_decreases.vpr"
-import "../decreaseOrder/seq_decreases.vpr"
+import "../decreaseOrder/int_decreases.sil"
+import "../decreaseOrder/seq_decreases.sil"
 
 function f(x : Int, s:Seq[Int]) : Int
 decreases x+5

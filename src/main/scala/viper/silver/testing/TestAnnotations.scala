@@ -117,7 +117,7 @@ case class OutputAnnotationId(keyId: String, valueId: Option[String]) {
     if (ids.size == 1) {
       return keyId == id && valueId.isEmpty
     }
-    assert(ids.size == 2, s"Expected full ID, but got $id.")
+    assert(ids.size >= 2, s"Expected full ID, but got $id.")
     valueId match {
       case None => keyId == ids(0)
       case Some(s) => keyId == ids(0) && s == ids(1)

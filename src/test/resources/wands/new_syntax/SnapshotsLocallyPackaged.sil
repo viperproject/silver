@@ -1,4 +1,4 @@
-//:: IgnoreFile(/carbon/issue/0000000000000000/)
+//:: IgnoreFile(/carbon/issue/216/)
 field f: Int
 field g: Int
 field next: Ref
@@ -8,8 +8,8 @@ predicate List(x: Ref) {
 }
 
 function length(x: Ref): Int
-requires List(x)
-decreases * {
+  requires List(x)
+{
     unfolding List(x) in (x.next == null ? 1 : 1 + length(x.next))
 }
 
@@ -73,6 +73,14 @@ requires acc(x.f) && x.f == 1 {
     x.f := 2
     apply acc(x.f) --* acc(x.f)
     assert x.f == 2
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert false
+}
+
+method test5(x: Ref)
+requires acc(x.f) && x.f == 0 {
+    package acc(x.f, 1/2) && x.f == 1 --* acc(x.f) && false
 
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert false

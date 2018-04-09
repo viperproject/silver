@@ -42,7 +42,9 @@ object CfgGenerator {
     */
   def methodToCfg(method: Method, simplify: Boolean = true): SilverCfg = {
     // generate cfg for the body
-    val bodyCfg = method.body.toCfg(simplify = false)
+    val bodyCfg =
+      method.body.getOrElse(Seqn(Vector.empty, Vector.empty)())
+                 .toCfg(simplify = false)
 
     // create precondition block and corresponding edge
     val preBlock: SilverBlock = PreconditionBlock(method.pres)

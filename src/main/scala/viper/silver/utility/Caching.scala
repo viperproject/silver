@@ -56,7 +56,7 @@ trait DependencyAware {
     * - fields are considered as global dependencies (even if they don't influence the method);
     * - concrete predicates used abstractly (w/o unfolding) bring transitive dependencies via their body.
     *
-    * Danger! A bug in this method may lead to unsound caused by caching.
+    * Danger! A bug in this method may lead to unsoundness caused by caching.
     *
     * @param p
     *          The [[Program]] under consideration.
@@ -66,7 +66,7 @@ trait DependencyAware {
     *          List of dependency [[Hashable]]s.
     */
   def getDependencies(p: Program, m: Method): List[Hashable] = p.domains ++ p.fields ++
-  (m.pres ++ m.posts :+ m.body).flatMap {
+  (m.pres ++ m.posts ++ m.body.toSeq).flatMap {
     n => n.deepCollect {
       case method_call: MethodCall =>
         val method = p.findMethod(method_call.methodName)

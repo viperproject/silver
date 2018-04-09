@@ -3,7 +3,6 @@ field f: Int
 function fac(n: Int): Int
   requires n >= 0
   ensures result >= 0
-  decreases *
 { n < 2 ? n : n * fac(n - 1) }
 
 method test() {
@@ -22,5 +21,4 @@ function err1(n: Int): Int
   requires n >= 0
   //:: ExpectedOutput(postcondition.violated:assertion.false)
   ensures result >= 0
-  decreases *
 { n <= 1 ? 1 : err1(n - 1) - n }

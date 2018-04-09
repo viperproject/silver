@@ -4,7 +4,6 @@ field next: Ref
 function i(this: Ref, x: Int, y: Bool): Bool
   requires this != null
   requires acc(valid(this), wildcard)
-  decreases *
 {
   (unfolding acc(valid(this), wildcard) in i(this.next, x, y))
 }

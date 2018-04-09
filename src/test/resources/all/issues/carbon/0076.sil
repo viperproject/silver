@@ -24,7 +24,6 @@ function contentNodes(this: Ref, end: Ref): Seq[Ref]
     forall i: Int, j: Int ::
       0 <= i && i < j && j < |result| ==>
         prio(result[i]) <= prio(result[j])
-  decreases *
 {
   this == end ? Seq[Ref]() :
                 unfolding acc(Lseg(this, end)) in (

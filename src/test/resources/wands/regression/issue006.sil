@@ -1,4 +1,4 @@
-//:: IgnoreFile(/carbon/issue/0000000000000000/)
+//:: IgnoreFile(/carbon/issue/216/)
 field val : Int;
 
 method test03(x: Ref) {
@@ -60,7 +60,6 @@ method test06(xs: Seq[Int], n: Int)
 }
 
 function sum(xs: Seq[Int]): Int
-  decreases *
 {
   |xs| == 0 ? 0 : xs[0] + sum(xs[1..])
 }

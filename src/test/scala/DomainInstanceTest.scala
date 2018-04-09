@@ -5,13 +5,10 @@
  */
 
 import java.nio.file.Paths
-
+import scala.language.implicitConversions
 import TestHelpers.MockSilFrontend
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast._
-
-import scala.language.implicitConversions
-
 
 class DomainInstanceTest extends FunSuite with Matchers {
   test("Basic domain instances") {
@@ -19,7 +16,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
     val d = Domain("D", Seq(), Seq(), Seq(t))(NoPosition, NoInfo)
     val r = LocalVarDecl("r", Int)(NoPosition, NoInfo)
     val x = LocalVarDecl("x", DomainType(d, Map(t -> Int)))(NoPosition, NoInfo)
-    val m = Method("m", Seq(x), Seq(r), Seq(), Seq(), Seqn(Seq(Assert(TrueLit()(NoPosition, NoInfo))(NoPosition, NoInfo)), Seq())(NoPosition, NoInfo))(NoPosition, NoInfo)
+    val m = Method("m", Seq(x), Seq(r), Seq(), Seq(), Some(Seqn(Seq(Assert(TrueLit()(NoPosition, NoInfo))(NoPosition, NoInfo)), Seq())(NoPosition, NoInfo)))(NoPosition, NoInfo)
     val p = Program(Seq(d), Seq(), Seq(), Seq(), Seq(m))(NoPosition, NoInfo)
 
     p.groundTypeInstances.size should be(3)

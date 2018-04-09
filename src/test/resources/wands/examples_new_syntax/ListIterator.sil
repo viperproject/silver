@@ -1,4 +1,4 @@
-//:: IgnoreFile(/carbon/issue/0000000000000000/)
+//:: IgnoreFile(/carbon/issue/216/)
 /* This example is based on the list iterator example, created by Blom and Huisman, which is available at
  * https://github.com/utwente-fmt/vercors/blob/master/examples/witnesses/ListIterator.java.
  *
@@ -15,7 +15,7 @@
  * linked list by giving up access to the iterator in the "ready" state.  
  */
 
-//main method used for as an example execution using the Iterator class 
+//main method used as an example execution using the Iterator class
 method main(l: Ref)
 requires l!=null && List_state(l)
 ensures  l!=null && List_state(l) {
@@ -310,8 +310,8 @@ requires Node_reverse(this) {
 
 //finds the first node of a list
 function Node_first(this: Ref): Ref
-requires Node_reverse(this)
-decreases * {
+  requires Node_reverse(this)
+{
   unfolding Node_reverse(this) in (this.Node_prev==null) ? this : Node_first(this.Node_prev)}
 
 //create a new node

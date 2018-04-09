@@ -5,16 +5,13 @@
  */
 
 import java.nio.file.Paths
-
+import scala.collection.mutable
+import scala.language.implicitConversions
 import TestHelpers.{FileComparisonHelper, MockSilFrontend}
 import org.scalatest.FunSuite
 import viper.silver.ast._
 import viper.silver.ast.utility.Rewriter._
 import viper.silver.ast.utility._
-
-import scala.collection.mutable
-import scala.language.implicitConversions
-
 
 class RegexTests extends FunSuite with FileComparisonHelper {
   test("Sharing") {
@@ -42,7 +39,7 @@ class RegexTests extends FunSuite with FileComparisonHelper {
     val t = TreeRegexBuilder.simple[Node]
 
     // Arbitrary regex to observe how much the matching slows down the program
-    val strat = t &> n[Program] >> iC[Method](_.body) >> n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
+    val strat = t &> n[Program] >> iC[Method](_.bodyOrAssumeFalse) >> n.r[Implies] |-> { case (i:Implies) => Or(Not(i.left)(), i.right)()}
 
     val frontend = new MockSilFrontend
 
@@ -141,7 +138,7 @@ class RegexTests extends FunSuite with FileComparisonHelper {
 
     // Regular expression
     val t = TreeRegexBuilder.context[Node, Int](_ + _, math.max, 0)
-    val strat = t &> iC[Method](_.body, _.name == "here") >> (n[Inhale] | n[Exhale]) >> (c[Or]( _ => 1 )  | c[And]( _ => 1)).* >> n.r[LocalVar]((v:LocalVar) => v.typ == Int && v.name.contains("x")) |-> { case (n:LocalVar, c) => IntLit(c.c)(n.pos, n.info, n.errT)}
+    val strat = t &> iC[Method](_.bodyOrAssumeFalse, _.name == "here") >> (n[Inhale] | n[Exhale]) >> (c[Or]( _ => 1 )  | c[And]( _ => 1)).* >> n.r[LocalVar]((v:LocalVar) => v.typ == Int && v.name.contains("x")) |-> { case (n:LocalVar, c) => IntLit(c.c)(n.pos, n.info, n.errT)}
 
     val frontend = new MockSilFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend)}

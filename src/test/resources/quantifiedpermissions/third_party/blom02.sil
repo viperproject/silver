@@ -35,7 +35,6 @@ function Map__indexOfLoop(diz: Ref, hash: Int, ignoreDeleted: Bool, cap: Int): I
   requires (hash >= 0) && (hash < |diz.Map__keys|)
   requires cap < |diz.Map__keys|
   ensures (result == Map__EMPTY()) || (result >= 0) && (result < |diz.Map__keys|)
-  decreases *
 {
   (cap <= 0 ? Map__EMPTY() : Map__indexOfLoop(diz, (hash + 1) % |diz.Map__keys|, ignoreDeleted, cap - 1))
 }

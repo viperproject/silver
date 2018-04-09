@@ -13,7 +13,7 @@ import viper.silver.ast.utility.Visitor
 import viper.silver.FastMessaging
 
 /**
- * A resolver and type-checker for the intermediate SIL AST.
+ * A resolver and type-checker for the intermediate Viper AST.
  */
 case class Resolver(p: PProgram) {
   val names = NameAnalyser()
@@ -83,7 +83,7 @@ case class TypeChecker(names: NameAnalyser) {
     checkMember(m) {
       m.pres foreach (check(_, Bool))
       m.posts foreach (check(_, Bool))
-      check(m.body)
+      m.body.foreach(check)
     }
   }
 
@@ -457,9 +457,9 @@ case class TypeChecker(names: NameAnalyser) {
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
   {
     check(exp,PTypeSubstitution.id)
-    if (exp.typ.isValidAndResolved && exp.typeSubstitutions.nonEmpty){
+    if (exp.typ.isValidOrUndeclared && exp.typeSubstitutions.nonEmpty){
       val etss = oexpected match{
-        case Some(expected) if expected.isValidAndResolved => exp.typeSubstitutions.flatMap(_.add(exp.typ,expected))
+        case Some(expected) if expected.isValidOrUndeclared => exp.typeSubstitutions.flatMap(_.add(exp.typ,expected))
         case _ => exp.typeSubstitutions
       }
       if (etss.nonEmpty) {
@@ -540,14 +540,14 @@ case class TypeChecker(names: NameAnalyser) {
       case poa: POpApp =>
         assert(poa.typeSubstitutions.isEmpty)
         poa.args.foreach(checkInternal)
-        var nestedTypeError = !poa.args.forall(a => a.typ.isValidAndResolved)
+        var nestedTypeError = !poa.args.forall(a => a.typ.isValidOrUndeclared)
         if (!nestedTypeError) {
           poa match {
             case pfa@PCall(func, args, explicitType) =>
               explicitType match {
                 case Some(t) =>
                   check(t)
-                  if (!t.isValidAndResolved) nestedTypeError = true
+                  if (!t.isValidOrUndeclared) nestedTypeError = true
                 case None =>
               }
 
@@ -624,7 +624,7 @@ case class TypeChecker(names: NameAnalyser) {
                 else
                   ppa.predicate = predicate
               }
-            case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidAndResolved =>
+            case pecl: PEmptyCollectionLiteral if !pecl.pElementType.isValidOrUndeclared =>
               check(pecl.pElementType)
 
             case _ =>
@@ -879,9 +879,9 @@ case class NameAnalyser() {
             }
           case localVar : PLocalVarDecl =>
             getContainingMethod(localVar) match {
-              case Some(PMethod(_, args, returns, pres, posts, body)) =>
+              case Some(PMethod(_, _, _, _, _, Some(actualBody))) =>
                 // Variables must not be used before they are declared
-                if (containsSubnodeBefore(body, i, localVar)){
+                if (containsSubnodeBefore(actualBody, i, localVar)){
                   messages ++= FastMessaging.message(i, s"local variable $name cannot be accessed before it is declared.")
                 }
               case _ =>

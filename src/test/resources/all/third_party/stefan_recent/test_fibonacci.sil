@@ -3,7 +3,6 @@ field Fib__input: Int
 field Fib__output: Int
 
 function Fib__fib(n: Int): Int
-  decreases *
 {
   (n < 2 ? 1 : Fib__fib(n - 1) + Fib__fib(n - 2))
 }

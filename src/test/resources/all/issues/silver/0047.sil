@@ -1,11 +1,8 @@
-predicate F1(r: Ref) {true}
+method callee(x: Ref)
 
-method main(r: Ref)
-{
-    	inhale acc(F1(r))
-}
-
-method main2(r: Ref)
-{
-    	inhale F1(r) 
+method caller() {
+  //:: ExpectedOutput(typechecker.error)
+  callee()
+  //:: ExpectedOutput(typechecker.error)
+  callee(null, null)
 }

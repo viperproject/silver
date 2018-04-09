@@ -5,10 +5,12 @@
  */
 
 package viper.silver.ast
+
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.ast.pretty._
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility._
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
+import viper.silver.ast.utility.Rewriter.{StrategyBuilder, Traverse}
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 
@@ -104,21 +106,115 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
   // maybe rename this sometime
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
-    this.shallowCollect {
-      case old: Old => Some(old)
-      case LabelledOld(_, FastParser.LHS_OLD_LABEL) => None
-      case lo: LabelledOld => Some(lo)
-      case q: QuantifiedExp if q.isHeapDependent(p) => None
-      case e: Exp if !e.isHeapDependent(p) => Some(e)
-    }.flatten
+    /* The code collects expressions that can/are to be evaluated in a fixed state, i.e.
+     * a state that is known when this method is called.
+     * Among other things, such expressions may not be heap-dependent (unless they are nested
+     * under old-expressions) and they may not contain bound (e.g. quantified) variables.
+     *
+     * I [Malte] tried using our new AST transformation framework, in particular a Visitor and a
+     * Query, but the former doesn't return anything (it could be executed for its side-effect,
+     * though) and the latter doesn't take a context. We should change that.
+     */
+
+    var collectedExpressions = Vector.empty[Exp]
+
+    def go(root: Exp, boundVariables: Set[LocalVar]): Unit = {
+      root.visitWithContextManually(boundVariables)(boundVariables => {
+        case LabelledOld(_, FastParser.LHS_OLD_LABEL) => /* Don't descend further */
+
+        case Let(v, e, body) => go(body.replace(v.localVar, e), boundVariables)
+
+        case old: OldExp if !boundVariables.exists(old.contains)=>
+          collectedExpressions :+= old
+
+        case quant: QuantifiedExp =>
+          val newContext = boundVariables ++ quant.variables.map(_.localVar)
+
+          quant.getChildren.collect { case e: Exp => e }
+                           .foreach(go(_, newContext))
+
+        case e: Exp if !e.isHeapDependent(p) && !boundVariables.exists(e.contains) =>
+          collectedExpressions :+= e
+      })
+    }
+
+    go(this, Set.empty)
+
+    collectedExpressions
   }
 
   def structure(p: Program): MagicWandStructure = {
+    /* High-level idea: take the input wand (`this`) and perform a sequence of
+     * substitutions that transform the wand into a canonical form suitable for
+     * checking whether or not a given state provides a particular wand.
+     *
+     * The substitutions are:
+     *   - Replace holes in the wand (subexpressions to evaluate) by local variables
+     *     whose names are the type of the hole. E.g. "n + 1" is replaced by an
+     *     artificial variable with name "int" and similarly, "n < m" by "bool".
+     *   - Quantified variables are given canonical names based on their depth/level
+     *     of nesting in the overall wand. E.g. the subexpression
+     *     "(forall x, y :: b1(x, y) ==> forall z :: b2(x, y, z)) && forall x :: b3(x)"
+     *     is transformed into
+     *     "(forall q1, q2 :: b1(q1, q2) ==> forall q3 :: b2(q1, q2, q3)) && forall q1 :: b3(q1)".
+     *
+     * Wands transformed in this way can be compared for equality as follows: an initial
+     * syntactic comparison can be used to check if the wands match structurally, a subsequent
+     * semantic comparison of their arguments (the values that go into the wands' holes) then
+     * ensures that the wands are actually (i.e. semantically) equivalent.
+     */
+
     val subexpressionsToEvaluate = this.subexpressionsToEvaluate(p)
-    this.transform({
-      case exp: Exp if subexpressionsToEvaluate.contains(exp) =>
-        LocalVar(exp.typ.toString())(exp.typ)
-    })
+
+    type Bindings = Map[String, Int]
+    val Bindings = Map
+
+    def name(typ: Type, index: Int): String = s"${typ}_$index"
+
+    def extendBindings(bindings: Bindings, extension: Seq[LocalVarDecl]): Bindings = {
+      var count = bindings.size
+
+      val additionalBindings =
+        extension.map(decl => {
+          count += 1
+
+          decl.name -> count
+        })
+
+      bindings ++ additionalBindings
+    }
+
+    def renameDecls(decls: Seq[LocalVarDecl], bindings: Bindings): Seq[LocalVarDecl] = {
+      decls.map(decl =>
+        decl.copy(name(decl.typ, bindings(decl.name)))(decl.pos, decl.info, decl.errT))
+    }
+
+    StrategyBuilder.Context[Node, Bindings](
+      {
+        case (exp: Exp, _) if subexpressionsToEvaluate.contains(exp) =>
+          LocalVar(exp.typ.toString())(exp.typ)
+
+        case (quant: QuantifiedExp, context) =>
+          /* NOTE: This case, i.e. the transformation case, is reached before the
+           *       corresponding case in the context update function (defined below)
+           *       is reached. This unfortunately means that we have to duplicate work,
+           *       i.e. we have to compute the new bindings twice.
+           */
+          val bindings = extendBindings(context.c, quant.variables)
+          val variables = renameDecls(quant.variables, bindings)
+
+          quant.withVariables(variables)
+
+        case (lv: LocalVar, context) =>
+          context.c.get(lv.name) match {
+            case None => lv
+            case Some(index) => lv.copy(name(lv.typ, index))(lv.typ, lv.pos, lv.info, lv.errT)
+          }
+      },
+      Bindings.empty,
+      { case (quant: QuantifiedExp, bindings) => extendBindings(bindings, quant.variables) },
+      Traverse.TopDown
+    ).execute[this.type](this)
   }
 
   override def isValid : Boolean = this match {
@@ -319,7 +415,10 @@ case class FieldAccess(rcv: Exp, field: Field)
 }
 
 /** A predicate access expression. See also companion object below for an alternative creation signature */
-case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Position, val info: Info, val errT: ErrorTrafo) extends LocationAccess {
+case class PredicateAccess(args: Seq[Exp], predicateName: String)
+                          (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+    extends LocationAccess {
+
   def loc(p:Program) = p.findPredicate(predicateName)
   lazy val typ = Bool
 
@@ -329,9 +428,10 @@ case class PredicateAccess(args: Seq[Exp], predicateName: String)(val pos: Posit
     predicate.body map (Expressions.instantiateVariables(_, predicate.formalArgs, args))
   }
 }
+
 // allows PredicateAccess to be created from a predicate directly, in which case only the name is kept
 object PredicateAccess {
-  def apply(args: Seq[Exp], predicate:Predicate)(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : PredicateAccess = PredicateAccess(args, predicate.name)(pos, info, errT)
+  def apply(args: Seq[Exp], predicate:Predicate)(pos: Position, info: Info, errT: ErrorTrafo): PredicateAccess = PredicateAccess(args, predicate.name)(pos, info, errT)
 }
 
 // --- Conditional expression
@@ -402,6 +502,14 @@ sealed trait QuantifiedExp extends Exp with Scope {
     case _ if !isPure && contains[PredicateAccess] => false
     case _ => true
   }
+
+  /* Results is expected to satisfy the following constraints:
+   *   result.variables == variables
+   *   result.exp == this.exp
+   *
+   * TODO: Might be better to also replace occurrences of the quantified variables in `exp`
+   */
+  def withVariables(variables: Seq[LocalVarDecl]): QuantifiedExp
 }
 
 object QuantifiedExp {
@@ -441,12 +549,18 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
       this
     }
   }
+
+  def withVariables(variables: Seq[LocalVarDecl]): Forall =
+    copy(variables)(this.pos, this.info, this.errT)
 }
 
 /** Existential quantification. */
 case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp) ++
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq())
+
+  def withVariables(variables: Seq[LocalVarDecl]): Exists =
+    copy(variables)(this.pos, this.info, this.errT)
 }
 
 
@@ -473,6 +587,14 @@ case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
     case _ if body.contains[PermExp] => false
     case ForPerm(_, Seq( Predicate(_, Seq(LocalVarDecl(_, Ref)), _) ), _) => true
     case _ => false
+  }
+
+  def withVariables(variables: Seq[LocalVarDecl]): ForPerm = {
+    assert(
+      variables.lengthCompare(1) == 0,
+      s"Expected exactly one variable, but got $variables")
+
+    copy(variables.head)(this.pos, this.info, this.errT)
   }
 }
 
@@ -722,7 +844,7 @@ case class AnySetIntersection(left: Exp, right: Exp)(val pos: Position = NoPosit
   override lazy val check : Seq[ConsistencyError] =
     (if(left.typ != right.typ) Seq(ConsistencyError("Left and right operand types must match", left.pos)) else Seq()) ++
     (if(!(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError(s"Expected SetType or MultisetType, but found ${left.typ}", left.pos)) else Seq())
-  
+
   lazy val priority = 8
   lazy val fixity = Infix(LeftAssociative)
   lazy val op = "intersection"
@@ -750,7 +872,7 @@ case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   override lazy val check : Seq[ConsistencyError] =
     (if(left.typ != right.typ) Seq(ConsistencyError("Left and right operand types must match", left.pos)) else Seq()) ++
     (if(!(left.typ.isInstanceOf[SetType] || left.typ.isInstanceOf[MultisetType])) Seq(ConsistencyError(s"Expected SetType or MultisetType, but found ${left.typ}", left.pos)) else Seq())
-  
+
   lazy val priority = 8
   lazy val fixity = Infix(NonAssociative)
   lazy val op = "setminus"
@@ -759,7 +881,7 @@ case class AnySetMinus(left: Exp, right: Exp)(val pos: Position = NoPosition, va
   def withArgs(newArgs: Seq[Exp]) = AnySetMinus(newArgs.head,newArgs(1))(pos, info, errT)
 }
 
-/** Is the element 'elem' contained in the sequence 'seq'? */
+/** Is the element 'elem' contained in the set 's'? */
 case class AnySetContains(elem: Exp, s: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AnySetBinExp {
   override lazy val check : Seq[ConsistencyError] =
     if(!((s.typ.isInstanceOf[SetType] && (elem isSubtype s.typ.asInstanceOf[SetType].elementType)) ||

@@ -17,12 +17,10 @@ predicate list(xs: Ref) {
 function length(xs: Ref): Int
   requires acc(list(xs)) && xs != null // (1)
   ensures result > 0
-  decreases *
 { unfolding acc(list(xs)) in 1 + (xs.next == null ? 0 : length(xs.next)) } // (1)
 
 function sum(xs: Ref): Int
   requires acc(list(xs)) && xs != null
-  decreases *
 { unfolding acc(list(xs)) in xs.val + (xs.next == null ? 0 : sum(xs.next)) }
 
 function head(xs: Ref): Int
@@ -35,23 +33,19 @@ function tail(xs: Ref): Ref
 
 function last(xs: Ref): Int
   requires acc(list(xs)) && xs != null
-  decreases *
 { unfolding acc(list(xs)) in xs.next == null ? xs.val : last(xs.next) }
 
 function contains(xs: Ref, x: Int): Bool
   requires acc(list(xs)) && xs != null
-  decreases *
 { unfolding acc(list(xs)) in x == xs.val || (xs.next != null && contains(xs.next, x)) }
 
 function elems(xs: Ref): Seq[Int]
   requires acc(list(xs)) && xs != null
-  decreases *
 { unfolding acc(list(xs)) in Seq(xs.val) ++ (xs.next == null ? Seq[Int]() : elems(xs.next)) }
 
 function get(xs: Ref, index: Int): Int
   requires acc(list(xs)) && xs != null
   requires 0 <= index && index < length(xs)
-  decreases *
 { unfolding acc(list(xs)) in index == 0 ? xs.val : get(xs.next, index - 1) }
 
 method prepend(xs: Ref, y: Int) returns (ys: Ref)
@@ -94,7 +88,6 @@ method append(xs: Ref, y: Int)
 
 function ascending(xs: Ref): Bool
   requires acc(list(xs)) && xs != null
-  decreases *
 { unfolding acc(list(xs)) in (xs.next == null || (xs.val <= head(xs.next) && ascending(xs.next))) }
 
 method insert(xs: Ref, y: Int) returns (ys: Ref, i: Int)

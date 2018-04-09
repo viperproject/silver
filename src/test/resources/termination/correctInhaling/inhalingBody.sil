@@ -1,5 +1,5 @@
-import "../decreaseOrder/int_decreases.vpr"
-import "../decreaseOrder/bool_decreases.vpr"
+import "../decreaseOrder/int_decreases.sil"
+import "../decreaseOrder/bool_decreases.sil"
 
 //:: ExpectedOutput(termination.failed:variant.not.decreasing)
 function fun(i: Int): Int

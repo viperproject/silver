@@ -1,4 +1,4 @@
-//:: IgnoreFile(/carbon/issue/0000000000000000/)
+//:: IgnoreFile(/carbon/issue/216/)
 /* This example encodes and specifies an iterative computation of the
  * sum of a recursively defined linked-list. Magic wands are used to
  * book-keep permissions in the loop.
@@ -17,7 +17,6 @@ predicate List(ys: Ref) {
 /* Pure function that computes the sum in a straight-forward, recursive way. */
 function sum_rec(ys: Ref): Int
   requires acc(List(ys))
-  decreases *
 { unfolding List(ys) in ys.val + (ys.next == null ? 0 : sum_rec(ys.next)) }
 
 

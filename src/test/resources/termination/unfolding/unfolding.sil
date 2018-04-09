@@ -1,7 +1,7 @@
 //UnexpectedOutput(z3.interaction.failed)(silicon)
 
-import "../decreaseOrder/int_decreases.vpr"
-import "../decreaseOrder/pred_decreases.vpr"
+import "../decreaseOrder/int_decreases.sil"
+import "../decreaseOrder/pred_decreases.sil"
 
 field next : Ref
 field f : Int

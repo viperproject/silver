@@ -1,12 +1,15 @@
 package viper.silver.parser
 
 import java.nio.file.{Files, Path}
+
 import scala.language.{implicitConversions, reflectiveCalls}
-import scala.util.parsing.input.NoPosition
+import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import viper.silver.ast.SourcePosition
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
+import viper.silver.parser.Transformer.ParseTreeDuplicationError
+import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier.ParseError
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
@@ -33,7 +36,7 @@ object FastParser extends PosParser {
   private def addToImported(path: Path): Boolean =
     _imported.add(path.toAbsolutePath)
 
-  def parse(s: String, f: Path) = {
+  def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None) = {
     _file = f
     val lines = s.linesWithSeparators
     _lines = lines.map(_.length).toArray
@@ -50,7 +53,7 @@ object FastParser extends PosParser {
         } else {
           val toImport = firstImport.get
           if (addToImported(pathFromImport(toImport))) {
-            val newProg = importProgram(toImport)
+            val newProg = importProgram(toImport, plugins)
 
             PProgram(
               p.imports.drop(1) ++ newProg.imports,
@@ -138,7 +141,7 @@ object FastParser extends PosParser {
     * @param importStmt Import statement.
     * @return `PProgram` node corresponding to the imported program.
     */
-  def importProgram(importStmt: PImport): PProgram = {
+  def importProgram(importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
     val path = pathFromImport(importStmt)
 
     if (java.nio.file.Files.notExists(path))
@@ -154,10 +157,18 @@ object FastParser extends PosParser {
       source.close()
     }
     val imported_source = buffer.mkString("\n") + "\n"
-    val p = RecParser(path).parses(imported_source)
+    val transformed_source = if (plugins.isDefined){
+      plugins.get.beforeParse(imported_source, isImported = true) match {
+        case Some(transformed) => transformed
+        case None => throw ParseException(s"Plugin failed: ${plugins.get.errors.map(_.toString).mkString(", ")}", importStmt.start)
+      }
+    } else {
+      imported_source
+    }
+    val p = RecParser(path).parses(transformed_source)
     p match {
       case fastparse.core.Parsed.Success(prog, _) => prog
-      case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Failure: $msg", FilePosition(path, extra.line, extra.col))
+      case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Expected $msg", FilePosition(path, extra.line, extra.col))
     }
   }
 
@@ -244,13 +255,9 @@ object FastParser extends PosParser {
     /* Store the replacements from normal variable to freshly generated variable */
     var freshNames = Map.empty[String, String]
 
-    // It follows a list of useful helper classes and functions
+    /**** General helper classes and functions ****/
 
     case class ReplaceContext(formalArgumentSubstitutions: Map[String, PExp] = Map.empty)
-
-    // Context class used for expanding the macros themselves.
-    // Seq macros contains the name of every macro we already imported to detect collisions
-    case class ExpandContext(macros: Seq[String] = Seq())
 
     // Handy method to get a macro from its name string
     def getMacroByName(name: String): PDefine = macros.find(_.idndef.name == name) match {
@@ -292,16 +299,42 @@ object FastParser extends PosParser {
       }
     }
 
-    // Check if the macro name was already expanded => recursion found
-    def recursionCheck(name: String, ctxt: ExpandContext) = {
-      if (ctxt.macros.contains(name))
-        throw ParseException("Recursive macro declaration found: " + name, NoPosition)
-    }
-
     // Create a map that maps the formal parameters to the actual parameters of a macro call
     def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]): Map[String, PExp] = {
       params.map(_.name).zip(args).toMap
     }
+
+    /* Abstraction over several possible `PNode`s that can represent macro applications */
+    case class MacroApp(name: String, arguments: Seq[PExp], node: PNode)
+
+    val matchOnMacroApplication: PartialFunction[PNode, MacroApp] = {
+      case app: PMacroRef => MacroApp(app.idnuse.name, Nil, app)
+      case app: PMethodCall if isMacro(app.method.name) => MacroApp(app.method.name, app.args, app)
+      case app: PCall if isMacro(app.func.name) => MacroApp(app.func.name, app.args, app)
+      case app: PIdnUse if isMacro(app.name) => MacroApp(app.name, Nil, app)
+    }
+
+    /**** Detect cyclic macros ****/
+
+    def detectCyclicMacros(start: PNode, seen: Set[String]): Unit = {
+      start.visit(
+        matchOnMacroApplication.andThen { case MacroApp(name, _, _) =>
+          if (seen.contains(name)) {
+            val position =
+              macros.find(_.idndef.name == name)
+                    .fold[Position](NoPosition)(FastPositions.getStart)
+
+            throw ParseException("Recursive macro declaration found: " + name, position)
+          } else {
+            detectCyclicMacros(getMacroByName(name).body, seen + name)
+          }
+        }
+      )
+    }
+
+    detectCyclicMacros(toExpand, Set.empty)
+
+    /**** Expand macros ****/
 
     // Strategy that replaces every formal parameter occurrence in the macro body with the corresponding actual parameter
     // Also makes the macro call hygienic by creating a unique variable name for every newly declared variable
@@ -363,77 +396,45 @@ object FastParser extends PosParser {
       res
     }
 
-    // Strategy that expands the macros and checks for infinite recursion in the expansion process
-    val expander = StrategyBuilder.Context[PNode, ExpandContext]({
-      case (pMacro: PMacroRef, ctxt) =>
-        val name = pMacro.idnuse.name
-        recursionCheck(name, ctxt.c)
+    /* Strategy that checks macro applications for legality and then expands them.
+     * Relies on all macros being acyclic!
+     */
+    val expander = StrategyBuilder.Ancestor[PNode] { case (currentNode, ctxt) =>
+      matchOnMacroApplication.andThen { case MacroApp(name, actualArgs, app) =>
+        val appliedMacro = getMacroByName(name)
+        val formalArgs = appliedMacro.args.getOrElse(Nil)
+        val macroBody = appliedMacro.body
 
-        val body = getMacroByName(name).body
+        if (actualArgs.length != formalArgs.length)
+          throw ParseException("Number of macro arguments does not match", FastPositions.getStart(app))
 
-        if (!body.isInstanceOf[PStmt])
-          throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro.idnuse))
+        (app, macroBody) match {
+          case (_: PStmt, _: PExp) =>
+            throw ParseException("Expression macro used in statement position", FastPositions.getStart(app))
+          case (_: PExp, _: PStmt) =>
+            throw ParseException("Statement macro used in expression position", FastPositions.getStart(app))
+          case _ => /* All good */
+        }
 
-        replacerOnBody(body, Map(), pMacro)
+        /* TODO: The current unsupported position detection is probably not exhaustive.
+         *       Seems difficult to concisely and precisely match all (il)legal cases, however.
+         */
+        (ctxt.parent, macroBody) match {
+          case (PAccPred(loc, _), _) if (loc eq app) && !macroBody.isInstanceOf[PLocationAccess] =>
+            throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+          case (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
+            throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+          case _ => /* All good */
+        }
 
-      case (pMacro: PMethodCall, ctxt) if isMacro(pMacro.method.name) =>
-        val name = pMacro.method.name
-        recursionCheck(name, ctxt.c)
-
-        val realMacro = getMacroByName(name)
-        val body = realMacro.body
-
-        if (pMacro.args.length != realMacro.args.getOrElse(Seq()).length) // Would not be a PMethodCall in case of no arguments
-          throw ParseException("Number of arguments does not match", FastPositions.getStart(pMacro.method))
-
-        if (!body.isInstanceOf[PStmt])
-          throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro.method))
-
-        replacerOnBody(body, mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
-
-      case (pMacro: PCall, ctxt) if isMacro(pMacro.func.name) =>
-        val name = pMacro.func.name
-        recursionCheck(name, ctxt.c)
-
-        val realMacro = getMacroByName(name)
-        val body = realMacro.body
-
-        if (pMacro.args.length != realMacro.args.getOrElse(Seq()).length) // Would not be a PMethodCall in case of no arguments
-          throw ParseException("Number of arguments does not match", FastPositions.getStart(pMacro))
-
-        if (!body.isInstanceOf[PExp])
-          throw ParseException("Expression macro used as statement", FastPositions.getStart(pMacro))
-
-        replacerOnBody(body, mapParamsToArgs(realMacro.args.get, pMacro.args), pMacro)
-
-      case (pMacro: PIdnUse, ctxt) if isMacro(pMacro.name) =>
-        val name = pMacro.name
-        recursionCheck(name, ctxt.c)
-
-        val body = getMacroByName(name).body
-
-        if (!body.isInstanceOf[PExp])
-          throw ParseException("Statement macro used as expression", FastPositions.getStart(pMacro))
-
-        replacerOnBody(body, Map(), pMacro)
-
-    }, ExpandContext(), {
-      case (pMacro: PMacroRef, c) =>
-        val realMacro = getMacroByName(pMacro.idnuse.name)
-        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-
-      case (pMacro: PMethodCall, c) if isMacro(pMacro.method.name) =>
-        val realMacro = getMacroByName(pMacro.method.name)
-        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-
-      case (pMacro: PCall, c) if isMacro(pMacro.func.name) =>
-        val realMacro = getMacroByName(pMacro.func.name)
-        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-
-      case (pMacro: PIdnUse, c) if isMacro(pMacro.name) =>
-        val realMacro = getMacroByName(pMacro.name)
-        ExpandContext(c.macros ++ Seq(realMacro.idndef.name))
-    }).recurseFunc {
+        try {
+          replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
+        } catch {
+          case problem: ParseTreeDuplicationError =>
+            throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), FastPositions.getStart(app))
+        }
+      }.applyOrElse(currentNode, (_: PNode) => currentNode)
+    }.recurseFunc {
       /* Don't recurse into the PIdnUse of nodes that themselves could represent macro
        * applications. Otherwise, the expansion of nested macros will fail due to attempting
        * to construct invalid AST nodes.
@@ -444,8 +445,12 @@ object FastParser extends PosParser {
       case PCall(_, args, typeAnnotated) => Seq(args, typeAnnotated)
     }.repeat
 
-    val res = expander.execute[T](toExpand)
-    res
+    try {
+      expander.execute[T](toExpand)
+    } catch {
+      case problem: ParseTreeDuplicationError =>
+        throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), problem.original.start)
+    }
   }
 
   /** The file we are currently parsing (for creating positions later). */
@@ -771,9 +776,11 @@ object FastParser extends PosParser {
     }
   }
 
-  lazy val newstmt: P[PNewStmt] = P(idnuse ~ ":=" ~ "new" ~ "(" ~ starOrFields ~ ")").map { case (a, b) => PNewStmt(a, b) }
+  lazy val newstmt: P[PNewStmt] = starredNewstmt | regularNewstmt
 
-  lazy val starOrFields: P[Option[Seq[PIdnUse]]] = P(("*").!.map { _ => None } | (idnuse.rep(sep = ",").map { fields => Some(fields) }))
+  lazy val regularNewstmt: P[PRegularNewStmt] = P(idnuse ~ ":=" ~ "new" ~ "(" ~ idnuse.rep(sep = ",") ~ ")").map { case (a, b) => PRegularNewStmt(a, b) }
+
+  lazy val starredNewstmt: P[PStarredNewStmt] = P(idnuse ~ ":=" ~ "new" ~ "(" ~ "*" ~ ")").map(PStarredNewStmt)
 
   lazy val fresh: P[PFresh] = P(keyword("fresh") ~ idnuse.rep(sep = ",")).map { case vars => PFresh(vars) }
 
@@ -861,10 +868,8 @@ object FastParser extends PosParser {
   lazy val predicateDecl: P[PPredicate] = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }
 
   lazy val methodDecl: P[PMethod] = P(methodSignature ~/ pre.rep ~ post.rep ~ block.?).map {
-    case (name, args, rets, pres, posts, Some(body)) =>
+    case (name, args, rets, pres, posts, body) =>
       PMethod(name, args, rets.getOrElse(Nil), pres, posts, body)
-    case (name, args, rets, pres, posts, None) =>
-      PMethod(name, args, rets.getOrElse(Nil), pres, posts, PSeqn(Seq(PInhale(PBoolLit(b = false)))))
   }
 
   lazy val methodSignature = P("method" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")").?)

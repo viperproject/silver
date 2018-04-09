@@ -1,4 +1,4 @@
-import "../decreaseOrder/int_decreases.vpr"
+import "../decreaseOrder/int_decreases.sil"
 
 //:: ExpectedOutput(termination.failed:variant.not.decreasing)
 function f(x :Int, y:Int) : Int

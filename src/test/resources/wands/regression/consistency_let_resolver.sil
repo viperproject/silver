@@ -1,4 +1,4 @@
-//:: IgnoreFile(/carbon/issue/0000000000000000/)
+//:: IgnoreFile(/carbon/issue/216/)
 method test01() {
   assert let y == (0) in true
   //:: ExpectedOutput(typechecker.error)

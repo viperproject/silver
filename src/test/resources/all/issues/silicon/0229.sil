@@ -1,4 +1,4 @@
-//:: IgnoreFile(/carbon/issue/0000000000000000/)
+//:: IgnoreFile(/carbon/issue/216/)
 /* Simplified problem */
 
 define RHS2 old(unfolding acc(valid2(x)) in x.r)

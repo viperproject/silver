@@ -4,7 +4,6 @@ field value: Int
 function contains(this: Ref, i: Int): Bool
   requires this != null
   requires acc(valid(this), wildcard)
-  decreases *
 {
   (unfolding acc(valid(this), wildcard) in (i == this.value) || (this.next != null) && contains(this.next, i))
 }

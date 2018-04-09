@@ -8,7 +8,6 @@ function find(struct: Ref, this:Ref) : Ref
   requires this in allNodes(struct)
   ensures result != null
   ensures result in allNodes(struct)
-  decreases *
 {
   unfolding acc(inv(struct), wildcard) in this == this.parent ? this : find(struct, this.parent)
 }

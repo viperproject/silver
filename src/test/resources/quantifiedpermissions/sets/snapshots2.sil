@@ -4,7 +4,6 @@ function fun(xs: Set[Ref], x: Ref, n: Int): Int
   requires forall z: Ref :: z in xs ==> acc(z.f)
   requires x in xs
   requires n >= 0
-  decreases *
 { n == 0 ? x.f : fun(xs, x, n - 1) }
 
 method test01(xs: Set[Ref], x: Ref, n: Int)

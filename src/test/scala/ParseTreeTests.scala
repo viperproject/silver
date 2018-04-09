@@ -5,39 +5,14 @@
  */
 
 import java.nio.file.Paths
-
+import scala.language.implicitConversions
 import TestHelpers.MockSilFrontend
 import org.scalatest.FunSuite
 import viper.silver.ast._
 
-import scala.language.implicitConversions
-
 class ParseTreeTests extends FunSuite {
-  test("CyclicMacroDetection") {
-    val filePrefix = "parsertests/cyclicMacros/"
-    val files = Seq("simple", "complex", "complexExp")
-
-    val frontend = new MockSilFrontend
-
-    files foreach {
-      fileName => {
-        val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-        assert(fileRes != null, s"File $filePrefix$fileName not found")
-        val file = Paths.get(fileRes.toURI)
-
-        frontend.translate(file) match {
-          case (Some(_), _) =>
-            fail("Expected cyclic macro errors, but gone none")
-          case (None, errors) => errors.foreach(e => {
-            assert(e.readableMessage.contains("Recursive macro declaration found"))
-          })
-        }
-      }
-    }
-  }
-
   test("MacroExpansion") {
-    val filePrefix = "parsertests/macroExpansion/"
+    val filePrefix = "transformations/Macros/Expansion/"
     val files = Seq("simple", "simple2", "simpleExp", "simpleArgs", "simpleArgs2", "simpleArgsExp", "simpleMethod", "simpleMethodExp")
 
     val frontend = new MockSilFrontend
@@ -47,7 +22,7 @@ class ParseTreeTests extends FunSuite {
   }
 
   test("HygienicMacros") {
-    val filePrefix = "parsertests/hygienicMacros/"
+    val filePrefix = "transformations/Macros/Hygienic/"
     val files = Seq("simple", "nested", "collision", "collision2", "forall", "loopConstruction")
 
     val frontend = new MockSilFrontend
@@ -56,8 +31,54 @@ class ParseTreeTests extends FunSuite {
       parseAndCompare(filePrefix + fileName + ".sil", filePrefix + fileName + "Ref" + ".sil", frontend))
   }
 
+  test("Positions and Paths") {
+    val filePrefix = "transformations/Imports/"
+    val files = Seq("simpleRef", "simple_other")
+
+    val paths: Seq[String] = files.map { f => filePrefix + f + ".sil" }
+
+    val fileResA = getClass.getResource(paths(0))
+    assert(fileResA != null, s"File ${paths(0)} not found")
+    val file_a = Paths.get(fileResA.toURI)
+
+    val fileResB = getClass.getResource(paths(1))
+    assert(fileResB != null, s"File ${paths(1)} not found")
+    val file_b = Paths.get(fileResB.toURI)
+
+    val frontend_a = new MockSilFrontend
+    val frontend_b = new MockSilFrontend
+
+    frontend_a.translate(file_a) match {
+      case (Some(prog_a), _) =>
+        frontend_b.translate(file_b) match {
+          case (Some(prog_b), _) =>
+            prog_a.members.foreach( m_1 =>
+              m_1.pos match {
+                case p_1: AbstractSourcePosition =>
+                  prog_b.members.foreach( m_2 =>
+                    m_1.pos match {
+                      case p_2: AbstractSourcePosition =>
+                        //FIXME: the paths must actually be different.
+                        //FIXME: this test will fail once someone fixes Silver's #224.
+                        assert( p_1.file.toUri.compareTo( p_2.file.toUri ) == 0,
+                          s"""Given that there are no import statements in the programs:
+                            | Prog A: ${fileResA.toURI}
+                            | Prog B: ${fileResB.toURI}
+                            | the absolute paths in the positions of AST nodes from these files
+                            | must be different.""".stripMargin
+                        )
+                      case _ => assert( false, """positions of AST nodes are not set by the parser""" )
+                    })
+                case _ => assert( false, """positions of AST nodes are not set by the parser""" )
+              })
+          case (None, errors) => sys.error("Error occurred during translating: " + errors)
+        }
+      case (None, errors) => sys.error("Error occurred during translating: " + errors)
+    }
+  }
+
   test("Imports") {
-    val filePrefix = "parsertests/imports/"
+    val filePrefix = "transformations/Imports/"
     val files = Seq("simple", "complex", "cyclic")
 
     val frontend = new MockSilFrontend

@@ -21,7 +21,7 @@ trait ErrorMessage {
 
 trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
-  def readableMessage(withId: Boolean = false, withPosition: Boolean = true): String
+  def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
   override def readableMessage = readableMessage(false, true)
   def fullId = s"$id:${reason.id}"
 }
@@ -226,7 +226,7 @@ object errors {
   def AssertFailed(offendingNode: Assert): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => AssertFailed(offendingNode, reason))
 
-  case class TerminationFailed(offendingNode: Function, reason: ErrorReason) extends AbstractVerificationError {
+  case class TerminationFailed(offendingNode: Function, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "termination.failed"
     val text = s"Function ${offendingNode.name} might not terminate."
 
@@ -237,7 +237,7 @@ object errors {
   def TerminationFailed(offendingNode: Function): PartialVerificationError =
     PartialVerificationError((r: ErrorReason) => TerminationFailed(offendingNode, r))
 
-  case class PostconditionViolated(offendingNode: Exp, member: Contracted, reason: ErrorReason) extends AbstractVerificationError {
+  case class PostconditionViolated(offendingNode: Exp, member: Contracted, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "postcondition.violated"
     val text = s"Postcondition of ${member.name} might not hold."
 
@@ -369,11 +369,11 @@ object errors {
   def HeuristicsFailed(offendingNode: ErrorNode): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => HeuristicsFailed(offendingNode, reason))
 
-  case class VerificationErrorWithCounterexample(ve: AbstractVerificationError, model: String, symState: String, currentMember: String) extends AbstractVerificationError {
+  case class VerificationErrorWithCounterexample(ve: AbstractVerificationError, model: String, symState: String, currentMember: String, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = ve.id
     val text = null // not used since readableMessage is overridden
 
-    override def readableMessage(withId: Boolean, withPosition: Boolean): String = ve.readableMessage(withId, withPosition)
+    override def readableMessage(withId: Boolean, withPosition: Boolean = false): String = ve.readableMessage(withId, withPosition)
 
     override def offendingNode = ve.offendingNode
 
@@ -436,7 +436,9 @@ object reasons {
   case class CallingNonTerminatingFunction(offendingNode: FuncApp, callee: Function) extends AbstractErrorReason {
     val id = "calling.non.terminating.function"
 
-    override def readableMessage = s"Function ${offendingNode.funcname} (indirectly) calls ${callee.name}, which might not terminate."
+    override def readableMessage = if (offendingNode.funcname == callee.name)
+      s"The function calls ${callee.name}, which might not terminate." else
+      s"The function call ${offendingNode} indirectly calls ${callee.name}, which might not terminate."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CallingNonTerminatingFunction(offendingNode.asInstanceOf[FuncApp], callee)
   }
