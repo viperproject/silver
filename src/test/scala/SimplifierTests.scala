@@ -7,7 +7,7 @@
 import scala.language.implicitConversions
 import org.scalatest.{Matchers, FunSuite}
 import viper.silver.ast._
-import viper.silver.ast.utility.Transformer._
+import viper.silver.ast.utility.Simplifier._
 
 class SimplifierTests extends FunSuite with Matchers {
   test("div and mod") {
