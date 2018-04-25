@@ -664,7 +664,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           nil
         else {
           val stmtsToShow =
-            stmts filterNot (s => s.isInstanceOf[Seqn] && s.info.comment.isEmpty && s.children.isEmpty && s.asInstanceOf[Seqn].scopedDecls.isEmpty)
+            stmts filterNot (s => s.isInstanceOf[Seqn] && s.info.comment.isEmpty && s.asInstanceOf[Seqn].ss.isEmpty && s.asInstanceOf[Seqn].scopedDecls.isEmpty)
 
           ssep((if (locals == null) Nil else locals map (text("var") <+> showVar(_))) ++ (stmtsToShow map show), line)
         }
