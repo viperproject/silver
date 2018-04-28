@@ -87,7 +87,7 @@ method test_build_index_definedness_small(i : Int)
   //:: ExpectedOutput(assert.failed:seq.index.negative)  
   //:: MissingOutput(assert.failed:seq.index.negative, /silicon/issue/323/)
   //:: MissingOutput(assert.failed:seq.index.negative, /carbon/issue/232/)  
-  //:: UnexpectedOutput(assert.failed:seq.index.length,  /silicon/issue/323/)
+  //:: UnexpectedOutput(assert.failed:seq.index.length, /silicon/issue/323/)
   assert trivial(Seq(3,4,5,6)[i := 3][0])
 }
 
