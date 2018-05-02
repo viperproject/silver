@@ -1,0 +1,12 @@
+field val : Int
+
+method test(x: Ref, y: Ref) {
+    inhale acc(x.val) && (x != y ==> acc(y.val))
+    x.val := 4
+    y.val := 3
+    //assert x != y // succeeds!
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /Silicon/issue/324/)
+    assert x.val == 4 // succeeds!
+    // assert false // fails
+}
