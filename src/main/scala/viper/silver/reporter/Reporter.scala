@@ -17,11 +17,45 @@ object NoopReporter extends Reporter {
   def report(msg: Message): Unit = ()
 }
 
-class StdIOReporter(val name: String) extends Reporter {
+class StdIOReporter(val name: String, val timeInfo: Boolean = true) extends Reporter {
+
+  import viper.silver.verifier.{Failure, AbortedExceptionally}
+
   var counter = 0
+  def timeStr(t: Time): String = f"${t*0.001}%.3f"
 
   def report(msg: Message): Unit = {
-    println(s"$name#$counter: $msg")
+    msg match {
+      case OverallFailureMessage(v, t, ex) =>
+        if (!timeInfo)
+          println(s"The following errors were found:")
+        else
+          println(s"The following errors were found in ${timeStr(t)} seconds:")
+        ex.errors.foreach(e => println(s"  ${e.toString}"))
+      case OverallSuccessMessage(v, t) =>
+        if (!timeInfo)
+          println(s"$v finished.")
+        else
+          println( s"$v finished in ${timeStr(t)} seconds." )
+        println( s"Verification successful." )
+      case ExternalDependenciesReport(deps) =>
+        val s: String = (deps map (dep => {
+          s"  ${dep.name} ${dep.version}, located at ${dep.location}."
+        })).mkString("\n")
+        println( s"The following dependencies are used:\n$s" )
+      case ExceptionReport(e) =>
+        /** Theoretically, we may encounter an exceptional message that has
+          * not yet been reported via AbortedExceptionally. */
+        println( Failure(Seq(AbortedExceptionally(e))).toString )
+      case InvalidArgumentsReport(tool_sig, errors) =>
+        errors.foreach(e => println(s"  ${e.readableMessage}"))
+        println( s"Run with just --help for usage and options" )
+      case sm:SimpleMessage =>
+        println( sm.text )
+      case _ =>
+        println( s"Cannot properly print message of unsupported type: $msg" )
+    }
     counter = counter + 1
   }
 }
+

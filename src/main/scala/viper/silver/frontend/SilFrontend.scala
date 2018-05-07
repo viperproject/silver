@@ -17,6 +17,7 @@ import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.{PluginException, PluginNotFoundException, PluginWrongTypeException}
+import viper.silver.reporter._
 import viper.silver.verifier._
 
 /**
@@ -25,6 +26,33 @@ import viper.silver.verifier._
  * error messages in a user-friendly fashion.
  */
 trait SilFrontend extends DefaultFrontend {
+
+  /**
+   * Coarse-grained reasons only. Needed for generating appropriate exit codes fro the entire application.
+   * For fine-grained error reasons, @see [[VerificationResult]].
+   */
+  object ApplicationExitReason extends Enumeration {
+    type PreVerificationFailureReasons = Value
+    val UNKNOWN_EXIT_REASON            = Value(-2)
+    val NOTHING_TO_BE_DONE             = Value(-1)
+    val VERIFICATION_SUCCEEDED         = Value( 0) // POSIX standard
+    val VERIFICATION_FAILED            = Value( 1)
+    val COMMAND_LINE_ARGS_PARSE_FAILED = Value( 2)
+    val ISSUE_WITH_PLUGINS             = Value( 3)
+    val SYSTEM_DEPENDENCY_UNSATISFIED  = Value( 4)
+  }
+
+  protected var _appExitReason: ApplicationExitReason.Value = ApplicationExitReason.UNKNOWN_EXIT_REASON
+  def appExitCode: Int = _appExitReason.id
+
+  protected def specifyAppExitCode(): Unit = {
+      if ( _state >= TranslatorState.Verified ) {
+      _appExitReason = result match {
+        case Success => ApplicationExitReason.VERIFICATION_SUCCEEDED
+        case Failure(_) => ApplicationExitReason.VERIFICATION_FAILED
+      }
+    }
+  }
 
   /**
    * Create the verifier. The full command is parsed for debugging purposes only,
@@ -47,23 +75,33 @@ trait SilFrontend extends DefaultFrontend {
 
   /** The current configuration. */
   protected var _config: SilFrontendConfig = _
-  def config = _config
+  def config: SilFrontendConfig = _config
 
   protected var _plugins: SilverPluginManager = SilverPluginManager(None)
-  def plugins = _plugins
+  def plugins: SilverPluginManager = _plugins
 
   protected var _startTime: Long = _
-  def startTime = _startTime
+  def startTime: Time = _startTime
+
+  def getTime: Long = System.currentTimeMillis() - _startTime
+
+  def getTimeStr: String = {
+    val timeMs = getTime
+    val time = f"${timeMs * 0.001}%.3f seconds"
+    time
+  }
 
   def resetMessages() {
     Consistency.resetMessages()
   }
 
-  def setVerifier(verifier:Verifier): Unit ={
+  def setVerifier(verifier:Verifier): Unit = {
     _ver = verifier
   }
 
-  def prepare(args: Seq[String]): Boolean ={
+  def prepare(args: Seq[String]): Boolean = {
+
+    reporter.report( CopyrightReport(s"${_ver.signature} ${_ver.copyright}") )
 
     /* Parse command line arguments and populate _config */
     parseCommandLine(args)
@@ -73,27 +111,21 @@ trait SilFrontend extends DefaultFrontend {
       /* The command line arguments could not be parses. Hence, we should not
        * ready any arguments-related value from _config!
        */
-      printFallbackHeader()
-      printErrors(CliOptionError(_config.error.get + "."))
+      reporter.report( InvalidArgumentsReport(_ver.signature, List(CliOptionError(_config.error.get + "."))) )
+      _appExitReason = ApplicationExitReason.COMMAND_LINE_ARGS_PARSE_FAILED
       return false
+
     } else if (_config.exit) {
       /* Parsing succeeded, but the frontend should exit immediately never the less. */
-      printHeader()
-      printFinishHeader()
+      _appExitReason = ApplicationExitReason.NOTHING_TO_BE_DONE
       return false
     }
-
-    printHeader()
 
     // print dependencies if necessary
     if (_config.dependencies()) {
-      val s = (_ver.dependencies map (dep => {
-        s"  ${dep.name} ${dep.version}, located at ${dep.location}."
-      })).mkString("\n")
-      logger.info("The following dependencies are used:")
-      logger.info(s+"\n")
+      reporter.report( ExternalDependenciesReport(_ver.dependencies) )
     }
-    return true
+    true
   }
 
   /**
@@ -117,8 +149,8 @@ trait SilFrontend extends DefaultFrontend {
       reset(Paths.get(_config.file()))
     } catch {
       case exception: PluginException =>
-        printFallbackHeader()
-        printErrors(CliOptionError(exception.toString))
+        reporter.report( ExceptionReport(exception) )
+        _appExitReason = ApplicationExitReason.ISSUE_WITH_PLUGINS
         return
     }
 
@@ -148,7 +180,7 @@ trait SilFrontend extends DefaultFrontend {
 
     silicon_pattern.findFirstIn(verifier.name) match {
       case Some(_) =>
-        return "silicon"
+        "silicon"
       case _ =>
         carbon_pattern.findFirstIn(verifier.name) match {
           case Some(_) => "carbon"
@@ -158,68 +190,17 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   def finish(): Unit = {
-    // print the result
-    printFinishHeader()
-
     _plugins.beforeFinish(result) match {
       case Success =>
-        printSuccess()
-      case f@Failure(errors) =>
-        printErrors(errors: _*)
+        reporter.report( OverallSuccessMessage(verifier.name, getTime) )
+      case f: Failure =>
+        reporter.report( OverallFailureMessage(verifier.name, getTime, f) )
     }
   }
 
   protected def parseCommandLine(args: Seq[String]) {
     _config = configureVerifier(args)
   }
-
-  /** Prints a header that does **not** depend on any command line argument.
-    * This method is thus safe to call even if parsing the command line
-    * arguments failed.
-    */
-  protected def printFallbackHeader() {
-    if(config.error.isDefined) {
-      logger.info(s"${_ver.name} ${_ver.version}")
-      logger.info(s"${_ver.copyright}\n")
-    }
-  }
-
-  /** Prints the frontend header. May depend on command line arguments. */
-  protected def printHeader() {
-    printFallbackHeader()
-  }
-
-  /** Prints the final part of the frontend header. May depend on command line
-    * arguments.
-    */
-  protected def printFinishHeader() {
-    if (!_config.exit) {
-      if (_config.noTiming()) {
-        logger.info(s"${_ver.name} finished.")
-      } else {
-        printFinishHeaderWithTime()
-      }
-    }
-  }
-
-  protected def printFinishHeaderWithTime() {
-    val timeMs = System.currentTimeMillis() - _startTime
-    val time = f"${timeMs / 1000.0}%.3f seconds"
-    logger.info(s"${_ver.name} finished in $time.")
-  }
-
-  protected def printErrors(errors: AbstractError*) {
-    logger.info("The following errors were found:")
-
-    errors.foreach(e => logger.info(s"  ${e.readableMessage}"))
-
-    if (config != null && config.error.nonEmpty) {
-      logger.info("")
-      logger.info("Run with --help for usage and options")
-    }
-  }
-
-  protected def printSuccess() = logger.info("No errors found.")
 
   override def doParse(input: String): Result[ParserResult] = {
     val file = _inputFile.get
@@ -312,58 +293,4 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def mapVerificationResult(in: VerificationResult): VerificationResult = _plugins.mapVerificationResult(in)
-
-  private class IdeModeErrorRepresentation(val error: AbstractError) {
-    private var fileOpt: Option[Path] = None
-    private var startOpt: Option[HasLineColumn] = None
-    private var endOpt: Option[HasLineColumn] = None
-
-    /* Get the relevant error information from the error (if available) */
-    error.pos match {
-      case abs: AbstractSourcePosition =>
-        fileOpt = Some(abs.file)
-        startOpt = Some(abs.start)
-        endOpt = abs.end
-      case hlc: HasLineColumn =>
-        startOpt = Some(hlc)
-      case _: Position => /* Position gives us nothing to work with */
-    }
-
-    lazy val messageStr = extractMessage(error)
-    lazy val escapedMessageStr = messageStr.
-      replaceAll("\\\\","\\\\\\\\").
-      replaceAll("\\\"","\\\\\"").
-      replaceAll("\\n","\\\\n").
-      replaceAll("\\r","\\\\r").
-      replaceAll("\\t","\\\\t")
-    lazy val longFileStr = fileOpt.map(_.toString).getOrElse("<unknown file>")
-    lazy val shortFileStr = fileOpt.map(f => FilenameUtils.getName(f.toString)).getOrElse("<unknown file>")
-    lazy val startStr = startOpt.map(toStr).getOrElse("<unknown start line>:<unknown start column>")
-    lazy val endStr = endOpt.map(toStr).getOrElse("<unknown end line>:<unknown end column>")
-
-    lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
-    lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
-
-    lazy val jsonError =
-      s"""{
-         |"cached": ${error.cached},
-         |"tag": "${error.fullId}",
-         |"message": "$escapedMessageStr",
-         |"start": "$startStr",
-         |"end": "$endStr"
-      }""".stripMargin
-
-    @inline
-    private def extractMessage(error: AbstractError) = {
-      /* TODO: Disassembling readableMessage is just a fragile hack because AbstractError
-       *       does not provide the "raw" error message.
-       */
-      error.readableMessage
-           .replace(s"(${error.pos.toString})", "")
-           .trim
-    }
-
-    @inline
-    private def toStr(hlc: HasLineColumn) = s"${hlc.line}:${hlc.column}"
-  }
 }

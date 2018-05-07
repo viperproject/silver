@@ -69,7 +69,6 @@ trait Frontend {
   def result: VerificationResult
 
   val logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
-  val loggerForIde = LoggerFactory.getLogger(getClass.getName+"_IDE").asInstanceOf[Logger]
 }
 
 trait SinglePhase extends Frontend {
@@ -230,7 +229,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _state = TranslatorState.Verified
   }
 
-  override def result = {
+  override def result: VerificationResult = {
     if (_errors.isEmpty) {
       require(state >= TranslatorState.Verified)
       _verificationResult.get

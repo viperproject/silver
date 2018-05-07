@@ -48,6 +48,9 @@ trait Verifier extends LifetimeComponent {
   /** Returns the copyright string of this verifier, e.g., "(c) 2013 Name" */
   def copyright: String
 
+  /** Returns the signature of the verifier. */
+  def signature: String = s"$name $version"
+
   /**
    * Set some debug information from the calling part of the system.
    *

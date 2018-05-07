@@ -22,7 +22,18 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   var error: Option[String] = None
 
   /** True if (after command-line parsing) we should exit. */
-  var exit: Boolean = false
+  private var _exit: Boolean = false
+
+  def exit: Boolean = parseOnly.toOption match {
+    case Some(need_exit) => need_exit
+    case None => _exit
+  }
+
+  val parseOnly = opt[Boolean]("parseOnly",
+    descr = "Exit right after parsing the program",
+    default = Some(false),
+    noshort = true,
+    hidden = true)
 
   val file = trailArg[String]("file", "The file to verify.")/*, (x: String) => {
     val f = new java.io.File(x)
@@ -101,7 +112,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   }
 
   override def onError(e: Throwable): Unit = {
-    exit = true
+    _exit = true
 
     e match {
       case Version => println(builder.vers.get)
