@@ -48,7 +48,7 @@ trait Frontend {
     *
     * See https://bitbucket.org/viperproject/viperserver/src for more details.
     */
-  val reporter: Reporter = NoopReporter
+  protected val reporter: Reporter = NoopReporter
 
   /**
     * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then
@@ -68,7 +68,8 @@ trait Frontend {
     */
   def result: VerificationResult
 
-  val logger: Logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
+  val logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
+  val loggerForIde = LoggerFactory.getLogger(getClass.getName+"_IDE").asInstanceOf[Logger]
 }
 
 trait SinglePhase extends Frontend {
@@ -142,18 +143,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   def translatorResult: Program = _program.get
 
   def state = _state
-  def errors = _errors
-  def program = _program
-
-  def setState(new_state: TranslatorState.Value): Unit = {
-    _state = new_state
-  }
-
-  def setVerificationResult(ver_result: VerificationResult): Unit = {
-    _verificationResult = Some(ver_result)
-  }
-
-  def getVerificationResult: Option[VerificationResult] = _verificationResult
 
   override def init(verifier: Verifier) {
     _state = TranslatorState.Initialized

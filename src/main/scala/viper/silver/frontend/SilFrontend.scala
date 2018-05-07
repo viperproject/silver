@@ -59,7 +59,7 @@ trait SilFrontend extends DefaultFrontend {
     Consistency.resetMessages()
   }
 
-  def setVerifier(verifier:Verifier): Unit = {
+  def setVerifier(verifier:Verifier): Unit ={
     _ver = verifier
   }
 
@@ -142,7 +142,7 @@ trait SilFrontend extends DefaultFrontend {
     _startTime = System.currentTimeMillis()
   }
 
-  def getVerifierName: String = {
+  protected def getVerifierName: String = {
     val silicon_pattern = raw"""(?i)(silicon)""".r
     val carbon_pattern = raw"""(?i)(carbon)""".r
 
@@ -213,7 +213,7 @@ trait SilFrontend extends DefaultFrontend {
 
     errors.foreach(e => logger.info(s"  ${e.readableMessage}"))
 
-    if (config.error.nonEmpty) {
+    if (config != null && config.error.nonEmpty) {
       logger.info("")
       logger.info("Run with --help for usage and options")
     }
@@ -313,4 +313,57 @@ trait SilFrontend extends DefaultFrontend {
 
   override def mapVerificationResult(in: VerificationResult): VerificationResult = _plugins.mapVerificationResult(in)
 
+  private class IdeModeErrorRepresentation(val error: AbstractError) {
+    private var fileOpt: Option[Path] = None
+    private var startOpt: Option[HasLineColumn] = None
+    private var endOpt: Option[HasLineColumn] = None
+
+    /* Get the relevant error information from the error (if available) */
+    error.pos match {
+      case abs: AbstractSourcePosition =>
+        fileOpt = Some(abs.file)
+        startOpt = Some(abs.start)
+        endOpt = abs.end
+      case hlc: HasLineColumn =>
+        startOpt = Some(hlc)
+      case _: Position => /* Position gives us nothing to work with */
+    }
+
+    lazy val messageStr = extractMessage(error)
+    lazy val escapedMessageStr = messageStr.
+      replaceAll("\\\\","\\\\\\\\").
+      replaceAll("\\\"","\\\\\"").
+      replaceAll("\\n","\\\\n").
+      replaceAll("\\r","\\\\r").
+      replaceAll("\\t","\\\\t")
+    lazy val longFileStr = fileOpt.map(_.toString).getOrElse("<unknown file>")
+    lazy val shortFileStr = fileOpt.map(f => FilenameUtils.getName(f.toString)).getOrElse("<unknown file>")
+    lazy val startStr = startOpt.map(toStr).getOrElse("<unknown start line>:<unknown start column>")
+    lazy val endStr = endOpt.map(toStr).getOrElse("<unknown end line>:<unknown end column>")
+
+    lazy val consoleErrorStr = s"$shortFileStr,$startStr: $messageStr"
+    lazy val fileErrorStr = s"$longFileStr,$startStr,$endStr,$messageStr"
+
+    lazy val jsonError =
+      s"""{
+         |"cached": ${error.cached},
+         |"tag": "${error.fullId}",
+         |"message": "$escapedMessageStr",
+         |"start": "$startStr",
+         |"end": "$endStr"
+      }""".stripMargin
+
+    @inline
+    private def extractMessage(error: AbstractError) = {
+      /* TODO: Disassembling readableMessage is just a fragile hack because AbstractError
+       *       does not provide the "raw" error message.
+       */
+      error.readableMessage
+           .replace(s"(${error.pos.toString})", "")
+           .trim
+    }
+
+    @inline
+    private def toStr(hlc: HasLineColumn) = s"${hlc.line}:${hlc.column}"
+  }
 }

@@ -1,0 +1,11 @@
+field val: Int
+
+function foo(): Bool
+  //:: UnexpectedOutput(internal:feature.unsupported, /silicon/issue/326/)
+  ensures forall n:Ref :: { n.val } true
+
+method test(x: Ref) {
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
+  assert false
+}
