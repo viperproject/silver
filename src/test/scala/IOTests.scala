@@ -43,7 +43,7 @@ class IOTests extends FunSuite with Matchers {
   }*/
 
   test(s"$test_prefix: handling PluginException in execute") {
-    runOneCombo(verifiableFile, pass = true, Seq("--plugin", "NonExisting.IO.TestPlugin"), Seq("exceptional.error"))
+    runOneCombo(verifiableFile, pass = true, Seq("--plugin", "NonExisting.IO.TestPlugin"), Seq("Plugin NonExisting.IO.TestPlugin not found."))
     //runOneCombo(pass = true, Seq("--plugin", "IOTestPlugin"), Seq("Verification successful"))
   }
 
