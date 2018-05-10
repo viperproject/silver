@@ -184,7 +184,7 @@ trait SilFrontend extends DefaultFrontend {
       case _ =>
         carbon_pattern.findFirstIn(verifier.name) match {
           case Some(_) => "carbon"
-          case _ => "<unknown verifier>"
+          case _ => verifier.name
         }
     }
   }
