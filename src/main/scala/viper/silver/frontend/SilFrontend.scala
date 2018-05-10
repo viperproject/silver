@@ -174,7 +174,7 @@ trait SilFrontend extends DefaultFrontend {
     _startTime = System.currentTimeMillis()
   }
 
-  protected def getVerifierName: String = {
+  def getVerifierName: String = {
     val silicon_pattern = raw"""(?i)(silicon)""".r
     val carbon_pattern = raw"""(?i)(carbon)""".r
 
