@@ -29,7 +29,7 @@ class IOTests extends FunSuite with Matchers {
   }
 
   test(s"$test_prefix: handling parseOnly mode and copyright") {
-    runOneCombo(verifiableFile, pass = true, Seq("--parseOnly"), Seq("MockIOVerifier 3.14 (c) Copyright ETH Zurich 2012 - 2018"), Seq(), 1)
+    runOneCombo(verifiableFile, pass = true, Seq("--parseOnly"), Seq("MockIOVerifier 3.14", "(c) Copyright ETH Zurich 2012 - 2018"), Seq(), 2)
   }
 
   test(s"$test_prefix: external dependencies are reported") {
@@ -66,10 +66,10 @@ class IOTests extends FunSuite with Matchers {
                   pass: Boolean,                         // Decide whether the mock verifier should succeed verification phase.
                   cmd_args: Seq[String],                 // Command line arguments to pass to the verifier.
                   expected_fragments: Seq[String],       // String fragments that must occur in the output.
-                  asbent_fragments: Seq[String] = Seq(), // String fragments that must not occur in the output.
-                  loc: Int = 0) = {                      // Expected number of LOC; below 1 means "don't ckeck."
+                  absent_fragments: Seq[String] = Seq(), // String fragments that must not occur in the output.
+                  loc: Int = 0) = {                      // Expected number of LOC; below 1 means "don't check."
 
-    (expected_fragments intersect asbent_fragments) should be (Seq())
+    (expected_fragments intersect absent_fragments) should be (Seq())
 
     val resource = getClass.getResource(sil_file)
     val fname = if (resource != null) {
@@ -92,12 +92,13 @@ class IOTests extends FunSuite with Matchers {
     if (stream.size() == 0)
       fail(s"MockIOFrontend did not produce any output.")
     else {
-      //println(s"${stream.toString}")
+//      println(s"${stream.toString}") // !! FIXME Please, uncomment me for debugging tests that failed.
+//                                     // !! FIXME         Comment me back before you commit the fixes, please.
       val stdoutstr = stream.toString
       expected_fragments.foreach(frag => {
         stdoutstr should include (frag)
       })
-      asbent_fragments.foreach(frag => {
+      absent_fragments.foreach(frag => {
         stdoutstr should not include (frag)
       })
       if ( loc > 0 ) {
@@ -121,7 +122,7 @@ class IOTests extends FunSuite with Matchers {
       instance.config
     }
 
-    override val reporter = new StdIOReporter("MockStdIOReporter")
+    override val reporter = StdIOReporter("MockStdIOReporter")
   }
 
   class MockIOVerifier(val pass: Boolean) extends Verifier {

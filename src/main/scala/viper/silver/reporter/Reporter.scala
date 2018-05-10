@@ -17,7 +17,7 @@ object NoopReporter extends Reporter {
   def report(msg: Message): Unit = ()
 }
 
-class StdIOReporter(val name: String, val timeInfo: Boolean = true) extends Reporter {
+case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends Reporter {
 
   import viper.silver.verifier.{Failure, AbortedExceptionally}
 
@@ -47,13 +47,21 @@ class StdIOReporter(val name: String, val timeInfo: Boolean = true) extends Repo
         /** Theoretically, we may encounter an exceptional message that has
           * not yet been reported via AbortedExceptionally. */
         println( Failure(Seq(AbortedExceptionally(e))).toString )
+      case InternalWarningMessage(test) =>
+        println( s"Internal warning: $test" )
+      case ConfigurationConfirmation(test) =>
+        println( s"Configuration confirmation: $test" )
       case InvalidArgumentsReport(tool_sig, errors) =>
         errors.foreach(e => println(s"  ${e.readableMessage}"))
         println( s"Run with just --help for usage and options" )
+      case EntitySuccessMessage(_, _, _) =>    // FIXME Currently, we only print overall verification results to STDOUT.
+      case EntityFailureMessage(_, _, _, _) => // FIXME Currently, we only print overall verification results to STDOUT.
+      case ConfigurationConfirmation(_) =>     // TODO  use for progress reporting
+      case InternalWarningMessage(_) =>        // TODO  use for progress reporting
       case sm:SimpleMessage =>
-        println( sm.text )
+        //println( sm.text )
       case _ =>
-        println( s"Cannot properly print message of unsupported type: $msg" )
+        //println( s"Cannot properly print message of unsupported type: $msg" )
     }
     counter = counter + 1
   }

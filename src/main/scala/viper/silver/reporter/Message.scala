@@ -151,6 +151,17 @@ abstract class SimpleMessage(val text: String) extends Message {
   override val name: String = s"simple_message"
 }
 
+case class ConfigurationConfirmation(override val text: String) extends SimpleMessage(text) {
+  override def toString: String = s"configuration_confirmation(text=${text.toString()})"
+  override val name: String = s"configuration_confirmation"
+}
+
+case class InternalWarningMessage(override val text: String) extends SimpleMessage(text) {
+
+  override def toString: String = s"internal_warning_message(text=${text.toString()})"
+  override val name: String = s"internal_warning_message"
+}
+
 case class CopyrightReport(override val text: String) extends SimpleMessage(text) {
 
   override def toString: String = s"copyright_report(text=${text.toString()})"

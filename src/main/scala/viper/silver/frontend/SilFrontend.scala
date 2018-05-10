@@ -101,7 +101,7 @@ trait SilFrontend extends DefaultFrontend {
 
   def prepare(args: Seq[String]): Boolean = {
 
-    reporter.report( CopyrightReport(s"${_ver.signature} ${_ver.copyright}") )
+    reporter report CopyrightReport(s"${_ver.signature}\n${_ver.copyright}")
 
     /* Parse command line arguments and populate _config */
     parseCommandLine(args)
@@ -111,7 +111,7 @@ trait SilFrontend extends DefaultFrontend {
       /* The command line arguments could not be parses. Hence, we should not
        * ready any arguments-related value from _config!
        */
-      reporter.report( InvalidArgumentsReport(_ver.signature, List(CliOptionError(_config.error.get + "."))) )
+      reporter report InvalidArgumentsReport(_ver.signature, List(CliOptionError(_config.error.get + ".")))
       _appExitReason = ApplicationExitReason.COMMAND_LINE_ARGS_PARSE_FAILED
       return false
 
@@ -123,7 +123,7 @@ trait SilFrontend extends DefaultFrontend {
 
     // print dependencies if necessary
     if (_config.dependencies()) {
-      reporter.report( ExternalDependenciesReport(_ver.dependencies) )
+      reporter report ExternalDependenciesReport(_ver.dependencies)
     }
     true
   }
@@ -149,7 +149,7 @@ trait SilFrontend extends DefaultFrontend {
       reset(Paths.get(_config.file()))
     } catch {
       case exception: PluginException =>
-        reporter.report( ExceptionReport(exception) )
+        reporter report ExceptionReport(exception)
         _appExitReason = ApplicationExitReason.ISSUE_WITH_PLUGINS
         return
     }
@@ -192,9 +192,9 @@ trait SilFrontend extends DefaultFrontend {
   def finish(): Unit = {
     _plugins.beforeFinish(result) match {
       case Success =>
-        reporter.report( OverallSuccessMessage(verifier.name, getTime) )
+        reporter report OverallSuccessMessage(verifier.name, getTime)
       case f: Failure =>
-        reporter.report( OverallFailureMessage(verifier.name, getTime, f) )
+        reporter report OverallFailureMessage(verifier.name, getTime, f)
     }
   }
 
