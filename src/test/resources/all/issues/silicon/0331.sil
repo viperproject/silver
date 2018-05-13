@@ -1,0 +1,21 @@
+field nx : Ref
+
+predicate Peano(r:Ref) { r != null ==> acc(r.nx) && Peano(r.nx) }
+
+function integer(r:Ref) : Int
+  requires Peano(r)
+{ unfolding Peano(r) in r == null ? 0 : 1 + integer(r.nx) }
+
+function integer2(r:Ref,k:Int) : Int
+  requires Peano(r)
+{ integer(r) + k }
+
+method A(r:Ref)
+  requires Peano(r)
+  requires r != null
+{
+  assert forall k : Int ::
+    //:: UnexpectedOutput(internal:feature.unsupported, /silicon/issue/331/)
+    { integer2(r.nx,k) }
+    (unfolding Peano(r) in integer2(r.nx,k) >= 0) ==> integer2(r,k) > 0
+}

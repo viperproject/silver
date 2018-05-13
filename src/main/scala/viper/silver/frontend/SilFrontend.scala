@@ -152,7 +152,7 @@ trait SilFrontend extends DefaultFrontend {
       case _ =>
         carbon_pattern.findFirstIn(verifier.name) match {
           case Some(_) => "carbon"
-          case _ => "<unknown verifier>"
+          case _ => verifier.name
         }
     }
   }
@@ -213,7 +213,7 @@ trait SilFrontend extends DefaultFrontend {
 
     errors.foreach(e => logger.info(s"  ${e.readableMessage}"))
 
-    if (config.error.nonEmpty) {
+    if (config != null && config.error.nonEmpty) {
       logger.info("")
       logger.info("Run with --help for usage and options")
     }

@@ -12,6 +12,7 @@ predicate List(this: Ref)
 	acc(this.nodes)
    && (forall i: Int :: 0 <= i && i < |this.nodes| ==> acc(this.nodes[i].val))
 	 && (forall i: Int :: 0 <= i && i < |this.nodes| ==> acc(this.nodes[i].next))
+	 //:: UnexpectedOutput(internal:feature.unsupported, /silicon/issue/314/)
 	 && (forall i: Int :: {this.nodes[i] in this.nodes} (0 <= i && i < |this.nodes| ==>
 	 	    this.nodes[i] in this.nodes && (i < |this.nodes| - 1 ? this.nodes[i].next == this.nodes[i+1] : this.nodes[i].next == null)
 	 ))
@@ -53,7 +54,7 @@ method append(this: Ref, elem: Int)
 	} else {
 	 this.nodes := Seq(n)
 	}
-	//:: UnexpectedOutput(fold.failed:assertion.false, /carbon/issue/96/)
+	// //:: UnexpectedOutput(fold.failed:assertion.false, /carbon/issue/96/)
 	fold acc(List(this))
 }
 

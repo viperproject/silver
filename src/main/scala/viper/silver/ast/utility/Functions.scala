@@ -170,6 +170,7 @@ object Functions {
 
     def recordCallsAndUnfoldings(e: Node, ufs: Seq[Unfolding]) {
       e.shallowCollect {
+      case Let(v, e, bod) => recordCallsAndUnfoldings(e.replace(e, bod), ufs)
       case uf@Unfolding (acc, body) =>
         recordCallsAndUnfoldings (body, ufs :+ uf) // note: acc is not recursively-processed - we may want to revisit this decision
       case fa@FuncApp (func, args) =>
