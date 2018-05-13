@@ -363,6 +363,7 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         FieldAccess(exp(rcv), findField(idn))(pos)
       case PPredicateAccess(args, idn) =>
         PredicateAccess(args map exp, findPredicate(idn).name)(pos)
+      case PMagicWandExp(left, right) => MagicWand(exp(left), exp(right))(pos)
       case pfa@PCall(func, args, _) =>
         members(func.name) match {
           case f: Function => FuncApp(f, args map exp)(pos)
@@ -434,11 +435,12 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         LabelledOld(exp(e),lbl.name)(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
-      case PCurPerm(loc) =>
-        exp(loc) match {
-          case PredicateAccessPredicate(inner, _) => CurrentPerm(inner.asInstanceOf[LocationAccess])(pos)
-          case x: FieldAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
-          case x: PredicateAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
+      case PCurPerm(res) =>
+        exp(res) match {
+          case PredicateAccessPredicate(inner, _) => CurrentPerm(inner.asInstanceOf[ResourceAccess])(pos)
+          case x: FieldAccess => CurrentPerm(x.asInstanceOf[ResourceAccess])(pos)
+          case x: PredicateAccess => CurrentPerm(x.asInstanceOf[ResourceAccess])(pos)
+          case x: MagicWand => CurrentPerm(x.asInstanceOf[ResourceAccess])(pos)
           case other => sys.error(s"Unexpectedly found $other")
         }
       case PNoPerm() =>

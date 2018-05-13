@@ -5,7 +5,7 @@ import java.nio.file.{Files, Path}
 import scala.language.{implicitConversions, reflectiveCalls}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
-import viper.silver.ast.SourcePosition
+import viper.silver.ast.{MagicWandOp, SourcePosition}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
@@ -527,9 +527,12 @@ object FastParser extends PosParser {
   lazy val old: P[PExp] = P(StringIn("old") ~ (parens(exp).map(POld) | ("[" ~ oldLabel ~ "]" ~ parens(exp)).map { case (a, b) => PLabelledOld(a, b) }))
 
   lazy val magicWandExp: P[PExp] = P(orExp ~ ("--*".! ~ exp).?).map { case (a, b) => b match {
-    case Some(c) => PBinExp(a, c._1, c._2)
+    case Some(c) => PMagicWandExp(a, c._2)
     case None => a
   }
+  }
+
+  lazy val realMagicWandExp: P[PMagicWandExp] = P(orExp ~ "--*".! ~ exp).map { case (a,b,c) => PMagicWandExp(a,c)
   }
 
   lazy val implExp: P[PExp] = P(magicWandExp ~ (StringIn("==>").! ~ implExp).?).map { case (a, b) => b match {
@@ -614,6 +617,8 @@ object FastParser extends PosParser {
     }
   })
 
+  lazy val resAcc: P[PResourceAccess] = P(locAcc | realMagicWandExp)
+
   lazy val locAcc: P[PLocationAccess] = P(fieldAcc | predAcc)
 
   lazy val fieldAcc: P[PFieldAccess] =
@@ -628,8 +633,9 @@ object FastParser extends PosParser {
 
   lazy val inhaleExhale: P[PExp] = P("[" ~ exp ~ "," ~ exp ~ "]").map { case (a, b) => PInhaleExhaleExp(a, b) }
 
-  lazy val perm: P[PExp] = P(keyword("none").map(_ => PNoPerm()) | keyword("wildcard").map(_ => PWildcard()) | keyword("write").map(_ => PFullPerm())
-    | keyword("epsilon").map(_ => PEpsilon()) | ("perm" ~ parens(locAcc)).map(PCurPerm))
+  lazy val perm: P[PExp] =
+    P(keyword("none").map(_ => PNoPerm()) | keyword("wildcard").map(_ => PWildcard()) | keyword("write").map(_ => PFullPerm())
+    | keyword("epsilon").map(_ => PEpsilon()) | ("perm" ~ parens(resAcc)).map(PCurPerm))
 
   lazy val let: P[PExp] = P(
     ("let" ~/ idndef ~ "==" ~ "(" ~ exp ~ ")" ~ "in" ~ exp).map { case (id, exp1, exp2) =>

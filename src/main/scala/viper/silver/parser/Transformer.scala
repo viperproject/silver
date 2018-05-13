@@ -47,6 +47,7 @@ object Transformer {
         case _: PPredicateType | _: PWandType => parent
         case PDecStar() => parent
         case PDecTuple(exp) => PDecTuple(exp map go)
+        case PMagicWandExp(left, right) => PMagicWandExp(go(left), go(right))
         case PBinExp(left, op, right) => PBinExp(go(left), op, go(right))
         case PUnExp(op, exp) => PUnExp(op, go(exp))
         case _: PIntLit => parent
@@ -166,6 +167,7 @@ object Transformer {
     case (p: PWandType, _) => p
 
     case (p: PBinExp, Seq(left: PExp, right: PExp)) => PBinExp(left, p.opName, right)
+    case (p: PMagicWandExp, Seq(left: PExp, right: PExp)) => PMagicWandExp(left, right)
     case (p: PUnExp, Seq(exp: PExp)) => PUnExp(p.opName, exp)
     case (_: PTrigger, Seq(exp: Seq[PExp@unchecked])) => PTrigger(exp)
     case (p: PIntLit, _) => p
