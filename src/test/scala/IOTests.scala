@@ -48,18 +48,18 @@ class IOTests extends FunSuite with Matchers {
   }
 
   test(s"$test_prefix: reporting verification success") {
-    runOneCombo(verifiableFile, pass = true, Seq(), Seq("Verification successful"))
+    runOneCombo(verifiableFile, pass = true, Seq(), Seq("finished verification successfully"))
   }
 
   test(s"$test_prefix: reporting verification failure") {
-    runOneCombo(verifiableFile, pass = false, Seq(), Seq("The following errors were found"))
+    runOneCombo(verifiableFile, pass = false, Seq(), Seq("found 1 error"))
   }
 
   test(s"$test_prefix: frontend instance is reusable") {
-    runOneCombo(verifiableFile, pass = true,  Seq(),              Seq("Verification successful"))
-    runOneCombo(verifiableFile, pass = false, Seq(),              Seq("The following errors were found"))
+    runOneCombo(verifiableFile, pass = true,  Seq(),              Seq("finished verification successfully"))
+    runOneCombo(verifiableFile, pass = false, Seq(),              Seq("found 1 error"))
     runOneCombo(verifiableFile, pass = true,  Seq("--parseOnly"), Seq(), Seq(), 0)
-    runOneCombo(verifiableFile, pass = true,  Seq(),              Seq("Verification successful"))
+    runOneCombo(verifiableFile, pass = true,  Seq(),              Seq("finished verification successfully"))
   }
 
   private def runOneCombo(sil_file: String,              // Input Viper program; if does not exist, simulate absent file.

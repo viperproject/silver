@@ -28,7 +28,7 @@ import viper.silver.verifier._
 trait SilFrontend extends DefaultFrontend {
 
   /**
-   * Coarse-grained reasons only. Needed for generating appropriate exit codes fro the entire application.
+   * Coarse-grained reasons only. Needed for generating appropriate exit codes for the entire application.
    * For fine-grained error reasons, @see [[VerificationResult]].
    */
   object ApplicationExitReason extends Enumeration {
@@ -84,12 +84,6 @@ trait SilFrontend extends DefaultFrontend {
   def startTime: Time = _startTime
 
   def getTime: Long = System.currentTimeMillis() - _startTime
-
-  def getTimeStr: String = {
-    val timeMs = getTime
-    val time = f"${timeMs * 0.001}%.3f seconds"
-    time
-  }
 
   def resetMessages() {
     Consistency.resetMessages()
@@ -174,7 +168,8 @@ trait SilFrontend extends DefaultFrontend {
     _startTime = System.currentTimeMillis()
   }
 
-  protected def getVerifierName: String = {
+  // TODO: do not hard code names of implementations into SilFrontend.
+  def getVerifierName: String = {
     val silicon_pattern = raw"""(?i)(silicon)""".r
     val carbon_pattern = raw"""(?i)(carbon)""".r
 

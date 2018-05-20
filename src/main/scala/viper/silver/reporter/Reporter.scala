@@ -20,23 +20,29 @@ object NoopReporter extends Reporter {
 case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends Reporter {
   
   var counter = 0
-  def timeStr(t: Time): String = f"${t*0.001}%.3f"
+
+  // includes the unit name (e.g., seconds, sec, or s).
+  private def timeStr: Time => String = format.formatMillisReadably
+
+  private def plurals(num_things: Int): String = if (num_things==1) "" else "s"
+
+  private def bulletFmt(num_items: Int): String = s"%${num_items.toString.length}d"
 
   def report(msg: Message): Unit = {
     msg match {
-      case OverallFailureMessage(v, t, ex) =>
+      case OverallFailureMessage(v, t, res) =>
+        val num_errors = res.errors.length
         if (!timeInfo)
-          println(s"The following errors were found:")
+          println( s"$v found $num_errors error${plurals(num_errors)}:" )
         else
-          println(s"The following errors were found in ${timeStr(t)} seconds:")
-        ex.errors.foreach(e => println(s"  ${e.toString}"))
+          println( s"$v found $num_errors error${plurals(num_errors)} in ${timeStr(t)}:" )
+        res.errors.zipWithIndex.foreach { case(e, n) => println( s"  [${bulletFmt(num_errors).format(n)}] ${e.readableMessage}" ) }
 
       case OverallSuccessMessage(v, t) =>
         if (!timeInfo)
-          println(s"$v finished.")
+          println( s"$v finished verification successfully." )
         else
-          println( s"$v finished in ${timeStr(t)} seconds." )
-        println( s"Verification successful." )
+          println( s"$v finished verification successfully in ${timeStr(t)}." )
 
       case ExceptionReport(e) =>
         /** Theoretically, we may encounter an exceptional message that has
