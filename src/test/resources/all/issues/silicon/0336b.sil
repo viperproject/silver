@@ -12,8 +12,6 @@ predicate uf_bank(b:Set[Ref])
 method bad(b:Set[Ref],l:Ref)
   requires uf_bank(b)
   requires l in b
-  //:: ExpectedOutput(postcondition.violated:assertion.false)
-  //:: MissingOutput(postcondition.violated:assertion.false, /silicon/issue/34/)
   ensures false
 {
   unfold uf_bank(b);
@@ -31,6 +29,7 @@ method veryBad()
   l := new(parent,rank);
   l.parent := null;
   l.rank := 0;
+  //:: UnexpectedOutput(fold.failed:insufficient.permission, /carbon/issue/237/)
   fold uf_bank(Set(l));
   bad(Set(l),l);
 }
