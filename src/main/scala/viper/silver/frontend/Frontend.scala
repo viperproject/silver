@@ -47,7 +47,7 @@ trait Frontend {
     *
     * @see <a href="https://bitbucket.org/viperproject/viperserver/src">ViperServer</a> for more details.
     */
-  protected val reporter: Reporter = StdIOReporter()
+  val reporter: Reporter = StdIOReporter()
 
   /**
     * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then
@@ -141,6 +141,18 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   def translatorResult: Program = _program.get
 
   def state = _state
+  def errors = _errors
+  def program = _program
+
+  def setState(new_state: TranslatorState.Value): Unit = {
+    _state = new_state
+  }
+
+  def setVerificationResult(ver_result: VerificationResult): Unit = {
+    _verificationResult = Some(ver_result)
+  }
+
+  def getVerificationResult: Option[VerificationResult] = _verificationResult
 
   override def init(verifier: Verifier) {
     _state = TranslatorState.Initialized
