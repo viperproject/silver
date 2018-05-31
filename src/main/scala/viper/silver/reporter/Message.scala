@@ -115,11 +115,12 @@ case class ProgramDefinitionsReport(definitions: List[Definition]) extends Messa
 }
 
 // TODO: design the infrastructure for reporting Symbolic Execution info with variable level of detail.
-case class SymbExLogReport(entity: Entity, timestamp: Time, stuff: Option[Any])
+//case class SymbExLogReport(entity: Entity, timestamp: Time, stuff: Option[Any])
+case class SymbExLogReport(timestamp: Time, stuff: Option[Any])
     extends Message {
 
   override def toString: String = s"symbolic_execution_logger_report(" +
-    s"entity=${entity.toString()}, " +
+    //s"entity=${entity.toString()}, " +
     s"timestamp=${timestamp.toString()}, stuff=${stuff.toString()})"
 
   override val name: String = s"symbolic_execution_logger_report"
