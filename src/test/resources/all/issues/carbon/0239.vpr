@@ -7,6 +7,7 @@ method m(x:Ref)
   requires forall b:Bool :: acc(bool2Ref(b).val)
   {
      x.val := 42
+     //:: ExpectedOutput(assert.failed:assertion.false)
      //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/239/)
      assert false
   }
