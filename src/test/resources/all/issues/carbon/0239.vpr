@@ -8,6 +8,5 @@ method m(x:Ref)
   {
      x.val := 42
      //:: ExpectedOutput(assert.failed:assertion.false)
-     //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/239/)
      assert false
   }
