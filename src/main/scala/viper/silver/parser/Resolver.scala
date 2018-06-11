@@ -673,6 +673,17 @@ case class TypeChecker(names: NameAnalyser) {
         pl._typeSubstitutions = (for (ts1 <- pl.body.typeSubstitutions;ts2 <- e.typeSubstitutions) yield ts1*ts2).flatten.toList.distinct
         curMember = oldCurMember
 
+      case pq: PForPerm =>
+        val oldCurMember = curMember
+        curMember = pq
+        pq.vars foreach (v => check(v.typ))
+        check(pq.body,Bool)
+        pq.accessList foreach (v => checkInternal(v))
+        pq.triggers foreach (_.exp foreach (tpe=>checkTopTyped(tpe,None)))
+        pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
+        pq.typ = Bool
+        curMember = oldCurMember
+
       case pq:PQuantifier =>
         val oldCurMember = curMember
         curMember = pq

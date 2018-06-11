@@ -69,7 +69,7 @@ object Transformer {
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map go, go(exp))
         case PTrigger(exp) => PTrigger(exp map go)
-        case PForPerm(v, fields, exp) => PForPerm(go(v), fields map go, go(exp))
+        case PForPerm(vars, fields, exp) => PForPerm(vars map go, fields map go, go(exp))
         case PCondExp(cond, thn, els) => PCondExp(go(cond), go(thn), go(els))
         case PInhaleExhaleExp(in, ex) => PInhaleExhaleExp(go(in), go(ex))
         case PCurPerm(loc) => PCurPerm(go(loc))
@@ -183,7 +183,7 @@ object Transformer {
 
     case (_: PExists, Seq(vars: Seq[PFormalArgDecl@unchecked], exp: PExp)) => PExists(vars, exp)
     case (_: PForall, Seq(vars: Seq[PFormalArgDecl@unchecked], triggers: Seq[PTrigger@unchecked], exp: PExp)) => PForall(vars, triggers, exp)
-    case (_: PForPerm, Seq(v: PFormalArgDecl, fields: Seq[PIdnUse@unchecked], exp: PExp)) => PForPerm(v, fields, exp)
+    case (_: PForPerm, Seq(vars: Seq[PFormalArgDecl], res: Seq[PResourceAccess], exp: PExp)) => PForPerm(vars, res, exp)
     case (_: PCondExp, Seq(cond: PExp, thn: PExp, els: PExp)) => PCondExp(cond, thn, els)
     case (_: PInhaleExhaleExp, Seq(in: PExp, ex: PExp)) => PInhaleExhaleExp(in, ex)
     case (_: PCurPerm, Seq(loc: PLocationAccess)) => PCurPerm(loc)

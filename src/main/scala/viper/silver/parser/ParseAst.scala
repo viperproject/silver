@@ -765,9 +765,13 @@ sealed trait PQuantifier extends PBinder with PScope{
 case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[PTrigger] = Seq()}
 case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp) extends PQuantifier
 
-case class PForPerm(variable: PFormalArgDecl, fields: Seq[PIdnUse], body: PExp) extends PQuantifier{
-  val triggers : Seq[PTrigger] = Seq()
-  override val vars = Seq(variable)
+//case class PForPerm(variable: PFormalArgDecl, fields: Seq[PIdnUse], body: PExp) extends PQuantifier{
+//  val triggers : Seq[PTrigger] = Seq()
+//  override val vars = Seq(variable)
+//}
+
+case class PForPerm(vars: Seq[PFormalArgDecl], accessList: Seq[PResourceAccess], body: PExp) extends  PQuantifier{
+  val triggers: Seq[PTrigger] = Seq()
 }
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
  * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but
@@ -1136,7 +1140,7 @@ object Nodes {
       case PLet(exp, nestedScope) => Seq(exp, nestedScope)
       case PLetNestedScope(variable, body) => Seq(variable, body)
       case PForall(vars, triggers, exp) => vars ++ triggers ++ Seq(exp)
-      case PForPerm(v,fields, expr) => v +: fields :+ expr
+      case PForPerm(vars,fields, expr) => vars ++ fields ++ Seq(expr) //+: fields :+ expr
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)
       case PCurPerm(loc) => Seq(loc)

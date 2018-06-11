@@ -569,15 +569,43 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
   * FieldAccess/PredicateAccess (LocationAccess) aren't good alternatives either, because they require
   * a field receiver/predicate arguments whereas field/predicate id would suffice.
   */
-case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
+//case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
+//                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with QuantifiedExp {
+//  override lazy val check : Seq[ConsistencyError] =
+//    (if(!(body isSubtype Bool)) Seq(ConsistencyError(s"Body of forperm quantifier must be of Bool type, but found ${body.typ}.", body.pos)) else Seq()) ++
+//    Consistency.checkPure(body) ++
+//    (if(!Consistency.noPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain perm expressions.", body.pos)) else Seq()) ++
+//    (if(!Consistency.noForPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain nested forperm expressions.", body.pos)) else Seq())
+//
+//  def variables: Seq[LocalVarDecl] = Seq(variable)
+//  def exp: Exp = body
+//
+//  //TODO: make type of Seq more specific
+//  override lazy val typ = Bool
+//
+//  override def isValid : Boolean = this match {
+//    case _ if body.contains[PermExp] => false
+//    case ForPerm(_, Seq( Predicate(_, Seq(LocalVarDecl(_, Ref)), _) ), _) => true
+//    case _ => false
+//  }
+//
+//  def withVariables(variables: Seq[LocalVarDecl]): ForPerm = {
+//    assert(
+//      variables.lengthCompare(1) == 0,
+//      s"Expected exactly one variable, but got $variables")
+//
+//    copy(variables.head)(this.pos, this.info, this.errT)
+//  }
+//}
+
+case class ForPerm(variables: Seq[LocalVarDecl], accessList: Seq[ResourceAccess], body: Exp)
                   (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] =
     (if(!(body isSubtype Bool)) Seq(ConsistencyError(s"Body of forperm quantifier must be of Bool type, but found ${body.typ}.", body.pos)) else Seq()) ++
-    Consistency.checkPure(body) ++
-    (if(!Consistency.noPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain perm expressions.", body.pos)) else Seq()) ++
-    (if(!Consistency.noForPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain nested forperm expressions.", body.pos)) else Seq())
+      Consistency.checkPure(body) ++
+      (if(!Consistency.noPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain perm expressions.", body.pos)) else Seq()) ++
+      (if(!Consistency.noForPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain nested forperm expressions.", body.pos)) else Seq())
 
-  def variables: Seq[LocalVarDecl] = Seq(variable)
   def exp: Exp = body
 
   //TODO: make type of Seq more specific
@@ -585,16 +613,12 @@ case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
 
   override def isValid : Boolean = this match {
     case _ if body.contains[PermExp] => false
-    case ForPerm(_, Seq( Predicate(_, Seq(LocalVarDecl(_, Ref)), _) ), _) => true
+    case ForPerm(_, Seq(_), _) => true
     case _ => false
   }
 
   def withVariables(variables: Seq[LocalVarDecl]): ForPerm = {
-    assert(
-      variables.lengthCompare(1) == 0,
-      s"Expected exactly one variable, but got $variables")
-
-    copy(variables.head)(this.pos, this.info, this.errT)
+    copy(variables)(this.pos, this.info, this.errT)
   }
 }
 
