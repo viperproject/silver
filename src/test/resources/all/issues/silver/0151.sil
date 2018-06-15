@@ -3,7 +3,7 @@ field held: Int
 function level(this: Ref): Rational
 
 define below(u) (
-  (forperm[held] x :: level(x) < level(u))
+  (forperm x: Ref :: [x.held] level(x) < level(u))
   // previously necessary workaround: (forperm[held] y :: level(y) < level(u))
 )
 

@@ -50,6 +50,8 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
 
         val finalProgram = Program(domain, fields, functions, predicates, methods)(program)
 
+        finalProgram.members.map(m => m.subnodes.map (m => m.collect {case fp: ForPerm => fp}.map(fp => Consistency.checkForpermArgUse(fp, finalProgram))))
+
         if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
         else None
     }
@@ -431,7 +433,6 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         }
 
         val fp = ForPerm(varList, argAccess, exp(e))(pos)
-        //Consistency.checkForPerm(fp)
         fp
       case POld(e) =>
         Old(exp(e))(pos)

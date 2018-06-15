@@ -12,9 +12,9 @@ method test02a(this: Ref)
   requires acc(P(this));
 {
   //:: ExpectedOutput(exhale.failed:assertion.false)
-  exhale (forperm[P] r :: false) &&
+  exhale (forperm r: Ref :: [P(r)] false) &&
          acc(P(this)) &&
-         (forperm[P] r :: false)
+         (forperm r: Ref :: [P(r)] false)
 }
 
 method test02b(this: Ref)
@@ -22,7 +22,7 @@ method test02b(this: Ref)
 {
   exhale /*(forperm[P] r :: false &&)*/
          acc(P(this)) &&
-         (forperm[P] r :: false)
+         (forperm r: Ref :: [P(r)] false)
 }
 
 

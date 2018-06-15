@@ -765,11 +765,6 @@ sealed trait PQuantifier extends PBinder with PScope{
 case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[PTrigger] = Seq()}
 case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp) extends PQuantifier
 
-//case class PForPerm(variable: PFormalArgDecl, fields: Seq[PIdnUse], body: PExp) extends PQuantifier{
-//  val triggers : Seq[PTrigger] = Seq()
-//  override val vars = Seq(variable)
-//}
-
 case class PForPerm(vars: Seq[PFormalArgDecl], accessList: Seq[PResourceAccess], body: PExp) extends  PQuantifier{
   val triggers: Seq[PTrigger] = Seq()
 }

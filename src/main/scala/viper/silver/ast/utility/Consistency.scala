@@ -288,7 +288,7 @@ object Consistency {
     case l: LocalVar => if (v == l) false else true
     case _ => {
       var noQuantifiedVar = true
-      for (exp <- Expressions.subExps(e)) {
+      for (exp <- e.subExps) {
         noQuantifiedVar = noQuantifiedVar && onlyDirectUse(v, exp)
       }
       noQuantifiedVar
@@ -307,37 +307,39 @@ object Consistency {
     recordIfNot(positioned, oneRefParam(positioned), "Can only use predicates with one Ref parameter in 'forperm' expressions")
   }
 
-  def checkForPerm(fp : ForPerm, program : Program): Unit = {
-    val resArgs = fp.accessList.map( res => res match {
-      case fa: FieldAccess => Seq(fa.rcv)
-      case pa: PredicateAccess => pa.args
-      case w: MagicWand => w.subexpressionsToEvaluate(program) //TODO: what program variable to use?
-    })
-
-    recordIfNot(fp, allVariablesUsed(fp.variables, resArgs), "All quantified variables need to be used in a resource")
-    resArgs.map(arg => checkForPermArgs(arg, fp.variables))
-  }
-
   def allVariablesUsed(vars: Seq[LocalVarDecl], resArgs: Seq[Seq[Exp]]): Boolean = {
-    var allUsed = true
     for (arg <- resArgs) {
       for (v <- vars) {
-        if (!arg.contains(v.localVar)) {
-           return false
+        var ok = false
+        for (a <- arg) {
+          val asub = a.deepCollect {case vr: LocalVar => if (vr == v.localVar) vr}.filter(_.isInstanceOf[LocalVar])
+          ok = ok || (a == v.localVar || asub.nonEmpty)
         }
+        if (!ok) return false
       }
     }
     true
   }
 
-  def checkForPermArgs(resArgs: Seq[Exp], vars: Seq[LocalVarDecl]): Unit = {
-    for (v <- vars) {
-      for (arg <- resArgs) {
+  def checkForpermArgUse(fp: ForPerm, program: Program): Unit = {
+
+    val resArgs = fp.accessList.map(res => res match {
+      case fa: FieldAccess => Seq(fa.rcv)
+      case pa: PredicateAccess => pa.args
+      case w: MagicWand => w.subexpressionsToEvaluate(program)
+    })
+
+    recordIfNot(fp, allVariablesUsed(fp.variables, resArgs), "All quantified variables need to be used in a resource")
+
+    for (args <- resArgs) {
+    for (v <- fp.variables) {
+      for (arg <- args) {
         if (!arg.isInstanceOf[LocalVar]) {
           recordIfNot(arg, onlyDirectUse(v.localVar, arg), "Quantified arguments can only be used directly")
         }
       }
     }
+  }
   }
 
 //  def checkNoImpureConditionals(wand: MagicWand, program: Program) = {

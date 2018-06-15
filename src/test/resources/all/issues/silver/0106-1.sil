@@ -10,9 +10,9 @@ method m1(x: Ref)
 
 function f1(x: Ref): Bool
   //:: ExpectedOutput(consistency.error)
-  requires forperm[f] r :: true
+  requires forperm r: Ref :: [r.f] true
   //this is fine because perm occurs in inhale/exhale
-  requires [forperm[f] r :: true, true]
+  requires [forperm r: Ref :: [r.f] true, true]
 
 method invariant_test(x: Ref) {
   while (true)
@@ -25,7 +25,7 @@ method invariant_test(x: Ref) {
 
 method other_tests(x: Ref) {
   var p1: Perm := perm(x.f)
-  var b1: Bool := forperm[f] r :: true
+  var b1: Bool := forperm r: Ref :: [r.f] true
   inhale none <= perm(x.g)
-  exhale forperm[f] r :: true
+  exhale forperm r: Ref :: [r.f] true
 }

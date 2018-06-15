@@ -744,7 +744,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case ForPerm(vars, accessList, exp) =>
       parens(text("forperm")
         <+> showVars(vars)
-        <+> brackets(ssep(accessList map show, char (',') <> space)) <+> "::" <+> show(exp))
+        <+> "::" <+> brackets(ssep(accessList map show, char (',') <> space)) <+> show(exp))
 
     case InhaleExhaleExp(in, ex) =>
       brackets(show(in) <> char (',') <+> show(ex))

@@ -25,6 +25,6 @@ method test(this: Ref, c: Ref, n: Int)
     exhale acc(mustSendBounded$(c), 1 * write)
 
     //:: ExpectedOutput(exhale.failed:assertion.false)
-    exhale (forperm [mustSendBounded$] r$_4 :: false)
+    exhale (forperm r$_4: Ref :: [mustSendBounded$(r$_4)] false)
   }
 }
