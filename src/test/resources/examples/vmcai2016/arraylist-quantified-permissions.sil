@@ -130,9 +130,7 @@ method insert(this: Ref, elem: Int) returns (j: Int)
     invariant (forall i:Int :: j < i && i <= this.size ==> acc(loc(this.elems,i).val))
     invariant j <= t && t <= this.size
     invariant this.size == old(length(this))
-    //:: UnexpectedOutput(internal:feature.unsupported, /silicon/issue/314/)
     invariant forall i: Int :: {loc(this.elems,i)} j <= i && i <= this.size ==> (i < t ==> loc(this.elems,i).val == old(itemAt(this,i)))
-    //:: UnexpectedOutput(internal:feature.unsupported, /silicon/issue/314/)
     invariant forall i: Int :: {loc(this.elems,i)} j < i && i <= this.size ==> (i > t ==> loc(this.elems,i).val == old(itemAt(this,i-1)))
   {
     loc(this.elems,t).val := loc(this.elems,t-1).val

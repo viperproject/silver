@@ -15,7 +15,6 @@ method test0(k: Perm, x: Ref) {
   exhale acc(old[succeeds2_end_label](x.c).f, k)
 
   if (old[succeeds2_end_label](x.b)) {
-    //:: UnexpectedOutput(exhale.failed:assertion.false, /silicon/issue/0312/)
     exhale old[succeeds2_end_label](x.c.f == x.d.f)
   }
 }
@@ -31,7 +30,6 @@ method test1(k: Perm, x: Ref) {
 
   exhale acc(old[succeeds2_end_label](x.c).f, k)
 
-  //:: UnexpectedOutput(exhale.failed:assertion.false, /silicon/issue/0312/)
   exhale
     old[succeeds2_end_label](x.b) ==>
       (old[succeeds2_end_label](x.c.f) == old[succeeds2_end_label](x.d.f))
@@ -48,7 +46,6 @@ method test2(k: Perm, x: Ref) {
 
   exhale acc(old[succeeds2_end_label](x.c).f, k)
 
-  //:: UnexpectedOutput(exhale.failed:assertion.false, /silicon/issue/0312/)
   exhale
     old[succeeds2_end_label](x.b) ==>
       (old[succeeds2_end_label](x.c.f == x.d.f))

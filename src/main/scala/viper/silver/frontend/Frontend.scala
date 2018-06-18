@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory
 import ch.qos.logback.classic.Logger
 import scala.io.Source
 import viper.silver.ast._
-import viper.silver.reporter.{NoopReporter, Reporter}
+import viper.silver.reporter.{StdIOReporter, Reporter}
 import viper.silver.verifier._
 
 
@@ -39,16 +39,15 @@ trait Frontend {
   def resetMessages()
 
   /**
-    * Reporter is the message interface which enables dynamic feedback from the backend.
+    * Reporter is the message interface which enables (potentially dynamic) feedback from the backend.
     *
     * The reporter object can be passed as an argument of the Frontend implementation's constructor.
     *
-    * The default implementation [[viper.silver.reporter.NoopReporter]] will simply swallow all
-    * received messages.
+    * The default implementation [[viper.silver.reporter.StdIOReporter]] will print the reported messages to STDOUT.
     *
-    * See https://bitbucket.org/viperproject/viperserver/src for more details.
+    * @see <a href="https://bitbucket.org/viperproject/viperserver/src">ViperServer</a> for more details.
     */
-  protected val reporter: Reporter = NoopReporter
+  val reporter: Reporter = StdIOReporter()
 
   /**
     * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then
@@ -69,7 +68,6 @@ trait Frontend {
   def result: VerificationResult
 
   val logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
-  val loggerForIde = LoggerFactory.getLogger(getClass.getName+"_IDE").asInstanceOf[Logger]
 }
 
 trait SinglePhase extends Frontend {
@@ -143,6 +141,18 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   def translatorResult: Program = _program.get
 
   def state = _state
+  def errors = _errors
+  def program = _program
+
+  def setState(new_state: TranslatorState.Value): Unit = {
+    _state = new_state
+  }
+
+  def setVerificationResult(ver_result: VerificationResult): Unit = {
+    _verificationResult = Some(ver_result)
+  }
+
+  def getVerificationResult: Option[VerificationResult] = _verificationResult
 
   override def init(verifier: Verifier) {
     _state = TranslatorState.Initialized
@@ -230,7 +240,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _state = TranslatorState.Verified
   }
 
-  override def result = {
+  override def result: VerificationResult = {
     if (_errors.isEmpty) {
       require(state >= TranslatorState.Verified)
       _verificationResult.get
