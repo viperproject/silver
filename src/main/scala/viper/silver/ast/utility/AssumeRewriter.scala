@@ -5,6 +5,9 @@ import viper.silver.ast.utility.Rewriter._
 
 object AssumeRewriter {
 
+  var funcs: Seq[Function] = Seq()
+  var generated = false
+
   def rewrite(exp: Exp) : Exp = {
 
     /**
@@ -19,7 +22,9 @@ object AssumeRewriter {
         println(fap)
         println(c.c)
         val cp = CurrentPerm(fap.loc)(fap.pos, fap.info, fap.errT)
-        val p = generatePerm(c.c, fap.loc.rcv, fap.perm, cp)(fap.pos, fap.info, fap.errT)
+        //val p = generatePerm(c.c, fap.loc.rcv, fap.perm, cp)(fap.pos, fap.info, fap.errT)
+        val p = generatePermUsingFunc(c.c, fap.loc.rcv, fap.perm, cp)
+        println(p)
         p
       }
 //      case (pred: PredicateAccessPredicate, c) => {
@@ -144,6 +149,19 @@ object AssumeRewriter {
     p
   }
 
+  def generatePermUsingFunc(context: Seq[((Exp, Exp), Exp)], rcv: Exp, perm: Exp, permLoc: CurrentPerm): Exp = {
+
+    val contextWithoutRcv = context.filter(c => !c._1._1.contains(rcv))
+    if (contextWithoutRcv.isEmpty) return PermGeCmp(permLoc, perm)()
+
+    val conds = contextWithoutRcv map (c => c._1._1.replace(c._1._2, rcv))
+    val perms = (contextWithoutRcv map (_._2)) :+ perm
+
+    val func = funcs(contextWithoutRcv.length-1)
+    val funcApp = FuncApp(func, conds ++ perms)()
+    PermGeCmp(permLoc, funcApp)()
+  }
+
   def generateExp(conds: Seq[(Exp, Exp)], perm: Exp)
                  (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): Exp = {
     if (conds.isEmpty) return perm
@@ -159,6 +177,76 @@ object AssumeRewriter {
       case and: And => split(and.left) ++ split(and.right)
       case other => Seq(other)
     }
+  }
+
+  def generateFunc(numOfConds: Int): Function = {
+    val name = "assume_helper_" + numOfConds
+    var conds: Seq[LocalVar] = Seq()
+    var perms: Seq[LocalVar] = Seq()
+    var cDecls: Seq[LocalVarDecl] = Seq()
+    var pDecls: Seq[LocalVarDecl] = Seq(LocalVarDecl("p_0", Perm)())
+    val formalArgs = {
+      for (i <- 0 until numOfConds) {
+        cDecls = LocalVarDecl("c_" + (i+1), Bool)() +: cDecls
+        if (i < numOfConds-1) conds = conds :+ LocalVar("c_" + (i+1))(Bool)
+      }
+      for (i <- 0 until numOfConds) {
+        pDecls = LocalVarDecl("p_" + (i+1), Perm)() +: pDecls
+        if (i < numOfConds-1) perms = perms :+ LocalVar("p_" + (i+1))(Perm)
+      }
+      cDecls ++ pDecls
+    }
+    val body = {
+      val condsWithPerm = conds zip perms
+
+      var condSeq: Seq[(Exp, Exp)] = Seq()
+      for (i <- numOfConds until 0 by -1) {
+        for (c <- condsWithPerm.combinations(i)) {
+          val funC = genFuncCond(c, LocalVar("p_0")(Perm))
+          val cnj = And(LocalVar("c_" + numOfConds)(Bool), funC._1)()
+          val sum = PermAdd(LocalVar("p_" + numOfConds)(Perm), funC._2)()
+          condSeq = condSeq :+ (cnj, sum)
+        }
+      }
+
+      condSeq = condSeq :+ (LocalVar("c_" + numOfConds)(Bool), PermAdd(LocalVar("p_" + numOfConds)(Perm), LocalVar("p_0")(Perm))())
+
+      if (numOfConds > 1) {
+        val funcName = "assume_helper_" + (numOfConds-1)
+        Some(generateExp(condSeq, FuncApp(funcName, conds ++ perms :+ LocalVar("p_0")(Perm))(NoPosition, NoInfo, Perm, cDecls.tail ++ pDecls.tail, NoTrafos))())
+      } else {
+        val c1 = LocalVar("c_1")(Bool)
+        val p1 = LocalVar("p_1")(Perm)
+        val p0 = LocalVar("p_0")(Perm)
+        Some(CondExp(c1, PermAdd(p1, p0)(), p0)())
+      }
+    }
+    Function(name, formalArgs, Perm, Seq(), Seq(), None, body)()
+  }
+
+  def genFuncCond(condsWithPerm: Seq[(Exp, Exp)], perm: Exp): (Exp, Exp) = {
+    val conds = condsWithPerm map (_._1)
+    val perms = condsWithPerm map (_._2)
+
+    val cnj = conds.tail.foldLeft[Exp](conds.head)((e, v) => And(e, v)())
+    val sum = perms.foldLeft[Exp](perm)((e, v) => PermAdd(e, v)())
+
+    (cnj, sum)
+  }
+
+  def addFuncs(p: Program): Program = {
+
+    if (!generated) {
+      for (i <- 1 until 9) {
+        funcs = funcs :+ generateFunc(i)
+      }
+      generated = true
+    }
+
+    ViperStrategy.Slim({
+      case p: Program => Program(p.domains, p.fields, p.functions ++ funcs, p.predicates, p.methods)(p.pos, p.info, p.errT)
+      case a: Assume => rewriteInhale(Inhale(rewrite(a.exp))(a.pos))
+    }).execute(p)
   }
 
   //TODO: second set of args
