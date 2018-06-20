@@ -4,7 +4,7 @@ field g: Int
 method m1(x: Ref, y: Ref) {
     inhale acc(x.f)
     inhale acc(y.f)
-    inhale forperm a: Ref :: [a.f] a.f > 0
+    inhale forperm a: Ref [a.f] :: a.f > 0
 
     assert x.f > 0
 }
@@ -13,5 +13,6 @@ method m2(x: Ref, y: Ref) {
     inhale acc(x.f)
     inhale acc(y.g)
 
-    assert forperm a: Ref :: [a.f, a.g] a == x || a == y
+    assert forperm a: Ref [a.f] :: a == x
+    assert forperm a: Ref [a.g] :: a == y
 }

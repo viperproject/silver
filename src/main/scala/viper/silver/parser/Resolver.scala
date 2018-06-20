@@ -678,7 +678,7 @@ case class TypeChecker(names: NameAnalyser) {
         curMember = pq
         pq.vars foreach (v => check(v.typ))
         check(pq.body,Bool)
-        pq.accessList foreach (v => checkInternal(v))
+        checkInternal(pq.accessRes)
         pq.triggers foreach (_.exp foreach (tpe=>checkTopTyped(tpe,None)))
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool

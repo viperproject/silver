@@ -412,28 +412,21 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
           desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
-      case f@PForPerm(vars, args, e) =>
+      case f@PForPerm(vars, res, e) =>
 
         //check that the arguments contain only fields and predicates
         //args.foreach(a => Consistency.checkForPermArguments(members(a.name)))
 
         val varList = vars map liftVarDecl
-        val argAccess = mutable.Buffer[ResourceAccess]()
-        for (a <- args) {
 
-          //we are either dealing with predicates, or fields!
-          exp(a) match {
-            case PredicateAccessPredicate(inner, _) => argAccess += inner
-            case f : FieldAccess => argAccess += f
-            case p : PredicateAccess => argAccess += p
-            case w : MagicWand => argAccess += w
-            case other =>
-              sys.error(s"Internal Error: Unexpectedly found $other in forperm")
-          }
+        exp(res) match {
+          case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, exp(e))(pos)
+          case f : FieldAccess => ForPerm(varList, f, exp(e))(pos)
+          case p : PredicateAccess => ForPerm(varList, p, exp(e))(pos)
+          case w : MagicWand => ForPerm(varList, w, exp(e))(pos)
+          case other =>
+            sys.error(s"Internal Error: Unexpectedly found $other in forperm")
         }
-
-        val fp = ForPerm(varList, argAccess, exp(e))(pos)
-        fp
       case POld(e) =>
         Old(exp(e))(pos)
       case PLabelledOld(lbl,e) =>

@@ -54,7 +54,7 @@ class FeatureCombinationsTests extends FunSuite with Matchers {
   test("Forall with ForPerm in body expression") {
     val pred = Predicate("foo", Seq(LocalVarDecl("x", Ref)()), Option(TrueLit()()))()
     val predAccess = PredicateAccess(Seq(LocalVar("y")(Ref)), pred)(NoPosition, NoInfo, NoTrafos)
-    val q = ForPerm( Seq(LocalVarDecl("y", Ref)()), Seq(predAccess), TrueLit()() )()
+    val q = ForPerm( Seq(LocalVarDecl("y", Ref)()), predAccess, TrueLit()() )()
     val p = Forall(Seq(LocalVarDecl("i", Int)()), Seq(), q)()
 
     assert(!p.isValid)
@@ -65,7 +65,7 @@ class FeatureCombinationsTests extends FunSuite with Matchers {
   test("ForPerm with Perm in body expression") {
     val pred = Predicate("foo", Seq(LocalVarDecl("x", Ref)()), Option(TrueLit()()))()
     val pred_acc = PredicateAccess(Seq(LocalVar("y")(Ref)), pred.name)()
-    val q = ForPerm( Seq(LocalVarDecl("y", Ref)()), Seq(pred_acc), PermGtCmp(CurrentPerm(pred_acc)(), NoPerm()())() )()
+    val q = ForPerm( Seq(LocalVarDecl("y", Ref)()), pred_acc, PermGtCmp(CurrentPerm(pred_acc)(), NoPerm()())() )()
 
     assert(!q.isValid)
   }
@@ -82,7 +82,7 @@ class FeatureCombinationsTests extends FunSuite with Matchers {
   test("Predicate with forperm") {
     val pred1 = Predicate("foo", Seq(LocalVarDecl("x", Ref)()), Option(TrueLit()()))()
     val pred_acc = PredicateAccess(Seq(LocalVar("y")(Ref)), pred1.name)()
-    val q = ForPerm( Seq(LocalVarDecl("y", Ref)()), Seq(pred_acc), TrueLit()() )()
+    val q = ForPerm( Seq(LocalVarDecl("y", Ref)()), pred_acc, TrueLit()() )()
     val pred2 = Predicate("foo", Seq(LocalVarDecl("x", Ref)()), Option(q))()
 
     assert(!pred2.isValid)
@@ -92,7 +92,7 @@ class FeatureCombinationsTests extends FunSuite with Matchers {
   test("Magic wand with forperm") {
     val pred = Predicate("foo", Seq(LocalVarDecl("x", Ref)()), Option(TrueLit()()))()
     val pred_acc = PredicateAccess(Seq(), pred.name)()
-    val q = ForPerm( Seq(LocalVarDecl("y", Ref)()), Seq(pred_acc), PermGtCmp(CurrentPerm(pred_acc)(), NoPerm()())() )()
+    val q = ForPerm( Seq(LocalVarDecl("y", Ref)()), pred_acc, PermGtCmp(CurrentPerm(pred_acc)(), NoPerm()())() )()
     val wand0 = MagicWand(TrueLit()(), TrueLit()())()
     val wand1 = MagicWand(q, TrueLit()())()
     val wand2 = MagicWand(TrueLit()(), q)()
@@ -141,7 +141,7 @@ class FeatureCombinationsTests extends FunSuite with Matchers {
   test("Function with forperm") {
     val pred = Predicate("foo", Seq(LocalVarDecl("x", Ref)()), Option(TrueLit()()))()
     val pred_acc = PredicateAccess(Seq(LocalVar("y")(Ref)), pred.name)()
-    val q = ForPerm( Seq(LocalVarDecl("y", Ref)()), Seq(pred_acc), TrueLit()() )()
+    val q = ForPerm( Seq(LocalVarDecl("y", Ref)()), pred_acc, TrueLit()() )()
     val f1 = Function("foo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(q), Seq(), None, Option(TrueLit()()))()
     val f2 = Function("ofo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(q), None, Option(TrueLit()()))()
     val f3 = Function("oof", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(), None, Option(q))()

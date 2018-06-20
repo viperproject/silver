@@ -741,10 +741,10 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       parens(text("forall") <+> showVars(v) <+> "::" <>
         (if (triggers.isEmpty) nil else space <> ssep(triggers map show, space)) <+>
         show(exp))
-    case ForPerm(vars, accessList, exp) =>
+    case ForPerm(vars, accessRes, exp) =>
       parens(text("forperm")
         <+> showVars(vars)
-        <+> "::" <+> brackets(ssep(accessList map show, char (',') <> space)) <+> show(exp))
+        <+> brackets(show(accessRes)) <+> "::" <+> show(exp))
 
     case InhaleExhaleExp(in, ex) =>
       brackets(show(in) <> char (',') <+> show(ex))

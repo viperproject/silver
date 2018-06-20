@@ -307,39 +307,35 @@ object Consistency {
     recordIfNot(positioned, oneRefParam(positioned), "Can only use predicates with one Ref parameter in 'forperm' expressions")
   }
 
-  def allVariablesUsed(vars: Seq[LocalVarDecl], resArgs: Seq[Seq[Exp]]): Boolean = {
-    for (arg <- resArgs) {
-      for (v <- vars) {
-        var ok = false
-        for (a <- arg) {
-          val asub = a.deepCollect {case vr: LocalVar => if (vr == v.localVar) vr}.filter(_.isInstanceOf[LocalVar])
-          ok = ok || (a == v.localVar || asub.nonEmpty)
-        }
-        if (!ok) return false
+  def allVariablesUsed(vars: Seq[LocalVarDecl], resArgs: Seq[Exp]): Boolean = {
+    for (v <- vars) {
+      var ok = false
+      for (a <- resArgs) {
+        val asub = a.deepCollect {case vr: LocalVar => if (vr == v.localVar) vr}.filter(_.isInstanceOf[LocalVar])
+        ok = ok || (a == v.localVar || asub.nonEmpty)
       }
+      if (!ok) return false
     }
     true
   }
 
   def checkForpermArgUse(fp: ForPerm, program: Program): Unit = {
 
-    val resArgs = fp.accessList.map(res => res match {
+    val resArgs = fp.accessRes match {
       case fa: FieldAccess => Seq(fa.rcv)
       case pa: PredicateAccess => pa.args
       case w: MagicWand => w.subexpressionsToEvaluate(program)
-    })
+    }
 
     recordIfNot(fp, allVariablesUsed(fp.variables, resArgs), "All quantified variables need to be used in a resource")
 
-    for (args <- resArgs) {
     for (v <- fp.variables) {
-      for (arg <- args) {
+      for (arg <- resArgs) {
         if (!arg.isInstanceOf[LocalVar]) {
           recordIfNot(arg, onlyDirectUse(v.localVar, arg), "Quantified arguments can only be used directly")
         }
       }
     }
-  }
   }
 
 //  def checkNoImpureConditionals(wand: MagicWand, program: Program) = {
