@@ -23,6 +23,7 @@ field f: Int
        inhale forall a: Ref :: a == x ==> P(x, 3)
        inhale forall a: Ref :: a == y ==> P(y, 0)
 
+       //:: IgnoreFile(/Carbon/issue/243/)
        assert forperm a: Ref, i: Int [P(a, i)] :: i >= 0
    }
 
@@ -38,7 +39,9 @@ method m3(x: Ref, y: Ref, z: Ref){
 
     assert forperm a: Ref [a.f] :: a.f > 0
 
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert forperm a: Ref [acc(a.f) --* acc(y.f)] :: a == x || a == z
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert forperm a: Ref, b: Ref [acc(a.f) --* acc(b.f)] :: b == y
 }
 
@@ -46,6 +49,7 @@ method m4(x: Ref, y: Ref) {
     inhale forall a: Ref :: (a == x || a == y) ==> p2(a,x)
     inhale x != y
 
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert forperm a: Ref [p2(a,a)] :: a == x
 }
 
@@ -55,6 +59,7 @@ method m5(x: Ref, y: Ref, z: Ref) {
     inhale forall a: Ref :: a == x ==> P(a,3)
     inhale forall a: Ref :: (a == y ==> P(a,10)) && (a == z ==> P(a,3))
 
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert forperm a: Ref [P(a,3)] :: a == x || a == z
 }
 
@@ -63,6 +68,7 @@ method m6(x: Ref, y: Ref) {
     inhale forall a: Ref :: a == y ==> P(a,5)
     inhale x != y
 
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert forperm a: Ref [P(a,10)] :: a == x
 }
 

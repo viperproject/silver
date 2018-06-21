@@ -4,6 +4,7 @@ method m1(x: Ref, y: Ref) {
     inhale p1(x, 0)
     inhale p1(y, 10)
 
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert forperm a:Ref, i: Int [p1(a,i)] :: i >= 0
 }
 
@@ -12,8 +13,10 @@ method m2(x: Ref, y: Ref, z: Ref) {
     inhale p2(z, y)
     inhale x != z
 
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert !forperm a: Ref [p2(a,y)] :: a == z
     unfold p2(x,y)
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert forperm a: Ref [p2(a,y)] :: a == z
 }
 
@@ -22,6 +25,7 @@ method m3(x: Ref, y: Ref, z: Ref) {
     inhale p3(z,z)
     inhale x != y
 
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert forperm a: Ref [p3(a,a)] :: a == z
 }
 
@@ -30,6 +34,7 @@ method m4(x: Ref, y: Ref, z: Ref) {
     inhale p3(y,z)
     inhale z != y
 
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert forperm a: Ref [p3(a,y)] :: a == x
 }
 
@@ -37,6 +42,7 @@ method m5(x: Ref, y: Ref) {
     inhale p1(x,10)
     inhale p1(y, 15)
 
+    //:: IgnoreFile(/Carbon/issue/243/)
     if (forperm a: Ref, i: Int [p1(a,i)] :: a == x) {
         assert x == y
     } else {
@@ -48,6 +54,7 @@ method m6(x: Ref, y: Ref) {
     inhale p2(x,y)
     inhale p3(y,x)
 
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert forperm a: Ref, b: Ref [p2(a,b)] :: x != y ==> a != y
 }
 

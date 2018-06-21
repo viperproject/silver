@@ -6,9 +6,11 @@ method m(x: Ref, y: Ref) {
     inhale acc(y.f) --* acc(y.g)
 
     if (x == y) {
+        //:: IgnoreFile(/Carbon/issue/243/)
         assert perm(acc(x.f) --* acc(x.g)) == 2 * write
     } else {
         exhale acc(x.f) --* acc(x.g)
+        //:: IgnoreFile(/Carbon/issue/243/)
         assert perm(acc(y.f) --* acc(y.g)) == write
     }
 }
