@@ -4,7 +4,9 @@ field g: Int
 method m(x:Ref, y: Ref) {
     inhale acc(x.f)
     inhale acc(x.f) --* acc(x.g)
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert perm(acc(x.f) --* acc(x.g)) == write
     apply acc(x.f) --* acc(x.g)
+    //:: IgnoreFile(/Carbon/issue/243/)
     assert perm (acc(x.f) --* acc(x.g)) == none
 }

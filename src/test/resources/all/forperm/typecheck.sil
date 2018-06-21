@@ -12,17 +12,17 @@ method permUse()
 {
   var r1: Ref
   //:: ExpectedOutput(consistency.error)
-  assert forperm r: Ref :: [r.f1] perm(r.f1) > none
+  assert forperm r: Ref [r.f1] :: perm(r.f1) > none
 }
 
 method nonRefPredicateUse()
 {
   var r1: Ref
-  assert forperm r: Int :: [P(r)] true
+  assert forperm r: Int [P(r)] :: true
 }
 
 method nonSingleArgumentPredicateUse()
 {
   var r1: Ref
-  assert forperm r: Ref :: [P2(r,0)] true
+  assert forperm r: Ref [P2(r,0)] :: true
 }

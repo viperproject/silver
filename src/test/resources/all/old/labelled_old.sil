@@ -58,10 +58,10 @@ label first
   y := new(f)
 
 label second
-  assert forperm z: Ref :: [z.f] z.f == old[second](z.f)
+  assert forperm z: Ref [z.f] :: z.f == old[second](z.f)
 
   //:: ExpectedOutput(assert.failed:insufficient.permission)
-  assert forperm z: Ref :: [z.f] z.f == old[first](z.f)
+  assert forperm z: Ref [z.f] :: z.f == old[first](z.f)
 }
 
 method test05(x: Ref, y: Ref)
@@ -71,8 +71,8 @@ label first
   y.f := 0
 
 label second
-  assert forperm z: Ref :: [z.f] z.f == old[second](z.f)
+  assert forperm z: Ref [z.f] :: z.f == old[second](z.f)
 
   //:: ExpectedOutput(assert.failed:assertion.false)
-  assert forperm z: Ref :: [z.f] z.f == old[first](z.f)
+  assert forperm z: Ref [z.f] :: z.f == old[first](z.f)
 }

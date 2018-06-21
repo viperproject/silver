@@ -677,7 +677,7 @@ object FastParser extends PosParser {
 
   lazy val trigger: P[PTrigger] = P("{" ~/ exp.rep(sep = ",", min = 1) ~ "}").map(s => PTrigger(s))
 
-  lazy val forperm: P[PExp] = P(keyword("forperm") ~ nonEmptyFormalArgList ~ "::" ~ "[" ~ resAcc.rep(sep = ",") ~ "]" ~/ exp).map {
+  lazy val forperm: P[PExp] = P(keyword("forperm") ~ nonEmptyFormalArgList ~ "[" ~ resAcc ~ "]" ~ "::" ~/ exp).map {
     case (args, res, body) => PForPerm(args, res, body)
   }
 

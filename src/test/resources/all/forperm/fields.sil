@@ -6,11 +6,12 @@ method noFields()
 {
   var r1: Ref
   var r2: Ref
-  assert forperm r: Ref :: [r.f1] r.f1 > 0
-  assert forperm r: Ref :: [r.f2] r.f2 > 0
-  assert forperm r: Ref :: [r.f1,r.f2] r.f1 > 0
-  assert forperm r: Ref :: [r.f1,r.f2] r.f2 > 0
-  assert forperm r: Ref :: [r.f1,r.f2] r.f1 > 0 && r.f2 > 0
+  assert forperm r: Ref [r.f1] :: r.f1 > 0
+  assert forperm r: Ref [r.f2] :: r.f1 > 0
+  assert forperm r: Ref [r.f1] :: r.f2 > 0
+  assert forperm r: Ref [r.f2] :: r.f2 > 0
+  assert forperm r: Ref [r.f1] :: r.f1 > 0 && r.f2 > 0
+  assert forperm r: Ref [r.f2] :: r.f1 > 0 && r.f2 > 0
 }
 
 method noFields2()
@@ -18,11 +19,12 @@ method noFields2()
   var r1: Ref
   var r2: Ref
   inhale acc(r1.f3)
-  assert forperm r: Ref :: [r.f1] r.f1 > 0
-  assert forperm r: Ref :: [r.f2] r.f2 > 0
-  assert forperm r: Ref :: [r.f1,r.f2] r.f1 > 0
-  assert forperm r: Ref :: [r.f1,r.f2] r.f2 > 0
-  assert forperm r: Ref :: [r.f1,r.f2] r.f1 > 0 && r.f2 > 0
+  assert forperm r: Ref [r.f1] :: r.f1 > 0
+  assert forperm r: Ref [r.f2] :: r.f1 > 0
+  assert forperm r: Ref [r.f1] :: r.f2 > 0
+  assert forperm r: Ref [r.f2] :: r.f2 > 0
+  assert forperm r: Ref [r.f1] :: r.f1 > 0 && r.f2 > 0
+  assert forperm r: Ref [r.f2] :: r.f1 > 0 && r.f2 > 0
 }
 
 method permOnlyOneField()
@@ -30,9 +32,9 @@ method permOnlyOneField()
   var r1: Ref
   var r2: Ref
   inhale acc(r1.f1) && r1.f1 > 0
-  assert forperm r: Ref :: [r.f1] r.f1 > 0
-  assert forperm r: Ref :: [r.f2] r.f2 > 0
-  assert forperm r: Ref :: [r.f1,r.f2] r.f1 > 0
+  assert forperm r: Ref [r.f1] :: r.f1 > 0
+  assert forperm r: Ref [r.f2] :: r.f2 > 0
+  assert forperm r: Ref [r.f2] :: r.f1 > 0
 }
 
 method permOnlyOneField1()
@@ -41,7 +43,8 @@ method permOnlyOneField1()
   var r2: Ref
   inhale acc(r1.f1) && r1.f1 > 0
   //:: ExpectedOutput(assert.failed:insufficient.permission)
-  assert forperm r: Ref :: [r.f1,r.f2] r.f2 >= r.f2
+  assert forperm r: Ref [r.f1] :: r.f2 >= r.f2
+  assert forperm r: Ref [r.f2] :: r.f2 >= r.f2
 }
 
 method permOnlyOneField2()
@@ -50,14 +53,16 @@ method permOnlyOneField2()
   var r2: Ref
   inhale acc(r1.f1) && r1.f1 > 0
   //:: ExpectedOutput(assert.failed:insufficient.permission)
-  assert forperm r: Ref :: [r.f1,r.f2] r.f1 > 0 && r.f2 >= r.f2
+  assert forperm r: Ref [r.f1] :: r.f1 > 0 && r.f2 >= r.f2
+  assert forperm r: Ref [r.f2] :: r.f1 > 0 && r.f2 >= r.f2
 }
 
 method permCheck1()
 {
   var r1: Ref
   var r2: Ref
-  assert forperm r: Ref :: [r.f1,r.f2] false
+  assert forperm r: Ref [r.f1] :: false
+  assert forperm r: Ref [r.f2] :: false
 }
 
 method permCheck2()
@@ -66,7 +71,8 @@ method permCheck2()
   var r2: Ref
   inhale acc(r1.f1)
   //:: ExpectedOutput(assert.failed:assertion.false)
-  assert forperm r: Ref :: [r.f1,r.f2] false
+  assert forperm r: Ref [r.f1] :: false
+  assert forperm r: Ref [r.f2] :: false
 }
 
 method permCheck3()
@@ -75,5 +81,6 @@ method permCheck3()
   var r2: Ref
   inhale acc(r1.f1)
   exhale acc(r1.f1)
-  assert forperm r: Ref :: [r.f1,r.f2] false
+  assert forperm r: Ref [r.f1] :: false
+  assert forperm r: Ref [r.f2] :: false
 }
