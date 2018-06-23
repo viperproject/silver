@@ -19,6 +19,8 @@ import org.jgrapht.graph.DefaultDirectedGraph
 import org.jgrapht.traverse.TopologicalOrderIterator
 import viper.silver.ast._
 
+import scala.collection.mutable.ListBuffer
+
 /**
  * Utility methods for functions.
  */
@@ -31,12 +33,34 @@ object Functions {
   }
 
   def allSubexpressions(func: Function): Seq[Exp] = func.pres ++ func.posts ++ func.body
+  def allSubexpressionsIncludingUnfoldings(program: Program)(func: Function): Seq[Exp] = {
+    var visitedPredicates = Set[String]()
+    var subexpressions = allSubexpressions(func)
+    var unfoldings = new ListBuffer[Unfolding]
+    unfoldings ++= (subexpressions map (e => e.deepCollect{case u@Unfolding(_, _) => u})).flatten
+    var i = 0
+    while (i < unfoldings.length){
+      val current = unfoldings(i)
+      val name = current.acc.loc.predicateName
+      if (!visitedPredicates.contains(name)){
+        visitedPredicates += name
+        val pred = program.findPredicate(name)
+        if (pred.body.isDefined) {
+          val bodyExp : Exp = pred.body.get
+          subexpressions ++= Seq(bodyExp)
+          unfoldings ++= bodyExp.deepCollect { case u@Unfolding(_, _) => u }
+        }
+      }
+      i += 1
+    }
+    subexpressions
+  }
 
   /** Returns the call graph of a given program (also considering specifications as calls).
     *
     * TODO: Memoize invocations of `getFunctionCallgraph`.
     */
-  def getFunctionCallgraph(program: Program, subs: Function => Seq[Exp] = allSubexpressions)
+  def getFunctionCallgraph(program: Program, subs: Function => Seq[Exp])
                           : DirectedGraph[Function, Edge[Function]] = {
 
     val graph = new DefaultDirectedGraph[Function, Edge[Function]](Factory[Function]())
@@ -74,7 +98,7 @@ object Functions {
      * An edge from f1 to f2 denotes that f1 calls f2, either in the function
      * body or in the specifications.
      */
-    val callGraph = getFunctionCallgraph(program)
+    val callGraph = getFunctionCallgraph(program, allSubexpressionsIncludingUnfoldings(program))
 
 ///* debugging */
 //    val functionVNP = new org.jgrapht.ext.VertexNameProvider[Function] {
