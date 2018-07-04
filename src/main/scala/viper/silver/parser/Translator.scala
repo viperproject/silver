@@ -57,14 +57,12 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         val finalProgram = if (Translator.counter == 0) AssumeRewriter.addFuncs(Program(domain, fields, functions, predicates, methods)(program))
                             else Program(domain, fields, functions, predicates, methods)(program)
 
-        println(Translator.counter)
+        println(finalProgram.methods)
+
         val pw = new PrintWriter(new File("/home/tobias/Documents/ETH/BA/dev/tests/program" + (Translator.counter) + ".txt"))
         Translator.counter = Translator.counter + 1
         pw.write(finalProgram.toString())
         pw.close()
-
-        println(finalProgram.methods)
-        println(Translator.counter)
 
         finalProgram.members.map(m => m.subnodes.map (m => m.collect {case fp: ForPerm => fp}.map(fp => Consistency.checkForpermArgUse(fp, finalProgram))))
 
