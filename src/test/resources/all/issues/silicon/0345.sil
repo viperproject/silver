@@ -1,0 +1,22 @@
+field f: Ref
+
+// test aliasing of heap values with other objects
+method t0() {
+    var c: Ref
+
+    c := new(f)
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/345/)
+    assert c.f != c 
+}
+
+method separately() {
+    var c: Ref
+
+    c := new()
+    inhale acc(c.f)
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert c.f != c   
+}
