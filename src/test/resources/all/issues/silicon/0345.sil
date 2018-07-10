@@ -7,8 +7,7 @@ method t0() {
     c := new(f)
 
     //:: ExpectedOutput(assert.failed:assertion.false)
-    //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/345/)
-    assert c.f != c 
+    assert c.f != c
 }
 
 method separately() {
@@ -18,5 +17,16 @@ method separately() {
     inhale acc(c.f)
 
     //:: ExpectedOutput(assert.failed:assertion.false)
-    assert c.f != c   
+    assert c.f != c
+}
+
+method t1() {
+    var c: Ref
+
+    var d: Ref
+    inhale acc(d.f)
+
+    c := new(f)
+
+    assert c != d && (c.f != c || c.f != d)
 }
