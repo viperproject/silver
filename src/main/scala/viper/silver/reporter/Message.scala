@@ -114,12 +114,14 @@ case class ProgramDefinitionsReport(definitions: List[Definition]) extends Messa
   override val name: String = s"program_definitions"
 }
 
-// TODO: design the infrastructure for reporting Symbolic Execution info with variable level of detail.
-//case class SymbExLogReport(entity: Entity, timestamp: Time, stuff: Option[Any])
-case class SymbExLogReport(timestamp: Time) extends Message {
+// TODO: Variable level of detail?
+case class ExecutionTraceReport(timestamp: Time, memberTraces: List[Any]) extends Message {
 
-  override def toString: String = s"symbolic_execution_logger_report(" +
-    s"timestamp=${timestamp.toString()})"
+  override def toString: String =
+    s"""symbolic_execution_logger_report(
+       |  timestamp=${timestamp.toString()},
+       |  members=${(memberTraces map {m => m.toString}).mkString("[", ",", "]")}
+       |)""".stripMargin
 
   override val name: String = s"symbolic_execution_logger_report"
 }
