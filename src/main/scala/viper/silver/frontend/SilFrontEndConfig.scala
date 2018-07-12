@@ -77,8 +77,15 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val ideModeAdvanced = opt[Boolean]("ideModeAdvanced",
-    descr = (  "Used for symbolic execution debugging in ViperIDE. Write symbolic execution log into "
-            + ".vscode/executionTreeData.js file, and output z3's counterexample models."),
+    descr = "Used for symbolic execution debugging in ViperIDE. Produce the symbolic execution " +
+      "log report.",
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
+  val writeTraceFile = opt[Boolean]("writeTraceFile",
+    descr = "Write symbolic execution log into .vscode/executionTreeData.js file.",
     default = Some(false),
     noshort = true,
     hidden = true
