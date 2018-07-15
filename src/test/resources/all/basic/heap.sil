@@ -2,6 +2,16 @@
 field f: Ref
 
 // test aliasing of heap values with other objects
+method t0() {
+    var c: Ref
+
+    c := new(f)
+
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert c.f != c // This assertion was expected true in an old version of the test case, but should fail
+}
+
+// test aliasing of heap values with other objects
 method t1() {
     var a: Ref
     var c: Ref
@@ -10,7 +20,7 @@ method t1() {
 
     c := new(f)
 
-    assert c.f != c
+    //assert c.f != c // This assertion was in an old version of the test case, but should fail
 
     assume a != null
     set_f(a, c)
