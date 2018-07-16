@@ -413,12 +413,7 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
       case f@PForPerm(vars, res, e) =>
-
-        //check that the arguments contain only fields and predicates
-        //args.foreach(a => Consistency.checkForPermArguments(members(a.name)))
-
         val varList = vars map liftVarDecl
-
         exp(res) match {
           case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, exp(e))(pos)
           case f : FieldAccess => ForPerm(varList, f, exp(e))(pos)
@@ -435,10 +430,10 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         CondExp(exp(cond), exp(thn), exp(els))(pos)
       case PCurPerm(res) =>
         exp(res) match {
-          case PredicateAccessPredicate(inner, _) => CurrentPerm(inner.asInstanceOf[ResourceAccess])(pos)
-          case x: FieldAccess => CurrentPerm(x.asInstanceOf[ResourceAccess])(pos)
-          case x: PredicateAccess => CurrentPerm(x.asInstanceOf[ResourceAccess])(pos)
-          case x: MagicWand => CurrentPerm(x.asInstanceOf[ResourceAccess])(pos)
+          case PredicateAccessPredicate(inner, _) => CurrentPerm(inner)(pos)
+          case x: FieldAccess => CurrentPerm(x)(pos)
+          case x: PredicateAccess => CurrentPerm(x)(pos)
+          case x: MagicWand => CurrentPerm(x)(pos)
           case other => sys.error(s"Unexpectedly found $other")
         }
       case PNoPerm() =>

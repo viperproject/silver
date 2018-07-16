@@ -110,8 +110,9 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
                 */
               case fp@ForPerm(_, accessList, _) if accessList.contains(sc) =>
                 val optionalError = sc match {
-                  case f: Field => checkNameUse[Field](f.name,fp, "Field", declarationMap)
-                  case p: Predicate => checkNameUse[Predicate](p.name, fp, "Predicate", declarationMap)
+                  case f: FieldAccess => checkNameUse[Field](f.field.name, fp,"Field", declarationMap)
+                  case p: PredicateAccess => checkNameUse[Predicate](p.predicateName, fp, "Predicate", declarationMap)
+                  case _ => None
                 }
                 optionalError match {
                   case Some(error) => s :+= error

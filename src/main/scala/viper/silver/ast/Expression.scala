@@ -566,7 +566,7 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
 
 /** Quantification over heap chunks with positive permission in any of the listed fields */
 
-case class ForPerm(variables: Seq[LocalVarDecl], accessRes: ResourceAccess, body: Exp)
+case class ForPerm(variables: Seq[LocalVarDecl], resource: ResourceAccess, body: Exp)
                   (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] =
     (if(!(body isSubtype Bool)) Seq(ConsistencyError(s"Body of forperm quantifier must be of Bool type, but found ${body.typ}.", body.pos)) else Seq()) ++
@@ -576,14 +576,9 @@ case class ForPerm(variables: Seq[LocalVarDecl], accessRes: ResourceAccess, body
 
   def exp: Exp = body
 
-  //TODO: make type of Seq more specific
   override lazy val typ = Bool
 
-  override def isValid : Boolean = this match {
-    case _ if body.contains[PermExp] => false
-    case ForPerm(_ ,_ ,_) => true
-    case _ => false
-  }
+  override def isValid : Boolean = !body.contains[PermExp]
 
   def withVariables(variables: Seq[LocalVarDecl]): ForPerm = {
     copy(variables)(this.pos, this.info, this.errT)
