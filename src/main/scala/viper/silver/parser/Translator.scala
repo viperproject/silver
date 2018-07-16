@@ -59,7 +59,7 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
 
         println(finalProgram.methods)
 
-        val pw = new PrintWriter(new File("/home/tobias/Documents/ETH/BA/dev/tests/program" + (Translator.counter) + ".txt"))
+        val pw = new PrintWriter(new File("E:\\Tobias\\Dokumente\\ETH\\BA\\tests\\program" + (Translator.counter) + ".txt"))
         Translator.counter = Translator.counter + 1
         pw.write(finalProgram.toString())
         pw.close()

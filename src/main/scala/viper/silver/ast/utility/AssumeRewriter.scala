@@ -366,27 +366,30 @@ object AssumeRewriter {
     val body = {
       val condsWithPerm = conds zip perms
 
-      var condSeq: Seq[(Exp, Exp)] = Seq()
-      for (i <- numOfConds until 0 by -1) {
-        for (c <- condsWithPerm.combinations(i)) {
-          val funC = genFuncCond(c, LocalVar("p_0")(Perm))
-          val cnj = And(LocalVar("c_" + numOfConds)(Bool), funC._1)()
-          val sum = PermAdd(LocalVar("p_" + numOfConds)(Perm), funC._2)()
-          condSeq = condSeq :+ (cnj, sum)
-        }
-      }
+      val condExps = condsWithPerm map (cp => CondExp(cp._1, cp._2, NoPerm()())())
+      Some(condExps.foldLeft[Exp](LocalVar("p_0")(Perm))((p, c) => PermAdd(p, c)()))
 
-      condSeq = condSeq :+ (LocalVar("c_" + numOfConds)(Bool), PermAdd(LocalVar("p_" + numOfConds)(Perm), LocalVar("p_0")(Perm))())
-
-      if (numOfConds > 1) {
-        val funcName = "assume_helper_" + (numOfConds-1)
-        Some(generateExp(condSeq, FuncApp(funcName, conds ++ perms :+ LocalVar("p_0")(Perm))(NoPosition, NoInfo, Perm, cDecls.tail ++ pDecls.tail, NoTrafos))())
-      } else {
-        val c1 = LocalVar("c_1")(Bool)
-        val p1 = LocalVar("p_1")(Perm)
-        val p0 = LocalVar("p_0")(Perm)
-        Some(CondExp(c1, PermAdd(p1, p0)(), p0)())
-      }
+//      var condSeq: Seq[(Exp, Exp)] = Seq()
+//      for (i <- numOfConds until 0 by -1) {
+//        for (c <- condsWithPerm.combinations(i)) {
+//          val funC = genFuncCond(c, LocalVar("p_0")(Perm))
+//          val cnj = And(LocalVar("c_" + numOfConds)(Bool), funC._1)()
+//          val sum = PermAdd(LocalVar("p_" + numOfConds)(Perm), funC._2)()
+//          condSeq = condSeq :+ (cnj, sum)
+//        }
+//      }
+//
+//      condSeq = condSeq :+ (LocalVar("c_" + numOfConds)(Bool), PermAdd(LocalVar("p_" + numOfConds)(Perm), LocalVar("p_0")(Perm))())
+//
+//      if (numOfConds > 1) {
+//        val funcName = "assume_helper_" + (numOfConds-1)
+//        Some(generateExp(condSeq, FuncApp(funcName, conds ++ perms :+ LocalVar("p_0")(Perm))(NoPosition, NoInfo, Perm, cDecls.tail ++ pDecls.tail, NoTrafos))())
+//      } else {
+//        val c1 = LocalVar("c_1")(Bool)
+//        val p1 = LocalVar("p_1")(Perm)
+//        val p0 = LocalVar("p_0")(Perm)
+//        Some(CondExp(c1, PermAdd(p1, p0)(), p0)())
+//      }
     }
     Function(name, formalArgs, Perm, Seq(), Seq(), None, body)()
   }
