@@ -6,8 +6,11 @@
 
 package viper.silver.plugin
 
+import ch.qos.logback.classic.Logger
 import viper.silver.ast._
+import viper.silver.frontend.SilFrontendConfig
 import viper.silver.parser.PProgram
+import viper.silver.reporter.Reporter
 import viper.silver.verifier.{AbstractError, Failure, Success, VerificationResult}
 
 /** Manage the loaded plugins and execute them during the different hooks (see [[viper.silver.plugin.SilverPlugin]]).
@@ -21,10 +24,10 @@ class SilverPluginManager(val plugins: Seq[SilverPlugin]) {
   protected var _errors: Seq[AbstractError] = Seq()
   def errors = _errors
 
-  def foldWithError[T](start: T)(f: (T, SilverPlugin) => T): Option[T] ={
+  def foldWithError[T](start: T)(f: (T, SilverPlugin) => T): Option[T] = {
     var v: Option[T] = Some(start)
-    plugins.foreach(plugin => {
-      if (v.isDefined){
+    if (v.isDefined) {
+      plugins.foreach(plugin => {
         val vprime = f(v.get, plugin)
         v = if (plugin.errors.isEmpty){
           Some(vprime)
@@ -32,8 +35,8 @@ class SilverPluginManager(val plugins: Seq[SilverPlugin]) {
           _errors ++= plugin.errors
           None
         }
-      }
-    })
+      })
+    }
     v
   }
 
@@ -76,22 +79,108 @@ class SilverPluginManager(val plugins: Seq[SilverPlugin]) {
   */
 object SilverPluginManager {
 
-  def apply(pluginArg: Option[String]): SilverPluginManager =
+  def apply(pluginArg: Option[String])
+           (reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig): SilverPluginManager =
     pluginArg match {
       case Some(plugins) =>
-        new SilverPluginManager(resolveAll(plugins))
+        new SilverPluginManager(resolveAll(plugins)(reporter, logger, cmdArgs))
       case None =>
         new SilverPluginManager(Seq())
     }
 
-  def resolveAll(pluginArg: String): Seq[SilverPlugin] =
-    pluginArg.split(":").toSeq.map(resolve).filter(_.isDefined).map(_.get)
+  def apply() = new SilverPluginManager(Seq())
 
-  def resolve(clazzName: String): Option[SilverPlugin] = {
+  def resolveAll(pluginArg: String)
+                (reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig): Seq[SilverPlugin] =
+    pluginArg.split(":").toSeq.map(resolve(_, reporter, logger, cmdArgs)).filter(_.isDefined).map(_.get)
+
+  /** Tries to create an instance of the plugin class.
+    *
+    * The plugin constructor is expected to take either zero or three arguments (as specified in [[viper.silver.plugin.IOAwarePlugin]]):
+    *  [[viper.silver.reporter.Reporter]],
+    *  [[ch.qos.logback.classic.Logger]],
+    *  [[viper.silver.frontend.SilFrontendConfig]].
+    *
+    * Example plugin class declarations:
+    * <pre>
+    * class MyPlugin(val _reporter: Reporter,
+    *                val _logger: Logger,
+    *                val _cmdArgs: SilFrontendConfig)
+    *                extends IOAwarePlugin(_reporter, _logger, _cmdArgs) with SilverPlugin
+    * </pre>
+    * <pre>
+    * class MyPlugin extends SilverPlugin
+    * </pre>
+    *
+    * class TestPluginImport extends SilverPlugin
+    *
+    * @param clazzName The fully qualified name of the plugin class.
+    * @param reporter  The reporter to be used in the plugin.
+    * @param logger    The logger to be used in the plugin.
+    * @param cmdArgs   The config object to be accessible from the plugin.
+    *
+    * @return A fresh instance of the plugin class
+    *
+    * @throws PluginNotFoundException  if the class is not found in the current environment.
+    * @throws PluginWrongTypeException if the plugin class does not extend [[viper.silver.plugin.SilverPlugin]]
+    * @throws PluginWrongArgsException if the plugin does not provide a constructor with the expected arguments.
+    */
+  def resolve(clazzName: String, reporter: Reporter, logger: Logger, cmdArgs: SilFrontendConfig): Option[SilverPlugin] = {
+    val clazz = try {
+      val constructor = Class.forName(clazzName).getConstructor(
+        classOf[viper.silver.reporter.Reporter],
+        classOf[ch.qos.logback.classic.Logger],
+        classOf[viper.silver.frontend.SilFrontendConfig])
+      Some(constructor.newInstance(reporter, logger, cmdArgs))
+    } catch {
+      case nsm1: NoSuchMethodException =>
+        try {
+          Some(Class.forName(clazzName).newInstance())
+        } catch {
+          case nsm2: NoSuchMethodException =>
+            throw PluginWrongArgsException(clazzName)
+        }
+      case cnf: ClassNotFoundException =>
+        None
+    }
+    clazz match {
+      case Some(instance) if instance.isInstanceOf[SilverPlugin] =>
+        Some(instance.asInstanceOf[SilverPlugin])
+      case Some(instance) =>
+        throw PluginWrongTypeException(instance.getClass.getName)
+      case None =>
+        throw PluginNotFoundException(clazzName)
+    }
+  }
+
+  /** Tries to create an instance of the plugin class. Use this version only for testing and in contexts
+    * where Silver's IO is not available.
+    *
+    * The plugin constructor is expected to take either zero arguments.
+    *
+    * Example plugin class declaration:
+    * <pre>
+    * class MyPlugin extends SilverPlugin
+    * </pre>
+    *
+    * class TestPluginImport extends SilverPlugin
+    *
+    * @param clazzName The fully qualified name of the plugin class.
+    *
+    * @return A fresh instance of the plugin class
+    *
+    * @throws PluginNotFoundException  if the class is not found in the current environment.
+    * @throws PluginWrongTypeException if the plugin class does not extend [[viper.silver.plugin.SilverPlugin]]
+    * @throws PluginWrongArgsException if the plugin does not provide a constructor with no arguments.
+    */
+  def resolve(clazzName: String): Some[SilverPlugin] = {
     val clazz = try {
       Some(Class.forName(clazzName).newInstance())
     } catch {
-      case e: ClassNotFoundException => None
+      case nsm1: NoSuchMethodException =>
+        throw PluginWrongArgsException(clazzName)
+      case cnf: ClassNotFoundException =>
+        None
     }
     clazz match {
       case Some(instance) if instance.isInstanceOf[SilverPlugin] =>
@@ -111,5 +200,9 @@ object SilverPluginManager {
 
   case class PluginWrongTypeException(name: String) extends PluginException {
     override def toString: String = s"Plugin $name has wrong type."
+  }
+
+  case class PluginWrongArgsException(name: String) extends PluginException {
+    override def toString: String = s"Plugin $name does not implement a constructor with the required signature."
   }
 }

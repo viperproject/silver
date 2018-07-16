@@ -285,14 +285,8 @@ object Consistency {
   }
 
   def onlyDirectUse(v: LocalVar, e: Exp): Boolean = e match {
-    case l: LocalVar => if (v == l) false else true
-    case _ => {
-      var noQuantifiedVar = true
-      for (exp <- e.subExps) {
-        noQuantifiedVar = noQuantifiedVar && onlyDirectUse(v, exp)
-      }
-      noQuantifiedVar
-    }
+    case l: LocalVar => v != l
+    case _ => e.subExps.forall(exp => onlyDirectUse(v, exp))
   }
 
   //check all properties that need to be satisfied by the arguments of forperm expressions
@@ -308,23 +302,17 @@ object Consistency {
   }
 
   def allVariablesUsed(vars: Seq[LocalVarDecl], resArgs: Seq[Exp]): Boolean = {
-    for (v <- vars) {
-      var ok = false
-      for (a <- resArgs) {
-        val asub = a.deepCollect {case vr: LocalVar => if (vr == v.localVar) vr}.filter(_.isInstanceOf[LocalVar])
-        ok = ok || (a == v.localVar || asub.nonEmpty)
-      }
-      if (!ok) return false
-    }
-    true
+    vars.forall(v => resArgs.exists(a => a == v.localVar ||
+      a.deepCollect[LocalVar]{case vr: LocalVar if vr == v.localVar => vr}.nonEmpty))
   }
 
   def checkForpermArgUse(fp: ForPerm, program: Program): Unit = {
 
-    val resArgs = fp.accessRes match {
+    val resArgs = fp.resource match {
       case fa: FieldAccess => Seq(fa.rcv)
       case pa: PredicateAccess => pa.args
       case w: MagicWand => w.subexpressionsToEvaluate(program)
+      case other => sys.error(s"Unexpectedly found $other")
     }
 
     recordIfNot(fp, allVariablesUsed(fp.variables, resArgs), "All quantified variables need to be used in a resource")

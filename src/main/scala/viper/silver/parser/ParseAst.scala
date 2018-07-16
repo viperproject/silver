@@ -704,8 +704,7 @@ sealed trait PHeapOpApp extends POpApp{
 //  override final val typeSubstitutions = _typeSubstitutions
 }
 
-sealed  trait PResourceAccess extends PHeapOpApp {
-}
+sealed trait PResourceAccess extends PHeapOpApp
 
 sealed trait PLocationAccess extends PResourceAccess {
   def idnuse: PIdnUse
@@ -765,7 +764,7 @@ sealed trait PQuantifier extends PBinder with PScope{
 case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[PTrigger] = Seq()}
 case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp) extends PQuantifier
 
-case class PForPerm(vars: Seq[PFormalArgDecl], accessRes: PResourceAccess, body: PExp) extends  PQuantifier{
+case class PForPerm(vars: Seq[PFormalArgDecl], accessRes: PResourceAccess, body: PExp) extends PQuantifier {
   val triggers: Seq[PTrigger] = Seq()
 }
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
@@ -1135,7 +1134,7 @@ object Nodes {
       case PLet(exp, nestedScope) => Seq(exp, nestedScope)
       case PLetNestedScope(variable, body) => Seq(variable, body)
       case PForall(vars, triggers, exp) => vars ++ triggers ++ Seq(exp)
-      case PForPerm(vars,res, expr) => vars :+ res :+ expr
+      case PForPerm(vars, res, expr) => vars :+ res :+ expr
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)
       case PCurPerm(loc) => Seq(loc)

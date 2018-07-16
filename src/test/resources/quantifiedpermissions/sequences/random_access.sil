@@ -7,7 +7,7 @@ method test01(s: Seq[Ref], a: Int, b: Int, n: Int)
   var j: Int
 
   inhale 0 <= j && j < n
-  inhale forall i: Int :: i in [0..n) ==> acc(s[a + i*b].f)
+  inhale forall i: Int :: {i in [0..n)} i in [0..n) ==> acc(s[a + i*b].f)
     /* Yields the non-null axiom
 
          forall i: Int
