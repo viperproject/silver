@@ -26,3 +26,10 @@ method m2(x: Ref, y: Ref, z: Ref) {
 
     assert x == z
 }
+
+method m3(x: Ref, y: Ref, z: Ref) {
+    inhale (let p == (write) in acc(x.f, p)) --* acc(y.f)
+    inhale acc(y.f) --* acc(z.f)
+
+    assert forperm a: Ref, b: Ref [(let p == (write) in acc(a.f, p)) --* acc(b.f)] :: a == x && b == y
+}

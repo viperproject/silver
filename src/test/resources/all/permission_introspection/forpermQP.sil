@@ -71,7 +71,7 @@ method m7(xs: Set[Ref], ys: Set[Ref], zs: Set[Ref]) {
     inhale (forall x: Ref :: x in xs ==> acc(x.f)) --* (forall y: Ref :: y in ys ==> acc(y.f))
     inhale (forall z: Ref :: z in zs ==> acc(z.f)) --* (forall y: Ref :: y in ys ==> acc(y.f))
 
-    //assert forperm a: Perm [(forall x: Ref :: x in xs ==> acc(x.f, a)) --* (forall y: Ref :: y in ys ==> acc(y.f, a))] :: true
+    assert forperm a: Perm [(forall x: Ref :: x in xs ==> acc(x.f, a)) --* (forall y: Ref :: y in ys ==> acc(y.f, a))] :: a == write
 }
 
 predicate P(x: Ref, i: Int) {

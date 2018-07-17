@@ -53,6 +53,29 @@ method m6(x: Ref, y: Ref) {
     assert forperm a: Ref, b: Ref [p2(a,b)] :: x != y ==> a != y
 }
 
+method m7(x: Ref, y: Ref) {
+    inhale p2(x,y)
+    inhale p2(fun(x),fun(y))
+    assume fun(x) != x
+
+    assert forperm a: Ref [p2(fun(x),a)] :: a == fun(y)
+}
+
+method m8(x: Ref, y: Ref) {
+    inhale p1(x, 10)
+    inhale p1(y, 0)
+
+    assert forperm a: Ref [p1(a,10)] :: a == x
+}
+
+method m9(x: Ref, y: Ref, z: Ref, b: Bool) {
+    inhale p3((b ? x : y), z)
+    inhale p3(z, x)
+    assume z != (b ? x : y)
+
+    assert forperm a: Ref [p3((b ? x : y), a)] :: a == z
+}
+
 predicate p1(x: Ref, i: Int) {
     acc(x.f) && x.f > i
 }
@@ -64,3 +87,5 @@ predicate p2(x: Ref, y: Ref) {
 predicate p3(x: Ref, y: Ref) {
     acc(x.f) && acc(y.f)
 }
+
+function fun(x: Ref): Ref
