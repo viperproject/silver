@@ -50,7 +50,7 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
 
         val finalProgram = Program(domain, fields, functions, predicates, methods)(program)
 
-        finalProgram.members.map(m => m.subnodes.map (m => m.collect {case fp: ForPerm => fp}.map(fp => Consistency.checkForpermArgUse(fp, finalProgram))))
+        finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForpermArgUse(fp, finalProgram)}
 
         if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
         else None

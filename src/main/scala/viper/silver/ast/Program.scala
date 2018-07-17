@@ -6,13 +6,16 @@
 
 package viper.silver.ast
 
+import java.nio.channels.NonReadableChannelException
+
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
-import utility.{Consistency, DomainInstances, Types, Nodes, Visitor}
+import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.cfg.silver.CfgGenerator
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
-import viper.silver.utility.{DependencyAware, CacheHelper}
+import viper.silver.utility.{CacheHelper, DependencyAware}
+
 import scala.collection.immutable
 import scala.reflect.ClassTag
 
@@ -104,22 +107,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){n=> {
         n match {
           case sc: Scope => if (sc == currentScope) true else {
-            currentScope match {
-              /** fields and predicates in ForPerm's access list need to be treated as uses and not declarations
-                * see related TODO in ForPerm definition
-                */
-              case fp@ForPerm(_, accessList, _) if accessList.contains(sc) =>
-                val optionalError = sc match {
-                  case f: FieldAccess => checkNameUse[Field](f.field.name, fp,"Field", declarationMap)
-                  case p: PredicateAccess => checkNameUse[Predicate](p.predicateName, fp, "Predicate", declarationMap)
-                  case _ => None
-                }
-                optionalError match {
-                  case Some(error) => s :+= error
-                  case None =>
-                }
-              case _ => s ++= checkNamesInScope(sc, declarationMap)
-            }
+            s ++= checkNamesInScope(sc, declarationMap)
             false
           }
           case _ =>
