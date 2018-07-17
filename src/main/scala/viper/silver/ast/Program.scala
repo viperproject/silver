@@ -259,7 +259,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 }
 
 /** A method declaration. */
-case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
+case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], var body: Option[Seqn])
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
     extends Member with Callable with Contracted {
 
@@ -282,6 +282,24 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   }
 
   val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns
+
+  body = body match {
+    case Some(actualBody) =>
+      val newScopedDecls = actualBody.scopedDecls ++ actualBody.deepCollect({case l: Label => l})
+      Some(actualBody.copy(scopedDecls = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
+    case null => null
+    case None => None
+  }
+
+//  body match {
+//    case None => println("None")
+//    case _ => ()
+//  }
+
+  //body = body.map(actualBody => {
+  //  val newScopedDecls = actualBody.scopedDecls ++ actualBody.deepCollect({case l: Label => l})
+  //  actualBody.copy(scopedDecls = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT)
+  //})
 
   override lazy val check: Seq[ConsistencyError] =
     pres.flatMap(Consistency.checkPre) ++
