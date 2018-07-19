@@ -178,7 +178,7 @@ object ViperStrategy {
     case (ex: Exists, Seq(v: Seq[LocalVarDecl@unchecked], e: Exp), meta) => Exists(v, e)(meta._1, meta._2, meta._3)
     case (f: Forall, Seq(v: Seq[LocalVarDecl@unchecked], triggers: Seq[Trigger@unchecked], e: Exp), meta) =>
       Forall(v, triggers, e)(meta._1, meta._2, meta._3)
-    case (f: ForPerm, Seq(v: Seq[LocalVarDecl], res: ResourceAccess@unchecked, e: Exp), meta) =>
+    case (f: ForPerm, Seq(v: Seq[LocalVarDecl@unchecked], res: ResourceAccess@unchecked, e: Exp), meta) =>
       ForPerm(v, res, e)(meta._1, meta._2, meta._3)
     case (ie: InhaleExhaleExp, Seq(in: Exp, ex: Exp), meta) =>
       InhaleExhaleExp(in, ex)(meta._1, meta._2, meta._3)
