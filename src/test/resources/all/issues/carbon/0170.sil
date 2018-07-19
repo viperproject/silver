@@ -5,7 +5,7 @@ field f2: Ref
 method test1(a: Ref)
     requires acc(a.f2, write)
     ensures [true, acc(a.f2, write - perm(a.f1))]
-    ensures [true, (forperm [f2] r :: false)]
+    ensures [true, (forperm r: Ref [r.f2] :: false)]
 {
 }
 
@@ -13,5 +13,5 @@ method test2(a: Ref)
 {
     inhale acc(a.f2, write)
     exhale acc(a.f2, write - perm(a.f1))
-    exhale (forperm [f2] r :: false)
+    exhale (forperm r: Ref [r.f2] :: false)
 }

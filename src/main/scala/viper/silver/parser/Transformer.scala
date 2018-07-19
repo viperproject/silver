@@ -47,6 +47,7 @@ object Transformer {
         case _: PPredicateType | _: PWandType => parent
         case PDecStar() => parent
         case PDecTuple(exp) => PDecTuple(exp map go)
+        case PMagicWandExp(left, right) => PMagicWandExp(go(left), go(right))
         case PBinExp(left, op, right) => PBinExp(go(left), op, go(right))
         case PUnExp(op, exp) => PUnExp(op, go(exp))
         case _: PIntLit => parent
@@ -68,7 +69,7 @@ object Transformer {
         case PExists(vars, exp) => PExists(vars map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map go, go(exp))
         case PTrigger(exp) => PTrigger(exp map go)
-        case PForPerm(v, fields, exp) => PForPerm(go(v), fields map go, go(exp))
+        case PForPerm(vars, res, exp) => PForPerm(vars map go, go(res), go(exp))
         case PCondExp(cond, thn, els) => PCondExp(go(cond), go(thn), go(els))
         case PInhaleExhaleExp(in, ex) => PInhaleExhaleExp(go(in), go(ex))
         case PCurPerm(loc) => PCurPerm(go(loc))
@@ -166,6 +167,7 @@ object Transformer {
     case (p: PWandType, _) => p
 
     case (p: PBinExp, Seq(left: PExp, right: PExp)) => PBinExp(left, p.opName, right)
+    case (p: PMagicWandExp, Seq(left: PExp, right: PExp)) => PMagicWandExp(left, right)
     case (p: PUnExp, Seq(exp: PExp)) => PUnExp(p.opName, exp)
     case (_: PTrigger, Seq(exp: Seq[PExp@unchecked])) => PTrigger(exp)
     case (p: PIntLit, _) => p
@@ -181,7 +183,7 @@ object Transformer {
 
     case (_: PExists, Seq(vars: Seq[PFormalArgDecl@unchecked], exp: PExp)) => PExists(vars, exp)
     case (_: PForall, Seq(vars: Seq[PFormalArgDecl@unchecked], triggers: Seq[PTrigger@unchecked], exp: PExp)) => PForall(vars, triggers, exp)
-    case (_: PForPerm, Seq(v: PFormalArgDecl, fields: Seq[PIdnUse@unchecked], exp: PExp)) => PForPerm(v, fields, exp)
+    case (_: PForPerm, Seq(vars: Seq[PFormalArgDecl], res: PResourceAccess, exp: PExp)) => PForPerm(vars, res, exp)
     case (_: PCondExp, Seq(cond: PExp, thn: PExp, els: PExp)) => PCondExp(cond, thn, els)
     case (_: PInhaleExhaleExp, Seq(in: PExp, ex: PExp)) => PInhaleExhaleExp(in, ex)
     case (_: PCurPerm, Seq(loc: PLocationAccess)) => PCurPerm(loc)

@@ -702,10 +702,13 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
     case elem: N @unchecked => children ++ Seq(elem)
   })
 
-  /**
-    * Parent of node
+  /** Parent of node.
+    * Will result in a `java.util.NoSuchElementException` if no parent is available.
     */
   lazy val parent: N = ancestorList.dropRight(1).last
+
+  /** Parent of node, if available. */
+  lazy val parentOption: Option[N] = ancestorList.dropRight(1).lastOption
 
   // Equality between nodes
   private def isEqualNode(elem: AnyRef): Boolean = elem match {

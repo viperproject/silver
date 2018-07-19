@@ -25,7 +25,7 @@ object Success extends VerificationResult {
 case class Failure(errors: Seq[AbstractError]) extends VerificationResult {
   override def toString = {
     s"Verification failed with ${errors.size} errors:\n  " +
-      (errors map (e => "[" + e.fullId + "]" + e.readableMessage)).mkString("\n  ")
+      (errors map (e => "[" + e.fullId + "] " + e.readableMessage)).mkString("\n  ")
   }
 }
 

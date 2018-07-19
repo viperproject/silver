@@ -664,7 +664,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           nil
         else {
           val stmtsToShow =
-            stmts filterNot (s => s.isInstanceOf[Seqn] && s.info.comment.isEmpty && s.children.isEmpty && s.asInstanceOf[Seqn].scopedDecls.isEmpty)
+            stmts filterNot (s => s.isInstanceOf[Seqn] && s.info.comment.isEmpty && s.asInstanceOf[Seqn].ss.isEmpty && s.asInstanceOf[Seqn].scopedDecls.isEmpty)
 
           ssep((if (locals == null) Nil else locals map (text("var") <+> showVar(_))) ++ (stmtsToShow map show), line)
         }
@@ -741,10 +741,10 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       parens(text("forall") <+> showVars(v) <+> "::" <>
         (if (triggers.isEmpty) nil else space <> ssep(triggers map show, space)) <+>
         show(exp))
-    case ForPerm(v, fields, exp) =>
+    case ForPerm(vars, resource, exp) =>
       parens(text("forperm")
-        <+> brackets(ssep(fields map showLocation, char (',') <> space))
-        <+> v.name <+> "::" <+> show(exp))
+        <+> showVars(vars)
+        <+> brackets(show(resource)) <+> "::" <+> show(exp))
 
     case InhaleExhaleExp(in, ex) =>
       brackets(show(in) <> char (',') <+> show(ex))

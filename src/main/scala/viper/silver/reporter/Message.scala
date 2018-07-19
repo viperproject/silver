@@ -6,7 +6,7 @@
 
 package viper.silver.reporter
 
-import viper.silver.verifier.{Failure, Success, VerificationResult}
+import viper.silver.verifier.{AbstractError, Failure, Success, VerificationResult, Dependency}
 
 /**
   * The only possible messages for the reporter are defined in this file.
@@ -125,10 +125,53 @@ case class SymbExLogReport(entity: Entity, timestamp: Time, stuff: Option[Any])
   override val name: String = s"symbolic_execution_logger_report"
 }
 
+case class ExceptionReport(e: java.lang.Throwable) extends Message {
+
+  override def toString: String = s"exception_report(e=${e.toString()})"
+  override val name: String = s"exception_report"
+}
+
+case class InvalidArgumentsReport(tool_signature: String, errors: List[AbstractError]) extends Message {
+
+  override def toString: String = s"invalid_args_report(tool_signature=${tool_signature.toString()}, errors=[${errors.mkString(",")}])"
+  override val name: String = s"invalid_args_report"
+}
+
+case class ExternalDependenciesReport(deps: Seq[Dependency]) extends Message {
+
+  override def toString: String = s"external_dependencies_report(deps=[${deps.mkString(",")}])"
+  override val name: String = s"external_dependencies_report"
+}
+
+/**
+  * Simple messages contain just one text field.
+  */
+
+abstract class SimpleMessage(val text: String) extends Message {
+  override val name: String = s"simple_message"
+}
+
+case class ConfigurationConfirmation(override val text: String) extends SimpleMessage(text) {
+  override def toString: String = s"configuration_confirmation(text=${text.toString()})"
+  override val name: String = s"configuration_confirmation"
+}
+
+case class InternalWarningMessage(override val text: String) extends SimpleMessage(text) {
+
+  override def toString: String = s"internal_warning_message(text=${text.toString()})"
+  override val name: String = s"internal_warning_message"
+}
+
+case class CopyrightReport(override val text: String) extends SimpleMessage(text) {
+
+  override def toString: String = s"copyright_report(text=${text.toString()})"
+  override val name: String = s"copyright_report"
+}
+
 // FIXME: for debug purposes only: a pong message can be reported to indicate
 // FIXME: that the verification backend is alive.
-case class PongMessage(msg: String) extends Message {
+case class PongMessage(override val text: String) extends SimpleMessage(text) {
 
-  override def toString: String = s"dbg__pong(msg=$msg)"
+  override def toString: String = s"dbg__pong(text=$text)"
   override val name: String = s"dbg__pong"
 }

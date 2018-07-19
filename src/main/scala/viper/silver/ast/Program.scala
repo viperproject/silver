@@ -6,13 +6,16 @@
 
 package viper.silver.ast
 
+import java.nio.channels.NonReadableChannelException
+
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
-import utility.{Consistency, DomainInstances, Types, Nodes, Visitor}
+import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.cfg.silver.CfgGenerator
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
-import viper.silver.utility.{DependencyAware, CacheHelper}
+import viper.silver.utility.{CacheHelper, DependencyAware}
+
 import scala.collection.immutable
 import scala.reflect.ClassTag
 
@@ -95,7 +98,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       currentScope.scopedDecls.foreach(l=> {
         if(!Consistency.validUserDefinedIdentifier(l.name)) s :+= ConsistencyError(s"${l.name} is not a valid identifier.", l.pos)
         declarationMap.get(l.name) match {
-          case Some(d: Declaration) => s :+= ConsistencyError(s"Duplicate identifier ${l.name} found.", l.pos)
+          case Some(_: Declaration) => s :+= ConsistencyError(s"Duplicate identifier ${l.name} found.", l.pos)
           case None => declarationMap += (l.name -> l)
         }
       })
@@ -104,21 +107,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){n=> {
         n match {
           case sc: Scope => if (sc == currentScope) true else {
-            currentScope match {
-              /** fields and predicates in ForPerm's access list need to be treated as uses and not declarations
-                * see related TODO in ForPerm definition
-                */
-              case fp@ForPerm(_, accessList, _) if accessList.contains(sc) =>
-                val optionalError = sc match {
-                  case f: Field => checkNameUse[Field](f.name,fp, "Field", declarationMap)
-                  case p: Predicate => checkNameUse[Predicate](p.name, fp, "Predicate", declarationMap)
-                }
-                optionalError match {
-                  case Some(error) => s :+= error
-                  case None =>
-                }
-              case _ => s ++= checkNamesInScope(sc, declarationMap)
-            }
+            s ++= checkNamesInScope(sc, declarationMap)
             false
           }
           case _ =>
@@ -329,6 +318,8 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
     (if(!(body forall (_ isSubtype typ))) Seq(ConsistencyError("Type of function body must match function type.", pos)) else Seq() ) ++
     pres.flatMap(Consistency.checkPre) ++
     posts.flatMap(Consistency.checkPost) ++
+    posts.flatMap(p => if (!Consistency.noPermissions(p))
+      Seq(ConsistencyError("Function post-conditions must not contain permissions.", p.pos)) else Seq()) ++
     (if(decs.isDefined) Consistency.checkDecClause(decs.get) else Seq()) ++
     (if(body.isDefined) Consistency.checkFunctionBody(body.get) else Seq()) ++
     (if(!Consistency.noDuplicates(formalArgs)) Seq(ConsistencyError("There must be no duplicates in formal args.", pos)) else Seq())
@@ -414,7 +405,7 @@ case class DomainAxiom(name: String, exp: Exp)
   override lazy val check : Seq[ConsistencyError] =
     (if(!Consistency.noResult(exp)) Seq(ConsistencyError("Axioms can never contain result variables.", exp.pos)) else Seq()) ++
     (if(!Consistency.noOld(exp)) Seq(ConsistencyError("Axioms can never contain old expressions.", exp.pos)) else Seq()) ++
-    (if(!Consistency.noAccessLocation(exp)) Seq(ConsistencyError("Axioms can never contain access locations.", exp.pos)) else Seq()) ++
+    (if(!Consistency.noLocationAccesses(exp)) Seq(ConsistencyError("Axioms can never contain location accesses.", exp.pos)) else Seq()) ++
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError("Axioms must be of Bool type", exp.pos)) else Seq()) ++
     Consistency.checkPure(exp)
 
@@ -433,7 +424,7 @@ case class DomainFunc(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, un
                      (val pos: Position = NoPosition, val info: Info = NoInfo,val domainName : String, val errT: ErrorTrafo = NoTrafos)
                       extends AbstractDomainFunc with DomainMember {
   override lazy val check : Seq[ConsistencyError] =
-    (if(unique && formalArgs.nonEmpty) Seq(ConsistencyError("Only constants, i.e. nullary domain functions can be unique.", pos)) else Seq())
+    if (unique && formalArgs.nonEmpty) Seq(ConsistencyError("Only constants, i.e. nullary domain functions can be unique.", pos)) else Seq()
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
@@ -633,7 +624,7 @@ case object ImpliesOp extends BoolBinOp with BoolDomainFunc {
 }
 
 /** Separating implication/Magic Wand. */
-case object MagicWandOp extends BoolBinOp with AbstractDomainFunc {
+case object MagicWandOp extends BoolBinOp with AbstractDomainFunc with Resource {
   lazy val typ = Wand
   lazy val op = "--*"
   lazy val priority = 3

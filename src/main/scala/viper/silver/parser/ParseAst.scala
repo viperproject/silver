@@ -386,6 +386,8 @@ sealed trait PExp extends PNode {
   def forceSubstitution(ts: PTypeSubstitution)
 }
 
+case class PMagicWandExp(override val left: PExp, override val right: PExp) extends PBinExp(left, MagicWandOp.op, right) with PResourceAccess
+
 sealed trait PDecClause extends PNode
 
 case class PDecStar() extends PDecClause
@@ -564,7 +566,7 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
 
 case class PTrigger(exp: Seq[PExp]) extends PNode
 
-case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
+class PBinExp(val left: PExp, val opName: String, val right: PExp) extends POpApp {
 
   override val args = Seq(left, right)
   val extraElementType = PTypeVar("#E")
@@ -622,6 +624,34 @@ case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
     )
     case _ => sys.error(s"internal error - unknown binary operator $opName")
   }
+
+  override def canEqual(that: Any): Boolean = that.isInstanceOf[PBinExp]
+
+  override def productElement(n: Int): Any = n match {
+    case 0 => left
+    case 1 => opName
+    case 2 => right
+    case _ => throw new IndexOutOfBoundsException
+  }
+
+  override def productArity: Int = 3
+
+  override def equals(that: Any): Boolean = {
+    if (this.canEqual(that)) {
+      val other = that.asInstanceOf[PBinExp];
+      other.opName.equals(this.opName) && other.right.equals(this.right) && other.left.equals(this.left)
+    } else false
+  }
+
+  override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(left, opName, right)
+}
+
+object PBinExp extends ((PExp, String ,PExp) => PBinExp) {
+
+  def apply(left: PExp, opName: String, right: PExp): PBinExp = new PBinExp(left, opName, right)
+
+  def unapply(arg: PBinExp): Option[(PExp, String, PExp)] = Some(arg.left, arg.opName, arg.right)
+
 }
 
 case class PUnExp(opName: String, exp: PExp) extends POpApp {
@@ -673,7 +703,10 @@ sealed trait PHeapOpApp extends POpApp{
 //  val _typeSubstitutions : Set[PTypeSubstitution] = Set(PTypeSubstitution.id)
 //  override final val typeSubstitutions = _typeSubstitutions
 }
-sealed trait PLocationAccess extends PHeapOpApp {
+
+sealed trait PResourceAccess extends PHeapOpApp
+
+sealed trait PLocationAccess extends PResourceAccess {
   def idnuse: PIdnUse
 }
 
@@ -731,9 +764,8 @@ sealed trait PQuantifier extends PBinder with PScope{
 case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[PTrigger] = Seq()}
 case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp) extends PQuantifier
 
-case class PForPerm(variable: PFormalArgDecl, fields: Seq[PIdnUse], body: PExp) extends PQuantifier{
-  val triggers : Seq[PTrigger] = Seq()
-  override val vars = Seq(variable)
+case class PForPerm(vars: Seq[PFormalArgDecl], accessRes: PResourceAccess, body: PExp) extends PQuantifier {
+  val triggers: Seq[PTrigger] = Seq()
 }
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
  * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but
@@ -762,13 +794,14 @@ case class PInhaleExhaleExp(in: PExp, ex: PExp) extends PHeapOpApp{
     Map(POpApp.pArgS(0) -> Bool,POpApp.pArgS(1) -> Bool, POpApp.pResS -> Bool)
   )
 }
-case class PCurPerm(loc: PLocationAccess) extends PHeapOpApp{
+case class PCurPerm(res: PResourceAccess) extends PHeapOpApp{
   override val opName = "#perm"
-  override val args = Seq(loc)
+  override val args = Seq(res)
   val signatures : List[PTypeSubstitution] = List(
     Map(POpApp.pResS -> Perm)
   )
 }
+
 case class PNoPerm() extends PSimpleLiteral{typ = Perm}
 case class PFullPerm() extends PSimpleLiteral{typ = Perm}
 case class PWildcard() extends PSimpleLiteral{typ = Perm}
@@ -1016,9 +1049,29 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
 }
 case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
 case class PImport(file: String) extends PNode
-case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt]) extends PMember with PGlobalDeclaration
+case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt]) extends PMember with PGlobalDeclaration {
+  def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body): PMethod = {
+    StrategyBuilder.Slim[PNode]({
+      case m: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
+    }).duplicateEverything.execute[PMethod](this)
+  }
+  def deepCopyWithNameSubstitution(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body)
+                                  (idn_generic_name: String, idn_substitution: String): PMethod = {
+    StrategyBuilder.Slim[PNode]({
+      case m: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
+      case PIdnDef(name) if name == idn_generic_name => PIdnDef(idn_substitution)
+      case PIdnUse(name) if name == idn_generic_name => PIdnUse(idn_substitution)
+    }).duplicateEverything.execute[PMethod](this)
+  }
+}
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecClause], body: Option[PExp]) extends PAnyFunction
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecClause], body: Option[PExp]) extends PAnyFunction {
+  def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, decs: Option[PDecClause] = this.decs, body: Option[PExp] = this.body): PFunction = {
+    StrategyBuilder.Slim[PNode]({
+      case f: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, decs, body)
+    }).duplicateEverything.execute[PFunction](this)
+  }
+}
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PAnyFunction
 case class PAxiom(idndef: PIdnDef, exp: PExp)(val domainName:PIdnUse) extends PScope with PGlobalDeclaration  //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
@@ -1061,6 +1114,7 @@ object Nodes {
       case PMultisetType(elemType) => Seq(elemType)
       case PUnknown() => Nil
       case PBinExp(left, op, right) => Seq(left, right)
+      case PMagicWandExp(left, right) => Seq(left, right)
       case PUnExp(op, exp) => Seq(exp)
       case PTrigger(exp) => exp
       case PIntLit(i) => Nil
@@ -1080,7 +1134,7 @@ object Nodes {
       case PLet(exp, nestedScope) => Seq(exp, nestedScope)
       case PLetNestedScope(variable, body) => Seq(variable, body)
       case PForall(vars, triggers, exp) => vars ++ triggers ++ Seq(exp)
-      case PForPerm(v,fields, expr) => v +: fields :+ expr
+      case PForPerm(vars, res, expr) => vars :+ res :+ expr
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)
       case PCurPerm(loc) => Seq(loc)

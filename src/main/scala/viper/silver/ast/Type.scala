@@ -12,6 +12,7 @@
 
 package viper.silver.ast
 
+import scala.collection.breakOut
 import utility.Types
 import viper.silver.verifier.ConsistencyError
 
@@ -130,17 +131,24 @@ sealed case class MultisetType(override val  elementType: Type) extends Collecti
 //    MultisetType(elementType.substitute(typVarsMap))
 }
 
-/**
- * Type for user-defined domains. See also the companion object below, which allows passing a Domain - this should be used in general for creation (so that domainTypVars is guaranteed to be set correctly)
- *
- * @param domainName The name of the underlying domain.
- * @param typVarsMap Maps type parameters to (possibly concrete) types. May not map all type
- *                   parameters, may even be empty.
- */
-
-sealed case class DomainType (domainName: String, typVarsMap: Map[TypeVar, Type])
-                      (val typeParameters: Seq[TypeVar])
+/** Type for user-defined domains. See also the companion object below, which allows passing a
+  * Domain - this should be used in general for creation (so that domainTypVars is guaranteed to
+  * be set correctly)
+  *
+  * @param domainName The name of the underlying domain.
+  * @param partialTypVarsMap Maps type parameters to (possibly concrete) types. May not map all
+  *                          type parameters, may even be empty.
+  */
+sealed case class DomainType(domainName: String, partialTypVarsMap: Map[TypeVar, Type])
+                            (val typeParameters: Seq[TypeVar])
     extends GenericType {
+
+  /* Map each type parameter `A` to `partialTypVarsMap(A)`, if defined, otherwise to `A` itself.
+   * `typVarsMap` thus contains a mapping for each type parameter.
+   */
+  val typVarsMap: Map[TypeVar, Type] =
+    typeParameters.map(tp => tp -> partialTypVarsMap.getOrElse(tp, tp))(breakOut)
+
   override lazy val check =
     if(!(typeParameters.toSet == typVarsMap.keys.toSet)) Seq(ConsistencyError(s"${typeParameters.toSet} doesn't equal ${typVarsMap.keys.toSet}", NoPosition)) else Seq()
 
