@@ -217,7 +217,8 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
   val scopedDecls = Seq() //field is a scope because it is a member; it has no locals
 }
 
-/** A decreases-Clause declaration. */
+/** A decreases-Clause declaration.
+    TODO: change [[Node]] to [[Hashable]] */
 sealed trait DecClause extends Node with Positioned with Infoed with TransformableErrors
 
 case class DecStar()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DecClause
