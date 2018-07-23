@@ -386,6 +386,8 @@ sealed trait PExp extends PNode {
   def forceSubstitution(ts: PTypeSubstitution)
 }
 
+case class PMagicWandExp(override val left: PExp, override val right: PExp) extends PBinExp(left, MagicWandOp.op, right) with PResourceAccess
+
 sealed trait PDecClause extends PNode
 
 case class PDecStar() extends PDecClause
@@ -564,7 +566,7 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
 
 case class PTrigger(exp: Seq[PExp]) extends PNode
 
-case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
+class PBinExp(val left: PExp, val opName: String, val right: PExp) extends POpApp {
 
   override val args = Seq(left, right)
   val extraElementType = PTypeVar("#E")
@@ -622,6 +624,34 @@ case class PBinExp(left: PExp, opName: String, right: PExp) extends POpApp {
     )
     case _ => sys.error(s"internal error - unknown binary operator $opName")
   }
+
+  override def canEqual(that: Any): Boolean = that.isInstanceOf[PBinExp]
+
+  override def productElement(n: Int): Any = n match {
+    case 0 => left
+    case 1 => opName
+    case 2 => right
+    case _ => throw new IndexOutOfBoundsException
+  }
+
+  override def productArity: Int = 3
+
+  override def equals(that: Any): Boolean = {
+    if (this.canEqual(that)) {
+      val other = that.asInstanceOf[PBinExp];
+      other.opName.equals(this.opName) && other.right.equals(this.right) && other.left.equals(this.left)
+    } else false
+  }
+
+  override def hashCode(): Int = viper.silver.utility.Common.generateHashCode(left, opName, right)
+}
+
+object PBinExp extends ((PExp, String ,PExp) => PBinExp) {
+
+  def apply(left: PExp, opName: String, right: PExp): PBinExp = new PBinExp(left, opName, right)
+
+  def unapply(arg: PBinExp): Option[(PExp, String, PExp)] = Some(arg.left, arg.opName, arg.right)
+
 }
 
 case class PUnExp(opName: String, exp: PExp) extends POpApp {
@@ -673,7 +703,10 @@ sealed trait PHeapOpApp extends POpApp{
 //  val _typeSubstitutions : Set[PTypeSubstitution] = Set(PTypeSubstitution.id)
 //  override final val typeSubstitutions = _typeSubstitutions
 }
-sealed trait PLocationAccess extends PHeapOpApp {
+
+sealed trait PResourceAccess extends PHeapOpApp
+
+sealed trait PLocationAccess extends PResourceAccess {
   def idnuse: PIdnUse
 }
 
@@ -731,9 +764,8 @@ sealed trait PQuantifier extends PBinder with PScope{
 case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[PTrigger] = Seq()}
 case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp) extends PQuantifier
 
-case class PForPerm(variable: PFormalArgDecl, fields: Seq[PIdnUse], body: PExp) extends PQuantifier{
-  val triggers : Seq[PTrigger] = Seq()
-  override val vars = Seq(variable)
+case class PForPerm(vars: Seq[PFormalArgDecl], accessRes: PResourceAccess, body: PExp) extends PQuantifier {
+  val triggers: Seq[PTrigger] = Seq()
 }
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
  * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but
@@ -762,13 +794,14 @@ case class PInhaleExhaleExp(in: PExp, ex: PExp) extends PHeapOpApp{
     Map(POpApp.pArgS(0) -> Bool,POpApp.pArgS(1) -> Bool, POpApp.pResS -> Bool)
   )
 }
-case class PCurPerm(loc: PLocationAccess) extends PHeapOpApp{
+case class PCurPerm(res: PResourceAccess) extends PHeapOpApp{
   override val opName = "#perm"
-  override val args = Seq(loc)
+  override val args = Seq(res)
   val signatures : List[PTypeSubstitution] = List(
     Map(POpApp.pResS -> Perm)
   )
 }
+
 case class PNoPerm() extends PSimpleLiteral{typ = Perm}
 case class PFullPerm() extends PSimpleLiteral{typ = Perm}
 case class PWildcard() extends PSimpleLiteral{typ = Perm}
@@ -1081,6 +1114,7 @@ object Nodes {
       case PMultisetType(elemType) => Seq(elemType)
       case PUnknown() => Nil
       case PBinExp(left, op, right) => Seq(left, right)
+      case PMagicWandExp(left, right) => Seq(left, right)
       case PUnExp(op, exp) => Seq(exp)
       case PTrigger(exp) => exp
       case PIntLit(i) => Nil
@@ -1100,7 +1134,7 @@ object Nodes {
       case PLet(exp, nestedScope) => Seq(exp, nestedScope)
       case PLetNestedScope(variable, body) => Seq(variable, body)
       case PForall(vars, triggers, exp) => vars ++ triggers ++ Seq(exp)
-      case PForPerm(v,fields, expr) => v +: fields :+ expr
+      case PForPerm(vars, res, expr) => vars :+ res :+ expr
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)
       case PCurPerm(loc) => Seq(loc)

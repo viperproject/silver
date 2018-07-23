@@ -77,7 +77,7 @@ trait SilFrontend extends DefaultFrontend {
   protected var _config: SilFrontendConfig = _
   def config: SilFrontendConfig = _config
 
-  protected var _plugins: SilverPluginManager = SilverPluginManager(None)
+  protected var _plugins: SilverPluginManager = SilverPluginManager()
   def plugins: SilverPluginManager = _plugins
 
   protected var _startTime: Long = _
@@ -160,7 +160,7 @@ trait SilFrontend extends DefaultFrontend {
 
     if(_config != null) {
       // reset error messages of plugins
-      _plugins = SilverPluginManager(_config.plugin.toOption)
+      _plugins = SilverPluginManager(_config.plugin.toOption)(reporter, logger, _config)
     }
   }
 

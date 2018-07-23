@@ -15,7 +15,7 @@ method Main$change(this: Ref, m: Ref, n: Int)
   ensures [true, perm(m.mustReleaseBounded$) == none]
   ensures [true, write - perm(m.mustReleaseBounded$) == write]
   ensures [true, acc(m.mustReleaseUnbounded$, write - perm(m.mustReleaseBounded$))] 
-  ensures [true, (forperm [mustReleaseUnbounded$] r$_15 :: false)]
+  ensures [true, (forperm r$_15: Ref [r$_15.mustReleaseUnbounded$] :: false)]
 {
   assert m != null
   // Check if we already acquired lock

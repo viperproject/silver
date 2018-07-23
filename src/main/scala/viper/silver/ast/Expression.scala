@@ -318,8 +318,8 @@ case class PermDiv(left: Exp, right: Exp)(val pos: Position = NoPosition, val in
     (if(left.typ != Perm) Seq(ConsistencyError(s"First parameter of permission division expression must be Perm, but found ${left.typ}", left.pos)) else Seq()) ++
     (if(right.typ != Int) Seq(ConsistencyError(s"Second parameter of permission division expression must be Int, but found ${right.typ}", right.pos)) else Seq())
 }
-/** The permission currently held for a given location. */
-case class CurrentPerm(loc: LocationAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends PermExp
+/** The permission currently held for a given resource. */
+case class CurrentPerm(res: ResourceAccess)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends PermExp
 
 // Arithmetic expressions
 case class PermMinus(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DomainUnExp(PermNegOp) with PermExp
@@ -565,36 +565,23 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
 
 
 /** Quantification over heap chunks with positive permission in any of the listed fields */
-/** TODO: Seq[Location] is not ideal for accessList, because it is a seq of uses rather than declarations;
-  * FieldAccess/PredicateAccess (LocationAccess) aren't good alternatives either, because they require
-  * a field receiver/predicate arguments whereas field/predicate id would suffice.
-  */
-case class ForPerm(variable: LocalVarDecl, accessList: Seq[Location], body: Exp)
+
+case class ForPerm(variables: Seq[LocalVarDecl], resource: ResourceAccess, body: Exp)
                   (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] =
     (if(!(body isSubtype Bool)) Seq(ConsistencyError(s"Body of forperm quantifier must be of Bool type, but found ${body.typ}.", body.pos)) else Seq()) ++
-    Consistency.checkPure(body) ++
-    (if(!Consistency.noPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain perm expressions.", body.pos)) else Seq()) ++
-    (if(!Consistency.noForPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain nested forperm expressions.", body.pos)) else Seq())
+      Consistency.checkPure(body) ++
+      (if(!Consistency.noPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain perm expressions.", body.pos)) else Seq()) ++
+      (if(!Consistency.noForPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain nested forperm expressions.", body.pos)) else Seq())
 
-  def variables: Seq[LocalVarDecl] = Seq(variable)
   def exp: Exp = body
 
-  //TODO: make type of Seq more specific
   override lazy val typ = Bool
 
-  override def isValid : Boolean = this match {
-    case _ if body.contains[PermExp] => false
-    case ForPerm(_, Seq( Predicate(_, Seq(LocalVarDecl(_, Ref)), _) ), _) => true
-    case _ => false
-  }
+  override def isValid : Boolean = !body.contains[PermExp]
 
   def withVariables(variables: Seq[LocalVarDecl]): ForPerm = {
-    assert(
-      variables.lengthCompare(1) == 0,
-      s"Expected exactly one variable, but got $variables")
-
-    copy(variables.head)(this.pos, this.info, this.errT)
+    copy(variables)(this.pos, this.info, this.errT)
   }
 }
 
