@@ -107,7 +107,7 @@ object CacheHelper {
     new String(MessageDigest.getInstance("MD5").digest(s.getBytes))
   }
   def computeEntityHash(prefix: String, astNode: Node): String = {
-    val node = prefix + "_" + FastPrettyPrinter.pretty(astNode)
+    val node = prefix + s"_<${astNode.getClass.toString()}>_" + FastPrettyPrinter.pretty(astNode)
     CacheHelper.buildHash(node)
   }
 }

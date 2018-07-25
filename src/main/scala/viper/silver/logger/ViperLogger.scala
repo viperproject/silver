@@ -12,13 +12,13 @@ import org.slf4j.LoggerFactory
   *
   * @param  name  The name of the logger.
   * @param  file  Either [[Some]] file to which the logger will be written,
-  *               or [[None]], if which case logs will be written to STDOUT.
+  *               or [[None]], in which case logs will be written to STDOUT.
   * @param  level The level of detail for this logger (should be one of the
   *               following values:
   *               @see [[ch.qos.logback.classic.Level.toLevel]])
   *
   * @return       The logger factory that will lazily produce a singleton
-  *               logger once [[viper.silver.logger.ViperLogger.get]] is evaluated.
+  *               logger once [[viper.silver.logger.ViperLogger::get]] is evaluated.
   *
   * @author       Based on https://stackoverflow.com/questions/16910955/programmatically-configure-logback-appender
   */

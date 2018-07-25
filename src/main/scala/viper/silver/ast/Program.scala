@@ -250,7 +250,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
-                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos, val is_cached: Boolean = false)
     extends Member with Callable with Contracted {
 
   /* TODO: Should not have to be a lazy val, see also the comment for method
@@ -300,6 +300,12 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     * Returns a control flow graph that corresponds to this method.
     */
   def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
+}
+
+object Mathod {
+  def apply(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
+           (pos: Position, info: Info, errT: ErrorTrafo) =
+    new Method(name, formalArgs, formalReturns, pres, posts, body)(pos, info, errT, false)
 }
 
 /** A function declaration */

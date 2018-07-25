@@ -23,6 +23,7 @@ trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
   def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
   override def readableMessage = readableMessage(false, true)
+  def loggableMessage = s"$fullId-$pos"
   def fullId = s"$id:${reason.id}"
 }
 
