@@ -6,8 +6,6 @@
 
 package viper.silver.ast
 
-import java.nio.channels.NonReadableChannelException
-
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
@@ -302,6 +300,19 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
 }
 
+object MethodWithLabelsInScope {
+  def apply(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
+                 (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos, is_cached: Boolean = false): Method = {
+    val newBody = body match {
+      case Some(actualBody) =>
+        val newScopedDecls = actualBody.scopedDecls ++ actualBody.deepCollect({case l: Label => l})
+        Some(actualBody.copy(scopedDecls = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
+      case _ => body
+    }
+    Method(name, formalArgs, formalReturns, pres, posts, newBody)(pos, info, errT, is_cached)
+  }
+}
+
 object Mathod {
   def apply(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
            (pos: Position, info: Info, errT: ErrorTrafo) =
@@ -409,7 +420,7 @@ case class DomainAxiom(name: String, exp: Exp)
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError("Axioms must be of Bool type", exp.pos)) else Seq()) ++
     Consistency.checkPure(exp)
 
-  override def getMetadata:Seq[Any] = {
+    override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
   val scopedDecls = Seq()

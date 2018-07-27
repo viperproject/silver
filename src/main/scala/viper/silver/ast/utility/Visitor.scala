@@ -122,7 +122,7 @@ object Visitor {
     * of nodes ns, but also to all those transitively traversed via `subs`.
     *
     * Subnodes of nodes for which `f` is defined are traversed as well. More
-    * precisely, children of a given `parent` a traversed before `f` is applied
+    * precisely, children of a given `parent` are traversed before `f` is applied
     * to the parent itself.
     * For example, if `f` is defined for `A(_)` and for `B()`, and if `f` is
     * used to perform a deep collect over the structure `X(B(), Y(), A(B()))`,
