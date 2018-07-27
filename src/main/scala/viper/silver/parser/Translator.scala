@@ -68,7 +68,7 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         b.copy(scopedDecls = newScopedDecls)(b.pos, b.info, b.errT)
       })
 
-      val finalMethod = m.copy(pres = pres map exp, posts = posts map exp, body = newBody)(m.pos, m.info, m.errT, m.is_cached)
+      val finalMethod = m.copy(pres = pres map exp, posts = posts map exp, body = newBody)(m.pos, m.info, m.errT)
 
       members(m.name) = finalMethod
 
