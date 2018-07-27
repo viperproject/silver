@@ -60,9 +60,18 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
   private def translate(m: PMethod): Method = m match {
     case PMethod(name, _, _, pres, posts, body) =>
       val m = findMethod(name)
-      val newBody = body.map(actualBody => stmt(actualBody).asInstanceOf[Seqn])
+
+      val newBody = body.map(actualBody => {
+        val b = stmt(actualBody).asInstanceOf[Seqn]
+        val newScopedDecls = b.scopedDecls ++ b.deepCollect {case l: Label => l}
+
+        b.copy(scopedDecls = newScopedDecls)(b.pos, b.info, b.errT)
+      })
+
       val finalMethod = m.copy(pres = pres map exp, posts = posts map exp, body = newBody)(m.pos, m.info, m.errT)
+
       members(m.name) = finalMethod
+
       finalMethod
   }
 

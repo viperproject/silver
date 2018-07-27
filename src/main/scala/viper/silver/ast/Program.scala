@@ -248,7 +248,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 }
 
 /** A method declaration. */
-case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], var body: Option[Seqn])
+case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
     extends Member with Callable with Contracted {
 
@@ -271,13 +271,6 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
   }
 
   val scopedDecls: Seq[Declaration] = formalArgs ++ formalReturns
-
-  body = body match {
-    case Some(actualBody) =>
-      val newScopedDecls = actualBody.scopedDecls ++ actualBody.deepCollect({case l: Label => l})
-      Some(actualBody.copy(scopedDecls = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
-    case _ => body
-  }
 
   override lazy val check: Seq[ConsistencyError] =
     pres.flatMap(Consistency.checkPre) ++
@@ -306,6 +299,19 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     * Returns a control flow graph that corresponds to this method.
     */
   def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
+}
+
+object MethodWithLabelsInScope {
+  def apply(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
+                 (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): Method = {
+    val newBody = body match {
+      case Some(actualBody) =>
+        val newScopedDecls = actualBody.scopedDecls ++ actualBody.deepCollect({case l: Label => l})
+        Some(actualBody.copy(scopedDecls = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
+      case _ => body
+    }
+    Method(name, formalArgs, formalReturns, pres, posts, newBody)(pos, info, errT)
+  }
 }
 
 /** A function declaration */
