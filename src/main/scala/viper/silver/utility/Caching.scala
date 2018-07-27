@@ -11,6 +11,7 @@ import java.security.MessageDigest
 import viper.silver.ast.pretty.FastPrettyPrinter
 import viper.silver.ast.{Member, Method, Node}
 
+import scala.collection.mutable
 import scala.language.postfixOps
 
 trait DependencyAware {
@@ -26,25 +27,28 @@ trait DependencyAware {
     *          The [[Program]] under consideration.
     * @param ns
     *          The list of [[Hashable]] AST nodes for which the dependencies are collected.
+    * @param marker
+    *          The set of visited nodes. Needed to avoid infinite recursion and duplicates.
     * @return
     *          List of dependency [[Hashable]]s.
     */
-  private def getDependenciesRec(p: Program, ns: Seq[Hashable]): List[Hashable] = {
+  private def getDependenciesRec(p: Program, ns: Seq[Hashable], marker: mutable.Set[Hashable]): List[Hashable] = {
     ns.flatMap {
-      n => n.deepCollect {
-        case func_app: FuncApp =>
-          val func = p.findFunction(func_app.funcname)
-          (func +: (getDependenciesRec(p, func.pres) ++ getDependenciesRec(p, func.posts))) ++ (func.body match {
-            case Some(e: Exp) => getDependenciesRec(p, Seq(e))
-            case _ => List()
-          })
-        case pred_access: PredicateAccess =>
-          val pred = p.findPredicate(pred_access.predicateName)
-          pred +: (pred.body match {
-            case Some(e: Exp) => getDependenciesRec(p, Seq(e))
-            case _ => List()
-          })
-      } flatten
+      n =>
+        n.deepCollect {
+          case func_app: FuncApp =>
+            val func = p.findFunction(func_app.funcname)
+            if (!marker.contains(func)) {
+              markSubAST(func, marker)
+              Seq(func) ++ getDependenciesRec(p, func.pres ++ func.posts ++ extractOptionalNode(func.body), marker)
+            } else Nil
+          case pred_access: PredicateAccess =>
+            val pred = p.findPredicate(pred_access.predicateName)
+            if (!marker.contains(pred)) {
+              markSubAST(pred, marker)
+              Seq(pred) ++ getDependenciesRec(p, extractOptionalNode(pred.body), marker)
+            } else Nil
+        } flatten
     } toList
   }
 
@@ -58,6 +62,8 @@ trait DependencyAware {
     *
     * Danger! A bug in this method may lead to unsoundness caused by caching.
     *
+    * TODO: add transitive dependencies via function decreases clauses.
+    *
     * @param p
     *          The [[Program]] under consideration.
     * @param m
@@ -65,20 +71,35 @@ trait DependencyAware {
     * @return
     *          List of dependency [[Hashable]]s.
     */
-  def getDependencies(p: Program, m: Method): List[Hashable] = p.domains ++ p.fields ++
-  (m.pres ++ m.posts ++ m.body.toSeq).flatMap {
-    n => n.deepCollect {
-      case method_call: MethodCall =>
-        val method = p.findMethod(method_call.methodName)
-        method.formalArgs ++ method.formalReturns ++ method.pres ++ method.posts ++ getDependenciesRec(p, method.pres ++ method.posts)
-      case func_app: FuncApp =>
-        val function = p.findFunction(func_app.funcname)
-        function +: getDependenciesRec(p, Seq(function))
-      case pred_access: PredicateAccess =>
-        val predicate = p.findPredicate(pred_access.predicateName)
-        predicate +: getDependenciesRec(p, Seq(predicate))
-    } flatten
-  } toList
+  def getDependencies(p: Program, m: Method): List[Hashable] = {
+    val marker: mutable.Set[Hashable] = mutable.Set.empty
+    markSubAST(m, marker)
+    Seq(m) ++ p.domains ++ p.fields ++
+      (m.pres ++ m.posts ++ m.body.toSeq).flatMap {
+        n => n.deepCollect {
+          case method_call: MethodCall =>
+            val method = p.findMethod(method_call.methodName)
+            if (!marker.contains(method)) {
+              method.formalArgs ++ method.formalReturns ++
+                method.pres ++ method.posts ++
+                getDependenciesRec(p, method.formalArgs ++ method.formalReturns ++ method.pres ++ method.posts, marker)
+            } else Nil
+          case func_app: FuncApp =>
+            getDependenciesRec(p, Seq(func_app), marker)
+          case pred_access: PredicateAccess =>
+            getDependenciesRec(p, Seq(pred_access), marker)
+        } flatten
+      } toList
+  }
+
+  private def markSubAST(node: Node, marker: mutable.Set[Hashable]): Unit = node.deepCollect {
+    case n: Hashable => marker.add(n)
+  }
+
+  private def extractOptionalNode(bla: Option[Hashable]): Seq[Hashable] = bla match {
+    case Some(n) => Seq(n)
+    case None => Nil
+  }
 }
 
 object CacheHelper {
@@ -86,7 +107,7 @@ object CacheHelper {
     new String(MessageDigest.getInstance("MD5").digest(s.getBytes))
   }
   def computeEntityHash(prefix: String, astNode: Node): String = {
-    val node = prefix + "_" + FastPrettyPrinter.pretty(astNode)
+    val node = prefix + s"_<${astNode.getClass.toString()}>_" + FastPrettyPrinter.pretty(astNode)
     CacheHelper.buildHash(node)
   }
 }

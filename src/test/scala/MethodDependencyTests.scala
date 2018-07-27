@@ -5,7 +5,7 @@
  */
 
 import org.scalatest._
-import viper.silver.ast.{And, Bool, Domain, Field, FieldAccess, FieldAccessPredicate, FullPerm, FuncApp, Function, Hashable, LocalVar, LocalVarDecl, Method, MethodCall, Predicate, PredicateAccess, PredicateAccessPredicate, Program, Ref, Seqn, TrueLit, Unfold, While}
+import viper.silver.ast._
 
 class MethodDependencyTests extends FunSuite with Matchers {
 
@@ -56,6 +56,30 @@ class MethodDependencyTests extends FunSuite with Matchers {
           }
         }
 
+    method mrec_a()
+    {
+      rec_b()
+    }
+
+    method mrec_b()
+    {
+      rec_a()
+    }
+
+    function frec_a(): Bool
+      ensures frec_b()
+
+    function frec_b(): Bool
+    {
+      frec_a()
+    }
+
+    method test_rec()
+      requires frec_a()
+    {
+      mrec_a()
+    }
+
    * The method test must depend on all AST nodes but the following: fun3, p3, m1.
    */
 
@@ -98,17 +122,17 @@ class MethodDependencyTests extends FunSuite with Matchers {
 
   val p: Program = Program(Seq(D0), Seq(f0, f1, f2, f3, f4), Seq(fun0, fun1, fun2, fun3, fun4), Seq(p0, p1, p2, p3, p4), Seq(m0, m1, test))()
 
-  //println(p)
+//  println(p)
 
   val global_deps: List[Hashable] = List(D0, f0,f1,f2,f3,f4)
   val via_pre_deps: List[Hashable] = List(fun0, p0)
   val via_post_deps: List[Hashable] = List(fun1, p1)
   val via_body_deps: List[Hashable] = List(fun2, p2) ++ m0.formalArgs ++ m0.formalReturns ++ m0.pres ++ m0.posts
   val transitive_deps: List[Hashable] = List(fun4, p4)
-  val must_be_deps: List[Hashable] = global_deps ++ via_pre_deps ++ via_post_deps ++ via_body_deps ++ transitive_deps
+  val must_be_deps: List[Hashable] = List(test) ++ global_deps ++ via_pre_deps ++ via_post_deps ++ via_body_deps ++ transitive_deps
   val must_not_be_deps: List[Hashable] = List(fun3, p3, m0.body.get, m1)
 
-  val computed_deps = p.getDependencies(p, test)
+  val computed_deps: List[Hashable] = p.getDependencies(p, test)
 
 
   val test_prefix = s"Test Dependency Analysis"
@@ -123,7 +147,7 @@ class MethodDependencyTests extends FunSuite with Matchers {
 
   test(s"$test_prefix: are fields and domains global dependencies?") {
     global_deps.foreach {
-      case n =>
+      n =>
         if ( !computed_deps.contains(n) )
           fail(s"AST node ```$n``` is expected to be a global dependency of all methods, but is not present in the result of `getDependencies`.")
     }
@@ -131,7 +155,7 @@ class MethodDependencyTests extends FunSuite with Matchers {
 
   test(s"$test_prefix: are the dependencies from preconditions encountered for?") {
     via_pre_deps.foreach {
-      case n =>
+      n =>
         if ( !computed_deps.contains(n) )
           fail(s"AST node ```$n``` is expected to be a dependency from the precondition of ```$test```, but is not present in the result of `getDependencies`.")
     }
@@ -139,7 +163,7 @@ class MethodDependencyTests extends FunSuite with Matchers {
 
   test(s"$test_prefix: are the dependencies from postconditions encountered for?") {
     via_post_deps.foreach {
-      case n =>
+      n =>
         if ( !computed_deps.contains(n) )
           fail(s"AST node ```$n``` is expected to be a dependency from the postcondition of ```$test```, but is not present in the result of `getDependencies`.")
     }
@@ -147,7 +171,7 @@ class MethodDependencyTests extends FunSuite with Matchers {
 
   test(s"$test_prefix: are the dependencies from method's body encountered for?") {
     via_body_deps.foreach {
-      case n =>
+      n =>
         if ( !computed_deps.contains(n) )
           fail(s"AST node ```$n``` is expected to be a dependency from the body of ```$test```, but is not present in the result of `getDependencies`.")
     }
@@ -155,22 +179,81 @@ class MethodDependencyTests extends FunSuite with Matchers {
 
   test(s"$test_prefix: are transitive dependencies encountered for?") {
     transitive_deps.foreach {
-      case n =>
+      n =>
         if ( !computed_deps.contains(n) )
           fail(s"AST node ```$n``` is expected to be a transitive dependency of ```$test```, but is not present in the result of `getDependencies`.")
     }
   }
 
   test(s"$test_prefix: do we get too many dependencies?") {
+//    println(computed_deps.map(_.asInstanceOf[viper.silver.ast.Member].name))
     computed_deps.foreach {
-      case n =>
+      n =>
         if ( !must_be_deps.contains(n) || must_not_be_deps.contains(n) )
           fail(s"AST node ```$n``` is not expected to be a dependency of ```$test```, but is present in the result of `getDependencies`.")
     }
   }
 
+  test(s"$test_prefix: are there duplicated dependencies?") {
+    computed_deps.size should be (computed_deps.distinct.size)
+  }
+
   // If the following test is the only one to fail, the above tests are probably messed up.
   test(s"$test_prefix: sanity checks") {
+    must_be_deps.size should be (must_be_deps.distinct.size)
+    must_not_be_deps.size should be (must_not_be_deps.distinct.size)
+
+//    must_be_deps.foreach { n =>
+//      if (!computed_deps.contains(n)) println(n)
+//    }
     computed_deps.size should be (must_be_deps.size)
+  }
+
+  val prec_a: Predicate = Predicate("prec_a", Seq(), Some( PredicateAccess(Seq(), "prec_b")() ))()
+  val prec_b: Predicate = Predicate("prec_b", Seq(), Some( PredicateAccess(Seq(), "prec_a")() ))()
+
+  val mrec_a: Method = Method("mrec_a", Seq(), Seq(), Seq(), Seq( PredicateAccess(Seq(), "prec_b")() ), Some( Seqn( Seq( MethodCall("mrec_b", Seq(), Seq())(NoPosition, NoInfo, NoTrafos) ), Seq() )() ))()
+  val mrec_b: Method = Method("mrec_b", Seq(), Seq(), Seq(), Seq(),                                     Some( Seqn( Seq( MethodCall("mrec_a", Seq(), Seq())(NoPosition, NoInfo, NoTrafos) ), Seq() )() ))()
+
+  val frec_a: Function = Function("frec_a", Seq(), Bool, Seq(FuncApp("frec_b", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos)), Seq(), None, None)()
+  val frec_b: Function = Function("frec_b", Seq(), Bool, Seq(), Seq(), None, Some( FuncApp("frec_a", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos) ))()
+
+  val test_rec: Method = Method("test_rec", Seq(), Seq(),
+    Seq(FuncApp("frec_a", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos)),
+    Seq(),
+    Some( Seqn( Seq(
+      MethodCall("mrec_a",   Seq(), Seq())(NoPosition, NoInfo, NoTrafos),
+      MethodCall("test_rec", Seq(), Seq())(NoPosition, NoInfo, NoTrafos)), Seq() )() ))()
+
+  val rec_p: Program = Program(Seq(), Seq(), Seq(frec_a, frec_b), Seq(prec_a, prec_b), Seq(mrec_a, mrec_b, test_rec))()
+
+  val expected_rec_deps = List(test_rec,  frec_a, frec_b, mrec_a.posts.last, prec_a, prec_b)
+  val unexpected_rec_deps = List(mrec_a, mrec_b)
+
+//  println(rec_p)
+
+  test(s"$test_prefix: is mutual recursion handled safely?") {
+    try {
+      val computed_rec_deps: Seq[Hashable] = rec_p.getDependencies(rec_p, test_rec)
+//      println(computed_rec_deps.map {
+//        case member: viper.silver.ast.Member => member.name
+//        case node => node.toString()
+//      })
+      expected_rec_deps.foreach {
+        n =>
+          if ( !computed_rec_deps.contains(n) )
+            fail(s"AST node ```$n``` is expected to be a recursive dependency of ```$test_rec```, but is not present in the result of `getDependencies`.")
+      }
+      unexpected_rec_deps.foreach {
+        n =>
+          if ( computed_rec_deps.contains(n) )
+            fail(s"AST node ```$n``` is not expected to be a recursive dependency of ```$test_rec```, but is present in the result of `getDependencies`.")
+      }
+      computed_rec_deps.size should be (expected_rec_deps.size)
+
+    } catch {
+      case e: StackOverflowError =>
+        fail(s"mutual recursion is not properly handled by the method dependency analysis.")
+    }
   }
 }

@@ -183,7 +183,7 @@ object Transformer {
 
     case (_: PExists, Seq(vars: Seq[PFormalArgDecl@unchecked], exp: PExp)) => PExists(vars, exp)
     case (_: PForall, Seq(vars: Seq[PFormalArgDecl@unchecked], triggers: Seq[PTrigger@unchecked], exp: PExp)) => PForall(vars, triggers, exp)
-    case (_: PForPerm, Seq(vars: Seq[PFormalArgDecl], res: PResourceAccess, exp: PExp)) => PForPerm(vars, res, exp)
+    case (_: PForPerm, Seq(vars: Seq[PFormalArgDecl@unchecked], res: PResourceAccess, exp: PExp)) => PForPerm(vars, res, exp)
     case (_: PCondExp, Seq(cond: PExp, thn: PExp, els: PExp)) => PCondExp(cond, thn, els)
     case (_: PInhaleExhaleExp, Seq(in: PExp, ex: PExp)) => PInhaleExhaleExp(in, ex)
     case (_: PCurPerm, Seq(loc: PLocationAccess)) => PCurPerm(loc)

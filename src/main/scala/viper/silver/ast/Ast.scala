@@ -106,6 +106,12 @@ trait Node extends Traversable[Node] with Rewritable {
 
   override def toString() = FastPrettyPrinter.pretty(this)
 
+  def toOneLinerStr() = s"<${getClass.getSimpleName()}> ``" + (
+    if (toString().indexOf("\n") != -1)
+      toString().take(toString().indexOf("\n")) + "..."
+    else
+      toString() ) + "''"
+
   /** @see [[viper.silver.ast.utility.ViperStrategy]] */
   def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty,
                 recurse: Traverse = Traverse.Innermost)
