@@ -115,12 +115,13 @@ case class ProgramDefinitionsReport(definitions: List[Definition]) extends Messa
 }
 
 // TODO: Variable level of detail?
-case class ExecutionTraceReport(timestamp: Time, memberTraces: List[Any]) extends Message {
+case class ExecutionTraceReport(timestamp: Time, memberTraces: List[Any], axioms: List[Any]) extends Message {
 
   override def toString: String =
     s"""symbolic_execution_logger_report(
        |  timestamp=${timestamp.toString()},
-       |  members=${(memberTraces map {m => m.toString}).mkString("[", ",", "]")}
+       |  members=${(memberTraces map {m => m.toString}).mkString("[", ",", "]")},
+       |  axioms=${axioms.toString()}
        |)""".stripMargin
 
   override val name: String = s"symbolic_execution_logger_report"

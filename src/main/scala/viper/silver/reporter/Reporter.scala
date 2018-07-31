@@ -64,9 +64,12 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
         errors.foreach(e => println(s"  ${e.readableMessage}"))
         println( s"Run with just --help for usage and options" )
 
-      case ExecutionTraceReport(timestamp, memberTraces) =>
+      case ExecutionTraceReport(timestamp, memberTraces, axioms) =>
         println("Execution trace for the last run:")
-        memberTraces.foreach(t => println(s"  $t"))
+        println(s"  Members:")
+        memberTraces.foreach(t => println(s"    $t"))
+        println(s"  Axioms:")
+        axioms.foreach(t => println(s"    $t"))
 
       case CopyrightReport(text) =>
         println( text )
