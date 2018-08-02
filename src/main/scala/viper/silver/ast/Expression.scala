@@ -404,7 +404,7 @@ object LocationAccess {
 /** A field access expression. */
 case class FieldAccess(rcv: Exp, field: Field)
                       (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
-    extends LocationAccess with Lhs with PossibleTrigger {
+    extends LocationAccess with Lhs /* with PossibleTrigger */ {
 
   def loc(p : Program) = field
   lazy val typ = field.typ
