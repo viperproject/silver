@@ -566,10 +566,12 @@ case class TypeChecker(names: NameAnalyser) {
                   case fd: PAnyFunction =>
                     pfa.function = fd
                     ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
-                    check(fd.typ)
-                    fd.formalArgs foreach (a => check(a.typ))
                     fd match {
                       case PFunction(_, _, _, _, _, _, _) =>
+                        checkMember(fd) {
+                          check(fd.typ)
+                          fd.formalArgs foreach (a => check(a.typ))
+                        }
                         if (inAxiomScope(pfa))
                           issueError(func, func.name + " is not a domain function")
 
