@@ -1,0 +1,7 @@
+method m()
+{
+    var k: Perm
+    k := wildcard
+
+    assert wildcard < k
+}
