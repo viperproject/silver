@@ -6,6 +6,7 @@ method test01(x: Ref, y: Ref)
   requires acc(x.f, wildcard)
 {
   var k: Perm
+  //:: ExpectedOutput(consistency.error)
   k := wildcard // should be disallowed be a consistency check in Silver
 
   //:: ExpectedOutput(exhale.failed:insufficient.permission)

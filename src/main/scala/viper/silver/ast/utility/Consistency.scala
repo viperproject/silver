@@ -398,11 +398,12 @@ object Consistency {
 
         c
 
-      case FieldAccessPredicate(_, _) =>
-        c.copy(insideFieldAccessPredicateStatus = true)
+      case FieldAccessPredicate(_, _) |
+           PredicateAccessPredicate(_, _) =>
+        c.copy(insideAccessPredicateStatus = true)
 
-      case wp@WildcardPerm() if !c.insideFieldAccessPredicateStatus =>
-        s :+= ConsistencyError("wildcards can only be used inside field access predicates", wp.pos)
+      case wp@WildcardPerm() if !c.insideAccessPredicateStatus =>
+        s :+= ConsistencyError("\"wildcard\" can only be used in accessibility predicates", wp.pos)
         c
     })
     s
@@ -447,5 +448,5 @@ object Consistency {
 
   /** Context for context dependent consistency checking. */
   case class Context(insideWandStatus: InsideWandStatus = InsideWandStatus.No,
-                     insideFieldAccessPredicateStatus: Boolean = false)
+                     insideAccessPredicateStatus: Boolean = false)
 }
