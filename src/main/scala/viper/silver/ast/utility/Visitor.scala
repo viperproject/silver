@@ -20,7 +20,7 @@ object Visitor {
     }
   }
 
-  /** Applies the function `f` to this node node (if possible), then visits all
+  /** Applies the function `f` to this node (if possible), then visits all
     * subnodes. Also carries a context down the tree that can be updated by `f`.
     *
     * @tparam C Context type.

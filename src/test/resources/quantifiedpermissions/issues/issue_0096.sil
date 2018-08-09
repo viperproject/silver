@@ -8,6 +8,7 @@ method m() {
 
   inhale 0 <= k && k < |s|
 
+  //:: ExpectedOutput(consistency.error)
   p := wildcard
 
   inhale forall i:Int :: i in [0..|s|) ==> acc(s[i].f, wildcard)
