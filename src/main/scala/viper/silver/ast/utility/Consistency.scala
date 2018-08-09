@@ -397,6 +397,13 @@ object Consistency {
         s :+= ConsistencyError("Labelled old expressions with \"lhs\" label may only occur inside wands and their proof scripts.", po.pos)
 
         c
+
+      case FieldAccessPredicate(_, _) =>
+        c.copy(insideFieldAccessPredicateStatus = true)
+
+      case wp@WildcardPerm() if !c.insideFieldAccessPredicateStatus =>
+        s :+= ConsistencyError("wildcards can only be used inside field access predicates", wp.pos)
+        c
     })
     s
   }
@@ -439,5 +446,6 @@ object Consistency {
   }
 
   /** Context for context dependent consistency checking. */
-  case class Context(insideWandStatus: InsideWandStatus = InsideWandStatus.No)
+  case class Context(insideWandStatus: InsideWandStatus = InsideWandStatus.No,
+                     insideFieldAccessPredicateStatus: Boolean = false)
 }
