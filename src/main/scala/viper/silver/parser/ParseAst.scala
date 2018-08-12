@@ -564,6 +564,10 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
   }
 }
 
+case class PComp(parameters: Seq[PFormalArgDecl], filter: PExp, receiver: PFieldAccess, binary: PIdentifier, unit: PExp) extends POpApp {
+
+}
+
 case class PTrigger(exp: Seq[PExp]) extends PNode
 
 class PBinExp(val left: PExp, val opName: String, val right: PExp) extends POpApp {

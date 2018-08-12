@@ -493,14 +493,16 @@ object FastParser extends PosParser {
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
-    "unique")
+    "unique",
+    // comprehension
+    "comp")
 
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
+    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | comp )
 
 
   lazy val result: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
@@ -717,6 +719,10 @@ object FastParser extends PosParser {
 
   lazy val typedFapp: P[PExp] = P(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map {
     case (func, args, typeGiven) => PCall(func, args, Some(typeGiven))
+  }
+
+  lazy val comp: P[PComp] = P("comp" ~ nonEmptyFormalArgList ~ "::" ~ "{" ~ exp ~ "}" ~ "(" ~ fieldAcc ~ "," ~ idnuse ~ "," ~ exp ~ ")").map {
+    case (arg, filter, receiver, binary, unit) => PComp(arg, filter, receiver, binary, unit)
   }
 
   lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
