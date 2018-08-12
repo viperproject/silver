@@ -5,6 +5,7 @@
  */
 
 import java.nio.file.Paths
+import java.io.File
 import scala.language.implicitConversions
 import TestHelpers.MockSilFrontend
 import org.scalatest.FunSuite
@@ -80,6 +81,16 @@ class ParseTreeTests extends FunSuite {
   test("Imports") {
     val filePrefix = "transformations/Imports/"
     val files = Seq("simple", "complex", "cyclic")
+
+    val frontend = new MockSilFrontend
+
+    files foreach (fileName =>
+      parseAndCompare(filePrefix + fileName + ".sil", filePrefix + fileName + "Ref" + ".sil", frontend))
+  }
+
+  test("Comprehensions") {
+    val filePrefix = "all/comprehensions/"
+    val files = Seq("sum")
 
     val frontend = new MockSilFrontend
 
