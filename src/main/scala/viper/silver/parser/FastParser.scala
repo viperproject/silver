@@ -722,7 +722,7 @@ object FastParser extends PosParser {
   }
 
   lazy val comp: P[PComp] = P("comp" ~ nonEmptyFormalArgList ~ "::" ~ "{" ~ exp ~ "}" ~ "(" ~ fieldAcc ~ "," ~ idnuse ~ "," ~ exp ~ ")").map {
-    case (arg, filter, receiver, binary, unit) => PComp(arg, filter, receiver, binary, unit)
+    case (vars, filter, exp, binary, unit) => PComp(vars, filter, exp, binary, unit)
   }
 
   lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |

@@ -278,7 +278,7 @@ case class PDomainType(domain: PIdnUse, args: Seq[PType]) extends PGenericType {
     if (args==newArgs)
       return this
 
-    val r = new PDomainType(domain,newArgs)
+    val r = PDomainType(domain,newArgs)
     r.kind = PDomainTypeKinds.Domain
     r
   }
@@ -564,10 +564,6 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
   }
 }
 
-case class PComp(parameters: Seq[PFormalArgDecl], filter: PExp, receiver: PFieldAccess, binary: PIdentifier, unit: PExp) extends POpApp {
-
-}
-
 case class PTrigger(exp: Seq[PExp]) extends PNode
 
 class PBinExp(val left: PExp, val opName: String, val right: PExp) extends POpApp {
@@ -771,6 +767,9 @@ case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PEx
 case class PForPerm(vars: Seq[PFormalArgDecl], accessRes: PResourceAccess, body: PExp) extends PQuantifier {
   val triggers: Seq[PTrigger] = Seq()
 }
+
+case class PComp(vars: Seq[PFormalArgDecl], filter: PExp, body: PFieldAccess, binary: PIdentifier, unit: PExp) extends PBinder
+
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
  * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but
  * `PLet` isn't) in order to work with the current architecture of the resolver.
@@ -1139,6 +1138,7 @@ object Nodes {
       case PLetNestedScope(variable, body) => Seq(variable, body)
       case PForall(vars, triggers, exp) => vars ++ triggers ++ Seq(exp)
       case PForPerm(vars, res, expr) => vars :+ res :+ expr
+      case PComp(vars, filter, expr, binary, unit) => vars :+ filter :+ expr :+ unit
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)
       case PCurPerm(loc) => Seq(loc)
