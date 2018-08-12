@@ -709,6 +709,25 @@ case class TypeChecker(names: NameAnalyser) {
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
         curMember = oldCurMember
+
+      case comp: PComp =>
+        val oldCurMember = curMember
+        curMember = comp
+        comp.vars foreach (v => check(v.typ))
+        names.definition(curMember)(comp.binary) match {
+          case f: PAnyFunction =>
+            if (f.formalArgs.size != 2) {
+              issueError(f, "expected binary operator")
+            } else {
+              val out: PType = f.typ
+              f.formalArgs foreach (a => if (a.typ != out) issueError(f, "illegal binary operator for comprehension"))
+              comp.typ = out
+            }
+        }
+        check(comp.body, comp.typ)
+        check(comp.unit, comp.typ)
+        check(comp.filter, Bool)
+        curMember = oldCurMember
     }
   }
 
