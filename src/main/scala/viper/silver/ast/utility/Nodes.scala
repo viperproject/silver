@@ -33,6 +33,7 @@ object Nodes {
   def subnodes(n: Node): Seq[Node] = {
     val subnodesWithType: Seq[Node] = n match {
       case Trigger(exps) => exps
+      case Filter(exp) => Seq(exp)
       case Program(domains, fields, functions, predicates, methods) =>
         domains ++ fields ++ functions ++ predicates ++ methods
       case m: Member =>
