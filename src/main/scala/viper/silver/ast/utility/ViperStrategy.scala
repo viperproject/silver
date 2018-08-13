@@ -326,6 +326,9 @@ object ViperStrategy {
     case (i: Inhale, Seq(expression: Exp), meta) =>
       Inhale(expression)(meta._1, meta._2, meta._3)
 
+    case (a: Assume, Seq(expression: Exp), meta) =>
+      Assume(expression)(meta._1, meta._2, meta._3)
+
     case (l: Label, invars: Seq[Exp@unchecked], meta) => Label(l.name, invars)(meta._1, meta._2, meta._3)
 
     case (l: LocalVarAssign, Seq(variable: LocalVar, value: Exp), meta) =>

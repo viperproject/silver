@@ -6,6 +6,7 @@ import viper.silver.ast.utility.Rewriter._
 object AssumeRewriter {
 
   var funcs: Seq[Function] = Seq()
+  var inverses = Seq.empty[Function]
   var generated = false
 
   def rewrite(exp: Exp, program: Program) : Exp = {
@@ -93,7 +94,7 @@ object AssumeRewriter {
           generatePermUsingFunc(c.c.getOrElse(key, Seq()), args, perm, cp)
         })
 
-        val f: Node = forall.replace((resources zip perms).toMap)
+        val f = forall.replace((resources zip perms).toMap)
         f
       }
     }, Map(): Map[Resource, Seq[((Exp, Seq[Exp]), Exp)]], {
@@ -119,7 +120,6 @@ object AssumeRewriter {
           val update = c.getOrElse(lu._1, Seq())
           (lu._1, lu._2 ++ update)
         })
-        println(newC)
         c ++ newC
       }
       case (forall: Forall, c) => {
@@ -305,7 +305,6 @@ object AssumeRewriter {
     val cond = generateExp(condSeq, perm)(pos, info, errT)
 
     val p = PermGeCmp(permLoc, cond)(pos, info, errT)
-    println(p)
     p
   }
 
@@ -313,7 +312,6 @@ object AssumeRewriter {
 
     assert(context.forall(c => c._1._2.length == rcv.length))
 
-    println(context)
     val contextWithoutRcv = context.filter(c => !rcv.forall(e => c._1._1.contains(e)))
     if (contextWithoutRcv.isEmpty) return PermGeCmp(permLoc, perm)()
 
@@ -404,16 +402,38 @@ object AssumeRewriter {
     (cnj, sum)
   }
 
+  //TODO: nested foralls
+  def rewriteForalls(exp: Exp, program: Program): Exp = {
+    exp match {
+      case forall: Forall => {
+        val invForall = InverseFunctions.getFreshInverse(forall, program)
+        invForall match {
+          case (Some(invs), Some(axioms), forall1) => {
+            inverses ++= invs
+            val ax = axioms.tail.foldLeft[Exp](axioms.head)((e, f) => And(e, f)())
+            And(ax, forall1)()
+          }
+          case _ => forall
+        }
+      }
+      case _ => exp.replace((exp.subExps zip (exp.subExps map (e => rewriteForalls(e, program)))).toMap)
+    }
+  }
+
   def addFuncs(p: Program): Program = {
 
     funcs = Seq.empty
 
-    val pAssume: Program = ViperStrategy.Slim({
-      case a: Assume => rewriteInhale(Inhale(rewrite(a.exp, p))(a.pos))
+    val pInvs: Program = ViperStrategy.Slim({
+      case a: Assume => a.replace(a.exp, rewriteForalls(a.exp, p))
     }).execute(p)
 
+    val pAssume: Program = ViperStrategy.Slim({
+      case a: Assume => rewriteInhale(Inhale(rewrite(a.exp, pInvs))(a.pos))
+    }).execute(pInvs)
+
     ViperStrategy.Slim({
-      case p: Program => Program(p.domains, p.fields, p.functions ++ funcs, p.predicates, p.methods)(p.pos, p.info, p.errT)
+      case p: Program => Program(p.domains, p.fields, p.functions ++ funcs ++ inverses, p.predicates, p.methods)(p.pos, p.info, p.errT)
     }).execute(pAssume)
   }
 

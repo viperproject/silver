@@ -646,6 +646,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case Package(e, proofScript) => text("package") <+> show(e) <+> showBlock(proofScript)
       case Apply(e) => text("apply") <+> show(e)
       case Inhale(e) => text("inhale") <+> show(e)
+      case Assume(e) => text("assume") <+> show(e)
       case Exhale(e) => text("exhale") <+> show(e)
       case Assert(e) => text("assert") <+> show(e)
       case Fresh(vars) =>

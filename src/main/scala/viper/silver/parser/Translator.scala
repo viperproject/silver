@@ -57,8 +57,6 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         val finalProgram = if (Translator.counter == 0) AssumeRewriter.addFuncs(Program(domain, fields, functions, predicates, methods)(program))
                             else Program(domain, fields, functions, predicates, methods)(program)
 
-        println(finalProgram.methods)
-
         val pw = new PrintWriter(new File("E:\\Tobias\\Dokumente\\ETH\\BA\\tests\\program" + (Translator.counter) + ".txt"))
         Translator.counter = Translator.counter + 1
         pw.write(finalProgram.toString())
