@@ -723,10 +723,12 @@ case class TypeChecker(names: NameAnalyser) {
               f.formalArgs foreach (a => if (a.typ != out) issueError(f, "illegal binary operator for comprehension"))
               comp.typ = out
             }
+          case _ => issueError(comp.binary, "expected binary operator")
         }
         check(comp.body, comp.typ)
         check(comp.unit, comp.typ)
         check(comp.filter, Bool)
+        comp._typeSubstitutions = comp.body.typeSubstitutions.toList.distinct
         curMember = oldCurMember
     }
   }
