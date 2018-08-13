@@ -93,6 +93,7 @@ object Nodes {
           case Exists(v, exp) => v ++ Seq(exp)
           case Forall(v, triggers, exp) => v ++ triggers ++ Seq(exp)
           case ForPerm(v, resource, exp) => v :+ resource :+ exp
+          case Comp(variables, filter, body, _, unit) => variables :+ filter :+ body :+ unit
           case InhaleExhaleExp(in, ex) => Seq(in, ex)
           case WildcardPerm() => Nil
           case FullPerm() => Nil
