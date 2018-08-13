@@ -596,6 +596,15 @@ case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Inf
   }
 }
 
+
+// --- Comprehensions
+
+/** Comprehension */
+case class Comp(variables: Seq[LocalVarDecl], filter: Filter, body: FieldAccess, binary: String, unit: Exp)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp
+
+/** Filter of a comprehension */
+case class Filter(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+
 // --- Variables, this, result
 
 /** A local variable, special or not (used both for declarations and usages). */
