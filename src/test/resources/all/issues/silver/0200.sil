@@ -1,0 +1,29 @@
+field val:Int 
+
+//domain Array
+//{
+//    function loc(a:Array, i:Int):Ref
+//}
+//
+//predicate isArray(this:Array)
+//{
+//    forall i:Int :: acc(loc(this,i))
+//}
+
+//domain Array {
+//    function loc(): Ref
+//}
+//method test() {
+//    inhale acc(loc())
+//}
+
+
+domain Array
+{
+    function loc(): Ref
+}
+
+method test()
+    requires acc(loc())
+{
+}
