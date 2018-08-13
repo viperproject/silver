@@ -44,7 +44,8 @@ object Expressions {
   def isHeapDependent(e: Exp, p: Program): Boolean = e existsDefined {
     case   _: AccessPredicate
          | _: LocationAccess
-         | _: MagicWand =>
+         | _: MagicWand
+           |_: Comp =>
 
     case fapp: FuncApp if fapp.func(p).pres.exists(isHeapDependent(_, p)) =>
   }

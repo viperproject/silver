@@ -480,6 +480,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case dc: DecClause => showDecClause(dc)
     case Trigger(exps) =>
       text("{") <+> ssep(exps map show, char (',')) <+> "}"
+    case Filter(exp) =>
+      text("{") <+> show(exp) <+> text("}")
     case null => uninitialized
   }
 
@@ -745,6 +747,16 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       parens(text("forperm")
         <+> showVars(vars)
         <+> brackets(show(resource)) <+> "::" <+> show(exp))
+    case Comp(vars, filter, body, binary, unit) =>
+      parens(text("comp")
+        <+> showVars(vars)
+        <+> "::"
+        <+> show(filter)
+        <+> show(body)
+        <+> text(binary)
+        <+> show(unit)
+      )
+
 
     case InhaleExhaleExp(in, ex) =>
       brackets(show(in) <> char (',') <+> show(ex))

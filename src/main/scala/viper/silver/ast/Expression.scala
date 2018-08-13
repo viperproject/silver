@@ -600,10 +600,17 @@ case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Inf
 // --- Comprehensions
 
 /** Comprehension */
-case class Comp(variables: Seq[LocalVarDecl], filter: Filter, body: FieldAccess, binary: String, unit: Exp)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp
+case class Comp(variables: Seq[LocalVarDecl], filter: Filter, body: FieldAccess, binary: String, unit: Exp)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with Scope {
+  override lazy val check : Seq[ConsistencyError] =
+    Consistency.checkPure(body.rcv) ++
+    Consistency.checkPure(unit)
+  val scopedDecls: Seq[Declaration] = variables
+}
 
 /** Filter of a comprehension */
-case class Filter(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+case class Filter(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node with Positioned {
+  override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp)
+}
 
 // --- Variables, this, result
 
