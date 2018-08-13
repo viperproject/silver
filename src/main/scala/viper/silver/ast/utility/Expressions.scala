@@ -16,7 +16,6 @@ object Expressions {
   def isPure(e: Exp): Boolean = e match {
     case   _: AccessPredicate
          | _: MagicWand
-           | _: Comp
          => false
 
     case UnExp(e0) => isPure(e0)
@@ -38,6 +37,7 @@ object Expressions {
          | _: SetExp
          | _: MultisetExp
          | _:ForPerm
+          | _: Comp
       => true
   }
 
