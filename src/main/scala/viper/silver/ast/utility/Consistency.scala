@@ -267,6 +267,8 @@ object Consistency {
   def validTrigger(e: Exp): Boolean = {
     e match {
       case Old(nested) => validTrigger(nested) // case corresponds to OldTrigger node
+        //TODO: magic wand args
+      //case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.existsDefined {case _: ForbiddenInTrigger => })
       case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess | _: MagicWand => !e.existsDefined { case _: ForbiddenInTrigger => }
       case _ => false
     }
