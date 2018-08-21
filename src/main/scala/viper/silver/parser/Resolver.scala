@@ -619,16 +619,12 @@ case class TypeChecker(names: NameAnalyser) {
               acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")(
                 (id, decl) => checkInternal(id))
 
-            case ppp@PAccPred(loc, _) =>
+            case PAccPred(loc, _) =>
               loc match {
-                case ppfa@PCall(func, args, explicitType) =>
-                  val ad = names.definition(curMember)(func)
-                  ad match {
-                    case ppf : PFunction =>
-                      issueError(func, "expected predicate ")
-                    case _ =>
-                  }
+                case PFieldAccess(_, _) =>
+                case pc: PCall if pc.extfunction != null=>
                 case _ =>
+                  issueError(loc, "specified location is not a field nor a predicate")
               }
 
             case ppa@PPredicateAccess(args, idnuse) =>
