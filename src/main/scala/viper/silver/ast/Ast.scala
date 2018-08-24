@@ -281,7 +281,7 @@ trait ErrorTrafo {
 
   def rTransformations: List[PartialFunction[ErrorReason, ErrorReason]]
 
-  def nTransformations: Option[ErrorNode]
+  def nTransformations: Option[ErrorNode] // TODO: Why is this an option and not a list?
 
   def +(t: ErrorTrafo): Trafos = {
     Trafos(eTransformations ++ t.eTransformations, rTransformations ++ t.rTransformations, if (t.nTransformations.isDefined) t.nTransformations else nTransformations)
