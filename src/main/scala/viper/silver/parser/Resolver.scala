@@ -728,7 +728,9 @@ case class TypeChecker(names: NameAnalyser) {
         check(comp.body, comp.typ)
         check(comp.unit, comp.typ)
         check(comp.filter, Bool)
-        comp._typeSubstitutions = comp.body.typeSubstitutions.toList.distinct
+        comp._typeSubstitutions = comp.body.typeSubstitutions.toList.distinct ++
+          comp.unit.typeSubstitutions.toList.distinct ++
+          comp.filter.typeSubstitutions.toList.distinct
         curMember = oldCurMember
     }
   }
