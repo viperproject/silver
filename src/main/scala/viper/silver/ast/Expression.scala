@@ -608,7 +608,7 @@ case class Comp(variables: Seq[LocalVarDecl], filter: Filter, body: FieldAccess,
 }
 
 /** Filter of a comprehension */
-case class Filter(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node with Positioned {
+case class Filter(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp)
 }
 

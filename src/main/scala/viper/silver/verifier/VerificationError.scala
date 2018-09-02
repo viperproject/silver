@@ -348,6 +348,17 @@ object errors {
   def MagicWandNotWellformed(offendingNode: MagicWand): PartialVerificationError =
     PartialVerificationError((reason: ErrorReason) => MagicWandNotWellformed(offendingNode, reason))
 
+  case class ComprehensionNotWellformed(offendingNode: Comp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+    val id = "comprehension.not.wellformed"
+    val text = s"Comprehension might not be well-formed."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = ComprehensionNotWellformed(offendingNode.asInstanceOf[Comp], this.reason)
+    def withReason(r: ErrorReason) = ComprehensionNotWellformed(offendingNode, r)
+  }
+
+  def ComprehensionNotWellformed(offendingNode: Comp): PartialVerificationError =
+    NullPartialVerificationError((reason: ErrorReason) => ComprehensionNotWellformed(offendingNode, reason))
+
   case class LetWandFailed(offendingNode: LocalVarAssign, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "letwand.failed"
     val text = s"Referencing a wand might fail."
@@ -531,5 +542,26 @@ object reasons {
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) =
       SeqIndexExceedsLength(seq, offendingNode.asInstanceOf[Exp])
+  }
+
+  case class CompUnitNotUnit(offendingNode: Exp) extends AbstractErrorReason {
+    val id = "unit.not.unit"
+    def readableMessage = s"Unit of $offendingNode [$pos] might not be an actual unit."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
+  }
+
+  case class CompBinaryNotCommutative(offendingNode: Comp) extends AbstractErrorReason {
+    val id = "binary.not.commutative"
+    def readableMessage = s"Binary operator of $offendingNode [$pos] might not be commutative."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
+  }
+
+  case class CompBinaryNotAssociative(offendingNode: Comp) extends AbstractErrorReason {
+    val id = "binary.not.associative"
+    def readableMessage = s"Binary operator of $offendingNode [$pos] might not be associative."
+
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
   }
 }
