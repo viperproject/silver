@@ -1,8 +1,21 @@
-// Silver project
+// Settings common to Silver and backends
+// Compilation settings
+ThisBuild / scalaVersion := "2.11.8"      //?
+//ThisBuild / scalaVersion := "2.12.6"    //? Upgrade, was 2.11.8
+ThisBuild / scalacOptions ++= Seq(
+    "-deprecation",                     // Warn when using deprecated language features
+    "-unchecked",                       // Warn on generated code assumptions
+    "-feature")                         // Warn on features that requires explict import
+
+// Silver specific project settings
 lazy val silver = (project in file("."))
     .settings(
-        name := "Silver",
-        scalaVersion := "2.11.8",
+        // General settings
+        name := "silver",           //? Silicon depends on it? Capitalize otherwise.
+        organization := "viper",    //? Silicon depends on it? Use ETH otherwise.
+        version := "0.1-SNAPSHOT",  //? Silicon depends on it? Establish otherwise.
+
+        // Compilation settings (old)
         libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,             // Scala
         libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1",                            // Testing
         libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.5",    // Parsing
@@ -13,24 +26,33 @@ lazy val silver = (project in file("."))
         libraryDependencies += "org.jgrapht" % "jgrapht-core" % "0.9.1",                            // Graphs
         libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.12",                                // Logging
         libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",                      // Logging
-        Test / parallelExecution := false,
-    )
+
+        // Compilation settings
+        //libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test",                   // Testing
+        //libraryDependencies += "com.lihaoyi" %% "fastparse" % "1.0.0",                              // Parsing
+
+        // Test settings
+        Test / parallelExecution := false)
+
 
 
 
 
 
 //organization  := "viper"
-
 //version := "0.1-SNAPSHOT"
-
-
 //libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0" // Logging Frontend
+
+
+
 
 //scalacOptions += "-deprecation"
 //scalacOptions += "-feature"
 //scalacOptions += "-unchecked"
 //scalacOptions ++= Seq("-Ypatmat-exhaust-depth", "off")
+
+
+
 
 // Make publish-local also create a test artifact, i.e., put a jar-file into the local Ivy
 // repository that contains all classes and resources relevant for testing.
@@ -38,6 +60,9 @@ lazy val silver = (project in file("."))
 // allows them to access the Sil test suite.
 
 //publishArtifact in Test := true
+
+
+
 
 //(Test, packageBin) := true
 
