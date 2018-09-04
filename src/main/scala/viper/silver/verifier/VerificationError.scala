@@ -357,7 +357,7 @@ object errors {
   }
 
   def ComprehensionNotWellformed(offendingNode: Comp): PartialVerificationError =
-    NullPartialVerificationError((reason: ErrorReason) => ComprehensionNotWellformed(offendingNode, reason))
+    PartialVerificationError((reason: ErrorReason) => ComprehensionNotWellformed(offendingNode, reason))
 
   case class LetWandFailed(offendingNode: LocalVarAssign, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
     val id = "letwand.failed"
