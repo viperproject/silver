@@ -1,18 +1,22 @@
 package viper.silver.ast.utility
 
+import viper.silver.ast
 import viper.silver.ast._
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility.Rewriter._
 
 object AssumeRewriter {
 
-  var funcs: Seq[Function] = Seq()
-  var inverses = Seq.empty[Function]
+  var funcs: Seq[DomainFunc] = Seq()
+  var axioms: Seq[DomainAxiom] = Seq()
+  var inverses = Seq.empty[DomainFunc]
+  var domains = Seq.empty[Domain]
   var generated = false
 
   def rewrite(exp: Exp, program: Program) : Exp = {
 
     /**
-      * Context; Pair of condition and variable to replace in the condition as well as the
+      * Context: Pair of condition and variable to replace in the condition as well as the
       * permission amount
       */
 
@@ -22,7 +26,7 @@ object AssumeRewriter {
         if (!insideWand) {
           val cp = CurrentPerm(fap.loc)(fap.pos, fap.info, fap.errT)
           //val p = generatePerm(c.c, fap.loc.rcv, fap.perm, cp)(fap.pos, fap.info, fap.errT)
-          val p = generatePermUsingFunc(c.c.getOrElse(fap.loc.field, Seq()), Seq(fap.loc.rcv), fap.perm, cp)
+          val p = generatePermUsingFunc(c.c.getOrElse(fap.loc.field, Seq()), Seq(fap.loc.rcv), fap.perm, cp, None)
           p
         } else {
           fap
@@ -32,7 +36,7 @@ object AssumeRewriter {
         val insideWand = c.ancestorList.foldLeft[Boolean](false)((b, n) => b || n.isInstanceOf[MagicWand])
         if (!insideWand) {
           val cp = CurrentPerm(pred.loc)(pred.pos, pred.info, pred.errT)
-          val p = generatePermUsingFunc(c.c.getOrElse(pred.loc.loc(program), Seq()), pred.loc.args, pred.perm, cp)
+          val p = generatePermUsingFunc(c.c.getOrElse(pred.loc.loc(program), Seq()), pred.loc.args, pred.perm, cp, None)
           p
         } else {
           pred
@@ -41,62 +45,95 @@ object AssumeRewriter {
       case (wand: MagicWand, c) => {
         if (!c.parent.isInstanceOf[CurrentPerm]) {
           val cp = CurrentPerm(wand)(wand.pos, wand.info, wand.errT)
-          val p = generatePermUsingFunc(c.c.getOrElse(wand.structure(program), Seq()), wand.subexpressionsToEvaluate(program), FullPerm()(), cp)
+          val p = generatePermUsingFunc(c.c.getOrElse(wand.structure(program), Seq()), wand.subexpressionsToEvaluate(program), FullPerm()(), cp, None)
           p
         } else {
           wand
         }
       }
-      case (forall: Forall, c) => {
-
-        val resources = forall.deepCollect[ResourceAccess] {
-          case fap: FieldAccessPredicate => fap
-          case pred: PredicateAccessPredicate => pred
-          case wand: MagicWand => wand
+      case (QuantifiedPermissionAssertion(forall, cond, acc), c) => {
+        acc match {
+          case fap: FieldAccessPredicate => {
+            val insideWand = c.ancestorList.foldLeft[Boolean](false)((b, n) => b || n.isInstanceOf[MagicWand])
+            if (!insideWand) {
+              val cp = CurrentPerm(fap.loc)(fap.pos, fap.info, fap.errT)
+              val p = generatePermUsingFunc(c.c.getOrElse(fap.loc.field, Seq()), Seq(fap.loc.rcv), fap.perm, cp, Some(cond))
+              forall.replace(acc, p)
+            } else {
+              forall
+            }
+          }
+          case pred: PredicateAccessPredicate => {
+            val insideWand = c.ancestorList.foldLeft[Boolean](false)((b, n) => b || n.isInstanceOf[MagicWand])
+            if (!insideWand) {
+              val cp = CurrentPerm(pred.loc)(pred.pos, pred.info, pred.errT)
+              val p = generatePermUsingFunc(c.c.getOrElse(pred.loc.loc(program), Seq()), pred.loc.args, pred.perm, cp, Some(cond))
+              forall.replace(acc, p)
+            } else {
+              forall
+            }
+          }
+          case wand: MagicWand => {
+            if (!c.parent.isInstanceOf[CurrentPerm]) {
+              val cp = CurrentPerm(wand)(wand.pos, wand.info, wand.errT)
+              val p = generatePermUsingFunc(c.c.getOrElse(wand.structure(program), Seq()), wand.subexpressionsToEvaluate(program), FullPerm()(), cp, Some(cond))
+              forall.replace(acc, p)
+            } else {
+              forall
+            }
+          }
         }
-
-        //TODO: lhs of conjunction under quantifier needs to be considered
-        val updates = resources map (res => update(res, program))
-        val keys = resources map {
-          case fap: FieldAccessPredicate => fap.loc.field
-          case pred: PredicateAccessPredicate => pred.loc.loc(program)
-          case wand: MagicWand => wand.structure(program)
-        }
-        val addC = keys.asInstanceOf[Seq[Resource]] zip updates
-
-        val perms = resources map (res => {
-          val cp = res match {
-            case fap: FieldAccessPredicate => CurrentPerm(fap.loc)()
-            case pred: PredicateAccessPredicate => CurrentPerm(pred.loc)()
-            case wand: MagicWand => CurrentPerm(wand)()
-          }
-          val key = res match {
-            case fap: FieldAccessPredicate => fap.loc.field
-            case pred: PredicateAccessPredicate => pred.loc.loc(program)
-            case wand: MagicWand => wand.structure(program)
-          }
-          val args = res match {
-            case fap: FieldAccessPredicate => Seq(fap.loc.rcv)
-            case pred: PredicateAccessPredicate => pred.loc.args
-            case wand: MagicWand => wand.subexpressionsToEvaluate(program)
-          }
-          val perm = res match {
-            case fap: FieldAccessPredicate => fap.perm
-            case pred: PredicateAccessPredicate => pred.perm
-            case wand: MagicWand => FullPerm()()
-          }
-
-          val i = resources.indexOf(res)
-          val prev = addC take i
-          val map = prev groupBy (_._1)
-          val prevC = map.getOrElse(key, Seq())
-
-          generatePermUsingFunc(c.c.getOrElse(key, Seq()), args, perm, cp)
-        })
-
-        val f = forall.replace((resources zip perms).toMap)
-        f
       }
+//      case (forall: Forall, c) => {
+//
+//        val resources = forall.deepCollect[ResourceAccess] {
+//          case fap: FieldAccessPredicate => fap
+//          case pred: PredicateAccessPredicate => pred
+//          case wand: MagicWand => wand
+//        }
+//
+//        //TODO: lhs of conjunction under quantifier needs to be considered
+//        val updates = resources map (res => update(res, program))
+//        val keys = resources map {
+//          case fap: FieldAccessPredicate => fap.loc.field
+//          case pred: PredicateAccessPredicate => pred.loc.loc(program)
+//          case wand: MagicWand => wand.structure(program)
+//        }
+//        val addC = keys.asInstanceOf[Seq[Resource]] zip updates
+//
+//        val perms = resources map (res => {
+//          val cp = res match {
+//            case fap: FieldAccessPredicate => CurrentPerm(fap.loc)()
+//            case pred: PredicateAccessPredicate => CurrentPerm(pred.loc)()
+//            case wand: MagicWand => CurrentPerm(wand)()
+//          }
+//          val key = res match {
+//            case fap: FieldAccessPredicate => fap.loc.field
+//            case pred: PredicateAccessPredicate => pred.loc.loc(program)
+//            case wand: MagicWand => wand.structure(program)
+//          }
+//          val args = res match {
+//            case fap: FieldAccessPredicate => Seq(fap.loc.rcv)
+//            case pred: PredicateAccessPredicate => pred.loc.args
+//            case wand: MagicWand => wand.subexpressionsToEvaluate(program)
+//          }
+//          val perm = res match {
+//            case fap: FieldAccessPredicate => fap.perm
+//            case pred: PredicateAccessPredicate => pred.perm
+//            case wand: MagicWand => FullPerm()()
+//          }
+//
+//          val i = resources.indexOf(res)
+//          val prev = addC take i
+//          val map = prev groupBy (_._1)
+//          val prevC = map.getOrElse(key, Seq())
+//
+//          generatePermUsingFunc(c.c.getOrElse(key, Seq()), args, perm, cp)
+//        })
+//
+//        val f = forall.replace((resources zip perms).toMap)
+//        f
+//      }
     }, Map(): Map[Resource, Seq[((Exp, Seq[Exp]), Exp)]], {
       case (fap: FieldAccessPredicate, c) => {
         val dummyVar = LocalVar("dummy")(Ref)
@@ -122,58 +159,92 @@ object AssumeRewriter {
         })
         c ++ newC
       }
-      case (forall: Forall, c) => {
-        if (forall.isPure) c
-        else {
-          val cond = forall.exp match {
-            case impl: Implies => impl.left
-            case _ => TrueLit()(forall.exp.pos, forall.exp.info, forall.exp.errT)
-          }
-          val resources = forall.exp.deepCollect[ResourceAccess] {
-            case fap: FieldAccessPredicate => fap
-            case pred: PredicateAccessPredicate => pred
-            case wand: MagicWand => wand
-          }
-          val args = resources map {
-            case fap: FieldAccessPredicate => fap.loc.getArgs
-            case pred: PredicateAccessPredicate => pred.loc.args
-            case wand: MagicWand => wand.subexpressionsToEvaluate(program)
-          }
-          val perms = resources map {
-            case fap: FieldAccessPredicate => fap.perm
-            case pred: PredicateAccessPredicate => pred.perm
-            case _: MagicWand => FullPerm()()
-          }
-          val res: Seq[Resource] = resources map {
-            case fap: FieldAccessPredicate => fap.loc.field
-            case pred: PredicateAccessPredicate => pred.loc.loc(program)
-            case wand: MagicWand => wand.structure(program)
-          }
-          val qVars = forall.variables map (_.localVar)
-          val resWithArgs = res zip args
+      case (QuantifiedPermissionAssertion(forall, cond, acc), c) => {
 
-          val varsWithEq = resWithArgs map (resArgs => {
-            val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(resArgs._1 match {
-              case f: Field => Ref
-              case p: Predicate => p.formalArgs(i).typ
-              case w: MagicWand => w.structure(program).subexpressionsToEvaluate(program)(i).typ
-            }))) take resArgs._2.length
-            (resArgs._2 zipWithIndex) map (e => {
-              if (qVars.contains(e._1)) (e._1, null)
-              else (dummyVars(e._2), EqCmp(e._1, dummyVars(e._2))())
-            })
-          })
+        val args = acc match {
+          case fap: FieldAccessPredicate => Seq(fap.loc.rcv)
+          case pred: PredicateAccessPredicate => pred.loc.args
+          case wand: MagicWand => wand.subexpressionsToEvaluate(program)
+        }
 
-          val conds = varsWithEq map (vc => vc.foldLeft[Exp](cond)((c, varCond) => if (varCond._2 != null) And(c, varCond._2)() else c))
-          val varsToReplace = varsWithEq map (vc => vc map (_._1))
-          val condVars = conds zip varsToReplace
-          val condVarsPerm = condVars zip perms
+        val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(acc match {
+          case _: FieldAccessPredicate => Ref
+          case pred: PredicateAccessPredicate => pred.loc.loc(program).formalArgs(i).typ
+          case wand: MagicWand => wand.structure(program).subexpressionsToEvaluate(program)(i).typ
+        }))) take args.length
 
-          val addC = (res zipWithIndex) map (r => r._1 -> (c.getOrElse(r._1, Seq()) :+ condVarsPerm(r._2)))
+        val varsWithEq = (args zipWithIndex) map {case (arg, i) => {
+          if ((forall.variables map (_.localVar)).contains(arg)) (arg, null)
+          else (dummyVars(i), EqCmp(arg, dummyVars(i))())
+        }}
 
-          c ++ addC
+        val vars = varsWithEq map (_._1)
+        val conds = (varsWithEq map (_._2)).foldLeft[Exp](cond)((c, e) => if (e != null) And(c, e)() else c)
+
+        acc match {
+          case fap: FieldAccessPredicate => {
+            c + (fap.loc.field -> (c.getOrElse(fap.loc.field, Seq()) :+ ((cond, forall.variables map (_.localVar)), fap.perm)))
+          }
+          case pred: PredicateAccessPredicate => {
+            c + (pred.loc.loc(program) -> (c.getOrElse(pred.loc.loc(program), Seq()) :+ ((cond, forall.variables map (_.localVar)), pred.perm)))
+          }
+          case wand: MagicWand => {
+            c + (wand.structure(program) -> (c.getOrElse(wand.structure(program), Seq()) :+ ((cond, forall.variables map (_.localVar)), FullPerm()())))
+          }
         }
       }
+//      case (forall: Forall, c) => {
+//        if (forall.isPure) c
+//        else {
+//          val cond = forall.exp match {
+//            case impl: Implies => impl.left
+//            case _ => TrueLit()(forall.exp.pos, forall.exp.info, forall.exp.errT)
+//          }
+//          val resources = forall.exp.deepCollect[ResourceAccess] {
+//            case fap: FieldAccessPredicate => fap
+//            case pred: PredicateAccessPredicate => pred
+//            case wand: MagicWand => wand
+//          }
+//          val args = resources map {
+//            case fap: FieldAccessPredicate => fap.loc.getArgs
+//            case pred: PredicateAccessPredicate => pred.loc.args
+//            case wand: MagicWand => wand.subexpressionsToEvaluate(program)
+//          }
+//          val perms = resources map {
+//            case fap: FieldAccessPredicate => fap.perm
+//            case pred: PredicateAccessPredicate => pred.perm
+//            case _: MagicWand => FullPerm()()
+//          }
+//          val res: Seq[Resource] = resources map {
+//            case fap: FieldAccessPredicate => fap.loc.field
+//            case pred: PredicateAccessPredicate => pred.loc.loc(program)
+//            case wand: MagicWand => wand.structure(program)
+//          }
+//          val qVars = forall.variables map (_.localVar)
+//          val resWithArgs = res zip args
+//
+//          val varsWithEq = resWithArgs map (resArgs => {
+//            val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(resArgs._1 match {
+//              case f: Field => Ref
+//              case p: Predicate => p.formalArgs(i).typ
+//              case w: MagicWand => w.structure(program).subexpressionsToEvaluate(program)(i).typ
+//            }))) take resArgs._2.length
+//            (resArgs._2 zipWithIndex) map (e => {
+//              if (qVars.contains(e._1)) (e._1, null)
+//              else (dummyVars(e._2), EqCmp(e._1, dummyVars(e._2))())
+//            })
+//          })
+//
+//          val conds = varsWithEq map (vc => vc.foldLeft[Exp](cond)((c, varCond) => if (varCond._2 != null) And(c, varCond._2)() else c))
+//          val varsToReplace = varsWithEq map (vc => vc map (_._1))
+//          val condVars = conds zip varsToReplace
+//          val condVarsPerm = condVars zip perms
+//
+//          val addC = (res zipWithIndex) map (r => r._1 -> (c.getOrElse(r._1, Seq()) :+ condVarsPerm(r._2)))
+//
+//          c ++ addC
+//        }
+//      }
     })
 
     strat.execute(exp)
@@ -197,57 +268,91 @@ object AssumeRewriter {
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         Seq(wand.structure(program) -> Seq(((cond, dummyVars), FullPerm()())))
       }
-      case forall: Forall => {
-        if (forall.isPure) return Seq()
-        else {
-          val cond = forall.exp match {
-            case impl: Implies => impl.left
-            case _ => TrueLit()(forall.exp.pos, forall.exp.info, forall.exp.errT)
-          }
-          val resources = forall.exp.deepCollect[ResourceAccess] {
-            case fap: FieldAccessPredicate => fap
-            case pred: PredicateAccessPredicate => pred
-            case wand: MagicWand => wand
-          }
-          val args = resources map {
-            case fap: FieldAccessPredicate => fap.loc.getArgs
-            case pred: PredicateAccessPredicate => pred.loc.args
-            case wand: MagicWand => wand.subexpressionsToEvaluate(program)
-          }
-          val perms = resources map {
-            case fap: FieldAccessPredicate => fap.perm
-            case pred: PredicateAccessPredicate => pred.perm
-            case _: MagicWand => FullPerm()()
-          }
-          val res: Seq[Resource] = resources map {
-            case fap: FieldAccessPredicate => fap.loc.field
-            case pred: PredicateAccessPredicate => pred.loc.loc(program)
-            case wand: MagicWand => wand.structure(program)
-          }
-          val qVars = forall.variables map (_.localVar)
-          val resWithArgs = res zip args
+      case QuantifiedPermissionAssertion(forall, cond, acc) => {
 
-          val varsWithEq = resWithArgs map (resArgs => {
-            val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(resArgs._1 match {
-              case f: Field => Ref
-              case p: Predicate => p.formalArgs(i).typ
-              case w: MagicWand => w.structure(program).subexpressionsToEvaluate(program)(i).typ
-            }))) take resArgs._2.length
-            (resArgs._2 zipWithIndex) map (e => {
-              if (qVars.contains(e._1)) (e._1, null)
-              else (dummyVars(e._2), EqCmp(e._1, dummyVars(e._2))())
-            })
-          })
+        val args = acc match {
+          case fap: FieldAccessPredicate => Seq(fap.loc.rcv)
+          case pred: PredicateAccessPredicate => pred.loc.args
+          case wand: MagicWand => wand.subexpressionsToEvaluate(program)
+        }
 
-          val conds = varsWithEq map (vc => vc.foldLeft[Exp](cond)((c, varCond) => if (varCond._2 != null) And(c, varCond._2)() else c))
-          val varsToReplace = varsWithEq map (vc => vc map (_._1))
-          val condVars = conds zip varsToReplace
-          val condVarsPerm = condVars zip perms
+        val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(acc match {
+          case _: FieldAccessPredicate => Ref
+          case pred: PredicateAccessPredicate => pred.loc.loc(program).formalArgs(i).typ
+          case wand: MagicWand => wand.structure(program).subexpressionsToEvaluate(program)(i).typ
+        }))) take args.length
 
-          val addC = (res zipWithIndex) map (r => (r._1, Seq(condVarsPerm(r._2))))
-          addC
+        val varsWithEq = (args zipWithIndex) map {case (arg, i) => {
+          if ((forall.variables map (_.localVar)).contains(arg)) (arg, null)
+          else (dummyVars(i), EqCmp(arg, dummyVars(i))())
+        }}
+
+        val vars = varsWithEq map (_._1)
+        val conds = (varsWithEq map (_._2)).foldLeft[Exp](cond)((c, e) => if (e != null) And(c, e)() else c)
+
+        acc match {
+          case fap: FieldAccessPredicate => {
+            Seq(fap.loc.field -> Seq(((cond, forall.variables map (_.localVar)), fap.perm)))
+          }
+          case pred: PredicateAccessPredicate => {
+            Seq(pred.loc.loc(program) -> Seq(((cond, forall.variables map (_.localVar)), pred.perm)))
+          }
+          case wand: MagicWand => {
+            Seq(wand.structure(program) -> Seq(((cond, forall.variables map (_.localVar)), FullPerm()())))
+          }
         }
       }
+//      case forall: Forall => {
+//        if (forall.isPure) return Seq()
+//        else {
+//          val cond = forall.exp match {
+//            case impl: Implies => impl.left
+//            case _ => TrueLit()(forall.exp.pos, forall.exp.info, forall.exp.errT)
+//          }
+//          val resources = forall.exp.deepCollect[ResourceAccess] {
+//            case fap: FieldAccessPredicate => fap
+//            case pred: PredicateAccessPredicate => pred
+//            case wand: MagicWand => wand
+//          }
+//          val args = resources map {
+//            case fap: FieldAccessPredicate => fap.loc.getArgs
+//            case pred: PredicateAccessPredicate => pred.loc.args
+//            case wand: MagicWand => wand.subexpressionsToEvaluate(program)
+//          }
+//          val perms = resources map {
+//            case fap: FieldAccessPredicate => fap.perm
+//            case pred: PredicateAccessPredicate => pred.perm
+//            case _: MagicWand => FullPerm()()
+//          }
+//          val res: Seq[Resource] = resources map {
+//            case fap: FieldAccessPredicate => fap.loc.field
+//            case pred: PredicateAccessPredicate => pred.loc.loc(program)
+//            case wand: MagicWand => wand.structure(program)
+//          }
+//          val qVars = forall.variables map (_.localVar)
+//          val resWithArgs = res zip args
+//
+//          val varsWithEq = resWithArgs map (resArgs => {
+//            val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(resArgs._1 match {
+//              case f: Field => Ref
+//              case p: Predicate => p.formalArgs(i).typ
+//              case w: MagicWand => w.structure(program).subexpressionsToEvaluate(program)(i).typ
+//            }))) take resArgs._2.length
+//            (resArgs._2 zipWithIndex) map (e => {
+//              if (qVars.contains(e._1)) (e._1, null)
+//              else (dummyVars(e._2), EqCmp(e._1, dummyVars(e._2))())
+//            })
+//          })
+//
+//          val conds = varsWithEq map (vc => vc.foldLeft[Exp](cond)((c, varCond) => if (varCond._2 != null) And(c, varCond._2)() else c))
+//          val varsToReplace = varsWithEq map (vc => vc map (_._1))
+//          val condVars = conds zip varsToReplace
+//          val condVarsPerm = condVars zip perms
+//
+//          val addC = (res zipWithIndex) map (r => (r._1, Seq(condVarsPerm(r._2))))
+//          addC
+//        }
+//      }
       case n => {
         val subUpdate = n.subnodes flatMap (sub => update(sub, program))
         subUpdate.groupBy(_._1).map { case (k,v) => (k, v.flatMap(_._2))} toSeq
@@ -308,22 +413,31 @@ object AssumeRewriter {
     p
   }
 
-  def generatePermUsingFunc(context: Seq[((Exp, Seq[Exp]), Exp)], rcv: Seq[Exp], perm: Exp, permLoc: CurrentPerm): Exp = {
+  def generatePermUsingFunc(context: Seq[((Exp, Seq[Exp]), Exp)], rcv: Seq[Exp], perm: Exp, permLoc: CurrentPerm, cond: Option[Exp]): Exp = {
 
     assert(context.forall(c => c._1._2.length == rcv.length))
 
-    val contextWithoutRcv = context.filter(c => !rcv.forall(e => c._1._1.contains(e)))
+    val contextWithoutRcv = cond match {
+      case Some(exp) => {
+        context.filter(c => !c._1._1.equals(exp))
+      }
+      case None => {
+        context.filter(c => !rcv.forall(e => c._1._1.contains(e)))
+      }
+    }
     if (contextWithoutRcv.isEmpty) return PermGeCmp(permLoc, perm)()
 
     val conds = contextWithoutRcv map (c => c._1._1.replace((c._1._2 zip rcv).toMap[Exp, Exp]))
     val perms = (contextWithoutRcv map (_._2)) :+ perm
 
     if (funcs.length <= contextWithoutRcv.length-1) {
-      funcs = funcs :+ generateFunc(funcs.length + 1)
+      val (fun, ax) = generateFunc(funcs.length + 1)
+      funcs = funcs :+ fun
+      axioms = axioms :+ ax
     }
 
     val func = funcs(contextWithoutRcv.length-1)
-    val funcApp = FuncApp(func, conds ++ perms)()
+    val funcApp = DomainFuncApp(func, conds ++ perms, Map[TypeVar, Type]())()
     PermGeCmp(permLoc, funcApp)()
   }
 
@@ -344,7 +458,7 @@ object AssumeRewriter {
     }
   }
 
-  def generateFunc(numOfConds: Int): Function = {
+  def generateFunc(numOfConds: Int): (DomainFunc, DomainAxiom) = {
     val name = "assume_helper_" + numOfConds
     var conds: Seq[LocalVar] = Seq()
     var perms: Seq[LocalVar] = Seq()
@@ -353,11 +467,11 @@ object AssumeRewriter {
     val formalArgs = {
       for (i <- 0 until numOfConds) {
         cDecls = LocalVarDecl("c_" + (i+1), Bool)() +: cDecls
-        if (i < numOfConds-1) conds = conds :+ LocalVar("c_" + (i+1))(Bool)
+        if (i < numOfConds) conds = conds :+ LocalVar("c_" + (i+1))(Bool)
       }
       for (i <- 0 until numOfConds) {
         pDecls = LocalVarDecl("p_" + (i+1), Perm)() +: pDecls
-        if (i < numOfConds-1) perms = perms :+ LocalVar("p_" + (i+1))(Perm)
+        if (i < numOfConds) perms = perms :+ LocalVar("p_" + (i+1))(Perm)
       }
       cDecls ++ pDecls
     }
@@ -365,7 +479,7 @@ object AssumeRewriter {
       val condsWithPerm = conds zip perms
 
       val condExps = condsWithPerm map (cp => CondExp(cp._1, cp._2, NoPerm()())())
-      Some(condExps.foldLeft[Exp](LocalVar("p_0")(Perm))((p, c) => PermAdd(p, c)()))
+      condExps.foldLeft[Exp](LocalVar("p_0")(Perm))((p, c) => PermAdd(p, c)())
 
 //      var condSeq: Seq[(Exp, Exp)] = Seq()
 //      for (i <- numOfConds until 0 by -1) {
@@ -389,7 +503,11 @@ object AssumeRewriter {
 //        Some(CondExp(c1, PermAdd(p1, p0)(), p0)())
 //      }
     }
-    Function(name, formalArgs, Perm, Seq(), Seq(), None, body)()
+    Function(name, formalArgs, Perm, Seq(), Seq(), None, Some(body))()
+    val fun = DomainFunc(name, formalArgs, Perm)(domainName = "Assume")
+    val ax = Forall(formalArgs, Seq(Trigger(Seq(DomainFuncApp(fun, (formalArgs map (_.localVar)), Map[TypeVar, Type]())()))()), EqCmp(DomainFuncApp(fun, (formalArgs map (_.localVar)), Map[TypeVar, Type]())(), body)())()
+    val dax = DomainAxiom(name + "_axiom", ax)(domainName = "Assume")
+    (fun, dax)
   }
 
   def genFuncCond(condsWithPerm: Seq[(Exp, Exp)], perm: Exp): (Exp, Exp) = {
@@ -408,9 +526,10 @@ object AssumeRewriter {
       case forall: Forall => {
         val invForall = InverseFunctions.getFreshInverse(forall, program)
         invForall match {
-          case (Some(invs), Some(axioms), forall1) => {
+          case (Some((invs, domain)), Some(axs), forall1) => {
             inverses ++= invs
-            val ax = axioms.tail.foldLeft[Exp](axioms.head)((e, f) => And(e, f)())
+            domains :+= domain
+            val ax = axs.tail.foldLeft[Exp](axs.head)((e, f) => And(e, f)())
             And(ax, forall1)()
           }
           case _ => forall
@@ -433,7 +552,7 @@ object AssumeRewriter {
     }).execute(pInvs)
 
     ViperStrategy.Slim({
-      case p: Program => Program(p.domains, p.fields, p.functions ++ funcs ++ inverses, p.predicates, p.methods)(p.pos, p.info, p.errT)
+      case p: Program => Program(p.domains ++ domains :+ Domain("Assume", funcs, axioms)(), p.fields, p.functions, p.predicates, p.methods)(p.pos, p.info, p.errT)
     }).execute(pAssume)
   }
 
