@@ -1,7 +1,7 @@
 // Settings common to Silver and backends
 // Compilation settings
-ThisBuild / scalaVersion := "2.11.8"      //?
-//ThisBuild / scalaVersion := "2.12.6"    //? Upgrade, was 2.11.8
+//ThisBuild / scalaVersion := "2.11.8"      //?
+ThisBuild / scalaVersion := "2.12.6"    //? Upgrade, was 2.11.8
 ThisBuild / scalacOptions ++= Seq(
     "-deprecation",                     // Warn when using deprecated language features
     "-unchecked",                       // Warn on generated code assumptions
@@ -17,9 +17,9 @@ lazy val silver = (project in file("."))
 
         // Compilation settings (old)
         libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,             // Scala
-        libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1",                            // Testing
+        //libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1",                            // Testing
         libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.5",    // Parsing
-        libraryDependencies += "com.lihaoyi" %% "fastparse" % "0.3.7",                              // Parsing
+        //libraryDependencies += "com.lihaoyi" %% "fastparse" % "0.3.7",                              // Parsing
         libraryDependencies += "org.rogach" %% "scallop" % "2.0.7",                                 // CLI parsing
         libraryDependencies += "commons-io" % "commons-io" % "2.5",                                 // I/O
         libraryDependencies += "com.google.guava" % "guava" % "17.0",                               // Collections
@@ -28,8 +28,8 @@ lazy val silver = (project in file("."))
         libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.7",                      // Logging
 
         // Compilation settings
-        //libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test",                   // Testing
-        //libraryDependencies += "com.lihaoyi" %% "fastparse" % "1.0.0",                              // Parsing
+        libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5",                            // Testing
+        libraryDependencies += "com.lihaoyi" %% "fastparse" % "1.0.0",                              // Parsing
 
         // Test settings
         Test / parallelExecution := false)

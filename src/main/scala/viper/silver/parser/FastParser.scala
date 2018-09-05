@@ -5,7 +5,7 @@ import java.nio.file.{Files, Path}
 import scala.language.{implicitConversions, reflectiveCalls}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
-import viper.silver.ast.{MagicWandOp, SourcePosition}
+import viper.silver.ast.{SourcePosition, LineCol}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
@@ -168,7 +168,9 @@ object FastParser extends PosParser {
     val p = RecParser(path).parses(transformed_source)
     p match {
       case fastparse.core.Parsed.Success(prog, _) => prog
-      case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Expected $msg", FilePosition(path, extra.line, extra.col))
+      case fastparse.core.Parsed.Failure(msg, index, extra) =>
+        val (line, col) = LineCol(extra.input, index)
+        throw ParseException(s"Expected $msg", FilePosition(path, line, col))
     }
   }
 
@@ -507,7 +509,7 @@ object FastParser extends PosParser {
 
   lazy val unExp: P[PUnExp] = P((CharIn("-!+").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
 
-  lazy val strInteger: P[String] = P(CharIn('0' to '9').rep(1)).!
+  lazy val strInteger: P[String] = P(CharIn('0' to '9').rep(min = 1)).!
 
   lazy val integer: P[PIntLit] = strInteger.filter(s => !s.contains(' ')).map { s => PIntLit(BigInt(s)) }
 
@@ -829,7 +831,7 @@ object FastParser extends PosParser {
     case filename => PImport(filename)
   }
 
-  lazy val relativeFilePath: P[String] = P((CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
+  lazy val relativeFilePath: P[String] = P((CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(min = 1))
 
   lazy val domainDecl: P[PDomain] = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
     "}").map {

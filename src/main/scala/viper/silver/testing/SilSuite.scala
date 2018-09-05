@@ -47,7 +47,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
     *
     * @param configMap The config map provided by ScalaTest.
     */
-  override def beforeAll(configMap: ConfigMap) {
+  def beforeAll(configMap: ConfigMap) {
     this.configMap = configMap
     verifiers foreach (_.start())
   }
