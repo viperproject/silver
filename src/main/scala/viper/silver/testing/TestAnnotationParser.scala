@@ -34,7 +34,7 @@ trait TestAnnotationParser {
     * returns an object describing the result.
     */
   def parseAnnotations(file: Path) = {
-    val lines = Source.fromInputStream(Files.newInputStream(file))
+    val lines = Source.fromInputStream(Files.newInputStream(file), "UTF-8")
                       .mkString
                       .replace("""\r""", "")
                       .split("\n")
