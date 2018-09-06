@@ -12,12 +12,13 @@
 
 package viper.silver.ast.utility
 
-import scala.collection.JavaConversions._
-import org.jgrapht.{DirectedGraph, EdgeFactory}
-import org.jgrapht.alg.{CycleDetector, StrongConnectivityInspector}
+import viper.silver.ast._
+import org.jgrapht.EdgeFactory
+import org.jgrapht.alg.CycleDetector
+import org.jgrapht.alg.connectivity.GabowStrongConnectivityInspector
 import org.jgrapht.graph.DefaultDirectedGraph
 import org.jgrapht.traverse.TopologicalOrderIterator
-import viper.silver.ast._
+import scala.collection.JavaConversions._
 
 /**
  * Utility methods for functions.
@@ -37,7 +38,7 @@ object Functions {
     * TODO: Memoize invocations of `getFunctionCallgraph`.
     */
   def getFunctionCallgraph(program: Program, subs: Function => Seq[Exp] = allSubexpressions)
-                          : DirectedGraph[Function, Edge[Function]] = {
+                          : DefaultDirectedGraph[Function, Edge[Function]] = {
 
     val graph = new DefaultDirectedGraph[Function, Edge[Function]](Factory[Function]())
 
@@ -91,7 +92,7 @@ object Functions {
     /* Get all strongly connected components (SCCs) of the call-graph, represented as
      * sets of functions.
      */
-    val stronglyConnectedSets = new StrongConnectivityInspector(callGraph).stronglyConnectedSets()
+    val stronglyConnectedSets = new GabowStrongConnectivityInspector(callGraph).stronglyConnectedSets()
 
     /* Will represent the condensation of the call-graph, i.e., the call-graph,
      * but where each strongly connected component has been condensed into a
