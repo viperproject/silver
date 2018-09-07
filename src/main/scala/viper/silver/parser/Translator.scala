@@ -422,11 +422,11 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
           case other =>
             sys.error(s"Internal Error: Unexpectedly found $other in forperm")
         }
-      case c@PComp(vars, filter, body, binary, unit) =>
+      case c@PComp(vars, filter, body, _, unit) =>
         val varList = vars map liftVarDecl
         val filt = Filter(exp(filter))(pos)
         val bod = exp(body).asInstanceOf[FieldAccess]
-        val bin = binary.name
+        val bin = exp(c.exampleBinApp).asInstanceOf[FuncLikeApp]
         val un = exp(unit)
         Comp(varList, filt, bod, bin, un)(ttyp(c.typ), pos)
 

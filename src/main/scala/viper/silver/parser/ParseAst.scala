@@ -768,7 +768,9 @@ case class PForPerm(vars: Seq[PFormalArgDecl], accessRes: PResourceAccess, body:
   val triggers: Seq[PTrigger] = Seq()
 }
 
-case class PComp(vars: Seq[PFormalArgDecl], filter: PExp, body: PFieldAccess, binary: PIdnUse, unit: PExp) extends PBinder with PScope
+case class PComp(vars: Seq[PFormalArgDecl], filter: PExp, body: PFieldAccess, binary: PIdnUse, unit: PExp) extends PBinder with PScope {
+  val exampleBinApp = PCall(binary, Seq(body, unit))
+}
 
 /* Let-expressions `let x == e1 in e2` are represented by the nested structure
  * `PLet(e1, PLetNestedScope(x, e2))`, where `PLetNestedScope <: PScope` (but
