@@ -1,0 +1,39 @@
+field val: Int
+
+domain Array {
+    function loc(a: Array, i: Int): Ref
+    function len(a: Array): Int
+    function array(r: Ref): Array
+    function index(r: Ref): Int
+
+    axiom allDiff {
+        forall a: Array, i: Int :: {loc(a, i)}
+            array(loc(a, i)) == a && index(loc(a, i)) == i
+    }
+
+    axiom lenNonNeg {
+        forall a: Array :: {len(a)}
+        len(a) >= 0
+    }
+}
+
+define in_range(i, a)
+    i >= 0 && i < len(a)
+
+function add(l: Int, r: Int): Int
+    ensures result == l + r
+
+
+method test(a1: Array)
+    // access to full array
+    requires forall i: Int :: {loc(a1, i).val} in_range(i, a1) ==> acc(loc(a1,i).val)
+    requires (comp[add, 0] i: Int, a: Array :: {loc(a, i).val | in_range(i, a) && i%2 == 0 && a == a1}) == 5
+    requires (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && i%2 == 1 && a == a1}) == 2
+{
+    var i1: Int
+    assume in_range(i1, a1) && i1 % 2 == 0
+    var r: Ref
+    assume loc(a1, i1) == r
+    r.val := r.val + 5
+    assert (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && a == a1}) == 11
+}

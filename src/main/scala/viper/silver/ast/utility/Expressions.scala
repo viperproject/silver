@@ -118,8 +118,8 @@ object Expressions {
 
     instantiateVariables(exp, variables map (_.localVar), values)
 
-  /** Collects all the local variables mentioned in an expression */
-  def collectVars(e: Exp) = Visitor.shallowCollect(Seq(e), subExps) {case v: LocalVar => v}
+  /** Collects all the local variables mentioned in an expression, distinctively */
+  def collectVars(e: Exp) = Visitor.shallowCollect(Seq(e), subExps) {case v: LocalVar => v}.distinct
 
   def subExps(e: Exp) = e.subnodes collect {
     case e: Exp => e
