@@ -749,12 +749,10 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         <+> brackets(show(resource)) <+> "::" <+> show(exp))
     case Comp(vars, filter, body, binary, unit) =>
       parens(text("comp")
+        <+> "[" <+> text(binary.funcname) <+> "," <+> show(unit) <+> "]"
         <+> showVars(vars)
         <+> "::"
-        <+> show(filter)
-        <+> show(body)
-        <+> text(binary)
-        <+> show(unit)
+        <+> "{" <+> show(body) <+> """|""" <+> show(filter) <+> "}"
       )
 
 

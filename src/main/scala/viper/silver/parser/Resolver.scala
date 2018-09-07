@@ -725,12 +725,11 @@ case class TypeChecker(names: NameAnalyser) {
             }
           case _ => issueError(comp.binary, "expected binary operator")
         }
-        check(comp.body, comp.typ)
-        check(comp.unit, comp.typ)
+        check(comp.exampleBinApp, comp.typ) // this also checks body and unit
         check(comp.filter, Bool)
         comp._typeSubstitutions = comp.body.typeSubstitutions.toList.distinct ++
-          comp.unit.typeSubstitutions.toList.distinct ++
-          comp.filter.typeSubstitutions.toList.distinct
+          comp.filter.typeSubstitutions.toList.distinct ++
+          comp.unit.typeSubstitutions.toList.distinct
         curMember = oldCurMember
     }
   }
