@@ -306,6 +306,15 @@ object Consistency {
       a.deepCollect[LocalVar]{case vr: LocalVar if vr == v.localVar => vr}.nonEmpty))
   }
 
+  /** Returns, whether only the variables in `vars` are used in the expressions of `resArgs`. */
+  def onlyVarsUsed(vars: Seq[LocalVarDecl], resArgs: Seq[Exp]): Boolean = {
+    val locals = vars map {vDecl => vDecl.localVar}
+    resArgs forall {arg =>
+      val used = Expressions.collectVars(arg)
+      used.forall(v => locals.contains(v))
+    }
+  }
+
   def checkForpermArgUse(fp: ForPerm, program: Program): Unit = {
 
     val resArgs = fp.resource match {

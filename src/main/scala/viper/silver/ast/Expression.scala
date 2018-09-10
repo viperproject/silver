@@ -603,7 +603,10 @@ case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Inf
 case class Comp(variables: Seq[LocalVarDecl], filter: Filter, body: FieldAccess, binaryApp: FuncLikeApp, unit: Exp)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with Scope {
   override lazy val check : Seq[ConsistencyError] =
     Consistency.checkPure(body.rcv) ++
-    Consistency.checkPure(unit)
+    Consistency.checkPure(unit) ++
+      (if(Consistency.allVariablesUsed(variables, Seq(body))) Seq() else Seq(ConsistencyError("Body of comprehension does not mention all variables.", pos))) ++
+      (if(Consistency.onlyVarsUsed(variables, Seq(body))) Seq() else Seq(ConsistencyError("Body of comprehension mentions variables defined outside the comprehension.", pos))) ++
+      (if(Consistency.onlyVarsUsed(Seq(), Seq(unit))) Seq() else Seq(ConsistencyError("Unit of comprehension has no static value.", pos)))
   val scopedDecls: Seq[Declaration] = variables
 }
 
