@@ -35,5 +35,5 @@ method test(a1: Array)
     var r: Ref
     assume loc(a1, i1) == r
     r.val := r.val + 5
-    assert (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && a == a1}) == 11
+    assert (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && a == a1}) == 12
 }

@@ -1,11 +1,15 @@
 field val: Int
 
-function r(i: Int): Ref
+domain Foo {
+    function r(i: Int): Ref
+}
 
 function add(i1: Int, i2: Int): Int
     ensures result == i1 + i2
 
-method test() {
+method test()
+    requires forall i:Int :: {r(i).val} i >= 0 && i <= 10 ==> acc(r(i).val)
+{
     assume (comp[add, 0] i: Int :: {r(i).val | i >= 0 && i <= 10}) == 10
     r(5).val := r(5).val + 5
     assert (comp[add, 0] i: Int :: {r(i).val | i >= 0 && i <= 10}) == 15
