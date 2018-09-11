@@ -11,6 +11,7 @@ import scala.collection.mutable
 import viper.silver.ast._
 import viper.silver.ast.utility._
 import viper.silver.FastMessaging
+import viper.silver.verifier.ConsistencyError
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -51,6 +52,7 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         val finalProgram = Program(domain, fields, functions, predicates, methods)(program)
 
         finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForpermArgUse(fp, finalProgram)}
+        finalProgram.deepCollect {case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)}
 
         if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
         else None

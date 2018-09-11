@@ -588,8 +588,8 @@ case class ForPerm(variables: Seq[LocalVarDecl], resource: ResourceAccess, body:
 
 /** A trigger for a universally quantified formula. */
 case class Trigger(exps: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Node with Positioned with Infoed {
-  override lazy val check : Seq[ConsistencyError] =
-    (if(!(exps forall Consistency.validTrigger)) Seq(ConsistencyError( s"The trigger { ${exps.mkString(", ")} } is not valid.", pos)) else Seq())
+//  override lazy val check : Seq[ConsistencyError] =
+//    (if(!(exps forall Consistency.validTrigger)) Seq(ConsistencyError( s"The trigger { ${exps.mkString(", ")} } is not valid.", pos)) else Seq())
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
