@@ -1,0 +1,15 @@
+field v: Int
+
+function plus(l: Int, r: Int): Int
+    ensures result == l+r
+
+method test(s: Set[Ref])
+    requires forall n: Ref :: {n.v} n in s ==> acc(n.v)
+    requires (comp[plus, 0] n: Ref :: {n.v | n in s}) == 0
+    ensures forall n: Ref :: {n.v} n in s ==> acc(n.v)
+{
+    var r: Ref
+    assume r in s
+    r.v := r.v+1
+    assert (comp[plus, 0] n: Ref :: {n.v | n in s}) == 1
+}
