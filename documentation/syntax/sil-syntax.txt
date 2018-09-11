@@ -238,7 +238,8 @@ exp ::=
 	"|" exp "|" |                // length of a sequence; or set/multiset cardinality
 
 	let-in-exp  |
-	forperm-exp 
+	forperm-exp |
+	comprehension
 
 magic-wand-exp ::=
     exp // except that it must not be <==> or ==>
@@ -280,6 +281,9 @@ field-access ::=
 	
 predicate-access ::=
 	ident "(" exp^,* ")"         // predicate access
+
+comprehension ::=
+    comp "[" ident "," exp "]" formal-arg`,* "::" "{" field-access "|" exp "}"
 
 // Types
 type ::=
