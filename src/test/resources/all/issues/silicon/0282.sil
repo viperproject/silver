@@ -49,6 +49,7 @@ method test03a(xs: Seq[Ref], k: Int) {
   inhale 0 <= k && k < |xs|
   inhale forall i: Int :: {at2(i, xs)} 0 <= i && i < |xs| ==> acc(at1(xs, i).f)
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/242/)
   assert at1(xs, k) != null
 }
 

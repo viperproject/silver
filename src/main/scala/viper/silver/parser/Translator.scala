@@ -50,6 +50,8 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
 
         val finalProgram = Program(domain, fields, functions, predicates, methods)(program)
 
+        finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForpermArgUse(fp, finalProgram)}
+
         if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
         else None
     }
@@ -363,6 +365,7 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         FieldAccess(exp(rcv), findField(idn))(pos)
       case PPredicateAccess(args, idn) =>
         PredicateAccess(args map exp, findPredicate(idn).name)(pos)
+      case PMagicWandExp(left, right) => MagicWand(exp(left), exp(right))(pos)
       case pfa@PCall(func, args, _) =>
         members(func.name) match {
           case f: Function => FuncApp(f, args map exp)(pos)
@@ -409,36 +412,28 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
           desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
-      case f@PForPerm(_, args, e) =>
-
-        //val args = fields map findField
-
-        //check that the arguments contain only fields and predicates
-        args.foreach(a => Consistency.checkForPermArguments(members(a.name)))
-
-        val argAccess = mutable.Buffer[Location]()
-        for (a <- args) {
-
-          //we are either dealing with predicates, or fields!
-          members(a.name) match {
-            case f : Field => argAccess += f
-            case p : Predicate => argAccess += p
-            case _ => sys.error("Internal Error: Can only handle fields and predicates in forperm")
-          }
+      case f@PForPerm(vars, res, e) =>
+        val varList = vars map liftVarDecl
+        exp(res) match {
+          case PredicateAccessPredicate(inner, _) => ForPerm(varList, inner, exp(e))(pos)
+          case f : FieldAccess => ForPerm(varList, f, exp(e))(pos)
+          case p : PredicateAccess => ForPerm(varList, p, exp(e))(pos)
+          case w : MagicWand => ForPerm(varList, w, exp(e))(pos)
+          case other =>
+            sys.error(s"Internal Error: Unexpectedly found $other in forperm")
         }
-
-        ForPerm(liftVarDecl(f.variable), argAccess.toList, exp(e))(pos)
       case POld(e) =>
         Old(exp(e))(pos)
       case PLabelledOld(lbl,e) =>
         LabelledOld(exp(e),lbl.name)(pos)
       case PCondExp(cond, thn, els) =>
         CondExp(exp(cond), exp(thn), exp(els))(pos)
-      case PCurPerm(loc) =>
-        exp(loc) match {
-          case PredicateAccessPredicate(inner, _) => CurrentPerm(inner.asInstanceOf[LocationAccess])(pos)
-          case x: FieldAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
-          case x: PredicateAccess => CurrentPerm(x.asInstanceOf[LocationAccess])(pos)
+      case PCurPerm(res) =>
+        exp(res) match {
+          case PredicateAccessPredicate(inner, _) => CurrentPerm(inner)(pos)
+          case x: FieldAccess => CurrentPerm(x)(pos)
+          case x: PredicateAccess => CurrentPerm(x)(pos)
+          case x: MagicWand => CurrentPerm(x)(pos)
           case other => sys.error(s"Unexpectedly found $other")
         }
       case PNoPerm() =>

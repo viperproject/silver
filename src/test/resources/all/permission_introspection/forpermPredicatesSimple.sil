@@ -14,9 +14,8 @@ method noPredicates()
 {
   var r1: Ref
   var r2: Ref
-  assert forperm[P1] r :: false
-  assert forperm[P2] r :: false
-  assert forperm[P1,P2] r :: false
+  assert forperm r: Ref [P1(r)] :: false
+  assert forperm r: Ref [P2(r)] :: false
 }
 
 method noPredicates2()
@@ -24,9 +23,8 @@ method noPredicates2()
   var r1: Ref
   var r2: Ref
   inhale acc(P3(r1))
-  assert forperm[P1] r :: false
-  assert forperm[P2] r :: false
-  assert forperm[P1,P2] r :: false
+  assert forperm r: Ref [P1(r)] :: false
+  assert forperm r: Ref [P2(r)] :: false
 }
 
 method permOnlyOnePredicate1()
@@ -35,7 +33,7 @@ method permOnlyOnePredicate1()
   var r2: Ref
   inhale acc(P1(r1))
   //:: ExpectedOutput(assert.failed:assertion.false)
-  assert forperm[P1] r :: false
+  assert forperm r: Ref [P1(r)] :: false
 }
 
 method permOnlyOnePredicate2()
@@ -43,9 +41,9 @@ method permOnlyOnePredicate2()
   var r1: Ref
   var r2: Ref
   inhale acc(P1(r1))
-  assert forperm[P2] r :: false
+  assert forperm r: Ref [P2(r)] :: false
   //:: ExpectedOutput(assert.failed:assertion.false)
-  assert forperm[P1,P2] r :: false
+  assert forperm r: Ref [P1(r)] :: false
 }
 
 method permCheck()
@@ -54,7 +52,6 @@ method permCheck()
   var r2: Ref
   inhale acc(P1(r1))
   exhale acc(P1(r1))
-  assert forperm[P1] r :: false
-  assert forperm[P2] r :: false
-  assert forperm[P1,P2] r :: false
+  assert forperm r: Ref [P1(r)] :: false
+  assert forperm r: Ref [P2(r)] :: false
 }

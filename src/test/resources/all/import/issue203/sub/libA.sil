@@ -1,0 +1,5 @@
+import "libB.sil"
+
+method test2() {
+  assert b2()
+}

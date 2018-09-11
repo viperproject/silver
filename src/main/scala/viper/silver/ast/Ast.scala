@@ -106,6 +106,12 @@ trait Node extends Traversable[Node] with Rewritable {
 
   override def toString() = FastPrettyPrinter.pretty(this)
 
+  def toOneLinerStr() = s"<${getClass.getSimpleName()}> ``" + (
+    if (toString().indexOf("\n") != -1)
+      toString().take(toString().indexOf("\n")) + "..."
+    else
+      toString() ) + "''"
+
   /** @see [[viper.silver.ast.utility.ViperStrategy]] */
   def transform(pre: PartialFunction[Node, Node] = PartialFunction.empty,
                 recurse: Traverse = Traverse.Innermost)
@@ -275,7 +281,7 @@ trait ErrorTrafo {
 
   def rTransformations: List[PartialFunction[ErrorReason, ErrorReason]]
 
-  def nTransformations: Option[ErrorNode]
+  def nTransformations: Option[ErrorNode] // TODO: Why is this an option and not a list?
 
   def +(t: ErrorTrafo): Trafos = {
     Trafos(eTransformations ++ t.eTransformations, rTransformations ++ t.rTransformations, if (t.nTransformations.isDefined) t.nTransformations else nTransformations)
@@ -286,6 +292,10 @@ trait ErrorTrafo {
 trait Info {
   // A list of comments.
   def comment: Seq[String]
+
+  // Whether the owner of this [[Info]] is cached and does not require further verification (but is still needed in the AST).
+  def isCached: Boolean
+
   def getUniqueInfo[T <: Info:ClassTag] : Option[T] = {
     this match {
       case t:T => Some(t)
@@ -301,19 +311,30 @@ trait Info {
 /** A default `Info` that is empty. */
 case object NoInfo extends Info {
   lazy val comment = Nil
+  lazy val isCached = false
 }
 
 /** A simple `Info` that contains a list of comments. */
-case class SimpleInfo(comment: Seq[String]) extends Info
+case class SimpleInfo(comment: Seq[String]) extends Info {
+  lazy val isCached = false
+}
 
 /** An `Info` instance for labelling a quantifier as auto-triggered. */
 case object AutoTriggered extends Info {
   lazy val comment = Nil
+  lazy val isCached = false
+}
+
+/** An `Info` instance for labelling a pre-verified AST node (e.g., via caching). */
+case object Cached extends Info {
+  lazy val comment = Nil
+  lazy val isCached = true
 }
 
 /** An `Info` instance for composing multiple `Info`s together */
 case class ConsInfo(head: Info, tail: Info) extends Info {
   lazy val comment = head.comment ++ tail.comment
+  lazy val isCached = head.isCached || tail.isCached
 }
 
 /** Build a `ConsInfo` instance out of two `Info`s, unless the latter is `NoInfo` (which can be dropped) */

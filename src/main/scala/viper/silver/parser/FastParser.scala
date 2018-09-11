@@ -5,12 +5,14 @@ import java.nio.file.{Files, Path}
 import scala.language.{implicitConversions, reflectiveCalls}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
-import viper.silver.ast.SourcePosition
+import viper.silver.ast.{MagicWandOp, SourcePosition}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier.ParseError
+
+import scala.collection.mutable
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
 
@@ -22,63 +24,63 @@ object FastParser extends PosParser {
 
   var _lines: Array[Int] = null
 
-  /** Set of already imported files.
-    *
-    * Only absolute paths should be recorded in order to prevent that different relative paths
-    * (referencing the same file) result in importing files more than once.
-    * Hence, the two methods [[isAlreadyImported]] and [[addToImported]] below.
-    */
-  private val _imported = collection.mutable.Set.empty[Path]
-
-  private def isAlreadyImported(path: Path): Boolean =
-    _imported.contains(path.toAbsolutePath)
-
-  private def addToImported(path: Path): Boolean =
-    _imported.add(path.toAbsolutePath)
-
   def parse(s: String, f: Path, plugins: Option[SilverPluginManager] = None) = {
-    _file = f
+    _file = f.toAbsolutePath
     val lines = s.linesWithSeparators
     _lines = lines.map(_.length).toArray
 
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
     //       iterate until no new imports are present.
-    val importer = StrategyBuilder.Slim[PProgram]({
-      case p: PProgram =>
-        val firstImport = p.imports.headOption
 
-        if (firstImport.isEmpty) {
-          p
-        } else {
-          val toImport = firstImport.get
-          if (addToImported(pathFromImport(toImport))) {
-            val newProg = importProgram(toImport, plugins)
+    def resolveImports(p: PProgram) = {
+        val pathsToImport = new mutable.ArrayBuffer[Path]()
+        val pathImportStatements = new mutable.HashMap[Path, PImport]()
+        pathsToImport.append(f.toAbsolutePath)
 
-            PProgram(
-              p.imports.drop(1) ++ newProg.imports,
-              p.macros ++ newProg.macros,
-              p.domains ++ newProg.domains,
-              p.fields ++ newProg.fields,
-              p.functions ++ newProg.functions,
-              p.predicates ++ newProg.predicates,
-              p.methods ++ newProg.methods,
-              p.errors ++ newProg.errors)
-          } else {
-            PProgram(p.imports.drop(1), p.macros, p.domains, p.fields, p.functions, p.predicates, p.methods, p.errors)
+        var macros = p.macros
+        var domains = p.domains
+        var fields = p.fields
+        var functions = p.functions
+        var methods = p.methods
+        var predicates = p.predicates
+        var errors = p.errors
+        for (ip <- p.imports) {
+          val importedPath = f.toAbsolutePath.getParent.resolve(ip.file)
+          if (!(pathsToImport.contains(importedPath))) {
+            pathsToImport.append(importedPath)
+            pathImportStatements.update(importedPath, ip)
           }
         }
-        // Stop recursion at the program node already. Nodes other than PProgram are not
-        // interesting for our transformation
-    }).recurseFunc({ case p: PProgram => Seq() }).repeat
+        var i = 1
+        while (i < pathsToImport.length) {
+          val current = pathsToImport(i)
+          val newProg = importProgram(current, pathImportStatements.get(current).get, plugins)
+          macros ++= newProg.macros
+          domains ++= newProg.domains
+          fields ++= newProg.fields
+          functions ++= newProg.functions
+          methods ++= newProg.methods
+          predicates ++= newProg.predicates
+          errors ++= newProg.errors
+          for (ip <- newProg.imports) {
+            val importedPath = current.getParent.resolve(ip.file)
+            if (!(pathsToImport.contains(importedPath))) {
+              pathsToImport.append(importedPath)
+              pathImportStatements.update(importedPath, ip)
+            }
+          }
+          i += 1
+        }
+        PProgram(Seq(), macros, domains, fields, functions, predicates, methods, errors)
+    }
+
 
     try {
       val rp = RecParser(f).parses(s)
       rp match {
         case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, errors), e) =>
-          _imported.clear() // Don't keep state in between parsing programs (same parse instance might be reused)
-          addToImported(f) // Add the current program to already imported
-          val importedProgram = importer.execute[PProgram](program) // Import programs
+          val importedProgram = resolveImports(program) // Import programs
           val expandedProgram = expandDefines(importedProgram) // Expand macros
           Parsed.Success(expandedProgram, e)
         case _ => rp
@@ -138,12 +140,11 @@ object FastParser extends PosParser {
   /**
     * Function that parses a file and converts it into a program
     *
+    * @param path Path of the file to be imported
     * @param importStmt Import statement.
     * @return `PProgram` node corresponding to the imported program.
     */
-  def importProgram(importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
-    val path = pathFromImport(importStmt)
-
+  def importProgram(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
     if (java.nio.file.Files.notExists(path))
       throw ParseException(s"""file "$path" does not exist""", FastPositions.getStart(importStmt))
 
@@ -507,7 +508,9 @@ object FastParser extends PosParser {
 
   lazy val unExp: P[PUnExp] = P((CharIn("-!+").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
 
-  lazy val integer: P[PIntLit] = P(CharIn('0' to '9').rep(1)).!.map { s => PIntLit(BigInt(s)) }
+  lazy val strInteger: P[String] = P(CharIn('0' to '9').rep(1)).!
+
+  lazy val integer: P[PIntLit] = strInteger.filter(s => !s.contains(' ')).map { s => PIntLit(BigInt(s)) }
 
   lazy val booltrue: P[PBoolLit] = P(keyword("true")).map(_ => PBoolLit(b = true))
 
@@ -527,10 +530,11 @@ object FastParser extends PosParser {
   lazy val old: P[PExp] = P(StringIn("old") ~ (parens(exp).map(POld) | ("[" ~ oldLabel ~ "]" ~ parens(exp)).map { case (a, b) => PLabelledOld(a, b) }))
 
   lazy val magicWandExp: P[PExp] = P(orExp ~ ("--*".! ~ exp).?).map { case (a, b) => b match {
-    case Some(c) => PBinExp(a, c._1, c._2)
+    case Some(c) => PMagicWandExp(a, c._2)
     case None => a
-  }
-  }
+  }}
+
+  lazy val realMagicWandExp: P[PMagicWandExp] = P(orExp ~ "--*".! ~ exp).map { case (a,_,c) => PMagicWandExp(a,c)}
 
   lazy val implExp: P[PExp] = P(magicWandExp ~ (StringIn("==>").! ~ implExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
@@ -614,6 +618,8 @@ object FastParser extends PosParser {
     }
   })
 
+  lazy val resAcc: P[PResourceAccess] = P(locAcc | realMagicWandExp)
+
   lazy val locAcc: P[PLocationAccess] = P(fieldAcc | predAcc)
 
   lazy val fieldAcc: P[PFieldAccess] =
@@ -628,8 +634,9 @@ object FastParser extends PosParser {
 
   lazy val inhaleExhale: P[PExp] = P("[" ~ exp ~ "," ~ exp ~ "]").map { case (a, b) => PInhaleExhaleExp(a, b) }
 
-  lazy val perm: P[PExp] = P(keyword("none").map(_ => PNoPerm()) | keyword("wildcard").map(_ => PWildcard()) | keyword("write").map(_ => PFullPerm())
-    | keyword("epsilon").map(_ => PEpsilon()) | ("perm" ~ parens(locAcc)).map(PCurPerm))
+  lazy val perm: P[PExp] =
+    P(keyword("none").map(_ => PNoPerm()) | keyword("wildcard").map(_ => PWildcard()) | keyword("write").map(_ => PFullPerm())
+    | keyword("epsilon").map(_ => PEpsilon()) | ("perm" ~ parens(resAcc)).map(PCurPerm))
 
   lazy val let: P[PExp] = P(
     ("let" ~/ idndef ~ "==" ~ "(" ~ exp ~ ")" ~ "in" ~ exp).map { case (id, exp1, exp2) =>
@@ -671,8 +678,8 @@ object FastParser extends PosParser {
 
   lazy val trigger: P[PTrigger] = P("{" ~/ exp.rep(sep = ",", min = 1) ~ "}").map(s => PTrigger(s))
 
-  lazy val forperm: P[PExp] = P(keyword("forperm") ~ "[" ~ idnuse.rep(sep = ",") ~ "]" ~ idndef ~ "::" ~/ exp).map {
-    case (ids, id, body) => PForPerm(PFormalArgDecl(id, PPrimitiv("Ref")), ids, body)
+  lazy val forperm: P[PExp] = P(keyword("forperm") ~ nonEmptyFormalArgList ~ "[" ~ resAcc ~ "]" ~ "::" ~/ exp).map {
+    case (args, res, body) => PForPerm(args, res, body)
   }
 
   lazy val unfolding: P[PExp] = P(keyword("unfolding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PUnfolding(a, b) }

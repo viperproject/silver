@@ -5,7 +5,6 @@ function SCIONPath_get_hof(self: Ref): Ref
   let idx_0 ==
   (unfolding acc(outer(self), wildcard) in self.whatever)
   in
-  //:: UnexpectedOutput(application.precondition:assertion.false, /carbon/issue/200/)
   (unbox(box(false)) ? null : null))
 }
 

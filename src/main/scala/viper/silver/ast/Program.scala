@@ -7,12 +7,13 @@
 package viper.silver.ast
 
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
-import utility.{Consistency, DomainInstances, Types, Nodes, Visitor}
+import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.cfg.silver.CfgGenerator
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
-import viper.silver.utility.{DependencyAware, CacheHelper}
+import viper.silver.utility.{CacheHelper, DependencyAware}
+
 import scala.collection.immutable
 import scala.reflect.ClassTag
 
@@ -104,21 +105,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
       Visitor.visitOpt(currentScope.asInstanceOf[Node], Nodes.subnodes){n=> {
         n match {
           case sc: Scope => if (sc == currentScope) true else {
-            currentScope match {
-              /** fields and predicates in ForPerm's access list need to be treated as uses and not declarations
-                * see related TODO in ForPerm definition
-                */
-              case fp@ForPerm(_, accessList, _) if accessList.contains(sc) =>
-                val optionalError = sc match {
-                  case f: Field => checkNameUse[Field](f.name,fp, "Field", declarationMap)
-                  case p: Predicate => checkNameUse[Predicate](p.name, fp, "Predicate", declarationMap)
-                }
-                optionalError match {
-                  case Some(error) => s :+= error
-                  case None =>
-                }
-              case _ => s ++= checkNamesInScope(sc, declarationMap)
-            }
+            s ++= checkNamesInScope(sc, declarationMap)
             false
           }
           case _ =>
@@ -310,6 +297,19 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     * Returns a control flow graph that corresponds to this method.
     */
   def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
+}
+
+object MethodWithLabelsInScope {
+  def apply(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
+                 (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): Method = {
+    val newBody = body match {
+      case Some(actualBody) =>
+        val newScopedDecls = actualBody.scopedDecls ++ actualBody.deepCollect({case l: Label => l})
+        Some(actualBody.copy(scopedDecls = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
+      case _ => body
+    }
+    Method(name, formalArgs, formalReturns, pres, posts, newBody)(pos, info, errT)
+  }
 }
 
 /** A function declaration */
@@ -628,7 +628,7 @@ case object ImpliesOp extends BoolBinOp with BoolDomainFunc {
 }
 
 /** Separating implication/Magic Wand. */
-case object MagicWandOp extends BoolBinOp with AbstractDomainFunc {
+case object MagicWandOp extends BoolBinOp with AbstractDomainFunc with Resource {
   lazy val typ = Wand
   lazy val op = "--*"
   lazy val priority = 3

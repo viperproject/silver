@@ -453,7 +453,9 @@ case class TypeChecker(names: NameAnalyser) {
   def typeError(exp:PExp) = {
     messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.rangeStr}")
   }
-  def check(exp: PExp, expected: PType) = checkTopTyped(exp,Some(expected))
+
+  def check(exp: PExp, expected: PType) = checkTopTyped(exp, Some(expected))
+
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
   {
     check(exp,PTypeSubstitution.id)
@@ -524,6 +526,13 @@ case class TypeChecker(names: NameAnalyser) {
       new PTypeSubstitution(ts map (kv => rts.rename(kv._1) -> kv._2.substitute(rts)))
     }
 
+    def inAxiomScope(s: PNode): Boolean =
+      s match {
+        case null => false
+        case _: PAxiom => true
+        case _ => inAxiomScope(s.parent)
+      }
+
     var extraReturnTypeConstraint : Option[PType] = None
 
     exp match {
@@ -558,7 +567,14 @@ case class TypeChecker(names: NameAnalyser) {
                     pfa.function = fd
                     ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                     fd match {
-                      case PFunction(_, _, resultType, _, _, _, _) =>
+                      case PFunction(_, _, _, _, _, _, _) =>
+                        checkMember(fd) {
+                          check(fd.typ)
+                          fd.formalArgs foreach (a => check(a.typ))
+                        }
+                        if (inAxiomScope(pfa))
+                          issueError(func, func.name + " is not a domain function")
+
                       case pdf@PDomainFunction(_, _, resultType, unique) =>
                         val domain = names.definition(curMember)(pdf.domainName).asInstanceOf[PDomain]
                         val fdtv = PTypeVar.freshTypeSubstitution((domain.typVars map (tv => tv.idndef.name)).distinct) //fresh domain type variables
@@ -603,16 +619,12 @@ case class TypeChecker(names: NameAnalyser) {
               acceptAndCheckTypedEntity[PField, Nothing](Seq(idnuse), "expected field")(
                 (id, decl) => checkInternal(id))
 
-            case ppp@PAccPred(loc, _) =>
+            case PAccPred(loc, _) =>
               loc match {
-                case ppfa@PCall(func, args, explicitType) =>
-                  val ad = names.definition(curMember)(func)
-                  ad match {
-                    case ppf : PFunction =>
-                      issueError(func, "expected predicate ")
-                    case _ =>
-                  }
+                case PFieldAccess(_, _) =>
+                case pc: PCall if pc.extfunction != null=>
                 case _ =>
+                  issueError(loc, "specified location is not a field nor a predicate")
               }
 
             case ppa@PPredicateAccess(args, idnuse) =>
@@ -671,6 +683,17 @@ case class TypeChecker(names: NameAnalyser) {
         checkInternal(pl.body)
         pl.typ = pl.body.typ
         pl._typeSubstitutions = (for (ts1 <- pl.body.typeSubstitutions;ts2 <- e.typeSubstitutions) yield ts1*ts2).flatten.toList.distinct
+        curMember = oldCurMember
+
+      case pq: PForPerm =>
+        val oldCurMember = curMember
+        curMember = pq
+        pq.vars foreach (v => check(v.typ))
+        check(pq.body,Bool)
+        checkInternal(pq.accessRes)
+        pq.triggers foreach (_.exp foreach (tpe=>checkTopTyped(tpe,None)))
+        pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
+        pq.typ = Bool
         curMember = oldCurMember
 
       case pq:PQuantifier =>

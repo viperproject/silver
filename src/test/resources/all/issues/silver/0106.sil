@@ -10,13 +10,13 @@ predicate p1(x: Ref)
 predicate p2(x: Ref)
 {
 	//:: ExpectedOutput(consistency.error)
-	forperm[f] r :: false
+	forperm r: Ref [r.f] :: false
 }
 
 predicate p3(x: Ref)
 {
 	//:: ExpectedOutput(consistency.error)
-	[forperm[f] r :: false, true]
+	[forperm r: Ref [r.f] :: false, true]
 }
 
 
@@ -30,7 +30,7 @@ function f1(x: Ref): Bool
 function f2(x: Ref): Bool
 {
 	//:: ExpectedOutput(consistency.error)
-	forperm[f] r :: false
+	forperm r: Ref [r.f] :: false
 }
 
 function f3(x: Ref): Bool
