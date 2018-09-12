@@ -338,33 +338,6 @@ object Consistency {
     }
   }
 
-  def checkForallInAssume(fa: Forall, program: Program): Unit = {
-
-    val resources = fa.deepCollect[ResourceAccess] {
-      case fap: FieldAccessPredicate => fap
-      case pred: PredicateAccessPredicate => pred
-      case wand: MagicWand => wand
-    }
-
-    val resArgs = resources map (res => res match {
-      case fap: FieldAccessPredicate => Seq(fap.loc.rcv)
-      case pred: PredicateAccessPredicate => pred.loc.args
-      case wand: MagicWand => wand.subexpressionsToEvaluate(program)
-    })
-
-    resArgs foreach (arg => recordIfNot(fa, allVariablesUsed(fa.variables, arg), "Only resources containing all quantified variables can be assumed"))
-
-    for (args <- resArgs) {
-      for (v <- fa.variables) {
-        for (arg <- args) {
-          if (!arg.isInstanceOf[LocalVar]) {
-            recordIfNot(arg,onlyDirectUse(v.localVar, arg), "Quantified arguments can only be used directly")
-          }
-        }
-      }
-    }
-  }
-
 //  def checkNoImpureConditionals(wand: MagicWand, program: Program) = {
 //    var expsToVisit = wand.left :: wand.right :: Nil
 //    var visitedMembers = List[Member]()
