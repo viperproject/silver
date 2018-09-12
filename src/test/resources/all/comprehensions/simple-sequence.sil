@@ -1,0 +1,11 @@
+field val: Int
+
+function mult(l: Int, r: Int): Int
+
+function foo(i: Int): Ref
+
+method test(s: Seq[Ref])
+    requires comp[mult, 1] i: Int :: {foo(i).val | 0 < i && i < |s|} == 7
+{
+
+}

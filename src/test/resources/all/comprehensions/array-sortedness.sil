@@ -1,0 +1,74 @@
+field tuple: Tuple[Int] // holds the current element and the next element of the array
+
+domain Array {
+    function loc(a: Array, i: Int): Ref
+    function len(a: Array): Int
+    function array(r: Ref): Array
+    function index(r: Ref): Int
+
+    axiom allDiff {
+        forall a: Array, i: Int :: {loc(a, i)}
+            array(loc(a, i)) == a && index(loc(a, i)) == i
+    }
+
+    axiom lenNonNeg {
+        forall a: Array :: {len(a)}
+        len(a) >= 0
+    }
+}
+
+define in_range(i, a)
+    i >= 0 && i < len(a)
+
+define full_access(a)
+    forall r: Ref :: {r.tuple} array(r) == a && in_range(index(r), array(r)) ==> acc(r.tuple)
+
+domain Tuple[T] {
+    function fst(t: Tuple[T]): T
+    function snd(t: Tuple[T]): T
+}
+
+function sorted(l: Tuple[Int], r: Tuple[Int]): Tuple[Int]
+    ensures fst(l) <= snd(l) && fst(r) <= snd(r) ? fst(result) == 0 && snd(result) == 1 : fst(result) == 1 && snd(result) == 0
+
+function resultSorted(res: Tuple[Int]): Bool
+    ensures result <==> fst(res) <= snd(res)
+
+function unit(): Tuple[Int]
+    ensures fst(result) == 0 && snd(result) == 1
+
+define first(a, i)
+    fst(loc(a, i).tuple)
+
+define second(a, i)
+    snd(loc(a, i).tuple)
+
+define first_swapped(a, i1, i2)
+    first(a, i1) == old(first(a, i2))
+
+define second_swapped(a, i1, i2)
+    second(a, i1) == old(second(a, i2))
+
+method swap(a: Array, i1: Int, i2: Int)
+    requires in_range(i1, a) && in_range(i2, a) && i1 < i2
+    // require access
+    requires acc(loc(a, i1).tuple)
+    requires i1 > 0 ==> acc(loc(a, i1-1).tuple)
+    requires i2 < len(a)-1 ==> acc(loc(a, i2).tuple)
+    requires acc(loc(a, i2-1).tuple)
+    // ensure access
+    ensures acc(loc(a, i1).tuple)
+    ensures i1 > 0 ==> acc(loc(a, i1-1).tuple)
+    ensures i2 < len(a)-1 ==> acc(loc(a, i2).tuple)
+    ensures acc(loc(a, i2-1).tuple)
+    // ensures result
+    ensures first_swapped(a, i2-1, i2-1) && (i1 > 0 ==> first_swapped(a, i1-1, i1-1)) // first of previous entry remained
+    ensures second_swapped(a, i1, i1) && (i2 < len(a)-1 ==> second_swapped(a, i2, i2)) // second of current entry remained
+    ensures first(a, i1) == old(second(a, i2-1)) && old(first(a, i1)) == second(a, i2-1) // swapped values
+    ensures i1 > 0 ==> second(a, i1-1) == first(a, i1) // match with previous tuple
+    ensures i2 < len(a)-1 ==> second(a, i2-1) == first(a, i2) // match with previous tuple
+
+method sort(a: Array)
+    requires full_access(a)
+    ensures full_access(a)
+    ensures resultSorted(comp[sorted, unit()] a1: Array, i: Int :: {loc(a1, i).tuple | a1 == a && i >= 0 && i < len(a)-1})
