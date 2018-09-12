@@ -63,6 +63,7 @@ object Nodes {
           case Inhale(e) => Seq(e)
           case Exhale(e) => Seq(e)
           case Assert(e) => Seq(e)
+          case Assume(e) => Seq(e)
           case MethodCall(mname, args, targets) => args ++ targets
           case Seqn(ss, scopedDecls) => ss ++ scopedDecls.collect {case l: LocalVarDecl => l} //skip labels because they are already part of ss
           case While(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)

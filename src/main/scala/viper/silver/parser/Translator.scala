@@ -6,6 +6,8 @@
 
 package viper.silver.parser
 
+import java.io.{File, PrintWriter}
+
 import scala.language.implicitConversions
 import scala.collection.mutable
 import viper.silver.ast._
@@ -25,6 +27,10 @@ import viper.silver.verifier.ConsistencyError
  * return a tree, but instead, records error messages using the
  * Messaging feature.
  */
+object Translator {
+  var counter: Int = 0
+}
+
 case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolean) {
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
@@ -49,7 +55,13 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
           methods ++= structureForTermProofs._3
         }
 
-        val finalProgram = Program(domain, fields, functions, predicates, methods)(program)
+        val finalProgram = if (Translator.counter == 0) AssumeRewriter.addFuncs(Program(domain, fields, functions, predicates, methods)(program))
+                            else Program(domain, fields, functions, predicates, methods)(program)
+
+        val pw = new PrintWriter(new File("E:\\Tobias\\Dokumente\\ETH\\BA\\tests\\program" + (Translator.counter) + ".txt"))
+        Translator.counter = Translator.counter + 1
+        pw.write(finalProgram.toString())
+        pw.close()
 
         finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForpermArgUse(fp, finalProgram)}
         finalProgram.deepCollect {case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)}
@@ -190,8 +202,9 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         Inhale(exp(e))(pos)
       case assume@PAssume(e) =>
         val sub = exp(e)
-        if(!sub.isPure) { Consistency.messages ++= FastMessaging.message(assume, "assume statements can only have pure parameters, found: " + sub) }
-        Inhale(exp(e))(pos)
+        Assume(exp(e))(pos)
+        //if(!sub.isPure) { Consistency.messages ++= FastMessaging.message(assume, "assume statements can only have pure parameters, found: " + sub) }
+        //AssumeRewriter.rewriteInhale(Inhale(AssumeRewriter.rewrite(exp(e)))(pos))
       case PExhale(e) =>
         Exhale(exp(e))(pos)
       case PAssert(e) =>
