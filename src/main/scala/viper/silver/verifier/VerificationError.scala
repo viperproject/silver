@@ -553,14 +553,14 @@ object reasons {
 
   case class CompBinaryNotCommutative(offendingNode: Comp) extends AbstractErrorReason {
     val id = "binary.not.commutative"
-    def readableMessage = s"Binary operator of $offendingNode [$pos] might not be commutative."
+    def readableMessage = s"Binary operator ${offendingNode.binaryApp.funcname} [$pos] might not be commutative."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
   }
 
   case class CompBinaryNotAssociative(offendingNode: Comp) extends AbstractErrorReason {
     val id = "binary.not.associative"
-    def readableMessage = s"Binary operator of $offendingNode [$pos] might not be associative."
+    def readableMessage = s"Binary operator ${offendingNode.binaryApp.funcname} [$pos] might not be associative."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
   }

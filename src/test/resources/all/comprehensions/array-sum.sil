@@ -33,7 +33,7 @@ method test(a1: Array)
     var i1: Int
     assume in_range(i1, a1) && i1 % 2 == 0
     var r: Ref
-    assume loc(a1, i1) == r
     r.val := r.val + 5
-    assert (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && a == a1}) == 12
+    assume loc(a1, i1) == r
+    assert (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && a == a1}) == 11
 }
