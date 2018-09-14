@@ -1,0 +1,5 @@
+method m(x:Int) {
+    assert x > 0 
+    //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/34/)
+    assert x > 42
+}
