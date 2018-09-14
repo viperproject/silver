@@ -4,6 +4,8 @@ function mult(l: Int, r: Int): Int
     ensures result == l * r
 
 function foo(i: Int): Ref
+    ensures forall i2: Int :: {foo(i2)} i != i2 ==> foo(i2) != result
 
 method test(s: Seq[Ref])
+    requires forall i: Int :: {foo(i).val} 0 < i && i < |s| ==> acc(foo(i).val)
     requires comp[mult, 1] i: Int :: {foo(i).val | 0 < i && i < |s|} == 7
