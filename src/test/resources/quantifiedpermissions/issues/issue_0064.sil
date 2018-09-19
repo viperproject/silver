@@ -5,7 +5,6 @@ field f: Int
 method m01(S1: Seq[Ref], S2: Set[Ref], x: Ref)
   requires S1 == Seq(x) && S2 == Set(x)
   requires forall i: Int :: i in [0..|S1|) ==> acc(S1[i].f)
-  //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /carbon/issue/117/)
   //:: UnexpectedOutput(postcondition.violated:insufficient.permission, /silicon/issue/64/)
   ensures  forall y: Ref :: y in S2 ==> acc(y.f) /* y in Set fails */
 {}
@@ -20,7 +19,6 @@ method m02(S1: Seq[Ref], S2: Set[Ref], x: Ref)
 method m03(S1: Seq[Ref], S2: Set[Ref], x: Ref)
   requires S1 == Seq(x) && S2 == Set(x)
   requires forall i: Int :: i in [0..|S1|) ==> S1[i] != null
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /carbon/issue/117/)
   //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/150/)
   ensures  forall y: Ref :: y in S2 ==> y != null
 {}

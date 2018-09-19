@@ -2,24 +2,51 @@ field data: Seq[Int]
 
 function f(x:Int) : Bool
 
-method test(i:Int)
+method test_one(i:Int)
 {
     var s : Seq[Int]
     assume forall x : Int :: {x in s} f(x)
     s := s ++ Seq(1)
-    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/314/)
+    //:: ExpectedOutput(assert.failed:assertion.false) // not the same s as in trigger above!
     assert i in s ==> f(i) 
+}
+
+method test_one_stronger(i:Int)
+{
+    var s : Seq[Int]
+    assume forall x : Int :: {x in s} f(x)
+    s := s ++ Seq(1)
+    assert i in s && i != 1 ==> f(i) 
 }
 
 method test_two(i:Int)
 {
     var r : Ref
+    var b : Bool
     inhale acc(r.data)
     assume forall x : Int :: {x in r.data} f(x)
     r.data := r.data ++ Seq(1)
-    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/314/)
-    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/252/)
-    assert i in r.data ==> f(i)
+    if(b) {
+      //:: ExpectedOutput(assert.failed:assertion.false)
+      assert i in r.data ==> f(i) // not the same r.data as in trigger above!
+    } else {
+      assert i in r.data && i != 1 ==> f(i) // not the same r.data!
+    }
+}
+
+method test_two_switched(i:Int)
+{
+    var r : Ref
+    var b : Bool
+    inhale acc(r.data)
+    assume forall x : Int :: {x in r.data} f(x)
+    r.data := r.data ++ Seq(1)
+    if(b) {
+      assert i in r.data && i != 1 ==> f(i)
+    } else {
+      // Somewhat surprisingly, this doesn't fail. It seems Z3 keeps the quantifier instantation?
+      assert i in r.data ==> f(i) 
+    }
 }
 
 method test_three(i:Int)
@@ -28,6 +55,6 @@ method test_three(i:Int)
     inhale acc(r.data)
     assume forall x : Int :: {r.data[x] in r.data} f(x)
     r.data := r.data ++ Seq(1)
-    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/252/)
-    assert i in r.data ==> f(i) // FAILS in Carbon, not in Silicon
+    // rather surprisingly, this doesn't fail
+    assert i in r.data ==> f(i) 
 }
