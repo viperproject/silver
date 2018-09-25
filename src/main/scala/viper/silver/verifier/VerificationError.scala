@@ -546,7 +546,7 @@ object reasons {
 
   case class CompUnitNotUnit(offendingNode: Exp) extends AbstractErrorReason {
     val id = "unit.not.unit"
-    def readableMessage = s"Unit of $offendingNode [$pos] might not be an actual unit."
+    def readableMessage = s"Unit $offendingNode [$pos] might not be an actual unit."
 
     def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
   }

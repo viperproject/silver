@@ -26,16 +26,22 @@ define full_access(a)
 domain Tuple[T] {
     function fst(t: Tuple[T]): T
     function snd(t: Tuple[T]): T
+    unique function unit(): Tuple[Int]
+
+    axiom unitVal {
+        fst(unit()) == 0 && snd(unit()) == 1
+    }
+
+    axiom equal {
+        forall t1: Tuple[T], t2: Tuple[T] :: {snd(t1), fst(t1), snd(t2), fst(t2)} fst(t1) == fst(t2) && snd(t1) == snd(t2) ==> t1 == t2
+    }
 }
 
 function sorted(l: Tuple[Int], r: Tuple[Int]): Tuple[Int]
-    ensures fst(l) <= snd(l) && fst(r) <= snd(r) ? fst(result) == 0 && snd(result) == 1 : fst(result) == 1 && snd(result) == 0
+    ensures (fst(l) <= snd(l) && fst(r) <= snd(r)) ? fst(result) == 0 && snd(result) == 1 : fst(result) == 1 && snd(result) == 0
 
 function resultSorted(res: Tuple[Int]): Bool
     ensures result <==> fst(res) <= snd(res)
-
-function unit(): Tuple[Int]
-    ensures fst(result) == 0 && snd(result) == 1
 
 define first(a, i)
     fst(loc(a, i).tuple)
