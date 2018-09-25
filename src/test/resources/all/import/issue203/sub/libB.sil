@@ -1,0 +1,7 @@
+domain D {
+  function b1(): Bool
+  function b2(): Bool
+  axiom bothTrue {
+    b1() && b2()
+  }
+}
