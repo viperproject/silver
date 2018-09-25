@@ -56,8 +56,9 @@ method test2(a1: Array)
 
 method test3support(a1: Array)
     requires forall i: Int :: {loc(a1, i).val} in_range(i, a1) && i%3 == 0 ==> acc(loc(a1,i).val)
-    ensures (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && i%3 == 0 && a == a1}) ==
-        old(comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && i%3 == 1 && a == a1}) - 5
+    ensures forall i: Int :: {loc(a1, i).val} in_range(i, a1) && i%3 == 0 ==> acc(loc(a1, i).val)
+    ensures (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a1) && i%3 == 0 && a == a1}) ==
+        old(comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a1) && i%3 == 0 && a == a1}) - 5
 
 // test general heap update
 method test3(a1: Array)
@@ -69,8 +70,8 @@ method test3(a1: Array)
     var i1: Int
     assume in_range(i1, a1) && i1 % 2 == 0
     var r: Ref
-    r.val := r.val + 5
     assume loc(a1, i1) == r
+    r.val := r.val + 5
     test3support(a1)
     assert (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && a == a1}) == 7
 }
@@ -85,8 +86,8 @@ method test4(a1: Array)
     var i1: Int
     assume in_range(i1, a1) && i1 % 2 == 0
     var r: Ref
-    r.val := r.val + 5
     assume loc(a1, i1) == r
+    r.val := r.val + 5
     test3support(a1)
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && a == a1}) == 8

@@ -25,12 +25,12 @@ define in_range(i, a)
 
 
 method test1(a: Array)
-    requires forall i: Int :: {loc(a, i).val} in_range(i, a) ==> acc(loc(a, i).val)
+    requires forall i: Int :: {loc(a, i).val} in_range(i, a) || i == 9 ==> acc(loc(a, i).val)
     requires len(a) == 10
     requires comp[add, 0] i: Int, a1: Array :: {loc(a1, i).val | a1 == a && in_range(i, a) && i%2 == 0} == 5
     requires comp[add, 0] i: Int, a1: Array :: {loc(a1, i).val | a1 == a && i >= 0 && i < 10 && (i%2 == 1 || i == 0)} == 5
     requires comp[add, 0] i: Int, a1: Array :: {loc(a1, i).val | a1 == a && (i == 0 || i == 9) } == 5
-    requires comp[add, 0] i: Int, a1: Array :: {loc(a1, i).val | a1 == a && (i >= 5 || i == 0)) && i < 10} == 5
+    requires comp[add, 0] i: Int, a1: Array :: {loc(a1, i).val | a1 == a && (i >= 5 || i == 0) && i < 10} == 5
 {
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert comp[add, 0] i: Int, a1: Array :: {loc(a1, i).val | a1 == a && in_range(i, a) && i < 5} == 5

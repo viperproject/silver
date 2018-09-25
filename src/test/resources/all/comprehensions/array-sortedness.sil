@@ -1,3 +1,8 @@
+// Implementation of sortedness won't currently work as it is done here.
+// With an additional feature 'transformer', this should actually be possible, if we transformed the tuple to
+// a boolean expression (checking whether the first entry of the tuple is smaller or equal to the second entry)
+// and using a 'and' operator as the binary operator for the comprehension, with unit `true`
+
 field tuple: Tuple[Int] // holds the current element and the next element of the array
 
 domain Array {
@@ -77,4 +82,5 @@ method swap(a: Array, i1: Int, i2: Int)
 method sort(a: Array)
     requires full_access(a)
     ensures full_access(a)
+    //:: ExpectedOutput(unit.not.unit)
     ensures resultSorted(comp[sorted, unit()] a1: Array, i: Int :: {loc(a1, i).tuple | a1 == a && i >= 0 && i < len(a)-1})

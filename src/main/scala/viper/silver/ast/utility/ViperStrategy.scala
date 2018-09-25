@@ -11,6 +11,8 @@ import viper.silver.ast.utility.Rewriter._
 import viper.silver.ast.utility.Rewriter.Traverse.Traverse
 import viper.silver.verifier.errors.ErrorNode
 
+import scala.reflect.internal.TreeGen
+
 /**
   * Viper specific Wrapper for the rewriting Strategies
   * Provides automatic back transformations for Node rewrites
@@ -180,6 +182,9 @@ object ViperStrategy {
       Forall(v, triggers, e)(meta._1, meta._2, meta._3)
     case (f: ForPerm, Seq(v: Seq[LocalVarDecl@unchecked], res: ResourceAccess@unchecked, e: Exp), meta) =>
       ForPerm(v, res, e)(meta._1, meta._2, meta._3)
+    case (c: Comp, Seq(v: Seq[LocalVarDecl@unchecked], f: Filter, b: FieldAccess, bApp: FuncLikeApp, u: Exp), meta) =>
+      Comp(v, f, b, bApp, u)(c.typ, meta._1, meta._2, meta._3)
+    case (f: Filter, Seq(e: Exp), meta) => Filter(e)(meta._1, meta._2, meta._3)
     case (ie: InhaleExhaleExp, Seq(in: Exp, ex: Exp), meta) =>
       InhaleExhaleExp(in, ex)(meta._1, meta._2, meta._3)
     case (w: WildcardPerm, _, meta) => WildcardPerm()(meta._1, meta._2, meta._3)
