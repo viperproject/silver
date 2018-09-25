@@ -1,0 +1,37 @@
+field val: Int
+
+domain Array {
+    function loc(a: Array, i: Int): Ref
+    function len(a: Array): Int
+    function array(r: Ref): Array
+    function index(r: Ref): Int
+
+    axiom allDiff {
+        forall a: Array, i: Int :: {loc(a, i)}
+            array(loc(a, i)) == a && index(loc(a, i)) == i
+    }
+
+    axiom lenNonNeg {
+        forall a: Array :: {len(a)}
+        len(a) >= 0
+    }
+}
+
+function add(l: Int, r: Int): Int
+    ensures result == l+r
+
+define in_range(i, a)
+    i >= 0 && i < len(a) - 1
+
+
+method test1(a: Array)
+    requires forall i: Int :: {loc(a, i).val} in_range(i, a) ==> acc(loc(a, i).val)
+    requires len(a) == 10
+    requires comp[add, 0] i: Int, a1: Array :: {loc(a1, i).val | a1 == a && in_range(i, a) && i%2 == 0} == 5
+    requires comp[add, 0] i: Int, a1: Array :: {loc(a1, i).val | a1 == a && i >= 0 && i < 10 && (i%2 == 1 || i == 0)} == 5
+    requires comp[add, 0] i: Int, a1: Array :: {loc(a1, i).val | a1 == a && (i == 0 || i == 9) } == 5
+    requires comp[add, 0] i: Int, a1: Array :: {loc(a1, i).val | a1 == a && (i >= 5 || i == 0)) && i < 10} == 5
+{
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert comp[add, 0] i: Int, a1: Array :: {loc(a1, i).val | a1 == a && in_range(i, a) && i < 5} == 5
+}
