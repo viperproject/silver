@@ -23,6 +23,7 @@ trait VerificationError extends AbstractError with ErrorMessage {
   def reason: ErrorReason
   def readableMessage(withId: Boolean = false, withPosition: Boolean = false): String
   override def readableMessage = readableMessage(false, true)
+  def loggableMessage = s"$fullId-$pos"
   def fullId = s"$id:${reason.id}"
 }
 
@@ -72,7 +73,6 @@ case object NullPartialVerificationError extends PartialVerificationError {
 }
 
 abstract class AbstractVerificationError extends VerificationError {
-
   protected def text: String
 
   def pos = offendingNode.pos
@@ -87,7 +87,8 @@ abstract class AbstractVerificationError extends VerificationError {
   /** Transform the error back according to the specified error transformations */
   def transformedError(): AbstractVerificationError = {
     val errorT = offendingNode.transformError(this)
-    val reasonT:ErrorReason = errorT.reason.offendingNode.transformReason(errorT.reason)
+    val reasonT = errorT.reason.offendingNode.transformReason(errorT.reason)
+
     errorT.withReason(reasonT)
   }
 

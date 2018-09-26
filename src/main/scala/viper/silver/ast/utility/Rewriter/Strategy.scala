@@ -71,15 +71,17 @@ trait StrategyInterface[N <: Rewritable] {
     new ConcatinatedStrategy[N](this, s)
   }
 
-  /**
-    * This method can be overridden to control the creation of a new node by possibly adding metadata to it
+  /** This method can be overridden to control the creation of a new node by possibly adding
+    * metadata to it.
     *
     * @param old Node before rewriting
     * @param now Node after rewriting
+    * @param directlyRewritten Indicates if `now` was obtained from `old` by rewriting `old` itself,
+    *                          or if `old` was merely duplicated because its children were
+    *                          rewritten.
     * @return Updated node that will be built into the AST
     */
-  protected def preserveMetaData(old: N, now: N): N = now
-
+  protected def preserveMetaData(old: N, now: N, directlyRewritten: Boolean): N = now
 }
 
 /**
@@ -377,13 +379,15 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     val updatedContext: C = contextWithMyself.update(newNode).asInstanceOf[C]
 
     // Recurse on children. If we get None from the recursion we know that nothing was replaced and we keep the old node
-    recurseChildren(newNode, executeTopDown(_, updatedContext)) match {
-      case Some(children) =>
-        val dup = newNode.duplicate(children).asInstanceOf[N]
-        Some(preserveMetaData(node, dup))
-      case None =>
-        newNodeO
-    }
+    val finalNodeO =
+      recurseChildren(newNode, executeTopDown(_, updatedContext)) match {
+        case Some(children) =>
+          Some(newNode.duplicate(children).asInstanceOf[N])
+        case None =>
+          newNodeO
+      }
+
+    finalNodeO.map(n => preserveMetaData(node, n, newNodeO.nonEmpty))
   }
 
   // Method to execute the rewriting bottom up
@@ -407,9 +411,9 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
 
     // Perform the rewriting
     duplicateMode(node, rule.execute(nodeToTransform, updatedContext)) match {
-      case Some(transformed) => Some(preserveMetaData(node, transformed))
+      case Some(transformed) => Some(preserveMetaData(node, transformed, true))
       case None if nodeToTransform eq node => None
-      case None => Some(preserveMetaData(node, nodeToTransform))
+      case None => Some(preserveMetaData(node, nodeToTransform, false))
     }
   }
 
@@ -427,11 +431,11 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
       recurseChildren(node, executeInnermost(_, newC)) match {
         case Some(children) =>
           val res = node.duplicate(children).asInstanceOf[N]
-          Some(preserveMetaData(node, res))
+          Some(preserveMetaData(node, res, false))
         case None => None
       }
     } else {
-      // Rewriting happended stop recursion (according to innermost policy)
+      // Rewriting happened, stop recursion (according to innermost policy)
       maybe
     }
   }

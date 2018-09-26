@@ -251,7 +251,7 @@ class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunctio
     recurseChildren(resultNode, replaceTopDown(_, matches, newAncList)) match {
       case Some(children) =>
         val res = resultNode.duplicate(children).asInstanceOf[N]
-        Some(preserveMetaData(n, res))
+        Some(preserveMetaData(n, res, resultNodeO.nonEmpty))
 
       case None => resultNodeO
     }

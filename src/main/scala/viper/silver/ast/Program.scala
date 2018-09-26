@@ -6,8 +6,6 @@
 
 package viper.silver.ast
 
-import java.nio.channels.NonReadableChannelException
-
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
@@ -217,8 +215,7 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
   val scopedDecls = Seq() //field is a scope because it is a member; it has no locals
 }
 
-/** A decreases-Clause declaration.
-    TODO: change [[Node]] to [[Hashable]] */
+/** A decreases-Clause declaration. */
 sealed trait DecClause extends Node with Positioned with Infoed with TransformableErrors
 
 case class DecStar()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DecClause
@@ -300,6 +297,19 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
     * Returns a control flow graph that corresponds to this method.
     */
   def toCfg(simplify: Boolean = true) = CfgGenerator.methodToCfg(this, simplify)
+}
+
+object MethodWithLabelsInScope {
+  def apply(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
+                 (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): Method = {
+    val newBody = body match {
+      case Some(actualBody) =>
+        val newScopedDecls = actualBody.scopedDecls ++ actualBody.deepCollect({case l: Label => l})
+        Some(actualBody.copy(scopedDecls = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
+      case _ => body
+    }
+    Method(name, formalArgs, formalReturns, pres, posts, newBody)(pos, info, errT)
+  }
 }
 
 /** A function declaration */
