@@ -12,6 +12,7 @@
 
 package viper.silver.ast
 
+import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.utility.{Consistency, Statements}
 import viper.silver.cfg.silver.CfgGenerator
 import viper.silver.verifier.ConsistencyError
@@ -258,3 +259,13 @@ case class Constraining(vars: Seq[LocalVar], body: Seqn)(val pos: Position = NoP
   * scopes.
   */
 case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt
+
+
+/** Generic Statement type to use to extend the AST.
+  * New statement-typed AST nodes can be defined by creating new case classes extending this trait.
+  * AST nodes of these types should always be converted to standard Silver nodes, and therefore never
+  * reach the backend verifiers. */
+trait ExtensionStmt extends Stmt {
+  def _subnodes: Seq[Node]
+  def prettyPrint: PrettyPrintPrimitives#Cont
+}
