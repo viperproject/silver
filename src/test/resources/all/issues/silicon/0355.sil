@@ -1,0 +1,22 @@
+field f: Ref
+predicate P(x: Ref) { acc(x.f) &&
+                      x.f == makebla(x) &&
+                      blahasproperty(x.f)
+}
+
+function user(x: Ref): Bool
+    requires P(x)
+{
+    unfolding P(x) in true
+}
+function useruser(x: Ref): Bool
+    requires P(x)
+{
+    user(x)
+}
+function isbla(x: Ref): Bool
+function blahasproperty(x: Ref) : Bool
+    requires isbla(x)
+
+function makebla(x: Ref) : Ref
+    ensures isbla(result)
