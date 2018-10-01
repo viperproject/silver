@@ -548,20 +548,20 @@ object reasons {
     val id = "unit.not.unit"
     def readableMessage = s"Unit $offendingNode [$pos] might not be an actual unit."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CompUnitNotUnit(offendingNode.asInstanceOf[Exp])
   }
 
   case class CompBinaryNotCommutative(offendingNode: Comp) extends AbstractErrorReason {
     val id = "binary.not.commutative"
     def readableMessage = s"Binary operator ${offendingNode.binaryApp.funcname} [$pos] might not be commutative."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CompBinaryNotCommutative(offendingNode.asInstanceOf[Comp])
   }
 
   case class CompBinaryNotAssociative(offendingNode: Comp) extends AbstractErrorReason {
     val id = "binary.not.associative"
     def readableMessage = s"Binary operator ${offendingNode.binaryApp.funcname} [$pos] might not be associative."
 
-    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = LabelledStateNotReached(offendingNode.asInstanceOf[LabelledOld])
+    def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = CompBinaryNotAssociative(offendingNode.asInstanceOf[Comp])
   }
 }
