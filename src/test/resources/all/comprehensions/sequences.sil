@@ -39,7 +39,7 @@ method setToOne(s: Seq[Ref]) returns (total: Int)
     invariant forall i:Int :: 0 <= i && i < |s| ==> acc(s[i].val)
     invariant 0 <= x && x <= |s|
     invariant comp[sum, 0] n:Ref :: { n.val | n in s[..x] } == x
-    invariant comp[sum, 0] n:Ref :: { n.val | n in s[x..] } == old( comp[sum, 0] n:Ref :: { n.val | n in s[x..] } )
+    invariant old(comp[sum, 0] n:Ref :: { n.val | n in s[x..] }) == comp[sum, 0] n:Ref :: { n.val | n in s[x..] }
     {
         s[x].val := 1
         x := x + 1

@@ -1140,7 +1140,7 @@ object Nodes {
       case PLetNestedScope(variable, body) => Seq(variable, body)
       case PForall(vars, triggers, exp) => vars ++ triggers ++ Seq(exp)
       case PForPerm(vars, res, expr) => vars :+ res :+ expr
-      case PComp(vars, filter, expr, binary, unit) => vars :+ filter :+ expr :+ unit
+      case PComp(vars, filter, expr, binary, unit) => vars :+ filter :+ expr :+ binary :+ unit
       case PCondExp(cond, thn, els) => Seq(cond, thn, els)
       case PInhaleExhaleExp(in, ex) => Seq(in, ex)
       case PCurPerm(loc) => Seq(loc)
