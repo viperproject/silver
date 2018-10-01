@@ -48,8 +48,8 @@ method test2(a1: Array)
     var i1: Int
     assume in_range(i1, a1) && i1 % 2 == 0
     var r: Ref
-    r.val := r.val + 5
     assume loc(a1, i1) == r
+    r.val := r.val + 5
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && a == a1}) == 11
 }
