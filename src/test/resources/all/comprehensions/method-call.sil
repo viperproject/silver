@@ -24,7 +24,6 @@ function add(l: Int, r: Int): Int
     ensures result == l + r
 
 method m(a1: Array)
-    requires len(a1) > 0
     requires forall i: Int :: {loc(a1, i).val} i >= 0 && i <= len(a1) \ 2 ==> acc(loc(a1,i).val)
     ensures forall i: Int :: {loc(a1, i).val} i >= 0 && i <= len(a1) \ 2 ==> acc(loc(a1, i).val)
     ensures (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | i >= 0 && i <= len(a) \ 2 && a == a1}) ==
@@ -46,7 +45,6 @@ method test(a1: Array)
 method testFailure(a1: Array)
     // access to full array
     requires forall i: Int :: {loc(a1, i).val} in_range(i, a1) ==> acc(loc(a1,i).val)
-    requires len(a1) > 0
     requires (comp[add, 0] i: Int, a: Array :: {loc(a, i).val | in_range(i, a) && i%2 == 0 && a == a1}) == 5
     requires (comp[add, 0] i: Int, a: Array :: {loc(a,i).val | in_range(i, a) && i%2 == 1 && a == a1}) == 2
 {
