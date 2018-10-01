@@ -1,0 +1,49 @@
+domain Funcs {
+    function sum(a:Int, b:Int): Int
+
+    axiom ax_Sum {
+        forall a:Int, b:Int :: { sum(a,b) }
+            sum(a,b) == a + b
+    }
+}
+
+field val: Int
+
+method getTotal(s: Seq[Ref]) returns (total: Int)
+    requires forall i:Int :: 0 <= i && i < |s| ==> acc(s[i].val)
+    ensures forall i:Int :: 0 <= i && i < |s| ==> acc(s[i].val)
+    ensures total == comp[sum, 0] n:Ref :: { n.val | n in s }
+{
+    total := 0
+    var x:Int := 0
+
+    while ( x < |s| )
+        invariant forall i:Int :: 0 <= i && i < |s| ==> acc(s[i].val)
+        invariant 0 <= x && x <= |s|
+        invariant total == comp[sum, 0] n:Ref :: { n.val | n in s[..x] }
+    {
+        total := total + s[x].val
+        x := x + 1
+    }
+}
+
+method setToOne(s: Seq[Ref]) returns (total: Int)
+    requires 0 < |s|
+    requires forall i:Int :: 0 <= i && i < |s| ==> acc(s[i].val)
+    ensures forall i:Int :: 0 <= i && i < |s| ==> acc(s[i].val)
+    ensures total == comp[sum, 0] n:Ref :: { n.val | n in s }
+{
+    var x:Int := 0
+
+    while ( x < |s| )
+    invariant forall i:Int :: 0 <= i && i < |s| ==> acc(s[i].val)
+    invariant 0 <= x && x <= |s|
+    invariant comp[sum, 0] n:Ref :: { n.val | n in s[..x] } == x
+    invariant comp[sum, 0] n:Ref :: { n.val | n in s[x..] } == old( comp[sum, 0] n:Ref :: { n.val | n in s[x..] } )
+    {
+        s[x].val := 1
+        x := x + 1
+    }
+
+    total := x
+}
