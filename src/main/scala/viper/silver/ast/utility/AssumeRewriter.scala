@@ -5,6 +5,16 @@ import viper.silver.ast._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility.Rewriter._
 
+/**
+  * Viper to Viper translation of impure assume statements into pure assumes:
+  *   an assume of the form assume acc(x.f, p) && acc(y.f, p) is transformed into
+  *   perm(x.f) >= p && perm(y.f) >= assume_helper_0(x == y, p, p), where assume_helper_0 is a domain function
+  *   of an added domain for assume statements. The function is a conditional sum of permissions, where the condition is
+  *   the first argument: assume_helper_0(x == y, p, p) == p + (x == y ? p : none)
+  *
+  *   if there are more conjunctions, additional functions are generated to check aliasing
+  */
+
 object AssumeRewriter {
 
   var funcs: Seq[DomainFunc] = Seq()
@@ -15,23 +25,23 @@ object AssumeRewriter {
   def rewrite(exp: Exp, program: Program) : Exp = {
 
     /**
+      * Rewrites assume statements:
+      *   assume statements are rewritten using
       * Context: Pair of condition and variable to replace in the condition as well as the
       * permission amount
       */
 
     val strat = ViperStrategy.Context[Map[Resource, Seq[((Exp, Seq[Exp]), Exp)]]]({
-      case (fap: FieldAccessPredicate, c) => {
+      case (fap: FieldAccessPredicate, c) =>
         val insideWand = c.ancestorList.foldLeft[Boolean](false)((b, n) => b || n.isInstanceOf[MagicWand])
         if (!insideWand) {
           val cp = CurrentPerm(fap.loc)(fap.pos, fap.info, fap.errT)
-          //val p = generatePerm(c.c, fap.loc.rcv, fap.perm, cp)(fap.pos, fap.info, fap.errT)
           val p = generatePermUsingFunc(c.c.getOrElse(fap.loc.field, Seq()), Seq(fap.loc.rcv), fap.perm, cp, None)
           p
         } else {
           fap
         }
-      }
-      case (pred: PredicateAccessPredicate, c) => {
+      case (pred: PredicateAccessPredicate, c) =>
         val insideWand = c.ancestorList.foldLeft[Boolean](false)((b, n) => b || n.isInstanceOf[MagicWand])
         if (!insideWand && !c.parent.isInstanceOf[Unfolding]) {
           val cp = CurrentPerm(pred.loc)(pred.pos, pred.info, pred.errT)
@@ -40,8 +50,7 @@ object AssumeRewriter {
         } else {
           pred
         }
-      }
-      case (wand: MagicWand, c) => {
+      case (wand: MagicWand, c) =>
         if (!c.parent.isInstanceOf[CurrentPerm] && !c.parent.isInstanceOf[Trigger] && !c.parent.isInstanceOf[Applying]) {
           val cp = CurrentPerm(wand)(wand.pos, wand.info, wand.errT)
           val p = generatePermUsingFunc(c.c.getOrElse(wand.structure(program), Seq()), wand.subexpressionsToEvaluate(program), FullPerm()(), cp, None)
@@ -49,10 +58,9 @@ object AssumeRewriter {
         } else {
           wand
         }
-      }
-      case (QuantifiedPermissionAssertion(forall, cond, acc), c) => {
+      case (QuantifiedPermissionAssertion(forall, cond, acc), c) =>
         acc match {
-          case fap: FieldAccessPredicate => {
+          case fap: FieldAccessPredicate =>
             val insideWand = c.ancestorList.foldLeft[Boolean](false)((b, n) => b || n.isInstanceOf[MagicWand])
             if (!insideWand) {
               val cp = CurrentPerm(fap.loc)(fap.pos, fap.info, fap.errT)
@@ -61,8 +69,7 @@ object AssumeRewriter {
             } else {
               forall
             }
-          }
-          case pred: PredicateAccessPredicate => {
+          case pred: PredicateAccessPredicate =>
             val insideWand = c.ancestorList.foldLeft[Boolean](false)((b, n) => b || n.isInstanceOf[MagicWand])
             if (!insideWand) {
               val cp = CurrentPerm(pred.loc)(pred.pos, pred.info, pred.errT)
@@ -71,8 +78,7 @@ object AssumeRewriter {
             } else {
               forall
             }
-          }
-          case wand: MagicWand => {
+          case wand: MagicWand =>
             if (!c.parent.isInstanceOf[CurrentPerm]) {
               val cp = CurrentPerm(wand)(wand.pos, wand.info, wand.errT)
               val p = generatePermUsingFunc(c.c.getOrElse(wand.structure(program), Seq()), wand.subexpressionsToEvaluate(program), FullPerm()(), cp, Some(cond))
@@ -80,89 +86,78 @@ object AssumeRewriter {
             } else {
               forall
             }
-          }
         }
-      }
     }, Map(): Map[Resource, Seq[((Exp, Seq[Exp]), Exp)]], {
-      case (fap: FieldAccessPredicate, c) => {
+      case (fap: FieldAccessPredicate, c) =>
         val dummyVar = LocalVar("dummy")(Ref)
         c + (fap.loc.field -> (c.getOrElse(fap.loc.field, Seq()) :+ ((EqCmp(fap.loc.rcv, dummyVar)(fap.pos, fap.info, fap.errT), Seq(dummyVar)), fap.perm)))
-      }
-      case (pred: PredicateAccessPredicate, c) => {
+      case (pred: PredicateAccessPredicate, c) =>
         val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(pred.loc.loc(program).formalArgs(i).typ))) take pred.loc.args.length
         val eqs = (pred.loc.args zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         c + (pred.loc.loc(program) -> (c.getOrElse(pred.loc.loc(program), Seq()) :+ ((cond, dummyVars), pred.perm)))
-      }
-      case (wand: MagicWand, c) => {
+      case (wand: MagicWand, c) =>
         val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(wand.structure(program).subexpressionsToEvaluate(program)(i).typ))) take wand.subexpressionsToEvaluate(program).length
         val eqs = (wand.subexpressionsToEvaluate(program) zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         c + (wand.structure(program) -> (c.getOrElse(wand.structure(program), Seq()) :+ ((cond, dummyVars), FullPerm()())))
-      }
-      case (and: And, c) => {
+      case (and: And, c) =>
         val lupdate = update(and.left, program)
         val newC = lupdate map (lu => {
           val update = c.getOrElse(lu._1, Seq())
           (lu._1, lu._2 ++ update)
         })
         c ++ newC
-      }
-      case (QuantifiedPermissionAssertion(forall, cond, acc), c) => {
+      case (QuantifiedPermissionAssertion(forall, cond, acc), c) =>
 
         acc match {
-          case fap: FieldAccessPredicate => {
+          case fap: FieldAccessPredicate =>
             c + (fap.loc.field -> (c.getOrElse(fap.loc.field, Seq()) :+ ((cond, forall.variables map (_.localVar)), fap.perm)))
-          }
-          case pred: PredicateAccessPredicate => {
+          case pred: PredicateAccessPredicate =>
             c + (pred.loc.loc(program) -> (c.getOrElse(pred.loc.loc(program), Seq()) :+ ((cond, forall.variables map (_.localVar)), pred.perm)))
-          }
-          case wand: MagicWand => {
+          case wand: MagicWand =>
             c + (wand.structure(program) -> (c.getOrElse(wand.structure(program), Seq()) :+ ((cond, forall.variables map (_.localVar)), FullPerm()())))
-          }
         }
-      }
     })
 
     strat.execute(exp)
   }
 
+  /**
+    * Creates context updates for the lhs of a conjunction which need to be passed down to the rhs
+    * @param node lhs of conjunction for which we update the context
+    * @param program current program that is being rewritten
+    * @return context update for the above rewriter
+    */
   def update(node: Node, program: Program): Seq[(Resource, Seq[((Exp, Seq[Exp]), Exp)])] = {
     node match {
-      case fp: FieldAccessPredicate => {
+      case fp: FieldAccessPredicate =>
         val dummyVar = LocalVar("dummy")(Ref)
         Seq(fp.loc.field -> Seq(((EqCmp(fp.loc.rcv, dummyVar)(fp.pos, fp.info, fp.errT), Seq(dummyVar)), fp.perm)))
-      }
-      case pred: PredicateAccessPredicate => {
+      case pred: PredicateAccessPredicate =>
         val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(pred.loc.loc(program).formalArgs(i).typ))) take pred.loc.args.length
         val eqs = (pred.loc.args zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         Seq(pred.loc.loc(program) -> Seq(((cond, dummyVars), pred.perm)))
-      }
-      case wand: MagicWand => {
+      case wand: MagicWand =>
         val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(wand.structure(program).subexpressionsToEvaluate(program)(i).typ))) take wand.subexpressionsToEvaluate(program).length
         val eqs = (wand.subexpressionsToEvaluate(program) zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         Seq(wand.structure(program) -> Seq(((cond, dummyVars), FullPerm()())))
-      }
-      case QuantifiedPermissionAssertion(forall, cond, acc) => {
+      case QuantifiedPermissionAssertion(forall, cond, acc) =>
 
         acc match {
-          case fap: FieldAccessPredicate => {
+          case fap: FieldAccessPredicate =>
             Seq(fap.loc.field -> Seq(((cond, forall.variables map (_.localVar)), fap.perm)))
-          }
-          case pred: PredicateAccessPredicate => {
+          case pred: PredicateAccessPredicate =>
             Seq(pred.loc.loc(program) -> Seq(((cond, forall.variables map (_.localVar)), pred.perm)))
-          }
-          case wand: MagicWand => {
+          case wand: MagicWand =>
             Seq(wand.structure(program) -> Seq(((cond, forall.variables map (_.localVar)), FullPerm()())))
-          }
         }
-      }
-      case n => {
+      case _: Trigger | _: CurrentPerm | _: Unfolding | _: Applying=> Seq()
+      case n =>
         val subUpdate = n.subnodes flatMap (sub => update(sub, program))
         subUpdate.groupBy(_._1).map { case (k,v) => (k, v.flatMap(_._2))} toSeq
-      }
     }
   }
 
@@ -182,17 +177,27 @@ object AssumeRewriter {
     seqn
   }
 
+  /**
+    * Generates the rewritten perm expressions using domain functions. The expressions are of the form perm(res) >= func
+    * with func being a helper function. Which helper function to use depends on the size of the conjunction to rewrite,
+    * the bigger the conjuction, the more possibilities for aliasing there are.
+    *
+    * @param context context from the rewriter for the current resource
+    * @param rcv arguments of the resource for the expression that is currently being rewritten
+    * @param perm permission amount added to the resource by the expression that is being rewritten
+    * @param permLoc perm expression for the rewritten expression
+    * @param cond condition used by QPs to determine if a given QP assertion provides permission to some location
+    * @return rewritten perm expression that replaces the impure assume statement
+    */
   def generatePermUsingFunc(context: Seq[((Exp, Seq[Exp]), Exp)], rcv: Seq[Exp], perm: Exp, permLoc: CurrentPerm, cond: Option[Exp]): Exp = {
 
     assert(context.forall(c => c._1._2.length == rcv.length))
 
     val contextWithoutRcv = cond match {
-      case Some(exp) => {
+      case Some(exp) =>
         context.filter(c => !c._1._1.equals(exp))
-      }
-      case None => {
+      case None =>
         context.filter(c => !rcv.forall(e => c._1._1.contains(e)))
-      }
     }
     if (contextWithoutRcv.isEmpty) return PermGeCmp(permLoc, perm)()
 
@@ -210,16 +215,6 @@ object AssumeRewriter {
     PermGeCmp(permLoc, funcApp)()
   }
 
-  def generateExp(conds: Seq[(Exp, Exp)], perm: Exp)
-                 (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): Exp = {
-    if (conds.isEmpty) return perm
-    val head = conds.head
-    val cond = head._1
-    val thn = head._2
-    val otherwise = generateExp(conds.tail, perm)(pos, info, errT)
-    CondExp(cond, thn, otherwise)(pos, info, errT)
-  }
-
   def split(exp: Exp): Seq[Exp] = {
     exp match {
       case and: And => split(and.left) ++ split(and.right)
@@ -227,6 +222,15 @@ object AssumeRewriter {
     }
   }
 
+  /**
+    * Generates the helper functions used to rewrite the assume statements.
+    * Every helper function is of the form p + (c1 ? p1 : none) + (c2 ? p2 : none) + ...
+    * The size of the helper function (i.e. how many conditional sums there are) depends on the size of an assumed conjunction
+    * that is being rewritten.
+    *
+    * @param numOfConds number of conditional sums in this helper function
+    * @return The new domain function as well as the axiom defining the value of the function
+    */
   def generateFunc(numOfConds: Int): (DomainFunc, DomainAxiom) = {
     val name = "assume_helper_" + numOfConds
     var conds: Seq[LocalVar] = Seq()
@@ -251,35 +255,23 @@ object AssumeRewriter {
       condExps.foldLeft[Exp](LocalVar("p_0")(Perm))((p, c) => PermAdd(p, c)())
     }
     val fun = DomainFunc(name, formalArgs, Perm)(domainName = "Assume")
-    val ax = Forall(formalArgs, Seq(Trigger(Seq(DomainFuncApp(fun, (formalArgs map (_.localVar)), Map[TypeVar, Type]())()))()), EqCmp(DomainFuncApp(fun, (formalArgs map (_.localVar)), Map[TypeVar, Type]())(), body)())()
+    val ax = Forall(formalArgs, Seq(Trigger(Seq(DomainFuncApp(fun, formalArgs map (_.localVar), Map[TypeVar, Type]())()))()), EqCmp(DomainFuncApp(fun, formalArgs map (_.localVar), Map[TypeVar, Type]())(), body)())()
     val dax = DomainAxiom(name + "_axiom", ax)(domainName = "Assume")
     (fun, dax)
   }
 
-  def genFuncCond(condsWithPerm: Seq[(Exp, Exp)], perm: Exp): (Exp, Exp) = {
-    val conds = condsWithPerm map (_._1)
-    val perms = condsWithPerm map (_._2)
-
-    val cnj = conds.tail.foldLeft[Exp](conds.head)((e, v) => And(e, v)())
-    val sum = perms.foldLeft[Exp](perm)((e, v) => PermAdd(e, v)())
-
-    (cnj, sum)
-  }
-
   def rewriteQPs(exp: Exp, program: Program): Exp = {
     exp match {
-      case forall: Forall => {
+      case forall: Forall =>
         val invForall = InverseFunctions.getFreshInverse(forall, program)
         invForall match {
-          case (Some((invs, domain)), Some(axs), forall1) => {
+          case (Some((invs, domain)), Some(axs), forall1) =>
             inverses ++= invs
             domains :+= domain
             val ax = axs.tail.foldLeft[Exp](axs.head)((e, f) => And(e, f)())
             And(ax, forall1)()
-          }
           case _ => forall
         }
-      }
       case _ => exp.replace((exp.subExps zip (exp.subExps map (e => rewriteQPs(e, program)))).toMap)
     }
   }

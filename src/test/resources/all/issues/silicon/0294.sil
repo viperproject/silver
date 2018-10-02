@@ -1,6 +1,5 @@
 field f: Int
 
 method test() {
-  ////:: UnexpectedOutput(internal:feature.unsupported, /silicon/issue/294/)
   inhale forall x: Ref :: {x.f} true
 }

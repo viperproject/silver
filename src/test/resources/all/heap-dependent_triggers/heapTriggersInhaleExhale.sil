@@ -5,7 +5,6 @@ method m7(xs: Seq[Ref]) {
     assume |xs| >= 1
     inhale forall i: Int :: {xs[i].f} 0 <= i && i < |xs| ==> acc(xs[i].f)
 
-    assert acc(xs[0].f)
     var v: Int
     v := xs[0].f
     assert perm(xs[0].f) >= write
@@ -24,13 +23,6 @@ method m2(xs: Set[Ref], ys: Set[Ref]) {
     assume a in ys
     assert perm(a.f) == 2*write
     assert false
-
-    var v: Int
-    v := a.f
-
-    exhale acc(a.f)
-    exhale acc(a.f)
-    assert perm(a.f) == none
 }
 
 method m3(xs: Seq[Ref]) {
