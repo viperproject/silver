@@ -26,7 +26,7 @@ object Expressions {
     case app: Applying => isPure(app.body)
     case QuantifiedExp(_, e0) => isPure(e0)
     case Let(_, _, body) => isPure(body)
-    case e: ExtensionExp => e._isPure
+    case e: ExtensionExp => e.isPure
 
     case   _: Literal
          | _: PermExp

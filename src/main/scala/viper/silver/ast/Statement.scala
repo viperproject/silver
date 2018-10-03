@@ -266,6 +266,6 @@ case class LocalVarDeclStmt(decl: LocalVarDecl)(val pos: Position = NoPosition, 
   * AST nodes of these types should always be converted to standard Silver nodes, and therefore never
   * reach the backend verifiers. */
 trait ExtensionStmt extends Stmt {
-  def _subnodes: Seq[Node]
+  def extensionSubnodes: Seq[Node]
   def prettyPrint: PrettyPrintPrimitives#Cont
 }
