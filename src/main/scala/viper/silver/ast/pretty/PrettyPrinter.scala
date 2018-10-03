@@ -688,6 +688,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         text("goto") <+> target
       case LocalVarDeclStmt(decl) =>
         text("var") <+> showVar(decl)
+      case e: ExtensionStmt => e.prettyPrint
       case null => uninitialized
     }
     showComment(stmt) <> stmtDoc
@@ -841,6 +842,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
             ed <> text(u.op)
 
       }
+    case e: ExtensionExp => e.prettyPrint
     case _ => sys.error(s"unknown expression: ${e.getClass}")
   }
 
