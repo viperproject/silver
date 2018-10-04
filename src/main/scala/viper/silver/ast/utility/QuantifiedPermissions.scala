@@ -136,7 +136,7 @@ object QuantifiedPermissions {
     }
   }
 
-  def desugareSourceSyntax(source: Forall): Seq[Forall] = {
+  def desugarSourceQuantifiedPermissionSyntax(source: Forall): Seq[Forall] = {
     val vars = source.variables
     val triggers = source.triggers
 
@@ -151,7 +151,7 @@ object QuantifiedPermissions {
             /* RHS is a conjunction; split into two foralls and recursively rewrite these */
 
             val foralls0 =
-              desugareSourceSyntax(
+              desugarSourceQuantifiedPermissionSyntax(
                 Forall(
                   vars,
                   triggers,
@@ -159,7 +159,7 @@ object QuantifiedPermissions {
                 )(source.pos, source.info))
 
             val foralls1 =
-              desugareSourceSyntax(
+              desugarSourceQuantifiedPermissionSyntax(
                 Forall(
                   vars,
                   triggers,
@@ -180,7 +180,7 @@ object QuantifiedPermissions {
                 Implies(newCond, e1)(rhs.pos, rhs.info)
               )(source.pos, source.info)
 
-            desugareSourceSyntax(newRhs)
+            desugarSourceQuantifiedPermissionSyntax(newRhs)
 
           case _ =>
             /* RHS does not need to be desugared (any further) */
