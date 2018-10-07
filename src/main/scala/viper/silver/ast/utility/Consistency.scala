@@ -307,7 +307,7 @@ object Consistency {
   }
 
   /** Returns, whether only the variables in `vars` are used in the expressions of `resArgs`. */
-  def onlyVarsUsed(vars: Seq[LocalVarDecl], resArgs: Seq[Exp]): Boolean = {
+  def specificVariablesUsed(vars: Seq[LocalVarDecl], resArgs: Seq[Exp]): Boolean = {
     val locals = vars map {vDecl => vDecl.localVar}
     resArgs forall {arg =>
       val used = Expressions.collectVars(arg)

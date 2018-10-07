@@ -37,7 +37,7 @@ object Expressions {
          | _: SetExp
          | _: MultisetExp
          | _:ForPerm
-          | _: Comp
+         | _: Comp
       => true
   }
 
@@ -45,7 +45,7 @@ object Expressions {
     case   _: AccessPredicate
          | _: LocationAccess
          | _: MagicWand
-           |_: Comp =>
+         |_: Comp =>
 
     case fapp: FuncApp if fapp.func(p).pres.exists(isHeapDependent(_, p)) =>
   }

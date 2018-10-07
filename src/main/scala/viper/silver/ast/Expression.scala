@@ -605,8 +605,8 @@ case class Comp(variables: Seq[LocalVarDecl], filter: Filter, body: FieldAccess,
     Consistency.checkPure(body.rcv) ++
     Consistency.checkPure(unit) ++
       (if(Consistency.allVariablesUsed(variables, Seq(body))) Seq() else Seq(ConsistencyError("Body of comprehension does not mention all variables.", pos))) ++
-      (if(Consistency.onlyVarsUsed(variables, Seq(body))) Seq() else Seq(ConsistencyError("Body of comprehension mentions variables defined outside the comprehension.", pos))) ++
-      (if(Consistency.onlyVarsUsed(Seq(), Seq(unit))) Seq() else Seq(ConsistencyError("Unit of comprehension has no static value.", pos)))
+      (if(Consistency.specificVariablesUsed(variables, Seq(body))) Seq() else Seq(ConsistencyError("Body of comprehension mentions variables defined outside the comprehension.", pos))) ++
+      (if(Consistency.specificVariablesUsed(Seq(), Seq(unit))) Seq() else Seq(ConsistencyError("Unit of comprehension has no static value.", pos)))
   val scopedDecls: Seq[Declaration] = variables
 }
 
