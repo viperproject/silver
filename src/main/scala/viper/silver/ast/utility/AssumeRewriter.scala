@@ -145,7 +145,6 @@ object AssumeRewriter {
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         Seq(wand.structure(program) -> Seq(((cond, dummyVars), FullPerm()())))
       case QuantifiedPermissionAssertion(forall, cond, acc) =>
-
         acc match {
           case fap: FieldAccessPredicate =>
             Seq(fap.loc.field -> Seq(((cond, forall.variables map (_.localVar)), fap.perm)))
@@ -157,7 +156,7 @@ object AssumeRewriter {
       case _: Trigger | _: CurrentPerm | _: Unfolding | _: Applying=> Seq()
       case n =>
         val subUpdate = n.subnodes flatMap (sub => update(sub, program))
-        subUpdate.groupBy(_._1).map { case (k,v) => (k, v.flatMap(_._2))} toSeq
+        subUpdate.groupBy(_._1).map{ case (k,v) => (k, v.flatMap(_._2))}.toSeq
     }
   }
 
