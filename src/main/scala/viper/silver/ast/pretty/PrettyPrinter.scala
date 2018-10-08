@@ -689,6 +689,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
         text("goto") <+> target
       case LocalVarDeclStmt(decl) =>
         text("var") <+> showVar(decl)
+      case e: ExtensionStmt => e.prettyPrint
       case null => uninitialized
     }
     showComment(stmt) <> stmtDoc
@@ -796,13 +797,13 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     case ExplicitMultiset(elems) =>
       text("Multiset") <> parens(ssep(elems map show, char (',') <> space))
     case AnySetUnion(left, right) =>
-      show(left) <+> "union" <+> show(right)
+      parens(show(left) <+> "union" <+> show(right))
     case AnySetIntersection(left, right) =>
-      show(left) <+> "intersection" <+> show(right)
+      parens(show(left) <+> "intersection" <+> show(right))
     case AnySetSubset(left, right) =>
-      show(left) <+> "subset" <+> show(right)
+      parens(show(left) <+> "subset" <+> show(right))
     case AnySetMinus(left, right) =>
-      show(left) <+> "setminus" <+> show(right)
+      parens(show(left) <+> "setminus" <+> show(right))
     case AnySetContains(elem, s) =>
       parens(show(elem) <+> "in" <+> show(s))
     case AnySetCardinality(s) =>
@@ -842,6 +843,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
             ed <> text(u.op)
 
       }
+    case e: ExtensionExp => e.prettyPrint
     case _ => sys.error(s"unknown expression: ${e.getClass}")
   }
 

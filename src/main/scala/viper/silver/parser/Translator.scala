@@ -410,7 +410,7 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         if (fa.isPure) {
           fa
         } else {
-          val desugaredForalls = QuantifiedPermissions.desugareSourceSyntax(fa)
+          val desugaredForalls = QuantifiedPermissions.desugarSourceQuantifiedPermissionSyntax(fa)
           desugaredForalls.tail.foldLeft(desugaredForalls.head: Exp)((conjuncts, forall) =>
             And(conjuncts, forall)(fa.pos, fa.info, fa.errT))
         }
