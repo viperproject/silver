@@ -275,13 +275,25 @@ case class NodeTrafo(node: ErrorNode) extends ErrorTrafo {
   val nTransformations = Some(node)
 }
 
+/** Combine two Trafos into one **/
+object MakeTrafoPair {
+  def apply(first: ErrorTrafo, second: ErrorTrafo) : ErrorTrafo = first match {
+    case NoTrafos => second
+    case _ => second match {
+      case NoTrafos => first
+      case _ => first + second
+    }
+  }
+}
+
+
 /** Base trait for error transformation objects */
 trait ErrorTrafo {
   def eTransformations: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]]
 
   def rTransformations: List[PartialFunction[ErrorReason, ErrorReason]]
 
-  def nTransformations: Option[ErrorNode] // TODO: Why is this an option and not a list?
+  def nTransformations: Option[ErrorNode] // TODO: Why is this an option and not a list? Why is it OK to drop the second such value in the + definition below (if both are defined)?
 
   def +(t: ErrorTrafo): Trafos = {
     Trafos(eTransformations ++ t.eTransformations, rTransformations ++ t.rTransformations, if (t.nTransformations.isDefined) t.nTransformations else nTransformations)
@@ -339,9 +351,12 @@ case class ConsInfo(head: Info, tail: Info) extends Info {
 
 /** Build a `ConsInfo` instance out of two `Info`s, unless the latter is `NoInfo` (which can be dropped) */
 object MakeInfoPair {
-  def apply(head: Info, tail: Info) = tail match {
-    case NoInfo => head
-    case _ => ConsInfo(head, tail)
+  def apply(head: Info, tail: Info) = head match {
+    case NoInfo => tail
+    case _ => tail match {
+      case NoInfo => head
+      case _ => ConsInfo(head, tail)
+    }
   }
 }
 
