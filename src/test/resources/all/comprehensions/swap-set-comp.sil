@@ -59,11 +59,11 @@ method swapFail(l: Int, r: Int, a: Array)
     requires forall n: Ref :: {n.val} in_range(index(n), a) ==> acc(n.val)
     requires in_range(l, a) && in_range(r, a)
     ensures forall n: Ref :: {n.val} in_range(index(n), a) ==> acc(n.val)
+    //:: ExpectedOutput(postcondition.violated:assertion.false)
     ensures comp[unite, empty()] i: Int, a1: Array :: {loc(a1, i).val | in_range(i, a1) && a1 == a} ==
         old(comp[unite, empty()] i: Int, a1: Array :: {loc(a1, i).val | in_range(i, a1) && a1 == a})
 {
     var tmp: Set[Int]
     tmp := loc(a, r).val
     loc(a, r).val := loc(a, l).val
-    //:: ExpectedOutput(postcondition.violated:assertion.false)
 }
