@@ -1,0 +1,69 @@
+field val: Set[Int]
+
+function get(s: Set[Int]): Int
+    requires |s| == 1
+    ensures result in s
+
+function unite(l: Set[Int], r: Set[Int]): Set[Int]
+    ensures forall i: Int :: {i in result} i in l || i in r ==> i in result
+    ensures |l| == 0 ==> result == r
+    ensures result == unite(r, l)
+    ensures forall z: Set[Int] :: {unite(result, z)} {unite(l, unite(r, z))}
+        unite(result, z) == unite(l, unite(r, z))
+
+function empty(): Set[Int]
+    ensures |result| == 0
+    ensures forall i: Int :: {i in result} !(i in result)
+
+domain Array {
+    function loc(a: Array, i: Int): Ref
+    function len(a: Array): Int
+    function array(r: Ref): Array
+    function index(r: Ref): Int
+
+    axiom allDiff {
+        forall a: Array, i: Int :: {loc(a, i)}
+            array(loc(a, i)) == a && index(loc(a, i)) == i
+    }
+
+    axiom lenNonNeg {
+        forall a: Array :: {len(a)}
+        len(a) >= 0
+    }
+
+    axiom reverse {
+        forall r: Ref :: {array(r)}{index(r)}
+            loc(array(r), index(r)) == r
+    }
+}
+
+define in_range(i, a) i >= 0 && i < len(a)
+
+// test working
+method swap(l: Int, r: Int, a: Array)
+    requires forall n: Ref :: {n.val} in_range(index(n), a) ==> acc(n.val)
+    requires in_range(l, a) && in_range(r, a)
+    ensures forall n: Ref :: {n.val} in_range(index(n), a) ==> acc(n.val)
+    ensures loc(a, l).val == old(loc(a, r).val) && loc(a, r).val == old(loc(a, l).val)
+    ensures comp[unite, empty()] i: Int, a1: Array :: {loc(a1, i).val | in_range(i, a1) && a1 == a} ==
+        old(comp[unite, empty()] i: Int, a1: Array :: {loc(a1, i).val | in_range(i, a1) && a1 == a})
+{
+    var tmp: Set[Int]
+    tmp := loc(a, r).val
+    loc(a, r).val := loc(a, l).val
+    loc(a, l).val := tmp
+}
+
+// test failure
+method swapFail(l: Int, r: Int, a: Array)
+    requires forall n: Ref :: {n.val} in_range(index(n), a) ==> acc(n.val)
+    requires in_range(l, a) && in_range(r, a)
+    ensures forall n: Ref :: {n.val} in_range(index(n), a) ==> acc(n.val)
+    ensures comp[unite, empty()] i: Int, a1: Array :: {loc(a1, i).val | in_range(i, a1) && a1 == a} ==
+        old(comp[unite, empty()] i: Int, a1: Array :: {loc(a1, i).val | in_range(i, a1) && a1 == a})
+{
+    var tmp: Set[Int]
+    tmp := loc(a, r).val
+    loc(a, r).val := loc(a, l).val
+    //:: ExpectedOutput(postcondition.violated:assertion.false)
+}
