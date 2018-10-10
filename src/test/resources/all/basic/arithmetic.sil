@@ -29,3 +29,16 @@ method t4() {
     //:: ExpectedOutput(assignment.failed:division.by.zero)
     i := 1 / 0
 }
+
+method t5() {
+    assert 2/3 == 0 // 2/3 is interpreted as integer division
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert 2/3 == none
+}
+
+method t6() {
+    assert 2/3 == 3/4 + 0 // / is interpreted as integer division
+    assert 2\3 == 3/4 // / is interpreted as integer division
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert 2/3 == 3/4 // / is interpreted as Perm-typed division
+}
