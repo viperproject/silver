@@ -24,9 +24,9 @@ object QuantifiedPermissions {
     * predicate only, then the returned condition will be a [[TrueLit]].
     */
   object QuantifiedPermissionAssertion {
-    def unapply(forall: Forall): Option[(Forall, Exp, ResourceAccess)] = {
+    def unapply(forall: Forall): Option[(Forall, Exp, AccessPredicate)] = {
       forall match {
-        case SourceQuantifiedPermissionAssertion(`forall`, condition, res: ResourceAccess) =>
+        case SourceQuantifiedPermissionAssertion(`forall`, condition, res: AccessPredicate) =>
           Some((forall, condition, res))
         case _ =>
           None

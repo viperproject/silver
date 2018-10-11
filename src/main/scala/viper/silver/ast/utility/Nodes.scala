@@ -102,6 +102,12 @@ object Nodes {
           case EpsilonPerm() => Nil
           case CurrentPerm(loc) => Seq(loc)
           case FractionalPerm(left, right) => Seq(left, right)
+          case MagicWand(left, right) => Seq(left, right)
+            /* [2018-10-09 Malte] Only here since a MagicWand is a Resource ("location "), a
+             *  ResourceAccess and an AccessPredicate. If the latter case were matched here, then
+             *  accessPredicate.loc would be accessPredicate again, and we would have an infinite
+             *  recursion here.
+             */
           case AccessPredicate(loc, perm) => Seq(loc, perm)
           case BinExp(left, right) => Seq(left, right)
           case UnExp(exp) => Seq(exp)

@@ -139,7 +139,10 @@ object Consistency {
     var found = false
 
     val findPermissions = ViperStrategy.Ancestor({
-      case (acc: AccessPredicate, c) if c.parentOption.fold(true)(!_.isInstanceOf[Unfolding]) =>
+      case (acc: FieldAccessPredicate, _) =>
+        found = true
+        acc
+      case (acc: PredicateAccessPredicate, c) if c.parentOption.fold(true)(!_.isInstanceOf[Unfolding]) =>
         found = true
         acc
       case (mw: MagicWand, c) if c.parentOption.fold(true)(!_.isInstanceOf[Applying]) =>

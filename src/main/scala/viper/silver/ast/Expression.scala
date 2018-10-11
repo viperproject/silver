@@ -100,9 +100,22 @@ object MagicWandStructure {
 }
 
 case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
-    extends DomainBinExp(MagicWandOp) with Resource with ResourceAccess {
+    extends DomainBinExp(MagicWandOp)
+       with Resource
+       with ResourceAccess
+       with AccessPredicate {
+
+  /* [2018-10-08 Malte] Magic wands are currently not wrapped in acc(...); to account for that,
+   * a `MagicWand` is currently both a `ResourceAccess` and an `AccessPredicate`.
+   * It is also a `Resource` because we do not declare wands separately from wand instances, in
+   * contrast to e.g. fields and predicates.
+   */
 
   override def res(p: Program): Resource = this
+  def loc: ResourceAccess = this
+  val perm: Exp = FullPerm()(pos, NoInfo, NoTrafos)
+
+  override val typ: Wand.type = Wand
 
   // maybe rename this sometime
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
@@ -250,11 +263,11 @@ case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo, va
 
 /** A common trait for accessibility predicates. */
 // Note: adding extra instances of AccessPredicate will require adding cases to viper.silver.ast.utility.multiplyExpByPerm method
-sealed trait AccessPredicate extends Exp with ResourceAccess {
-  override def res(p: Program): Resource = loc.loc(p)
-  def loc: LocationAccess
+sealed trait AccessPredicate extends Exp {
+  def res(p: Program): Resource = loc.res(p)
+  def loc: ResourceAccess
   def perm: Exp
-  final lazy val typ = Bool
+  val typ: Bool.type = Bool
 }
 object AccessPredicate {
   def unapply(a: AccessPredicate) = Some((a.loc, a.perm))

@@ -760,6 +760,11 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       "epsilon"
     case CurrentPerm(loc) =>
       text("perm") <> parens(show(loc))
+    case mw: MagicWand => showPrettyBinaryExp(mw)
+      /** [2018-10-09 Malte] Here to prevent the next case from matching, which would result in
+        * infinite recursion. See the comment in [[viper.silver.ast.utility.Nodes.subnodes]]
+        * for details.
+        */
     case AccessPredicate(loc, perm) =>
       text("acc") <> parens(show(loc) <> "," <+> show(perm))
     case FuncApp(funcname, args) =>
@@ -810,41 +815,44 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       surround(show(s),char ('|'))
 
     case null => uninitialized
-    case _: PrettyUnaryExpression | _: PrettyBinaryExpression =>
-      e match {
-        case b: PrettyBinaryExpression =>
-          val ld =
-            b.left match {
-              case l: PrettyOperatorExpression =>
-                bracket(l, b, LeftAssociative)
-              case l =>
-                toParenDoc(l)
-            }
-          val rd =
-            b.right match {
-              case r: PrettyOperatorExpression =>
-                bracket(r, b, RightAssociative)
-              case r =>
-                toParenDoc(r)
-            }
-          ld <+> text(b.op) <+> rd
-
-        case u: PrettyUnaryExpression =>
-          val ed =
-            u.exp match {
-              case e: PrettyOperatorExpression =>
-                bracket(e, u, NonAssociative)
-              case _ =>
-                toParenDoc(u.exp)
-            }
-          if (u.fixity == Prefix)
-            text(u.op) <> ed
-          else
-            ed <> text(u.op)
-
-      }
+    case u: PrettyUnaryExpression => showPrettyUnaryExp(u)
+    case b: PrettyBinaryExpression => showPrettyBinaryExp(b)
     case e: ExtensionExp => e.prettyPrint
     case _ => sys.error(s"unknown expression: ${e.getClass}")
   }
 
+  def showPrettyUnaryExp(u: PrettyUnaryExpression): Cont = {
+    val ed =
+      u.exp match {
+        case e: PrettyOperatorExpression =>
+          bracket(e, u, NonAssociative)
+        case _ =>
+          toParenDoc(u.exp)
+      }
+
+    if (u.fixity == Prefix)
+      text(u.op) <> ed
+    else
+      ed <> text(u.op)
+  }
+
+  def showPrettyBinaryExp(b: PrettyBinaryExpression): Cont = {
+    val ld =
+      b.left match {
+        case l: PrettyOperatorExpression =>
+          bracket(l, b, LeftAssociative)
+        case l =>
+          toParenDoc(l)
+      }
+
+    val rd =
+      b.right match {
+        case r: PrettyOperatorExpression =>
+          bracket(r, b, RightAssociative)
+        case r =>
+          toParenDoc(r)
+      }
+
+    ld <+> text(b.op) <+> rd
+  }
 }
