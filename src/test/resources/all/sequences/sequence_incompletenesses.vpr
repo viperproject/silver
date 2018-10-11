@@ -15,7 +15,7 @@ domain Array {
 }
 field val : Seq[Seq[Int]]  // array slot values
 
-function valid(s : Seq[Int], lenTiles: Int, isStart: Bool) : Bool 
+function valid(s : Seq[Int], lenTiles: Int, isStart: Bool) : Bool
 {
   (|s| == 0 ? lenTiles == 0 :
    |s| == 1 ? // just reds
@@ -25,14 +25,14 @@ function valid(s : Seq[Int], lenTiles: Int, isStart: Bool) : Bool
   )
 }
 
-//solutions: in a 
+//solutions: in a
 
 // NOTE: we store all solutions in an array. count[i] is represented by |slot(a,i).val|
 
 
 method colourings0(a: Array)
   requires len(a) == 51
-  requires forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val) 
+  requires forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val)
 {
   slot(a,0).val := Seq(Seq())
   //assert forall j:Int :: 0 <= j && j < |slot(a,0).val| ==>
@@ -51,7 +51,7 @@ method colourings0(a: Array)
 // We represent sequences of "how many reds", "how many blacks", "how many reds", etc.
 method colourings1(a: Array)
   requires len(a) == 51
-  requires forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val) 
+  requires forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val)
 {
   slot(a,0).val := Seq(Seq())
   //assert forall j:Int :: 0 <= j && j < |slot(a,0).val| ==>
@@ -62,7 +62,7 @@ method colourings1(a: Array)
   assert Seq(0,1)[2..] == Seq() // sequence incompleteness
   assert forall j:Int :: 0 <= j && j < |slot(a,1).val| ==>
         slot(a,1).val[j] == Seq(0,1) && valid(slot(a,1).val[j],1,true)
-        
+
   slot(a,2).val := Seq(Seq(0,2)) // no red, 2 black
   assert Seq(0,2)[2..] == Seq()
   assert forall j:Int :: 0 <= j && j < |slot(a,2).val| ==>
@@ -72,23 +72,23 @@ method colourings1(a: Array)
   assert Seq(0,3)[2..] == Seq()
   assert forall j:Int :: 0 <= j && j < |slot(a,3).val| ==>
       valid(slot(a,3).val[j],3,true)
-  
+
   var n : Int := 4
   while(n <= 50)
   invariant 4 <= n && n <= 51
   invariant len(a) == 51
-  invariant forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val) 
+  invariant forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val)
   invariant forall m: Int, j:Int :: 0 <= m && m < n && 0 <= j && j < |slot(a,m).val| ==>
         valid(slot(a,m).val[j],m,true)
   {
     slot(a,n).val := Seq() // none yet
     // count[n] := count[n-1]
     var i : Int := 0
-    while(i < |slot(a,n-1).val|) 
-      invariant acc(slot(a,n-1).val, 1/2) 
+    while(i < |slot(a,n-1).val|)
+      invariant acc(slot(a,n-1).val, 1/2)
       invariant len(a) == 51
       invariant 0 <= i && i <= |slot(a,n-1).val|
-      invariant acc(slot(a,n).val) 
+      invariant acc(slot(a,n).val)
       invariant |slot(a,n).val| == i
       invariant forall j:Int :: 0 <= j && j < |slot(a,n-1).val| ==>
         valid(slot(a,n-1).val[j],n-1,true)
@@ -103,7 +103,7 @@ method colourings1(a: Array)
         //:: UnexpectedOutput(assert.failed:assertion.false, /silver/issue/80/)
         assert valid(soln,n,true)
       } else {
-        soln := Seq(0,1) ++ oldSoln 
+        soln := Seq(0,1) ++ oldSoln
         assert soln[2..] == oldSoln
         assert valid(oldSoln,n-1,false)
         assert valid(soln,n,true)
@@ -122,7 +122,7 @@ method colourings1(a: Array)
 // We represent sequences of "how many reds", "how many blacks", "how many reds", etc.
 method colourings2(a: Array)
   requires len(a) == 51
-  requires forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val) 
+  requires forall i: Int :: {slot(a,i).val} 0 <= i && i < len(a) ==> acc(slot(a,i).val)
 {
   slot(a,0).val := Seq(Seq())
   //assert forall j:Int :: 0 <= j && j < |slot(a,0).val| ==>
@@ -133,7 +133,7 @@ method colourings2(a: Array)
   assert Seq(0,1)[2..] == Seq() // sequence incompleteness
   assert forall j:Int :: 0 <= j && j < |slot(a,1).val| ==>
         slot(a,1).val[j] == Seq(0,1) && valid(slot(a,1).val[j],1,true)
-        
+
   slot(a,2).val := Seq(Seq(0,2)) // no red, 2 black
   assert Seq(0,2)[2..] == Seq()
   assert forall j:Int :: 0 <= j && j < |slot(a,2).val| ==>
@@ -143,23 +143,23 @@ method colourings2(a: Array)
   assert Seq(0,3)[2..] == Seq()
   assert forall j:Int :: 0 <= j && j < |slot(a,3).val| ==>
       valid(slot(a,3).val[j],3,true)
-  
+
   var n : Int := 4
   while(n <= 50)
   invariant 4 <= n && n <= 51
   invariant len(a) == 51
-  invariant forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val) 
+  invariant forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val)
   invariant forall m: Int, j:Int :: 0 <= m && m < n && 0 <= j && j < |slot(a,m).val| ==>
         valid(slot(a,m).val[j],m,true)
   {
     slot(a,n).val := Seq() // none yet
     // count[n] := count[n-1]
     var i : Int := 0
-    while(i < |slot(a,n-1).val|) 
-      invariant acc(slot(a,n-1).val, 1/2) 
+    while(i < |slot(a,n-1).val|)
+      invariant acc(slot(a,n-1).val, 1/2)
       invariant len(a) == 51
       invariant 0 <= i && i <= |slot(a,n-1).val|
-      invariant acc(slot(a,n).val) 
+      invariant acc(slot(a,n).val)
       invariant |slot(a,n).val| == i
       invariant forall j:Int :: 0 <= j && j < |slot(a,n-1).val| ==>
         valid(slot(a,n-1).val[j],n-1,true)
@@ -173,7 +173,7 @@ method colourings2(a: Array)
         assert soln[2..] == oldSoln[2..]
         assert valid(soln,n,true)
       } else {
-        soln := Seq(0,1) ++ oldSoln 
+        soln := Seq(0,1) ++ oldSoln
         //assert soln[2..] == oldSoln
         assert valid(oldSoln,n-1,false)
         //:: UnexpectedOutput(assert.failed:assertion.false, /silver/issue/80/)
@@ -191,7 +191,7 @@ method colourings2(a: Array)
 // We represent sequences of "how many reds", "how many blacks", "how many reds", etc.
 method colourings(a: Array)
   requires len(a) == 51
-  requires forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val) 
+  requires forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val)
 {
   slot(a,0).val := Seq(Seq())
   //assert forall j:Int :: 0 <= j && j < |slot(a,0).val| ==>
@@ -202,7 +202,7 @@ method colourings(a: Array)
   assert Seq(0,1)[2..] == Seq() // sequence incompleteness
   assert forall j:Int :: 0 <= j && j < |slot(a,1).val| ==>
         slot(a,1).val[j] == Seq(0,1) && valid(slot(a,1).val[j],1,true)
-        
+
   slot(a,2).val := Seq(Seq(0,2)) // no red, 2 black
   assert Seq(0,2)[2..] == Seq()
   assert forall j:Int :: 0 <= j && j < |slot(a,2).val| ==>
@@ -212,23 +212,23 @@ method colourings(a: Array)
   assert Seq(0,3)[2..] == Seq()
   assert forall j:Int :: 0 <= j && j < |slot(a,3).val| ==>
       valid(slot(a,3).val[j],3,true)
-  
+
   var n : Int := 4
   while(n <= 50)
   invariant 4 <= n && n <= 51
   invariant len(a) == 51
-  invariant forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val) 
+  invariant forall i: Int :: 0 <= i && i < len(a) ==> acc(slot(a,i).val)
   invariant forall m: Int, j:Int :: 0 <= m && m < n && 0 <= j && j < |slot(a,m).val| ==>
         valid(slot(a,m).val[j],m,true)
   {
     slot(a,n).val := Seq() // none yet
     // count[n] := count[n-1]
     var i : Int := 0
-    while(i < |slot(a,n-1).val|) 
-      invariant acc(slot(a,n-1).val, 1/2) 
+    while(i < |slot(a,n-1).val|)
+      invariant acc(slot(a,n-1).val, 1/2)
       invariant len(a) == 51
       invariant 0 <= i && i <= |slot(a,n-1).val|
-      invariant acc(slot(a,n).val) 
+      invariant acc(slot(a,n).val)
       invariant |slot(a,n).val| == i
       invariant forall j:Int :: 0 <= j && j < |slot(a,n-1).val| ==>
         valid(slot(a,n-1).val[j],n-1,true)
@@ -242,7 +242,7 @@ method colourings(a: Array)
         assert soln[2..] == oldSoln[2..]
         assert valid(soln,n,true)
       } else {
-        soln := Seq(0,1) ++ oldSoln 
+        soln := Seq(0,1) ++ oldSoln
         assert soln[2..] == oldSoln
         assert valid(oldSoln,n-1,false)
         assert valid(soln,n,true)
