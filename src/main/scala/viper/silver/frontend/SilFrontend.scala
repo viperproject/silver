@@ -6,17 +6,17 @@
 
 package viper.silver.frontend
 
-import org.apache.commons.io.FilenameUtils
-import viper.silver.ast.{Position, SourcePosition, _}
+import viper.silver.ast.SourcePosition
 import viper.silver.ast.utility.Consistency
 import viper.silver.FastMessaging
 import viper.silver.ast._
 import viper.silver.parser._
 import viper.silver.plugin.SilverPluginManager
-import viper.silver.plugin.SilverPluginManager.{PluginException, PluginNotFoundException, PluginWrongTypeException}
+import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
 import fastparse.all.{Parsed, ParserInput}
+import fastparse.all
 import java.nio.file.{Path, Paths}
 
 
@@ -207,9 +207,10 @@ trait SilFrontend extends DefaultFrontend {
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning]))
                 Succ({ e.initProperties(); e })
               else Fail(err_list)
-            case Parsed.Failure(msg, index, extra) =>
+            case fail @ Parsed.Failure(_, index, extra) =>
+              val msg = all.ParseError(fail.asInstanceOf[Parsed.Failure]).getMessage()
               val (line, col) = LineCol(extra.input.asInstanceOf[ParserInput], index)
-              Fail(List(ParseError("Expected " + msg.toString, SourcePosition(file, line, col))))
+              Fail(List(ParseError("Expected " + msg, SourcePosition(file, line, col))))
             case ParseError(msg, pos) => Fail(List(ParseError(msg, pos)))
           }
 

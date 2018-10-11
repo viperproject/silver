@@ -2,11 +2,6 @@ package viper.silver
 
 import scala.util.parsing.input.{NoPosition, Position}
 
-/**
-  * Created by Sahil on 22.06.16.
-  */
-
-
 case class FastMessage (label : String, pos : Position = NoPosition) {
 
   def line : Int = pos.line
@@ -47,5 +42,4 @@ object FastMessaging {
       case (msg1, msg2) =>
         (msg1.line < msg2.line) || ((msg1.line == msg2.line) && (msg1.column < msg2.column))
     }
-
 }

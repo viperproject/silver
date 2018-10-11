@@ -4,10 +4,6 @@ package viper.silver
 import com.google.common.cache.{Cache, CacheBuilder}
 import scala.util.parsing.input.{NoPosition, Position}
 
-/**
-  * Created by Sahil on 22.06.16.
-  */
-
 class PositionMap {
 
 

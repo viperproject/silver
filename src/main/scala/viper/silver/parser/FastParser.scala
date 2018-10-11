@@ -5,6 +5,7 @@ import java.nio.file.{Files, Path}
 import scala.language.{implicitConversions, reflectiveCalls}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
+import fastparse.all
 import viper.silver.ast.{SourcePosition, LineCol}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
@@ -18,7 +19,7 @@ case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp
   override def apply(v1: PExp): E = func(v1)
 }
 
-object FastParser extends PosParser {
+object FastParser extends PosParser[Char, String] {
 
   var _lines: Array[Int] = null
 
@@ -168,7 +169,8 @@ object FastParser extends PosParser {
     val p = RecParser(path).parses(transformed_source)
     p match {
       case fastparse.core.Parsed.Success(prog, _) => prog
-      case fastparse.core.Parsed.Failure(msg, index, extra) =>
+      case fail @ fastparse.core.Parsed.Failure(_, index, extra) =>
+        val msg = all.ParseError(fail).getMessage()
         val (line, col) = LineCol(extra.input, index)
         throw ParseException(s"Expected $msg", FilePosition(path, line, col))
     }
@@ -509,7 +511,7 @@ object FastParser extends PosParser {
 
   lazy val unExp: P[PUnExp] = P((CharIn("-!+").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
 
-  lazy val strInteger: P[String] = P(CharIn('0' to '9').rep(min = 1)).!
+  lazy val strInteger: P[String] = P(CharIn('0' to '9').rep(1)).!
 
   lazy val integer: P[PIntLit] = strInteger.filter(s => !s.contains(' ')).map { s => PIntLit(BigInt(s)) }
 
@@ -624,7 +626,7 @@ object FastParser extends PosParser {
   lazy val locAcc: P[PLocationAccess] = P(fieldAcc | predAcc)
 
   lazy val fieldAcc: P[PFieldAccess] =
-    P(realSuffixExpr.filter(isFieldAccess).map {
+    P(NoCut(realSuffixExpr.filter(isFieldAccess)).map {
       case fa: PFieldAccess => fa
       case other => sys.error(s"Unexpectedly found $other")
     })
@@ -831,7 +833,7 @@ object FastParser extends PosParser {
     case filename => PImport(filename)
   }
 
-  lazy val relativeFilePath: P[String] = P((CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(min = 1))
+  lazy val relativeFilePath: P[String] = P((CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
 
   lazy val domainDecl: P[PDomain] = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
     "}").map {
