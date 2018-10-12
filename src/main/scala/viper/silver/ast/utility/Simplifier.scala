@@ -111,7 +111,7 @@ object Simplifier {
       case root @ Div(IntLit(left), IntLit(right)) if right != bigIntZero =>
         IntLit(left / right)(root.pos, root.info)
       case root @ Mod(IntLit(left), IntLit(right)) if right != bigIntZero =>
-        IntLit(left % right)(root.pos, root.info)
+        IntLit((right.abs + (left % right)) % right.abs)(root.pos, root.info)
     }, Traverse.BottomUp) execute[Exp](expression)
   }
 
