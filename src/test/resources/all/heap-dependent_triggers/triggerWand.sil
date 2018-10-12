@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/255/)
+
 field f: Int
 
 method m1(xs: Set[Ref], y: Ref) {

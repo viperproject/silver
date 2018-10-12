@@ -1,3 +1,5 @@
+//:: IgnoreFile(/carbon/issue/256/)
+
 field f: Int
 
 method m(xs1: Set[Ref], xs2: Set[Ref], xs3: Set[Ref], xs4: Set[Ref], xs5: Set[Ref], xs6: Set[Ref],

@@ -31,5 +31,6 @@ method m3(xs: Seq[Ref]) {
     inhale forall x: Ref :: {x.f} x in xs ==> x != y
     var z: Ref
     assume z in xs
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/257/)
     assert z != y
 }
