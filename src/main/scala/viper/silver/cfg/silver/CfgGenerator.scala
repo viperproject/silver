@@ -218,7 +218,8 @@ object CfgGenerator {
            _: Fresh |
            _: NewStmt |
            _: Assert |
-           _: LocalVarDeclStmt =>
+           _: LocalVarDeclStmt |
+           _: Assume =>
         // handle regular, non-control statements
         addStatement(WrappedStmt(stmt))
       case _: ExtensionStmt => sys.error("Extension statements are not handled.")

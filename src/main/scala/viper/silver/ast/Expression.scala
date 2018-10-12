@@ -265,7 +265,7 @@ case class NullLit()(val pos: Position = NoPosition, val info: Info = NoInfo, va
 // Note: adding extra instances of AccessPredicate will require adding cases to viper.silver.ast.utility.multiplyExpByPerm method
 sealed trait AccessPredicate extends Exp {
   def res(p: Program): Resource = loc.res(p)
-  def loc: ResourceAccess
+  def loc: ResourceAccess /* TODO: Should be renamed to, e.g. `resAcc` or just `acc` */
   def perm: Exp
   val typ: Bool.type = Bool
 }
