@@ -72,6 +72,7 @@ object Nodes {
           case Fresh(vars) => vars
           case Constraining(vars, body) => vars ++ Seq(body)
           case LocalVarDeclStmt(decl) => Seq(decl)
+          case e: ExtensionStmt => e.extensionSubnodes
         }
       case vd: LocalVarDecl => Nil
       case dc: DecTuple => dc.e
@@ -122,6 +123,7 @@ object Nodes {
           case ExplicitSet(elems) => elems
           case EmptyMultiset(elemTyp) => Seq(elemTyp)
           case ExplicitMultiset(elems) => elems
+          case e: ExtensionExp => e.extensionSubnodes
         }
       case t: Type => Nil
     }

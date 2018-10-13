@@ -148,7 +148,7 @@ trait SilFrontend extends DefaultFrontend {
         return
     }
 
-    // run the parser, typechecker, and verifier
+    // Parse, type check, translate and verify
     verify()
 
     finish()

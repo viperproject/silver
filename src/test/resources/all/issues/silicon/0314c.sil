@@ -1,0 +1,33 @@
+field data: Seq[Int]
+
+function f(x:Int) : Bool
+
+method test(i:Int)
+{
+    var s : Seq[Int]
+    assume forall x : Int :: {x in s} f(x)
+    s := s ++ Seq(1)
+    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/314/)
+    assert i in s ==> f(i) 
+}
+
+method test_two(i:Int)
+{
+    var r : Ref
+    inhale acc(r.data)
+    assume forall x : Int :: {x in r.data} f(x)
+    r.data := r.data ++ Seq(1)
+    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/314/)
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/252/)
+    assert i in r.data ==> f(i)
+}
+
+method test_three(i:Int)
+{ 
+    var r : Ref
+    inhale acc(r.data)
+    assume forall x : Int :: {r.data[x] in r.data} f(x)
+    r.data := r.data ++ Seq(1)
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/252/)
+    assert i in r.data ==> f(i) // FAILS in Carbon, not in Silicon
+}
