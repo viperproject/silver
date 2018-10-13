@@ -215,8 +215,7 @@ case class Field(name: String, typ: Type)(val pos: Position = NoPosition, val in
   val scopedDecls = Seq() //field is a scope because it is a member; it has no locals
 }
 
-/** A decreases-Clause declaration.
-    TODO: change [[Node]] to [[Hashable]] */
+/** A decreases-Clause declaration. */
 sealed trait DecClause extends Node with Positioned with Infoed with TransformableErrors
 
 case class DecStar()(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends DecClause
@@ -248,7 +247,7 @@ case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[E
 
 /** A method declaration. */
 case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
-                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos, val is_cached: Boolean = false)
+                 (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
     extends Member with Callable with Contracted {
 
   /* TODO: Should not have to be a lazy val, see also the comment for method
@@ -302,21 +301,15 @@ case class Method(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Se
 
 object MethodWithLabelsInScope {
   def apply(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
-                 (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos, is_cached: Boolean = false): Method = {
+                 (pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos): Method = {
     val newBody = body match {
       case Some(actualBody) =>
         val newScopedDecls = actualBody.scopedDecls ++ actualBody.deepCollect({case l: Label => l})
         Some(actualBody.copy(scopedDecls = newScopedDecls)(actualBody.pos, actualBody.info, actualBody.errT))
       case _ => body
     }
-    Method(name, formalArgs, formalReturns, pres, posts, newBody)(pos, info, errT, is_cached)
+    Method(name, formalArgs, formalReturns, pres, posts, newBody)(pos, info, errT)
   }
-}
-
-object Mathod {
-  def apply(name: String, formalArgs: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
-           (pos: Position, info: Info, errT: ErrorTrafo) =
-    new Method(name, formalArgs, formalReturns, pres, posts, body)(pos, info, errT, false)
 }
 
 /** A function declaration */
@@ -420,7 +413,7 @@ case class DomainAxiom(name: String, exp: Exp)
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError("Axioms must be of Bool type", exp.pos)) else Seq()) ++
     Consistency.checkPure(exp)
 
-    override def getMetadata:Seq[Any] = {
+  override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
   }
   val scopedDecls = Seq()
