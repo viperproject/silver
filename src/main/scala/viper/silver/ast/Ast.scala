@@ -26,13 +26,9 @@ Some design choices:
   we check is necessary.
 - val vs lazy val: We check consistency in the constructor at various nodes, which prevents us from using
   val fields in many cases due to initialization problems.  For this reason, we use lazy val.
-- The AST can contain cycles, for instance for recursive methods (or functions) where the method references
-  the body, which in turn contains a method call that in turn references the method.  To enable initialization,
-  we make the body of the method a var field and initialize it later.  That is, during construction,
-  one first needs to create all methods without a body (one can think of this as the method signature),
-  and then create all the implementations.  This allows method call nodes to already reference the method
-  declarations.
-
+- The AST can represent programs with cycles, for example to represent calls to methods. The cycles are
+  handled by using the name of the corresponding program element (stored as a String), which can be looked
+  up in the Program itself (e.g. findMethod). This allows AST instances to be immutable.
 */
 
 /**
