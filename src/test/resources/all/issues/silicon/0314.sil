@@ -21,10 +21,12 @@ method test(x: Ref) {
 
   if (rnd == 0) {
     assume x.f in S1
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/257/)
     assert x.f == n0
   } elseif (rnd == 1) {
     var n1: Int
     assume n1 in S1
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/257/)
     assert n1 == n0
   }
 }
