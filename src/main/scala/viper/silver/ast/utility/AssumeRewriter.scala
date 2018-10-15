@@ -16,6 +16,7 @@ import viper.silver.ast.utility.Rewriter._
   */
 
 object AssumeRewriter {
+  val domainName = "Assume"
 
   var funcs: Seq[DomainFunc] = Seq()
   var axioms: Seq[DomainAxiom] = Seq()
@@ -253,9 +254,9 @@ object AssumeRewriter {
       val condExps = condsWithPerm map (cp => CondExp(cp._1, cp._2, NoPerm()())())
       condExps.foldLeft[Exp](LocalVar("p_0")(Perm))((p, c) => PermAdd(p, c)())
     }
-    val fun = DomainFunc(name, formalArgs, Perm)(domainName = "Assume")
+    val fun = DomainFunc(name, formalArgs, Perm)(domainName = domainName)
     val ax = Forall(formalArgs, Seq(Trigger(Seq(DomainFuncApp(fun, formalArgs map (_.localVar), Map[TypeVar, Type]())()))()), EqCmp(DomainFuncApp(fun, formalArgs map (_.localVar), Map[TypeVar, Type]())(), body)())()
-    val dax = DomainAxiom(name + "_axiom", ax)(domainName = "Assume")
+    val dax = DomainAxiom(name + "_axiom", ax)(domainName = domainName)
     (fun, dax)
   }
 
@@ -297,7 +298,10 @@ object AssumeRewriter {
     }).execute(pInvs)
 
     ViperStrategy.Slim({
-      case p: Program => Program(p.domains ++ domains :+ Domain("Assume", funcs, axioms)(), p.fields, p.functions, p.predicates, p.methods)(p.pos, p.info, p.errT)
+      case p: Program =>
+        val assumeDomain = Domain(domainName, funcs, axioms)(info = Synthesized)
+
+        Program(p.domains ++ domains :+ assumeDomain, p.fields, p.functions, p.predicates, p.methods)(p.pos, p.info, p.errT)
     }).execute(pAssume)
   }
 }

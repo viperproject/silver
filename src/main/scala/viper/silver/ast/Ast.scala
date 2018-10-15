@@ -339,6 +339,15 @@ case object Cached extends Info {
   lazy val isCached = true
 }
 
+/** An `Info` instance for labelling a node as synthesized. A synthesized node is one that
+  * was not present in the original program that was passed to a Viper backend, such as nodes that
+  * originate from an AST transformation.
+  */
+case object Synthesized extends Info {
+  lazy val comment = Nil
+  lazy val isCached = false
+}
+
 /** An `Info` instance for composing multiple `Info`s together */
 case class ConsInfo(head: Info, tail: Info) extends Info {
   lazy val comment = head.comment ++ tail.comment
