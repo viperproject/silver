@@ -499,7 +499,7 @@ object FastParser extends PosParser {
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old
     | result | unExp
-    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
+    | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let.log() | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
     | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
 
@@ -541,7 +541,7 @@ object FastParser extends PosParser {
     case None => a
   }
   }
-  lazy val iffExp: P[PExp] = P(implExp ~ ("<==>".! ~ iffExp).?).map { case (a, b) => b match {
+  lazy val iffExp: P[PExp] = P(implExp.log() ~ ("<==>".! ~ iffExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
     case None => a
   }
@@ -639,7 +639,7 @@ object FastParser extends PosParser {
     | keyword("epsilon").map(_ => PEpsilon()) | ("perm" ~ parens(resAcc)).map(PCurPerm))
 
   lazy val let: P[PExp] = P(
-    ("let" ~/ idndef ~ "==" ~ "(" ~ exp ~ ")" ~ "in" ~ exp).map { case (id, exp1, exp2) =>
+    ("let" ~/ idndef ~ "==" ~ exp.log() ~ "in".log() ~ exp.log()).map { case (id, exp1, exp2) =>
       /* Type unresolvedType is expected to be replaced with the type of exp1
        * after the latter has been resolved
        * */
@@ -722,7 +722,7 @@ object FastParser extends PosParser {
     case (func, args, typeGiven) => PCall(func, args, Some(typeGiven))
   }
 
-  lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
+  lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP.log() |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand | macroref | block)
 
