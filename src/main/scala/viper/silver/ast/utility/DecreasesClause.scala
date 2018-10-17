@@ -489,6 +489,8 @@ class DecreasesClause(val members: collection.mutable.HashMap[String, Node]) {
                                             mapNested)(calledPred.pos))(calledPred.pos)
 
           Seqn(Seq(assign1, assign2, assume), Nil)(calledPred.pos)
+        case mw: MagicWand =>
+          sys.error(s"Unexpectedly found resource access node $mw")
       }
       case c: CondExp =>
         val thn = rewritePredBodyAsExp(c.thn, origPred)

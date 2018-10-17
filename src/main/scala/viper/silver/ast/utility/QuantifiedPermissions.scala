@@ -24,9 +24,9 @@ object QuantifiedPermissions {
     * predicate only, then the returned condition will be a [[TrueLit]].
     */
   object QuantifiedPermissionAssertion {
-    def unapply(forall: Forall): Option[(Forall, Exp, ResourceAccess)] = {
+    def unapply(forall: Forall): Option[(Forall, Exp, AccessPredicate)] = {
       forall match {
-        case SourceQuantifiedPermissionAssertion(`forall`, condition, res: ResourceAccess) =>
+        case SourceQuantifiedPermissionAssertion(`forall`, condition, res: AccessPredicate) =>
           Some((forall, condition, res))
         case _ =>
           None
@@ -91,9 +91,10 @@ object QuantifiedPermissions {
   }
 
   def quantifiedMagicWands(root: Node, program: Program): collection.Set[MagicWandStructure.MagicWandStructure] = {
-    root collect {
-      case QuantifiedPermissionAssertion(_, _, wand: MagicWand) => wand.structure(program)
-    } toSet
+    (root collect {
+      case QuantifiedPermissionAssertion(_, _, wand: MagicWand) => Seq(wand.structure(program))
+      case Forall(_,triggers,_) => triggers flatMap (_.exps) collect {case wand: MagicWand => wand.structure(program)}
+    } toSet) flatten
   }
 
   private def quantifiedFields(toVisit: mutable.Queue[Member],
@@ -107,6 +108,7 @@ object QuantifiedPermissions {
       root visit {
         case QuantifiedPermissionAssertion(_, _, acc: FieldAccessPredicate) =>
           collected += acc.loc.field
+        case Forall(_,triggers,_) => collected ++= triggers flatMap (_.exps) collect {case fa: FieldAccess => fa.field}
       }
 
       visited += root
@@ -127,6 +129,7 @@ object QuantifiedPermissions {
       root visit {
         case QuantifiedPermissionAssertion(_, _, acc: PredicateAccessPredicate) =>
           collected += program.findPredicate(acc.loc.predicateName)
+        case Forall(_,triggers,_) => collected ++= triggers flatMap (_.exps) collect {case pa: PredicateAccess => pa.loc(program)}
       }
 
       visited += root

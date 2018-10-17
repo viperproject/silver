@@ -142,6 +142,11 @@ case class Assert(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoI
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Assertion to assert must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
 }
 
+case class Assume(exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
+  override lazy val check : Seq[ConsistencyError] =
+    (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Assertion to assume must be of type Bool, but found ${exp.typ}", exp.pos)) else Seq())
+}
+
 /** An fold statement. */
 case class Fold(acc: PredicateAccessPredicate)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
   override lazy val check : Seq[ConsistencyError] =
