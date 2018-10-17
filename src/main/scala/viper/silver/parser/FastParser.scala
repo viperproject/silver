@@ -756,7 +756,7 @@ object FastParser extends PosParser {
     * This parser is wrapped in another parser because otherwise the position
     * in rules like [[block.?]] are not set properly.
     */
-  lazy val block: P[PSeqn] = P(P("{" ~ stmts ~ "}").map(PSeqn))
+  lazy val block: P[PSeqn] = P(P("{" ~/ stmts ~ "}").map(PSeqn))
 
   lazy val stmts: P[Seq[PStmt]] = P(stmt ~/ ";".?).rep
 
