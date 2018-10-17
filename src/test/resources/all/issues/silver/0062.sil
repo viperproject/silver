@@ -1,12 +1,11 @@
 domain Foo {
   axiom ax1 {
-    //:: UnexpectedOutput(parser.error, /silver/issue/62/)
+    //:: ExpectedOutput(consistency.error)
     forall x: Int :: {} x > (x - 1)
   }
 }
 
 method test1()
-  // Error not reported sed here.
-  // Probably, because the parser doesn't even get here.
+  //:: ExpectedOutput(consistency.error)
   requires forall x: Int :: {} x > (x - 1)
 {}
