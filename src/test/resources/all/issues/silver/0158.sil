@@ -1,5 +1,5 @@
 method m()
 {
-    //:: ExpectedOutput(parser.error)
+    //:: ExpectedOutput(consistency.error)
     assert forall i : Int :: {} true
 }
