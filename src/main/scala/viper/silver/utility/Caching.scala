@@ -9,7 +9,7 @@ package viper.silver.utility
 import java.security.MessageDigest
 
 import viper.silver.ast.pretty.FastPrettyPrinter
-import viper.silver.ast.{Member, Method, Node}
+import viper.silver.ast.Node
 
 import scala.collection.mutable
 import scala.language.postfixOps

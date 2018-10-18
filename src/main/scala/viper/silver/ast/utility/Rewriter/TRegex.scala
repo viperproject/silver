@@ -6,7 +6,6 @@ package viper.silver.ast.utility.Rewriter
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-import scala.language.implicitConversions
 import scala.reflect.api
 import scala.reflect.runtime.universe._
 

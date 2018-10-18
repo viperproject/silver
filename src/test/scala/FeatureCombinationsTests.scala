@@ -4,7 +4,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
  */
 
-import scala.language.implicitConversions
 import org.scalatest.{Matchers, FunSuite}
 import viper.silver.ast._
 import viper.silver.ast.utility.Simplifier._

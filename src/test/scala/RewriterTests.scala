@@ -12,9 +12,6 @@ import viper.silver.ast._
 import viper.silver.ast.utility.Rewriter._
 import viper.silver.ast.utility._
 
-import scala.language.implicitConversions
-
-
 class RewriterTests extends FunSuite with FileComparisonHelper {
   test("Performance_BinomialHeap") {
     val fileName = "transformations/Performance/BinomialHeap"
