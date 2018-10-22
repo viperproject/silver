@@ -36,8 +36,8 @@ class ParseTreeTests extends FunSuite {
 
     val paths: Seq[String] = files.map { f => filePrefix + f + ".sil" }
 
-    val fileResA = getClass.getResource(paths(0))
-    assert(fileResA != null, s"File ${paths(0)} not found")
+    val fileResA = getClass.getResource(paths.head)
+    assert(fileResA != null, s"File ${paths.head} not found")
     val file_a = Paths.get(fileResA.toURI)
 
     val fileResB = getClass.getResource(paths(1))
@@ -51,24 +51,31 @@ class ParseTreeTests extends FunSuite {
       case (Some(prog_a), _) =>
         frontend_b.translate(file_b) match {
           case (Some(prog_b), _) =>
-            prog_a.members.foreach( m_1 =>
+            prog_a.members.foreach(m_1 =>
               m_1.pos match {
                 case p_1: AbstractSourcePosition =>
-                  prog_b.members.foreach( m_2 =>
-                    m_1.pos match {
+                  prog_b.members.foreach(m_2 =>
+                    m_2.pos match {
                       case p_2: AbstractSourcePosition =>
                         //FIXME: the paths must actually be different.
                         //FIXME: this test will fail once someone fixes Silver's #224.
-                        assert( p_1.file.toUri.compareTo( p_2.file.toUri ) == 0,
-                          s"""Given that there are no import statements in the programs:
-                            | Prog A: ${fileResA.toURI}
-                            | Prog B: ${fileResB.toURI}
-                            | the absolute paths in the positions of AST nodes from these files
-                            | must be different.""".stripMargin
-                        )
-                      case _ => assert( false, """positions of AST nodes are not set by the parser""" )
+                        assert(p_1.file.toUri.compareTo(p_2.file.toUri) == 0,
+                               s"""Given that there are no import statements in the programs:
+                                 | Prog A: ${fileResA.toURI}
+                                 | Prog B: ${fileResB.toURI}
+                                 | the absolute paths in the positions of AST nodes from these files
+                                 | must be different.""".stripMargin)
+                      case NoPosition =>
+                        assert(m_2.info.getUniqueInfo[Synthesized.type].isDefined,
+                               "positions of AST nodes are not set by the parser")
+                      case other =>
+                        fail(s"Found unexpected position node $other (${other.getClass.getName})")
                     })
-                case _ => assert( false, """positions of AST nodes are not set by the parser""" )
+                case NoPosition =>
+                  assert(m_1.info.getUniqueInfo[Synthesized.type].isDefined,
+                         "positions of AST nodes are not set by the parser")
+                case other =>
+                  fail(s"Found unexpected position node $other (${other.getClass.getName})")
               })
           case (None, errors) => sys.error("Error occurred during translating: " + errors)
         }

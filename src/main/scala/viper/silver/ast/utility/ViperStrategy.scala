@@ -19,8 +19,8 @@ import viper.silver.verifier.errors.ErrorNode
   * @tparam C Type of context
   */
 class ViperStrategy[C <: Context[Node]](p: PartialFunction[(Node, C), Node]) extends Strategy[Node, C](p) {
-  override def preserveMetaData(old: Node, now: Node): Node = {
-    ViperStrategy.preserveMetaData(old, now, this)
+  override def preserveMetaData(old: Node, now: Node, directlyRewritten: Boolean): Node = {
+    ViperStrategy.preserveMetaData(old, now, directlyRewritten)
   }
 }
 
@@ -34,16 +34,14 @@ class ViperStrategy[C <: Context[Node]](p: PartialFunction[(Node, C), Node]) ext
   * @tparam C Type of context
   */
 class ViperRegexStrategy[C](a: TRegexAutomaton, p: PartialFunction[(Node, RegexContext[Node, C]), Node], d: PartialContextR[Node, C]) extends RegexStrategy[Node, C](a, p, d) {
-
-  override def preserveMetaData(old: Node, now: Node): Node = {
-    ViperStrategy.preserveMetaData(old, now, this)
+  override def preserveMetaData(old: Node, now: Node, directlyRewritten: Boolean): Node = {
+    ViperStrategy.preserveMetaData(old, now, directlyRewritten)
   }
 }
 
 class SlimViperRegexStrategy[C](a: TRegexAutomaton, p: PartialFunction[Node, Node]) extends SlimRegexStrategy[Node](a, p) {
-
-  override def preserveMetaData(old: Node, now: Node): Node = {
-    ViperStrategy.preserveMetaData(old, now, this)
+  override def preserveMetaData(old: Node, now: Node, directlyRewritten: Boolean): Node = {
+    ViperStrategy.preserveMetaData(old, now, directlyRewritten)
   }
 }
 
@@ -128,20 +126,45 @@ object ViperStrategy {
   /**
     * Function for automatic Error back transformation of nodes and conservation of metadata
     */
-  def preserveMetaData(old: Node, now: Node, si: StrategyInterface[Node]): Node = {
+  def preserveMetaData(old: Node, now: Node, directlyRewritten: Boolean): Node = {
     old match {
-      case n: TransformableErrors =>
-        val OldMetaData = old.getPrettyMetadata
-        var NewMetaData = now.getPrettyMetadata
+      case n: ErrorNode =>
+        val oldMetaData = old.getPrettyMetadata
+        var newMetaData = now.getPrettyMetadata
 
-        if ((NewMetaData._1 == NoPosition) && (NewMetaData._2 == NoInfo) && (NewMetaData._3 == NoTrafos)) {
-          NewMetaData = (OldMetaData._1, OldMetaData._2, OldMetaData._3)
+        /* TODO: This seems like a special case, not sure if makes sense to watch out for it here */
+        if ((newMetaData._1 == NoPosition) && (newMetaData._2 == NoInfo) && (newMetaData._3 == NoTrafos)) {
+          newMetaData = (oldMetaData._1, oldMetaData._2, oldMetaData._3)
         }
 
-        // Only duplicate if old and new are actually different
+        /* Only duplicate if old and new are actually different */
         if (old ne now) {
-          NewMetaData = (NewMetaData._1, NewMetaData._2, NewMetaData._3 + NodeTrafo(n.asInstanceOf[ErrorNode]))
-          now.duplicateMeta(NewMetaData)
+          /* If a node (with children) wasn't transformed itself, but was duplicated because its
+           * children were transformed, then that parent node should not get an error
+           * back-transformation from new to old.
+           * Consider the parent node `0 < x` and a user-provided transformation that replaces `x`
+           * with `foo(y)` and that adds a custom error transformation to `foo(y)` such that errors
+           * are reported using `bar(y)` instead. If an error back-transformation were
+           * automatically added to the parent node, then `0 < foo(y)` were mapped back (in error
+           * messages) to `0 < x`, and the custom mapping from `foo(y)` to `bar(y)` would be lost.
+           * Automatic error back-translations from old to new node are therefore only added to
+           * nodes that have been transformed themselves (or rather, if the `directlyRewritten`
+           * is true).
+           */
+          val newNodeTrafo = {
+            if (directlyRewritten) {
+              /* Attach an error transformation (in the form of a node transformation) from new to
+               * old, but don't override any already attached transformations */
+              Trafos(
+                newMetaData._3.eTransformations,
+                newMetaData._3.rTransformations,
+                newMetaData._3.nTransformations.orElse(Some(n.asInstanceOf[ErrorNode])))
+            } else {
+              /* Keep already attached transformations (if any) */
+              newMetaData._3
+            }
+          }
+          now.duplicateMeta((newMetaData._1, newMetaData._2, newNodeTrafo))
         } else {
           now
         }
@@ -325,6 +348,9 @@ object ViperStrategy {
 
     case (i: Inhale, Seq(expression: Exp), meta) =>
       Inhale(expression)(meta._1, meta._2, meta._3)
+
+    case (a: Assume, Seq(expression: Exp), meta) =>
+      Assume(expression)(meta._1, meta._2, meta._3)
 
     case (l: Label, invars: Seq[Exp@unchecked], meta) => Label(l.name, invars)(meta._1, meta._2, meta._3)
 

@@ -63,6 +63,7 @@ object Nodes {
           case Inhale(e) => Seq(e)
           case Exhale(e) => Seq(e)
           case Assert(e) => Seq(e)
+          case Assume(e) => Seq(e)
           case MethodCall(mname, args, targets) => args ++ targets
           case Seqn(ss, scopedDecls) => ss ++ scopedDecls.collect {case l: LocalVarDecl => l} //skip labels because they are already part of ss
           case While(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
@@ -72,6 +73,7 @@ object Nodes {
           case Fresh(vars) => vars
           case Constraining(vars, body) => vars ++ Seq(body)
           case LocalVarDeclStmt(decl) => Seq(decl)
+          case e: ExtensionStmt => e.extensionSubnodes
         }
       case vd: LocalVarDecl => Nil
       case dc: DecTuple => dc.e
@@ -100,6 +102,12 @@ object Nodes {
           case EpsilonPerm() => Nil
           case CurrentPerm(loc) => Seq(loc)
           case FractionalPerm(left, right) => Seq(left, right)
+          case MagicWand(left, right) => Seq(left, right)
+            /* [2018-10-09 Malte] Only here since a MagicWand is a Resource ("location "), a
+             *  ResourceAccess and an AccessPredicate. If the latter case were matched here, then
+             *  accessPredicate.loc would be accessPredicate again, and we would have an infinite
+             *  recursion here.
+             */
           case AccessPredicate(loc, perm) => Seq(loc, perm)
           case BinExp(left, right) => Seq(left, right)
           case UnExp(exp) => Seq(exp)
@@ -122,6 +130,7 @@ object Nodes {
           case ExplicitSet(elems) => elems
           case EmptyMultiset(elemTyp) => Seq(elemTyp)
           case ExplicitMultiset(elems) => elems
+          case e: ExtensionExp => e.extensionSubnodes
         }
       case t: Type => Nil
     }

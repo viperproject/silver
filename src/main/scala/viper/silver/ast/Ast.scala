@@ -26,13 +26,9 @@ Some design choices:
   we check is necessary.
 - val vs lazy val: We check consistency in the constructor at various nodes, which prevents us from using
   val fields in many cases due to initialization problems.  For this reason, we use lazy val.
-- The AST can contain cycles, for instance for recursive methods (or functions) where the method references
-  the body, which in turn contains a method call that in turn references the method.  To enable initialization,
-  we make the body of the method a var field and initialize it later.  That is, during construction,
-  one first needs to create all methods without a body (one can think of this as the method signature),
-  and then create all the implementations.  This allows method call nodes to already reference the method
-  declarations.
-
+- The AST can represent programs with cycles, for example to represent calls to methods. The cycles are
+  handled by using the name of the corresponding program element (stored as a String), which can be looked
+  up in the Program itself (e.g. findMethod). This allows AST instances to be immutable.
 */
 
 /**
@@ -275,13 +271,25 @@ case class NodeTrafo(node: ErrorNode) extends ErrorTrafo {
   val nTransformations = Some(node)
 }
 
+/** Combine two Trafos into one **/
+object MakeTrafoPair {
+  def apply(first: ErrorTrafo, second: ErrorTrafo) : ErrorTrafo = first match {
+    case NoTrafos => second
+    case _ => second match {
+      case NoTrafos => first
+      case _ => first + second
+    }
+  }
+}
+
+
 /** Base trait for error transformation objects */
 trait ErrorTrafo {
   def eTransformations: List[PartialFunction[AbstractVerificationError, AbstractVerificationError]]
 
   def rTransformations: List[PartialFunction[ErrorReason, ErrorReason]]
 
-  def nTransformations: Option[ErrorNode]
+  def nTransformations: Option[ErrorNode] // TODO: Why is this an option and not a list? Why is it OK to drop the second such value in the + definition below (if both are defined)?
 
   def +(t: ErrorTrafo): Trafos = {
     Trafos(eTransformations ++ t.eTransformations, rTransformations ++ t.rTransformations, if (t.nTransformations.isDefined) t.nTransformations else nTransformations)
@@ -331,6 +339,15 @@ case object Cached extends Info {
   lazy val isCached = true
 }
 
+/** An `Info` instance for labelling a node as synthesized. A synthesized node is one that
+  * was not present in the original program that was passed to a Viper backend, such as nodes that
+  * originate from an AST transformation.
+  */
+case object Synthesized extends Info {
+  lazy val comment = Nil
+  lazy val isCached = false
+}
+
 /** An `Info` instance for composing multiple `Info`s together */
 case class ConsInfo(head: Info, tail: Info) extends Info {
   lazy val comment = head.comment ++ tail.comment
@@ -339,9 +356,12 @@ case class ConsInfo(head: Info, tail: Info) extends Info {
 
 /** Build a `ConsInfo` instance out of two `Info`s, unless the latter is `NoInfo` (which can be dropped) */
 object MakeInfoPair {
-  def apply(head: Info, tail: Info) = tail match {
-    case NoInfo => head
-    case _ => ConsInfo(head, tail)
+  def apply(head: Info, tail: Info) = head match {
+    case NoInfo => tail
+    case _ => tail match {
+      case NoInfo => head
+      case _ => ConsInfo(head, tail)
+    }
   }
 }
 

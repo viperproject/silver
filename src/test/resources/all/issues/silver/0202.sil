@@ -1,5 +1,5 @@
 method test()
 {
-  //:: ExpectedOutput(consistency.error)
+  //:: ExpectedOutput(typechecker.error)
   assert (forall i: Int :: {i+1} true)
 }

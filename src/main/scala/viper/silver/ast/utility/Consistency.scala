@@ -139,7 +139,10 @@ object Consistency {
     var found = false
 
     val findPermissions = ViperStrategy.Ancestor({
-      case (acc: AccessPredicate, c) if c.parentOption.fold(true)(!_.isInstanceOf[Unfolding]) =>
+      case (acc: FieldAccessPredicate, _) =>
+        found = true
+        acc
+      case (acc: PredicateAccessPredicate, c) if c.parentOption.fold(true)(!_.isInstanceOf[Unfolding]) =>
         found = true
         acc
       case (mw: MagicWand, c) if c.parentOption.fold(true)(!_.isInstanceOf[Applying]) =>
@@ -264,10 +267,11 @@ object Consistency {
   }
 
   /** Returns true iff the given expression is a valid trigger. */
-  def validTrigger(e: Exp): Boolean = {
+  def validTrigger(e: Exp, program: Program): Boolean = {
     e match {
-      case Old(nested) => validTrigger(nested) // case corresponds to OldTrigger node
-      case _ : PossibleTrigger | _: FieldAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
+      case Old(nested) => validTrigger(nested, program) // case corresponds to OldTrigger node
+      case wand: MagicWand => wand.subexpressionsToEvaluate(program).forall(e => !e.existsDefined {case _: ForbiddenInTrigger => })
+      case _ : PossibleTrigger | _: FieldAccess | _: PredicateAccess => !e.existsDefined { case _: ForbiddenInTrigger => }
       case _ => false
     }
   }
@@ -324,6 +328,10 @@ object Consistency {
         }
       }
     }
+  }
+
+  def checkTriggers(t: Trigger, program: Program): Unit = {
+    t.exps foreach (e => recordIfNot(t, validTrigger(e, program), s"$t is not a valid Trigger"))
   }
 
 //  def checkNoImpureConditionals(wand: MagicWand, program: Program) = {
