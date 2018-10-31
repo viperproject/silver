@@ -30,5 +30,9 @@ lazy val silver = (project in file("."))
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",                      // Logging
 
     // Test settings
-    Test / parallelExecution := false
+    Test / parallelExecution := false,
+
+    // Assembly settings
+    assembly / assemblyJarName := "silver.jar",
+    assembly / test := {},
   )
