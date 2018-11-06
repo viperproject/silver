@@ -210,7 +210,7 @@ trait SilFrontend extends DefaultFrontend {
             case fail @ Parsed.Failure(_, index, extra) =>
               val msg = all.ParseError(fail.asInstanceOf[Parsed.Failure]).getMessage()
               val (line, col) = LineCol(extra.input.asInstanceOf[ParserInput], index)
-              Fail(List(ParseError("Expected " + msg, SourcePosition(file, line, col))))
+              Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
             case ParseError(msg, pos) => Fail(List(ParseError(msg, pos)))
           }
 
