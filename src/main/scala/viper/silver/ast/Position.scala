@@ -12,8 +12,10 @@
 
 package viper.silver.ast
 
-import java.nio.file.Path
 import viper.silver.utility.Common.StructuralEquality
+import fastparse.all._
+import fastparse.StringReprOps
+import java.nio.file.Path
 
 /** A trait describing the position of occurrence of an AST node. */
 sealed trait Position
@@ -75,6 +77,13 @@ class IdentifierPosition(val file: Path, val start: HasLineColumn, val end: Opti
   protected val equalityDefiningMembers = file :: start :: end :: id :: Nil
 }
 
+object LineCol {
+  def apply(input: ParserInput, index: Int) = {
+    val Array(line, column) = StringReprOps.prettyIndex(input, index).split(":")
+    (line.toInt, column.toInt)
+  }
+}
+
 object SourcePosition {
   def apply(file: Path, line: Int, column: Int) =
     new SourcePosition(file, LineColumnPosition(line, column), None)
@@ -91,3 +100,4 @@ case class TranslatedPosition(pos: AbstractSourcePosition) extends AbstractSourc
   val start = pos.start
   val end = pos.end
 }
+

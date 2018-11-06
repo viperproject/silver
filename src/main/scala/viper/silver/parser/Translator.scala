@@ -10,6 +10,7 @@ import scala.language.implicitConversions
 import viper.silver.ast._
 import viper.silver.ast.utility._
 import viper.silver.FastMessaging
+import viper.silver.ast.SourcePosition
 import util.parsing.input.NoPosition
 
 /**
@@ -500,7 +501,7 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
   private def liftVarDecl(formal: PFormalArgDecl) =
-    LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal)
+    LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
 
   /** Takes a `PType` and turns it into a `Type`. */
   private def ttyp(t: PType): Type = t match {

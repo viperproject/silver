@@ -4,9 +4,8 @@ import java.nio.file.Paths
 import org.scalatest.{FunSuite, Matchers}
 import viper.silver.ast.{NoPosition, Position, Program}
 import viper.silver.frontend.{SilFrontend, SilFrontendConfig}
-import viper.silver.plugin.SilverPlugin
 import viper.silver.reporter.StdIOReporter
-import viper.silver.verifier.errors.{AssertFailed, ErrorNode}
+import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier._
 
 class IOTests extends FunSuite with Matchers {

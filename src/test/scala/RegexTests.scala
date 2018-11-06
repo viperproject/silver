@@ -6,7 +6,6 @@
 
 import java.nio.file.Paths
 import scala.collection.mutable
-import scala.language.implicitConversions
 import TestHelpers.{FileComparisonHelper, MockSilFrontend}
 import org.scalatest.FunSuite
 import viper.silver.ast._

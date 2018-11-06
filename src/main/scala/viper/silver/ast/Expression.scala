@@ -267,7 +267,6 @@ sealed trait AccessPredicate extends Exp {
   def res(p: Program): Resource = loc.res(p)
   def loc: ResourceAccess /* TODO: Should be renamed to, e.g. `resAcc` or just `acc` */
   def perm: Exp
-  val typ: Bool.type = Bool
 }
 object AccessPredicate {
   def unapply(a: AccessPredicate) = Some((a.loc, a.perm))
@@ -277,12 +276,14 @@ object AccessPredicate {
 case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
   override lazy val check : Seq[ConsistencyError] =
     if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()
+  val typ: Bool.type = Bool
 }
 
 /** An accessibility predicate for a predicate location. */
 case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
   override lazy val check : Seq[ConsistencyError] =
     if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()
+  val typ: Bool.type = Bool
 }
 
 // --- Inhale exhale expressions.

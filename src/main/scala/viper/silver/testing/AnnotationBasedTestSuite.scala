@@ -6,9 +6,8 @@
 
 package viper.silver.testing
 
-import java.nio.file.Path
-
 import org.scalatest.Tag
+import java.nio.file.Path
 
 /**
  * End-to-end test suite that extracts [[viper.silver.testing.TestAnnotations]]

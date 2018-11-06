@@ -154,5 +154,6 @@ method test02(xs: Ref, x: Int, ys: Ref)
   xs.next := ys
 
   fold acc(list(xs))
+  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/359/)
   assert forall i: Int :: i in [1..length(xs)) ==> get(xs, i) == unfolding acc(list(xs), write) in get(ys, i - 1)
 }

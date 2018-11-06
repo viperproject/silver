@@ -1,9 +1,7 @@
 package viper.silver.ast.utility
 
-import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.ast.utility.Rewriter._
 
 /**
   * Viper to Viper translation of impure assume statements into pure assumes:

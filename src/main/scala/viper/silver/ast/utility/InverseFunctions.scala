@@ -1,6 +1,5 @@
 package viper.silver.ast.utility
 
-import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 

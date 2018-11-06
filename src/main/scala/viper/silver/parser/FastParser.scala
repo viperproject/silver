@@ -1,11 +1,17 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+
 package viper.silver.parser
 
 import java.nio.file.{Files, Path}
 
-import scala.language.{implicitConversions, reflectiveCalls}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
-import viper.silver.ast.{MagicWandOp, SourcePosition}
+import fastparse.all
+import viper.silver.ast.{SourcePosition, LineCol}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
@@ -20,7 +26,7 @@ case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp
   override def apply(v1: PExp): E = func(v1)
 }
 
-object FastParser extends PosParser {
+object FastParser extends PosParser[Char, String] {
 
   var _lines: Array[Int] = null
 
@@ -169,7 +175,10 @@ object FastParser extends PosParser {
     val p = RecParser(path).parses(transformed_source)
     p match {
       case fastparse.core.Parsed.Success(prog, _) => prog
-      case fastparse.core.Parsed.Failure(msg, next, extra) => throw ParseException(s"Expected $msg", FilePosition(path, extra.line, extra.col))
+      case fail @ fastparse.core.Parsed.Failure(_, index, extra) =>
+        val msg = all.ParseError(fail).getMessage()
+        val (line, col) = LineCol(extra.input, index)
+        throw ParseException(s"Expected $msg", FilePosition(path, line, col))
     }
   }
 
@@ -623,7 +632,7 @@ object FastParser extends PosParser {
   lazy val locAcc: P[PLocationAccess] = P(fieldAcc | predAcc)
 
   lazy val fieldAcc: P[PFieldAccess] =
-    P(realSuffixExpr.filter(isFieldAccess).map {
+    P(NoCut(realSuffixExpr.filter(isFieldAccess)).map {
       case fa: PFieldAccess => fa
       case other => sys.error(s"Unexpectedly found $other")
     })
