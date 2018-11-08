@@ -35,4 +35,7 @@ lazy val silver = (project in file("."))
     // Assembly settings
     assembly / assemblyJarName := "silver.jar",
     assembly / test := {},
+
+    // Publishing settings
+    Test / publishArtifact := true,
   )
