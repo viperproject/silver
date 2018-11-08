@@ -8,6 +8,8 @@ ThisBuild / scalacOptions ++= Seq(
   "-Ywarn-unused-import"              // Warn on unused imports
 )
 
+// Publishing settings
+ThisBuild / Test / publishArtifact := true
 
 // Silver specific project settings
 lazy val silver = (project in file("."))
@@ -35,7 +37,4 @@ lazy val silver = (project in file("."))
     // Assembly settings
     assembly / assemblyJarName := "silver.jar",
     assembly / test := {},
-
-    // Publishing settings
-    Test / publishArtifact := true,
   )
