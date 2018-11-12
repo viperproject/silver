@@ -10,6 +10,10 @@ ThisBuild / scalacOptions ++= Seq(
 
 // Publishing settings
 ThisBuild / Test / publishArtifact := true
+// Allows 'publishLocal' SBT command to include test artifacts in a dedicated JAR file
+// (whose name is postfixed by 'test-source') and publish it in the local Ivy repository.
+// This JAR file contains all classes and resources for testing and projects like Carbon
+// and Silicon can rely on it to access the test suit implemented in Silver.
 
 // Silver specific project settings
 lazy val silver = (project in file("."))
