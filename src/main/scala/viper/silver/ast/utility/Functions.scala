@@ -18,8 +18,7 @@ import org.jgrapht.alg.connectivity.GabowStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import org.jgrapht.traverse.TopologicalOrderIterator
 import scala.collection.mutable.{Set => MSet}
-import scala.collection.JavaConversions._
-//import scala.collection.JavaConverters._
+import scala.collection.JavaConverters._
 
 /**
  * Utility methods for functions.
@@ -88,7 +87,7 @@ object Functions {
     /* Get all strongly connected components (SCCs) of the call-graph, represented as
      * sets of functions.
      */
-    val stronglyConnectedSets = new GabowStrongConnectivityInspector(callGraph).stronglyConnectedSets()
+    val stronglyConnectedSets = new GabowStrongConnectivityInspector(callGraph).stronglyConnectedSets().asScala
 
     /* Will represent the condensation of the call-graph, i.e., the call-graph,
      * but where each strongly connected component has been condensed into a
@@ -97,19 +96,16 @@ object Functions {
     val condensedCallGraph = new DefaultDirectedGraph[MSet[Function], DefaultEdge](classOf[DefaultEdge])
 
     /* Add each SCC as a vertex to the condensed call-graph */
-    //stronglyConnectedSets.asScala.foreach(v => condensedCallGraph.addVertex(v.asScala))
-    for (v <- stronglyConnectedSets) {
-      condensedCallGraph.addVertex(v)
-    }
+    stronglyConnectedSets.foreach(v => condensedCallGraph.addVertex(v.asScala))
 
     def condensationOf(func: Function): MSet[Function] =
-      stronglyConnectedSets.find(_ contains func).get
+      stronglyConnectedSets.find(_ contains func).get.asScala
 
     /* Add edges from the call-graph (between individual functions) as edges
      * between their corresponding SCCs in the condensed call-graph, but only
      * if this does not result in a cycle.
      */
-    for (e <- callGraph.edgeSet()) {
+    for (e <- callGraph.edgeSet().asScala) {
       val sourceSet = condensationOf(callGraph.getEdgeSource(e))
       val targetSet = condensationOf(callGraph.getEdgeTarget(e))
 
@@ -143,7 +139,7 @@ object Functions {
      * the same height.
      */
     var height = 0
-    for (condensation <- new TopologicalOrderIterator(condensedCallGraph)) {
+    for (condensation <- new TopologicalOrderIterator(condensedCallGraph).asScala) {
       for (func <- condensation) {
         result(func) = height
       }
@@ -199,7 +195,7 @@ object Functions {
     program.functions.flatMap(func => {
       val graph = getFunctionCallgraph(program, subs(func))
       val cycleDetector = new CycleDetector(graph)
-      val cycle = cycleDetector.findCyclesContainingVertex(func)
+      val cycle = cycleDetector.findCyclesContainingVertex(func).asScala
 
       if (cycle.isEmpty)
         None
