@@ -13,23 +13,19 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
-import org.jgrapht.EdgeFactory
-import org.jgrapht.alg.CycleDetector
+import org.jgrapht.alg.cycle.CycleDetector
 import org.jgrapht.alg.connectivity.GabowStrongConnectivityInspector
-import org.jgrapht.graph.DefaultDirectedGraph
+import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import org.jgrapht.traverse.TopologicalOrderIterator
+import scala.collection.mutable.{Set => MSet}
 import scala.collection.JavaConversions._
+//import scala.collection.JavaConverters._
 
 /**
  * Utility methods for functions.
  */
 object Functions {
   case class Edge[T](source: T, target: T)
-
-  case class Factory[T]() extends EdgeFactory[T, Edge[T]] {
-    def createEdge(source: T, target: T) =
-      Edge(source, target)
-  }
 
   def allSubexpressions(func: Function): Seq[Exp] = func.pres ++ func.posts ++ func.body
 
@@ -38,9 +34,9 @@ object Functions {
     * TODO: Memoize invocations of `getFunctionCallgraph`.
     */
   def getFunctionCallgraph(program: Program, subs: Function => Seq[Exp] = allSubexpressions)
-                          : DefaultDirectedGraph[Function, Edge[Function]] = {
+                          : DefaultDirectedGraph[Function, DefaultEdge] = {
 
-    val graph = new DefaultDirectedGraph[Function, Edge[Function]](Factory[Function]())
+    val graph = new DefaultDirectedGraph[Function, DefaultEdge](classOf[DefaultEdge])
 
     for (f <- program.functions) {
       graph.addVertex(f)
@@ -98,14 +94,15 @@ object Functions {
      * but where each strongly connected component has been condensed into a
      * single node.
      */
-    val condensedCallGraph = new DefaultDirectedGraph(Factory[java.util.Set[Function]]())
+    val condensedCallGraph = new DefaultDirectedGraph[MSet[Function], DefaultEdge](classOf[DefaultEdge])
 
     /* Add each SCC as a vertex to the condensed call-graph */
+    //stronglyConnectedSets.asScala.foreach(v => condensedCallGraph.addVertex(v.asScala))
     for (v <- stronglyConnectedSets) {
       condensedCallGraph.addVertex(v)
     }
 
-    def condensationOf(func: Function): java.util.Set[Function] =
+    def condensationOf(func: Function): MSet[Function] =
       stronglyConnectedSets.find(_ contains func).get
 
     /* Add edges from the call-graph (between individual functions) as edges
@@ -113,8 +110,8 @@ object Functions {
      * if this does not result in a cycle.
      */
     for (e <- callGraph.edgeSet()) {
-      val sourceSet = condensationOf(e.source)
-      val targetSet = condensationOf(e.target)
+      val sourceSet = condensationOf(callGraph.getEdgeSource(e))
+      val targetSet = condensationOf(callGraph.getEdgeTarget(e))
 
       if (sourceSet != targetSet)
         condensedCallGraph.addEdge(sourceSet, targetSet)
