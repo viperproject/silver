@@ -10,6 +10,8 @@ import scala.language.implicitConversions
 import viper.silver.ast._
 import viper.silver.ast.utility._
 import viper.silver.FastMessaging
+import viper.silver.ast.SourcePosition
+import util.parsing.input.NoPosition
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -493,17 +495,13 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
     val end = LineColumnPosition(pos.finish.line, pos.finish.column)
     pos.start match {
       case fp: FilePosition => SourcePosition(fp.file, start, end)
-      case _ =>
-        //FIXME Do we really need to construct an instance of SourcePosition with undefined file field?
-        //FIXME One would expect to have a well-defined file path once a position pattern matched this type.
-        //FIXME @see https://bitbucket.org/viperproject/silver/issues/232
-        SourcePosition(null, start, end)
+      case NoPosition => SourcePosition(null, 0, 0)
     }
   }
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
   private def liftVarDecl(formal: PFormalArgDecl) =
-    LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal)
+    LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
 
   /** Takes a `PType` and turns it into a `Type`. */
   private def ttyp(t: PType): Type = t match {

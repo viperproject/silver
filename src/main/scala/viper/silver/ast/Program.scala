@@ -228,6 +228,9 @@ case class DecTuple(e: Seq[Exp])(val pos: Position = NoPosition, val info: Info 
 case class Predicate(name: String, formalArgs: Seq[LocalVarDecl], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Location {
   override lazy val check : Seq[ConsistencyError] =
     (if (body.isDefined) Consistency.checkNonPostContract(body.get) else Seq()) ++
+    (if (body.isDefined && !Consistency.noOld(body.get))
+      Seq(ConsistencyError("Predicates must not contain old expressions.",body.get.pos))
+     else Seq()) ++
     (if (body.isDefined && !(Consistency.noPerm(body.get) && Consistency.noForPerm(body.get)))
       Seq(ConsistencyError("perm and forperm expressions are not allowed in predicate bodies", body.get.pos)) else Seq())
 

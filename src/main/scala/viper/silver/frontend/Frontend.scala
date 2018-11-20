@@ -72,7 +72,7 @@ trait Frontend {
 
 trait SinglePhase extends Frontend {
   val phases = List(
-    Phase("singlePhase", runPhase)
+    Phase("singlePhase", runPhase _)
   )
 
   def runPhase()
@@ -81,10 +81,10 @@ trait SinglePhase extends Frontend {
 trait DefaultPhases extends Frontend {
 
   val phases = List(
-    Phase("parse", parse),
-    Phase("typecheck", typecheck),
-    Phase("translate", translate),
-    Phase("verify", verify))
+    Phase("parse", parse _),
+    Phase("typecheck", typecheck _),
+    Phase("translate", translate _),
+    Phase("verify", verify _))
 
   /** Parse the program. */
   def parse()
