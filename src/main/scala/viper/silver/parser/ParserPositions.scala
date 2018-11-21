@@ -107,7 +107,7 @@ class PosRepeat[T, +R, Elem, Repr](p: Parser[T, Elem, Repr], min: Int, max: Int,
   override def toString = {
     val things = Seq(
       if (min == 0) None else Some(min),
-      if (delimiter == Pass) None else Some("sep = " + delimiter),
+      if (delimiter == Pass[Elem, Repr]) None else Some("sep = " + delimiter),
       if (max == Int.MaxValue) None else Some("max = " + max)
     ).flatten.mkString(", ")
     if (things.isEmpty) opWrap(p) + ".rep"

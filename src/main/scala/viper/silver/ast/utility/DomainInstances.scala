@@ -456,7 +456,7 @@ object DomainInstances {
   class TarjanAR[N](val nodes: Map[N,TarjanNode[N]]) {
     val r = new mutable.ListBuffer[mutable.Set[N]]()
     var index: Int = 0
-    val stack = new mutable.Stack[N]()
+    var stack = List.empty[N]
     val set = new mutable.HashSet[N]()
   }
 /*  def getSCCs[N, L](g: Map[N, Map[N, L]]): List[mutable.Set[N]] = {

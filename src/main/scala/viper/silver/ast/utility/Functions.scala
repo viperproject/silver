@@ -17,6 +17,7 @@ import org.jgrapht.alg.cycle.CycleDetector
 import org.jgrapht.alg.connectivity.GabowStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import org.jgrapht.traverse.TopologicalOrderIterator
+
 import scala.collection.mutable.{Set => MSet}
 import scala.collection.JavaConverters._
 
@@ -25,7 +26,6 @@ import scala.collection.JavaConverters._
  */
 object Functions {
   case class Edge[T](source: T, target: T)
-
   def allSubexpressions(func: Function): Seq[Exp] = func.pres ++ func.posts ++ func.body
 
   /** Returns the call graph of a given program (also considering specifications as calls).
@@ -43,7 +43,7 @@ object Functions {
 
     def process(f: Function, e: Exp) {
       e visit {
-        case FuncApp(f2name, args) =>
+        case FuncApp(f2name, _) =>
           graph.addEdge(f, program.findFunction(f2name))
       }
     }

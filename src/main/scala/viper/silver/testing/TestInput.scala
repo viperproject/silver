@@ -6,10 +6,10 @@
 
 package viper.silver.testing
 
-import scala.collection.JavaConversions._
 import java.nio.file.{Files, Path}
 import java.util.regex.Pattern
 import org.scalatest.Tag
+import scala.collection.JavaConverters._
 
 /** Provides the name, files and tags from which to create a test. */
 trait TestInput {
@@ -67,7 +67,7 @@ object DefaultTestInput {
         // Collect all files that match this regex and their numbers.
         var files = List[(Path, Int)]()
         val dirStream = Files.newDirectoryStream(file.getParent)
-        dirStream foreach { f =>
+        dirStream.asScala foreach { f =>
           f.toString match {
             case regex(index) => files = (f, index.toInt) :: files
             case _ =>
