@@ -5,7 +5,8 @@ ThisBuild / scalacOptions ++= Seq(
   "-deprecation",                     // Warn when using deprecated language features
   "-unchecked",                       // Warn on generated code assumptions
   "-feature",                         // Warn on features that requires explicit import
-  "-Ywarn-unused-import"              // Warn on unused imports
+  "-Ywarn-unused-import",             // Warn on unused imports
+  "-Ypatmat-exhaust-depth", "40"      // Increase depth of pattern matching analysis
 )
 
 // Publishing settings

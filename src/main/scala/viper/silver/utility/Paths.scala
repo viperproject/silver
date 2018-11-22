@@ -8,7 +8,7 @@ package viper.silver.utility
 
 import java.net.{URI, URL}
 import java.nio.file.{FileSystem, FileSystems, Path}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
   * A collection of utility methods for dealing with paths and environment variables.
@@ -88,7 +88,7 @@ object Paths {
         var fs: FileSystem = null
 
         try {
-          fs = FileSystems.newFileSystem(fileURI, Map[String, Object]())
+          fs = FileSystems.newFileSystem(fileURI, Map[String, Object]().asJava)
           openFileSystems = fs +: openFileSystems
         } catch {
           case e: java.nio.file.FileSystemAlreadyExistsException =>
