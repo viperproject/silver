@@ -309,7 +309,7 @@ object FastParser extends PosParser[Char, String] {
       }
     }
 
-    // Create a map that maps the formal parameters to the actual parameters of a macro call
+    // Create a map that maps the formal parameters to the actual arguments of a macro call
     def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]): Map[String, PExp] = {
       params.map(_.name).zip(args).toMap
     }
