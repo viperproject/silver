@@ -70,6 +70,26 @@ object Expressions {
     expressions.exists(_.contains[T])
   }
 
+  // collects the free variables in an expression
+  def freeVariables(e: Exp) : Set[AbstractLocalVar] = freeVariablesExcluding(e, Set())
+
+  // collects the free variables in an expression, *excluding* a given set of variables to ignore
+  def freeVariablesExcluding(e:Exp, toIgnore:Set[AbstractLocalVar]) : Set[AbstractLocalVar] =
+  {
+    e.shallowCollect{
+      case Let(binding,exp,body) =>
+        freeVariablesExcluding(exp, toIgnore) union freeVariablesExcluding(body, toIgnore + binding.localVar)
+      case Forall(boundVars,triggers,body) => {
+        val ignoring = toIgnore union (boundVars map (_.localVar)).toSet
+        triggers.flatMap(t => t.exps.flatMap(freeVariablesExcluding(_, ignoring))).toSet union freeVariablesExcluding(body, ignoring)
+      }
+      case Exists(boundVars,body) =>
+        freeVariablesExcluding(body,toIgnore union (boundVars map (_.localVar)).toSet)
+      case v@AbstractLocalVar(name) if !toIgnore.contains(v) =>
+        Seq(v)
+    }.flatten.toSet
+  }
+
   /** In an expression, rename a list (domain) of variables with given (range) variables. */
   def renameVariables[E <: Exp]
                      (exp: E, domain: Seq[AbstractLocalVar], range: Seq[AbstractLocalVar])
