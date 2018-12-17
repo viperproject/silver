@@ -39,7 +39,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     val shared = FalseLit()()
     val sharedAST = And(Not(shared)(), shared)()
 
-    val strat = ViperStrategy.SimpleContext[Int]({ case (FalseLit(), c) => if (c == 1) TrueLit()() else FalseLit()() }, 0, { case (Not(_), i) => i + 1 })
+    val strat = ViperStrategy.CustomContext[Int]({ case (FalseLit(), c) => if (c == 1) TrueLit()() else FalseLit()() }, 0, { case (Not(_), i) => i + 1 })
 
     val res = strat.execute[Exp](sharedAST)
 

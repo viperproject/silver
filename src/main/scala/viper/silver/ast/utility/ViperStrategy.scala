@@ -118,12 +118,14 @@ object ViperStrategy {
     * @param t          Traversion mode
     * @tparam C Type of custom context
     * @return ViperStrategy
+    *
+    * AS: NOTE: Its static type is a Strategy, not a ViperStrategy. It would be good practice to annotate the static types on such functions, to avoid typing surprises
     */
   def Context[C](p: PartialFunction[(Node, ContextC[Node, C]), Node], default: C, updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
-    new ViperStrategy[ContextC[Node, C]](p) defaultContext new PartialContextC[Node, C](default, updateFunc) traverse t
+// AS: I cannot parse this style: new ViperStrategy[ContextC[Node, C]](p) defaultContext new PartialContextC[Node, C](default, updateFunc) traverse t
+    new ViperStrategy[ContextC[Node, C]](p).defaultContext(new PartialContextC[Node, C](default, updateFunc)).traverse(t)
   }
 
-  // AS: It might be more efficient to implement this one natively, and make Context a special case of it, rather than building a richer partial function and then desugaring whenever needed
   /**
     * Strategy with (only) custom context
     *
@@ -133,14 +135,14 @@ object ViperStrategy {
     * @param t          Traversion mode
     * @tparam C Type of custom context
     * @return ViperStrategy
+    *
+    * AS: NOTE: Its static type is a Strategy, not a ViperStrategy. It would be good practice to annotate the static types on such functions, to avoid typing surprises
     */
-  def SimpleContext[C](p: PartialFunction[(Node, C), Node], initialContext: C, updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
-    Context[C]({ // rewrite partial function taking context with parent access etc. to one just taking the custom context
+  def CustomContext[C](p: PartialFunction[(Node, C), Node], initialContext: C, updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) =
+    new ViperStrategy[ContextCustom[Node, C]](
+      { // rewrite partial function taking context with parent access etc. to one just taking the custom context
       case (n, generalContext) if p.isDefinedAt(n, generalContext.c) => p.apply(n, generalContext.c)
-    },
-    initialContext, updateFunc, t
-    )
-  }
+    }).defaultContext(new PartialContextCC[Node, C](initialContext, updateFunc)).traverse(t)
 
   /**
     * Function for automatic Error back transformation of nodes and conservation of metadata
