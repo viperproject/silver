@@ -309,7 +309,7 @@ object FastParser extends PosParser[Char, String] {
       }
     }
 
-    // Create a map that maps the formal parameters to the actual parameters of a macro call
+    // Create a map that maps the formal parameters to the actual arguments of a macro call
     def mapParamsToArgs(params: Seq[PIdnDef], args: Seq[PExp]): Map[String, PExp] = {
       params.map(_.name).zip(args).toMap
     }
@@ -346,40 +346,54 @@ object FastParser extends PosParser[Char, String] {
 
     /**** Expand macros ****/
 
-    // Strategy that replaces every formal parameter occurrence in the macro body with the corresponding actual parameter
-    // Also makes the macro call hygienic by creating a unique variable name for every newly declared variable
-    val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
-      case (varDecl: PIdnDef, ctxt) =>
-        /* We found a locally-bound variable (e.g. by a quantifier) */
+    // Strategy to rename variables declared in macro's body if their names are already used in
+    // the scope where the macro is being expanded, avoiding name clashes (hygienic macro expansion)
+    val renamer = StrategyBuilder.Context[PNode, ReplaceContext]({
 
+      // Declared variable: either local or bound
+      case (varDecl: PIdnDef, ctxt) =>
+
+        // If variable name is already used in scope
         if (namesCurrentlyInScope.contains(varDecl.name)) {
-          /* Rename locally bound variable to avoid name clashes */
+
+          // Rename variable
           val freshName = getFreshVar(ctxt.c, varDecl.name)
           val freshDecl = PIdnDef(freshName)
 
+          // Update scope
           freshNames += varDecl.name -> freshName
           namesCurrentlyInScope += freshName
 
+          // Preserve positions
           adaptPositions(freshDecl, varDecl)
 
+          // Return renamed variable
           freshDecl
         } else {
-          /* Record locally-bound variable as in scope */
+
+          // Update scope
           namesCurrentlyInScope += varDecl.name
 
+          // Return same variable
           varDecl
         }
 
-      case (ident: PIdnUse, ctxt) if ctxt.c.formalArgumentSubstitutions.contains(ident.name) =>
-        /* Replace formal with actual argument */
-        val replaceParam = ctxt.c.formalArgumentSubstitutions(ident.name)
-        replaceParam
+      // Variable use: update variable's name according to its declaration
+      // Macro's parameters are not renamed, since they will be replaced by
+      // their respective arguments in the following steps
+      case (varUse: PIdnUse, ctxt) if freshNames.contains(varUse.name) &&
+                                      !ctxt.c.formalArgumentSubstitutions.contains(varUse.name) =>
+        PIdnUse(freshNames(varUse.name))
 
-      case (ident: PIdnUse, ctxt) if freshNames.contains(ident.name) =>
-        /* Rename occurrence of a variable whose declaration has been renamed (case for PIdnDef
-         * above) to avoid name clashes
-         */
-        PIdnUse(freshNames(ident.name))
+    }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
+
+    // Strategy to replace macro's parameters by their respective arguments
+    val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
+
+      // Macro parameter
+      case (varUse: PIdnUse, ctxt) if ctxt.c.formalArgumentSubstitutions.contains(varUse.name) =>
+        ctxt.c.formalArgumentSubstitutions(varUse.name)
+
     }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
 
     val replacerContextUpdater: PartialFunction[(PNode, ReplaceContext), ReplaceContext] = {
@@ -394,16 +408,25 @@ object FastParser extends PosParser[Char, String] {
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
     def replacerOnBody(body: PNode, p2a: Map[String, PExp], pos: FastPositioned): PNode = {
       /* TODO: It would be best if the context updater function were passed as another argument
-       *       to the replacer above. That is already possible, but when the replacer is executed
+       *       to the hyginizer above. That is already possible, but when the replacer is executed
        *       and an initial context is passed, that initial context's updater function (which
        *       defaults to "never update", if left unspecified) replaces the updater function that
-       *       was initially passed to replacer.
+       *       was initially passed to renamer.
        */
-      val context =
-        new PartialContextC[PNode, ReplaceContext](ReplaceContext(p2a), replacerContextUpdater)
-      val res = replacer.execute[PNode](body, context)
-      adaptPositions(res, pos)
-      res
+
+      // Create context
+      val context = new PartialContextC[PNode, ReplaceContext](ReplaceContext(p2a), replacerContextUpdater)
+
+      // Rename variables in macro's body
+      val renamedVarsMacro = renamer.execute[PNode](body, context)
+      adaptPositions(renamedVarsMacro, pos)
+
+      // Replace macro's parameters by their respective arguments
+      val expandedMacro = replacer.execute[PNode](renamedVarsMacro, context)
+      adaptPositions(expandedMacro, pos)
+
+      // Return expanded macro's body
+      expandedMacro
     }
 
     /* Strategy that checks macro applications for legality and then expands them.

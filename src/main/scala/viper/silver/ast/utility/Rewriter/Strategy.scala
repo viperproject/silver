@@ -104,7 +104,7 @@ object StrategyBuilder {
     * Strategy that allows access to ancestors and siblings
     *
     * @param p Partial function that transforms input (node, context) into a new node
-    * @param t Traversial direction
+    * @param t Traverse direction
     * @tparam N Common supertype of every node in the tree
     * @return Strategy object ready to execute on a tree
     */
