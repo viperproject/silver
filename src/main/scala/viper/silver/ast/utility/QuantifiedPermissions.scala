@@ -24,9 +24,9 @@ object QuantifiedPermissions {
     * predicate only, then the returned condition will be a [[TrueLit]].
     */
   object QuantifiedPermissionAssertion {
-    def unapply(forall: Forall): Option[(Forall, Exp, ResourceAccess)] = {
+    def unapply(forall: Forall): Option[(Forall, Exp, AccessPredicate)] = {
       forall match {
-        case SourceQuantifiedPermissionAssertion(`forall`, condition, res: ResourceAccess) =>
+        case SourceQuantifiedPermissionAssertion(`forall`, condition, res: AccessPredicate) =>
           Some((forall, condition, res))
         case _ =>
           None
@@ -91,9 +91,10 @@ object QuantifiedPermissions {
   }
 
   def quantifiedMagicWands(root: Node, program: Program): collection.Set[MagicWandStructure.MagicWandStructure] = {
-    root collect {
-      case QuantifiedPermissionAssertion(_, _, wand: MagicWand) => wand.structure(program)
-    } toSet
+    (root collect {
+      case QuantifiedPermissionAssertion(_, _, wand: MagicWand) => Seq(wand.structure(program))
+      case Forall(_,triggers,_) => triggers flatMap (_.exps) collect {case wand: MagicWand => wand.structure(program)}
+    } toSet) flatten
   }
 
   private def quantifiedFields(toVisit: mutable.Queue[Member],
@@ -107,6 +108,7 @@ object QuantifiedPermissions {
       root visit {
         case QuantifiedPermissionAssertion(_, _, acc: FieldAccessPredicate) =>
           collected += acc.loc.field
+        case Forall(_,triggers,_) => collected ++= triggers flatMap (_.exps) collect {case fa: FieldAccess => fa.field}
       }
 
       visited += root
@@ -127,6 +129,7 @@ object QuantifiedPermissions {
       root visit {
         case QuantifiedPermissionAssertion(_, _, acc: PredicateAccessPredicate) =>
           collected += program.findPredicate(acc.loc.predicateName)
+        case Forall(_,triggers,_) => collected ++= triggers flatMap (_.exps) collect {case pa: PredicateAccess => pa.loc(program)}
       }
 
       visited += root
@@ -136,22 +139,23 @@ object QuantifiedPermissions {
     }
   }
 
-  def desugareSourceSyntax(source: Forall): Seq[Forall] = {
-    val vars = source.variables
-    val triggers = source.triggers
+  def desugarSourceQuantifiedPermissionSyntax(source: Forall): Seq[Forall] = {
+
 
     source match {
-      case SourceQuantifiedPermissionAssertion(_, cond, rhs) =>
+      case SourceQuantifiedPermissionAssertion(_, cond, rhs) if (!rhs.isPure) =>
         /* Source forall denotes a quantified permission assertion that potentially
          * needs to be desugared
          */
+        val vars = source.variables
+        val triggers = source.triggers
 
         rhs match {
           case And(e0, e1) =>
             /* RHS is a conjunction; split into two foralls and recursively rewrite these */
 
             val foralls0 =
-              desugareSourceSyntax(
+              desugarSourceQuantifiedPermissionSyntax(
                 Forall(
                   vars,
                   triggers,
@@ -159,7 +163,7 @@ object QuantifiedPermissions {
                 )(source.pos, source.info))
 
             val foralls1 =
-              desugareSourceSyntax(
+              desugarSourceQuantifiedPermissionSyntax(
                 Forall(
                   vars,
                   triggers,
@@ -171,16 +175,33 @@ object QuantifiedPermissions {
           case Implies(e0, e1) =>
             /* RHS is an implication; pull its LHS out and rewrite the resulting forall */
 
-            val newCond = And(cond, e0)(cond.pos, cond.info)
+            val newCond = And(cond, e0)(cond.pos, MakeInfoPair(cond.info,e0.info))
 
-            val newRhs =
+            val newForall =
               Forall(
                 vars,
                 triggers,
-                Implies(newCond, e1)(rhs.pos, rhs.info)
+                Implies(newCond, e1)(rhs.pos, rhs.info) // TODO: this positional/info choice seems surprising. See also issue #249
               )(source.pos, source.info)
 
-            desugareSourceSyntax(newRhs)
+            desugarSourceQuantifiedPermissionSyntax(newForall)
+
+          case nested@SourceQuantifiedPermissionAssertion(_, nestedCond, nestedRhs) => // no need to check nestedRhs is pure, or else consistency check should already have failed (e.h. impure lhs of implication)
+            /* Source forall denotes a quantified permission assertion that potentially
+             * needs to be desugared
+             */
+            val nestedVars = nested.variables
+            val nestedTriggers = if (nested.triggers.isEmpty) {
+              val withTriggers = nested.autoTrigger
+              withTriggers.triggers
+            } else nested.triggers
+
+            val combinedTriggers : Seq[Trigger] = // cross product
+              triggers flatMap ((t:Trigger) => nestedTriggers map ((s:Trigger) => Trigger(t.exps ++ s.exps)(pos = t.pos, info = MakeInfoPair(t.info,s.info), errT = MakeTrafoPair(t.errT,s.errT))))
+
+            val newCond = And(cond, nestedCond)(cond.pos, MakeInfoPair(cond.info,nestedCond.info))
+
+            desugarSourceQuantifiedPermissionSyntax(Forall(vars ++ nestedVars, combinedTriggers, Implies(newCond, nestedRhs)(rhs.pos, rhs.info, rhs.errT))(source.pos,MakeInfoPair(source.info, nested.info),MakeTrafoPair(source.errT,nested.errT)))
 
           case _ =>
             /* RHS does not need to be desugared (any further) */

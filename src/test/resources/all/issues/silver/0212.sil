@@ -1,8 +1,21 @@
-method test() {
-  var my_set1: Seq[Int]
-  assume my_set1[..33] == my_set1
+method m()
+{
+    var seq: Seq[Int] 
 
-  var my_set2: Seq[Int]
-  //:: UnexpectedOutput(parser.error, /silver/issue/212/)
-  assume my_set2[ ..33] == my_set2
+    var a1:  Bool := seq[..33]    == seq
+    var a2:  Bool := seq[ ..33]   == seq
+    var a3:  Bool := seq[.. 33]   == seq
+    var a5:  Bool := seq[..33 ]   == seq
+    var a6:  Bool := seq[ .. 33]  == seq
+    var a7:  Bool := seq[.. 33 ]  == seq
+    var a8:  Bool := seq[ .. 33 ] == seq
+
+    var a9:  Bool := seq[33..]    == seq
+    var a10: Bool := seq[ 33..]   == seq
+    var a11: Bool := seq[33 ..]   == seq
+    var a12: Bool := seq[33.. ]   == seq
+    var a13: Bool := seq[33 ..]   == seq
+    var a14: Bool := seq[ 33 ..]  == seq
+    var a15: Bool := seq[33 .. ]  == seq
+    var a16: Bool := seq[ 33 .. ] == seq
 }

@@ -1,12 +1,16 @@
-//:: IgnoreFile(/carbon/issue/137/)
-method test()
-{
-    while (true)
-    {
-        while (true)
-        {
-            var x: Perm
-        }
-    }
+field f: Int
+
+function fun(a: Int): Bool
+
+predicate wrap(xs: Seq[Ref]) {
+  forall x: Ref :: x in xs ==> acc(x.f)
 }
 
+method test(xs: Seq[Ref])
+  requires forall xx: Ref :: xx in xs ==> acc(xx.f)
+  requires forall xx: Ref :: xx in xs ==> fun(xx.f)
+{
+  fold acc(wrap(xs))
+  unfold acc(wrap(xs))
+  exhale forall x: Ref :: x in xs ==> fun(x.f)
+}
