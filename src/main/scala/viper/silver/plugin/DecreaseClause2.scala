@@ -21,9 +21,9 @@ import scala.collection.immutable.ListMap
 /** Utility methods for DecreaseClauses.
   *
   * Mainly copied from viper/silver/ast/utility/DecreasesClause
-  * Changed signature of class creation
-  * Change the statements using the old parameter, which was a map with all members (functions, methods, domains, etc.),
-  * to lines using the new local variables created with the new parameter program.  *
+  * Changed signature of class initialization
+  * Change the statements using the old initialization parameter, which was a map with all members (functions, methods, domains, etc.),
+  * to statements using the new local variables created with the new initialization parameter (Program).
   * */
 class DecreasesClause2(val program: Program) {
 
