@@ -504,7 +504,7 @@ object FastParser extends PosParser[Char, String] {
     // declaration keywords
     "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define",
     // specifications
-    "requires", "ensures", "decreases", "invariant",
+    "requires", "ensures", "invariant",
     // statements
     "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
     // control flow

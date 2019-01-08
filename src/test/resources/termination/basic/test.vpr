@@ -1,0 +1,19 @@
+import "../decreaseOrder/importAllDec.sil"
+
+
+domain DecreaseDomain[T]{
+    function decreases(t: T):Bool
+
+    axiom notChecked{
+        forall t: T :: decreases(t) == true
+    }
+}
+
+
+function test(x: Int): Int
+    requires 0<=x
+    ensures decreases(1)
+    ensures decreases(2)
+{
+    x == 0 ? 0 : test(x-1)
+}

@@ -25,7 +25,7 @@ import scala.collection.immutable.ListMap
   * Change the statements using the old initialization parameter, which was a map with all members (functions, methods, domains, etc.),
   * to statements using the new local variables created with the new initialization parameter (Program).
   * */
-class DecreasesClause2(val program: Program) {
+class DecreasesClause2(val program: Program, decreaseMap: Map[Function, DecreaseExp]) {
 
 
   private var functions: collection.mutable.Map[String, Function] = collection.mutable.Map(program.functions map (f => (f.name, f)): _*)
@@ -71,7 +71,6 @@ class DecreasesClause2(val program: Program) {
                  nestFunc: Option[Node],
                  locDom: Option[Node])
   : (Seq[Domain], Seq[Function], Seq[Method]) = {
-
     decreasingFunc = decFunc map (_.asInstanceOf[DomainFunc])
     boundedFunc = boundFunc map (_.asInstanceOf[DomainFunc])
     locationDomain = locDom map (_.asInstanceOf[Domain])
@@ -79,7 +78,8 @@ class DecreasesClause2(val program: Program) {
 
     //Create for every Function a method which proofs the termination
     //Ignore functions with 'decreases *' or with no body
-    val newMethods = (funcs.filter(f => f.body.nonEmpty && (f.decs.isEmpty || !f.decs.get.isInstanceOf[DecStar])) map {
+    //val newMethods = (funcs.filter(f => f.body.nonEmpty && (f.decs.isEmpty || !f.decs.get.isInstanceOf[DecStar])) map {
+    val newMethods = (decreaseMap.keys.toSeq map {
       func => {
         neededLocalVars = collection.mutable.ListMap.empty[String, LocalVarDecl]
         val methodBody: Stmt = rewriteFuncBody(func.body.get, func, null, Nil, preds)
@@ -125,12 +125,15 @@ class DecreasesClause2(val program: Program) {
                               alreadyChecked: Seq[String],
                               predicates: Seq[Predicate])
   : Stmt = {
+
     bodyToRewrite match {
       case pap: PredicateAccessPredicate =>
         val permChecks = rewriteFuncBody(pap.perm, func, funcAppInOrigFunc, alreadyChecked, predicates)
         //Add the nested-assumption if the predicate has another predicate inside of its body
-        func.decs match {
-          case Some(DecTuple(_)) =>
+        //func.decs match {
+          //case Some(DecTuple(_)) =>
+        decreaseMap.get(func) match {
+          case Some(DecreaseExp(_,_,_)) =>
             val pred: Predicate = predicates.find(_.name == pap.loc.predicateName).get
 
             pred.body match {
@@ -180,7 +183,8 @@ class DecreasesClause2(val program: Program) {
           case _ => Seqn(Seq(unfold, access, unfoldBody, fold), Nil)(unfBody.pos)
         }
       case callee: FuncApp =>
-        val decrClauseOfOrigFnc = func.decs
+        //val decrClauseOfOrigFnc = func.decs
+        val decrClauseOfOrigFnc = decreaseMap.get(func)
         val calleeArgs = callee.getArgs
 
         //Check for possible recursion inside of the arguments
@@ -192,8 +196,9 @@ class DecreasesClause2(val program: Program) {
             //Program didn't check this function for recursion yet
             val calledFunc = findFnc(callee.funcname)
 
-            calledFunc.decs match {
-              case Some(DecStar()) =>
+            //calledFunc.decs match {
+            decreaseMap.get(calledFunc) match {
+              case Some(DecreaseExp(_,_,_)) =>
                 //The called function might not terminate
                 val functionInOrigBody = if (funcAppInOrigFunc == null) callee else funcAppInOrigFunc
 
@@ -262,7 +267,9 @@ class DecreasesClause2(val program: Program) {
 
               Assert(FalseLit()(func.pos))(func.pos, SimpleInfo(Seq("Recursion but no decClause")), errTr)
             }
-            case Some(DecTuple(decreasingExp)) => {
+            //case Some(DecTuple(decreasingExp)) => {
+            case Some(DecreaseExp(_,_,decreasingExp)) => {
+
               //Replace in the decreaseClause every argument with the correct call
               if (decreasingFunc.isDefined && boundedFunc.isDefined &&
                 (decreasingExp.collect { case p: PredicateAccessPredicate => p }.isEmpty
@@ -301,6 +308,7 @@ class DecreasesClause2(val program: Program) {
                 val infoDecr = SimpleInfo(Seq("DecreasingCheck"))
 
                 val callerFunctionInOrigBody = if (funcAppInOrigFunc == null) callee else funcAppInOrigFunc
+
 
                 //Map AssertionErrors to TerminationFailedErrors
                 val errTBound = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(func, reason match {
@@ -369,11 +377,17 @@ class DecreasesClause2(val program: Program) {
                   val argMap: ListMap[Exp, Exp] = ListMap(formalArgs.zip(calleeArgs):_*)
                   val bodyWithArgs = func.body.get.replace(argMap)
 
+
+
                   //Replace 'result' in the postconditions with the dummy-Function and the correct arguments
                   val resultNodes = func.posts flatMap (p => p.deepCollect { case r: Result => r })
+
+
                   val resMap = ListMap(resultNodes.zip(List.fill(resultNodes.size)(FuncApp(func, calleeArgs)(pos))):_*)
+
                   val postConds = func.posts map (p =>
                     p.replace(argMap ++ resMap))
+
                   val inhalePostConds = postConds map (c => Inhale(replaceExpWithDummyFnc(c))(pos))
 
                   val inhaleFuncBody =
@@ -381,6 +395,7 @@ class DecreasesClause2(val program: Program) {
 
                   Seqn(termChecksOfArgs ++ neededArgAssigns ++
                     Seq(boundedAss, decreaseAss, inhaleFuncBody) ++ inhalePostConds, Nil)(pos)
+
                 } else {
                   Seqn(termChecksOfArgs ++ neededArgAssigns ++ Seq(boundedAss, decreaseAss), Nil)(pos)
                 }
@@ -398,12 +413,14 @@ class DecreasesClause2(val program: Program) {
                 }
                 EmptyStmt
               }
-            }
+
+            }/*
             case res@Some(DecStar()) => {
               // Should never happen, because the function 'rewriteFuncBody(_, func, _, _, _)' should only be called
               // when the decreasing clause of the argument 'func' is not 'decreases *'
               sys.error(s"Got $res but this isn't supposed to happen")
             }
+            */
           }
         }
       case b: BinExp =>
@@ -532,6 +549,7 @@ class DecreasesClause2(val program: Program) {
     * @return the generated chain of con- and disjunctions
     */
   private def buildDecTree(decrArgs: Seq[Exp], conj: Boolean): Exp = {
+
     if (decrArgs.size == 1)
       decrArgs.head
     else if (conj)
@@ -548,6 +566,7 @@ class DecreasesClause2(val program: Program) {
     * @return the chain of conjunctions
     */
   private def buildBoundTree(boundArgs: Seq[Exp]): Exp = {
+
     if (boundArgs.size == 1)
       boundArgs.head
     else

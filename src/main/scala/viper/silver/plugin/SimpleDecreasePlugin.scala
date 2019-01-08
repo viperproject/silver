@@ -1,11 +1,12 @@
 package viper.silver.plugin
 
-import viper.silver.ast.{CondExp, DecStar, DecTuple, Exp, Function, If, Method, Program, Seqn, Stmt}
+import viper.silver.ast.{CondExp, DecStar, DecTuple, Exp, FuncApp, Function, If, Method, Program, Seqn, Stmt}
 import viper.silver.ast.utility.Functions
 import viper.silver.ast.utility.Statements.EmptyStmt
 
 class SimpleDecreasePlugin extends SilverPlugin
 {
+  /*
   /** Called after methods are filtered but before the verification by the backend happens.
     *
     * @param input AST
@@ -31,7 +32,7 @@ object ProgramTransformation{
         val edges = callGraph.edgesOf(function)
 
         // TODO: create proof Method for function
-        rewriteFunction(function.body.get, heights)
+        rewriteFunction(function.body.get, function, heights)
         // for each function call check if they have the same height
         // If yes add termination checks
 
@@ -62,12 +63,19 @@ object ProgramTransformation{
     program
   }
 
-  private def rewriteFunction(body: Exp, heights: Map[Function, Int]): Stmt = {
+  private def rewriteFunction(body: Exp, start: Function, heights: Map[Function, Int]): Stmt = {
     body match {
+      case callee: FuncApp =>
+        if(heights(start) == heights(callee)){
+
+        }else{
+          // not in the same cluster
+          EmptyStmt
+        }
       case CondExp(cond, thn, els) =>
-        val termCheckInCond = rewriteFunction(cond, heights)
-        val thenSt = rewriteFunction(thn, heights)
-        val elseSt = rewriteFunction(els, heights)
+        val termCheckInCond = rewriteFunction(cond, start, heights)
+        val thenSt = rewriteFunction(thn, start, heights)
+        val elseSt = rewriteFunction(els, start, heights)
 
         val wholeCond: Stmt = if (thenSt == EmptyStmt && elseSt == EmptyStmt) {
           EmptyStmt
@@ -77,4 +85,30 @@ object ProgramTransformation{
         Seqn(Seq(termCheckInCond, wholeCond), Nil)(body.pos)
     }
   }
+
+  private def getTerminationCheck(caller: Function, callee: Function): Stmt = {
+    if (caller.decs.isEmpty){
+      EmptyStmt
+    }else if(caller.decs.get.isInstanceOf[DecStar]){
+      EmptyStmt
+    } else if(callee.decs.isEmpty){
+      EmptyStmt
+    } else if(callee.decs.get.isInstanceOf[DecStar]){
+      EmptyStmt
+    }else{
+      // both have a decrease clause
+      val callerDec = caller.decs.get.asInstanceOf[DecTuple]
+      val calleeDec = callee.decs.get.asInstanceOf[DecTuple]
+
+      // all expressions of both functions with same type
+      val exps = callerDec.exp.zip(calleeDec.exp).takeWhile {case (l, r) => l.isSubtype(r) && r.isSubtype(l)}
+
+      // TODO introduce parameters of callee as new variables and assign them the arguments from caller
+
+      // TODO put all the checks together into an assert
+
+    }
+
+  }
+  */
 }
