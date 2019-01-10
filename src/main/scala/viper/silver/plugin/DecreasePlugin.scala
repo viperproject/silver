@@ -3,7 +3,8 @@ package viper.silver.plugin
 
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast._
-import viper.silver.ast.pretty.FastPrettyPrinter.{char, parens, show, ssep, text, toParenDoc, space, ContOps}
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, show, space, ssep, text, toParenDoc}
+import viper.silver.parser._
 
 
 // run --printTranslatedProgram --plugin viper.silver.plugin.DecreasePlugin silver/src/test/resources/termination/basic/test.vpr
@@ -25,9 +26,8 @@ class DecreasePlugin extends SilverPlugin
       input
     }
   }
+  */
 
-
-  val pMapFunctionDecreases = scala.collection.mutable.Map[String, PExp]()
 
 
   /** Called after parse AST has been constructed but before identifiers are resolved and the program is type checked.
@@ -38,6 +38,12 @@ class DecreasePlugin extends SilverPlugin
   override def beforeResolve(input: PProgram): PProgram = {
     // get the arguments of all decreases calls in postconditions
     // and remove them
+    println("old:")
+    println(input)
+
+
+    val decreaseDomain = input.domains.find(d => d.idndef.name == "DecreaseDomainx").get
+
     var newFunctions = Seq[PFunction]()
 
     for(function <- input.functions){
@@ -49,7 +55,11 @@ class DecreasePlugin extends SilverPlugin
           val call = post.asInstanceOf[PCall]
           if (call.opName == "decreases"){
             // remove post condition and store it
-            pMapFunctionDecreases += (function.idndef.name -> post)
+            val argsSize = call.args.length
+
+            val decreaseN = getDecreaseN(decreaseDomain, argsSize)
+
+            //posts = posts :+ post
 
           }else{
             posts = posts :+ post
@@ -60,10 +70,52 @@ class DecreasePlugin extends SilverPlugin
       }
       val newFunction = function.copy(posts = posts)
       newFunctions = newFunctions :+ function.copy(posts = posts)
-
     }
-    input.copy(functions = newFunctions)
+
+
+    val newDomains: Seq[PDomain] = decreaseNFunctions.values.toSeq
+
+    val newProgram = input.copy(functions = newFunctions, domains = newDomains)
+
+
+    println("New Program:")
+    println(newProgram.functions)
+    println(newProgram.domains)
+    newProgram
   }
+
+  // #arguments -> (domain name, function name)
+  val decreaseNFunctions = collection.mutable.Map[Integer, (PDomain)]()
+
+  def getDecreaseN(decreaseDomain: PDomain, argsSize: Integer): (PDomain) = {
+    if (!decreaseNFunctions.contains(argsSize)) {
+      val domainName: String = "DecreasesDomain" + argsSize
+      val functionName: String = "decreases"
+
+      val typVars = Seq.tabulate(argsSize)(i => PTypeVarDecl(PIdnDef("T" + i)))
+
+      val vars = typVars.map(t => PFormalArgDecl(PIdnDef("v" + t.idndef.name), PPrimitiv(t.idndef.name)))
+
+      val newDomainFunction = PDomainFunction(PIdnDef(functionName), vars, TypeHelper.Bool, false)(PIdnUse(domainName))
+      val newDomain = PDomain(PIdnDef(domainName), typVars, Seq(newDomainFunction), Seq())
+
+      //val newDomainFunction = decreaseDomain.funcs.head.copy(PIdnDef(functionName), vars, TypeHelper.Bool, false)(PIdnUse(domainName))
+      //val newDomain = decreaseDomain.copy(PIdnDef(domainName), typVars, Seq(newDomainFunction), Seq())
+
+      //println(decreaseDomain.funcs.head.formalArgs.head.typ.freeTypeVariables)
+
+      //val newDomainFunction = decreaseDomain.funcs.head.copy(formalArgs = vars)(decreaseDomain.funcs.head.domainName)
+      //val newDomain = decreaseDomain.copy(typVars = typVars, funcs = Seq(newDomainFunction))
+
+      decreaseNFunctions += (argsSize -> (newDomain))
+
+      (newDomain)
+    }else{
+      decreaseNFunctions(argsSize)
+    }
+  }
+
+  /*
 
   /** Called after identifiers have been resolved but before the parse AST is translated into the normal AST.
     *
@@ -87,7 +139,6 @@ class DecreasePlugin extends SilverPlugin
     input.copy(functions = newFunctions)
   }
 
-  */
 
   /** Called after parse AST has been translated into the normal AST but before methods to verify are filtered.
     * In [[viper.silver.frontend.SilFrontend]] this step is confusingly called doTranslate.
@@ -110,7 +161,7 @@ class DecreasePlugin extends SilverPlugin
         if (post.isInstanceOf[Call] && post.asInstanceOf[Call].callee == "decreases"){
           // the decrease function only has one argument (=> one subExp)
           decs = decs :+ post.subExps.head
-          posts = posts :+ post
+          posts = posts :+ post // keep them for pretty print!
         }else{
           posts = posts :+ post
         }
@@ -180,6 +231,7 @@ class DecreasePlugin extends SilverPlugin
 
     newProgram.copy(domains = d, functions = newProgram.functions ++ f, methods = newProgram.methods ++ m)(newProgram.pos, newProgram.info, newProgram.errT)
   }
+  */
 }
 
 case class DecreaseExp(extensionIsPure: Boolean, pos: Position, extensionSubnodes: Seq[Exp]) extends ExtensionExp {
