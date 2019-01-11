@@ -1,12 +1,17 @@
-
+import "../decreaseOrder/int_decreases.sil"
 
 domain DecreasesDomainX[T]{
     function decreasesX(t: T): Bool
 }
 
-function test(x: Int): Int
-    requires 0<=x
+function test(): Int
     ensures decreases(1)
 {
-    x == 0 ? 0 : test(x-1)
+    1
+}
+
+function test2(x: Int): Int
+    ensures decreases(x, x+x, x)
+{
+    2
 }
