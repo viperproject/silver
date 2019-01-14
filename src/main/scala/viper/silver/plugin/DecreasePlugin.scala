@@ -206,4 +206,22 @@ case class DecreaseExp(extensionIsPure: Boolean, pos: Position, extensionSubnode
   /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
   override def prettyPrint: PrettyPrintPrimitives#Cont = text("decreases") <> parens(ssep(extensionSubnodes map (toParenDoc(_)), char(',') <> space))
+
+
+
+
+  /**
+    * Method that accesses all children of a node.
+    * We allow 3 different types of children: Rewritable, Seq[Rewritable] and Option[Rewritable]
+    * The supertype of all 3 is AnyRef
+    *
+    * @return Sequence of children
+    */
+  override def getChildren: Seq[Exp] = extensionSubnodes
+
+  override def duplicate(children: Seq[AnyRef]): DecreaseExp = {
+    children match {
+      case Seq(args: List[Exp]) => DecreaseExp(extensionIsPure, pos, args)
+    }
+  }
 }
