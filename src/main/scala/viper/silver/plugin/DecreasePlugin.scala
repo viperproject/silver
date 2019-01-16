@@ -48,9 +48,14 @@ class DecreasePlugin extends SilverPlugin
       newFunctions = newFunctions :+ function.copy(posts = posts)
     }
 
-    val newDomain = createDecreasesDomain(getDecreasesNDomain, decreasesNFunctions.toMap)
+    println(decreasesNFunctions)
 
-    input.copy(functions = newFunctions, domains = input.domains :+ newDomain)
+    if (decreasesNFunctions.nonEmpty) {
+      val newDomain = createDecreasesDomain(getDecreasesNDomain, decreasesNFunctions.toMap)
+      input.copy(functions = newFunctions, domains = input.domains :+ newDomain)
+    }else{
+      input
+    }
   }
 
   /**
