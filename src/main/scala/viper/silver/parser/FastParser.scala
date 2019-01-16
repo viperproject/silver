@@ -189,9 +189,10 @@ object FastParser extends PosParser[Char, String] {
 
   def parens[A](p: fastparse.noApi.Parser[A]) = "(" ~ p ~ ")"
 
+  def angles[A](p: fastparse.noApi.Parser[A]) = "<" ~ p ~ ">"
+
   def quoted[A](p: fastparse.noApi.Parser[A]) = "\"" ~ p ~ "\""
 
-  def angles[A](p: fastparse.noApi.Parser[A]) = "[" ~ p ~ "]"
 
   def foldPExp[E <: PExp](e: PExp, es: Seq[SuffixedExpressionGenerator[E]]): E =
     es.foldLeft(e) { (t, a) =>
