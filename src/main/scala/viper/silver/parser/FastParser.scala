@@ -408,7 +408,7 @@ object FastParser extends PosParser[Char, String] {
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
     def replacerOnBody(body: PNode, p2a: Map[String, PExp], pos: FastPositioned): PNode = {
       /* TODO: It would be best if the context updater function were passed as another argument
-       *       to the hyginizer above. That is already possible, but when the replacer is executed
+       *       to the replacer above. That is already possible, but when the replacer is executed
        *       and an initial context is passed, that initial context's updater function (which
        *       defaults to "never update", if left unspecified) replaces the updater function that
        *       was initially passed to renamer.
