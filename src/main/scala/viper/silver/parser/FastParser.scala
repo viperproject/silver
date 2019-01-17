@@ -246,7 +246,6 @@ object FastParser extends PosParser[Char, String] {
     val buffer =
       try {
         try {
-          println("T1")
           source.getLines.toArray
         } catch {
           case e@(_: RuntimeException | _: java.io.IOException) =>
@@ -259,7 +258,6 @@ object FastParser extends PosParser[Char, String] {
           throw ParseException(s"""file <$path> does not exist""", FastPositions.getStart(importStmt))
       }
 
-    println("T2")
       //scala.io.Source.fromInputStream(getClass.getResourceAsStream("/import/"+ path.toString))
     importProgram(buffer, path, importStmt, plugins)
   }
