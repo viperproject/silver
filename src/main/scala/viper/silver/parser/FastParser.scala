@@ -38,13 +38,17 @@ object FastParser extends PosParser[Char, String] {
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
     //       iterate until no new imports are present.
+    //       To import each file at most once the normalized path is calculated (removes redundancies).
+    //       (normalize a path is a purely syntactic operation. if sally were a symbolic link removing sally/.. might
+    //       result in a path that no longer locates the intended file. toRealPath() might be an alternative)
 
     def resolveImports(p: PProgram) = {
-        val pathsToImport = new mutable.ArrayBuffer[Path]()
-        val pathImportStatements = new mutable.HashMap[Path, PLocalImport]()
-        val standardToImport = new mutable.ArrayBuffer[Path]()
+        val localsToImport = new mutable.ArrayBuffer[Path]()
+        val localImportStatements = new mutable.HashMap[Path, PLocalImport]()
+        val standardsToImport = new mutable.ArrayBuffer[Path]()
         val standardImportStatements = new mutable.HashMap[Path, PStandardImport]()
-        pathsToImport.append(f.toAbsolutePath)
+
+        localsToImport.append(f.toAbsolutePath)
 
         var macros = p.macros
         var domains = p.domains
@@ -53,57 +57,57 @@ object FastParser extends PosParser[Char, String] {
         var methods = p.methods
         var predicates = p.predicates
         var errors = p.errors
+
         for (ip <- p.imports) {
           ip match {
             case pathImport: PLocalImport =>
-              val importedPath = f.toAbsolutePath.getParent.resolve(pathImport.file)
-              if (!(pathsToImport.contains(importedPath))) {
-                pathsToImport.append(importedPath)
-                pathImportStatements.update(importedPath, pathImport)
+              val importedPath = f.toAbsolutePath.resolveSibling(pathImport.file).normalize()
+              if (!localsToImport.contains(importedPath)) {
+                localsToImport.append(importedPath)
+                localImportStatements.update(importedPath, pathImport)
               }
             case standardImport: PStandardImport =>
-              val importedStandard = Paths.get(standardImport.file)
-              if(!standardToImport.contains(importedStandard)){
-                standardToImport.append(importedStandard)
+              val importedStandard = Paths.get(standardImport.file).normalize()
+              if(!standardsToImport.contains(importedStandard)){
+                standardsToImport.append(importedStandard)
                 standardImportStatements.update(importedStandard, standardImport)
               }
           }
         }
 
-        // resolve imports form imported programs
-        var i = 1 // pathsToImport
-        var j = 0 // standardToImport
-        while (i < pathsToImport.length || j < standardToImport.length) {
+        // resolve imports from imported programs
+        var i = 1 // localsToImport
+        var j = 0 // standardsToImport
+        while (i < localsToImport.length || j < standardsToImport.length) {
 
-          if (i < pathsToImport.length){
-            // import a not standard file
+          if (i < localsToImport.length){
+            // import a local file
 
-            val current = pathsToImport(i)
-            val newProg = importPath(current, pathImportStatements(current), plugins)
+            val current = localsToImport(i)
+            val newProg = importPath(current, localImportStatements(current), plugins)
 
             appendNewProgram(newProg)
 
             for (ip <- newProg.imports) {
               ip match {
                 case pathImport: PLocalImport =>
-                  val importedPath = current.getParent.resolve(pathImport.file)
-                  if (!(pathsToImport.contains(importedPath))) {
-                    pathsToImport.append(importedPath)
-                    pathImportStatements.update(importedPath, pathImport)
+                  val importedPath = current.resolveSibling(pathImport.file).normalize()
+                  if (!localsToImport.contains(importedPath)) {
+                    localsToImport.append(importedPath)
+                    localImportStatements.update(importedPath, pathImport)
                   }
                 case standardImport: PStandardImport =>
-                  val importedStandard = Paths.get(standardImport.file)
-                  if(!standardToImport.contains(importedStandard)){
-                    standardToImport.append(importedStandard)
+                  val importedStandard = Paths.get(standardImport.file).normalize()
+                  if(!standardsToImport.contains(importedStandard)){
+                    standardsToImport.append(importedStandard)
                     standardImportStatements.update(importedStandard, standardImport)
                   }
               }
             }
-
             i += 1
           }else{
-            // import a new standard
-            val current = standardToImport(j)
+            // import a standard file
+            val current = standardsToImport(j)
             val newProg = importStandard(current, standardImportStatements(current), plugins)
 
             appendNewProgram(newProg)
@@ -111,33 +115,35 @@ object FastParser extends PosParser[Char, String] {
             for (ip <- newProg.imports) {
               ip match {
                 case pathImport: PLocalImport =>
-                  // path import get transformed to standard imports
-                  val importedPath = current.getParent.resolve(pathImport.file)
-                  if (!(standardToImport.contains(importedPath))) {
-                    standardToImport.append(importedPath)
+                  // local import get transformed to standard imports
+                  val importedPath = current.resolveSibling(pathImport.file).normalize()
+                  if (!(standardsToImport.contains(importedPath))) {
+                    standardsToImport.append(importedPath)
                     standardImportStatements.update(importedPath, PStandardImport(importedPath.toString))
                   }
                 case standardImport: PStandardImport =>
-                  val importedStandard = Paths.get(standardImport.file)
-                  if(!standardToImport.contains(importedStandard)){
-                    standardToImport.append(importedStandard)
+                  val importedStandard = Paths.get(standardImport.file).normalize()
+                  if(!standardsToImport.contains(importedStandard)){
+                    standardsToImport.append(importedStandard)
                     standardImportStatements.update(importedStandard, standardImport)
                   }
               }
             }
             j += 1
           }
-
-          def appendNewProgram(newProg: PProgram) {
-            macros ++= newProg.macros
-            domains ++= newProg.domains
-            fields ++= newProg.fields
-            functions ++= newProg.functions
-            methods ++= newProg.methods
-            predicates ++= newProg.predicates
-            errors ++= newProg.errors
-          }
         }
+
+
+      def appendNewProgram(newProg: PProgram) {
+        macros ++= newProg.macros
+        domains ++= newProg.domains
+        fields ++= newProg.fields
+        functions ++= newProg.functions
+        methods ++= newProg.methods
+        predicates ++= newProg.predicates
+        errors ++= newProg.errors
+      }
+
         PProgram(Seq(), macros, domains, fields, functions, predicates, methods, errors)
     }
 
@@ -954,15 +960,11 @@ object FastParser extends PosParser[Char, String] {
     }
   }
 
-  lazy val preambleImport: P[PImport] = P(localImport | standardImport)
-
-  lazy val localImport: P[PLocalImport] = P(keyword("import") ~/ quoted(relativeFilePath.!)).map {
-    case filename => PLocalImport(filename)
-  }
-
-  lazy val standardImport: P[PStandardImport] = P(keyword("import") ~/ angles(relativeFilePath.!)).map {
-    case filename => PStandardImport(filename)
-  }
+  lazy val preambleImport: P[PImport] = P(keyword("import") ~/ (
+      quoted(relativeFilePath.!).map(filename => PLocalImport(filename)) |
+      angles(relativeFilePath.!).map(filename => PStandardImport(filename))
+    )
+  )
 
   lazy val relativeFilePath: P[String] = P((CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
 
