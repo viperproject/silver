@@ -3,10 +3,8 @@ package viper.silver.plugin
 
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast._
-import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, show, space, ssep, text, toParenDoc}
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, space, ssep, text, toParenDoc}
 import viper.silver.parser._
-import viper.silver.verifier.{Failure, Success, VerificationResult}
-
 
 // run --printTranslatedProgram --plugin viper.silver.plugin.DecreasePlugin silver/src/test/resources/termination/basic/test.vpr
 class DecreasePlugin extends SilverPlugin
