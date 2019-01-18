@@ -1,4 +1,4 @@
-import "../decreaseOrder/int_decreases.sil"
+import <decreaseOrder/int_decreases.sil>
 
 function fun1(x: Int): Int
 decreases x+10
