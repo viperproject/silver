@@ -6,6 +6,8 @@
 
 package viper.silver.cfg
 
+import java.util.concurrent.atomic.AtomicInteger
+
 /**
   * A basic block of a control flow graph.
   *
@@ -29,11 +31,10 @@ sealed trait Block[S, E] {
 }
 
 object Block {
-  private var id: Int = 0
+  private var id = new AtomicInteger(0)
 
   def nextId(): Int = {
-    id = id + 1
-    id
+    id.incrementAndGet()
   }
 }
 

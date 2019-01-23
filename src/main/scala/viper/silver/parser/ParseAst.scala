@@ -663,7 +663,7 @@ case class PUnExp(opName: String, exp: PExp) extends POpApp {
       case _ => Set()
     }
   override val signatures : List[PTypeSubstitution] = opName match {
-    case "-" | "+" => List(
+    case "-" => List(
       Map(POpApp.pArgS(0) -> Int, POpApp.pResS -> Int),
       Map(POpApp.pArgS(0) -> Perm, POpApp.pResS -> Perm)
     )
