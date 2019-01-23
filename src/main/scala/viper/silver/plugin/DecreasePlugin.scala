@@ -4,7 +4,9 @@ package viper.silver.plugin
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, space, ssep, text, toParenDoc}
+import viper.silver.ast.utility.{Consistency, Functions, ViperStrategy}
 import viper.silver.parser._
+import viper.silver.verifier.ConsistencyError
 
 // run --printTranslatedProgram --plugin viper.silver.plugin.DecreasePlugin silver/src/test/resources/termination/basic/test.vpr
 class DecreasePlugin extends SilverPlugin
@@ -23,30 +25,27 @@ class DecreasePlugin extends SilverPlugin
     // with decreasesN calls
     // and add DecreasesDomain with all needed decreasesN functions
 
-    var newFunctions = Seq[PFunction]()
+    val newFunctions = collection.mutable.ArrayBuffer[PFunction]()
 
     for(function <- input.functions){
-      var posts = Seq[PExp]()
-
+      val posts = collection.mutable.ArrayBuffer[PExp]()
       for(post <- function.posts){
         post match {
-          case call: PCall =>
-            if (call.opName == DECREASES) {
+          case call: PCall if call.opName.equals(DECREASES)=>{
               // change call
               val argsSize = call.args.length
               val functionName = getDecreasesNFunction(argsSize)
-              posts = posts :+ call.copy(func = PIdnUse(functionName))
-            } else {
-              posts = posts :+ post
+              val post = call.copy(func = PIdnUse(functionName)).setPos(call)
+              posts.append(post)
             }
           case _ =>
-            posts = posts :+ post
+            posts.append(post)
         }
       }
-      newFunctions = newFunctions :+ function.copy(posts = posts)
-    }
 
-    println(decreasesNFunctions)
+      val newFunction = function.copy(posts = posts).setPos(function)
+      newFunctions.append(newFunction)
+    }
 
     if (decreasesNFunctions.nonEmpty) {
       val newDomain = createDecreasesDomain(getDecreasesNDomain, decreasesNFunctions.toMap)
@@ -116,30 +115,9 @@ class DecreasePlugin extends SilverPlugin
     * @return Modified AST
     */
   override def beforeMethodFilter(input: Program): Program = {
-    // get all decreases in post conditions and
-    // transform them to one post condition with a DecreaseExp
-    // replace decreasesN again with decreases
-    var newFunctions = Seq[Function]()
-    val decreasesN = decreasesNFunctions.values.toSeq
-
-    for (function <- input.functions){
-      val posts = function.posts map {
-        case c: Call => {
-          if (decreasesNFunctions.get(c.args.size).contains(c.callee)) {
-            DecreaseExp(true, c.pos, c.args)
-          }else {
-            c
-          }
-        }
-        case p => p
-      }
-      newFunctions = newFunctions :+ function.copy(posts = posts)(function.pos, function.info, function.errT)
-    }
-
-    val newDomains = input.domains.filterNot(d => d.name == getDecreasesNDomain)
-
-    // copy the program with the new functions
-    input.copy(functions = newFunctions, domains = newDomains)(input.pos, input.info, input.errT)
+    // get decrease in post conditions and
+    // transform them to post condition with a DecreaseExp
+    transformDecreasesNToDecreaseExp(input, decreasesNFunctions.toMap, getDecreasesNDomain)
   }
 
   /** Called after methods are filtered but before the verification by the backend happens.
@@ -148,35 +126,22 @@ class DecreasePlugin extends SilverPlugin
     * @return Modified AST
     */
   override def beforeVerify(input: Program): Program = {
-
     // remove all post conditions which are DecreaseExp
-    // and add them to the functions -> decreases map
-    var newFunctions = Seq[Function]()
-    val decreaseMap = scala.collection.mutable.Map[Function, DecreaseExp]()
+    // and add them to the decreaseMap functions -> decreases map
 
-    for (function <- input.functions) {
-      var decreaseClause: DecreaseExp = null
-      var posts = Seq[Exp]()
 
-      for (post <- function.posts) {
-        if (post.isInstanceOf[DecreaseExp]) {
-          // add to the decrease map
-          decreaseClause = post.asInstanceOf[DecreaseExp]
-        }else{
-          posts = posts :+ post
-        }
+    val errors = checkNoFunctionRecursesViaDecreasesClause(input)
+    if (errors.nonEmpty){
+      for (e <- errors) {
+        reportError(e)
       }
-
-      val newFunction = function.copy(posts = posts)(function.pos, function.info, function.errT)
-      newFunctions = newFunctions :+ newFunction
-
-      if (decreaseClause != null){
-        decreaseMap += (newFunction -> decreaseClause)
-      }
+      return input
     }
 
-    // new program without any DecreaseExp
-    val newProgram: Program = input.copy(domains = input.domains, functions = newFunctions, methods = input.methods)(input.pos, input.info, input.errT)
+    val removedDecreasesExp = removeDecreaseExp(input)
+
+    val newProgram: Program = removedDecreasesExp._1
+    val decreasesMap = removedDecreasesExp._2
 
 
     val locDom = newProgram.domains.find(d => d.name.equals("Loc"))
@@ -184,7 +149,7 @@ class DecreasePlugin extends SilverPlugin
     val boundFunc = newProgram.findDomainFunctionOptionally("bounded")
     val nestFunc = newProgram.findDomainFunctionOptionally("nested")
 
-    val termCheck = new DecreasesClause2(newProgram, decreaseMap.toMap)
+    val termCheck = new DecreasesClause2(newProgram, decreasesMap)
     val structureForTermProofs = termCheck.addMethods(newProgram.functions, newProgram.predicates, newProgram.domains, decFunc, boundFunc, nestFunc, locDom)
 
     val d = structureForTermProofs._1
@@ -193,9 +158,100 @@ class DecreasePlugin extends SilverPlugin
 
     newProgram.copy(domains = d, functions = newProgram.functions ++ f, methods = newProgram.methods ++ m)(newProgram.pos, newProgram.info, newProgram.errT)
   }
+
+
+  def transformDecreasesNToDecreaseExp(input: Program, decreasesNFunctions: Map[Integer, String], decreasesNDomain: String): Program = {
+    ViperStrategy.Slim({
+      case p: Program => {
+        val domains = p.domains.filterNot(d => d.name.equals(decreasesNDomain))
+        p.copy(domains = domains)(p.pos, p.info, p.errT)
+      }
+      case f: Function => {
+        val posts = f.posts map {
+          case c: Call if decreasesNFunctions.get(c.args.size).contains(c.callee) => {
+            DecreaseExp(c.isPure, c.pos, c.subExps, NodeTrafo(c))
+          }
+          case p => p
+        }
+        Function(
+          name = f.name,
+          posts = posts,
+          formalArgs = f.formalArgs,
+          typ = f.typ,
+          pres = f.pres,
+          decs = f.decs,
+          body = f.body,
+        )(f.pos, f.info, NodeTrafo(f))
+      }
+    }).execute(input)
+  }
+
+  def removeDecreaseExp(program: Program): (Program, Map[Function, DecreaseExp]) = {
+    val decreaseMap = scala.collection.mutable.Map[Function, DecreaseExp]()
+
+    val result: Program = ViperStrategy.Slim({
+      case f: Function => {
+        val partition = f.posts.partition(p => p.isInstanceOf[DecreaseExp])
+        val decreases = partition._1
+        val posts = partition._2
+
+        val newFunction =
+          Function(
+            name = f.name,
+            posts = posts,
+            formalArgs = f.formalArgs,
+            typ = f.typ,
+            pres = f.pres,
+            decs = f.decs,
+            body = f.body,
+          )(f.pos, f.info, NodeTrafo(f))
+
+        if (decreases.nonEmpty) {
+          decreaseMap += (newFunction -> decreases.head.asInstanceOf[DecreaseExp])
+        }
+        newFunction
+      }
+    }).execute(program)
+    (result, decreaseMap.toMap)
+  }
+
+  def checkNoFunctionRecursesViaDecreasesClause(program: Program): Seq[ConsistencyError] = {
+
+    val checkProgram: Program = ViperStrategy.Slim({
+      case f: Function => {
+        val partition = f.posts.partition(p => p.isInstanceOf[DecreaseExp])
+        val decreases = partition._1
+        val posts = partition._2
+
+        val newFunction =
+          Function(
+            name = f.name,
+            posts = posts,
+            formalArgs = f.formalArgs,
+            typ = f.typ,
+            pres = f.pres ++ decreases,
+            decs = f.decs,
+            body = f.body,
+          )(f.pos, f.info, NodeTrafo(f))
+        newFunction
+      }
+    }).execute(program)
+
+    // TODO WHY??
+    var errors = Seq.empty[ConsistencyError]
+    Functions.findFunctionCyclesViaPreconditions(checkProgram) foreach { case (func, cycleSet) =>
+      var msg = s"Function ${func.name} recurses via its decreases clause"
+
+      if (cycleSet.nonEmpty) {
+        msg = s"$msg: the cycle contains the function(s) ${cycleSet.map(_.name).mkString(", ")}"
+      }
+      errors :+= ConsistencyError(msg, func.pos)
+    }
+    errors
+  }
 }
 
-case class DecreaseExp(extensionIsPure: Boolean, pos: Position, extensionSubnodes: Seq[Exp]) extends ExtensionExp {
+case class DecreaseExp(extensionIsPure: Boolean, pos: Position, extensionSubnodes: Seq[Exp], errT: ErrorTrafo) extends ExtensionExp {
 
   override def typ: Type = Bool
 
@@ -203,8 +259,6 @@ case class DecreaseExp(extensionIsPure: Boolean, pos: Position, extensionSubnode
     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
 
   override def info: Info = NoInfo
-
-  override def errT: ErrorTrafo = NoTrafos
 
   /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
@@ -224,7 +278,7 @@ case class DecreaseExp(extensionIsPure: Boolean, pos: Position, extensionSubnode
 
   override def duplicate(children: Seq[AnyRef]): DecreaseExp = {
     children match {
-      case Seq(args: List[Exp]) => DecreaseExp(extensionIsPure, pos, args)
+      case Seq(args: List[Exp]) => DecreaseExp(extensionIsPure, pos, args, errT)
     }
   }
 }

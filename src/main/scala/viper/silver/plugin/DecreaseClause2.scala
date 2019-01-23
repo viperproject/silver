@@ -133,7 +133,7 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
         //func.decs match {
           //case Some(DecTuple(_)) =>
         decreaseMap.get(func) match {
-          case Some(DecreaseExp(_,_,_)) =>
+          case Some(DecreaseExp(_,_,_,_)) =>
             val pred: Predicate = predicates.find(_.name == pap.loc.predicateName).get
 
             pred.body match {
@@ -194,11 +194,13 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
           //Called function is not the original function => no recursion so far
           if (!alreadyChecked.contains(callee.funcname)) {
             //Program didn't check this function for recursion yet
+            // TODO first time function checked:
+
             val calledFunc = findFnc(callee.funcname)
 
             //calledFunc.decs match {
             decreaseMap.get(calledFunc) match {
-              case Some(DecreaseExp(_,_,_)) =>
+              case Some(DecreaseExp(_,_,_,_)) =>
                 //The called function might not terminate
                 val functionInOrigBody = if (funcAppInOrigFunc == null) callee else funcAppInOrigFunc
 
@@ -210,7 +212,7 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
                   Nil)(bodyToRewrite.pos)
 
               case _ =>
-                //Check the called unction for recursion
+                //Check the called function for recursion
 
                 val formalArgsOfCallee = calledFunc.formalArgs map (_.localVar)
 
@@ -268,7 +270,7 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
               Assert(FalseLit()(func.pos))(func.pos, SimpleInfo(Seq("Recursion but no decClause")), errTr)
             }
             //case Some(DecTuple(decreasingExp)) => {
-            case Some(DecreaseExp(_,_,decreasingExp)) => {
+            case Some(DecreaseExp(_,_,decreasingExp,_)) => {
 
               //Replace in the decreaseClause every argument with the correct call
               if (decreasingFunc.isDefined && boundedFunc.isDefined &&
