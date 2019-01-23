@@ -11,7 +11,7 @@ import java.nio.file.{Files, Path, Paths}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
-import viper.silver.ast.{LineCol, SourcePosition}
+import viper.silver.ast.{SourcePosition, LineCol}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
@@ -38,7 +38,8 @@ object FastParser extends PosParser[Char, String] {
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
     //       iterate until no new imports are present.
-    //       To import each file at most once the normalized path is calculated (removes redundancies).
+    //       To import each file at most once the absolute path is normalized (removes redundancies).
+    //       For standard import the path relative to the import folder (in resources) is normalized and used.
     //       (normalize a path is a purely syntactic operation. if sally were a symbolic link removing sally/.. might
     //       result in a path that no longer locates the intended file. toRealPath() might be an alternative)
 
@@ -48,7 +49,8 @@ object FastParser extends PosParser[Char, String] {
         val standardsToImport = new mutable.ArrayBuffer[Path]()
         val standardImportStatements = new mutable.HashMap[Path, PStandardImport]()
 
-        localsToImport.append(f.toAbsolutePath)
+        // assume p is a program from the user space (local).
+        localsToImport.append(f.toAbsolutePath.normalize())
 
         var macros = p.macros
         var domains = p.domains
@@ -79,12 +81,12 @@ object FastParser extends PosParser[Char, String] {
         var i = 1 // localsToImport
         var j = 0 // standardsToImport
         while (i < localsToImport.length || j < standardsToImport.length) {
-
+          // at least one local or standard import has not yet been resolved
           if (i < localsToImport.length){
             // import a local file
 
             val current = localsToImport(i)
-            val newProg = importPath(current, localImportStatements(current), plugins)
+            val newProg = importLocal(current, localImportStatements(current), plugins)
 
             appendNewProgram(newProg)
 
@@ -106,6 +108,7 @@ object FastParser extends PosParser[Char, String] {
             }
             i += 1
           }else{
+            // no more local imports
             // import a standard file
             val current = standardsToImport(j)
             val newProg = importStandard(current, standardImportStatements(current), plugins)
@@ -117,7 +120,7 @@ object FastParser extends PosParser[Char, String] {
                 case pathImport: PLocalImport =>
                   // local import get transformed to standard imports
                   val importedPath = current.resolveSibling(pathImport.file).normalize()
-                  if (!(standardsToImport.contains(importedPath))) {
+                  if (!standardsToImport.contains(importedPath)) {
                     standardsToImport.append(importedPath)
                     standardImportStatements.update(importedPath, PStandardImport(importedPath.toString))
                   }
@@ -132,7 +135,6 @@ object FastParser extends PosParser[Char, String] {
             j += 1
           }
         }
-
 
       def appendNewProgram(newProg: PProgram) {
         macros ++= newProg.macros
@@ -215,6 +217,7 @@ object FastParser extends PosParser[Char, String] {
   /**
     * Function that parses a file and converts it into a program
     *
+    * @param buffer Buffer to read file from
     * @param path Path of the file to be imported
     * @param importStmt Import statement.
     * @return `PProgram` node corresponding to the imported program.
@@ -240,9 +243,19 @@ object FastParser extends PosParser[Char, String] {
     }
   }
 
+  /**
+    * Opens (and closes) standard file to be imported, parses it and converts it into a program.
+    * Standard files are located in the resources inside a "import" folder.
+    *
+    * @param path Path of the file to be imported
+    * @param importStmt Import statement.
+    * @return `PProgram` node corresponding to the imported program.
+    */
   def importStandard(path: Path, importStmt: PStandardImport, plugins: Option[SilverPluginManager]): PProgram = {
-    val source = scala.io.Source.fromResource("import/"+path)
+    val IMPORT = "import/"
+    val source = scala.io.Source.fromResource(IMPORT+path)
 
+    // nested try-catch block because source.close() in finally could also cause a NullPointerException
     val buffer =
       try {
         try {
@@ -258,11 +271,18 @@ object FastParser extends PosParser[Char, String] {
           throw ParseException(s"""file <$path> does not exist""", FastPositions.getStart(importStmt))
       }
 
-      //scala.io.Source.fromInputStream(getClass.getResourceAsStream("/import/"+ path.toString))
+    //scala.io.Source.fromInputStream(getClass.getResourceAsStream("/import/"+ path.toString))
     importProgram(buffer, path, importStmt, plugins)
   }
 
-  def importPath(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
+  /**
+    * Opens (and closes) local file to be imported, parses it and converts it into a program.
+    *
+    * @param path Path of the file to be imported
+    * @param importStmt Import statement.
+    * @return `PProgram` node corresponding to the imported program.
+    */
+  def importLocal(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
     if (java.nio.file.Files.notExists(path))
       throw ParseException(s"""file "$path" does not exist""", FastPositions.getStart(importStmt))
 
@@ -278,15 +298,6 @@ object FastParser extends PosParser[Char, String] {
     }
 
     importProgram(buffer, path, importStmt, plugins)
-  }
-
-  def pathFromImport(importStmt: PImport): Path = {
-    importStmt match {
-      case PLocalImport(fileName) =>
-        val path = file.getParent.resolve(fileName)
-        path
-    }
-
   }
 
   /**
