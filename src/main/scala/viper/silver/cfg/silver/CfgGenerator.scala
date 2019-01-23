@@ -10,6 +10,7 @@ import viper.silver.ast._
 import viper.silver.cfg._
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.utility.{CfgSimplifier, LoopDetector}
+import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.mutable
 
@@ -97,11 +98,11 @@ object CfgGenerator {
   case class TmpLabel(name: String)
 
   object TmpLabel {
-    var id = 0
+    var id = new AtomicInteger(0)
 
     def generate(name: String): TmpLabel = {
-      id = id + 1
-      new TmpLabel(s"${name}_$id")
+      val freshId = id.incrementAndGet()
+      new TmpLabel(s"${name}_$freshId")
     }
   }
 
