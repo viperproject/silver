@@ -508,7 +508,7 @@ object FastParser extends PosParser[Char, String] {
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
     def replacerOnBody(body: PNode, p2a: Map[String, PExp], pos: FastPositioned): PNode = {
       /* TODO: It would be best if the context updater function were passed as another argument
-       *       to the hyginizer above. That is already possible, but when the replacer is executed
+       *       to the replacer above. That is already possible, but when the replacer is executed
        *       and an initial context is passed, that initial context's updater function (which
        *       defaults to "never update", if left unspecified) replaces the updater function that
        *       was initially passed to renamer.
@@ -638,7 +638,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val result: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
 
-  lazy val unExp: P[PUnExp] = P((CharIn("-!+").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
+  lazy val unExp: P[PUnExp] = P((CharIn("-!").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
 
   lazy val strInteger: P[String] = P(CharIn('0' to '9').rep(1)).!
 
