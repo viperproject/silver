@@ -1,0 +1,4 @@
+
+domain BasicAxiom {
+    axiom test { basic() == true }
+}
