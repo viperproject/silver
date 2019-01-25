@@ -50,7 +50,8 @@ object FastParser extends PosParser[Char, String] {
         val standardImportStatements = new mutable.HashMap[Path, PStandardImport]()
 
         // assume p is a program from the user space (local).
-        localsToImport.append(f.toAbsolutePath.normalize())
+        val filePath = f.toAbsolutePath.normalize()
+        localsToImport.append(filePath)
 
         var macros = p.macros
         var domains = p.domains
@@ -60,22 +61,43 @@ object FastParser extends PosParser[Char, String] {
         var predicates = p.predicates
         var errors = p.errors
 
-        for (ip <- p.imports) {
-          ip match {
-            case pathImport: PLocalImport =>
-              val importedPath = f.toAbsolutePath.resolveSibling(pathImport.file).normalize()
-              if (!localsToImport.contains(importedPath)) {
-                localsToImport.append(importedPath)
-                localImportStatements.update(importedPath, pathImport)
-              }
-            case standardImport: PStandardImport =>
-              val importedStandard = Paths.get(standardImport.file).normalize()
-              if(!standardsToImport.contains(importedStandard)){
-                standardsToImport.append(importedStandard)
-                standardImportStatements.update(importedStandard, standardImport)
-              }
+        def appendNewImports(imports: Seq[PImport], current: Path, fromLocal: Boolean) {
+          for (ip <- imports) {
+            ip match {
+              case localImport: PLocalImport if fromLocal =>
+                val localPath = current.resolveSibling(localImport.file).normalize()
+                if(!localsToImport.contains(localPath)){
+                  localsToImport.append(localPath)
+                  localImportStatements.update(localPath, localImport)
+                }
+              case localImport: PLocalImport if !fromLocal =>
+                // local import get transformed to standard imports
+                val localPath = current.resolveSibling(localImport.file).normalize()
+                if (!standardsToImport.contains(localPath)) {
+                  standardsToImport.append(localPath)
+                  standardImportStatements.update(localPath, PStandardImport(localPath.toString))
+                }
+              case standardImport: PStandardImport =>
+                val standardPath = Paths.get(standardImport.file).normalize()
+                if(!standardsToImport.contains(standardPath)){
+                  standardsToImport.append(standardPath)
+                  standardImportStatements.update(standardPath, standardImport)
+                }
+            }
           }
         }
+
+        def appendNewProgram(newProg: PProgram) {
+          macros ++= newProg.macros
+          domains ++= newProg.domains
+          fields ++= newProg.fields
+          functions ++= newProg.functions
+          methods ++= newProg.methods
+          predicates ++= newProg.predicates
+          errors ++= newProg.errors
+        }
+
+        appendNewImports(p.imports, filePath, true)
 
         // resolve imports from imported programs
         var i = 1 // localsToImport
@@ -89,23 +111,7 @@ object FastParser extends PosParser[Char, String] {
             val newProg = importLocal(current, localImportStatements(current), plugins)
 
             appendNewProgram(newProg)
-
-            for (ip <- newProg.imports) {
-              ip match {
-                case pathImport: PLocalImport =>
-                  val importedPath = current.resolveSibling(pathImport.file).normalize()
-                  if (!localsToImport.contains(importedPath)) {
-                    localsToImport.append(importedPath)
-                    localImportStatements.update(importedPath, pathImport)
-                  }
-                case standardImport: PStandardImport =>
-                  val importedStandard = Paths.get(standardImport.file).normalize()
-                  if(!standardsToImport.contains(importedStandard)){
-                    standardsToImport.append(importedStandard)
-                    standardImportStatements.update(importedStandard, standardImport)
-                  }
-              }
-            }
+            appendNewImports(newProg.imports, current, true)
             i += 1
           }else{
             // no more local imports
@@ -114,39 +120,11 @@ object FastParser extends PosParser[Char, String] {
             val newProg = importStandard(current, standardImportStatements(current), plugins)
 
             appendNewProgram(newProg)
-
-            for (ip <- newProg.imports) {
-              ip match {
-                case pathImport: PLocalImport =>
-                  // local import get transformed to standard imports
-                  val importedPath = current.resolveSibling(pathImport.file).normalize()
-                  if (!standardsToImport.contains(importedPath)) {
-                    standardsToImport.append(importedPath)
-                    standardImportStatements.update(importedPath, PStandardImport(importedPath.toString))
-                  }
-                case standardImport: PStandardImport =>
-                  val importedStandard = Paths.get(standardImport.file).normalize()
-                  if(!standardsToImport.contains(importedStandard)){
-                    standardsToImport.append(importedStandard)
-                    standardImportStatements.update(importedStandard, standardImport)
-                  }
-              }
-            }
+            appendNewImports(newProg.imports, current, false)
             j += 1
           }
         }
-
-      def appendNewProgram(newProg: PProgram) {
-        macros ++= newProg.macros
-        domains ++= newProg.domains
-        fields ++= newProg.fields
-        functions ++= newProg.functions
-        methods ++= newProg.methods
-        predicates ++= newProg.predicates
-        errors ++= newProg.errors
-      }
-
-        PProgram(Seq(), macros, domains, fields, functions, predicates, methods, errors)
+      PProgram(Seq(), macros, domains, fields, functions, predicates, methods, errors)
     }
 
 
