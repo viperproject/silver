@@ -203,4 +203,24 @@ object Functions {
         Some(func -> cycle.toSet)
     }).toMap[Function, Set[Function]]
   }
+
+  // TODO: above code could use this here
+  def findFunctionCyclesVia(program: Program, via: Function => Seq[Exp], subs: Function => Seq[Exp] = allSubexpressions)
+  :Map[Function, Set[Function]] = {
+    def viaSubs(entryFunc: Function)(otherFunc: Function): Seq[Exp] =
+      if (otherFunc == entryFunc)
+        via(otherFunc)
+      else
+        subs(otherFunc)
+
+    program.functions.flatMap(func => {
+      val graph = getFunctionCallgraph(program, viaSubs(func))
+      val cycleDetector = new CycleDetector(graph)
+      val cycle = cycleDetector.findCyclesContainingVertex(func).asScala
+      if (cycle.isEmpty)
+        None
+      else
+        Some(func -> cycle.toSet)
+    }).toMap[Function, Set[Function]]
+  }
 }
