@@ -1,0 +1,3 @@
+define P() 1
+//:: ExpectedOutput(parser.error)
+define P() 2
