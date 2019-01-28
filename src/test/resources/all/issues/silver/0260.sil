@@ -1,0 +1,6 @@
+field f : Ref
+field g : Ref
+
+method foo(s:Ref, k : Int) {
+    inhale forall j : Int :: (j == k ? acc(s.f) : true)
+}
