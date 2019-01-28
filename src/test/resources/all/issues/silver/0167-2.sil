@@ -1,0 +1,6 @@
+method x() {
+    var y: Int
+}
+
+//:: ExpectedOutput(parser.error)
+define x() 1

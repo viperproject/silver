@@ -337,7 +337,6 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
       case PUnExp(op, pe) =>
         val e = exp(pe)
         op match {
-          case "+" => e
           case "-" =>
             e.typ match {
               case Int => Minus(e)(pos)

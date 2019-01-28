@@ -11,7 +11,7 @@ import java.nio.file.{Files, Path}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
-import viper.silver.ast.{SourcePosition, LineCol}
+import viper.silver.ast.{LineCol, SourcePosition}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
@@ -199,13 +199,32 @@ object FastParser extends PosParser[Char, String] {
     val globalMacros = p.macros
 
     // Collect all global names to avoid conflicts
-    val globalNames: Set[String] = (
+    val globalNamesWithoutMacros: Set[String] = (
          p.domains.map(_.idndef.name).toSet
       ++ p.functions.map(_.idndef.name).toSet
       ++ p.predicates.map(_.idndef.name).toSet
-      ++ p.macros.map(_.idndef.name).toSet
       ++ p.methods.map(_.idndef.name).toSet
     )
+
+    val globalNames = globalNamesWithoutMacros ++ p.macros.map(_.idndef.name).toSet
+
+    // Check if all macros names are unique
+    var uniqueMacroNames = new mutable.HashMap[String, Position]()
+    for (define <- globalMacros) {
+      if (uniqueMacroNames.contains(define.idndef.name)) {
+        throw ParseException(s"Another macro named '${define.idndef.name}' already " +
+          s"exists at ${uniqueMacroNames.get(define.idndef.name).get}", define.start)
+      } else {
+        uniqueMacroNames += ((define.idndef.name, define.start))
+      }
+    }
+
+    // Check if macros names aren't already taken by other identifiers
+    for (name <- globalNamesWithoutMacros) {
+      if (uniqueMacroNames.contains(name)) {
+        throw ParseException(s"The macro name '$name' has already been used by another identifier", uniqueMacroNames.get(name).get)
+      }
+    }
 
     // Expand defines
     val domains =
@@ -538,7 +557,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val result: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
 
-  lazy val unExp: P[PUnExp] = P((CharIn("-!+").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
+  lazy val unExp: P[PUnExp] = P((CharIn("-!").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
 
   lazy val strInteger: P[String] = P(CharIn('0' to '9').rep(1)).!
 
