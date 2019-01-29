@@ -1,0 +1,7 @@
+define min(a,b) (a < b ? a : b)
+
+field f:Ref
+
+method m(x:Ref) {
+  inhale acc(x.f,min(1/2,write))
+}
