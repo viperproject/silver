@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 field f: Int
 field next: Ref
 
@@ -7,7 +6,6 @@ method t01(x: Ref)
   //should fail since not enough permission to evaluate x.f > 0 ? 1/4:1/2
   //:: ExpectedOutput(wand.not.wellformed:insufficient.permission)
   //:: MissingOutput(wand.not.wellformed:insufficient.permission, /carbon/issue/105/)
-  //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
   //:: MissingOutput(wand.not.wellformed:insufficient.permission, /silicon/issue/201/)
   package acc(x.f,1/2) && x.f > -1 --* (acc(x.f, (x.f > 0 ? 1/4: 1/2)) )
 }

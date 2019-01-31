@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 field f: Int
 
 predicate Cell(x: Ref) {

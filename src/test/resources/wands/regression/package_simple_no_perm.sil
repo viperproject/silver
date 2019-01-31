@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 /* This example encodes and specifies an iterative computation of the
  * sum of a recursively defined linked-list. Magic wands are used to
  * book-keep permissions in the loop.

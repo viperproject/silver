@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 predicate P() {true}
 predicate Q() {true}
 
