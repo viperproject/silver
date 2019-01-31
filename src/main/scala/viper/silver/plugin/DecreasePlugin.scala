@@ -6,7 +6,8 @@ import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, space, ssep, text, toParenDoc}
 import viper.silver.ast.utility.{Functions, ViperStrategy}
 import viper.silver.parser._
-import viper.silver.verifier.ConsistencyError
+import viper.silver.verifier.errors.AssertFailed
+import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 
 // run --printTranslatedProgram --plugin viper.silver.plugin.DecreasePlugin silver/src/test/resources/termination/basic/test.vpr
 class DecreasePlugin extends SilverPlugin
@@ -127,13 +128,29 @@ class DecreasePlugin extends SilverPlugin
     * @return Modified AST
     */
   override def beforeVerify(input: Program): Program = {
-    val newProgram = transformToVerifyableProgram(input)
+    val newProgram = transformToVerifiableProgram(input)
 
     newProgram
   }
 
 
-  def transformToVerifyableProgram(input: Program): Program = {
+  /** Called after the verification. Error transformation should happen here.
+    * This will only be called if verification took place.
+    *
+    * @param input Result of verification
+    * @return Modified result
+    */
+  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
+    input match {
+      case Success => input
+      case Failure(errors) => Failure(errors.map({
+        case a@AssertFailed(on, r, c) => a.transformedError()
+        case e => e
+      }))
+    }
+  }
+
+  def transformToVerifiableProgram(input: Program): Program = {
     // remove all post conditions which are DecreaseExp
     // and add them to the decreaseMap functions -> decreases map
     val errors = checkNoFunctionRecursesViaDecreasesClause(input)

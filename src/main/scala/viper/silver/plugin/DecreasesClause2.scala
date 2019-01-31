@@ -263,20 +263,28 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
 
                 val callerFunctionInOrigBody = newFuncAppList.head
 
-                // TODO: Error Transformation not working
                 //Map AssertionErrors to TerminationFailedErrors
-                val errTBound = ErrTrafo({ case AssertFailed(_, AssertionFalse(offendingNode), _) => TerminationFailed(func, offendingNode match {
-                  case dfa: DomainFuncApp => TerminationNoBound(callerFunctionInOrigBody, dfa.args.head match {
-                      case PredicateAccessPredicate(loc, _) => loc
-                    }, newFuncAppList)
+                val errTBound = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(func, reason match {
+                  case AssertionFalse(offendingNode) => offendingNode match {
+                    case dfa: DomainFuncApp =>
+                      assert(dfa.args.size == 1)
+                      TerminationNoBound(callerFunctionInOrigBody, comparableDec._1, newFuncAppList)
+                    case _ => reason
+                  }
                 })
+                case e => e
                 })
 
                 //Map AssertionErrors to TerminationFailedErrors
-                val errTDecr = ErrTrafo({ case AssertFailed(_, AssertionFalse(_), _)  => TerminationFailed(func,
-                    VariantNotDecreasing(callerFunctionInOrigBody, decOrigin.get.subExps map {
+                val errTDecr = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(func, reason match {
+                  case AssertionFalse(_) =>
+                    VariantNotDecreasing(callerFunctionInOrigBody, comparableDec._1 map {
                       case p: PredicateAccessPredicate => p.loc
-                    }, newFuncAppList))
+                      case r => r
+                    }, newFuncAppList)
+                  case d => d
+                })
+                case e => e
                 })
 
                 val argsForTermProof = smallerExpressions zip biggerExpression
@@ -644,21 +652,21 @@ case class TerminationFailed(offendingNode: Function, reason: ErrorReason, overr
 
 case class VariantNotDecreasing(offendingNode: FuncApp, decExp: Seq[Exp], offendingPath: Seq[FuncApp]) extends AbstractErrorReason {
   val id = "variant.not.decreasing"
-  override def readableMessage = s"Termination measure (${decExp.mkString(",")}) might not (indirectly) decrease on ${getReadablePath(offendingPath)}."
+  override def readableMessage = s"Termination measure (${decExp.mkString(",")}) might not decrease on ${getReadablePath(offendingPath)}."
 
   def getReadablePath(path: Seq[FuncApp]): String = {
-    path.map(f => s"$f @ ${f.pos}").mkString(" -> ")
+    path.map(f => s"$f@${f.pos}").mkString(" -> ")
   }
 
   def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = VariantNotDecreasing(offendingNode.asInstanceOf[FuncApp], decExp, offendingPath)
 }
 
-case class TerminationNoBound(offendingNode: FuncApp, decExp: Exp, offendingPath: Seq[FuncApp]) extends AbstractErrorReason {
+case class TerminationNoBound(offendingNode: FuncApp, decExp: Seq[Exp], offendingPath: Seq[FuncApp]) extends AbstractErrorReason {
   val id = "termination.no.bound"
-  override def readableMessage = s"Decreases expression ($decExp) might not be bounded on ${getReadablePath(offendingPath)}."
+  override def readableMessage = s"Decreases expression (${decExp.mkString(",")}) might not be bounded on ${getReadablePath(offendingPath)}."
 
   def getReadablePath(path: Seq[FuncApp]): String = {
-    path.map(f => s"$f @ ${f.pos}").mkString(" -> ")
+    path.map(f => s"$f@${f.pos}").mkString(" -> ")
   }
 
   def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(offendingNode.asInstanceOf[FuncApp], decExp, offendingPath)
