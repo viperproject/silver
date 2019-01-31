@@ -118,6 +118,7 @@ class DecreasePlugin extends SilverPlugin
     // get decrease in post conditions and
     // transform them to post condition with a DecreaseExp
     transformDecreasesNToDecreaseExp(input, decreasesNFunctions.toMap, getDecreasesNDomain)
+
   }
 
   /** Called after methods are filtered but before the verification by the backend happens.
@@ -126,10 +127,15 @@ class DecreasePlugin extends SilverPlugin
     * @return Modified AST
     */
   override def beforeVerify(input: Program): Program = {
+    val newProgram = transformToVerifyableProgram(input)
+
+    newProgram
+  }
+
+
+  def transformToVerifyableProgram(input: Program): Program = {
     // remove all post conditions which are DecreaseExp
     // and add them to the decreaseMap functions -> decreases map
-
-
     val errors = checkNoFunctionRecursesViaDecreasesClause(input)
     if (errors.nonEmpty){
       for (e <- errors) {
@@ -157,7 +163,15 @@ class DecreasePlugin extends SilverPlugin
     val f = structureForTermProofs._2
     val m = structureForTermProofs._3
 
-    newProgram.copy(domains = d, functions = newProgram.functions ++ f, methods = newProgram.methods ++ m)(newProgram.pos, newProgram.info, newProgram.errT)
+    //newProgram.copy(domains = d, functions = newProgram.functions ++ f, methods = newProgram.methods ++ m)(newProgram.pos, newProgram.info, newProgram.errT)
+
+    Program(
+      newProgram.domains ++ d,
+      newProgram.fields,
+      newProgram.functions ++ f,
+      newProgram.predicates,
+      newProgram.methods ++ m
+    )(newProgram.pos, newProgram.info, newProgram.errT)
   }
 
 
@@ -170,7 +184,7 @@ class DecreasePlugin extends SilverPlugin
       case f: Function => {
         val posts = f.posts map {
           case c: Call if decreasesNFunctions.get(c.args.size).contains(c.callee) => {
-            DecreaseExp(c.isPure, c.pos, c.subExps, NodeTrafo(c))
+            DecreaseExp(c.pos, c.subExps, NodeTrafo(c))
           }
           case p => p
         }
@@ -182,7 +196,7 @@ class DecreasePlugin extends SilverPlugin
           pres = f.pres,
           decs = f.decs,
           body = f.body,
-        )(f.pos, f.info, NodeTrafo(f))
+        )(f.pos, f.info, f.errT)
       }
     }).execute(input)
   }
@@ -205,7 +219,7 @@ class DecreasePlugin extends SilverPlugin
             pres = f.pres,
             decs = f.decs,
             body = f.body,
-          )(f.pos, f.info, NodeTrafo(f))
+          )(f.pos, f.info, f.errT)
 
         if (decreases.nonEmpty) {
           decreaseMap += (newFunction -> decreases.head.asInstanceOf[DecreaseExp])
@@ -236,7 +250,9 @@ class DecreasePlugin extends SilverPlugin
 
 
 
-case class DecreaseExp(extensionIsPure: Boolean, pos: Position, extensionSubnodes: Seq[Exp], errT: ErrorTrafo) extends ExtensionExp {
+case class DecreaseExp(pos: Position, extensionSubnodes: Seq[Exp], errT: ErrorTrafo) extends ExtensionExp {
+
+  override def extensionIsPure = false
 
   override def typ: Type = Bool
 
@@ -263,7 +279,7 @@ case class DecreaseExp(extensionIsPure: Boolean, pos: Position, extensionSubnode
 
   override def duplicate(children: Seq[AnyRef]): DecreaseExp = {
     children match {
-      case Seq(args: List[Exp]) => DecreaseExp(extensionIsPure, pos, args, errT)
+      case Seq(args: List[Exp]) => DecreaseExp(pos, args, errT)
     }
   }
 }

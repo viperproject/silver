@@ -12,8 +12,9 @@ import viper.silver.ast._
 import viper.silver.ast.utility.{Consistency, Functions}
 import viper.silver.ast.utility.Rewriter.{StrategyBuilder, Traverse}
 import viper.silver.ast.utility.Statements.EmptyStmt
-import viper.silver.verifier.errors.{AssertFailed, TerminationFailed}
-import viper.silver.verifier.reasons._
+import viper.silver.verifier.errors.AssertFailed
+import viper.silver.verifier.reasons.AssertionFalse
+import viper.silver.verifier.{AbstractErrorReason, AbstractVerificationError, ErrorReason, errors}
 
 import scala.collection.immutable.ListMap
 
@@ -81,10 +82,10 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
     //Create for every Function a method which proofs the termination
     //Ignore functions with 'decreases *' or with no body
     //val newMethods = (funcs.filter(f => f.body.nonEmpty && (f.decs.isEmpty || !f.decs.get.isInstanceOf[DecStar])) map {
-    val newMethods = (decreaseMap.keys.toSeq map {
+    val newMethods = (funcs.filter(f => f.body.nonEmpty ) map {
       func => {
         neededLocalVars = collection.mutable.ListMap.empty[String, LocalVarDecl]
-        val methodBody: Stmt = rewriteFuncBody(func.body.get, func, null, Nil, preds)
+        val methodBody: Stmt = rewriteFuncBody(func.body.get, func, Nil, Nil :+ func.name, preds)
 
         val methodName = uniqueName(func.name + "_termination_proof")
 
@@ -115,7 +116,7 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
     *
     * @param bodyToRewrite     expression which will be transformed to statements
     * @param func              original function
-    * @param funcAppInOrigFunc is the position where the original function calls another function.
+    * @param funcAppList is the position where the original function calls another function.
     *                          It is used for ErrorMeassges
     * @param alreadyChecked    set of functions which has been already traversed, to hinder infinity checks
     * @param predicates        set of all predicates, used in proof generation for decreasing predicates
@@ -123,19 +124,19 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
     */
   private def rewriteFuncBody(bodyToRewrite: Exp,
                               func: Function,
-                              funcAppInOrigFunc: FuncApp,
+                              funcAppList: Seq[FuncApp],
                               alreadyChecked: Seq[String],
                               predicates: Seq[Predicate])
   : Stmt = {
 
     bodyToRewrite match {
       case pap: PredicateAccessPredicate =>
-        val permChecks = rewriteFuncBody(pap.perm, func, funcAppInOrigFunc, alreadyChecked, predicates)
+        val permChecks = rewriteFuncBody(pap.perm, func, funcAppList, alreadyChecked, predicates)
         //Add the nested-assumption if the predicate has another predicate inside of its body
         //func.decs match {
           //case Some(DecTuple(_)) =>
         decreaseMap.get(func) match {
-          case Some(DecreaseExp(_,_,_,_)) =>
+          case Some(DecreaseExp(_,_,_)) =>
             val pred: Predicate = predicates.find(_.name == pap.loc.predicateName).get
 
             pred.body match {
@@ -165,9 +166,9 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
 
       case CondExp(cond, thn, els) =>
         //Check for possible recursion inside of the condition
-        val termCheckInCond = rewriteFuncBody(cond, func, funcAppInOrigFunc, alreadyChecked, predicates)
-        val thnSt = rewriteFuncBody(thn, func, funcAppInOrigFunc, alreadyChecked, predicates)
-        val elsSt = rewriteFuncBody(els, func, funcAppInOrigFunc, alreadyChecked, predicates)
+        val termCheckInCond = rewriteFuncBody(cond, func, funcAppList, alreadyChecked, predicates)
+        val thnSt = rewriteFuncBody(thn, func, funcAppList, alreadyChecked, predicates)
+        val elsSt = rewriteFuncBody(els, func, funcAppList, alreadyChecked, predicates)
 
         val wholeCond = if (thnSt == EmptyStmt && elsSt == EmptyStmt) EmptyStmt else {
           If(replaceExpWithDummyFnc(func)(cond), Seqn(Seq(thnSt), Nil)(bodyToRewrite.pos),
@@ -176,8 +177,8 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
         Seqn(Seq(termCheckInCond, wholeCond), Nil)(bodyToRewrite.pos)
       case Unfolding(acc, unfBody) =>
         val unfold = Unfold(acc)(unfBody.pos)
-        val access = rewriteFuncBody(acc, func, funcAppInOrigFunc, alreadyChecked, predicates)
-        val unfoldBody = rewriteFuncBody(unfBody, func, funcAppInOrigFunc, alreadyChecked, predicates)
+        val access = rewriteFuncBody(acc, func, funcAppList, alreadyChecked, predicates)
+        val unfoldBody = rewriteFuncBody(unfBody, func, funcAppList, alreadyChecked, predicates)
         val fold = Fold(acc)(unfBody.pos)
 
         unfoldBody match {
@@ -185,34 +186,34 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
           case _ => Seqn(Seq(unfold, access, unfoldBody, fold), Nil)(unfBody.pos)
         }
       case callee: FuncApp =>
+
         val stmts = collection.mutable.ArrayBuffer[Stmt]()
 
         val calledFunc = callee.func(program)
         val calleeArgs = callee.getArgs
-        val termChecksOfArgs = calleeArgs map (rewriteFuncBody(_, func, funcAppInOrigFunc, alreadyChecked, predicates))
 
+        // check the arguments
+        val termChecksOfArgs = calleeArgs map (rewriteFuncBody(_, func, funcAppList, alreadyChecked, predicates))
         stmts.appendAll(termChecksOfArgs)
 
         if (heights(func) == heights(calledFunc)){
           // In the same cycle. => unroll
-          if (funcAppInOrigFunc == null){
-            // function call inside original function
-            val recursion = rewriteFuncBody(callee, func, callee, alreadyChecked :+ func.name, predicates)
-            stmts.append(recursion)
-          }else{
+
+          val newFuncAppList = funcAppList :+ callee
+          val newAlreadyChecked = alreadyChecked :+ callee.funcname
+
+          // map of parameters in the called function to parameters in the current functions (for substitution)
+          val mapFormalArgsToCalledArgs = ListMap(calledFunc.formalArgs.map(_.localVar).zip(calleeArgs):_*)
 
             if (!alreadyChecked.contains(callee.funcname)){
               // not yet unrolled
 
-              val formalArgsOfCallee = calledFunc.formalArgs map (_.localVar)
-              //Arguments are now checked -> to not check same recursions again, replace them with their dummyFnc
-              val mapFormalArgsToCalledArgs = ListMap(formalArgsOfCallee.zip(calleeArgs map replaceExpWithDummyFnc(func)):_*)
-
               if (calledFunc.body.nonEmpty) {
                 val body = calledFunc.body.get.replace(mapFormalArgsToCalledArgs)
 
-                val unrolled = rewriteFuncBody(body, func, funcAppInOrigFunc, alreadyChecked :+ callee.funcname, predicates)
+                val unrolled = rewriteFuncBody(body, func, newFuncAppList, newAlreadyChecked, predicates)
                 stmts.append(unrolled)
+
               }else{
                 // TODO: Why?
               }
@@ -224,71 +225,62 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
               val decDest = decreaseMap.get(calledFunc)
 
               if (decOrigin.isEmpty || decDest.isEmpty){
-                // TODO:
+                // TODO: Which policies?
 
               }else{
+
                 // none is empty
-                val formalArgs: Seq[LocalVar] = func.formalArgs map (_.localVar)
+                //val formalArgs: Seq[LocalVar] = func.formalArgs map (_.localVar)
                 var neededArgAssigns: Seq[Stmt] = Nil //Needed for decreasing predicates
 
-                val decZip =
-                (decOrigin.get.subExps zip decDest.get.subExps)
-                  .takeWhile(exps => exps._1.typ.isSubtype(exps._2.typ) && exps._2.typ.isSubtype(exps._1.typ))
+                val comparableDec =
+                (decOrigin.get.subExps zip decDest.get.subExps.map(_.replace(mapFormalArgsToCalledArgs)))
+                  .takeWhile(exps => exps._1.typ == exps._2.typ)
+                  .unzip
 
-                val smallerExpressions = decZip.unzip._1 map {
-                  case pap: PredicateAccessPredicate =>
-                    val argMap: ListMap[Exp,Exp] = ListMap(formalArgs.zip(calleeArgs): _*)
-                    val varOfCalleePred = uniquePredLocVar(pap.loc, argMap)
-
-                    neededArgAssigns :+= generateAssign(pap, varOfCalleePred, argMap)
-                    varOfCalleePred
-                  case decC => decC.replace(ListMap(formalArgs.zip(calleeArgs):_*))
-                }
-
-                val biggerExpression = decZip.unzip._2 map {
+                val biggerExpression = comparableDec._1 map {
                   case pap: PredicateAccessPredicate =>
                     assert(locationDomain.isDefined)
                     val varOfCalleePred = uniquePredLocVar(pap.loc)
 
                     neededArgAssigns :+= generateAssign(pap, varOfCalleePred)
                     varOfCalleePred
-                  case d => d match {
-                    case unfold: Unfolding => Old(unfold)(unfold.pos)
-                    case default => default
-                  }
+
+                  case unfold: Unfolding => Old(unfold)(unfold.pos)
+                  case default => default
+                }
+                val smallerExpressions = comparableDec._2 map {
+                  case pap: PredicateAccessPredicate =>
+                    val varOfCalleePred = uniquePredLocVar(pap.loc)
+
+                    neededArgAssigns :+= generateAssign(pap, varOfCalleePred)
+                    varOfCalleePred
+                  case decC => decC
                 }
 
-                val infoBound = SimpleInfo(Seq("BoundedCheck"))
-                val infoDecr = SimpleInfo(Seq("DecreasingCheck"))
+                val infoBound = SimpleInfo(Seq("BoundedCheck "))
+                val infoDecr = SimpleInfo(Seq("DecreasingCheck "))
 
-                val callerFunctionInOrigBody = if (funcAppInOrigFunc == null) callee else funcAppInOrigFunc
+                val callerFunctionInOrigBody = newFuncAppList.head
 
+                // TODO: Error Transformation not working
                 //Map AssertionErrors to TerminationFailedErrors
-                val errTBound = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(func, reason match {
-                  case AssertionFalse(offendingNode) => offendingNode match {
-                    case dfa: DomainFuncApp =>
-                      assert(dfa.args.size == 1)
-                      TerminationNoBound(DecTuple(decOrigin.get.subExps)(callerFunctionInOrigBody.pos), dfa.args.head match {
-                        case PredicateAccessPredicate(loc, _) => loc
-                        case d => d
-                      })
-                    case _ => reason
-                  }
+                val errTBound = ErrTrafo({ case AssertFailed(_, AssertionFalse(offendingNode), _) => TerminationFailed(func, offendingNode match {
+                  case dfa: DomainFuncApp => TerminationNoBound(callerFunctionInOrigBody, dfa.args.head match {
+                      case PredicateAccessPredicate(loc, _) => loc
+                    }, newFuncAppList)
                 })
                 })
 
                 //Map AssertionErrors to TerminationFailedErrors
-                val errTDecr = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(func, reason match {
-                  case AssertionFalse(_) =>
+                val errTDecr = ErrTrafo({ case AssertFailed(_, AssertionFalse(_), _)  => TerminationFailed(func,
                     VariantNotDecreasing(callerFunctionInOrigBody, decOrigin.get.subExps map {
                       case p: PredicateAccessPredicate => p.loc
-                      case r => r
-                    })
-                  case d => d
-                })
+                    }, newFuncAppList))
                 })
 
                 val argsForTermProof = smallerExpressions zip biggerExpression
+
 
                 val paramTypesDecr = decreasingFunc.get.formalArgs map (_.typ)
                 val argTypeVarsDecr = paramTypesDecr.flatMap(p => p.typeVariables)
@@ -304,12 +296,11 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
                     decrFunc :+= EqCmp(argsForTermProof(i - 1)._1, argsForTermProof(i - 1)._2)(decreasingFunc.get.pos)
                   }
                   decrFunc :+=
-                    replaceExpWithDummyFnc(func)(
                       DomainFuncApp(decreasingFunc.get,
                         Seq(argsForTermProof(i)._1, argsForTermProof(i)._2),
                         ListMap(argTypeVarsDecr.head -> argsForTermProof(i)._1.typ,
                           argTypeVarsDecr.last -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos)
-                    )
+
                   boundFunc :+= replaceExpWithDummyFnc(func)(
                     DomainFuncApp(boundedFunc.get,
                       Seq(argsForTermProof(i)._1),
@@ -323,20 +314,17 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
                 val decreaseAss =
                   Assert(buildDecTree(decrFunc, conj = true))(callerFunctionInOrigBody.pos, infoDecr, errTDecr)
 
-                stmts.appendAll(termChecksOfArgs ++ neededArgAssigns :+ boundedAss :+ decreaseAss)
-
+                stmts.appendAll(neededArgAssigns :+ boundedAss :+ decreaseAss)
               }
             }
-          }
-
         }else{
           // not in the same cycle
         }
 
         Seqn(stmts, Nil)(bodyToRewrite.pos)
       case b: BinExp =>
-        val left = rewriteFuncBody(b.left, func, funcAppInOrigFunc, alreadyChecked, predicates)
-        val right = rewriteFuncBody(b.right, func, funcAppInOrigFunc, alreadyChecked, predicates)
+        val left = rewriteFuncBody(b.left, func, funcAppList, alreadyChecked, predicates)
+        val right = rewriteFuncBody(b.right, func, funcAppList, alreadyChecked, predicates)
         //Short circuit evaluation
         b match {
           case _: Or =>
@@ -356,38 +344,38 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
         }
       case sq: SeqExp => sq match {
         case ExplicitSeq(elems) =>
-          Seqn(elems.map(rewriteFuncBody(_, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+          Seqn(elems.map(rewriteFuncBody(_, func, funcAppList, alreadyChecked, predicates)), Nil)(sq.pos)
         case RangeSeq(low, high) =>
-          Seqn(Seq(rewriteFuncBody(low, func, funcAppInOrigFunc, alreadyChecked, predicates),
-            rewriteFuncBody(high, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+          Seqn(Seq(rewriteFuncBody(low, func, funcAppList, alreadyChecked, predicates),
+            rewriteFuncBody(high, func, funcAppList, alreadyChecked, predicates)), Nil)(sq.pos)
         case SeqAppend(left, right) =>
-          Seqn(Seq(rewriteFuncBody(left, func, funcAppInOrigFunc, alreadyChecked, predicates),
-            rewriteFuncBody(right, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+          Seqn(Seq(rewriteFuncBody(left, func, funcAppList, alreadyChecked, predicates),
+            rewriteFuncBody(right, func, funcAppList, alreadyChecked, predicates)), Nil)(sq.pos)
         case SeqIndex(s, idx) =>
-          Seqn(Seq(rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates),
-            rewriteFuncBody(idx, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+          Seqn(Seq(rewriteFuncBody(s, func, funcAppList, alreadyChecked, predicates),
+            rewriteFuncBody(idx, func, funcAppList, alreadyChecked, predicates)), Nil)(sq.pos)
         case SeqTake(s, n) =>
-          Seqn(Seq(rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates),
-            rewriteFuncBody(n, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+          Seqn(Seq(rewriteFuncBody(s, func, funcAppList, alreadyChecked, predicates),
+            rewriteFuncBody(n, func, funcAppList, alreadyChecked, predicates)), Nil)(sq.pos)
         case SeqDrop(s, n) =>
-          Seqn(Seq(rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates),
-            rewriteFuncBody(n, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+          Seqn(Seq(rewriteFuncBody(s, func, funcAppList, alreadyChecked, predicates),
+            rewriteFuncBody(n, func, funcAppList, alreadyChecked, predicates)), Nil)(sq.pos)
         case SeqContains(elem, s) =>
-          Seqn(Seq(rewriteFuncBody(elem, func, funcAppInOrigFunc, alreadyChecked, predicates),
-            rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+          Seqn(Seq(rewriteFuncBody(elem, func, funcAppList, alreadyChecked, predicates),
+            rewriteFuncBody(s, func, funcAppList, alreadyChecked, predicates)), Nil)(sq.pos)
         case SeqUpdate(s, idx, elem) =>
-          Seqn(Seq(rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates),
-            rewriteFuncBody(idx, func, funcAppInOrigFunc, alreadyChecked, predicates),
-            rewriteFuncBody(elem, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+          Seqn(Seq(rewriteFuncBody(s, func, funcAppList, alreadyChecked, predicates),
+            rewriteFuncBody(idx, func, funcAppList, alreadyChecked, predicates),
+            rewriteFuncBody(elem, func, funcAppList, alreadyChecked, predicates)), Nil)(sq.pos)
         case SeqLength(s) =>
-          Seqn(Seq(rewriteFuncBody(s, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(sq.pos)
+          Seqn(Seq(rewriteFuncBody(s, func, funcAppList, alreadyChecked, predicates)), Nil)(sq.pos)
         case _: Exp => EmptyStmt
       }
       case st: ExplicitSet =>
-        Seqn(st.elems.map(rewriteFuncBody(_, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(st.pos)
+        Seqn(st.elems.map(rewriteFuncBody(_, func, funcAppList, alreadyChecked, predicates)), Nil)(st.pos)
       case mst: ExplicitMultiset =>
-        Seqn(mst.elems.map(rewriteFuncBody(_, func, funcAppInOrigFunc, alreadyChecked, predicates)), Nil)(mst.pos)
-      case u: UnExp => rewriteFuncBody(u.exp, func, funcAppInOrigFunc, alreadyChecked, predicates)
+        Seqn(mst.elems.map(rewriteFuncBody(_, func, funcAppList, alreadyChecked, predicates)), Nil)(mst.pos)
+      case u: UnExp => rewriteFuncBody(u.exp, func, funcAppList, alreadyChecked, predicates)
       case _: Exp => EmptyStmt
     }
   }
@@ -578,7 +566,7 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
           } else {
             val uniqueFuncName = uniqueName(fa.funcname + "_withoutBody")
             val func = functions(fa.funcname)
-            val newFunc = Function(uniqueFuncName, func.formalArgs, func.typ, func.pres, Nil, None, None)(func.pos)
+            val newFunc = Function(uniqueFuncName, func.formalArgs, func.typ, Nil, Nil, None, None)(func.pos)
             functions(uniqueFuncName) = newFunc
             neededDummyFncs(fa.funcname) = newFunc
             FuncApp(newFunc, fa.args)(fa.pos)
@@ -643,4 +631,35 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
       newLocalVar
     }
   }
+}
+
+
+case class TerminationFailed(offendingNode: Function, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+  val id = "termination.failed"
+  val text = s"Function ${offendingNode.name} might not terminate."
+
+  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationFailed(offendingNode.asInstanceOf[Function], this.reason)
+  def withReason(r: ErrorReason) = TerminationFailed(offendingNode, r)
+}
+
+case class VariantNotDecreasing(offendingNode: FuncApp, decExp: Seq[Exp], offendingPath: Seq[FuncApp]) extends AbstractErrorReason {
+  val id = "variant.not.decreasing"
+  override def readableMessage = s"Termination measure (${decExp.mkString(",")}) might not (indirectly) decrease on ${getReadablePath(offendingPath)}."
+
+  def getReadablePath(path: Seq[FuncApp]): String = {
+    path.map(f => s"$f @ ${f.pos}").mkString(" -> ")
+  }
+
+  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = VariantNotDecreasing(offendingNode.asInstanceOf[FuncApp], decExp, offendingPath)
+}
+
+case class TerminationNoBound(offendingNode: FuncApp, decExp: Exp, offendingPath: Seq[FuncApp]) extends AbstractErrorReason {
+  val id = "termination.no.bound"
+  override def readableMessage = s"Decreases expression ($decExp) might not be bounded on ${getReadablePath(offendingPath)}."
+
+  def getReadablePath(path: Seq[FuncApp]): String = {
+    path.map(f => s"$f @ ${f.pos}").mkString(" -> ")
+  }
+
+  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(offendingNode.asInstanceOf[FuncApp], decExp, offendingPath)
 }
