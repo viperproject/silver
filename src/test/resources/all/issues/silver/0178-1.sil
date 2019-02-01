@@ -1,0 +1,15 @@
+domain Pointers {
+  function f(x:Ref) : Ref
+}
+
+field storedInt : Int
+
+define deref(ptr) ptr.storedInt
+
+method strange()
+{
+  var i: Int
+  var x: Ref
+  //:: ExpectedOutput(typechecker.error)
+  deref(x) := loc(x).storedInt
+}

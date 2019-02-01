@@ -496,7 +496,10 @@ object FastParser extends PosParser[Char, String] {
         // Check if macro's body can be the left-hand side of an assignment and,
         // if that's the case, add it in a corresponding assignment statement
         body match {
-          case fa: PFieldAccess => PFieldAssign(fa, exp)
+          case fa: PFieldAccess =>
+            val node = PFieldAssign(fa, exp)
+            adaptPositions(node, fa)
+            node
           case _ => throw ParseException("The body of this macro is not a suitable left-hand side of an assignment statement", FastPositions.getStart(call))
         }
 
