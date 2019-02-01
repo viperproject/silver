@@ -1,0 +1,10 @@
+method m1(r: Ref)
+{
+
+}
+
+method m2(r: Ref)
+{
+    //:: ExpectedOutput(parser.error)
+    m1(r) := 1
+}

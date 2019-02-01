@@ -1,0 +1,7 @@
+define nonlhs() 3
+
+method m3()
+{
+    //:: ExpectedOutput(parser.error)
+    nonlhs() := 4
+}

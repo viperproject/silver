@@ -1,0 +1,14 @@
+define deref(x) x.f
+
+field f: Int
+
+method m1(r: Ref)
+    requires acc(r.f)
+{
+    r.f := r.f + 1
+    r.f := deref(r) + 1
+    r.f := deref(r)
+    deref(r) := r.f + 1
+}
+
+
