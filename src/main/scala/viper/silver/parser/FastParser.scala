@@ -7,17 +7,15 @@
 package viper.silver.parser
 
 import java.nio.file.{Files, Path}
-
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
 import viper.silver.ast.{LineCol, SourcePosition}
 import viper.silver.FastPositions
-import viper.silver.ast.utility.Rewriter.{PartialContextC, StrategyBuilder}
+import viper.silver.ast.utility.Rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier.ParseError
-
 import scala.collection.mutable
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
@@ -363,8 +361,6 @@ object FastParser extends PosParser[Char, String] {
 
     detectCyclicMacros(toExpand, Set.empty)
 
-    /**** Expand macros ****/
-
     // Strategy to rename variables declared in macro's body if their names are already used in
     // the scope where the macro is being expanded, avoiding name clashes (hygienic macro expansion)
     val renamer = StrategyBuilder.Context[PNode, ReplaceContext]({
@@ -436,56 +432,78 @@ object FastParser extends PosParser[Char, String] {
       // Create context
       val context = new PartialContextC[PNode, ReplaceContext](ReplaceContext(p2a), replacerContextUpdater)
 
-      // Rename variables in macro's body
+      // Rename locally bound variables in macro's body
       val renamedVarsMacro = renamer.execute[PNode](body, context)
       adaptPositions(renamedVarsMacro, pos)
 
-      // Replace macro's parameters by their respective arguments
-      val expandedMacro = replacer.execute[PNode](renamedVarsMacro, context)
-      adaptPositions(expandedMacro, pos)
+      // Replace macro's call arguments for every occurrence of its respective parameters in the body
+      val replacedParamsMacro = replacer.execute[PNode](renamedVarsMacro, context)
+      adaptPositions(replacedParamsMacro, pos)
 
       // Return expanded macro's body
-      expandedMacro
+      replacedParamsMacro
     }
 
-    /* Strategy that checks macro applications for legality and then expands them.
-     * Relies on all macros being acyclic!
-     */
-    val expander = StrategyBuilder.Ancestor[PNode] { case (currentNode, ctxt) =>
-      matchOnMacroApplication.andThen { case MacroApp(name, actualArgs, app) =>
-        val appliedMacro = getMacroByName(name)
-        val formalArgs = appliedMacro.args.getOrElse(Nil)
-        val macroBody = appliedMacro.body
+    def ifIsValidMacroThenExpand(node: PNode, ctxt: ContextA[PNode]): PNode = {
+      matchOnMacroApplication.andThen {
+        case MacroApp(name, actualArgs, app) =>
+          val appliedMacro = getMacroByName(name)
+          val formalArgs = appliedMacro.args.getOrElse(Nil)
+          val macroBody = appliedMacro.body
 
-        if (actualArgs.length != formalArgs.length)
-          throw ParseException("Number of macro arguments does not match", FastPositions.getStart(app))
+          if (actualArgs.length != formalArgs.length)
+            throw ParseException("Number of macro arguments does not match", FastPositions.getStart(app))
 
-        (app, macroBody) match {
-          case (_: PStmt, _: PExp) =>
-            throw ParseException("Expression macro used in statement position", FastPositions.getStart(app))
-          case (_: PExp, _: PStmt) =>
-            throw ParseException("Statement macro used in expression position", FastPositions.getStart(app))
-          case _ => /* All good */
+          (app, macroBody) match {
+            case (_: PStmt, _: PExp) =>
+              throw ParseException("Expression macro used in statement position", FastPositions.getStart(app))
+            case (_: PExp, _: PStmt) =>
+              throw ParseException("Statement macro used in expression position", FastPositions.getStart(app))
+            case _ => /* All good */
+          }
+
+          /* TODO: The current unsupported position detection is probably not exhaustive.
+           *       Seems difficult to concisely and precisely match all (il)legal cases, however.
+           */
+          (ctxt.parent, macroBody) match {
+            case (PAccPred(loc, _), _) if (loc eq app) && !macroBody.isInstanceOf[PLocationAccess] =>
+              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+            case (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
+              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+            case _ => /* All good */
+          }
+
+          try {
+            replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
+          } catch {
+            case problem: ParseTreeDuplicationError =>
+              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), FastPositions.getStart(app))
+          }
+      }.applyOrElse(node, (_: PNode) => node)
+    }
+
+    // Strategy that checks macro applications for legality and then expands them.
+    // Relies on all macros being acyclic!
+    val expander = StrategyBuilder.Ancestor[PNode] {
+
+      // Handles macros on the left hand-side of assignments
+      case (PMacroAssign(call, exp), ctxt) =>
+        if (!isMacro(call.opName))
+          throw ParseException("The only calls that can be on the left-hand side of an assignment statement are calls to macros", FastPositions.getStart(call))
+
+        val body = ifIsValidMacroThenExpand(call, ctxt)
+
+        // Check if macro's body can be the left-hand side of an assignment and,
+        // if that's the case, add it in a corresponding assignment statement
+        body match {
+          case fa: PFieldAccess => PFieldAssign(fa, exp)
+          case _ => throw ParseException("The body of this macro is not a suitable left-hand side of an assignment statement", FastPositions.getStart(call))
         }
 
-        /* TODO: The current unsupported position detection is probably not exhaustive.
-         *       Seems difficult to concisely and precisely match all (il)legal cases, however.
-         */
-        (ctxt.parent, macroBody) match {
-          case (PAccPred(loc, _), _) if (loc eq app) && !macroBody.isInstanceOf[PLocationAccess] =>
-            throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
-          case (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
-            throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
-          case _ => /* All good */
-        }
+      // Handles all other calls to macros
+      case (currentNode, ctxt) =>
+        ifIsValidMacroThenExpand(currentNode, ctxt)
 
-        try {
-          replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
-        } catch {
-          case problem: ParseTreeDuplicationError =>
-            throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), FastPositions.getStart(app))
-        }
-      }.applyOrElse(currentNode, (_: PNode) => currentNode)
     }.recurseFunc {
       /* Don't recurse into the PIdnUse of nodes that themselves could represent macro
        * applications. Otherwise, the expansion of nested macros will fail due to attempting
@@ -773,7 +791,7 @@ object FastParser extends PosParser[Char, String] {
     case (func, args, typeGiven) => PCall(func, args, Some(typeGiven))
   }
 
-  lazy val stmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
+  lazy val stmt: P[PStmt] = P(macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand | macroref | block)
 
@@ -784,6 +802,8 @@ object FastParser extends PosParser[Char, String] {
   lazy val macroref: P[PMacroRef] = P(idnuse).map { case (a) => PMacroRef(a) }
 
   lazy val fieldassign: P[PFieldAssign] = P(fieldAcc ~ ":=" ~ exp).map { case (a, b) => PFieldAssign(a, b) }
+
+  lazy val macroassign: P[PMacroAssign] = P(NoCut(fapp) ~ ":=" ~ exp).map { case (call, exp) => PMacroAssign(call, exp) }
 
   lazy val localassign: P[PVarAssign] = P(idnuse ~ ":=" ~ exp).map { case (a, b) => PVarAssign(a, b) }
 
