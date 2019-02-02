@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 predicate P(x: Ref) { x != null }
 predicate Q(x: Ref) { x != null }
 

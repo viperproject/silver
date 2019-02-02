@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 field next: Ref;
 
 predicate P(x: Ref) { acc(x.next) }

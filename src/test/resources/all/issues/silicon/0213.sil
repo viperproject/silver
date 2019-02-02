@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 field f1: Ref
 field f2: Ref
 field val: Int

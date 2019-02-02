@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 field f: Bool
 field g: Int
 field h: Ref
@@ -16,6 +15,8 @@ method test5a(x: Ref)
     // h: x.f |-> tf'' # w,  x.g |-> tg  # w - (tf' ? w : n),
     //                       x.g |-> tg' # tf'' ? w : n
 
+  //:: ExpectedOutput(assert.failed:insufficient.permission)
+  //:: MissingOutput(assert.failed:insufficient.permission, /silicon/issue/307/)
   assert acc(x.g, 1/1000)
 }
 

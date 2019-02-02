@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 /* This example illustrates the behaviour of conditionals on the RHS
  * of a wand, in particular, which uncertainties are caused when the
  * footprint of a wand is affected by locations to which permissions

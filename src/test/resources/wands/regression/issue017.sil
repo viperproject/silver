@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 predicate P(x: Ref) { true }
 
 function fun(x: Ref, y: Int): Int

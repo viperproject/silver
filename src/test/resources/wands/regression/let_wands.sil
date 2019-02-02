@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 //:: IgnoreFile(/carbon/issue/108/)
 
 field f: Int

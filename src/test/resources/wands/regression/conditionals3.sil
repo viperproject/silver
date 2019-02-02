@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 field f: Bool
 field g: Int
 field h: Ref

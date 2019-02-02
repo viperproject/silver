@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 //:: IgnoreFile(/carbon/issue/107/)
 
 field f: Ref

@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 field val : Int;
 
 method test03(x: Ref) {
