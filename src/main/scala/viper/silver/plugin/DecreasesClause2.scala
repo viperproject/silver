@@ -264,7 +264,7 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
                 val callerFunctionInOrigBody = newFuncAppList.head
 
                 //Map AssertionErrors to TerminationFailedErrors
-                val errTBound = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(func, reason match {
+                val errTBound = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(decOrigin.get, reason match {
                   case AssertionFalse(offendingNode) => offendingNode match {
                     case dfa: DomainFuncApp =>
                       assert(dfa.args.size == 1)
@@ -276,12 +276,9 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
                 })
 
                 //Map AssertionErrors to TerminationFailedErrors
-                val errTDecr = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(func, reason match {
+                val errTDecr = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(decOrigin.get, reason match {
                   case AssertionFalse(_) =>
-                    VariantNotDecreasing(callerFunctionInOrigBody, comparableDec._1 map {
-                      case p: PredicateAccessPredicate => p.loc
-                      case r => r
-                    }, newFuncAppList)
+                    VariantNotDecreasing(callerFunctionInOrigBody, comparableDec._1, comparableDec._2, newFuncAppList)
                   case d => d
                 })
                 case e => e
@@ -311,8 +308,8 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
 
                   boundFunc :+= replaceExpWithDummyFnc(func)(
                     DomainFuncApp(boundedFunc.get,
-                      Seq(argsForTermProof(i)._1),
-                      ListMap(argTypeVarsDecr.head -> argsForTermProof(i)._1.typ,
+                      Seq(argsForTermProof(i)._2),
+                      ListMap(argTypeVarsDecr.head -> argsForTermProof(i)._2.typ,
                         argTypeVarsDecr.last -> argsForTermProof(i)._2.typ))(callerFunctionInOrigBody.pos)
                   )
                 }
@@ -642,28 +639,28 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
 }
 
 
-case class TerminationFailed(offendingNode: Function, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+case class TerminationFailed(offendingNode: DecreaseExp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
   val id = "termination.failed"
-  val text = s"Function ${offendingNode.name} might not terminate."
+  val text = s"Function might not terminate."
 
-  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationFailed(offendingNode.asInstanceOf[Function], this.reason)
+  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationFailed(this.offendingNode, this.reason)
   def withReason(r: ErrorReason) = TerminationFailed(offendingNode, r)
 }
 
-case class VariantNotDecreasing(offendingNode: FuncApp, decExp: Seq[Exp], offendingPath: Seq[FuncApp]) extends AbstractErrorReason {
+case class VariantNotDecreasing(offendingNode: FuncApp, decOrigin: Seq[Exp], decDest: Seq[Exp], offendingPath: Seq[FuncApp]) extends AbstractErrorReason {
   val id = "variant.not.decreasing"
-  override def readableMessage = s"Termination measure (${decExp.mkString(",")}) might not decrease on ${getReadablePath(offendingPath)}."
+  override def readableMessage = s"Termination measure (${decOrigin.mkString(", ")}) might not decrease on the path ${getReadablePath(offendingPath)} resulting to (${decDest.mkString(", ")})."
 
   def getReadablePath(path: Seq[FuncApp]): String = {
-    path.map(f => s"$f@${f.pos}").mkString(" -> ")
+    path.map(f => s"$f ${f.pos}").mkString(" -> ")
   }
 
-  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = VariantNotDecreasing(offendingNode.asInstanceOf[FuncApp], decExp, offendingPath)
+  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = VariantNotDecreasing(offendingNode.asInstanceOf[FuncApp], decOrigin, decDest, offendingPath)
 }
 
 case class TerminationNoBound(offendingNode: FuncApp, decExp: Seq[Exp], offendingPath: Seq[FuncApp]) extends AbstractErrorReason {
   val id = "termination.no.bound"
-  override def readableMessage = s"Decreases expression (${decExp.mkString(",")}) might not be bounded on ${getReadablePath(offendingPath)}."
+  override def readableMessage = s"Termination measure (${decExp.mkString(", ")}) might not be bounded."
 
   def getReadablePath(path: Seq[FuncApp]): String = {
     path.map(f => s"$f@${f.pos}").mkString(" -> ")

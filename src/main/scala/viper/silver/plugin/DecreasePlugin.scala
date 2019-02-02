@@ -144,7 +144,7 @@ class DecreasePlugin extends SilverPlugin
     input match {
       case Success => input
       case Failure(errors) => Failure(errors.map({
-        case a@AssertFailed(on, r, c) => a.transformedError()
+        case a@AssertFailed(Assert(_), _, _) => a.transformedError()
         case e => e
       }))
     }

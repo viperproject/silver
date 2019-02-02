@@ -1,25 +1,18 @@
-import "../decreaseOrder/int_decreases.sil"
+import "../decreaseOrder/importAllDec.sil"
 
-function t1(x: Int): Int
+function t1(x: Int, y: Int): Int
 requires x >= 0
-ensures decreases(x)
-//decreases(x)
-{
-    x==0 ? x : t2(x)
-}
-
-function t2(y: Int): Int
 requires y >= 0
-ensures decreases(y)
-//decreases(y)
+ensures decreases(x, y)
+//decreases(x, 1)
 {
-    y==0 ? y : t3(y)
+    y==0 ? x : t2(x, false) + t1(x+1, y-1)
 }
 
-function t3(z: Int): Int
-requires z >= 0
-ensures decreases(z)
-//decreases(z)
+function t2(y: Int, z: Bool): Int
+requires y >= 0
+ensures decreases(y, z)
+//decreases(y, z)
 {
-    z==0 ? z : t1(-1)
+    y==0 ? y : t1(y-1, y+y)
 }
