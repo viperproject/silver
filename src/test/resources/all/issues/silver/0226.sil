@@ -1,0 +1,13 @@
+define assign(x) {
+  x := 4
+}
+
+define foo() {
+  var tmp : Int
+  assign(tmp)
+  exhale forall i:Int :: i in Set[Int]() ==> true // quantifier without trigger!
+}
+
+method m() {
+  foo()
+}
