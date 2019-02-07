@@ -196,7 +196,7 @@ object FastParser extends PosParser[Char, String] {
   def expandDefines(p: PProgram): PProgram = {
     val globalMacros = p.macros
 
-    // Collect all global names to avoid conflicts
+    // Collect names to check for and avoid clashes
     val globalNamesWithoutMacros: Set[String] = (
          p.domains.map(_.idndef.name).toSet
       ++ p.functions.map(_.idndef.name).toSet
@@ -227,36 +227,31 @@ object FastParser extends PosParser[Char, String] {
     // Expand defines
     val domains =
       p.domains.map(domain => {
-        val namesInScope = globalNames ++ domain.deepCollect { case d: PIdnDef => d.name }
-        doExpandDefines[PDomain](globalMacros, domain, namesInScope)
+        doExpandDefines[PDomain](globalMacros, domain, p)
       })
 
     val functions =
       p.functions.map(function => {
-        val namesInScope = globalNames ++ function.deepCollect { case d: PIdnDef => d.name }
-        doExpandDefines(globalMacros, function, namesInScope)
+        doExpandDefines(globalMacros, function, p)
       })
 
     val predicates =
       p.predicates.map(predicate => {
-        val namesInScope = globalNames ++ predicate.deepCollect { case d: PIdnDef => d.name }
-        doExpandDefines(globalMacros, predicate, namesInScope)
+        doExpandDefines(globalMacros, predicate, p)
       })
 
     val methods = p.methods.map(method => {
-      val namesInScope = globalNames ++ method.deepCollect { case d: PIdnDef => d.name }
-
       // Collect all method local macros and expand them in the method
       // Remove the method local macros from the method for convenience
       val localMacros = method.deepCollect { case n: PDefine => n }
 
-      val withoutDefines =
+      val methodWithoutDefines =
         if (localMacros.isEmpty)
           method
         else
           method.transform { case mac: PDefine => PSkip().setPos(mac) }()
 
-      doExpandDefines(localMacros ++ globalMacros, withoutDefines, namesInScope)
+      doExpandDefines(localMacros ++ globalMacros, methodWithoutDefines, p)
     })
 
     PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.errors)
@@ -266,23 +261,21 @@ object FastParser extends PosParser[Char, String] {
   /**
     * Expand a macro inside a PNode of type T
     *
-    * @param macros      All macros that could be invoked inside the code
-    * @param toExpand    The AST node where we want to expand the macros in
-    * @param namesInScope Names that are considered to be in scope for all of `toExpand`
-    * @tparam T Type of the PNode
-    * @return PNode with expanded macros of type T
+    * @param macros   All macros that could be invoked inside the code
+    * @param toExpand The AST node where we want to expand the macros in
+    * @param p        root of the AST where the 'toExpand' node belongs to
+    * @tparam T       Type of the PNode
+    * @return         PNode with expanded macros of type T
     */
   def doExpandDefines[T <: PNode]
-                     (macros: Seq[PDefine], toExpand: T, namesInScope: Set[String])
+                     (macros: Seq[PDefine], toExpand: T, p: PProgram)
                      : T = {
+    // Store the replacements from normal variable to freshly generated variable
+    val freshNames = mutable.Map.empty[String, String]
+    var scopeAtMacroCall = Set.empty[String]
+    val scopeOfExpandedMacros = mutable.Set.empty[String]
 
-    /* Variables currently in scope; locally bound variables must not clash with them */
-    var namesCurrentlyInScope = namesInScope
-
-    /* Store the replacements from normal variable to freshly generated variable */
-    var freshNames = Map.empty[String, String]
-
-    /**** General helper classes and functions ****/
+    def scope: Set[String] = scopeAtMacroCall ++ scopeOfExpandedMacros
 
     case class ReplaceContext(formalArgumentSubstitutions: Map[String, PExp] = Map.empty)
 
@@ -306,21 +299,21 @@ object FastParser extends PosParser[Char, String] {
       adapter.execute[PNode](body)
     }
 
-    def getFreshVar(context: ReplaceContext, name: String): String =
-      getFreshVarWithSuffix(context, name, 0)
+    def getFreshVar(name: String): String =
+      getFreshVarWithSuffix(name, 0)
 
     // Acquire a fresh variable name for a macro definition
     // Rule: newName = name + $ + x where: x >= 0 and newName does not collide with global name
-    def getFreshVarWithSuffix(context: ReplaceContext, name: String, counter: Int): String = {
+    def getFreshVarWithSuffix(name: String, counter: Int): String = {
       val newName = s"$name$$$counter"
 
-      if (namesCurrentlyInScope.contains(newName)) {
+      if (scope.contains(newName)) {
         /* newName would clash with a name already in scope */
 
         /* TODO: Seems that the implementation could be optimised rather easily to avoid
          *       the linear search for the next "available" identifier
          */
-        getFreshVarWithSuffix(context, name, counter + 1)
+        getFreshVarWithSuffix(name, counter + 1)
       } else {
         newName
       }
@@ -340,8 +333,6 @@ object FastParser extends PosParser[Char, String] {
       case app: PCall if isMacro(app.func.name) => MacroApp(app.func.name, app.args, app)
       case app: PIdnUse if isMacro(app.name) => MacroApp(app.name, Nil, app)
     }
-
-    /**** Detect cyclic macros ****/
 
     def detectCyclicMacros(start: PNode, seen: Set[String]): Unit = {
       start.visit(
@@ -366,18 +357,18 @@ object FastParser extends PosParser[Char, String] {
     val renamer = StrategyBuilder.Context[PNode, ReplaceContext]({
 
       // Declared variable: either local or bound
-      case (varDecl: PIdnDef, ctxt) =>
+      case (varDecl: PIdnDef, _) =>
 
         // If variable name is already used in scope
-        if (namesCurrentlyInScope.contains(varDecl.name)) {
+        if (scope.contains(varDecl.name)) {
 
           // Rename variable
-          val freshName = getFreshVar(ctxt.c, varDecl.name)
+          val freshName = getFreshVar(varDecl.name)
           val freshDecl = PIdnDef(freshName)
 
           // Update scope
           freshNames += varDecl.name -> freshName
-          namesCurrentlyInScope += freshName
+          scopeOfExpandedMacros += freshName
 
           // Preserve positions
           adaptPositions(freshDecl, varDecl)
@@ -387,7 +378,7 @@ object FastParser extends PosParser[Char, String] {
         } else {
 
           // Update scope
-          namesCurrentlyInScope += varDecl.name
+          scopeOfExpandedMacros += varDecl.name
 
           // Return same variable
           varDecl
@@ -444,7 +435,7 @@ object FastParser extends PosParser[Char, String] {
       replacedParamsMacro
     }
 
-    def ifIsValidMacroThenExpand(node: PNode, ctxt: ContextA[PNode]): PNode = {
+    def ExpandMacroIfValid(node: PNode, ctxt: ContextA[PNode]): PNode = {
       matchOnMacroApplication.andThen {
         case MacroApp(name, actualArgs, app) =>
           val appliedMacro = getMacroByName(name)
@@ -474,6 +465,8 @@ object FastParser extends PosParser[Char, String] {
           }
 
           try {
+            scopeAtMacroCall = NameAnalyser().namesInScope(p, node)
+            freshNames.clear
             replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
           } catch {
             case problem: ParseTreeDuplicationError =>
@@ -491,7 +484,7 @@ object FastParser extends PosParser[Char, String] {
         if (!isMacro(call.opName))
           throw ParseException("The only calls that can be on the left-hand side of an assignment statement are calls to macros", FastPositions.getStart(call))
 
-        val body = ifIsValidMacroThenExpand(call, ctxt)
+        val body = ExpandMacroIfValid(call, ctxt)
 
         // Check if macro's body can be the left-hand side of an assignment and,
         // if that's the case, add it in a corresponding assignment statement
@@ -505,7 +498,7 @@ object FastParser extends PosParser[Char, String] {
 
       // Handles all other calls to macros
       case (currentNode, ctxt) =>
-        ifIsValidMacroThenExpand(currentNode, ctxt)
+        ExpandMacroIfValid(currentNode, ctxt)
 
     }.recurseFunc {
       /* Don't recurse into the PIdnUse of nodes that themselves could represent macro

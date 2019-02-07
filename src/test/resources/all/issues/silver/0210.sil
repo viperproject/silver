@@ -1,0 +1,11 @@
+domain D {
+  function f(i: Int): Bool
+}
+
+define macro() forall i: Int :: f(i)
+
+method m()
+{
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert (forall i: Int :: i == i) && macro()
+}
