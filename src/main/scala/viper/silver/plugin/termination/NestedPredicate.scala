@@ -1,18 +1,104 @@
 package viper.silver.plugin.termination
 
+import viper.silver.FastMessaging
+import viper.silver.ast.utility.Consistency
 import viper.silver.ast.utility.Statements.EmptyStmt
-import viper.silver.ast.{AccessPredicate, BinExp, CondExp, Domain, DomainFunc, DomainFuncApp, DomainType, Exp, FieldAccessPredicate, If, Implies, Inhale, Int, LocalVar, LocalVarAssign, LocalVarDecl, MagicWand, NoPosition, Node, PredicateAccess, PredicateAccessPredicate, Seqn, SimpleInfo, Stmt, Type, TypeVar, UnExp}
+import viper.silver.ast._
 
 import scala.collection.immutable.ListMap
-import scala.collection.mutable
 
-trait RewritePredicateBody extends TerminationCheck {
+/**
+  * Adds nested statements for the used predicates to the check code.
+  * Therefore it needs the following in the program:
+  * "nested" domain function
+  * "Loc" domain
+  */
+trait NestedPredicate extends TerminationCheck with RewriteFunctionBody[SimpleContext] {
 
-  val neededLocFunctions: mutable.ListMap[String, DomainFunc] = collection.mutable.ListMap[String, DomainFunc]()
+  val nestedFunc: Option[DomainFunc] =  program.findDomainFunctionOptionally("nested")
+  val locationDomain: Option[Domain] =  program.domains.find(_.name == "Loc") // findDomainOptionally()?
+
+  // local variables for methods. Have to be added to the created method
+  val neededLocalVars: collection.mutable.ListMap[Function, collection.mutable.ListMap[String, LocalVarDecl]] = collection.mutable.ListMap[Function, collection.mutable.ListMap[String, LocalVarDecl]]()
+
+  private val neededLocFunctions: collection.mutable.ListMap[String, DomainFunc] = collection.mutable.ListMap[String, DomainFunc]()
 
   override def clear(): Unit = {
     neededLocFunctions.clear()
-    super.clear()
+    neededLocalVars.clear()
+  }
+
+
+  /**
+    * Creates a new program with the needed fields added to it
+    *
+    * @return a program
+    */
+  override def createCheckProgram(): Program = {
+
+    val newDomains: Seq[Domain] =
+    if(neededLocFunctions.nonEmpty){
+      assert(locationDomain.isDefined)
+      val domainsWLoc = program.domains.filterNot(_ == locationDomain.get)
+      val newLocDom = Domain(locationDomain.get.name,
+        neededLocFunctions.values.toSeq,
+        locationDomain.get.axioms,
+        locationDomain.get.typVars)(locationDomain.get.pos, locationDomain.get.info, locationDomain.get.errT)
+      domainsWLoc ++ Seq(newLocDom) ++ neededDomains.values.toSeq
+    }else{
+      Nil
+    }
+
+    neededDomains ++= newDomains.map(d => d.name -> d)
+
+    super.createCheckProgram()
+  }
+
+
+  /**
+    * Transforms an expression (e.g. function body) into a statement.
+    * Parts of the expressions which stay expressions (e.g. the condition in a if clause)
+    * are added in front as statements.
+    * TODO: Expressions which cannot be transformed to statements (e.g. literals) are replaced
+    * by the transfromExp.
+    *
+    * @return a statement representing the expression
+    */
+  override def transform: PartialFunction[(Exp, SimpleContext), Stmt] = {
+    case (pap: PredicateAccessPredicate, c: SimpleContext) =>
+      val func = c.func
+      val permChecks = transform(pap.perm, c)
+      val dec = decreasesMap.get(func)
+      //Add the nested-assumption if the predicate has another predicate inside of its body
+      dec match {
+        case Some(DecreaseExp(_,_,_)) =>
+          val pred: Predicate = program.findPredicate(pap.loc.predicateName)
+
+          pred.body match {
+            case Some(body) =>
+              if (locationDomain.isDefined && nestedFunc.isDefined) {
+                val formalArgs = pred.formalArgs map (_.localVar)
+                //Generate nested-assumption
+                val predBody = transformPredicateBody(body.replace(ListMap(formalArgs.zip(pap.loc.args):_*)), pap, c)
+                Seqn(Seq(permChecks, predBody), Nil)(body.pos)
+              } else {
+                if (locationDomain.isEmpty) {
+                  Consistency.messages ++= FastMessaging.message(
+                    func, "missing location-domain")
+                }
+                if (nestedFunc.isEmpty) {
+                  Consistency.messages ++= FastMessaging.message(
+                    func, "missing nested-relation")
+                }
+                permChecks
+              }
+            //Predicate has no body
+            case None => permChecks
+          }
+        //No decreasing clause
+        case _ => permChecks
+      }
+    case d => super.transform(d)
   }
 
   /**
@@ -23,7 +109,7 @@ trait RewritePredicateBody extends TerminationCheck {
     * @param origPred the body of the original predicate which should be analyzed
     * @return statements with the generated inhales: (Inhale(nested(pred1, pred2)))
     */
-  def rewritePredBodyAsExp(body: Exp, origPred: PredicateAccessPredicate): Stmt = {
+  def transformPredicateBody(body: Exp, origPred: PredicateAccessPredicate, context: SimpleContext): Stmt = {
 
     body match {
       case ap: AccessPredicate => ap match {
@@ -37,15 +123,15 @@ trait RewritePredicateBody extends TerminationCheck {
           val domainOfCalleePred: Domain = uniqueNameGen(calledPred.loc).asInstanceOf[Domain]
 
           //local variables
-          val varOfCallerPred: LocalVar = uniquePredLocVar(origPred.loc)
-          val varOfCalleePred: LocalVar = uniquePredLocVar(calledPred.loc)
+          val varOfCallerPred: LocalVar = uniquePredLocVar(origPred.loc, context)
+          val varOfCalleePred: LocalVar = uniquePredLocVar(calledPred.loc, context)
 
           //assign
           val assign1 = generateAssign(origPred, varOfCallerPred)
           val assign2 = generateAssign(calledPred, varOfCalleePred)
 
           //inhale nested-relation
-          val params: Seq[TypeVar] = usedNames(nestedFunc.get.domainName).asInstanceOf[Domain].typVars
+          val params: Seq[TypeVar] = program.findDomain(nestedFunc.get.domainName).typVars
           val types: Seq[Type] =
             Seq(DomainType(domainOfCalleePred, ListMap()), DomainType(domainOfCallerPred, ListMap()), Int)
 
@@ -59,17 +145,17 @@ trait RewritePredicateBody extends TerminationCheck {
           sys.error(s"Unexpectedly found resource access node $mw")
       }
       case c: CondExp =>
-        val thn = rewritePredBodyAsExp(c.thn, origPred)
-        val els = rewritePredBodyAsExp(c.els, origPred)
+        val thn = transformPredicateBody(c.thn, origPred, context)
+        val els = transformPredicateBody(c.els, origPred, context)
         If(c.cond, Seqn(Seq(thn), Nil)(c.pos), Seqn(Seq(els), Nil)(c.pos))(c.pos)
       case i: Implies =>
-        val thn = rewritePredBodyAsExp(i.right, origPred)
+        val thn = transformPredicateBody(i.right, origPred, context)
         If(i.left, Seqn(Seq(thn), Nil)(i.pos), EmptyStmt)(i.pos)
       case b: BinExp =>
-        val left = rewritePredBodyAsExp(b.left, origPred)
-        val right = rewritePredBodyAsExp(b.right, origPred)
+        val left = transformPredicateBody(b.left, origPred, context)
+        val right = transformPredicateBody(b.right, origPred, context)
         Seqn(Seq(left, right), Nil)(b.pos)
-      case u: UnExp => rewritePredBodyAsExp(u.exp, origPred)
+      case u: UnExp => transformPredicateBody(u.exp, origPred, context)
       case _ => EmptyStmt
     }
   }
@@ -102,12 +188,16 @@ trait RewritePredicateBody extends TerminationCheck {
     * @param argMap optional replacement for the arguments
     * @return a local variable with the correct type
     */
-  private def uniquePredLocVar(p: PredicateAccess, argMap: ListMap[Exp, Exp] = ListMap.empty): LocalVar = {
+  private def uniquePredLocVar(p: PredicateAccess, context: SimpleContext, argMap: ListMap[Exp, Exp] = ListMap.empty): LocalVar = {
+    val func = context.func
     val args = p.args map (_.replace(argMap))
     val predVarName = p.predicateName + "_" + args.hashCode().toString.replaceAll("-", "_")
-    if (neededLocalVars.contains(p.predicateName)) {
+    if (!neededLocalVars.contains(func)){
+      neededLocalVars(func) = collection.mutable.ListMap()
+    }
+    if (neededLocalVars(func).contains(p.predicateName)) {
       //Variable already exists
-      neededLocalVars(p.predicateName).localVar
+      neededLocalVars(func)(p.predicateName).localVar
     } else {
       val info = SimpleInfo(Seq(p.predicateName + "_" + args.mkString(",")))
       val newLocalVar =
@@ -115,7 +205,7 @@ trait RewritePredicateBody extends TerminationCheck {
           ListMap(TypeVar(locationDomain.get.typVars.head.name)
             -> DomainType(uniqueNameGen(p).asInstanceOf[Domain], ListMap()))),
           info = info)
-      neededLocalVars(predVarName) = LocalVarDecl(newLocalVar.name, newLocalVar.typ)(newLocalVar.pos, info)
+      neededLocalVars(func)(predVarName) = LocalVarDecl(newLocalVar.name, newLocalVar.typ)(newLocalVar.pos, info)
       newLocalVar
     }
   }

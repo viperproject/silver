@@ -272,7 +272,7 @@ class DecreasePlugin extends SilverPlugin {
 
 case class DecreaseExp(pos: Position, extensionSubnodes: Seq[Exp], errT: ErrorTrafo) extends ExtensionExp {
 
-  override def extensionIsPure = false
+  override def extensionIsPure = true
 
   override def typ: Type = Bool
 

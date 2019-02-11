@@ -1,18 +1,20 @@
 import "../decreaseOrder/importAllDec.sil"
 
-function t1(x: Int, y: Int): Int
-requires x >= 0
-requires y >= 0
-ensures decreases(x, y)
-//decreases(x, 1)
-{
-    y==0 ? x : t2(x, false) + t1(x+1, y-1)
+field next: Ref
+field elem: Int
+
+domain Test[T]{
+    function test(t: T): Bool
 }
 
-function t2(y: Int, z: Bool): Int
-requires y >= 0
-ensures decreases(y, z)
-//decreases(y, z)
+predicate list(xs: Ref) {
+  acc(xs.next) && acc(xs.elem) &&
+  (xs.next != null ==> list(xs.next))
+}
+
+function length(xs: Ref): Int
+  requires acc(list(xs))
+  ensures result > 0
 {
-    y==0 ? y : t1(y-1, y+y)
+  unfolding list(xs) in xs.next == null ? 1 : 1 + length(xs.next)
 }

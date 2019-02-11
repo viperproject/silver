@@ -1,17 +1,21 @@
-
 package viper.silver.plugin.termination
 
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast._
 
-trait RewriteFunctionBody[C <: Context] extends TerminationCheck {
+/**
+  * A basic interface which helps to write a function body (Exp) into a method body (Stmt).
+  * Some basic transformations are already implemented.
+  * @tparam C: the context in which an expression is transformed
+  */
+trait RewriteFunctionBody[C <: Context] {
 
   /**
     * Transforms an expression (e.g. function body) into a statement.
     * Parts of the expressions which stay expressions (e.g. the condition in a if clause)
     * are added in front as statements.
     * Expressions which cannot be transformed to statements (e.g. literals) are replaced
-    * by the transfromExp.
+    * by the transformExp.
     *
     * @return a statement representing the expression
     */
@@ -33,7 +37,8 @@ trait RewriteFunctionBody[C <: Context] extends TerminationCheck {
       val unfoldBody = transform(unfBody, c)
       val fold = Fold(acc)()
       // TODO: shouldn't access be before unfold?
-      Seqn(Seq(unfold, access, unfoldBody, fold), Nil)()
+      val t = Seqn(Seq(unfold, access, unfoldBody, fold), Nil)()
+      t
     case (b: BinExp, c) =>
       val left = transform(b.left, c)
       val right = transform(b.right, c)
@@ -91,7 +96,13 @@ trait RewriteFunctionBody[C <: Context] extends TerminationCheck {
     case _ => EmptyStmt
   }
 
-  def transformExp(exp: Exp, context: C): Exp
+  def transformExp(exp: Exp, context: C): Exp = {
+    exp
+  }
 }
 
 trait Context
+
+trait SimpleContext extends Context{
+  def func: Function
+}
