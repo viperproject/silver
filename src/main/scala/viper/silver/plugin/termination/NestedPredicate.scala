@@ -28,7 +28,6 @@ trait NestedPredicate extends TerminationCheck with RewriteFunctionBody[SimpleCo
     neededLocalVars.clear()
   }
 
-
   /**
     * Creates a new program with the needed fields added to it
     *
@@ -36,20 +35,15 @@ trait NestedPredicate extends TerminationCheck with RewriteFunctionBody[SimpleCo
     */
   override def createCheckProgram(): Program = {
 
-    val newDomains: Seq[Domain] =
     if(neededLocFunctions.nonEmpty){
       assert(locationDomain.isDefined)
-      val domainsWLoc = program.domains.filterNot(_ == locationDomain.get)
       val newLocDom = Domain(locationDomain.get.name,
         neededLocFunctions.values.toSeq,
         locationDomain.get.axioms,
         locationDomain.get.typVars)(locationDomain.get.pos, locationDomain.get.info, locationDomain.get.errT)
-      domainsWLoc ++ Seq(newLocDom) ++ neededDomains.values.toSeq
-    }else{
-      Nil
-    }
 
-    neededDomains ++= newDomains.map(d => d.name -> d)
+      domains(newLocDom.name) = newLocDom
+    }
 
     super.createCheckProgram()
   }
@@ -65,6 +59,7 @@ trait NestedPredicate extends TerminationCheck with RewriteFunctionBody[SimpleCo
     * @return a statement representing the expression
     */
   override def transform: PartialFunction[(Exp, SimpleContext), Stmt] = {
+    // TODO: unfolding should be here
     case (pap: PredicateAccessPredicate, c: SimpleContext) =>
       val func = c.func
       val permChecks = transform(pap.perm, c)
@@ -110,7 +105,7 @@ trait NestedPredicate extends TerminationCheck with RewriteFunctionBody[SimpleCo
     * @return statements with the generated inhales: (Inhale(nested(pred1, pred2)))
     */
   def transformPredicateBody(body: Exp, origPred: PredicateAccessPredicate, context: SimpleContext): Stmt = {
-
+    // TODO: shouldn't the expression be checked for termination or at least replaced with dummy
     body match {
       case ap: AccessPredicate => ap match {
         case FieldAccessPredicate(_, _) => EmptyStmt
@@ -170,7 +165,7 @@ trait NestedPredicate extends TerminationCheck with RewriteFunctionBody[SimpleCo
     * @param argMap      an optional mapping used for replacing the arguments of the predicate
     * @return an assignment of the given variable to the representation of a predicate with the corresponding arguments
     */
-  private def generateAssign(pred: PredicateAccessPredicate, assLocation: LocalVar, argMap: ListMap[Exp, Exp] = ListMap.empty)
+  def generateAssign(pred: PredicateAccessPredicate, assLocation: LocalVar, argMap: ListMap[Exp, Exp] = ListMap.empty)
   : LocalVarAssign = {
     val domainOfPred: Domain = uniqueNameGen(pred.loc).asInstanceOf[Domain]
     val domainFunc = uniqueNameGen(pred).asInstanceOf[DomainFunc]
@@ -180,26 +175,23 @@ trait NestedPredicate extends TerminationCheck with RewriteFunctionBody[SimpleCo
     LocalVarAssign(assLocation, assValue)(pred.pos)
   }
 
-
   /**
-    * Generator of the predicate-variables, which represents the type 'predicate'
+    * Generator of the predicate-variables, which represents the type 'predicate'.
     *
     * @param p      predicate which defines the type of the variable
-    * @param argMap optional replacement for the arguments
     * @return a local variable with the correct type
     */
-  private def uniquePredLocVar(p: PredicateAccess, context: SimpleContext, argMap: ListMap[Exp, Exp] = ListMap.empty): LocalVar = {
+  def uniquePredLocVar(p: PredicateAccess, context: SimpleContext): LocalVar = {
     val func = context.func
-    val args = p.args map (_.replace(argMap))
-    val predVarName = p.predicateName + "_" + args.hashCode().toString.replaceAll("-", "_")
+    val predVarName = p.predicateName + "_" + p.args.hashCode().toString.replaceAll("-", "_")
     if (!neededLocalVars.contains(func)){
       neededLocalVars(func) = collection.mutable.ListMap()
     }
-    if (neededLocalVars(func).contains(p.predicateName)) {
+    if (neededLocalVars(func).contains(predVarName)) {
       //Variable already exists
-      neededLocalVars(func)(p.predicateName).localVar
+      neededLocalVars(func)(predVarName).localVar
     } else {
-      val info = SimpleInfo(Seq(p.predicateName + "_" + args.mkString(",")))
+      val info = SimpleInfo(Seq(p.predicateName + "_" + p.args.mkString(",")))
       val newLocalVar =
         LocalVar(predVarName)(DomainType(locationDomain.get,
           ListMap(TypeVar(locationDomain.get.typVars.head.name)
@@ -215,16 +207,16 @@ trait NestedPredicate extends TerminationCheck with RewriteFunctionBody[SimpleCo
       node.isInstanceOf[PredicateAccessPredicate])
     node match {
       case p: PredicateAccess =>
-        if (neededDomains.values.exists(_.name == p.predicateName)) {
-          neededDomains.values.find(_.name == p.predicateName).get
+        if (domains.values.exists(_.name == p.predicateName)) {
+          domains.values.find(_.name == p.predicateName).get
         } else {
-          if (neededDomains.contains(p.predicateName)) {
-            neededDomains(p.predicateName)
+          if (domains.contains(p.predicateName)) {
+            domains(p.predicateName)
           } else {
             val uniquePredName = uniqueName(p.predicateName + "_PredName")
             val newDomain = Domain(uniquePredName, Seq(), Seq(), Seq())(NoPosition)
             //domains(uniquePredName) = newDomain
-            neededDomains(p.predicateName) = newDomain
+            domains(p.predicateName) = newDomain
             newDomain
           }
         }

@@ -138,7 +138,8 @@ class DecreasePlugin extends SilverPlugin {
       return input
     }
 
-    val removedDecreasesExp = removeDecreaseExp(input)
+    //val removedDecreasesExp = removeDecreaseExp(input)
+    val removedDecreasesExp = getDecreaseExpFromDecrease(input)
 
     val newProgram: Program = removedDecreasesExp._1
     val decreasesMap = removedDecreasesExp._2
@@ -248,6 +249,21 @@ class DecreasePlugin extends SilverPlugin {
       }
     }).execute(program)
     (result, decreaseMap.toMap)
+  }
+
+  /**
+    * ONLY FOR TESTS!
+    * @param program
+    * @return
+    */
+  def getDecreaseExpFromDecrease(program: Program): (Program, Map[Function, DecreaseExp]) = {
+    val decreaseMap: Map[Function, DecreaseExp] =
+      program.functions.filter(_.decs.nonEmpty).map(f => f.decs.get match {
+        case ds@DecStar() => f -> DecreaseExp(ds.pos, Nil, NodeTrafo(ds))
+        case d@DecTuple(e) => f -> DecreaseExp(d.pos, d.exp, NodeTrafo(d))
+      }).toMap
+
+    (program, decreaseMap)
   }
 
   def checkNoFunctionRecursesViaDecreasesClause(program: Program): Seq[ConsistencyError] = {

@@ -1,20 +1,16 @@
-import "../decreaseOrder/importAllDec.sil"
+import "../decreaseOrder/pred_decreases.sil"
 
 field next: Ref
-field elem: Int
-
-domain Test[T]{
-    function test(t: T): Bool
-}
 
 predicate list(xs: Ref) {
-  acc(xs.next) && acc(xs.elem) &&
+  acc(xs.next) &&
   (xs.next != null ==> list(xs.next))
 }
 
 function length(xs: Ref): Int
   requires acc(list(xs))
   ensures result > 0
+  decreases list(xs)
 {
   unfolding list(xs) in xs.next == null ? 1 : 1 + length(xs.next)
 }

@@ -52,31 +52,31 @@ trait TerminationCheck extends ProgramCheck with RewriteFunctionBody[SimpleConte
 
     node match {
       case f: Function =>
-        if (neededFunctions.values.exists(_.name == f.name)) {
-          neededDomains.values.find(_.name == f.name).get
+        if (functions.values.exists(_.name == f.name)) {
+          domains.values.find(_.name == f.name).get
         } else {
-          if (neededFunctions.contains(f.name)) {
-            neededFunctions(f.name)
+          if (functions.contains(f.name)) {
+            functions(f.name)
           } else {
             val uniqueFuncName = uniqueName(f.name + "_withoutBody")
             val newFunc = Function(uniqueFuncName, f.formalArgs, f.typ, f.pres, Nil, None, None)(f.pos)
             //functions(uniqueFuncName) = newFunc
-            neededFunctions(f.name) = newFunc
+            functions(f.name) = newFunc
             newFunc
           }
         }
       case fa: FuncApp =>
-        if (neededFunctions.values.exists(_.name == fa.funcname)) {
-          FuncApp(neededFunctions.values.find(_.name == fa.funcname).get, fa.args)(fa.pos)
+        if (functions.values.exists(_.name == fa.funcname)) {
+          FuncApp(functions.values.find(_.name == fa.funcname).get, fa.args)(fa.pos)
         } else {
-          if (neededFunctions.contains(fa.funcname)) {
-            FuncApp(neededFunctions(fa.funcname), fa.args)(fa.pos)
+          if (functions.contains(fa.funcname)) {
+            FuncApp(functions(fa.funcname), fa.args)(fa.pos)
           } else {
             val uniqueFuncName = uniqueName(fa.funcname + "_withoutBody")
             val func = program.findFunction(fa.funcname)
             val newFunc = Function(uniqueFuncName, func.formalArgs, func.typ, Nil, Nil, None, None)(func.pos)
             //functions(uniqueFuncName) = newFunc
-            neededFunctions(fa.funcname) = newFunc
+            functions(fa.funcname) = newFunc
             FuncApp(newFunc, fa.args)(fa.pos)
           }
         }

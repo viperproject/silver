@@ -25,7 +25,7 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
       val methodName = uniqueName(f.name + "_termination_proof")
       val method = Method(methodName, f.formalArgs, Nil, f.pres, Nil, Option(methodBody))()
 
-      neededMethods(methodName) = method
+      methods(methodName) = method
     })
 
     super.createCheckProgram()
@@ -76,30 +76,24 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
                 .unzip
 
             val biggerExpression = comparableDec._1 map {
-              /* TODO:
             case pap: PredicateAccessPredicate =>
               assert(locationDomain.isDefined)
-              val varOfCalleePred = uniquePredLocVar(pap.loc)
+              val varOfCalleePred = uniquePredLocVar(pap.loc, context)
 
-              neededArgAssigns :+= generateAssign(pap, varOfCalleePred)
+              //neededArgAssigns :+= generateAssign(pap, varOfCalleePred)
               varOfCalleePred
-              */
               case unfold: Unfolding => Old(unfold)(unfold.pos)
               case default => default
             }
 
             val smallerExpressions = comparableDec._2 map {
-              /* TODO
               case pap: PredicateAccessPredicate =>
-                val varOfCalleePred = uniquePredLocVar(pap.loc)
+                val varOfCalleePred = uniquePredLocVar(pap.loc, context)
 
-                neededArgAssigns :+= generateAssign(pap, varOfCalleePred)
+                //neededArgAssigns :+= generateAssign(pap, varOfCalleePred)
                 varOfCalleePred
-                */
               case decC => decC
             }
-
-            val info = SimpleInfo(Seq("TerminationCheck "))
 
             val reTBound = ReTrafo({
               case AssertionFalse(_) =>
@@ -118,9 +112,9 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
 
             val terminationCheck = createTerminationCheck(biggerExpression.map(transformExp(_, context)), smallerExpressions.map(transformExp(_, context)), reTDec, reTBound)
 
-            val assert = Assert(terminationCheck)(callee.pos, info, errTrafo)
+            val assertion = Assert(terminationCheck)(callee.pos, NoInfo, errTrafo)
 
-            stmts.appendAll(neededArgAssigns :+ assert)
+            stmts.appendAll(neededArgAssigns :+ assertion)
           }
       }else{
         // not in the same cycle

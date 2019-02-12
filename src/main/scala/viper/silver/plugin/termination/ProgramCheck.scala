@@ -22,19 +22,24 @@ trait ProgramCheck{
       ++ program.domains.flatten(_.functions)
     ).map(_.name): _*)
 
-  val neededDomains: mutable.ListMap[String, Domain] = collection.mutable.ListMap[String, Domain]()
-  val neededFields: mutable.ListMap[String, Field] = collection.mutable.ListMap[String, Field]()
-  val neededFunctions: mutable.ListMap[String, Function] = collection.mutable.ListMap[String, Function]()
-  val neededPredicates: mutable.ListMap[String, Predicate] = collection.mutable.ListMap[String, Predicate]()
-  val neededMethods: mutable.ListMap[String, Method] = collection.mutable.ListMap[String, Method]()
+  val domains: mutable.ListMap[String, Domain] = collection.mutable.ListMap[String, Domain](program.domains.map(d => d.name -> d): _*)
+  val fields: mutable.ListMap[String, Field] = collection.mutable.ListMap[String, Field](program.fields.map(f => f.name -> f): _*)
+  val functions: mutable.ListMap[String, Function] = collection.mutable.ListMap[String, Function](program.functions.map(f => f.name -> f): _*)
+  val predicates: mutable.ListMap[String, Predicate] = collection.mutable.ListMap[String, Predicate](program.predicates.map(f => f.name -> f): _*)
+  val methods: mutable.ListMap[String, Method] = collection.mutable.ListMap[String, Method](program.methods.map(f => f.name -> f): _*)
 
 
   def clear(): Unit = {
-    neededDomains.clear()
-    neededFields.clear()
-    neededFunctions.clear()
-    neededPredicates.clear()
-    neededMethods.clear()
+    domains.clear()
+      domains ++= program.domains.map(d => d.name -> d)
+    fields.clear()
+    fields ++= program.fields.map(f => f.name -> f)
+    functions.clear
+    functions ++= program.functions.map(f => f.name -> f)
+    predicates.clear()
+    predicates ++= program.predicates.map(f => f.name -> f)
+    methods.clear()
+    methods ++= program.methods.map(f => f.name -> f)
   }
 
   /**
@@ -42,11 +47,11 @@ trait ProgramCheck{
     * @return a program
     */
   def createCheckProgram(): Program = {
-    Program(program.domains ++ neededDomains.values,
-      program.fields ++ neededFields.values,
-      program.functions ++ neededFunctions.values,
-      program.predicates ++ neededPredicates.values,
-      program.methods ++ neededMethods.values)(program.pos, program.info, program.errT)
+    Program(domains.values.toSeq,
+      fields.values.toSeq,
+      functions.values.toSeq,
+      predicates.values.toSeq,
+      methods.values.toSeq)(program.pos, program.info, program.errT)
   }
 
 
