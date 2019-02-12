@@ -151,7 +151,7 @@ object FastParser extends PosParser[Char, String] {
   def importProgram(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
     if (java.nio.file.Files.notExists(path))
       throw ParseException(s"""file "$path" does not exist""", FastPositions.getStart(importStmt))
-
+    _file = path
     val source = scala.io.Source.fromInputStream(Files.newInputStream(path))
     val buffer = try {
       source.getLines.toArray
