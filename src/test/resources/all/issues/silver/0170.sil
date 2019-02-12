@@ -1,0 +1,10 @@
+field f: Int
+
+define access(f) r.f
+define constraint(f) r.f > 3
+
+method m(r: Ref)
+    requires acc(access(f), 1/2)
+    requires constraint(f)
+{
+}
