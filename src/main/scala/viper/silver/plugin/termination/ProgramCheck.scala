@@ -71,7 +71,5 @@ trait ProgramCheck{
     usedNames.add(newName)
     newName
   }
-
-
 }
 

@@ -13,7 +13,7 @@ import scala.collection.immutable.ListMap
   * "nested" domain function
   * "Loc" domain
   */
-trait NestedPredicate extends TerminationCheck with RewriteFunctionBody[SimpleContext] {
+trait NestedPredicate[C <: SimpleContext] extends ProgramCheck with RewriteFunctionBody[C] {
 
   val nestedFunc: Option[DomainFunc] =  program.findDomainFunctionOptionally("nested")
   val locationDomain: Option[Domain] =  program.domains.find(_.name == "Loc") // findDomainOptionally()?
@@ -58,41 +58,36 @@ trait NestedPredicate extends TerminationCheck with RewriteFunctionBody[SimpleCo
     *
     * @return a statement representing the expression
     */
-  override def transform: PartialFunction[(Exp, SimpleContext), Stmt] = {
+  override def transform: PartialFunction[(Exp, C), Stmt] = {
     // TODO: unfolding should be here
-    case (pap: PredicateAccessPredicate, c: SimpleContext) =>
+    case (pap: PredicateAccessPredicate, c: C) =>
       val func = c.func
       val permChecks = transform(pap.perm, c)
-      val dec = decreasesMap.get(func)
-      //Add the nested-assumption if the predicate has another predicate inside of its body
-      dec match {
-        case Some(DecreaseExp(_,_,_)) =>
-          val pred: Predicate = program.findPredicate(pap.loc.predicateName)
 
-          pred.body match {
-            case Some(body) =>
-              if (locationDomain.isDefined && nestedFunc.isDefined) {
-                val formalArgs = pred.formalArgs map (_.localVar)
-                //Generate nested-assumption
-                val predBody = transformPredicateBody(body.replace(ListMap(formalArgs.zip(pap.loc.args):_*)), pap, c)
-                Seqn(Seq(permChecks, predBody), Nil)(body.pos)
-              } else {
-                if (locationDomain.isEmpty) {
-                  Consistency.messages ++= FastMessaging.message(
-                    func, "missing location-domain")
-                }
-                if (nestedFunc.isEmpty) {
-                  Consistency.messages ++= FastMessaging.message(
-                    func, "missing nested-relation")
-                }
-                permChecks
-              }
-            //Predicate has no body
-            case None => permChecks
+      val pred: Predicate = program.findPredicate(pap.loc.predicateName)
+
+      pred.body match {
+        case Some(body) =>
+          if (locationDomain.isDefined && nestedFunc.isDefined) {
+            val formalArgs = pred.formalArgs map (_.localVar)
+            //Generate nested-assumption
+            val predBody = transformPredicateBody(body.replace(ListMap(formalArgs.zip(pap.loc.args):_*)), pap, c)
+            Seqn(Seq(permChecks, predBody), Nil)(body.pos)
+          } else {
+            if (locationDomain.isEmpty) {
+              Consistency.messages ++= FastMessaging.message(
+                func, "missing location-domain")
+            }
+            if (nestedFunc.isEmpty) {
+              Consistency.messages ++= FastMessaging.message(
+                func, "missing nested-relation")
+            }
+            permChecks
           }
-        //No decreasing clause
-        case _ => permChecks
+        //Predicate has no body
+        case None => permChecks
       }
+
     case d => super.transform(d)
   }
 

@@ -96,6 +96,12 @@ trait RewriteFunctionBody[C <: Context] {
     case _ => EmptyStmt
   }
 
+  /**
+    * Transforms the expressions which stay expressions.
+    * @param exp to be transformed
+    * @param context in which the transformation happens
+    * @return the transformed expression
+    */
   def transformExp(exp: Exp, context: C): Exp = {
     exp
   }

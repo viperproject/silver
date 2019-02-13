@@ -12,7 +12,7 @@ import viper.silver.ast.{DomainFunc, Exp, FuncApp, Function, Node, Predicate}
   *
   * It adds dummy function to the program if needed.
   */
-trait TerminationCheck extends ProgramCheck with RewriteFunctionBody[SimpleContext] {
+trait TerminationCheck[C <: SimpleContext] extends ProgramCheck with RewriteFunctionBody[C] {
 
   val decreasesMap: Map[Function, DecreaseExp]
 
@@ -28,7 +28,7 @@ trait TerminationCheck extends ProgramCheck with RewriteFunctionBody[SimpleConte
     * @param context of the transformation
     * @return
     */
-  override def transformExp(exp: Exp, context: SimpleContext): Exp = {
+  override def transformExp(exp: Exp, context: C): Exp = {
     val newExp = StrategyBuilder.Slim[Node]({
       case fa: FuncApp if heights(context.func) == heights(fa.func(program)) =>
         uniqueNameGen(fa)

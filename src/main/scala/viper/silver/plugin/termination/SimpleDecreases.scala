@@ -8,7 +8,7 @@ import viper.silver.verifier.reasons.AssertionFalse
 
 import scala.collection.immutable.ListMap
 
-class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, DecreaseExp]) extends TerminationCheck with RewriteFunctionBody[SimpleContext] with NestedPredicate {
+class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, DecreaseExp]) extends TerminationCheck[SimpleContext] with NestedPredicate[SimpleContext] {
 
   override def createCheckProgram(): Program = {
     this.clear()
@@ -123,7 +123,13 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
     case default => super.transform(default)
   }
 
-
+  /**
+    * Creates Expression to check decrease and bounded of lexicographical order
+    * (decreasing(s,b) && bounded(b)) || (s==b && ( (decr...
+    * @param biggerExp [b,..] with at least one element
+    * @param smallerExp [s,..] same size as biggerExp
+    * @return expression
+    */
   def createTerminationCheck(biggerExp: Seq[Exp], smallerExp: Seq[Exp], decrReTrafo: ReTrafo, boundReTrafo: ReTrafo): Exp = {
 
     val paramTypesDecr = decreasingFunc.get.formalArgs map (_.typ)
@@ -131,13 +137,7 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
     val paramTypesBound = boundedFunc.get.formalArgs map (_.typ)
     val argTypeVarsBound = paramTypesBound.flatMap(p => p.typeVariables)
 
-    /**
-      *
-      * (decreasing(s,b) && bounded(b)) || (s==b && ( (decr...
-      * @param biggerExp [b,..] with at least one element
-      * @param smallerExp [s,..] same size as biggerExp
-      * @return expression
-      */
+
     def createExp(biggerExp: Seq[Exp], smallerExp: Seq[Exp]): Exp = {
       assert(biggerExp.size == smallerExp.size)
       val bigger = biggerExp.head
@@ -169,7 +169,7 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
   }
 }
 
-
+trait SpecialContext extends SimpleContext
 
 case class TerminationFailed(offendingNode: DecreaseExp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
   val id = "termination.failed"
