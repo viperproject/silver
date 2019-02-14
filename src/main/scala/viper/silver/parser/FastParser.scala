@@ -7,6 +7,7 @@
 package viper.silver.parser
 
 import java.nio.file.{Files, Path}
+
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
@@ -16,6 +17,7 @@ import viper.silver.ast.utility.Rewriter.{ContextA, PartialContextC, StrategyBui
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier.ParseError
+
 import scala.collection.mutable
 
 case class ParseException(msg: String, pos: scala.util.parsing.input.Position) extends Exception
@@ -204,8 +206,6 @@ object FastParser extends PosParser[Char, String] {
       ++ p.methods.map(_.idndef.name).toSet
     )
 
-    val globalNames = globalNamesWithoutMacros ++ p.macros.map(_.idndef.name).toSet
-
     // Check if all macros names are unique
     var uniqueMacroNames = new mutable.HashMap[String, Position]()
     for (define <- globalMacros) {
@@ -223,6 +223,13 @@ object FastParser extends PosParser[Char, String] {
         throw ParseException(s"The macro name '$name' has already been used by another identifier", uniqueMacroNames.get(name).get)
       }
     }
+
+    // Check if macros are defined in the right place
+    case class InsideMagicWandContext(inside: Boolean = false)
+    StrategyBuilder.ContextVisitor[PNode, InsideMagicWandContext]({case (_, _) => ()}, InsideMagicWandContext(), {
+      case (_: PPackageWand, c) => c.copy(true)
+      case (d: PDefine, c) if (c.inside) => throw ParseException("Macros cannot be defined inside magic wands proof scripts", d.start)
+    }).execute(p)
 
     // Expand defines
     val domains =
