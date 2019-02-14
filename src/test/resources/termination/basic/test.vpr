@@ -8,9 +8,9 @@ predicate list(xs: Ref) {
 }
 
 function length(xs: Ref): Int
-  requires acc(list(xs))
+  requires list(xs)
   ensures result > 0
-  decreases list(xs)
+  ensures decreases(list(xs))
 {
   unfolding list(xs) in xs.next == null ? 1 : 1 + length(xs.next)
 }

@@ -17,7 +17,9 @@ class DecreasePlugin extends SilverPlugin {
   private val DECREASES = "decreases"
 
   /** Called after parse AST has been constructed but before identifiers are resolved and the program is type checked.
-    *
+    * Replaces all decreases function calls in postconditions, replaces them with decreasesN function calls and
+    * adds a domain with the necessary decreasesN functions.
+    * Replaces all predicates acc in decreases function calls, replaces them with function calls.
     * @param input Parse AST
     * @return Modified Parse AST
     */
@@ -33,10 +35,21 @@ class DecreasePlugin extends SilverPlugin {
       for(post <- function.posts){
         post match {
           case call: PCall if call.opName.equals(DECREASES)=>{
-              // change call
+              // replace call
               val argsSize = call.args.length
-              val functionName = getDecreasesNFunction(argsSize)
-              val post = call.copy(func = PIdnUse(functionName)).setPos(call)
+              val functionName = addDecreasesNFunction(argsSize)
+              // replace predicates
+              val newArgs = call.args.map {
+                case p: PCall if input.predicates.map(_.idndef.name).contains(p.idnuse.name) =>
+                  // a predicate with the same name exists
+                  val predicate = input.predicates.filter(_.idndef.name.equals(p.idnuse.name)).head
+                  val formalArg = predicate.formalArgs
+                  // use the same arguments to type check!
+                  val function = addPredicateFunctions(p.idnuse.name, formalArg)
+                  p.copy(func = PIdnUse(function)).setPos(p)
+                case default => default
+              }
+              val post = call.copy(func = PIdnUse(functionName), args = newArgs).setPos(call)
               posts.append(post)
             }
           case _ =>
@@ -49,8 +62,13 @@ class DecreasePlugin extends SilverPlugin {
     }
 
     if (decreasesNFunctions.nonEmpty) {
-      val newDomain = createDecreasesDomain(getDecreasesNDomain, decreasesNFunctions.toMap)
-      input.copy(functions = newFunctions, domains = input.domains :+ newDomain)
+      val decreasesDomain = createDecreasesDomain(getDecreasesNDomain, decreasesNFunctions.toMap)
+      if (predicateFunctions.nonEmpty){
+        val predicateDomain = createPredicateFunctionsDomain(getPredicateFunctionsDomain, predicateFunctions.toMap)
+        input.copy(functions = newFunctions, domains = input.domains :+ decreasesDomain :+ predicateDomain)
+      }else{
+        input.copy(functions = newFunctions, domains = input.domains :+ decreasesDomain)
+      }
     }else{
       input
     }
@@ -59,6 +77,7 @@ class DecreasePlugin extends SilverPlugin {
   /**
     * All needed decreasesN functions
     * (#arguments -> function name)
+    * Has to be invertible
     */
   private val decreasesNFunctions = collection.mutable.Map[Integer, String]()
 
@@ -67,15 +86,15 @@ class DecreasePlugin extends SilverPlugin {
     * @param argsSize: number of arguments needed
     * @return name of decrease function
     */
-  private def getDecreasesNFunction(argsSize: Integer): String = {
+  private def addDecreasesNFunction(argsSize: Integer): String = {
     if (!decreasesNFunctions.contains(argsSize)){
-      val newName: String = s"$$decreases${argsSize}"
-      decreasesNFunctions += (argsSize -> newName)
+      val newName: String = s"$$decreases$argsSize"
+      decreasesNFunctions(argsSize) = newName
     }
     decreasesNFunctions(argsSize)
   }
 
-  private def getDecreasesNDomain: String ={
+  private def getDecreasesNDomain: String = {
     "$DecreasesDomain"
   }
 
@@ -100,13 +119,44 @@ class DecreasePlugin extends SilverPlugin {
     val formalArgs: Seq[PFormalArgDecl] = typeVars.map(t => PFormalArgDecl(PIdnDef(s"v${t.idndef.name}"), PDomainType(PIdnUse(t.idndef.name), Seq())))
 
     // all needed decreasesN functions
-    val decreasesFunctions = functions.map {
-      case (argsSize, functionName) => {
+    val decreasesFunctions: Seq[PDomainFunction] = functions.map {
+      case (argsSize, functionName) =>
         PDomainFunction(PIdnDef(functionName), formalArgs.take(argsSize), PPrimitiv(TypeHelper.Bool.name), false)(domainIdUse)
-      }
-    }(collection.breakOut)
+    }.toSeq
 
     PDomain(domainIdDef, typeVars, decreasesFunctions, Seq())
+  }
+
+  /**
+    * All needed functions representing a predicate in the decrease clause
+    * ((predicateName, argumentNumber) -> functionName)
+    * Has to be invertible
+    */
+  private val predicateFunctions = collection.mutable.Map[(String, Seq[PFormalArgDecl]), String]()
+
+  private  def addPredicateFunctions(predicateName: String, args: Seq[PFormalArgDecl]): String = {
+    if (!predicateFunctions.contains((predicateName, args))){
+      val functionName: String = s"$$pred_$predicateName"
+      predicateFunctions((predicateName, args)) = functionName
+    }
+    predicateFunctions((predicateName, args))
+  }
+
+  private def getPredicateFunctionsDomain: String = {
+    "$PredicateFunctionsDomain"
+  }
+
+  private def createPredicateFunctionsDomain(domain: String, predicates: Map[(String, Seq[PFormalArgDecl]), String]): PDomain = {
+    val domainIdDef = PIdnDef(domain)
+    val domainIdUse = PIdnUse(domain)
+
+    // all needed predicate functions
+    val predicateFunctions: Seq[PDomainFunction] = predicates.map {
+      case ((predicate, args), function) =>
+        PDomainFunction(PIdnDef(function), args, PPrimitiv(TypeHelper.Bool.name), false)(domainIdUse)
+    }.toSeq
+
+    PDomain(domainIdDef, Nil, predicateFunctions, Seq())
   }
 
   /** Called after parse AST has been translated into the normal AST but before methods to verify are filtered.
@@ -118,7 +168,15 @@ class DecreasePlugin extends SilverPlugin {
   override def beforeMethodFilter(input: Program): Program = {
     // get decrease in post conditions and
     // transform them to post condition with a DecreaseExp
-    transformDecreasesNToDecreaseExp(input, decreasesNFunctions.toMap, getDecreasesNDomain)
+    // also transform all functions representing predicates back
+    if (decreasesNFunctions.nonEmpty) {
+      val mapDecreasesN = decreasesNFunctions.toMap.map(_.swap)
+      val mapPredicateFunctions = predicateFunctions.toMap.map(_.swap)
+      transformDecreasesNToDecreaseExp(input, mapDecreasesN, getDecreasesNDomain, mapPredicateFunctions, getPredicateFunctionsDomain)
+    }else{
+      // no decreasesN functions were created
+      input
+    }
 
   }
 
@@ -138,8 +196,8 @@ class DecreasePlugin extends SilverPlugin {
       return input
     }
 
-    //val removedDecreasesExp = removeDecreaseExp(input)
-    val removedDecreasesExp = getDecreaseExpFromDecrease(input)
+    val removedDecreasesExp = removeDecreaseExp(input)
+    //val removedDecreasesExp = getDecreaseExpFromDecrease(input)
 
     val newProgram: Program = removedDecreasesExp._1
     val decreasesMap = removedDecreasesExp._2
@@ -196,17 +254,31 @@ class DecreasePlugin extends SilverPlugin {
   }
 
 
-  def transformDecreasesNToDecreaseExp(input: Program, decreasesNFunctions: Map[Integer, String], decreasesNDomain: String): Program = {
+  def transformDecreasesNToDecreaseExp(input: Program,
+                                       decreasesNFunctions: Map[String, Integer],
+                                       decreasesNDomain: String,
+                                       predicateFunctions: Map[String, (String, Seq[PFormalArgDecl])],
+                                       predicateDomain: String): Program = {
     ViperStrategy.Slim({
       case p: Program => {
-        val domains = p.domains.filterNot(d => d.name.equals(decreasesNDomain))
+        // remove the decreasesNDomain and the predicateDomain
+        val domains = p.domains.filterNot(d => d.name.equals(decreasesNDomain) || d.name.equals(predicateDomain))
         p.copy(domains = domains)(p.pos, p.info, p.errT)
       }
       case f: Function => {
         val posts = f.posts map {
-          case c: Call if decreasesNFunctions.get(c.args.size).contains(c.callee) => {
-            DecreaseExp(c.pos, c.subExps, NodeTrafo(c))
-          }
+          // replace all decreasesN functions with DecreaseExp
+          case c: Call if decreasesNFunctions.contains(c.callee) =>
+            assert(c.args.size == decreasesNFunctions(c.callee))
+            val newArgs = c.args map {
+              // replace all predicate functions with the PredicateAccess
+              case p: Call if predicateFunctions.contains(p.callee) =>
+                val mapResult = predicateFunctions(p.callee)
+                assert(p.args.size == mapResult._2.size)
+                PredicateAccess(p.args, mapResult._1)(p.pos, p.info, p.errT)
+              case default => default
+            }
+            DecreaseExp(c.pos, newArgs, NodeTrafo(c))
           case p => p
         }
         Function(

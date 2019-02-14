@@ -76,9 +76,9 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
                 .unzip
 
             val biggerExpression = comparableDec._1 map {
-            case pap: PredicateAccessPredicate =>
+            case pap: PredicateAccess =>
               assert(locationDomain.isDefined)
-              val varOfCalleePred = uniquePredLocVar(pap.loc, context)
+              val varOfCalleePred = uniquePredLocVar(pap, context)
 
               //neededArgAssigns :+= generateAssign(pap, varOfCalleePred)
               varOfCalleePred
@@ -87,8 +87,8 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
             }
 
             val smallerExpressions = comparableDec._2 map {
-              case pap: PredicateAccessPredicate =>
-                val varOfCalleePred = uniquePredLocVar(pap.loc, context)
+              case pap: PredicateAccess =>
+                val varOfCalleePred = uniquePredLocVar(pap, context)
 
                 //neededArgAssigns :+= generateAssign(pap, varOfCalleePred)
                 varOfCalleePred

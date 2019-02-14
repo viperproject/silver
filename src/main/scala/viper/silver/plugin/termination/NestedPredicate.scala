@@ -120,17 +120,26 @@ trait NestedPredicate[C <: SimpleContext] extends ProgramCheck with RewriteFunct
           val assign1 = generateAssign(origPred, varOfCallerPred)
           val assign2 = generateAssign(calledPred, varOfCalleePred)
 
+          println(assign1.lhs + ": " + assign1.lhs.typ)
+          println(assign1.rhs + ": " + assign1.rhs.typ)
+          println(assign2.lhs + ": " + assign2.lhs.typ)
+          println(assign2.rhs + ": " + assign2.rhs.typ)
+
           //inhale nested-relation
           val params: Seq[TypeVar] = program.findDomain(nestedFunc.get.domainName).typVars
           val types: Seq[Type] =
             Seq(DomainType(domainOfCalleePred, ListMap()), DomainType(domainOfCallerPred, ListMap()), Int)
-
+          println(types) //TODO why is the Int used?!
           val mapNested: ListMap[TypeVar, Type] = ListMap(params.zip(types):_*)
-          val assume = Inhale(DomainFuncApp(nestedFunc.get,
+          val inhale = Inhale(DomainFuncApp(nestedFunc.get,
             Seq(varOfCalleePred, varOfCallerPred),
             mapNested)(calledPred.pos))(calledPred.pos)
-
-          Seqn(Seq(assign1, assign2, assume), Nil)(calledPred.pos)
+          // TODO: NOT WORKING: Z3 ERROR!
+          //Seqn(Seq(assign1, assign2, assume), Nil)(calledPred.pos)
+          // the assignments are probably necessary for soundness.
+          //Seqn(Seq(assign2), Nil)(calledPred.pos)
+          Seqn(Seq(inhale), Nil)(calledPred.pos)
+          //EmptyStmt
         case mw: MagicWand =>
           sys.error(s"Unexpectedly found resource access node $mw")
       }
