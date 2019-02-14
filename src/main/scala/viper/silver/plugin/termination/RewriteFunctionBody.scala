@@ -20,8 +20,6 @@ trait RewriteFunctionBody[C <: Context] {
     * @return a statement representing the expression
     */
   def transform: PartialFunction[(Exp, C), Stmt] = {
-    case (pap: PredicateAccessPredicate, _) =>
-      EmptyStmt
     case (callee: FuncApp, _) =>
       EmptyStmt
     case (CondExp(cond, thn, els), c) =>
@@ -31,14 +29,11 @@ trait RewriteFunctionBody[C <: Context] {
       val ifStmt = If(transformExp(cond, c), Seqn(Seq(thnStmt), Nil)(), Seqn(Seq(elsStmt), Nil)())()
       Seqn(Seq(condStmt, ifStmt), Nil)()
     case (Unfolding(acc, unfBody), c) =>
-      // TODO: needed? val accExp = transformExp(acc, c)
+      val permCheck = transform(acc.perm, c)
       val unfold = Unfold(acc)()
-      val access = transform(acc, c)
       val unfoldBody = transform(unfBody, c)
       val fold = Fold(acc)()
-      // TODO: shouldn't access be before unfold?
-      val t = Seqn(Seq(unfold, access, unfoldBody, fold), Nil)()
-      t
+      Seqn(Seq(unfold, unfoldBody, fold), Nil)()
     case (b: BinExp, c) =>
       val left = transform(b.left, c)
       val right = transform(b.right, c)

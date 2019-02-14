@@ -5,7 +5,7 @@ import viper.silver.ast._
 import scala.collection.mutable
 
 /**
-  * An interface which offers multiple classes to add additional code to a program
+  * An interface which offers to add additional code to a program
   * without causing name conflicts.
   */
 trait ProgramCheck{

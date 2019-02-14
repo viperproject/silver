@@ -59,34 +59,38 @@ trait NestedPredicate[C <: SimpleContext] extends ProgramCheck with RewriteFunct
     * @return a statement representing the expression
     */
   override def transform: PartialFunction[(Exp, C), Stmt] = {
-    // TODO: unfolding should be here
-    case (pap: PredicateAccessPredicate, c: C) =>
-      val func = c.func
-      val permChecks = transform(pap.perm, c)
+    case (Unfolding(pap, unfBody), c) =>
+      // unfolding with nested inhale
+      val permCheck = transform(pap.perm, c)
+      val unfold = Unfold(pap)()
 
-      val pred: Predicate = program.findPredicate(pap.loc.predicateName)
-
-      pred.body match {
-        case Some(body) =>
-          if (locationDomain.isDefined && nestedFunc.isDefined) {
-            val formalArgs = pred.formalArgs map (_.localVar)
-            //Generate nested-assumption
-            val predBody = transformPredicateBody(body.replace(ListMap(formalArgs.zip(pap.loc.args):_*)), pap, c)
-            Seqn(Seq(permChecks, predBody), Nil)(body.pos)
-          } else {
-            if (locationDomain.isEmpty) {
-              Consistency.messages ++= FastMessaging.message(
-                func, "missing location-domain")
+      val nested: Stmt = {
+        val pred = program.findPredicate(pap.loc.predicateName)
+        pred.body match {
+          case Some(body) =>
+            if (locationDomain.isDefined && nestedFunc.isDefined) {
+              val formalArgs = pred.formalArgs map (_.localVar)
+              //Generate nested-assumption
+              transformPredicateBody(body.replace(ListMap(formalArgs.zip(pap.loc.args): _*)), pap, c)
+            } else {
+              if (locationDomain.isEmpty) {
+                Consistency.messages ++= FastMessaging.message(
+                  pap, "missing location-domain")
+              }
+              if (nestedFunc.isEmpty) {
+                Consistency.messages ++= FastMessaging.message(
+                  pap, "missing nested-relation")
+              }
+              EmptyStmt
             }
-            if (nestedFunc.isEmpty) {
-              Consistency.messages ++= FastMessaging.message(
-                func, "missing nested-relation")
-            }
-            permChecks
-          }
-        //Predicate has no body
-        case None => permChecks
+          //Predicate has no body
+          case None => EmptyStmt
+        }
       }
+
+      val unfoldBody = transform(unfBody, c)
+      val fold = Fold(pap)()
+      Seqn(Seq(unfold, nested, unfoldBody, fold), Nil)()
 
     case d => super.transform(d)
   }
@@ -109,8 +113,8 @@ trait NestedPredicate[C <: SimpleContext] extends ProgramCheck with RewriteFunct
           assert(nestedFunc.isDefined)
 
           //predicate-Domains (p_PredName)
-          val domainOfCallerPred: Domain = uniqueNameGen(origPred.loc).asInstanceOf[Domain]
-          val domainOfCalleePred: Domain = uniqueNameGen(calledPred.loc).asInstanceOf[Domain]
+          val domainOfCallerPred: Domain = addPredicateDomain(origPred.loc).asInstanceOf[Domain]
+          val domainOfCalleePred: Domain = addPredicateDomain(calledPred.loc).asInstanceOf[Domain]
 
           //local variables
           val varOfCallerPred: LocalVar = uniquePredLocVar(origPred.loc, context)
@@ -171,8 +175,8 @@ trait NestedPredicate[C <: SimpleContext] extends ProgramCheck with RewriteFunct
     */
   def generateAssign(pred: PredicateAccessPredicate, assLocation: LocalVar, argMap: ListMap[Exp, Exp] = ListMap.empty)
   : LocalVarAssign = {
-    val domainOfPred: Domain = uniqueNameGen(pred.loc).asInstanceOf[Domain]
-    val domainFunc = uniqueNameGen(pred).asInstanceOf[DomainFunc]
+    val domainOfPred: Domain = addPredicateDomain(pred.loc)
+    val domainFunc = addPredicateDomainFunction(pred)
     val typVarMap: ListMap[TypeVar, Type] =
       ListMap(TypeVar(locationDomain.get.typVars.head.name) -> DomainType(domainOfPred, ListMap()))
     val assValue = DomainFuncApp(domainFunc, pred.loc.args.map(_.replace(argMap)), typVarMap)(pred.pos)
@@ -199,50 +203,56 @@ trait NestedPredicate[C <: SimpleContext] extends ProgramCheck with RewriteFunct
       val newLocalVar =
         LocalVar(predVarName)(DomainType(locationDomain.get,
           ListMap(TypeVar(locationDomain.get.typVars.head.name)
-            -> DomainType(uniqueNameGen(p).asInstanceOf[Domain], ListMap()))),
+            -> DomainType(addPredicateDomain(p), ListMap()))),
           info = info)
       neededLocalVars(func)(predVarName) = LocalVarDecl(newLocalVar.name, newLocalVar.typ)(newLocalVar.pos, info)
       newLocalVar
     }
   }
 
-  private def uniqueNameGen(node: Node): Node = {
-    assert(node.isInstanceOf[PredicateAccess] ||
-      node.isInstanceOf[PredicateAccessPredicate])
-    node match {
-      case p: PredicateAccess =>
-        if (domains.values.exists(_.name == p.predicateName)) {
-          domains.values.find(_.name == p.predicateName).get
-        } else {
-          if (domains.contains(p.predicateName)) {
-            domains(p.predicateName)
-          } else {
-            val uniquePredName = uniqueName(p.predicateName + "_PredName")
-            val newDomain = Domain(uniquePredName, Seq(), Seq(), Seq())(NoPosition)
-            //domains(uniquePredName) = newDomain
-            domains(p.predicateName) = newDomain
-            newDomain
-          }
-        }
-      case pa: PredicateAccessPredicate =>
-        if (neededLocFunctions.contains(pa.loc.predicateName)) {
-          neededLocFunctions(pa.loc.predicateName)
-        } else {
-          val uniquePredFuncName =
-            uniqueName("loc_" + pa.loc.args.map(_.typ).mkString("_").replaceAll("\\[", "").replaceAll("\\]", ""))
-          val pred = program.findPredicate(pa.loc.predicateName)
-          val newLocFunc =
-            DomainFunc(uniquePredFuncName,
-              pred.formalArgs,
-              DomainType(locationDomain.get,
-                ListMap(locationDomain.get.typVars.head -> locationDomain.get.typVars.head))
-            )(locationDomain.get.pos, locationDomain.get.info, locationDomain.get.name, locationDomain.get.errT)
-
-          //domainfunctions(uniquePredFuncName) = newLocFunc
-          neededLocFunctions(pa.loc.predicateName) = newLocFunc
-          newLocFunc
-        }
+  /**
+    * Creates a domain representing the predicate and adds it to the program domains,
+    * if not yet done
+    * @param pa PredicateAccess to the predicate.
+    * @return Domain of the predicate
+    */
+  private def addPredicateDomain(pa: PredicateAccess): Domain = {
+    if (domains.values.exists(_.name == pa.predicateName)) {
+      domains.values.find(_.name == pa.predicateName).get
+    } else {
+      if (domains.contains(pa.predicateName)) {
+        domains(pa.predicateName)
+      } else {
+        val uniquePredName = uniqueName(pa.predicateName + "_PredName")
+        val newDomain = Domain(uniquePredName, Nil, Nil, Nil)(NoPosition)
+        domains(pa.predicateName) = newDomain
+        newDomain
+      }
     }
+  }
+
+  /**
+    * Creates a domain function to create the representation of the predicate
+    * @param pap predicate
+    * @return domain function
+    */
+  private def addPredicateDomainFunction(pap: PredicateAccessPredicate): DomainFunc = {
+      if (neededLocFunctions.contains(pap.loc.predicateName)) {
+        neededLocFunctions(pap.loc.predicateName)
+      } else {
+        val uniquePredFuncName =
+          uniqueName("loc_" + pap.loc.args.map(_.typ).mkString("_").replaceAll("\\[", "").replaceAll("\\]", ""))
+        val pred = program.findPredicate(pap.loc.predicateName)
+        val newLocFunc =
+          DomainFunc(uniquePredFuncName,
+            pred.formalArgs,
+            DomainType(locationDomain.get,
+              ListMap(locationDomain.get.typVars.head -> locationDomain.get.typVars.head))
+          )(locationDomain.get.pos, locationDomain.get.info, locationDomain.get.name, locationDomain.get.errT)
+
+        neededLocFunctions(pap.loc.predicateName) = newLocFunc
+        newLocFunc
+      }
   }
 
 
