@@ -13,8 +13,9 @@ import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationRe
 // run --printTranslatedProgram --plugin viper.silver.plugin.DecreasePlugin silver/src/test/resources/termination/basic/test.vpr
 class DecreasePlugin extends SilverPlugin {
 
-  // decreases "keyword"
+  // decreases keywords
   private val DECREASES = "decreases"
+  private val DECREASESSTAR = "decreasesStar"
 
   /** Called after parse AST has been constructed but before identifiers are resolved and the program is type checked.
     * Replaces all decreases function calls in postconditions, replaces them with decreasesN function calls and
@@ -52,7 +53,8 @@ class DecreasePlugin extends SilverPlugin {
               val post = call.copy(func = PIdnUse(functionName), args = newArgs).setPos(call)
               posts.append(post)
             }
-          case _ =>
+          case star@PIdnUse(DECREASESSTAR) => // TODO: maybe directly add to the map and remove
+          case d => println(d)
             posts.append(post)
         }
       }
@@ -221,12 +223,13 @@ class DecreasePlugin extends SilverPlugin {
     }
   }
 
-  def transformToVerifiableProgramSimple(input: Program, decreasesMap: Map[Function, DecreaseExp]): Program = {
+  def transformToVerifiableProgramSimple(input: Program, decreasesMap: Map[Function, DecreasesExp]): Program = {
     val termCheck = new SimpleDecreases(input, decreasesMap)
     termCheck.createCheckProgram()
   }
 
-  def transformToVerifiableProgram(input: Program, decreasesMap: Map[Function, DecreaseExp]): Program = {
+  /*
+  def transformToVerifiableProgram(input: Program, decreasesMap: Map[Function, DecreasesExp]): Program = {
 
     val heights = Functions.heights(input)
 
@@ -252,6 +255,7 @@ class DecreasePlugin extends SilverPlugin {
       input.methods ++ m
     )(input.pos, input.info, input.errT)
   }
+  */
 
 
   def transformDecreasesNToDecreaseExp(input: Program,
@@ -278,7 +282,7 @@ class DecreasePlugin extends SilverPlugin {
                 PredicateAccess(p.args, mapResult._1)(p.pos, p.info, p.errT)
               case default => default
             }
-            DecreaseExp(c.pos, newArgs, NodeTrafo(c))
+            DecreasesTuple(newArgs, c.pos, NodeTrafo(c))
           case p => p
         }
         Function(
@@ -294,12 +298,12 @@ class DecreasePlugin extends SilverPlugin {
     }).execute(input)
   }
 
-  def removeDecreaseExp(program: Program): (Program, Map[Function, DecreaseExp]) = {
-    val decreaseMap = scala.collection.mutable.Map[Function, DecreaseExp]()
+  def removeDecreaseExp(program: Program): (Program, Map[Function, DecreasesExp]) = {
+    val decreaseMap = scala.collection.mutable.Map[Function, DecreasesExp]()
 
     val result: Program = ViperStrategy.Slim({
       case f: Function => {
-        val partition = f.posts.partition(p => p.isInstanceOf[DecreaseExp])
+        val partition = f.posts.partition(p => p.isInstanceOf[DecreasesExp])
         val decreases = partition._1
         val posts = partition._2
 
@@ -315,7 +319,7 @@ class DecreasePlugin extends SilverPlugin {
           )(f.pos, f.info, f.errT)
 
         if (decreases.nonEmpty) {
-          decreaseMap += (newFunction -> decreases.head.asInstanceOf[DecreaseExp])
+          decreaseMap += (newFunction -> decreases.head.asInstanceOf[DecreasesExp])
         }
         newFunction
       }
@@ -328,11 +332,11 @@ class DecreasePlugin extends SilverPlugin {
     * @param program
     * @return
     */
-  def getDecreaseExpFromDecrease(program: Program): (Program, Map[Function, DecreaseExp]) = {
-    val decreaseMap: Map[Function, DecreaseExp] =
+  def getDecreaseExpFromDecrease(program: Program): (Program, Map[Function, DecreasesExp]) = {
+    val decreaseMap: Map[Function, DecreasesExp] =
       program.functions.filter(_.decs.nonEmpty).map(f => f.decs.get match {
-        case ds@DecStar() => f -> DecreaseExp(ds.pos, Nil, NodeTrafo(ds))
-        case d@DecTuple(e) => f -> DecreaseExp(d.pos, d.exp, NodeTrafo(d))
+        case ds@DecStar() => f -> DecreasesStar(ds.pos, NodeTrafo(ds))
+        case d@DecTuple(e) => f -> DecreasesTuple(d.exp, d.pos, NodeTrafo(d))
       }).toMap
 
     (program, decreaseMap)
@@ -340,7 +344,7 @@ class DecreasePlugin extends SilverPlugin {
 
   def checkNoFunctionRecursesViaDecreasesClause(program: Program): Seq[ConsistencyError] = {
 
-    def functionDecs(function:Function) = function.posts.filter(p => p.isInstanceOf[DecreaseExp])
+    def functionDecs(function:Function) = function.posts.filter(p => p.isInstanceOf[DecreasesExp])
 
     var errors = Seq.empty[ConsistencyError]
     // TODO: cycles through all specification should not be allowed!
@@ -356,9 +360,9 @@ class DecreasePlugin extends SilverPlugin {
   }
 }
 
+sealed trait DecreasesExp extends ExtensionExp with Node
 
-
-case class DecreaseExp(pos: Position, extensionSubnodes: Seq[Exp], errT: ErrorTrafo) extends ExtensionExp {
+case class DecreasesTuple(extensionSubnodes: Seq[Exp] = Nil, pos: Position = NoPosition, errT: ErrorTrafo = NoTrafos) extends DecreasesExp {
 
   override def extensionIsPure = true
 
@@ -373,9 +377,6 @@ case class DecreaseExp(pos: Position, extensionSubnodes: Seq[Exp], errT: ErrorTr
     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
   override def prettyPrint: PrettyPrintPrimitives#Cont = text("decreases") <> parens(ssep(extensionSubnodes map (toParenDoc(_)), char(',') <> space))
 
-
-
-
   /**
     * Method that accesses all children of a node.
     * We allow 3 different types of children: Rewritable, Seq[Rewritable] and Option[Rewritable]
@@ -385,9 +386,24 @@ case class DecreaseExp(pos: Position, extensionSubnodes: Seq[Exp], errT: ErrorTr
     */
   override def getChildren: Seq[Exp] = extensionSubnodes
 
-  override def duplicate(children: Seq[AnyRef]): DecreaseExp = {
+  override def duplicate(children: Seq[AnyRef]): DecreasesTuple = {
     children match {
-      case Seq(args: List[Exp]) => DecreaseExp(pos, args, errT)
+      case Seq(args: List[Exp]) => DecreasesTuple(args, pos, errT)
     }
   }
+}
+
+case class DecreasesStar(pos: Position = NoPosition, errT: ErrorTrafo = NoTrafos) extends DecreasesExp{
+  override def extensionIsPure: Boolean = true
+
+  override def extensionSubnodes: Seq[Node] = Nil
+
+  override def typ: Type = Bool
+
+  /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
+    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
+  override def prettyPrint: PrettyPrintPrimitives#Cont = text("decreasesStar")
+
+  override def info: Info = NoInfo
+
 }

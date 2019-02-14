@@ -14,7 +14,7 @@ import viper.silver.ast.{DomainFunc, Exp, FuncApp, Function, Node, Predicate}
   */
 trait TerminationCheck[C <: SimpleContext] extends ProgramCheck with RewriteFunctionBody[C] {
 
-  val decreasesMap: Map[Function, DecreaseExp]
+  val decreasesMap: Map[Function, DecreasesExp]
 
   val heights = Functions.heights(program)
 

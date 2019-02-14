@@ -90,6 +90,7 @@ trait NestedPredicate[C <: SimpleContext] extends ProgramCheck with RewriteFunct
 
       val unfoldBody = transform(unfBody, c)
       val fold = Fold(pap)()
+      // TODO: reassign the unfolded predicate for soundness?
       Seqn(Seq(unfold, nested, unfoldBody, fold), Nil)()
 
     case d => super.transform(d)

@@ -26,7 +26,7 @@ import scala.collection.immutable.ListMap
   * Change the statements using the old initialization parameter, which was a map with all members (functions, methods, domains, etc.),
   * to statements using the new local variables created with the new initialization parameter (Program).
   * */
-class DecreasesClause2(val program: Program, decreaseMap: Map[Function, DecreaseExp]) {
+class DecreasesClause2(val program: Program, decreaseMap: Map[Function, DecreasesTuple]) {
 
 
   private var functions: collection.mutable.Map[String, Function] = collection.mutable.Map(program.functions map (f => (f.name, f)): _*)
@@ -136,7 +136,7 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
         //func.decs match {
         //case Some(DecTuple(_)) =>
         decreaseMap.get(func) match {
-          case Some(DecreaseExp(_,_,_)) =>
+          case Some(DecreasesTuple(_,_,_)) =>
             val pred: Predicate = predicates.find(_.name == pap.loc.predicateName).get
 
             pred.body match {
@@ -264,7 +264,7 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
               val callerFunctionInOrigBody = newFuncAppList.head
 
               //Map AssertionErrors to TerminationFailedErrors
-              val errTBound = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(decOrigin.get, reason match {
+              val errTBound = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(callerFunctionInOrigBody, reason match {
                 case AssertionFalse(offendingNode) => offendingNode match {
                   case dfa: DomainFuncApp =>
                     assert(dfa.args.size == 1)
@@ -276,7 +276,7 @@ class DecreasesClause2(val program: Program, decreaseMap: Map[Function, Decrease
               })
 
               //Map AssertionErrors to TerminationFailedErrors
-              val errTDecr = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(decOrigin.get, reason match {
+              val errTDecr = ErrTrafo({ case AssertFailed(_, reason, _) => TerminationFailed(callerFunctionInOrigBody, reason match {
                 case AssertionFalse(_) =>
                   TerminationNoDecreasePath(callerFunctionInOrigBody, comparableDec._1, comparableDec._2, newFuncAppList)
                 case d => d

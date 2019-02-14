@@ -8,11 +8,12 @@ import viper.silver.verifier.reasons.AssertionFalse
 
 import scala.collection.immutable.ListMap
 
-class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, DecreaseExp]) extends TerminationCheck[SimpleContext] with NestedPredicate[SimpleContext] {
+class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, DecreasesExp]) extends TerminationCheck[SimpleContext] with NestedPredicate[SimpleContext] {
 
   override def createCheckProgram(): Program = {
     this.clear()
 
+    // TODO: filter functions with decreasesStar
     program.functions.filter(_.body.nonEmpty).foreach(f => {
       val context = FunctionContext(f)
       val body = transform(f.body.get, context)
@@ -61,66 +62,73 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
           val decOrigin = decreasesMap.get(func)
           val decDest = decreasesMap.get(calledFunc)
 
-          if (decOrigin.isEmpty || decDest.isEmpty){
-            // TODO: Which policies?
+          val errTrafo = ErrTrafo({
+            case AssertFailed(_,r,c) => TerminationFailed(callee, r, c)
+            case d => d
+          })
 
-          }else{
+          val terminationCheck = createTerminationCheck(decOrigin, decDest, mapFormalArgsToCalledArgs, errTrafo, context)
 
-            // none is empty
-            //val formalArgs: Seq[LocalVar] = func.formalArgs map (_.localVar)
-            var neededArgAssigns: Seq[Stmt] = Nil //Needed for decreasing predicates
+          val assertion = terminationCheck
 
-            val comparableDec =
-              (decOrigin.get.subExps zip decDest.get.subExps.map(_.replace(mapFormalArgsToCalledArgs)))
-                .takeWhile(exps => exps._1.typ == exps._2.typ)
-                .unzip
-
-            val biggerExpression = comparableDec._1 map {
-            case pap: PredicateAccess =>
-              assert(locationDomain.isDefined)
-              val varOfCalleePred = uniquePredLocVar(pap, context)
-
-              //neededArgAssigns :+= generateAssign(pap, varOfCalleePred)
-              varOfCalleePred
-              case unfold: Unfolding => Old(unfold)(unfold.pos)
-              case default => default
-            }
-
-            val smallerExpressions = comparableDec._2 map {
-              case pap: PredicateAccess =>
-                val varOfCalleePred = uniquePredLocVar(pap, context)
-
-                //neededArgAssigns :+= generateAssign(pap, varOfCalleePred)
-                varOfCalleePred
-              case decC => decC
-            }
-
-            val reTBound = ReTrafo({
-              case AssertionFalse(_) =>
-                TerminationNoBound(callee, biggerExpression)
-            })
-
-            val reTDec = ReTrafo({
-              case AssertionFalse(_) =>
-                TerminationNoDecrease(callee, biggerExpression)
-            })
-
-            val errTrafo = ErrTrafo({
-              case AssertFailed(_,r,c) => TerminationFailed(decOrigin.get, r, c)
-              case d => d
-            })
-
-            val terminationCheck = createTerminationCheck(biggerExpression.map(transformExp(_, context)), smallerExpressions.map(transformExp(_, context)), reTDec, reTBound)
-
-            val assertion = Assert(terminationCheck)(callee.pos, NoInfo, errTrafo)
-
-            stmts.appendAll(neededArgAssigns :+ assertion)
-          }
+          stmts.appendAll(Seq(assertion))
       }else{
         // not in the same cycle
       }
       Seqn(stmts, Nil)()
     case default => super.transform(default)
+  }
+
+  /**
+    * Creates a termination check
+    * @param biggerDec DecreaseExp of the function currently checked
+    * @param smallerDec DecreaseExp of the function called
+    * @return termination check as a Assert Stmt
+    */
+  def createTerminationCheck(biggerDec: Option[DecreasesExp], smallerDec: Option[DecreasesExp], argMap: Map[LocalVar, Node], errTrafo: ErrTrafo, context: SimpleContext): Assert = {
+    (biggerDec, smallerDec) match {
+      case (None, _) | (_, None) =>
+        // one it not defined. should not be needed later!
+        Assert(FalseLit()())(errT = errTrafo)
+      case (Some(DecreasesTuple(_,_,_)), Some(DecreasesStar(_,_))) =>
+        Assert(FalseLit()())(errT = errTrafo)
+      case (Some(DecreasesTuple(biggerExp,_,_)), Some(DecreasesTuple(smallerExp,_,_))) =>
+        // trims to the longest commonly typed prefix
+        val (bExp, sExp) = (biggerExp zip smallerExp.map(_.replace(argMap))).takeWhile(exps => exps._1.typ == exps._2.typ).unzip
+
+        val reTBound = ReTrafo({
+          case AssertionFalse(_) =>
+            TerminationNoBound(biggerDec.get, bExp)
+        })
+
+        val reTDec = ReTrafo({
+          case AssertionFalse(_) =>
+            TerminationNoDecrease(biggerDec.get, bExp)
+        })
+
+        val checkableBiggerExp = bExp.map({
+          case pa: PredicateAccess =>
+            assert(locationDomain.isDefined)
+            val varOfCalleePred = uniquePredLocVar(pa, context)
+            varOfCalleePred
+          case unfold: Unfolding => Old(unfold)(unfold.pos)
+          case default => default
+        })
+
+        val checkableSmallerExp = sExp.map({
+          case pa: PredicateAccess =>
+            val varOfCalleePred = uniquePredLocVar(pa, context)
+            varOfCalleePred
+          case default => default
+        })
+
+        val check = createTerminationCheckExp(checkableBiggerExp, checkableSmallerExp, reTDec, reTBound)
+
+        Assert(check)(errT = errTrafo)
+      case default =>
+        assert(false, "this should not happen")
+        Assert(FalseLit()())(errT = errTrafo)
+    }
   }
 
   /**
@@ -130,7 +138,7 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
     * @param smallerExp [s,..] same size as biggerExp
     * @return expression
     */
-  def createTerminationCheck(biggerExp: Seq[Exp], smallerExp: Seq[Exp], decrReTrafo: ReTrafo, boundReTrafo: ReTrafo): Exp = {
+  def createTerminationCheckExp(biggerExp: Seq[Exp], smallerExp: Seq[Exp], decrReTrafo: ReTrafo, boundReTrafo: ReTrafo): Exp = {
 
     val paramTypesDecr = decreasingFunc.get.formalArgs map (_.typ)
     val argTypeVarsDecr = paramTypesDecr.flatMap(p => p.typeVariables)
@@ -171,7 +179,7 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
 
 trait SpecialContext extends SimpleContext
 
-case class TerminationFailed(offendingNode: DecreaseExp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
+case class TerminationFailed(offendingNode: FuncApp, reason: ErrorReason, override val cached: Boolean = false) extends AbstractVerificationError {
   val id = "termination.failed"
   val text = s"Function might not terminate."
 
@@ -179,16 +187,16 @@ case class TerminationFailed(offendingNode: DecreaseExp, reason: ErrorReason, ov
   def withReason(r: ErrorReason) = TerminationFailed(offendingNode, r)
 }
 
-case class TerminationNoDecrease(offendingNode: FuncApp, decOrigin: Seq[Exp]) extends AbstractErrorReason {
+case class TerminationNoDecrease(offendingNode: DecreasesExp, decOrigin: Seq[Exp]) extends AbstractErrorReason {
   val id = "termination.no.decreasing"
-  override def readableMessage = s"Termination measure (${decOrigin.mkString(", ")}) might not decrease when calling $offendingNode ${offendingNode.pos}."
+  override def readableMessage = s"Termination measure (${decOrigin.mkString(", ")}) might not decrease."
 
-  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoDecrease(offendingNode.asInstanceOf[FuncApp], decOrigin)
+  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoDecrease(this.offendingNode, decOrigin)
 }
 
-case class TerminationNoBound(offendingNode: FuncApp, decExp: Seq[Exp]) extends AbstractErrorReason {
+case class TerminationNoBound(offendingNode: DecreasesExp, decExp: Seq[Exp]) extends AbstractErrorReason {
   val id = "termination.no.bound"
-  override def readableMessage = s"Termination measure (${decExp.mkString(", ")}) might not be bounded when calling $offendingNode ${offendingNode.pos}."
+  override def readableMessage = s"Termination measure (${decExp.mkString(", ")}) might not be bounded."
 
-  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(offendingNode.asInstanceOf[FuncApp], decExp)
+  def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(this.offendingNode, decExp)
 }
