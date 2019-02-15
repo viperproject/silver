@@ -1,0 +1,4 @@
+method foo() {
+  //:: ExpectedOutput(inhale.failed:division.by.zero)
+  assume forall b:Bool :: 1/0 == 1/0
+}

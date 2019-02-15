@@ -168,7 +168,7 @@ object AssumeRewriter {
     }
 
     for (e <- exps) {
-      seq = seq :+ Inhale(e)()
+      seq = seq :+ Inhale(e)(e.pos, e.info, e.errT)
     }
 
     val seqn = Seqn(seq, Seq())(inhale.pos, inhale.info, inhale.errT)
