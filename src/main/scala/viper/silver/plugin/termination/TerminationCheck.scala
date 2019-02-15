@@ -2,7 +2,7 @@ package viper.silver.plugin.termination
 
 import viper.silver.ast.utility.Functions
 import viper.silver.ast.utility.Rewriter.{StrategyBuilder, Traverse}
-import viper.silver.ast.{DomainFunc, Exp, FuncApp, Function, Node, Predicate}
+import viper.silver.ast.{DomainFunc, Exp, FuncApp, Function, Node, NodeTrafo, Predicate}
 
 /**
   * A basic interface to help create termination checks.
@@ -14,7 +14,19 @@ import viper.silver.ast.{DomainFunc, Exp, FuncApp, Function, Node, Predicate}
   */
 trait TerminationCheck[C <: SimpleContext] extends ProgramCheck with RewriteFunctionBody[C] {
 
+  // all defined decreases Expressions
   val decreasesMap: Map[Function, DecreasesExp]
+
+  /**
+    * This function should be used to access all the DecreasesExp
+    * @param function for which the decreases exp is defined
+    * @return the defined DecreasesExp or a DecreasesTuple with the parameters as the arguments
+    */
+  def getDecreasesExp(function: Function): DecreasesExp = {
+    decreasesMap.getOrElse(function, {
+      DecreasesTuple(function.formalArgs.map(_.localVar), function.pos, NodeTrafo(function))
+    })
+  }
 
   val heights = Functions.heights(program)
 

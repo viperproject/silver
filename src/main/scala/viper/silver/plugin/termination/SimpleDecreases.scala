@@ -14,7 +14,7 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
     this.clear()
 
     // TODO: filter functions with decreasesStar
-    program.functions.filter(_.body.nonEmpty).foreach(f => {
+    program.functions.filterNot(f => f.body.isEmpty || getDecreasesExp(f).isInstanceOf[DecreasesStar]).foreach(f => {
       val context = FunctionContext(f)
       val body = transform(f.body.get, context)
       val localVars = neededLocalVars.get(f) match {
@@ -59,8 +59,8 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
         // map of parameters in the called function to parameters in the current functions (for substitution)
         val mapFormalArgsToCalledArgs = ListMap(calledFunc.formalArgs.map(_.localVar).zip(calleeArgs):_*)
 
-          val decOrigin = decreasesMap.get(func)
-          val decDest = decreasesMap.get(calledFunc)
+          val decOrigin = getDecreasesExp(func)
+          val decDest = getDecreasesExp(calledFunc)
 
           val errTrafo = ErrTrafo({
             case AssertFailed(_,r,c) => TerminationFailed(callee, r, c)
@@ -85,25 +85,22 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
     * @param smallerDec DecreaseExp of the function called
     * @return termination check as a Assert Stmt
     */
-  def createTerminationCheck(biggerDec: Option[DecreasesExp], smallerDec: Option[DecreasesExp], argMap: Map[LocalVar, Node], errTrafo: ErrTrafo, context: SimpleContext): Assert = {
+  def createTerminationCheck(biggerDec: DecreasesExp, smallerDec: DecreasesExp, argMap: Map[LocalVar, Node], errTrafo: ErrTrafo, context: SimpleContext): Assert = {
     (biggerDec, smallerDec) match {
-      case (None, _) | (_, None) =>
-        // one it not defined. should not be needed later!
+      case (DecreasesTuple(_,_,_), DecreasesStar(_,_)) =>
         Assert(FalseLit()())(errT = errTrafo)
-      case (Some(DecreasesTuple(_,_,_)), Some(DecreasesStar(_,_))) =>
-        Assert(FalseLit()())(errT = errTrafo)
-      case (Some(DecreasesTuple(biggerExp,_,_)), Some(DecreasesTuple(smallerExp,_,_))) =>
+      case (DecreasesTuple(biggerExp,_,_), DecreasesTuple(smallerExp,_,_)) =>
         // trims to the longest commonly typed prefix
         val (bExp, sExp) = (biggerExp zip smallerExp.map(_.replace(argMap))).takeWhile(exps => exps._1.typ == exps._2.typ).unzip
 
         val reTBound = ReTrafo({
           case AssertionFalse(_) =>
-            TerminationNoBound(biggerDec.get, bExp)
+            TerminationNoBound(biggerDec, bExp)
         })
 
         val reTDec = ReTrafo({
           case AssertionFalse(_) =>
-            TerminationNoDecrease(biggerDec.get, bExp)
+            TerminationNoDecrease(biggerDec, bExp)
         })
 
         val checkableBiggerExp = bExp.map({
@@ -126,7 +123,7 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
 
         Assert(check)(errT = errTrafo)
       case default =>
-        assert(false, "this should not happen")
+        assert(false, "Checking a function with DecreasesStar for termination!")
         Assert(FalseLit()())(errT = errTrafo)
     }
   }
