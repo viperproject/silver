@@ -1,8 +1,8 @@
-package viper.silver.plugin.termination
+package viper.silver.plugin.termination.checkcode
 
 import viper.silver.ast.utility.Functions
 import viper.silver.ast.utility.Rewriter.{StrategyBuilder, Traverse}
-import viper.silver.ast.{And, Assert, DomainFunc, DomainFuncApp, EqCmp, ErrTrafo, Exp, FalseLit, FuncApp, Function, LocalVar, Node, NodeTrafo, Old, Or, Predicate, PredicateAccess, ReTrafo, Unfolding}
+import viper.silver.ast.{And, Assert, DomainFunc, DomainFuncApp, EqCmp, ErrTrafo, Exp, FalseLit, FuncApp, Function, LocalVar, Node, NodeTrafo, Old, Or, PredicateAccess, ReTrafo, Unfolding}
 import viper.silver.verifier.{AbstractVerificationError, ErrorReason, errors}
 
 import scala.collection.immutable.ListMap
@@ -15,7 +15,7 @@ import scala.collection.immutable.ListMap
   *
   * It adds dummy function to the program if needed.
   */
-trait TerminationCheck[C <: FunctionContext] extends ProgramCheck with NestedPredicate[C] {
+trait CheckDecreases[C <: FunctionContext] extends CheckProgram with NestedPredicate[C] {
 
   // all defined decreases Expressions
   val decreasesMap: Map[Function, DecreasesExp]
@@ -31,7 +31,7 @@ trait TerminationCheck[C <: FunctionContext] extends ProgramCheck with NestedPre
     })
   }
 
-  val heights = Functions.heights(program)
+  val heights: Map[Function, Int] = Functions.heights(program)
 
   val decreasingFunc: Option[DomainFunc] = program.findDomainFunctionOptionally("decreasing")
   val boundedFunc: Option[DomainFunc] =  program.findDomainFunctionOptionally("bounded")

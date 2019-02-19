@@ -1,9 +1,9 @@
-package viper.silver.plugin.termination
+package viper.silver.plugin.termination.checkcode
 
 import viper.silver.FastMessaging
 import viper.silver.ast.utility.Consistency
 import viper.silver.ast.utility.Statements.EmptyStmt
-import viper.silver.ast._
+import viper.silver.ast.{AccessPredicate, BinExp, CondExp, Domain, DomainFunc, DomainFuncApp, DomainType, Exp, FieldAccessPredicate, Fold, Function, If, Implies, Inhale, Int, LocalVar, LocalVarAssign, LocalVarDecl, MagicWand, NoPosition, PredicateAccess, PredicateAccessPredicate, Program, Seqn, SimpleInfo, Stmt, Type, TypeVar, UnExp, Unfold, Unfolding}
 
 import scala.collection.immutable.ListMap
 
@@ -13,7 +13,7 @@ import scala.collection.immutable.ListMap
   * "nested" domain function
   * "Loc" domain
   */
-trait NestedPredicate[C <: FunctionContext] extends ProgramCheck with RewriteFunctionBody[C] {
+trait NestedPredicate[C <: FunctionContext] extends CheckProgram with RewriteFunctionBody[C] {
 
   val nestedFunc: Option[DomainFunc] =  program.findDomainFunctionOptionally("nested")
   val locationDomain: Option[Domain] =  program.domains.find(_.name == "Loc") // findDomainOptionally()?

@@ -4,12 +4,7 @@ field next: Ref
 
 predicate list(xs: Ref) {
   acc(xs.next) &&
-  (xs.next != null ==> list2(xs.next))
-}
-
-predicate list2(xs: Ref) {
-    acc(xs.next) &&
-    (xs.next != null ==> list(xs.next))
+  (xs.next != null ==> list(xs.next))
 }
 
 function length(xs: Ref): Int
@@ -18,13 +13,5 @@ function length(xs: Ref): Int
   ensures decreases(list(xs))
 
 {
-  unfolding list(xs) in xs.next == null ? 1 : 1 + length2(xs.next)
-}
-
-function length2(xs: Ref): Int
-    requires list2(xs)
-    ensures result > 0
-    ensures decreases(list2(xs))
-{
-    unfolding list2(xs) in xs.next == null ? 1 : 1 + length(xs.next)
+  unfolding list(xs) in xs.next == null ? 1 : 1 + length(xs.next)
 }

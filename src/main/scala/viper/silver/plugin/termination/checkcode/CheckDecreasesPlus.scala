@@ -1,14 +1,14 @@
 
-package viper.silver.plugin.termination
+package viper.silver.plugin.termination.checkcode
 
 import viper.silver.ast._
 import viper.silver.verifier.errors.AssertFailed
-import viper.silver.verifier.{AbstractErrorReason, AbstractVerificationError, ErrorReason, errors}
+import viper.silver.verifier.{AbstractErrorReason, errors}
 import viper.silver.verifier.reasons.AssertionFalse
 
 import scala.collection.immutable.ListMap
 
-class DecreasesPlus(val program: Program, val decreasesMap: Map[Function, DecreasesExp]) extends TerminationCheck[PlusContext]{
+class CheckDecreasesPlus(val program: Program, val decreasesMap: Map[Function, DecreasesExp]) extends CheckDecreases[PlusContext]{
 
   override def createCheckProgram(): Program = {
     this.clear()
@@ -72,7 +72,7 @@ class DecreasesPlus(val program: Program, val decreasesMap: Map[Function, Decrea
 
           } else {
             // function with an empty body in the same cycle?!
-            assert(false, "Function with an empty body in the same cycle. Should not be possible!")
+            assert(assertion = false, "Function with an empty body in the same cycle. Should not be possible!")
           }
 
         } else {
@@ -128,7 +128,7 @@ case class PlusContext(func: Function, funcAppList: Seq[FuncApp], alreadyChecked
 
 case class TerminationNoDecreasePath(offendingNode: DecreasesExp, decOrigin: Seq[Exp], decDest: Seq[Exp], offendingPath: Seq[FuncApp]) extends AbstractErrorReason {
   val id = "termination.no.decreasing.path"
-  override def readableMessage = s"Termination measure might not decrease. " +
+  override def readableMessage: String = s"Termination measure might not decrease. " +
     s"Assertion (${decDest.mkString(", ")})≺(${decOrigin.mkString(", ")}) might not hold. " +
     s"Path: ${getReadablePath(offendingPath)}."
 
@@ -141,7 +141,7 @@ case class TerminationNoDecreasePath(offendingNode: DecreasesExp, decOrigin: Seq
 
 case class TerminationNoBoundPath(offendingNode: DecreasesExp, decExp: Seq[Exp], offendingPath: Seq[FuncApp]) extends AbstractErrorReason {
   val id = "termination.no.bound.path"
-  override def readableMessage = s"Termination measure might not be bounded. " +
+  override def readableMessage: String = s"Termination measure might not be bounded. " +
     s"Assertion 0≺(${decExp.mkString(", ")}) might not hold. " +
     s"Path: ${getReadablePath(offendingPath)}."
 

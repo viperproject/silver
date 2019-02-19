@@ -1,14 +1,14 @@
 
-package viper.silver.plugin.termination
+package viper.silver.plugin.termination.checkcode
 
 import viper.silver.ast._
 import viper.silver.verifier.errors.AssertFailed
-import viper.silver.verifier.{AbstractErrorReason, AbstractVerificationError, ErrorReason, errors}
+import viper.silver.verifier.{AbstractErrorReason, errors}
 import viper.silver.verifier.reasons.AssertionFalse
 
 import scala.collection.immutable.ListMap
 
-class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, DecreasesExp]) extends TerminationCheck[FunctionContext] {
+class CheckDecreasesSimple(val program: Program, val decreasesMap: Map[Function, DecreasesExp]) extends CheckDecreases[FunctionContext] {
 
   override def createCheckProgram(): Program = {
     this.clear()
@@ -102,7 +102,7 @@ class SimpleDecreases(val program: Program, val decreasesMap: Map[Function, Decr
 
 case class TerminationNoDecrease(offendingNode: DecreasesTuple, decOrigin: Seq[Exp], decDest: Seq[Exp]) extends AbstractErrorReason {
   val id = "termination.no.decrease"
-  override def readableMessage = s"Termination measure might not decrease. " +
+  override def readableMessage: String = s"Termination measure might not decrease. " +
     s"Assertion (${decDest.mkString(", ")})≺(${decOrigin.mkString(", ")}) might not hold."
 
   def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoDecrease(this.offendingNode, decOrigin, decDest)
@@ -110,7 +110,7 @@ case class TerminationNoDecrease(offendingNode: DecreasesTuple, decOrigin: Seq[E
 
 case class TerminationNoBound(offendingNode: DecreasesTuple, decExp: Seq[Exp]) extends AbstractErrorReason {
   val id = "termination.no.bound"
-  override def readableMessage = s"Termination measure might not be bounded. " +
+  override def readableMessage: String = s"Termination measure might not be bounded. " +
     s"Assertion 0≺(${decExp.mkString(", ")}) might not hold."
 
   def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBound(this.offendingNode, decExp)

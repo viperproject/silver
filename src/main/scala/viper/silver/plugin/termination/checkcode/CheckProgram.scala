@@ -1,4 +1,4 @@
-package viper.silver.plugin.termination
+package viper.silver.plugin.termination.checkcode
 
 import viper.silver.ast._
 
@@ -8,7 +8,7 @@ import scala.collection.mutable
   * An interface which offers to add additional code to a program
   * without causing name conflicts.
   */
-trait ProgramCheck{
+trait CheckProgram{
 
   val program: Program
 
@@ -72,4 +72,3 @@ trait ProgramCheck{
     newName
   }
 }
-

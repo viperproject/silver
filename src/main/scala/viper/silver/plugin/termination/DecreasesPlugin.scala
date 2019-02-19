@@ -1,17 +1,16 @@
 
 package viper.silver.plugin.termination
 
-import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast._
-import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, space, ssep, text, toParenDoc}
 import viper.silver.ast.utility.{Functions, ViperStrategy}
 import viper.silver.parser._
 import viper.silver.plugin.SilverPlugin
+import viper.silver.plugin.termination.checkcode._
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 
 // run --printTranslatedProgram --plugin viper.silver.plugin.DecreasePlugin silver/src/test/resources/termination/basic/test.vpr
-class DecreasePlugin extends SilverPlugin {
+trait DecreasesPlugin extends SilverPlugin {
 
   // decreases keywords
   private val DECREASES = "decreases"
@@ -111,7 +110,7 @@ class DecreasePlugin extends SilverPlugin {
     val domainIdUse = PIdnUse(name)
 
     // decreases star domain function
-    val decreasesStarFunction = PDomainFunction(PIdnDef(decreasesStar), Nil, PPrimitiv(TypeHelper.Bool.name), false)(domainIdUse)
+    val decreasesStarFunction = PDomainFunction(PIdnDef(decreasesStar), Nil, PPrimitiv(TypeHelper.Bool.name), unique = false)(domainIdUse)
 
     // number of type parameters needed
     val maxArgs: Integer = decreasesN.keySet match {
@@ -125,13 +124,13 @@ class DecreasePlugin extends SilverPlugin {
     // all needed decreasesN functions
     val decreasesFunctions: Seq[PDomainFunction] = decreasesN.map {
       case (argsSize, functionName) =>
-        PDomainFunction(PIdnDef(functionName), formalArgs.take(argsSize), PPrimitiv(TypeHelper.Bool.name), false)(domainIdUse)
+        PDomainFunction(PIdnDef(functionName), formalArgs.take(argsSize), PPrimitiv(TypeHelper.Bool.name), unique = false)(domainIdUse)
     }.toSeq
 
     // all needed predicate functions
     val predicateFunctions: Seq[PDomainFunction] = predicates.map {
-      case ((predicate, args), function) =>
-        PDomainFunction(PIdnDef(function), args, PPrimitiv(TypeHelper.Bool.name), false)(domainIdUse)
+      case ((_, args), function) =>
+        PDomainFunction(PIdnDef(function), args, PPrimitiv(TypeHelper.Bool.name), unique = false)(domainIdUse)
     }.toSeq
 
     PDomain(domainIdDef, typeVars, decreasesFunctions ++ predicateFunctions :+ decreasesStarFunction , Seq())
@@ -156,12 +155,11 @@ class DecreasePlugin extends SilverPlugin {
 
 
     ViperStrategy.Slim({
-      case p: Program => {
+      case p: Program =>
         // remove the helper domain
         val domains = p.domains.filterNot(d => d.name.equals(helperDomain))
         p.copy(domains = domains)(p.pos, p.info, p.errT)
-      }
-      case f: Function => {
+      case f: Function =>
         val posts = f.posts map {
           case c: Call if c.callee.equals(decStarFunc) =>
             // replace all decreasesStar functions with DecreasesStar
@@ -189,7 +187,6 @@ class DecreasePlugin extends SilverPlugin {
           decs = f.decs,
           body = f.body,
         )(f.pos, f.info, f.errT)
-      }
     }).execute(input)
 
   }
@@ -215,7 +212,7 @@ class DecreasePlugin extends SilverPlugin {
 
     val newProgram: Program = removedDecreasesExp._1
     val decreasesMap = removedDecreasesExp._2
-    transformToVerifiableProgramPath(newProgram, decreasesMap)
+    transformToCheckProgram(newProgram, decreasesMap)
   }
 
 
@@ -235,50 +232,35 @@ class DecreasePlugin extends SilverPlugin {
     }
   }
 
-  def transformToVerifiableProgramSimple(input: Program, decreasesMap: Map[Function, DecreasesExp]): Program = {
-    val termCheck = new SimpleDecreases(input, decreasesMap)
-    termCheck.createCheckProgram()
+  /**
+    * Creates a Program containing all the wanted termination checks
+    * @param input program
+    * @param decreasesMap all decreases exp (defined by the user)
+    * @return a program with the additional termination checks (including normal program)
+    */
+  def transformToCheckProgram(input: Program, decreasesMap: Map[Function, DecreasesExp]): Program
+
+  private def checkNoFunctionRecursesViaDecreasesClause(program: Program): Seq[ConsistencyError] = {
+
+    def functionDecs(function:Function) = function.posts.filter(p => p.isInstanceOf[DecreasesExp])
+
+    var errors = Seq.empty[ConsistencyError]
+    Functions.findFunctionCyclesVia(program, functionDecs) foreach { case (func, cycleSet) =>
+      var msg = s"Function ${func.name} recurses via its decreases clause"
+
+      if (cycleSet.nonEmpty) {
+        msg = s"$msg: the cycle contains the function(s) ${cycleSet.map(_.name).mkString(", ")}"
+      }
+      errors :+= ConsistencyError(msg, func.pos)
+    }
+    errors
   }
 
-  def transformToVerifiableProgramPath(input: Program, decreasesMap: Map[Function, DecreasesExp]): Program = {
-    val termCheck = new DecreasesPlus(input, decreasesMap)
-    termCheck.createCheckProgram()
-  }
-
-  /*
-  def transformToVerifiableProgram(input: Program, decreasesMap: Map[Function, DecreasesExp]): Program = {
-
-    val heights = Functions.heights(input)
-
-    val locDom = input.domains.find(d => d.name.equals("Loc"))
-    val decFunc = input.findDomainFunctionOptionally("decreasing")
-    val boundFunc = input.findDomainFunctionOptionally("bounded")
-    val nestFunc = input.findDomainFunctionOptionally("nested")
-
-    val termCheck = new DecreasesClause2(input, decreasesMap)
-    val structureForTermProofs = termCheck.addMethods(input.functions, input.predicates, input.domains, decFunc, boundFunc, nestFunc, locDom)
-
-    val d = structureForTermProofs._1
-    val f = structureForTermProofs._2
-    val m = structureForTermProofs._3
-
-    //newProgram.copy(domains = d, functions = newProgram.functions ++ f, methods = newProgram.methods ++ m)(newProgram.pos, newProgram.info, newProgram.errT)
-
-    Program(
-      d,
-      input.fields,
-      input.functions ++ f,
-      input.predicates,
-      input.methods ++ m
-    )(input.pos, input.info, input.errT)
-  }
-  */
-
-  def removeDecreaseExp(program: Program): (Program, Map[Function, DecreasesExp]) = {
+  private def removeDecreaseExp(program: Program): (Program, Map[Function, DecreasesExp]) = {
     val decreaseMap = scala.collection.mutable.Map[Function, DecreasesExp]()
 
     val result: Program = ViperStrategy.Slim({
-      case f: Function => {
+      case f: Function =>
         val partition = f.posts.partition(p => p.isInstanceOf[DecreasesExp])
         val decreases = partition._1
         val posts = partition._2
@@ -307,87 +289,7 @@ class DecreasePlugin extends SilverPlugin {
           // none decreases clause
           f
         }
-      }
     }).execute(program)
     (result, decreaseMap.toMap)
   }
-
-  /**
-    * ONLY FOR TESTS!
-    * @param program
-    * @return
-    */
-  def getDecreaseExpFromDecrease(program: Program): (Program, Map[Function, DecreasesExp]) = {
-    val decreaseMap: Map[Function, DecreasesExp] =
-      program.functions.filter(_.decs.nonEmpty).map(f => f.decs.get match {
-        case ds@DecStar() => f -> DecreasesStar(ds.pos, NodeTrafo(ds))
-        case d@DecTuple(e) => f -> DecreasesTuple(d.exp, d.pos, NodeTrafo(d))
-      }).toMap
-
-    (program, decreaseMap)
-  }
-
-  def checkNoFunctionRecursesViaDecreasesClause(program: Program): Seq[ConsistencyError] = {
-
-    def functionDecs(function:Function) = function.posts.filter(p => p.isInstanceOf[DecreasesExp])
-
-    var errors = Seq.empty[ConsistencyError]
-    Functions.findFunctionCyclesVia(program, functionDecs) foreach { case (func, cycleSet) =>
-      var msg = s"Function ${func.name} recurses via its decreases clause"
-
-      if (cycleSet.nonEmpty) {
-        msg = s"$msg: the cycle contains the function(s) ${cycleSet.map(_.name).mkString(", ")}"
-      }
-      errors :+= ConsistencyError(msg, func.pos)
-    }
-    errors
-  }
-}
-
-sealed trait DecreasesExp extends ExtensionExp with Node
-
-case class DecreasesTuple(extensionSubnodes: Seq[Exp] = Nil, pos: Position = NoPosition, errT: ErrorTrafo = NoTrafos) extends DecreasesExp {
-
-  override def extensionIsPure = true
-
-  override def typ: Type = Bool
-
-  /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
-    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-
-  override def info: Info = NoInfo
-
-  /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
-    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-  override def prettyPrint: PrettyPrintPrimitives#Cont = text("decreases") <> parens(ssep(extensionSubnodes map (toParenDoc(_)), char(',') <> space))
-
-  /**
-    * Method that accesses all children of a node.
-    * We allow 3 different types of children: Rewritable, Seq[Rewritable] and Option[Rewritable]
-    * The supertype of all 3 is AnyRef
-    *
-    * @return Sequence of children
-    */
-  override def getChildren: Seq[Exp] = extensionSubnodes
-
-  override def duplicate(children: Seq[AnyRef]): DecreasesTuple = {
-    children match {
-      case Seq(args: List[Exp]) => DecreasesTuple(args, pos, errT)
-    }
-  }
-}
-
-case class DecreasesStar(pos: Position = NoPosition, errT: ErrorTrafo = NoTrafos) extends DecreasesExp{
-  override def extensionIsPure: Boolean = true
-
-  override def extensionSubnodes: Seq[Node] = Nil
-
-  override def typ: Type = Bool
-
-  /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
-    * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-  override def prettyPrint: PrettyPrintPrimitives#Cont = text("decreasesStar")
-
-  override def info: Info = NoInfo
-
 }
