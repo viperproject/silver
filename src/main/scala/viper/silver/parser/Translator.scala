@@ -51,7 +51,7 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
 
         val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods)(program))
 
-        finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForpermArgUse(fp, finalProgram)}
+        finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)}
         finalProgram.deepCollect {case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)}
 
         if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
