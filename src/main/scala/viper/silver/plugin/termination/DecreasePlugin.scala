@@ -215,7 +215,7 @@ class DecreasePlugin extends SilverPlugin {
 
     val newProgram: Program = removedDecreasesExp._1
     val decreasesMap = removedDecreasesExp._2
-    transformToVerifiableProgramSimple(newProgram, decreasesMap)
+    transformToVerifiableProgramPath(newProgram, decreasesMap)
   }
 
 
@@ -237,6 +237,11 @@ class DecreasePlugin extends SilverPlugin {
 
   def transformToVerifiableProgramSimple(input: Program, decreasesMap: Map[Function, DecreasesExp]): Program = {
     val termCheck = new SimpleDecreases(input, decreasesMap)
+    termCheck.createCheckProgram()
+  }
+
+  def transformToVerifiableProgramPath(input: Program, decreasesMap: Map[Function, DecreasesExp]): Program = {
+    val termCheck = new DecreasesPlus(input, decreasesMap)
     termCheck.createCheckProgram()
   }
 
@@ -327,7 +332,6 @@ class DecreasePlugin extends SilverPlugin {
     def functionDecs(function:Function) = function.posts.filter(p => p.isInstanceOf[DecreasesExp])
 
     var errors = Seq.empty[ConsistencyError]
-    // TODO: cycles through all specification should not be allowed!
     Functions.findFunctionCyclesVia(program, functionDecs) foreach { case (func, cycleSet) =>
       var msg = s"Function ${func.name} recurses via its decreases clause"
 

@@ -13,7 +13,7 @@ import scala.collection.immutable.ListMap
   * "nested" domain function
   * "Loc" domain
   */
-trait NestedPredicate[C <: SimpleContext] extends ProgramCheck with RewriteFunctionBody[C] {
+trait NestedPredicate[C <: FunctionContext] extends ProgramCheck with RewriteFunctionBody[C] {
 
   val nestedFunc: Option[DomainFunc] =  program.findDomainFunctionOptionally("nested")
   val locationDomain: Option[Domain] =  program.domains.find(_.name == "Loc") // findDomainOptionally()?
@@ -104,7 +104,7 @@ trait NestedPredicate[C <: SimpleContext] extends ProgramCheck with RewriteFunct
     * @param origPred the body of the original predicate which should be analyzed
     * @return statements with the generated inhales: (Inhale(nested(pred1, pred2)))
     */
-  def transformPredicateBody(body: Exp, origPred: PredicateAccessPredicate, context: SimpleContext): Stmt = {
+  def transformPredicateBody(body: Exp, origPred: PredicateAccessPredicate, context: FunctionContext): Stmt = {
     // TODO: shouldn't the expression be checked for termination or at least replaced with dummy
     body match {
       case ap: AccessPredicate => ap match {
@@ -134,7 +134,7 @@ trait NestedPredicate[C <: SimpleContext] extends ProgramCheck with RewriteFunct
           val params: Seq[TypeVar] = program.findDomain(nestedFunc.get.domainName).typVars
           val types: Seq[Type] =
             Seq(DomainType(domainOfCalleePred, ListMap()), DomainType(domainOfCallerPred, ListMap()), Int)
-          println(types) //TODO why is the Int used?!
+          println(types)
           val mapNested: ListMap[TypeVar, Type] = ListMap(params.zip(types):_*)
           val inhale = Inhale(DomainFuncApp(nestedFunc.get,
             Seq(varOfCalleePred, varOfCallerPred),
@@ -190,7 +190,7 @@ trait NestedPredicate[C <: SimpleContext] extends ProgramCheck with RewriteFunct
     * @param p      predicate which defines the type of the variable
     * @return a local variable with the correct type
     */
-  def uniquePredLocVar(p: PredicateAccess, context: SimpleContext): LocalVar = {
+  def uniquePredLocVar(p: PredicateAccess, context: FunctionContext): LocalVar = {
     val func = context.func
     val predVarName = p.predicateName + "_" + p.args.hashCode().toString.replaceAll("-", "_")
     if (!neededLocalVars.contains(func)){

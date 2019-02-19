@@ -103,7 +103,3 @@ trait RewriteFunctionBody[C <: Context] {
 }
 
 trait Context
-
-trait SimpleContext extends Context{
-  def func: Function
-}
