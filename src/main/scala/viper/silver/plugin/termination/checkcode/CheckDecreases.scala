@@ -32,9 +32,15 @@ trait CheckDecreases[C <: FunctionContext] extends CheckProgram with NestedPredi
   }
 
   val heights: Map[Function, Int] = Functions.heights(program)
+  def compareHeights(f1: Function, f2: Function): Boolean= {
+    // guess heights are always positive
+    heights.getOrElse(f1, -1) == heights.getOrElse(f2, -2)
+  }
 
   val decreasingFunc: Option[DomainFunc] = program.findDomainFunctionOptionally("decreasing")
   val boundedFunc: Option[DomainFunc] =  program.findDomainFunctionOptionally("bounded")
+
+  private val dummyFunctions: scala.collection.mutable.Map[String, Function] = scala.collection.mutable.Map[String, Function]()
 
   /**
     * Replaces all function calls in an expression with calls to dummy functions
@@ -45,7 +51,7 @@ trait CheckDecreases[C <: FunctionContext] extends CheckProgram with NestedPredi
     */
   override def transformExp(exp: Exp, context: C): Exp = {
     val newExp = StrategyBuilder.Slim[Node]({
-      case fa: FuncApp if heights(context.func) == heights(fa.func(program)) =>
+      case fa: FuncApp if compareHeights(context.func, functions(fa.funcname)) =>
         addDummyFunction(fa)
     }, Traverse.BottomUp)
       .execute(exp)
@@ -60,19 +66,16 @@ trait CheckDecreases[C <: FunctionContext] extends CheckProgram with NestedPredi
     * @return the needed dummy-function
     */
   private def addDummyFunction(fa: FuncApp): FuncApp = {
-    if (functions.values.exists(_.name == fa.funcname)) {
-      FuncApp(functions.values.find(_.name == fa.funcname).get, fa.args)(fa.pos)
+    if (dummyFunctions.contains(fa.funcname)) {
+      FuncApp(dummyFunctions(fa.funcname), fa.args)(fa.pos)
     } else {
-      if (functions.contains(fa.funcname)) {
-        FuncApp(functions(fa.funcname), fa.args)(fa.pos)
-      } else {
-        val uniqueFuncName = uniqueName(fa.funcname + "_withoutBody")
-        val func = program.findFunction(fa.funcname)
-        val newFunc = Function(uniqueFuncName, func.formalArgs, func.typ, Nil, Nil, None, None)(func.pos)
-        //functions(uniqueFuncName) = newFunc
-        functions(fa.funcname) = newFunc
-        FuncApp(newFunc, fa.args)(fa.pos)
-      }
+      val uniqueFuncName = uniqueName(fa.funcname + "_withoutBody")
+      val func = program.findFunction(fa.funcname)
+      val newFunc = Function(uniqueFuncName, func.formalArgs, func.typ, Nil, Nil, None, None)(func.pos)
+
+      dummyFunctions(fa.funcname) = newFunc
+      functions(uniqueFuncName) = newFunc
+      FuncApp(newFunc, fa.args)(fa.pos)
     }
   }
 
