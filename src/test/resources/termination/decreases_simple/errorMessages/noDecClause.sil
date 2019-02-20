@@ -1,0 +1,34 @@
+import <decreases/int_decreases.sil>
+
+//Function with recursion but no decreasing Clause
+function f1(x:Int): Int
+{
+//:: ExpectedOutput(termination.failed:termination.no.decrease)
+    f1(x)
+}
+
+//Function with indirect-recursion but no decreasing Clause
+function f2(x:Int): Int
+{
+//:: ExpectedOutput(termination.failed:termination.no.decrease)
+    f3(x)
+}
+
+function f3(x:Int): Int
+{
+//:: ExpectedOutput(termination.failed:termination.no.decrease)
+    f2(x)
+}
+
+function f4(x:Int): Int
+{
+//:: ExpectedOutput(termination.failed:termination.no.decrease)
+    f5(f5(f4(f5(x))))
+}
+
+function f5(x:Int): Int
+{
+    6
+}
+
+

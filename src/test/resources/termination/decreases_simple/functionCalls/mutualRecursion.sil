@@ -1,0 +1,34 @@
+import <decreases/importAllDec.sil>
+
+function f(x : Int, s:Seq[Int]) : Int
+ensures decreases(x+5)
+{
+    (x<5) ? 3 : g(x-4, s)
+}
+
+function g(y : Int, q: Seq[Int]) : Int
+ensures decreases(y)
+{
+    //:: ExpectedOutput(termination.failed:termination.no.decrease)
+    (y < 10) ? f(y+3, q[1..]) : g2(y-5, q[1..])
+}
+
+function g2(y : Int, q: Seq[Int]) : Int
+ensures decreases(q)
+{
+    //:: ExpectedOutput(termination.failed:termination.no.decrease)
+    |q| <= 1 ? 1 : g(y,q[1..])
+}
+
+function h1(x : Int, y:Int) : Int
+ensures decreases(y)
+{
+    //:: ExpectedOutput(termination.failed:termination.no.decrease)
+    y>8 ? h1(x, y-1) : h2(y,x)
+}
+
+function h2(x : Int, y:Int) : Int
+ensures decreases(x)
+{
+    x<6 ? 4 : h1(y,x-2)
+}

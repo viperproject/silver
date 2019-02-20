@@ -1,0 +1,25 @@
+import <decreases/importAllDec.sil>
+
+function f(x: Int): Int
+ensures decreases(x)
+{
+  //:: ExpectedOutput(termination.failed:termination.no.decrease)
+  x > 7 ? f(f(x-x)) : 5
+}
+
+function g(x: Int): Int
+ensures result == 1
+ensures decreases(x)
+{
+  //:: ExpectedOutput(termination.failed:termination.no.decrease)
+  x > 1 ? h(g(x-1)-1) : 1
+}
+
+function h(x: Int): Int
+//:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/247/)
+ensures result == 1
+ensures decreases(x)
+{
+    //:: ExpectedOutput(termination.failed:termination.no.decrease)
+  x > 1 ? g(h(x-1)-1) : 1
+}

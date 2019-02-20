@@ -1,0 +1,39 @@
+import <decreases/int_decreases.sil>
+
+function fun1(x: Int): Int
+ensures decreases(x+10)
+{
+  x > -10 ? fun1(x-1) : 6
+}
+
+function fun2(x: Int): Int
+ensures decreases(x+x)
+{
+  x > 5 ? (
+    x > 10 ? fun2(x-2) : fun2(x-1))
+  : 1
+}
+
+function fun3(x:Int, y:Int): Int
+requires x>0 && y>0
+ensures decreases(x)
+{
+    y >=x ? 8 : fun3(y,y)
+}
+
+function fun4(x:Int, y:Int): Int
+ensures decreases(x,y)
+{
+    x < 5 || y<8 ? 10 : fun4(x-2, y-3)
+}
+
+function fun5(x:Int): Int
+ensures decreases(-x+12)
+{
+    x<10 ? fun5(x+2) : 7
+}
+
+function fun6(x: Int): Int
+{
+    x < 0 ? 0 : fun6(x-1)
+}

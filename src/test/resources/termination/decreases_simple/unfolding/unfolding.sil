@@ -1,0 +1,25 @@
+//UnexpectedOutput(z3.interaction.failed)(silicon)
+
+import <decreases/int_decreases.sil>
+import <decreases/pred_decreases.sil>
+
+field next : Ref
+field f : Int
+
+function fun1(r:Ref): Int
+requires List(r)
+ensures decreases(List(r))
+{
+    unfolding List(r) in r.next == null ? 0 : fun1(r.next)
+}
+
+predicate List(r:Ref) {
+    acc(r.f) && acc(r.next) && (r.next != null ==> List(r.next)) && (r.next != null ==> unfolding List(r.next) in r.f > r.next.f) && r.f > 0
+}
+
+function fun2(r:Ref): Int
+requires List(r)
+ensures decreases(List(r))
+{
+    unfolding List(r) in r.next == null ? 0 : fun2(r.next)
+}

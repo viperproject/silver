@@ -1,0 +1,26 @@
+import <decreases/int_decreases.sil>
+
+//function with "decreases *" wont be tested
+function f1(x:Int): Int
+ensures decreasesStar()
+{
+    f1(x) + f1(x)
+}
+
+function f2(x:Int): Int
+{
+    f1(x)
+}
+
+function f3(x:Int): Int
+{
+    f2(x)
+}
+
+function f4(x:Int): Int
+decreases x
+{
+
+//:: ExpectedOutput(termination.failed:termination.no.decrease)
+    f4(f1(x))
+}
