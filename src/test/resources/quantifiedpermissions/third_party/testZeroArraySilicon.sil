@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 field Ref__Integer_value: Int
 
 method ZeroArray__zero_array(diz: Ref, current_thread_id: Int, ar: Seq[Ref])

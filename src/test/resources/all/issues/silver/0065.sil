@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method good(x: Int, y: Perm) {
   assume x != 0
   assume y != none

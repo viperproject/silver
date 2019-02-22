@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /*
 On Nov 18, 2016, I found the bug. It occurs in method merge, which might drop nodes.
 The smallest counterexample contains trees of degrees 0, 2, 3 (that is, 13 nodes) and removes

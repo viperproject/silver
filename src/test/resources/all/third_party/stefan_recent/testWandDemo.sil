@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 field Wand_readonly_for_writeonly__lemma: Int
 
 field Wand_readonly_for_writeonly__in_1: Ref

@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 // test aliasing information of newly created objects
 method t1(this: Ref, a: Int, b: Bool, g: Ref) returns (c: Bool, d: Int)
     requires b && acc(this.value, write)

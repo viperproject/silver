@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Examples used to investigate how to optimise the terms created by Silicon */
 
 field f: Int

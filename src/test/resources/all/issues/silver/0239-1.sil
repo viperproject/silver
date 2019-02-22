@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 define index(j) (0 <= j)
 
 define pollute() (forall i: Int :: true)
