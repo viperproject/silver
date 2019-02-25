@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Doesn't seem related to Silver issue #47*/
 
 predicate F1(r: Ref) {true}

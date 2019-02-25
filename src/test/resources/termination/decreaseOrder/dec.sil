@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 domain TerminationOrder[T1, T2]{
     function decreasing(arg1:T1, arg2:T2):Bool
     function bounded(arg1:T1):Bool

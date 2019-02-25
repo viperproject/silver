@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* The problem was a "typo" in the original implementation of
  * DefaultConsumer/ast.Forall, with the effect that the pre-consume heap σ.h
  * was used in a place where the consume heap h should be used.

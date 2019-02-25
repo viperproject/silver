@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Binary search in a sorted array */
 
 define access(a) forall j: Int :: 0 <= j && j < len(a) ==> acc(loc(a, j).val)

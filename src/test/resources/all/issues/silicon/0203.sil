@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 function count(lo: Int, hi: Int, a: Dummy):Int
   ensures hi <= lo ==> result == 0
   ensures lo <= hi ==> count(lo, hi+1, a) == result + (loc(a, hi) ? 0 : 1)

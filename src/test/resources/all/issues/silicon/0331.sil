@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 field nx : Ref
 
 predicate Peano(r:Ref) { r != null ==> acc(r.nx) && Peano(r.nx) }

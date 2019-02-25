@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Provided by Stefan Blom of U Twente.
  * The problem boiled down to Z3 not being able to show a property involving
  * non-linear arithmetic because we had disabled Groebner Bases at that time.

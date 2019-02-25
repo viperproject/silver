@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 field Test__next: Ref
 
 method Test__main2(diz: Ref, current_thread_id: Int, t1: Ref, t2: Ref)

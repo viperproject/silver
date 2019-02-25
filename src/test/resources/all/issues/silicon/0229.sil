@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Simplified problem */
 
 define RHS2 old(unfolding acc(valid2(x)) in x.r)

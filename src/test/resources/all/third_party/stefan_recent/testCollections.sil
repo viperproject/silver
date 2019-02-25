@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method Ref__types(diz: Ref, current_thread_id: Int)
   requires diz != null
   requires current_thread_id >= 0

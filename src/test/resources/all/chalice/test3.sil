@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
   field value: Int
   predicate inv(this: Ref) { acc(this.value, write) }
   function get(this: Ref): Int

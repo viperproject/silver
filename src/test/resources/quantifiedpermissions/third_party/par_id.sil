@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* This test case is due to Stefan Blom. It uses old-expressions under quantifiers,
  * which Silicon did not consider as potential triggers until commit 3930114cec12.
  */

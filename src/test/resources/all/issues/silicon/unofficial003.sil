@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Examples of nested branches, which (at some point) were not properly handled
  * by the code responsible for axiomatising functions. The problem was reported
  * by Alex Summers.
