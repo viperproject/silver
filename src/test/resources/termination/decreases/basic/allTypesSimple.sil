@@ -43,7 +43,6 @@ ensures decreases(seq)
         seq[0] ? 1 + numberOfUsers(seq[1..]) : numberOfUsers(seq[1..])
 }
 
-
 //Example decreasing Set
 function sets(s:Set[Int]):Int
 ensures decreases(s)

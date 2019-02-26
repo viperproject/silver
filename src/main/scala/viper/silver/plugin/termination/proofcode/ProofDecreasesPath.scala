@@ -1,5 +1,5 @@
 
-package viper.silver.plugin.termination.checkcode
+package viper.silver.plugin.termination.proofcode
 
 import viper.silver.ast._
 import viper.silver.verifier.errors.AssertFailed
@@ -127,13 +127,17 @@ trait PathContext extends FunctionContext{
 case class PlusContext(func: Function, funcAppList: Seq[FuncApp], alreadyChecked: Set[String]) extends PathContext
 
 case class TerminationNoDecreasePath(offendingNode: DecreasesExp, decOrigin: Seq[Exp], decDest: Seq[Exp], offendingPath: Seq[FuncApp]) extends AbstractErrorReason {
-  val id = "termination.no.decreasing.path"
+  val id = "termination.no.decrease.path"
   override def readableMessage: String = s"Termination measure might not decrease. " +
     s"Assertion (${decDest.mkString(", ")})≺(${decOrigin.mkString(", ")}) might not hold. " +
     s"Path: ${getReadablePath(offendingPath)}."
 
   def getReadablePath(path: Seq[FuncApp]): String = {
-    path.map(f => s"$f ${f.pos}").mkString(" -> ")
+    path.map(f => s"$f@${
+      f.pos match {
+        case NoPosition =>"noPos"
+        case p: HasLineColumn => s"${p.line}.${p.column}"
+      }}").mkString(" -> ")
   }
 
   def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoDecreasePath(this.offendingNode, decOrigin, decDest, offendingPath)
@@ -146,7 +150,11 @@ case class TerminationNoBoundPath(offendingNode: DecreasesExp, decExp: Seq[Exp],
     s"Path: ${getReadablePath(offendingPath)}."
 
   def getReadablePath(path: Seq[FuncApp]): String = {
-    path.map(f => s"$f@${f.pos}").mkString(" -> ")
+    path.map(f => s"$f@${
+      f.pos match {
+        case NoPosition =>"noPos"
+        case p: HasLineColumn => s"${p.line}.${p.column}"
+      }}").mkString(" -> ")
   }
 
   def withNode(offendingNode: errors.ErrorNode = this.offendingNode) = TerminationNoBoundPath(this.offendingNode, decExp, offendingPath)

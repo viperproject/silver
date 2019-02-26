@@ -5,7 +5,7 @@ import viper.silver.ast._
 import viper.silver.ast.utility.{Functions, ViperStrategy}
 import viper.silver.parser._
 import viper.silver.plugin.SilverPlugin
-import viper.silver.plugin.termination.checkcode._
+import viper.silver.plugin.termination.proofcode._
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
 

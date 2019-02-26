@@ -5,6 +5,5 @@ ensures n<=100 ==> result == 91 //Postconditin needed for proving termination
 ensures n > 100 ==> result == n-10
 ensures decreases(111-n)
 {
-        //:: ExpectedOutput(termination.failed:termination.no.decrease)
 	(n>100) ? n-10 : mc(mc(n+11))
 }

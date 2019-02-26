@@ -1,4 +1,4 @@
-package viper.silver.plugin.termination.checkcode
+package viper.silver.plugin.termination.proofcode
 
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast._

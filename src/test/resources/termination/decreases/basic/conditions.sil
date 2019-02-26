@@ -4,8 +4,7 @@ function f1(i: Int): Int
 requires i >= 0
 ensures decreases(i)
 {
-//:: ExpectedOutput(termination.failed:termination.no.decrease)
-    i < 10 ? 1 : (f1(i-1) < 4 || (f1(i-3) < 6) ? 1 : f1(i))
+    i < 10 ? 1 : (f1(i-1) < 4 || (f1(i-3) < 6) ? 1 : f1(i-1))
 }
 
 //Short circuit evaluation

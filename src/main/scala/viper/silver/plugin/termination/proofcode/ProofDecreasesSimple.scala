@@ -1,5 +1,5 @@
 
-package viper.silver.plugin.termination.checkcode
+package viper.silver.plugin.termination.proofcode
 
 import viper.silver.ast._
 import viper.silver.verifier.errors.AssertFailed

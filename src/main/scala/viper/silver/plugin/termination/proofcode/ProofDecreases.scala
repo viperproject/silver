@@ -1,4 +1,4 @@
-package viper.silver.plugin.termination.checkcode
+package viper.silver.plugin.termination.proofcode
 
 import viper.silver.ast.utility.Functions
 import viper.silver.ast.utility.Rewriter.{StrategyBuilder, Traverse}
@@ -15,7 +15,7 @@ import scala.collection.immutable.ListMap
   *
   * It adds dummy function to the program if needed.
   */
-trait CheckDecreases[C <: FunctionContext] extends CheckProgram with NestedPredicate[C] {
+trait CheckDecreases[C <: FunctionContext] extends ProofProgram with UnfoldPredicate[C] {
 
   // all defined decreases Expressions
   val decreasesMap: Map[Function, DecreasesExp]
@@ -50,14 +50,16 @@ trait CheckDecreases[C <: FunctionContext] extends CheckProgram with NestedPredi
     * @return
     */
   override def transformExp(exp: Exp, context: C): Exp = {
+    /*
     val newExp = StrategyBuilder.Slim[Node]({
       case fa: FuncApp if compareHeights(context.func, functions(fa.funcname)) =>
         addDummyFunction(fa)
     }, Traverse.BottomUp)
       .execute(exp)
       .asInstanceOf[Exp]
+    */
 
-    super.transformExp(newExp, context)
+    super.transformExp(exp, context)
   }
 
   /** Generator of the dummy-Functions

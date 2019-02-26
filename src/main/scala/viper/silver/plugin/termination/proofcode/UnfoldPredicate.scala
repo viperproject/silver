@@ -1,4 +1,4 @@
-package viper.silver.plugin.termination.checkcode
+package viper.silver.plugin.termination.proofcode
 
 import viper.silver.FastMessaging
 import viper.silver.ast.utility.Consistency
@@ -13,7 +13,7 @@ import scala.collection.immutable.ListMap
   * "nested" domain function
   * "Loc" domain
   */
-trait NestedPredicate[C <: FunctionContext] extends CheckProgram with RewriteFunctionBody[C] {
+trait UnfoldPredicate[C <: FunctionContext] extends ProofProgram with RewriteFunctionBody[C] {
 
   val nestedFunc: Option[DomainFunc] =  program.findDomainFunctionOptionally("nested")
   val locationDomain: Option[Domain] =  program.domains.find(_.name == "Loc") // findDomainOptionally()?
@@ -125,16 +125,16 @@ trait NestedPredicate[C <: FunctionContext] extends CheckProgram with RewriteFun
           val assign1 = generateAssign(origPred, varOfCallerPred)
           val assign2 = generateAssign(calledPred, varOfCalleePred)
 
-          println(assign1.lhs + ": " + assign1.lhs.typ)
-          println(assign1.rhs + ": " + assign1.rhs.typ)
-          println(assign2.lhs + ": " + assign2.lhs.typ)
-          println(assign2.rhs + ": " + assign2.rhs.typ)
+          //println(assign1.lhs + ": " + assign1.lhs.typ)
+          //println(assign1.rhs + ": " + assign1.rhs.typ)
+          //println(assign2.lhs + ": " + assign2.lhs.typ)
+          //println(assign2.rhs + ": " + assign2.rhs.typ)
 
           //inhale nested-relation
           val params: Seq[TypeVar] = program.findDomain(nestedFunc.get.domainName).typVars
           val types: Seq[Type] =
             Seq(DomainType(domainOfCalleePred, ListMap()), DomainType(domainOfCallerPred, ListMap()), Int)
-          println(types)
+          //println(types)
           val mapNested: ListMap[TypeVar, Type] = ListMap(params.zip(types):_*)
           val inhale = Inhale(DomainFuncApp(nestedFunc.get,
             Seq(varOfCalleePred, varOfCallerPred),
