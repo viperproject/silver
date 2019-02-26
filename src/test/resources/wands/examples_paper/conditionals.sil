@@ -1,4 +1,6 @@
-//:: IgnoreFile(/carbon/issue/216/)
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* This example illustrates the behaviour of conditionals on the RHS
  * of a wand, in particular, which uncertainties are caused when the
  * footprint of a wand is affected by locations to which permissions

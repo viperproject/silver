@@ -1,0 +1,10 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+define min(a,b) (a < b ? a : b)
+
+field f:Ref
+
+method m(x:Ref) {
+  inhale acc(x.f,min(1/2,write))
+}

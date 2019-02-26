@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Peter attached this to Silicon issue #44 (Translate Sil triggers to Z3 patterns) */
 
 field next: Ref

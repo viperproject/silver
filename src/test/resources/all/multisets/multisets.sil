@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method test01() {
   var B1: Multiset[Int]
   var B2: Multiset[Int]

@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 define access(a) forall k: Int :: 0 <= k && k < length(a) ==> acc(loc(a, k).val)
 define bound(a,v) 0 <= v && v < length(a)
 

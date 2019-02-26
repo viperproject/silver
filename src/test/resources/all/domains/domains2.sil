@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 domain D1[T]{
 	function g1(t:T) : D1[T]
 	function g2(t:D1[T]) : D1[T]

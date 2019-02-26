@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 function C__g(diz: Ref): Int
    requires diz != null
    requires acc(C__P(diz), wildcard)

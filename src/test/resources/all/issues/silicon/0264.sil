@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 predicate RefGuard(ref: Ref)
 
 function getWSet(ref: Ref): Set[Ref]

@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Reported by Stefan Blom of U Twente.
  * Previously, the program failed, *except* if a particular quantified assumption (precondition)
  * was removed.

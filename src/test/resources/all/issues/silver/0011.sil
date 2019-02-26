@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 domain List1[T] {
   //:: ExpectedOutput(typechecker.error)
   function nil1(): List[X] /* X has not been declared! */

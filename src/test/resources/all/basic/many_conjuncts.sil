@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Intended to test the overhead of Silicon's failure-driven heuristics, e.g. state consolidations.
  * At some point, the implementation had a bug which made the verification of the failing tests
  * (..._erroneous) horribly slow.

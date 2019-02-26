@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method binary_search(array: Seq[Int], key: Int) returns (index: Int)
    requires forall i: Int, j: Int :: 0 <= i && j < |array| && i < j ==> array[i] < array[j]
    ensures -1 <= index && index < |array|

@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Minimal example, distilled from an example provided by Stefan Blom of U Twente
  * that crashed Silicon-QP. The problem has been fixed by commit a4f3145a5ac1.
  */

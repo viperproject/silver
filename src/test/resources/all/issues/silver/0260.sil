@@ -1,0 +1,9 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f : Ref
+field g : Ref
+
+method foo(s:Ref, k : Int) {
+    inhale forall j : Int :: (j == k ? acc(s.f) : true)
+}

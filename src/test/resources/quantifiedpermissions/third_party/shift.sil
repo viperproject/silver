@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Provided by Stefan Blom of U Twente with the comment:
  *   "Apparently quantifiers over a range are easier than equivalent
  *    free form ones because in each example the last assert fails."
