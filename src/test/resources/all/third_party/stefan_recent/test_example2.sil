@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 field Counter__x: Int
 
 method Loop__incr(diz: Ref, current_thread_id: Int, c: Ref, y: Int)

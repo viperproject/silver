@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Consistency checks (performed on the real Silver AST, not the parser AST) */
 
 field f: Int

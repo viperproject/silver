@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method main() returns ()
  requires 1 + 5  == 6
  ensures 1 + 5  == 6

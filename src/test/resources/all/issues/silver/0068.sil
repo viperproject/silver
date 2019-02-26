@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method test1(xs: Set[Ref], ys: Set[Ref], zs: Set[Ref]) {
   assume (xs intersection ys) == zs
   assert (ys intersection xs) == zs

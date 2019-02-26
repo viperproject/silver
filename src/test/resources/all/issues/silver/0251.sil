@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 define a(j) forall i: Int :: i != 0 ==> i != j
 
 function f(i: Int) : Int { i }

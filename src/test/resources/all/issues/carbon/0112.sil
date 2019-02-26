@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 function fun01(): Int
   ensures result != 0
   ensures 1 \ result != 2

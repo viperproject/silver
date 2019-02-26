@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Reduced version of an example provided by Stefan Blom of U Twente.
  * Crashed Silicon at some point because of an internal assertion that prevented
  * dereferencing a quantified field at a receiver expression in which more than
