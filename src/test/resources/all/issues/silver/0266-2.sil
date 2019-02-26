@@ -1,0 +1,3 @@
+// Comment
+//:: ExpectedOutput(parser.error)
+import "doesnotexist.sil"

@@ -102,7 +102,7 @@ object CfgGenerator {
 
     def generate(name: String): TmpLabel = {
       val freshId = id.incrementAndGet()
-      new TmpLabel(s"${name}_$freshId")
+      new TmpLabel(s"${freshId}_${name}")
     }
   }
 

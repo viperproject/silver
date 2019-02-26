@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 /* A version of the (un)currying-example with additional sanity checks */
 
 /* The predicate bodies can be arbitrary since the proofs never unfold the

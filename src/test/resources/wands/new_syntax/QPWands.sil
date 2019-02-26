@@ -13,7 +13,7 @@ requires acc(y.f) {
     label setupComplete
     var toGo: Seq[Ref] := xs
     var completed: Seq[Ref] := Seq()
-    while (|toGo| != 0)
+    while (|toGo| != 0) 
     invariant forall x: Ref :: x in completed ==> acc(y.f) --* acc(x.f) && acc(y.f) && y.f == old[lhs](y.f)
     invariant forall i: Int, j: Int :: 0 <= i && 0 <= j && i < |toGo| && j < |toGo| && i != j ==> toGo[i] != toGo[j]
     invariant forall x: Ref :: x in toGo ==> acc(x.f)

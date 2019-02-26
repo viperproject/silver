@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 predicate P()
 predicate Q(b: Bool) { b ==> acc(P()) }
 

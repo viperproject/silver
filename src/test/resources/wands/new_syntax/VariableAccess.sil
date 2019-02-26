@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 field next: Ref
 
 predicate TrueListNode(x: Ref) {

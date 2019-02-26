@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 field f: Int
 
 predicate P(x: Ref) { acc(x.f, 1/3) }

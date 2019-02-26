@@ -964,6 +964,7 @@ case class PAssume(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
 case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp) extends PStmt
+case class PMacroAssign(call: PCall, exp: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PSeqn, els: PSeqn) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PSeqn) extends PStmt
 case class PFresh(vars: Seq[PIdnUse]) extends PStmt
@@ -1176,6 +1177,7 @@ object Nodes {
       case PGoto(label) => Seq(label)
       case PVarAssign(target, rhs) => Seq(target, rhs)
       case PFieldAssign(field, rhs) => Seq(field, rhs)
+      case PMacroAssign(call, exp) => Seq(call, exp)
       case PIf(cond, thn, els) => Seq(cond, thn, els)
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)

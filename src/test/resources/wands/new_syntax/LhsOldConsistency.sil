@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 method test0() {
     //:: ExpectedOutput(parser.error)
     label lhs

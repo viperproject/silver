@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 field f: Int
 field g: Int
 
@@ -16,7 +15,6 @@ method test06(p: Ref) {
   // Note: the following should fail whether the unfolding is interpreted as part of an expression on the RHS (old way), or as a ghost operation for the package (new way)
   //:: ExpectedOutput(wand.not.wellformed:insufficient.permission)
   //:: MissingOutput(wand.not.wellformed:insufficient.permission, /carbon/issue/105/)
-  //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
   //:: MissingOutput(wand.not.wellformed:insufficient.permission, /silicon/issue/201/)
   package (acc(Pair(p)) && sum(p) == 10) --* p.f + p.g == 10 {
       unfold acc(Pair(p))

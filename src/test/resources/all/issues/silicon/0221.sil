@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 predicate P(x: Ref) { true }
 
 method test01(x: Ref) {

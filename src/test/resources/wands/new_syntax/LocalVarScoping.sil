@@ -1,4 +1,3 @@
-//:: IgnoreFile(/carbon/issue/216/)
 method test0() {
     var i: Int := 0
     package true --* true {

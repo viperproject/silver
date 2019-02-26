@@ -1,0 +1,6 @@
+method test(x: Ref) {
+  package true --* true {
+    //:: ExpectedOutput(parser.error)
+    define P() false
+  }
+}
