@@ -1,0 +1,14 @@
+domain Loc[T] {
+  function loc_Ref(r: Ref): Loc[T]
+}
+
+domain d {}
+domain d2 {}
+
+method meth(r: Ref) {
+  var y: Loc[d] := loc_Ref(r)
+}
+
+method meth2(r: Ref) {
+  var z: Loc[d2] := loc_Ref(r)
+}
