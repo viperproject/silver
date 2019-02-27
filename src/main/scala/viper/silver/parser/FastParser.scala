@@ -6,12 +6,12 @@
 
 package viper.silver.parser
 
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, Path, Paths}
 
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
-import viper.silver.ast.{LineCol, SourcePosition}
+import viper.silver.ast.{SourcePosition, LineCol}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
@@ -38,11 +38,20 @@ object FastParser extends PosParser[Char, String] {
     // Strategy to handle imports
     // Idea: Import every import reference and merge imported methods, functions, imports, .. into current program
     //       iterate until no new imports are present.
+    //       To import each file at most once the absolute path is normalized (removes redundancies).
+    //       For standard import the path relative to the import folder (in resources) is normalized and used.
+    //       (normalize a path is a purely syntactic operation. if sally were a symbolic link removing sally/.. might
+    //       result in a path that no longer locates the intended file. toRealPath() might be an alternative)
 
     def resolveImports(p: PProgram) = {
-        val pathsToImport = new mutable.ArrayBuffer[Path]()
-        val pathImportStatements = new mutable.HashMap[Path, PImport]()
-        pathsToImport.append(f.toAbsolutePath)
+        val localsToImport = new mutable.ArrayBuffer[Path]()
+        val localImportStatements = new mutable.HashMap[Path, PLocalImport]()
+        val standardsToImport = new mutable.ArrayBuffer[Path]()
+        val standardImportStatements = new mutable.HashMap[Path, PStandardImport]()
+
+        // assume p is a program from the user space (local).
+        val filePath = f.toAbsolutePath.normalize()
+        localsToImport.append(filePath)
 
         var macros = p.macros
         var domains = p.domains
@@ -51,17 +60,34 @@ object FastParser extends PosParser[Char, String] {
         var methods = p.methods
         var predicates = p.predicates
         var errors = p.errors
-        for (ip <- p.imports) {
-          val importedPath = f.toAbsolutePath.getParent.resolve(ip.file)
-          if (!(pathsToImport.contains(importedPath))) {
-            pathsToImport.append(importedPath)
-            pathImportStatements.update(importedPath, ip)
+
+        def appendNewImports(imports: Seq[PImport], current: Path, fromLocal: Boolean) {
+          for (ip <- imports) {
+            ip match {
+              case localImport: PLocalImport if fromLocal =>
+                val localPath = current.resolveSibling(localImport.file).normalize()
+                if(!localsToImport.contains(localPath)){
+                  localsToImport.append(localPath)
+                  localImportStatements.update(localPath, localImport)
+                }
+              case localImport: PLocalImport if !fromLocal =>
+                // local import get transformed to standard imports
+                val localPath = current.resolveSibling(localImport.file).normalize()
+                if (!standardsToImport.contains(localPath)) {
+                  standardsToImport.append(localPath)
+                  standardImportStatements.update(localPath, PStandardImport(localPath.toString))
+                }
+              case standardImport: PStandardImport =>
+                val standardPath = Paths.get(standardImport.file).normalize()
+                if(!standardsToImport.contains(standardPath)){
+                  standardsToImport.append(standardPath)
+                  standardImportStatements.update(standardPath, standardImport)
+                }
+            }
           }
         }
-        var i = 1
-        while (i < pathsToImport.length) {
-          val current = pathsToImport(i)
-          val newProg = importProgram(current, pathImportStatements.get(current).get, plugins)
+
+        def appendNewProgram(newProg: PProgram) {
           macros ++= newProg.macros
           domains ++= newProg.domains
           fields ++= newProg.fields
@@ -69,16 +95,36 @@ object FastParser extends PosParser[Char, String] {
           methods ++= newProg.methods
           predicates ++= newProg.predicates
           errors ++= newProg.errors
-          for (ip <- newProg.imports) {
-            val importedPath = current.getParent.resolve(ip.file)
-            if (!(pathsToImport.contains(importedPath))) {
-              pathsToImport.append(importedPath)
-              pathImportStatements.update(importedPath, ip)
-            }
-          }
-          i += 1
         }
-        PProgram(Seq(), macros, domains, fields, functions, predicates, methods, errors)
+
+        appendNewImports(p.imports, filePath, true)
+
+        // resolve imports from imported programs
+        var i = 1 // localsToImport
+        var j = 0 // standardsToImport
+        while (i < localsToImport.length || j < standardsToImport.length) {
+          // at least one local or standard import has not yet been resolved
+          if (i < localsToImport.length){
+            // import a local file
+
+            val current = localsToImport(i)
+            val newProg = importLocal(current, localImportStatements(current), plugins)
+
+            appendNewProgram(newProg)
+            appendNewImports(newProg.imports, current, true)
+            i += 1
+          }else{
+            // no more local imports
+            // import a standard file
+            val current = standardsToImport(j)
+            val newProg = importStandard(current, standardImportStatements(current), plugins)
+
+            appendNewProgram(newProg)
+            appendNewImports(newProg.imports, current, false)
+            j += 1
+          }
+        }
+      PProgram(Seq(), macros, domains, fields, functions, predicates, methods, errors)
     }
 
 
@@ -129,6 +175,8 @@ object FastParser extends PosParser[Char, String] {
 
   def parens[A](p: fastparse.noApi.Parser[A]) = "(" ~ p ~ ")"
 
+  def angles[A](p: fastparse.noApi.Parser[A]) = "<" ~ p ~ ">"
+
   def quoted[A](p: fastparse.noApi.Parser[A]) = "\"" ~ p ~ "\""
 
   def foldPExp[E <: PExp](e: PExp, es: Seq[SuffixedExpressionGenerator[E]]): E =
@@ -146,23 +194,13 @@ object FastParser extends PosParser[Char, String] {
   /**
     * Function that parses a file and converts it into a program
     *
+    * @param buffer Buffer to read file from
     * @param path Path of the file to be imported
     * @param importStmt Import statement.
     * @return `PProgram` node corresponding to the imported program.
     */
-  def importProgram(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
-    if (java.nio.file.Files.notExists(path))
-      throw ParseException(s"""file "$path" does not exist""", FastPositions.getStart(importStmt))
-    _file = path
-    val source = scala.io.Source.fromInputStream(Files.newInputStream(path))
-    val buffer = try {
-      source.getLines.toArray
-    } catch {
-      case e@(_: RuntimeException | _: java.io.IOException) =>
-        throw ParseException(s"""could not import file ($e)""", FastPositions.getStart(importStmt))
-    } finally {
-      source.close()
-    }
+  def importProgram(buffer: Array[String], path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
+
     val imported_source = buffer.mkString("\n") + "\n"
     val transformed_source = if (plugins.isDefined){
       plugins.get.beforeParse(imported_source, isImported = true) match {
@@ -182,11 +220,61 @@ object FastParser extends PosParser[Char, String] {
     }
   }
 
-  def pathFromImport(importStmt: PImport): Path = {
-    val fileName = importStmt.file
-    val path = file.getParent.resolve(fileName)
+  /**
+    * Opens (and closes) standard file to be imported, parses it and converts it into a program.
+    * Standard files are located in the resources inside a "import" folder.
+    *
+    * @param path Path of the file to be imported
+    * @param importStmt Import statement.
+    * @return `PProgram` node corresponding to the imported program.
+    */
+  def importStandard(path: Path, importStmt: PStandardImport, plugins: Option[SilverPluginManager]): PProgram = {
+    val IMPORT = "import/"
+    val source = scala.io.Source.fromResource(IMPORT+path)
 
-    path
+    // nested try-catch block because source.close() in finally could also cause a NullPointerException
+    val buffer =
+      try {
+        try {
+          source.getLines.toArray
+        } catch {
+          case e@(_: RuntimeException | _: java.io.IOException) =>
+            throw ParseException(s"""could not import file ($e)""", FastPositions.getStart(importStmt))
+        } finally {
+          source.close()
+        }
+      }catch {
+        case e: java.lang.NullPointerException =>
+          throw ParseException(s"""file <$path> does not exist""", FastPositions.getStart(importStmt))
+      }
+
+    //scala.io.Source.fromInputStream(getClass.getResourceAsStream("/import/"+ path.toString))
+    importProgram(buffer, path, importStmt, plugins)
+  }
+
+  /**
+    * Opens (and closes) local file to be imported, parses it and converts it into a program.
+    *
+    * @param path Path of the file to be imported
+    * @param importStmt Import statement.
+    * @return `PProgram` node corresponding to the imported program.
+    */
+  def importLocal(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
+    if (java.nio.file.Files.notExists(path))
+      throw ParseException(s"""file "$path" does not exist""", FastPositions.getStart(importStmt))
+      _file = path
+    val source = scala.io.Source.fromInputStream(Files.newInputStream(path))
+
+    val buffer = try {
+      source.getLines.toArray
+    } catch {
+      case e@(_: RuntimeException | _: java.io.IOException) =>
+        throw ParseException(s"""could not import file ($e)""", FastPositions.getStart(importStmt))
+    } finally {
+      source.close()
+    }
+
+    importProgram(buffer, path, importStmt, plugins)
   }
 
   /**
@@ -270,15 +358,14 @@ object FastParser extends PosParser[Char, String] {
     *
     * @param macros   All macros that could be invoked inside the code
     * @param toExpand The AST node where we want to expand the macros in
-    * @param p        root of the AST where the 'toExpand' node belongs to
+    * @param program  root of the AST where the 'toExpand' node belongs to
     * @tparam T       Type of the PNode
     * @return         PNode with expanded macros of type T
     */
-  def doExpandDefines[T <: PNode]
-                     (macros: Seq[PDefine], toExpand: T, p: PProgram)
-                     : T = {
+  def doExpandDefines[T <: PNode] (macros: Seq[PDefine], toExpand: T, program: PProgram): T = {
+
     // Store the replacements from normal variable to freshly generated variable
-    val freshNames = mutable.Map.empty[String, String]
+    val renamesMap = mutable.Map.empty[String, String]
     var scopeAtMacroCall = Set.empty[String]
     val scopeOfExpandedMacros = mutable.Set.empty[String]
 
@@ -306,23 +393,23 @@ object FastParser extends PosParser[Char, String] {
       adapter.execute[PNode](body)
     }
 
-    def getFreshVar(name: String): String =
-      getFreshVarWithSuffix(name, 0)
+    object getFreshVarName {
+      private val namesToNumbers = mutable.Map.empty[String, Int]
 
-    // Acquire a fresh variable name for a macro definition
-    // Rule: newName = name + $ + x where: x >= 0 and newName does not collide with global name
-    def getFreshVarWithSuffix(name: String, counter: Int): String = {
-      val newName = s"$name$$$counter"
+      def apply(name: String): String = {
+        var number = namesToNumbers.get(name) match {
+          case Some(number) => number + 1
+          case None => 0
+        }
 
-      if (scope.contains(newName)) {
-        /* newName would clash with a name already in scope */
+        val freshVarName = (name: String, number: Int) => s"$name$$$number"
 
-        /* TODO: Seems that the implementation could be optimised rather easily to avoid
-         *       the linear search for the next "available" identifier
-         */
-        getFreshVarWithSuffix(name, counter + 1)
-      } else {
-        newName
+        while (scope.contains(freshVarName(name, number)))
+          number += 1
+
+        namesToNumbers += name -> number
+
+        freshVarName(name, number)
       }
     }
 
@@ -361,49 +448,45 @@ object FastParser extends PosParser[Char, String] {
 
     // Strategy to rename variables declared in macro's body if their names are already used in
     // the scope where the macro is being expanded, avoiding name clashes (hygienic macro expansion)
-    val renamer = StrategyBuilder.Context[PNode, ReplaceContext]({
+    val renamer = StrategyBuilder.Slim[PNode]({
 
-      // Declared variable: either local or bound
-      case (varDecl: PIdnDef, _) =>
+      // Variable declared: either local or bound
+      case (varDecl: PIdnDef) =>
 
         // If variable name is already used in scope
         if (scope.contains(varDecl.name)) {
 
           // Rename variable
-          val freshName = getFreshVar(varDecl.name)
-          val freshDecl = PIdnDef(freshName)
+          val freshVarName = getFreshVarName(varDecl.name)
 
           // Update scope
-          freshNames += varDecl.name -> freshName
-          scopeOfExpandedMacros += freshName
+          scopeOfExpandedMacros += freshVarName
+          renamesMap += varDecl.name -> freshVarName
 
-          // Preserve positions
-          adaptPositions(freshDecl, varDecl)
-
-          // Return renamed variable
-          freshDecl
+          // Create a variable with new name to substitute the previous one
+          val freshVarDecl = PIdnDef(freshVarName)
+          adaptPositions(freshVarDecl, varDecl)
+          freshVarDecl
         } else {
 
           // Update scope
           scopeOfExpandedMacros += varDecl.name
 
-          // Return same variable
+          // Return the same variable
           varDecl
         }
 
-      // Variable use: update variable's name according to its declaration
+      // Variable used: update variable's name according to its declaration
       // Macro's parameters are not renamed, since they will be replaced by
-      // their respective arguments in the following steps
-      case (varUse: PIdnUse, ctxt) if freshNames.contains(varUse.name) &&
-                                      !ctxt.c.formalArgumentSubstitutions.contains(varUse.name) =>
-        PIdnUse(freshNames(varUse.name))
+      // their respective arguments in the following steps (by replacer)
+      case (varUse: PIdnUse) if renamesMap.contains(varUse.name) => PIdnUse(renamesMap(varUse.name))
 
-    }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
+    }).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
 
     // Strategy to replace macro's parameters by their respective arguments
     val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
 
-      // Macro parameter
+      // Variable use: macro parameters are replaced by their respective argument expressions
       case (varUse: PIdnUse, ctxt) if ctxt.c.formalArgumentSubstitutions.contains(varUse.name) =>
         ctxt.c.formalArgumentSubstitutions(varUse.name)
 
@@ -427,12 +510,12 @@ object FastParser extends PosParser[Char, String] {
        *       was initially passed to renamer.
        */
 
+      // Rename locally bound variables in macro's body
+      val renamedVarsMacro = renamer.execute[PNode](body)
+      adaptPositions(renamedVarsMacro, pos)
+
       // Create context
       val context = new PartialContextC[PNode, ReplaceContext](ReplaceContext(p2a), replacerContextUpdater)
-
-      // Rename locally bound variables in macro's body
-      val renamedVarsMacro = renamer.execute[PNode](body, context)
-      adaptPositions(renamedVarsMacro, pos)
 
       // Replace macro's call arguments for every occurrence of its respective parameters in the body
       val replacedParamsMacro = replacer.execute[PNode](renamedVarsMacro, context)
@@ -442,7 +525,7 @@ object FastParser extends PosParser[Char, String] {
       replacedParamsMacro
     }
 
-    def ExpandMacroIfValid(node: PNode, ctxt: ContextA[PNode]): PNode = {
+    def ExpandMacroIfValid(node: PNode, ctx: ContextA[PNode]): PNode = {
       matchOnMacroApplication.andThen {
         case MacroApp(name, actualArgs, app) =>
           val appliedMacro = getMacroByName(name)
@@ -463,7 +546,7 @@ object FastParser extends PosParser[Char, String] {
           /* TODO: The current unsupported position detection is probably not exhaustive.
            *       Seems difficult to concisely and precisely match all (il)legal cases, however.
            */
-          (ctxt.parent, macroBody) match {
+          (ctx.parent, macroBody) match {
             case (PAccPred(loc, _), _) if (loc eq app) && !macroBody.isInstanceOf[PLocationAccess] =>
               throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
             case (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
@@ -472,8 +555,8 @@ object FastParser extends PosParser[Char, String] {
           }
 
           try {
-            scopeAtMacroCall = NameAnalyser().namesInScope(p, node)
-            freshNames.clear
+            scopeAtMacroCall = NameAnalyser().namesInScope(program, node)
+            renamesMap.clear
             replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
           } catch {
             case problem: ParseTreeDuplicationError =>
@@ -487,14 +570,13 @@ object FastParser extends PosParser[Char, String] {
     val expander = StrategyBuilder.Ancestor[PNode] {
 
       // Handles macros on the left hand-side of assignments
-      case (PMacroAssign(call, exp), ctxt) =>
+      case (PMacroAssign(call, exp), ctx) =>
         if (!isMacro(call.opName))
           throw ParseException("The only calls that can be on the left-hand side of an assignment statement are calls to macros", FastPositions.getStart(call))
 
-        val body = ExpandMacroIfValid(call, ctxt)
+        val body = ExpandMacroIfValid(call, ctx)
 
-        // Check if macro's body can be the left-hand side of an assignment and,
-        // if that's the case, add it in a corresponding assignment statement
+        // Check if macro's body can be the left-hand side of an assignment and, // if that's the case, add it in a corresponding assignment statement
         body match {
           case fa: PFieldAccess =>
             val node = PFieldAssign(fa, exp)
@@ -504,8 +586,7 @@ object FastParser extends PosParser[Char, String] {
         }
 
       // Handles all other calls to macros
-      case (currentNode, ctxt) =>
-        ExpandMacroIfValid(currentNode, ctxt)
+      case (currentNode, ctx) => ExpandMacroIfValid(currentNode, ctx)
 
     }.recurseFunc {
       /* Don't recurse into the PIdnUse of nodes that themselves could represent macro
@@ -900,9 +981,11 @@ object FastParser extends PosParser[Char, String] {
     }
   }
 
-  lazy val preambleImport: P[PImport] = P(keyword("import") ~/ quoted(relativeFilePath.!)).map {
-    case filename => PImport(filename)
-  }
+  lazy val preambleImport: P[PImport] = P(keyword("import") ~/ (
+      quoted(relativeFilePath.!).map(filename => PLocalImport(filename)) |
+      angles(relativeFilePath.!).map(filename => PStandardImport(filename))
+    )
+  )
 
   lazy val relativeFilePath: P[String] = P((CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
 

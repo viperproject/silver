@@ -413,7 +413,12 @@ case class TypeChecker(names: NameAnalyser) {
    * error should be issued.
    */
   def composeAndAdd(pts1: PTypeSubstitution,pts2: PTypeSubstitution,pt1:PType,pt2:PType) : Option[PTypeSubstitution] = {
-    assert(pts1.keySet.intersect(pts2.keySet).isEmpty)
+    val sharedKeys = pts1.keySet.intersect(pts2.keySet)
+    if (sharedKeys.exists(p => pts1.get(p).get != pts2.get(p).get)) {
+      /* no composed substitution if input substitutions do not match */
+      return None
+    }
+
     //composed substitution before add
     val cs = new PTypeSubstitution(
       pts1.map({ case (s: String, pt: PType) => s -> pt.substitute(pts2) }) ++
@@ -783,11 +788,11 @@ case class NameAnalyser() {
 
   private val namesInScope = mutable.Set.empty[String]
 
-  private def check(p: PProgram, target: Option[PNode]): Unit = {
+  private def check(n: PNode, target: Option[PNode]): Unit = {
     var curMember: PScope = null
     def getMap(d:PNode) : mutable.HashMap[String, PEntity] =
       d match {
-        case d: PGlobalDeclaration => globalDeclarationMap
+        case _: PGlobalDeclaration => globalDeclarationMap
         case _ => getCurrentMap
       }
     def getCurrentMap: mutable.HashMap[String, PEntity] =
@@ -889,10 +894,10 @@ case class NameAnalyser() {
     }
 
     // find all declarations
-    p.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
+    n.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
 
     /* Check all identifier uses. */
-    p.visit({
+    n.visit({
       case m: PScope =>
         scopeStack.push(curMember)
         curMember = m
@@ -920,7 +925,7 @@ case class NameAnalyser() {
         }
       case _ =>
     }, {
-      case m: PScope =>
+      case _: PScope =>
         curMember = scopeStack.pop()
       case _ =>
     })
@@ -931,8 +936,8 @@ case class NameAnalyser() {
     messages.isEmpty
   }
 
-  def namesInScope(p: PProgram, target: PNode): Set[String] = {
-    check(p, Some(target))
+  def namesInScope(n: PNode, target: PNode): Set[String] = {
+    check(n, Some(target))
     (namesInScope ++ globalDeclarationMap.map(_._1)).toSet
   }
 }
