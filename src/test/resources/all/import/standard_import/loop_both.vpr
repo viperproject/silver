@@ -1,0 +1,11 @@
+import <standard_import_tests/loop_all/la.vpr>
+
+domain Loop {
+    function loopa(): Bool
+    function loopb(): Bool
+}
+
+method main(){
+    assert loopa()
+    assert loopb()
+}

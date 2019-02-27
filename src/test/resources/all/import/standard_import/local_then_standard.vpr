@@ -1,0 +1,5 @@
+import "basic.vpr"
+
+method main2(){
+    assert basic()
+}
