@@ -1049,7 +1049,10 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def typ: PType
 }
 case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
-case class PImport(file: String) extends PNode
+abstract class PImport() extends PNode
+case class PLocalImport(file: String) extends PImport()
+case class PStandardImport(file: String) extends PImport()
+
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt]) extends PMember with PGlobalDeclaration {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body): PMethod = {
     StrategyBuilder.Slim[PNode]({
@@ -1182,8 +1185,9 @@ object Nodes {
       case PConstraining(vars, stmt) => vars ++ Seq(stmt)
       case PProgram(files, macros, domains, fields, functions, predicates, methods, errors) =>
         domains ++ fields ++ functions ++ predicates ++ methods
-      case PImport(file) =>
+      case PLocalImport(file) =>
         Seq()
+      case PStandardImport(file) => Seq()
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
