@@ -413,7 +413,12 @@ case class TypeChecker(names: NameAnalyser) {
    * error should be issued.
    */
   def composeAndAdd(pts1: PTypeSubstitution,pts2: PTypeSubstitution,pt1:PType,pt2:PType) : Option[PTypeSubstitution] = {
-    assert(pts1.keySet.intersect(pts2.keySet).isEmpty)
+    val sharedKeys = pts1.keySet.intersect(pts2.keySet)
+    if (sharedKeys.exists(p => pts1.get(p).get != pts2.get(p).get)) {
+      /* no composed substitution if input substitutions do not match */
+      return None
+    }
+
     //composed substitution before add
     val cs = new PTypeSubstitution(
       pts1.map({ case (s: String, pt: PType) => s -> pt.substitute(pts2) }) ++
