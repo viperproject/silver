@@ -783,11 +783,11 @@ case class NameAnalyser() {
 
   private val namesInScope = mutable.Set.empty[String]
 
-  private def check(p: PProgram, target: Option[PNode]): Unit = {
+  private def check(n: PNode, target: Option[PNode]): Unit = {
     var curMember: PScope = null
     def getMap(d:PNode) : mutable.HashMap[String, PEntity] =
       d match {
-        case d: PGlobalDeclaration => globalDeclarationMap
+        case _: PGlobalDeclaration => globalDeclarationMap
         case _ => getCurrentMap
       }
     def getCurrentMap: mutable.HashMap[String, PEntity] =
@@ -889,10 +889,10 @@ case class NameAnalyser() {
     }
 
     // find all declarations
-    p.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
+    n.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
 
     /* Check all identifier uses. */
-    p.visit({
+    n.visit({
       case m: PScope =>
         scopeStack.push(curMember)
         curMember = m
@@ -920,7 +920,7 @@ case class NameAnalyser() {
         }
       case _ =>
     }, {
-      case m: PScope =>
+      case _: PScope =>
         curMember = scopeStack.pop()
       case _ =>
     })
@@ -931,8 +931,8 @@ case class NameAnalyser() {
     messages.isEmpty
   }
 
-  def namesInScope(p: PProgram, target: PNode): Set[String] = {
-    check(p, Some(target))
+  def namesInScope(n: PNode, target: PNode): Set[String] = {
+    check(n, Some(target))
     (namesInScope ++ globalDeclarationMap.map(_._1)).toSet
   }
 }
