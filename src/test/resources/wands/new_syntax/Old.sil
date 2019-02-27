@@ -1,4 +1,6 @@
-//:: IgnoreFile(/carbon/issue/216/)
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 field f: Int
 
 method test0(x: Ref)
@@ -26,6 +28,9 @@ requires acc(x.f) {
     y.f := 5
     apply acc(x.f) && acc(y.f) && x.f == 3 && y.f == 5 --* acc(x.f) && x.f == old[lhs](x.f)
     //:: ExpectedOutput(assert.failed:labelled.state.not.reached)
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/114/)
+    //:: UnexpectedOutput(assert.failed:insufficient.permission, /carbon/issue/114/)
+    //:: MissingOutput(assert.failed:labelled.state.not.reached, /carbon/issue/114/)
     assert old[first](x.f) == 5
 }
 

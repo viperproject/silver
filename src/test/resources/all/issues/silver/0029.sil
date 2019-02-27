@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method test(x: Set[Int], y: Set[Int]) returns (z: Set[Int]) {
   z := x union y
 //:: ExpectedOutput(typechecker.error)

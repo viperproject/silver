@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /*
 Even though one of the InhaleExhale expression branches might never get
 executed, both of them must be checked for wellformedness.

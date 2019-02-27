@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast.utility
 
@@ -182,7 +182,6 @@ object Consistency {
   }
 
   /** Check all properties required for a function body. */
-
   def checkFunctionBody(e: Exp) : Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
     if(!noOld(e)) s :+= ConsistencyError( "Old expressions are not allowed in functions bodies.", e.pos)
@@ -276,16 +275,9 @@ object Consistency {
     }
   }
 
-  def fieldOrPredicate(p : Positioned) : Boolean = p match {
-    case Predicate(_,_,_) => true
-    case Field(_,_) => true
-    case _ => false
-  }
-
-  //check only for predicates (everything else yields true)
-  def oneRefParam(p : Positioned) : Boolean = p match {
-    case p : Predicate => p.formalArgs.size == 1 && p.formalArgs.head.typ == Ref
-    case _ => true
+  //check if predicate being accessed has just one parameter of type Ref
+  def oneRefParam(p : PredicateAccess) : Boolean = {
+    p.args.size == 1 && p.args.head.typ == Ref
   }
 
   def onlyDirectUse(v: LocalVar, e: Exp): Boolean = e match {
@@ -293,30 +285,20 @@ object Consistency {
     case _ => e.subExps.forall(exp => onlyDirectUse(v, exp))
   }
 
-  //check all properties that need to be satisfied by the arguments of forperm expressions
-  def checkForPermArguments(arg : Node) {
-
-    val positioned : Positioned = arg match {
-      case p : Positioned => p
-      case _ => sys.error("Can only handle positioned arguments!")
-    }
-
-    recordIfNot(positioned, fieldOrPredicate(positioned), "Can only use fields and predicates in 'forperm' expressions")
-    recordIfNot(positioned, oneRefParam(positioned), "Can only use predicates with one Ref parameter in 'forperm' expressions")
-  }
-
   def allVariablesUsed(vars: Seq[LocalVarDecl], resArgs: Seq[Exp]): Boolean = {
     vars.forall(v => resArgs.exists(a => a == v.localVar ||
       a.deepCollect[LocalVar]{case vr: LocalVar if vr == v.localVar => vr}.nonEmpty))
   }
 
-  def checkForpermArgUse(fp: ForPerm, program: Program): Unit = {
+  //check all properties that need to be satisfied by the arguments of a forperm expression
+  def checkForPermArguments(fp: ForPerm, program: Program): Unit = {
 
     val resArgs = fp.resource match {
       case fa: FieldAccess => Seq(fa.rcv)
       case pa: PredicateAccess => pa.args
       case w: MagicWand => w.subexpressionsToEvaluate(program)
-      case other => sys.error(s"Unexpectedly found $other")
+      case other => sys.error(s"Only field access, predicate access and magic wands can be used in 'forperm'" +
+                              s"expressions, but found $other instead")
     }
 
     recordIfNot(fp, allVariablesUsed(fp.variables, resArgs), "All quantified variables need to be used in a resource")

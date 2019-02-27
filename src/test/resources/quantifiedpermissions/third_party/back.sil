@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* This test is due to Stefan Blom. He noticed that the snapshots-as-arrays encoding
  * that Silicon-QP used at some point slowed the verification of this test down
  * quite a lot (from a few seconds to several minutes.)

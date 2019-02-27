@@ -1,0 +1,10 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+define nonlhs() 3
+
+method m3()
+{
+    //:: ExpectedOutput(parser.error)
+    nonlhs() := 4
+}

@@ -1,0 +1,7 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method foo() {
+  //:: ExpectedOutput(inhale.failed:division.by.zero)
+  assume forall b:Bool :: 1/0 == 1/0
+}

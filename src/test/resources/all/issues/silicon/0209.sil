@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 domain List {
     unique function fn$$List__Node(): List
     unique function fn$$List__Nil(): List

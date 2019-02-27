@@ -1,0 +1,18 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain Pointers {
+  function f(x:Ref) : Ref
+}
+
+field storedInt : Int
+
+define deref(ptr) ptr.storedInt
+
+method strange()
+{
+  var i: Int
+  var x: Ref
+  //:: ExpectedOutput(typechecker.error)
+  deref(x) := loc(x).storedInt
+}

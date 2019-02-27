@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 function fun01(): Int
   //:: ExpectedOutput(not.wellformed:division.by.zero)
   ensures 1 \ result != 1

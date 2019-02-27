@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method test1(arr1: IArray, arr2: IArray) {
   inhale forall i: Int :: true ==> acc(loc(arr1, i).val, (0 <= i && i < 10) ? write : none)
 

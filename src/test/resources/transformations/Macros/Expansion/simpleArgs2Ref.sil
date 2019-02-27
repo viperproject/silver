@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 define macro(x, y) {
     assert(x + y == 5)
     macro2(y)
