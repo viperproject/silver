@@ -1,0 +1,23 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method test1() {
+
+  /**/
+
+  assert true
+
+  /**/
+
+}
+
+
+method test2() {
+
+/*abc*/
+
+assert false
+
+/**/
+
+}
