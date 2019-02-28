@@ -16,6 +16,7 @@ method test2() {
 
 /*abc*/
 
+//:: ExpectedOutput(assert.failed:assertion.false)
 assert false
 
 /**/
