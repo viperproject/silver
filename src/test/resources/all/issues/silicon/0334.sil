@@ -25,7 +25,6 @@ method toArray(tree: Ref)
 {
   unfold BTree(tree)
 
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/334/)
   assert
     forall i: Int, b: Int ::
       (tree_size(tree.left) < i && i < b) ==> (tree_size(tree.left) + 1 < b)
