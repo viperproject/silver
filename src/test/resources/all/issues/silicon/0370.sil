@@ -1,0 +1,42 @@
+domain VCTOption[T] {
+  function VCTNone(): VCTOption[T]
+  function getVCTOption(o: VCTOption[T]): T
+}
+
+field Integer__item: Int
+
+function getVCTOption1(x: VCTOption[Seq[Ref]]): Seq[Ref]
+  requires x != VCTNone()
+{
+  getVCTOption(x)
+}
+
+method barrier_check_2(diz: Ref, current_thread_id: Int, output: VCTOption[Seq[Ref]])
+
+  requires VCTNone() != output
+  requires (forall tid: Int :: 0 <= tid && tid < |getVCTOption1(output)| ==> acc(getVCTOption1(output)[tid].Integer__item, write))
+  requires (forall tid: Int :: 0 <= tid && tid < |getVCTOption1(output)| ==> getVCTOption1(output)[tid].Integer__item == tid)
+  ensures VCTNone() != output
+  ensures (forall k: Int :: {getVCTOption1(output)[k].Integer__item} 0 <= k && k < |getVCTOption1(output)| ==> acc(getVCTOption1(output)[k].Integer__item, wildcard))
+  ensures (forall tid: Int, j: Int :: 0 <= tid && tid < |getVCTOption1(output)| && (0 <= j && j < |getVCTOption1(output)|) ==> getVCTOption1(output)[j].Integer__item == tid)
+{
+  inhale false
+}
+
+method barrier_check_2_essence(diz: Ref, current_thread_id: Int, output: VCTOption[Seq[Ref]])
+{
+  inhale VCTNone() != output
+
+  inhale
+    forall k: Int :: {getVCTOption1(output)[k].Integer__item}
+      0 <= k && k < |getVCTOption1(output)| ==>
+        acc(getVCTOption1(output)[k].Integer__item, wildcard)
+
+  //:: ExpectedOutput(exhale.failed:assertion.false)
+  exhale
+    forall tid: Int, j: Int ::
+      (0 <= tid && tid < |getVCTOption1(output)| &&
+       0 <= j   &&   j < |getVCTOption1(output)|) ==>
+        getVCTOption1(output)[j].Integer__item == tid
+        // The equality is expected to fail here, but not due to insufficient permissions
+}
