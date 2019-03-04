@@ -6,10 +6,10 @@ field parent : Ref
 field rank : Int
 
 predicate uf_bank(b:Set[Ref])
-{ (forall lol:Ref :: {lol in b} lol in b ==>
-    acc(lol.parent) && acc(lol.rank) && 0 <= lol.rank) &&
-  (forall lol:Ref :: {lol.parent} lol in b && lol.parent != null ==>
-    lol.parent in b && lol.parent.rank > lol.rank)
+{ (forall l:Ref :: {l in b} l in b ==>
+    acc(l.parent) && acc(l.rank) && 0 <= l.rank) &&
+  (forall l:Ref :: {l.parent} l in b && l.parent != null ==>
+    l.parent in b && l.parent.rank > l.rank)
 }
 
 method bad(b:Set[Ref],l:Ref)
