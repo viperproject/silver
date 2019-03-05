@@ -67,20 +67,12 @@ trait Frontend {
     */
   def result: VerificationResult
 
-  val logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
-}
-
-trait SinglePhase extends Frontend {
-  val phases = List(
-    Phase("singlePhase", runPhase _)
-  )
-
-  def runPhase()
+  protected val logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
 }
 
 trait DefaultPhases extends Frontend {
 
-  val phases = List(
+  val phases = Seq(
     Phase("parse", parse _),
     Phase("typecheck", typecheck _),
     Phase("translate", translate _),
@@ -97,7 +89,6 @@ trait DefaultPhases extends Frontend {
 
   /** Verify the Viper program using the verifier. */
   def verify()
-
 }
 
 trait SingleFileFrontend {
@@ -111,7 +102,7 @@ trait SingleFileFrontend {
   }
 }
 
-/** A default implementation of a translator that keeps track of the state of the translator.
+/** A default implementation of a frontend that keeps track of the state of the verification.
   */
 trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFrontend {
 
