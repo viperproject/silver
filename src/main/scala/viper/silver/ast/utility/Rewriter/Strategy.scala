@@ -128,6 +128,23 @@ object StrategyBuilder {
   }
 
   /**
+    * Strategy that allows access to custom defined context (of parameter type C)
+    *
+    * @param p          Partial function that transforms input (node, context) into a new node
+    * @param default    Default context value (in case no context is present)
+    * @param updateFunc Function that extracts context out of nodes and combines it with existing context
+    * @param t          Traversal direction
+    * @tparam N Common supertype of every node in the tree
+    * @tparam C Type of the context
+    * @return Strategy object ready to execute on a tree
+    */
+  def CustomContext[N <: Rewritable, C](p: PartialFunction[(N, C), N], default: C, updateFunc: PartialFunction[(N, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
+    new Strategy[N, ContextCustom[N,C]]({ // rewrite partial function taking context with parent access etc. to one just taking the custom context
+      case (n, context) if p.isDefinedAt(n, context.c) => p.apply(n, context.c)
+    }).defaultContext(new PartialContextCC[N,C](default,updateFunc)) //default new PartialContextC[N, C](default, updateFunc) traverse t
+  }
+
+  /**
     * Visitor analogous to SlimStrategy just with no new node as return type
     *
     * @param f Function to execute on every node
@@ -758,6 +775,29 @@ class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transforme
 }
 
 /**
+  * Encapsulates context information with custom context and *no* ancestors
+  *
+  * @param c           custom context object
+  * @param transformer current transformer
+  * @param upContext   Function to update the context
+  * @tparam N      Common supertype of every node in the tree
+  * @tparam CUSTOM Type of custom context
+  */
+class ContextCustom[N <: Rewritable, CUSTOM](val c: CUSTOM, override protected val transformer: StrategyInterface[N], private val upContext: PartialFunction[(N, CUSTOM), CUSTOM]) extends SimpleContext[N](transformer) {
+
+  // Perform the custom update part of the update
+  def updateCustom(n: N): ContextCustom[N, CUSTOM] = {
+    val updated = upContext.applyOrElse((n, c), (els:(N, CUSTOM)) => els._2)
+    new ContextCustom[N, CUSTOM](updated, transformer, upContext)
+  }
+
+  // Update the context with node and custom context
+  override def update(n: N): ContextCustom[N, CUSTOM] = {
+    updateCustom(n)
+  }
+}
+
+/**
   * Context object that does not contain all information yet. Provides functions to lift the object into a full context
   *
   * @tparam N Common supertype of every node in the tree
@@ -844,6 +884,36 @@ class PartialContextC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContext
     */
   override def get(transformer: StrategyInterface[N]): ContextC[N, CUSTOM] = get(aList, transformer)
 }
+
+/**
+  * Partial context for ContextCustom
+  *
+  * @param custom    Custom context object
+  * @param upContext Function to update the context
+  * @tparam N      Common supertype of every node in the tree
+  * @tparam CUSTOM Type of custom context
+  */
+class PartialContextCC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContext: PartialFunction[(N, CUSTOM), CUSTOM] = PartialFunction.empty) extends PartialContext[N, ContextCustom[N, CUSTOM]] {
+
+  /**
+    * Provide information to complete ContextCustom object
+    *
+    * @param upC         Update function for custom context
+    * @param transformer Current transformer
+    * @return A complete ContextC object
+    */
+  def get(upC: PartialFunction[(N, CUSTOM), CUSTOM], transformer: StrategyInterface[N]): ContextCustom[N, CUSTOM] = new ContextCustom[N, CUSTOM](custom, transformer, upC)
+
+  /**
+    * Provide the transformer for the real context
+    *
+    * @param transformer current transformer
+    * @return A complete ContextC object
+    */
+  override def get(transformer: StrategyInterface[N]): ContextCustom[N, CUSTOM] = get(upContext, transformer)
+}
+
+
 
 /**
   * A visitor that executes a unit-result function on every node

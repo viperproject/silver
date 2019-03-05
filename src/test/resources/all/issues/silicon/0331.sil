@@ -18,7 +18,6 @@ method A(r:Ref)
   requires r != null
 {
   inhale unfolding Peano(r) in r.nx == r
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/331/)
   assert forall k : Int ::
     { integer2(r.nx,k) }
     (unfolding Peano(r) in integer2(r.nx,k) >= 0) ==> integer2(r,k) > 0
