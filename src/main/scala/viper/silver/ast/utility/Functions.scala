@@ -180,25 +180,21 @@ object Functions {
     *         formed cycles involves the set of functions `fs`.
     */
   def findFunctionCyclesViaPreconditions(program: Program): Map[Function, Set[Function]] = {
-    def subs(entryFunc: Function)(otherFunc: Function): Seq[Exp] =
-      if (otherFunc == entryFunc)
-        otherFunc.pres
-      else
-        allSubexpressions(otherFunc)
-
-    program.functions.flatMap(func => {
-      val graph = getFunctionCallgraph(program, subs(func))
-      val cycleDetector = new CycleDetector(graph)
-      val cycle = cycleDetector.findCyclesContainingVertex(func).asScala
-
-      if (cycle.isEmpty)
-        None
-      else
-        Some(func -> cycle.toSet)
-    }).toMap[Function, Set[Function]]
+    def via(func: Function): Seq[Exp] = func.pres
+    def subs(func: Function): Seq[Exp] = allSubexpressions(func)
+    findFunctionCyclesVia(program, via, subs)
   }
 
-  // TODO: above code could use this here
+  /** Returns all cycles formed by functions that (transitively through certain sub expressions)
+    * recurses via certain expressions.
+    *
+    * @param program The program that defines the functions to check for cycles.
+    * @param via The expression the cycle has to go through.
+    * @param subs The expressions the cycle can go through transitively
+    * @return A map from functions to sets of functions. If a function `f` maps to a set of
+    *         functions `fs`, then `f` (transitively) recurses via, and the
+    *         formed cycles involves the set of functions `fs`.
+    */
   def findFunctionCyclesVia(program: Program, via: Function => Seq[Exp], subs: Function => Seq[Exp] = allSubexpressions)
   :Map[Function, Set[Function]] = {
     def viaSubs(entryFunc: Function)(otherFunc: Function): Seq[Exp] =
