@@ -229,10 +229,8 @@ object FastParser extends PosParser[Char, String] {
     * @return `PProgram` node corresponding to the imported program.
     */
   def importStandard(path: Path, importStmt: PStandardImport, plugins: Option[SilverPluginManager]): PProgram = {
-    // val IMPORT = "import/"; val source = scala.io.Source.fromResource(IMPORT+path) might not work on windows
-    val IMPORT = "/import/"
-    val stream = getClass.getResourceAsStream(IMPORT+path)
-    val source = scala.io.Source.fromInputStream(stream)
+    val IMPORT = "import/"
+    val source = scala.io.Source.fromResource(IMPORT+path)
 
     // nested try-catch block because source.close() in finally could also cause a NullPointerException
     val buffer =
