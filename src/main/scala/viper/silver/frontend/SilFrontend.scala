@@ -243,12 +243,10 @@ trait SilFrontend extends DefaultFrontend {
 
   override def doTranslate(input: PProgram): Result[Program] = {
     def translate(input: PProgram): Result[Program] = {
-      val enableFunctionTerminationChecks =
-        config != null && config.verified && config.enableFunctionTerminationChecks()
 
       _plugins.beforeTranslate(input) match {
         case Some(modifiedInputPlugin) =>
-          Translator(modifiedInputPlugin, enableFunctionTerminationChecks).translate match {
+          Translator(modifiedInputPlugin).translate match {
             case Some(program) =>
               val check = program.checkTransitively
               if (check.isEmpty) Succ(program) else Fail(check)
