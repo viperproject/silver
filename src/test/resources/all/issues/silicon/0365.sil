@@ -1,0 +1,54 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val: Int
+field tokCount: Int
+
+domain Epsilon {
+    function eps() : Perm
+    axiom epsilonPositive { eps() > none }
+}
+
+function tokCountRef(r:Ref): Ref
+    ensures tokCountRef(temp(r))==result // removing this line makes the file verify with silicon
+
+domain parallelHeaps { 
+    function temp(x: Ref): Ref 
+    function temp_inv(x: Ref): Ref 
+    function heap(x: Ref): Int 
+    function is_ghost(x: Ref): Bool 
+
+    // WARNING: The two axioms can cause a matching loop
+    axiom inv_temp {
+        (forall r: Ref :: { temp(r) } temp_inv(temp(r)) == r && (is_ghost(r) ? temp(r) == r : heap(temp(r)) == heap(r) - 3))
+    } 
+    axiom inv_temp_inv {
+        (forall r: Ref :: { temp_inv(r) } temp(temp_inv(r)) == r && (is_ghost(r) ? temp_inv(r) == r : heap(temp_inv(r)) == heap(r) + 3))
+    }
+}
+
+function resource():Ref
+function readers():Ref
+
+define n(v) v \ 4 
+// using this line instead, also makes silicon verify the file
+// define n(v) v 
+
+method try_lock_shared()
+{
+    var v0: Int
+    var v1: Int
+    v1 := havocedInt()
+
+    inhale (v1 >= 0
+    && acc(tokCountRef(resource()).tokCount, 1/1 - (n(v1)+1)*eps())
+    && acc(tokCountRef(readers()).tokCount, 1/1 - n(v1)*eps())
+    )
+
+    v0 := n(v1)
+    assume 1/1 > (eps() * v0/1)
+    assert  perm(tokCountRef(readers()).tokCount) >= 1/1 - (eps() * v0/1)
+    assert  acc (tokCountRef(readers()).tokCount,    1/1 - (eps() * v0/1))
+}
+
+method havocedInt() returns (res:Int)

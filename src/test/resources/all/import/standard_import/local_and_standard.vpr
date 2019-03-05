@@ -1,0 +1,6 @@
+import <standard_import_tests/local_and_standard.vpr>
+import "basic.vpr"
+
+method main2(){
+    assert basic()
+}
