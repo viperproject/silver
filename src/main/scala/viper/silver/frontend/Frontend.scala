@@ -25,7 +25,7 @@ case class Phase(name: String, action: () => Unit)
 trait Frontend {
 
   /** Initialize this translator with a given verifier. Only meant to be called once. */
-  def init(verifier: Verifier)
+  protected def init(verifier: Verifier)
 
   /**
     * Reset the translator, and set the input program. Can be called many times to verify multiple programs
@@ -54,8 +54,24 @@ trait Frontend {
     * returning result.
     */
   def run(): VerificationResult = {
-    phases.foreach(p => p.action())
+    phases.foreach(_.action())
     result
+  }
+
+  private def isValidPhase(phaseName: String) =
+    if (!phases.exists(_.name == phaseName))
+      sys.error(s"Phase $phaseName does not exist")
+
+  def runOnly(phaseName: String) = {
+    isValidPhase(phaseName)
+    val index = phases.indexWhere(_.name == phaseName)
+    phases(index).action()
+  }
+
+  def runTo(phaseName: String) = {
+    isValidPhase(phaseName)
+    val index = phases.indexWhere(_.name == phaseName) + 1
+    phases.slice(0, index).foreach(_.action())
   }
 
   /** The phases of this frontend which have to be executed in the order given by the list. */
@@ -72,23 +88,26 @@ trait Frontend {
 
 trait DefaultPhases extends Frontend {
 
-  val phases = Seq(
-    Phase("parse", parse _),
-    Phase("typecheck", typecheck _),
-    Phase("translate", translate _),
-    Phase("verify", verify _))
+  val phases = Seq(Phase("Parsing",           parsing _),
+                   Phase("Semantic Analysis", semanticAnalysis _),
+                   Phase("Translation",       translation _),
+                   Phase("Consistency Check", consistencyCheck _),
+                   Phase("Verification",      verification _))
 
   /** Parse the program. */
-  def parse()
+  def parsing()
 
-  /** Type-check the program. */
-  def typecheck()
+  /** Perform semantic analysis in the program, such as type, names and scope checking. */
+  def semanticAnalysis()
 
   /** Translate the program to Viper. */
-  def translate()
+  def translation()
 
-  /** Verify the Viper program using the verifier. */
-  def verify()
+  /** Perform a consistency check in Viper AST. */
+  def consistencyCheck()
+
+  /** Verify the Viper program using a verifier. */
+  def verification()
 }
 
 trait SingleFileFrontend {
@@ -102,8 +121,7 @@ trait SingleFileFrontend {
   }
 }
 
-/** A default implementation of a frontend that keeps track of the state of the verification.
-  */
+/** A default implementation of a frontend that keeps track of the state of the verification. */
 trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFrontend {
 
   sealed trait Result[+A]
@@ -115,7 +133,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   protected type ParserResult <: AnyRef
   protected type TypecheckerResult <: AnyRef
 
-  protected var _state: TranslatorState.Value = TranslatorState.Initial
+  protected var _state: DefaultStates.Value = DefaultStates.Initial
   protected var _verifier: Option[Verifier] = None
   protected var _input: Option[String] = None
   protected var _inputFile: Option[Path] = None
@@ -135,24 +153,16 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   def errors = _errors
   def program = _program
 
-  def setState(new_state: TranslatorState.Value): Unit = {
-    _state = new_state
-  }
-
-  def setVerificationResult(ver_result: VerificationResult): Unit = {
-    _verificationResult = Some(ver_result)
-  }
-
   def getVerificationResult: Option[VerificationResult] = _verificationResult
 
   override def init(verifier: Verifier) {
-    _state = TranslatorState.Initialized
+    _state = DefaultStates.Initialized
     _verifier = Some(verifier)
   }
 
   override def reset(input: Path) {
-    if (state < TranslatorState.Initialized) sys.error("The translator has not been initialized.")
-    _state = TranslatorState.InputSet
+    if (state < DefaultStates.Initialized) sys.error("The translator has not been initialized.")
+    _state = DefaultStates.InputSet
     _inputFile = Some(input)
     _input = Some(Source.fromInputStream(Files.newInputStream(input)).mkString)
     _errors = Seq()
@@ -165,75 +175,67 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   protected def mapVerificationResult(in: VerificationResult): VerificationResult
 
-  protected def doParse(input: String): Result[ParserResult]
+  protected def doParsing(input: String): Result[ParserResult]
 
-  protected def doTypecheck(input: ParserResult): Result[TypecheckerResult]
+  protected def doSemanticAnalysis(input: ParserResult): Result[TypecheckerResult]
 
-  protected def doTranslate(input: TypecheckerResult): Result[Program]
+  protected def doTranslation(input: TypecheckerResult): Result[Program]
 
-  override def parse() {
-    if (state < TranslatorState.InputSet) sys.error("The translator has not been initialized, or there is no input set.")
-    if (state >= TranslatorState.Parsed) return
+  protected def doConsistencyCheck(input: Program): Result[Program]
 
-    doParse(_input.get) match {
-      case Succ(r) => _parseResult = Some(r)
-      case Fail(e) => _errors ++= e
+  override def parsing() = {
+    if (state < DefaultStates.InputSet) sys.error("The translator has not been initialized, or there is no input set.")
+
+    if (state == DefaultStates.InputSet) {
+      doParsing(_input.get) match {
+        case Succ(r) => _parseResult = Some(r)
+        case Fail(e) => _errors ++= e
+      }
+      _state = DefaultStates.Parsing
     }
-    _state = TranslatorState.Parsed
   }
 
-  override def typecheck() {
-    // typecheck and translate (if successful)
-    if (state >= TranslatorState.Typechecked || _errors.nonEmpty) return
-    parse()
-    if (_errors.nonEmpty) {
-      _state = TranslatorState.Typechecked
-      return
+  override def semanticAnalysis() = {
+    if (state == DefaultStates.Parsing && _errors.isEmpty) {
+      doSemanticAnalysis(_parseResult.get) match {
+        case Succ(r) => _typecheckResult = Some(r)
+        case Fail(e) => _errors ++= e
+      }
+      _state = DefaultStates.SemanticAnalysis
     }
-    doTypecheck(_parseResult.get) match {
-      case Succ(r) => _typecheckResult = Some(r)
-      case Fail(e) => _errors ++= e
-    }
-    _state = TranslatorState.Typechecked
   }
 
-  override def translate() {
-    if (state >= TranslatorState.Translated || _errors.nonEmpty) return
-    typecheck()
-    if (_errors.nonEmpty) {
-      _state = TranslatorState.Translated
-      return
+  override def translation() = {
+    if (state == DefaultStates.SemanticAnalysis && _errors.isEmpty) {
+      doTranslation(_typecheckResult.get) match {
+        case Succ(r) => _program = Some(r)
+        case Fail(e) => _errors ++= e
+      }
+      _state = DefaultStates.Translation
     }
-    doTranslate(_typecheckResult.get) match {
-      case Succ(r) => _program = Some(r)
-      case Fail(e) => _errors ++= e
-    }
-
-    _state = TranslatorState.Translated
   }
 
-  override def verify() {
-    if (state >= TranslatorState.Verified || _errors.nonEmpty) return
-    translate()
-    if (_errors.nonEmpty) {
-      _state = TranslatorState.Verified
-      return
+  override def consistencyCheck(): Unit = {
+    if (state == DefaultStates.Translation && _errors.isEmpty) {
+      doConsistencyCheck(_program.get) match {
+        case Succ(program) => _program = Some(program)
+        case Fail(errors)  => _errors ++= errors
+      }
+      _state = DefaultStates.ConsistencyCheck
     }
-
-    doVerify()
   }
 
-  def doVerify() {
-    _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
-    assert(_verificationResult != null)
-
-    //    _verifier.get.stop()
-    _state = TranslatorState.Verified
+  override def verification() = {
+    if (state == DefaultStates.ConsistencyCheck && _errors.isEmpty) {
+      _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
+      assert(_verificationResult.isDefined)
+      _state = DefaultStates.Verification
+    }
   }
 
   override def result: VerificationResult = {
     if (_errors.isEmpty) {
-      require(state >= TranslatorState.Verified)
+      require(state >= DefaultStates.Verification)
       _verificationResult.get
     }
     else {
@@ -242,7 +244,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   }
 }
 
-object TranslatorState extends Enumeration {
-  type TranslatorState = Value
-  val Initial, Initialized, InputSet, Parsed, Typechecked, Translated, Verified = Value
+object DefaultStates extends Enumeration {
+  val Initial, Initialized, InputSet, Parsing, SemanticAnalysis, Translation, ConsistencyCheck, Verification = Value
 }
