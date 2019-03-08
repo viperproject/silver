@@ -1,0 +1,49 @@
+field f : Ref
+
+function g(x: Ref) : Bool
+  requires acc(x.f)
+
+function h(x: Ref) : Bool
+
+method foo(x:Ref) 
+  requires acc(x.f) && g(x)
+{
+    exhale acc(x.f)
+    inhale acc(x.f)
+    assume forall y: Ref :: {old(g(y))} h(y)
+    assert h(x)
+}
+
+method wrong_foo(x:Ref) 
+  requires acc(x.f) && g(x)
+{
+    exhale acc(x.f)
+    inhale acc(x.f)
+    assume forall y: Ref :: {g(y)} h(y)
+    //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/371/)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert h(x)
+}
+
+function gg(x: Ref) : Bool
+  requires forall z:Ref :: z == x ==> acc(z.f)
+
+method bar(x:Ref) 
+  requires acc(x.f) && gg(x)
+{
+    exhale acc(x.f)
+    inhale acc(x.f)
+    assume forall y: Ref :: {old(gg(y))} h(y)
+    assert h(x)
+} 
+
+method wrong_bar(x:Ref) 
+  requires acc(x.f) && gg(x)
+{
+    exhale acc(x.f)
+    inhale acc(x.f)    
+    assume forall y: Ref :: {gg(y)} h(y)
+    //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/371/)
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert h(x)
+} 
