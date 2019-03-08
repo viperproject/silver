@@ -9,7 +9,7 @@ import java.nio.file.{Path, Paths}
 import org.scalatest.Suite
 import viper.silver.ast.{Node, Program}
 import viper.silver.ast.utility.Rewriter.StrategyInterface
-import viper.silver.frontend.{SilFrontend, SilFrontendConfig, TranslatorState}
+import viper.silver.frontend.{SilFrontend, SilFrontendConfig, DefaultStates}
 import viper.silver.verifier.{AbstractError, Verifier}
 
 object TestHelpers {
@@ -20,10 +20,10 @@ object TestHelpers {
 
     def translate(silverFile: Path): (Option[Program], Seq[AbstractError]) = {
       _verifier = None
-      _state = TranslatorState.Initialized
+      _state = DefaultStates.Initialized
 
       reset(silverFile)
-      translate()
+      runTo("Translation")
 
       (_program, _errors)
     }
