@@ -130,24 +130,24 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   case class Fail(errors: Seq[AbstractError]) extends Result[Nothing]
 
-  protected type ParserResult <: AnyRef
-  protected type TypecheckerResult <: AnyRef
+  protected type ParsingResult <: AnyRef
+  protected type SemanticAnalysisResult <: AnyRef
 
   protected var _state: DefaultStates.Value = DefaultStates.Initial
   protected var _verifier: Option[Verifier] = None
   protected var _input: Option[String] = None
   protected var _inputFile: Option[Path] = None
   protected var _errors: Seq[AbstractError] = Seq()
+  protected var _parsingResult: Option[ParsingResult] = None
+  protected var _semanticAnalysisResult: Option[SemanticAnalysisResult] = None
   protected var _verificationResult: Option[VerificationResult] = None
-  protected var _parseResult: Option[ParserResult] = None
-  protected var _typecheckResult: Option[TypecheckerResult] = None
   protected var _program: Option[Program] = None
 
-  def parserResult: ParserResult = _parseResult.get
+  def parsingResult: ParsingResult = _parsingResult.get
 
-  def typecheckerResult: TypecheckerResult = _typecheckResult.get
+  def semanticAnalysisResult: SemanticAnalysisResult = _semanticAnalysisResult.get
 
-  def translatorResult: Program = _program.get
+  def translationResult: Program = _program.get
 
   def state = _state
   def errors = _errors
@@ -166,20 +166,20 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     _inputFile = Some(input)
     _input = Some(Source.fromInputStream(Files.newInputStream(input)).mkString)
     _errors = Seq()
-    _program = None
+    _parsingResult = None
+    _semanticAnalysisResult = None
     _verificationResult = None
-    _parseResult = None
-    _typecheckResult = None
+    _program = None
     resetMessages()
   }
 
   protected def mapVerificationResult(in: VerificationResult): VerificationResult
 
-  protected def doParsing(input: String): Result[ParserResult]
+  protected def doParsing(input: String): Result[ParsingResult]
 
-  protected def doSemanticAnalysis(input: ParserResult): Result[TypecheckerResult]
+  protected def doSemanticAnalysis(input: ParsingResult): Result[SemanticAnalysisResult]
 
-  protected def doTranslation(input: TypecheckerResult): Result[Program]
+  protected def doTranslation(input: SemanticAnalysisResult): Result[Program]
 
   protected def doConsistencyCheck(input: Program): Result[Program]
 
@@ -188,7 +188,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
     if (state == DefaultStates.InputSet) {
       doParsing(_input.get) match {
-        case Succ(r) => _parseResult = Some(r)
+        case Succ(r) => _parsingResult = Some(r)
         case Fail(e) => _errors ++= e
       }
       _state = DefaultStates.Parsing
@@ -197,8 +197,8 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   override def semanticAnalysis() = {
     if (state == DefaultStates.Parsing && _errors.isEmpty) {
-      doSemanticAnalysis(_parseResult.get) match {
-        case Succ(r) => _typecheckResult = Some(r)
+      doSemanticAnalysis(_parsingResult.get) match {
+        case Succ(r) => _semanticAnalysisResult = Some(r)
         case Fail(e) => _errors ++= e
       }
       _state = DefaultStates.SemanticAnalysis
@@ -207,7 +207,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   override def translation() = {
     if (state == DefaultStates.SemanticAnalysis && _errors.isEmpty) {
-      doTranslation(_typecheckResult.get) match {
+      doTranslation(_semanticAnalysisResult.get) match {
         case Succ(r) => _program = Some(r)
         case Fail(e) => _errors ++= e
       }

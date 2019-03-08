@@ -70,8 +70,8 @@ trait SilFrontend extends DefaultFrontend {
   def verifier: Verifier = _ver
   protected var _ver: Verifier = _
 
-  override protected type ParserResult = PProgram
-  override protected type TypecheckerResult = PProgram
+  override protected type ParsingResult = PProgram
+  override protected type SemanticAnalysisResult = PProgram
 
   /** The current configuration. */
   protected var _config: SilFrontendConfig = _
