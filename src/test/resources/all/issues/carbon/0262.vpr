@@ -14,9 +14,9 @@ method append(bad_var_name:Ref)
     var y : Ref
     assume bad_var_name != null
     link_DAG_next(bad_var_name)
-    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/262)
+    //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/262/)
     assert exists_path(y,y) ==> __learn_trigger__(foo(bad_var_name,y)) // should pass
-    //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/262)
+    //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/262/)
     //:: ExpectedOutput(assert.failed:assertion.false)
     assert exists_path(y,y) ==> __learn_trigger__(foo(y,y)) // should fail
 }
