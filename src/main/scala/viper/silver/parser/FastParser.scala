@@ -6,12 +6,12 @@
 
 package viper.silver.parser
 
+import java.net.URL
 import java.nio.file.{Files, Path, Paths}
-
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
-import viper.silver.ast.{SourcePosition, LineCol}
+import viper.silver.ast.{LineCol, SourcePosition}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
@@ -27,6 +27,11 @@ case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp
 }
 
 object FastParser extends PosParser[Char, String] {
+
+  /* When importing a file from standard library, e.g. `include <inc.vpr>`, the file is expected
+   * to be located in `resources/${standard_import_directory}`, e.g. `resources/import/inv.vpr`.
+   */
+  val standard_import_directory = "import"
 
   var _lines: Array[Int] = null
 
@@ -229,8 +234,14 @@ object FastParser extends PosParser[Char, String] {
     * @return `PProgram` node corresponding to the imported program.
     */
   def importStandard(path: Path, importStmt: PStandardImport, plugins: Option[SilverPluginManager]): PProgram = {
-    val IMPORT = "import/"
-    val source = scala.io.Source.fromResource(IMPORT+path)
+    val relativeImportPath = Paths.get(standard_import_directory, path.toString)
+    val relativeImportUrl = new URL(new URL("file:"), relativeImportPath.toString)
+    val relativeImportStr = relativeImportUrl.getPath
+
+    var resourceUrl = getClass.getClassLoader.getResource(relativeImportStr)
+    val resourcePath = viper.silver.utility.Paths.pathFromResource(resourceUrl)
+
+    val source = scala.io.Source.fromResource(relativeImportStr, getClass.getClassLoader)
 
     // nested try-catch block because source.close() in finally could also cause a NullPointerException
     val buffer =
@@ -260,9 +271,11 @@ object FastParser extends PosParser[Char, String] {
     * @return `PProgram` node corresponding to the imported program.
     */
   def importLocal(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
-    if (java.nio.file.Files.notExists(path))
+    if (java.nio.file.Files.notExists(path)) {
       throw ParseException(s"""file "$path" does not exist""", FastPositions.getStart(importStmt))
-      _file = path
+    }
+
+    _file = path
     val source = scala.io.Source.fromInputStream(Files.newInputStream(path))
 
     val buffer = try {
