@@ -330,7 +330,7 @@ object FastParser extends PosParser[Char, String] {
     // Check if macros names aren't already taken by other identifiers
     for (name <- globalNamesWithoutMacros) {
       if (uniqueMacroNames.contains(name)) {
-        throw ParseException(s"The macro name '$name' has already been used by another identifier", uniqueMacroNames.get(name).get)
+        throw ParseException(s"The macro name '$name' has already been used by another identifier", uniqueMacroNames(name))
       }
     }
 
@@ -570,9 +570,9 @@ object FastParser extends PosParser[Char, String] {
            */
           (ctx.parent, macroBody) match {
             case (PAccPred(loc, _), _) if (loc eq app) && !macroBody.isInstanceOf[PLocationAccess] =>
-              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString, FastPositions.getStart(app))
             case (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
-              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString, FastPositions.getStart(app))
             case _ => /* All good */
           }
 
@@ -582,7 +582,7 @@ object FastParser extends PosParser[Char, String] {
             replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
           } catch {
             case problem: ParseTreeDuplicationError =>
-              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), FastPositions.getStart(app))
+              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, FastPositions.getStart(app))
           }
       }.applyOrElse(node, (_: PNode) => node)
     }
@@ -625,7 +625,7 @@ object FastParser extends PosParser[Char, String] {
       expander.execute[T](toExpand)
     } catch {
       case problem: ParseTreeDuplicationError =>
-        throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), problem.original.start)
+        throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, problem.original.start)
     }
   }
 
@@ -780,15 +780,14 @@ object FastParser extends PosParser[Char, String] {
     case (loc, perms) => PAccPred(loc, perms.getOrElse(PFullPerm()))
   })
 
-  lazy val accessPred: P[PAccPred] = P(accessPredImpl.map {
-    case acc =>
-      val perm = acc.perm
-      if (FastPositions.getStart(perm) == NoPosition) {
-        FastPositions.setStart(perm, acc.start)
-        FastPositions.setFinish(perm, acc.finish)
-      }
-      acc
-  })
+  lazy val accessPred: P[PAccPred] = P(accessPredImpl.map(acc => {
+    val perm = acc.perm
+    if (FastPositions.getStart(perm) == NoPosition) {
+      FastPositions.setStart(perm, acc.start)
+      FastPositions.setFinish(perm, acc.finish)
+    }
+    acc
+  }))
 
   lazy val resAcc: P[PResourceAccess] = P(locAcc | realMagicWandExp)
 
@@ -899,7 +898,7 @@ object FastParser extends PosParser[Char, String] {
     inhale | assume | ifthnels | whle | varDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand | macroref | block)
 
-  lazy val macroref: P[PMacroRef] = P(idnuse).map { case a => PMacroRef(a) }
+  lazy val macroref: P[PMacroRef] = P(idnuse).map(a => PMacroRef(a))
 
   lazy val fieldassign: P[PFieldAssign] = P(fieldAcc ~ ":=" ~ exp).map { case (a, b) => PFieldAssign(a, b) }
 
