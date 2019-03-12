@@ -234,13 +234,22 @@ object FastParser extends PosParser[Char, String] {
     * @return `PProgram` node corresponding to the imported program.
     */
   def importStandard(path: Path, importStmt: PStandardImport, plugins: Option[SilverPluginManager]): PProgram = {
+    /* Prefix the standard library import (`path`) with the directory in which standard library
+     * files are expected (`standard_import_directory`). The result is a OS-specific path, e.g.
+     * "import\my\stdlib.vpr".
+     */
     val relativeImportPath = Paths.get(standard_import_directory, path.toString)
+
+    /* Creates a corresponding relative URL, e.g. "file://import/my/stdlib.vpr" */
     val relativeImportUrl = new URL(new URL("file:"), relativeImportPath.toString)
+
+    /* Extract the path component only, e.g. "import/my/stdlib.vpr" */
     val relativeImportStr = relativeImportUrl.getPath
 
-    var resourceUrl = getClass.getClassLoader.getResource(relativeImportStr)
-    val resourcePath = viper.silver.utility.Paths.pathFromResource(resourceUrl)
-
+    /* Resolve the import using the specified class loader. Could point into the local file system
+     * or into a jar file. The latter case requires `relativeImportStr` to be a valid URL (which
+     * rules out Windows paths).
+     */
     val source = scala.io.Source.fromResource(relativeImportStr, getClass.getClassLoader)
 
     // nested try-catch block because source.close() in finally could also cause a NullPointerException
@@ -250,11 +259,11 @@ object FastParser extends PosParser[Char, String] {
           source.getLines.toArray
         } catch {
           case e@(_: RuntimeException | _: java.io.IOException) =>
-            throw ParseException(s"""could not import file ($e)""", FastPositions.getStart(importStmt))
+            throw ParseException(s"could not import file ($e)", FastPositions.getStart(importStmt))
         } finally {
           source.close()
         }
-      }catch {
+      } catch {
         case e: java.lang.NullPointerException =>
           throw ParseException(s"""file <$path> does not exist""", FastPositions.getStart(importStmt))
       }
@@ -312,7 +321,7 @@ object FastParser extends PosParser[Char, String] {
     for (define <- globalMacros) {
       if (uniqueMacroNames.contains(define.idndef.name)) {
         throw ParseException(s"Another macro named '${define.idndef.name}' already " +
-          s"exists at ${uniqueMacroNames.get(define.idndef.name).get}", define.start)
+          s"exists at ${uniqueMacroNames(define.idndef.name)}", define.start)
       } else {
         uniqueMacroNames += ((define.idndef.name, define.start))
       }
