@@ -46,7 +46,7 @@ trait SilFrontend extends DefaultFrontend {
   def appExitCode: Int = _appExitReason.id
 
   protected def specifyAppExitCode(): Unit = {
-      if ( _state >= TranslatorState.Verified ) {
+      if ( _state >= DefaultStates.Verification ) {
       _appExitReason = result match {
         case Success => ApplicationExitReason.VERIFICATION_SUCCEEDED
         case Failure(_) => ApplicationExitReason.VERIFICATION_FAILED
@@ -70,8 +70,8 @@ trait SilFrontend extends DefaultFrontend {
   def verifier: Verifier = _ver
   protected var _ver: Verifier = _
 
-  override protected type ParserResult = PProgram
-  override protected type TypecheckerResult = PProgram
+  override protected type ParsingResult = PProgram
+  override protected type SemanticAnalysisResult = PProgram
 
   /** The current configuration. */
   protected var _config: SilFrontendConfig = _
@@ -149,7 +149,7 @@ trait SilFrontend extends DefaultFrontend {
     }
 
     // Parse, type check, translate and verify
-    verify()
+    run()
 
     finish()
   }
@@ -197,7 +197,7 @@ trait SilFrontend extends DefaultFrontend {
     _config = configureVerifier(args)
   }
 
-  override def doParse(input: String): Result[PProgram] = {
+  override def doParsing(input: String): Result[PProgram] = {
     val file = _inputFile.get
     _plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
@@ -218,7 +218,7 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  override def doTypecheck(input: PProgram): Result[PProgram] = {
+  override def doSemanticAnalysis(input: PProgram): Result[PProgram] = {
     _plugins.beforeResolve(input) match {
       case Some(inputPlugin) =>
         val r = Resolver(inputPlugin)
@@ -241,34 +241,32 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  override def doTranslate(input: PProgram): Result[Program] = {
-    def translate(input: PProgram): Result[Program] = {
-      val enableFunctionTerminationChecks =
-        config != null && config.verified && config.enableFunctionTerminationChecks()
+  override def doTranslation(input: PProgram): Result[Program] = {
+    val enableFunctionTerminationChecks =
+      config != null && config.verified && config.enableFunctionTerminationChecks()
 
-      _plugins.beforeTranslate(input) match {
-        case Some(modifiedInputPlugin) =>
-          Translator(modifiedInputPlugin, enableFunctionTerminationChecks).translate match {
-            case Some(program) =>
-              val check = program.checkTransitively
-              if (check.isEmpty) Succ(program) else Fail(check)
+    _plugins.beforeTranslate(input) match {
+      case Some(modifiedInputPlugin) =>
+        Translator(modifiedInputPlugin, enableFunctionTerminationChecks).translate match {
+          case Some(program) => Succ(program)
 
-            case None => // then there are translation messages
-              Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
-                TypecheckerError(
-                  m.label, m.pos match {
-                    case fp: FilePosition =>
-                      SourcePosition(fp.file, m.pos.line, m.pos.column)
-                    case _ =>
-                      SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-                  })
-              }))
-          }
+          case None => // then there are translation messages
+            Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
+              TypecheckerError(
+                m.label, m.pos match {
+                  case fp: FilePosition =>
+                    SourcePosition(fp.file, m.pos.line, m.pos.column)
+                  case _ =>
+                    SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
+                })
+            }))
+        }
 
-        case None => Fail(_plugins.errors)
-      }
+      case None => Fail(_plugins.errors)
     }
+  }
 
+  def doConsistencyCheck(input: Program): Result[Program]= {
     def filter(input: Program): Result[Program]  = {
       _plugins.beforeMethodFilter(input) match {
         case Some(inputPlugin) =>
@@ -289,10 +287,11 @@ trait SilFrontend extends DefaultFrontend {
       }
     }
 
-    translate(input) match {
-      case Succ(program) => filter(program)
-      case failure => failure
-    }
+    val errors = input.checkTransitively
+    if (errors.isEmpty)
+      filter(input)
+    else
+      Fail(errors)
   }
 
   override def mapVerificationResult(in: VerificationResult): VerificationResult = _plugins.mapVerificationResult(in)
