@@ -1,0 +1,11 @@
+//:: IgnoreFile(/silver/issue/266/)
+
+import <standard_import_tests/basic_inc.vpr>
+
+domain Basic {
+    function basic(): Bool
+}
+
+method main(){
+    assert basic()
+}

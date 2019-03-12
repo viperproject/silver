@@ -1,3 +1,5 @@
+//:: IgnoreFile(/silver/issue/266/)
+
 import "basic.vpr"
 
 method main2(){

@@ -1,3 +1,5 @@
+//:: IgnoreFile(/silver/issue/266/)
+
 import <standard_import_tests/loop_standard/la.vpr>
 
 domain Loop {

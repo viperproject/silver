@@ -1,9 +1,0 @@
-import <standard_import_tests/basic.vpr>
-
-domain Basic {
-    function basic(): Bool
-}
-
-method main(){
-    assert basic()
-}

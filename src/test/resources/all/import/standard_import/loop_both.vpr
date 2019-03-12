@@ -1,4 +1,6 @@
-import <standard_import_tests/loop_local/la.vpr>
+//:: IgnoreFile(/carbon/issue/258/)
+
+import <standard_import_tests/loop_all/la.vpr>
 
 domain Loop {
     function loopa(): Bool
