@@ -1,0 +1,8 @@
+//:: IgnoreFile(/silver/issue/266/)
+
+import <standard_import_tests/local_and_standard_inc.vpr>
+import "basic.vpr"
+
+method main2(){
+    assert basic()
+}

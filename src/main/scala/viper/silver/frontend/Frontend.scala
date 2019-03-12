@@ -7,11 +7,13 @@
 package viper.silver.frontend
 
 import java.nio.file.{Files, Path}
+
 import org.slf4j.LoggerFactory
 import ch.qos.logback.classic.Logger
+
 import scala.io.Source
 import viper.silver.ast._
-import viper.silver.reporter.{StdIOReporter, Reporter}
+import viper.silver.reporter.{Reporter, StdIOReporter}
 import viper.silver.verifier._
 
 
@@ -83,7 +85,8 @@ trait Frontend {
     */
   def result: VerificationResult
 
-  protected val logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
+  /* ATG: the following field is used in ViperServer and shoudl stay public for now. */
+  val logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
 }
 
 trait DefaultPhases extends Frontend {
@@ -142,6 +145,15 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
   protected var _semanticAnalysisResult: Option[SemanticAnalysisResult] = None
   protected var _verificationResult: Option[VerificationResult] = None
   protected var _program: Option[Program] = None
+
+  /* ATG: The following two methods are needed in ViperServer. Please do not remove them. */
+  def setState(new_state: DefaultStates.Value): Unit = {
+    _state = new_state
+  }
+
+  def setVerificationResult(ver_result: VerificationResult): Unit = {
+    _verificationResult = Some(ver_result)
+  }
 
   def parsingResult: ParsingResult = _parsingResult.get
 
