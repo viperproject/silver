@@ -6,12 +6,12 @@
 
 package viper.silver.parser
 
+import java.net.URL
 import java.nio.file.{Files, Path, Paths}
-
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
-import viper.silver.ast.{SourcePosition, LineCol}
+import viper.silver.ast.{LineCol, SourcePosition}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
@@ -27,6 +27,11 @@ case class SuffixedExpressionGenerator[E <: PExp](func: PExp => E) extends (PExp
 }
 
 object FastParser extends PosParser[Char, String] {
+
+  /* When importing a file from standard library, e.g. `include <inc.vpr>`, the file is expected
+   * to be located in `resources/${standard_import_directory}`, e.g. `resources/import/inv.vpr`.
+   */
+  val standard_import_directory = "import"
 
   var _lines: Array[Int] = null
 
@@ -214,7 +219,7 @@ object FastParser extends PosParser[Char, String] {
     p match {
       case fastparse.core.Parsed.Success(prog, _) => prog
       case fail @ fastparse.core.Parsed.Failure(_, index, extra) =>
-        val msg = all.ParseError(fail).getMessage()
+        val msg = all.ParseError(fail).getMessage
         val (line, col) = LineCol(extra.input, index)
         throw ParseException(s"Expected $msg", FilePosition(path, line, col))
     }
@@ -229,8 +234,23 @@ object FastParser extends PosParser[Char, String] {
     * @return `PProgram` node corresponding to the imported program.
     */
   def importStandard(path: Path, importStmt: PStandardImport, plugins: Option[SilverPluginManager]): PProgram = {
-    val IMPORT = "import/"
-    val source = scala.io.Source.fromResource(IMPORT+path)
+    /* Prefix the standard library import (`path`) with the directory in which standard library
+     * files are expected (`standard_import_directory`). The result is a OS-specific path, e.g.
+     * "import\my\stdlib.vpr".
+     */
+    val relativeImportPath = Paths.get(standard_import_directory, path.toString)
+
+    /* Creates a corresponding relative URL, e.g. "file://import/my/stdlib.vpr" */
+    val relativeImportUrl = new URL(new URL("file:"), relativeImportPath.toString)
+
+    /* Extract the path component only, e.g. "import/my/stdlib.vpr" */
+    val relativeImportStr = relativeImportUrl.getPath
+
+    /* Resolve the import using the specified class loader. Could point into the local file system
+     * or into a jar file. The latter case requires `relativeImportStr` to be a valid URL (which
+     * rules out Windows paths).
+     */
+    val source = scala.io.Source.fromResource(relativeImportStr, getClass.getClassLoader)
 
     // nested try-catch block because source.close() in finally could also cause a NullPointerException
     val buffer =
@@ -239,11 +259,11 @@ object FastParser extends PosParser[Char, String] {
           source.getLines.toArray
         } catch {
           case e@(_: RuntimeException | _: java.io.IOException) =>
-            throw ParseException(s"""could not import file ($e)""", FastPositions.getStart(importStmt))
+            throw ParseException(s"could not import file ($e)", FastPositions.getStart(importStmt))
         } finally {
           source.close()
         }
-      }catch {
+      } catch {
         case e: java.lang.NullPointerException =>
           throw ParseException(s"""file <$path> does not exist""", FastPositions.getStart(importStmt))
       }
@@ -260,9 +280,11 @@ object FastParser extends PosParser[Char, String] {
     * @return `PProgram` node corresponding to the imported program.
     */
   def importLocal(path: Path, importStmt: PImport, plugins: Option[SilverPluginManager]): PProgram = {
-    if (java.nio.file.Files.notExists(path))
+    if (java.nio.file.Files.notExists(path)) {
       throw ParseException(s"""file "$path" does not exist""", FastPositions.getStart(importStmt))
-      _file = path
+    }
+
+    _file = path
     val source = scala.io.Source.fromInputStream(Files.newInputStream(path))
 
     val buffer = try {
@@ -299,7 +321,7 @@ object FastParser extends PosParser[Char, String] {
     for (define <- globalMacros) {
       if (uniqueMacroNames.contains(define.idndef.name)) {
         throw ParseException(s"Another macro named '${define.idndef.name}' already " +
-          s"exists at ${uniqueMacroNames.get(define.idndef.name).get}", define.start)
+          s"exists at ${uniqueMacroNames(define.idndef.name)}", define.start)
       } else {
         uniqueMacroNames += ((define.idndef.name, define.start))
       }
@@ -308,7 +330,7 @@ object FastParser extends PosParser[Char, String] {
     // Check if macros names aren't already taken by other identifiers
     for (name <- globalNamesWithoutMacros) {
       if (uniqueMacroNames.contains(name)) {
-        throw ParseException(s"The macro name '$name' has already been used by another identifier", uniqueMacroNames.get(name).get)
+        throw ParseException(s"The macro name '$name' has already been used by another identifier", uniqueMacroNames(name))
       }
     }
 
@@ -316,7 +338,7 @@ object FastParser extends PosParser[Char, String] {
     case class InsideMagicWandContext(inside: Boolean = false)
     StrategyBuilder.ContextVisitor[PNode, InsideMagicWandContext]({case (_, _) => ()}, InsideMagicWandContext(), {
       case (_: PPackageWand, c) => c.copy(true)
-      case (d: PDefine, c) if (c.inside) => throw ParseException("Macros cannot be defined inside magic wands proof scripts", d.start)
+      case (d: PDefine, c) if c.inside => throw ParseException("Macros cannot be defined inside magic wands proof scripts", d.start)
     }).execute(p)
 
     // Expand defines
@@ -451,7 +473,7 @@ object FastParser extends PosParser[Char, String] {
     val renamer = StrategyBuilder.Slim[PNode]({
 
       // Variable declared: either local or bound
-      case (varDecl: PIdnDef) =>
+      case varDecl: PIdnDef =>
 
         // If variable name is already used in scope
         if (scope.contains(varDecl.name)) {
@@ -479,7 +501,7 @@ object FastParser extends PosParser[Char, String] {
       // Variable used: update variable's name according to its declaration
       // Macro's parameters are not renamed, since they will be replaced by
       // their respective arguments in the following steps (by replacer)
-      case (varUse: PIdnUse) if renamesMap.contains(varUse.name) => PIdnUse(renamesMap(varUse.name))
+      case varUse: PIdnUse if renamesMap.contains(varUse.name) => PIdnUse(renamesMap(varUse.name))
 
     }).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
 
@@ -548,9 +570,9 @@ object FastParser extends PosParser[Char, String] {
            */
           (ctx.parent, macroBody) match {
             case (PAccPred(loc, _), _) if (loc eq app) && !macroBody.isInstanceOf[PLocationAccess] =>
-              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString, FastPositions.getStart(app))
             case (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
-              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString, FastPositions.getStart(app))
             case _ => /* All good */
           }
 
@@ -560,7 +582,7 @@ object FastParser extends PosParser[Char, String] {
             replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
           } catch {
             case problem: ParseTreeDuplicationError =>
-              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), FastPositions.getStart(app))
+              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, FastPositions.getStart(app))
           }
       }.applyOrElse(node, (_: PNode) => node)
     }
@@ -603,7 +625,7 @@ object FastParser extends PosParser[Char, String] {
       expander.execute[T](toExpand)
     } catch {
       case problem: ParseTreeDuplicationError =>
-        throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), problem.original.start)
+        throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, problem.original.start)
     }
   }
 
@@ -673,7 +695,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val identifier: P[Unit] = P(CharIn('A' to 'Z', 'a' to 'z', "$_") ~~ CharIn('0' to '9', 'A' to 'Z', 'a' to 'z', "$_").repX)
 
-  lazy val ident: P[String] = P(identifier.!).filter { case a => !keywords.contains(a) }.opaque("invalid identifier (could be a keyword)")
+  lazy val ident: P[String] = P(identifier.!).filter(a => !keywords.contains(a)).opaque("invalid identifier (could be a keyword)")
 
   lazy val idnuse: P[PIdnUse] = P(ident).map(PIdnUse)
 
@@ -735,41 +757,37 @@ object FastParser extends PosParser[Char, String] {
   lazy val cmpExp: P[PExp] = P(sum ~ (cmpOp ~ cmpExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
     case None => a
-  }
-  }
+  }}
 
   lazy val eqOp = P(StringIn("==", "!=").!)
 
   lazy val eqExp: P[PExp] = P(cmpExp ~ (eqOp ~ eqExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
     case None => a
-  }
-  }
+  }}
+
   lazy val andExp: P[PExp] = P(eqExp ~ ("&&".! ~ andExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
     case None => a
-  }
-  }
+  }}
+
   lazy val orExp: P[PExp] = P(andExp ~ ("||".! ~ orExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
     case None => a
-  }
-  }
+  }}
 
   lazy val accessPredImpl: P[PAccPred] = P((keyword("acc") ~/ "(" ~ locAcc ~ ("," ~ exp).? ~ ")").map {
     case (loc, perms) => PAccPred(loc, perms.getOrElse(PFullPerm()))
   })
 
-  lazy val accessPred: P[PAccPred] = P(accessPredImpl.map {
-    case acc => {
-      val perm = acc.perm
-      if (FastPositions.getStart(perm) == NoPosition) {
-        FastPositions.setStart(perm, acc.start)
-        FastPositions.setFinish(perm, acc.finish)
-      }
-      acc
+  lazy val accessPred: P[PAccPred] = P(accessPredImpl.map(acc => {
+    val perm = acc.perm
+    if (FastPositions.getStart(perm) == NoPosition) {
+      FastPositions.setStart(perm, acc.start)
+      FastPositions.setFinish(perm, acc.finish)
     }
-  })
+    acc
+  }))
 
   lazy val resAcc: P[PResourceAccess] = P(locAcc | realMagicWandExp)
 
@@ -815,10 +833,8 @@ object FastParser extends PosParser[Char, String] {
   lazy val typ: P[PType] = P(primitiveTyp | domainTyp | seqType | setType | multisetType)
 
   lazy val domainTyp: P[PDomainType] = P((idnuse ~ "[" ~ typ.rep(sep = ",") ~ "]").map { case (a, b) => PDomainType(a, b) } |
-    idnuse.map {
-      // domain type without type arguments (might also be a type variable)
-      case name => PDomainType(name, Nil)
-    })
+    // domain type without type arguments (might also be a type variable)
+    idnuse.map(name => PDomainType(name, Nil)))
 
   lazy val seqType: P[PType] = P(keyword("Seq") ~/ "[" ~ typ ~ "]").map(PSeqType)
 
@@ -826,7 +842,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val multisetType: P[PType] = P(keyword("Multiset") ~/ "[" ~ typ ~ "]").map(PMultisetType)
 
-  lazy val primitiveTyp: P[PType] = P(keyword("Rational").map { case _ => PPrimitiv("Perm") }
+  lazy val primitiveTyp: P[PType] = P(keyword("Rational").map(_ => PPrimitiv("Perm"))
     | (StringIn("Int", "Bool", "Perm", "Ref") ~~ !identContinues).!.map(PPrimitiv))
 
   lazy val trigger: P[PTrigger] = P("{" ~/ exp.rep(sep = ",") ~ "}").map(s => PTrigger(s))
@@ -837,14 +853,13 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val unfolding: P[PExp] = P(keyword("unfolding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PUnfolding(a, b) }
 
-  lazy val predicateAccessPred: P[PAccPred] = P(accessPred | predAcc.map {
-    case loc => {
+  lazy val predicateAccessPred: P[PAccPred] = P(accessPred | predAcc.map (
+    loc => {
       val perm = PFullPerm()
       FastPositions.setStart(perm, loc.start)
       FastPositions.setFinish(perm, loc.finish)
       PAccPred(loc, perm)
-    }
-  })
+  }))
 
   lazy val setTypedEmpty: P[PExp] = collectionTypedEmpty("Set", PEmptySet)
 
@@ -883,7 +898,7 @@ object FastParser extends PosParser[Char, String] {
     inhale | assume | ifthnels | whle | varDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand | macroref | block)
 
-  lazy val macroref: P[PMacroRef] = P(idnuse).map { case (a) => PMacroRef(a) }
+  lazy val macroref: P[PMacroRef] = P(idnuse).map(a => PMacroRef(a))
 
   lazy val fieldassign: P[PFieldAssign] = P(fieldAcc ~ ":=" ~ exp).map { case (a, b) => PFieldAssign(a, b) }
 
@@ -944,7 +959,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val starredNewstmt: P[PStarredNewStmt] = P(idnuse ~ ":=" ~ "new" ~ "(" ~ "*" ~ ")").map(PStarredNewStmt)
 
-  lazy val fresh: P[PFresh] = P(keyword("fresh") ~ idnuse.rep(sep = ",")).map { case vars => PFresh(vars) }
+  lazy val fresh: P[PFresh] = P(keyword("fresh") ~ idnuse.rep(sep = ",")).map(vars => PFresh(vars))
 
   lazy val constrainingBlock: P[PConstraining] = P("constraining" ~ "(" ~ idnuse.rep(sep = ",") ~ ")" ~ block).map { case (vars, s) => PConstraining(vars, s) }
 
@@ -987,7 +1002,7 @@ object FastParser extends PosParser[Char, String] {
     )
   )
 
-  lazy val relativeFilePath: P[String] = P((CharIn("~.").?).! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
+  lazy val relativeFilePath: P[String] = P(CharIn("~.").?.! ~~ (CharIn("/").? ~~ CharIn(".", 'A' to 'Z', 'a' to 'z', '0' to '9', "_- \n\t")).rep(1))
 
   lazy val domainDecl: P[PDomain] = P("domain" ~/ idndef ~ ("[" ~ domainTypeVarDecl.rep(sep = ",") ~ "]").? ~ "{" ~ (domainFunctionDecl | axiomDecl).rep ~
     "}").map {
@@ -1025,7 +1040,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val post: P[PExp] = P("ensures" ~/ exp ~ ";".?)
 
-  lazy val dec: P[PDecClause] = P("decreases" ~/ (("*").!.map{_ => PDecStar()} | (exp.rep(sep = ",").map { exps => PDecTuple(exps)})) ~ ";".?)
+  lazy val dec: P[PDecClause] = P("decreases" ~/ ("*".!.map{ _ => PDecStar()} | exp.rep(sep = ",").map(exps => PDecTuple(exps))) ~ ";".?)
 
   lazy val decCl: P[Seq[PExp]] = P(exp.rep(sep = ","))
 
