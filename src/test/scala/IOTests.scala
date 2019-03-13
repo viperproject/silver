@@ -34,7 +34,7 @@ class IOTests extends FunSuite with Matchers {
   }
 
   test(s"$test_prefix: handling parseOnly mode and copyright") {
-    runOneCombo(verifiableFile, pass = true, Seq("--parseOnly"), Seq("MockIOVerifier 3.14", "(c) Copyright ETH Zurich 2012 - 2018"), Seq(), 2)
+    runOneCombo(verifiableFile, pass = true, Seq("--parseOnly"), Seq("MockIOVerifier 3.14"), Seq(), 1)
   }
 
   test(s"$test_prefix: external dependencies are reported") {
