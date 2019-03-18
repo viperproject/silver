@@ -527,40 +527,41 @@ object FastParser extends PosParser[Char, String] {
 
     def ExpandMacroIfValid(node: PNode, ctx: ContextA[PNode]): PNode = {
       matchOnMacroApplication.andThen {
-        case MacroApp(name, actualArgs, app) =>
-          val appliedMacro = getMacroByName(name)
-          val formalArgs = appliedMacro.args.getOrElse(Nil)
-          val macroBody = appliedMacro.body
+        case MacroApp(name, arguments, app) =>
+          val macroDefinition = getMacroByName(name)
+          val parameters = macroDefinition.parameters.getOrElse(Nil)
+          val body = macroDefinition.body
+          val pos = FastPositions.getStart(app)
 
-          if (actualArgs.length != formalArgs.length)
-            throw ParseException("Number of macro arguments does not match", FastPositions.getStart(app))
+          if (arguments.length != parameters.length)
+            throw ParseException("Number of macro arguments does not match", pos)
 
-          (app, macroBody) match {
+          (app, body) match {
             case (_: PStmt, _: PExp) =>
-              throw ParseException("Expression macro used in statement position", FastPositions.getStart(app))
+              throw ParseException("Expression macro used in statement position", pos)
             case (_: PExp, _: PStmt) =>
-              throw ParseException("Statement macro used in expression position", FastPositions.getStart(app))
+              throw ParseException("Statement macro used in expression position", pos)
             case _ => /* All good */
           }
 
           /* TODO: The current unsupported position detection is probably not exhaustive.
            *       Seems difficult to concisely and precisely match all (il)legal cases, however.
            */
-          (ctx.parent, macroBody) match {
-            case (PAccPred(loc, _), _) if (loc eq app) && !macroBody.isInstanceOf[PLocationAccess] =>
-              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
-            case (_: PCurPerm, _) if !macroBody.isInstanceOf[PLocationAccess] =>
-              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + macroBody.toString(), FastPositions.getStart(app))
+          (ctx.parent, body) match {
+            case (PAccPred(loc, _), _) if (loc eq app) && !body.isInstanceOf[PLocationAccess] =>
+              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString(), pos)
+            case (_: PCurPerm, _) if !body.isInstanceOf[PLocationAccess] =>
+              throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString(), pos)
             case _ => /* All good */
           }
 
           try {
             scopeAtMacroCall = NameAnalyser().namesInScope(program, node)
             renamesMap.clear
-            replacerOnBody(macroBody, mapParamsToArgs(formalArgs, actualArgs), app)
+            replacerOnBody(body, mapParamsToArgs(parameters, arguments), app)
           } catch {
             case problem: ParseTreeDuplicationError =>
-              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), FastPositions.getStart(app))
+              throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), pos)
           }
       }.applyOrElse(node, (_: PNode) => node)
     }
@@ -576,7 +577,8 @@ object FastParser extends PosParser[Char, String] {
 
         val body = ExpandMacroIfValid(call, ctx)
 
-        // Check if macro's body can be the left-hand side of an assignment and, // if that's the case, add it in a corresponding assignment statement
+        // Check if macro's body can be the left-hand side of an assignment and,
+        // if that's the case, add it in a corresponding assignment statement
         body match {
           case fa: PFieldAccess =>
             val node = PFieldAssign(fa, exp)
