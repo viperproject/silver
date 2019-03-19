@@ -750,7 +750,7 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
   * @tparam N      Common supertype of every node in the tree
   * @tparam CUSTOM Type of custom context
   */
-class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transformer: StrategyInterface[N], private val upContext: PartialFunction[(N, CUSTOM), CUSTOM]) extends ContextA[N](aList, transformer) {
+class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transformer: StrategyInterface[N], upContext: PartialFunction[(N, CUSTOM), CUSTOM]) extends ContextA[N](aList, transformer) {
 
   // Add an ancestor to the context
   override def addAncestor(n: N): ContextC[N, CUSTOM] = {
