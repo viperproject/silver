@@ -336,17 +336,17 @@ object FastParser extends PosParser[Char, String] {
       })
 
     val methods = p.methods.map(method => {
-      // Collect all method local macros and expand them in the method
-      // Remove the method local macros from the method for convenience
+      // Collect local macro definitions
       val localMacros = method.deepCollect { case n: PDefine => n }
 
-      val methodWithoutDefines =
+      // Remove local macro definitions from method
+      val methodWithoutMacros =
         if (localMacros.isEmpty)
           method
         else
           method.transform { case mac: PDefine => PSkip().setPos(mac) }()
 
-      doExpandDefines(localMacros ++ globalMacros, methodWithoutDefines, p)
+      doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p)
     })
 
     PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.errors)
@@ -354,15 +354,15 @@ object FastParser extends PosParser[Char, String] {
 
 
   /**
-    * Expand a macro inside a PNode of type T
+    * Expand all macro calls in a subtree of the program's AST
     *
-    * @param macros   All macros that could be invoked inside the code
-    * @param toExpand The AST node where we want to expand the macros in
-    * @param program  root of the AST where the 'toExpand' node belongs to
-    * @tparam T       Type of the PNode
-    * @return         PNode with expanded macros of type T
+    * @param macros   All macros that can be called in the subtree
+    * @param subtree  The root the subtree whose macro calls will be expanded
+    * @param program  Root of the AST representing the program which includes 'subtree'
+    * @tparam T       Type parameter of 'subtree' and return type, which is a subtype of PNode
+    * @return         The same subtree with all macro calls expanded
     */
-  def doExpandDefines[T <: PNode] (macros: Seq[PDefine], toExpand: T, program: PProgram): T = {
+  def doExpandDefines[T <: PNode] (macros: Seq[PDefine], subtree: T, program: PProgram): T = {
 
     // Store the replacements from normal variable to freshly generated variable
     val renamesMap = mutable.Map.empty[String, String]
@@ -371,7 +371,8 @@ object FastParser extends PosParser[Char, String] {
 
     def scope: Set[String] = scopeAtMacroCall ++ scopeOfExpandedMacros
 
-    case class ReplaceContext(formalArgumentSubstitutions: Map[String, PExp] = Map.empty)
+    case class ReplaceContext(paramToArgMap: Map[String, PExp] = Map.empty,
+                              boundVars: Set[String] = Set.empty)
 
     // Handy method to get a macro from its name string
     def getMacroByName(name: String): PDefine = macros.find(_.idndef.name == name) match {
@@ -421,7 +422,7 @@ object FastParser extends PosParser[Char, String] {
     /* Abstraction over several possible `PNode`s that can represent macro applications */
     case class MacroApp(name: String, arguments: Seq[PExp], node: PNode)
 
-    val matchOnMacroApplication: PartialFunction[PNode, MacroApp] = {
+    val matchOnMacroCall: PartialFunction[PNode, MacroApp] = {
       case app: PMacroRef => MacroApp(app.idnuse.name, Nil, app)
       case app: PMethodCall if isMacro(app.method.name) => MacroApp(app.method.name, app.args, app)
       case app: PCall if isMacro(app.func.name) => MacroApp(app.func.name, app.args, app)
@@ -430,7 +431,7 @@ object FastParser extends PosParser[Char, String] {
 
     def detectCyclicMacros(start: PNode, seen: Set[String]): Unit = {
       start.visit(
-        matchOnMacroApplication.andThen { case MacroApp(name, _, _) =>
+        matchOnMacroCall.andThen { case MacroApp(name, _, _) =>
           if (seen.contains(name)) {
             val position =
               macros.find(_.idndef.name == name)
@@ -444,7 +445,7 @@ object FastParser extends PosParser[Char, String] {
       )
     }
 
-    detectCyclicMacros(toExpand, Set.empty)
+    detectCyclicMacros(subtree, Set.empty)
 
     // Strategy to rename variables declared in macro's body if their names are already used in
     // the scope where the macro is being expanded, avoiding name clashes (hygienic macro expansion)
@@ -479,7 +480,8 @@ object FastParser extends PosParser[Char, String] {
       // Variable used: update variable's name according to its declaration
       // Macro's parameters are not renamed, since they will be replaced by
       // their respective arguments in the following steps (by replacer)
-      case (varUse: PIdnUse) if renamesMap.contains(varUse.name) => PIdnUse(renamesMap(varUse.name))
+      case (varUse: PIdnUse) if renamesMap.contains(varUse.name) =>
+        PIdnUse(renamesMap(varUse.name))
 
     }).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
 
@@ -487,22 +489,26 @@ object FastParser extends PosParser[Char, String] {
     val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
 
       // Variable use: macro parameters are replaced by their respective argument expressions
-      case (varUse: PIdnUse, ctxt) if ctxt.c.formalArgumentSubstitutions.contains(varUse.name) =>
-        ctxt.c.formalArgumentSubstitutions(varUse.name)
+      case (varUse: PIdnUse, ctx) if ctx.c.paramToArgMap.contains(varUse.name) &&
+                                     !ctx.c.boundVars.contains(varUse.name) =>
+        ctx.c.paramToArgMap(varUse.name)
 
     }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
 
     val replacerContextUpdater: PartialFunction[(PNode, ReplaceContext), ReplaceContext] = {
-      case (ident: PIdnUse, c) if c.formalArgumentSubstitutions.contains(ident.name) =>
-        /* Matches case "replace formal with actual argument" above: having replaced a formal
-         * with an actual argument, no further substitutions should be carried out for the
-         * plugged-in actual argument.
+      case (ident: PIdnUse, ctx) if ctx.paramToArgMap.contains(ident.name) =>
+        /* Matches case "replace parameter with argument" above. Having replaced a parameter
+         * with an argument, no further substitutions should be carried out for the
+         * plugged-in argument.
          */
-        c.copy(formalArgumentSubstitutions = c.formalArgumentSubstitutions.empty)
+        ctx.copy(paramToArgMap = ctx.paramToArgMap.empty)
+
+      case (fa: PForall, ctx) => ctx.copy(boundVars = ctx.boundVars | fa.vars.map(_.idndef.name).toSet)
+      case (ex: PExists, ctx) => ctx.copy(boundVars = ctx.boundVars | ex.vars.map(_.idndef.name).toSet)
     }
 
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
-    def replacerOnBody(body: PNode, p2a: Map[String, PExp], pos: FastPositioned): PNode = {
+    def replacerOnBody(body: PNode, paramToArgMap: Map[String, PExp], pos: FastPositioned): PNode = {
       /* TODO: It would be best if the context updater function were passed as another argument
        *       to the replacer above. That is already possible, but when the replacer is executed
        *       and an initial context is passed, that initial context's updater function (which
@@ -511,44 +517,44 @@ object FastParser extends PosParser[Char, String] {
        */
 
       // Rename locally bound variables in macro's body
-      val renamedVarsMacro = renamer.execute[PNode](body)
-      adaptPositions(renamedVarsMacro, pos)
+      val bodyWithRenamedVars = renamer.execute[PNode](body)
+      adaptPositions(bodyWithRenamedVars, pos)
 
       // Create context
-      val context = new PartialContextC[PNode, ReplaceContext](ReplaceContext(p2a), replacerContextUpdater)
+      val context = new PartialContextC[PNode, ReplaceContext](ReplaceContext(paramToArgMap), replacerContextUpdater)
 
       // Replace macro's call arguments for every occurrence of its respective parameters in the body
-      val replacedParamsMacro = replacer.execute[PNode](renamedVarsMacro, context)
-      adaptPositions(replacedParamsMacro, pos)
+      val bodyWithReplacedParams = replacer.execute[PNode](bodyWithRenamedVars, context)
+      adaptPositions(bodyWithReplacedParams, pos)
 
       // Return expanded macro's body
-      replacedParamsMacro
+      bodyWithReplacedParams
     }
 
     def ExpandMacroIfValid(node: PNode, ctx: ContextA[PNode]): PNode = {
-      matchOnMacroApplication.andThen {
-        case MacroApp(name, arguments, app) =>
+      matchOnMacroCall.andThen {
+        case MacroApp(name, arguments, call) =>
           val macroDefinition = getMacroByName(name)
           val parameters = macroDefinition.parameters.getOrElse(Nil)
           val body = macroDefinition.body
-          val pos = FastPositions.getStart(app)
+          val pos = FastPositions.getStart(call)
 
           if (arguments.length != parameters.length)
             throw ParseException("Number of macro arguments does not match", pos)
 
-          (app, body) match {
+          (call, body) match {
             case (_: PStmt, _: PExp) =>
               throw ParseException("Expression macro used in statement position", pos)
             case (_: PExp, _: PStmt) =>
               throw ParseException("Statement macro used in expression position", pos)
-            case _ => /* All good */
+            case _ =>
           }
 
           /* TODO: The current unsupported position detection is probably not exhaustive.
            *       Seems difficult to concisely and precisely match all (il)legal cases, however.
            */
           (ctx.parent, body) match {
-            case (PAccPred(loc, _), _) if (loc eq app) && !body.isInstanceOf[PLocationAccess] =>
+            case (PAccPred(loc, _), _) if (loc eq call) && !body.isInstanceOf[PLocationAccess] =>
               throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString(), pos)
             case (_: PCurPerm, _) if !body.isInstanceOf[PLocationAccess] =>
               throw ParseException("Macro expansion would result in invalid code...\n...occurs in position where a location access is required, but the body is of the form:\n" + body.toString(), pos)
@@ -558,7 +564,7 @@ object FastParser extends PosParser[Char, String] {
           try {
             scopeAtMacroCall = NameAnalyser().namesInScope(program, node)
             renamesMap.clear
-            replacerOnBody(body, mapParamsToArgs(parameters, arguments), app)
+            replacerOnBody(body, mapParamsToArgs(parameters, arguments), call)
           } catch {
             case problem: ParseTreeDuplicationError =>
               throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), pos)
@@ -566,8 +572,8 @@ object FastParser extends PosParser[Char, String] {
       }.applyOrElse(node, (_: PNode) => node)
     }
 
-    // Strategy that checks macro applications for legality and then expands them.
-    // Relies on all macros being acyclic!
+    // Strategy that checks if the macro calls are valid and expands them.
+    // Requires that macro calls are acyclic
     val expander = StrategyBuilder.Ancestor[PNode] {
 
       // Handles macros on the left hand-side of assignments
@@ -584,11 +590,11 @@ object FastParser extends PosParser[Char, String] {
             val node = PFieldAssign(fa, exp)
             adaptPositions(node, fa)
             node
-          case _ => throw ParseException("The body of this macro is not a suitable left-hand side of an assignment statement", FastPositions.getStart(call))
+          case _ => throw ParseException("The body of this macro is not a suitable left-hand side for an assignment statement", FastPositions.getStart(call))
         }
 
       // Handles all other calls to macros
-      case (currentNode, ctx) => ExpandMacroIfValid(currentNode, ctx)
+      case (node, ctx) => ExpandMacroIfValid(node, ctx)
 
     }.recurseFunc {
       /* Don't recurse into the PIdnUse of nodes that themselves could represent macro
@@ -602,7 +608,7 @@ object FastParser extends PosParser[Char, String] {
     }.repeat
 
     try {
-      expander.execute[T](toExpand)
+      expander.execute[T](subtree)
     } catch {
       case problem: ParseTreeDuplicationError =>
         throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage(), problem.original.start)
