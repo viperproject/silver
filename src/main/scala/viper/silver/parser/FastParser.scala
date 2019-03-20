@@ -562,7 +562,13 @@ object FastParser extends PosParser[Char, String] {
           }
 
           try {
-            scopeAtMacroCall = NameAnalyser().namesInScope(program, node)
+            scopeAtMacroCall = NameAnalyser().namesInScope(program, Some(node))
+            arguments.foreach(
+              StrategyBuilder.SlimVisitor[PNode] {
+                case id: PIdnDef => scopeAtMacroCall += id.name
+                case _ =>
+              }.execute[PNode](_)
+            )
             renamesMap.clear
             replacerOnBody(body, mapParamsToArgs(parameters, arguments), call)
           } catch {
