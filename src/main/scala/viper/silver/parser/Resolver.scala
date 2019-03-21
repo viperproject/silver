@@ -936,8 +936,8 @@ case class NameAnalyser() {
     messages.isEmpty
   }
 
-  def namesInScope(n: PNode, target: PNode): Set[String] = {
-    check(n, Some(target))
+  def namesInScope(n: PNode, target: Option[PNode] = None): Set[String] = {
+    check(n, target)
     (namesInScope ++ globalDeclarationMap.map(_._1)).toSet
   }
 }

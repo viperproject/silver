@@ -975,7 +975,7 @@ case class PLabel(idndef: PIdnDef, invs: Seq[PExp]) extends PStmt with PLocalDec
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 case class PMacroRef(idnuse : PIdnUse) extends PStmt
-case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
+case class PDefine(idndef: PIdnDef, parameters: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
 sealed trait PNewStmt extends PStmt {

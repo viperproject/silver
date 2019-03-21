@@ -28,7 +28,7 @@ object Traverse extends Enumeration {
 trait StrategyInterface[N <: Rewritable] {
 
   // Store every special node we don't want to recurse on
-  // A hash map would be more efficient but then we get problems with circular dependencies (calculating hash never terminates)
+  // A hash set would be more efficient but then we get problems with circular dependencies (calculating hash never terminates)
   protected var noRecursion = collection.mutable.ListBuffer.empty[Rewritable]
 
   protected var changed = false
@@ -67,8 +67,8 @@ trait StrategyInterface[N <: Rewritable] {
     * @param s strategy to combine with
     * @return combined strategy
     */
-  def ||(s: StrategyInterface[N]): ConcatinatedStrategy[N] = {
-    new ConcatinatedStrategy[N](this, s)
+  def ||(s: StrategyInterface[N]): ConcatenatedStrategy[N] = {
+    new ConcatenatedStrategy[N](this, s)
   }
 
   /** This method can be overridden to control the creation of a new node by possibly adding
@@ -538,19 +538,19 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
   * @param s1 strategy 1
   * @param s2 strategy 2
   */
-class ConcatinatedStrategy[N <: Rewritable](s1: StrategyInterface[N], val s2: StrategyInterface[N]) extends StrategyInterface[N] {
+class ConcatenatedStrategy[N <: Rewritable](s1: StrategyInterface[N], val s2: StrategyInterface[N]) extends StrategyInterface[N] {
   private var strategies = collection.mutable.ListBuffer.empty[StrategyInterface[N]]
 
   strategies.append(s1)
   strategies.append(s2)
 
 
-  override def ||(s: StrategyInterface[N]): ConcatinatedStrategy[N] = {
+  override def ||(s: StrategyInterface[N]): ConcatenatedStrategy[N] = {
     strategies.append(s)
     this
   }
 
-  def ||(s: ConcatinatedStrategy[N]): ConcatinatedStrategy[N] = {
+  def ||(s: ConcatenatedStrategy[N]): ConcatenatedStrategy[N] = {
     strategies ++= s.strategies
     this
   }
@@ -750,7 +750,7 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
   * @tparam N      Common supertype of every node in the tree
   * @tparam CUSTOM Type of custom context
   */
-class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transformer: StrategyInterface[N], private val upContext: PartialFunction[(N, CUSTOM), CUSTOM]) extends ContextA[N](aList, transformer) {
+class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transformer: StrategyInterface[N], upContext: PartialFunction[(N, CUSTOM), CUSTOM]) extends ContextA[N](aList, transformer) {
 
   // Add an ancestor to the context
   override def addAncestor(n: N): ContextC[N, CUSTOM] = {
