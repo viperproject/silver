@@ -1,0 +1,18 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Capture avoiding substitution is implemented by the following rules:
+// 1) (forall x in A)[x->e] = (forall x in A)
+// 2) (forall x in A)[y->e] = (forall x' in A[x->x';y->e]) if x belongs to fv(e) and x != y
+// 3) (forall x in A)[y->e] = (forall x in A[y->e]) if x does not belong to fv(e) and x != y
+
+// ========= Rule 3 enforcement =========
+
+define macro1(x) (
+    forall i: Int :: i == x
+)
+
+method test1() {
+    var b: Bool := macro1(let j == (1) in j)
+  //(forall i: Int :: i == (let j == (1) in j))
+}
