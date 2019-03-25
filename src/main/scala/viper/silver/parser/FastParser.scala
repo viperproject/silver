@@ -8,6 +8,7 @@ package viper.silver.parser
 
 import java.net.URL
 import java.nio.file.{Files, Path, Paths}
+
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
@@ -341,6 +342,31 @@ object FastParser extends PosParser[Char, String] {
       case (d: PDefine, c) if c.inside => throw ParseException("Macros cannot be defined inside magic wands proof scripts", d.start)
     }).execute(p)
 
+    // Check if all macro parameters are used in the body
+    def allParametersUsedInBody(define: PDefine) = {
+      //val parameters = define.parameters.get.view.map(_.name).toSet
+      //val parameters = define.parameters.getOrElse(Set.empty[String]).view.map(_.name).toSet
+      val parameters = define.parameters.getOrElse(Seq.empty[PIdnDef]).map(_.name).toSet
+      val freeVars = mutable.Set.empty[String]
+
+      case class BoundedVars(boundedVars: Set[String] = Set())
+      StrategyBuilder.ContextVisitor[PNode, BoundedVars]((_, _) => (), BoundedVars(), {
+        case (id: PIdnUse, ctx) => freeVars ++= Set(id.name) -- ctx.boundedVars
+                                   ctx
+        case (fa: PForall, ctx) => ctx.copy(boundedVars = ctx.boundedVars | fa.vars.map(_.idndef.name).toSet)
+        case (ex: PExists, ctx) => ctx.copy(boundedVars = ctx.boundedVars | ex.vars.map(_.idndef.name).toSet)
+      }).execute(define)
+
+      val nonUsedParameter = parameters -- freeVars
+
+      if (nonUsedParameter.nonEmpty) {
+        throw ParseException(s"In macro ${define.idndef.name}, the following parameters were defined but not used: " +
+          s"${nonUsedParameter.mkString(", ")} ", define.start)
+      }
+    }
+
+    globalMacros.foreach(allParametersUsedInBody(_))
+
     // Expand defines
     val domains =
       p.domains.map(domain => {
@@ -360,6 +386,8 @@ object FastParser extends PosParser[Char, String] {
     val methods = p.methods.map(method => {
       // Collect local macro definitions
       val localMacros = method.deepCollect { case n: PDefine => n }
+
+      localMacros.foreach(allParametersUsedInBody(_))
 
       // Remove local macro definitions from method
       val methodWithoutMacros =
