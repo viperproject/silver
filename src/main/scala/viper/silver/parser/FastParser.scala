@@ -353,8 +353,8 @@ object FastParser extends PosParser[Char, String] {
       StrategyBuilder.ContextVisitor[PNode, BoundedVars]((_, _) => (), BoundedVars(), {
         case (id: PIdnUse, ctx) => freeVars ++= Set(id.name) -- ctx.boundedVars
                                    ctx
-        case (fa: PForall, ctx) => ctx.copy(boundedVars = ctx.boundedVars | fa.vars.map(_.idndef.name).toSet)
-        case (ex: PExists, ctx) => ctx.copy(boundedVars = ctx.boundedVars | ex.vars.map(_.idndef.name).toSet)
+        case (q @ (_: PForall | _: PExists), ctx) => ctx.copy(boundedVars = ctx.boundedVars |
+                                                              q.asInstanceOf[PQuantifier].vars.map(_.idndef.name).toSet)
       }).execute(define)
 
       val nonUsedParameter = parameters -- freeVars
@@ -553,8 +553,8 @@ object FastParser extends PosParser[Char, String] {
          */
         ctx.copy(paramToArgMap = ctx.paramToArgMap.empty)
 
-      case (fa: PForall, ctx) => ctx.copy(boundVars = ctx.boundVars | fa.vars.map(_.idndef.name).toSet)
-      case (ex: PExists, ctx) => ctx.copy(boundVars = ctx.boundVars | ex.vars.map(_.idndef.name).toSet)
+      case (q @ (_: PForall | _: PExists), ctx) => ctx.copy(boundVars = ctx.boundVars |
+                                                            q.asInstanceOf[PQuantifier].vars.map(_.idndef.name).toSet)
     }
 
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
