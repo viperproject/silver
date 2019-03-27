@@ -8,6 +8,7 @@ package viper.silver.parser
 
 import java.net.URL
 import java.nio.file.{Files, Path, Paths}
+
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
@@ -16,7 +17,7 @@ import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
-import viper.silver.verifier.ParseError
+import viper.silver.verifier.{ParseError, ParseWarning}
 
 import scala.collection.mutable
 
@@ -144,7 +145,7 @@ object FastParser extends PosParser[Char, String] {
       }
     }
     catch {
-      case e@ParseException(msg, pos) =>
+      case ParseException(msg, pos) =>
         var line = 0
         var column = 0
         if (pos != null) {
@@ -341,6 +342,35 @@ object FastParser extends PosParser[Char, String] {
       case (d: PDefine, c) if c.inside => throw ParseException("Macros cannot be defined inside magic wands proof scripts", d.start)
     }).execute(p)
 
+    // Check if all macro parameters are used in the body
+    def allParametersUsedInBody(define: PDefine): Seq[ParseWarning] = {
+      val parameters = define.parameters.getOrElse(Seq.empty[PIdnDef]).map(_.name).toSet
+      val freeVars = mutable.Set.empty[String]
+
+      case class BoundedVars(boundedVars: Set[String] = Set())
+      StrategyBuilder.ContextVisitor[PNode, BoundedVars]((_, _) => (), BoundedVars(), {
+        case (id: PIdnUse, ctx) => freeVars ++= Set(id.name) -- ctx.boundedVars
+                                   ctx
+        case (q @ (_: PForall | _: PExists), ctx) => ctx.copy(boundedVars = ctx.boundedVars |
+                                                              q.asInstanceOf[PQuantifier].vars.map(_.idndef.name).toSet)
+      }).execute(define)
+
+      val nonUsedParameter = parameters -- freeVars
+
+      if (nonUsedParameter.nonEmpty) {
+        Seq(ParseWarning(s"In macro ${define.idndef.name}, the following parameters were defined but not used: " +
+          s"${nonUsedParameter.mkString(", ")} ", SourcePosition(_file, define.start.line, define.start.column)))
+      }
+      else
+        Seq()
+    }
+
+    var warnings = Seq.empty[ParseWarning]
+
+    warnings = (warnings /: globalMacros)(_ ++ allParametersUsedInBody(_))
+
+    globalMacros.foreach(allParametersUsedInBody(_))
+
     // Expand defines
     val domains =
       p.domains.map(domain => {
@@ -361,6 +391,8 @@ object FastParser extends PosParser[Char, String] {
       // Collect local macro definitions
       val localMacros = method.deepCollect { case n: PDefine => n }
 
+      warnings = (warnings /: localMacros)(_ ++ allParametersUsedInBody(_))
+
       // Remove local macro definitions from method
       val methodWithoutMacros =
         if (localMacros.isEmpty)
@@ -371,7 +403,7 @@ object FastParser extends PosParser[Char, String] {
       doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p)
     })
 
-    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.errors)
+    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.errors ++ warnings)
   }
 
 
@@ -525,8 +557,8 @@ object FastParser extends PosParser[Char, String] {
          */
         ctx.copy(paramToArgMap = ctx.paramToArgMap.empty)
 
-      case (fa: PForall, ctx) => ctx.copy(boundVars = ctx.boundVars | fa.vars.map(_.idndef.name).toSet)
-      case (ex: PExists, ctx) => ctx.copy(boundVars = ctx.boundVars | ex.vars.map(_.idndef.name).toSet)
+      case (q @ (_: PForall | _: PExists), ctx) => ctx.copy(boundVars = ctx.boundVars |
+                                                            q.asInstanceOf[PQuantifier].vars.map(_.idndef.name).toSet)
     }
 
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
