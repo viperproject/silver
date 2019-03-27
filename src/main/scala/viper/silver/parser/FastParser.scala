@@ -17,7 +17,7 @@ import viper.silver.FastPositions
 import viper.silver.ast.utility.Rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
-import viper.silver.verifier.ParseError
+import viper.silver.verifier.{ParseError, ParseWarning}
 
 import scala.collection.mutable
 
@@ -145,7 +145,7 @@ object FastParser extends PosParser[Char, String] {
       }
     }
     catch {
-      case e@ParseException(msg, pos) =>
+      case ParseException(msg, pos) =>
         var line = 0
         var column = 0
         if (pos != null) {
@@ -343,9 +343,7 @@ object FastParser extends PosParser[Char, String] {
     }).execute(p)
 
     // Check if all macro parameters are used in the body
-    def allParametersUsedInBody(define: PDefine) = {
-      //val parameters = define.parameters.get.view.map(_.name).toSet
-      //val parameters = define.parameters.getOrElse(Set.empty[String]).view.map(_.name).toSet
+    def allParametersUsedInBody(define: PDefine): Seq[ParseWarning] = {
       val parameters = define.parameters.getOrElse(Seq.empty[PIdnDef]).map(_.name).toSet
       val freeVars = mutable.Set.empty[String]
 
@@ -360,10 +358,16 @@ object FastParser extends PosParser[Char, String] {
       val nonUsedParameter = parameters -- freeVars
 
       if (nonUsedParameter.nonEmpty) {
-        throw ParseException(s"In macro ${define.idndef.name}, the following parameters were defined but not used: " +
-          s"${nonUsedParameter.mkString(", ")} ", define.start)
+        Seq(ParseWarning(s"In macro ${define.idndef.name}, the following parameters were defined but not used: " +
+          s"${nonUsedParameter.mkString(", ")} ", SourcePosition(_file, define.start.line, define.start.column)))
       }
+      else
+        Seq()
     }
+
+    var warnings = Seq.empty[ParseWarning]
+
+    warnings = (warnings /: globalMacros)(_ ++ allParametersUsedInBody(_))
 
     globalMacros.foreach(allParametersUsedInBody(_))
 
@@ -387,7 +391,7 @@ object FastParser extends PosParser[Char, String] {
       // Collect local macro definitions
       val localMacros = method.deepCollect { case n: PDefine => n }
 
-      localMacros.foreach(allParametersUsedInBody(_))
+      warnings = (warnings /: localMacros)(_ ++ allParametersUsedInBody(_))
 
       // Remove local macro definitions from method
       val methodWithoutMacros =
@@ -399,7 +403,7 @@ object FastParser extends PosParser[Char, String] {
       doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p)
     })
 
-    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.errors)
+    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.errors ++ warnings)
   }
 
 

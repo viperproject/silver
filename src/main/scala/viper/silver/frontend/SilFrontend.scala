@@ -204,14 +204,16 @@ trait SilFrontend extends DefaultFrontend {
         val result = FastParser.parse(inputPlugin, file, Some(_plugins))
           result match {
             case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
-              if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning]))
-                Succ({ e.initProperties(); e })
+              if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
+                reporter report WarningsDuringParsing(err_list)
+                Succ({e.initProperties(); e})
+              }
               else Fail(err_list)
             case fail @ Parsed.Failure(_, index, extra) =>
               val msg = all.ParseError(fail.asInstanceOf[Parsed.Failure]).getMessage()
               val (line, col) = LineCol(extra.input.asInstanceOf[ParserInput], index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
-            case ParseError(msg, pos) => Fail(List(ParseError(msg, pos)))
+            case error: ParseError => Fail(List(error))
           }
 
       case None => Fail(_plugins.errors)
