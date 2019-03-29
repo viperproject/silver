@@ -56,7 +56,7 @@ object Consistency {
     // declaration keywords
     "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "wand",
     // specifications
-    "requires", "ensures", "decreases", "invariant",
+    "requires", "ensures", "invariant",
     // statements
     "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
     // control flow
@@ -229,18 +229,6 @@ object Consistency {
   def checkPost(e: Exp) : Seq[ConsistencyError]  = {
     (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Postcondition $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
     (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
-  }
-
-  /** Check all properties required for a decreases Clause */
-  def checkDecClause(d: DecClause) : Seq[ConsistencyError]  = {
-    d match {
-      case DecStar() => Seq()
-      case DecTuple(exp) => exp flatMap { e =>
-        (if (!noOld(e)) Seq(ConsistencyError("Old expressions are not allowed in decreases Clauses.", e.pos)) else Seq()) ++
-          (if (!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in decreases Clauses.", e.pos)) else Seq()) ++
-          (if (!noResult(e)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", e.pos)) else Seq())
-      }
-    }
   }
 
   /** checks that all quantified variables appear in all triggers */

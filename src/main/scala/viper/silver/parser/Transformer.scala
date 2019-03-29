@@ -45,8 +45,6 @@ object Transformer {
         case PMultisetType(elementType) => PMultisetType(go(elementType))
         case _: PUnknown => parent
         case _: PPredicateType | _: PWandType => parent
-        case PDecStar() => parent
-        case PDecTuple(exp) => PDecTuple(exp map go)
         case PMagicWandExp(left, right) => PMagicWandExp(go(left), go(right))
         case PBinExp(left, op, right) => PBinExp(go(left), op, go(right))
         case PUnExp(op, exp) => PUnExp(op, go(exp))
@@ -126,7 +124,7 @@ object Transformer {
         case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, body map go)
         case PDomain(idndef, typVars, funcs, axioms) => PDomain(go(idndef), typVars map go, funcs map go, axioms map go)
         case PField(idndef, typ) => PField(go(idndef), go(typ))
-        case PFunction(idndef, formalArgs, typ, pres, posts, decs, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, decs map go, body map go)
+        case PFunction(idndef, formalArgs, typ, pres, posts, body) => PFunction(go(idndef), formalArgs map go, go(typ), pres map go, posts map go, body map go)
         case pdf@PDomainFunction(idndef, formalArgs, typ, unique) => PDomainFunction(go(idndef), formalArgs map go, go(typ), unique)(domainName = pdf.domainName)
         case PPredicate(idndef, formalArgs, body) => PPredicate(go(idndef), formalArgs map go, body map go)
         case pda@PAxiom(idndef, exp) => PAxiom(go(idndef), go(exp))(domainName = pda.domainName)
@@ -241,7 +239,7 @@ object Transformer {
     case (_: PMethod, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], formalReturns: Seq[PFormalArgDecl@unchecked], pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], body: Option[PStmt@unchecked])) => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
     case (_: PDomain, Seq(idndef: PIdnDef, typVars: Seq[PTypeVarDecl@unchecked], funcs: Seq[PDomainFunction@unchecked], axioms: Seq[PAxiom@unchecked])) => PDomain(idndef, typVars, funcs, axioms)
     case (_: PField, Seq(idndef: PIdnDef, typ: PType)) => PField(idndef, typ)
-    case (_: PFunction, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], typ: PType, pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], decs: Option[PDecClause@unchecked], body: Option[PExp@unchecked])) => PFunction(idndef, formalArgs, typ, pres, posts, decs, body)
+    case (_: PFunction, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], typ: PType, pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], body: Option[PExp@unchecked])) => PFunction(idndef, formalArgs, typ, pres, posts, body)
     case (p: PDomainFunction, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], typ: PType)) => PDomainFunction(idndef, formalArgs, typ, p.unique)(domainName = p.domainName)
     case (_: PPredicate, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], body: Option[PExp@unchecked])) => PPredicate(idndef, formalArgs, body)
     case (p: PAxiom, Seq(idndef: PIdnDef, exp: PExp)) => PAxiom(idndef, exp)(domainName = p.domainName)
