@@ -41,7 +41,7 @@ method colourings0(a: Array)
   slot(a,1).val := Seq(Seq(0,1)) // no red, 1 black
   assert valid(Seq(),0,false) // needed for unrolling valid
   //assert Seq(0,1)[2..] == Seq() // sequence incompleteness
-  // //:: UnexpectedOutput(assert.failed:assertion.false, /silver/issue/80/) // fixed with diff 5
+  // // UnexpectedOutput(assert.failed:assertion.false, /silver/issue/80/) // fixed with diff 5
   assert forall j:Int :: 0 <= j && j < |slot(a,1).val| ==>
         slot(a,1).val[j] == Seq(0,1) && valid(slot(a,1).val[j],1,true)
 }
