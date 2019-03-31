@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 // Settings common to Silver and backends
 // Compilation settings
 ThisBuild / scalaVersion := "2.12.7"
@@ -5,7 +11,8 @@ ThisBuild / scalacOptions ++= Seq(
   "-deprecation",                     // Warn when using deprecated language features
   "-unchecked",                       // Warn on generated code assumptions
   "-feature",                         // Warn on features that requires explicit import
-  "-Ywarn-unused-import"              // Warn on unused imports
+  "-Ywarn-unused-import",             // Warn on unused imports
+  "-Ypatmat-exhaust-depth", "40"      // Increase depth of pattern matching analysis
 )
 
 // Publishing settings

@@ -1,36 +1,25 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
-
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast.utility
 
 import viper.silver.ast._
-import org.jgrapht.EdgeFactory
-import org.jgrapht.alg.CycleDetector
+import org.jgrapht.alg.cycle.CycleDetector
 import org.jgrapht.alg.connectivity.GabowStrongConnectivityInspector
-import org.jgrapht.graph.DefaultDirectedGraph
+import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import org.jgrapht.traverse.TopologicalOrderIterator
-import scala.collection.JavaConversions._
+
+import scala.collection.mutable.{Set => MSet}
+import scala.collection.JavaConverters._
 
 /**
  * Utility methods for functions.
  */
 object Functions {
   case class Edge[T](source: T, target: T)
-
-  case class Factory[T]() extends EdgeFactory[T, Edge[T]] {
-    def createEdge(source: T, target: T) =
-      Edge(source, target)
-  }
-
   def allSubexpressions(func: Function): Seq[Exp] = func.pres ++ func.posts ++ func.body
 
   /** Returns the call graph of a given program (also considering specifications as calls).
@@ -38,9 +27,9 @@ object Functions {
     * TODO: Memoize invocations of `getFunctionCallgraph`.
     */
   def getFunctionCallgraph(program: Program, subs: Function => Seq[Exp] = allSubexpressions)
-                          : DefaultDirectedGraph[Function, Edge[Function]] = {
+                          : DefaultDirectedGraph[Function, DefaultEdge] = {
 
-    val graph = new DefaultDirectedGraph[Function, Edge[Function]](Factory[Function]())
+    val graph = new DefaultDirectedGraph[Function, DefaultEdge](classOf[DefaultEdge])
 
     for (f <- program.functions) {
       graph.addVertex(f)
@@ -48,7 +37,7 @@ object Functions {
 
     def process(f: Function, e: Exp) {
       e visit {
-        case FuncApp(f2name, args) =>
+        case FuncApp(f2name, _) =>
           graph.addEdge(f, program.findFunction(f2name))
       }
     }
@@ -92,29 +81,27 @@ object Functions {
     /* Get all strongly connected components (SCCs) of the call-graph, represented as
      * sets of functions.
      */
-    val stronglyConnectedSets = new GabowStrongConnectivityInspector(callGraph).stronglyConnectedSets()
+    val stronglyConnectedSets = new GabowStrongConnectivityInspector(callGraph).stronglyConnectedSets().asScala
 
     /* Will represent the condensation of the call-graph, i.e., the call-graph,
      * but where each strongly connected component has been condensed into a
      * single node.
      */
-    val condensedCallGraph = new DefaultDirectedGraph(Factory[java.util.Set[Function]]())
+    val condensedCallGraph = new DefaultDirectedGraph[MSet[Function], DefaultEdge](classOf[DefaultEdge])
 
     /* Add each SCC as a vertex to the condensed call-graph */
-    for (v <- stronglyConnectedSets) {
-      condensedCallGraph.addVertex(v)
-    }
+    stronglyConnectedSets.foreach(v => condensedCallGraph.addVertex(v.asScala))
 
-    def condensationOf(func: Function): java.util.Set[Function] =
-      stronglyConnectedSets.find(_ contains func).get
+    def condensationOf(func: Function): MSet[Function] =
+      stronglyConnectedSets.find(_ contains func).get.asScala
 
     /* Add edges from the call-graph (between individual functions) as edges
      * between their corresponding SCCs in the condensed call-graph, but only
      * if this does not result in a cycle.
      */
-    for (e <- callGraph.edgeSet()) {
-      val sourceSet = condensationOf(e.source)
-      val targetSet = condensationOf(e.target)
+    for (e <- callGraph.edgeSet().asScala) {
+      val sourceSet = condensationOf(callGraph.getEdgeSource(e))
+      val targetSet = condensationOf(callGraph.getEdgeTarget(e))
 
       if (sourceSet != targetSet)
         condensedCallGraph.addEdge(sourceSet, targetSet)
@@ -146,7 +133,7 @@ object Functions {
      * the same height.
      */
     var height = 0
-    for (condensation <- new TopologicalOrderIterator(condensedCallGraph)) {
+    for (condensation <- new TopologicalOrderIterator(condensedCallGraph).asScala) {
       for (func <- condensation) {
         result(func) = height
       }
@@ -193,17 +180,31 @@ object Functions {
     *         formed cycles involves the set of functions `fs`.
     */
   def findFunctionCyclesViaPreconditions(program: Program): Map[Function, Set[Function]] = {
-    def subs(entryFunc: Function)(otherFunc: Function): Seq[Exp] =
+    findFunctionCyclesVia(program, func => func.pres, allSubexpressions)
+  }
+
+  /** Returns all cycles formed by functions that (transitively through certain subexpressions)
+    * recurses via certain expressions.
+    *
+    * @param program The program that defines the functions to check for cycles.
+    * @param via The expression the cycle has to go through.
+    * @param subs The expressions the cycle can go through transitively
+    * @return A map from functions to sets of functions. If a function `f` maps to a set of
+    *         functions `fs`, then `f` (transitively) recurses via, and the
+    *         formed cycles involves the set of functions `fs`.
+    */
+  def findFunctionCyclesVia(program: Program, via: Function => Seq[Exp], subs: Function => Seq[Exp] = allSubexpressions)
+      :Map[Function, Set[Function]] = {
+    def viaSubs(entryFunc: Function)(otherFunc: Function): Seq[Exp] =
       if (otherFunc == entryFunc)
-        otherFunc.pres
+        via(otherFunc)
       else
-        allSubexpressions(otherFunc)
+        subs(otherFunc)
 
     program.functions.flatMap(func => {
-      val graph = getFunctionCallgraph(program, subs(func))
+      val graph = getFunctionCallgraph(program, viaSubs(func))
       val cycleDetector = new CycleDetector(graph)
-      val cycle = cycleDetector.findCyclesContainingVertex(func)
-
+      val cycle = cycleDetector.findCyclesContainingVertex(func).asScala
       if (cycle.isEmpty)
         None
       else

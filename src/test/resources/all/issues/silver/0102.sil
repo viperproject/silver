@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method test5(x: Ref, y: Ref) {
   //:: ExpectedOutput(typechecker.error)
   assert (forall i: Int :: x == y) <= 0

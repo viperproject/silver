@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Silver commit 5b89574 uncovered a bug in Silicon, namely, that locals
  * declared inside while-loops were not added to Silicon's store.
  * This didn't cause any existing test case to fail, though, because those

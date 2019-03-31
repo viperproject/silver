@@ -1,0 +1,12 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <standard_import_tests/basic_inc.vpr>
+
+domain Basic {
+    function basic(): Bool
+}
+
+method main(){
+    assert basic()
+}

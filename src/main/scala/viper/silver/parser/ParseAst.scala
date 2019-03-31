@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.parser
 
@@ -388,12 +388,6 @@ sealed trait PExp extends PNode {
 
 case class PMagicWandExp(override val left: PExp, override val right: PExp) extends PBinExp(left, MagicWandOp.op, right) with PResourceAccess
 
-sealed trait PDecClause extends PNode
-
-case class PDecStar() extends PDecClause
-
-case class PDecTuple (decs: Seq[PExp]) extends PDecClause
-
 class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
 {
   require(m.values.forall(_.isValidOrUndeclared))
@@ -663,7 +657,7 @@ case class PUnExp(opName: String, exp: PExp) extends POpApp {
       case _ => Set()
     }
   override val signatures : List[PTypeSubstitution] = opName match {
-    case "-" | "+" => List(
+    case "-" => List(
       Map(POpApp.pArgS(0) -> Int, POpApp.pResS -> Int),
       Map(POpApp.pArgS(0) -> Perm, POpApp.pResS -> Perm)
     )
@@ -964,6 +958,7 @@ case class PAssume(e: PExp) extends PStmt
 case class PInhale(e: PExp) extends PStmt
 case class PVarAssign(idnuse: PIdnUse, rhs: PExp) extends PStmt
 case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp) extends PStmt
+case class PMacroAssign(call: PCall, exp: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PSeqn, els: PSeqn) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PSeqn) extends PStmt
 case class PFresh(vars: Seq[PIdnUse]) extends PStmt
@@ -974,7 +969,7 @@ case class PLabel(idndef: PIdnDef, invs: Seq[PExp]) extends PStmt with PLocalDec
 case class PGoto(targets: PIdnUse) extends PStmt
 case class PTypeVarDecl(idndef: PIdnDef) extends PLocalDeclaration
 case class PMacroRef(idnuse : PIdnUse) extends PStmt
-case class PDefine(idndef: PIdnDef, args: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
+case class PDefine(idndef: PIdnDef, parameters: Option[Seq[PIdnDef]], body: PNode) extends PStmt with PLocalDeclaration
 case class PSkip() extends PStmt
 
 sealed trait PNewStmt extends PStmt {
@@ -1048,7 +1043,10 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def typ: PType
 }
 case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
-case class PImport(file: String) extends PNode
+abstract class PImport() extends PNode
+case class PLocalImport(file: String) extends PImport()
+case class PStandardImport(file: String) extends PImport()
+
 case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt]) extends PMember with PGlobalDeclaration {
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body): PMethod = {
     StrategyBuilder.Slim[PNode]({
@@ -1065,10 +1063,10 @@ case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalRetur
   }
 }
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecClause], body: Option[PExp]) extends PAnyFunction {
-  def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, decs: Option[PDecClause] = this.decs, body: Option[PExp] = this.body): PFunction = {
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction {
+  def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PExp] = this.body): PFunction = {
     StrategyBuilder.Slim[PNode]({
-      case f: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, decs, body)
+      case f: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, body)
     }).duplicateEverything.execute[PFunction](this)
   }
 }
@@ -1173,6 +1171,7 @@ object Nodes {
       case PGoto(label) => Seq(label)
       case PVarAssign(target, rhs) => Seq(target, rhs)
       case PFieldAssign(field, rhs) => Seq(field, rhs)
+      case PMacroAssign(call, exp) => Seq(call, exp)
       case PIf(cond, thn, els) => Seq(cond, thn, els)
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
@@ -1180,22 +1179,21 @@ object Nodes {
       case PConstraining(vars, stmt) => vars ++ Seq(stmt)
       case PProgram(files, macros, domains, fields, functions, predicates, methods, errors) =>
         domains ++ fields ++ functions ++ predicates ++ methods
-      case PImport(file) =>
+      case PLocalImport(file) =>
         Seq()
+      case PStandardImport(file) => Seq()
       case PDomain(idndef, typVars, funcs, axioms) => Seq(idndef) ++ typVars ++ funcs ++ axioms
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ body.toSeq
-      case PFunction(name, args, typ, pres, posts, dec, body) =>
-        Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ dec ++ body
+      case PFunction(name, args, typ, pres, posts, body) =>
+        Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ body
       case PDomainFunction(name, args, typ, unique) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, args, body) =>
         Seq(name) ++ args ++ body
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
-      case PDecTuple(exp) => exp
-      case PDecStar() => Nil
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case _: PSkip => Nil
     }

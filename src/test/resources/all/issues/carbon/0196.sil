@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 predicate P(r: Ref) {forall e : Ref :: e in refs(r) ==> acc(Q(e), wildcard)}
 predicate P2(r: Ref) {forall e : Ref :: e in refs(r) ==> acc(Q(e), 1/2)}
 predicate R(r: Ref) {forall e : Ref :: e in refs(r) ==> acc(e.q, wildcard)}

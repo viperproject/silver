@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Binary search in a sorted sequence */
 
 method binary_search(xs: Seq[Int], key: Int) returns (index: Int)

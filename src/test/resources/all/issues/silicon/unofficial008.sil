@@ -1,0 +1,34 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain PyType {
+  function isInt(r: Ref): Bool
+}
+
+field path: Ref
+field idx: Ref
+
+predicate Packet(self: Ref) {
+  acc(self.path, write) &&
+  (self.path != null ==> acc(Path(self.path), write)) &&
+  (self.path != null)
+}
+
+predicate Path(self: Ref) {
+    acc(self.idx, write) && isInt(self.idx)
+}
+
+function get_idx(self: Ref): Ref
+  requires acc(Packet(self), write)
+  ensures isInt(result)
+{
+  (unfolding acc(Packet(self), write) in get_idx_1(self))
+}
+
+function get_idx_1(self: Ref): Ref
+  requires acc(self.path, write)
+  requires acc(Path(self.path), write)
+  ensures isInt(result)
+{
+  (unfolding acc(Path(self.path), write) in self.path.idx)
+}

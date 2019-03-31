@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.parser
 
@@ -102,7 +102,6 @@ case class TypeChecker(names: NameAnalyser) {
       curFunction=f
       f.pres foreach (check(_, Bool))
       resultAllowed=true
-      check(f.decs)
       f.posts foreach (check(_, Bool))
       f.body.foreach(check(_, f.typ)) //result in the function body gets the error message somewhere else
       resultAllowed=false
@@ -148,13 +147,6 @@ case class TypeChecker(names: NameAnalyser) {
   def check(f: PDomainFunction) {
     check(f.typ)
     f.formalArgs foreach (a => check(a.typ))
-  }
-
-  def check(d: Option[PDecClause]) : Unit = {
-    d foreach {
-      case PDecStar() =>
-      case PDecTuple(exp) => exp foreach (e => check(e, e.typ))
-    }
   }
 
   def check(stmt: PStmt) {
@@ -413,7 +405,12 @@ case class TypeChecker(names: NameAnalyser) {
    * error should be issued.
    */
   def composeAndAdd(pts1: PTypeSubstitution,pts2: PTypeSubstitution,pt1:PType,pt2:PType) : Option[PTypeSubstitution] = {
-    assert(pts1.keySet.intersect(pts2.keySet).isEmpty)
+    val sharedKeys = pts1.keySet.intersect(pts2.keySet)
+    if (sharedKeys.exists(p => pts1.get(p).get != pts2.get(p).get)) {
+      /* no composed substitution if input substitutions do not match */
+      return None
+    }
+
     //composed substitution before add
     val cs = new PTypeSubstitution(
       pts1.map({ case (s: String, pt: PType) => s -> pt.substitute(pts2) }) ++
@@ -567,7 +564,7 @@ case class TypeChecker(names: NameAnalyser) {
                     pfa.function = fd
                     ensure(fd.formalArgs.size == args.size, pfa, "wrong number of arguments")
                     fd match {
-                      case PFunction(_, _, _, _, _, _, _) =>
+                      case PFunction(_, _, _, _, _, _) =>
                         checkMember(fd) {
                           check(fd.typ)
                           fd.formalArgs foreach (a => check(a.typ))
@@ -766,6 +763,7 @@ case class NameAnalyser() {
   def reset() {
     globalDeclarationMap.clear()
     localDeclarationMaps.clear()
+    namesInScope.clear()
   }
 
   private val globalDeclarationMap = mutable.HashMap[String, PEntity]()
@@ -780,11 +778,13 @@ case class NameAnalyser() {
    */
   private val localDeclarationMaps = mutable.HashMap[PScope.Id, mutable.HashMap[String, PEntity]]()
 
-  def run(p: PProgram): Boolean = {
+  private val namesInScope = mutable.Set.empty[String]
+
+  private def check(n: PNode, target: Option[PNode]): Unit = {
     var curMember: PScope = null
     def getMap(d:PNode) : mutable.HashMap[String, PEntity] =
       d match {
-        case d: PGlobalDeclaration => globalDeclarationMap
+        case _: PGlobalDeclaration => globalDeclarationMap
         case _ => getCurrentMap
       }
     def getCurrentMap: mutable.HashMap[String, PEntity] =
@@ -794,36 +794,40 @@ case class NameAnalyser() {
 
     val nodeDownNameCollectorVisitor = new PartialFunction[PNode,Unit] {
       def apply(n:PNode) = {
-        n match {
-          case d: PDeclaration =>
-            getMap(d).get(d.idndef.name) match {
-              case Some(e: PDeclaration) =>
-                messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
-              case Some(e:PErrorEntity) =>
-              case None =>
-                globalDeclarationMap.get(d.idndef.name) match {
-                  case Some(e: PDeclaration) =>
-                    messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
-                  case Some(e:PErrorEntity) =>
-                  case None =>
-                    getMap(d).put(d.idndef.name, d)
-                }
-            }
-          case _ =>
-        }
+        if (n == target.orNull) {
+          namesInScope ++= getCurrentMap.map(_._1)
+        } else {
+          n match {
+            case d: PDeclaration =>
+              getMap(d).get(d.idndef.name) match {
+                case Some(e: PDeclaration) =>
+                  messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+                case Some(e: PErrorEntity) =>
+                case None =>
+                  globalDeclarationMap.get(d.idndef.name) match {
+                    case Some(e: PDeclaration) =>
+                      messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+                    case Some(e: PErrorEntity) =>
+                    case None =>
+                      getMap(d).put(d.idndef.name, d)
+                  }
+              }
+            case _ =>
+          }
 
-        n match {
-          case s: PScope =>
-            val localDeclarations =
-              if (curMember == null)
-                mutable.HashMap[String, PEntity]()
-              else
-                localDeclarationMaps.getOrElse(curMember.scopeId, mutable.HashMap[String, PEntity]()).clone()
+          n match {
+            case s: PScope =>
+              val localDeclarations =
+                if (curMember == null)
+                  mutable.HashMap[String, PEntity]()
+                else
+                  localDeclarationMaps.getOrElse(curMember.scopeId, mutable.HashMap[String, PEntity]()).clone()
 
-            localDeclarationMaps.put(s.scopeId, localDeclarations)
-            scopeStack.push(curMember)
-            curMember = s
-          case _ =>
+              localDeclarationMaps.put(s.scopeId, localDeclarations)
+              scopeStack.push(curMember)
+              curMember = s
+            case _ =>
+          }
         }
       }
 
@@ -831,7 +835,7 @@ case class NameAnalyser() {
         n match {
           case d: PDeclaration => true
           case s: PScope => true
-          case _ => false
+          case _ => target.isDefined
         }
       }
     }
@@ -882,10 +886,10 @@ case class NameAnalyser() {
     }
 
     // find all declarations
-    p.visit( nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
+    n.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
 
     /* Check all identifier uses. */
-    p.visit({
+    n.visit({
       case m: PScope =>
         scopeStack.push(curMember)
         curMember = m
@@ -913,11 +917,19 @@ case class NameAnalyser() {
         }
       case _ =>
     }, {
-      case m: PScope =>
+      case _: PScope =>
         curMember = scopeStack.pop()
       case _ =>
     })
+  }
 
+  def run(p: PProgram): Boolean = {
+    check(p, None)
     messages.isEmpty
+  }
+
+  def namesInScope(n: PNode, target: Option[PNode] = None): Set[String] = {
+    check(n, target)
+    (namesInScope ++ globalDeclarationMap.map(_._1)).toSet
   }
 }

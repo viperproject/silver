@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.frontend
 
@@ -46,7 +46,7 @@ trait SilFrontend extends DefaultFrontend {
   def appExitCode: Int = _appExitReason.id
 
   protected def specifyAppExitCode(): Unit = {
-      if ( _state >= TranslatorState.Verified ) {
+      if ( _state >= DefaultStates.Verification ) {
       _appExitReason = result match {
         case Success => ApplicationExitReason.VERIFICATION_SUCCEEDED
         case Failure(_) => ApplicationExitReason.VERIFICATION_FAILED
@@ -70,8 +70,8 @@ trait SilFrontend extends DefaultFrontend {
   def verifier: Verifier = _ver
   protected var _ver: Verifier = _
 
-  override protected type ParserResult = PProgram
-  override protected type TypecheckerResult = Program
+  override protected type ParsingResult = PProgram
+  override protected type SemanticAnalysisResult = PProgram
 
   /** The current configuration. */
   protected var _config: SilFrontendConfig = _
@@ -95,7 +95,7 @@ trait SilFrontend extends DefaultFrontend {
 
   def prepare(args: Seq[String]): Boolean = {
 
-    reporter report CopyrightReport(s"${_ver.signature}\n${_ver.copyright}")
+    reporter report CopyrightReport(s"${_ver.signature}\n")//${_ver.copyright}") // we agreed on 11/03/19 to drop the copyright
 
     /* Parse command line arguments and populate _config */
     parseCommandLine(args)
@@ -149,7 +149,7 @@ trait SilFrontend extends DefaultFrontend {
     }
 
     // Parse, type check, translate and verify
-    verify()
+    run()
 
     finish()
   }
@@ -197,63 +197,36 @@ trait SilFrontend extends DefaultFrontend {
     _config = configureVerifier(args)
   }
 
-  override def doParse(input: String): Result[ParserResult] = {
+  override def doParsing(input: String): Result[PProgram] = {
     val file = _inputFile.get
     _plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
         val result = FastParser.parse(inputPlugin, file, Some(_plugins))
           result match {
             case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
-              if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning]))
-                Succ({ e.initProperties(); e })
+              if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
+                reporter report WarningsDuringParsing(err_list)
+                Succ({e.initProperties(); e})
+              }
               else Fail(err_list)
             case fail @ Parsed.Failure(_, index, extra) =>
               val msg = all.ParseError(fail.asInstanceOf[Parsed.Failure]).getMessage()
               val (line, col) = LineCol(extra.input.asInstanceOf[ParserInput], index)
               Fail(List(ParseError(s"Expected $msg", SourcePosition(file, line, col))))
-            case ParseError(msg, pos) => Fail(List(ParseError(msg, pos)))
+            case error: ParseError => Fail(List(error))
           }
 
       case None => Fail(_plugins.errors)
     }
   }
 
-  /* TODO: Naming of doTypecheck and doTranslate isn't ideal.
-           doTypecheck already translated the program, whereas doTranslate doesn't actually translate
-           anything, but instead filters members.
-   */
-
-  override def doTypecheck(input: ParserResult): Result[TypecheckerResult] = {
+  override def doSemanticAnalysis(input: PProgram): Result[PProgram] = {
     _plugins.beforeResolve(input) match {
       case Some(inputPlugin) =>
         val r = Resolver(inputPlugin)
         r.run match {
           case Some(modifiedInput) =>
-            val enableFunctionTerminationChecks =
-              config != null && config.verified && config.enableFunctionTerminationChecks()
-
-            _plugins.beforeTranslate(modifiedInput) match {
-              case Some(modifiedInputPlugin) =>
-                Translator(modifiedInputPlugin, enableFunctionTerminationChecks).translate match {
-                  case Some(program) =>
-                    val check = program.checkTransitively
-                    if (check.isEmpty) Succ(program) else Fail(check)
-
-                  case None => // then there are translation messages
-                    Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
-                      TypecheckerError(
-                        m.label, m.pos match {
-                          case fp: FilePosition =>
-                            SourcePosition(fp.file, m.pos.line, m.pos.column)
-                          case _ =>
-                            SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
-                        })
-                    }))
-                }
-
-              case None => Fail(_plugins.errors)
-            }
-
+            Succ(modifiedInput)
           case None =>
             val errors = for (m <- FastMessaging.sortmessages(r.messages)) yield {
               TypecheckerError(m.label, m.pos match {
@@ -270,24 +243,55 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  override def doTranslate(input: TypecheckerResult): Result[Program] = {
-    _plugins.beforeMethodFilter(input) match {
-      case Some(inputPlugin) =>
-        // Filter methods according to command-line arguments.
-        val verifyMethods =
-          if (config != null && config.methods() != ":all") Seq("methods", config.methods())
-          else inputPlugin.methods map (_.name)
+  override def doTranslation(input: PProgram): Result[Program] = {
 
-        val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
-        val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods)(inputPlugin.pos, inputPlugin.info)
+    _plugins.beforeTranslate(input) match {
+      case Some(modifiedInputPlugin) =>
+        Translator(modifiedInputPlugin).translate match {
+          case Some(program) => Succ(program)
 
-        _plugins.beforeVerify(program) match {
-          case Some(programPlugin) => Succ(programPlugin)
-          case None => Fail(_plugins.errors)
+          case None => // then there are translation messages
+            Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
+              TypecheckerError(
+                m.label, m.pos match {
+                  case fp: FilePosition =>
+                    SourcePosition(fp.file, m.pos.line, m.pos.column)
+                  case _ =>
+                    SourcePosition(_inputFile.get, m.pos.line, m.pos.column)
+                })
+            }))
         }
 
       case None => Fail(_plugins.errors)
     }
+  }
+
+  def doConsistencyCheck(input: Program): Result[Program]= {
+    def filter(input: Program): Result[Program]  = {
+      _plugins.beforeMethodFilter(input) match {
+        case Some(inputPlugin) =>
+          // Filter methods according to command-line arguments.
+          val verifyMethods =
+            if (config != null && config.methods() != ":all") Seq("methods", config.methods())
+            else inputPlugin.methods map (_.name)
+
+          val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
+          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods)(inputPlugin.pos, inputPlugin.info)
+
+          _plugins.beforeVerify(program) match {
+            case Some(programPlugin) => Succ(programPlugin)
+            case None => Fail(_plugins.errors)
+          }
+
+        case None => Fail(_plugins.errors)
+      }
+    }
+
+    val errors = input.checkTransitively
+    if (errors.isEmpty)
+      filter(input)
+    else
+      Fail(errors)
   }
 
   override def mapVerificationResult(in: VerificationResult): VerificationResult = _plugins.mapVerificationResult(in)

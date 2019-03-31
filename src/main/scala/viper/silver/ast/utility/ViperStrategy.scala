@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast.utility
 
@@ -118,10 +118,31 @@ object ViperStrategy {
     * @param t          Traversion mode
     * @tparam C Type of custom context
     * @return ViperStrategy
+    *
+    * AS: NOTE: Its static type is a Strategy, not a ViperStrategy. It would be good practice to annotate the static types on such functions, to avoid typing surprises
     */
   def Context[C](p: PartialFunction[(Node, ContextC[Node, C]), Node], default: C, updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
-    new ViperStrategy[ContextC[Node, C]](p) defaultContext new PartialContextC[Node, C](default, updateFunc) traverse t
+// AS: I cannot parse this style: new ViperStrategy[ContextC[Node, C]](p) defaultContext new PartialContextC[Node, C](default, updateFunc) traverse t
+    new ViperStrategy[ContextC[Node, C]](p).defaultContext(new PartialContextC[Node, C](default, updateFunc)).traverse(t)
   }
+
+  /**
+    * Strategy with (only) custom context
+    *
+    * @param p          Partial function to perform rewriting
+    * @param initialContext    Default context
+    * @param updateFunc Function that specifies how to update the custom context
+    * @param t          Traversion mode
+    * @tparam C Type of custom context
+    * @return ViperStrategy
+    *
+    * AS: NOTE: Its static type is a Strategy, not a ViperStrategy. It would be good practice to annotate the static types on such functions, to avoid typing surprises
+    */
+  def CustomContext[C](p: PartialFunction[(Node, C), Node], initialContext: C, updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) =
+    new ViperStrategy[ContextCustom[Node, C]](
+      { // rewrite partial function taking context with parent access etc. to one just taking the custom context
+      case (n, generalContext) if p.isDefinedAt(n, generalContext.c) => p.apply(n, generalContext.c)
+    }).defaultContext(new PartialContextCC[Node, C](initialContext, updateFunc)).traverse(t)
 
   /**
     * Function for automatic Error back transformation of nodes and conservation of metadata
@@ -289,8 +310,8 @@ object ViperStrategy {
     case (f: Field, Seq(singleType: Type), meta) =>
       Field(f.name, singleType)(meta._1, meta._2, meta._3)
 
-    case (f: Function, Seq(parameters: Seq[LocalVarDecl@unchecked], aType: Type, preconditions: Seq[Exp@unchecked], postconditions: Seq[Exp@unchecked], decreases: Option[DecClause@unchecked], body: Option[Exp@unchecked]), meta) =>
-      Function(f.name, parameters, aType, preconditions, postconditions, decreases, body)(meta._1, meta._2, meta._3)
+    case (f: Function, Seq(parameters: Seq[LocalVarDecl@unchecked], aType: Type, preconditions: Seq[Exp@unchecked], postconditions: Seq[Exp@unchecked], body: Option[Exp@unchecked]), meta) =>
+      Function(f.name, parameters, aType, preconditions, postconditions, body)(meta._1, meta._2, meta._3)
 
     case (p: Predicate, Seq(parameters: Seq[LocalVarDecl@unchecked], body: Option[Exp@unchecked]), meta) =>
       Predicate(p.name, parameters, body)(meta._1, meta._2, meta._3)

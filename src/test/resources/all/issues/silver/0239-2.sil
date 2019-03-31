@@ -1,0 +1,13 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+define index(i) (0 <= i)
+
+define pollute() (forall i: Int :: true)
+
+method m(i: Int)
+    requires pollute()
+{
+    //:: ExpectedOutput(assert.failed:assertion.false)
+    assert index(i + 3)
+}

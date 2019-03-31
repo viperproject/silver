@@ -1,12 +1,12 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.reporter
 
-import viper.silver.verifier.{AbstractError, Failure, Success, VerificationResult, Dependency}
+import viper.silver.verifier._
 
 /**
   * The only possible messages for the reporter are defined in this file.
@@ -141,6 +141,11 @@ case class ExternalDependenciesReport(deps: Seq[Dependency]) extends Message {
 
   override def toString: String = s"external_dependencies_report(deps=[${deps.mkString(",")}])"
   override val name: String = s"external_dependencies_report"
+}
+
+case class WarningsDuringParsing(warnings: Seq[ParseReport]) extends Message {
+  override def toString: String = s"warnings_during_parsing(warnings=${warnings.toString})"
+  override val name: String = s"warnings_during_parsing"
 }
 
 /**

@@ -1,0 +1,2 @@
+import <standard_import_tests/basic_inc.vpr>
+import "basic_inc.vpr"

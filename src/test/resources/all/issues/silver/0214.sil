@@ -1,0 +1,29 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain Array {
+  function loc(a: Array, i: Int): Ref
+  function len(a: Array): Int
+  function first(r: Ref): Array
+  function second(r: Ref): Int
+
+  axiom all_diff {
+    forall a: Array, i: Int :: {loc(a, i)}
+      first(loc(a, i)) == a && second(loc(a, i)) == i
+  }
+
+  axiom length_nonneg {
+    forall a: Array :: len(a) >= 0
+  }
+}
+
+field val : Int
+
+define A(i) loc(a,i).val
+
+method test(a:Array)
+  requires acc(A(0))
+{
+  var x:Int := A(0)
+  A(0) := 0 // Now it is supported
+}

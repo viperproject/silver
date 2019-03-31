@@ -1,0 +1,31 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method m() {
+  var x: Bool
+  var y: Int
+
+  if (!x) {
+    y := 123
+  } else {
+    y := 456
+    label then_1
+  }
+
+  assert (!x) ==> y == 123
+}
+
+method n() {
+  var x: Bool
+  var y: Int
+
+  if (!x) {
+    y := 123
+  } else {
+    label then_1
+    y := 456
+  }
+
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert (!x) ==> y != 123
+}

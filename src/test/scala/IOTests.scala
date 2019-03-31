@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 import java.io.File
 import java.nio.file.Paths
 
@@ -28,7 +34,7 @@ class IOTests extends FunSuite with Matchers {
   }
 
   test(s"$test_prefix: handling parseOnly mode and copyright") {
-    runOneCombo(verifiableFile, pass = true, Seq("--parseOnly"), Seq("MockIOVerifier 3.14", "(c) Copyright ETH Zurich 2012 - 2018"), Seq(), 2)
+    runOneCombo(verifiableFile, pass = true, Seq("--parseOnly"), Seq("MockIOVerifier 3.14"), Seq(), 1)
   }
 
   test(s"$test_prefix: external dependencies are reported") {

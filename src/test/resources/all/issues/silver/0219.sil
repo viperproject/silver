@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 define checkThis(check)
   check(x) // <-- here I put by mistake "(x)"
 

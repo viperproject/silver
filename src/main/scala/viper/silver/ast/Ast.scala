@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast
 
@@ -12,7 +12,7 @@ import utility._
 import viper.silver.ast.utility.Rewriter.Traverse.Traverse
 import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder, Traverse}
 import viper.silver.verifier.errors.ErrorNode
-import viper.silver.verifier.{ConsistencyError, AbstractVerificationError, ErrorReason}
+import viper.silver.verifier.{AbstractVerificationError, ConsistencyError, ErrorReason}
 
 /*
 
@@ -114,6 +114,20 @@ trait Node extends Traversable[Node] with Rewritable {
                : this.type =
 
   StrategyBuilder.Slim[Node](pre, recurse) execute[this.type] (this)
+
+
+  /**
+    * Allows a transformation with a custom context threaded through
+    *
+    * @see [[viper.silver.ast.utility.ViperStrategy]] */
+  def transformWithContext[C](transformation: PartialFunction[(Node,C), Node] = PartialFunction.empty,
+                             initialContext: C,
+                              updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, // use this to update the context passed recursively down
+                recurse: Traverse = Traverse.Innermost)
+  : this.type =
+    ViperStrategy.CustomContext[C](transformation, initialContext, updateFunc, recurse) execute[this.type] (this)
+
+
 
   def replace(original: Node, replacement: Node): this.type =
     this.transform { case `original` => replacement }

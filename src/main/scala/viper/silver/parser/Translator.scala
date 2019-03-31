@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.parser
 
@@ -25,7 +25,7 @@ import util.parsing.input.NoPosition
  * return a tree, but instead, records error messages using the
  * Messaging feature.
  */
-case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolean) {
+case class Translator(program: PProgram) {
   def translate: Option[Program] /*(Program, Seq[Messaging.Record])*/ = {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
@@ -40,18 +40,9 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         val predicates = ppredicates map translate
         var methods = pmethods map translate
 
-        if (enableFunctionTerminationChecks) {
-          // Add methods, domains and functions needed for proving termination
-          val termCheck = new DecreasesClause(members)
-          val structureForTermProofs = termCheck.addMethods(functions, predicates, domain, members.get("decreasing"), members.get("bounded"), members.get("nested"), members.get("Loc"))
-          domain = structureForTermProofs._1
-          functions ++= structureForTermProofs._2
-          methods ++= structureForTermProofs._3
-        }
-
         val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods)(program))
 
-        finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForpermArgUse(fp, finalProgram)}
+        finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)}
         finalProgram.deepCollect {case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)}
 
         if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
@@ -92,9 +83,9 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
   }
 
   private def translate(f: PFunction): Function = f match {
-    case PFunction(name, _, _, pres, posts, decs, body) =>
+    case PFunction(name, _, _, pres, posts, body) =>
       val f = findFunction(name)
-      val ff = f.copy(pres = pres map exp, posts = posts map exp, decs = decs map dec, body = body map exp)(f.pos, f.info, f.errT)
+      val ff = f.copy(pres = pres map exp, posts = posts map exp, body = body map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
   }
@@ -126,8 +117,8 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
     val t = p match {
       case PField(_, typ) =>
         Field(name, ttyp(typ))(pos)
-      case PFunction(_, formalArgs, typ, _, _, _, _) =>
-        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null, null)(pos)
+      case PFunction(_, formalArgs, typ, _, _, _) =>
+        Function(name, formalArgs map liftVarDecl, ttyp(typ), null, null, null)(pos)
       case pdf@ PDomainFunction(_, args, typ, unique) =>
         DomainFunc(name, args map liftVarDecl, ttyp(typ), unique)(pos,NoInfo,pdf.domainName.name)
       case PDomain(_, typVars, _, _) =>
@@ -220,14 +211,6 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
         While(exp(cond), invs map exp, stmt(body).asInstanceOf[Seqn])(pos)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
-    }
-  }
-
-  /** Takes a `PExp` and turns it into an `Exp`. */
-  private def dec(pdec: PDecClause): DecClause = {
-    pdec match {
-      case PDecStar() => DecStar()(pdec)
-      case PDecTuple(d) => DecTuple(d map exp)(pdec)
     }
   }
 
@@ -337,7 +320,6 @@ case class Translator(program: PProgram, enableFunctionTerminationChecks: Boolea
       case PUnExp(op, pe) =>
         val e = exp(pe)
         op match {
-          case "+" => e
           case "-" =>
             e.typ match {
               case Int => Minus(e)(pos)

@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 field f: Int
 
 predicate token(x: Ref) {
@@ -7,7 +10,7 @@ predicate token(x: Ref) {
 method t_plus(x: Ref)
     requires acc(x.f)
 {
-    fold acc(token(x), (+1/10))
+    fold acc(token(x), (1/10))
 }
 
 method t_minus_1(x: Ref)

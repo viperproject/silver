@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
   method m(this: Ref, a: Int, b: Int) returns (x: Int, y: Int)
     ensures ((x) == (a)) && ((y) == (b))
   {

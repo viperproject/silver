@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 import java.nio.file.Paths
 
@@ -36,6 +36,25 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
   }
 
   test("Sharing") {
+    val shared = FalseLit()()
+    val sharedAST = And(Not(shared)(), shared)()
+
+    val strat = ViperStrategy.CustomContext[Int]({ case (FalseLit(), c) => if (c == 1) TrueLit()() else FalseLit()() }, 0, { case (Not(_), i) => i + 1 })
+
+    val res = strat.execute[Exp](sharedAST)
+
+    // Check that both true lits are no longer of the same instance
+    res match {
+      case And(Not(t1), t2) =>
+        assert(t1 == TrueLit()())
+        assert(t2 == FalseLit()())
+      case _ => assert(false)
+    }
+  }
+
+
+// same as the test above, but with a Context rather than SimpleContext strategy
+ test("Sharing (richer context, unused)") {
     val shared = FalseLit()()
     val sharedAST = And(Not(shared)(), shared)()
 

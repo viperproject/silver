@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 field val: Int
 field next: Ref
 
@@ -25,7 +28,6 @@ method insert(xs: Ref, e: Int)
 	requires acc(SortedList(xs))
 {
 	assert unfolding acc(SortedList(xs)) in true /* Peek into the predicate */
-    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/359/)
 	assert ascending(xs)
 	  /* Used to fail because the triggers of the quantifier inside ascending
 	   * were translated into their unlimited form, whereas it should be the

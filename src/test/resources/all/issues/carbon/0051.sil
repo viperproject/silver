@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 // oldC2SCases/linked_list.chalice
 field Listvalue$: Int
 
@@ -32,7 +35,6 @@ method Listappend$(this$_4: Ref, k$: Perm, newval: Int)
   ensures acc(Listinv$(this$_4), write)
   ensures Listlen$(this$_4) > 0
   ensures Listlen$(this$_4) == old(Listlen$(this$_4)) + 1
-  //:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/359/)
   ensures Listget$(this$_4, Listlen$(this$_4) - 1) == newval
   ensures (forall i: Int :: true && (i in [0..old(Listlen$(this$_4)))) ==> (Listget$(this$_4, i) == old(Listget$(this$_4, i))))
 {

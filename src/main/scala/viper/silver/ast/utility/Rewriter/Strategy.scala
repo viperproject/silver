@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast.utility.Rewriter
 
@@ -28,7 +28,7 @@ object Traverse extends Enumeration {
 trait StrategyInterface[N <: Rewritable] {
 
   // Store every special node we don't want to recurse on
-  // A hash map would be more efficient but then we get problems with circular dependencies (calculating hash never terminates)
+  // A hash set would be more efficient but then we get problems with circular dependencies (calculating hash never terminates)
   protected var noRecursion = collection.mutable.ListBuffer.empty[Rewritable]
 
   protected var changed = false
@@ -67,8 +67,8 @@ trait StrategyInterface[N <: Rewritable] {
     * @param s strategy to combine with
     * @return combined strategy
     */
-  def ||(s: StrategyInterface[N]): ConcatinatedStrategy[N] = {
-    new ConcatinatedStrategy[N](this, s)
+  def ||(s: StrategyInterface[N]): ConcatenatedStrategy[N] = {
+    new ConcatenatedStrategy[N](this, s)
   }
 
   /** This method can be overridden to control the creation of a new node by possibly adding
@@ -104,7 +104,7 @@ object StrategyBuilder {
     * Strategy that allows access to ancestors and siblings
     *
     * @param p Partial function that transforms input (node, context) into a new node
-    * @param t Traversial direction
+    * @param t Traverse direction
     * @tparam N Common supertype of every node in the tree
     * @return Strategy object ready to execute on a tree
     */
@@ -125,6 +125,23 @@ object StrategyBuilder {
     */
   def Context[N <: Rewritable, C](p: PartialFunction[(N, ContextC[N, C]), N], default: C, updateFunc: PartialFunction[(N, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
     new Strategy[N, ContextC[N, C]](p) defaultContext new PartialContextC[N, C](default, updateFunc) traverse t
+  }
+
+  /**
+    * Strategy that allows access to custom defined context (of parameter type C)
+    *
+    * @param p          Partial function that transforms input (node, context) into a new node
+    * @param default    Default context value (in case no context is present)
+    * @param updateFunc Function that extracts context out of nodes and combines it with existing context
+    * @param t          Traversal direction
+    * @tparam N Common supertype of every node in the tree
+    * @tparam C Type of the context
+    * @return Strategy object ready to execute on a tree
+    */
+  def CustomContext[N <: Rewritable, C](p: PartialFunction[(N, C), N], default: C, updateFunc: PartialFunction[(N, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
+    new Strategy[N, ContextCustom[N,C]]({ // rewrite partial function taking context with parent access etc. to one just taking the custom context
+      case (n, context) if p.isDefinedAt(n, context.c) => p.apply(n, context.c)
+    }).defaultContext(new PartialContextCC[N,C](default,updateFunc)) //default new PartialContextC[N, C](default, updateFunc) traverse t
   }
 
   /**
@@ -521,19 +538,19 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
   * @param s1 strategy 1
   * @param s2 strategy 2
   */
-class ConcatinatedStrategy[N <: Rewritable](s1: StrategyInterface[N], val s2: StrategyInterface[N]) extends StrategyInterface[N] {
+class ConcatenatedStrategy[N <: Rewritable](s1: StrategyInterface[N], val s2: StrategyInterface[N]) extends StrategyInterface[N] {
   private var strategies = collection.mutable.ListBuffer.empty[StrategyInterface[N]]
 
   strategies.append(s1)
   strategies.append(s2)
 
 
-  override def ||(s: StrategyInterface[N]): ConcatinatedStrategy[N] = {
+  override def ||(s: StrategyInterface[N]): ConcatenatedStrategy[N] = {
     strategies.append(s)
     this
   }
 
-  def ||(s: ConcatinatedStrategy[N]): ConcatinatedStrategy[N] = {
+  def ||(s: ConcatenatedStrategy[N]): ConcatenatedStrategy[N] = {
     strategies ++= s.strategies
     this
   }
@@ -733,7 +750,7 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
   * @tparam N      Common supertype of every node in the tree
   * @tparam CUSTOM Type of custom context
   */
-class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transformer: StrategyInterface[N], private val upContext: PartialFunction[(N, CUSTOM), CUSTOM]) extends ContextA[N](aList, transformer) {
+class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transformer: StrategyInterface[N], upContext: PartialFunction[(N, CUSTOM), CUSTOM]) extends ContextA[N](aList, transformer) {
 
   // Add an ancestor to the context
   override def addAncestor(n: N): ContextC[N, CUSTOM] = {
@@ -754,6 +771,29 @@ class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transforme
   // Update the context with node and custom context
   override def update(n: N): ContextC[N, CUSTOM] = {
     replaceNode(n).updateCustom(node)
+  }
+}
+
+/**
+  * Encapsulates context information with custom context and *no* ancestors
+  *
+  * @param c           custom context object
+  * @param transformer current transformer
+  * @param upContext   Function to update the context
+  * @tparam N      Common supertype of every node in the tree
+  * @tparam CUSTOM Type of custom context
+  */
+class ContextCustom[N <: Rewritable, CUSTOM](val c: CUSTOM, override protected val transformer: StrategyInterface[N], private val upContext: PartialFunction[(N, CUSTOM), CUSTOM]) extends SimpleContext[N](transformer) {
+
+  // Perform the custom update part of the update
+  def updateCustom(n: N): ContextCustom[N, CUSTOM] = {
+    val updated = upContext.applyOrElse((n, c), (els:(N, CUSTOM)) => els._2)
+    new ContextCustom[N, CUSTOM](updated, transformer, upContext)
+  }
+
+  // Update the context with node and custom context
+  override def update(n: N): ContextCustom[N, CUSTOM] = {
+    updateCustom(n)
   }
 }
 
@@ -844,6 +884,36 @@ class PartialContextC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContext
     */
   override def get(transformer: StrategyInterface[N]): ContextC[N, CUSTOM] = get(aList, transformer)
 }
+
+/**
+  * Partial context for ContextCustom
+  *
+  * @param custom    Custom context object
+  * @param upContext Function to update the context
+  * @tparam N      Common supertype of every node in the tree
+  * @tparam CUSTOM Type of custom context
+  */
+class PartialContextCC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContext: PartialFunction[(N, CUSTOM), CUSTOM] = PartialFunction.empty) extends PartialContext[N, ContextCustom[N, CUSTOM]] {
+
+  /**
+    * Provide information to complete ContextCustom object
+    *
+    * @param upC         Update function for custom context
+    * @param transformer Current transformer
+    * @return A complete ContextC object
+    */
+  def get(upC: PartialFunction[(N, CUSTOM), CUSTOM], transformer: StrategyInterface[N]): ContextCustom[N, CUSTOM] = new ContextCustom[N, CUSTOM](custom, transformer, upC)
+
+  /**
+    * Provide the transformer for the real context
+    *
+    * @param transformer current transformer
+    * @return A complete ContextC object
+    */
+  override def get(transformer: StrategyInterface[N]): ContextCustom[N, CUSTOM] = get(upContext, transformer)
+}
+
+
 
 /**
   * A visitor that executes a unit-result function on every node

@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 package viper.silver.ast.utility
 
 import viper.silver.ast._
@@ -456,7 +462,7 @@ object DomainInstances {
   class TarjanAR[N](val nodes: Map[N,TarjanNode[N]]) {
     val r = new mutable.ListBuffer[mutable.Set[N]]()
     var index: Int = 0
-    val stack = new mutable.Stack[N]()
+    var stack = List.empty[N]
     val set = new mutable.HashSet[N]()
   }
 /*  def getSCCs[N, L](g: Map[N, Map[N, L]]): List[mutable.Set[N]] = {
