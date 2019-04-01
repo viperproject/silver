@@ -149,7 +149,7 @@ trait SilFrontend extends DefaultFrontend {
     }
 
     // Parse, type check, translate and verify
-    run()
+    runAllPhases()
 
     finish()
   }

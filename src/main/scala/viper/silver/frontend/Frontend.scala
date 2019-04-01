@@ -56,7 +56,7 @@ trait Frontend {
 
   /** Execute all phases of the frontend sequentially. */
   def runAllPhases(): Unit = {
-    phases.foreach(_.f)
+    phases.foreach(_.f())
   }
 
   /** Executes only the specified phase of the frontend. The specified phase must a phase of the frontend.
@@ -88,36 +88,11 @@ trait Frontend {
   def runRange(from: Phase, to: Phase): Unit = {
     assertPhase(from)
     assertPhase(to)
-    phases.slice(phases.indexOf(from), phases.indexOf(to) + 1).foreach(_.f)
+    phases.slice(phases.indexOf(from), phases.indexOf(to) + 1).foreach(_.f())
   }
 
   private def assertPhase(phase: Phase): Unit =
     assert(phases.contains(phase), s"The phase ${phase.name} is not one of the phases of the frontend")
-
-  /**
-    * Run the verification on the input and return the result.  This is equivalent to calling all the phases and then
-    * returning result.
-    */
-  def run(): VerificationResult = {
-    phases.foreach(_.f())
-    result
-  }
-
-  private def isValidPhase(phaseName: String) =
-    if (!phases.exists(_.name == phaseName))
-      sys.error(s"Phase $phaseName does not exist")
-
-  def runOnly(phaseName: String) = {
-    isValidPhase(phaseName)
-    val index = phases.indexWhere(_.name == phaseName)
-    phases(index).f()
-  }
-
-  def runTo(phaseName: String) = {
-    isValidPhase(phaseName)
-    val index = phases.indexWhere(_.name == phaseName) + 1
-    phases.slice(0, index).foreach(_.f())
-  }
 
   /**
     * The result of the verification attempt (only available after parse, typecheck, translate and
