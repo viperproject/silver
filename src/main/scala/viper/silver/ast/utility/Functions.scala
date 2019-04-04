@@ -21,11 +21,6 @@ import scala.collection.JavaConverters._
 object Functions {
   case class Edge[T](source: T, target: T)
 
-  case class Factory[T]() extends EdgeFactory[T, Edge[T]] {
-    def createEdge(source: T, target: T) =
-      Edge(source, target)
-  }
-
   def allSubexpressions(func: Function): Seq[Exp] = func.pres ++ func.posts ++ func.body
   def allSubexpressionsIncludingUnfoldings(program: Program)(func: Function): Seq[Exp] = {
     var visitedPredicates = Set[String]()
