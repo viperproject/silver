@@ -1,0 +1,13 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method m1(r: Ref)
+{
+
+}
+
+method m2(r: Ref)
+{
+    //:: ExpectedOutput(parser.error)
+    m1(r) := 1
+}

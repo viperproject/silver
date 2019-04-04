@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method checkGcd(left: Int, right: Int)
   requires left >= 0 && right >= 0
   ensures right == 0 || (left % right >= 0)

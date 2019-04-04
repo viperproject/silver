@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast.utility
 
@@ -185,6 +185,28 @@ object QuantifiedPermissions {
               )(source.pos, source.info)
 
             desugarSourceQuantifiedPermissionSyntax(newForall)
+
+          case CondExp(b, e0, e1) =>
+            /* RHS is a conditional assertion; pull its condition out and rewrite the resulting foralls */
+
+            val newCond0 = And(cond, b)(cond.pos, MakeInfoPair(cond.info,b.info))
+            val newCond1 = And(cond, Not(b)(b.pos,b.info))(cond.pos, MakeInfoPair(cond.info,b.info))
+
+            val newForalls0 =
+              desugarSourceQuantifiedPermissionSyntax(Forall(
+                vars,
+                triggers,
+                Implies(newCond0, e0)(rhs.pos, rhs.info) // TODO: this positional/info choice seems surprising. See also issue #249
+              )(source.pos, source.info))
+
+            val newForalls1 =
+              desugarSourceQuantifiedPermissionSyntax(Forall(
+                vars,
+                triggers,
+                Implies(newCond1, e1)(rhs.pos, rhs.info) // TODO: this positional/info choice seems surprising. See also issue #249
+              )(source.pos, source.info))
+
+                newForalls0 ++ newForalls1
 
           case nested@SourceQuantifiedPermissionAssertion(_, nestedCond, nestedRhs) => // no need to check nestedRhs is pure, or else consistency check should already have failed (e.h. impure lhs of implication)
             /* Source forall denotes a quantified permission assertion that potentially

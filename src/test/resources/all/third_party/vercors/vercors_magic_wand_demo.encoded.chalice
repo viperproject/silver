@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 class Wand_readonly_for_writeonly {
   var lemma : int;
   var in_1 : WandDemo;

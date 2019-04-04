@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.plugin
 
@@ -11,7 +11,7 @@ import viper.silver.ast._
 import viper.silver.frontend.SilFrontendConfig
 import viper.silver.parser.PProgram
 import viper.silver.reporter.Reporter
-import viper.silver.verifier.{AbstractError, Failure, Success, VerificationResult}
+import viper.silver.verifier.{AbstractError, VerificationResult}
 
 /** Manage the loaded plugins and execute them during the different hooks (see [[viper.silver.plugin.SilverPlugin]]).
   *

@@ -1,0 +1,14 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <standard_import_tests/loop_standard/la.vpr>
+
+domain Loop {
+    function loopa(): Bool
+    function loopb(): Bool
+}
+
+method main(){
+    assert loopa()
+    assert loopb()
+}

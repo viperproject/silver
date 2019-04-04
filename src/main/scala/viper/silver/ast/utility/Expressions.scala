@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast.utility
 
@@ -68,6 +68,26 @@ object Expressions {
 
   def contains[T <: Node : ClassTag](expressions: Seq[Exp]) = {
     expressions.exists(_.contains[T])
+  }
+
+  // collects the free variables in an expression
+  def freeVariables(e: Exp) : Set[AbstractLocalVar] = freeVariablesExcluding(e, Set())
+
+  // collects the free variables in an expression, *excluding* a given set of variables to ignore
+  def freeVariablesExcluding(e:Exp, toIgnore:Set[AbstractLocalVar]) : Set[AbstractLocalVar] =
+  {
+    e.shallowCollect{
+      case Let(binding,exp,body) =>
+        freeVariablesExcluding(exp, toIgnore) union freeVariablesExcluding(body, toIgnore + binding.localVar)
+      case Forall(boundVars,triggers,body) => {
+        val ignoring = toIgnore union (boundVars map (_.localVar)).toSet
+        triggers.flatMap(t => t.exps.flatMap(freeVariablesExcluding(_, ignoring))).toSet union freeVariablesExcluding(body, ignoring)
+      }
+      case Exists(boundVars,body) =>
+        freeVariablesExcluding(body,toIgnore union (boundVars map (_.localVar)).toSet)
+      case v@AbstractLocalVar(name) if !toIgnore.contains(v) =>
+        Seq(v)
+    }.flatten.toSet
   }
 
   /** In an expression, rename a list (domain) of variables with given (range) variables. */

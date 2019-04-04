@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 
 field parent : Ref
 field rank : Int
@@ -30,6 +33,7 @@ method veryBad()
   l.parent := null;
   l.rank := 0;
   //:: UnexpectedOutput(fold.failed:insufficient.permission, /carbon/issue/237/)
+  ////:: UnexpectedOutput(fold.failed:assertion.false, /carbon/issue/237/)
   fold uf_bank(Set(l));
   bad(Set(l),l);
 }

@@ -1,0 +1,9 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+method x() {
+    var y: Int
+}
+
+//:: ExpectedOutput(parser.error)
+define x() 1

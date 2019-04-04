@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* TODO: The NonNull stuff should not be necessary, see Silicon issue 61 */
 domain NonNull {
   function NN(x: Ref): Bool

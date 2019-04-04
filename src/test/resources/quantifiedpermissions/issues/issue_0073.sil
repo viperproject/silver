@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* 2014-09-09 Malte:
  *   These tests are no longer really useful, because what they were meant to
  *   test has significantly changed over the last months. In particular, we

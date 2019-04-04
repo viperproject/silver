@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 field Wand_list_for_list__lemma: Int
 
 field Wand_list_for_list__in_1: Ref

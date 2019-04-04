@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 domain List[T] {
     function nil(): List[T]
     function cons(x: T, xs: List[T]): List[T]

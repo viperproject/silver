@@ -1,0 +1,42 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Capture avoiding substitution is implemented by the following rules:
+// 1) (forall x in A)[x->e] = (forall x in A)
+// 2) (forall x in A)[y->e] = (forall x' in A[x->x';y->e]) if x belongs to fv(e) and x != y
+// 3) (forall x in A)[y->e] = (forall x in A[y->e]) if x does not belong to fv(e) and x != y
+
+// ========= Rule 1 enforcement =========
+
+define macro1(i) (
+    i == i && forall i: Int :: i == i
+  //j == j && forall i: Int :: i == i (substitution after macro expansion)
+)
+
+define macro2(i) (
+    (forall i: Int :: i == i) && i == i
+  //(forall i: Int :: i == i) && j == j (substitution after macro expansion)
+)
+
+method test1() {
+    var j: Int
+    assert(macro1(j))
+}
+
+method test2() {
+    var j: Int
+    assert(macro2(j))
+}
+
+define macro3(i, x) (
+    i && forall i: Int :: i == i && i == x
+)
+
+method test3() {
+    var b: Bool := true
+    // An attempt to compare boolean with integer will issue a type checker error.
+    // Before, such error wouldn't occur, as the boolean variable would be compared
+    // with itself.
+    //:: ExpectedOutput(typechecker.error)
+    assert macro3(b, b)
+}

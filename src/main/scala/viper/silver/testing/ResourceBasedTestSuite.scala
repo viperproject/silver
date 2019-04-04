@@ -1,14 +1,14 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.testing
 
 import org.scalatest._
 import java.nio.file.{Path, Files}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /** A test suite for end-to-end toolchain testing that operates on source files
   * in resource directories.
@@ -87,7 +87,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
     assert(dir != null, "Directory must not be null")
     assert(Files.isDirectory(dir), "Path must represent a directory")
 
-    val directoryStream = Files.newDirectoryStream(dir)
+    val directoryStream = Files.newDirectoryStream(dir).asScala
     val dirContent = directoryStream.toList
     val includeFilesPattern = configMap.getOrElse("includeFiles", defaultTestPattern).toString
 

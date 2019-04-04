@@ -1,0 +1,9 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import <standard_import_tests/local_and_standard_inc.vpr>
+import "basic.vpr"
+
+method main2(){
+    assert basic()
+}

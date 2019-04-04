@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 // This issue exposed a Z3 feature/bug, in that multiple multi-pattern annotations will sometimes be ignored. 
 // This can be worked around by passing an option to Z3: smt.qi.max_multi_patterns=1000
 // It seems hard to write a small regression for this behaviour, since Z3 has other behaviour which kicks in for small examples.

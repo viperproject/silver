@@ -1,14 +1,14 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.utility
 
 import java.net.{URI, URL}
 import java.nio.file.{FileSystem, FileSystems, Path}
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 /**
   * A collection of utility methods for dealing with paths and environment variables.
@@ -88,7 +88,7 @@ object Paths {
         var fs: FileSystem = null
 
         try {
-          fs = FileSystems.newFileSystem(fileURI, Map[String, Object]())
+          fs = FileSystems.newFileSystem(fileURI, Map[String, Object]().asJava)
           openFileSystems = fs +: openFileSystems
         } catch {
           case e: java.nio.file.FileSystemAlreadyExistsException =>

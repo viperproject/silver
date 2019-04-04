@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast
 
@@ -267,7 +267,6 @@ sealed trait AccessPredicate extends Exp {
   def res(p: Program): Resource = loc.res(p)
   def loc: ResourceAccess /* TODO: Should be renamed to, e.g. `resAcc` or just `acc` */
   def perm: Exp
-  val typ: Bool.type = Bool
 }
 object AccessPredicate {
   def unapply(a: AccessPredicate) = Some((a.loc, a.perm))
@@ -277,12 +276,14 @@ object AccessPredicate {
 case class FieldAccessPredicate(loc: FieldAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
   override lazy val check : Seq[ConsistencyError] =
     if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()
+  val typ: Bool.type = Bool
 }
 
 /** An accessibility predicate for a predicate location. */
 case class PredicateAccessPredicate(loc: PredicateAccess, perm: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AccessPredicate {
   override lazy val check : Seq[ConsistencyError] =
     if(!(perm isSubtype Perm)) Seq(ConsistencyError(s"Permission amount parameter of access predicate must be of Perm type, but found ${perm.typ}", perm.pos)) else Seq()
+  val typ: Bool.type = Bool
 }
 
 // --- Inhale exhale expressions.
@@ -582,10 +583,10 @@ case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = No
 case class ForPerm(variables: Seq[LocalVarDecl], resource: ResourceAccess, body: Exp)
                   (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Exp with QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] =
-    (if(!(body isSubtype Bool)) Seq(ConsistencyError(s"Body of forperm quantifier must be of Bool type, but found ${body.typ}.", body.pos)) else Seq()) ++
-      Consistency.checkPure(body) ++
-      (if(!Consistency.noPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain perm expressions.", body.pos)) else Seq()) ++
-      (if(!Consistency.noForPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain nested forperm expressions.", body.pos)) else Seq())
+    (if (!(body isSubtype Bool)) Seq(ConsistencyError(s"Body of forperm quantifier must be of Bool type, but found ${body.typ}.", body.pos)) else Seq()) ++
+    Consistency.checkPure(body) ++
+    (if (!Consistency.noPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain perm expressions.", body.pos)) else Seq()) ++
+    (if (!Consistency.noForPerm(body)) Seq(ConsistencyError("Body of forperm quantifier is not allowed to contain nested forperm expressions.", body.pos)) else Seq())
 
   def exp: Exp = body
 
@@ -934,7 +935,7 @@ object FuncLikeApp {
   def unapply(fa: FuncLikeApp) = Some((fa.funcname, fa.args))
   def apply(f: FuncLike, args: Seq[Exp], typVars: Map[TypeVar, Type]) = {
     f match {
-      case f@Function(_, _, _, _, _, _, _) => FuncApp(f, args)()
+      case f@Function(_, _, _, _, _, _) => FuncApp(f, args)()
       case f@DomainFunc(_, _, _, _) => DomainFuncApp(f, args, typVars)()
       case _ => sys.error(s"should not occur: $f (${f.getClass})")
     }

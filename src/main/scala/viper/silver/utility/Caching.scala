@@ -1,15 +1,15 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.utility
 
 import java.security.MessageDigest
 
 import viper.silver.ast.pretty.FastPrettyPrinter
-import viper.silver.ast.{Member, Method, Node}
+import viper.silver.ast.Node
 
 import scala.collection.mutable
 import scala.language.postfixOps
@@ -62,7 +62,6 @@ trait DependencyAware {
     *
     * Danger! A bug in this method may lead to unsoundness caused by caching.
     *
-    * TODO: add transitive dependencies via function decreases clauses.
     *
     * @param p
     *          The [[Program]] under consideration.

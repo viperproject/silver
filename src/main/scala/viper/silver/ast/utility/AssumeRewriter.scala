@@ -1,9 +1,13 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 package viper.silver.ast.utility
 
-import viper.silver.ast
 import viper.silver.ast._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.ast.utility.Rewriter._
 
 /**
   * Viper to Viper translation of impure assume statements into pure assumes:
@@ -170,7 +174,7 @@ object AssumeRewriter {
     }
 
     for (e <- exps) {
-      seq = seq :+ Inhale(e)()
+      seq = seq :+ Inhale(e)(e.pos, e.info, e.errT)
     }
 
     val seqn = Seqn(seq, Seq())(inhale.pos, inhale.info, inhale.errT)

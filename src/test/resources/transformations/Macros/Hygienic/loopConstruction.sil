@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 define increaseFive(x) {
     var oldX: Int := x
     var ctr: Int := 0

@@ -1,0 +1,17 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+define deref(x) x.f
+
+field f: Int
+
+method m1(r: Ref)
+    requires acc(r.f)
+{
+    r.f := r.f + 1
+    r.f := deref(r) + 1
+    r.f := deref(r)
+    deref(r) := r.f + 1
+}
+
+

@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 predicate P1(this: Ref) {
   true
 }
@@ -12,35 +15,30 @@ predicate P3(this: Ref) {
 
 method noPredicates()
 {
-  var r1: Ref
-  var r2: Ref
   assert forperm r: Ref [P1(r)] :: false
   assert forperm r: Ref [P2(r)] :: false
 }
 
 method noPredicates2()
 {
-  var r1: Ref
-  var r2: Ref
-  inhale acc(P3(r1))
+  var ref: Ref
+  inhale acc(P3(ref))
   assert forperm r: Ref [P1(r)] :: false
   assert forperm r: Ref [P2(r)] :: false
 }
 
 method permOnlyOnePredicate1()
 {
-  var r1: Ref
-  var r2: Ref
-  inhale acc(P1(r1))
+  var ref: Ref
+  inhale acc(P1(ref))
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert forperm r: Ref [P1(r)] :: false
 }
 
 method permOnlyOnePredicate2()
 {
-  var r1: Ref
-  var r2: Ref
-  inhale acc(P1(r1))
+  var ref: Ref
+  inhale acc(P1(ref))
   assert forperm r: Ref [P2(r)] :: false
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert forperm r: Ref [P1(r)] :: false
@@ -48,10 +46,9 @@ method permOnlyOnePredicate2()
 
 method permCheck()
 {
-  var r1: Ref
-  var r2: Ref
-  inhale acc(P1(r1))
-  exhale acc(P1(r1))
+  var ref: Ref
+  inhale acc(P1(ref))
+  exhale acc(P1(ref))
   assert forperm r: Ref [P1(r)] :: false
   assert forperm r: Ref [P2(r)] :: false
 }

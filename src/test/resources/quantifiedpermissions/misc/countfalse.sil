@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 function countFalseX(a: Array, from: Int): Int
   requires 0 <= from && from <= length(a);
   requires forall z: Int :: (from <= z && z < length(a) ==> acc(loc(a,z).val));

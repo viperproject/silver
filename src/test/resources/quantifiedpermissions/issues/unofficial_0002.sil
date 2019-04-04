@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* Originally reported by Arshavir (and minimised by Peter) on 2015-10-12.
  * The problem was another instance of a prover variable that escaped its scope.
  */

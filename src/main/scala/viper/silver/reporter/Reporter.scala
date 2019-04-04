@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.reporter
 
@@ -60,6 +60,9 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
         })).mkString("\n")
         println( s"The following dependencies are used:\n$s" )
 
+      case WarningsDuringParsing(warnings) =>
+        warnings.foreach(println)
+
       case InvalidArgumentsReport(tool_sig, errors) =>
         errors.foreach(e => println(s"  ${e.readableMessage}"))
         println( s"Run with just --help for usage and options" )
@@ -76,7 +79,7 @@ case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = t
       case sm:SimpleMessage =>
         //println( sm.text )
       case _ =>
-        //println( s"Cannot properly print message of unsupported type: $msg" )
+        println( s"Cannot properly print message of unsupported type: $msg" )
     }
     counter = counter + 1
   }

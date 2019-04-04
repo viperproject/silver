@@ -1,21 +1,21 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.testing
 
 import java.nio.file._
 import collection.mutable
-import org.scalatest.{BeforeAndAfterAll, ConfigMap}
+import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap}
 import viper.silver.verifier._
 import viper.silver.ast.{SourcePosition, TranslatedPosition}
 import viper.silver.frontend.Frontend
 import viper.silver.utility.TimingUtils
 
 /** A test suite for verification toolchains that use Viper. */
-abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll {
+abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllConfigMap {
 
   /** The list of verifiers to be used. Should be overridden by a lazy val
     * if the verifiers need to access the config map provided by ScalaTest.
@@ -55,7 +55,7 @@ abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAll 
   /** Invoked by ScalaTest after all tests of the current suite have been run.
     * Stops all verifiers specified by `verifiers`.
     */
-  override def afterAll() {
+  override def afterAll(configMap: ConfigMap) {
     verifiers foreach (_.stop())
   }
 

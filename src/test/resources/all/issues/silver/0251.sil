@@ -1,0 +1,21 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+define a(j) forall i: Int :: i != 0 ==> i != j
+
+function f(i: Int) : Int { i }
+
+method failure (i:Int)
+  requires i == 0
+  ensures  a(f(i))
+{}
+
+field next:Ref
+
+method unlink_DAG_next(x:Ref)
+    requires acc(x.next)
+    ensures acc(x.next)
+    ensures MY_MACRO(x.next)
+
+define MY_MACRO(hello)
+    forall x:Ref :: hello != x

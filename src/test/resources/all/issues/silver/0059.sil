@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method m(a: Seq[Int])
   requires (exists j: Int :: j in a && j > 0)
   requires (exists j: Int :: (0 <= j && j < |a|) && (a[j] > 0))

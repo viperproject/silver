@@ -1,4 +1,6 @@
-//:: IgnoreFile(/carbon/issue/216/)
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 field f: Int;
 
 method test01(x: Ref)
@@ -22,7 +24,6 @@ method test02(x: Ref)
 {
   //:: ExpectedOutput(wand.not.wellformed)
   //:: MissingOutput(wand.not.wellformed, /carbon/issue/105/)
-  //:: UnexpectedOutput(package.failed:insufficient.permission, /carbon/issue/105/)
   //:: MissingOutput(wand.not.wellformed, /silicon/issue/201/)
   package acc(x.f) && x.f == 0 --* x.f == 0
   x.f := 0

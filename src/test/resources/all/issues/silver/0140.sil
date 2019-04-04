@@ -1,3 +1,6 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 method test(b: Bool) {
   //:: ExpectedOutput(assert.failed:wand.not.found)
   assert true --* b ==> (true --* true)

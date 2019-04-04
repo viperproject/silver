@@ -1,8 +1,8 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/.
- */
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.cfg.silver
 
@@ -10,6 +10,7 @@ import viper.silver.ast._
 import viper.silver.cfg._
 import viper.silver.cfg.silver.SilverCfg.{SilverBlock, SilverEdge}
 import viper.silver.cfg.utility.{CfgSimplifier, LoopDetector}
+import java.util.concurrent.atomic.AtomicInteger
 
 import scala.collection.mutable
 
@@ -97,11 +98,11 @@ object CfgGenerator {
   case class TmpLabel(name: String)
 
   object TmpLabel {
-    var id = 0
+    var id = new AtomicInteger(0)
 
     def generate(name: String): TmpLabel = {
-      id = id + 1
-      new TmpLabel(s"${name}_$id")
+      val freshId = id.incrementAndGet()
+      new TmpLabel(s"${freshId}_${name}")
     }
   }
 
@@ -310,7 +311,7 @@ object CfgGenerator {
       * statement that syntactically belongs to the loop. The second entry is
       * used to lazily remove the tuples from the stack.
       */
-    private val loopStack: mutable.Stack[(SilverBlock, Int)] = mutable.Stack()
+    private var loopStack = List.empty[(SilverBlock, Int)]
 
     /**
       * The index of the current block. The index is optional since there might
@@ -363,7 +364,7 @@ object CfgGenerator {
               // create loop head
               val block: SilverBlock = LoopHeadBlock(invs, Nil)
               // push current loop id block onto stack
-              loopStack.push((block, resolve(after)))
+              loopStack = (block, resolve(after)) :: loopStack
               // add loop head
               addBlock(index, block)
               addTmpEdge(TmpUnconditionalEdge(last, index))
@@ -400,7 +401,7 @@ object CfgGenerator {
 
     private def heads(index: Int): Set[SilverBlock] = {
       // lazily pop loops that we left
-      while (loopStack.headOption.exists(_._2 <= index)) loopStack.pop()
+      while (loopStack.headOption.exists(_._2 <= index)) loopStack = loopStack.tail
       // return id of the current loop head
       loopStack.map(_._1).toSet
     }

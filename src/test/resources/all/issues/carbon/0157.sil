@@ -1,0 +1,34 @@
+domain List[T] {
+  function Nil(): List[T]
+}
+
+method test1() {
+  assert Nil() == Nil() // Both lines cause ...
+  assert (Nil(): List[Int]) == (Nil(): List[Int]) // ... Boogie errors
+}
+
+domain Loc[T] {
+  function loc(r: Ref): Loc[T]
+}
+
+domain Nested[N1, N2] {
+  function nested(l1: Loc[N1], l2: Loc[N2]): Bool
+}
+
+method test2(r: Ref) {
+  assume nested(loc(null), loc(r))
+}
+
+domain Edge[T] {
+    function edge_pred(e0: Edge[T]): Ref
+    function edge_succ(e0: Edge[T]): Ref
+
+    function create_edge(x0:Ref, y0:Ref): Edge[T]
+
+    axiom edge_injectivity {
+        forall x0:Ref, y0:Ref ::
+            { create_edge(x0,y0) }
+                edge_pred( create_edge(x0,y0) ) == x0 &&
+                edge_succ( create_edge(x0,y0) ) == y0
+    }
+}
