@@ -62,7 +62,6 @@ trait DependencyAware {
     *
     * Danger! A bug in this method may lead to unsoundness caused by caching.
     *
-    * TODO: add transitive dependencies via function decreases clauses.
     *
     * @param p
     *          The [[Program]] under consideration.

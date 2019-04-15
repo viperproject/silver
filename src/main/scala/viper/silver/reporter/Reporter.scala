@@ -6,6 +6,8 @@
 
 package viper.silver.reporter
 
+import java.io.FileWriter
+
 trait Reporter {
   val name: String
 
@@ -15,6 +17,48 @@ trait Reporter {
 object NoopReporter extends Reporter {
   val name: String = "NoopReporter"
   def report(msg: Message): Unit = ()
+}
+
+case class CSVReporter(name: String = "csv_reporter", path: String = "report.csv") extends Reporter {
+
+  def this() = this("csv_reporter", "report.csv")
+
+  val csv_file = new FileWriter(path, true)
+
+  def report(msg: Message): Unit = {
+    msg match {
+      case OverallFailureMessage(verifier, time, result) =>
+        csv_file.write(s"OverallFailureMessage,${time}\n")
+      case OverallSuccessMessage(verifier, time) =>
+        csv_file.write(s"OverallSuccessMessage,${time}\n")
+      case ExceptionReport(e) =>
+        csv_file.write(s"ExceptionReport,${e.toString}\n")
+      case ExternalDependenciesReport(deps) =>
+        deps.foreach(dep =>
+          csv_file.write(s"ExternalDependenciesReport,${dep.name} ${dep.version} located at ${dep.location}\n")
+        )
+      case WarningsDuringParsing(warnings) =>
+        warnings.foreach(report => {
+          csv_file.write(s"WarningsDuringParsing,${report}\n")
+        })
+      case InvalidArgumentsReport(tool_sig, errors) =>
+        errors.foreach(error => {
+          csv_file.write(s"WarningsDuringParsing,${error}\n")
+        })
+      case CopyrightReport(text) =>
+
+      case EntitySuccessMessage(verifier, concerning, time) =>
+        csv_file.write(s"EntitySuccessMessage,${concerning.name},${time}\n")
+      case EntityFailureMessage(verifier, concerning, time, result) =>
+        csv_file.write(s"EntityFailureMessage,${concerning.name},${time}\n")
+      case ConfigurationConfirmation(_) =>
+      case InternalWarningMessage(_) =>
+      case sm:SimpleMessage =>
+      case _ =>
+        println( s"Cannot properly print message of unsupported type: $msg" )
+    }
+    csv_file.flush()
+  }
 }
 
 case class StdIOReporter(name: String = "stdout_reporter", timeInfo: Boolean = true) extends Reporter {
