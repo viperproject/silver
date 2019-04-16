@@ -26,6 +26,7 @@ method trav_rec(nodes: Set[Ref], node: Ref)
 	ensures node in nodes && INV(nodes)
 
 	/* We do not unmark nodes. This allows us to prove that the current node will be marked. */
+	//:: UnexpectedOutput(postcondition.violated:assertion.false, /silicon/issue/374/)
 	ensures forall n: Ref :: {n in nodes, n.is_marked} n in nodes ==> (old(n.is_marked) ==> n.is_marked)
 	ensures node.is_marked
 

@@ -32,8 +32,8 @@ object Nodes {
       case m: Member =>
         m match {
           case Field(name, typ) => Nil
-          case Function(name, formalArgs, typ, pres, posts, decs, body) =>
-            formalArgs ++ pres ++ posts ++ decs ++ body
+          case Function(name, formalArgs, typ, pres, posts, body) =>
+            formalArgs ++ pres ++ posts ++ body
           case Method(name, formalArgs, formalReturns, pres, posts, body) =>
             formalArgs ++ formalReturns ++ pres ++ posts ++ body.toSeq
           case Predicate(name, formalArg, body) => formalArg ++ body.toSeq
@@ -70,8 +70,6 @@ object Nodes {
           case e: ExtensionStmt => e.extensionSubnodes
         }
       case vd: LocalVarDecl => Nil
-      case dc: DecTuple => dc.e
-      case ds: DecStar => Nil
       case e: Exp =>
         // Note: If you have to update this pattern match to make it exhaustive, it
         // might also be necessary to update the PrettyPrinter.toParenDoc method.

@@ -112,10 +112,10 @@ class FeatureCombinationsTests extends FunSuite with Matchers {
   /** function tests */
   test("Function with magic wand") {
     val wand = MagicWand(TrueLit()(), TrueLit()())()
-    val f0 = Function("bar", Seq(LocalVarDecl("x", Int)()), Bool, Seq(), Seq(), None, Option(TrueLit()()))()
-    val f1 = Function("foo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(wand), Seq(), None, Option(TrueLit()()))()
-    val f2 = Function("ofo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(wand), None, Option(TrueLit()()))()
-    val f3 = Function("oof", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(), None, Option(wand))()
+    val f0 = Function("bar", Seq(LocalVarDecl("x", Int)()), Bool, Seq(), Seq(), Option(TrueLit()()))()
+    val f1 = Function("foo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(wand), Seq(), Option(TrueLit()()))()
+    val f2 = Function("ofo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(wand), Option(TrueLit()()))()
+    val f3 = Function("oof", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(), Option(wand))()
 
     assert(f0.isValid)
     assert(!f1.isValid)
@@ -128,9 +128,9 @@ class FeatureCombinationsTests extends FunSuite with Matchers {
     val perm = CurrentPerm(pred_acc)()
 
     val body_exp = PermGeCmp(perm, NoPerm()())()
-    val f1 = Function("foo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(perm), Seq(), None, Option(TrueLit()()))()
-    val f2 = Function("ofo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(perm), None, Option(TrueLit()()))()
-    val f3 = Function("oof", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(), None, Option(body_exp))()
+    val f1 = Function("foo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(perm), Seq(), Option(TrueLit()()))()
+    val f2 = Function("ofo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(perm), Option(TrueLit()()))()
+    val f3 = Function("oof", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(), Option(body_exp))()
 
     assert(!f1.isValid)
     assert(!f2.isValid)
@@ -141,9 +141,9 @@ class FeatureCombinationsTests extends FunSuite with Matchers {
     val pred = Predicate("foo", Seq(LocalVarDecl("x", Ref)()), Option(TrueLit()()))()
     val pred_acc = PredicateAccess(Seq(LocalVar("y")(Ref)), pred.name)()
     val q = ForPerm( Seq(LocalVarDecl("y", Ref)()), pred_acc, TrueLit()() )()
-    val f1 = Function("foo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(q), Seq(), None, Option(TrueLit()()))()
-    val f2 = Function("ofo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(q), None, Option(TrueLit()()))()
-    val f3 = Function("oof", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(), None, Option(q))()
+    val f1 = Function("foo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(q), Seq(), Option(TrueLit()()))()
+    val f2 = Function("ofo", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(q), Option(TrueLit()()))()
+    val f3 = Function("oof", Seq(LocalVarDecl("y", Int)()), Bool, Seq(), Seq(), Option(q))()
 
     assert(!f1.isValid)
     assert(!f2.isValid)

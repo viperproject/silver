@@ -244,12 +244,10 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def doTranslation(input: PProgram): Result[Program] = {
-    val enableFunctionTerminationChecks =
-      config != null && config.verified && config.enableFunctionTerminationChecks()
 
     _plugins.beforeTranslate(input) match {
       case Some(modifiedInputPlugin) =>
-        Translator(modifiedInputPlugin, enableFunctionTerminationChecks).translate match {
+        Translator(modifiedInputPlugin).translate match {
           case Some(program) => Succ(program)
 
           case None => // then there are translation messages
