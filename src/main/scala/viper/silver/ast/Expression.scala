@@ -365,6 +365,20 @@ case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info
 // allows a FuncApp to be created directly from a Function node (but only stores its name)
 object FuncApp {
   def apply(func: Function, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : FuncApp = FuncApp(func.name, args)(pos,info,func.typ,func.formalArgs, errT)
+
+  /** Function application without type-checking of arguments.
+    *
+    * Viper frontends such as Nagini and Prusti do not need the arguments to be type-checked with regard to the
+    * formal arguments, so this method builds a FuncApp using the type of the arguments as reference.
+    */
+  def build(name: String, args: Seq[Exp], typ: Type)(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : FuncApp = {
+    val formalArgsForTypechecking = args.zipWithIndex.map(argAndIndex => {
+      val arg = argAndIndex._1
+      val index = argAndIndex._2
+      LocalVarDecl(s"arg$index", arg.typ)(arg.pos, arg.info, arg.errT)
+    })
+    FuncApp(name, args)(pos, info, typ, formalArgsForTypechecking, errT)
+  }
 }
 
 /** User-defined domain function application. */
