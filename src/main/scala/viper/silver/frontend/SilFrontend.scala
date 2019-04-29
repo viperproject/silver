@@ -18,6 +18,7 @@ import viper.silver.verifier._
 import fastparse.all.{Parsed, ParserInput}
 import fastparse.all
 import java.nio.file.{Path, Paths}
+import viper.silver.FastPositions
 
 
 /**
@@ -162,6 +163,8 @@ trait SilFrontend extends DefaultFrontend {
       // reset error messages of plugins
       _plugins = SilverPluginManager(_config.plugin.toOption)(reporter, logger, _config)
     }
+
+    FastPositions.reset()
   }
 
   def setStartTime(): Unit = {
@@ -248,7 +251,8 @@ trait SilFrontend extends DefaultFrontend {
     _plugins.beforeTranslate(input) match {
       case Some(modifiedInputPlugin) =>
         Translator(modifiedInputPlugin).translate match {
-          case Some(program) => Succ(program)
+          case Some(program) =>
+            Succ(program)
 
           case None => // then there are translation messages
             Fail(FastMessaging.sortmessages(Consistency.messages) map (m => {
