@@ -331,6 +331,7 @@ sealed trait PGenericType extends PType {
   def typeArguments : Seq[PType]
   override def isGround = typeArguments.forall(_.isGround)
 }
+
 sealed trait PGenericCollectionType extends PGenericType{
   def elementType : PType
   override val typeArguments = Seq(elementType)
@@ -387,12 +388,6 @@ sealed trait PExp extends PNode {
 }
 
 case class PMagicWandExp(override val left: PExp, override val right: PExp) extends PBinExp(left, MagicWandOp.op, right) with PResourceAccess
-
-sealed trait PDecClause extends PNode
-
-case class PDecStar() extends PDecClause
-
-case class PDecTuple (decs: Seq[PExp]) extends PDecClause
 
 class PTypeSubstitution(val m:Map[String,PType])  //extends Map[String,PType]()
 {
@@ -476,8 +471,6 @@ class PTypeRenaming(val mm:Map[String,String])
 
   def rename(key:String) : String = getS(key) match{ case Some(s) => s case None => key }
 }
-
-
 
 // Operator applications
 sealed trait POpApp extends PExp{
@@ -1069,10 +1062,10 @@ case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalRetur
   }
 }
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
-case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecClause], body: Option[PExp]) extends PAnyFunction {
-  def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, decs: Option[PDecClause] = this.decs, body: Option[PExp] = this.body): PFunction = {
+case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction {
+  def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PExp] = this.body): PFunction = {
     StrategyBuilder.Slim[PNode]({
-      case f: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, decs, body)
+      case f: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, body)
     }).duplicateEverything.execute[PFunction](this)
   }
 }
@@ -1192,16 +1185,14 @@ object Nodes {
       case PField(idndef, typ) => Seq(idndef, typ)
       case PMethod(idndef, args, rets, pres, posts, body) =>
         Seq(idndef) ++ args ++ rets ++ pres ++ posts ++ body.toSeq
-      case PFunction(name, args, typ, pres, posts, dec, body) =>
-        Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ dec ++ body
+      case PFunction(name, args, typ, pres, posts, body) =>
+        Seq(name) ++ args ++ Seq(typ) ++ pres ++ posts ++ body
       case PDomainFunction(name, args, typ, unique) =>
         Seq(name) ++ args ++ Seq(typ)
       case PPredicate(name, args, body) =>
         Seq(name) ++ args ++ body
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
-      case PDecTuple(exp) => exp
-      case PDecStar() => Nil
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
       case _: PSkip => Nil
     }

@@ -45,7 +45,7 @@ trait PosComputer {
   * This class is a custom class for parser and has added FastPosition
   * support.
   * */
-class PosRepeat[T, +R, Elem, Repr](p: Parser[T, Elem, Repr], min: Int, max: Int, delimiter: Parser[_, Elem, Repr], file: Path)
+class PosRepeat[T, +R, Elem, Repr](p: Parser[T, Elem, Repr], min: Int, max: Int, delimiter: Parser[_, Elem, Repr])
                                   (implicit ev: Implicits.Repeater[T, R], repr: ReprOps[Elem, Repr])
                                   extends Repeat[T, R, Elem, Repr](p, min, max, delimiter) with PosComputer{
 
@@ -74,8 +74,8 @@ class PosRepeat[T, +R, Elem, Repr](p: Parser[T, Elem, Repr], min: Int, max: Int,
               val counted = count + 1
               val start1 = computeFrom(index0)
               val end1 = computeFrom(index1)
-              viper.silver.FastPositions.setStart(value1, FilePosition(file, start1._1, start1._2))
-              viper.silver.FastPositions.setFinish (value1, FilePosition(file, end1._1, end1._2))
+              viper.silver.FastPositions.setStart(value1, FilePosition(FastParser._file, start1._1, start1._2))
+              viper.silver.FastPositions.setFinish (value1, FilePosition(FastParser._file, end1._1, end1._2))
               if (counted < max)
                 rec(index1, delimiter, lastFailure, acc, cut0 | cut1, counted)
               else
@@ -115,7 +115,7 @@ class PosRepeat[T, +R, Elem, Repr](p: Parser[T, Elem, Repr], min: Int, max: Int,
   }
 }
 
-class PosCustomSequence[+T, +R, +V](WL: P0, p0: P[T], p: P[V], cut: Boolean, file: Path)
+class PosCustomSequence[+T, +R, +V](WL: P0, p0: P[T], p: P[V], cut: Boolean)
                                    (implicit ev: Sequencer[T, V, R]) extends WhitespaceApi.CustomSequence(WL, p0, p, cut)(ev) with PosComputer{
 
 
@@ -125,8 +125,8 @@ class PosCustomSequence[+T, +R, +V](WL: P0, p0: P[T], p: P[V], cut: Boolean, fil
       case Mutable.Success(value0, index0, traceParsers0, cut0) =>
         val start0 = computeFrom(index)
         val end0 = computeFrom(index0)
-        viper.silver.FastPositions.setStart (value0, FilePosition(file, start0._1, start0._2))
-        viper.silver.FastPositions.setFinish (value0, FilePosition(file, end0._1, end0._2))
+        viper.silver.FastPositions.setStart (value0, FilePosition(FastParser._file, start0._1, start0._2))
+        viper.silver.FastPositions.setFinish (value0, FilePosition(FastParser._file, end0._1, end0._2))
         WL.parseRec(cfg, index0) match {
           case f1: all.Mutable.Failure => failMore(f1, index, cfg.logDepth)
           case Mutable.Success(value1, index1, traceParsers1, cut1) =>
@@ -139,8 +139,8 @@ class PosCustomSequence[+T, +R, +V](WL: P0, p0: P[T], p: P[V], cut: Boolean, fil
               case Mutable.Success(value2, index2, traceParsers2, cut2) =>
                 val start1 = computeFrom(index1)
                 val end1 = computeFrom(index2)
-                viper.silver.FastPositions.setStart (value2, FilePosition(file, start1._1, start1._2))
-                viper.silver.FastPositions.setFinish (value2, FilePosition(file, end1._1, end1._2))
+                viper.silver.FastPositions.setStart (value2, FilePosition(FastParser._file, start1._1, start1._2))
+                viper.silver.FastPositions.setFinish (value2, FilePosition(FastParser._file, end1._1, end1._2))
                 val (newIndex, newCut) =
                   if (index2 > index1 || index1 == cfg.input.length) (index2, cut | cut0 | cut1 | cut2)
                   else (index0, cut | cut0 | cut2)
@@ -159,7 +159,7 @@ class PosCustomSequence[+T, +R, +V](WL: P0, p0: P[T], p: P[V], cut: Boolean, fil
 
 }
 
-class PositionRule[+T, Elem, Repr](override val name: String, override val p: () => Parser[T, Elem, Repr], file: Path)
+class PositionRule[+T, Elem, Repr](override val name: String, override val p: () => Parser[T, Elem, Repr])
                                   (implicit repr: ReprOps[Elem, Repr])
                                   extends Rule[T, Elem, Repr](name, p) with PosComputer{
   lazy val pCached = p()
@@ -171,8 +171,8 @@ class PositionRule[+T, Elem, Repr](override val name: String, override val p: ()
         case s: Mutable.Success[T, Elem, Repr] =>
           val start = computeFrom(index)
           val end = computeFrom(s.index)
-          viper.silver.FastPositions.setStart (s.value, FilePosition(file, start._1, start._2))
-          viper.silver.FastPositions.setFinish (s.value, FilePosition(file, end._1, end._2))
+          viper.silver.FastPositions.setStart (s.value, FilePosition(FastParser._file, start._1, start._2))
+          viper.silver.FastPositions.setFinish (s.value, FilePosition(FastParser._file, end._1, end._2))
           s
       }
     } else {
@@ -181,8 +181,8 @@ class PositionRule[+T, Elem, Repr](override val name: String, override val p: ()
         case s: Mutable.Success[T, Elem, Repr] =>
           val start = computeFrom(index)
           val end = computeFrom(s.index)
-          viper.silver.FastPositions.setStart (s.value, FilePosition(file, start._1, start._2))
-          viper.silver.FastPositions.setFinish (s.value, FilePosition(file, end._1, end._2))
+          viper.silver.FastPositions.setStart (s.value, FilePosition(FastParser._file, start._1, start._2))
+          viper.silver.FastPositions.setFinish (s.value, FilePosition(FastParser._file, end._1, end._2))
 
           s
       }
@@ -201,35 +201,35 @@ trait PosParser[Elem, Repr] {
   var _file: Path = null
 
   def P[T](p: => Parser[T, Elem, Repr])(implicit name: sourcecode.Name, repr: ReprOps[Elem, Repr]): Parser[T, Elem, Repr] =
-    new PositionRule(name.value, () => p, _file)
+    new PositionRule(name.value, () => p)
 
   def PWrapper(WL: P0) = new PWrapper(WL)
 
   class PWhitespaceApi[V](p0: P[V], WL: P0) extends WhitespaceApi[V](p0, WL){
 
-    override def repX[R](implicit ev: Repeater[V, R]): all.Parser[R] = new PosRepeat(p0, 0, Int.MaxValue, all.Pass, _file)
+    override def repX[R](implicit ev: Repeater[V, R]): all.Parser[R] = new PosRepeat(p0, 0, Int.MaxValue, all.Pass)
 
-    override def rep[R](implicit ev: Repeater[V, R]): all.Parser[R] = new PosRepeat(p0, 0, Int.MaxValue, NoCut(WL), _file)
+    override def rep[R](implicit ev: Repeater[V, R]): all.Parser[R] = new PosRepeat(p0, 0, Int.MaxValue, NoCut(WL))
 
     override def repX[R](min: Int = 0, sep: all.Parser[_] = all.Pass, max: Int = Int.MaxValue)
-                        (implicit ev: Repeater[V, R]): all.Parser[R] =  new PosRepeat(p0, min, max, sep, _file)
+                        (implicit ev: Repeater[V, R]): all.Parser[R] =  new PosRepeat(p0, min, max, sep)
 
     override def rep[R](min: Int = 0, sep: all.Parser[_] = all.Pass, max: Int = Int.MaxValue, exactly: Int = -1)
                        (implicit ev: Repeater[V, R]): all.Parser[R] = {
       new PosRepeat(p0, if (exactly < 0) min else exactly, if (exactly < 0) max else exactly,
-                    if (sep != all.Pass) NoCut(WL) ~ sep ~ NoCut(WL) else NoCut(WL), _file)
+                    if (sep != all.Pass) NoCut(WL) ~ sep ~ NoCut(WL) else NoCut(WL))
     }
 
     override def ~[V2, R](p: all.Parser[V2])(implicit ev: Sequencer[V, V2, R]): all.Parser[R] = {
       assert(p != null)
-      new PosCustomSequence[V, R, V2](WL, if (p0 != WL) p0 else all.Pass.asInstanceOf[P[V]], p, cut=false, _file)(ev)
+      new PosCustomSequence[V, R, V2](WL, if (p0 != WL) p0 else all.Pass.asInstanceOf[P[V]], p, cut=false)(ev)
     }
 
     override def ~/[V2, R](p: P[V2])
                           (implicit ev: Sequencer[V, V2, R])
     : P[R] = {
       assert(p != null)
-      new PosCustomSequence(WL, if (p0 != WL) p0 else all.Pass.asInstanceOf[P[V]], p, cut=true, _file)(ev)
+      new PosCustomSequence(WL, if (p0 != WL) p0 else all.Pass.asInstanceOf[P[V]], p, cut=true)(ev)
     }
   }
   class PWrapper(WL: P0){
