@@ -201,11 +201,11 @@ case class TypeChecker(names: NameAnalyser) {
         val msg = "expected variable as lhs"
         acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](Seq(target), msg){(v, _) => check(v, Ref)}
         fields foreach (_.foreach (field =>
-          names.definition(curMember)(field, Some(PField.getClass)) match {
+          names.definition(curMember)(field) match {
             case PField(_, typ) =>
               check(field, typ)
             case _ =>
-              messages ++= FastMessaging.message(stmt, "expected a field as lhs")
+              messages ++= FastMessaging.message(stmt, "expected a field as argument")
           }))
       case PMethodCall(targets, method, args) =>
         names.definition(curMember)(method) match {
