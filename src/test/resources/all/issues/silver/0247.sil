@@ -1,0 +1,9 @@
+method test(x : Ref) {
+  var obj: Ref
+
+  //:: ExpectedOutput(typechecker.error)
+  obj := new(x) // None.get exception
+
+  //:: ExpectedOutput(typechecker.error)
+  obj := new(test) // strange parse error
+}
