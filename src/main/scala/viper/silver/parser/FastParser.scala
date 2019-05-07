@@ -14,7 +14,7 @@ import fastparse.core.Parsed
 import fastparse.all
 import viper.silver.ast.{LineCol, SourcePosition}
 import viper.silver.FastPositions
-import viper.silver.ast.utility.Rewriter.{ContextA, PartialContextC, StrategyBuilder}
+import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier.{ParseError, ParseWarning}

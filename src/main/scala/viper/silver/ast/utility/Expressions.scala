@@ -8,7 +8,7 @@ package viper.silver.ast.utility
 
 import scala.reflect.ClassTag
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter.Traverse
+import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.Triggers.TriggerGeneration
 
 /** Utility methods for expressions. */
