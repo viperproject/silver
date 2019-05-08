@@ -35,6 +35,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     Consistency.checkContextDependentConsistency(this) ++
     Consistency.checkNoFunctionRecursesViaPreconditions(this) ++
     checkMethodCallsAreValid ++
+    checkFunctionApplicationsAreValid ++
     checkIdentifiers
 
   /** checks that formalReturns of method calls are assignable to targets, and arguments are assignable to formalArgs */
@@ -58,6 +59,33 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
     s
   })
+
+  /** checks that and arguments of function applications are assignable to formalArgs */
+  lazy val checkFunctionApplicationsAreValid: Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+
+    for (funcApp@FuncApp(funcname, args) <- this) {
+      this.findFunctionOptionally(funcname) match {
+        case None => s :+= ConsistencyError(s"No function named $funcname found in the program.", funcApp.pos)
+        case Some(funcDef) => {
+          if (!Consistency.areAssignable(args, funcDef.formalArgs)) {
+            s :+= ConsistencyError(
+              s"Arguments $args are not assignable to formal arguments ${funcDef.formalArgs} of function $funcname.",
+              funcApp.pos
+            )
+          }
+          if (funcApp.typ != funcDef.typ) {
+            s :+= ConsistencyError(
+              s"No matching function $funcname found of return type ${funcApp.typ}, instead found function definition of return type ${funcDef.typ}.",
+              funcApp.pos
+            )
+          }
+        }
+      }
+    }
+
+    s
+  }
 
   /** checks that all identifier declarations and uses are valid in scope**/
   lazy val checkIdentifiers: Seq[ConsistencyError] = {

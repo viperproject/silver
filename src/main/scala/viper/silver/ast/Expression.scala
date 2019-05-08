@@ -351,12 +351,9 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 // --- Function application (domain and normal)
 
 /** Function application. */
+// TODO: remove `formalArgs` from the class
 case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl], val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
-  override lazy val check : Seq[ConsistencyError] =
-    args.flatMap(Consistency.checkPure) ++
-    (if(!Consistency.areAssignable(args, formalArgs))
-      Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
-
+  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
   def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos, info, typ, formalArgs, errT)
