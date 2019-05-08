@@ -60,7 +60,9 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     s
   })
 
-  /** checks that and arguments of function applications are assignable to formalArgs */
+  /** Checks that the applied functions exists, that the arguments of function applications are assignable to
+    * formalArgs, and that the type of function applications matches with the type of the function definition.
+    **/
   lazy val checkFunctionApplicationsAreValid: Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
 
