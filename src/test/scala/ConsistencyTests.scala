@@ -26,7 +26,7 @@ class ConsistencyTests extends FunSuite with Matchers {
   }
 
   test("Missing and duplicate identifiers"){
-    val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, Seq(), NoTrafos)
+    val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, NoTrafos)
     val methodcall1: MethodCall = MethodCall("m2", Seq(), Seq())(NoPosition, NoInfo, NoTrafos)
     val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
       Some(Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i")(Int, NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
@@ -43,7 +43,7 @@ class ConsistencyTests extends FunSuite with Matchers {
   }
 
   test("Type mismatched identifiers"){
-    val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, Seq(), NoTrafos)
+    val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, NoTrafos)
     val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
       Some(Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i")(Int, NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
         NoTrafos), LocalVarAssign(LocalVar("j")(Int, NoPosition, NoInfo, NoTrafos), IntLit(5)(NoPosition))(NoPosition, NoInfo,
@@ -60,7 +60,7 @@ class ConsistencyTests extends FunSuite with Matchers {
 
   test("Conditional expression"){
     val condexp1 : CondExp = CondExp(BoolLit(true)(NoPosition, NoInfo, NoTrafos),
-      IntLit(5)(NoPosition, NoInfo, NoTrafos), FuncApp("f1", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos))(NoPosition, NoInfo, NoTrafos)
+      IntLit(5)(NoPosition, NoInfo, NoTrafos), FuncApp("f1", Seq())(NoPosition, NoInfo, Bool, NoTrafos))(NoPosition, NoInfo, NoTrafos)
 
     condexp1.checkTransitively should be (Seq(
       ConsistencyError("Second and third parameter types of conditional expression must match, but found Int and Bool", NoPosition)
