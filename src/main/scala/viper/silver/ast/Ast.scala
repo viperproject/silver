@@ -127,7 +127,10 @@ trait Node extends Traversable[Node] with Rewritable {
   : this.type =
     ViperStrategy.CustomContext[C](transformation, initialContext, updateFunc, recurse) execute[this.type] (this)
 
-
+  def transformNodeAndContext[C](transformation: PartialFunction[(Node,C), (Node, C)],
+                                 initialContext: C,
+                                 recurse: Traverse = Traverse.Innermost) : this.type =
+    StrategyBuilder.RewriteNodeAndContext[Node, C](transformation, initialContext, recurse).execute[this.type](this)
 
   def replace(original: Node, replacement: Node): this.type =
     this.transform { case `original` => replacement }

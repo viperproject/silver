@@ -17,7 +17,7 @@ class ASTTransformationTests extends FunSuite {
     def createVerifier(fullCmd: String): Verifier = ???
   }
 
-  test("Rewriting nodes and updating context during AST traversal - Example 1") {
+  test("Rewriting nodes and updating context during parse AST traversal - Example 1") {
     // Transforms this code:
     // method m()
     // {
@@ -52,7 +52,7 @@ class ASTTransformationTests extends FunSuite {
     assert(transformed === target)
   }
 
-  test("Rewriting nodes and updating context during AST traversal - Example 2") {
+  test("Rewriting nodes and updating context during parse AST traversal - Example 2") {
     // Transform this program:
     // function f(x: Int, y: Int): Int
     // method m()
