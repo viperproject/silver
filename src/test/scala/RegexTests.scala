@@ -9,7 +9,7 @@ import scala.collection.mutable
 import TestHelpers.{FileComparisonHelper, MockSilFrontend}
 import org.scalatest.FunSuite
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter._
+import viper.silver.ast.utility.rewriter._
 import viper.silver.ast.utility._
 
 class RegexTests extends FunSuite with FileComparisonHelper {

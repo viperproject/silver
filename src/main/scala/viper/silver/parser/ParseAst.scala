@@ -12,7 +12,7 @@ import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.MagicWandOp
 import viper.silver.FastPositions
-import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder}
+import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 

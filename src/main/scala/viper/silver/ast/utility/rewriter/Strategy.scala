@@ -4,9 +4,9 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.ast.utility.Rewriter
+package viper.silver.ast.utility.rewriter
 
-import viper.silver.ast.utility.Rewriter.Traverse.Traverse
+import viper.silver.ast.utility.rewriter.Traverse.Traverse
 import scala.collection.mutable
 
 /**
@@ -103,6 +103,7 @@ object StrategyBuilder {
     * Create a strategy without context just node to node
     *
     * @param p Partial function that transforms the input node into the output node
+    * @param t Traverse direction
     * @tparam N Common supertype of every node in the tree
     * @return Strategy object ready to execute on a tree
     */
@@ -151,7 +152,29 @@ object StrategyBuilder {
   def CustomContext[N <: Rewritable, C](p: PartialFunction[(N, C), N], default: C, updateFunc: PartialFunction[(N, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
     new Strategy[N, ContextCustom[N,C]]({ // rewrite partial function taking context with parent access etc. to one just taking the custom context
       case (n, context) if p.isDefinedAt(n, context.c) => p.apply(n, context.c)
-    }).defaultContext(new PartialContextCC[N,C](default,updateFunc)) //default new PartialContextC[N, C](default, updateFunc) traverse t
+    }).defaultContext(new PartialContextCC[N,C](default,updateFunc)) traverse t
+  }
+
+  /**
+    * Strategy that allows both node and context to be rewritten.
+    *
+    * @param p          Partial function that transforms input (node, context) into a new (node, context)
+    * @param default    Initial context
+    * @param t          Traversal order
+    * @tparam N         Common supertype of every node in the tree
+    * @tparam C         Type of the context
+    * @return           Strategy object ready to execute on a tree
+    */
+  def RewriteNodeAndContext[N <: Rewritable, C](p: PartialFunction[(N, C), (N, C)], default: C, t: Traverse = Traverse.TopDown) = {
+    val p1: PartialFunction[(N, ContextCustom[N, C]), N] = {
+      case (n, cc) if p.isDefinedAt(n, cc.c) => p((n, cc.c))._1
+    }
+
+    val p2: PartialFunction[(N, C), C] = {
+      case (n, c) if p.isDefinedAt((n, c)) => p((n, c))._2
+    }
+
+    new Strategy[N, ContextCustom[N, C]](p1).defaultContext(new PartialContextCC[N, C](default, p2)).traverse(t)
   }
 
   /**
@@ -189,7 +212,6 @@ object StrategyBuilder {
   def ContextVisitor[N <: Rewritable, C](f: (N, ContextC[N, C]) => Unit, default: C, updateFunc: PartialFunction[(N, C), C] = PartialFunction.empty) = {
     new StrategyVisitor[N, ContextC[N, C]](f) defaultContext new PartialContextC[N, C](default, updateFunc)
   }
-
 }
 
 /**
@@ -646,13 +668,13 @@ trait Context[N <: Rewritable] {
   def getTransformer: StrategyInterface[N] = transformer
 
   // Add an ancestor to the context
-  private[Rewriter] def addAncestor(node: N): Context[N]
+  private[rewriter] def addAncestor(node: N): Context[N]
 
   // Replace the current node with a new one
-  private[Rewriter] def replaceNode(node: N): Context[N]
+  private[rewriter] def replaceNode(node: N): Context[N]
 
   // Update the context
-  private[Rewriter] def update(node: N): Context[N]
+  private[rewriter] def update(node: N): Context[N]
 }
 
 /**

@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.ast.utility.Rewriter
+package viper.silver.ast.utility.rewriter
 
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public

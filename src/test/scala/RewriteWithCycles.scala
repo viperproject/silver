@@ -5,7 +5,7 @@
 // Copyright (c) 2011-2019 ETH Zurich.
 
 import org.scalatest.FunSuite
-import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder}
+import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 
 class RewriteWithCycles extends FunSuite {
 
