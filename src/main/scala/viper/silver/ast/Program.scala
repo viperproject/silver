@@ -69,7 +69,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
     for (funcApp@FuncApp(name, args) <- this) {
       this.findFunctionOptionally(name) match {
-        case None => s :+= ConsistencyError(s"No function named $name found in the program.", funcApp.pos)
+        case None => // Consistency error already reported by checkIdentifiers
         case Some(funcDef) => {
           if (!Consistency.areAssignable(args, funcDef.formalArgs)) {
             s :+= ConsistencyError(
