@@ -763,7 +763,10 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
   /** Parent of node.
     * Will result in a `java.util.NoSuchElementException` if no parent is available.
     */
-  lazy val parent: N = ancestorList.dropRight(1).last
+  lazy val parent: N = {
+    assert(ancestorList.length > 1, "No parent information available in context")
+    ancestorList.dropRight(1).last
+  }
 
   /** Parent of node, if available. */
   lazy val parentOption: Option[N] = ancestorList.dropRight(1).lastOption
