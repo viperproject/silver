@@ -7,7 +7,7 @@
 package viper.silver.verifier
 
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter.Rewritable
+import viper.silver.ast.utility.rewriter.Rewritable
 
 trait ErrorMessage {
   def id: String

@@ -10,7 +10,7 @@ import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
-import viper.silver.ast.utility.Rewriter.{StrategyBuilder, Traverse}
+import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 

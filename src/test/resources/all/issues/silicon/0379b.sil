@@ -1,0 +1,18 @@
+field f1: Ref
+field f2: Ref
+field val: Bool
+
+function f(this: Ref, p: Perm): Bool
+  requires acc(P(this), p)
+{
+  (true ||
+   (unfolding acc(P(this), p) in (unfolding acc(u32(this.f1), p) in this.f1.val)))
+}
+
+predicate P(self: Ref) {
+  acc(self.f1) && u32(self.f1) && acc(self.f2) && u32(self.f2)
+}
+
+predicate u32(self: Ref) {
+  acc(self.val)
+}

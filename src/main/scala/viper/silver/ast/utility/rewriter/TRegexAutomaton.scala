@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.ast.utility.Rewriter
+package viper.silver.ast.utility.rewriter
 
 
 // Encapsulation of start and end state in an automaton to make it expandable

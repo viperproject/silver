@@ -374,7 +374,7 @@ trait FastPrettyPrinterBase extends PrettyPrintPrimitives {
       dl <> space <> dr
 
     def <@> (dr: Cont) : Cont =
-      dl <> line <> dr
+      if (dl == nil) dr else dl <> line <> dr
   }
 
   def line: Cont = line(" ")
@@ -491,7 +491,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
   /** Show a program. */
   def showProgram(p: Program): Cont = {
     val Program(domains, fields, functions, predicates, methods) = p
-    showComment(p) <>
+    showComment(p) <@>
       ssep((domains ++ fields ++ functions ++ predicates ++ methods) map show, line <> line)
   }
 
@@ -506,7 +506,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
             line <> show(exp)
           ) <> line)
     }
-    showComment(m) <> memberDoc
+    showComment(m) <@> memberDoc
   }
 
 
@@ -560,7 +560,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case d: Domain =>
         showDomain(d)
     }
-    showComment(m) <> memberDoc
+    showComment(m) <@> memberDoc
   }
 
   /** Shows contracts and use `name` as the contract name (usually `requires` or `ensures`). */
@@ -687,7 +687,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case e: ExtensionStmt => e.prettyPrint
       case null => uninitialized
     }
-    showComment(stmt) <> stmtDoc
+    showComment(stmt) <@> stmtDoc
   }
 
   def showElse(els: Stmt): Cont = els match {

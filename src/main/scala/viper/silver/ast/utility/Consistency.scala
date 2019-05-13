@@ -8,7 +8,7 @@ package viper.silver.ast.utility
 
 import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter.Traverse
+import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}

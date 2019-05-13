@@ -9,8 +9,8 @@ package viper.silver.ast
 import scala.reflect.ClassTag
 import pretty.FastPrettyPrinter
 import utility._
-import viper.silver.ast.utility.Rewriter.Traverse.Traverse
-import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder, Traverse}
+import viper.silver.ast.utility.rewriter.Traverse.Traverse
+import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder, Traverse}
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ConsistencyError, ErrorReason}
 
@@ -127,7 +127,10 @@ trait Node extends Traversable[Node] with Rewritable {
   : this.type =
     ViperStrategy.CustomContext[C](transformation, initialContext, updateFunc, recurse) execute[this.type] (this)
 
-
+  def transformNodeAndContext[C](transformation: PartialFunction[(Node,C), (Node, C)],
+                                 initialContext: C,
+                                 recurse: Traverse = Traverse.Innermost) : this.type =
+    StrategyBuilder.RewriteNodeAndContext[Node, C](transformation, initialContext, recurse).execute[this.type](this)
 
   def replace(original: Node, replacement: Node): this.type =
     this.transform { case `original` => replacement }

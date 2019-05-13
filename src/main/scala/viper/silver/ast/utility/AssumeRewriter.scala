@@ -48,7 +48,7 @@ object AssumeRewriter {
         }
       case (pred: PredicateAccessPredicate, c) =>
         val insideWand = c.ancestorList.foldLeft[Boolean](false)((b, n) => b || n.isInstanceOf[MagicWand])
-        if (!insideWand && !c.parent.isInstanceOf[Unfolding]) {
+        if (!insideWand && c.parentOption.isDefined && !c.parent.isInstanceOf[Unfolding]) {
           val cp = CurrentPerm(pred.loc)(pred.pos, pred.info, pred.errT)
           val p = generatePermUsingFunc(c.c.getOrElse(pred.loc.loc(program), Seq()), pred.loc.args, pred.perm, cp, None)
           p
