@@ -179,9 +179,12 @@ case class Translator(program: PProgram) {
         Apply(exp(e).asInstanceOf[MagicWand])(pos)
       case PInhale(e) =>
         Inhale(exp(e))(pos)
-      case assume@PAssume(e) =>
-        val sub = exp(e)
-        Assume(exp(e))(pos)
+      case PAssume(pe) =>
+        val e = exp(pe)
+        if (e.isPure)
+          Assume(e)(pos)
+        else
+          sys.error("Assume can only be used with pure expressions")
       case PExhale(e) =>
         Exhale(exp(e))(pos)
       case PAssert(e) =>
