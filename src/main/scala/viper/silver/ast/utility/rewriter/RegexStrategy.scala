@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.ast.utility.Rewriter
+package viper.silver.ast.utility.rewriter
 
 /**
   * Extension of the Strategy context. Encapsulates all the required information for the rewriting

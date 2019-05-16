@@ -34,11 +34,11 @@ case class Translator(program: PProgram) {
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
             pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
 
-        var domain = pdomains map translate
+        val domain = pdomains map translate
         val fields = pfields map translate
-        var functions = pfunctions map translate
+        val functions = pfunctions map translate
         val predicates = ppredicates map translate
-        var methods = pmethods map translate
+        val methods = pmethods map translate
 
         val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods)(program))
 

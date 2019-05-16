@@ -7,7 +7,7 @@
 package viper.silver.ast.utility
 
 import viper.silver.ast._
-import viper.silver.ast.utility.Rewriter._
+import viper.silver.ast.utility.rewriter._
 
 /**
  * An implementation for simplifications on the Viper AST.

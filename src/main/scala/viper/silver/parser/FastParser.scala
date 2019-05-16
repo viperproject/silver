@@ -14,7 +14,7 @@ import fastparse.core.Parsed
 import fastparse.all
 import viper.silver.ast.{LineCol, SourcePosition}
 import viper.silver.FastPositions
-import viper.silver.ast.utility.Rewriter.{ContextA, PartialContextC, StrategyBuilder}
+import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier.{ParseError, ParseWarning}
@@ -727,7 +727,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val result: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
 
-  lazy val unExp: P[PUnExp] = P((CharIn("-!").! ~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
+  lazy val unExp: P[PUnExp] = P((CharIn("-!").! ~~ suffixExpr).map { case (a, b) => PUnExp(a, b) })
 
   lazy val strInteger: P[String] = P(CharIn('0' to '9').rep(1)).!
 

@@ -12,7 +12,7 @@ import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
 import viper.silver.ast.MagicWandOp
 import viper.silver.FastPositions
-import viper.silver.ast.utility.Rewriter.{Rewritable, StrategyBuilder}
+import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 
@@ -331,6 +331,7 @@ sealed trait PGenericType extends PType {
   def typeArguments : Seq[PType]
   override def isGround = typeArguments.forall(_.isGround)
 }
+
 sealed trait PGenericCollectionType extends PGenericType{
   def elementType : PType
   override val typeArguments = Seq(elementType)
@@ -470,8 +471,6 @@ class PTypeRenaming(val mm:Map[String,String])
 
   def rename(key:String) : String = getS(key) match{ case Some(s) => s case None => key }
 }
-
-
 
 // Operator applications
 sealed trait POpApp extends PExp{

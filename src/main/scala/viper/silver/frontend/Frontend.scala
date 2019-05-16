@@ -85,7 +85,7 @@ trait Frontend {
     */
   def result: VerificationResult
 
-  /* ATG: the following field is used in ViperServer and shoudl stay public for now. */
+  /* ATG: the following field is used in ViperServer and should stay public for now. */
   val logger = LoggerFactory.getLogger(getClass.getName).asInstanceOf[Logger]
 }
 
