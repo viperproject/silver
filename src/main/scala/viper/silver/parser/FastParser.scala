@@ -755,6 +755,11 @@ object FastParser extends PosParser[Char, String] {
     case None => a
   }}
 
+  lazy val trueMagicWandExp: P[PExp] = P(trueOrExp ~ ("--*".! ~ trueExp).?).map { case (a, b) => b match {
+    case Some(c) => PMagicWandExp(a, c._2)
+    case None => a
+  }}
+
   lazy val realMagicWandExp: P[PMagicWandExp] = P(orExp ~ "--*".! ~ exp).map { case (a,_,c) => PMagicWandExp(a,c)}
 
   lazy val implExp: P[PExp] = P(magicWandExp ~ (StringIn("==>").! ~ implExp).?).map { case (a, b) => b match {
@@ -762,17 +767,39 @@ object FastParser extends PosParser[Char, String] {
     case None => a
   }
   }
+  lazy val trueImplExp: P[PExp] = P(trueMagicWandExp ~ (StringIn("==>").! ~ trueImplExp).?).map { case (a, b) => b match {
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }
+  }
+
   lazy val iffExp: P[PExp] = P(implExp ~ ("<==>".! ~ iffExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
     case None => a
   }
   }
+
+  lazy val trueIffExp: P[PExp] = P(trueImplExp ~ ("<==>".! ~ trueIffExp).?).map { case (a, b) => b match {
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }
+  }
+
   lazy val iteExpr: P[PExp] = P(iffExp ~ ("?" ~ iteExpr ~ ":" ~ iteExpr).?).map { case (a, b) => b match {
     case Some(c) => PCondExp(a, c._1, c._2)
     case None => a
   }
   }
-  lazy val exp: P[PExp] = P(iteExpr)
+
+  lazy val trueIteExpr: P[PExp] = P(trueIffExp ~ ("?" ~ iteExpr ~ ":" ~ trueIteExpr).?).map { case (a, b) => b match {
+    case Some(c) => PCondExp(a, c._1, c._2)
+    case None => a
+  }
+  }
+
+  lazy val exp: P[PExp] = P(iteExpr).log()
+
+  lazy val trueExp: P[PExp] = P(trueIteExpr).log()
 
   lazy val suffix: fastparse.noApi.Parser[SuffixedExpressionGenerator[PExp]] =
     P(("." ~ idnuse).map { id => SuffixedExpressionGenerator[PExp]((e: PExp) => PFieldAccess(e, id)) } |
@@ -799,8 +826,14 @@ object FastParser extends PosParser[Char, String] {
   lazy val sumd: P[SuffixedExpressionGenerator[PBinExp]] = P(sumOp ~ term).map { case (op, id) => SuffixedExpressionGenerator[PBinExp]((e: PExp) => PBinExp(e, op, id)) }
 
   lazy val cmpOp = P(StringIn("<=", ">=", "<", ">").! | keyword("in").!)
+  lazy val trueCmpOp = P(StringIn("<=", ">=", "<", ">").!)
 
   lazy val cmpExp: P[PExp] = P(sum ~ (cmpOp ~ cmpExp).?).map { case (a, b) => b match {
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }}
+
+  lazy val trueCmpExp: P[PExp] = P(sum ~ (trueCmpOp ~ trueCmpExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
     case None => a
   }}
@@ -812,12 +845,27 @@ object FastParser extends PosParser[Char, String] {
     case None => a
   }}
 
+  lazy val trueEqExp: P[PExp] = P(trueCmpExp ~ (eqOp ~ trueEqExp).?).map { case (a, b) => b match {
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }}
+
   lazy val andExp: P[PExp] = P(eqExp ~ ("&&".! ~ andExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
     case None => a
   }}
 
+  lazy val trueAndExp: P[PExp] = P(trueEqExp ~ ("&&".! ~ trueAndExp).?).map { case (a, b) => b match {
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }}
+
   lazy val orExp: P[PExp] = P(andExp ~ ("||".! ~ orExp).?).map { case (a, b) => b match {
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }}
+
+  lazy val trueOrExp: P[PExp] = P(trueAndExp ~ ("||".! ~ trueOrExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
     case None => a
   }}
@@ -856,7 +904,7 @@ object FastParser extends PosParser[Char, String] {
     | keyword("epsilon").map(_ => PEpsilon()) | ("perm" ~ parens(resAcc)).map(PCurPerm))
 
   lazy val let: P[PExp] = P(
-    ("let" ~/ idndef ~ "==" ~ "(" ~ exp ~ ")" ~ "in" ~ exp).map { case (id, exp1, exp2) =>
+    ("let" ~/ idndef ~ "==" ~  trueExp  ~ "in" ~ exp).map { case (id, exp1, exp2) =>
       /* Type unresolvedType is expected to be replaced with the type of exp1
        * after the latter has been resolved
        * */
@@ -1025,7 +1073,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val applyWand: P[PApplyWand] = P("apply" ~/ magicWandExp).map(PApplyWand)
 
-  lazy val applying: P[PExp] = P(keyword("applying") ~/ "(" ~ magicWandExp ~ ")" ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
+  lazy val applying: P[PExp] = P(keyword("applying") ~/ trueMagicWandExp ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
 
   lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl).rep).map {
     decls => {
