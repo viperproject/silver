@@ -105,7 +105,7 @@ method colourings1(a: Array)
         soln := oldSoln[1 := oldSoln[1]+1] // add one to initial blacks
        // assert soln[2..] == oldSoln[2..]
         //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
-        assert valid(soln,n,true)
+        assert valid(soln,n,true) 
       } else {
         soln := Seq(0,1) ++ oldSoln
         assert soln[2..] == oldSoln
@@ -265,7 +265,6 @@ method colourings(a: Array)
 method test_extend(s:Seq[Int])
 {
   var ss : Seq[Int] := s ++ Seq(42)
-   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/273/)
   assert forall i:Int :: i in s ==> i in ss[..|ss|-1]
 }
 
@@ -273,14 +272,12 @@ method test_extend_left(s:Seq[Int])
 {
   var ss : Seq[Int] := Seq(42) ++ s
    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
-   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/273/)
    assert forall i:Int :: i in s ==> i in ss[1..]
 }
 
 method test_append_left(s:Seq[Int], t:Seq[Int])
 {
   var ss : Seq[Int] := s ++ t
-   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/273/)
   assert forall i:Int :: i in s ==> i in ss[..|s|]
 }
 
@@ -288,6 +285,5 @@ method test_append_right(s:Seq[Int], t:Seq[Int])
 {
   var ss : Seq[Int] := s ++ t
    //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/380/)
-   //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/273/)
   assert forall i:Int :: i in t ==> i in ss[|s|..]
 }
