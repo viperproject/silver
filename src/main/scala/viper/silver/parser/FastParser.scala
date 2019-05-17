@@ -719,7 +719,7 @@ object FastParser extends PosParser[Char, String] {
 
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old
-    | result | unExp
+    | result | unExp | "(" ~ trueExp ~ ")"
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
     | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
@@ -797,9 +797,9 @@ object FastParser extends PosParser[Char, String] {
   }
   }
 
-  lazy val exp: P[PExp] = P(iteExpr).log()
+  lazy val exp: P[PExp] = P(iteExpr)
 
-  lazy val trueExp: P[PExp] = P(trueIteExpr).log()
+  lazy val trueExp: P[PExp] = P(trueIteExpr)
 
   lazy val suffix: fastparse.noApi.Parser[SuffixedExpressionGenerator[PExp]] =
     P(("." ~ idnuse).map { id => SuffixedExpressionGenerator[PExp]((e: PExp) => PFieldAccess(e, id)) } |
