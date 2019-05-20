@@ -15,9 +15,8 @@ function func0(r: Ref): Bool
     requires vperm(r)
     ensures result
 {
-    //:: ExpectedOutput(parser.error) 
-    let v1 == unfolding vperm(r) in r.v in unfolding vperm(r) in v1 == r.v
-}
+    //:: ExpectedOutput(parser.error)
+    let v1 == unfolding vperm(r) in r.v in unfolding vperm(r) in v1 == r.v}
 
 
 function func1(r: Ref): Bool
