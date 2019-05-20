@@ -334,10 +334,10 @@ case class Translator(program: PProgram) {
         IntLit(i)(pos)
       case p@PResultLit() =>
         // find function
-        var par: PNode = p.parent
+        var par: PNode = p.parent.get
         while (!par.isInstanceOf[PFunction]) {
           if (par == null) sys.error("cannot use 'result' outside of function")
-          par = par.parent
+          par = par.parent.get
         }
         Result()(ttyp(par.asInstanceOf[PFunction].typ), pos)
       case PBoolLit(b) =>

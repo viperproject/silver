@@ -522,11 +522,11 @@ case class TypeChecker(names: NameAnalyser) {
       new PTypeSubstitution(ts map (kv => rts.rename(kv._1) -> kv._2.substitute(rts)))
     }
 
-    def inAxiomScope(s: PNode): Boolean =
+    def inAxiomScope(s: Option[PNode]): Boolean =
       s match {
-        case null => false
-        case _: PAxiom => true
-        case _ => inAxiomScope(s.parent)
+        case Some(_: PAxiom) => true
+        case Some(x) => inAxiomScope(x.parent)
+        case None => false
       }
 
     var extraReturnTypeConstraint : Option[PType] = None
@@ -568,7 +568,7 @@ case class TypeChecker(names: NameAnalyser) {
                             check(fd.typ)
                             fd.formalArgs foreach (a => check(a.typ))
                           }
-                          if (inAxiomScope(pfa))
+                          if (inAxiomScope(Some(pfa)))
                             issueError(func, func.name + " is not a domain function")
 
                         case pdf@PDomainFunction(_, _, resultType, unique) =>
@@ -879,8 +879,8 @@ case class NameAnalyser() {
         case method : PMethod => Some(method)
         case nonMethod =>
           nonMethod.parent match {
-            case parentNode : PNode => getContainingMethod(parentNode)
-            case _ => None
+            case Some(parentNode) => getContainingMethod(parentNode)
+            case None => None
           }
       }
     }
@@ -899,10 +899,13 @@ case class NameAnalyser() {
           case PUnknownEntity() =>
             // domain types can also be type variables, which need not be declared
             // goto and state labels may exist out of scope (but must exist in method, this is checked in final AST in checkIdentifiers)
-            if (!i.parent.isInstanceOf[PDomainType] && !i.parent.isInstanceOf[PGoto] &&
-            !(i.parent.isInstanceOf[PLabelledOld] && i==i.parent.asInstanceOf[PLabelledOld].label) &&
-            !(name == FastParser.LHS_OLD_LABEL && i.parent.isInstanceOf[PLabelledOld])) {
-              messages ++= FastMessaging.message(i, s"identifier $name not defined.")
+            if (i.parent.isDefined) {
+              val parent = i.parent.get
+              if (!parent.isInstanceOf[PDomainType] && !parent.isInstanceOf[PGoto] &&
+              !(parent.isInstanceOf[PLabelledOld] && i==parent.asInstanceOf[PLabelledOld].label) &&
+              !(name == FastParser.LHS_OLD_LABEL && parent.isInstanceOf[PLabelledOld])) {
+                messages ++= FastMessaging.message(i, s"identifier $name not defined.")
+              }
             }
           case localVar : PLocalVarDecl =>
             getContainingMethod(localVar) match {
