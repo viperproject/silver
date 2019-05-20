@@ -134,10 +134,10 @@ sealed trait PNode extends FastPositioned with Product with Rewritable {
   private val _children = scala.collection.mutable.ListBuffer[PNode] ()
 
 
-  var parent : PNode = null
+  var parent :Option[PNode] = None
   var index : Int = -1
-  var next : PNode = null
-  var prev : PNode = null
+  var next :Option[PNode] = None
+  var prev :Option[PNode] = None
 
   def initProperties() {
 
@@ -148,13 +148,14 @@ sealed trait PNode extends FastPositioned with Product with Rewritable {
     def setNodeChildConnections (node : Any) : Unit =
       node match {
         case c : PNode =>
-          c.parent = this
+          c.parent = Some(this)
           _children += c
           c.index = ind
           ind += 1
-          c.prev = prev
+          c.prev = Some(prev)
           c.next = null
-          if (prev != null) prev.next = c
+          if (prev != null)
+            prev.next = Some(c)
           prev = c
           c.initProperties
         case Some (o) =>
