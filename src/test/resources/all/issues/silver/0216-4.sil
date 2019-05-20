@@ -1,0 +1,28 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field v: Int
+
+predicate vperm (r: Ref) {acc(r.v)}
+
+/* In this type of a construct, i.e the nested let/unfolding/applying, 
+    the inner levels have to be enclosed in the parenthese otherwise the 
+    outer "in" will be consumed in the exp part the inner expression. 
+    This is to incorporate the set operation
+*/
+
+function func0(r: Ref): Bool
+    requires vperm(r)
+    ensures result
+{
+    //:: ExpectedOutput(parser.error) 
+    let v1 == unfolding vperm(r) in r.v in unfolding vperm(r) in v1 == r.v
+}
+
+
+function func1(r: Ref): Bool
+    requires vperm(r)
+    ensures result
+{
+    let v1 == (unfolding vperm(r)) in r.v in unfolding vperm(r) in v1 == r.v
+}

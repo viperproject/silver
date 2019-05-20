@@ -719,7 +719,7 @@ object FastParser extends PosParser[Char, String] {
 
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old
-    | result | unExp | "(" ~ trueExp ~ ")"
+    | result | unExp 
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
     | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
