@@ -1,22 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-field f : Int
-
-function g(x:Ref) : Int
-  requires acc(x.f,write)
-  //:: ExpectedOutput(consistency.error)
-  ensures acc(x.f,write)
-{ 0 }
-
-method test(x: Ref) {
-  inhale acc(x.f)
-  var n: Int
-  n := g(x)
-}
-
-predicate P(x: Ref) { true }
-
-function f1(x: Ref): Int
+method f1(x: Ref)
   requires true --* true
+  //:: ExpectedOutput(not.wellformed:wand.not.found)
   ensures applying true --* true in true
