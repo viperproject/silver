@@ -12,6 +12,7 @@ import java.nio.file.{Files, Path, Paths}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
+import viper.silver.plugin.trialplugin
 import viper.silver.ast.{LineCol, SourcePosition}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
@@ -1075,7 +1076,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val applying: P[PExp] = P(keyword("applying") ~/ trueMagicWandExp ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
 
-  lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl).rep).map {
+  lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl /*| functionDecl */| predicateDecl | methodDecl | trialplugin.functionDecl).rep).map {
     decls => {
       PProgram(
         decls.collect { case i: PImport => i }, // Imports
