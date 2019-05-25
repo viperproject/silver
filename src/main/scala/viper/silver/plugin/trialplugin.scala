@@ -7,6 +7,9 @@ import fastparse.noApi.P
 import viper.silver.parser.{PFormalArgDecl, PFunction}
 
 object trialplugin extends SilverPlugin{
-    val functionDecl: P[PFunction] = P(keyword("function") ~/ idndef ~  ":" ~ typ ~ pre.rep ~
+
+    val functionDecl2: P[PFunction] = P(keyword("function") ~/ idndef ~  ":" ~ typ ~ pre.rep ~
     post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }.log()
+
+    lazy val pluginTest: P[PFunction] = P(keyword("pluginTest") )
 }
