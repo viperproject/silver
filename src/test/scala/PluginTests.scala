@@ -71,7 +71,6 @@ class TestPluginAllCalled extends SilverPlugin with TestPlugin {
   var translate = false
   var filter = false
   var verify = false
-  var mapping = false
   var finish = false
 
   override def beforeParse(input: String, isImported: Boolean): String = {
@@ -103,19 +102,13 @@ class TestPluginAllCalled extends SilverPlugin with TestPlugin {
     input
   }
 
-  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
-    assert(parse && resolve && translate && filter && verify)
-    mapping = true
-    input
-  }
-
   override def beforeFinish(input: VerificationResult): VerificationResult = {
-    assert(parse && resolve && translate && filter && verify && mapping)
+    assert(parse && resolve && translate && filter && verify)
     finish = true
     input
   }
 
-  override def test(): Boolean = parse && resolve && translate && filter && verify && mapping && finish
+  override def test(): Boolean = parse && resolve && translate && filter && verify && finish
 }
 
 class TestPluginAddPredicate extends SilverPlugin {
@@ -144,6 +137,7 @@ class TestPluginAddPredicate extends SilverPlugin {
   }
 }
 
+// ATG: After introducing `PluginAwareReporter` this test became rather trivial.
 class TestPluginMapErrors extends SilverPlugin with TestPlugin with FakeResult {
 
   var error1: Internal = Internal(FeatureUnsupported(LocalVar("test1")(Perm), "Test1"))
@@ -153,9 +147,11 @@ class TestPluginMapErrors extends SilverPlugin with TestPlugin with FakeResult {
   override def mapVerificationResult(input: VerificationResult): VerificationResult = {
     input match {
       case Success =>
+//        println(">>> detected VerificationResult is Success")
         assert(false)
         input
       case Failure(errors) =>
+//        println(s">>> detected VerificationResult is Failure: ${errors.toString()}")
         assert(errors.contains(error1))
         Failure(Seq(error2))
     }
@@ -163,9 +159,12 @@ class TestPluginMapErrors extends SilverPlugin with TestPlugin with FakeResult {
 
   override def beforeFinish(input: VerificationResult): VerificationResult = {
     finish = true
-    input match {
-      case Success => assert(false)
+    mapVerificationResult(input) match {
+      case Success =>
+//        println("]]] detected VerificationResult is Success")
+        assert(false)
       case Failure(errors) =>
+//        println(s"]]] detected VerificationResult is Failure: ${errors.toString()}")
         assert(!errors.contains(error1))
         assert(errors.contains(error2))
     }
