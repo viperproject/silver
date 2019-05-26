@@ -120,6 +120,12 @@ trait SilFrontend extends DefaultFrontend {
     if (_config.dependencies()) {
       reporter report ExternalDependenciesReport(_ver.dependencies)
     }
+
+    // FIXME The error transformer function may not be immutable with current design:
+    // FIXME  `reporter` is a field of trait Frontend, whereas the plugin manager
+    // FIXME  stored in `_plugins` is only initialized here, in SilFrontend.
+    // FIXME  Consider refactoring this part. --- ATG 2019
+    reporter.transform = _plugins.mapVerificationResult
     true
   }
 
@@ -161,7 +167,7 @@ trait SilFrontend extends DefaultFrontend {
 
     if(_config != null) {
       // reset error messages of plugins
-      _plugins = SilverPluginManager(_config.plugin.toOption)(reporter, logger, _config)
+      _plugins = SilverPluginManager(_config.plugin.toOption)(reporter.reporter, logger, _config)
     }
 
     FastPositions.reset()
@@ -297,6 +303,4 @@ trait SilFrontend extends DefaultFrontend {
     else
       Fail(errors)
   }
-
-  override def mapVerificationResult(in: VerificationResult): VerificationResult = _plugins.mapVerificationResult(in)
 }
