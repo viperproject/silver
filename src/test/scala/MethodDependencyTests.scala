@@ -215,11 +215,11 @@ class MethodDependencyTests extends FunSuite with Matchers {
   val mrec_a: Method = Method("mrec_a", Seq(), Seq(), Seq(), Seq( PredicateAccess(Seq(), "prec_b")() ), Some( Seqn( Seq( MethodCall("mrec_b", Seq(), Seq())(NoPosition, NoInfo, NoTrafos) ), Seq() )() ))()
   val mrec_b: Method = Method("mrec_b", Seq(), Seq(), Seq(), Seq(),                                     Some( Seqn( Seq( MethodCall("mrec_a", Seq(), Seq())(NoPosition, NoInfo, NoTrafos) ), Seq() )() ))()
 
-  val frec_a: Function = Function("frec_a", Seq(), Bool, Seq(FuncApp("frec_b", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos)), Seq(), None)()
-  val frec_b: Function = Function("frec_b", Seq(), Bool, Seq(), Seq(), Some( FuncApp("frec_a", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos) ))()
+  val frec_a: Function = Function("frec_a", Seq(), Bool, Seq(FuncApp("frec_b", Seq())(NoPosition, NoInfo, Bool, NoTrafos)), Seq(), None)()
+  val frec_b: Function = Function("frec_b", Seq(), Bool, Seq(), Seq(), Some( FuncApp("frec_a", Seq())(NoPosition, NoInfo, Bool, NoTrafos) ))()
 
   val test_rec: Method = Method("test_rec", Seq(), Seq(),
-    Seq(FuncApp("frec_a", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos)),
+    Seq(FuncApp("frec_a", Seq())(NoPosition, NoInfo, Bool, NoTrafos)),
     Seq(),
     Some( Seqn( Seq(
       MethodCall("mrec_a",   Seq(), Seq())(NoPosition, NoInfo, NoTrafos),
