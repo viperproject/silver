@@ -753,12 +753,12 @@ object FastParser extends PosParser[Char, String] {
   lazy val magicWandExp: P[PExp] = P(orExp ~ ("--*".! ~ exp).?).map { case (a, b) => b match {
     case Some(c) => PMagicWandExp(a, c._2)
     case None => a
-  }}
+  }}.log()
 
-  lazy val trueMagicWandExp: P[PExp] = P(trueOrExp ~ ("--*".! ~ trueExp).?).map { case (a, b) => b match {
+  lazy val trueMagicWandExp: P[PExp] = P((orExp | trueOrExp) ~ ("--*".! ~ trueExp).?).map { case (a, b) => b match {
     case Some(c) => PMagicWandExp(a, c._2)
     case None => a
-  }}
+  }}.log()
 
   lazy val realMagicWandExp: P[PMagicWandExp] = P(orExp ~ "--*".! ~ exp).map { case (a,_,c) => PMagicWandExp(a,c)}
 
@@ -825,7 +825,8 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val sumd: P[SuffixedExpressionGenerator[PBinExp]] = P(sumOp ~ term).map { case (op, id) => SuffixedExpressionGenerator[PBinExp]((e: PExp) => PBinExp(e, op, id)) }
 
-  lazy val cmpOp = P(StringIn("<=", ">=", "<", ">").! | keyword("in").!)
+  lazy val cmpOp = P(StringIn("<=", ">=", "<", ">").!)
+
   lazy val trueCmpOp = P(StringIn("<=", ">=", "<", ">").!)
 
   lazy val cmpExp: P[PExp] = P(sum ~ (cmpOp ~ cmpExp).?).map { case (a, b) => b match {
@@ -860,10 +861,19 @@ object FastParser extends PosParser[Char, String] {
     case None => a
   }}
 
-  lazy val orExp: P[PExp] = P(andExp ~ ("||".! ~ orExp).?).map { case (a, b) => b match {
+  lazy val inExp: P[PExp] = P(andExp ~ ("in".! ~ andExp).?).map {case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
     case None => a
   }}
+//  lazy val recInExp: P[PExp] = P(andExp ~ "in".! ~ andExp).map{ case (a,b,c) => PBinExp(a , b, c)}
+//
+//  lazy val inExp: P[PExp] = P(recInExp | andExp)
+
+  lazy val orExp: P[PExp] = P(inExp ~ ("||".! ~ orExp).?).map { case (a, b) => b match {
+    case Some(c) => PBinExp(a, c._1, c._2)
+    case None => a
+  }}
+
 
   lazy val trueOrExp: P[PExp] = P(trueAndExp ~ ("||".! ~ trueOrExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
@@ -904,7 +914,7 @@ object FastParser extends PosParser[Char, String] {
     | keyword("epsilon").map(_ => PEpsilon()) | ("perm" ~ parens(resAcc)).map(PCurPerm))
 
   lazy val let: P[PExp] = P(
-    ("let" ~/ idndef ~ "==" ~  trueExp  ~ "in" ~ exp).map { case (id, exp1, exp2) =>
+    ("let" ~/ idndef ~ "==" ~  exp  ~ "in" ~ exp).map { case (id, exp1, exp2) =>
       /* Type unresolvedType is expected to be replaced with the type of exp1
        * after the latter has been resolved
        * */
