@@ -35,6 +35,8 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     Consistency.checkContextDependentConsistency(this) ++
     Consistency.checkNoFunctionRecursesViaPreconditions(this) ++
     checkMethodCallsAreValid ++
+    checkFunctionApplicationsAreValid ++
+    checkDomainFunctionApplicationsAreValid ++
     checkIdentifiers
 
   /** checks that formalReturns of method calls are assignable to targets, and arguments are assignable to formalArgs */
@@ -58,6 +60,75 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
     s
   })
+
+  /** Checks that the applied functions exists, that the arguments of function applications are assignable to
+    * formalArgs, and that the type of function applications matches with the type of the function definition.
+    **/
+  lazy val checkFunctionApplicationsAreValid: Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+
+    for (funcApp@FuncApp(name, args) <- this) {
+      this.findFunctionOptionally(name) match {
+        case None => // Consistency error already reported by checkIdentifiers
+        case Some(funcDef) => {
+          if (!Consistency.areAssignable(args, funcDef.formalArgs)) {
+            s :+= ConsistencyError(
+              s"Function $name with formal arguments ${funcDef.formalArgs} cannot be applied to provided arguments $args.",
+              funcApp.pos
+            )
+          }
+          if (funcApp.typ != funcDef.typ) {
+            s :+= ConsistencyError(
+              s"No matching function $name found of return type ${funcApp.typ}, instead found with return type ${funcDef.typ}.",
+              funcApp.pos
+            )
+          }
+        }
+      }
+    }
+
+    s
+  }
+
+  /** Checks that the applied domain functions exists, that the arguments of function applications are assignable to
+    * formalArgs, that the type of function applications matches with the type of the function definition and that also
+    * the name of the domain matches.
+    **/
+  lazy val checkDomainFunctionApplicationsAreValid: Seq[ConsistencyError] = {
+    var s = Seq.empty[ConsistencyError]
+
+    for (funcApp@DomainFuncApp(name, args, typVarMap) <- this) {
+      this.findDomainFunctionOptionally(name) match {
+        case None => s :+= ConsistencyError(s"No domain function named $name found in the program.", funcApp.pos)
+        case Some(funcDef) => {
+          if (!Consistency.areAssignable(args, funcDef.formalArgs map {
+            fa =>
+              // substitute parameter types
+              LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
+          })) {
+            s :+= ConsistencyError(
+              s"Domain function $name with formal arguments ${funcDef.formalArgs} cannot be applied to provided arguments $args.",
+              funcApp.pos
+            )
+          }
+          if (funcApp.typ != funcDef.typ.substitute(typVarMap)) {
+            s :+= ConsistencyError(
+              s"No matching domain function $name found of return type ${funcApp.typ}, instead found with return type ${funcDef.typ}.",
+              funcApp.pos
+            )
+          }
+          if (funcApp.domainName != funcDef.domainName) {
+            s :+= ConsistencyError(
+              s"No matching domain function $name found in domain ${funcApp.domainName}, instead found in domain ${funcDef.domainName}.",
+              funcApp.pos
+            )
+          }
+        }
+      }
+    }
+
+    s
+  }
 
   /** checks that all identifier declarations and uses are valid in scope**/
   lazy val checkIdentifiers: Seq[ConsistencyError] = {

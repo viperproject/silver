@@ -56,7 +56,7 @@ method test5(s:Seq[Int], i : Int, j:Int)
 {
   // AS: note: take and drop operators should be allowed to be applied outside of their ranges, as (potentially) in this example
   //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/129/)
-  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/36/)
+  // CLOSE ISSUE: // UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/36/)
   assert s == s[..i] ++ s[i..]
 }
 

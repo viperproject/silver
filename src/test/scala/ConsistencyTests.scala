@@ -26,7 +26,7 @@ class ConsistencyTests extends FunSuite with Matchers {
   }
 
   test("Missing and duplicate identifiers"){
-    val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, Seq(), NoTrafos)
+    val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, NoTrafos)
     val methodcall1: MethodCall = MethodCall("m2", Seq(), Seq())(NoPosition, NoInfo, NoTrafos)
     val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
       Some(Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i")(Int, NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
@@ -43,7 +43,7 @@ class ConsistencyTests extends FunSuite with Matchers {
   }
 
   test("Type mismatched identifiers"){
-    val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, Seq(), NoTrafos)
+    val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, NoTrafos)
     val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
       Some(Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i")(Int, NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
         NoTrafos), LocalVarAssign(LocalVar("j")(Int, NoPosition, NoInfo, NoTrafos), IntLit(5)(NoPosition))(NoPosition, NoInfo,
@@ -60,7 +60,7 @@ class ConsistencyTests extends FunSuite with Matchers {
 
   test("Conditional expression"){
     val condexp1 : CondExp = CondExp(BoolLit(true)(NoPosition, NoInfo, NoTrafos),
-      IntLit(5)(NoPosition, NoInfo, NoTrafos), FuncApp("f1", Seq())(NoPosition, NoInfo, Bool, Seq(), NoTrafos))(NoPosition, NoInfo, NoTrafos)
+      IntLit(5)(NoPosition, NoInfo, NoTrafos), FuncApp("f1", Seq())(NoPosition, NoInfo, Bool, NoTrafos))(NoPosition, NoInfo, NoTrafos)
 
     condexp1.checkTransitively should be (Seq(
       ConsistencyError("Second and third parameter types of conditional expression must match, but found Int and Bool", NoPosition)
@@ -121,6 +121,130 @@ class ConsistencyTests extends FunSuite with Matchers {
       ConsistencyError("Arguments List() are not assignable to formal arguments List(x: Ref) of method callee", NoPosition),
       ConsistencyError("Arguments List(null, null) are not assignable to formal arguments List(x: Ref) of method callee", NoPosition),
       ConsistencyError("Arguments List(true) are not assignable to formal arguments List(x: Ref) of method callee", NoPosition)
+    )
+  }
+
+  test("Function call") {
+    val func =
+      Function(
+        name          = "f",
+        formalArgs    = Seq(LocalVarDecl("x", Int)()),
+        typ           = Int,
+        pres          = Seq(),
+        posts         = Seq(),
+        body          = None
+      )()
+
+    val callerIntVarDecl = LocalVarDecl("intRes", Int)()
+    val callerIntVar = LocalVar("intRes")(Int)
+    val callerBoolVarDecl = LocalVarDecl("boolRes", Bool)()
+    val callerBoolVar = LocalVar("boolRes")(Bool)
+
+    val callerBody =
+      Seqn(
+        Seq(
+          // Wrong: function name
+          LocalVarAssign(callerIntVar, FuncApp("g", Seq(callerIntVar))(NoPosition, NoInfo, Int, NoTrafos))(),
+          // Wrong: zero arguments
+          LocalVarAssign(callerIntVar, FuncApp("f", Seq())(NoPosition, NoInfo, Int, NoTrafos))(),
+          // Wrong: wrong return type
+          LocalVarAssign(callerBoolVar, FuncApp("f", Seq(callerIntVar))(NoPosition, NoInfo, Bool, NoTrafos))(),
+          // Wrong: wrong argument type
+          LocalVarAssign(callerIntVar, FuncApp("f", Seq(callerBoolVar))(NoPosition, NoInfo, Int, NoTrafos))()
+        ),
+        Seq()
+      )()
+
+    val caller =
+      Method(
+        name          = "caller",
+        formalArgs    = Seq(),
+        formalReturns = Seq(callerIntVarDecl, callerBoolVarDecl),
+        pres          = Seq(),
+        posts         = Seq(),
+        body          = Some(callerBody)
+      )()
+
+    val program =
+      Program(
+        domains    = Seq(),
+        fields     = Seq(),
+        functions  = Seq(func),
+        predicates = Seq(),
+        methods    = Seq(caller)
+      )()
+
+    program.checkTransitively shouldBe Seq(
+      ConsistencyError("Function f with formal arguments List(x: Int) cannot be applied to provided arguments List().", NoPosition),
+      ConsistencyError("No matching function f found of return type Bool, instead found with return type Int.", NoPosition),
+      ConsistencyError("Function f with formal arguments List(x: Int) cannot be applied to provided arguments List(boolRes).", NoPosition),
+      ConsistencyError("No matching identifier g found of type Function.", NoPosition)
+    )
+  }
+
+  test("Domain function call") {
+    val func =
+      DomainFunc(
+        name       = "f",
+        formalArgs = Seq(LocalVarDecl("x", Int)()),
+        typ        = Int
+      )(NoPosition, NoInfo, "MyDomain", NoTrafos)
+
+    val domain = Domain(
+      name      = "MyDomain",
+      functions = Seq(func),
+      axioms    = Seq(),
+      typVars   = Seq()
+    )()
+
+    val callerIntVarDecl = LocalVarDecl("intRes", Int)()
+    val callerIntVar = LocalVar("intRes")(Int)
+    val callerBoolVarDecl = LocalVarDecl("boolRes", Bool)()
+    val callerBoolVar = LocalVar("boolRes")(Bool)
+
+    val callerBody =
+      Seqn(
+        Seq(
+          // Wrong: function name
+          LocalVarAssign(callerIntVar, DomainFuncApp(funcname="g", Seq(callerIntVar), Map())(NoPosition, NoInfo, Int, "MyDomain", NoTrafos))(),
+          // Wrong: domain name
+          LocalVarAssign(callerIntVar, DomainFuncApp(funcname="f", Seq(callerIntVar), Map())(NoPosition, NoInfo, Int, "WrongDomain", NoTrafos))(),
+          // Wrong: zero arguments
+          LocalVarAssign(callerIntVar, DomainFuncApp(funcname="f", Seq(), Map())(NoPosition, NoInfo, Int, "MyDomain", NoTrafos))(),
+          // Wrong: wrong return type
+          LocalVarAssign(callerBoolVar, DomainFuncApp(funcname="f", Seq(callerIntVar), Map())(NoPosition, NoInfo, Bool, "MyDomain", NoTrafos))(),
+          // Wrong: wrong argument type
+          LocalVarAssign(callerIntVar, DomainFuncApp(funcname="f", Seq(callerBoolVar), Map())(NoPosition, NoInfo, Int, "MyDomain", NoTrafos))()
+        ),
+        Seq()
+      )()
+
+    val caller =
+      Method(
+        name          = "caller",
+        formalArgs    = Seq(),
+        formalReturns = Seq(callerIntVarDecl, callerBoolVarDecl),
+        pres          = Seq(),
+        posts         = Seq(),
+        body          = Some(callerBody)
+      )()
+
+    val program =
+      Program(
+        domains    = Seq(domain),
+        fields     = Seq(),
+        functions  = Seq(),
+        predicates = Seq(),
+        methods    = Seq(caller)
+      )()
+
+    program.checkTransitively shouldBe Seq(
+      ConsistencyError("No domain function named g found in the program.", NoPosition),
+      ConsistencyError("No matching domain function f found in domain WrongDomain, instead found in domain MyDomain.", NoPosition),
+      ConsistencyError("Domain function f with formal arguments List(x: Int) cannot be applied to provided arguments List().", NoPosition),
+      ConsistencyError("No matching domain function f found of return type Bool, instead found with return type Int.", NoPosition),
+      ConsistencyError("Domain function f with formal arguments List(x: Int) cannot be applied to provided arguments List(boolRes).", NoPosition),
+      ConsistencyError("No matching identifier g found of type DomainFunc.", NoPosition)
     )
   }
 }
