@@ -86,13 +86,11 @@ case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPositio
 
 /** A method/function/domain function call. - AS: this comment is misleading - the trait is currently not used for method calls below */
 trait Call {
-//  require(Consistency.areAssignable(args, formalArgs), s"$args vs $formalArgs for callee: $callee") <- this check has been moved to case classes
+//  require(Consistency.areAssignable(args, formalArgs), s"$args vs $formalArgs for callee: $callee") <- this check has been moved to the Program AST node
 
   def callee: String
 
   def args: Seq[Exp]
-
-  def formalArgs: Seq[LocalVarDecl] // formal arguments of the call, for type checking
 }
 
 /** A method call. */

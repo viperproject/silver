@@ -351,51 +351,40 @@ case class PermGeCmp(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 // --- Function application (domain and normal)
 
 /** Function application. */
-case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, override val formalArgs: Seq[LocalVarDecl], val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
-  override lazy val check : Seq[ConsistencyError] =
-    args.flatMap(Consistency.checkPure) ++
-    (if(!Consistency.areAssignable(args, formalArgs))
-      Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
+case class FuncApp(funcname: String, args: Seq[Exp])(val pos: Position, val info: Info, override val typ : Type, val errT: ErrorTrafo) extends FuncLikeApp with PossibleTrigger {
+  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
 
   def func : (Program => Function) = (p) => p.findFunction(funcname)
   def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos, info, typ, formalArgs, errT)
+  def withArgs(newArgs: Seq[Exp]) = FuncApp(funcname, newArgs)(pos, info, typ, errT)
   def asManifestation = this
 }
 // allows a FuncApp to be created directly from a Function node (but only stores its name)
 object FuncApp {
-  def apply(func: Function, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : FuncApp = FuncApp(func.name, args)(pos,info,func.typ,func.formalArgs, errT)
+  def apply(func: Function, args: Seq[Exp])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : FuncApp = FuncApp(func.name, args)(pos, info, func.typ, errT)
 }
 
 /** User-defined domain function application. */
 case class DomainFuncApp(funcname: String, args: Seq[Exp], typVarMap: Map[TypeVar, Type])
-                        (val pos: Position, val info: Info, typPassed: => Type, formalArgsPassed: => Seq[LocalVarDecl],val domainName:String, val errT: ErrorTrafo)
+                        (val pos: Position, val info: Info, typPassed: => Type, val domainName:String, val errT: ErrorTrafo)
   extends AbstractDomainFuncApp with PossibleTrigger {
-  override lazy val check : Seq[ConsistencyError] =
-    args.flatMap(Consistency.checkPure) ++
-    (if(!Consistency.areAssignable(args, formalArgs))
-      Seq(ConsistencyError(s"Function $funcname with formal arguments $formalArgs cannot be applied to provided arguments $args.", args.head.pos)) else Seq())
+  override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
 
   def typ = typPassed
-  def formalArgs = formalArgsPassed
   def func = (p:Program) => p.findDomainFunction(funcname)
   def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,formalArgs,domainName, errT)
+  def withArgs(newArgs: Seq[Exp]) = DomainFuncApp(funcname,newArgs,typVarMap)(pos,info,typ,domainName, errT)
   def asManifestation = this
 
   //Strangely, the copy method is not a member of the DomainFuncApp case class,
   //therefore, We need this method that does the copying manually
-  def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, => Type, => Seq[LocalVarDecl], String, ErrorTrafo) => DomainFuncApp ={
+  def copy(funcname: String = this.funcname, args: Seq[Exp] = this.args, typVarMap: Map[TypeVar, Type] = this.typVarMap): (Position, Info, => Type, String, ErrorTrafo) => DomainFuncApp ={
     DomainFuncApp(this.funcname,args,typVarMap)
   }
 }
 object DomainFuncApp {
   def apply(func : DomainFunc, args: Seq[Exp], typVarMap: Map[TypeVar, Type])(pos: Position = NoPosition, info: Info = NoInfo, errT: ErrorTrafo = NoTrafos) : DomainFuncApp =
-    DomainFuncApp(func.name,args,typVarMap)(pos, info, func.typ.substitute(typVarMap), func.formalArgs map {
-    fa =>
-      // substitute parameter types
-      LocalVarDecl(fa.name, fa.typ.substitute(typVarMap))(fa.pos)
-  },func.domainName, errT)
+    DomainFuncApp(func.name,args,typVarMap)(pos, info, func.typ.substitute(typVarMap), func.domainName, errT)
 }
 
 // --- Field and predicate accesses
