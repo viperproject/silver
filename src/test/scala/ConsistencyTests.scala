@@ -175,10 +175,10 @@ class ConsistencyTests extends FunSuite with Matchers {
       )()
 
     program.checkTransitively shouldBe Seq(
-      ConsistencyError("No matching identifier g found of type Function", NoPosition),
       ConsistencyError("Function f with formal arguments List(x: Int) cannot be applied to provided arguments List().", NoPosition),
       ConsistencyError("No matching function f found of return type Bool, instead found with return type Int.", NoPosition),
-      ConsistencyError("Function f with formal arguments List(x: Int) cannot be applied to provided arguments List(boolRes).", NoPosition)
+      ConsistencyError("Function f with formal arguments List(x: Int) cannot be applied to provided arguments List(boolRes).", NoPosition),
+      ConsistencyError("No matching identifier g found of type Function.", NoPosition)
     )
   }
 
