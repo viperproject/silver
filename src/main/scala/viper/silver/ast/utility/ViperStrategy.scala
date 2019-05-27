@@ -240,9 +240,9 @@ object ViperStrategy {
     case (p: PredicateAccessPredicate, Seq(loc: PredicateAccess, perm: Exp), meta) =>
       PredicateAccessPredicate(loc, perm)(meta._1, meta._2, meta._3)
     case (fa: FuncApp, Seq(args: Seq[Exp@unchecked]), meta) =>
-      FuncApp(fa.funcname, args)(meta._1, meta._2, fa.typ, fa.formalArgs, meta._3)
+      FuncApp(fa.funcname, args)(meta._1, meta._2, fa.typ, meta._3)
     case (df: DomainFuncApp, Seq(args: Seq[Exp@unchecked]), meta) =>
-      DomainFuncApp(df.funcname, args, df.typVarMap)(meta._1, meta._2, df.typ, df.formalArgs, df.domainName, meta._3)
+      DomainFuncApp(df.funcname, args, df.typVarMap)(meta._1, meta._2, df.typ, df.domainName, meta._3)
 
     case (m: Minus, Seq(e: Exp), meta) => Minus(e)(meta._1, meta._2, meta._3)
     case (n: Not, Seq(e: Exp), meta) => Not(e)(meta._1, meta._2, meta._3)
