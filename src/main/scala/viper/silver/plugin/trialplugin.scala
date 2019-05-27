@@ -10,8 +10,8 @@ import viper.silver.parser._
 
 object trialplugin{
 
-    lazy val functionDecl2: P[PFunction] = P(keyword("function2") ~/ idndef.log() ~  ":" ~ typ ~ pre.rep ~
-    post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }.log()
+//    lazy val functionDecl2: P[PFunction] = P(keyword("function2") ~/ idndef.log() ~  ":" ~ typ ~ pre.rep ~
+//    post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }.log()
 
 //    lazy val pluginTest: P[PFunction] = P(keyword("pluginTest") )
 }

@@ -1076,7 +1076,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val applying: P[PExp] = P(keyword("applying") ~/ magicWandExp ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
 
-  lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl /*| functionDecl */| predicateDecl | methodDecl | trialplugin.functionDecl2).rep).map {
+  lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl /*| trialplugin.functionDecl2*/).rep).map {
     decls => {
       PProgram(
         decls.collect { case i: PImport => i }, // Imports

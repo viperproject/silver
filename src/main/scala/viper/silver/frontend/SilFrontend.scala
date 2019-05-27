@@ -20,6 +20,7 @@ import fastparse.all
 import java.nio.file.{Path, Paths}
 import viper.silver.FastPositions
 
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -209,7 +210,10 @@ trait SilFrontend extends DefaultFrontend {
             case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
                 reporter report WarningsDuringParsing(err_list)
-                Succ({e.initProperties(); e})
+                val pluginTestfunc = PFunction(PIdnDef("pluginTest"), ArrayBuffer(PFormalArgDecl(PIdnDef("s"), PPrimitiv("Int"))), PPrimitiv("Bool"), ArrayBuffer(PBoolLit(true)), ArrayBuffer(PBoolLit(true)), None)
+                val result2 = PProgram(e.imports, e.macros, e.domains, e.fields, e.functions ++ Seq[PFunction](pluginTestfunc), e.predicates,
+                  e.methods, e.errors)
+                Succ({result2.initProperties(); result2})
               }
               else Fail(err_list)
             case fail @ Parsed.Failure(_, index, extra) =>
