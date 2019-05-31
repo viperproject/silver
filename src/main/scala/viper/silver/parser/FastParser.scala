@@ -810,9 +810,9 @@ object FastParser extends PosParser[Char, String] {
       ("[" ~ exp ~ "]").map { e1 => SuffixedExpressionGenerator[PExp]((e0: PExp) => PSeqIndex(e0, e1)) } |
       ("[" ~ exp ~ ":=" ~ exp ~ "]").map { case (i, v) => SuffixedExpressionGenerator[PExp]((e: PExp) => PSeqUpdate(e, i, v)) })
 
-  lazy val suffixExpr: P[PExp] = P((trialplugin.atom ~ suffix.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
+  lazy val suffixExpr: P[PExp] = P((atom ~ suffix.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
 
-  lazy val realSuffixExpr: P[PExp] = P((trialplugin.atom ~ suffix.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
+  lazy val realSuffixExpr: P[PExp] = P((atom ~ suffix.rep).map { case (fac, ss) => foldPExp[PExp](fac, ss) })
 
   lazy val termOp: P[String] = P(StringIn("*", "/", "\\", "%").!)
 
