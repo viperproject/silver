@@ -20,6 +20,31 @@ import fastparse.all
 import java.nio.file.{Path, Paths}
 import viper.silver.FastPositions
 
+//class TestPhase extends TestA {
+//  type PProgram = viper.silver.parser.PProgram
+//  type Program = viper.silver.ast.Program
+//  type Message = String
+//
+//  override def parsing(program: String): Result[PProgram] = {
+//    Success(PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq()))
+//  }
+//
+//  override def semanticAnalysis(program: PProgram): Result[PProgram] = {
+//    Success(PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq()))
+//  }
+//
+//  override def translation(program: PProgram): Result[Program] = {
+//    Success(Program(Seq(), Seq(), Seq(), Seq(), Seq())())
+//  }
+//
+//  override def consistencyCheck(program: Program): Result[Program] = {
+//    Success(Program(Seq(), Seq(), Seq(), Seq(), Seq())())
+//  }
+
+//  override def verification(program: Program): Result[Message] = {
+//    Success("Program verified correctly")
+//  }
+//}
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -155,7 +180,6 @@ trait SilFrontend extends DefaultFrontend {
     finish()
   }
 
-
   override def reset(input: Path): Unit = {
     super.reset(input)
 
@@ -201,6 +225,9 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def doParsing(input: String): Result[PProgram] = {
+    val o = new ReflectOfMe
+    o.runMN()
+
     val file = _inputFile.get
     _plugins.beforeParse(input, isImported = false) match {
       case Some(inputPlugin) =>
