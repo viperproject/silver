@@ -12,6 +12,8 @@ import viper.silver.parser.{PFunction, _}
 object trialplugin  extends PosParser[Char, String] {
 
 
+  case class PDoubleFunction( idndef: PIdnDef,  formalArgs: Seq[PFormalArgDecl], formalArgsSecondary: Seq[PFormalArgDecl],  typ: PType,  pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PExtender {}
+
     val White = PWrapper {
         import fastparse.all._
         NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
@@ -29,16 +31,12 @@ object trialplugin  extends PosParser[Char, String] {
       post.rep ~ ("{" ~ exp ~ "}").?).map { case (a,  c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }
 
 
-//    lazy val atom: noApi.P[PExp] = FastParser.P(integer | booltrue | boolfalse | nul | old
-//      | result | unExp
-//      | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
-//      | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-//      | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
-
-//    lazy val parseplugin = P(functionDecl | atom)
-
-    lazy val newDecl = P(functionDecl2)
+    lazy val doubleFunctionDecl: noApi.P[PDoubleFunction] = P(keyword("dfunction") ~/ idndef ~ "(" ~ formalArgList ~ ")"~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
+      post.rep ~ ("{" ~ exp ~ "}").?).map{case (a, b, c, d, e, f, g) => PDoubleFunction(a, b, c, d, e, f, g)}
+    lazy val newDecl = P(doubleFunctionDecl)
     lazy val newExp = P(integer)
 
-    lazy val extendedKeywords = Set[String]()
+    lazy val extendedKeywords = Set[String]("dfunction")
+
+
 }

@@ -1042,7 +1042,7 @@ sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDec
   def formalArgs: Seq[PFormalArgDecl]
   def typ: PType
 }
-case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], errors: Seq[ParseReport]) extends PNode
+case class PProgram(imports: Seq[PImport], macros: Seq[PDefine], domains: Seq[PDomain], fields: Seq[PField], functions: Seq[PFunction], predicates: Seq[PPredicate], methods: Seq[PMethod], extensions: Seq[PExtender], errors: Seq[ParseReport]) extends PNode
 abstract class PImport() extends PNode
 case class PLocalImport(file: String) extends PImport()
 case class PStandardImport(file: String) extends PImport()
@@ -1092,6 +1092,7 @@ case class PMultipleEntity() extends PErrorEntity("multiple")
 case class PUnknownEntity() extends PErrorEntity("unknown")
 
 
+abstract class PExtender extends PNode
 /**
  * Utility methods for parser parserAST nodes.
  */
@@ -1177,8 +1178,8 @@ object Nodes {
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
       case PFresh(vars) => vars
       case PConstraining(vars, stmt) => vars ++ Seq(stmt)
-      case PProgram(files, macros, domains, fields, functions, predicates, methods, errors) =>
-        domains ++ fields ++ functions ++ predicates ++ methods
+      case PProgram(files, macros, domains, fields, functions, predicates, methods, extensions, errors) =>
+        domains ++ fields ++ functions ++ predicates ++ methods ++ extensions
       case PLocalImport(file) =>
         Seq()
       case PStandardImport(file) => Seq()

@@ -66,6 +66,7 @@ object FastParser extends PosParser[Char, String] {
         var functions = p.functions
         var methods = p.methods
         var predicates = p.predicates
+        var extensions = p.extensions
         var errors = p.errors
 
         def appendNewImports(imports: Seq[PImport], current: Path, fromLocal: Boolean) {
@@ -101,6 +102,7 @@ object FastParser extends PosParser[Char, String] {
           functions ++= newProg.functions
           methods ++= newProg.methods
           predicates ++= newProg.predicates
+          extensions ++= newProg.extensions
           errors ++= newProg.errors
         }
 
@@ -131,14 +133,14 @@ object FastParser extends PosParser[Char, String] {
             j += 1
           }
         }
-      PProgram(Seq(), macros, domains, fields, functions, predicates, methods, errors)
+      PProgram(Seq(), macros, domains, fields, functions, predicates, methods, extensions, errors)
     }
 
 
     try {
       val rp = RecParser(f).parses(s)
       rp match {
-        case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, errors), e) =>
+        case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, _, errors), e) =>
           val importedProgram = resolveImports(program) // Import programs
           val expandedProgram = expandDefines(importedProgram) // Expand macros
           Parsed.Success(expandedProgram, e)
@@ -404,7 +406,7 @@ object FastParser extends PosParser[Char, String] {
       doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p)
     })
 
-    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.errors ++ warnings)
+    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.extensions, p.errors ++ warnings)
   }
 
 
@@ -1086,6 +1088,7 @@ object FastParser extends PosParser[Char, String] {
         decls.collect { case f: PFunction => f }, // Functions
         decls.collect { case p: PPredicate => p }, // Predicates
         decls.collect { case m: PMethod => m }, // Methods
+        decls.collect { case e: PExtender => e },
         Seq() // Parse Errors
       )
     }
