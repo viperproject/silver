@@ -716,14 +716,14 @@ object FastParser extends PosParser[Char, String] {
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
-    "unique")
+    "unique") | trialplugin.extendedKeywords
 
 
   lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
+    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | trialplugin.newExp)
 
 
   lazy val result: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
@@ -1076,7 +1076,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val applying: P[PExp] = P(keyword("applying") ~/ magicWandExp ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
 
-  lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | trialplugin.functionDecl | predicateDecl | methodDecl /*| trialplugin.functionDecl2*/).rep).map {
+  lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | trialplugin.newDecl).rep).map {
     decls => {
       PProgram(
         decls.collect { case i: PImport => i }, // Imports

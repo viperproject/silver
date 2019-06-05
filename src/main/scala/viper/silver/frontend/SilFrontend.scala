@@ -6,21 +6,19 @@
 
 package viper.silver.frontend
 
-import viper.silver.ast.SourcePosition
+import java.nio.file.{Path, Paths}
+
+import fastparse.all
+import fastparse.all.{Parsed, ParserInput}
 import viper.silver.ast.utility.Consistency
-import viper.silver.FastMessaging
-import viper.silver.ast._
+import viper.silver.ast.{SourcePosition, _}
 import viper.silver.parser._
+import viper.silver.ast.utility.rewriter._
 import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
-import fastparse.all.{Parsed, ParserInput}
-import fastparse.all
-import java.nio.file.{Path, Paths}
-import viper.silver.FastPositions
-
-import scala.collection.mutable.ArrayBuffer
+import viper.silver.{FastMessaging, FastPositions}
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -210,10 +208,18 @@ trait SilFrontend extends DefaultFrontend {
             case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
                 reporter report WarningsDuringParsing(err_list)
-                val pluginTestfunc = PFunction(PIdnDef("pluginTest"), ArrayBuffer(PFormalArgDecl(PIdnDef("s"), PPrimitiv("Int"))), PPrimitiv("Bool"), ArrayBuffer(PBoolLit(true)), ArrayBuffer(PBoolLit(true)), None)
-                val result2 = PProgram(e.imports, e.macros, e.domains, e.fields, e.functions ++ Seq[PFunction](pluginTestfunc), e.predicates,
-                  e.methods, e.errors)
-                Succ({result2.initProperties(); result2})
+
+                case class Context(increment: Int)
+
+                val pluginfunc: PFunction = PFunction(PIdnDef("pluginTest"), Seq(PFormalArgDecl(PIdnDef("a"), TypeHelper.Int)), TypeHelper.Bool, Seq(), Seq(), None)
+
+                val transformed = StrategyBuilder.RewriteNodeAndContext[PNode, Context]({
+                      case (e@PProgram(_,_,_,_,func_list,_,_,_), ctx) =>
+                        (PProgram(e.imports,e.macros,e.domains,e.fields,func_list ++ Seq(pluginfunc),e.predicates,e.methods,e.errors), ctx.copy(ctx.increment + 1))
+                    }, Context(1)).execute[PProgram](e)
+
+                Succ({transformed.initProperties(); transformed})
+//                Succ({e.initProperties(); e})
               }
               else Fail(err_list)
             case fail @ Parsed.Failure(_, index, extra) =>

@@ -87,4 +87,40 @@ class ASTTransformationTests extends FunSuite {
 
     assert(transformed === target)
   }
+
+  test("Rewriting nodes and updating context during parse AST traversal - Example 3(Introducing a new function)") {
+    // Transform this program:
+    // function trialer() : Bool
+    //  requires true
+    //  ensures true
+    // {
+    //   pluginTest(5)
+    // }
+    //
+    // Into this one:
+    // function pluginTest(a: Int): Bool
+    // function trialer() : Bool
+    //  requires true
+    //  ensures true
+    // {
+    //  pluginTest(5)
+    // }
+
+    import viper.silver.parser._
+
+    val pluginfunc: PFunction = PFunction(PIdnDef("pluginTest"), Seq(PFormalArgDecl(PIdnDef("a"), TypeHelper.Int)), TypeHelper.Bool, Seq(), Seq(), None)
+
+    val trialerfunc:PFunction = PFunction(PIdnDef("trialer"), Seq[PFormalArgDecl](), TypeHelper.Bool, Seq(PBoolLit(true)), Seq(PBoolLit(true)),Option(PCall(PIdnUse("pluginTest"), Seq(PIntLit(5)))))
+    val origprog: PProgram = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(trialerfunc), Seq(), Seq(), Seq())
+    val finalprog: PProgram = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(trialerfunc, pluginfunc), Seq(), Seq(), Seq())
+
+    case class Context(increment: Int)
+
+    val transformed = StrategyBuilder.RewriteNodeAndContext[PNode, Context]({
+      case (e@PProgram(_,_,_,_,func_list,_,_,_), ctx) =>
+        (PProgram(e.imports,e.macros,e.domains,e.fields,func_list ++ Seq(pluginfunc),e.predicates,e.methods,e.errors), ctx.copy(ctx.increment + 1))
+    }, Context(1)).execute[PProgram](origprog)
+
+    assert(transformed === finalprog)
+  }
 }
