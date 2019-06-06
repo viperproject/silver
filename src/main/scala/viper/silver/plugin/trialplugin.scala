@@ -12,7 +12,7 @@ import viper.silver.parser.{PFunction, _}
 object trialplugin  extends PosParser[Char, String] {
 
 
-  case class PDoubleFunction( idndef: PIdnDef,  formalArgs: Seq[PFormalArgDecl], formalArgsSecondary: Seq[PFormalArgDecl],  typ: PType,  pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PExtender {}
+
 
     val White = PWrapper {
         import fastparse.all._
@@ -21,9 +21,14 @@ object trialplugin  extends PosParser[Char, String] {
     import White._
     import fastparse.noApi._
 
+  case class PDoubleFunction( idndef: PIdnDef,  formalArgs: Seq[PFormalArgDecl], formalArgsSecondary: Seq[PFormalArgDecl],  rettyp: PType,  pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PExtender {
+    override def getsubnodes(): Seq[PNode] ={
+      Seq(this.idndef) ++ this.formalArgs ++ this.formalArgsSecondary ++ Seq(this.rettyp) ++ this.pres ++ this.posts ++ this.body
+    }
+  }
 
 
-    lazy val functionDecl2: noApi.P[PFunction] = P("function" ~/ (functionDeclWithArg | functionDeclNoArg))
+  lazy val functionDecl2: noApi.P[PFunction] = P("function" ~/ (functionDeclWithArg | functionDeclNoArg))
 
     lazy val functionDeclWithArg: noApi.P[PFunction] = P(idndef ~ "(" ~ formalArgList ~ ")" ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
             post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, g, c, d, e, f) => PFunction(a, b, c, d, e, f) }
@@ -33,6 +38,7 @@ object trialplugin  extends PosParser[Char, String] {
 
     lazy val doubleFunctionDecl: noApi.P[PDoubleFunction] = P(keyword("dfunction") ~/ idndef ~ "(" ~ formalArgList ~ ")"~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
       post.rep ~ ("{" ~ exp ~ "}").?).map{case (a, b, c, d, e, f, g) => PDoubleFunction(a, b, c, d, e, f, g)}
+
     lazy val newDecl = P(doubleFunctionDecl)
     lazy val newExp = P(integer)
 

@@ -1092,7 +1092,10 @@ case class PMultipleEntity() extends PErrorEntity("multiple")
 case class PUnknownEntity() extends PErrorEntity("unknown")
 
 
-abstract class PExtender extends PNode
+abstract class PExtender extends PNode/* with PMember with PGlobalDeclaration with PAnyFunction with PExp*/{
+  def getsubnodes():Seq[PNode] = ???
+}
+
 /**
  * Utility methods for parser parserAST nodes.
  */
@@ -1196,6 +1199,7 @@ object Nodes {
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
+      case t : PExtender => t.getsubnodes()
       case _: PSkip => Nil
     }
   }
