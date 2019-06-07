@@ -65,7 +65,7 @@ trait FastPositioned {
  * The root of the parser abstract syntax tree.  Note that we prefix all nodes with `P` to avoid confusion
  * with the actual Viper abstract syntax tree.
  */
-sealed trait PNode extends FastPositioned with Product with Rewritable {
+trait PNode extends FastPositioned with Product with Rewritable {
 
   /** Returns a list of all direct sub-nodes of this node. */
   def subnodes = Nodes.subnodes(this)
@@ -382,7 +382,7 @@ case class PWandType() extends PInternalType {
 // Expressions
 // typeSubstitutions are the possible substitutions used for type checking and inference
 // The argument types are unified with the (fresh versions of) types  are
-sealed trait PExp extends PNode {
+trait PExp extends PNode {
   var typ: PType = PUnknown()
   def typeSubstitutions : scala.collection.Seq[PTypeSubstitution]
   def forceSubstitution(ts: PTypeSubstitution)
@@ -933,7 +933,7 @@ case class PExplicitMultiset(override val args: Seq[PExp]) extends PMultiSetLite
 
 ///////////////////////////////////////////////////////////////////////////
 // Statements
-sealed trait PStmt extends PNode {
+trait PStmt extends PNode {
   /**
    * Returns a list of all actual statements contained in this statement.  That
    * is, all statements except `Seqn`, including statements in the body of loops, etc.
@@ -1092,9 +1092,11 @@ case class PMultipleEntity() extends PErrorEntity("multiple")
 case class PUnknownEntity() extends PErrorEntity("unknown")
 
 
-abstract class PExtender extends PNode/* with PMember with PGlobalDeclaration with PAnyFunction with PExp*/{
+trait PExtender extends PNode/* with PMember with PGlobalDeclaration with PAnyFunction with PExp*/{
   def getsubnodes():Seq[PNode] = ???
 }
+
+abstract class PStmtExtender extends PStmt
 
 /**
  * Utility methods for parser parserAST nodes.

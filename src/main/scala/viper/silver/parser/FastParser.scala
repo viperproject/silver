@@ -989,7 +989,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val stmt: P[PStmt] = P(macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | fresh | constrainingBlock |
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block)
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block | trialplugin.newStmt)
 
   lazy val nodefinestmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | newstmt | fresh | constrainingBlock |

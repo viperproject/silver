@@ -118,7 +118,7 @@ object Transformer {
         case PLetNestedScope(idndef, body) => PLetNestedScope(go(idndef), go(body))
         case _: PSkip => parent
 
-        case PProgram(files, macros, domains, fields, functions, predicates, methods, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, errors)
+        case PProgram(files, macros, domains, fields, functions, predicates, methods, extensions, errors) => PProgram(files, macros map go, domains map go, fields map go, functions map go, predicates map go, methods map go, extensions map go, errors)
         case PLocalImport(file) => PLocalImport(file)
         case PStandardImport(file) => PStandardImport(file)
         case PMethod(idndef, formalArgs, formalReturns, pres, posts, body) => PMethod(go(idndef), formalArgs map go, formalReturns map go, pres map go, posts map go, body map go)
@@ -232,8 +232,8 @@ object Transformer {
     case (_: PLetNestedScope, Seq(idndef: PFormalArgDecl, body: PExp)) => PLetNestedScope(idndef, body)
     case (p: PSkip, _) => p
 
-    case (p: PProgram, Seq(files: Seq[PImport@unchecked], macros: Seq[PDefine@unchecked], domains: Seq[PDomain@unchecked], fields: Seq[PField@unchecked], functions: Seq[PFunction@unchecked], predicates: Seq[PPredicate@unchecked], methods: Seq[PMethod@unchecked], errors: Seq[ParseReport@unchecked])) =>
-      PProgram(files, macros, domains, fields, functions, predicates, methods, errors)
+    case (p: PProgram, Seq(files: Seq[PImport@unchecked], macros: Seq[PDefine@unchecked], domains: Seq[PDomain@unchecked], fields: Seq[PField@unchecked], functions: Seq[PFunction@unchecked], predicates: Seq[PPredicate@unchecked], methods: Seq[PMethod@unchecked], extensions: Seq[PExtender@unchecked], errors: Seq[ParseReport@unchecked])) =>
+      PProgram(files, macros, domains, fields, functions, predicates, methods, extensions, errors)
 
     case (p: PImport, _) => p
     case (_: PMethod, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], formalReturns: Seq[PFormalArgDecl@unchecked], pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], body: Option[PStmt@unchecked])) => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
