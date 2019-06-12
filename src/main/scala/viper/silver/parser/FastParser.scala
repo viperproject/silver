@@ -725,7 +725,7 @@ object FastParser extends PosParser[Char, String] {
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | trialplugin.newExp)
+    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | trialplugin.newExp).log()
 
 
   lazy val result: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
@@ -981,7 +981,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val fapp: P[PCall] = P(idnuse ~ parens(actualArgList)).map {
     case (func, args) => PCall(func, args, None)
-  }
+  }.log()
 
   lazy val typedFapp: P[PExp] = P(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map {
     case (func, args, typeGiven) => PCall(func, args, Some(typeGiven))
@@ -993,7 +993,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val nodefinestmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | newstmt | fresh | constrainingBlock |
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block)
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block | trialplugin.newStmt)
 
   lazy val macroref: P[PMacroRef] = P(idnuse).map(a => PMacroRef(a))
 

@@ -33,6 +33,12 @@ object trialplugin  extends PosParser[Char, String] {
     override def typeSubstitutions: Seq[PTypeSubstitution] = ???
   }
 
+  case class PDoubleCall(dfunc: PIdnUse, argList1: Seq[PExp], argList2: Seq[PExp]) extends PExtender with PExp{
+    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
+
+    override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
+  }
+
 
   lazy val functionDecl2: noApi.P[PFunction] = P("function" ~/ (functionDeclWithArg | functionDeclNoArg))
 
@@ -47,13 +53,15 @@ object trialplugin  extends PosParser[Char, String] {
 
     lazy val stringtyp: noApi.P[PType] = P("String" ~~ !identContinues).!.map(PPrimitiv)
 
-    lazy val newDecl = P(doubleFunctionDecl).log()
+    lazy val newDecl = P(doubleFunctionDecl)
 
 // String var_name := "afasfsdaf"
     lazy val stringDef: noApi.P[PStrDef] = P(stringtyp ~/ idndef ~ ":=" ~ "\"" ~ (AnyChar.rep).! ~ "\"").map{case(_, b,c) => PStrDef(b, c)}
 
+    lazy val dfapp: noApi.P[PDoubleCall] = P(idnuse ~ parens(actualArgList) ~ parens(actualArgList)).map {case (a,b,c) => PDoubleCall(a,b,c)}.log()
+
     // This newExp extension is not yet used
-    lazy val newExp = P(stringDef)
+    lazy val newExp = P(stringDef | dfapp).log()
     lazy val newStmt = P(block)
 
     lazy val extendedKeywords = Set[String]("dfunction")
