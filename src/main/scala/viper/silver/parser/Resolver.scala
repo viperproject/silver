@@ -50,6 +50,7 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(p: PProgram) {
+    p.extensions foreach checkExtension
     p.domains foreach checkFunctions
     p.domains foreach checkAxioms
     p.fields foreach check
@@ -59,6 +60,7 @@ case class TypeChecker(names: NameAnalyser) {
     p.predicates foreach checkBody
     p.methods foreach checkDeclaration
     p.methods foreach checkBody
+
 
     /* Report any domain type that couldn't be resolved */
     /* Alex suggests replacing *all* these occurrences by one arbitrary type */
@@ -702,6 +704,13 @@ case class TypeChecker(names: NameAnalyser) {
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
         curMember = oldCurMember
+    }
+  }
+
+  def checkExtension(e: PExtender): Unit ={
+    e.typecheck(this, names) match {
+      case Some(message) => messages ++= FastMessaging.message(e,message)
+      case None =>
     }
   }
 

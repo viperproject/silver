@@ -705,3 +705,7 @@ case object NotOp extends UnOp with BoolDomainFunc {
   lazy val priority = 10
   lazy val fixity = Prefix
 }
+
+trait ExtMember extends Member{
+  def extensionsubnodes: Seq[Node]
+}

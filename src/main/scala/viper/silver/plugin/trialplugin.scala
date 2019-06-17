@@ -8,18 +8,34 @@ import scala.collection.Set
 
 object trialplugin  extends PosParser[Char, String] {
 
-    val White = PWrapper {
-        import fastparse.all._
-        NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
-    }
-    import White._
-    import fastparse.noApi._
+  val White = PWrapper {
+      import fastparse.all._
+      NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+  }
+  import White._
+  import fastparse.noApi._
 
   case class PDoubleFunction( idndef: PIdnDef,  formalArgs: Seq[PFormalArgDecl], formalArgsSecondary: Seq[PFormalArgDecl],  rettyp: PType,  pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction with PExtender{
     override def getsubnodes(): Seq[PNode] ={
       Seq(this.idndef) ++ this.formalArgs ++ this.formalArgsSecondary ++ Seq(this.rettyp) ++ this.pres ++ this.posts ++ this.body
     }
     override def typ: PType = ???
+
+    /**
+      * Must return a FastMessaging.message type variable
+      */
+
+    override def typecheck(typechecker:TypeChecker, names: NameAnalyser): Option[String] = {
+      if (formalArgs.size == formalArgsSecondary.size){
+        for(i <- 0 until formalArgs.size) {
+          if (formalArgsSecondary(i).typ != formalArgs(i).typ){
+            return Some(s"Type mismatch at index = $i")
+          }
+        }
+        return None
+      }
+      return Some("Argument List size mismatch")
+    }
   }
 
   case class PStrDef(idndef: PIdnDef, value: String) extends PExp with PExtender {
@@ -28,7 +44,7 @@ object trialplugin  extends PosParser[Char, String] {
     override def typeSubstitutions: Seq[PTypeSubstitution] = ???
   }
 
-  case class PDoubleCall(dfunc: PIdnUse, argList1: Seq[PExp], argList2: Seq[PExp]) extends POpApp with PExtender /*with Extender*/ with PExp with PLocationAccess {
+  case class PDoubleCall(dfunc: PIdnUse, argList1: Seq[PExp], argList2: Seq[PExp]) extends POpApp with PExtender with PExp with PLocationAccess {
     //    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
     override def args: Seq[PExp] = argList1 ++ argList2
     override def opName: String = dfunc.name
@@ -47,11 +63,11 @@ object trialplugin  extends PosParser[Char, String] {
         )
 
     })
-    else if(extfunction!=null && extfunction.formalArgs.size == args.size)( extfunction match{
-      case ppa: PPredicate => List(
-        new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> TypeHelper.Bool))
-      )
-    })
+      else if(extfunction!=null && extfunction.formalArgs.size == args.size)( extfunction match{
+        case ppa: PPredicate => List(
+          new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> TypeHelper.Bool))
+        )
+      })
 
 
     else List() // this case is handled in Resolver.scala (- method check) which generates the appropriate error message
@@ -88,35 +104,66 @@ object trialplugin  extends PosParser[Char, String] {
       Seq(this.dfunc) ++ argList1 ++ argList2
     }
 
+    override def typecheck(t: TypeChecker, names: NameAnalyser): Option[String] = {
+      val af = names.definition(t.curMember)(dfunc)
+      af match {
+        case ad: PDoubleFunction => {
+          print(ad.typ)
+          if (ad.formalArgs.size != argList1.size)
+            return Some("Arg List 1 are of incorrect sizes")
+          else {
+            for (i <- 0 until argList1.size) {
+              if (argList1(i).typ != ad.formalArgs(i).typ)
+                return Some(s"Type error in ArgList1 at index=$i")
+            }
+          }
+
+          if (ad.formalArgsSecondary.size != argList2.size)
+            return Some("Arg List 1 are of incorrect sizes")
+          else {
+            for (i <- 0 until argList2.size) {
+              if (argList2(i).typ != ad.formalArgsSecondary(i).typ)
+                return Some(s"Type error in ArgList2 at index=$i")
+            }
+          }
+
+          return None
+        }
+        case _ => None
+      }
+
+    }
 
   }
 
 
+
+
   lazy val functionDecl2: noApi.P[PFunction] = P("function" ~/ (functionDeclWithArg | functionDeclNoArg))
 
-    lazy val functionDeclWithArg: noApi.P[PFunction] = P(idndef ~ "(" ~ formalArgList ~ ")" ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-            post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, g, c, d, e, f) => PFunction(a, b, c, d, e, f) }
-    lazy val functionDeclNoArg: noApi.P[PFunction] = P(idndef ~ ":" ~ typ ~ pre.rep ~
-      post.rep ~ ("{" ~ exp ~ "}").?).map { case (a,  c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }
+  lazy val functionDeclWithArg: noApi.P[PFunction] = P(idndef ~ "(" ~ formalArgList ~ ")" ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
+          post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, g, c, d, e, f) => PFunction(a, b, c, d, e, f) }
+
+  lazy val functionDeclNoArg: noApi.P[PFunction] = P(idndef ~ ":" ~ typ ~ pre.rep ~
+    post.rep ~ ("{" ~ exp ~ "}").?).map { case (a,  c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }
 
 
-    lazy val doubleFunctionDecl: noApi.P[PDoubleFunction] = P(keyword("dfunction") ~/ idndef ~ "(" ~ formalArgList ~ ")"~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-      post.rep ~ ("{" ~ exp ~ "}").?).map{case (a, b, c, d, e, f, g) => PDoubleFunction(a, b, c, d, e, f, g)}
+  lazy val doubleFunctionDecl: noApi.P[PDoubleFunction] = P(keyword("dfunction") ~/ idndef ~ "(" ~ formalArgList ~ ")"~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
+    post.rep ~ ("{" ~ exp ~ "}").?).map{case (a, b, c, d, e, f, g) => PDoubleFunction(a, b, c, d, e, f, g)}
 
-    lazy val stringtyp: noApi.P[PType] = P("String" ~~ !identContinues).!.map(PPrimitiv)
+  lazy val stringtyp: noApi.P[PType] = P("String" ~~ !identContinues).!.map(PPrimitiv)
 
-    lazy val newDecl = P(doubleFunctionDecl)
+  lazy val newDecl = P(doubleFunctionDecl)
 
-// String var_name := "afasfsdaf"
-    lazy val stringDef: noApi.P[PStrDef] = P(stringtyp ~/ idndef ~ ":=" ~ "\"" ~ (AnyChar.rep).! ~ "\"").map{case(_, b,c) => PStrDef(b, c)}
+  lazy val stringDef: noApi.P[PStrDef] = P(stringtyp ~/ idndef ~ ":=" ~ "\"" ~ (AnyChar.rep).! ~ "\"").map{case(_, b,c) => PStrDef(b, c)}
 
-    lazy val dfapp: noApi.P[PDoubleCall] = P(keyword("DFCall") ~ idnuse ~ parens(actualArgList) ~ parens(actualArgList)).map {case (a,b,c) => PDoubleCall(a,b,c)}
+  lazy val dfapp: noApi.P[PDoubleCall] = P(keyword("DFCall") ~ idnuse ~ parens(actualArgList) ~ parens(actualArgList)).map {case (a,b,c) => PDoubleCall(a,b,c)}
 
-    // This newExp extension is not yet used
-    lazy val newExp = P(stringDef | dfapp)
-    lazy val newStmt = P(block)
+  lazy val newStmt = P(block)
+  // This newExp extension is not yet used
+  lazy val newExp = P(stringDef | dfapp)
 
-    lazy val extendedKeywords = Set[String]("dfunction", "DFCall")
+  lazy val extendedKeywords = Set[String]("dfunction", "DFCall")
 
 
 }

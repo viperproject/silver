@@ -725,7 +725,7 @@ object FastParser extends PosParser[Char, String] {
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | trialplugin.newExp).log()
+    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | trialplugin.newExp)
 
 
   lazy val result: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
@@ -981,7 +981,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val fapp: P[PCall] = P(idnuse ~ parens(actualArgList)).map {
     case (func, args) => PCall(func, args, None)
-  }.log()
+  }
 
   lazy val typedFapp: P[PExp] = P(parens(idnuse ~ parens(actualArgList) ~ ":" ~ typ)).map {
     case (func, args, typeGiven) => PCall(func, args, Some(typeGiven))
@@ -1076,7 +1076,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val applyWand: P[PApplyWand] = P("apply" ~/ magicWandExp).map(PApplyWand)
 
-  lazy val applying: P[PExp] = P(keyword("applying") ~/ magicWandExp ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
+  lazy val applying: P[PExp] = P(keyword("applying") ~/ "(" ~ magicWandExp  ~ ")" ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
 
   lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | trialplugin.newDecl).rep).map {
     decls => {

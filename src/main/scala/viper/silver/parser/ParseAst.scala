@@ -474,7 +474,7 @@ class PTypeRenaming(val mm:Map[String,String])
 }
 
 // Operator applications
-sealed trait POpApp extends PExp{
+trait POpApp extends PExp{
   def opName : String
   def args : Seq[PExp]
 
@@ -700,7 +700,7 @@ sealed trait PHeapOpApp extends POpApp{
 
 sealed trait PResourceAccess extends PHeapOpApp
 
-sealed trait PLocationAccess extends PResourceAccess {
+trait PLocationAccess extends PResourceAccess {
   def idnuse: PIdnUse
 }
 
@@ -1019,7 +1019,7 @@ object PScope {
 /** An entity is a declaration (named) or an error node */
 sealed trait PEntity
 
-sealed trait PDeclaration extends PNode with PEntity {
+trait PDeclaration extends PNode with PEntity {
   def idndef: PIdnDef
 }
 
@@ -1037,7 +1037,7 @@ sealed trait PMember extends PDeclaration with PScope {
 //  def idndef: PIdnDef
 }
 
-sealed trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDeclaration{
+trait PAnyFunction extends PMember with PGlobalDeclaration with PTypedDeclaration{
   def idndef: PIdnDef
   def formalArgs: Seq[PFormalArgDecl]
   def typ: PType
@@ -1094,6 +1094,8 @@ case class PUnknownEntity() extends PErrorEntity("unknown")
 
 trait PExtender extends PNode/* with PMember with PGlobalDeclaration with PAnyFunction with PExp*/{
   def getsubnodes():Seq[PNode] = ???
+  def typecheck(t: TypeChecker, n: NameAnalyser):Option[String] = ???
+  def namecheck(n: NameAnalyser) = ???
 }
 
 abstract class PStmtExtender extends PStmt

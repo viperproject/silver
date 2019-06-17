@@ -207,17 +207,6 @@ trait SilFrontend extends DefaultFrontend {
             case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, _, err_list), _) =>
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
                 reporter report WarningsDuringParsing(err_list)
-
-//                case class Context(increment: Int)
-//
-//                val pluginfunc: PFunction = PFunction(PIdnDef("pluginTest"), Seq(PFormalArgDecl(PIdnDef("a"), TypeHelper.Int)), TypeHelper.Bool, Seq(), Seq(), None)
-//
-//                val transformed = StrategyBuilder.RewriteNodeAndContext[PNode, Context]({
-//                      case (e@PProgram(_,_,_,_,func_list,_,_,_,_), ctx) =>
-//                        (PProgram(e.imports,e.macros,e.domains,e.fields,func_list ++ Seq(pluginfunc),e.predicates,e.methods,e.extensions,e.errors), ctx.copy(ctx.increment + 1))
-//                    }, Context(1)).execute[PProgram](e)
-//
-//                Succ({transformed.initProperties(); transformed})
                 Succ({e.initProperties(); e})
               }
               else Fail(err_list)
