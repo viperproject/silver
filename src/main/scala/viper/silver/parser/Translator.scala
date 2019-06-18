@@ -30,15 +30,17 @@ case class Translator(program: PProgram) {
     // assert(TypeChecker.messagecount == 0, "Expected previous phases to succeed, but found error messages.") // AS: no longer sharing state with these phases
 
     program match {
-      case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, _, _) =>
+      case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, pextensions, _) =>
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
-            pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
+            pmethods ++ pextensions ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
 
         val domain = pdomains map translate
         val fields = pfields map translate
         val functions = pfunctions map translate
         val predicates = ppredicates map translate
         val methods = pmethods map translate
+        val extension = pextensions map translate
+
 
         val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods)(program))
 
@@ -48,6 +50,10 @@ case class Translator(program: PProgram) {
         if (Consistency.messages.isEmpty) Some(finalProgram) // all error messages generated during translation should be Consistency messages
         else None
     }
+  }
+
+  private def translate(t: PExtender): ExtMember = {
+
   }
 
   private def translate(m: PMethod): Method = m match {

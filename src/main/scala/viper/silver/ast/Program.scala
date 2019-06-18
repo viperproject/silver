@@ -18,12 +18,12 @@ import scala.collection.immutable
 import scala.reflect.ClassTag
 
 /** A Silver program. */
-case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
+case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method], extensions: Seq[ExtMember])
                   (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends Node with DependencyAware with Positioned with Infoed with Scope with TransformableErrors {
 
   val scopedDecls: Seq[Declaration] =
-    domains ++ fields ++ functions ++ predicates ++ methods ++
+    domains ++ fields ++ functions ++ predicates ++ methods ++ extensions ++
     domains.flatMap(d => {d.axioms ++ d.functions})
 
   lazy val magicWandStructures: Seq[MagicWandStructure] =
@@ -206,7 +206,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   lazy val groundTypeInstances = DomainInstances.findNecessaryTypeInstances(this)
 
-  lazy val members: Seq[Member with Serializable] = domains ++ fields ++ functions ++ predicates ++ methods
+  lazy val members: Seq[Member with Serializable] = domains ++ fields ++ functions ++ predicates ++ methods ++ extensions
 
   def findField(name: String): Field = {
     this.fields.find(_.name == name) match {

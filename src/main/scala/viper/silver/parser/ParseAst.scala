@@ -1092,7 +1092,7 @@ case class PMultipleEntity() extends PErrorEntity("multiple")
 case class PUnknownEntity() extends PErrorEntity("unknown")
 
 
-trait PExtender extends PNode/* with PMember with PGlobalDeclaration with PAnyFunction with PExp*/{
+trait PExtender extends PNode with PMember/* with PMember with PGlobalDeclaration with PAnyFunction with PExp*/{
   def getsubnodes():Seq[PNode] = ???
   def typecheck(t: TypeChecker, n: NameAnalyser):Option[String] = ???
   def namecheck(n: NameAnalyser) = ???
