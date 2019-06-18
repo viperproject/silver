@@ -19,7 +19,7 @@ object trialplugin  extends PosParser[Char, String] {
     override def getsubnodes(): Seq[PNode] ={
       Seq(this.idndef) ++ this.formalArgs ++ this.formalArgsSecondary ++ Seq(this.rettyp) ++ this.pres ++ this.posts ++ this.body
     }
-    override def typ: PType = ???
+    override def typ: PType = PPrimitiv("Bool")
 
     /**
       * Must return a FastMessaging.message type variable
@@ -44,25 +44,18 @@ object trialplugin  extends PosParser[Char, String] {
     override def typeSubstitutions: Seq[PTypeSubstitution] = ???
   }
 
-  case class PDoubleCall(dfunc: PIdnUse, argList1: Seq[PExp], argList2: Seq[PExp]) extends POpApp with PExtender with PExp with PLocationAccess {
+  case class PDoubleCall(dfunc: PIdnUse, argList1: Seq[PExp], argList2: Seq[PExp]) extends PExtender with PExp with PLocationAccess {
     //    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
     override def args: Seq[PExp] = argList1 ++ argList2
     override def opName: String = dfunc.name
     override val idnuse = dfunc
 
-    override def signatures = if (function!=null&& function.formalArgs.size == argList1.size && function.formalArgsSecondary.size == argList2.size) (function match{
+    override def signatures = if (function!=null&& function.formalArgs.size == argList1.size && function.formalArgsSecondary.size == argList2.size) function match{
       case pf:PDoubleFunction => {
         List(
         new PTypeSubstitution(argList1.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) ++ argList2.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgsSecondary(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
       )}
-      case pdf:PDomainFunction =>
-        List(
-          new PTypeSubstitution(
-            args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ.substitute(domainTypeRenaming.get)) :+
-              (POpApp.pRes.domain.name -> pdf.typ.substitute(domainTypeRenaming.get)))
-        )
-
-    })
+    }
       else if(extfunction!=null && extfunction.formalArgs.size == args.size)( extfunction match{
         case ppa: PPredicate => List(
           new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> TypeHelper.Bool))

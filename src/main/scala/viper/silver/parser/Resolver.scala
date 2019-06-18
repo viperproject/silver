@@ -50,7 +50,6 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(p: PProgram) {
-    p.extensions foreach checkExtension
     p.domains foreach checkFunctions
     p.domains foreach checkAxioms
     p.fields foreach check
@@ -60,6 +59,7 @@ case class TypeChecker(names: NameAnalyser) {
     p.predicates foreach checkBody
     p.methods foreach checkDeclaration
     p.methods foreach checkBody
+    p.extensions foreach checkExtension
 
 
     /* Report any domain type that couldn't be resolved */
@@ -262,6 +262,10 @@ case class TypeChecker(names: NameAnalyser) {
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
+      case t:PExtender => t.typecheck(this, names) match {
+        case Some(message) => messages ++= FastMessaging.message(t, message)
+        case _ =>
+      }
       case _: PSkip =>
     }
   }
@@ -453,7 +457,12 @@ case class TypeChecker(names: NameAnalyser) {
     messages ++= FastMessaging.message(exp, s"Type error in the expression at ${exp.rangeStr}")
   }
 
-  def check(exp: PExp, expected: PType) = checkTopTyped(exp, Some(expected))
+  def check(exp: PExp, expected: PType) = exp match {
+    case t: PExtender => t.typecheck(this, names) match{
+      case Some(message) => messages ++= FastMessaging.message(t, message)
+      case _ =>
+    }
+    case _ => checkTopTyped(exp, Some(expected))}
 
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
   {
