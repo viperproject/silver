@@ -39,10 +39,10 @@ case class Translator(program: PProgram) {
         val functions = pfunctions map translate
         val predicates = ppredicates map translate
         val methods = pmethods map translate
-        val extension = pextensions map translate
+        val extensions = pextensions map translate
 
 
-        val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods)(program))
+        val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods, extensions)(program))
 
         finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)}
         finalProgram.deepCollect {case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)}
@@ -53,7 +53,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(t: PExtender): ExtMember = {
-
+    t.translate(this)
   }
 
   private def translate(m: PMethod): Method = m match {
@@ -91,7 +91,7 @@ case class Translator(program: PProgram) {
   private def translate(f: PFunction): Function = f match {
     case PFunction(name, _, _, pres, posts, body) =>
       val f = findFunction(name)
-      val ff = f.copy(pres = pres map exp, posts = posts map exp, body = body map exp)(f.pos, f.info, f.errT)
+      val ff = f.copy( pres = pres map exp, posts = posts map exp, body = body map exp)(f.pos, f.info, f.errT)
       members(f.name) = ff
       ff
   }
@@ -107,7 +107,7 @@ case class Translator(program: PProgram) {
   private def translate(f: PField) = findField(f.idndef)
 
   private val members = collection.mutable.HashMap[String, Node]()
-
+  def getMembers() = members
   /**
     * Translate the signature of a member, so that it can be looked up later.
     *
@@ -215,13 +215,14 @@ case class Translator(program: PProgram) {
         Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss).asInstanceOf[Seqn])(pos)
       case PWhile(cond, invs, body) =>
         While(exp(cond), invs map exp, stmt(body).asInstanceOf[Seqn])(pos)
+      case t: PExtender =>   t.translate(this).asInstanceOf[ExtensionStmt]
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
   }
 
   /** Takes a `PExp` and turns it into an `Exp`. */
-  private def exp(pexp: PExp): Exp = {
+  def exp(pexp: PExp): Exp = {
     val pos = pexp
     pexp match {
 
@@ -474,6 +475,7 @@ case class Translator(program: PProgram) {
         EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType))(pos)
       case PExplicitMultiset(elems) =>
         ExplicitMultiset(elems map exp)(pos)
+      case t: PExtender => t.translate(this).asInstanceOf[ExtensionExp]
     }
   }
 

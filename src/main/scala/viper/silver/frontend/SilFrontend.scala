@@ -278,7 +278,7 @@ trait SilFrontend extends DefaultFrontend {
             else inputPlugin.methods map (_.name)
 
           val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
-          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods)(inputPlugin.pos, inputPlugin.info)
+          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods, inputPlugin.extensions)(inputPlugin.pos, inputPlugin.info)
 
           _plugins.beforeVerify(program) match {
             case Some(programPlugin) => Succ(programPlugin)

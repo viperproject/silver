@@ -16,7 +16,7 @@ class DomainInstanceTest extends FunSuite with Matchers {
     val r = LocalVarDecl("r", Int)(NoPosition, NoInfo)
     val x = LocalVarDecl("x", DomainType(d, Map(t -> Int)))(NoPosition, NoInfo)
     val m = Method("m", Seq(x), Seq(r), Seq(), Seq(), Some(Seqn(Seq(Assert(TrueLit()(NoPosition, NoInfo))(NoPosition, NoInfo)), Seq())(NoPosition, NoInfo)))(NoPosition, NoInfo)
-    val p = Program(Seq(d), Seq(), Seq(), Seq(), Seq(m))(NoPosition, NoInfo)
+    val p = Program(Seq(d), Seq(), Seq(), Seq(), Seq(m), Seq())(NoPosition, NoInfo)
 
     p.groundTypeInstances.size should be(3)
   }

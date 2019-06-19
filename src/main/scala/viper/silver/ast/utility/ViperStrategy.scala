@@ -300,8 +300,16 @@ object ViperStrategy {
     case (a: AnySetContains, Seq(elem: Exp, s: Exp), meta) => AnySetContains(elem, s)(meta._1, meta._2, meta._3)
     case (a: AnySetCardinality, Seq(s: Exp), meta) => AnySetCardinality(s)(meta._1, meta._2, meta._3)
 
-    case (p: Program, Seq(domains: Seq[Domain@unchecked], fields: Seq[Field@unchecked], functions: Seq[Function@unchecked], predicates: Seq[Predicate@unchecked], methods: Seq[Method@unchecked]), meta) =>
-      Program(domains, fields, functions, predicates, methods)(meta._1, meta._2, meta._3)
+    /**
+      * This change from
+      * case (p: Program, Seq(domains: Seq[Domain@unchecked], fields: Seq[Field@unchecked], functions: Seq[Function@unchecked], predicates: Seq[Predicate@unchecked], methods: Seq[Method@unchecked]), meta) =>
+      * to
+      * case (p: Program, Seq(domains: Seq[Domain@unchecked], fields: Seq[Field@unchecked], functions: Seq[Function@unchecked], predicates: Seq[Predicate@unchecked], methods: Seq[Method@unchecked], extensions: Seq[ExtMember@unchecked]), meta) =>
+      * has been done by G Rahul Kranti Kiran as an attempt to resolve the compilations errors in the implementaion of the parser plugin prototype.
+      * This modification needs consideration by a more knowledgeable person to point out any inconsistensies or incorrectness
+      */
+    case (p: Program, Seq(domains: Seq[Domain@unchecked], fields: Seq[Field@unchecked], functions: Seq[Function@unchecked], predicates: Seq[Predicate@unchecked], methods: Seq[Method@unchecked], extensions: Seq[ExtMember@unchecked]), meta) =>
+      Program(domains, fields, functions, predicates, methods, extensions)(meta._1, meta._2, meta._3)
 
 
     case (d: Domain, Seq(functions: Seq[DomainFunc@unchecked], axioms: Seq[DomainAxiom@unchecked], typeVariables: Seq[TypeVar@unchecked]), meta) =>

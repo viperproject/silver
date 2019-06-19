@@ -1,6 +1,8 @@
 package viper.silver.plugin
 
 import fastparse.noApi
+import viper.silver.ast
+import viper.silver.ast.ExtMember
 import viper.silver.parser.FastParser._
 import viper.silver.parser.{PFunction, PosParser, _}
 
@@ -36,6 +38,13 @@ object trialplugin  extends PosParser[Char, String] {
       }
       return Some("Argument List size mismatch")
     }
+
+    override def translate(t: Translator): ExtMember = this match{
+      case PDoubleFunction(name,formalArgs,formalArgsSecondary,_,pres,posts, body) =>
+      val func1: ast.Function = t.getMembers()(idndef.asInstanceOf[PIdentifier].name).asInstanceOf[ast.Function]
+      val ff: ast.Function = func1.copy(pres = pres map t.exp, posts = posts map t.exp, body = body map t.exp)(func1.pos, func1.info, func1.errT)
+      ff.asInstanceOf[ExtMember]
+    }
   }
 
   case class PStrDef(idndef: PIdnDef, value: String) extends PExp with PExtender {
@@ -44,12 +53,12 @@ object trialplugin  extends PosParser[Char, String] {
     override def typeSubstitutions: Seq[PTypeSubstitution] = ???
   }
 
-  case class PDoubleCall(dfunc: PIdnUse, argList1: Seq[PExp], argList2: Seq[PExp]) extends PExtender with PExp with PLocationAccess {
-    //    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
+  case class PDoubleCall(dfunc: PIdnUse, argList1: Seq[PExp], argList2: Seq[PExp]) extends POpApp with PExtender with PExp with PLocationAccess {
+//        override def typeSubstitutions: Seq[PTypeSubstitution] = ???
     override def args: Seq[PExp] = argList1 ++ argList2
     override def opName: String = dfunc.name
+    override def idndef: PIdnDef = dfunc.name
     override val idnuse = dfunc
-
     override def signatures = if (function!=null&& function.formalArgs.size == argList1.size && function.formalArgsSecondary.size == argList2.size) function match{
       case pf:PDoubleFunction => {
         List(
@@ -152,8 +161,8 @@ object trialplugin  extends PosParser[Char, String] {
 
   lazy val dfapp: noApi.P[PDoubleCall] = P(keyword("DFCall") ~ idnuse ~ parens(actualArgList) ~ parens(actualArgList)).map {case (a,b,c) => PDoubleCall(a,b,c)}
 
+  // This newStmt extension is not yet used
   lazy val newStmt = P(block)
-  // This newExp extension is not yet used
   lazy val newExp = P(stringDef | dfapp)
 
   lazy val extendedKeywords = Set[String]("dfunction", "DFCall")

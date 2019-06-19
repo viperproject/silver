@@ -31,8 +31,7 @@ class ConsistencyTests extends FunSuite with Matchers {
     val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
       Some(Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i")(Int, NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
         NoTrafos), Goto("lbl1")(NoPosition, NoInfo, NoTrafos), methodcall1), Seq())(NoPosition, NoInfo, NoTrafos)))(NoPosition, NoInfo, NoTrafos)
-    val prog : Program = Program(Seq(), Seq(Field("j", Int)(NoPosition, NoInfo, NoTrafos), Field("j", Bool)(NoPosition, NoInfo, NoTrafos)),
-      Seq(), Seq(), Seq(method1))(NoPosition, NoInfo, NoTrafos)
+    val prog : Program = Program(Seq(), Seq(Field("j", Int)(NoPosition, NoInfo, NoTrafos), Field("j", Bool)(NoPosition, NoInfo, NoTrafos)), Seq(), Seq(), Seq(method1), Seq())(NoPosition, NoInfo, NoTrafos)
 
     prog.checkTransitively should be (Seq(
       ConsistencyError("Duplicate identifier j found.", NoPosition),
@@ -49,8 +48,7 @@ class ConsistencyTests extends FunSuite with Matchers {
         NoTrafos), LocalVarAssign(LocalVar("j")(Int, NoPosition, NoInfo, NoTrafos), IntLit(5)(NoPosition))(NoPosition, NoInfo,
         NoTrafos)), Seq(LocalVarDecl("i", Bool)(NoPosition)))(NoPosition, NoInfo, NoTrafos)))(NoPosition, NoInfo, NoTrafos)
     val method2: Method = Method("j", Seq(), Seq(), Seq(), Seq(), Some(Seqn(Seq(), Seq())(NoPosition)))(NoPosition)
-    val prog : Program = Program(Seq(), Seq(Field("f1", Int)(NoPosition, NoInfo, NoTrafos)),
-      Seq(), Seq(), Seq(method1, method2))(NoPosition, NoInfo, NoTrafos)
+    val prog : Program = Program(Seq(), Seq(Field("f1", Int)(NoPosition, NoInfo, NoTrafos)), Seq(), Seq(), Seq(method1, method2), Seq())(NoPosition, NoInfo, NoTrafos)
 
     prog.checkTransitively should be (Seq(
       ConsistencyError("No matching local variable i found with type Int, instead found Bool.", NoPosition),
@@ -109,13 +107,7 @@ class ConsistencyTests extends FunSuite with Matchers {
       )()
 
     val program =
-      Program(
-        domains    = Seq(),
-        fields     = Seq(),
-        functions  = Seq(),
-        predicates = Seq(),
-        methods    = Seq(callee, caller)
-      )()
+      Program(domains    = Seq(), fields     = Seq(), functions  = Seq(), predicates = Seq(), methods    = Seq(callee, caller), extensions = Seq())()
 
     program.checkTransitively shouldBe Seq(
       ConsistencyError("Arguments List() are not assignable to formal arguments List(x: Ref) of method callee", NoPosition),
@@ -166,13 +158,7 @@ class ConsistencyTests extends FunSuite with Matchers {
       )()
 
     val program =
-      Program(
-        domains    = Seq(),
-        fields     = Seq(),
-        functions  = Seq(func),
-        predicates = Seq(),
-        methods    = Seq(caller)
-      )()
+      Program(domains    = Seq(), fields     = Seq(), functions  = Seq(func), predicates = Seq(), methods    = Seq(caller), extensions = Seq())()
 
     program.checkTransitively shouldBe Seq(
       ConsistencyError("Function f with formal arguments List(x: Int) cannot be applied to provided arguments List().", NoPosition),
@@ -230,13 +216,7 @@ class ConsistencyTests extends FunSuite with Matchers {
       )()
 
     val program =
-      Program(
-        domains    = Seq(domain),
-        fields     = Seq(),
-        functions  = Seq(),
-        predicates = Seq(),
-        methods    = Seq(caller)
-      )()
+      Program(domains    = Seq(domain), fields     = Seq(), functions  = Seq(), predicates = Seq(), methods    = Seq(caller), extensions = Seq())()
 
     program.checkTransitively shouldBe Seq(
       ConsistencyError("No domain function named g found in the program.", NoPosition),
