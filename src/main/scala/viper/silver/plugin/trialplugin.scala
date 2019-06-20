@@ -1,8 +1,8 @@
 package viper.silver.plugin
 
 import fastparse.noApi
-import viper.silver.ast
-import viper.silver.ast.ExtMember
+import viper.silver.ast._
+import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.FastParser._
 import viper.silver.parser.{PFunction, PosParser, _}
 
@@ -17,7 +17,7 @@ object trialplugin  extends PosParser[Char, String] {
   import White._
   import fastparse.noApi._
 
-  case class PDoubleFunction( idndef: PIdnDef,  formalArgs: Seq[PFormalArgDecl], formalArgsSecondary: Seq[PFormalArgDecl],  rettyp: PType,  pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction with PExtender{
+    case class PDoubleFunction( idndef: PIdnDef,  formalArgs: Seq[PFormalArgDecl], formalArgsSecondary: Seq[PFormalArgDecl],  rettyp: PType,  pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction with PMember with PExtender{
     override def getsubnodes(): Seq[PNode] ={
       Seq(this.idndef) ++ this.formalArgs ++ this.formalArgsSecondary ++ Seq(this.rettyp) ++ this.pres ++ this.posts ++ this.body
     }
@@ -39,68 +39,58 @@ object trialplugin  extends PosParser[Char, String] {
       return Some("Argument List size mismatch")
     }
 
-    override def translate(t: Translator): ExtMember = this match{
+    override def translateMem(t: Translator): ExtMember = this match{
       case PDoubleFunction(name,formalArgs,formalArgsSecondary,_,pres,posts, body) =>
-      val func1: ast.Function = t.getMembers()(idndef.asInstanceOf[PIdentifier].name).asInstanceOf[ast.Function]
-      val ff: ast.Function = func1.copy(pres = pres map t.exp, posts = posts map t.exp, body = body map t.exp)(func1.pos, func1.info, func1.errT)
-      ff.asInstanceOf[ExtMember]
+      val func1 = t.getMembers()(idndef.name).asInstanceOf[DoubleFunction]
+      val ff = func1.copy(pres = pres map t.exp, posts = posts map t.exp, body = body map t.exp)(func1.pos, func1.info, func1.errT)
+
+        ff
+    }
+
+    override def translateMemSignature(t: Translator): ExtMember = {
+      DoubleFunction(this.idndef.name, this.formalArgs map t.liftVarDecl, this.formalArgsSecondary map t.liftVarDecl, t.ttyp(this.rettyp), null, null, null)()
     }
   }
 
-  case class PStrDef(idndef: PIdnDef, value: String) extends PExp with PExtender {
-    override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
+  case class DoubleFunction(name: String, formalArgs: Seq[LocalVarDecl], formalArgsSecondary: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtMember {
+    override def extensionsubnodes: Seq[Node] = {
+      formalArgs ++ formalArgsSecondary ++ pres ++ posts
+    }
 
-    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
+    override val scopedDecls: Seq[Declaration] = formalArgs ++ formalArgsSecondary
   }
 
-  case class PDoubleCall(dfunc: PIdnUse, argList1: Seq[PExp], argList2: Seq[PExp]) extends POpApp with PExtender with PExp with PLocationAccess {
+  case class DoubleCall(funcname: String, argList1: Seq[Exp], argList2: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp{
+    override def extensionIsPure: Boolean = {
+      true
+    }
+
+    override def extensionSubnodes: Seq[Node] = {
+      argList1 ++ argList2
+    }
+
+    override def prettyPrint: PrettyPrintPrimitives#Cont = ???
+    override def typ: Type = ???
+  }
+
+  case class PDoubleCall(dfunc: PIdnUse, argList1: Seq[PExp], argList2: Seq[PExp]) extends POpApp with PExp with PExtender with PLocationAccess {
 //        override def typeSubstitutions: Seq[PTypeSubstitution] = ???
     override def args: Seq[PExp] = argList1 ++ argList2
     override def opName: String = dfunc.name
-    override def idndef: PIdnDef = dfunc.name
     override val idnuse = dfunc
-    override def signatures = if (function!=null&& function.formalArgs.size == argList1.size && function.formalArgsSecondary.size == argList2.size) function match{
-      case pf:PDoubleFunction => {
+    override def signatures = if (function!=null&& function.formalArgs.size == argList1.size && function.formalArgsSecondary.size == argList2.size) function match {
+      case pf: PDoubleFunction => {
         List(
-        new PTypeSubstitution(argList1.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) ++ argList2.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgsSecondary(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
-      )}
-    }
-      else if(extfunction!=null && extfunction.formalArgs.size == args.size)( extfunction match{
-        case ppa: PPredicate => List(
-          new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> TypeHelper.Bool))
+          new PTypeSubstitution(argList1.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) ++ argList2.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgsSecondary(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
         )
-      })
+      }
+    }
 
 
     else List() // this case is handled in Resolver.scala (- method check) which generates the appropriate error message
+    override def forceSubstitution(ots: PTypeSubstitution) = ???
 
     var function : PDoubleFunction = null
-    var extfunction : PPredicate = null
-    override def extraLocalTypeVariables = _extraLocalTypeVariables
-    var _extraLocalTypeVariables : Set[PDomainType] = Set()
-    var domainTypeRenaming : Option[PTypeRenaming] = None
-    def isDomainFunction = domainTypeRenaming.isDefined
-    var domainSubstitution : Option[PTypeSubstitution] = None
-    override def forceSubstitution(ots: PTypeSubstitution) = {
-      val ts = domainTypeRenaming match {
-        case Some(dtr) =>
-          val s3 = PTypeSubstitution(dtr.mm.map(kv => kv._1 -> (ots.get(kv._2) match {
-            case Some(pt) => pt
-            case None => PTypeSubstitution.defaultType
-          })))
-          assert(s3.m.keySet==dtr.mm.keySet)
-          assert(s3.m.forall(_._2.isGround))
-          domainSubstitution = Some(s3)
-          dtr.mm.values.foldLeft(ots)(
-            (tss,s)=> if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).get)
-        case _ => ots
-      }
-      super.forceSubstitution(ts)
-      typeSubstitutions.clear(); typeSubstitutions+=ts
-      typ = typ.substitute(ts)
-      assert(typ.isGround)
-      args.foreach(_.forceSubstitution(ts))
-    }
 
     override def getsubnodes(): Seq[PNode] = {
       Seq(this.dfunc) ++ argList1 ++ argList2
@@ -136,18 +126,26 @@ object trialplugin  extends PosParser[Char, String] {
 
     }
 
+    override def translateExp(t: Translator): ExtensionExp = {
+      DoubleCall(this.dfunc.name,argList1 map t.exp, argList2 map t.exp)()
+    }
+
   }
 
-
-
-
   lazy val functionDecl2: noApi.P[PFunction] = P("function" ~/ (functionDeclWithArg | functionDeclNoArg))
+
 
   lazy val functionDeclWithArg: noApi.P[PFunction] = P(idndef ~ "(" ~ formalArgList ~ ")" ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
           post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, g, c, d, e, f) => PFunction(a, b, c, d, e, f) }
 
   lazy val functionDeclNoArg: noApi.P[PFunction] = P(idndef ~ ":" ~ typ ~ pre.rep ~
     post.rep ~ ("{" ~ exp ~ "}").?).map { case (a,  c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }
+
+  case class PStrDef(idndef: PIdnDef, value: String) extends PExtensionExp {
+    override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
+
+    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
+  }
 
 
   lazy val doubleFunctionDecl: noApi.P[PDoubleFunction] = P(keyword("dfunction") ~/ idndef ~ "(" ~ formalArgList ~ ")"~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~

@@ -156,6 +156,7 @@ object FastParser extends PosParser[Char, String] {
           column = pos.column
         }
         ParseError(msg, SourcePosition(_file, line, column))
+      case _:Throwable =>
     }
   }
 

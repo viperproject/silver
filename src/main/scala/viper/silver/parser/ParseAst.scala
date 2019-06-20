@@ -10,7 +10,7 @@ import scala.collection.{GenTraversable, Set}
 import scala.language.implicitConversions
 import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
-import viper.silver.ast.{ExtMember, MagicWandOp}
+import viper.silver.ast.{ExtMember, ExtensionExp, ExtensionStmt, MagicWandOp}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
@@ -1033,7 +1033,7 @@ abstract class PErrorEntity(name: String) extends PEntity
 
 
 // a member (like method or axiom) that is its own name scope
-sealed trait PMember extends PDeclaration with PScope {
+trait PMember extends PDeclaration with PScope {
 //  def idndef: PIdnDef
 }
 
@@ -1092,14 +1092,32 @@ case class PMultipleEntity() extends PErrorEntity("multiple")
 case class PUnknownEntity() extends PErrorEntity("unknown")
 
 
-trait PExtender extends PNode with PMember/* with PMember with PGlobalDeclaration with PAnyFunction with PExp*/{
+trait PExtender extends PNode/* with PMember with PGlobalDeclaration with PAnyFunction with PExp*/{
   def getsubnodes():Seq[PNode] = ???
   def typecheck(t: TypeChecker, n: NameAnalyser):Option[String] = ???
   def namecheck(n: NameAnalyser) = ???
-  def translate(t: Translator): ExtMember = ???
+  def translateMemSignature(t: Translator): ExtMember = ???
+  def translateMem(t: Translator): ExtMember = ???
+
+  def translateStmt(t: Translator): ExtensionStmt = ???
+  def translateExp(t: Translator): ExtensionExp = ???
 }
 
-abstract class PStmtExtender extends PStmt
+trait PExtensionStmt extends PNode with PStmt
+{
+  def getsubnodes():Seq[PNode] = ???
+  def typecheck(t: TypeChecker, n: NameAnalyser):Option[String] = ???
+  def namecheck(n: NameAnalyser) = ???
+}
+
+trait PExtensionExp extends PNode with PExp
+{
+  def getsubnodes():Seq[PNode] = ???
+  def typecheck(t: TypeChecker, n: NameAnalyser):Option[String] = ???
+  def namecheck(n: NameAnalyser) = ???
+
+}
+
 
 /**
  * Utility methods for parser parserAST nodes.

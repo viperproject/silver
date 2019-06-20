@@ -39,10 +39,10 @@ case class Translator(program: PProgram) {
         val functions = pfunctions map translate
         val predicates = ppredicates map translate
         val methods = pmethods map translate
-        val extensions = pextensions map translate
+        val extensions = (pextensions map translate).asInstanceOf[Seq[Function]]
 
 
-        val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods, extensions)(program))
+        val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions ++ extensions, predicates, methods, Seq())(program))
 
         finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)}
         finalProgram.deepCollect {case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)}
@@ -53,7 +53,7 @@ case class Translator(program: PProgram) {
   }
 
   private def translate(t: PExtender): ExtMember = {
-    t.translate(this)
+    t.translateMem(this)
   }
 
   private def translate(m: PMethod): Method = m match {
@@ -133,6 +133,7 @@ case class Translator(program: PProgram) {
         Predicate(name, formalArgs map liftVarDecl, null)(pos)
       case PMethod(_, formalArgs, formalReturns, _, _, _) =>
         Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null)(pos)
+      case t: PExtender => t.translateMemSignature(this)
     }
     members.put(p.idndef.name, t)
   }
@@ -215,7 +216,7 @@ case class Translator(program: PProgram) {
         Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss).asInstanceOf[Seqn])(pos)
       case PWhile(cond, invs, body) =>
         While(exp(cond), invs map exp, stmt(body).asInstanceOf[Seqn])(pos)
-      case t: PExtender =>   t.translate(this).asInstanceOf[ExtensionStmt]
+      case t: PExtender =>   t.translateStmt(this)
       case _: PDefine | _: PSkip =>
         sys.error(s"Found unexpected intermediate statement $s (${s.getClass.getName}})")
     }
@@ -475,7 +476,7 @@ case class Translator(program: PProgram) {
         EmptyMultiset(ttyp(pexp.typ.asInstanceOf[PMultisetType].elementType))(pos)
       case PExplicitMultiset(elems) =>
         ExplicitMultiset(elems map exp)(pos)
-      case t: PExtender => t.translate(this).asInstanceOf[ExtensionExp]
+      case t: PExtender => t.translateExp(this)
     }
   }
 
@@ -490,11 +491,11 @@ case class Translator(program: PProgram) {
   }
 
   /** Takes a `PFormalArgDecl` and turns it into a `LocalVar`. */
-  private def liftVarDecl(formal: PFormalArgDecl) =
+  def liftVarDecl(formal: PFormalArgDecl) =
     LocalVarDecl(formal.idndef.name, ttyp(formal.typ))(formal.idndef)
 
   /** Takes a `PType` and turns it into a `Type`. */
-  private def ttyp(t: PType): Type = t match {
+  def ttyp(t: PType): Type = t match {
     case PPrimitiv(name) => name match {
       case "Int" => Int
       case "Bool" => Bool
