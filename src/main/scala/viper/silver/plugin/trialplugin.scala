@@ -5,6 +5,7 @@ import viper.silver.ast._
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.FastParser._
 import viper.silver.parser.{PFunction, PosParser, _}
+import viper.silver.verifier.ParseReport
 
 import scala.collection.Set
 
@@ -17,7 +18,7 @@ object trialplugin  extends PosParser[Char, String] {
   import White._
   import fastparse.noApi._
 
-    case class PDoubleFunction( idndef: PIdnDef,  formalArgs: Seq[PFormalArgDecl], formalArgsSecondary: Seq[PFormalArgDecl],  rettyp: PType,  pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction with PMember with PExtender{
+  case class PDoubleFunction( idndef: PIdnDef,  formalArgs: Seq[PFormalArgDecl], formalArgsSecondary: Seq[PFormalArgDecl],  rettyp: PType,  pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction with PMember with PExtender{
     override def getsubnodes(): Seq[PNode] ={
       Seq(this.idndef) ++ this.formalArgs ++ this.formalArgsSecondary ++ Seq(this.rettyp) ++ this.pres ++ this.posts ++ this.body
     }
@@ -70,7 +71,7 @@ object trialplugin  extends PosParser[Char, String] {
     }
 
     override def prettyPrint: PrettyPrintPrimitives#Cont = ???
-    override def typ: Type = ???
+    override def typ: Type = Translator( PProgram(Seq(),Seq(),Seq(),Seq(),Seq(),Seq(),Seq(),Seq[PExtender](),Seq[ParseReport]()) ).ttyp(PBoolLit(true).typ)
   }
 
   case class PDoubleCall(dfunc: PIdnUse, argList1: Seq[PExp], argList2: Seq[PExp]) extends POpApp with PExp with PExtender with PLocationAccess {

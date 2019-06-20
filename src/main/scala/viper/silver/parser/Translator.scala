@@ -6,12 +6,12 @@
 
 package viper.silver.parser
 
-import scala.language.implicitConversions
-import viper.silver.ast._
-import viper.silver.ast.utility._
 import viper.silver.FastMessaging
-import viper.silver.ast.SourcePosition
-import util.parsing.input.NoPosition
+import viper.silver.ast.{SourcePosition, _}
+import viper.silver.ast.utility._
+
+import scala.language.implicitConversions
+import scala.util.parsing.input.NoPosition
 
 /**
  * Takes an abstract syntax tree after parsing is done and translates it into
@@ -32,17 +32,18 @@ case class Translator(program: PProgram) {
     program match {
       case PProgram(_, _, pdomains, pfields, pfunctions, ppredicates, pmethods, pextensions, _) =>
         (pdomains ++ pfields ++ pfunctions ++ ppredicates ++
-            pmethods ++ pextensions ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
+            pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
+        pextensions foreach translateMemberSignature
 
         val domain = pdomains map translate
         val fields = pfields map translate
         val functions = pfunctions map translate
         val predicates = ppredicates map translate
         val methods = pmethods map translate
-        val extensions = (pextensions map translate).asInstanceOf[Seq[Function]]
+        val extensions = (pextensions map translate)//.asInstanceOf[Seq[Function]]
 
 
-        val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions ++ extensions, predicates, methods, Seq())(program))
+        val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods, extensions)(program))
 
         finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)}
         finalProgram.deepCollect {case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)}
@@ -133,9 +134,17 @@ case class Translator(program: PProgram) {
         Predicate(name, formalArgs map liftVarDecl, null)(pos)
       case PMethod(_, formalArgs, formalReturns, _, _, _) =>
         Method(name, formalArgs map liftVarDecl, formalReturns map liftVarDecl, null, null, null)(pos)
-      case t: PExtender => t.translateMemSignature(this)
     }
     members.put(p.idndef.name, t)
+  }
+
+  private def translateMemberSignature(p: PExtender): Unit ={
+    val pos = p
+    val t = p match {
+      case t: PMember =>
+        val l = p.translateMemSignature(this)
+        members.put(t.idndef.name, l)
+    }
   }
 
   // helper methods that can be called if one knows what 'id' refers to
