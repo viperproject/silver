@@ -27,17 +27,17 @@ object trialplugin  extends PosParser[Char, String] {
     /**
       * Must return a FastMessaging.message type variable
       */
-
-    override def typecheck(typechecker:TypeChecker, names: NameAnalyser): Option[String] = {
+    var classname = "PDoubleFunction"
+    override def typecheck(typechecker:TypeChecker, names: NameAnalyser): Option[Seq[String]] = {
       if (formalArgs.size == formalArgsSecondary.size){
         for(i <- 0 until formalArgs.size) {
           if (formalArgsSecondary(i).typ != formalArgs(i).typ){
-            return Some(s"Type mismatch at index = $i")
+            return Some(Seq(s"$classname Type mismatch at index = $i"))
           }
         }
         return None
       }
-      return Some("Argument List size mismatch")
+      return Some(Seq(s"$classname Argument List size mismatch"))
     }
 
     override def translateMem(t: Translator): ExtMember = this match{
@@ -58,6 +58,8 @@ object trialplugin  extends PosParser[Char, String] {
       formalArgs ++ formalArgsSecondary ++ pres ++ posts
     }
 
+    override def toString(): String = ""
+
     override val scopedDecls: Seq[Declaration] = formalArgs ++ formalArgsSecondary
   }
 
@@ -66,11 +68,24 @@ object trialplugin  extends PosParser[Char, String] {
       true
     }
 
+    var name = "DoubleCall"
+
+    override def verifyExtExp(): viper.silver.verifier.VerificationResult ={
+      viper.silicon.interfaces.Success()
+    }
+
+    override def toString(): String = "DoubleCall"
+
     override def extensionSubnodes: Seq[Node] = {
       argList1 ++ argList2
     }
 
     override def prettyPrint: PrettyPrintPrimitives#Cont = ???
+
+    /**
+      * override def typ: Type = Type(Bool)
+      * @return
+      */
     override def typ: Type = Translator( PProgram(Seq(),Seq(),Seq(),Seq(),Seq(),Seq(),Seq(),Seq[PExtender](),Seq[ParseReport]()) ).ttyp(PBoolLit(true).typ)
   }
 
@@ -79,6 +94,7 @@ object trialplugin  extends PosParser[Char, String] {
     override def args: Seq[PExp] = argList1 ++ argList2
     override def opName: String = dfunc.name
     override val idnuse = dfunc
+    var classname = "PDoublecall"
     override def signatures = if (function!=null&& function.formalArgs.size == argList1.size && function.formalArgsSecondary.size == argList2.size) function match {
       case pf: PDoubleFunction => {
         List(
@@ -97,26 +113,25 @@ object trialplugin  extends PosParser[Char, String] {
       Seq(this.dfunc) ++ argList1 ++ argList2
     }
 
-    override def typecheck(t: TypeChecker, names: NameAnalyser): Option[String] = {
+    override def typecheck(t: TypeChecker, names: NameAnalyser): Option[Seq[String]] = {
       val af = names.definition(t.curMember)(dfunc)
       af match {
         case ad: PDoubleFunction => {
-          print(ad.typ)
           if (ad.formalArgs.size != argList1.size)
-            return Some("Arg List 1 are of incorrect sizes")
+            return Some(Seq(s"$classname Arg List 1 are of incorrect sizes"))
           else {
             for (i <- 0 until argList1.size) {
               if (argList1(i).typ != ad.formalArgs(i).typ)
-                return Some(s"Type error in ArgList1 at index=$i")
+                return Some(Seq(s"Type error in ArgList1 at index=$i"))
             }
           }
 
           if (ad.formalArgsSecondary.size != argList2.size)
-            return Some("Arg List 1 are of incorrect sizes")
+            return Some(Seq(s"$classname Arg List 1 are of incorrect sizes"))
           else {
             for (i <- 0 until argList2.size) {
               if (argList2(i).typ != ad.formalArgsSecondary(i).typ)
-                return Some(s"Type error in ArgList2 at index=$i")
+                return Some(Seq(s"$classname Type error in ArgList2 at index=$i"))
             }
           }
 

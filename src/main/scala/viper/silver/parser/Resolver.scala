@@ -263,7 +263,8 @@ case class TypeChecker(names: NameAnalyser) {
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
       case t:PExtender => t.typecheck(this, names) match {
-        case Some(message) => messages ++= FastMessaging.message(t, message)
+        case Some(message_list) =>
+          message_list foreach ( message => messages ++= FastMessaging.message(t, message))
         case _ =>
       }
       case _: PSkip =>
@@ -459,7 +460,8 @@ case class TypeChecker(names: NameAnalyser) {
 
   def check(exp: PExp, expected: PType) = exp match {
     case t: PExtender => t.typecheck(this, names) match{
-      case Some(message) => messages ++= FastMessaging.message(t, message)
+      case Some(message_list) =>
+        message_list foreach ( message => messages ++= FastMessaging.message(t, message))
       case _ =>
     }
     case _ => checkTopTyped(exp, Some(expected))}
@@ -718,7 +720,8 @@ case class TypeChecker(names: NameAnalyser) {
 
   def checkExtension(e: PExtender): Unit ={
     e.typecheck(this, names) match {
-      case Some(message) => messages ++= FastMessaging.message(e,message)
+      case Some(message_list) =>
+        message_list foreach ( message => messages ++= FastMessaging.message(e, message))
       case None =>
     }
   }

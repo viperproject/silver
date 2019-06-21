@@ -40,7 +40,7 @@ case class Translator(program: PProgram) {
         val functions = pfunctions map translate
         val predicates = ppredicates map translate
         val methods = pmethods map translate
-        val extensions = (pextensions map translate)//.asInstanceOf[Seq[Function]]
+        val extensions = (pextensions map translate)
 
 
         val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods, extensions)(program))

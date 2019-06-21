@@ -1094,7 +1094,7 @@ case class PUnknownEntity() extends PErrorEntity("unknown")
 
 trait PExtender extends PNode{
   def getsubnodes():Seq[PNode] = ???
-  def typecheck(t: TypeChecker, n: NameAnalyser):Option[String] = ???
+  def typecheck(t: TypeChecker, n: NameAnalyser):Option[Seq[String]] = ???
   def namecheck(n: NameAnalyser) = ???
   def translateMemSignature(t: Translator): ExtMember = ???
   def translateMem(t: Translator): ExtMember = ???

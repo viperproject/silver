@@ -239,13 +239,15 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 
   override def verification() = {
     if (state == DefaultStates.ConsistencyCheck && _errors.isEmpty) {
+
       _verificationResult = Some(mapVerificationResult(_verifier.get.verify(_program.get)))
       assert(_verificationResult.isDefined)
       _state = DefaultStates.Verification
     }
   }
 
-  override def result: VerificationResult = {
+  override def result: VerificationResult = {          _errors ++= errors
+
     if (_errors.isEmpty) {
       require(state >= DefaultStates.Verification)
       _verificationResult.get
