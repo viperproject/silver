@@ -1040,7 +1040,7 @@ object FastParser extends PosParser[Char, String] {
     case (cond, invs, body) => PWhile(cond, invs, body)
   }
 
-  lazy val inv: P[PExp] = P(keyword("invariant") ~ exp ~ ";".?)
+  lazy val inv: P[PExp] = P((keyword("invariant") ~ exp ~ ";".?) | trialplugin.specification)
 
   lazy val varDecl: P[PLocalVarDecl] = P(keyword("var") ~/ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map { case (a, b, c) => PLocalVarDecl(a, b, c) }
 
@@ -1135,9 +1135,9 @@ object FastParser extends PosParser[Char, String] {
     post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f) => PFunction(a, b, c, d, e, f) }
 
 
-  lazy val pre: P[PExp] = P("requires" ~/ exp ~ ";".?)
+  lazy val pre: P[PExp] = P(("requires" ~/ exp ~ ";".?) | trialplugin.specification)
 
-  lazy val post: P[PExp] = P("ensures" ~/ exp ~ ";".?)
+  lazy val post: P[PExp] = P(("ensures" ~/ exp ~ ";".?)| trialplugin.specification)
 
   lazy val decCl: P[Seq[PExp]] = P(exp.rep(sep = ","))
 

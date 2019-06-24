@@ -198,12 +198,17 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
    /*
     * The newStmt parser wich is essentially an extension of the stmt rules in the new parser.
     */
-  lazy val newStmt = P(block)
+  lazy val newStmt = P("").map {case () => "".asInstanceOf[PStmt]}
    /*
     * THe newExp rule provides an extension to the expression parsers.
     */
   lazy val newExp = P(dfapp)
 
+  /*
+   * The specification rule, though equivalent to an expression is used to extend the type of specifications
+   * that are possible.
+   */
+  lazy val specification: noApi.P[PExp] = P("").map { case() => "".asInstanceOf[PExp]}
    /*
     * The extended Keywords is a set of the strings which consitute the set of keywirds but are not a part of the base keyword set.
     */
