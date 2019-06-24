@@ -4,13 +4,16 @@ import fastparse.noApi
 import viper.silver.ast._
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.FastParser._
-import viper.silver.parser.{PFunction, PosParser, _}
-import viper.silver.verifier.ParseReport
+import viper.silver.parser.{PFunction, _}
 
 import scala.collection.Set
 
-object trialplugin  extends PosParser[Char, String] {
+object trialplugin  /*extends PosParser[Char, String]*/ {
 
+   /*
+    * The import statements that instantiate the PWhiteSpaceApi class and then import the overloaded sequencing operators
+    * of the "fastparse" library.
+    */
   val White = PWrapper {
       import fastparse.all._
       NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
@@ -18,16 +21,25 @@ object trialplugin  extends PosParser[Char, String] {
   import White._
   import fastparse.noApi._
 
+   /*
+    * The high level function that overloads the existing PExtender class with the PAnyFunction  and PMember traits to get a new function declaration.
+    */
   case class PDoubleFunction( idndef: PIdnDef,  formalArgs: Seq[PFormalArgDecl], formalArgsSecondary: Seq[PFormalArgDecl],  rettyp: PType,  pres: Seq[PExp], posts: Seq[PExp], body: Option[PExp]) extends PAnyFunction with PMember with PExtender{
+    var classname = "PDoubleFunction"
+
+     /*
+      * The support function for the NameAnalyser phase. Not implemented by G Rahul Kranti Kiran.
+      * These function were already used in the NameAnalyser in general and not just for the sake of the plugin
+      * implementation.
+      */
     override def getsubnodes(): Seq[PNode] ={
       Seq(this.idndef) ++ this.formalArgs ++ this.formalArgsSecondary ++ Seq(this.rettyp) ++ this.pres ++ this.posts ++ this.body
     }
-    override def typ: PType = PPrimitiv("Bool")
 
-    /**
-      * Must return a FastMessaging.message type variable
+     /*
+      * The hook implementation for the typechecker part of the semantic analyser.
+      * Must return a FastMessaging.message type variable.
       */
-    var classname = "PDoubleFunction"
     override def typecheck(typechecker:TypeChecker, names: NameAnalyser): Option[Seq[String]] = {
       if (formalArgs.size == formalArgsSecondary.size){
         for(i <- 0 until formalArgs.size) {
@@ -39,7 +51,11 @@ object trialplugin  extends PosParser[Char, String] {
       }
       return Some(Seq(s"$classname Argument List size mismatch"))
     }
+    override def typ: PType = PPrimitiv("Bool")
 
+     /*
+      * The support functions for the translation phase.
+      */
     override def translateMem(t: Translator): ExtMember = this match{
       case PDoubleFunction(name,formalArgs,formalArgsSecondary,_,pres,posts, body) =>
       val func1 = t.getMembers()(idndef.name).asInstanceOf[DoubleFunction]
@@ -53,48 +69,19 @@ object trialplugin  extends PosParser[Char, String] {
     }
   }
 
-  case class DoubleFunction(name: String, formalArgs: Seq[LocalVarDecl], formalArgsSecondary: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtMember {
-    override def extensionsubnodes: Seq[Node] = {
-      formalArgs ++ formalArgsSecondary ++ pres ++ posts
-    }
-
-    override def toString(): String = ""
-
-    override val scopedDecls: Seq[Declaration] = formalArgs ++ formalArgsSecondary
-  }
-
-  case class DoubleCall(funcname: String, argList1: Seq[Exp], argList2: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp{
-    override def extensionIsPure: Boolean = {
-      true
-    }
-
-    var name = "DoubleCall"
-
-    override def verifyExtExp(): viper.silver.verifier.VerificationResult ={
-      viper.silicon.interfaces.Success()
-    }
-
-    override def toString(): String = "DoubleCall"
-
-    override def extensionSubnodes: Seq[Node] = {
-      argList1 ++ argList2
-    }
-
-    override def prettyPrint: PrettyPrintPrimitives#Cont = ???
-
-    /**
-      * override def typ: Type = Type(Bool)
-      * @return
-      */
-    override def typ: Type = Translator( PProgram(Seq(),Seq(),Seq(),Seq(),Seq(),Seq(),Seq(),Seq[PExtender](),Seq[ParseReport]()) ).ttyp(PBoolLit(true).typ)
-  }
-
+   /*
+    * The PDoubleCall function that constitutes the ParseAst Node for the expressions that call the Double function type.
+    */
   case class PDoubleCall(dfunc: PIdnUse, argList1: Seq[PExp], argList2: Seq[PExp]) extends POpApp with PExp with PExtender with PLocationAccess {
-//        override def typeSubstitutions: Seq[PTypeSubstitution] = ???
+
+    var classname = "PDoublecall"
+    override val idnuse = dfunc
+
+     /*
+      * The support functions for the nameanalyser phase.
+      */
     override def args: Seq[PExp] = argList1 ++ argList2
     override def opName: String = dfunc.name
-    override val idnuse = dfunc
-    var classname = "PDoublecall"
     override def signatures = if (function!=null&& function.formalArgs.size == argList1.size && function.formalArgsSecondary.size == argList2.size) function match {
       case pf: PDoubleFunction => {
         List(
@@ -102,8 +89,6 @@ object trialplugin  extends PosParser[Char, String] {
         )
       }
     }
-
-
     else List() // this case is handled in Resolver.scala (- method check) which generates the appropriate error message
     override def forceSubstitution(ots: PTypeSubstitution) = ???
 
@@ -113,6 +98,9 @@ object trialplugin  extends PosParser[Char, String] {
       Seq(this.dfunc) ++ argList1 ++ argList2
     }
 
+     /*
+      * The hook implementation for the typechecker part of the Sematic Analysis phase.
+      */
     override def typecheck(t: TypeChecker, names: NameAnalyser): Option[Seq[String]] = {
       val af = names.definition(t.curMember)(dfunc)
       af match {
@@ -142,44 +130,102 @@ object trialplugin  extends PosParser[Char, String] {
 
     }
 
+     /*
+      * The tranlator for this PNode
+      */
     override def translateExp(t: Translator): ExtensionExp = {
       DoubleCall(this.dfunc.name,argList1 map t.exp, argList2 map t.exp)()
     }
 
   }
 
-  lazy val functionDecl2: noApi.P[PFunction] = P("function" ~/ (functionDeclWithArg | functionDeclNoArg))
+   /*
+    * The Ast Node for the declaration of the function with two parameter lists.
+    * This is the translation result of the PDoubleFunction node.
+    */
+  case class DoubleFunction(name: String, formalArgs: Seq[LocalVarDecl], formalArgsSecondary: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtMember {
+     /*
+      * Function necessary for the consistency check. Not implemented by G Rahul Kranti Kiran.
+      */
+    override def extensionsubnodes: Seq[Node] = {
+      formalArgs ++ formalArgsSecondary ++ pres ++ posts
+    }
+    override def toString(): String = ""
 
+    override val scopedDecls: Seq[Declaration] = formalArgs ++ formalArgsSecondary
+  }
 
-  lazy val functionDeclWithArg: noApi.P[PFunction] = P(idndef ~ "(" ~ formalArgList ~ ")" ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-          post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, g, c, d, e, f) => PFunction(a, b, c, d, e, f) }
+   /*
+    * The Ast Node for the representation of the expression which call the function with two parameter lists.
+    * This is the translation result of the PDoubleCall node of the ParseAst.
+    */
+  case class DoubleCall(funcname: String, argList1: Seq[Exp], argList2: Seq[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp{
+     /*
+      * The functions necessary for the consistency check in the Translation phase.
+      */
+    override def extensionIsPure: Boolean = {
+      true
+    }
+    override def toString(): String = "DoubleCall"
+    override def extensionSubnodes: Seq[Node] = {
+      argList1 ++ argList2
+    }
+    override def prettyPrint: PrettyPrintPrimitives#Cont = ???
+     /*
+      * override def typ: Type = Type(Bool)
+      */
+    override def typ: Type = Translator( PProgram(Seq(),Seq(),Seq(),Seq(),Seq(),Seq(),Seq(),Seq(),Seq()) ).ttyp(PBoolLit(true).typ)
 
-  lazy val functionDeclNoArg: noApi.P[PFunction] = P(idndef ~ ":" ~ typ ~ pre.rep ~
-    post.rep ~ ("{" ~ exp ~ "}").?).map { case (a,  c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }
-
-  case class PStrDef(idndef: PIdnDef, value: String) extends PExtensionExp {
-    override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
-
-    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
+     /*
+      * The functions that define the hook in the verifier(At the moment, only in Silicon).
+      * Incomplete hook and has to be removed in viper.silicon.rules.evaluator.eval2()
+      * for the successful compilation.
+      */
+    override def verifyExtExp(): viper.silver.verifier.VerificationResult = ???
   }
 
 
-  lazy val doubleFunctionDecl: noApi.P[PDoubleFunction] = P(keyword("dfunction") ~/ idndef ~ "(" ~ formalArgList ~ ")"~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-    post.rep ~ ("{" ~ exp ~ "}").?).map{case (a, b, c, d, e, f, g) => PDoubleFunction(a, b, c, d, e, f, g)}
+   /*
+    * The parser rules, which extend the actual parser.
+    */
 
-  lazy val stringtyp: noApi.P[PType] = P("String" ~~ !identContinues).!.map(PPrimitiv)
-
+   /*
+    * The high level declarations which provide a hook for any type of independent declarations like new function or new predicates etc.
+    */
   lazy val newDecl = P(doubleFunctionDecl)
 
-  lazy val stringDef: noApi.P[PStrDef] = P(stringtyp ~/ idndef ~ ":=" ~ "\"" ~ (AnyChar.rep).! ~ "\"").map{case(_, b,c) => PStrDef(b, c)}
+
+   /*
+    * The newStmt parser wich is essentially an extension of the stmt rules in the new parser.
+    */
+  lazy val newStmt = P(block)
+   /*
+    * THe newExp rule provides an extension to the expression parsers.
+    */
+  lazy val newExp = P(dfapp)
+
+   /*
+    * The extended Keywords is a set of the strings which consitute the set of keywirds but are not a part of the base keyword set.
+    */
+  lazy val extendedKeywords = Set[String]("dfunction", "DFCall")
+
+
+  lazy val functionDecl2: noApi.P[PFunction] = P("function" ~/ (functionDeclWithArg | functionDeclNoArg))
+
+  lazy val functionDeclWithArg: noApi.P[PFunction] = P(idndef ~ "(" ~ formalArgList ~ ")" ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
+  post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, g, c, d, e, f) => PFunction(a, b, c, d, e, f) }
+
+
+  lazy val functionDeclNoArg: noApi.P[PFunction] = P(idndef ~ ":" ~ typ ~ pre.rep ~
+  post.rep ~ ("{" ~ exp ~ "}").?).map { case (a,  c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }
+
+
+  lazy val doubleFunctionDecl: noApi.P[PDoubleFunction] = P(keyword("dfunction") ~/ idndef ~ "(" ~ formalArgList ~ ")"~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
+  post.rep ~ ("{" ~ exp ~ "}").?).map{case (a, b, c, d, e, f, g) => PDoubleFunction(a, b, c, d, e, f, g)}
+
 
   lazy val dfapp: noApi.P[PDoubleCall] = P(keyword("DFCall") ~ idnuse ~ parens(actualArgList) ~ parens(actualArgList)).map {case (a,b,c) => PDoubleCall(a,b,c)}
 
-  // This newStmt extension is not yet used
-  lazy val newStmt = P(block)
-  lazy val newExp = P(stringDef | dfapp)
-
-  lazy val extendedKeywords = Set[String]("dfunction", "DFCall")
 
 
 }
