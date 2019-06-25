@@ -185,6 +185,15 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
   }
 
 
+//  case class PDecreases(params: Seq[PIdnUse]) extends PExtender with PExp{
+//    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
+//    override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
+//    override def getsubnodes(): Seq[PNode] = params
+//
+//    override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+//      None
+//    }
+//  }
    /*
     * The parser rules, which extend the actual parser.
     */
@@ -208,7 +217,9 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
    * The specification rule, though equivalent to an expression is used to extend the type of specifications
    * that are possible.
    */
-  lazy val specification: noApi.P[PExp] = P("").map { case() => "".asInstanceOf[PExp]}
+  lazy val preSpecification: noApi.P[PExp] = P("").map { case() => "".asInstanceOf[PExp]}
+  lazy val postSpecification: noApi.P[PExp] = P(decreases)
+  lazy val invSpecification: noApi.P[PExp] = P("").map { case() => "".asInstanceOf[PExp]}
    /*
     * The extended Keywords is a set of the strings which consitute the set of keywirds but are not a part of the base keyword set.
     */
@@ -231,6 +242,6 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
 
   lazy val dfapp: noApi.P[PDoubleCall] = P(keyword("DFCall") ~ idnuse ~ parens(actualArgList) ~ parens(actualArgList)).map {case (a,b,c) => PDoubleCall(a,b,c)}
 
-
+  lazy val decreases: noApi.P[PExp] = P("decreases" ~/ idnuse.rep).map{case t:Seq[PIdnUse] => PCall(PIdnUse("decreases"),t)}
 
 }
