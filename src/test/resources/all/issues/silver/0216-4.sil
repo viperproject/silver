@@ -23,5 +23,5 @@ function func1(r: Ref): Bool
     requires vperm(r)
     ensures result
 {
-    let v1 == (unfolding vperm(r)) in r.v in unfolding vperm(r) in v1 == r.v
+    let v1 == unfolding vperm(r) in r.v in unfolding vperm(r) in v1 == r.v
 }

@@ -755,7 +755,7 @@ object FastParser extends PosParser[Char, String] {
     case None => a
   }}.log()
 
-  lazy val trueMagicWandExp: P[PExp] = P((orExp | trueOrExp) ~ ("--*".! ~ trueExp).?).map { case (a, b) => b match {
+  lazy val trueMagicWandExp: P[PExp] = P(( trueOrExp | orExp ) ~ ("--*".! ~ (trueExp | exp) ).?).map { case (a, b) => b match {
     case Some(c) => PMagicWandExp(a, c._2)
     case None => a
   }}.log()
@@ -914,7 +914,7 @@ object FastParser extends PosParser[Char, String] {
     | keyword("epsilon").map(_ => PEpsilon()) | ("perm" ~ parens(resAcc)).map(PCurPerm))
 
   lazy val let: P[PExp] = P(
-    ("let" ~/ idndef ~ "==" ~  exp  ~ "in" ~ exp).map { case (id, exp1, exp2) =>
+    ("let" ~/ idndef ~ "==" ~  (trueExp | exp ) ~ "in" ~ (trueExp | exp )).map { case (id, exp1, exp2) =>
       /* Type unresolvedType is expected to be replaced with the type of exp1
        * after the latter has been resolved
        * */
@@ -955,7 +955,7 @@ object FastParser extends PosParser[Char, String] {
     case (args, res, body) => PForPerm(args, res, body)
   }
 
-  lazy val unfolding: P[PExp] = P(keyword("unfolding") ~/ predicateAccessPred ~ "in" ~ exp).map { case (a, b) => PUnfolding(a, b) }
+  lazy val unfolding: P[PExp] = P(keyword("unfolding") ~/ predicateAccessPred ~ "in" ~ (trueExp | exp)).map { case (a, b) => PUnfolding(a, b) }
 
   lazy val predicateAccessPred: P[PAccPred] = P(accessPred | predAcc.map (
     loc => {
