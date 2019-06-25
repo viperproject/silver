@@ -223,7 +223,7 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
    /*
     * The extended Keywords is a set of the strings which consitute the set of keywirds but are not a part of the base keyword set.
     */
-  lazy val extendedKeywords = Set[String]("dfunction", "DFCall")
+  lazy val extendedKeywords = Set[String]("dfunction", "DFCall", "decreases")
 
 
   lazy val functionDecl2: noApi.P[PFunction] = P("function" ~/ (functionDeclWithArg | functionDeclNoArg))
@@ -242,6 +242,6 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
 
   lazy val dfapp: noApi.P[PDoubleCall] = P(keyword("DFCall") ~ idnuse ~ parens(actualArgList) ~ parens(actualArgList)).map {case (a,b,c) => PDoubleCall(a,b,c)}
 
-  lazy val decreases: noApi.P[PExp] = P("decreases" ~/ idnuse.rep).map{case t:Seq[PIdnUse] => PCall(PIdnUse("decreases"),t)}
+  lazy val decreases: noApi.P[PExp] = P(keyword("decreases") ~/ (exp ~ ",").rep ~ exp).map{case (a,b) => PCall(PIdnUse("decreases"),a ++ Seq(b))}
 
 }
