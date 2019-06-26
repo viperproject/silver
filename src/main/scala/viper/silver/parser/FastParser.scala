@@ -1137,7 +1137,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val pre: P[PExp] = P(("requires" ~/ exp ~ ";".?) | trialplugin.preSpecification)
 
-  lazy val post: P[PExp] = P(("ensures" ~/ exp ~ ";".?)| trialplugin.postSpecification)
+  lazy val post: P[PExp] = P(("ensures" ~/ exp ~ ";".?) | trialplugin.postSpecification)
 
   lazy val decCl: P[Seq[PExp]] = P(exp.rep(sep = ","))
 

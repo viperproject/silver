@@ -217,9 +217,9 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
    * The specification rule, though equivalent to an expression is used to extend the type of specifications
    * that are possible.
    */
-  lazy val preSpecification: noApi.P[PExp] = P("").map { case() => "".asInstanceOf[PExp]}
+  lazy val preSpecification: noApi.P[PExp] = P("preSpecificationExample").map { case() => "".asInstanceOf[PExp]}
   lazy val postSpecification: noApi.P[PExp] = P(decreases)
-  lazy val invSpecification: noApi.P[PExp] = P("").map { case() => "".asInstanceOf[PExp]}
+  lazy val invSpecification: noApi.P[PExp] = P("invariantSpecificationExample").map { case() => "".asInstanceOf[PExp]}
    /*
     * The extended Keywords is a set of the strings which consitute the set of keywirds but are not a part of the base keyword set.
     */
@@ -242,6 +242,6 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
 
   lazy val dfapp: noApi.P[PDoubleCall] = P(keyword("DFCall") ~ idnuse ~ parens(actualArgList) ~ parens(actualArgList)).map {case (a,b,c) => PDoubleCall(a,b,c)}
 
-  lazy val decreases: noApi.P[PExp] = P(keyword("decreases") ~/ (exp ~ ",").rep ~ exp).map{case (a,b) => PCall(PIdnUse("decreases"),a ++ Seq(b))}
+  lazy val decreases: noApi.P[PExp] = P(keyword("decreases") ~/ exp.rep(sep=",")).map{case a => PCall(PIdnUse("decreases"),a, None).asInstanceOf[PExp]}
 
 }

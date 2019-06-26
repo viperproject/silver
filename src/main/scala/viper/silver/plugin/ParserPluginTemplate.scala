@@ -39,15 +39,15 @@ class ParserPluginTemplate {
   /**
     * The specification rule provides an extension to the precondition expressions
     */
-  lazy val preSpecification: noApi.P[PExp] = P("").map{case() => "".asInstanceOf[PExp]}
+  lazy val preSpecification: noApi.P[PExp] = P("preconditionSpecificationExample").map{case() => "".asInstanceOf[PExp]}
   /**
     * The specification rule provides an extension to the postcondition expressions
     */
-  lazy val postSpecification: noApi.P[PExp] = P("").map{case() => "".asInstanceOf[PExp]}
+  lazy val postSpecification: noApi.P[PExp] = P("postconditionSpecificationExample").map{case() => "".asInstanceOf[PExp]}
   /**
     * The specification rule provides an extension to the loop invariant specification expressions
     */
-  lazy val invSpecification: noApi.P[PExp] = P("").map{case() => "".asInstanceOf[PExp]}
+  lazy val invSpecification: noApi.P[PExp] = P("invariantSpecificationExample").map{case() => "".asInstanceOf[PExp]}
 
   case class PExampleDeclaration() extends PExtender{
     // The typechecker for this PAst node
