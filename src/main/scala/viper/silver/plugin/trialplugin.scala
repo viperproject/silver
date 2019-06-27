@@ -4,8 +4,11 @@ import fastparse.noApi
 import viper.silver.ast._
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.FastParser._
-import viper.silver.parser.{PFunction, _}
-
+import viper.silver.parser._
+import viper.silver.ast.pretty.FastPrettyPrinter.{char, parens, ssep, text, toParenDoc}
+import viper.silver.verifier.VerificationResult
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, space, ssep, text, toParenDoc}
+import viper.silver.ast.pretty.PrettyPrintPrimitives
 import scala.collection.Set
 
 object trialplugin  /*extends PosParser[Char, String]*/ {
@@ -185,18 +188,97 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
   }
 
 
-//  case class PDecreases(params: Seq[PIdnUse]) extends PExtender with PExp{
-//    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
-//    override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
-//    override def getsubnodes(): Seq[PNode] = params
-//
-//    override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-//      None
-//    }
-//  }
-   /*
-    * The parser rules, which extend the actual parser.
+  lazy val doubleFunctionDecl: noApi.P[PDoubleFunction] = P(keyword("dfunction") ~/ idndef ~ "(" ~ formalArgList ~ ")"~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
+    post.rep ~ ("{" ~ exp ~ "}").?).map{case (a, b, c, d, e, f, g) => PDoubleFunction(a, b, c, d, e, f, g)}
+
+
+  lazy val dfapp: noApi.P[PDoubleCall] = P(keyword("DFCall") ~ idnuse ~ FastParser.parens(actualArgList) ~ FastParser.parens(actualArgList)).map {case (a,b,c) => PDoubleCall(a,b,c)}
+
+/********************************************************************************************************************
+  * ********************************************************************************************************
+  * ***********************************************Termination Plugin***************************************
+  * ********************************************************************************************************
+  * ******************************************************************************************************************/
+
+  case class PDecreases(params: Seq[PExp]) extends PExtender with PExp{
+    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
+    override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
+    override def getsubnodes(): Seq[PNode] = params
+
+    override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+      params.map{case a => t.checkTopTyped(a,None)}
+      None
+    }
+
+    override def translateExp(t: Translator): ExtensionExp = {
+      val f = DecreasesTuple(params map t.exp)()
+      DecreasesTuple(params map t.exp)(f.extensionSubnodes.head.pos)
+    }
+  }
+
+  case class PDecreasesStar() extends PExtender with PExp{
+    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
+    override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
+    override def getsubnodes(): Seq[PNode] = Nil
+
+    override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+      None
+    }
+
+    override def translateExp(t: Translator): ExtensionExp = {
+      DecreasesStar()()
+    }
+  }
+
+  sealed trait DecreasesExp extends ExtensionExp with Node
+  /**
+    * Expression representing the decreases clause (termination measure).
+    * @param extensionSubnodes Seq of expressions defining the termination measure (lex order)
     */
+  case class DecreasesTuple(extensionSubnodes: Seq[Exp] = Nil)(override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends DecreasesExp {
+    override def verifyExtExp(): VerificationResult = ???
+    override val extensionIsPure = true
+
+    override val typ: Type = Bool
+
+    /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
+      * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
+    override lazy val prettyPrint: PrettyPrintPrimitives#Cont = text("decreases") <> parens(ssep(extensionSubnodes map (toParenDoc(_)), char(',') <> space))
+  }
+
+  /**
+    * Expression representing the decreases star option (possibly non terminating).
+    * No termination checks are done.
+    */
+  case class DecreasesStar()(override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends DecreasesExp{
+    override def verifyExtExp(): VerificationResult = ???
+    override val extensionIsPure: Boolean = true
+
+    override val extensionSubnodes: Seq[Node] = Nil
+
+    override val typ: Type = Bool
+
+    /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
+      * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
+    override lazy val prettyPrint: PrettyPrintPrimitives#Cont = text("decreasesStar")
+
+  }
+
+
+
+  lazy val decreases: noApi.P[PExp] = P("decreasea" ~/ exp.rep(sep=",")).map{case a => PDecreases(a)}
+//  lazy val decreases: noApi.P[PExp] = P("decreasea" ~/ exp.rep(sep=",")).map{case a => PCall(PIdnUse("decreases"),a)}
+
+  lazy val decreasesStar: noApi.P[PExp] = P("decreasesStar").map{_ => PDecreasesStar()}
+
+
+
+
+
+
+  /*
+   * The parser rules, which extend the actual parser.
+   */
 
    /*
     * The high level declarations which provide a hook for any type of independent declarations like new function or new predicates etc.
@@ -205,9 +287,9 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
 
 
    /*
-    * The newStmt parser wich is essentially an extension of the stmt rules in the new parser.
+    * The newStmt parser which is essentially an extension of the stmt rules in the new parser.
     */
-  lazy val newStmt = P("").map {case () => "".asInstanceOf[PStmt]}
+  lazy val newStmt = P("newStmtNotInUse").map {case () => "".asInstanceOf[PStmt]}
    /*
     * THe newExp rule provides an extension to the expression parsers.
     */
@@ -223,25 +305,22 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
    /*
     * The extended Keywords is a set of the strings which consitute the set of keywirds but are not a part of the base keyword set.
     */
-  lazy val extendedKeywords = Set[String]("dfunction", "DFCall", "decreases")
+  lazy val extendedKeywords = Set[String]("dfunction", "DFCall")
 
 
-  lazy val functionDecl2: noApi.P[PFunction] = P("function" ~/ (functionDeclWithArg | functionDeclNoArg))
-
-  lazy val functionDeclWithArg: noApi.P[PFunction] = P(idndef ~ "(" ~ formalArgList ~ ")" ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-  post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, g, c, d, e, f) => PFunction(a, b, c, d, e, f) }
 
 
-  lazy val functionDeclNoArg: noApi.P[PFunction] = P(idndef ~ ":" ~ typ ~ pre.rep ~
-  post.rep ~ ("{" ~ exp ~ "}").?).map { case (a,  c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }
 
 
-  lazy val doubleFunctionDecl: noApi.P[PDoubleFunction] = P(keyword("dfunction") ~/ idndef ~ "(" ~ formalArgList ~ ")"~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-  post.rep ~ ("{" ~ exp ~ "}").?).map{case (a, b, c, d, e, f, g) => PDoubleFunction(a, b, c, d, e, f, g)}
+
+  /* Rules not in use right now
+    lazy val functionDecl2: noApi.P[PFunction] = P("function" ~/ (functionDeclWithArg | functionDeclNoArg))
+
+    lazy val functionDeclWithArg: noApi.P[PFunction] = P(idndef ~ "(" ~ formalArgList ~ ")" ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
+    post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, g, c, d, e, f) => PFunction(a, b, c, d, e, f) }
 
 
-  lazy val dfapp: noApi.P[PDoubleCall] = P(keyword("DFCall") ~ idnuse ~ parens(actualArgList) ~ parens(actualArgList)).map {case (a,b,c) => PDoubleCall(a,b,c)}
-
-  lazy val decreases: noApi.P[PExp] = P(keyword("decreases") ~/ exp.rep(sep=",")).map{case a => PCall(PIdnUse("decreases"),a, None).asInstanceOf[PExp]}
-
+    lazy val functionDeclNoArg: noApi.P[PFunction] = P(idndef ~ ":" ~ typ ~ pre.rep ~
+    post.rep ~ ("{" ~ exp ~ "}").?).map { case (a,  c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }
+  */
 }

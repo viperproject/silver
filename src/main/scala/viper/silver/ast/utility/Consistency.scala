@@ -78,7 +78,7 @@ object Consistency {
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
-    "unique")
+    "unique") ++ viper.silver.plugin.trialplugin.extendedKeywords
 
   /** Returns true iff the string `name` is a valid identifier. */
   val identFirstLetter = "[a-zA-Z$_]"
@@ -135,7 +135,6 @@ object Consistency {
      *       i.e. strategies that executed for their side-effects or results, but that don't
      *       modify the visited AST.
      */
-
     var found = false
 
     val findPermissions = ViperStrategy.Ancestor({
@@ -150,9 +149,15 @@ object Consistency {
         mw
     }).traverse(Traverse.Innermost)
 
-    findPermissions.execute[Exp](n)
 
-    !found
+    findPermissions.execute[Exp](n)
+    /*
+    An extremely narrow temporary fix by G Rahul Kranti Kiran for using the termination check plugin
+     */
+    if(n.isInstanceOf[ExtensionExp])
+      true
+    else
+      !found
   }
 
   /** Convenience methods to treat null values as some other default values (e.g treat null as empty List) */
