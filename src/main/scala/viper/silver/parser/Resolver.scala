@@ -715,6 +715,12 @@ case class TypeChecker(names: NameAnalyser) {
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
         curMember = oldCurMember
+      case t:PExtender =>
+        t.typecheck(this, names) match{
+          case Some(message_list) =>
+            message_list foreach ( message => messages ++= FastMessaging.message(t, message))
+          case None =>
+        }
     }
   }
 

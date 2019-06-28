@@ -521,7 +521,10 @@ case class Translator(program: PProgram) {
       members.get(name.name) match {
         case Some(d) =>
           val domain = d.asInstanceOf[Domain]
-          val typVarMapping = domain.typVars zip (args map ttyp)
+          val typVarMapping = (domain.typVars zip (args map ttyp)) match {
+            case Nil => scala.collection.immutable.Map[TypeVar, Type]()
+            case _ => scala.collection.immutable.Map[TypeVar, Type]()
+          }
           DomainType(domain, typVarMapping /*.filter {
             case (tv, tt) => tv!=tt //!tt.isInstanceOf[TypeVar]
           }*/.toMap)

@@ -12,12 +12,11 @@ import java.nio.file.{Files, Path, Paths}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
-import viper.silver.plugin.trialplugin
+import viper.silver.plugin.{SilverPluginManager, trialplugin}
 import viper.silver.ast.{LineCol, SourcePosition}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
-import viper.silver.plugin.SilverPluginManager
 import viper.silver.verifier.{ParseError, ParseWarning}
 
 import scala.collection.mutable
@@ -1079,7 +1078,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val applying: P[PExp] = P(keyword("applying") ~/ "(" ~ magicWandExp  ~ ")" ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
 
-  lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | trialplugin.newDecl).rep).map {
+  lazy val programDecl: P[PProgram] = P((trialplugin.newDecl | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl ).rep).map {
     decls => {
       PProgram(
         decls.collect { case i: PImport => i }, // Imports
@@ -1138,8 +1137,6 @@ object FastParser extends PosParser[Char, String] {
   lazy val pre: P[PExp] = P(("requires" ~/ exp ~ ";".?) | trialplugin.preSpecification)
 
   lazy val post: P[PExp] = P(("ensures" ~/ exp ~ ";".?) | trialplugin.postSpecification)
-
-  lazy val decCl: P[Seq[PExp]] = P(exp.rep(sep = ","))
 
   lazy val predicateDecl: P[PPredicate] = P("predicate" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ ("{" ~ exp ~ "}").?).map { case (a, b, c) => PPredicate(a, b, c) }
 
