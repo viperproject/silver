@@ -281,7 +281,7 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
     ********************************************************************************************************************/
 
 
-  case class PTermFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], rettyp: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecreases] ,body: Option[PExp])
+  case class PTermFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecreases], body: Option[PExp])
             extends PAnyFunction with PExtender with PMember {
     var classname = "PTermFunction"
 
@@ -292,9 +292,9 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
      */
     override def getsubnodes(): Seq[PNode] =  this.decs match{
         case Some(t) =>
-          Seq(this.idndef) ++ this.formalArgs ++ Seq(this.rettyp) ++ this.pres ++ this.posts ++ Seq(t) ++ this.body
+          Seq(this.idndef) ++ this.formalArgs ++ Seq(this.typ) ++ this.pres ++ this.posts ++ Seq(t) ++ this.body
         case None =>
-          Seq(this.idndef) ++ this.formalArgs ++ Seq(this.rettyp) ++ this.pres ++ this.posts ++ this.body
+          Seq(this.idndef) ++ this.formalArgs ++ Seq(this.typ) ++ this.pres ++ this.posts ++ this.body
       }
 
     /*
@@ -304,7 +304,7 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
     override def typecheck(typechecker: TypeChecker, names: NameAnalyser): Option[Seq[String]] = {
       typechecker.checkMember(this) {
         this.formalArgs foreach (a => typechecker.check(a.typ))
-        typechecker.check(this.rettyp)
+        typechecker.check(this.typ)
       }
 
       typechecker.checkMember(this) {
@@ -319,10 +319,8 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
       None
     }
 
-    override def typ: PType = rettyp
-
     override def translateMemSignature(t: Translator): ExtMember = {
-      TermFunction(idndef.name, this.formalArgs map t.liftVarDecl, t.ttyp(rettyp), null, null, null, null)()
+      TermFunction(idndef.name, this.formalArgs map t.liftVarDecl, t.ttyp(typ), null, null, null, null)()
 
     }
 
