@@ -208,34 +208,9 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
     }
 
 
-  override def translateExp(t: Translator): ExtensionExp = {
-    val predicateFunctions = collection.mutable.Map[(String, Seq[PFormalArgDecl]), String]()
-
-    def addPredicateFunctions(predicateName: String, params: Seq[PFormalArgDecl]): String = {
-      predicateFunctions.getOrElseUpdate((predicateName, params),
-        s"$$pred_${predicateName}_${params.flatten(_.idndef.name).mkString("$")}")
-    }
-
-    def fixAccessPredicate(pap: POpApp, perm: PExp = PFullPerm()): PCall = {
-      // a predicate with the same name must exists
-      assert(t.program.predicates.exists(_.idndef.name.equals(pap.opName)))
-      val predicate = t.program.predicates.find(_.idndef.name.equals(pap.opName)).get
-      val formalArg = predicate.formalArgs
-      // use the same arguments!
-      val function = addPredicateFunctions(pap.opName, formalArg)
-      PCall(PIdnUse(function), pap.args :+ perm).setPos(pap)
-    }
-    val newArgs = params.map {
-        case predicateCall: PCall if t.program.predicates.exists(_.idndef.name == predicateCall.idnuse.name) =>
-          // a predicate with the same name exists
-          fixAccessPredicate(predicateCall)
-        case pap: PAccPred if t.program.predicates.exists(_.idndef.name == pap.loc.idnuse.name) =>
-          // a predicate with the same name exists
-          fixAccessPredicate(pap.loc, pap.perm)
-        case default => default
-      }
+    override def translateExp(t: Translator): ExtensionExp = {
       val f = DecreasesTuple(params map t.exp)()
-      DecreasesTuple(newArgs map t.exp)(f.extensionSubnodes.head.pos)
+      DecreasesTuple(params map t.exp)(f.extensionSubnodes.head.pos)
     }
   }
 
