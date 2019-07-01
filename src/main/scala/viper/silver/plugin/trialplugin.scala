@@ -228,10 +228,10 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
     }
   }
 
-  lazy val decreases: noApi.P[PExp] = P("decreasea" ~/ exp.rep(sep=",")).map{case a => PDecreases(a)}
+  lazy val decreases: noApi.P[PExp] = P(keyword("decreasea") ~/ "(".? ~ exp.rep(sep=",") ~ ")".?).map{case a => PDecreases(a)}
 //  lazy val decreases: noApi.P[PExp] = P("decreasea" ~/ exp.rep(sep=",")).map{case a => PCall(PIdnUse("decreases"),a)}
 
-  lazy val decreasesStar: noApi.P[PExp] = P("decreasesStar").map{_ => PDecreasesStar()}
+  lazy val decreasesStar: noApi.P[PExp] = P(keyword("decreaseaStar") ~ ("(" ~ ")").?).map{_ => PDecreasesStar()}
 
 
 
@@ -262,12 +262,12 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
    * that are possible.
    */
   lazy val preSpecification: noApi.P[PExp] = P("preSpecificationExample").map { case() => "".asInstanceOf[PExp]}
-  lazy val postSpecification: noApi.P[PExp] = P(decreases)
+  lazy val postSpecification: noApi.P[PExp] = P(decreases|decreasesStar)
   lazy val invSpecification: noApi.P[PExp] = P("invariantSpecificationExample").map { case() => "".asInstanceOf[PExp]}
    /*
     * The extended Keywords is a set of the strings which consitute the set of keywirds but are not a part of the base keyword set.
     */
-  lazy val extendedKeywords = Set[String]("dfunction", "DFCall")
+  lazy val extendedKeywords = Set[String]("dfunction", "DFCall", "decreasea", "decreaseaStar")
 
 
 
