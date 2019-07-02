@@ -464,7 +464,8 @@ case class TypeChecker(names: NameAnalyser) {
         message_list foreach ( message => messages ++= FastMessaging.message(t, message))
       case _ =>
     }
-    case _ => checkTopTyped(exp, Some(expected))}
+    case _ => checkTopTyped(exp, Some(expected))
+  }
 
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
   {
@@ -545,6 +546,13 @@ case class TypeChecker(names: NameAnalyser) {
     var extraReturnTypeConstraint : Option[PType] = None
 
     exp match {
+      case t:PExtender =>
+        t.typecheck(this, names) match{
+          case Some(message_list) =>
+            message_list foreach ( message => messages ++= FastMessaging.message(t, message))
+          case None =>
+
+        }
       case psl:PSimpleLiteral=>
         psl match {
           case r@PResultLit() =>
@@ -715,12 +723,6 @@ case class TypeChecker(names: NameAnalyser) {
         pq._typeSubstitutions = pq.body.typeSubstitutions.toList.distinct
         pq.typ = Bool
         curMember = oldCurMember
-      case t:PExtender =>
-        t.typecheck(this, names) match{
-          case Some(message_list) =>
-            message_list foreach ( message => messages ++= FastMessaging.message(t, message))
-          case None =>
-        }
     }
   }
 

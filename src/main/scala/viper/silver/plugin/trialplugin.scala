@@ -2,11 +2,8 @@ package viper.silver.plugin
 
 import fastparse.noApi
 import viper.silver.ast._
-import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
-import viper.silver.ast.pretty.FastPrettyPrinter.{char, parens, ssep, text, toParenDoc}
-import viper.silver.verifier.VerificationResult
 import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, space, ssep, text, toParenDoc}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.TypeHelper
@@ -199,10 +196,12 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
 /********************************************************************************************************************
   **********************************************************************************************************
   *************************************************Termination Plugin***************************************
-  **********************************************************************************************************
+  ***************************************************************************************************
   ********************************************************************************************************************/
 
-  case class PDecreases(params: Seq[PExp]) extends PExtender with PExp{
+  trait PDecreasesExp extends PExtender with PExp
+
+  case class PDecreases(params: Seq[PExp]) extends PDecreasesExp{
     override def typeSubstitutions: Seq[PTypeSubstitution] = ???
     override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
     override def getsubnodes(): Seq[PNode] = params
@@ -218,7 +217,7 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
     }
   }
 
-  case class PDecreasesStar() extends PExtender with PExp{
+  case class PDecreasesStar() extends PDecreasesExp {
     override def typeSubstitutions: Seq[PTypeSubstitution] = ???
     override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
     override def getsubnodes(): Seq[PNode] = Nil
@@ -232,46 +231,11 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
     }
   }
 
-  sealed trait DecreasesExp extends ExtensionExp with Node
-  /**
-    * Expression representing the decreases clause (termination measure).
-    * @param extensionSubnodes Seq of expressions defining the termination measure (lex order)
-    */
-  case class DecreasesTuple(extensionSubnodes: Seq[Exp] = Nil)(override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends DecreasesExp {
-    override def verifyExtExp(): VerificationResult = ???
-    override val extensionIsPure = true
-
-    override val typ: Type = Bool
-
-    /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
-      * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-    override lazy val prettyPrint: PrettyPrintPrimitives#Cont = text("decreases") <> parens(ssep(extensionSubnodes map (toParenDoc(_)), char(',') <> space))
-  }
-
-  /**
-    * Expression representing the decreases star option (possibly non terminating).
-    * No termination checks are done.
-    */
-  case class DecreasesStar()(override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends DecreasesExp{
-    override def verifyExtExp(): VerificationResult = ???
-    override val extensionIsPure: Boolean = true
-
-    override val extensionSubnodes: Seq[Node] = Nil
-
-    override val typ: Type = Bool
-
-    /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
-      * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-    override lazy val prettyPrint: PrettyPrintPrimitives#Cont = text("decreasesStar")
-
-  }
-
-
 
   lazy val decreases: noApi.P[PDecreases] = P("decreasea" ~/ exp.rep(sep=",")).map{case a => PDecreases(a)}
 //  lazy val decreases: noApi.P[PExp] = P("decreasea" ~/ exp.rep(sep=",")).map{case a => PCall(PIdnUse("decreases"),a)}
 
-  lazy val decreasesStar: noApi.P[PExp] = P("decreasesStar").map{_ => PDecreasesStar()}
+  lazy val decreasesStar: noApi.P[PDecreasesStar] = P("decreasesStar").map{_ => PDecreasesStar()}
 
 
   /********************************************************************************************************************
@@ -281,7 +245,7 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
     ********************************************************************************************************************/
 
 
-  case class PTermFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecreases], body: Option[PExp])
+  case class PTermFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, pres: Seq[PExp], posts: Seq[PExp], decs: Option[PDecreasesExp], body: Option[PExp])
             extends PAnyFunction with PExtender with PMember {
     var classname = "PTermFunction"
 
@@ -306,14 +270,20 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
         this.formalArgs foreach (a => typechecker.check(a.typ))
         typechecker.check(this.typ)
       }
-
+      print("In the PTermFunction before checkMember\n")
       typechecker.checkMember(this) {
         this.pres foreach (typechecker.check(_, TypeHelper.Bool))
         typechecker.resultAllowed=true
         this.posts foreach (typechecker.check(_, TypeHelper.Bool))
         this.decs foreach (typechecker.check(_,TypeHelper.Bool))// The parameter Bool is merely a formality as the typechecker is overloaded to ignore it
 
-        this.body.foreach(typechecker.check(_, this.typ)) //result in the function body gets the error message somewhere else
+        this.body match {
+          case Some(s)=>
+            print("before attempted function call\n")
+            typechecker.checkTopTyped(s, Some(this.typ))//result in the function body gets the error message somewhere else
+            print("after attempted function call\n")
+          case None =>
+        }
         typechecker.resultAllowed=false
       }
       None
@@ -333,6 +303,7 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
         ff
     }
   }
+
   case class TermFunction(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], decs: Option[DecreasesExp], body: Option[Exp])
                          (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtMember {
     /*
@@ -348,40 +319,84 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
     override val scopedDecls: Seq[Declaration] = formalArgs
   }
 
-  case class PTermCall(idnuse: PIdnUse, argList: Seq[PExp]) extends POpApp with PExp with PExtender with PLocationAccess{
-    var classname = "PDoublecall"
 
+  /**
+    * The PTermCall function to represent the nodes of PAst that are used to call the TErmFucntions
+    *
+    * @param func
+    * @param args
+    */
+  case class PTermCall(func: PIdnUse, args: Seq[PExp]) extends POpApp with PExp with PExtender with PLocationAccess{
+    var classname = "PTermcall"
+    override val idnuse = func
     /*
      * The support functions for the nameanalyser phase.
      */
-    override def args: Seq[PExp] = argList
     def opName: String = idnuse.name
-    override def signatures = if (function!=null&& function.formalArgs.size == argList.size) function match {
-      case pf: PTermFunction => {
+    override def signatures = if (function!=null&& function.formalArgs.size == args.size) function match{
+      case pf:PFunction => List(
+        new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
+      )
+      case pdf:PDomainFunction =>
         List(
-          new PTypeSubstitution(argList.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
+          new PTypeSubstitution(
+            args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ.substitute(domainTypeRenaming.get)) :+
+              (POpApp.pRes.domain.name -> pdf.typ.substitute(domainTypeRenaming.get)))
         )
-      }
+
+    }
+    else if(extfunction!=null && extfunction.formalArgs.size == args.size) extfunction match{
+      case ppa: PPredicate => List(
+        new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> TypeHelper.Bool))
+      )
     }
     else List() // this case is handled in Resolver.scala (- method check) which generates the appropriate error message
 
-    override def forceSubstitution(ots: PTypeSubstitution) = ???
+
+    override def forceSubstitution(ots: PTypeSubstitution) = {
+      val ts = domainTypeRenaming match {
+        case Some(dtr) =>
+          val s3 = PTypeSubstitution(dtr.mm.map(kv => kv._1 -> (ots.get(kv._2) match {
+            case Some(pt) => pt
+            case None => PTypeSubstitution.defaultType
+          })))
+          assert(s3.m.keySet==dtr.mm.keySet)
+          assert(s3.m.forall(_._2.isGround))
+          domainSubstitution = Some(s3)
+          dtr.mm.values.foldLeft(ots)(
+            (tss,s)=> if (tss.contains(s)) tss else tss.add(s, PTypeSubstitution.defaultType).get)
+        case _ => ots
+      }
+      super.forceSubstitution(ts)
+      typeSubstitutions.clear(); typeSubstitutions+=ts
+      typ = typ.substitute(ts)
+      assert(typ.isGround)
+      args.foreach(_.forceSubstitution(ts))
+    }
 
     var function : PTermFunction = null
+    var extfunction : PPredicate = null
+    override def extraLocalTypeVariables = _extraLocalTypeVariables
+    var _extraLocalTypeVariables : Set[PDomainType] = Set()
+    var domainTypeRenaming : Option[PTypeRenaming] = None
+    def isDomainFunction = domainTypeRenaming.isDefined
+    var domainSubstitution : Option[PTypeSubstitution] = None
 
     override def getsubnodes(): Seq[PNode] = {
-      Seq(this.idnuse) ++ argList
+      Seq(this.idnuse) ++ args
     }
 
     /*
      * The hook implementation for the typechecker part of the Sematic Analysis phase.
      */
     override def typecheck(t: TypeChecker, names: NameAnalyser): Option[Seq[String]] = {
+
       this.function = names.definition(t.curMember)(this.idnuse).asInstanceOf[PTermFunction]
       t.checkMember(this.function) {
         t.check(this.function.typ)
         this.function.formalArgs foreach (a => t.check(a.typ))
       }
+      args foreach (t.checkTopTyped(_,None))
       None
     }
 
@@ -389,7 +404,7 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
      * The tranlator for this PNode
      */
     override def translateExp(t: Translator): ExtensionExp = {
-      TermCall(this.idnuse.name,argList map t.exp)()
+      TermCall(this.idnuse.name, args map t.exp)()
     }
 
   }
@@ -415,8 +430,8 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
     override def verifyExtExp(): viper.silver.verifier.VerificationResult = ???
   }
 
-  lazy val pTermFunction: noApi.P[PTermFunction] = P(keyword("functionTerm") ~/ idndef ~ "(" ~formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~ post.rep ~ decreases.? ~ ("{" ~ exp ~ "}").? ).map{case (a,b,c,d,e,f,g)=> PTermFunction(a,b,c,d,e,f,g)}
-  lazy val pTermUse: noApi.P[PTermCall] = P(keyword("DFCall") ~ idnuse ~ FastParser.parens(actualArgList)).map{case (a,b) => PTermCall(a,b)}
+  lazy val pTermFunction: noApi.P[PTermFunction] = P(keyword("functionTerm") ~/ idndef ~ "(" ~formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~ post.rep ~ (decreases | decreasesStar).? ~ ("{" ~ exp ~ "}").? ).map{case (a,b,c,d,e,f,g)=> PTermFunction(a, b, c, d, e, f, g)}
+  lazy val pTermUse: noApi.P[PTermCall] = P(keyword("DFCall") ~ idnuse ~ FastParser.parens(actualArgList)).map{case (a,b) => PTermCall(a, b)}
 
   /*
    * The parser rules, which extend the actual parser.
@@ -446,7 +461,7 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
    /*
     * The extended Keywords is a set of the strings which consitute the set of keywirds but are not a part of the base keyword set.
     */
-  lazy val extendedKeywords = Set[String]("dfunction", "DFCall", "decreasea", "functionTerm")
+  lazy val extendedKeywords = Set[String]("dfunction", "DFCall", "decreasea", "functionTerm", "decreaseaStar")
 
 
 
