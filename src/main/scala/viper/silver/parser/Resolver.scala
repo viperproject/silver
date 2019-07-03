@@ -551,7 +551,6 @@ case class TypeChecker(names: NameAnalyser) {
           case Some(message_list) =>
             message_list foreach ( message => messages ++= FastMessaging.message(t, message))
           case None =>
-
         }
       case psl:PSimpleLiteral=>
         psl match {

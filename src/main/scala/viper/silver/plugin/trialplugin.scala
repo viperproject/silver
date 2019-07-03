@@ -334,16 +334,9 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
      */
     def opName: String = idnuse.name
     override def signatures = if (function!=null&& function.formalArgs.size == args.size) function match{
-      case pf:PFunction => List(
+      case pf:PTermFunction => List(
         new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
       )
-      case pdf:PDomainFunction =>
-        List(
-          new PTypeSubstitution(
-            args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ.substitute(domainTypeRenaming.get)) :+
-              (POpApp.pRes.domain.name -> pdf.typ.substitute(domainTypeRenaming.get)))
-        )
-
     }
     else if(extfunction!=null && extfunction.formalArgs.size == args.size) extfunction match{
       case ppa: PPredicate => List(
@@ -351,7 +344,6 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
       )
     }
     else List() // this case is handled in Resolver.scala (- method check) which generates the appropriate error message
-
 
     override def forceSubstitution(ots: PTypeSubstitution) = {
       val ts = domainTypeRenaming match {
@@ -390,13 +382,48 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
      * The hook implementation for the typechecker part of the Sematic Analysis phase.
      */
     override def typecheck(t: TypeChecker, names: NameAnalyser): Option[Seq[String]] = {
+      def getFreshTypeSubstitution(tvs : Seq[PDomainType]) : PTypeRenaming =
+        PTypeVar.freshTypeSubstitutionPTVs(tvs)
+
+      def refreshWith(ts: PTypeSubstitution, rts : PTypeRenaming) : PTypeSubstitution = {
+        require(ts.isFullyReduced)
+        require(rts.isFullyReduced)
+        //      require(rts.values.forall { case pdt: PDomainType if pdt.isTypeVar => true case _ => false })
+        new PTypeSubstitution(ts map (kv => rts.rename(kv._1) -> kv._2.substitute(rts)))
+      }
 
       this.function = names.definition(t.curMember)(this.idnuse).asInstanceOf[PTermFunction]
       t.checkMember(this.function) {
         t.check(this.function.typ)
         this.function.formalArgs foreach (a => t.check(a.typ))
       }
-      args foreach (t.checkTopTyped(_,None))
+      args foreach (t.check(_,PTypeSubstitution.id))
+      var extraReturnTypeConstraint : Option[PType] = None
+      var nestedTypeError = !this.args.forall(a => a.typ.isValidOrUndeclared)
+
+      if (this.signatures.nonEmpty && this.args.forall(_.typeSubstitutions.nonEmpty) && !nestedTypeError) {
+
+        val ltr = getFreshTypeSubstitution(this.localScope.toList) //local type renaming - fresh versions
+        val rlts = this.signatures map (ts => refreshWith(ts, ltr)) //local substitutions refreshed
+        assert(rlts.nonEmpty)
+        val rrt: PDomainType = POpApp.pRes.substitute(ltr).asInstanceOf[PDomainType] // return type (which is a dummy type variable) replaced with fresh type
+        val flat = this.args.indices map (i => POpApp.pArg(i).substitute(ltr)) //fresh local argument types
+        // the triples below are: (fresh argument type, argument type as used in domain of substitutions, substitutions)
+        this.typeSubstitutions ++= t.unifySequenceWithSubstitutions(rlts, flat.indices.map(i => (flat(i), this.args(i).typ, this.args(i).typeSubstitutions.distinct)) ++
+          (
+            extraReturnTypeConstraint match {
+              case None => Nil
+              case Some(t) => Seq((rrt, t, List(PTypeSubstitution.id)))
+            }
+            ))
+        val ts = this.typeSubstitutions.distinct
+        if (ts.isEmpty)
+          t.typeError(this)
+        this.typ = if (ts.size == 1) rrt.substitute(ts.head) else rrt
+      } else {
+        this.typeSubstitutions.clear()
+        this.typ = PUnknown()
+      }
       None
     }
 

@@ -507,7 +507,7 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
 {
   override val idnuse = func
   override val opName = func.name
-  override def signatures = if (function!=null&& function.formalArgs.size == args.size) function match{
+  override def signatures = if (function!=null&& function.formalArgs.size == args.size) (function match{
     case pf:PFunction => List(
       new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> function.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> function.typ))
     )
@@ -518,12 +518,12 @@ case class PCall(func: PIdnUse, args: Seq[PExp], typeAnnotated : Option[PType] =
             (POpApp.pRes.domain.name -> pdf.typ.substitute(domainTypeRenaming.get)))
       )
 
-  }
-  else if(extfunction!=null && extfunction.formalArgs.size == args.size) extfunction match{
+  })
+  else if(extfunction!=null && extfunction.formalArgs.size == args.size)( extfunction match{
     case ppa: PPredicate => List(
       new PTypeSubstitution(args.indices.map(i => POpApp.pArg(i).domain.name -> extfunction.formalArgs(i).typ) :+ (POpApp.pRes.domain.name -> Bool))
     )
-  }
+  })
   else List() // this case is handled in Resolver.scala (- method check) which generates the appropriate error message
 
   var function : PAnyFunction = null
