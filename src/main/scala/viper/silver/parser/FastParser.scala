@@ -861,13 +861,10 @@ object FastParser extends PosParser[Char, String] {
     case None => a
   }}
 
-  lazy val inExp: P[PExp] = P(andExp ~ ("in".! ~ andExp).?).map {case (a, b) => b match {
+  lazy val inExp: P[PExp] = P(andExp ~ ("in".! ~ (andExp | inExp)).?).map {case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
     case None => a
   }}
-//  lazy val recInExp: P[PExp] = P(andExp ~ "in".! ~ andExp).map{ case (a,b,c) => PBinExp(a , b, c)}
-//
-//  lazy val inExp: P[PExp] = P(recInExp | andExp)
 
   lazy val orExp: P[PExp] = P(inExp ~ ("||".! ~ orExp).?).map { case (a, b) => b match {
     case Some(c) => PBinExp(a, c._1, c._2)
@@ -1083,7 +1080,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val applyWand: P[PApplyWand] = P("apply" ~/ magicWandExp).map(PApplyWand)
 
-  lazy val applying: P[PExp] = P(keyword("applying") ~/ trueMagicWandExp ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
+  lazy val applying: P[PExp] = P(keyword("applying") ~/ trueMagicWandExp ~ "in" ~ (trueExp | exp)).map { case (a, b) => PApplying(a, b) }
 
   lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl).rep).map {
     decls => {

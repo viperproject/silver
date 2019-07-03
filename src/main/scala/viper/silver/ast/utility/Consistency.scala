@@ -228,7 +228,7 @@ object Consistency {
   /** Check all properties required for a postcondition */
   def checkPost(e: Exp) : Seq[ConsistencyError]  = {
     (if(!(e isSubtype Bool)) Seq(ConsistencyError(s"Postcondition $e: ${e.typ} must be boolean.", e.pos)) else Seq()) ++
-    (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq())
+    (if(!noLabelledOld(e)) Seq(ConsistencyError("Labelled-old expressions are not allowed in postconditions.", e.pos)) else Seq()) ++
   }
 
   /** checks that all quantified variables appear in all triggers */
