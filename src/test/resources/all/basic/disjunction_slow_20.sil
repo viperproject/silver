@@ -1,6 +1,6 @@
 /* 
  * The performance of silicon used to depend on the disjunction order in the following predicate
- * Compare disjunction_slow_20.sil
+ * Compare disjunction_fast_20.sil
  */
 
 field val: Int
