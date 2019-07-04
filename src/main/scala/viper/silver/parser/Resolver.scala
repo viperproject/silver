@@ -545,6 +545,11 @@ case class TypeChecker(names: NameAnalyser) {
     var extraReturnTypeConstraint : Option[PType] = None
 
     exp match {
+      case t: PExtender => t.typecheck(this, names) match{
+        case Some(message_list) =>
+          message_list foreach ( message => messages ++= FastMessaging.message(t, message))
+        case _ =>
+      }
       case psl:PSimpleLiteral=>
         psl match {
           case r@PResultLit() =>
