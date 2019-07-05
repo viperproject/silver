@@ -24,6 +24,6 @@ method test2(flag: Bool)
   requires acc(P())
   requires forall a: Int, b: Int :: true ==> trigG(a, flag) && trigF(a, b)
   ensures  acc(P())
-//:: UnexpectedOutput(postcondition.violated:assertion.false, /carbon/issue/39/)
+  //:: UnexpectedOutput(postcondition.violated:assertion.false, /carbon/issue/39/)
   ensures forall a: Int, b: Int :: true ==> (trigF(a,b) ==> trigG(a, flag)) && trigF(a, b)
 {}
