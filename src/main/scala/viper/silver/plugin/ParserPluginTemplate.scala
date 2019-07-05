@@ -7,6 +7,8 @@ import viper.silver.ast.{Declaration, ErrorTrafo, ExtMember, ExtensionExp, Exten
 import viper.silver.parser.FastParser._
 import viper.silver.verifier.VerificationResult
 
+import scala.collection.Set
+
 class ParserPluginTemplate {
   /**
     * The import statements that instantiate the PWhiteSpaceApi class and then import the overloaded sequencing operators
@@ -48,6 +50,10 @@ class ParserPluginTemplate {
     * The specification rule provides an extension to the loop invariant specification expressions
     */
   lazy val invSpecification: noApi.P[PExp] = P("invariantSpecificationExample").map{case() => "".asInstanceOf[PExp]}
+  /**
+    * This rule extends the keywords. So new strings added to the set will be considered as keywords.
+    */
+  lazy val extendedKeywords = Set[String]()
 
   case class PExampleDeclaration() extends PExtender{
     // The typechecker for this PAst node

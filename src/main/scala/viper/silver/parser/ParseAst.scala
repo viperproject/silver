@@ -217,7 +217,7 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
 case class PFormalArgDecl(idndef: PIdnDef, var typ: PType) extends PNode with PTypedDeclaration with PLocalDeclaration
 
 // Types
-sealed trait PType extends PNode {
+trait PType extends PNode {
   def isUnknown: Boolean = this.isInstanceOf[PUnknown]
   def isValidOrUndeclared : Boolean
   def isGround : Boolean = true
@@ -1023,8 +1023,8 @@ trait PDeclaration extends PNode with PEntity {
   def idndef: PIdnDef
 }
 
-sealed trait PGlobalDeclaration extends PDeclaration
-sealed trait PLocalDeclaration extends PDeclaration
+trait PGlobalDeclaration extends PDeclaration
+trait PLocalDeclaration extends PDeclaration
 
 sealed trait PTypedDeclaration extends PDeclaration {
   def typ: PType
