@@ -154,9 +154,9 @@ object Consistency {
     /*
     An extremely narrow temporary fix by G Rahul Kranti Kiran for using the termination check plugin
      */
-    if(n.isInstanceOf[ExtensionExp])
-      true
-    else
+//    if(n.isInstanceOf[ExtensionExp])
+//      true
+//    else
       !found
   }
 

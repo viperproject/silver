@@ -4,7 +4,6 @@ import fastparse.noApi
 import viper.silver.ast._
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
-import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, space, ssep, text, toParenDoc}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.TypeHelper
 
