@@ -327,7 +327,7 @@ object PTypeVar{
     }
 }
 
-sealed trait PGenericType extends PType {
+trait PGenericType extends PType {
   def genericName : String
   def typeArguments : Seq[PType]
   override def isGround = typeArguments.forall(_.isGround)
@@ -1026,7 +1026,7 @@ trait PDeclaration extends PNode with PEntity {
 trait PGlobalDeclaration extends PDeclaration
 trait PLocalDeclaration extends PDeclaration
 
-sealed trait PTypedDeclaration extends PDeclaration {
+trait PTypedDeclaration extends PDeclaration {
   def typ: PType
 }
 abstract class PErrorEntity(name: String) extends PEntity

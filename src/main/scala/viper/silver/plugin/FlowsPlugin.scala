@@ -1,9 +1,18 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 package viper.silver.plugin
 
 import fastparse.noApi
 import viper.silver.ast._
+import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
+import viper.silver.verifier.VerificationResult
+
 import scala.collection.Set
 import scala.util.parsing.input
 
@@ -35,12 +44,14 @@ object FlowsPlugin{
     }
   }
 
+  lazy val fdArg= P(idndef ~ ":" ~ idnuse).map{case (a,b) => PFlowDomainArg(a,b)}
+
   lazy val flowDomainTypVarDecl: noApi.P[PFlowDomainTypeVarDecl] = P("type" ~/ idndef ~ "= " ~ typ ~ ";".?).map{case (a,b) => PFlowDomainTypeVarDecl(a,b)}
 
   lazy val flowDomainIdentity: noApi.P[PFlowDomainIdentity] = P(keyword("fdidentity") ~/ idndef ~ ";".?).map{PFlowDomainIdentity}
 
-  lazy val flowDomainOp: noApi.P[PFlowDomainOp] = P(keyword("fdplus") ~/ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~
-                                          post.rep ~ ("{" ~ exp ~ "}").? ).map{ case (a,b,c,d) => PFlowDomainOp(PIdnDef("fdplus"),a,b,c,d) }
+  lazy val flowDomainOp: noApi.P[PFlowDomainOp] = P(keyword("fdplus") ~/ "(" ~ fdArg.rep(sep =",") ~ ")" ~ ":" ~ idnuse ~
+                                          post.rep ~ ("{" ~ exp ~ "}").? ).map{ case (a,b,c,d) => PFlowDomainOp(PIdnDef("fdplus"),a,PFlowDomainTypeUse(b),c,d) }
 
 
   lazy val flowDomain: noApi.P[PFlowDomain] = P(keyword("flowDomain") ~/ "{" ~ flowDomainTypVarDecl ~ flowDomainIdentity ~ flowDomainOp ~ "}").map{case (a,b,c) => PFlowDomain(a,b,c)}
@@ -53,7 +64,7 @@ object FlowsPlugin{
     * @param idndef
     * @param typ
     */
-  case class PFlowDomainTypeVarDecl(idndef: PIdnDef, typ: PType) extends PExtender with PGlobalDeclaration  with PType {
+  case class PFlowDomainTypeVarDecl(idndef: PIdnDef, typ: PType) extends PExtender with PGlobalDeclaration with PTypedDeclaration with PGenericType {
     override def getsubnodes(): Seq[PNode] = {
       Seq(idndef) ++ Seq(typ)
     }
@@ -73,6 +84,10 @@ object FlowsPlugin{
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
       None
     }
+
+    override def genericName: String = idndef.name
+
+    override def typeArguments: Seq[PType] = Seq(typ)
   }
 
   /**
@@ -83,10 +98,19 @@ object FlowsPlugin{
     * @param info
     * @param errT
     */
-  case class FlowDomainTypeVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)extends ExtMember{
+  case class FlowDomainTypeVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)extends ExtMember with Type{
     override def extensionsubnodes: Seq[Node] = Seq(typ)
 
     override val scopedDecls: Seq[Declaration] = Seq()
+
+    /**
+      * Takes a mapping of type variables to types and substitutes all
+      * occurrences of those type variables with the corresponding type.
+      */
+    override def substitute(typVarsMap: Map[TypeVar, Type]): Type = ???
+
+    /** Is this a concrete type (i.e. no uninstantiated type variables)? */
+    override def isConcrete: Boolean = true
   }
 
   /**
@@ -120,37 +144,38 @@ object FlowsPlugin{
     override val scopedDecls: Seq[Declaration] = Seq()
   }
 
+
   /**
     *
     * @param idndef
-    * @param formalArgs
-    * @param typ
+    * @param flowArgs
+    * @param typName
     * @param posts
     * @param body
     */
-  case class PFlowDomainOp(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, posts: Seq[PExp], body: Option[PExp]) extends PExtender with PAnyFunction{
+  case class PFlowDomainOp(idndef: PIdnDef, flowArgs: Seq[PFlowDomainArg], typName: PFlowDomainTypeUse, posts: Seq[PExp], body: Option[PExp]) extends PExtender with PMember with PGlobalDeclaration with PTypedDeclaration {
     override def getsubnodes(): Seq[PNode] = {
-      Seq(idndef) ++ Seq(typ) ++ formalArgs ++ posts ++ body
-    }
-
-    def liftVarDecl(formal: PFormalArgDecl,t: Translator){
-      val type_translated =
-      LocalVarDecl(formal.idndef.name, type_translated)(formal.idndef)
+      Seq(idndef) ++ Seq(typ) ++ flowArgs ++ posts ++ body
     }
 
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = super.typecheck(t, n)
 
-    override def translateMem(t: Translator): ExtMember ={
-      val f = t.getMembers()(idndef.name).asInstanceOf[FlowDomainOp]
-      val formalArgsTranslated = formalArgs foreach liftVarDecl(_,t)
+    def varConvert(arg: PFlowDomainArg, translator: Translator): LocalVarDecl = {
+      val ttyp = translator.getMembers()(arg.typName.name).asInstanceOf[Type]
+      LocalVarDecl(arg.idndef.name,ttyp)(liftPos(arg.idndef))
+    }
 
-      FlowDomainOp(idndef.name, formalArgsTranslated ,t.ttyp(typ), posts map t.exp, body map t.exp)(f.pos, f.info, f.errT)
+    override def translateMem(t: Translator): ExtMember = {
+      val f = t.getMembers()(idndef.name).asInstanceOf[FlowDomainOp]
+      val flowArgs_translated: Seq[LocalVarDecl] = flowArgs.map{a => varConvert(a,t)}
+      FlowDomainOp(idndef.name, flowArgs_translated,t.getMembers()(typName.idnuse.name).asInstanceOf[Type], posts map t.exp, body map t.exp)(f.pos, f.info, f.errT)
     }
 
     override def translateMemSignature(t: Translator): ExtMember = {
-      FlowDomainOp(idndef.name,null, null, null, null)(liftPos(this))
+      FlowDomainOp(idndef.name, null, null, null, null)(liftPos(this))
     }
 
+    override def typ: PType = typName.typ
   }
 
   /**
@@ -233,4 +258,53 @@ object FlowsPlugin{
 
   }
 
+
+  case class PFlowDomainTypeUse(idnuse: PIdnUse) extends PExtender with PExp{
+    override def typeSubstitutions: Seq[PTypeSubstitution] = ???
+
+    override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
+
+    override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
+      None
+    }
+
+    override def translateExp(t: Translator): ExtensionExp = {
+      FlowDomainTypeUse(idnuse.name)(liftPos(this))
+    }
+  }
+
+  case class FlowDomainTypeUse(str: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Type{
+    override def extensionIsPure: Boolean = true
+
+    override def extensionSubnodes: Seq[Node] = Seq()
+
+    override def typ: Type = FlowDomainTypeVarDecl.asInstanceOf[Type]
+
+    override def isSubtype(other: Type): Boolean = false
+    override def isSubtype(other: Typed): Boolean = false
+
+    override def verifyExtExp(): VerificationResult = ???
+
+    /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
+      * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
+    override def prettyPrint: PrettyPrintPrimitives#Cont = ???
+
+    /**
+      * Takes a mapping of type variables to types and substitutes all
+      * occurrences of those type variables with the corresponding type.
+      */
+    override def substitute(typVarsMap: Map[TypeVar, Type]): Type = ???
+
+    /** Is this a concrete type (i.e. no uninstantiated type variables)? */
+    override def isConcrete: Boolean = true
+  }
+
+  case class PFlowDomainArg(idndef: PIdnDef, typName: PIdnUse) extends PExtender with PTypedDeclaration with PLocalDeclaration{
+    override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] ={
+      None
+    }
+
+    override def getsubnodes(): Seq[PNode] = Seq(idndef) ++ Seq(typName)
+    override def typ: PType = ???
+  }
 }
