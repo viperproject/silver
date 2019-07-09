@@ -29,8 +29,8 @@ object FlowsPlugin{
   import fastparse.noApi._
 
   lazy val newDecl = P(flowDomain)
-  lazy val newStmt = P("somethingOfaStmt").map{case () => "".asInstanceOf[PStmt]}
-  lazy val newExp = P("somethingOfanExp").map{case () => "".asInstanceOf[PExp]}
+  lazy val  newStmt = P("somethingOfaStmt").map{case () => "".asInstanceOf[PStmt]}
+  lazy val newExp = P(accExp)
   lazy val preSpecification: noApi.P[PExp] = P("preConditionSpecificationExample").map{case() => "".asInstanceOf[PExp]}
   lazy val postSpecification: noApi.P[PExp] = P("postConditionSpecificationExample").map{case() => "".asInstanceOf[PExp]}
   lazy val invSpecification: noApi.P[PExp] = P("invariantSpecificationExample").map{case() => "".asInstanceOf[PExp]}
@@ -44,6 +44,13 @@ object FlowsPlugin{
     }
   }
 
+  lazy val newAccSugar: noApi.P[PExp] = P(fieldAcc ~ "|->" ~ idnuse).map{case (a,c) => PBinExp(PAccPred(a,PFullPerm()),"&&",PBinExp(a,"==",c))}
+
+  lazy val accExp: noApi.P[PExp] = P((newAccSugar | eqExp) ~ ("*" ~ accExp).?).map{ case(a,b) => b match {
+    case Some(c) => PBinExp(a,"&&",c)
+    case None => a
+  }}
+
   lazy val fdArg= P(idndef ~ ":" ~ idnuse).map{case (a,b) => PFlowDomainArg(a,b)}
 
   lazy val flowDomainTypVarDecl: noApi.P[PFlowDomainTypeVarDecl] = P("type" ~/ idndef ~ "= " ~ typ ~ ";".?).map{case (a,b) => PFlowDomainTypeVarDecl(a,b)}
@@ -56,7 +63,7 @@ object FlowsPlugin{
 
   lazy val flowDomain: noApi.P[PFlowDomain] = P(keyword("flowDomain") ~/ "{" ~ flowDomainTypVarDecl ~ flowDomainIdentity ~ flowDomainOp ~ "}").map{case (a,b,c) => PFlowDomain(a,b,c)}
 
-  lazy val extendedKeywords = Set[String]("flowDomain", "fdidentity", "fdplus")
+  lazy val extendedKeywords = Set("flowDomain", "fdidentity", "fdplus")
 
 
   /**
@@ -259,6 +266,10 @@ object FlowsPlugin{
   }
 
 
+  /**
+    *
+    * @param idnuse
+    */
   case class PFlowDomainTypeUse(idnuse: PIdnUse) extends PExtender with PExp{
     override def typeSubstitutions: Seq[PTypeSubstitution] = ???
 
@@ -273,6 +284,13 @@ object FlowsPlugin{
     }
   }
 
+  /**
+    *
+    * @param str
+    * @param pos
+    * @param info
+    * @param errT
+    */
   case class FlowDomainTypeUse(str: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Type{
     override def extensionIsPure: Boolean = true
 
@@ -299,6 +317,11 @@ object FlowsPlugin{
     override def isConcrete: Boolean = true
   }
 
+  /**
+    *
+    * @param idndef
+    * @param typName
+    */
   case class PFlowDomainArg(idndef: PIdnDef, typName: PIdnUse) extends PExtender with PTypedDeclaration with PLocalDeclaration{
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] ={
       None

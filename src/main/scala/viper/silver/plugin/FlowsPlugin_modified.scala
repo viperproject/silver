@@ -7,14 +7,10 @@
 package viper.silver.plugin
 
 import fastparse.noApi
-import viper.silver.ast._
-import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
-import viper.silver.verifier.VerificationResult
 
 import scala.collection.Set
-import scala.util.parsing.input
 
 object FlowsPlugin_modified{
   /*
