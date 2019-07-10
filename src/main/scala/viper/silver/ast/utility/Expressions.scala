@@ -10,6 +10,7 @@ import scala.reflect.ClassTag
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.Triggers.TriggerGeneration
+import scala.collection.mutable
 
 /** Utility methods for expressions. */
 object Expressions {
@@ -110,22 +111,71 @@ object Expressions {
     res
   }
 
+  object getFreshVarName {
+    private val namesToNumbers = mutable.Map.empty[String, Int]
+
+    def apply(name: String, scope: Set[String]): String = {
+      var number = namesToNumbers.get(name) match {
+        case Some(number) => number + 1
+        case None => 0
+      }
+
+      val freshVarName = (name: String, number: Int) => s"$name$$$number"
+
+      while (scope.contains(freshVarName(name, number)))
+        number += 1
+
+      namesToNumbers += name -> number
+
+      freshVarName(name, number)
+    }
+  }
+
   /** In an expression, instantiate a list of variables with given expressions. */
   def instantiateVariables[E <: Exp]
-                          (exp: E, variables: Seq[AbstractLocalVar], values: Seq[Exp])
+                          (exp: E, parameters: Seq[AbstractLocalVar], arguments: Seq[Exp])
                           : E = {
 
-    val argNames = (variables map (_.name)).zipWithIndex
+    val parametersNameIdx = (parameters map (_.name)).zipWithIndex
 
-    def actualArg(formalArg: String): Option[Exp] = {
-      argNames.find(x => x._1 == formalArg) map {
-        case (_, idx) => values(idx)
+    def parameterToArgument(parameterName: String): Option[Exp] = {
+      parametersNameIdx.find(x => x._1 == parameterName) map {
+        case (_, idx) => arguments(idx)
       }
     }
 
-    val res = exp.transform {
-      case AbstractLocalVar(name) if actualArg(name).isDefined => actualArg(name).get
+    // Detect name clashes
+    val boundedVars = exp.deepCollect({
+      case l: LocalVarDecl => l.name
+    }).toSet
+
+    val identifierInExp = arguments.flatMap({ _.deepCollect {
+      case AbstractLocalVar(name) => name
+    }}).toSet
+
+    var renameBoundVars = mutable.Map.empty[String, String]
+    (boundedVars & identifierInExp).foreach(name => renameBoundVars += (name -> getFreshVarName(name, boundedVars | identifierInExp)))
+
+    // arguments.foreach(_.deepCollect {
+    //   case AbstractLocalVar(name) if boundedVars(name) =>
+    //     renameBoundVars += (name -> "fresh" )
+    // })
+
+    // Rename bound variables if necessary to avoid name collisions
+    var res = exp
+    if (!renameBoundVars.isEmpty) {
+      res = res.transform {
+        case l: LocalVarDecl if renameBoundVars.contains(l.name) => l.copy(name = renameBoundVars(l.name))(l.pos, l.info, l.errT)
+        case l: LocalVar if renameBoundVars.contains(l.name) => l.copy(name = renameBoundVars(l.name))(l.typ, l.pos, l.info, l.errT)
+      }
     }
+
+    // Replace argument for every occurrence of its respective parameter
+    res = res.transform {
+      case AbstractLocalVar(name) if parameterToArgument(name).isDefined =>
+        parameterToArgument(name).get
+    }
+
     res
   }
 
