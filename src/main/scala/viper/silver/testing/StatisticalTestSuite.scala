@@ -11,8 +11,11 @@ import scala.collection.immutable
 
 trait StatisticalTestSuite extends SilSuite {
 
-  protected def warmupDirName: Option[String] = Option(System.getenv("GRAPHS_WARMUP"))
-  protected def targetDirName: String = Option(System.getenv("GRAPHS_TARGET")).get
+  protected def warmupLocationEnvVarName: String
+  protected def targetLocationEnvVarName: String
+
+  private def warmupDirName: Option[String] = Option(System.getenv(warmupLocationEnvVarName))
+  private def targetDirName: String = Option(System.getenv(targetLocationEnvVarName)).get
 
   protected def numOfExecutions: Int = 1
 
