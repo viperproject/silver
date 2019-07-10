@@ -6,6 +6,8 @@
 
 package viper.silver.ast.utility.rewriter
 
+import scala.reflect.runtime.{universe => reflection}
+
 /**
   * Extension of the Strategy context. Encapsulates all the required information for the rewriting
  *
@@ -83,7 +85,7 @@ case class SimpleRegexContext[N <: Rewritable](p: PartialFunction[N, N]) extends
   * @param p Partial function used for rewriting
   * @tparam N Common supertype of every node in the tree
   */
-class SlimRegexStrategy[N <: Rewritable](a: TRegexAutomaton, p: PartialFunction[N, N]) extends RegexStrategy[N, Any](a, SimpleRegexContext(p), new PartialContextR(null, (x, y) => x, (x, y) => true))
+class SlimRegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](a: TRegexAutomaton, p: PartialFunction[N, N]) extends RegexStrategy[N, Any](a, SimpleRegexContext(p), new PartialContextR(null, (x, y) => x, (x, y) => true))
 
 /**
   * A strategy that performs rewriting according to the Regex and Rewriting function specified
@@ -93,7 +95,7 @@ class SlimRegexStrategy[N <: Rewritable](a: TRegexAutomaton, p: PartialFunction[
   * @tparam N Common supertype of every node in the tree
   * @tparam COLL Type of custom context
   */
-class RegexStrategy[N <: Rewritable, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), N], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
+class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), N], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
 
   type CTXT = RegexContext[N, COLL]
 

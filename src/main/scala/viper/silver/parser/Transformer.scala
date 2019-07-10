@@ -166,7 +166,7 @@ object Transformer {
     case (p: PWandType, _) => p
 
     case (p: PBinExp, Seq(left: PExp, right: PExp)) => PBinExp(left, p.opName, right)
-    case (p: PMagicWandExp, Seq(left: PExp, right: PExp)) => PMagicWandExp(left, right)
+    case (_: PMagicWandExp, Seq(left: PExp, right: PExp)) => PMagicWandExp(left, right)
     case (p: PUnExp, Seq(exp: PExp)) => PUnExp(p.opName, exp)
     case (_: PTrigger, Seq(exp: Seq[PExp@unchecked])) => PTrigger(exp)
     case (p: PIntLit, _) => p
@@ -232,7 +232,7 @@ object Transformer {
     case (_: PLetNestedScope, Seq(idndef: PFormalArgDecl, body: PExp)) => PLetNestedScope(idndef, body)
     case (p: PSkip, _) => p
 
-    case (p: PProgram, Seq(files: Seq[PImport@unchecked], macros: Seq[PDefine@unchecked], domains: Seq[PDomain@unchecked], fields: Seq[PField@unchecked], functions: Seq[PFunction@unchecked], predicates: Seq[PPredicate@unchecked], methods: Seq[PMethod@unchecked], errors: Seq[ParseReport@unchecked])) =>
+    case (_: PProgram, Seq(files: Seq[PImport@unchecked], macros: Seq[PDefine@unchecked], domains: Seq[PDomain@unchecked], fields: Seq[PField@unchecked], functions: Seq[PFunction@unchecked], predicates: Seq[PPredicate@unchecked], methods: Seq[PMethod@unchecked], errors: Seq[ParseReport@unchecked])) =>
       PProgram(files, macros, domains, fields, functions, predicates, methods, errors)
 
     case (p: PImport, _) => p
