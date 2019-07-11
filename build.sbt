@@ -6,7 +6,7 @@
 
 // Settings common to Silver and backends
 // Compilation settings
-ThisBuild / scalaVersion := "2.12.7"
+ThisBuild / scalaVersion := "2.13.0"
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",                     // Warn when using deprecated language features
   "-unchecked",                       // Warn on generated code assumptions
