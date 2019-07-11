@@ -40,7 +40,7 @@ case class Translator(program: PProgram) {
         val functions = pfunctions map translate
         val predicates = ppredicates map translate
         val methods = pmethods map translate
-        val extensions = (pextensions map translate)
+        val extensions = pextensions map translate
 
 
         val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods, extensions)(program))
@@ -530,6 +530,7 @@ case class Translator(program: PProgram) {
           TypeVar(name.name) // not a domain, i.e. it must be a type variable
       }
     case PWandType() => Wand
+    case t: PExtender => t.translateMem(this).asInstanceOf[Type]
     case PUnknown() =>
       sys.error("unknown type unexpected here")
     case PPredicateType() =>

@@ -379,6 +379,8 @@ case class TypeChecker(names: NameAnalyser) {
         check(elemType)
       case PMultisetType(elemType) =>
         check(elemType)
+      case t: PExtender =>
+        t.typecheck(this,names)
       case PUnknown() =>
         messages ++= FastMessaging.message(typ, "expected concrete type, but found unknown type")
     }
@@ -403,6 +405,8 @@ case class TypeChecker(names: NameAnalyser) {
       case (PDomainType(domain1, args1), PDomainType(domain2, args2))
         if domain1 == domain2 && args1.length == args2.length =>
         (args1 zip args2) forall (x => isCompatible(x._1, x._2))
+      case (a: PExtender,b)  => false// TBD: the equality function for two type variables
+      case (a, b: PExtender) => false // TBD: the equality function for two type variables
       case _ => false
     }
   }
