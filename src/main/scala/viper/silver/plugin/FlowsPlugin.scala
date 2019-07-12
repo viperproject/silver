@@ -72,7 +72,7 @@ object FlowsPlugin{
     * @param idndef
     * @param typ
     */
-  case class PFlowDomainTypeVarDecl(idndef: PIdnDef, typ: PType) extends PExtender with PGlobalDeclaration with PTypedDeclaration with PGenericType {
+  case class PFlowDomainTypeVarDecl(idndef: PIdnDef, typ: PType) extends PExtender with PUniversalDeclaration with PTypedDeclaration with PGenericType {
     override def getsubnodes(): Seq[PNode] = {
       Seq(idndef) ++ Seq(typ)
     }
@@ -125,11 +125,11 @@ object FlowsPlugin{
     *
     * @param idndef
     */
-  case class PFlowDomainIdentity(idndef: PIdnDef) extends PExtender with PGlobalDeclaration with PIdentifier {
+  case class PFlowDomainIdentity(idndef: PIdnDef) extends PExtender with PUniversalDeclaration {
     override def getsubnodes(): Seq[PNode] = {
       Seq(idndef)
     }
-    override def name = idndef.name
+//    override def name = idndef.name
 
     override def translateMemSignature(t: Translator): ExtMember = super.translateMemSignature(t)
 
@@ -164,7 +164,7 @@ object FlowsPlugin{
     * @param posts
     * @param body
     */
-  case class PFlowDomainOp(idndef: PIdnDef, flowArgs: Seq[PFlowDomainArg], typName: PFlowDomainTypeUse, posts: Seq[PExp], body: Option[PExp]) extends PExtender with PMember with PGlobalDeclaration with PTypedDeclaration {
+  case class PFlowDomainOp(idndef: PIdnDef, flowArgs: Seq[PFlowDomainArg], typName: PFlowDomainTypeUse, posts: Seq[PExp], body: Option[PExp]) extends PExtender with PMember with PUniversalDeclaration with PTypedDeclaration {
     override def getsubnodes(): Seq[PNode] = {
       Seq(idndef) ++ Seq(typ) ++ flowArgs ++ posts ++ body
     }
@@ -280,9 +280,9 @@ object FlowsPlugin{
     * @param idnuse
     */
   case class PFlowDomainTypeUse(idnuse: PIdnUse) extends PExtender with PExp with PType{
-    override def typeSubstitutions: Seq[PTypeSubstitution] = {println("printedhere"); null}
+    override def typeSubstitutions: Seq[PTypeSubstitution] = {null}
 
-    override def forceSubstitution(ts: PTypeSubstitution): Unit = {println("printedhere"); null}
+    override def forceSubstitution(ts: PTypeSubstitution): Unit = {null}
 
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
       val af = n.definition(null)(idnuse)
@@ -432,9 +432,9 @@ object FlowsPlugin{
     * @param idnuse
     */
   case class PFlowDomainIdenUse(idnuse: PIdnUse) extends PExtender with PExp with PIdentifier {
-    override def typeSubstitutions: Seq[PTypeSubstitution] = {println("printedhere"); null}
+    override def typeSubstitutions: Seq[PTypeSubstitution] = {null}
 
-    override def forceSubstitution(ts: PTypeSubstitution): Unit = {println("printedhere"); null}
+    override def forceSubstitution(ts: PTypeSubstitution): Unit = {null}
 
     var ident: PFlowDomainIdentity = null
 

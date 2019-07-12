@@ -1025,6 +1025,7 @@ trait PDeclaration extends PNode with PEntity {
 
 trait PGlobalDeclaration extends PDeclaration
 trait PLocalDeclaration extends PDeclaration
+trait PUniversalDeclaration extends PDeclaration
 
 trait PTypedDeclaration extends PDeclaration {
   def typ: PType
