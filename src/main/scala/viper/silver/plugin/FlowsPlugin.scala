@@ -12,6 +12,7 @@ import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
 import viper.silver.verifier.VerificationResult
+import viper.silver.ast.pretty.FastPrettyPrinter.text
 
 import scala.collection.Set
 import scala.util.parsing.input
@@ -46,7 +47,7 @@ object FlowsPlugin{
 
   lazy val newAccSugar: noApi.P[PExp] = P(fieldAcc ~ "|->" ~ idnuse).map{case (a,c) => PBinExp(PAccPred(a,PFullPerm()),"&&",PBinExp(a,"==",c))}
 
-  lazy val flowDomainIdenUse: noApi.P[PExp] = P(keyword("fdi") ~ idnuse).map{PFlowDomainIdenUse}
+  lazy val flowDomainIdenUse: noApi.P[PExp] = P(keyword("fdi") ~ idnuse).map{case a =>PFlowDomainIdenUse(a.name)}
 
   lazy val accExp: noApi.P[PExp] = P(newAccSugar/* ~ ("*" ~ accExp).?*/).map{ case b => b
   }
@@ -77,7 +78,7 @@ object FlowsPlugin{
       Seq(idndef) ++ Seq(typ)
     }
 
-    override def translateMemSignature(t: Translator): ExtMember = {println("printedhere"); null}
+    override def translateMemSignature(t: Translator): ExtMember = {println("translateMemsignature of ptypevardecl"); null}
 
     override def translateMem(t: Translator): ExtMember = {
       FlowDomainTypeVarDecl(idndef.name, t.ttyp(typ))(liftPos(this))
@@ -85,9 +86,9 @@ object FlowsPlugin{
 
     override def isValidOrUndeclared: Boolean = true// An actual implementation of isValidOrUndeclared is required
 
-    override def substitute(ts: PTypeSubstitution): PType = {println("printedhere"); null}
+    override def substitute(ts: PTypeSubstitution): PType = {println("substitute of typevardec"); null}
 
-    override def subNodes: Seq[PType] = {println("printedhere"); null}
+    override def subNodes: Seq[PType] = {println("subnodes of typecvardecl"); null}
 
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
       None
@@ -107,7 +108,7 @@ object FlowsPlugin{
     * @param errT
     */
   case class FlowDomainTypeVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)extends ExtMember with Type{
-    override def extensionsubnodes: Seq[Node] = Seq(typ)
+    override def extensionsubnodes: Seq[Node] = Seq()
 
     override val scopedDecls: Seq[Declaration] = Seq()
 
@@ -115,10 +116,13 @@ object FlowsPlugin{
       * Takes a mapping of type variables to types and substitutes all
       * occurrences of those type variables with the corresponding type.
       */
-    override def substitute(typVarsMap: Map[TypeVar, Type]): Type = {println("printedhere"); null}
+    override def substitute(typVarsMap: Map[TypeVar, Type]): Type = {println("substitute pf typevardecl ast one"); null}
 
     /** Is this a concrete type (i.e. no uninstantiated type variables)? */
     override def isConcrete: Boolean = false
+
+    override def toString(): String = "FlowDomainTypeVarDecl"
+
   }
 
   /**
@@ -323,7 +327,7 @@ object FlowsPlugin{
     * @param errT
     */
   case class FlowDomainTypeUse(str: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Type{
-    override def extensionIsPure: Boolean = true
+    override def extensionIsPure: Boolean = false
 
     override def extensionSubnodes: Seq[Node] = Seq()
 
@@ -332,17 +336,17 @@ object FlowsPlugin{
     override def isSubtype(other: Type): Boolean = false
     override def isSubtype(other: Typed): Boolean = false
 
-    override def verifyExtExp(): VerificationResult = {println("printedhere"); null}
+    override def verifyExtExp(): VerificationResult = ???
 
     /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
       * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-    override def prettyPrint: PrettyPrintPrimitives#Cont = {println("printedhere"); null}
+    override def prettyPrint: PrettyPrintPrimitives#Cont = {println("FlowDomainTypeUse prettyprinter"); null}
 
     /**
       * Takes a mapping of type variables to types and substitutes all
       * occurrences of those type variables with the corresponding type.
       */
-    override def substitute(typVarsMap: Map[TypeVar, Type]): Type = {println("printedhere"); null}
+    override def substitute(typVarsMap: Map[TypeVar, Type]): Type = {println("substitute in type use "); null}
 
     /** Is this a concrete type (i.e. no uninstantiated type variables)? */
     override def isConcrete: Boolean = false
@@ -376,7 +380,7 @@ object FlowsPlugin{
   case class PFlowDomainFuncUse(idnuse: PIdnUse, args: Seq[PExp]) extends PExtender with PExp with POpApp with PLocationAccess{
     override def opName: String = idnuse.name
 
-    override def signatures: List[PTypeSubstitution] = {println("printedhere"); null}
+    override def signatures: List[PTypeSubstitution] = {println("signatures of funcuse"); null}
     val classname = "PFlowDomainFuncUse"
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
       val af = n.definition(null)(idnuse)
@@ -418,36 +422,36 @@ object FlowsPlugin{
 
     override def extensionSubnodes: Seq[Node] = args
 
-    override def typ: Type = {println("printedhere"); null}
+    override def typ: Type = FlowDomainTypeVarDecl("fd",Int)()
 
-    override def verifyExtExp(): VerificationResult = {println("printedhere"); null}
+    override def verifyExtExp(): VerificationResult = {println("verifyExtExp printer"); null}
 
     /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
       * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-    override def prettyPrint: PrettyPrintPrimitives#Cont = {println("printedhere"); null}
+    override def prettyPrint: PrettyPrintPrimitives#Cont = text("FlowDomainFuncUse")//println("FlowDomainFuncUse printer")
   }
 
   /**
     *
-    * @param idnuse
+    * @param name
     */
-  case class PFlowDomainIdenUse(idnuse: PIdnUse) extends PExtender with PExp with PIdentifier {
+  case class PFlowDomainIdenUse(name: String) extends PExtender with PExp with PIdentifier {
     override def typeSubstitutions: Seq[PTypeSubstitution] = {null}
 
     override def forceSubstitution(ts: PTypeSubstitution): Unit = {null}
 
+    override def getsubnodes(): Seq[PNode] = Seq()
+
     var ident: PFlowDomainIdentity = null
 
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
-      ident = n.definition(null)(idnuse).asInstanceOf[PFlowDomainIdentity]
+      ident = n.definition(null)(PIdnUse(name)).asInstanceOf[PFlowDomainIdentity]
       None
     }
 
     override def translateExp(t: Translator): ExtensionExp = {
       FlowDomainIdenUse(name)(liftPos(this))
     }
-
-    override def name: String = idnuse.name
   }
 
   /**
@@ -458,17 +462,16 @@ object FlowsPlugin{
     * @param errT
     */
   case class FlowDomainIdenUse(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp{
-    override def extensionIsPure: Boolean = true
+    override def extensionIsPure: Boolean = false
 
     override def extensionSubnodes: Seq[Node] = Seq()
 
-    override def typ: Type = local_typ
-    var local_typ: FlowDomainTypeVarDecl = null
+    override def typ: Type = FlowDomainTypeVarDecl("",Int)()
 
-    override def verifyExtExp(): VerificationResult = {println("printedhere"); null}
+    override def verifyExtExp(): VerificationResult = ???
 
     /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
       * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression. */
-    override def prettyPrint: PrettyPrintPrimitives#Cont = {println("printedhere"); null}
+    override def prettyPrint: PrettyPrintPrimitives#Cont = null
   }
 }
