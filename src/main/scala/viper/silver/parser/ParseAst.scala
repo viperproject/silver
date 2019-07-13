@@ -964,6 +964,7 @@ case class PWhile(cond: PExp, invs: Seq[PExp], body: PSeqn) extends PStmt
 case class PFresh(vars: Seq[PIdnUse]) extends PStmt
 case class PConstraining(vars: Seq[PIdnUse], stmt: PSeqn) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with PTypedDeclaration with PLocalDeclaration
+case class PGlobalVarDecl(idndef: PIdnDef, typ: PType) extends PTypedDeclaration with PUniversalDeclaration
 case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) extends PStmt
 case class PLabel(idndef: PIdnDef, invs: Seq[PExp]) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
@@ -1025,6 +1026,7 @@ trait PDeclaration extends PNode with PEntity {
 
 trait PGlobalDeclaration extends PDeclaration
 trait PLocalDeclaration extends PDeclaration
+trait PUniversalDeclaration extends PDeclaration
 
 trait PTypedDeclaration extends PDeclaration {
   def typ: PType

@@ -793,10 +793,12 @@ case class NameAnalyser() {
   def reset() {
     globalDeclarationMap.clear()
     localDeclarationMaps.clear()
+    universalDeclarationMap.clear()
     namesInScope.clear()
   }
 
   private val globalDeclarationMap = mutable.HashMap[String, PEntity]()
+  private val universalDeclarationMap = mutable.HashMap[String, PEntity]()
 
   /* [2014-11-13 Malte] Changed localDeclarationMaps to be a map from PScope.Id
    * instead of from PScope directly. This was necessary in order to support
@@ -810,10 +812,19 @@ case class NameAnalyser() {
 
   private val namesInScope = mutable.Set.empty[String]
 
+  private def clearUniversalDeclarationsMap(): Unit = {
+    universalDeclarationMap.map{k =>
+      globalDeclarationMap.put(k._1,k._2)
+      localDeclarationMaps.map{l =>
+        l._2.put(k._1,k._2)
+      }
+    }
+  }
   private def check(n: PNode, target: Option[PNode]): Unit = {
     var curMember: PScope = null
     def getMap(d:PNode) : mutable.HashMap[String, PEntity] =
       d match {
+        case _: PUniversalDeclaration => universalDeclarationMap
         case _: PGlobalDeclaration => globalDeclarationMap
         case _ => getCurrentMap
       }
@@ -917,7 +928,7 @@ case class NameAnalyser() {
 
     // find all declarations
     n.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
-
+    clearUniversalDeclarationsMap()
     /* Check all identifier uses. */
     n.visit({
       case m: PScope =>
