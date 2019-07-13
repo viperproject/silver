@@ -25,9 +25,13 @@ abstract class ResourceBasedTestSuite extends FunSuite {
 
   /**
    * The test directories where tests can be found.
-   * The directories must be relative because they are resolved via
-   * [[java.lang.ClassLoader]].
+   *
+   * Unless your test suite overrides [[getTestDirPath]],
+   * each of the directories in [[testDirectories]] must be relative
+   * because they are resolved via [[java.lang.ClassLoader]] in the
+   * default implementation.
    * @see http://stackoverflow.com/a/7098501/491216.
+   *
    * @return A sequence of test directories.
    */
   def testDirectories: Seq[String]
@@ -91,14 +95,14 @@ abstract class ResourceBasedTestSuite extends FunSuite {
     val dirContent = directoryStream.toList
     val includeFilesPattern = configMap.getOrElse("includeFiles", defaultTestPattern).toString
 
-    for (f: Path <- dirContent
+    for (f: Path <- dirContent.sorted
          if Files.isDirectory(f)) {
 
       val newPrefix = prefix + "/" + f.getName(f.getNameCount - 1)
       registerTestDirectory(f, newPrefix)
     }
 
-    for (f: Path <- dirContent
+    for (f: Path <- dirContent.sorted
         // If a file is renamed while Sbt runs, AccessDeniedExceptions
         // might be thrown. Apparently, because the old file still exists in
         // target/.../test-classes, but it is somehow locked. Weird stuff.
@@ -143,14 +147,19 @@ abstract class ResourceBasedTestSuite extends FunSuite {
 
   private var _testsRegistered = false
 
+  protected def getTestDirPath(testDir: String): Path = {
+    val resource = classLoader.getResource(testDir)
+    assert(resource != null, s"Test directory $testDir couldn't be found")
+    viper.silver.utility.Paths.pathFromResource(classLoader.getResource(testDir))
+  }
+
   private def registerTests() {
     if (_testsRegistered) return
 
+    // Here, the order of elements in testDirectories is defined
+    //  by the test suite implementation and we need not sort it.
     for (testDir <- testDirectories) {
-      val resource = classLoader.getResource(testDir)
-      assert(resource != null, s"Test directory $testDir couldn't be found")
-
-      val path = viper.silver.utility.Paths.pathFromResource(classLoader.getResource(testDir))
+      val path = getTestDirPath(testDir)
       registerTestDirectory(path, testDir)
     }
 

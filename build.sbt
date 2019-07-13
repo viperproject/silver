@@ -42,7 +42,7 @@ lazy val silver = (project in file("."))
     libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.25",                                // Logging
     libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3",                      // Logging
 
-    // Test settings
+    // Test settings.
     Test / parallelExecution := false,
 
     // Assembly settings
