@@ -4,4 +4,4 @@
 method f1(x: Ref)
   requires true --* true
   //:: ExpectedOutput(not.wellformed:wand.not.found)
-  ensures applying true --* (true) in true
+  ensures applying true --* true in true
