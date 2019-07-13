@@ -391,6 +391,27 @@ object FastParser extends PosParser[Char, String] {
         doExpandDefines(globalMacros, predicate, p)
       })
 
+    def linearizeMethod(method: PMethod): PMethod = {
+      def linearizeSeqOfNestedStmt(pseqn: PSeqn): Seq[PStmt] = {
+        var stmts = Seq.empty[PStmt]
+        pseqn.ss.foreach {
+          case s: PSeqn => stmts = stmts ++ linearizeSeqOfNestedStmt(s)
+          case v => stmts = stmts :+ v
+        }
+        stmts
+      }
+
+      val body = method.body match {
+        case Some(s: PSeqn) => Some(PSeqn(linearizeSeqOfNestedStmt(s)))
+        case v => v
+      }
+
+      if (body != method.body)
+        PMethod(method.idndef, method.formalArgs, method.formalReturns, method.pres, method.posts, body)
+      else
+        method
+    }
+
     val methods = p.methods.map(method => {
       // Collect local macro definitions
       val localMacros = method.deepCollect { case n: PDefine => n }
@@ -404,7 +425,7 @@ object FastParser extends PosParser[Char, String] {
         else
           method.transform { case mac: PDefine => PSkip().setPos(mac) }()
 
-      doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p)
+      linearizeMethod(doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p))
     })
 
     PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.extensions, p.errors ++ warnings)
@@ -589,7 +610,7 @@ object FastParser extends PosParser[Char, String] {
       bodyWithReplacedParams
     }
 
-    def ExpandMacroIfValid(node: PNode, ctx: ContextA[PNode]): PNode = {
+    def ExpandMacroIfValid(macroCall: PNode, ctx: ContextA[PNode]): PNode = {
       matchOnMacroCall.andThen {
         case MacroApp(name, arguments, call) =>
           val macroDefinition = getMacroByName(name)
@@ -620,7 +641,7 @@ object FastParser extends PosParser[Char, String] {
           }
 
           try {
-            scopeAtMacroCall = NameAnalyser().namesInScope(program, Some(node))
+            scopeAtMacroCall = NameAnalyser().namesInScope(program, Some(macroCall))
             arguments.foreach(
               StrategyBuilder.SlimVisitor[PNode] {
                 case id: PIdnDef => scopeAtMacroCall += id.name
@@ -633,7 +654,7 @@ object FastParser extends PosParser[Char, String] {
             case problem: ParseTreeDuplicationError =>
               throw ParseException("Macro expansion would result in invalid code (encountered ParseTreeDuplicationError:)\n" + problem.getMessage, pos)
           }
-      }.applyOrElse(node, (_: PNode) => node)
+      }.applyOrElse(macroCall, (_: PNode) => macroCall)
     }
 
     // Strategy that checks if the macro calls are valid and expands them.

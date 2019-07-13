@@ -6,8 +6,10 @@
 
 package viper.silver.utility
 
+import java.io.File
 import java.net.{URI, URL}
 import java.nio.file.{FileSystem, FileSystems, Path}
+
 import scala.collection.JavaConverters._
 
 /**
@@ -113,5 +115,26 @@ object Paths {
         }
       }
     })
+  }
+
+  /** Returns the canonical absolute path from a string.
+    * Example inputs: "/usr/local/Viper/backends", "./backends" */
+  def canonize(someFileName: String): File = {
+    val f = new File(someFileName)
+    if (f.isAbsolute) {
+      f
+    } else {
+      java.nio.file.Paths.get(System.getProperty("user.dir"), someFileName).toFile
+    }
+  }
+
+  /** Check that the file `file` is in (or equal to) the directory `dir`.
+    * Requires that `dir` is well-defined, but `file` can be anything. */
+  def isInSubDirectory(dir: File, file: File): Boolean = {
+
+    require(dir != null)
+    require(dir.isDirectory)
+
+    (file != null) && (file.equals(dir) || isInSubDirectory(dir, file.getParentFile))
   }
 }
