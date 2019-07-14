@@ -156,7 +156,7 @@ case class Translator(program: PProgram) {
   private def findMethod(id: PIdentifier) = members(id.name).asInstanceOf[Method]
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */
-  private def stmt(s: PStmt): Stmt = {
+  def stmt(s: PStmt): Stmt = {
     val pos = s
     s match {
       case PVarAssign(idnuse, PCall(func, args, _)) if members(func.name).isInstanceOf[Method] =>

@@ -2,16 +2,17 @@ package viper.silver.plugin
 
 import fastparse.noApi
 import viper.silver.ast._
-import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
-import viper.silver.ast.pretty.FastPrettyPrinter.{char, parens, ssep, text, toParenDoc}
 import viper.silver.verifier.VerificationResult
 import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, space, ssep, text, toParenDoc}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import scala.collection.Set
+import viper.silver.ast.utility.rewriter.StrategyBuilder
 
-object trialplugin  /*extends PosParser[Char, String]*/ {
+import scala.collection.Set
+import scala.util.parsing.input
+
+object trialplugin {
 
    /*
     * The import statements that instantiate the PWhiteSpaceApi class and then import the overloaded sequencing operators
@@ -23,6 +24,15 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
   }
   import White._
   import fastparse.noApi._
+
+  def liftPos(pos: FastPositioned): SourcePosition = {
+    val start = LineColumnPosition(pos.start.line, pos.start.column)
+    val end = LineColumnPosition(pos.finish.line, pos.finish.column)
+    pos.start match {
+      case fp: FilePosition => SourcePosition(fp.file, start, end)
+      case input.NoPosition => SourcePosition(null, 0, 0)
+    }
+  }
 
    /*
     * The high level function that overloads the existing PExtender class with the PAnyFunction  and PMember traits to get a new function declaration.
@@ -273,8 +283,128 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
 
 
 
+  /********************************************************************************************************************
+    * ********************************************************************************************************
+    * ***********************************************Statement Expansion***************************************
+    * ********************************************************************************************************
+    * ******************************************************************************************************************/
 
 
+  case class PDoubleMethod(idndef: PIdnDef, formalArgsList1: Seq[PFormalArgDecl], formalArgsList2: Seq[PFormalArgDecl], formalReturns: Seq[PFormalArgDecl], pres: Seq[PExp], posts: Seq[PExp], body: Option[PStmt]) extends PExtender with PMember with PGlobalDeclaration{
+    override def getsubnodes(): Seq[PNode] ={
+      Seq(this.idndef) ++ this.formalArgsList1 ++ this.formalArgsList2++ this.formalReturns ++ this.pres ++ this.posts ++ this.body
+    }
+
+    /*
+     * The hook implementation for the typechecker part of the semantic analyser.
+     * Must return a FastMessaging.message type variable.
+     */
+    override def typecheck(typechecker:TypeChecker, names: NameAnalyser): Option[Seq[String]] = {
+      typechecker.checkMember(this) {
+        (formalArgsList1 ++ formalArgsList2 ++ formalReturns) foreach (a => typechecker.check(a.typ))
+      }
+      typechecker.checkMember(this) {
+        pres foreach (typechecker.check(_, TypeHelper.Bool))
+        posts foreach (typechecker.check(_, TypeHelper.Bool))
+        body.foreach(typechecker.check)
+      }
+      None
+    }
+
+    def deepCopy(idndef: PIdnDef = this.idndef, formalArgsList1: Seq[PFormalArgDecl] = this.formalArgsList1, formalArgsList2: Seq[PFormalArgDecl] = this.formalArgsList2, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body): PDoubleMethod = {
+      StrategyBuilder.Slim[PNode]({
+        case m: PDoubleMethod => PDoubleMethod(idndef, formalArgsList1, formalArgsList2, formalReturns, pres, posts, body)
+      }).duplicateEverything.execute[PDoubleMethod](this)
+    }
+
+    def deepCopyWithNameSubstitution(idndef: PIdnDef = this.idndef, formalArgsList1: Seq[PFormalArgDecl] = this.formalArgsList1, formalArgsList2: Seq[PFormalArgDecl] = this.formalArgsList2, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body)
+                                    (idn_generic_name: String, idn_substitution: String): PDoubleMethod = {
+      StrategyBuilder.Slim[PNode]({
+        case m: PDoubleMethod => PDoubleMethod(idndef, formalArgsList1, formalArgsList2, formalReturns, pres, posts, body)
+        case PIdnDef(name) if name == idn_generic_name => PIdnDef(idn_substitution)
+        case PIdnUse(name) if name == idn_generic_name => PIdnUse(idn_substitution)
+      }).duplicateEverything.execute[PDoubleMethod](this)
+    }
+
+    override def translateMem(t: Translator): ExtMember = this match{
+      case PDoubleMethod(name,_, _, _, pres, posts, body) =>
+        val m = t.getMembers()(name.name).asInstanceOf[DoubleMethod]
+
+        val newBody = body.map(actualBody => {
+          val b = t.stmt(actualBody).asInstanceOf[Seqn]
+          val newScopedDecls = b.scopedDecls ++ b.deepCollect {case l: Label => l}
+
+          b.copy(scopedDecls = newScopedDecls)(b.pos, b.info, b.errT)
+        })
+
+        val finalMethod = m.copy(m.name, m.formalArgsList1, m.formalArgsList2, m.formalReturns, pres map t.exp, posts map t.exp, newBody)(m.pos, m.info, m.errT)
+
+        t.getMembers()(m.name) = finalMethod
+
+        finalMethod
+    }
+
+    override def translateMemSignature(t: Translator): ExtMember = {
+      DoubleMethod(this.idndef.name, this.formalArgsList1 map t.liftVarDecl, this.formalArgsList2 map t.liftVarDecl, this.formalReturns map t.liftVarDecl, null, null, null)(liftPos(this))
+    }
+  }
+
+  case class DoubleMethod(name: String, formalArgsList1: Seq[LocalVarDecl], formalArgsList2: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
+                         (override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends ExtMember{
+    override def extensionsubnodes: Seq[Node] = formalArgsList1 ++ formalArgsList2 ++ formalReturns ++ pres ++ posts ++ body
+
+
+    override val scopedDecls: Seq[Declaration] = formalArgsList1 ++ formalArgsList2 ++ formalReturns
+  }
+
+  case class  PDoubleMethodCall(targets: Seq[PIdnUse], method: PIdnUse, argsList1: Seq[PExp], argsList2: Seq[PExp]) extends PExtender with PStmt
+  {
+    override def getsubnodes(): Seq[PNode] = targets ++ Seq(method) ++ argsList1 ++ argsList2
+
+    override def typecheck(t: TypeChecker, names: NameAnalyser): Option[Seq[String]] = {
+      names.definition(t.curMember)(method) match {
+        case PDoubleMethod(_, formalArgsList1, formalArgsList2, formalTargets, _, _, _) =>
+          formalArgsList1.foreach(fa=>t.check(fa.typ))
+          formalArgsList2.foreach(fa=>t.check(fa.typ))
+          if ((formalArgsList1.length != argsList1.length) && (formalArgsList1.length != argsList1.length)) {
+            Some(Seq("wrong number of arguments"))
+          } else {
+            if (formalTargets.length != targets.length) {
+              Some(Seq("wrong number of targets"))
+            } else {
+              for ((formal, actual) <- (formalArgsList1 zip argsList1) ++ (formalArgsList2 zip argsList2) ++ (formalTargets zip targets)) {
+                t.check(actual, formal.typ)
+              }
+              None
+            }
+          }
+        case _ =>
+          Some(Seq("expected a method"))
+      }
+    }
+
+    override def translateStmt(t: Translator): ExtensionStmt = {
+      val ts = (targets map t.exp).asInstanceOf[Seq[LocalVar]]
+      DoubleMethodCall(method.name, argsList1 map t.exp, argsList2 map t.exp, ts)(liftPos(this))
+    }
+
+  }
+
+  case class DoubleMethodCall(methodName: String, argsList1: Seq[Exp], argsList2: Seq[Exp], targets: Seq[LocalVar])(override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends ExtensionStmt{
+    override def extensionSubnodes: Seq[Node] = argsList1 ++ argsList2 ++ targets
+
+    override def prettyPrint: PrettyPrintPrimitives#Cont = text("DoubleMethodCall")
+  }
+
+
+  lazy val doubleMethodDecl = P("dmethod" ~/ idndef ~ "(" ~ formalArgList ~ ")" ~ "(" ~ formalArgList ~ ")" ~ ("returns" ~ "(" ~ formalArgList ~ ")" ).? ~/ pre.rep ~ post.rep ~ block.?).map{
+    case (a,b,c,d,e,f,g) => PDoubleMethod(a,b,c,d.getOrElse(Nil),e,f,g)
+  }
+
+  lazy val dmethodCall: P[PDoubleMethodCall] = P(keyword("DMCall") ~ (idnuse.rep(sep = ",") ~ ":=").? ~ idnuse ~ FastParser.parens(exp.rep(sep = ",")) ~ FastParser.parens(exp.rep(sep = ","))).map {
+    case (None, method, args1, args2) => PDoubleMethodCall(Nil, method, args1, args2)
+    case (Some(targets), method, args1, args2) => PDoubleMethodCall(targets, method, args1, args2)
+  }
 
   /*
    * The parser rules, which extend the actual parser.
@@ -283,13 +413,13 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
    /*
     * The high level declarations which provide a hook for any type of independent declarations like new function or new predicates etc.
     */
-  lazy val newDecl = P(doubleFunctionDecl)
+  lazy val newDecl = P(doubleFunctionDecl | doubleMethodDecl)
 
 
    /*
     * The newStmt parser which is essentially an extension of the stmt rules in the new parser.
     */
-  lazy val newStmt = P("newStmtNotInUse").map {case () => "".asInstanceOf[PStmt]}
+  lazy val newStmt = P(dmethodCall)
    /*
     * THe newExp rule provides an extension to the expression parsers.
     */
@@ -305,22 +435,6 @@ object trialplugin  /*extends PosParser[Char, String]*/ {
    /*
     * The extended Keywords is a set of the strings which consitute the set of keywirds but are not a part of the base keyword set.
     */
-  lazy val extendedKeywords = Set[String]("dfunction", "DFCall")
+  lazy val extendedKeywords = Set[String]("dfunction", "DFCall", "dmethod", "DMCall")
 
-
-
-
-
-
-
-  /* Rules not in use right now
-    lazy val functionDecl2: noApi.P[PFunction] = P("function" ~/ (functionDeclWithArg | functionDeclNoArg))
-
-    lazy val functionDeclWithArg: noApi.P[PFunction] = P(idndef ~ "(" ~ formalArgList ~ ")" ~ "(" ~ formalArgList ~ ")" ~ ":" ~ typ ~ pre.rep ~
-    post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, g, c, d, e, f) => PFunction(a, b, c, d, e, f) }
-
-
-    lazy val functionDeclNoArg: noApi.P[PFunction] = P(idndef ~ ":" ~ typ ~ pre.rep ~
-    post.rep ~ ("{" ~ exp ~ "}").?).map { case (a,  c, d, e, f) => PFunction(a, Seq[PFormalArgDecl](), c, d, e, f) }
-  */
 }
