@@ -18,7 +18,7 @@ import scala.collection.immutable
 import scala.reflect.ClassTag
 
 /** A Silver program. */
-case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method], extensions: Seq[ExtMember])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method], extensions: Seq[ExtensionMember])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends Node with DependencyAware with Positioned with Infoed with Scope with TransformableErrors {
 
   val scopedDecls: Seq[Declaration] =
@@ -705,6 +705,6 @@ case object NotOp extends UnOp with BoolDomainFunc {
   lazy val fixity = Prefix
 }
 
-trait ExtMember extends Member{
+trait ExtensionMember extends Member{
   def extensionsubnodes: Seq[Node]
 }

@@ -308,7 +308,7 @@ object ViperStrategy {
       * has been done by G Rahul Kranti Kiran as an attempt to resolve the compilations errors in the implementaion of the parser plugin prototype.
       * This modification needs consideration by a more knowledgeable person to point out any inconsistensies or incorrectness
       */
-    case (p: Program, Seq(domains: Seq[Domain@unchecked], fields: Seq[Field@unchecked], functions: Seq[Function@unchecked], predicates: Seq[Predicate@unchecked], methods: Seq[Method@unchecked], extensions: Seq[ExtMember@unchecked]), meta) =>
+    case (p: Program, Seq(domains: Seq[Domain@unchecked], fields: Seq[Field@unchecked], functions: Seq[Function@unchecked], predicates: Seq[Predicate@unchecked], methods: Seq[Method@unchecked], extensions: Seq[ExtensionMember@unchecked]), meta) =>
       Program(domains, fields, functions, predicates, methods, extensions)(meta._1, meta._2, meta._3)
 
 

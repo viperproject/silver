@@ -69,7 +69,7 @@ object trialplugin {
      /*
       * The support functions for the translation phase.
       */
-    override def translateMem(t: Translator): ExtMember = this match{
+    override def translateMember(t: Translator): ExtensionMember = this match{
       case PDoubleFunction(name,formalArgs,formalArgsSecondary,_,pres,posts, body) =>
       val func1 = t.getMembers()(idndef.name).asInstanceOf[DoubleFunction]
       val ff = func1.copy(pres = pres map t.exp, posts = posts map t.exp, body = body map t.exp)(func1.pos, func1.info, func1.errT)
@@ -77,7 +77,7 @@ object trialplugin {
         ff
     }
 
-    override def translateMemSignature(t: Translator): ExtMember = {
+    override def translateMemberSignature(t: Translator): ExtensionMember = {
       DoubleFunction(this.idndef.name, this.formalArgs map t.liftVarDecl, this.formalArgsSecondary map t.liftVarDecl, t.ttyp(this.rettyp), null, null, null)()
     }
   }
@@ -156,7 +156,7 @@ object trialplugin {
     * The Ast Node for the declaration of the function with two parameter lists.
     * This is the translation result of the PDoubleFunction node.
     */
-  case class DoubleFunction(name: String, formalArgs: Seq[LocalVarDecl], formalArgsSecondary: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtMember {
+  case class DoubleFunction(name: String, formalArgs: Seq[LocalVarDecl], formalArgsSecondary: Seq[LocalVarDecl], typ: Type, pres: Seq[Exp], posts: Seq[Exp], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionMember {
      /*
       * Function necessary for the consistency check. Not implemented by G Rahul Kranti Kiran.
       */
@@ -326,7 +326,7 @@ object trialplugin {
       }).duplicateEverything.execute[PDoubleMethod](this)
     }
 
-    override def translateMem(t: Translator): ExtMember = this match{
+    override def translateMember(t: Translator): ExtensionMember = this match{
       case PDoubleMethod(name,_, _, _, pres, posts, body) =>
         val m = t.getMembers()(name.name).asInstanceOf[DoubleMethod]
 
@@ -344,13 +344,13 @@ object trialplugin {
         finalMethod
     }
 
-    override def translateMemSignature(t: Translator): ExtMember = {
+    override def translateMemberSignature(t: Translator): ExtensionMember = {
       DoubleMethod(this.idndef.name, this.formalArgsList1 map t.liftVarDecl, this.formalArgsList2 map t.liftVarDecl, this.formalReturns map t.liftVarDecl, null, null, null)(liftPos(this))
     }
   }
 
   case class DoubleMethod(name: String, formalArgsList1: Seq[LocalVarDecl], formalArgsList2: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
-                         (override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends ExtMember{
+                         (override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends ExtensionMember{
     override def extensionsubnodes: Seq[Node] = formalArgsList1 ++ formalArgsList2 ++ formalReturns ++ pres ++ posts ++ body
 
 

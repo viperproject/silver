@@ -53,8 +53,8 @@ case class Translator(program: PProgram) {
     }
   }
 
-  private def translate(t: PExtender): ExtMember = {
-    t.translateMem(this)
+  private def translate(t: PExtender): ExtensionMember = {
+    t.translateMember(this)
   }
 
   private def translate(m: PMethod): Method = m match {
@@ -142,7 +142,7 @@ case class Translator(program: PProgram) {
     val pos = p
     val t = p match {
       case t: PMember =>
-        val l = p.translateMemSignature(this)
+        val l = p.translateMemberSignature(this)
         members.put(t.idndef.name, l)
     }
   }
@@ -530,7 +530,7 @@ case class Translator(program: PProgram) {
           TypeVar(name.name) // not a domain, i.e. it must be a type variable
       }
     case PWandType() => Wand
-    case t: PExtender => t.translateMem(this).asInstanceOf[Type]
+    case t: PExtender => t.translateMember(this).asInstanceOf[Type]
     case PUnknown() =>
       sys.error("unknown type unexpected here")
     case PPredicateType() =>

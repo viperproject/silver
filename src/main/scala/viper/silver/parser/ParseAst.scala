@@ -10,7 +10,7 @@ import scala.collection.{GenTraversable, Set}
 import scala.language.implicitConversions
 import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
-import viper.silver.ast.{ExtMember, ExtensionExp, ExtensionStmt, MagicWandOp}
+import viper.silver.ast.{ExtensionMember, ExtensionExp, ExtensionStmt, MagicWandOp}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
@@ -1098,8 +1098,8 @@ trait PExtender extends PNode{
   def getsubnodes():Seq[PNode] = ???
   def typecheck(t: TypeChecker, n: NameAnalyser):Option[Seq[String]] = ???
   def namecheck(n: NameAnalyser) = ???
-  def translateMemSignature(t: Translator): ExtMember = ???
-  def translateMem(t: Translator): ExtMember = ???
+  def translateMemberSignature(t: Translator): ExtensionMember = ???
+  def translateMember(t: Translator): ExtensionMember = ???
 
   def translateStmt(t: Translator): ExtensionStmt = ???
   def translateExp(t: Translator): ExtensionExp = ???

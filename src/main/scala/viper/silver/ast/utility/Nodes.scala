@@ -39,7 +39,7 @@ object Nodes {
           case Predicate(name, formalArg, body) => formalArg ++ body.toSeq
           case Domain(name, functions, axioms, typVars) =>
             functions ++ axioms ++ typVars
-          case t: ExtMember => t.extensionsubnodes
+          case t: ExtensionMember => t.extensionsubnodes
         }
       case dm: DomainMember =>
         dm match {

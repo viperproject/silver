@@ -183,3 +183,7 @@ case class TypeVar(name: String) extends Type {
 
   //def !=(other: TypeVar) = name != other
 }
+
+trait ExtensionType extends Type{
+  def getAstType: Type = ???
+}

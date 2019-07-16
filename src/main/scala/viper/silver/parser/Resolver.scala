@@ -549,6 +549,7 @@ case class TypeChecker(names: NameAnalyser) {
     var extraReturnTypeConstraint : Option[PType] = None
 
     exp match {
+  //Add comments
       case t: PExtender => t.typecheck(this, names) match{
         case Some(message_list) =>
           message_list foreach ( message => messages ++= FastMessaging.message(t, message))

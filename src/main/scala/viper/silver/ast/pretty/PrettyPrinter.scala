@@ -559,7 +559,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
           })
       case d: Domain =>
         showDomain(d)
-      case t:ExtMember => nil
+      case t:ExtensionMember => nil
     }
     showComment(m) <@> memberDoc
   }

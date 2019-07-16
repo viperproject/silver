@@ -15,7 +15,6 @@ import viper.silver.verifier.VerificationResult
 import viper.silver.ast.pretty.FastPrettyPrinter.text
 
 import scala.collection.Set
-import scala.util.parsing.input
 
 object FlowsPlugin{
   /*
@@ -29,21 +28,15 @@ object FlowsPlugin{
   import White._
   import fastparse.noApi._
 
-  lazy val newDecl = P(flowDomain)
-  lazy val  newStmt = P("somethingOfaStmt").map{case () => "".asInstanceOf[PStmt]}
-  lazy val newExp = P(flowDomainCall | flowDomainIdenUse)
+//  lazy val newDeclAtStart: noApi.P[PExtender] = null
+//  lazy val newStmtAtStart: noApi.P[PStmt] = null
+  lazy val newDeclAtEnd = P(flowDomain)
+  lazy val  newStmtAtEnd: noApi.P[PStmt] = null
+  lazy val newExpAtEnd = P(flowDomainCall | flowDomainIdenUse)
+//  lazy val newExpAtStart: noApi.P[PExp] = null
   lazy val preSpecification: noApi.P[PExp] = P("preConditionSpecificationExample").map{case() => "".asInstanceOf[PExp]}
   lazy val postSpecification: noApi.P[PExp] = P("postConditionSpecificationExample").map{case() => "".asInstanceOf[PExp]}
   lazy val invSpecification: noApi.P[PExp] = P("invariantSpecificationExample").map{case() => "".asInstanceOf[PExp]}
-
-  def liftPos(pos: FastPositioned): SourcePosition = {
-    val start = LineColumnPosition(pos.start.line, pos.start.column)
-    val end = LineColumnPosition(pos.finish.line, pos.finish.column)
-    pos.start match {
-      case fp: FilePosition => SourcePosition(fp.file, start, end)
-      case input.NoPosition => SourcePosition(null, 0, 0)
-    }
-  }
 
   lazy val newAccSugar: noApi.P[PExp] = P(fieldAcc ~ "|->" ~ idnuse).map{case (a,c) => PBinExp(PAccPred(a,PFullPerm()),"&&",PBinExp(a,"==",c))}
 
@@ -78,10 +71,10 @@ object FlowsPlugin{
       Seq(idndef) ++ Seq(typ)
     }
 
-    override def translateMemSignature(t: Translator): ExtMember = {println("translateMemsignature of ptypevardecl"); null}
+    override def translateMemberSignature(t: Translator): ExtensionMember = {println("translateMemsignature of ptypevardecl"); null}
 
-    override def translateMem(t: Translator): ExtMember = {
-      FlowDomainTypeVarDecl(idndef.name, t.ttyp(typ))(liftPos(this))
+    override def translateMember(t: Translator): ExtensionMember = {
+      FlowDomainTypeVarDecl(idndef.name, t.ttyp(typ))(t.liftPos(this))
     }
 
     override def isValidOrUndeclared: Boolean = true// An actual implementation of isValidOrUndeclared is required
@@ -107,7 +100,7 @@ object FlowsPlugin{
     * @param info
     * @param errT
     */
-  case class FlowDomainTypeVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)extends ExtMember with Type{
+  case class FlowDomainTypeVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)extends ExtensionMember with ExtensionType {
     override def extensionsubnodes: Seq[Node] = Seq()
 
     override val scopedDecls: Seq[Declaration] = Seq()
@@ -123,6 +116,7 @@ object FlowsPlugin{
 
     override def toString(): String = "FlowDomainTypeVarDecl"
 
+    override def getAstType = typ
   }
 
   /**
@@ -135,10 +129,10 @@ object FlowsPlugin{
     }
 //    override def name = idndef.name
 
-    override def translateMemSignature(t: Translator): ExtMember = super.translateMemSignature(t)
+    override def translateMemberSignature(t: Translator): ExtensionMember = super.translateMemberSignature(t)
 
-    override def translateMem(t: Translator): ExtMember = {
-      FlowDomainIdentity(idndef.name)(liftPos(this))
+    override def translateMember(t: Translator): ExtensionMember = {
+      FlowDomainIdentity(idndef.name)(t.liftPos(this))
     }
     var typ: PType = PUnknown()
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
@@ -153,7 +147,7 @@ object FlowsPlugin{
     * @param info
     * @param errT
     */
-  case class FlowDomainIdentity(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtMember {
+  case class FlowDomainIdentity(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionMember {
     override def extensionsubnodes: Seq[Node] = Seq()
 
     override val scopedDecls: Seq[Declaration] = Seq()
@@ -179,17 +173,17 @@ object FlowsPlugin{
 
     def varConvert(arg: PFlowDomainArg, translator: Translator): LocalVarDecl = {
       val ttyp = translator.getMembers()(arg.typName.name).asInstanceOf[Type]
-      LocalVarDecl(arg.idndef.name,ttyp)(liftPos(arg.idndef))
+      LocalVarDecl(arg.idndef.name,ttyp)(translator.liftPos(arg.idndef))
     }
 
-    override def translateMem(t: Translator): ExtMember = {
+    override def translateMember(t: Translator): ExtensionMember = {
       val f = t.getMembers()(idndef.name).asInstanceOf[FlowDomainOp]
       val flowArgs_translated: Seq[LocalVarDecl] = flowArgs.map{a => varConvert(a,t)}
       FlowDomainOp(idndef.name, flowArgs_translated,t.getMembers()(typName.idnuse.name).asInstanceOf[Type], posts map t.exp, body map t.exp)(f.pos, f.info, f.errT)
     }
 
-    override def translateMemSignature(t: Translator): ExtMember = {
-      FlowDomainOp(idndef.name, null, null, null, null)(liftPos(this))
+    override def translateMemberSignature(t: Translator): ExtensionMember = {
+      FlowDomainOp(idndef.name, null, null, null, null)(t.liftPos(this))
     }
 
     override def typ: PType = typName.typ
@@ -206,7 +200,7 @@ object FlowsPlugin{
     * @param info
     * @param errT
     */
-  case class FlowDomainOp(name:String, formalArgs: Seq[LocalVarDecl], typ: Type, posts: Seq[Exp], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtMember{
+  case class FlowDomainOp(name:String, formalArgs: Seq[LocalVarDecl], typ: Type, posts: Seq[Exp], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionMember{
     override def extensionsubnodes: Seq[Node] = formalArgs ++ Seq(typ) ++ posts ++ body
 
     override val scopedDecls: Seq[Declaration] = formalArgs
@@ -231,27 +225,27 @@ object FlowsPlugin{
 
     override val idndef = PIdnDef("flowDomain")
 
-    override def translateMem(t: Translator): ExtMember = {
+    override def translateMember(t: Translator): ExtensionMember = {
       val func1 = t.getMembers()("flowDomain").asInstanceOf[FlowDomain]
 
       val typevar_translated =  t.getMembers()(typevar.idndef.name).asInstanceOf[FlowDomainTypeVarDecl]
       val identity_translated = t.getMembers()(identity.idndef.name).asInstanceOf[FlowDomainIdentity]
-      val op_translated = op.translateMem(t).asInstanceOf[FlowDomainOp]
+      val op_translated = op.translateMember(t).asInstanceOf[FlowDomainOp]
 
       FlowDomain(typevar_translated, identity_translated, op_translated)(func1.pos, func1.info, func1.errT)
     }
 
-    override def translateMemSignature(t: Translator): ExtMember = {
-      val typevar_translated = typevar.translateMem(t).asInstanceOf[FlowDomainTypeVarDecl]
+    override def translateMemberSignature(t: Translator): ExtensionMember = {
+      val typevar_translated = typevar.translateMember(t).asInstanceOf[FlowDomainTypeVarDecl]
       t.getMembers().put(typevar_translated.name, typevar_translated)
 
-      val identity_translated = identity.translateMem(t).asInstanceOf[FlowDomainIdentity]
+      val identity_translated = identity.translateMember(t).asInstanceOf[FlowDomainIdentity]
       t.getMembers().put(identity_translated.name, identity_translated)
 
-      val op_translated = op.translateMemSignature(t).asInstanceOf[FlowDomainOp]
+      val op_translated = op.translateMemberSignature(t).asInstanceOf[FlowDomainOp]
       t.getMembers().put(op_translated.name, op_translated)
 
-      FlowDomain(null, null, null)(liftPos(this))
+      FlowDomain(null, null, null)(t.liftPos(this))
     }
 
   }
@@ -265,7 +259,7 @@ object FlowsPlugin{
     * @param info
     * @param errT
     */
-  case class FlowDomain(typevar: FlowDomainTypeVarDecl, identity: FlowDomainIdentity, op: FlowDomainOp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)  extends ExtMember{
+  case class FlowDomain(typevar: FlowDomainTypeVarDecl, identity: FlowDomainIdentity, op: FlowDomainOp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)  extends ExtensionMember{
     override def extensionsubnodes: Seq[Node] = {
       Seq(typevar) ++ Seq(identity) ++ Seq(op)
     }
@@ -286,7 +280,7 @@ object FlowsPlugin{
   case class PFlowDomainTypeUse(idnuse: PIdnUse) extends PExtender with PExp with PType{
     override def typeSubstitutions: Seq[PTypeSubstitution] = {null}
 
-    override def forceSubstitution(ts: PTypeSubstitution): Unit = {null}
+    override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
 
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
       val af = n.definition(null)(idnuse)
@@ -303,7 +297,7 @@ object FlowsPlugin{
     override def getsubnodes(): Seq[PNode] = Seq(idnuse)
 
     override def translateExp(t: Translator): ExtensionExp = {
-      FlowDomainTypeUse(idnuse.name)(liftPos(this))
+      FlowDomainTypeUse(idnuse.name)(t.liftPos(this))
     }
 
     override def isValidOrUndeclared: Boolean = true
@@ -314,8 +308,8 @@ object FlowsPlugin{
 
     override def subNodes: Seq[PType] = Seq()
 
-    override def translateMem(t: Translator): ExtMember = {
-      FlowDomainTypeVarDecl(typ_local.idndef.name, t.ttyp(typ_local.typ))(liftPos(this))
+    override def translateMember(t: Translator): ExtensionMember = {
+      FlowDomainTypeVarDecl(typ_local.idndef.name, t.ttyp(typ_local.typ))(t.liftPos(this))
     }
   }
 
@@ -326,7 +320,7 @@ object FlowsPlugin{
     * @param info
     * @param errT
     */
-  case class FlowDomainTypeUse(str: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with Type{
+  case class FlowDomainTypeUse(str: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with ExtensionType{
     override def extensionIsPure: Boolean = false
 
     override def extensionSubnodes: Seq[Node] = Seq()
@@ -350,6 +344,10 @@ object FlowsPlugin{
 
     /** Is this a concrete type (i.e. no uninstantiated type variables)? */
     override def isConcrete: Boolean = false
+
+    override def getAstType: Type = {
+      typ
+    }
   }
 
   /**
@@ -405,7 +403,7 @@ object FlowsPlugin{
 
 
     override def translateExp(t: Translator): ExtensionExp = {
-      FlowDomainFuncUse("fdplus",args map t.exp)(liftPos(this))
+      FlowDomainFuncUse("fdplus",args map t.exp)(t.liftPos(this))
     }
   }
 
@@ -438,7 +436,7 @@ object FlowsPlugin{
   case class PFlowDomainIdenUse(name: String) extends PExtender with PExp with PIdentifier {
     override def typeSubstitutions: Seq[PTypeSubstitution] = {null}
 
-    override def forceSubstitution(ts: PTypeSubstitution): Unit = {null}
+    override def forceSubstitution(ts: PTypeSubstitution): Unit = ???
 
     override def getsubnodes(): Seq[PNode] = Seq()
 
@@ -450,7 +448,7 @@ object FlowsPlugin{
     }
 
     override def translateExp(t: Translator): ExtensionExp = {
-      FlowDomainIdenUse(name)(liftPos(this))
+      FlowDomainIdenUse(name)(t.liftPos(this))
     }
   }
 
