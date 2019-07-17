@@ -146,8 +146,8 @@ class TestPluginAddPredicate extends SilverPlugin {
 
 class TestPluginMapErrors extends SilverPlugin with TestPlugin with FakeResult {
 
-  var error1: Internal = Internal(FeatureUnsupported(LocalVar("test1")(Perm), "Test1"))
-  var error2: Internal = Internal(FeatureUnsupported(LocalVar("test2")(Perm), "Test2"))
+  var error1: Internal = Internal(FeatureUnsupported(LocalVar("test1", Perm)(), "Test1"))
+  var error2: Internal = Internal(FeatureUnsupported(LocalVar("test2", Perm)(), "Test2"))
   var finish = false
 
   override def mapVerificationResult(input: VerificationResult): VerificationResult = {
@@ -184,7 +184,7 @@ class TestPluginMapVsFinish extends SilverPlugin with TestPlugin {
   var finish = false
 
   override def beforeResolve(input: PProgram): PProgram = {
-    error = Internal(FeatureUnsupported(LocalVar("test")(Perm), "Test"))
+    error = Internal(FeatureUnsupported(LocalVar("test", Perm)(), "Test"))
     reportError(error)
     input
   }

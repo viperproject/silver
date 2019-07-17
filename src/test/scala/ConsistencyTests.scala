@@ -29,7 +29,7 @@ class ConsistencyTests extends FunSuite with Matchers {
     val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, NoTrafos)
     val methodcall1: MethodCall = MethodCall("m2", Seq(), Seq())(NoPosition, NoInfo, NoTrafos)
     val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
-      Some(Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i")(Int, NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
+      Some(Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i", Int)(NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
         NoTrafos), Goto("lbl1")(NoPosition, NoInfo, NoTrafos), methodcall1), Seq())(NoPosition, NoInfo, NoTrafos)))(NoPosition, NoInfo, NoTrafos)
     val prog : Program = Program(Seq(), Seq(Field("j", Int)(NoPosition, NoInfo, NoTrafos), Field("j", Bool)(NoPosition, NoInfo, NoTrafos)),
       Seq(), Seq(), Seq(method1))(NoPosition, NoInfo, NoTrafos)
@@ -45,8 +45,8 @@ class ConsistencyTests extends FunSuite with Matchers {
   test("Type mismatched identifiers"){
     val funcapp1 : FuncApp = FuncApp("f1", Seq())(NoPosition, NoInfo, Int, NoTrafos)
     val method1 : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
-      Some(Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i")(Int, NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
-        NoTrafos), LocalVarAssign(LocalVar("j")(Int, NoPosition, NoInfo, NoTrafos), IntLit(5)(NoPosition))(NoPosition, NoInfo,
+      Some(Seqn(Seq[Stmt](LocalVarAssign(LocalVar("i", Int)(NoPosition, NoInfo, NoTrafos), funcapp1)(NoPosition, NoInfo,
+        NoTrafos), LocalVarAssign(LocalVar("j", Int)(NoPosition, NoInfo, NoTrafos), IntLit(5)(NoPosition))(NoPosition, NoInfo,
         NoTrafos)), Seq(LocalVarDecl("i", Bool)(NoPosition)))(NoPosition, NoInfo, NoTrafos)))(NoPosition, NoInfo, NoTrafos)
     val method2: Method = Method("j", Seq(), Seq(), Seq(), Seq(), Some(Seqn(Seq(), Seq())(NoPosition)))(NoPosition)
     val prog : Program = Program(Seq(), Seq(Field("f1", Int)(NoPosition, NoInfo, NoTrafos)),
@@ -136,9 +136,9 @@ class ConsistencyTests extends FunSuite with Matchers {
       )()
 
     val callerIntVarDecl = LocalVarDecl("intRes", Int)()
-    val callerIntVar = LocalVar("intRes")(Int)
+    val callerIntVar = LocalVar("intRes", Int)()
     val callerBoolVarDecl = LocalVarDecl("boolRes", Bool)()
-    val callerBoolVar = LocalVar("boolRes")(Bool)
+    val callerBoolVar = LocalVar("boolRes", Bool)()
 
     val callerBody =
       Seqn(
@@ -198,9 +198,9 @@ class ConsistencyTests extends FunSuite with Matchers {
     )()
 
     val callerIntVarDecl = LocalVarDecl("intRes", Int)()
-    val callerIntVar = LocalVar("intRes")(Int)
+    val callerIntVar = LocalVar("intRes", Int)()
     val callerBoolVarDecl = LocalVarDecl("boolRes", Bool)()
-    val callerBoolVar = LocalVar("boolRes")(Bool)
+    val callerBoolVar = LocalVar("boolRes", Bool)()
 
     val callerBody =
       Seqn(

@@ -432,7 +432,7 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
   /**
    * Returns a local variable with equivalent information
    */
-  lazy val localVar = LocalVar(name)(typ, pos, info, errT)
+  lazy val localVar = LocalVar(name, typ)(pos, info, errT)
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)
