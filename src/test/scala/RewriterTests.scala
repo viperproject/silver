@@ -397,11 +397,11 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     }
 
     val strat2 = ViperStrategy.Slim({
-      case i:IntLit => LocalVar("x")(i.typ)
+      case i:IntLit => LocalVar("x", i.typ)()
     })
 
     val strat3 = ViperStrategy.Slim({
-      case i:IntLit => LocalVar("y")(i.typ)
+      case i:IntLit => LocalVar("y", i.typ)()
     })
 
     val combined = strat ? strat2 | strat3
@@ -472,8 +472,8 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
 
     // Initial program
     val localVarDecl = LocalVarDecl("y", Int)()
-    val assign1 = LocalVarAssign(LocalVar("y")(Int), IntLit(4)())()
-    val assign2 = LocalVarAssign(LocalVar("y")(Int), IntLit(4)())()
+    val assign1 = LocalVarAssign(LocalVar("y", Int)(), IntLit(4)())()
+    val assign2 = LocalVarAssign(LocalVar("y", Int)(), IntLit(4)())()
     val methodBefore = Method("m", Seq(), Seq(), Seq(), Seq(), Some(Seqn(Seq(assign1, assign2), Seq(localVarDecl))()))()
     val programBefore = Program(Seq(), Seq(), Seq(), Seq(), Seq(methodBefore))()
 
@@ -490,7 +490,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     }).execute[Program](programBefore)
 
     // Final program to compare with transformed program
-    val assert1 = Assert(NeCmp(LocalVar("y")(Int), IntLit(4)())())()
+    val assert1 = Assert(NeCmp(LocalVar("y", Int)(), IntLit(4)())())()
     val methodAfter = Method("m", Seq(), Seq(), Seq(), Seq(), Some(Seqn(Seq(Seqn(Seq(assert1, assign1), Seq())(), Seqn(Seq(assert1, assign2), Seq())()), Seq(localVarDecl))()))()
     val programAfter = Program(Seq(), Seq(), Seq(), Seq(), Seq(methodAfter))()
 
