@@ -277,8 +277,6 @@ object trialplugin {
 
 
   lazy val decreases: noApi.P[PExp] = P("decreasea" ~/ exp.rep(sep=",")).map{case a => PDecreases(a)}
-//  lazy val decreases: noApi.P[PExp] = P("decreasea" ~/ exp.rep(sep=",")).map{case a => PCall(PIdnUse("decreases"),a)}
-
   lazy val decreasesStar: noApi.P[PExp] = P("decreasesStar").map{_ => PDecreasesStar()}
 
 
@@ -413,25 +411,23 @@ object trialplugin {
    /*
     * The high level declarations which provide a hook for any type of independent declarations like new function or new predicates etc.
     */
-  lazy val newDecl = P(doubleFunctionDecl | doubleMethodDecl)
+  lazy val newDeclAtEnd = P(doubleFunctionDecl | doubleMethodDecl)
 
 
    /*
     * The newStmt parser which is essentially an extension of the stmt rules in the new parser.
     */
-  lazy val newStmt = P(dmethodCall)
+  lazy val newStmtAtEnd = P(dmethodCall)
    /*
     * THe newExp rule provides an extension to the expression parsers.
     */
-  lazy val newExp = P(dfapp)
+  lazy val newExpAtEnd = P(dfapp)
 
   /*
    * The specification rule, though equivalent to an expression is used to extend the type of specifications
    * that are possible.
    */
-  lazy val preSpecification: noApi.P[PExp] = P("preSpecificationExample").map { case() => "".asInstanceOf[PExp]}
   lazy val postSpecification: noApi.P[PExp] = P(decreases)
-  lazy val invSpecification: noApi.P[PExp] = P("invariantSpecificationExample").map { case() => "".asInstanceOf[PExp]}
    /*
     * The extended Keywords is a set of the strings which consitute the set of keywirds but are not a part of the base keyword set.
     */

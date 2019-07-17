@@ -28,15 +28,8 @@ object FlowsPlugin{
   import White._
   import fastparse.noApi._
 
-//  lazy val newDeclAtStart: noApi.P[PExtender] = null
-//  lazy val newStmtAtStart: noApi.P[PStmt] = null
   lazy val newDeclAtEnd = P(flowDomain)
-  lazy val  newStmtAtEnd: noApi.P[PStmt] = null
   lazy val newExpAtEnd = P(flowDomainCall | flowDomainIdenUse)
-//  lazy val newExpAtStart: noApi.P[PExp] = null
-  lazy val preSpecification: noApi.P[PExp] = P("preConditionSpecificationExample").map{case() => "".asInstanceOf[PExp]}
-  lazy val postSpecification: noApi.P[PExp] = P("postConditionSpecificationExample").map{case() => "".asInstanceOf[PExp]}
-  lazy val invSpecification: noApi.P[PExp] = P("invariantSpecificationExample").map{case() => "".asInstanceOf[PExp]}
 
   lazy val newAccSugar: noApi.P[PExp] = P(fieldAcc ~ "|->" ~ idnuse).map{case (a,c) => PBinExp(PAccPred(a,PFullPerm()),"&&",PBinExp(a,"==",c))}
 
@@ -127,7 +120,6 @@ object FlowsPlugin{
     override def getsubnodes(): Seq[PNode] = {
       Seq(idndef)
     }
-//    override def name = idndef.name
 
     override def translateMemberSignature(t: Translator): ExtensionMember = super.translateMemberSignature(t)
 
@@ -220,7 +212,6 @@ object FlowsPlugin{
       this.identity.typ = this.typevar
       this.identity.typecheck(t,n)
       this.op.typecheck(t,n)
-      None
     }
 
     override val idndef = PIdnDef("flowDomain")

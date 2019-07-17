@@ -12,7 +12,6 @@ import java.nio.file.{Files, Path, Paths}
 import scala.util.parsing.input.{NoPosition, Position}
 import fastparse.core.Parsed
 import fastparse.all
-import viper.silver.plugin.ParserExtension
 import viper.silver.ast.{LineCol, SourcePosition}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
@@ -743,7 +742,7 @@ object FastParser extends PosParser[Char, String] {
     "unique") | ParserExtension.extendedKeywords
 
 
-  lazy val atom: P[PExp] = P(/*ParserExtension.newExpAtStart |*/ integer | booltrue | boolfalse | nul | old
+  lazy val atom: P[PExp] = P(ParserExtension.newExpAtStart | integer | booltrue | boolfalse | nul | old
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
@@ -1009,11 +1008,11 @@ object FastParser extends PosParser[Char, String] {
     case (func, args, typeGiven) => PCall(func, args, Some(typeGiven))
   }
 
-  lazy val stmt: P[PStmt] = P(/*ParserExtension.newStmtAtStart | */macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
+  lazy val stmt: P[PStmt] = P(ParserExtension.newStmtAtStart | macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd)
 
-  lazy val nodefinestmt: P[PStmt] = P(/*ParserExtension.newStmtAtStart |*/ fieldassign | localassign | fold | unfold | exhale | assertP |
+  lazy val nodefinestmt: P[PStmt] = P(ParserExtension.newStmtAtStart | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | newstmt | fresh | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd)
 
@@ -1100,7 +1099,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val applying: P[PExp] = P(keyword("applying") ~/ "(" ~ magicWandExp  ~ ")" ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
 
-  lazy val programDecl: P[PProgram] = P((/*ParserExtension.newDeclAtStart | */preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd).rep).map {
+  lazy val programDecl: P[PProgram] = P((ParserExtension.newDeclAtStart | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd).rep).map {
     decls => {
       PProgram(
         decls.collect { case i: PImport => i }, // Imports
