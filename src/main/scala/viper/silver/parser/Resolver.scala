@@ -262,11 +262,8 @@ case class TypeChecker(names: NameAnalyser) {
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
-      case t:PExtender => t.typecheck(this, names) match {
-        case Some(message_list) =>
-          message_list foreach ( message => messages ++= FastMessaging.message(t, message))
-        case _ =>
-      }
+      case t:PExtender => t.typecheck(this, names).getOrElse(Nil) foreach(message =>
+                              messages ++= FastMessaging.message(t, message))
       case _: PSkip =>
     }
   }
@@ -379,6 +376,9 @@ case class TypeChecker(names: NameAnalyser) {
         check(elemType)
       case PMultisetType(elemType) =>
         check(elemType)
+      case t: PExtender =>
+        t.typecheck(this, names).getOrElse(Nil) foreach(message =>
+          messages ++= FastMessaging.message(t, message))
       case PUnknown() =>
         messages ++= FastMessaging.message(typ, "expected concrete type, but found unknown type")
     }
@@ -403,6 +403,10 @@ case class TypeChecker(names: NameAnalyser) {
       case (PDomainType(domain1, args1), PDomainType(domain2, args2))
         if domain1 == domain2 && args1.length == args2.length =>
         (args1 zip args2) forall (x => isCompatible(x._1, x._2))
+
+      case (a: PExtender,b)  => false// TBD: the equality function for two type variables
+      case (a, b: PExtender) => false // TBD: the equality function for two type variables
+
       case _ => false
     }
   }
@@ -459,11 +463,9 @@ case class TypeChecker(names: NameAnalyser) {
   }
 
   def check(exp: PExp, expected: PType) = exp match {
-    case t: PExtender => t.typecheck(this, names) match{
-      case Some(message_list) =>
-        message_list foreach ( message => messages ++= FastMessaging.message(t, message))
-      case _ =>
-    }
+    case t: PExtender => t.typecheck(this, names).getOrElse(Nil) foreach (message =>
+      messages ++= FastMessaging.message(t, message))
+
     case _ => checkTopTyped(exp, Some(expected))}
 
   def checkTopTyped(exp: PExp, oexpected: Option[PType]): Unit =
@@ -545,11 +547,15 @@ case class TypeChecker(names: NameAnalyser) {
     var extraReturnTypeConstraint : Option[PType] = None
 
     exp match {
-      case t: PExtender => t.typecheck(this, names) match{
-        case Some(message_list) =>
-          message_list foreach ( message => messages ++= FastMessaging.message(t, message))
-        case _ =>
-      }
+      /*
+        An extra hook for extending the TypeChecker in case of expressions as this portion of the TypeChecker for expressions is
+        accessible only when an expression is used inside another expression(an extremely frequent occurrence).
+        The main aim is to give the plugin developer more options as to whether type checking with an expected return type
+        is preferred or a simplistic approach.
+       */
+
+      case t: PExtender => t.typecheck(this, names).getOrElse(Nil) foreach(message =>
+        messages ++= FastMessaging.message(t, message))
       case psl:PSimpleLiteral=>
         psl match {
           case r@PResultLit() =>
@@ -723,13 +729,8 @@ case class TypeChecker(names: NameAnalyser) {
     }
   }
 
-  def checkExtension(e: PExtender): Unit ={
-    e.typecheck(this, names) match {
-      case Some(message_list) =>
-        message_list foreach ( message => messages ++= FastMessaging.message(e, message))
-      case None =>
-    }
-  }
+  def checkExtension(e: PExtender): Unit = e.typecheck(this, names).getOrElse(Nil) foreach(message =>
+    messages ++= FastMessaging.message(e, message))
 
   /**
    * If b is false, report an error for node.
@@ -789,10 +790,12 @@ case class NameAnalyser() {
   def reset() {
     globalDeclarationMap.clear()
     localDeclarationMaps.clear()
+    universalDeclarationMap.clear()
     namesInScope.clear()
   }
 
   private val globalDeclarationMap = mutable.HashMap[String, PEntity]()
+  private val universalDeclarationMap = mutable.HashMap[String, PEntity]()
 
   /* [2014-11-13 Malte] Changed localDeclarationMaps to be a map from PScope.Id
    * instead of from PScope directly. This was necessary in order to support
@@ -806,10 +809,19 @@ case class NameAnalyser() {
 
   private val namesInScope = mutable.Set.empty[String]
 
+  private def clearUniversalDeclarationsMap(): Unit = {
+    universalDeclarationMap.map{k =>
+      globalDeclarationMap.put(k._1,k._2)
+      localDeclarationMaps.map{l =>
+        l._2.put(k._1,k._2)
+      }
+    }
+  }
   private def check(n: PNode, target: Option[PNode]): Unit = {
     var curMember: PScope = null
     def getMap(d:PNode) : mutable.HashMap[String, PEntity] =
       d match {
+        case _: PUniversalDeclaration => universalDeclarationMap
         case _: PGlobalDeclaration => globalDeclarationMap
         case _ => getCurrentMap
       }
@@ -913,7 +925,7 @@ case class NameAnalyser() {
 
     // find all declarations
     n.visit(nodeDownNameCollectorVisitor,nodeUpNameCollectorVisitor)
-
+    clearUniversalDeclarationsMap()
     /* Check all identifier uses. */
     n.visit({
       case m: PScope =>

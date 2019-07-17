@@ -11,6 +11,7 @@ import java.nio.file.{Path, Paths}
 import fastparse.all
 import fastparse.all.{Parsed, ParserInput}
 import viper.silver.ast.utility.Consistency
+import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.ast.{SourcePosition, _}
 import viper.silver.parser._
 import viper.silver.plugin.SilverPluginManager
@@ -221,7 +222,24 @@ trait SilFrontend extends DefaultFrontend {
     }
   }
 
-  override def doSemanticAnalysis(input: PProgram): Result[PProgram] = {
+  override def doSemanticAnalysis(preP: PProgram): Result[PProgram] = {
+    case class Context(increment: Int)
+
+    val input = StrategyBuilder.RewriteNodeAndContext[PNode, Context]({
+      case (t: PDomainType, ctx) => ({
+        preP.extensions.find(k => k.isInstanceOf[viper.silver.plugin.FlowsPlugin.PFlowDomain]) match {
+          case Some(fd) =>
+            val type_local = fd.asInstanceOf[viper.silver.plugin.FlowsPlugin.PFlowDomain].typevar
+            if(t.domain.name == type_local.idndef.name)
+              viper.silver.plugin.FlowsPlugin.PFlowDomainTypeUse(t.domain).asInstanceOf[PType]
+            else
+              t
+          case None => t
+        }
+      }
+        ,ctx)
+    }, Context(1)).execute[PProgram](preP)
+
     _plugins.beforeResolve(input) match {
       case Some(inputPlugin) =>
         val r = Resolver(inputPlugin)

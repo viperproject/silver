@@ -10,7 +10,7 @@ import scala.collection.{GenTraversable, Set}
 import scala.language.implicitConversions
 import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
-import viper.silver.ast.{ExtMember, ExtensionExp, ExtensionStmt, MagicWandOp}
+import viper.silver.ast.{ExtensionMember, ExtensionExp, ExtensionStmt, MagicWandOp}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
@@ -217,7 +217,7 @@ case class PIdnUse(name: String) extends PExp with PIdentifier {
 case class PFormalArgDecl(idndef: PIdnDef, var typ: PType) extends PNode with PTypedDeclaration with PLocalDeclaration
 
 // Types
-sealed trait PType extends PNode {
+trait PType extends PNode {
   def isUnknown: Boolean = this.isInstanceOf[PUnknown]
   def isValidOrUndeclared : Boolean
   def isGround : Boolean = true
@@ -327,7 +327,7 @@ object PTypeVar{
     }
 }
 
-sealed trait PGenericType extends PType {
+trait PGenericType extends PType {
   def genericName : String
   def typeArguments : Seq[PType]
   override def isGround = typeArguments.forall(_.isGround)
@@ -964,6 +964,7 @@ case class PWhile(cond: PExp, invs: Seq[PExp], body: PSeqn) extends PStmt
 case class PFresh(vars: Seq[PIdnUse]) extends PStmt
 case class PConstraining(vars: Seq[PIdnUse], stmt: PSeqn) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with PTypedDeclaration with PLocalDeclaration
+case class PGlobalVarDecl(idndef: PIdnDef, typ: PType) extends PTypedDeclaration with PUniversalDeclaration
 case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) extends PStmt
 case class PLabel(idndef: PIdnDef, invs: Seq[PExp]) extends PStmt with PLocalDeclaration
 case class PGoto(targets: PIdnUse) extends PStmt
@@ -1023,10 +1024,11 @@ trait PDeclaration extends PNode with PEntity {
   def idndef: PIdnDef
 }
 
-sealed trait PGlobalDeclaration extends PDeclaration
-sealed trait PLocalDeclaration extends PDeclaration
+trait PGlobalDeclaration extends PDeclaration
+trait PLocalDeclaration extends PDeclaration
+trait PUniversalDeclaration extends PDeclaration
 
-sealed trait PTypedDeclaration extends PDeclaration {
+trait PTypedDeclaration extends PDeclaration {
   def typ: PType
 }
 abstract class PErrorEntity(name: String) extends PEntity
@@ -1096,8 +1098,8 @@ trait PExtender extends PNode{
   def getsubnodes():Seq[PNode] = ???
   def typecheck(t: TypeChecker, n: NameAnalyser):Option[Seq[String]] = ???
   def namecheck(n: NameAnalyser) = ???
-  def translateMemSignature(t: Translator): ExtMember = ???
-  def translateMem(t: Translator): ExtMember = ???
+  def translateMemberSignature(t: Translator): ExtensionMember = ???
+  def translateMember(t: Translator): ExtensionMember = ???
 
   def translateStmt(t: Translator): ExtensionStmt = ???
   def translateExp(t: Translator): ExtensionExp = ???

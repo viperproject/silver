@@ -7,6 +7,13 @@
 package viper.silver.utility
 
 trait TimingUtils {
+
+  /** Formats a time in milliseconds with fixed column width. */
+  def formatTimeForTable(millis: Long): String = {
+    if (millis > 1000) "%6.2f sec ".format(millis * 1.0 / 1000)
+    else "%6s msec".format(millis.toString)
+  }
+
   /** Formats a time in milliseconds. */
   def formatTime(millis: Long): String = {
     if (millis > 1000) "%.2f sec".format(millis * 1.0 / 1000)

@@ -40,7 +40,7 @@ case class Translator(program: PProgram) {
         val functions = pfunctions map translate
         val predicates = ppredicates map translate
         val methods = pmethods map translate
-        val extensions = (pextensions map translate)
+        val extensions = pextensions map translate
 
 
         val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods, extensions)(program))
@@ -53,8 +53,8 @@ case class Translator(program: PProgram) {
     }
   }
 
-  private def translate(t: PExtender): ExtMember = {
-    t.translateMem(this)
+  private def translate(t: PExtender): ExtensionMember = {
+    t.translateMember(this)
   }
 
   private def translate(m: PMethod): Method = m match {
@@ -142,7 +142,7 @@ case class Translator(program: PProgram) {
     val pos = p
     val t = p match {
       case t: PMember =>
-        val l = p.translateMemSignature(this)
+        val l = p.translateMemberSignature(this)
         members.put(t.idndef.name, l)
     }
   }
@@ -156,7 +156,7 @@ case class Translator(program: PProgram) {
   private def findMethod(id: PIdentifier) = members(id.name).asInstanceOf[Method]
 
   /** Takes a `PStmt` and turns it into a `Stmt`. */
-  private def stmt(s: PStmt): Stmt = {
+  def stmt(s: PStmt): Stmt = {
     val pos = s
     s match {
       case PVarAssign(idnuse, PCall(func, args, _)) if members(func.name).isInstanceOf[Method] =>
@@ -530,6 +530,7 @@ case class Translator(program: PProgram) {
           TypeVar(name.name) // not a domain, i.e. it must be a type variable
       }
     case PWandType() => Wand
+    case t: PExtender => t.translateMember(this).asInstanceOf[Type]
     case PUnknown() =>
       sys.error("unknown type unexpected here")
     case PPredicateType() =>
