@@ -14,7 +14,7 @@ class UtilityTests extends FunSuite with Matchers {
   /* These tests exercise utility methods on the AST (transformers, visitors, rewriters etc.) */
 
   test("Assume rewriter (direct)"){ // assume acc(x.f) -> rewritten to -> assume perm(x.f) >= write
-    val assumeBody = FieldAccessPredicate(FieldAccess(LocalVar("x")(Ref),Field("f",Int)(NoPosition))(NoPosition), FullPerm()(NoPosition))(NoPosition)
+    val assumeBody = FieldAccessPredicate(FieldAccess(LocalVar("x", Ref)(),Field("f",Int)(NoPosition))(NoPosition), FullPerm()(NoPosition))(NoPosition)
     val testMethod : Method = Method("m1", Seq(), Seq(), Seq(), Seq(),
       Some(Seqn(Seq(
         Assume(assumeBody)(NoPosition)

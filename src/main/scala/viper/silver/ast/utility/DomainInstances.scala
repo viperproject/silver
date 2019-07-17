@@ -298,8 +298,8 @@ object DomainInstances {
         val argss = args map (substitute(_, s, p))
         DomainFuncApp(dfa.func(p), argss, ts2)(dfa.pos, dfa.info)
       //            )(dfa.pos, dfa.info, substitute(dfa.typ,s), dfa.formalArgs.map(substitute(_,s)))
-      case lvd@LocalVar(name) =>
-        LocalVar(name)(substitute(lvd.typ, s, p), lvd.pos, lvd.info)
+      case lvd@LocalVar(name, _) =>
+        LocalVar(name, substitute(lvd.typ, s, p))(lvd.pos, lvd.info)
 
       case t: Type =>
         t.substitute(s)

@@ -394,7 +394,7 @@ object Consistency {
         Some(ConsistencyError("New statements statements are not allowed in magic wand proof scripts.", ne.pos))
       case wh: While =>
         Some(ConsistencyError("While statements are not allowed in magic wand proof scripts.", wh.pos))
-      case loc @ LocalVarAssign(LocalVar(varName), _) if !locals.exists(_.name == varName) =>
+      case loc @ LocalVarAssign(LocalVar(varName, _), _) if !locals.exists(_.name == varName) =>
         Some(ConsistencyError("Can only assign to local variables that were declared inside the proof script.", loc.pos))
       case _: Package => None
     }).flatten
