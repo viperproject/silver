@@ -38,8 +38,11 @@ trait StatisticalTestSuite extends SilSuite {
 
   override def systemsUnderTest:Seq[silver.testing.SystemUnderTest] = Vector(testingInstance)
 
+  protected def name: String = "Viper Statistics"
+
   private val testingInstance: SystemUnderTest with TimingUtils = new SystemUnderTest with TimingUtils {
-    val projectInfo = new ProjectInfo(List("Carbon-Chuckwalla"))
+
+    val projectInfo = new ProjectInfo(List(name))
 
     override def run(input: AnnotatedTestInput): Seq[AbstractOutput] = {
 
