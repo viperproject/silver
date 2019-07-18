@@ -1,3 +1,9 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 package viper.silver.plugin
 
 import fastparse.noApi
@@ -12,7 +18,7 @@ import viper.silver.ast.utility.rewriter.StrategyBuilder
 import scala.collection.Set
 import scala.util.parsing.input
 
-object trialplugin {
+class trialplugin extends SilverPlugin{
 
    /*
     * The import statements that instantiate the PWhiteSpaceApi class and then import the overloaded sequencing operators
@@ -399,7 +405,7 @@ object trialplugin {
     case (a,b,c,d,e,f,g) => PDoubleMethod(a,b,c,d.getOrElse(Nil),e,f,g)
   }
 
-  lazy val dmethodCall: P[PDoubleMethodCall] = P(keyword("DMCall") ~ (idnuse.rep(sep = ",") ~ ":=").? ~ idnuse ~ FastParser.parens(exp.rep(sep = ",")) ~ FastParser.parens(exp.rep(sep = ","))).map {
+  lazy val dmethodCall: P[PDoubleMethodCall] = P(keyword("DMCall") ~/ (idnuse.rep(sep = ",") ~ ":=").? ~ idnuse ~ FastParser.parens(exp.rep(sep = ",")) ~ FastParser.parens(exp.rep(sep = ","))).map {
     case (None, method, args1, args2) => PDoubleMethodCall(Nil, method, args1, args2)
     case (Some(targets), method, args1, args2) => PDoubleMethodCall(targets, method, args1, args2)
   }
@@ -432,5 +438,15 @@ object trialplugin {
     * The extended Keywords is a set of the strings which consitute the set of keywirds but are not a part of the base keyword set.
     */
   lazy val extendedKeywords = Set[String]("dfunction", "DFCall", "dmethod", "DMCall")
+
+  override def beforeParse(input: String, isImported: Boolean): String = {
+    ParserExtension.addNewDeclAtEnd(newDeclAtEnd)
+    ParserExtension.addNewStmtAtEnd(newStmtAtEnd)
+    ParserExtension.addNewExpAtEnd(newExpAtEnd)
+    ParserExtension.addNewPostCondition(postSpecification)
+    ParserExtension.addNewKeywords(extendedKeywords)
+
+    input
+  }
 
 }

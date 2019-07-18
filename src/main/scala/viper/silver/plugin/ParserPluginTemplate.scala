@@ -1,15 +1,21 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
+
 package viper.silver.plugin
 
 import viper.silver.parser.{NameAnalyser, PExp, PExtender, PStmt, PTypeSubstitution, Translator, TypeChecker}
 import fastparse.noApi
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.{Declaration, ErrorTrafo, ExtensionMember, ExtensionExp, ExtensionStmt, Info, Node, Position, Type}
+import viper.silver.ast.{Declaration, ErrorTrafo, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Node, Position, Type}
 import viper.silver.parser.FastParser._
 import viper.silver.verifier.VerificationResult
 
 import scala.collection.Set
 
-class ParserPluginTemplate {
+trait ParserPluginTemplate {
   /**
     * The import statements that instantiate the PWhiteSpaceApi class and then import the overloaded sequencing operators
     * of the "fastparse" library. It is extremely essential for these statements to exist in the parser.
@@ -157,7 +163,18 @@ class ParserPluginTemplate {
     */
     override def verifyExtExp(): VerificationResult = ???
   }
+}
 
+object ParserPluginTemplate{
+  val White = PWrapper {
+    import fastparse.all._
+    NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
+  }
+  import White._
+  import fastparse.noApi._
 
+  lazy val defaultExtension: noApi.P[PExtender] = P("PExampleDeclarationAtEnd which indicate ").map {case() => "".asInstanceOf[PExtender]}
+  lazy val defaultStmtExtension: noApi.P[PStmt] = P("PExampleStmt").map {case () => "".asInstanceOf[PStmt]}
+  lazy val defaultExpExtension: noApi.P[PExp] = P("invariantSpecificationExample").map{case() => "".asInstanceOf[PExp]}
 
 }

@@ -9,7 +9,7 @@ package viper.silver.ast.utility
 import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.parser.FastParser
+import viper.silver.parser.{FastParser, ParserExtension}
 import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}
 
@@ -78,7 +78,7 @@ object Consistency {
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
-    "unique") ++ viper.silver.plugin.trialplugin.extendedKeywords
+    "unique") ++ ParserExtension.extendedKeywords
 
   /** Returns true iff the string `name` is a valid identifier. */
   val identFirstLetter = "[a-zA-Z$_]"
