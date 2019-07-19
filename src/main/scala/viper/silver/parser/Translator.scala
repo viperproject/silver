@@ -339,7 +339,7 @@ case class Translator(program: PProgram) {
           if (par == null) sys.error("cannot use 'result' outside of function")
           par = par.parent.get
         }
-        Result()(ttyp(par.asInstanceOf[PFunction].typ), pos)
+        Result(ttyp(par.asInstanceOf[PFunction].typ))(pos)
       case PBoolLit(b) =>
         if (b) TrueLit()(pos) else FalseLit()(pos)
       case PNullLit() =>
