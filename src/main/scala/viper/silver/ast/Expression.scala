@@ -614,7 +614,7 @@ case class LocalVar(name: String, typ: Type)(val pos: Position = NoPosition, val
 }
 
 /** A special local variable for the result of a function. */
-case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
+case class Result(typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
   lazy val name = "result"
 }
 
