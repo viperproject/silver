@@ -1,0 +1,6 @@
+//:: IgnoreFile(/silver/issue/282/)
+define bar Multiset()
+
+method foo(b : Bool) {
+  assert Multiset(null) == bar
+}
