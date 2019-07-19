@@ -101,3 +101,13 @@ method test08(B: Multiset[Int], n: Int, x: Int, y: Int)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert |B1| <= 2
 }
+
+method test09(A: Multiset[Int], B:Multiset[Int], C:Multiset[Int])
+  requires A union B == C
+{
+  assert A subset C
+  assert B subset C
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert A subset B
+}
+
