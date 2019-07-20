@@ -20,19 +20,19 @@ object ParserExtension extends ParserPluginTemplate {
   import White._
   import fastparse.noApi._
 
-  var _newDeclAtEnd: Option[noApi.P[PExtender]] = None
-  var _newDeclAtStart: Option[noApi.P[PExtender]] = None
+  private var _newDeclAtEnd: Option[noApi.P[PExtender]] = None
+  private var _newDeclAtStart: Option[noApi.P[PExtender]] = None
 
-  var _newExpAtEnd: Option[noApi.P[PExp]] = None
-  var _newExpAtStart: Option[noApi.P[PExp]] = None
+  private var _newExpAtEnd: Option[noApi.P[PExp]] = None
+  private var _newExpAtStart: Option[noApi.P[PExp]] = None
 
-  var _newStmtAtEnd: Option[noApi.P[PStmt]] = None
-  var _newStmtAtStart: Option[noApi.P[PStmt]] = None
+  private var _newStmtAtEnd: Option[noApi.P[PStmt]] = None
+  private var _newStmtAtStart: Option[noApi.P[PStmt]] = None
 
-  var _preSpecification: Option[noApi.P[PExp]] = None
-  var _postSpecification: Option[noApi.P[PExp]] = None
-  var _invSpecification: Option[noApi.P[PExp]] = None
-  var _extendedKeywords: Set[String] = Set()
+  private var _preSpecification: Option[noApi.P[PExp]] = None
+  private var _postSpecification: Option[noApi.P[PExp]] = None
+  private var _invSpecification: Option[noApi.P[PExp]] = None
+  private var _extendedKeywords: Set[String] = Set()
 
 
   /**
