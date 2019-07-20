@@ -205,7 +205,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
     StrategyBuilder.Context[Node, Bindings](
       {
         case (exp: Exp, _) if subexpressionsToEvaluate.contains(exp) =>
-          LocalVar(exp.typ.toString())(exp.typ)
+          LocalVar(exp.typ.toString(),exp.typ)()
 
         case (quant: QuantifiedExp, context) =>
           /* NOTE: This case, i.e. the transformation case, is reached before the
@@ -221,7 +221,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
         case (lv: LocalVar, context) =>
           context.c.get(lv.name) match {
             case None => lv
-            case Some(index) => lv.copy(name(lv.typ, index))(lv.typ, lv.pos, lv.info, lv.errT)
+            case Some(index) => lv.copy(name(lv.typ, index), lv.typ)(lv.pos, lv.info, lv.errT)
           }
       },
       Bindings.empty,
@@ -608,13 +608,13 @@ object AbstractLocalVar {
 }
 
 /** A normal local variable. */
-case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
+case class LocalVar(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
   override lazy val check : Seq[ConsistencyError] =
     if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Local var name must be valid identifier.", pos)) else Seq()
 }
 
 /** A special local variable for the result of a function. */
-case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
+case class Result(typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
   lazy val name = "result"
 }
 
