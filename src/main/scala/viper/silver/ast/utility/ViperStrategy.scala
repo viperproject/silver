@@ -204,7 +204,7 @@ object ViperStrategy {
     case (il: IntLit, Seq(), meta) => IntLit(il.i)(meta._1, meta._2, meta._3)
     case (bl: BoolLit, Seq(), meta) => BoolLit(bl.value)(meta._1, meta._2, meta._3)
     case (nl: NullLit, _, meta) => NullLit()(meta._1, meta._2, meta._3)
-    case (lv: LocalVar, _, meta) => LocalVar(lv.name)(lv.typ, meta._1, meta._2, meta._3)
+    case (lv: LocalVar, _, meta) => LocalVar(lv.name, lv.typ)(meta._1, meta._2, meta._3)
     case (alv: AbstractLocalVar, _, meta) => alv
     // AS: added recursion on field: this was previously missing (as for all "shared" nodes in AST). But this could lead to the type of the field not being transformed consistently with its declaration (if the whole program is transformed)
     case (fa: FieldAccess, Seq(rcv: Exp, field: Field), meta) => FieldAccess(rcv, field)(meta._1, meta._2, meta._3)
@@ -381,7 +381,7 @@ object ViperStrategy {
     case (a: Assume, Seq(expression: Exp), meta) =>
       Assume(expression)(meta._1, meta._2, meta._3)
 
-    case (l: Label, invars: Seq[Exp@unchecked], meta) => Label(l.name, invars)(meta._1, meta._2, meta._3)
+    case (l: Label, Seq(invars: Seq[Exp@unchecked]), meta) => Label(l.name, invars)(meta._1, meta._2, meta._3)
 
     case (l: LocalVarAssign, Seq(variable: LocalVar, value: Exp), meta) =>
       LocalVarAssign(variable, value)(meta._1, meta._2, meta._3)

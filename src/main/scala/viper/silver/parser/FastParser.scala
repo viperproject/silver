@@ -705,7 +705,7 @@ object FastParser extends PosParser[Char, String] {
 
   val LHS_OLD_LABEL = "lhs"
 
-  val keywords = Set("result",
+  lazy val keywords = Set("result",
     // types
     "Int", "Perm", "Bool", "Ref", "Rational",
     // boolean constants

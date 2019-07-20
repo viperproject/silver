@@ -25,7 +25,7 @@ object Triggers {
     protected def Trigger_exps(t: Trigger) = t.exps
 
     protected def Trigger(exps: Seq[Exp]) = viper.silver.ast.Trigger(exps)()
-    protected def Var(id: String, typ: Type) = LocalVar(id)(typ)
+    protected def Var(id: String, typ: Type) = LocalVar(id, typ)()
 
     /* True iff the given node is a possible trigger */
     protected def isPossibleTrigger(e: Exp): Boolean = (customIsPossibleTrigger orElse {
@@ -100,7 +100,7 @@ object Triggers {
 
     protected def fresh(name: String, typ: Type) = {
       nextUniqueId += 1
-      LocalVar(s"__rw_$name$nextUniqueId")(typ)
+      LocalVar(s"__rw_$name$nextUniqueId", typ)()
     }
 
     protected def log(message: String) {}

@@ -167,11 +167,11 @@ case class Translator(program: PProgram) {
         call.setPos(s)
         stmt(call)
       case PVarAssign(idnuse, rhs) =>
-        LocalVarAssign(LocalVar(idnuse.name)(ttyp(idnuse.typ), pos), exp(rhs))(pos)
+        LocalVarAssign(LocalVar(idnuse.name, ttyp(idnuse.typ))(pos), exp(rhs))(pos)
       case PFieldAssign(field, rhs) =>
         FieldAssign(FieldAccess(exp(field.rcv), findField(field.idnuse))(field), exp(rhs))(pos)
       case PLocalVarDecl(idndef, t, Some(init)) =>
-        LocalVarAssign(LocalVar(idndef.name)(ttyp(t), pos), exp(init))(pos)
+        LocalVarAssign(LocalVar(idndef.name, ttyp(t))(pos), exp(init))(pos)
       case PLocalVarDecl(_, _, None) =>
         // there are no declarations in the Viper AST; rather they are part of the scope signature
         Statements.EmptyStmt
@@ -220,9 +220,9 @@ case class Translator(program: PProgram) {
         Goto(label.name)(pos)
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn).asInstanceOf[Seqn], stmt(els).asInstanceOf[Seqn])(pos)
-      case PFresh(vars) => Fresh(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)))(pos)
+      case PFresh(vars) => Fresh(vars map (v => LocalVar(v.name, ttyp(v.typ))(v)))(pos)
       case PConstraining(vars, ss) =>
-        Constraining(vars map (v => LocalVar(v.name)(ttyp(v.typ), v)), stmt(ss).asInstanceOf[Seqn])(pos)
+        Constraining(vars map (v => LocalVar(v.name, ttyp(v.typ))(v)), stmt(ss).asInstanceOf[Seqn])(pos)
       case PWhile(cond, invs, body) =>
         While(exp(cond), invs map exp, stmt(body).asInstanceOf[Seqn])(pos)
       case t: PExtender =>   t.translateStmt(this)
@@ -238,11 +238,11 @@ case class Translator(program: PProgram) {
 
       case piu @ PIdnUse(name) =>
         piu.decl match {
-          case _: PLocalVarDecl | _: PFormalArgDecl => LocalVar(name)(ttyp(pexp.typ), pos)
+          case _: PLocalVarDecl | _: PFormalArgDecl => LocalVar(name, ttyp(pexp.typ))(pos)
           case pf: PField =>
             /* A malformed AST where a field is dereferenced without a receiver */
             Consistency.messages ++= FastMessaging.message(piu, s"expected expression but found field $name")
-            LocalVar(pf.idndef.name)(ttyp(pf.typ), pos)
+            LocalVar(pf.idndef.name, ttyp(pf.typ))(pos)
           case _ =>
             sys.error("should not occur in type-checked program")
         }
@@ -356,7 +356,7 @@ case class Translator(program: PProgram) {
           if (par == null) sys.error("cannot use 'result' outside of function")
           par = par.parent.get
         }
-        Result()(ttyp(par.asInstanceOf[PFunction].typ), pos)
+        Result(ttyp(par.asInstanceOf[PFunction].typ))(pos)
       case PBoolLit(b) =>
         if (b) TrueLit()(pos) else FalseLit()(pos)
       case PNullLit() =>

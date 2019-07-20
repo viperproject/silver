@@ -94,15 +94,15 @@ object AssumeRewriter {
         }
     }, Map(): Map[Resource, Seq[((Exp, Seq[Exp]), Exp)]], {
       case (fap: FieldAccessPredicate, c) =>
-        val dummyVar = LocalVar("dummy")(Ref)
+        val dummyVar = LocalVar("dummy", Ref)()
         c + (fap.loc.field -> (c.getOrElse(fap.loc.field, Seq()) :+ ((EqCmp(fap.loc.rcv, dummyVar)(fap.pos, fap.info, fap.errT), Seq(dummyVar)), fap.perm)))
       case (pred: PredicateAccessPredicate, c) =>
-        val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(pred.loc.loc(program).formalArgs(i).typ))) take pred.loc.args.length
+        val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i, pred.loc.loc(program).formalArgs(i).typ)())) take pred.loc.args.length
         val eqs = (pred.loc.args zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         c + (pred.loc.loc(program) -> (c.getOrElse(pred.loc.loc(program), Seq()) :+ ((cond, dummyVars), pred.perm)))
       case (wand: MagicWand, c) =>
-        val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(wand.structure(program).subexpressionsToEvaluate(program)(i).typ))) take wand.subexpressionsToEvaluate(program).length
+        val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i, wand.structure(program).subexpressionsToEvaluate(program)(i).typ)())) take wand.subexpressionsToEvaluate(program).length
         val eqs = (wand.subexpressionsToEvaluate(program) zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         c + (wand.structure(program) -> (c.getOrElse(wand.structure(program), Seq()) :+ ((cond, dummyVars), FullPerm()())))
@@ -137,15 +137,15 @@ object AssumeRewriter {
   def update(node: Node, program: Program): Seq[(Resource, Seq[((Exp, Seq[Exp]), Exp)])] = {
     node match {
       case fp: FieldAccessPredicate =>
-        val dummyVar = LocalVar("dummy")(Ref)
+        val dummyVar = LocalVar("dummy", Ref)()
         Seq(fp.loc.field -> Seq(((EqCmp(fp.loc.rcv, dummyVar)(fp.pos, fp.info, fp.errT), Seq(dummyVar)), fp.perm)))
       case pred: PredicateAccessPredicate =>
-        val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(pred.loc.loc(program).formalArgs(i).typ))) take pred.loc.args.length
+        val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i, pred.loc.loc(program).formalArgs(i).typ)())) take pred.loc.args.length
         val eqs = (pred.loc.args zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         Seq(pred.loc.loc(program) -> Seq(((cond, dummyVars), pred.perm)))
       case wand: MagicWand =>
-        val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i)(wand.structure(program).subexpressionsToEvaluate(program)(i).typ))) take wand.subexpressionsToEvaluate(program).length
+        val dummyVars = (Stream.from(0) map (i => LocalVar("dummy" + i, wand.structure(program).subexpressionsToEvaluate(program)(i).typ)())) take wand.subexpressionsToEvaluate(program).length
         val eqs = (wand.subexpressionsToEvaluate(program) zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         Seq(wand.structure(program) -> Seq(((cond, dummyVars), FullPerm()())))
@@ -244,11 +244,11 @@ object AssumeRewriter {
     val formalArgs = {
       for (i <- 0 until numOfConds) {
         cDecls = LocalVarDecl("c_" + (i+1), Bool)() +: cDecls
-        if (i < numOfConds) conds = conds :+ LocalVar("c_" + (i+1))(Bool)
+        if (i < numOfConds) conds = conds :+ LocalVar("c_" + (i+1), Bool)()
       }
       for (i <- 0 until numOfConds) {
         pDecls = LocalVarDecl("p_" + (i+1), Perm)() +: pDecls
-        if (i < numOfConds) perms = perms :+ LocalVar("p_" + (i+1))(Perm)
+        if (i < numOfConds) perms = perms :+ LocalVar("p_" + (i+1), Perm)()
       }
       cDecls ++ pDecls
     }
@@ -256,7 +256,7 @@ object AssumeRewriter {
       val condsWithPerm = conds zip perms
 
       val condExps = condsWithPerm map (cp => CondExp(cp._1, cp._2, NoPerm()())())
-      condExps.foldLeft[Exp](LocalVar("p_0")(Perm))((p, c) => PermAdd(p, c)())
+      condExps.foldLeft[Exp](LocalVar("p_0", Perm)())((p, c) => PermAdd(p, c)())
     }
     val fun = DomainFunc(name, formalArgs, Perm)(domainName = domainName)
     val ax = Forall(formalArgs, Seq(Trigger(Seq(DomainFuncApp(fun, formalArgs map (_.localVar), Map[TypeVar, Type]())()))()), EqCmp(DomainFuncApp(fun, formalArgs map (_.localVar), Map[TypeVar, Type]())(), body)())()
