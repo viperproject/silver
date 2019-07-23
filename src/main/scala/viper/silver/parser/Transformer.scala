@@ -64,7 +64,7 @@ object Transformer {
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
         case PApplying(wand, exp) => PApplying(go(wand), go(exp))
 
-        case PExists(vars, exp) => PExists(vars map go, go(exp))
+        case PExists(vars, triggers, exp) => PExists(vars map go, triggers map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map go, go(exp))
         case PTrigger(exp) => PTrigger(exp map go)
         case PForPerm(vars, res, exp) => PForPerm(vars map go, go(res), go(exp))
@@ -180,7 +180,7 @@ object Transformer {
     case (_: PUnfolding, Seq(acc: PAccPred, exp: PExp)) => PUnfolding(acc, exp)
     case (_: PApplying, Seq(wand: PExp, exp: PExp)) => PApplying(wand, exp)
 
-    case (_: PExists, Seq(vars: Seq[PFormalArgDecl@unchecked], exp: PExp)) => PExists(vars, exp)
+    case (_: PExists, Seq(vars: Seq[PFormalArgDecl@unchecked], triggers: Seq[PTrigger@unchecked], exp: PExp)) => PExists(vars, triggers, exp)
     case (_: PForall, Seq(vars: Seq[PFormalArgDecl@unchecked], triggers: Seq[PTrigger@unchecked], exp: PExp)) => PForall(vars, triggers, exp)
     case (_: PForPerm, Seq(vars: Seq[PFormalArgDecl@unchecked], res: PResourceAccess, exp: PExp)) => PForPerm(vars, res, exp)
     case (_: PCondExp, Seq(cond: PExp, thn: PExp, els: PExp)) => PCondExp(cond, thn, els)

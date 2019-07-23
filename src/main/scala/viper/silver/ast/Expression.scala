@@ -558,9 +558,27 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 }
 
 /** Existential quantification. */
-case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
+case class Exists(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp) ++
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq())
+
+  /** Returns an identical forall quantification that has some automatically generated triggers
+    * if necessary and possible.
+    */
+  lazy val autoTrigger: Exists = {
+    if (triggers.isEmpty) {
+      Expressions.generateTriggerSet(this) match {
+        case Some((vars, triggerSets)) =>
+          Exists(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, MakeInfoPair(AutoTriggered,info))
+        case None =>
+          /* Couldn't generate triggers */
+          this
+      }
+    } else {
+      // triggers already present
+      this
+    }
+  }
 
   def withVariables(variables: Seq[LocalVarDecl]): Exists =
     copy(variables)(this.pos, this.info, this.errT)
