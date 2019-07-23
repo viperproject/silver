@@ -705,3 +705,7 @@ case object NotOp extends UnOp with BoolDomainFunc {
   lazy val priority = 10
   lazy val fixity = Prefix
 }
+
+
+case class SMTFunc(name: String, smtName: String, override val typ: Type, override val formalArgs: Seq[LocalVarDecl]) extends Node with AbstractDomainFunc with BuiltinDomainFunc
+

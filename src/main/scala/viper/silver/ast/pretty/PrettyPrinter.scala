@@ -618,6 +618,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       case dt@DomainType(domainName, typVarsMap) =>
         val typArgs = dt.typeParameters map (t => show(typVarsMap.getOrElse(t, t)))
         text(domainName) <> (if (typArgs.isEmpty) nil else brackets(ssep(typArgs, char (',') <> space)))
+      case SMTType(boogieName, _) => boogieName
     }
   }
 
@@ -766,6 +767,8 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       text(funcname) <> parens(ssep(args map show, char (',') <> space))
     case DomainFuncApp(funcname, args, _) =>
       text(funcname) <> parens(ssep(args map show, char (',') <> space))
+    case SMTFuncApp(func, args) =>
+      text(func.name) <> parens(ssep(args map show, char(',') <> space))
 
     case EmptySeq(elemTyp) =>
       text("Seq[") <> showType(elemTyp) <> "]()"
