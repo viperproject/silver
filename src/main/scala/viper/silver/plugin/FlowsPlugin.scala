@@ -53,11 +53,12 @@ class FlowsPlugin extends ParserPluginTemplate with SilverPlugin {
 
   lazy val flowDomainCall: noApi.P[PFlowDomainFuncUse] = P(keyword("DFCall") ~ keyword("fdplus") ~ parens(actualArgList)).map{case(a) => PFlowDomainFuncUse(PIdnUse("fdplus"),a)}
 
-  override lazy val extendedKeywords = Set("flowDomain", "fdidentity", "fdplus", "DFCall", "fdi")
+  override lazy val extendedKeywords = Set("flowDomain", "fdidentity", "DFCall", "fdi")
 
   override def beforeParse(input: String, isImported: Boolean): String = {
     ParserExtension.addNewDeclAtEnd(newDeclAtEnd)
-    ParserExtension._newExpAtEnd = Some(newExpAtEnd)
+    ParserExtension.addNewExpAtEnd(newExpAtEnd)
+    ParserExtension.addNewKeywords(extendedKeywords)
     input
   }
 
@@ -287,7 +288,7 @@ case class FlowDomain(typevar: FlowDomainTypeVarDecl, identity: FlowDomainIdenti
     Seq(typevar) ++ Seq(identity) ++ Seq(op)
   }
 
-  override def name = "flowDomain"
+  override def name = "flowDomain1"
 
 }
 

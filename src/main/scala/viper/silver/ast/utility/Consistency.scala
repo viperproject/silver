@@ -44,7 +44,8 @@ object Consistency {
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */
-  def reservedNames: Seq[String] = Seq("result",
+  def reservedNames: Seq[String] = _reservedNames
+  lazy val _reservedNames = Seq("result",
     // types
     "Int", "Perm", "Bool", "Ref", "Rational",
     // boolean constants

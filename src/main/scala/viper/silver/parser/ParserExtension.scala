@@ -20,6 +20,12 @@ object ParserExtension extends ParserPluginTemplate {
   import White._
   import fastparse.noApi._
 
+  /**
+    * These private variables are the storage variables for each of the extensions.
+    * As the parser are evaluated lazily, it is possible for us to stores extra parsing sequences in these variables
+    * and after the plugins are loaded, the parsers are added to these variables and when any parser is required,
+    * can be referenced back.
+    */
   private var _newDeclAtEnd: Option[noApi.P[PExtender]] = None
   private var _newDeclAtStart: Option[noApi.P[PExtender]] = None
 
@@ -39,7 +45,6 @@ object ParserExtension extends ParserPluginTemplate {
     * For more details regarding the functionality of each of these initial parser extensions
     * and other hooks for the parser extension, please refer to ParserPluginTemplate.scala
     */
-
   override lazy val newDeclAtStart = _newDeclAtStart match {
     case None => ParserPluginTemplate.defaultExtension
     case t: Option[noApi.P[PExtender]] => t.get

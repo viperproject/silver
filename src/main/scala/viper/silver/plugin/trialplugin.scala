@@ -449,4 +449,25 @@ class trialplugin extends SilverPlugin{
     input
   }
 
+  override def beforeResolve(preP: PProgram): PProgram = {
+    case class Context(increment: Int)
+
+    val input = StrategyBuilder.RewriteNodeAndContext[PNode, Context]({
+      case (t: PDomainType, ctx) => ({
+        preP.extensions.find(k => k.isInstanceOf[viper.silver.plugin.PFlowDomain]) match {
+          case Some(fd) =>
+            val type_local = fd.asInstanceOf[viper.silver.plugin.PFlowDomain].typevar
+            if(t.domain.name == type_local.idndef.name)
+              viper.silver.plugin.PFlowDomainTypeUse(t.domain).asInstanceOf[PType]
+            else
+              t
+          case None => t
+        }
+      }
+        ,ctx)
+    }, Context(1)).execute[PProgram](preP)
+
+    input
+  }
+
 }

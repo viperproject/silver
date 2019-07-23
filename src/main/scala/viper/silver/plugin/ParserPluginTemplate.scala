@@ -165,6 +165,11 @@ trait ParserPluginTemplate {
   }
 }
 
+
+/**
+  * A Companion Obejct that defines the default values of the parser extensions of types, PExtender(basic), PStmt(Statements)
+  * and PExp(Expressions)
+  */
 object ParserPluginTemplate{
   val White = PWrapper {
     import fastparse.all._
