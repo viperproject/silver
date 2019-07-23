@@ -1,0 +1,20 @@
+function otherDummy(i: Int): Bool
+function thirdDummy(i: Int): Bool
+
+
+method shouldNotTrigger(b: Bool)
+    requires (exists i : Int :: {thirdDummy(i)} !(i > 0 ==> otherDummy(i))) ==> !b
+{
+    if (b) {
+        //:: ExpectedOutput(assert.failed:assertion.false)
+        assert otherDummy(5)
+    }
+}
+
+method shouldTrigger(b: Bool)
+    requires (exists i : Int :: {otherDummy(i)} !(i > 0 ==> otherDummy(i))) ==> !b
+{
+    if (b) {
+        assert otherDummy(5)
+    }
+}

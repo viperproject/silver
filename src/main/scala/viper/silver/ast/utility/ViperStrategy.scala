@@ -219,7 +219,8 @@ object ViperStrategy {
     case (c: CondExp, Seq(cond: Exp, thn: Exp, els: Exp), meta) =>
       CondExp(cond, thn, els)(meta._1, meta._2, meta._3)
     case (l: Let, Seq(v: LocalVarDecl, exp1: Exp, body: Exp), meta) => Let(v, exp1, body)(meta._1, meta._2, meta._3)
-    case (ex: Exists, Seq(v: Seq[LocalVarDecl@unchecked], e: Exp), meta) => Exists(v, e)(meta._1, meta._2, meta._3)
+    case (ex: Exists, Seq(v: Seq[LocalVarDecl@unchecked], triggers: Seq[Trigger@unchecked], e: Exp), meta) =>
+      Exists(v, triggers, e)(meta._1, meta._2, meta._3)
     case (f: Forall, Seq(v: Seq[LocalVarDecl@unchecked], triggers: Seq[Trigger@unchecked], e: Exp), meta) =>
       Forall(v, triggers, e)(meta._1, meta._2, meta._3)
     case (f: ForPerm, Seq(v: Seq[LocalVarDecl@unchecked], res: ResourceAccess@unchecked, e: Exp), meta) =>

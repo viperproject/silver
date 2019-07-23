@@ -755,7 +755,7 @@ sealed trait PQuantifier extends PBinder with PScope{
   def vars : Seq[PFormalArgDecl]
   def triggers : Seq[PTrigger]
 }
-case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[PTrigger] = Seq()}
+case class PExists(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp) extends PQuantifier
 case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp) extends PQuantifier
 
 case class PForPerm(vars: Seq[PFormalArgDecl], accessRes: PResourceAccess, body: PExp) extends PQuantifier {
@@ -1126,7 +1126,7 @@ object Nodes {
       case PCall(func, args, optType) => Seq(func) ++ args ++ (optType match { case Some(t) => Seq(t) case None => Nil})
       case PUnfolding(acc, exp) => Seq(acc, exp)
       case PApplying(wand, exp) => Seq(wand, exp)
-      case PExists(vars, exp) => vars ++ Seq(exp)
+      case PExists(vars, triggers, exp) => vars ++ triggers ++ Seq(exp)
       case PLabelledOld(id, e) => Seq(id, e)
       case po: POldExp => Seq(po.e)
       case PLet(exp, nestedScope) => Seq(exp, nestedScope)

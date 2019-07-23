@@ -83,8 +83,10 @@ object Expressions {
         val ignoring = toIgnore union (boundVars map (_.localVar)).toSet
         triggers.flatMap(t => t.exps.flatMap(freeVariablesExcluding(_, ignoring))).toSet union freeVariablesExcluding(body, ignoring)
       }
-      case Exists(boundVars,body) =>
-        freeVariablesExcluding(body,toIgnore union (boundVars map (_.localVar)).toSet)
+      case Exists(boundVars,triggers,body) => {
+        val ignoring = toIgnore union (boundVars map (_.localVar)).toSet
+        triggers.flatMap(t => t.exps.flatMap(freeVariablesExcluding(_, ignoring))).toSet union freeVariablesExcluding(body, ignoring)
+      }
       case v@AbstractLocalVar(name) if !toIgnore.contains(v) =>
         Seq(v)
     }.flatten.toSet
