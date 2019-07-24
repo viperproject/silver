@@ -24,8 +24,6 @@ trait ParserPluginTemplate {
     import fastparse.all._
     NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
-  import White._
-  import fastparse.noApi._
 
   /**
     * The following three 3 variables form the main three hooks for extending the parser
@@ -36,7 +34,7 @@ trait ParserPluginTemplate {
     * will not cause any effects in the pre existing parser and any other viper codes.
     *
     */
-  lazy val newDeclAtEnd: noApi.P[PExtender] = P("PExampleDeclarationAtEnd which indicate ").map {case() => PExampleDeclaration()}
+  lazy val newDeclAtEnd: noApi.P[PExtender] = ParserPluginTemplate.defaultExtension
 
   /**
     * The high level declarations that are checked at the start of the parser. These have the highest priority over
@@ -44,46 +42,46 @@ trait ParserPluginTemplate {
     * if that particular top level construct is either particularly different from the top-level constructs in viper
     * or the programmer needs this particular rules to be executed with priority.
     */
-  lazy val newDeclAtStart: noApi.P[PExtender] = P("PExampleDeclaration").map {case() => PExampleDeclaration()}
+  lazy val newDeclAtStart: noApi.P[PExtender] = ParserPluginTemplate.defaultExtension
   /**
     * The newStmt parser which is essentially an extension of the stmt rules in the new parser.
     * The statements at the End Position are conservative extensions to the grammar. Extending the statements using this parser
     * will not cause any effects in the pre existing parser and any other viper codes.
     *
     */
-  lazy val newStmtAtEnd: noApi.P[PStmt] = P("PExampleStmt").map {case () => PExampleStmt()}
+  lazy val newStmtAtEnd: noApi.P[PStmt] = ParserPluginTemplate.defaultStmtExtension
 
  /**
    * The newStmt parser which is essentially an extension of the stmt rules in the new parser.
    * This provides an extension to statements that can be used force the parser to parse certain rules with high priority
    */
-  lazy val newStmtAtStart: noApi.P[PStmt] = P("PExampleStmt").map {case () => PExampleStmt()}
+  lazy val newStmtAtStart: noApi.P[PStmt] = ParserPluginTemplate.defaultStmtExtension
 
   /**
     * The newExp rule provides an extension to the expression parsers.
     * The expressions at the End Position are conservative extensions to the grammar. Extending the expressions using this parser
     * will not cause any effects in the pre existing parser and any other viper codes.
     */
-  lazy val newExpAtEnd: noApi.P[PExp] = P("PExampleExpression").map {case() => PExampleExp()}
+  lazy val newExpAtEnd: noApi.P[PExp] = ParserPluginTemplate.defaultExpExtension
 
 /**
   * The newExp rule provides an extension to the expression parsers.
   * This provides an extension to expressions that can be used force the parser to parse certain rules with high priority
   */
-  lazy val newExpAtStart: noApi.P[PExp] = P("PExampleExpression").map {case() => PExampleExp()}
+  lazy val newExpAtStart: noApi.P[PExp] = ParserPluginTemplate.defaultExpExtension
 
   /**
     * The specification rule provides an extension to the precondition expressions
     */
-  lazy val preSpecification: noApi.P[PExp] = P("preconditionSpecificationExample").map{case() => "".asInstanceOf[PExp]}
+  lazy val preSpecification: noApi.P[PExp] = ParserPluginTemplate.defaultExpExtension
   /**
     * The specification rule provides an extension to the postcondition expressions
     */
-  lazy val postSpecification: noApi.P[PExp] = P("postconditionSpecificationExample").map{case() => "".asInstanceOf[PExp]}
+  lazy val postSpecification: noApi.P[PExp] = ParserPluginTemplate.defaultExpExtension
   /**
     * The specification rule provides an extension to the loop invariant specification expressions
     */
-  lazy val invSpecification: noApi.P[PExp] = P("invariantSpecificationExample").map{case() => "".asInstanceOf[PExp]}
+  lazy val invSpecification: noApi.P[PExp] = ParserPluginTemplate.defaultExpExtension
   /**
     * This rule extends the keywords. So new strings added to the set will be considered as keywords.
     */
@@ -178,8 +176,8 @@ object ParserPluginTemplate{
   import White._
   import fastparse.noApi._
 
-  lazy val defaultExtension: noApi.P[PExtender] = P("PExampleDeclarationAtEnd which indicate ").map {case() => "".asInstanceOf[PExtender]}
-  lazy val defaultStmtExtension: noApi.P[PStmt] = P("PExampleStmt").map {case () => "".asInstanceOf[PStmt]}
-  lazy val defaultExpExtension: noApi.P[PExp] = P("invariantSpecificationExample").map{case() => "".asInstanceOf[PExp]}
+  lazy val defaultExtension: noApi.P[PExtender] = P(!"").map{case () => "".asInstanceOf[PExtender]}
+  lazy val defaultStmtExtension: noApi.P[PStmt] = P(!"").map {case () => "".asInstanceOf[PStmt]}
+  lazy val defaultExpExtension: noApi.P[PExp] = P(!"").map{case() => "".asInstanceOf[PExp]}
 
 }
