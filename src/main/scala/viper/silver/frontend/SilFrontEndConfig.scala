@@ -84,6 +84,13 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
+  val consolidateOnAssertTrue = opt[Boolean]("consolidateOnAssertTrue",
+    descr = "Specifies whether assert(true) triggers a state consolidation",
+    default  = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
   val writeTraceFile = opt[Boolean]("writeTraceFile",
     descr = "Write symbolic execution log into .vscode/executionTreeData.js file.",
     default = Some(false),
