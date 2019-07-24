@@ -124,7 +124,7 @@ trait ParserPluginTemplate {
     // All these are necessary methods for class inheritence
     override def pos: Position = ???
     override val scopedDecls: Seq[Declaration] = Seq()
-    override def extensionsubnodes: Seq[Node] = ???
+    override def extensionSubnodes: Seq[Node] = ???
     override def name: String = ???
     override def errT: ErrorTrafo = ???
     override def info: Info = ???

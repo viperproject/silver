@@ -91,8 +91,8 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
   /** Checks that the applied domain functions exists, that the arguments of function applications are assignable to
     * formalArgs, that the type of function applications matches with the type of the function definition and that also
-    **/
-  * the name of the domain matches.
+    * the name of the domain matches.
+    */
   lazy val checkDomainFunctionApplicationsAreValid: Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
 
@@ -709,5 +709,5 @@ case object NotOp extends UnOp with BoolDomainFunc {
   * The Extension Member trait provides the way to expand the Ast to include new Top Level declarations
   */
 trait ExtensionMember extends Member{
-  def extensionsubnodes: Seq[Node]
+  def extensionSubnodes: Seq[Node]
 }

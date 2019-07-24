@@ -166,7 +166,7 @@ class trialplugin extends SilverPlugin{
      /*
       * Function necessary for the consistency check. Not implemented by G Rahul Kranti Kiran.
       */
-    override def extensionsubnodes: Seq[Node] = {
+    override def extensionSubnodes: Seq[Node] = {
       formalArgs ++ formalArgsSecondary ++ pres ++ posts
     }
     override def toString(): String = ""
@@ -355,7 +355,7 @@ class trialplugin extends SilverPlugin{
 
   case class DoubleMethod(name: String, formalArgsList1: Seq[LocalVarDecl], formalArgsList2: Seq[LocalVarDecl], formalReturns: Seq[LocalVarDecl], pres: Seq[Exp], posts: Seq[Exp], body: Option[Seqn])
                          (override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends ExtensionMember{
-    override def extensionsubnodes: Seq[Node] = formalArgsList1 ++ formalArgsList2 ++ formalReturns ++ pres ++ posts ++ body
+    override def extensionSubnodes: Seq[Node] = formalArgsList1 ++ formalArgsList2 ++ formalReturns ++ pres ++ posts ++ body
 
 
     override val scopedDecls: Seq[Declaration] = formalArgsList1 ++ formalArgsList2 ++ formalReturns

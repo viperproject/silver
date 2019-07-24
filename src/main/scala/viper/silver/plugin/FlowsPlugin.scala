@@ -122,11 +122,7 @@ case class PFlowDomainTypeVarDecl(idndef: PIdnDef, typ: PType) extends PExtender
   * @param info
   * @param errT
   */
-case class FlowDomainTypeVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)extends ExtensionMember with ExtensionType {
-  override def extensionsubnodes: Seq[Node] = Seq()
-
-  override val scopedDecls: Seq[Declaration] = Seq()
-
+case class FlowDomainTypeVarDecl(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)extends ExtensionType with ExtensionMember{
   /**
     * Takes a mapping of type variables to types and substitutes all
     * occurrences of those type variables with the corresponding type.
@@ -139,6 +135,10 @@ case class FlowDomainTypeVarDecl(name: String, typ: Type)(val pos: Position = No
   override def toString(): String = "FlowDomainTypeVarDecl"
 
   override def getAstType = typ
+
+  override def extensionSubnodes: Seq[Node] = Seq(typ)
+
+  override val scopedDecls: Seq[Declaration] = Seq()
 }
 
 /**
@@ -169,7 +169,7 @@ case class PFlowDomainIdentity(idndef: PIdnDef) extends PExtender with PUniversa
   * @param errT
   */
 case class FlowDomainIdentity(name: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionMember {
-  override def extensionsubnodes: Seq[Node] = Seq()
+  override def extensionSubnodes: Seq[Node] = Seq()
 
   override val scopedDecls: Seq[Declaration] = Seq()
 }
@@ -222,7 +222,7 @@ case class PFlowDomainOp(idndef: PIdnDef, flowArgs: Seq[PFlowDomainArg], typName
   * @param errT
   */
 case class FlowDomainOp(name:String, formalArgs: Seq[LocalVarDecl], typ: Type, posts: Seq[Exp], body: Option[Exp])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionMember{
-  override def extensionsubnodes: Seq[Node] = formalArgs ++ Seq(typ) ++ posts ++ body
+  override def extensionSubnodes: Seq[Node] = formalArgs ++ Seq(typ) ++ posts ++ body
 
   override val scopedDecls: Seq[Declaration] = formalArgs
 }
@@ -280,7 +280,7 @@ case class PFlowDomain(typevar: PFlowDomainTypeVarDecl,identity: PFlowDomainIden
   * @param errT
   */
 case class FlowDomain(typevar: FlowDomainTypeVarDecl, identity: FlowDomainIdentity, op: FlowDomainOp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)  extends ExtensionMember{
-  override def extensionsubnodes: Seq[Node] = {
+  override def extensionSubnodes: Seq[Node] = {
     Seq(typevar) ++ Seq(identity) ++ Seq(op)
   }
 
@@ -328,7 +328,7 @@ case class PFlowDomainTypeUse(idnuse: PIdnUse) extends PExtender with PExp with 
 
   override def subNodes: Seq[PType] = Seq()
 
-  override def translateMember(t: Translator): ExtensionMember = {
+  override def translateType(t: Translator): ExtensionType = {
     FlowDomainTypeVarDecl(typ_local.idndef.name, t.ttyp(typ_local.typ))(t.liftPos(this))
   }
 }
@@ -340,7 +340,7 @@ case class PFlowDomainTypeUse(idnuse: PIdnUse) extends PExtender with PExp with 
   * @param info
   * @param errT
   */
-case class FlowDomainTypeUse(str: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionExp with ExtensionType{
+case class FlowDomainTypeUse(str: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends ExtensionType with ExtensionExp{
   override def extensionIsPure: Boolean = false
 
   override def extensionSubnodes: Seq[Node] = Seq()
