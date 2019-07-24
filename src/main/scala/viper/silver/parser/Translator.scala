@@ -530,7 +530,7 @@ case class Translator(program: PProgram) {
           TypeVar(name.name) // not a domain, i.e. it must be a type variable
       }
     case PWandType() => Wand
-    case t: PExtender => t.translateMember(this).asInstanceOf[Type]
+    case t: PExtender => t.translateType(this)
     case PUnknown() =>
       sys.error("unknown type unexpected here")
     case PPredicateType() =>

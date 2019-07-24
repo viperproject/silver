@@ -10,7 +10,7 @@ import scala.collection.{GenTraversable, Set}
 import scala.language.implicitConversions
 import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
-import viper.silver.ast.{ExtensionMember, ExtensionExp, ExtensionStmt, MagicWandOp}
+import viper.silver.ast.{ExtensionExp, ExtensionMember, ExtensionStmt, ExtensionType, MagicWandOp}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
@@ -1103,22 +1103,9 @@ trait PExtender extends PNode{
 
   def translateStmt(t: Translator): ExtensionStmt = ???
   def translateExp(t: Translator): ExtensionExp = ???
+  def translateType(t: Translator): ExtensionType = ???
 }
 
-trait PExtensionStmt extends PNode with PStmt
-{
-  def getsubnodes():Seq[PNode] = ???
-  def typecheck(t: TypeChecker, n: NameAnalyser):Option[String] = ???
-  def namecheck(n: NameAnalyser) = ???
-}
-
-trait PExtensionExp extends PNode with PExp
-{
-  def getsubnodes():Seq[PNode] = ???
-  def typecheck(t: TypeChecker, n: NameAnalyser):Option[String] = ???
-  def namecheck(n: NameAnalyser) = ???
-
-}
 
 
 /**
