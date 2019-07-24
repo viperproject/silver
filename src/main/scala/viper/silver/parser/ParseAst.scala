@@ -1081,7 +1081,7 @@ case class PPredicate(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], body: Op
 
 case class PDomainFunction1(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean) extends FastPositioned
 case class PAxiom1(idndef: PIdnDef, exp: PExp) extends FastPositioned
-
+  
 /**
  * A entity represented by names for whom we have seen more than one
  * declaration so we are unsure what is being represented.
