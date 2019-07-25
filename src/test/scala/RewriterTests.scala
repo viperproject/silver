@@ -53,20 +53,20 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
   }
 
 
-// same as the test above, but with a Context rather than SimpleContext strategy
- test("Sharing (richer context, unused)") {
-    val shared = FalseLit()()
-    val sharedAST = And(Not(shared)(), shared)()
+  // same as the test above, but with a Context rather than SimpleContext strategy
+  test("Sharing (richer context, unused)") {
+     val shared = FalseLit()()
+     val sharedAST = And(Not(shared)(), shared)()
 
-    val strat = ViperStrategy.Context[Int]({ case (FalseLit(), c) => if (c.c == 1) TrueLit()() else FalseLit()() }, 0, { case (Not(_), i) => i + 1 })
+     val strat = ViperStrategy.Context[Int]({ case (FalseLit(), c) => if (c.c == 1) TrueLit()() else FalseLit()() }, 0, { case (Not(_), i) => i + 1 })
 
-    val res = strat.execute[Exp](sharedAST)
+     val res = strat.execute[Exp](sharedAST)
 
-    // Check that both true lits are no longer of the same instance
-    res match {
-      case And(Not(t1), t2) =>
-        assert(t1 == TrueLit()())
-        assert(t2 == FalseLit()())
+     // Check that both true lits are no longer of the same instance
+     res match {
+       case And(Not(t1), t2) =>
+         assert(t1 == TrueLit()())
+         assert(t2 == FalseLit()())
       case _ => assert(false)
     }
   }
@@ -497,33 +497,4 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     // Compare transformed program with expected program
     assert(programAfter === programTransformed)
   }
-
-//  def executeTest(filePrefix: String,
-//                  fileName: String,
-//                  strat: StrategyInterface[Node],
-//                  frontend: MockSilFrontend): Unit = {
-//
-//    val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-//    assert(fileRes != null, s"File $filePrefix$fileName not found")
-//    val file = Paths.get(fileRes.toURI)
-//    var targetNode: Node = null
-//    var targetRef: Node = null
-//
-//    frontend.translate(file) match {
-//      case (Some(p), _) => targetNode = p
-//      case (None, errors) => fail("Problem with program: " + errors)
-//    }
-//    val res = strat.execute[Program](targetNode)
-//
-//    val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
-//    assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
-//
-//    val ref = Paths.get(fileRef.toURI)
-//    frontend.translate(ref) match {
-//      case (Some(p), _) => targetRef = p
-//      case (None, errors) => fail("Problem with program: " + errors)
-//    }
-//
-//    assert(res.toString == targetRef.toString(), "Files are not equal")
-//  }
 }

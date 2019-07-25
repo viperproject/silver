@@ -143,8 +143,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
         case quant: QuantifiedExp =>
           val newContext = boundVariables ++ quant.variables.map(_.localVar)
 
-          quant.getChildren.collect { case e: Exp => e }
-                           .foreach(go(_, newContext))
+          quant.children.collect { case e: Exp => e } .foreach(go(_, newContext))
 
         case e: Exp if !e.isHeapDependent(p) && !boundVariables.exists(e.contains) =>
           collectedExpressions :+= e
