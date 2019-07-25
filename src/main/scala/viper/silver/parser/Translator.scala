@@ -383,8 +383,12 @@ case class Translator(program: PProgram) {
         Let(liftVarDecl(variable), exp(exp1), exp(body))(pos)
       case _: PLetNestedScope =>
         sys.error("unexpected node PLetNestedScope, should only occur as a direct child of PLet nodes")
-      case PExists(vars, e) =>
-        Exists(vars map liftVarDecl, exp(e))(pos)
+      case PExists(vars, triggers, e) =>
+        val ts = triggers map (t => Trigger((t.exp map exp) map (e => e match {
+          case PredicateAccessPredicate(inner, _) => inner
+          case _ => e
+        }))(t))
+        Exists(vars map liftVarDecl, ts, exp(e))(pos)
       case PForall(vars, triggers, e) =>
         val ts = triggers map (t => Trigger((t.exp map exp) map (e => e match {
           case PredicateAccessPredicate(inner, _) => inner
