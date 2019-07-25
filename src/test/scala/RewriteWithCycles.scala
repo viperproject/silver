@@ -60,12 +60,12 @@ class RewriteWithCycles extends FunSuite {
 }
 
 // Simple graph class. Enough to demonstrate what we want
-case class SlimGraph[I](var info: I, var children: Seq[SlimGraph[I]] = Seq()) extends Rewritable {
-  def addChildren(ch: SlimGraph[I]*) = children ++= ch
+case class SlimGraph[I](var info: I, var childn: Seq[SlimGraph[I]] = Seq()) extends Rewritable {
+  def addChildren(ch: SlimGraph[I]*) = childn ++= ch
 
   // duplicate must not create a new node but update the old node to keep the circular dependencies
-  override def duplicate(childr: Seq[AnyRef]): Rewritable = {
-    children = childr.collect {  case s:SlimGraph[I] => s }
+  def duplicate(childr: Seq[AnyRef]): Rewritable = {
+    childn = childr.collect {  case s:SlimGraph[I] => s }
     this
   }
 

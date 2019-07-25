@@ -161,17 +161,6 @@ trait Node extends Traversable[Node] with Rewritable {
   /* To be overridden in subclasses of Node. */
   def isValid: Boolean = true
 
-  // Duplicate this node with new children
-  def duplicate(children: Seq[AnyRef]): Node = {
-    ViperStrategy.viperDuplicator(this, children, getPrettyMetadata)
-  }
-
-  // Duplicate this node with new metadata
-  def duplicateMeta(newMeta: (Position, Info, ErrorTrafo)): Node = {
-    val ch = getChildren
-    ViperStrategy.viperDuplicator(this, ch, newMeta)
-  }
-
   // Get metadata with correct types
   def getPrettyMetadata: (Position, Info, ErrorTrafo) = {
     val metadata = getMetadata
