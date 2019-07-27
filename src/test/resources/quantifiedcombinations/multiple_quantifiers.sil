@@ -58,28 +58,6 @@ method test02(xs: Seq[Ref], n: Int) {
       && (i != a || rcvr(i, i + 1).f > 1)
 }
 
-method test02_fail(xs: Seq[Ref], n: Int) {
-  inhale 0 <= n && n <= |xs|
-
-  inhale forall i: Int, j: Int ::
-    0 <= i && i < n && j == i + 1 ==> acc(rcvr(i, j).f, prm(i))
-
-  var a: Int
-  inhale 0 <= a && a < n
-  inhale rcvr(a, a + 1).f > 1
-
-  exhale forall i: Int ::
-    0 <= i && i < n ==>
-         acc(rcvr(i, i + 1).f, prm(i))
-      && (i != a || rcvr(i, i + 1).f > 1)
-
-  //:: ExpectedOutput(exhale.failed:insufficient.permission)
-  exhale forall i: Int ::
-      0 <= i && i < n ==>
-           acc(rcvr(i, i + 1).f, prm(i))
-
-}
-
 
 function det(mat: IMatrix): Int
   requires forall c: Int, r: Int ::
