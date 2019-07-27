@@ -6,14 +6,6 @@
 
 package viper.silver.parser
 
-import viper.silver.verifier.ParseReport
-
-/* TODO: This is basically a copy of silver.ast.utility.Transformer. Can we share code?
- *       This could be done by using tree visiting and rewriting functionality from Kiama,
-  *      or to implement something generic ourselves. Shapeless or Scala Macros might be
-  *      useful because they might help us to abstract over arity when it comes to
-  *      copying existing nodes, i.e., case classes.
- */
 object Transformer {
   /* Attention: You most likely want to call initTree on the transformed node. */
   def transform[A <: PNode](node: A,
@@ -64,7 +56,7 @@ object Transformer {
         case PUnfolding(acc, exp) => PUnfolding(go(acc), go(exp))
         case PApplying(wand, exp) => PApplying(go(wand), go(exp))
 
-        case PExists(vars, exp) => PExists(vars map go, go(exp))
+        case PExists(vars, triggers, exp) => PExists(vars map go, triggers map go, go(exp))
         case PForall(vars, triggers, exp) => PForall(vars map go, triggers map go, go(exp))
         case PTrigger(exp) => PTrigger(exp map go)
         case PForPerm(vars, res, exp) => PForPerm(vars map go, go(res), go(exp))
@@ -148,103 +140,6 @@ object Transformer {
       beforeRecursion
     }
     post.applyOrElse(afterRecursion, identity[PNode]).asInstanceOf[A]
-  }
-
-  def parseTreeDuplicator: PartialFunction[(PNode, Seq[Any]), PNode] = {
-    case (_: PMacroRef, Seq(idndef: PIdnUse)) => PMacroRef(idndef)
-    case (p: PIdnDef, _) => p
-    case (p: PIdnUse, _) => p
-    case (_: PFormalArgDecl, Seq(idndef: PIdnDef, typ: PType)) => PFormalArgDecl(idndef, typ)
-    case (_: PTypeVarDecl, Seq(idndef: PIdnDef)) => PTypeVarDecl(idndef)
-    case (p: PPrimitiv, _) => p
-    case (_: PDomainType, Seq(domain: PIdnUse, args: Seq[PType@unchecked])) => PDomainType(domain, args)
-    case (_: PSeqType, Seq(elementType: PType)) => PSeqType(elementType)
-    case (_: PSetType, Seq(elementType: PType)) => PSetType(elementType)
-    case (_: PMultisetType, Seq(elementType: PType)) => PMultisetType(elementType)
-    case (p: PUnknown, _) => p
-    case (p: PPredicateType, _) => p
-    case (p: PWandType, _) => p
-
-    case (p: PBinExp, Seq(left: PExp, right: PExp)) => PBinExp(left, p.opName, right)
-    case (p: PMagicWandExp, Seq(left: PExp, right: PExp)) => PMagicWandExp(left, right)
-    case (p: PUnExp, Seq(exp: PExp)) => PUnExp(p.opName, exp)
-    case (_: PTrigger, Seq(exp: Seq[PExp@unchecked])) => PTrigger(exp)
-    case (p: PIntLit, _) => p
-    case (p: PResultLit, _) => p
-    case (p: PBoolLit, _) => p
-    case (p: PNullLit, _) => p
-    case (_: PFieldAccess, Seq(rcv: PExp, idnuse: PIdnUse)) => PFieldAccess(rcv, idnuse)
-    case (_: PPredicateAccess, Seq(args: Seq[PExp@unchecked], idnuse: PIdnUse)) => PPredicateAccess(args, idnuse)
-    case (_: PCall, Seq(func: PIdnUse, args: Seq[PExp@unchecked], explicitType: Option[PType@unchecked])) => PCall(func, args, explicitType)
-
-    case (_: PUnfolding, Seq(acc: PAccPred, exp: PExp)) => PUnfolding(acc, exp)
-    case (_: PApplying, Seq(wand: PExp, exp: PExp)) => PApplying(wand, exp)
-
-    case (_: PExists, Seq(vars: Seq[PFormalArgDecl@unchecked], exp: PExp)) => PExists(vars, exp)
-    case (_: PForall, Seq(vars: Seq[PFormalArgDecl@unchecked], triggers: Seq[PTrigger@unchecked], exp: PExp)) => PForall(vars, triggers, exp)
-    case (_: PForPerm, Seq(vars: Seq[PFormalArgDecl@unchecked], res: PResourceAccess, exp: PExp)) => PForPerm(vars, res, exp)
-    case (_: PCondExp, Seq(cond: PExp, thn: PExp, els: PExp)) => PCondExp(cond, thn, els)
-    case (_: PInhaleExhaleExp, Seq(in: PExp, ex: PExp)) => PInhaleExhaleExp(in, ex)
-    case (_: PCurPerm, Seq(loc: PLocationAccess)) => PCurPerm(loc)
-    case (p: PNoPerm, _) => p
-    case (p: PFullPerm, _) => p
-    case (p: PWildcard, _) => p
-    case (p: PEpsilon, _) => p
-    case (_: PAccPred, Seq(loc: PLocationAccess, perm: PExp)) => PAccPred(loc, perm)
-    case (_: POld, Seq(e: PExp)) => POld(e)
-    case (_: PLabelledOld, Seq(lbl: PIdnUse, e: PExp)) => PLabelledOld(lbl, e)
-    case (_: PEmptySeq, Seq(t: PType)) => PEmptySeq(t)
-    case (_: PExplicitSeq, Seq(elems: Seq[PExp@unchecked])) => PExplicitSeq(elems)
-    case (_: PRangeSeq, Seq(low: PExp, high: PExp)) => PRangeSeq(low, high)
-    case (_: PSeqIndex, Seq(seq: PExp, idx: PExp)) => PSeqIndex(seq, idx)
-    case (_: PSeqTake, Seq(seq: PExp, n: PExp)) => PSeqTake(seq, n)
-    case (_: PSeqDrop, Seq(seq: PExp, n: PExp)) => PSeqDrop(seq, n)
-    case (_: PSeqUpdate, Seq(seq: PExp, idx: PExp, elem: PExp)) => PSeqUpdate(seq, idx, elem)
-    case (_: PSize, Seq(seq: PExp)) => PSize(seq)
-    case (_: PEmptySet, Seq(t: PType)) => PEmptySet(t)
-    case (_: PExplicitSet, Seq(elems: Seq[PExp@unchecked])) => PExplicitSet(elems)
-    case (_: PEmptyMultiset, Seq(t: PType)) => PEmptyMultiset(t)
-    case (_: PExplicitMultiset, Seq(elems: Seq[PExp@unchecked])) => PExplicitMultiset(elems)
-
-    case (_: PSeqn, Seq(ss: Seq[PStmt@unchecked])) => PSeqn(ss)
-    case (_: PFold, Seq(e: PExp)) => PFold(e)
-    case (_: PUnfold, Seq(e: PExp)) => PUnfold(e)
-    case (_: PPackageWand, Seq(e: PExp, proofScript: PSeqn)) => PPackageWand(e, proofScript)
-    case (_: PApplyWand, Seq(e: PExp)) => PApplyWand(e)
-    case (_: PExhale, Seq(e: PExp)) => PExhale(e)
-    case (_: PAssert, Seq(e: PExp)) => PAssert(e)
-    case (_: PAssume, Seq(e: PExp)) => PAssume(e)
-    case (_: PInhale, Seq(e: PExp)) => PInhale(e)
-    case (_: PRegularNewStmt, Seq(target: PIdnUse, fields: Seq[PIdnUse@unchecked])) => PRegularNewStmt(target, fields)
-    case (_: PStarredNewStmt, Seq(target: PIdnUse)) => PStarredNewStmt(target)
-    case (_: PVarAssign, Seq(idnuse: PIdnUse, rhs: PExp)) => PVarAssign(idnuse, rhs)
-    case (_: PFieldAssign, Seq(fieldAcc: PFieldAccess, rhs: PExp)) => PFieldAssign(fieldAcc, rhs)
-    case (_: PIf, Seq(cond: PExp, thn: PSeqn, els: PSeqn)) => PIf(cond, thn, els)
-    case (_: PWhile, Seq(cond: PExp, invs: Seq[PExp@unchecked], body: PSeqn)) => PWhile(cond, invs, body)
-    case (_: PFresh, Seq(vars: Seq[PIdnUse@unchecked])) => PFresh(vars)
-    case (_: PConstraining, Seq(vars: Seq[PIdnUse@unchecked], stmt: PSeqn)) => PConstraining(vars, stmt)
-    case (_: PLocalVarDecl, Seq(idndef: PIdnDef, typ: PType, init: Option[PExp@unchecked])) => PLocalVarDecl(idndef, typ, init)
-    case (_: PMethodCall, Seq(targets: Seq[PIdnUse@unchecked], method: PIdnUse, args: Seq[PExp@unchecked])) => PMethodCall(targets, method, args)
-    case (_: PLabel, Seq(idndef: PIdnDef, invs: Seq[PExp@unchecked])) => PLabel(idndef, invs)
-    case (_: PGoto, Seq(target: PIdnUse)) => PGoto(target)
-    case (_: PDefine, Seq(idndef: PIdnDef, optArgs: Seq[PIdnDef@unchecked], exp: PExp)) => PDefine(idndef, if (optArgs.isEmpty) None else Some(optArgs), exp)
-    case (_: PLet, Seq(exp: PExp, nestedScope: PLetNestedScope)) => PLet(exp, nestedScope)
-    case (_: PLetNestedScope, Seq(idndef: PFormalArgDecl, body: PExp)) => PLetNestedScope(idndef, body)
-    case (p: PSkip, _) => p
-
-    case (p: PProgram, Seq(files: Seq[PImport@unchecked], macros: Seq[PDefine@unchecked], domains: Seq[PDomain@unchecked], fields: Seq[PField@unchecked], functions: Seq[PFunction@unchecked], predicates: Seq[PPredicate@unchecked], methods: Seq[PMethod@unchecked], errors: Seq[ParseReport@unchecked])) =>
-      PProgram(files, macros, domains, fields, functions, predicates, methods, errors)
-
-    case (p: PImport, _) => p
-    case (_: PMethod, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], formalReturns: Seq[PFormalArgDecl@unchecked], pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], body: Option[PStmt@unchecked])) => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
-    case (_: PDomain, Seq(idndef: PIdnDef, typVars: Seq[PTypeVarDecl@unchecked], funcs: Seq[PDomainFunction@unchecked], axioms: Seq[PAxiom@unchecked])) => PDomain(idndef, typVars, funcs, axioms)
-    case (_: PField, Seq(idndef: PIdnDef, typ: PType)) => PField(idndef, typ)
-    case (_: PFunction, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], typ: PType, pres: Seq[PExp@unchecked], posts: Seq[PExp@unchecked], body: Option[PExp@unchecked])) => PFunction(idndef, formalArgs, typ, pres, posts, body)
-    case (p: PDomainFunction, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], typ: PType)) => PDomainFunction(idndef, formalArgs, typ, p.unique)(domainName = p.domainName)
-    case (_: PPredicate, Seq(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl@unchecked], body: Option[PExp@unchecked])) => PPredicate(idndef, formalArgs, body)
-    case (p: PAxiom, Seq(idndef: PIdnDef, exp: PExp)) => PAxiom(idndef, exp)(domainName = p.domainName)
-
-    case (p: PNode, s) => throw ParseTreeDuplicationError(p, s)
   }
 
   case class ParseTreeDuplicationError(original: PNode, newChildren: Seq[Any])
