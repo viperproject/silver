@@ -1,0 +1,17 @@
+predicate accessible_withdraw(msg_sender: Int, amount: Int, parameter: Int)
+
+method test1(){
+  var msg_sender: Int
+  var balance: Int
+  inhale forall a: Int, i: Int, j: Int :: {accessible_withdraw(a, i, j)} balance >= i ==> accessible_withdraw(a, i, j)
+  assert perm(accessible_withdraw(msg_sender, balance + 1, balance + 2)) == none
+}
+
+function isInt(i: Int): Bool {true}
+
+method test2(){
+  var msg_sender: Int
+  var balance: Int
+  inhale forall a: Int, i: Int, j: Int :: {accessible_withdraw(a, i, j)} isInt(a) && isInt(j) && balance >= i ==> accessible_withdraw(a, i, j)
+  assert perm(accessible_withdraw(msg_sender, balance + 1, balance + 2)) == none
+}
