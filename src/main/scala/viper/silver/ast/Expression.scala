@@ -391,10 +391,8 @@ object DomainFuncApp {
 
 case class SMTFuncApp(smtfunc: SMTFunc, args: Seq[Exp])
                      (val pos: Position, val info: Info, override val typ : Type, val errT: ErrorTrafo)
-  extends AbstractDomainFuncApp with PossibleTrigger {
+  extends AbstractDomainFuncApp {
   override lazy val check : Seq[ConsistencyError] = args.flatMap(Consistency.checkPure)
-  def getArgs = args
-  def withArgs(newArgs: Seq[Exp]) = SMTFuncApp(smtfunc, newArgs)(pos,info,typ, errT)
   override def func = (p: Program) => smtfunc
   def funcname = smtfunc.name
 }
