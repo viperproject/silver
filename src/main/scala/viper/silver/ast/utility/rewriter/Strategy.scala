@@ -398,7 +398,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
 
         case Some(value) => Some(rewriteTopDown(value, context)).asInstanceOf[A]
 
-        case n: N => {
+        case n: N @unchecked =>
           var c = context.addAncestor(n).asInstanceOf[C]
 
           val newNode = rule.execute(n, c).getOrElse(n)
@@ -413,7 +413,6 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
 
             (newNode.children = children).asInstanceOf[A]
           }
-        }
 
         case value => value
       }
@@ -431,7 +430,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
 
         case Some(value) => Some(rewriteBottomUp(value, context)).asInstanceOf[A]
 
-        case n: N => {
+        case n: N @unchecked =>
           val c = context.addAncestor(n).asInstanceOf[C]
 
           val allowedToRecurse = recursionFunc.applyOrElse(n, (_: N) => n.children).toSet
@@ -440,7 +439,6 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
           val newNode = (n.children = children).asInstanceOf[N]
 
           rule.execute(newNode, c).getOrElse(newNode).asInstanceOf[A]
-        }
 
         case value => value
       }
@@ -458,7 +456,7 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
 
         case Some(value) => Some(rewriteInnermost(value, context)).asInstanceOf[A]
 
-        case n: N => {
+        case n: N @unchecked =>
           val c = context.addAncestor(n).asInstanceOf[C]
 
           val newNode = rule.execute(n, c)
@@ -470,7 +468,6 @@ class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C 
             val children = n.children.map(child => if (allowedToRecurse(child)) rewriteInnermost(child, c) else child)
             (n.children = children).asInstanceOf[A]
           }
-        }
 
         case value => value
       }
@@ -934,7 +931,7 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
 
         case Some(value) => Some(visitTopDown(value, context))
 
-        case n: N => {
+        case n: N @unchecked =>
           var c = context.addAncestor(n).asInstanceOf[C]
 
           visitNode(n, c)
@@ -943,7 +940,6 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
 
           val allowedToRecurse = recursionFunc.applyOrElse(n, (_: N) => n.children).toSet
           n.children.filter(allowedToRecurse).foreach(visitTopDown(_, c))
-        }
 
         case _ =>
       }
@@ -1021,11 +1017,11 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
     node match {
       case map: Map[_, _] => accumulator(map.map(execute(_)).toSeq)
 
-      case collection: Iterable[_] => accumulator(collection.map(execute(_)).toSeq)
+      case collection: Iterable[_] => accumulator(collection.map(execute).toSeq)
 
       case Some(value) => execute(value)
 
-      case n: N => {
+      case n: N @unchecked =>
         // Query current node
         val nodeQueryRes = getInfo.applyOrElse(n, (n: N) => {
           assert(nElement.isDefined, "Node " + n + "does not define a result. Either define it in query or specify neutral element")
@@ -1033,10 +1029,9 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
         })
 
         val allowedToRecurse = recursionFunc.applyOrElse(n, (_: N) => n.children).toSet
-        val childrenQueryRes = accumulator(n.children.filter(allowedToRecurse).map(execute(_)))
+        val childrenQueryRes = accumulator(n.children.filter(allowedToRecurse).map(execute))
 
         accumulator(Seq(nodeQueryRes, childrenQueryRes))
-      }
 
       case _ => accumulator(Seq())
     }
