@@ -1,5 +1,4 @@
-//:: IgnoreFile(/silicon/issue/394/)
-domain test10 { 
+domain test10 {
   function foo(i:Int) : Multiset[Int]
   function bar(a:Int, b:Int) : Bool
   axiom foobar {

@@ -561,7 +561,7 @@ object FastParser extends PosParser[Char, String] {
       case varUse: PIdnUse if renamesMap.contains(varUse.name) =>
         PIdnUse(renamesMap(varUse.name))
 
-    }).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
+    })
 
     // Strategy to replace macro's parameters by their respective arguments
     val replacer = StrategyBuilder.Context[PNode, ReplaceContext]({
@@ -571,7 +571,7 @@ object FastParser extends PosParser[Char, String] {
                                      !ctx.c.boundVars.contains(varUse.name) =>
         ctx.c.paramToArgMap(varUse.name)
 
-    }, ReplaceContext()).duplicateEverything // Duplicate everything to avoid type checker bug with sharing (#191)
+    }, ReplaceContext())
 
     val replacerContextUpdater: PartialFunction[(PNode, ReplaceContext), ReplaceContext] = {
       case (ident: PIdnUse, ctx) if ctx.paramToArgMap.contains(ident.name) =>
@@ -942,7 +942,7 @@ object FastParser extends PosParser[Char, String] {
   lazy val idndef: P[PIdnDef] = P(ident).map(PIdnDef)
 
   lazy val quant: P[PExp] = P((keyword("forall") ~/ nonEmptyFormalArgList ~ "::" ~/ trigger.rep ~ exp).map { case (a, b, c) => PForall(a, b, c) } |
-    (keyword("exists") ~/ nonEmptyFormalArgList ~ "::" ~ exp).map { case (a, b) => PExists(a, b) })
+    (keyword("exists") ~/ nonEmptyFormalArgList ~ "::" ~ trigger.rep ~ exp).map { case (a, b, c) => PExists(a, b, c) })
 
   lazy val nonEmptyFormalArgList: P[Seq[PFormalArgDecl]] = P(formalArg.rep(min = 1, sep = ","))
 

@@ -129,7 +129,7 @@ trait PNode extends FastPositioned with Product with Rewritable {
    *
    * @see [[PNode.initProperties()]] */
   def deepCopyAll[A <: PNode]: A =
-    StrategyBuilder.Slim[PNode](PartialFunction.empty).duplicateEverything.execute[A](this)
+    StrategyBuilder.Slim[PNode](PartialFunction.empty).execute[A](this)
 
   private val _children = scala.collection.mutable.ListBuffer[PNode] ()
 
@@ -172,12 +172,6 @@ trait PNode extends FastPositioned with Product with Rewritable {
       setNodeChildConnections (c)
 
   }
-
-  override def duplicate(children: scala.Seq[AnyRef]): Rewritable = {
-    val dup = Transformer.parseTreeDuplicator(this, children)
-    dup.setPos(this)
-  }
-
 }
 
 object TypeHelper {
@@ -755,7 +749,7 @@ sealed trait PQuantifier extends PBinder with PScope{
   def vars : Seq[PFormalArgDecl]
   def triggers : Seq[PTrigger]
 }
-case class PExists(vars: Seq[PFormalArgDecl], body: PExp) extends PQuantifier{val triggers : Seq[PTrigger] = Seq()}
+case class PExists(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp) extends PQuantifier
 case class PForall(vars: Seq[PFormalArgDecl], triggers: Seq[PTrigger], body: PExp) extends PQuantifier
 
 case class PForPerm(vars: Seq[PFormalArgDecl], accessRes: PResourceAccess, body: PExp) extends PQuantifier {
@@ -1053,7 +1047,7 @@ case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalRetur
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body): PMethod = {
     StrategyBuilder.Slim[PNode]({
       case m: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
-    }).duplicateEverything.execute[PMethod](this)
+    }).execute[PMethod](this)
   }
   def deepCopyWithNameSubstitution(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, formalReturns: Seq[PFormalArgDecl] = this.formalReturns, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PStmt] = this.body)
                                   (idn_generic_name: String, idn_substitution: String): PMethod = {
@@ -1061,7 +1055,7 @@ case class PMethod(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], formalRetur
       case m: PMethod => PMethod(idndef, formalArgs, formalReturns, pres, posts, body)
       case PIdnDef(name) if name == idn_generic_name => PIdnDef(idn_substitution)
       case PIdnUse(name) if name == idn_generic_name => PIdnUse(idn_substitution)
-    }).duplicateEverything.execute[PMethod](this)
+    }).execute[PMethod](this)
   }
 }
 case class PDomain(idndef: PIdnDef, typVars: Seq[PTypeVarDecl], funcs: Seq[PDomainFunction], axioms: Seq[PAxiom]) extends PMember with PGlobalDeclaration
@@ -1069,9 +1063,10 @@ case class PFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PTyp
   def deepCopy(idndef: PIdnDef = this.idndef, formalArgs: Seq[PFormalArgDecl] = this.formalArgs, typ: PType = this.typ, pres: Seq[PExp] = this.pres, posts: Seq[PExp] = this.posts, body: Option[PExp] = this.body): PFunction = {
     StrategyBuilder.Slim[PNode]({
       case f: PFunction => PFunction(idndef, formalArgs, typ, pres, posts, body)
-    }).duplicateEverything.execute[PFunction](this)
+    }).execute[PFunction](this)
   }
 }
+
 case class PDomainFunction(idndef: PIdnDef, formalArgs: Seq[PFormalArgDecl], typ: PType, unique: Boolean)(val domainName:PIdnUse) extends PAnyFunction
 case class PAxiom(idndef: PIdnDef, exp: PExp)(val domainName:PIdnUse) extends PScope with PGlobalDeclaration  //urij: this was not a declaration before - but the constructor of Program would complain on name clashes
 case class PField(idndef: PIdnDef, typ: PType) extends PMember with PTypedDeclaration with PGlobalDeclaration
@@ -1142,7 +1137,7 @@ object Nodes {
       case PCall(func, args, optType) => Seq(func) ++ args ++ (optType match { case Some(t) => Seq(t) case None => Nil})
       case PUnfolding(acc, exp) => Seq(acc, exp)
       case PApplying(wand, exp) => Seq(wand, exp)
-      case PExists(vars, exp) => vars ++ Seq(exp)
+      case PExists(vars, triggers, exp) => vars ++ triggers ++ Seq(exp)
       case PLabelledOld(id, e) => Seq(id, e)
       case po: POldExp => Seq(po.e)
       case PLet(exp, nestedScope) => Seq(exp, nestedScope)

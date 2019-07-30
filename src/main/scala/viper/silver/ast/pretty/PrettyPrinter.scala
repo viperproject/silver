@@ -733,8 +733,10 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
       parens(text("let") <+> text(v.name) <+> "==" <+> parens(show(exp)) <+> "in" <+> show(body))
     case CondExp(cond, thn, els) =>
       parens(show(cond) <+> "?" <+> show(thn) <+> ":" <+> show(els))
-    case Exists(v, exp) =>
-      parens(text("exists") <+> showVars(v) <+> "::" <+> show(exp))
+    case Exists(v, triggers, exp) =>
+      parens(text("exists") <+> showVars(v) <+> "::" <>
+        (if (triggers.isEmpty) nil else space <> ssep(triggers map show, space)) <+>
+        show(exp))
     case Forall(v, triggers, exp) =>
       parens(text("forall") <+> showVars(v) <+> "::" <>
         (if (triggers.isEmpty) nil else space <> ssep(triggers map show, space)) <+>
