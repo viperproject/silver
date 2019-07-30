@@ -24,9 +24,13 @@ trait ParserPluginTemplate {
     import fastparse.all._
     NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
   }
+  /**
+    * The below line is essential if one wishes to use the overridden files from fastparse for the plugin.
+    */
+  /** import White._ */
 
   /**
-    * The following three 3 variables form the main three hooks for extending the parser
+    * The following three 10 variables form the main hooks for extending the parser
     */
   /**
     * The high level declarations which provide a hook for any type of independent declarations like new function or new predicates etc.
@@ -169,15 +173,8 @@ trait ParserPluginTemplate {
   * and PExp(Expressions)
   */
 object ParserPluginTemplate{
-  val White = PWrapper {
-    import fastparse.all._
-    NoTrace((("/*" ~ (!StringIn("*/") ~ AnyChar).rep ~ "*/") | ("//" ~ CharsWhile(_ != '\n').? ~ ("\n" | End)) | " " | "\t" | "\n" | "\r").rep)
-  }
-  import White._
-  import fastparse.noApi._
-
-  lazy val defaultExtension: noApi.P[PExtender] = P(!"").map{case () => "".asInstanceOf[PExtender]}
-  lazy val defaultStmtExtension: noApi.P[PStmt] = P(!"").map {case () => "".asInstanceOf[PStmt]}
-  lazy val defaultExpExtension: noApi.P[PExp] = P(!"").map{case() => "".asInstanceOf[PExp]}
+  lazy val defaultExtension: noApi.P[PExtender] = noApi.Fail
+  lazy val defaultStmtExtension: noApi.P[PStmt] = noApi.Fail
+  lazy val defaultExpExtension: noApi.P[PExp] = noApi.Fail
 
 }
