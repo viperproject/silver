@@ -9,6 +9,8 @@ package viper.silver.ast.utility.rewriter
 import viper.silver.FastPositions
 import viper.silver.parser.{FastPositioned, PDomainFunction}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
+import viper.silver.ast.{Node, AtomicType, Position, Info, ErrorTrafo}
+import viper.silver.ast.utility.ViperStrategy.forceRewrite
 import scala.reflect.runtime.{universe => reflection}
 
 /**
@@ -20,11 +22,11 @@ trait Rewritable extends Product {
   def children: Seq[Any] = productIterator.toList
 
   def children_= (children: Seq[Any]): this.type = {
-    if (this.children == children)
+    if (!forceRewrite && this.children == children)
       this
     else {
       // Singleton objects shouldn't be rewritten, preserving their singularity
-      if (this.isInstanceOf[viper.silver.ast.AtomicType])
+      if (this.isInstanceOf[AtomicType])
         this
       else {
         // Infer constructor from type
@@ -38,7 +40,7 @@ trait Rewritable extends Product {
         // Add additional arguments to constructor call, besides children
         var firstArgList = children
         var secondArgList = Seq.empty[Any]
-        import viper.silver.ast.{Node, DomainType, DomainAxiom, FuncApp, DomainFunc, DomainFuncApp}
+        import viper.silver.ast.{DomainType, DomainAxiom, FuncApp, DomainFunc, DomainFuncApp}
         import viper.silver.parser.{PAxiom, PMagicWandExp, PNode, PDomainType}
         this match {
           case dt: DomainType => secondArgList = Seq(dt.typeParameters)
@@ -77,6 +79,37 @@ trait Rewritable extends Product {
 
         newNode.asInstanceOf[this.type]
       }
+    }
+  }
+
+  def meta: (Position, Info, ErrorTrafo) = {
+    assert(this.isInstanceOf[Node], "Only descendants of class 'Node' have metadata")
+
+    val metadata = this.asInstanceOf[Node].getMetadata
+    (metadata(0).asInstanceOf[Position], metadata(1).asInstanceOf[Info], metadata(2).asInstanceOf[ErrorTrafo])
+  }
+
+  def meta_= (posInfoTrafo: (Position, Info, ErrorTrafo)): this.type = {
+    assert(this.isInstanceOf[Node], "Only descendants of class 'Node' have metadata")
+
+    val (pos, info, trafo) = posInfoTrafo
+
+    // Singleton objects shouldn't be rewritten, preserving their singularity
+    if (this.isInstanceOf[AtomicType])
+      this
+    else {
+      // Infer constructor from type
+      val mirror = reflection.runtimeMirror(reflection.getClass.getClassLoader)
+      val instanceMirror = mirror.reflect(this)
+      val classSymbol = instanceMirror.symbol
+      val classMirror = mirror.reflectClass(classSymbol)
+      val constructorSymbol = instanceMirror.symbol.primaryConstructor.asMethod
+      val constructorMirror = classMirror.reflectConstructor(constructorSymbol)
+
+      // Call constructor
+      val newNode = constructorMirror(this.children ++ Seq(pos, info, trafo): _*)
+
+      newNode.asInstanceOf[this.type]
     }
   }
 }
