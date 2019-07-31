@@ -1,0 +1,33 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Rules for capture-avoiding substitution with bound variables:
+//
+// 1) (forall x : e)[x -> e’] = (forall x : e), where:
+//
+//   x is a bound variable in e, therefore there isn’t any free variable in e named ‘x’. So the substitution x -> e’ doesn’t change e.
+//
+// 2) (forall y : e)[x -> e’] = (forall z : e[y -> z][x -> e’]), where:
+//   y != x
+//   y belongs to vars(e’), where vars is the set of free and bound variables in an expression.
+//   z doesn’t belong to vars(e’), effectively z is said to be “fresh”.
+//
+// 3) (forall y : e)[x -> e’] = (forall y : e[x -> e’]), where:
+//   y != x
+//   y doesn’t belong to vars(e’)
+
+// Tests to enforce rule 2: (forall y : e)[x -> e’] = (forall z : e[y -> z][x -> e’])
+
+field f: Int
+
+function func2(s: Set[Ref]): Bool
+    requires forall e: Ref :: e in s ==> acc(e.f)
+{
+  true
+}
+
+method m2(e: Ref)
+    requires acc(e.f)
+{
+  assert func2(Set(e))
+}
