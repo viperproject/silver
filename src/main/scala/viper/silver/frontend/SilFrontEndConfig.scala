@@ -99,6 +99,12 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = false
   )
 
+  val model = opt[String]("model",
+    descr="Return model for errors. Pass 'true' for returning the native model, or a comma-separated list of local Viper variables to return.",
+    default= None,
+    noshort = true
+  )
+
   validateOpt(file, ignoreFile) {
     case (_, Some(true)) => Right(Unit)
     case (Some(path), _) =>
