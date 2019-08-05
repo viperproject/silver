@@ -34,7 +34,7 @@ method conditionals01(x: Ref)
     // Applying the wand instance requires giving up permissions to x.f, but
     // we gain them back right away. x.f has an unknown value b'' (in 
     // principle, this should be the same unknown value b as before the 
-    // apply; see regression/issue024.sil for a discussion of this issue).
+    // apply; see regression/issue024.vpr for a discussion of this issue).
     // Depending on b'' (i.e. the value of x.f), we potentially also got 
     // permissions to x.g from the apply. The current state thus satisfies:
     //

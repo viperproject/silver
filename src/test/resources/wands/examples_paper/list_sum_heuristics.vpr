@@ -3,7 +3,7 @@
 
 //:: IgnoreFile(/carbon/issue/103/)
 
-/* See list_sum.sil */
+/* See list_sum.vpr */
 
 field __CONFIG_HEURISTICS: Bool /* Activates heuristics */
 

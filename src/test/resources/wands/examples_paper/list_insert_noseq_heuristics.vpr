@@ -3,7 +3,7 @@
 
 //:: IgnoreFile(/carbon/issue/103/)
 
-/* See list_insert_noseq.sil */
+/* See list_insert_noseq.vpr */
 
 field __CONFIG_HEURISTICS: Bool /* Activates heuristics */
 

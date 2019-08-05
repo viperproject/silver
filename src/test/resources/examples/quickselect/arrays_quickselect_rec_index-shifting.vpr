@@ -3,7 +3,7 @@
 
 //:: IgnoreFile(/carbon/issue/137/)
 
-/* This version differs from arrays_quickselect_rec.sil in so far as the
+/* This version differs from arrays_quickselect_rec.vpr in so far as the
  * permutation witness pw only covers the segment of the array that is being
  * mutated by partition and by select_rec, respectively.
  *

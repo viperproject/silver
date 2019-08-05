@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-// note: identical to 0172.sil
+// note: identical to 0172.vpr
 
 function t(r: Int) : Bool
     requires r > 0

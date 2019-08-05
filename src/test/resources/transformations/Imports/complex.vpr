@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-import "complex_other1.sil"
+import "complex_other1.vpr"
 
 method main()
 {

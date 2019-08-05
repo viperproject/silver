@@ -20,7 +20,7 @@ method split(xs: Seq[Ref], p: Perm, q: Perm)
   ensures forall i: Int :: i in [0..|xs|) ==> acc(xs[i].f, q)
 {}
 
-/* Inspired by Stefan Blom's test case fwd.sil, this test boils down to lots of
+/* Inspired by Stefan Blom's test case fwd.vpr, this test boils down to lots of
  * inhales and exhales of quantified permissions (over sequences) to the same
  * field. Hence, the permission terms stored in the quantified chunks grow
  * exponentially in the worst case.

@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-import "sub/libA.sil"
+import "sub/libA.vpr"
 
 method test1() {
   assert b1()

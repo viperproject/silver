@@ -12,7 +12,7 @@
  *    a bit.
  *  - The additional two asserts are currently necessary because of a known
  *    incompleteness of Silicon related to recursive functions.
- *  - See list_insert_noseq.sil for a version from which all sequences have
+ *  - See list_insert_noseq.vpr for a version from which all sequences have
  *    been removed.
  */
 

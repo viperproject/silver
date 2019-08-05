@@ -5,7 +5,7 @@ field next: Ref
 
 /* Originally reported code */
 
-/* good-wildcard.sil */
+/* good-wildcard.vpr */
 method main01(t1: Ref, t2: Ref)
   requires acc(t1.next, wildcard)
   requires acc(t2.next, wildcard)
@@ -16,7 +16,7 @@ method main01(t1: Ref, t2: Ref)
   }
 }
 
-/* bad-wildcard.sil */
+/* bad-wildcard.vpr */
 method main02(t1: Ref, t2: Ref)
   requires acc(t1.next, wildcard)
   requires acc(t2.next, wildcard)

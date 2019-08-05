@@ -15,12 +15,12 @@
  *    orthogonal to our work on magic wands. Should you experience
  *    verification runs that take much longer than the timing
  *    information included in our paper, please try
- *    list_insert_noseq.sil, which is a version of this example from
+ *    list_insert_noseq.vpr, which is a version of this example from
  *    which all sequence-related assertions have been erased (the
  *    wands are still included).
  *
  *  - The additional two asserts are currently necessary because of a
- *    known incompleteness of Silicon (again, see list_insert_noseq.sil
+ *    known incompleteness of Silicon (again, see list_insert_noseq.vpr
  *    for a version from which all sequence-related assertions have
  *    been removed).
  */

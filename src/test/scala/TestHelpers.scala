@@ -47,7 +47,7 @@ object TestHelpers {
                     frontend: MockSilFrontend)
                    : Unit = {
 
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+      val fileRes = getClass.getResource(filePrefix + fileName + ".vpr")
       assert(fileRes != null, s"File $filePrefix$fileName not found")
       val file = Paths.get(fileRes.toURI)
       var targetNode: Node = null
@@ -60,7 +60,7 @@ object TestHelpers {
       }
       val res = strat.execute[Program](targetNode)
 
-      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.vpr")
       assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
 
       val ref = Paths.get(fileRef.toURI)

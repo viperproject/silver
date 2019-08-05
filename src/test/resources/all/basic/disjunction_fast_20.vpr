@@ -1,6 +1,9 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /* 
  * The performance of silicon used to depend on the disjunction order in the following predicate
- * Compare disjunction_slow_20.sil
+ * Compare disjunction_slow_20.vpr
  */
 
 field val: Int

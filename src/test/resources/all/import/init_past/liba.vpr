@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-import "libb.sil"
+import "libb.vpr"
 domain LibA {
     function foo(x: Int): Bool
     axiom bar {

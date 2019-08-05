@@ -3,7 +3,7 @@
 
 //:: IgnoreFile(/carbon/issue/103/)
 
-/* See un_currying.sil */
+/* See un_currying.vpr */
 
 field __CONFIG_HEURISTICS: Bool /* Activates heuristics */
 

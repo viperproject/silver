@@ -4,7 +4,7 @@
 field f: Int
 field g: Int
 
-//this test is very similar to "snapshots.sil" in the Silicon test suite
+//this test is very similar to "snapshots.vpr" in the Silicon test suite
 method test01(x: Ref)
 {
   inhale acc(x.g)&&acc(x.f)

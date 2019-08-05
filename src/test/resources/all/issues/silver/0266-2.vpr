@@ -3,4 +3,4 @@
 
 // Comment
 //:: ExpectedOutput(parser.error)
-import "doesnotexist.sil"
+import "doesnotexist.vpr"

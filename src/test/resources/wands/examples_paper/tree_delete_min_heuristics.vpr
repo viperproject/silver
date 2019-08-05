@@ -3,7 +3,7 @@
 
 //:: IgnoreFile(/carbon/issue/103/)
 
-/* See tree_delete_min.sil */
+/* See tree_delete_min.vpr */
 
 field __CONFIG_HEURISTICS: Bool /* Activates heuristics */
 
