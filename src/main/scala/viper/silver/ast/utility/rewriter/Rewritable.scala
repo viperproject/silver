@@ -9,7 +9,7 @@ package viper.silver.ast.utility.rewriter
 import viper.silver.FastPositions
 import viper.silver.parser.{FastPositioned, PDomainFunction}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
-import viper.silver.ast.{Node, AtomicType, Position, Info, ErrorTrafo}
+import viper.silver.ast.{Node, AtomicType, FuncApp, DomainFuncApp, Position, Info, ErrorTrafo}
 import viper.silver.ast.utility.ViperStrategy.forceRewrite
 import scala.reflect.runtime.{universe => reflection}
 
@@ -106,8 +106,14 @@ trait Rewritable extends Product {
       val constructorSymbol = instanceMirror.symbol.primaryConstructor.asMethod
       val constructorMirror = classMirror.reflectConstructor(constructorSymbol)
 
+      val arguments = this match {
+        case fa: FuncApp => this.children ++ Seq(pos, info, fa.typ, trafo)
+        case df: DomainFuncApp => this.children ++ Seq(pos, info, df.typ, df.domainName, trafo)
+        case _ => this.children ++ Seq(pos, info, trafo)
+      }
+
       // Call constructor
-      val newNode = constructorMirror(this.children ++ Seq(pos, info, trafo): _*)
+      val newNode = constructorMirror(arguments: _*)
 
       newNode.asInstanceOf[this.type]
     }
