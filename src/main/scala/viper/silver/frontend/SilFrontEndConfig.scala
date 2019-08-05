@@ -100,7 +100,9 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   )
 
   val model = opt[String]("model",
-    descr="Return model for errors. Pass 'true' for returning the native model, or a comma-separated list of local Viper variables to return.",
+    descr="Return model for errors. Pass 'native' for returning the native model from the backend, " +"" +
+      "'variables' for returning a model of (arbitrary states of) all local Viper variables, " +
+      "or a comma-separated list of local Viper variable names to return to get a model only for these variables.",
     default= None,
     noshort = true
   )
