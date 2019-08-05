@@ -17,7 +17,10 @@ case class SingleEntry(value: String) extends ModelEntry {
 }
 case class MapEntry(options: Map[Seq[String], String], els: String) extends ModelEntry {
   override def toString: String = {
-    "{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + els +"\n}"
+    if (options.nonEmpty)
+      "{\n" + options.map(o => "    " + o._1.mkString(" ") + " -> " + o._2).mkString("\n") + "\n    else -> " + els +"\n}"
+    else
+      "{\n    " + els +"\n}"
   }
 }
 case class Model(entries: Map[String,ModelEntry]) {
