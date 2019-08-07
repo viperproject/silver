@@ -17,7 +17,7 @@ class CfgTests extends FunSuite {
 
   files foreach { filename =>
     test(s"Determinism Test $prefix$filename") {
-      val resource = getClass.getResource(prefix + filename + ".sil")
+      val resource = getClass.getResource(prefix + filename + ".vpr")
       assert(resource != null, s"File $prefix$filename not found")
       val file = Paths.get(resource.toURI)
 
