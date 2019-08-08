@@ -26,8 +26,8 @@ object ParserExtension extends ParserPluginTemplate {
     * and after the plugins are loaded, the parsers are added to these variables and when any parser is required,
     * can be referenced back.
     */
-  private var _newDeclAtEnd: Option[noApi.P[PExtender]] = None
-  private var _newDeclAtStart: Option[noApi.P[PExtender]] = None
+  private var _newDeclAtEnd: Option[noApi.P[PNode]] = None
+  private var _newDeclAtStart: Option[noApi.P[PNode]] = None
 
   private var _newExpAtEnd: Option[noApi.P[PExp]] = None
   private var _newExpAtStart: Option[noApi.P[PExp]] = None
@@ -47,12 +47,12 @@ object ParserExtension extends ParserPluginTemplate {
     */
   override lazy val newDeclAtStart = _newDeclAtStart match {
     case None => ParserPluginTemplate.defaultExtension
-    case t: Option[noApi.P[PExtender]] => t.get
+    case t: Option[noApi.P[PNode]] => t.get
   }
 
   override lazy val newDeclAtEnd = _newDeclAtEnd match {
     case None => ParserPluginTemplate.defaultExtension
-    case t: Option[noApi.P[PExtender]] => t.get
+    case t: Option[noApi.P[PNode]] => t.get
   }
 
   override lazy val newStmtAtEnd = _newStmtAtEnd match {
@@ -92,14 +92,14 @@ object ParserExtension extends ParserPluginTemplate {
 
   override lazy val extendedKeywords = _extendedKeywords
 
-  def addNewDeclAtEnd(t: noApi.P[PExtender]) = _newDeclAtEnd match {
+  def addNewDeclAtEnd(t: noApi.P[PNode]) = _newDeclAtEnd match {
     case None => _newDeclAtEnd = Some(t)
-    case f: Option[noApi.P[PExtender]] => _newDeclAtEnd = Some(P(f.get | t))
+    case f: Option[noApi.P[PNode]] => _newDeclAtEnd = Some(P(f.get | t))
   }
 
-  def addNewDeclAtStart(t: noApi.P[PExtender]) = _newDeclAtStart match {
+  def addNewDeclAtStart(t: noApi.P[PNode]) = _newDeclAtStart match {
     case None => _newDeclAtStart = Some(t)
-    case f: Option[noApi.P[PExtender]] => _newDeclAtStart = Some(P(f.get | t))
+    case f: Option[noApi.P[PNode]] => _newDeclAtStart = Some(P(f.get | t))
   }
 
   def addNewExpAtEnd(t: noApi.P[PExp]) = _newExpAtEnd match {
