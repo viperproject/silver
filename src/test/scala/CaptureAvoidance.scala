@@ -19,8 +19,11 @@ class CaptureAvoidance extends FunSuite {
   }
 
   test("Verify all programs in capture avoidance directory") {
-    val filename = "capture_avoidance/capture_avoidance_rule_1.sil"
-    val path = Paths.get(getClass.getResource(filename).toURI)
+    val filename = "capture_avoidance/capture_avoidance_rule_1.vpr"
+    //? val filename = "/home/pakk/code/silver/src/test/resources/capture_avoidance/capture_avoidance_rule_1.vpr"
+    val resource = getClass.getResource(filename)
+    assert(resource != null, s"File $filename not found")
+    val path = Paths.get(resource.toURI)
     frontend.reset(path)
     frontend.runTo("Semantic Analysis")
   }
