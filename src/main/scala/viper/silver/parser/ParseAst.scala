@@ -10,12 +10,11 @@ import scala.collection.{GenTraversable, Set}
 import scala.language.implicitConversions
 import scala.util.parsing.input.Position
 import viper.silver.ast.utility.Visitor
-import viper.silver.ast.{ExtensionExp, ExtensionMember, ExtensionStmt, ExtensionType, MagicWandOp}
+import viper.silver.ast.{Type, Member, Exp, MagicWandOp, Stmt}
 import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
-
 
 trait FastPositioned {
 
@@ -1090,15 +1089,16 @@ case class PUnknownEntity() extends PErrorEntity("unknown")
 
 
 trait PExtender extends PNode{
-  def getsubnodes():Seq[PNode] = ???
+  def getSubnodes():Seq[PNode] = ???
   def typecheck(t: TypeChecker, n: NameAnalyser):Option[Seq[String]] = ???
   def namecheck(n: NameAnalyser) = ???
-  def translateMemberSignature(t: Translator): ExtensionMember = ???
-  def translateMember(t: Translator): ExtensionMember = ???
+  def translateMemberSignature(t: Translator): Member = ???
+  def translateMember(t: Translator): Member = ???
 
-  def translateStmt(t: Translator): ExtensionStmt = ???
-  def translateExp(t: Translator): ExtensionExp = ???
-  def translateType(t: Translator): ExtensionType = ???
+  def translateStmt(t: Translator): Stmt = ???
+  def translateExp(t: Translator): Exp = ???
+  def translateType(t: Translator): Type = ???
+  def transformExtension(t: Transformer.type): PNode = ???
 }
 
 
@@ -1206,7 +1206,7 @@ object Nodes {
       case PAxiom(idndef, exp) => Seq(idndef, exp)
       case PTypeVarDecl(name) => Seq(name)
       case PDefine(idndef, optArgs, body) => Seq(idndef) ++ optArgs.getOrElse(Nil) ++ Seq(body)
-      case t : PExtender => t.getsubnodes()
+      case t : PExtender => t.getSubnodes()
       case _: PSkip => Nil
     }
   }

@@ -6,10 +6,10 @@
 
 package viper.silver.plugin
 
-import viper.silver.parser.{NameAnalyser, PNode, PExp, PExtender, PStmt, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PExp, PExtender, PNode, PStmt, PTypeSubstitution, Translator, TypeChecker}
 import fastparse.noApi
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.ast.{Declaration, ErrorTrafo, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Node, Position, Type}
+import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, Position, Stmt, Type}
 import viper.silver.parser.FastParser._
 import viper.silver.verifier.VerificationResult
 
@@ -95,8 +95,8 @@ trait ParserPluginTemplate {
     // The typechecker for this PAst node
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = ???
     // These two founction for translating PAst to Ast nodes are applicable only in the case of this class being a high level declaration
-    override def translateMember(t: Translator): ExtensionMember = ???
-    override def translateMemberSignature(t: Translator): ExtensionMember = super.translateMemberSignature(t)
+    override def translateMember(t: Translator): Member = ???
+    override def translateMemberSignature(t: Translator): Member = super.translateMemberSignature(t)
   }
 
   case class PExampleStmt() extends PExtender with PStmt{
@@ -104,7 +104,7 @@ trait ParserPluginTemplate {
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = ???
     
     // The overridden function to translate this node to a corresponding Ast node
-    override def translateStmt(t: Translator): ExtensionStmt = super.translateStmt(t)
+    override def translateStmt(t: Translator): Stmt = super.translateStmt(t)
   }
 
   case class PExampleExp() extends PExtender with PExp{
@@ -115,7 +115,7 @@ trait ParserPluginTemplate {
     // The typecheck funtion for PAst node corresponding to the expression
     override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = super.typecheck(t, n)
     // The translator function to translate the PAst node corresponding to the Ast node
-    override def translateExp(t: Translator): ExtensionExp = super.translateExp(t)
+    override def translateExp(t: Translator): Exp = super.translateExp(t)
   }
 
   /**

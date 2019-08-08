@@ -35,15 +35,18 @@ case class Translator(program: PProgram) {
             pmethods ++ (pdomains flatMap (_.funcs))) foreach translateMemberSignature
         pextensions foreach translateMemberSignature
 
-        val domain = pdomains map translate
-        val fields = pfields map translate
-        val functions = pfunctions map translate
-        val predicates = ppredicates map translate
-        val methods = pmethods map translate
         val extensions = pextensions map translate
+        val domain = (pdomains map translate) ++ extensions filter (t => t.isInstanceOf[Domain])
+        val fields = (pfields map translate) ++ extensions filter (t => t.isInstanceOf[Field])
+        val functions = (pfunctions map translate) ++ extensions filter (t => t.isInstanceOf[Function])
+        val predicates = (ppredicates map translate) ++ extensions filter (t => t.isInstanceOf[Predicate])
+        val methods = (pmethods map translate)  ++ extensions filter (t => t.isInstanceOf[Method])
 
 
-        val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain, fields, functions, predicates, methods, extensions)(program))
+
+        val finalProgram = AssumeRewriter.rewriteAssumes(Program(domain.asInstanceOf[Seq[Domain]], fields.asInstanceOf[Seq[Field]],
+                functions.asInstanceOf[Seq[Function]], predicates.asInstanceOf[Seq[Predicate]], methods.asInstanceOf[Seq[Method]],
+                    (extensions filter (t => t.isInstanceOf[ExtensionMember])).asInstanceOf[Seq[ExtensionMember]])(program))
 
         finalProgram.deepCollect {case fp: ForPerm => Consistency.checkForPermArguments(fp, finalProgram)}
         finalProgram.deepCollect {case trig: Trigger => Consistency.checkTriggers(trig, finalProgram)}
@@ -53,7 +56,7 @@ case class Translator(program: PProgram) {
     }
   }
 
-  private def translate(t: PExtender): ExtensionMember = {
+  private def translate(t: PExtender): Member = {
     t.translateMember(this)
   }
 
