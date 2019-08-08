@@ -42,7 +42,7 @@ class RegexTests extends FunSuite with FileComparisonHelper {
 
     val frontend = new MockSilFrontend
 
-    val fileRes = getClass.getResource(fileName + ".sil")
+    val fileRes = getClass.getResource(fileName + ".vpr")
     assert(fileRes != null, s"File $fileName not found")
     val file = Paths.get(fileRes.toURI)
     var targetNode: Node = null
@@ -63,8 +63,8 @@ class RegexTests extends FunSuite with FileComparisonHelper {
 
     val frontend = new MockSilFrontend
     files foreach (fileName => {
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+      val fileRes = getClass.getResource(filePrefix + fileName + ".vpr")
+      val fileRef = getClass.getResource(filePrefix + fileName + "Ref.vpr")
       assert(fileRes != null, s"File $filePrefix$fileName not found")
       assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
       val file = Paths.get(fileRes.toURI)
