@@ -6,7 +6,7 @@
 
 package viper.silver.plugin
 
-import viper.silver.parser.{NameAnalyser, PExp, PExtender, PNode, PStmt, PTypeSubstitution, Translator, TypeChecker}
+import viper.silver.parser.{NameAnalyser, PExp, PExtender, PStmt, PTypeSubstitution, Translator, TypeChecker}
 import fastparse.noApi
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.ast.{Declaration, ErrorTrafo, Exp, ExtensionExp, ExtensionMember, ExtensionStmt, Info, Member, Node, Position, Stmt, Type}
@@ -38,7 +38,7 @@ trait ParserPluginTemplate {
     * will not cause any effects in the pre existing parser and any other viper codes.
     *
     */
-  lazy val newDeclAtEnd: noApi.P[PNode] = ParserPluginTemplate.defaultExtension
+  lazy val newDeclAtEnd: noApi.P[PExtender] = ParserPluginTemplate.defaultExtension
 
   /**
     * The high level declarations that are checked at the start of the parser. These have the highest priority over
@@ -46,7 +46,7 @@ trait ParserPluginTemplate {
     * if that particular top level construct is either particularly different from the top-level constructs in viper
     * or the programmer needs this particular rules to be executed with priority.
     */
-  lazy val newDeclAtStart: noApi.P[PNode] = ParserPluginTemplate.defaultExtension
+  lazy val newDeclAtStart: noApi.P[PExtender] = ParserPluginTemplate.defaultExtension
   /**
     * The newStmt parser which is essentially an extension of the stmt rules in the new parser.
     * The statements at the End Position are conservative extensions to the grammar. Extending the statements using this parser
@@ -173,7 +173,7 @@ trait ParserPluginTemplate {
   * and PExp(Expressions)
   */
 object ParserPluginTemplate{
-  lazy val defaultExtension: noApi.P[PNode] = noApi.Fail
+  lazy val defaultExtension: noApi.P[PExtender] = noApi.Fail
   lazy val defaultStmtExtension: noApi.P[PStmt] = noApi.Fail
   lazy val defaultExpExtension: noApi.P[PExp] = noApi.Fail
 
