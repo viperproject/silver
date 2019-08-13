@@ -4,8 +4,6 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver
-
 import viper.silver.frontend._
 import viper.silver.verifier.Verifier
 import org.scalatest.FunSuite
@@ -16,15 +14,25 @@ class CaptureAvoidance extends FunSuite {
   object frontend extends SilFrontend {
     def configureVerifier(args: Seq[String]): SilFrontendConfig = ???
     def createVerifier(fullCmd: String): Verifier = ???
+
+    def semanticAnalysis(filename: String): Unit = {
+      val path = Paths.get(getClass.getResource(filename).toURI)
+      _state = DefaultStates.Initialized
+      reset(path)
+      runTo("Semantic Analysis")
+      assert(_errors.isEmpty, "Unexpected errors occurred in the semantic analysis of capture avoidance tests.")
+    }
   }
 
-  test("Verify all programs in capture avoidance directory") {
-    val filename = "capture_avoidance/capture_avoidance_rule_1.vpr"
-    //? val filename = "/home/pakk/code/silver/src/test/resources/capture_avoidance/capture_avoidance_rule_1.vpr"
-    val resource = getClass.getResource(filename)
-    assert(resource != null, s"File $filename not found")
-    val path = Paths.get(resource.toURI)
-    frontend.reset(path)
-    frontend.runTo("Semantic Analysis")
+  test("Checking enforcement of rule 1 of capture avoidance") {
+    frontend.semanticAnalysis("capture_avoidance/capture_avoidance_rule_1.vpr")
   }
+
+  //? test("Checking enforcement of rule 2 of capture avoidance") {
+  //?   frontend.semanticAnalysis("capture_avoidance/capture_avoidance_rule_2.vpr")
+  //? }
+
+  //? test("Checking enforcement of rule 3 of capture avoidance") {
+  //?   frontend.semanticAnalysis("capture_avoidance/capture_avoidance_rule_3.vpr")
+  //? }
 }

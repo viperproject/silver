@@ -17,6 +17,7 @@ import viper.silver.FastPositions
 import viper.silver.ast.utility.rewriter.{ContextA, PartialContextC, StrategyBuilder}
 import viper.silver.parser.Transformer.ParseTreeDuplicationError
 import viper.silver.plugin.SilverPluginManager
+import viper.silver.utility.Sanitizer
 import viper.silver.verifier.{ParseError, ParseWarning}
 
 import scala.collection.mutable
@@ -138,9 +139,10 @@ object FastParser extends PosParser[Char, String] {
       val rp = RecParser(f).parses(s)
       rp match {
         case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, errors), e) =>
-          val importedProgram = resolveImports(program) // Import programs
-          val expandedProgram = expandDefines(importedProgram) // Expand macros
-          Parsed.Success(expandedProgram, e)
+          val importedProgram = resolveImports(program)                             // Import programs
+          val expandedProgram = expandDefines(importedProgram)                      // Expand macros
+          val sanitizedProgram = Sanitizer.sanitizeBoundVariables(expandedProgram)  // Sanitize bound variables
+          Parsed.Success(sanitizedProgram, e)
         case _ => rp
       }
     }
