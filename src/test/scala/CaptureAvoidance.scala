@@ -28,9 +28,10 @@ class CaptureAvoidance extends FunSuite {
     frontend.semanticAnalysis("capture_avoidance/capture_avoidance_rule_1.vpr")
   }
 
-  //? test("Checking enforcement of rule 2 of capture avoidance") {
-  //?   frontend.semanticAnalysis("capture_avoidance/capture_avoidance_rule_2.vpr")
-  //? }
+  test("Checking enforcement of rule 2 of capture avoidance") {
+    // TODO: This should be a call to verifier if willing to see an error. Or some other way to simulate replacement?
+    frontend.semanticAnalysis("capture_avoidance/capture_avoidance_rule_2.vpr")
+  }
 
   //? test("Checking enforcement of rule 3 of capture avoidance") {
   //?   frontend.semanticAnalysis("capture_avoidance/capture_avoidance_rule_3.vpr")

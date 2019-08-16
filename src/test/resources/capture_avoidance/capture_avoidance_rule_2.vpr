@@ -5,29 +5,46 @@
 //
 // 1) (forall x : e)[x -> e’] = (forall x : e), where:
 //
-//   x is a bound variable in e, therefore there isn’t any free variable in e named ‘x’. So the substitution x -> e’ doesn’t change e.
+//   x is a bound variable in e, therefore there isn’t any free variable in e named ‘x’.
+//   So the substitution x -> e’ does not change e.
 //
-// 2) (forall y : e)[x -> e’] = (forall z : e[y -> z][x -> e’]), where:
-//   y != x
-//   y belongs to vars(e’), where vars is the set of free and bound variables in an expression.
-//   z doesn’t belong to vars(e’), effectively z is said to be “fresh”.
+// 2) (forall x : e)[y -> e’] = (forall z : e[x -> z][y -> e’]), where:
+//   x != y
+//   x belongs to vars(e’), where vars(e) is the set of free and bound variables in an expression e.
+//   z does not belong to vars(e’) U vars(e) U {x, y} U scope, effectively z is said to be “fresh”.
 //
-// 3) (forall y : e)[x -> e’] = (forall y : e[x -> e’]), where:
-//   y != x
-//   y doesn’t belong to vars(e’)
+// 3) (forall x : e)[y -> e’] = (forall x : e[y -> e’]), where:
+//   x != y
+//   x does not belong to vars(e’)
 
 // Tests to enforce rule 2: (forall y : e)[x -> e’] = (forall z : e[y -> z][x -> e’])
 
-field f: Int
+function func1(y: Int): Bool
+  requires forall x: Int :: x == x && y == 0
+  //       forall x: Int :: x == x && x == 0) Wrongly.
 
-function func2(s: Set[Ref]): Bool
-    requires forall e: Ref :: e in s ==> acc(e.f)
+function func2(y: Int): Bool
+  requires forall x: Int :: x == x && forall x: Int :: x == x && y == 0
+
+method client(x: Int)
+  requires x == 0
 {
-  true
+  var res: Bool
+//res := func1(x)
+  res := func2(x)
 }
 
-method m2(e: Ref)
-    requires acc(e.f)
-{
-  assert func2(Set(e))
-}
+
+// field f: Int
+//
+// function func2(s: Set[Ref]): Bool
+//     requires forall e: Ref :: e in s ==> acc(e.f)
+// {
+//   true
+// }
+//
+// method m2(e: Ref)
+//     requires acc(e.f)
+// {
+//  assert func2(Set(e))
+// }
