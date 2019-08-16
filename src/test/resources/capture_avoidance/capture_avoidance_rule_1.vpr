@@ -24,7 +24,7 @@ function func1(x: Ref): Bool
 //requires forall x$0: Int :: x$0 == x$0
 
 function func2(): Bool
-  requires forall x: Int :: x == x && forall x: Int :: x == x                 // One renaming needed on nested forall
+  requires forall x: Int :: (x == x && forall x: Int :: x == x)                 // One renaming needed on nested forall
 //requires forall x: Int :: x == x && forall x$0: Int :: x$0 == x$0
 
 function func3(): Bool

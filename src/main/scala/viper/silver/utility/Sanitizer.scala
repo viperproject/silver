@@ -71,6 +71,9 @@ object Sanitizer {
     }, Context()).execute(program)
   }
 
+  // This method replaces free variables in the expression by corresponding subexpressions.
+  // If bound variables exist and their identifiers clash with the new free variables or scope,
+  // then the bound variables are renamed, preventing the new free variables from being 'captured'.
   def replaceFreeVariablesInExpression[E <: Exp](expression: E, replaces: Map[LocalVar, Exp]): E = {
 
     def scopeAt(node: Node): Set[String] = {
@@ -128,85 +131,5 @@ object Sanitizer {
     }, Context(replaces)).execute(expression).asInstanceOf[E] //? remove cast
 
     result //?
-  }
-
-  def sanitizedReplacement2[E <: Exp](expression: E, variables: Seq[LocalVarDecl], values: Seq[Exp]): E = {
-
-    def scope(node: Node): Set[String] =
-      Set("Test") //? // TODO: get scope
-
-    case class Context(renames: Map[String, String] = Map(), freshNames: Set[String] = Set())
-
-    StrategyBuilder.RewriteNodeAndContext[Node, Context]({
-      case (forall: Forall, c) => {
-
-        // Check if bound variables clash with scope
-        val bounds = forall.variables.map(_.name).toSet
-        val intersection = scope(forall) & bounds
-
-        // Define how clashing variables will be renamed to fresh names
-        var renames = c.renames
-        var freshNames = c.freshNames
-
-        intersection.foreach {
-          name =>
-            val freshName = fresh(name, scope(forall) ++ bounds ++ freshNames)
-            renames += ((name, freshName))
-            freshNames += freshName
-        }
-
-        (forall, Context(renames, freshNames))
-      }
-
-      case (lv: LocalVarDecl, c) if c.renames.contains(lv.name) =>
-        (LocalVarDecl(c.renames(lv.name), lv.typ)(lv.pos, lv.info, lv.errT), c)
-
-      case (lv: LocalVar, c) if c.renames.contains(lv.name) =>
-        (LocalVar(c.renames(lv.name), lv.typ)(lv.pos, lv.info, lv.errT), c)
-
-    }, Context()).execute(expression)
-  }
-  // This method replaces free variables in the expression by their corresponding values. If bound variables
-  // exist in the expression and their identifiers clash with new variables in values, then the corresponding
-  // bound variables are renamed prior to the replacement, preventing the new free variables to be 'captured'.
-  // This method assumes that 'sanitizeBoundVariables' was executed previously.
-  def instantiateVariables[A <: Exp](expression: A, variables: Seq[LocalVarDecl], values: Seq[Exp]): A = {
-    assert(variables.size == values.size, "The number of variables and values must match")
-
-    val bounds = expression.deepCollect {
-      //? case fa: Forall => fa.variables
-      case dec: LocalVarDecl => dec.name
-    } toSet
-
-    val image = values.flatMap {
-      value =>
-        value.deepCollect {
-          case dec: LocalVarDecl => dec.name
-          case use: LocalVar => use.name
-        }
-    } toSet
-
-    val intersection = bounds & image
-    var renames = Map.empty[String, String]
-    val replaces = variables map(_.localVar) zip values toMap
-
-    intersection.foreach {
-      name =>
-        // TODO: Add scope to names to be avoided
-        renames += ((name, fresh(name, bounds ++ image ++ renames.keys)))
-    }
-
-    // Sanitize expression prior to replacement
-    val renamed = StrategyBuilder.Slim[Node]({
-      // TODO: Copy metadata
-      case dec: LocalVarDecl if renames.contains(dec.name) => dec.copy(name = renames(dec.name))(dec.pos, dec.info, dec.errT)
-      case use: LocalVar if renames.contains(use.name) => use.copy(name = renames(use.name))(use.pos, use.info, use.errT)
-    }).execute(expression)
-
-    // Replace variables by values
-    StrategyBuilder.Slim[Node]({
-      // TODO: Copy metadata
-      case use: LocalVar if replaces.contains(use) => replaces(use)
-    }).execute(renamed)
   }
 }
