@@ -425,9 +425,9 @@ case class PredicateAccess(args: Seq[Exp], predicateName: String)
   lazy val typ = Bool
 
   /** The body of the predicate with the arguments instantiated correctly. */
-  def predicateBody(program : Program) = {
+  def predicateBody(program : Program, scope: Set[String]) = {
     val predicate = program.findPredicate(predicateName)
-    predicate.body map (Expressions.instantiateVariables(_, predicate.formalArgs, args))
+    predicate.body map (Expressions.instantiateVariables(_, predicate.formalArgs, args, scope))
   }
 }
 

@@ -19,31 +19,38 @@
 
 // Tests to enforce rule 1: (forall x : e)[x -> e’] = (forall x : e)
 
-function func1(x: Ref): Bool
+function func1(y: Int): Bool
   requires forall x: Int :: x == x                                            // One renaming needed
 //requires forall x$0: Int :: x$0 == x$0
 
-function func2(): Bool
-  requires forall x: Int :: (x == x && forall x: Int :: x == x)                 // One renaming needed on nested forall
-//requires forall x: Int :: x == x && forall x$0: Int :: x$0 == x$0
-
-function func3(): Bool
-  requires (forall x: Int :: x == x) && (forall x: Int :: x == x)             // No renaming needed
-
-function func4(x: Ref): Bool
-  requires forall x: Int :: x == x && forall x: Int :: x == x                 // Two renaming needed, two new fresh variables
-//requires forall x$0: Int :: x$0 == x$0 && forall x$1: Int :: x$1 == x$1
-
-function func5(x: Ref): Bool
-  requires (forall x: Int :: x == x) && (forall x: Int :: x == x)             // Two independent renaming needed, one fresh variable that can be reused
-//requires (forall x$0: Int :: x$0 == x$0) && (forall x$0: Int :: x$0 == x$0) // Excessive renaming is avoided
-
-function func6(x: Ref, y: Ref): Bool
-  requires forall x: Int :: x == x && forall y: Int :: x == y                 // Two independent renaming, but without hiding, fresh variables can't clash
-//requires forall x$0: Int :: x$0 == x$0 && forall y$0: Int :: x$0 == y$0
+//function func2(): Bool
+//  requires forall x: Int :: (x == x && forall x: Int :: x == x)                 // One renaming needed on nested forall
+////requires forall x: Int :: x == x && forall x$0: Int :: x$0 == x$0
+//
+//function func3(): Bool
+//  requires (forall x: Int :: x == x) && (forall x: Int :: x == x)             // No renaming needed
+//
+//function func4(x: Ref): Bool
+//  requires forall x: Int :: x == x && forall x: Int :: x == x                 // Two renaming needed, two new fresh variables
+////requires forall x$0: Int :: x$0 == x$0 && forall x$1: Int :: x$1 == x$1
+//
+//function func5(x: Ref): Bool
+//  requires (forall x: Int :: x == x) && (forall x: Int :: x == x)             // Two independent renaming needed, one fresh variable that can be reused
+////requires (forall x$0: Int :: x$0 == x$0) && (forall x$0: Int :: x$0 == x$0) // Excessive renaming is avoided
+//
+//function func6(x: Ref, y: Ref): Bool
+//  requires forall x: Int :: x == x && forall y: Int :: x == y                 // Two independent renaming, but without hiding, fresh variables can't clash
+///requires forall x$0: Int :: x$0 == x$0 && forall y$0: Int :: x$0 == y$0
 
 // function func7(x: Ref): Bool
      //:: ExpectedOutput(consistency.error)
 //   requires forall x: Int, x: Int :: x == x                                 // Although renaming occur still there's a repeated declaration of same variable,
 // //requires forall x$0: Int, x$0: Int :: x$0 == x$0                         // so the error message should report the names of the variables prior to renaming.
                                                                               // Sanitizing can't make a wrong program correct.
+
+method test(x: Int)
+{
+  var res: Bool
+
+  res := func1(x)
+}
