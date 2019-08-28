@@ -10,5 +10,4 @@ function g(a: Int, b: Int): Int
 
 function h(a: Int): Bool
     //:: ExpectedOutput(application.precondition:assertion.false)
-    //:: MissingOutput(application.precondition:assertion.false, /silicon/issue/37/)
     ensures forall i: Int :: {g(a, i)} (g(a, i) > 17 ==> result)
