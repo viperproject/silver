@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/188/)
+
 function f(a: Int, b: Int): Bool
 
 function g(a: Int, b: Int): Int
@@ -9,5 +9,5 @@ function g(a: Int, b: Int): Int
     requires b > a ==> f(b, a)
 
 function h(a: Int): Bool
-    //:: ExpectedOutput(application.precondition:assertion.false)
+    //:: ExpectedOutput(application.precondition:assertion.false)|ExpectedOutput(carbon)(application.precondition:assertion.false)
     ensures forall i: Int :: {g(a, i)} (g(a, i) > 17 ==> result)

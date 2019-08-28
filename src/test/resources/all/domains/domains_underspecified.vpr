@@ -1,8 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/184/)
-
 domain D[T,S]{
 	function f1(t:T) : S
 	function f2(t:D[T,S]) : D[S,S]
