@@ -9,5 +9,6 @@ function g(a: Int, b: Int): Int
     requires b > a ==> f(b, a)
 
 function h(a: Int): Bool
-    //:: ExpectedOutput(application.precondition:assertion.false)|ExpectedOutput(carbon)(application.precondition:assertion.false)
+    //:: ExpectedOutput(application.precondition:assertion.false)
+    //:: MissingOutput(application.precondition:assertion.false, /silicon/issue/37/)
     ensures forall i: Int :: {g(a, i)} (g(a, i) > 17 ==> result)
