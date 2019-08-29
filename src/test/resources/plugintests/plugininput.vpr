@@ -1,0 +1,11 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+import "pluginimport.vpr"
+
+method meth(a: Int) returns (b: Int)
+requires a > 0
+ensures b > 0
+{
+    b := a * getRandomNumber()
+}

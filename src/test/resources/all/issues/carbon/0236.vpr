@@ -1,0 +1,44 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+// Shared value type
+field val: Int
+
+/*
+ * Taken from lecture slides
+ */
+domain Array {
+    function loc(a: Array, i: Int): Ref
+    function len(a: Array): Int
+    function first(r: Ref): Array
+    function second(r: Ref): Int
+
+    axiom injectivity {
+        forall a: Array, i: Int :: {loc(a, i)}
+        first(loc(a,i)) == a && second(loc(a, i)) == i
+    }
+
+    axiom length_nonneg {
+        forall a: Array :: len(a) >= 0
+    }
+}
+
+predicate array(a: Array) {
+    forall i: Int :: {loc(a, i).val} (0 <= i && i < len(a)) ==> acc(loc(a, i).val)
+}
+
+method test(a: Array)
+    requires array(a)
+    ensures array(a)
+    ensures unfolding array(a) in forall i: Int :: {loc(a, i).val} 0 <= i && i < len(a) ==> loc(a, i).val == i
+{
+    var i: Int := 0
+
+    while(i < len(a))
+        invariant array(a)
+    {
+        unfold array(a)
+        loc(a, i).val := i
+        fold array(a)
+    }
+}

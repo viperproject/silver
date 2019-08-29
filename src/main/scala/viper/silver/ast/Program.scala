@@ -395,7 +395,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
   /**
    * The result variable of this function (without position or info).
    */
-  def result = Result()(typ)
+  def result = Result(typ)()
 
   /**
    * Is this function recursive?
@@ -432,7 +432,7 @@ case class LocalVarDecl(name: String, typ: Type)(val pos: Position = NoPosition,
   /**
    * Returns a local variable with equivalent information
    */
-  lazy val localVar = LocalVar(name)(typ, pos, info, errT)
+  lazy val localVar = LocalVar(name, typ)(pos, info, errT)
 
   override def getMetadata:Seq[Any] = {
     Seq(pos, info, errT)

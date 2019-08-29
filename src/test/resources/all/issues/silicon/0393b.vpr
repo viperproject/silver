@@ -1,0 +1,23 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/carbon/issue/282/)
+
+domain dummy {
+    function foo(i: Int, idx: Int): Bool
+}
+
+predicate P(idx: Int) {
+    forall i: Int :: {foo(i, idx)}
+        0 <= i && i < 10 ==> foo(i, idx)
+}
+
+method test() {
+  var i: Int
+  inhale P(i)
+
+  // unfold P(i) // Was already OK
+  var b: Bool := unfolding P(i) in true // Was not OK
+
+  assert foo(0, i) // Previously failed when unfolding was used
+}

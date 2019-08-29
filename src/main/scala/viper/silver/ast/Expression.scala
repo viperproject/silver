@@ -143,8 +143,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
         case quant: QuantifiedExp =>
           val newContext = boundVariables ++ quant.variables.map(_.localVar)
 
-          quant.getChildren.collect { case e: Exp => e }
-                           .foreach(go(_, newContext))
+          quant.children.collect { case e: Exp => e } .foreach(go(_, newContext))
 
         case e: Exp if !e.isHeapDependent(p) && !boundVariables.exists(e.contains) =>
           collectedExpressions :+= e
@@ -205,7 +204,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
     StrategyBuilder.Context[Node, Bindings](
       {
         case (exp: Exp, _) if subexpressionsToEvaluate.contains(exp) =>
-          LocalVar(exp.typ.toString())(exp.typ)
+          LocalVar(exp.typ.toString(),exp.typ)()
 
         case (quant: QuantifiedExp, context) =>
           /* NOTE: This case, i.e. the transformation case, is reached before the
@@ -221,7 +220,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
         case (lv: LocalVar, context) =>
           context.c.get(lv.name) match {
             case None => lv
-            case Some(index) => lv.copy(name(lv.typ, index))(lv.typ, lv.pos, lv.info, lv.errT)
+            case Some(index) => lv.copy(name(lv.typ, index), lv.typ)(lv.pos, lv.info, lv.errT)
           }
       },
       Bindings.empty,
@@ -558,9 +557,27 @@ case class Forall(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp
 }
 
 /** Existential quantification. */
-case class Exists(variables: Seq[LocalVarDecl], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
+case class Exists(variables: Seq[LocalVarDecl], triggers: Seq[Trigger], exp: Exp)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends QuantifiedExp {
   override lazy val check : Seq[ConsistencyError] = Consistency.checkPure(exp) ++
     (if(!(exp isSubtype Bool)) Seq(ConsistencyError(s"Body of existential quantifier must be of Bool type, but found ${exp.typ}", exp.pos)) else Seq())
+
+  /** Returns an identical forall quantification that has some automatically generated triggers
+    * if necessary and possible.
+    */
+  lazy val autoTrigger: Exists = {
+    if (triggers.isEmpty) {
+      Expressions.generateTriggerSet(this) match {
+        case Some((vars, triggerSets)) =>
+          Exists(vars, triggerSets.map(set => Trigger(set.exps)()), exp)(pos, MakeInfoPair(AutoTriggered,info))
+        case None =>
+          /* Couldn't generate triggers */
+          this
+      }
+    } else {
+      // triggers already present
+      this
+    }
+  }
 
   def withVariables(variables: Seq[LocalVarDecl]): Exists =
     copy(variables)(this.pos, this.info, this.errT)
@@ -608,13 +625,13 @@ object AbstractLocalVar {
 }
 
 /** A normal local variable. */
-case class LocalVar(name: String)(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
+case class LocalVar(name: String, typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar with Lhs {
   override lazy val check : Seq[ConsistencyError] =
     if(!Consistency.validUserDefinedIdentifier(name)) Seq(ConsistencyError("Local var name must be valid identifier.", pos)) else Seq()
 }
 
 /** A special local variable for the result of a function. */
-case class Result()(val typ: Type, val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
+case class Result(typ: Type)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends AbstractLocalVar {
   lazy val name = "result"
 }
 
