@@ -41,13 +41,21 @@ object Expressions {
       => true
   }
 
-  def isHeapDependent(e: Exp, p: Program): Boolean = e existsDefined {
+  def isTopLevelHeapDependent(e: Exp, p:Program) : Boolean = e match {
     case   _: AccessPredicate
-         | _: LocationAccess
-         | _: MagicWand =>
+           | _: LocationAccess
+           | _: MagicWand => true
 
-    case fapp: FuncApp if fapp.func(p).pres.exists(isHeapDependent(_, p)) =>
+    case fapp: FuncApp if couldBeHeapDependent(fapp.func(p),p) => true
+    case _ => false
   }
+
+  def isHeapDependent(e: Exp, p: Program): Boolean = e existsDefined {
+    case ee:Exp if isTopLevelHeapDependent(ee,p) =>
+      // note: type of existsDefined doesn't guarantee we will only see Exp-typed nodes, but these are the transitive subnodes of e
+  }
+
+  def couldBeHeapDependent(f: Function, p:Program) : Boolean = f.pres.exists(isHeapDependent(_, p))
 
   def asBooleanExp(e: Exp): Exp = {
     e.transform({
