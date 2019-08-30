@@ -9,7 +9,6 @@ package viper.silver.ast
 import viper.silver.ast.pretty.{Fixity, Infix, LeftAssociative, NonAssociative, Prefix, RightAssociative}
 import utility.{Consistency, DomainInstances, Nodes, Types, Visitor}
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
-import viper.silver.ast.utility.Expressions.isHeapDependent
 import viper.silver.cfg.silver.CfgGenerator
 import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
