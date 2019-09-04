@@ -1,3 +1,4 @@
+//:: IgnoreFile(/Silver/issue/125/)
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
@@ -18,7 +19,6 @@ method test01a(x: Ref) {
 
   inhale fun01(x, 5)
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/204/)
   assert bar01(5) > 0
 }
 
@@ -77,6 +77,5 @@ method test03c(x: Ref, y: Ref)
 
   inhale fun01(x, 5)
   //:: ExpectedOutput(assert.failed:assertion.false)
-  //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/204/)
   assert bar01(5) > 0
 }
