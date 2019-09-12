@@ -19,32 +19,71 @@
 
 // Tests to enforce rule 2: (forall y : e)[x -> e’] = (forall z : e[y -> z][x -> e’])
 
-function func1(y: Int): Bool
-  requires forall x: Int :: x == x && y == 0
-  //       forall x: Int :: x == x && x == 0) Wrongly.
+function function0(): Bool
+  requires forall x: Int :: x == x
+        // forall x$0: Int :: x$0 == x$0
 
-function func2(y: Int): Bool
-  requires forall x: Int :: x == x && forall x: Int :: x == x && y == 0
+function function1(z: Int): Bool
+  requires forall x: Int :: x == x && z == 0
+        // forall x$0: Int :: x$0 == x$0 && x == 0
 
-method client(x: Int)
-  requires x == 0
+function function2(y: Int, z: Int): Bool
+  requires forall x: Int :: x == x && y == z
+        // forall x$0: Int :: x$0 == x$0 && x == y)
+
+function function3(b: Bool): Bool
+  requires forall z: Int :: b
+        // forall z: Int :: (forall z$0: Int :: z$0 == z$0)
+
+function function4(b: Bool, c: Bool): Bool
+  requires forall z: Int :: b && c
+        // forall z: Int :: (forall z$0: Int :: z$0 == z$0) && (forall z$0: Int :: z$0 == z$0)
+
+function function5(x: Int, y: Int): Bool
+ requires x == 0 || y == 0
+       // y == 0 || x == 0
+
+function function6(z: Int, w: Int): Bool
+  requires forall x: Int :: x == x && forall y: Int :: y == y && z == w
+        // forall x$0: Int :: x$0 == x$0 && (forall y$0: Int :: y$0 == y$0 && x == y)
+
+// Wrong context is making replacements still
+function function7(b: Bool, z: Int): Bool
+  requires b && z == 5
+        // (forall z: Int :: z == z) && (5 == 5)
+
+// Wrong context is making replacements still
+function function8(b: Bool, z: Int): Bool
+  requires forall x: Int :: b
+        // forall x$0: Int :: (forall z: Int :: z == z)
+
+method client1(x: Int, y: Int)
+  requires x == 0 && y == 0
 {
   var res: Bool
-//res := func1(x)
-  res := func2(x)
+
+  res := function0()
+  res := function1(x)
+  res := function2(x, y)
+  res := function3(forall z: Int :: z == z)
+  res := function4(forall z: Int :: z == z, forall z: Int :: z == z)
+  res := function5(y, x)
+  res := function6(x, y)
+  res := function7(forall z: Int :: z == z, 5)
+  res := function8(forall z: Int :: z == z, 5)
 }
 
+field f: Int
 
-// field f: Int
-//
-// function func2(s: Set[Ref]): Bool
-//     requires forall e: Ref :: e in s ==> acc(e.f)
-// {
-//   true
-// }
-//
-// method m2(e: Ref)
-//     requires acc(e.f)
-// {
-//  assert func2(Set(e))
-// }
+function function9(s: Set[Ref]): Bool
+  requires forall e: Ref :: e in s ==> acc(e.f)
+        // (forall e$0: Ref :: { (e$0 in Set(e$0)) } (e$0 in Set(e$0)) ==> acc(e$0.f, write))
+{
+  true
+}
+
+method client2(e: Ref)
+  requires acc(e.f)
+{
+  assert function9(Set(e))
+}
