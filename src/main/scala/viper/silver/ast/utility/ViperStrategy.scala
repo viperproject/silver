@@ -18,7 +18,7 @@ import viper.silver.verifier.errors.ErrorNode
   * @param p Partial function to perform rewritings
   * @tparam C Type of context
   */
-class ViperStrategy[C <: Context[Node]](p: PartialFunction[(Node, C), Node]) extends Strategy[Node, C](p) {
+class ViperStrategy[C <: Context[Node]](p: PartialFunction[(Node, C), (Node, C)]) extends Strategy[Node, C](p) {
   override def preserveMetaData(old: Node, now: Node, directlyRewritten: Boolean): Node = {
     ViperStrategy.preserveMetaData(old, now, directlyRewritten)
   }
@@ -33,7 +33,7 @@ class ViperStrategy[C <: Context[Node]](p: PartialFunction[(Node, C), Node]) ext
   * @param d Default context
   * @tparam C Type of context
   */
-class ViperRegexStrategy[C](a: TRegexAutomaton, p: PartialFunction[(Node, RegexContext[Node, C]), Node], d: PartialContextR[Node, C]) extends RegexStrategy[Node, C](a, p, d) {
+class ViperRegexStrategy[C](a: TRegexAutomaton, p: PartialFunction[(Node, RegexContext[Node, C]), (Node, RegexContext[Node, C])], d: PartialContextR[Node, C]) extends RegexStrategy[Node, C](a, p, d) {
   override def preserveMetaData(old: Node, now: Node, directlyRewritten: Boolean): Node = {
     ViperStrategy.preserveMetaData(old, now, directlyRewritten)
   }
@@ -60,7 +60,7 @@ class ViperRegexBuilder[C](acc: (C, C) => C, comp: (C, C) => C, dflt: C) extends
 
 class ViperRegexBuilderWithMatch[C](v: ViperRegexBuilder[C], m: Match) extends TreeRegexBuilderWithMatch[Node, C](v, m) {
 
-  override def |->(p: PartialFunction[(Node, RegexContext[Node, C]), Node]): ViperRegexStrategy[C] = new ViperRegexStrategy[C](m.createAutomaton(), p, new PartialContextR[Node, C](v.default, v.accumulator, v.combinator))
+  override def |->(p: PartialFunction[(Node, RegexContext[Node, C]), (Node, RegexContext[Node, C])]): ViperRegexStrategy[C] = new ViperRegexStrategy[C](m.createAutomaton(), p, new PartialContextR[Node, C](v.default, v.accumulator, v.combinator))
 }
 
 
@@ -85,7 +85,7 @@ object ViperStrategy {
     new SlimViperRegexBuilder &> m |-> p
   }
 
-  def Regex[C](m: Match, p: PartialFunction[(Node, RegexContext[Node, C]), Node], default: C, acc: (C, C) => C, comb: (C, C) => C) = {
+  def Regex[C](m: Match, p: PartialFunction[(Node, RegexContext[Node, C]), (Node, RegexContext[Node, C])], default: C, acc: (C, C) => C, comb: (C, C) => C) = {
     new ViperRegexBuilder[C](acc, comb, default) &> m |-> p
   }
 
@@ -107,7 +107,7 @@ object ViperStrategy {
     * @param t Traversion mode
     * @return ViperStrategy
     */
-  def Ancestor(p: PartialFunction[(Node, ContextA[Node]), Node], t: Traverse = Traverse.TopDown) = {
+  def Ancestor(p: PartialFunction[(Node, ContextA[Node]), (Node, ContextA[Node])], t: Traverse = Traverse.TopDown) = {
     new ViperStrategy[ContextA[Node]](p) defaultContext new PartialContextA[Node] traverse t
   }
 
@@ -116,16 +116,15 @@ object ViperStrategy {
     *
     * @param p          Partial function to perform rewriting
     * @param default    Default context
-    * @param updateFunc Function that specifies how to update the custom context
     * @param t          Traversion mode
     * @tparam C Type of custom context
     * @return ViperStrategy
     *
     * AS: NOTE: Its static type is a Strategy, not a ViperStrategy. It would be good practice to annotate the static types on such functions, to avoid typing surprises
     */
-  def Context[C](p: PartialFunction[(Node, ContextC[Node, C]), Node], default: C, updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
-// AS: I cannot parse this style: new ViperStrategy[ContextC[Node, C]](p) defaultContext new PartialContextC[Node, C](default, updateFunc) traverse t
-    new ViperStrategy[ContextC[Node, C]](p).defaultContext(new PartialContextC[Node, C](default, updateFunc)).traverse(t)
+  def Context[C](p: PartialFunction[(Node, ContextC[Node, C]), (Node, ContextC[Node, C])], default: C, t: Traverse = Traverse.TopDown) = {
+// AS: I cannot parse this style: new ViperStrategy[ContextC[Node, C]](p) defaultContext new PartialContextC[Node, C](default) traverse t
+    new ViperStrategy[ContextC[Node, C]](p).defaultContext(new PartialContextC[Node, C](default)).traverse(t)
   }
 
   /**
@@ -133,18 +132,19 @@ object ViperStrategy {
     *
     * @param p          Partial function to perform rewriting
     * @param initialContext    Default context
-    * @param updateFunc Function that specifies how to update the custom context
     * @param t          Traversion mode
     * @tparam C Type of custom context
     * @return ViperStrategy
     *
     * AS: NOTE: Its static type is a Strategy, not a ViperStrategy. It would be good practice to annotate the static types on such functions, to avoid typing surprises
     */
-  def CustomContext[C](p: PartialFunction[(Node, C), Node], initialContext: C, updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) =
+  def CustomContext[C](p: PartialFunction[(Node, C), (Node, C)], initialContext: C, t: Traverse = Traverse.TopDown) =
     new ViperStrategy[ContextCustom[Node, C]](
       { // rewrite partial function taking context with parent access etc. to one just taking the custom context
-      case (n, generalContext) if p.isDefinedAt(n, generalContext.c) => p.apply(n, generalContext.c)
-    }).defaultContext(new PartialContextCC[Node, C](initialContext, updateFunc)).traverse(t)
+        case (node, context) if p.isDefinedAt(node, context.c) =>
+          val (n, c) = p((node, context.c))
+          (n, context.updateContext(c))
+    }).defaultContext(new PartialContextCC[Node, C](initialContext)).traverse(t)
 
   /**
     * Function for automatic Error back transformation of nodes and conservation of metadata

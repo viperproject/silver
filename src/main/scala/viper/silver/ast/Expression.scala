@@ -203,8 +203,8 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
     StrategyBuilder.Context[Node, Bindings](
       {
-        case (exp: Exp, _) if subexpressionsToEvaluate.contains(exp) =>
-          LocalVar(exp.typ.toString(),exp.typ)()
+        case (exp: Exp, c) if subexpressionsToEvaluate.contains(exp) =>
+          (LocalVar(exp.typ.toString(),exp.typ)(), c)
 
         case (quant: QuantifiedExp, context) =>
           /* NOTE: This case, i.e. the transformation case, is reached before the
@@ -215,16 +215,15 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
           val bindings = extendBindings(context.c, quant.variables)
           val variables = renameDecls(quant.variables, bindings)
 
-          quant.withVariables(variables)
+          (quant.withVariables(variables), context.updateContext(extendBindings(context.c, quant.variables)))
 
         case (lv: LocalVar, context) =>
           context.c.get(lv.name) match {
-            case None => lv
-            case Some(index) => lv.copy(name(lv.typ, index), lv.typ)(lv.pos, lv.info, lv.errT)
+            case None => (lv, context)
+            case Some(index) => (lv.copy(name(lv.typ, index), lv.typ)(lv.pos, lv.info, lv.errT), context)
           }
       },
       Bindings.empty,
-      { case (quant: QuantifiedExp, bindings) => extendBindings(bindings, quant.variables) },
       Traverse.TopDown
     ).execute[this.type](this)
   }
