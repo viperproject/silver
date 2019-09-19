@@ -337,10 +337,12 @@ object FastParser extends PosParser[Char, String] {
 
     // Check if macros are defined in the right place
     case class InsideMagicWandContext(inside: Boolean = false)
-    StrategyBuilder.ContextVisitor[PNode, InsideMagicWandContext]({case (_, _) => ()}, InsideMagicWandContext(), {
-      case (_: PPackageWand, c) => c.copy(true)
-      case (d: PDefine, c) if c.inside => throw ParseException("Macros cannot be defined inside magic wands proof scripts", d.start)
-    }).execute(p)
+    StrategyBuilder.ContextVisitor[PNode, InsideMagicWandContext](
+      {
+        case (_: PPackageWand, c) => c.updateContext(c.c.copy(true))
+        case (d: PDefine, c) if c.c.inside => throw ParseException("Macros cannot be defined inside magic wands proof scripts", d.start)
+        case (_, c) => c
+      }, InsideMagicWandContext()).execute(p)
 
     // Check if all macro parameters are used in the body
     def allParametersUsedInBody(define: PDefine): Seq[ParseWarning] = {
@@ -348,12 +350,14 @@ object FastParser extends PosParser[Char, String] {
       val freeVars = mutable.Set.empty[String]
 
       case class BoundedVars(boundedVars: Set[String] = Set())
-      StrategyBuilder.ContextVisitor[PNode, BoundedVars]((_, _) => (), BoundedVars(), {
-        case (id: PIdnUse, ctx) => freeVars ++= Set(id.name) -- ctx.boundedVars
-                                   ctx
-        case (q @ (_: PForall | _: PExists), ctx) => ctx.copy(boundedVars = ctx.boundedVars |
-                                                              q.asInstanceOf[PQuantifier].vars.map(_.idndef.name).toSet)
-      }).execute(define)
+      StrategyBuilder.ContextVisitor[PNode, BoundedVars](
+      {
+        case (id: PIdnUse, ctx) => freeVars ++= Set(id.name) -- ctx.c.boundedVars
+          ctx
+        case (q @ (_: PForall | _: PExists), ctx) => ctx.updateContext(ctx.c.copy(boundedVars = ctx.c.boundedVars |
+          q.asInstanceOf[PQuantifier].vars.map(_.idndef.name).toSet))
+        case (_, c) => c
+      }, BoundedVars()).execute(define)
 
       val nonUsedParameter = parameters -- freeVars
 
@@ -566,37 +570,21 @@ object FastParser extends PosParser[Char, String] {
       // Variable use: macro parameters are replaced by their respective argument expressions
       case (varUse: PIdnUse, ctx) if ctx.c.paramToArgMap.contains(varUse.name) &&
                                      !ctx.c.boundVars.contains(varUse.name) =>
-        ctx.c.paramToArgMap(varUse.name)
+        (ctx.c.paramToArgMap(varUse.name), ctx.updateContext(ctx.c.copy(paramToArgMap = ctx.c.paramToArgMap.empty)))
 
+      case (q @ (_: PForall | _: PExists), ctx) =>
+        (q, ctx.updateContext(ctx.c.copy(boundVars = ctx.c.boundVars | q.asInstanceOf[PQuantifier].vars.map(_.idndef.name).toSet)))
     }, ReplaceContext())
-
-    val replacerContextUpdater: PartialFunction[(PNode, ReplaceContext), ReplaceContext] = {
-      case (ident: PIdnUse, ctx) if ctx.paramToArgMap.contains(ident.name) =>
-        /* Matches case "replace parameter with argument" above. Having replaced a parameter
-         * with an argument, no further substitutions should be carried out for the
-         * plugged-in argument.
-         */
-        ctx.copy(paramToArgMap = ctx.paramToArgMap.empty)
-
-      case (q @ (_: PForall | _: PExists), ctx) => ctx.copy(boundVars = ctx.boundVars |
-                                                            q.asInstanceOf[PQuantifier].vars.map(_.idndef.name).toSet)
-    }
 
     // Replace variables in macro body, adapt positions correctly (same line number as macro call)
     def replacerOnBody(body: PNode, paramToArgMap: Map[String, PExp], pos: FastPositioned): PNode = {
-      /* TODO: It would be best if the context updater function were passed as another argument
-       *       to the replacer above. That is already possible, but when the replacer is executed
-       *       and an initial context is passed, that initial context's updater function (which
-       *       defaults to "never update", if left unspecified) replaces the updater function that
-       *       was initially passed to renamer.
-       */
 
       // Rename locally bound variables in macro's body
       val bodyWithRenamedVars = renamer.execute[PNode](body)
       adaptPositions(bodyWithRenamedVars, pos)
 
       // Create context
-      val context = new PartialContextC[PNode, ReplaceContext](ReplaceContext(paramToArgMap), replacerContextUpdater)
+      val context = new PartialContextC[PNode, ReplaceContext](ReplaceContext(paramToArgMap))
 
       // Replace macro's call arguments for every occurrence of its respective parameters in the body
       val bodyWithReplacedParams = replacer.execute[PNode](bodyWithRenamedVars, context)
@@ -670,12 +658,12 @@ object FastParser extends PosParser[Char, String] {
           case fa: PFieldAccess =>
             val node = PFieldAssign(fa, exp)
             adaptPositions(node, fa)
-            node
+            (node, ctx)
           case _ => throw ParseException("The body of this macro is not a suitable left-hand side for an assignment statement", FastPositions.getStart(call))
         }
 
       // Handles all other calls to macros
-      case (node, ctx) => ExpandMacroIfValid(node, ctx)
+      case (node, ctx) => (ExpandMacroIfValid(node, ctx), ctx)
 
     }.recurseFunc {
       /* Don't recurse into the PIdnUse of nodes that themselves could represent macro

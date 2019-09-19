@@ -306,7 +306,7 @@ class TreeRegexBuilderWithMatch[N <: Rewritable : reflection.TypeTag : scala.ref
     * @param p partial function used for rewriting
     * @return complete RegexStrategy
     */
-  def |->(p: PartialFunction[(N, RegexContext[N, COLL]), N]) = new RegexStrategy[N, COLL](regex.createAutomaton(), p, new PartialContextR(tbuilder.default, tbuilder.accumulator, tbuilder.combinator))
+  def |->(p: PartialFunction[(N, RegexContext[N, COLL]), (N, RegexContext[N, COLL])]) = new RegexStrategy[N, COLL](regex.createAutomaton(), p, new PartialContextR(tbuilder.default, tbuilder.accumulator, tbuilder.combinator))
 }
 
 /**

@@ -73,10 +73,10 @@ class PartialContextR[N <: Rewritable, COLL](val c: COLL, val upContext: (COLL, 
   * @param p Partial function that describes the rewriting
   * @tparam N Common supertype of every node in the tree
   */
-case class SimpleRegexContext[N <: Rewritable](p: PartialFunction[N, N]) extends PartialFunction[(N, RegexContext[N, Any]), N] {
+case class SimpleRegexContext[N <: Rewritable](p: PartialFunction[N, N]) extends PartialFunction[(N, RegexContext[N, Any]), (N, RegexContext[N, Any])] {
   override def isDefinedAt(x: (N, RegexContext[N, Any])): Boolean = p.isDefinedAt(x._1)
 
-  override def apply(x: (N, RegexContext[N, Any])): N = p.apply(x._1)
+  override def apply(x: (N, RegexContext[N, Any])) = (p.apply(x._1), x._2)
 }
 
 /**
@@ -95,7 +95,7 @@ class SlimRegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.Cla
   * @tparam N Common supertype of every node in the tree
   * @tparam COLL Type of custom context
   */
-class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), N], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
+class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, COLL](a: TRegexAutomaton, p: PartialFunction[(N, RegexContext[N, COLL]), (N, RegexContext[N, COLL])], default: PartialContextR[N, COLL]) extends Strategy[N, RegexContext[N, COLL]](p) {
 
   type CTXT = RegexContext[N, COLL]
 
@@ -216,7 +216,7 @@ class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTa
         if (s.isValidInput(n))
           recurse(n, s, default.get(c.ancestorList.dropRight(1), this), Seq.empty[(N, CTXT)])
       })
-      n
+      (n, c)
     })
 
     visitor.execute(node)
@@ -249,7 +249,7 @@ class RegexStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTa
             case None => None
             case Some(elem) =>
               if (p.isDefinedAt(n, elem))
-                Some(p(n, elem))
+                Some(p(n, elem)._1)
               else
                 None
           }
