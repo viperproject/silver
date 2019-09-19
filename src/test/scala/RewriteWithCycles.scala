@@ -47,10 +47,10 @@ class RewriteWithCycles extends FunSuite {
     val strat = StrategyBuilder.Ancestor[SlimGraph[I]]({
       case (sG, c) => {
         if(c.ancestorList.dropRight(1).contains(sG))
-          c.noRec(sG)
+          (c.noRec(sG), c)
         else {
           sG.info = func(sG.info)
-          sG
+          (sG, c)
         }
       }
     })

@@ -18,6 +18,7 @@ method test01a(x: Ref) {
 
   inhale fun01(x, 5)
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/284/)
   //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/204/)
   assert bar01(5) > 0
 }
@@ -77,6 +78,7 @@ method test03c(x: Ref, y: Ref)
 
   inhale fun01(x, 5)
   //:: ExpectedOutput(assert.failed:assertion.false)
+  //:: MissingOutput(assert.failed:assertion.false, /carbon/issue/284/)
   //:: MissingOutput(assert.failed:assertion.false, /silicon/issue/204/)
   assert bar01(5) > 0
 }
