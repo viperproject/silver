@@ -10,11 +10,6 @@ import viper.silver.ast.utility.rewriter._
 import viper.silver.parser._
 import viper.silver.ast._
 
-//? TODO: Considering copying metadata
-//? TODO: Consider trafo to preserve original names for type checker errors
-//? TODO: Consider refactoring to reuse fresh name calculator
-//? TODO: Consider a stateful implementation of fresh name calculator to save time
-
 object Sanitizer {
 
   private def fresh(name: String, scope: Set[String]): String = {
@@ -27,12 +22,15 @@ object Sanitizer {
     freshName
   }
 
-  // This method renames bound variables when their identifiers already exist in the same scope,
-  // therefore preventing name clashes with other entities and preventing free variables to be
-  // 'captured', i.e., mistakenly considered bound variables. At the moment, this is not used
-  // since conceptually Viper does not allow name clashes and issues a "duplicate identifier"
-  // error in such cases. But this solution remains here as a suggestion of how rule number 1
-  // could be implemented if name clashes were allowed.
+  /** This method renames bound variables when their identifiers already exist in the same scope,
+    * therefore preventing name clashes with other entities and preventing free variables to be
+    * 'captured', i.e., mistakenly considered bound variables. At the moment, this is not used
+    * since conceptually Viper does not allow name clashes and issues a "duplicate identifier"
+    * error in such cases. But this solution remains here as a suggestion of how rule number 1
+    * could be implemented if name clashes were allowed.
+    *
+    * @param program The parse AST program to be sanitized.
+    */
   def sanitizeBoundVariables(program: PProgram): PProgram = {
 
     def scopeAt(node: PNode): Set[String] =
@@ -71,9 +69,16 @@ object Sanitizer {
     }, Context()).execute(program)
   }
 
-  // This method replaces free variables in the expression by corresponding subexpressions.
-  // If bound variables exist and their identifiers clash with the new free variables or scope,
-  // then the bound variables are renamed, preventing the new free variables from being 'captured'.
+  /** This method replaces free variables in the expression by corresponding subexpressions.
+    * If bound variables exist and their identifiers clash with the new free variables or scope,
+    * then the bound variables are renamed, preventing the new free variables from being 'captured'.
+    *
+    * @param expression   The expression containing free variables to be replaced.
+    * @param replacements A map from free variables to expressions, specifying the required substitutions.
+    * @param scope        A set of names representing the scope where the expression is located.
+    * @tparam E           The expression subtype.
+    * @return             An expression with all expected replacements, properly sanitized.
+    */
   def replaceFreeVariablesInExpression[E <: Exp](expression: E, replacements: Map[LocalVar, Exp], scope: Set[String]): E = {
 
     case class Context(scope: Set[String], replacements: Map[LocalVar, Exp], renaming: Map[String, String] = Map())

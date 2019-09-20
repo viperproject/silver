@@ -32,8 +32,6 @@ method veryBad()
   l := new(parent,rank);
   l.parent := null;
   l.rank := 0;
-  //:: UnexpectedOutput(fold.failed:insufficient.permission, /carbon/issue/237/)
-  ////:: UnexpectedOutput(fold.failed:assertion.false, /carbon/issue/237/)
   fold uf_bank(Set(l));
   bad(Set(l),l);
 }
