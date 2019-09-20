@@ -106,9 +106,9 @@ object Sanitizer {
       }
     }
 
-    val result = StrategyBuilder.RewriteNodeAndContext[Node, Context]({
-      case (forall: Forall, c) =>
-        (forall, calculateContext(forall, c))
+    StrategyBuilder.RewriteNodeAndContext[Node, Context]({
+      case (quantifier: QuantifiedExp, c) =>
+        (quantifier, calculateContext(quantifier, c))
 
       // Rename bound variable in definition
       case (lv: LocalVarDecl, c) if c.renaming.contains(lv.name) =>
@@ -123,8 +123,6 @@ object Sanitizer {
         val n = c.replacements(lv)
         (n, calculateContext(n, c.copy(replacements = Map(), renaming = Map())))
 
-    }, Context(scope, replacements)).execute(expression).asInstanceOf[E] //? Remove cast
-
-    result //? Remove 'result' as it is here just for debugging
+    }, Context(scope, replacements)).execute(expression)
   }
 }
