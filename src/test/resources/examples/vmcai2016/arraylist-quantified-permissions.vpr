@@ -1,8 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/137/)
-
 domain Pair[T1,T2] {
   function first(p : Pair[T1,T2]): T1
   function second(p: Pair[T1,T2]): T2
