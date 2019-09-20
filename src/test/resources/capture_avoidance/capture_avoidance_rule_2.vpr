@@ -38,6 +38,7 @@ function function3(b: Bool): Bool
 function function4(b: Bool, c: Bool): Bool
   requires forall z: Int :: b && c
         // forall z: Int :: (forall z$0: Int :: z$0 == z$0) && (forall z$0: Int :: z$0 == z$0)
+        // forall z: Int :: x == 0 && (forall z$0: Int :: z$0 == z$0) && (y == 0 && (forall z$0: Int :: z$0 == z$0))
 
 function function5(x: Int, y: Int): Bool
  requires x == 0 || y == 0
@@ -47,12 +48,10 @@ function function6(z: Int, w: Int): Bool
   requires forall x: Int :: x == x && forall y: Int :: y == y && z == w
         // forall x$0: Int :: x$0 == x$0 && (forall y$0: Int :: y$0 == y$0 && x == y)
 
-// Wrong context is making replacements still
 function function7(b: Bool, z: Int): Bool
   requires b && z == 5
         // (forall z: Int :: z == z) && (5 == 5)
 
-// Wrong context is making replacements still
 function function8(b: Bool, z: Int): Bool
   requires forall x: Int :: b
         // forall x$0: Int :: (forall z: Int :: z == z)
@@ -67,6 +66,7 @@ method client1(x: Int, y: Int)
   res := function2(x, y)
   res := function3(forall z: Int :: z == z)
   res := function4(forall z: Int :: z == z, forall z: Int :: z == z)
+  res := function4(x == 0 && forall z: Int :: z == z, y == 0 && forall z: Int :: z == z)
   res := function5(y, x)
   res := function6(x, y)
   res := function7(forall z: Int :: z == z, 5)
@@ -87,3 +87,4 @@ method client2(e: Ref)
 {
   assert function9(Set(e))
 }
+

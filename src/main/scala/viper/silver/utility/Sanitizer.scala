@@ -78,42 +78,50 @@ object Sanitizer {
 
     case class Context(scope: Set[String], replacements: Map[LocalVar, Exp], renaming: Map[String, String] = Map())
 
-    val result = StrategyBuilder.RewriteNodeAndContext[Node, Context]({
-      case (forall: Forall, c) => {
+    def calculateContext(expression: Exp, context: Context): Context = {
+      expression match {
+        case quantifier: QuantifiedExp =>
+          var scope = context.scope
+          var renaming = context.renaming
 
-        var scope = c.scope
-        var renaming = c.renaming
+          // Check if bound variables clash with scope
+          val bounds = quantifier.variables.map(_.name).toSet
+          val intersection = scope & bounds
+          scope = scope ++ bounds
 
-        // Check if bound variables clash with scope
-        val bounds = forall.variables.map(_.name).toSet
-        val intersection = scope & bounds
-        scope = scope ++ bounds
+          // Plan the renaming of clashing bound variables to fresh names
+          intersection.foreach {
+            name =>
+              val freshName = fresh(name, scope)
+              renaming += ((name, freshName))
+              scope += freshName
+          }
 
-        // Plan the renaming of clashing bound variables to fresh names
-        intersection.foreach {
-          name =>
-            val freshName = fresh(name, scope)
-            renaming += ((name, freshName))
-            scope += freshName
-        }
+          // Enforce that a variable is never both replaced and renamed
+          assert((context.replacements.keys.map(_.name).toSet & renaming.keys.toSet).isEmpty)
 
-        // Enforce that a variable is never both replaced and renamed
-        assert((c.replacements.keys.map(_.name).toSet & renaming.keys.toSet).isEmpty)
+          context.copy(scope = scope, renaming = renaming)
 
-        (forall, c.copy(scope = scope, renaming = renaming))
+        case _ => context
       }
+    }
+
+    val result = StrategyBuilder.RewriteNodeAndContext[Node, Context]({
+      case (forall: Forall, c) =>
+        (forall, calculateContext(forall, c))
 
       // Rename bound variable in definition
       case (lv: LocalVarDecl, c) if c.renaming.contains(lv.name) =>
-        (LocalVarDecl(c.renaming(lv.name), lv.typ)(lv.pos, lv.info, lv.errT), c)
+        (lv.copy(name = c.renaming(lv.name))(lv.pos, lv.info, lv.errT), c)
 
       // Rename bound variable in use
       case (lv: LocalVar, c) if c.renaming.contains(lv.name) =>
-        (LocalVar(c.renaming(lv.name), lv.typ)(lv.pos, lv.info, lv.errT), c)
+        (lv.copy(name = c.renaming(lv.name))(lv.pos, lv.info, lv.errT), c)
 
       // Replace free variable by expression
       case (lv: LocalVar, c) if c.replacements.contains(lv) =>
-        (c.replacements(lv), c.copy(replacements = Map(), renaming = Map()))
+        val n = c.replacements(lv)
+        (n, calculateContext(n, c.copy(replacements = Map(), renaming = Map())))
 
     }, Context(scope, replacements)).execute(expression).asInstanceOf[E] //? Remove cast
 

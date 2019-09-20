@@ -19,14 +19,42 @@
 
 // Tests to enforce rule 3: (forall y : e)[x -> e’] = (forall y : e[x -> e’])
 
+function function0(b: Bool, c: Bool): Bool
+  requires forall z: Int :: b && c
+        // forall z: Int :: x == 0 && y == 0
+
+function function1(b: Bool): Bool
+  requires forall w: Int :: b
+        // forall w: Int :: (forall z: Int :: z == z)
+
+function function2(b: Bool): Bool
+  requires forall i: Int :: b && b
+        // forall i: Int :: (forall z: Int :: z == z) && (forall z: Int :: z == z)
+
+function function3(b: Bool, z: Int): Bool
+  requires forall w: Int :: b && z == 0
+        // forall w: Int :: (forall z: Int :: z == z) && x == 0
+
+method client1(x: Int, y: Int)
+  requires x == 0 && y == 0
+{
+  var res: Bool
+
+  res := function0(x == 0, y == 0)
+  res := function1(forall z: Int :: z == z)
+  res := function2(forall z: Int :: z == z)
+  res := function3(forall z: Int :: z == z, x)
+}
+
 field f: Bool
 
-function func3(x: Bool): Bool
-    requires x && forall y: Ref :: acc(y.f)
+function function4(x: Bool): Bool
+  requires x && forall y: Ref :: acc(y.f)
+        // x && (forall y: Ref :: acc(y.f, write))
 
-method m3(x: Bool) returns (res: Bool)
-    requires forall z: Ref :: acc(z.f)
-    requires x == true
+method client2(x: Bool) returns (res: Bool)
+  requires forall z: Ref :: acc(z.f)
+  requires x == true
 {
-    res := func3(x)
+  res := function4(x)
 }
