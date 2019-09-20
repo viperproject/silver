@@ -11,13 +11,13 @@ import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
-import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
   lazy val isPure = Expressions.isPure(this)
   def isHeapDependent(p: Program) = Expressions.isHeapDependent(this, p)
+  def isTopLevelHeapDependent(p: Program) = Expressions.isTopLevelHeapDependent(this, p)
 
   /**
    * Returns a representation of this expression as it looks when it is used as a proof obligation, i.e. all
@@ -117,7 +117,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
   override val typ: Wand.type = Wand
 
-  // maybe rename this sometime
+  //maybe rename this sometime
   def subexpressionsToEvaluate(p: Program): Seq[Exp] = {
     /* The code collects expressions that can/are to be evaluated in a fixed state, i.e.
      * a state that is known when this method is called.
@@ -133,19 +133,19 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
 
     def go(root: Exp, boundVariables: Set[LocalVar]): Unit = {
       root.visitWithContextManually(boundVariables)(boundVariables => {
-        case LabelledOld(_, FastParser.LHS_OLD_LABEL) => /* Don't descend further */
-
-        case Let(v, e, body) => go(body.replace(v.localVar, e), boundVariables)
-
-        case old: OldExp if !boundVariables.exists(old.contains)=>
-          collectedExpressions :+= old
+        case Let(v, e, body) =>
+          {
+            go(e,boundVariables);
+            go(body, boundVariables ++ Set(v.localVar))
+            //go(body.replace(v.localVar, e), boundVariables) //AS: I don't think this would do the right think w.r.t. let around old
+          }
 
         case quant: QuantifiedExp =>
           val newContext = boundVariables ++ quant.variables.map(_.localVar)
 
           quant.children.collect { case e: Exp => e } .foreach(go(_, newContext))
 
-        case e: Exp if !e.isHeapDependent(p) && !boundVariables.exists(e.contains) =>
+        case e: Exp if !Expressions.dependsOnCurrentHeap(e,p,true) && !boundVariables.exists(e.contains) =>
           collectedExpressions :+= e
       })
     }
@@ -175,7 +175,6 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
      * semantic comparison of their arguments (the values that go into the wands' holes) then
      * ensures that the wands are actually (i.e. semantically) equivalent.
      */
-
     val subexpressionsToEvaluate = this.subexpressionsToEvaluate(p)
 
     type Bindings = Map[String, Int]
@@ -201,7 +200,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
         decl.copy(name(decl.typ, bindings(decl.name)))(decl.pos, decl.info, decl.errT))
     }
 
-    StrategyBuilder.Context[Node, Bindings](
+    val structure = StrategyBuilder.Context[Node, Bindings](
       {
         case (exp: Exp, c) if subexpressionsToEvaluate.contains(exp) =>
           (LocalVar(exp.typ.toString(),exp.typ)(), c)
@@ -226,6 +225,7 @@ case class MagicWand(left: Exp, right: Exp)(val pos: Position = NoPosition, val 
       Bindings.empty,
       Traverse.TopDown
     ).execute[this.type](this)
+    structure
   }
 
   override def isValid : Boolean = this match {

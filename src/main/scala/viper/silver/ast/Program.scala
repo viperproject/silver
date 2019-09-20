@@ -400,7 +400,7 @@ case class Function(name: String, formalArgs: Seq[LocalVarDecl], typ: Type, pres
   /**
    * Is this function recursive?
    */
-  def isRecursive: Boolean = body exists (_ existsDefined {
+  lazy val isRecursive: Boolean = body exists (_ existsDefined {
     case FuncApp(funcname, _) if name == funcname =>
   })
 

@@ -1,7 +1,7 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/188/)
+
 function f(a: Int, b: Int): Bool
 
 function g(a: Int, b: Int): Int
