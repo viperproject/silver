@@ -137,9 +137,9 @@ object FastParser extends PosParser[Char, String] {
     try {
       val rp = RecParser(f).parses(s)
       rp match {
-        case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, errors), e) =>
-          val importedProgram = resolveImports(program) // Import programs
-          val expandedProgram = expandDefines(importedProgram) // Expand macros
+        case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, _), e) =>
+          val importedProgram = resolveImports(program)                             // Import programs
+          val expandedProgram = expandDefines(importedProgram)                      // Expand macros
           Parsed.Success(expandedProgram, e)
         case _ => rp
       }
