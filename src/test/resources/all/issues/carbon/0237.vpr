@@ -1,0 +1,13 @@
+field f: Ref
+
+predicate P(b: Set[Ref]) {
+  forall l: Ref :: {l in b} l in b ==> acc(l.f)
+}
+
+method test() {
+  var l: Ref
+  l := new(f)
+  l.f := null
+  // assume l in Set(l) // Doesn't help
+  fold P(Set(l))
+}
