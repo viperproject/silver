@@ -133,4 +133,25 @@ class ASTTransformationTests extends FunSuite {
 
     assert(transformed === target)
   }
+
+  test("Rewriting nodes and updating context during parse AST traversal - Example 3") {
+    // function f(x: Ref): Bool
+    //   requires forall y: Int :: y == y
+
+    import viper.silver.parser._
+
+    val requires = PForall(Seq(PFormalArgDecl(PIdnDef("y"), TypeHelper.Int)), Seq(), PBinExp(PIdnUse("y"), "==", PIdnUse("y")))
+    val function = PFunction(PIdnDef("f"), Seq(PFormalArgDecl(PIdnDef("x"), TypeHelper.Ref)), TypeHelper.Bool, Seq(requires), Seq(), None)
+    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(), Seq())
+
+    case class Context()
+
+    StrategyBuilder.RewriteNodeAndContext[PNode, Context]({
+      case (forall: PForall, c) => {
+        val scope = NameAnalyser().namesInScope(program, Some(forall))
+        assert(scope === Set("f", "x"))
+        (forall, c)
+      }
+    }, Context()).execute[PNode](function)
+  }
 }
