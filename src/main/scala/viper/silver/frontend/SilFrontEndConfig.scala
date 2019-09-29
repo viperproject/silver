@@ -91,8 +91,8 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = true
   )
 
-  val writeTraceFile = opt[Boolean]("writeTraceFile",
-    descr = "Write symbolic execution log into .vscode/executionTreeData.js file.",
+  val writeLogFile = opt[Boolean]("writeLogFile",
+    descr = "Report the symbolic execution log as ExecutionTraceReport",
     default = Some(false),
     noshort = true,
     hidden = true

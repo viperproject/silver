@@ -8,13 +8,14 @@ package viper.silver.testing
 
 import java.nio.file._
 import collection.mutable
+import org.scalatest.{BeforeAndAfterAllConfigMap, ConfigMap}
 import viper.silver.verifier._
 import viper.silver.ast.{SourcePosition, TranslatedPosition}
 import viper.silver.frontend.Frontend
 import viper.silver.utility.TimingUtils
 
 /** A test suite for verification toolchains that use Viper. */
-abstract class SilSuite extends AnnotationBasedTestSuite {
+abstract class SilSuite extends AnnotationBasedTestSuite with BeforeAndAfterAllConfigMap {
 
   /** The list of verifiers to be used. Should be overridden by a lazy val
     * if the verifiers need to access the config map provided by ScalaTest.
@@ -40,6 +41,23 @@ abstract class SilSuite extends AnnotationBasedTestSuite {
     */
   lazy val prefixSpecificConfigMap: Map[String, Map[String, Any]] =
   splitConfigMap(configMap)
+
+  /** Invoked by ScalaTest before any test of the current suite is run.
+    * Starts all verifiers specified by `verifiers`.
+    *
+    * @param configMap The config map provided by ScalaTest.
+    */
+  override def beforeAll(configMap: ConfigMap) {
+    this.configMap = configMap
+    verifiers foreach (_.start())
+  }
+
+  /** Invoked by ScalaTest after all tests of the current suite have been run.
+   * Stops all verifiers specified by `verifiers`.
+   */
+  override def afterAll(configMap: ConfigMap) {
+    verifiers foreach (_.stop())
+  }
 
   def systemsUnderTest: Seq[SystemUnderTest] =
     verifiers.map(VerifierUnderTest)
@@ -75,7 +93,6 @@ abstract class SilSuite extends AnnotationBasedTestSuite {
     val projectInfo: ProjectInfo = SilSuite.this.projectInfo.update(verifier.name)
 
     def run(input: AnnotatedTestInput): Seq[AbstractOutput] = {
-      verifier.start()
       val fe = frontend(verifier, input.files)
       val tPhases = fe.phases.map { p =>
         formatTime(time(p.action)._2) + " (" + p.name + ")"
@@ -90,7 +107,6 @@ abstract class SilSuite extends AnnotationBasedTestSuite {
           case rest: AbstractError => rest
         }
       }
-      verifier.stop()
       actualErrors.map(SilOutput)
     }
   }

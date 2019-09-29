@@ -45,7 +45,6 @@ trait StatisticalTestSuite extends SilSuite {
     val projectInfo = new ProjectInfo(List(name))
 
     override def run(input: AnnotatedTestInput): Seq[AbstractOutput] = {
-
       val phaseNames: Seq[String] = frontend(verifier, input.files).phases.map(_.name) :+ "Overall"
 
       val isWarmup = warmupDirName.isDefined && Paths.isInSubDirectory(Paths.canonize(warmupDirName.get), input.file.toFile)
@@ -102,7 +101,11 @@ trait StatisticalTestSuite extends SilSuite {
 
       val meanTimings: Seq[Long] = trimmedTimings.transpose.map(col => (col.sum.toFloat / col.length).toLong)
       val bestRun: Seq[Long] = trimmedTimings.head
+      val bestRunNr: Int = timingsWithTotal.indexOf(bestRun) + 1
+      assert(bestRunNr >= 1)
       val medianRun: Seq[Long] = trimmedTimings(meaningfulReps / 2)
+      val medianRunNr: Int = timingsWithTotal.indexOf(medianRun) + 1
+      assert(medianRunNr >= 1)
       val worstRun: Seq[Long] = trimmedTimings.last
 
       //      println(s">>> min = ${bestRun.map(formatTimeForTable)}")
@@ -121,11 +124,10 @@ trait StatisticalTestSuite extends SilSuite {
 
         val n = "%2d".format(meaningfulReps)
         info(s"[Benchmark] Mean / $n runs: ${printableTimings(meanTimings, phaseNames)}.")
-        info(s"[Benchmark] Best run:       ${printableTimings(bestRun, phaseNames)}.")
-        info(s"[Benchmark] Median run:     ${printableTimings(medianRun, phaseNames)}.")
+        info(s"[Benchmark] Best run ($bestRunNr.):       ${printableTimings(bestRun, phaseNames)}.")
+        info(s"[Benchmark] Median run ($medianRunNr.):     ${printableTimings(medianRun, phaseNames)}.")
         info(s"[Benchmark] Worst run:      ${printableTimings(worstRun, phaseNames)}.")
       }
-
       verResults.flatten.map(SilOutput)
     }
 

@@ -175,7 +175,7 @@ abstract class ResourceBasedTestSuite extends FunSuite {
   private def classLoader: ClassLoader = getClass.getClassLoader
 
   override def testNames = {
-    // registerTests() configMap is not yet available!
+    registerTests()
     super.testNames
   }
 
