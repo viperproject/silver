@@ -794,47 +794,45 @@ case class NameAnalyser() {
 
     val nodeDownNameCollectorVisitor = new PartialFunction[PNode,Unit] {
       def apply(n:PNode) = {
-        if (n == target.orNull) {
+        if (n == target.orNull)
           namesInScope ++= getCurrentMap.map(_._1)
-        } else {
-          n match {
-            case d: PDeclaration =>
-              getMap(d).get(d.idndef.name) match {
-                case Some(e: PDeclaration) =>
-                  messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
-                case Some(e: PErrorEntity) =>
-                case None =>
-                  globalDeclarationMap.get(d.idndef.name) match {
-                    case Some(e: PDeclaration) =>
-                      messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
-                    case Some(e: PErrorEntity) =>
-                    case None =>
-                      getMap(d).put(d.idndef.name, d)
-                  }
-              }
-            case _ =>
-          }
+        n match {
+          case d: PDeclaration =>
+            getMap(d).get(d.idndef.name) match {
+              case Some(e: PDeclaration) =>
+                messages ++= FastMessaging.message(e.idndef, "Duplicate identifier `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+              case Some(e: PErrorEntity) =>
+              case None =>
+                globalDeclarationMap.get(d.idndef.name) match {
+                  case Some(e: PDeclaration) =>
+                    messages ++= FastMessaging.message(e, "Identifier shadowing `" + e.idndef.name + "' at " + e.idndef.start + " and at " + d.idndef.start)
+                  case Some(e: PErrorEntity) =>
+                  case None =>
+                    getMap(d).put(d.idndef.name, d)
+                }
+            }
+          case _ =>
+        }
 
-          n match {
-            case s: PScope =>
-              val localDeclarations =
-                if (curMember == null)
-                  mutable.HashMap[String, PEntity]()
-                else
-                  localDeclarationMaps.getOrElse(curMember.scopeId, mutable.HashMap[String, PEntity]()).clone()
+        n match {
+          case s: PScope =>
+            val localDeclarations =
+              if (curMember == null)
+                mutable.HashMap[String, PEntity]()
+              else
+                localDeclarationMaps.getOrElse(curMember.scopeId, mutable.HashMap[String, PEntity]()).clone()
 
-              localDeclarationMaps.put(s.scopeId, localDeclarations)
-              scopeStack.push(curMember)
-              curMember = s
-            case _ =>
-          }
+            localDeclarationMaps.put(s.scopeId, localDeclarations)
+            scopeStack.push(curMember)
+            curMember = s
+          case _ =>
         }
       }
 
       def isDefinedAt(n:PNode) = {
         n match {
-          case d: PDeclaration => true
-          case s: PScope => true
+          case _: PDeclaration => true
+          case _: PScope => true
           case _ => target.isDefined
         }
       }
@@ -850,7 +848,7 @@ case class NameAnalyser() {
       }
       def isDefinedAt(n:PNode) = {
         n match {
-          case s: PScope => true
+          case _: PScope => true
           case _ => false
         }
       }

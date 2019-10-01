@@ -5,12 +5,12 @@
 // Copyright (c) 2011-2019 ETH Zurich.
 
 package viper.silver.ast.utility.rewriter
-
 import viper.silver.ast.utility.rewriter.Traverse.Traverse
 import scala.collection.mutable
+import scala.reflect.runtime.{universe => reflection}
 
 /**
-  * An enumeration that represents traversion modes:
+  * An enumeration that represents traversal modes:
   * - TopDown: Perform transformation before visiting children
   * - BottomUp: Perform transformation after visiting children
   * - Innermost: Go TopDown but stop recursion after first rewrite
@@ -107,7 +107,7 @@ object StrategyBuilder {
     * @tparam N Common supertype of every node in the tree
     * @return Strategy object ready to execute on a tree
     */
-  def Slim[N <: Rewritable](p: PartialFunction[N, N], t: Traverse = Traverse.TopDown) = {
+  def Slim[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](p: PartialFunction[N, N], t: Traverse = Traverse.TopDown) = {
     new SlimStrategy[N](p) defaultContext new NoContext[N] traverse t
   }
 
@@ -119,7 +119,7 @@ object StrategyBuilder {
     * @tparam N Common supertype of every node in the tree
     * @return Strategy object ready to execute on a tree
     */
-  def Ancestor[N <: Rewritable](p: PartialFunction[(N, ContextA[N]), N], t: Traverse = Traverse.TopDown) = {
+  def Ancestor[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](p: PartialFunction[(N, ContextA[N]), (N, ContextA[N])], t: Traverse = Traverse.TopDown) = {
     new Strategy[N, ContextA[N]](p) defaultContext new PartialContextA[N] traverse t
   }
 
@@ -128,14 +128,13 @@ object StrategyBuilder {
     *
     * @param p          Partial function that transforms input (node, context) into a new node
     * @param default    Default context value (in case no context is present)
-    * @param updateFunc Function that extracts context out of nodes and combines it with existing context
     * @param t          Traversal direction
     * @tparam N Common supertype of every node in the tree
     * @tparam C Type of the context
     * @return Strategy object ready to execute on a tree
     */
-  def Context[N <: Rewritable, C](p: PartialFunction[(N, ContextC[N, C]), N], default: C, updateFunc: PartialFunction[(N, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
-    new Strategy[N, ContextC[N, C]](p) defaultContext new PartialContextC[N, C](default, updateFunc) traverse t
+  def Context[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C](p: PartialFunction[(N, ContextC[N, C]), (N, ContextC[N, C])], default: C, t: Traverse = Traverse.TopDown) = {
+    new Strategy[N, ContextC[N, C]](p) defaultContext new PartialContextC[N, C](default) traverse t
   }
 
   /**
@@ -143,16 +142,17 @@ object StrategyBuilder {
     *
     * @param p          Partial function that transforms input (node, context) into a new node
     * @param default    Default context value (in case no context is present)
-    * @param updateFunc Function that extracts context out of nodes and combines it with existing context
     * @param t          Traversal direction
     * @tparam N Common supertype of every node in the tree
     * @tparam C Type of the context
     * @return Strategy object ready to execute on a tree
     */
-  def CustomContext[N <: Rewritable, C](p: PartialFunction[(N, C), N], default: C, updateFunc: PartialFunction[(N, C), C] = PartialFunction.empty, t: Traverse = Traverse.TopDown) = {
-    new Strategy[N, ContextCustom[N,C]]({ // rewrite partial function taking context with parent access etc. to one just taking the custom context
-      case (n, context) if p.isDefinedAt(n, context.c) => p.apply(n, context.c)
-    }).defaultContext(new PartialContextCC[N,C](default,updateFunc)) traverse t
+  def CustomContext[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C](p: PartialFunction[(N, C), (N, C)], default: C, t: Traverse = Traverse.TopDown) = {
+    new Strategy[N, ContextCustom[N, C]]({ // rewrite partial function taking context with parent access etc. to one just taking the custom context
+      case (node, context) if p.isDefinedAt(node, context.c) =>
+        val (n, c) = p((node, context.c))
+        (n, context.updateContext(c))
+    }).defaultContext(new PartialContextCC[N, C](default)) traverse t
   }
 
   /**
@@ -165,16 +165,14 @@ object StrategyBuilder {
     * @tparam C         Type of the context
     * @return           Strategy object ready to execute on a tree
     */
-  def RewriteNodeAndContext[N <: Rewritable, C](p: PartialFunction[(N, C), (N, C)], default: C, t: Traverse = Traverse.TopDown) = {
-    val p1: PartialFunction[(N, ContextCustom[N, C]), N] = {
-      case (n, cc) if p.isDefinedAt(n, cc.c) => p((n, cc.c))._1
+  def RewriteNodeAndContext[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C](p: PartialFunction[(N, C), (N, C)], context: C, t: Traverse = Traverse.TopDown) = {
+    val f: PartialFunction[(N, ContextC[N, C]), (N, ContextC[N, C])] = {
+      case (node, context) if p.isDefinedAt(node, context.c) =>
+        val (n, c) = p((node, context.c))
+        (n, context.updateContext(c))
     }
 
-    val p2: PartialFunction[(N, C), C] = {
-      case (n, c) if p.isDefinedAt((n, c)) => p((n, c))._2
-    }
-
-    new Strategy[N, ContextCustom[N, C]](p1).defaultContext(new PartialContextCC[N, C](default, p2)).traverse(t)
+    new Strategy[N, ContextC[N, C]](f).defaultContext(new PartialContextC[N, C](context)).traverse(t)
   }
 
   /**
@@ -204,13 +202,16 @@ object StrategyBuilder {
     *
     * @param f          Function to execute on every node
     * @param default    Default context value (in case no context is present)
-    * @param updateFunc Function that extracts context out of nodes and combines it with existing context
     * @tparam N Common supertype of every node in the tree
     * @tparam C Type of the context
     * @return Visitor object ready to use
     */
-  def ContextVisitor[N <: Rewritable, C](f: (N, ContextC[N, C]) => Unit, default: C, updateFunc: PartialFunction[(N, C), C] = PartialFunction.empty) = {
-    new StrategyVisitor[N, ContextC[N, C]](f) defaultContext new PartialContextC[N, C](default, updateFunc)
+  def ContextVisitor[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C](f: (N, ContextC[N, C]) => ContextC[N, C], default: C) = {
+    val p: PartialFunction[(N, ContextC[N, C]), (N, ContextC[N, C])] = {
+      case (n, c) => (n, f(n, c))
+    }
+
+    new Strategy[N, ContextC[N, C]](p) defaultContext new PartialContextC[N, C](default)
   }
 }
 
@@ -220,10 +221,9 @@ object StrategyBuilder {
   * @param p partial function from node to node
   * @tparam N type of the AST nodes
   */
-class AddArtificialContext[N <: Rewritable](p: PartialFunction[N, N]) extends PartialFunction[(N, SimpleContext[N]), N] {
+class AddArtificialContext[N <: Rewritable](p: PartialFunction[N, N]) extends PartialFunction[(N, SimpleContext[N]), (N, SimpleContext[N])] {
   override def isDefinedAt(x: (N, SimpleContext[N])): Boolean = p.isDefinedAt(x._1)
-
-  override def apply(x: (N, SimpleContext[N])): N = p.apply(x._1)
+  override def apply(x: (N, SimpleContext[N])): (N, SimpleContext[N]) = (p.apply(x._1), x._2)
 }
 
 /**
@@ -232,22 +232,10 @@ class AddArtificialContext[N <: Rewritable](p: PartialFunction[N, N]) extends Pa
   * @param p Partial function from node to node
   * @tparam N Type of the
   */
-class SlimStrategy[N <: Rewritable](p: PartialFunction[N, N]) extends Strategy[N, SimpleContext[N]](new AddArtificialContext(p))
+class SlimStrategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](p: PartialFunction[N, N]) extends Strategy[N, SimpleContext[N]](new AddArtificialContext(p))
 
 // Generic Strategy class. Includes all the required functionality
-class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) extends StrategyInterface[N] {
-
-  protected var duplicateAll = false
-
-  def duplicateEverything: Strategy[N, C] = {
-    duplicateAll = true
-    this
-  }
-
-  def duplicateEfficiently: Strategy[N, C] = {
-    duplicateAll = false
-    this
-  }
+class Strategy[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, C <: Context[N]](p: PartialFunction[(N, C), (N, C)]) extends StrategyInterface[N] {
 
   // Defines the traversion mode
   protected var traversionMode: Traverse = Traverse.TopDown
@@ -270,8 +258,7 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     this
   }
 
-  // Selects the children on which we recurse. Wondering about type Any?
-  /** @see [[Rewritable.getChildren]]*/
+  // Selects the children on which we recurse.
   protected var recursionFunc: PartialFunction[N, Seq[AnyRef]] = PartialFunction.empty
 
   /**
@@ -284,9 +271,6 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     recursionFunc = r
     this
   }
-
-  // Function to update the context
-  protected var upContext: PartialFunction[(N, _), _] = PartialFunction.empty
 
   protected var defaultContxt: Option[C] = None
 
@@ -357,27 +341,12 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
   protected def selectStrat(node: N, contextUsed: C): N = {
     changed = false
     val result = traversionMode match {
-      case Traverse.TopDown => executeTopDown(node, contextUsed)
-      case Traverse.BottomUp => executeBottomUp(node, contextUsed)
-      case Traverse.Innermost => executeInnermost(node, contextUsed)
+      case Traverse.TopDown => rewriteTopDown(node, contextUsed)
+      case Traverse.BottomUp => rewriteBottomUp(node, contextUsed)
+      case Traverse.Innermost => rewriteInnermost(node, contextUsed)
     }
-    result match {
-      case Some(tree) =>
-        changed = true
-        tree
-      case None => node
-    }
-  }
-
-  protected def duplicateMode(old: N, cur: Option[N]): Option[N] = {
-    if (duplicateAll) {
-      cur match {
-        case None => Some(old.duplicate(old.getChildren).asInstanceOf[N])
-        case some => some
-      }
-    } else {
-      cur
-    }
+    changed = !(result eq node)
+    result
   }
 
   /**
@@ -415,151 +384,93 @@ class Strategy[N <: Rewritable, C <: Context[N]](p: PartialFunction[(N, C), N]) 
     */
   def executeT(node: N, ctxt: PartialContext[N, C]): N = execute[N](node, ctxt)
 
-  // Method to execute the rewriting top down
-  def executeTopDown(node: N, context: C): Option[N] = {
-    // Put ourselves into the ancestor list first
-    val contextWithMyself = context.addAncestor(node).asInstanceOf[C]
-
-    // Perform the rewriting
-    val newNodeO = duplicateMode(node, rule.execute(node, contextWithMyself))
-    val newNode: N = newNodeO.getOrElse(node)
-
-    // Create the new Context for children recursion
-    val updatedContext: C = contextWithMyself.update(newNode).asInstanceOf[C]
-
-    // Recurse on children. If we get None from the recursion we know that nothing was replaced and we keep the old node
-    val finalNodeO =
-      recurseChildren(newNode, executeTopDown(_, updatedContext)) match {
-        case Some(children) =>
-          Some(newNode.duplicate(children).asInstanceOf[N])
-        case None =>
-          newNodeO
-      }
-
-    finalNodeO.map(n => preserveMetaData(node, n, newNodeO.nonEmpty))
-  }
-
-  // Method to execute the rewriting bottom up
-  def executeBottomUp(node: N, context: C): Option[N] = {
-
-    // Put ourselves into the ancestor list first and update the context at the same time
-    val updatedContext: C = context match {
-      case cC: ContextC[N, _] =>
-        cC.addAncestor(node)
-        cC.update(node).asInstanceOf[C]
-      case cA: ContextA[N] => cA.addAncestor(node).asInstanceOf[C]
-      case nC: SimpleContext[N] => nC.asInstanceOf[C]
-    }
-
-    // Recurse on children. If we get None from the recursion we know that nothing was replaced and we keep the old children
-    val childRec = recurseChildren(node, executeBottomUp(_, updatedContext))
-    val nodeToTransform = childRec match {
-      case Some(c) => node.duplicate(c).asInstanceOf[N]
-      case None => node
-    }
-
-    // Perform the rewriting
-    duplicateMode(node, rule.execute(nodeToTransform, updatedContext)) match {
-      case Some(transformed) => Some(preserveMetaData(node, transformed, true))
-      case None if nodeToTransform eq node => None
-      case None => Some(preserveMetaData(node, nodeToTransform, false))
-    }
-  }
-
-  // Method to execute the rewriting as innermost
-  def executeInnermost(node: N, context: C): Option[N] = {
-    // Put ourselves into the ancestor list first
-    val newC = context.addAncestor(node).asInstanceOf[C]
-
-    // Perform the rewriting
-    val maybe = duplicateMode(node, rule.execute(node, newC))
-
-    // Recurse on children. If we get None from the recursion we know that nothing was replaced and we keep the old node
-    if (maybe.isEmpty) {
-      // No rewriting -> recurse further
-      recurseChildren(node, executeInnermost(_, newC)) match {
-        case Some(children) =>
-          val res = node.duplicate(children).asInstanceOf[N]
-          Some(preserveMetaData(node, res, false))
-        case None => None
-      }
-    } else {
-      // Rewriting happened, stop recursion (according to innermost policy)
-      maybe
-    }
-  }
-
-
-  /**
-    * Following methods are helper methods for the other Strategy implementations
-    */
-  protected def recurseChildren(node: N, recurse: N => Option[N]): Option[Seq[AnyRef]] = {
-    // Make sure recursion on this node is valid
+  def rewriteTopDown[A](node: A, context: C): A = {
     if (noRecursion.contains(node))
-      None
+      node
     else {
-      // Get the children of node
-      val children = node.getChildren
+      node match {
+        case map: Map[_, _] => map.map(rewriteTopDown(_, context)).asInstanceOf[A]
 
-      // Get the indices of the sequence that we perform recursion on and check if it is well formed. Default case is all children
-      val childrenSelect: Seq[AnyRef] = recursionFunc.applyOrElse(node, (_: AnyRef) => node.getChildren)
+        case collection: Iterable[_] => collection.map(rewriteTopDown(_, context)).asInstanceOf[A]
 
-      def selected(ch: AnyRef) = childrenSelect.exists(_ eq ch)
+        case Some(value) => Some(rewriteTopDown(value, context)).asInstanceOf[A]
 
-      def sequence(s: Seq[Rewritable]): Option[Seq[AnyRef]] = {
-        val newSeq = s map { x => if (!noRecursion.contains(x)) recurse(x.asInstanceOf[N]) else None }
-        if (newSeq.forall(_.isEmpty)) {
-          None
-        } else {
-          val seqWithChildren: Seq[AnyRef] = newSeq.zip(s) map {
-            case (None, e2) => e2
-            case (Some(y), _) => y
+        case node: N @unchecked =>
+          // Rewrite node and context
+          val (n, c) = rule.execute(node, context.addAncestor(node).asInstanceOf[C])
+
+          if (noRecursion.contains(n))
+            n.asInstanceOf[A]
+          else {
+            // Rewrite children
+            val allowedToRecurse = recursionFunc.applyOrElse(n, (_: N) => n.children).toSet
+            val children = n.children.map(child => if (allowedToRecurse(child)) rewriteTopDown(child, c) else child)
+
+            // Adopt rewritten children
+            (n.children = children).asInstanceOf[A]
           }
-          Some(seqWithChildren)
-        }
-      }
 
-      // Recurse on children if the according (same index) flag in childrenSelect is set. If it is not set, leave child untouched
-      val newChildren: Seq[Option[AnyRef]] = children map {
-        x => {
-          val res = x match {
-            case o: Option[AnyRef@unchecked] if selected(o) => o match {
-              case None => None
-              case Some(s: Seq[Rewritable@unchecked]) =>
-                sequence(s)
-              case Some(x: Rewritable) =>
-                if (!noRecursion.contains(x)) {
-                  recurse(x.asInstanceOf[N]) match {
-                    case None => None
-                    case Some(y) => Some(Some(y))
-                  }
-                }
-                else {
-                  None
-                }
-              case _ => None
-            }
-            case s: Seq[Rewritable@unchecked] if selected(s) =>
-              sequence(s)
-            case n: Rewritable if selected(n) =>
-              if (!noRecursion.contains(n)) recurse(n.asInstanceOf[N]) else None
-            case _ => None
+        case value => value
+      }
+    }
+  }
+
+  def rewriteBottomUp[A](node: A, context: C): A = {
+    if (noRecursion.contains(node))
+      node
+    else {
+      node match {
+        case map: Map[_, _] => map.map(rewriteBottomUp(_, context)).asInstanceOf[A]
+
+        case collection: Iterable[_] => collection.map(rewriteBottomUp(_, context)).asInstanceOf[A]
+
+        case Some(value) => Some(rewriteBottomUp(value, context)).asInstanceOf[A]
+
+        case node: N @unchecked =>
+          val c = context.addAncestor(node).asInstanceOf[C]
+
+          // Rewrite children
+          val allowedToRecurse = recursionFunc.applyOrElse(node, (_: N) => node.children).toSet
+          val children = node.children.map(child => if (allowedToRecurse(child)) rewriteBottomUp(child, c) else child)
+
+          // Adopt rewritten children
+          val n = (node.children = children).asInstanceOf[N]
+
+          // Rewrite node and context
+          rule.execute(n, c.replaceNode(n).asInstanceOf[C])._1.asInstanceOf[A]
+
+        case value => value
+      }
+    }
+  }
+
+  def rewriteInnermost[A](node: A, context: C): A = {
+    if (noRecursion.contains(node))
+      node
+    else {
+      node match {
+        case map: Map[_, _] => map.map(rewriteInnermost(_, context)).asInstanceOf[A]
+
+        case collection: Iterable[_] => collection.map(rewriteInnermost(_, context)).asInstanceOf[A]
+
+        case Some(value) => Some(rewriteInnermost(value, context)).asInstanceOf[A]
+
+        case node: N @unchecked =>
+          // Rewrite node and context
+          val (n, c) = rule.execute(node, context.addAncestor(node).asInstanceOf[C])
+
+          if (!(n eq node))
+            n.asInstanceOf[A]
+          else {
+            // Rewrite children
+            val allowedToRecurse = recursionFunc.applyOrElse(n, (_: N) => n.children).toSet
+            val children = n.children.map(child => if (allowedToRecurse(child)) rewriteInnermost(child, c) else child)
+
+            // Adopt rewritten children
+            (n.children = children).asInstanceOf[A]
           }
-          res
-        }
-      }
 
-      // Find out if one of the children was changed.
-      val hasChanged: Boolean = newChildren.exists(_.isDefined)
-
-      // Convention: If something changed -> return new children, otherwise return nothing
-      if (hasChanged) {
-        Some(newChildren.zip(children).map(elem => elem._1 match {
-          case None => elem._2
-          case Some(x) => x
-        }))
-      } else {
-        None
+        case value => value
       }
     }
   }
@@ -723,42 +634,40 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
   /**
     * The predecessor child of the parent that follows the node itself
     */
-  lazy val previous: Option[N] = predecessors.lastOption
+  lazy val previous: Option[Any] = predecessors.lastOption
 
   /**
     * All children of the parent of a node that precede the node itself
     */
-  lazy val predecessors: Seq[N] = family.takeWhile(!isEqualNode(_))
+  lazy val predecessors: Seq[Any] = family.takeWhile(!isEqualNode(_))
 
   /**
     * The successor child of the parent that follows the node itself
     */
-  lazy val next: Option[N] = successors.headOption
+  lazy val next: Option[Any] = successors.headOption
 
   /**
     * All children of the parent of a node that follow the node itself
     */
-  lazy val successors: Seq[N] = family.dropWhile(!isEqualNode(_)).drop(1)
+  lazy val successors: Seq[Any] = family.dropWhile(!isEqualNode(_)).drop(1)
 
 
   /**
     * All children of the parent without the node itself
     */
-  lazy val siblings: Seq[N] = family.filter(!isEqualNode(_))
-
+  lazy val siblings: Seq[Any] = family.filter(!isEqualNode(_))
 
   /**
     * All children of the parent. Sequence of nodes and options of nodes will be unfolded and the node itself is included in the list
     */
-  lazy val family: Seq[N] = parent.getChildren.foldLeft(Seq.empty[N])((children: Seq[N], y: AnyRef) => y match {
-    case elem: Seq[N@unchecked] => children ++ elem
-    case elem: Option[N@unchecked] => children ++ (elem match {
-      case Some(x: Seq[N@unchecked]) => x
-      case Some(x) => Seq(x)
-      case None => Seq.empty[N]
-    })
-    case elem: N @unchecked => children ++ Seq(elem)
-  })
+
+  lazy val family: Seq[Any] = {
+    parent match {
+      case viper.silver.ast.Seqn(stmts, _) => stmts
+      case viper.silver.ast.FuncApp(_, args) => args
+      case _ => parent.children
+    }
+  }
 
   /** Parent of node.
     * Will result in a `java.util.NoSuchElementException` if no parent is available.
@@ -772,10 +681,9 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
   lazy val parentOption: Option[N] = ancestorList.dropRight(1).lastOption
 
   // Equality between nodes
-  private def isEqualNode(elem: AnyRef): Boolean = elem match {
-    case Some(x: AnyRef) => x eq node.asInstanceOf[AnyRef]
-    case Seq(_) => false
-    case p: AnyRef => p eq node.asInstanceOf[AnyRef]
+  private def isEqualNode(elem: Any): Boolean = elem match {
+    case p: AnyRef => p eq node
+    case _ => node == elem
   }
 
 }
@@ -786,32 +694,33 @@ class ContextA[N <: Rewritable](val ancestorList: Seq[N], protected val transfor
   * @param aList       List of ancestors
   * @param c           custom context object
   * @param transformer current transformer
-  * @param upContext   Function to update the context
   * @tparam N      Common supertype of every node in the tree
   * @tparam CUSTOM Type of custom context
   */
-class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transformer: StrategyInterface[N], upContext: PartialFunction[(N, CUSTOM), CUSTOM]) extends ContextA[N](aList, transformer) {
+class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transformer: StrategyInterface[N]) extends ContextA[N](aList, transformer) {
 
   // Add an ancestor to the context
   override def addAncestor(n: N): ContextC[N, CUSTOM] = {
-    new ContextC(ancestorList ++ Seq(n), c, transformer, upContext)
+    new ContextC(ancestorList ++ Seq(n), c, transformer)
   }
 
   // Replace the current node with a new one
   override def replaceNode(n: N): ContextC[N, CUSTOM] = {
-    new ContextC(ancestorList.dropRight(1) ++ Seq(n), c, transformer, upContext)
+    new ContextC(ancestorList.dropRight(1) ++ Seq(n), c, transformer)
   }
 
   // Perform the custom update part of the update
   def updateCustom(n: N): ContextC[N, CUSTOM] = {
-    val cust = upContext.applyOrElse((n, c), (els:(N, CUSTOM)) => els._2)
-    new ContextC[N, CUSTOM](ancestorList, cust, transformer, upContext)
+    new ContextC[N, CUSTOM](ancestorList, c, transformer)
   }
 
   // Update the context with node and custom context
   override def update(n: N): ContextC[N, CUSTOM] = {
     replaceNode(n).updateCustom(node)
   }
+
+  def updateContext(c: CUSTOM) =
+    new ContextC(ancestorList, c, transformer)
 }
 
 /**
@@ -819,22 +728,23 @@ class ContextC[N <: Rewritable, CUSTOM](aList: Seq[N], val c: CUSTOM, transforme
   *
   * @param c           custom context object
   * @param transformer current transformer
-  * @param upContext   Function to update the context
   * @tparam N      Common supertype of every node in the tree
   * @tparam CUSTOM Type of custom context
   */
-class ContextCustom[N <: Rewritable, CUSTOM](val c: CUSTOM, override protected val transformer: StrategyInterface[N], private val upContext: PartialFunction[(N, CUSTOM), CUSTOM]) extends SimpleContext[N](transformer) {
+class ContextCustom[N <: Rewritable, CUSTOM](val c: CUSTOM, override protected val transformer: StrategyInterface[N]) extends SimpleContext[N](transformer) {
 
   // Perform the custom update part of the update
   def updateCustom(n: N): ContextCustom[N, CUSTOM] = {
-    val updated = upContext.applyOrElse((n, c), (els:(N, CUSTOM)) => els._2)
-    new ContextCustom[N, CUSTOM](updated, transformer, upContext)
+    new ContextCustom[N, CUSTOM](c, transformer)
   }
 
   // Update the context with node and custom context
   override def update(n: N): ContextCustom[N, CUSTOM] = {
     updateCustom(n)
   }
+
+  def updateContext(c: CUSTOM) =
+    new ContextCustom[N, CUSTOM](c, transformer)
 }
 
 /**
@@ -890,31 +800,20 @@ class PartialContextA[N <: Rewritable](val aList: Seq[N] = Seq()) extends Partia
   * Partial context for ContextC
   *
   * @param custom    Custom context object
-  * @param upContext Function to update the context
   * @param aList     List of ancestors
   * @tparam N      Common supertype of every node in the tree
   * @tparam CUSTOM Type of custom context
   */
-class PartialContextC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContext: PartialFunction[(N, CUSTOM), CUSTOM] = PartialFunction.empty, val aList: Seq[N] = Seq()) extends PartialContext[N, ContextC[N, CUSTOM]] {
+class PartialContextC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val aList: Seq[N] = Seq()) extends PartialContext[N, ContextC[N, CUSTOM]] {
 
   /**
     * Provide information to complete ContextC object
     *
     * @param list        List of ancestors
-    * @param upC         Update function for custom context
     * @param transformer Current transformer
     * @return A complete ContextC object
     */
-  def get(list: Seq[N], upC: PartialFunction[(N, CUSTOM), CUSTOM], transformer: StrategyInterface[N]): ContextC[N, CUSTOM] = new ContextC[N, CUSTOM](list, custom, transformer, upC)
-
-  /**
-    * Provide information to complete ContextC object
-    *
-    * @param list        List of ancestors
-    * @param transformer Current transformer
-    * @return A complette ContextC object
-    */
-  def get(list: Seq[N], transformer: StrategyInterface[N]): ContextC[N, CUSTOM] = get(list, upContext, transformer)
+  def get(list: Seq[N], transformer: StrategyInterface[N]): ContextC[N, CUSTOM] = new ContextC[N, CUSTOM](list, custom, transformer)
 
   /**
     * Provide the transformer for the real context
@@ -929,20 +828,10 @@ class PartialContextC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContext
   * Partial context for ContextCustom
   *
   * @param custom    Custom context object
-  * @param upContext Function to update the context
   * @tparam N      Common supertype of every node in the tree
   * @tparam CUSTOM Type of custom context
   */
-class PartialContextCC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContext: PartialFunction[(N, CUSTOM), CUSTOM] = PartialFunction.empty) extends PartialContext[N, ContextCustom[N, CUSTOM]] {
-
-  /**
-    * Provide information to complete ContextCustom object
-    *
-    * @param upC         Update function for custom context
-    * @param transformer Current transformer
-    * @return A complete ContextC object
-    */
-  def get(upC: PartialFunction[(N, CUSTOM), CUSTOM], transformer: StrategyInterface[N]): ContextCustom[N, CUSTOM] = new ContextCustom[N, CUSTOM](custom, transformer, upC)
+class PartialContextCC[N <: Rewritable, CUSTOM](val custom: CUSTOM) extends PartialContext[N, ContextCustom[N, CUSTOM]] {
 
   /**
     * Provide the transformer for the real context
@@ -950,12 +839,11 @@ class PartialContextCC[N <: Rewritable, CUSTOM](val custom: CUSTOM, val upContex
     * @param transformer current transformer
     * @return A complete ContextC object
     */
-  override def get(transformer: StrategyInterface[N]): ContextCustom[N, CUSTOM] = get(upContext, transformer)
+  override def get(transformer: StrategyInterface[N]): ContextCustom[N, CUSTOM] = new ContextCustom[N, CUSTOM](custom, transformer)
 }
 
-
-
 /**
+
   * A visitor that executes a unit-result function on every node
   *
   * @param visitNode Function used for visiting every node
@@ -1015,40 +903,27 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
   }
 
   // Method used for visiting
-  private def visitTopDown(node: N, context: C): Unit = {
+  private def visitTopDown[A](node: A, context: C): Unit = {
+    if (!noRecursion.contains(node)) {
+      node match {
+        case map: Map[_, _] => map.map(visitTopDown(_, context))
 
-    // Add node to the ancestor list
-    val contextWithMyself = context.addAncestor(node).asInstanceOf[C]
+        case collection: Iterable[_] => collection.map(visitTopDown(_, context))
 
-    // Check which node we get from rewriting
-    visitNode(node, contextWithMyself)
+        case Some(value) => Some(visitTopDown(value, context))
 
-    // Create the new Context for children recursion
-    val updatedContext: C = contextWithMyself.update(node).asInstanceOf[C]
+        case node: N @unchecked =>
+          val c = context.addAncestor(node).asInstanceOf[C]
 
-    // Get the children
-    val children = node.getChildren
+          visitNode(node, c)
 
-    // Basically a reduced version of the children recursion from Strategy
-    val childrenSelect = recursionFunc.applyOrElse(node, (n:N) => n.getChildren)
+          val allowedToRecurse = recursionFunc.applyOrElse(node, (_: N) => node.children).toSet
+          node.children.filter(allowedToRecurse).foreach(visitTopDown(_, c))
 
-    children.zip(childrenSelect) foreach {
-      case (child, _) => if (childrenSelect.exists(_ eq child)) {
-        child match {
-          case o: Option[AnyRef@unchecked] => o match {
-            case None => None
-            case Some(s: Seq[Rewritable@unchecked]) => s foreach { x => if (!noRecursion.contains(x)) visitTopDown(x.asInstanceOf[N], updatedContext) }
-            case Some(node: Rewritable) => if (!noRecursion.contains(node)) visitTopDown(node.asInstanceOf[N], updatedContext)
-            case _ => None
-          }
-          case s: Seq[Rewritable@unchecked] => s foreach { x => if (!noRecursion.contains(x)) visitTopDown(x.asInstanceOf[N], updatedContext) }
-          case n: Rewritable => if (!noRecursion.contains(n)) visitTopDown(n.asInstanceOf[N], updatedContext)
-        }
+        case _ =>
       }
     }
   }
-
-
 }
 
 /**
@@ -1116,52 +991,38 @@ class Query[N <: Rewritable, B](val getInfo: PartialFunction[N, B]) {
     * @param node Root of the AST
     * @return Query result
     */
-  def execute(node: N): B = {
 
-    // Get the query result for the current node
-    val qResult: B = getInfo.applyOrElse(node, (n:N) => {
-      assert(nElement.isDefined, "Node " + n + "does not define a result. Either define it in query or specify neutral element")
-      nElement.get
-    })
+  def execute[A](node: A): B = {
+    node match {
+      case map: Map[_, _] => accumulator(map.map(execute(_)).toSeq)
 
-    // Get children of current node
-    val children = node.getChildren
+      case collection: Iterable[_] => accumulator(collection.map(execute).toSeq)
 
-    // Get the indices of the sequence that we perform recursion on and check if it is well formed. Default case is all children
-    val childrenSelect = recursionFunc.applyOrElse(node, (n:N) => n.getChildren)
+      case Some(value) => execute(value)
 
-    // Recurse on children if the according bit (same index) in childrenSelect is set. If it is not set, leave child untouched
-    val seqResults: Seq[Option[B]] = children.zip(childrenSelect) collect {
-      case (child, _) =>
-       if (childrenSelect.exists(_ eq child)) {
-        child match {
-          case o: Option[AnyRef@unchecked] =>
-            o match {
-              case None => None
-              case Some(s: Seq[Rewritable@unchecked]) => Some(accumulator(s map { x => execute(x.asInstanceOf[N]) }))
-              case Some(node: Rewritable) => Some(execute(node.asInstanceOf[N]))
-              case _ => None
-            }
-          case s: Seq[Rewritable@unchecked] => Some(accumulator(s map { x => execute(x.asInstanceOf[N]) }))
-          case n: Rewritable => Some(execute(n.asInstanceOf[N]))
-        }
-      } else {
-        None
-      }
+      case n: N @unchecked =>
+        // Query current node
+        val nodeQueryRes = getInfo.applyOrElse(n, (n: N) => {
+          assert(nElement.isDefined, "Node " + n + "does not define a result. Either define it in query or specify neutral element")
+          nElement.get
+        })
+
+        val allowedToRecurse = recursionFunc.applyOrElse(n, (_: N) => n.children).toSet
+        val childrenQueryRes = accumulator(n.children.filter(allowedToRecurse).map(execute))
+
+        accumulator(Seq(nodeQueryRes, childrenQueryRes))
+
+      case _ => accumulator(Seq())
     }
-
-    // Accumulate query results from children
-    accumulator(Seq(qResult) ++ (seqResults collect { case Some(x: B@unchecked) => x }))
   }
-
 }
-
 
 /**
   * A trait that is used for providing an interface for rules and rule combinators
   */
 private[utility] trait RuleT[N <: Rewritable, C <: Context[N]] {
-  def execute(node: N, context: C): Option[N]
+  def domain(node: N, context: C): Boolean
+  def execute(node: N, context: C): (N, C)
 }
 
 /**
@@ -1169,14 +1030,18 @@ private[utility] trait RuleT[N <: Rewritable, C <: Context[N]] {
   *
   * @param r The partial function
   */
-private case class Rule[N <: Rewritable, C <: Context[N]](r: PartialFunction[(N, C), N]) extends RuleT[N, C] {
-  override def execute(node: N, context: C): Option[N] = {
-    val res = r.applyOrElse((node, context), (els:(N, C)) => els._1)
-    if (node eq res) {
-      None
-    } else {
-      Some(res)
+private case class Rule[N <: Rewritable, C <: Context[N]](r: PartialFunction[(N, C), (N, C)]) extends RuleT[N, C] {
+
+  override def domain(node: N, context: C): Boolean =
+    r.isDefinedAt((node, context))
+
+  override def execute(node: N, context: C): (N, C) = {
+    if (r.isDefinedAt((node, context))) {
+      val (n, c) = r((node, context))       // Apply function, obtaining potentially new node and context
+      (n, c.replaceNode(n).asInstanceOf[C]) // Update ancestor to newly created node
     }
+    else
+      (node, context)                       // Return unchanged input if outside partial function domain
   }
 }
 
@@ -1188,14 +1053,12 @@ private case class Rule[N <: Rewritable, C <: Context[N]](r: PartialFunction[(N,
   */
 private case class Append[N <: Rewritable, C <: Context[N]](r1: RuleT[N, C], r2: RuleT[N, C]) extends RuleT[N, C] {
 
-  override def execute(node: N, context: C): Option[N] = {
-    val res1 = r1.execute(node, context)
-    if (res1.isDefined) {
-      val res2 = r2.execute(res1.get, context.replaceNode(res1.get).asInstanceOf[C])
-      if (res2.isDefined) res2 else res1
-    } else {
-      r2.execute(node, context)
-    }
+  override def domain(node: N, context: C): Boolean =
+    r1.domain(node, context) || r2.domain(node, context)
+
+  override def execute(node: N, context: C): (N, C) = {
+    val (n, c) = r1.execute(node, context)
+    r2.execute(n, c)
   }
 }
 
@@ -1208,15 +1071,16 @@ private case class Append[N <: Rewritable, C <: Context[N]](r1: RuleT[N, C], r2:
   */
 private case class CondAppend[N <: Rewritable, C <: Context[N]](r1: RuleT[N, C], r2: RuleT[N, C]) extends RuleT[N, C] {
 
-  override def execute(node: N, context: C): Option[N] = {
-    val res1 = r1.execute(node, context)
-    if (res1.isDefined) {
-      val res2 = r2.execute(res1.get, context.replaceNode(res1.get).asInstanceOf[C])
-      if (res2.isDefined) res2 else res1
+  override def domain(node: N, context: C): Boolean =
+    r1.domain(node, context)
+
+  override def execute(node: N, context: C): (N, C) = {
+    if (r1.domain(node, context)) {
+      val (n, c) = r1.execute(node, context)
+      r2.execute(n, c)
     }
-    else {
-      None
-    }
+    else
+      (node, context)
   }
 }
 
@@ -1229,15 +1093,19 @@ private case class CondAppend[N <: Rewritable, C <: Context[N]](r1: RuleT[N, C],
   */
 private case class Ternary[N <: Rewritable, C <: Context[N]](r1: RuleT[N, C], r2: RuleT[N, C], r3: RuleT[N, C]) extends RuleT[N, C] {
 
-  override def execute(node: N, context: C): Option[N] = {
-    val res1 = r1.execute(node, context)
-    if (res1.isDefined) {
-      val res2 = r2.execute(res1.get, context.replaceNode(node).asInstanceOf[C])
-      if (res2.isDefined) res2 else res1
-    } else {
-      val res3 = r3.execute(node, context)
-      if (res3.isDefined) res3 else res1
-    }
+  override def domain(node: N, context: C): Boolean = {
+    if (r1.domain(node, context))
+      r2.domain(node, context)
+    else
+      r3.domain(node, context)
+  }
+
+  override def execute(node: N, context: C): (N, C) = {
+    val (n, c) = r1.execute(node, context)
+    if (r1.domain(node, context))
+      r2.execute(n, c)
+    else
+      r3.execute(n, c)
   }
 }
 

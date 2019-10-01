@@ -17,12 +17,6 @@ import viper.silver.verifier.ConsistencyError
 sealed trait Stmt extends Hashable with Infoed with Positioned with TransformableErrors {
 
   /**
-    * Returns a list of all actual statements contained in this statement.  That
-    * is, all statements except `Seqn`, including statements in the body of loops, etc.
-    */
-  def children = Statements.children(this)
-
-  /**
     * Returns a control flow graph that corresponds to this statement.
     */
   def toCfg(simplify: Boolean = true) = CfgGenerator.statementToCfg(this, simplify)
@@ -167,31 +161,7 @@ case class Apply(exp: MagicWand)(val pos: Position = NoPosition, val info: Info 
 }
 
 /** A sequence of statements. */
-case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[Declaration])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope {
-
-  // Interpret leaves of a possibly nested Seqn structure as its children
-  override lazy val getChildren: Seq[AnyRef] = {
-    def seqFlat(ss: Seq[Stmt]): (Seq[Stmt], Seq[Declaration]) = {
-      val result = ss.foldLeft((Seq.empty[Stmt], Seq.empty[Declaration]))((x: (Seq[Stmt], Seq[Declaration]), y: Stmt) => {
-        y match {
-          case elems: Seq[Stmt @unchecked] => {
-            val tmp = seqFlat(elems)
-            (x._1 ++ tmp._1, x._2 ++ tmp._2)
-          }
-          case elemS: Seqn => {
-            val tmp = seqFlat(elemS.ss)
-            (x._1 ++ tmp._1, x._2 ++ elemS.scopedDecls ++ tmp._2)
-          }
-          case elem: Stmt => (x._1 ++ Seq(elem), x._2)
-        }
-      })
-      result
-    }
-    val all = seqFlat(ss)
-    Seq(all._1, scopedDecls ++ all._2)
-  }
-
-}
+case class Seqn(ss: Seq[Stmt], scopedDecls: Seq[Declaration])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt with Scope
 
 /** An if control statement. */
 case class If(cond: Exp, thn: Seqn, els: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {

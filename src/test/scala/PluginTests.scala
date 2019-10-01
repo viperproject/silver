@@ -213,7 +213,7 @@ class TestPluginMapVsFinish extends SilverPlugin with TestPlugin {
 }
 
 class PluginTests extends FunSuite {
-  val inputfile = "plugintests/plugininput.sil"
+  val inputfile = "plugintests/plugininput.vpr"
   val plugins = Seq(
     "TestPluginImport",
     "TestPluginReportError",

@@ -1,0 +1,29 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val: Int
+
+predicate Node(self: Ref) {
+    acc(self.val)
+}
+
+method foo(s: Seq[Ref])
+    ensures forall i: Int :: i >= 0 && i < |s| ==> Node(s[i]) && unfolding Node(s[i]) in s[i].val >= 0
+{
+    var i: Int
+    foo(s)
+}
+
+field next:Ref
+
+predicate GRAPH(nodes:Set[Ref]) {
+    forall n:Ref :: n in nodes ==> acc(n.next)
+}
+
+method append(g:Set[Ref])
+    requires GRAPH(g)
+    requires unfolding GRAPH(g) in true
+
+{
+    assert unfolding GRAPH(g) in forall n:Ref :: true
+}

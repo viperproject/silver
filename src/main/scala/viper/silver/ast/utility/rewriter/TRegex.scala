@@ -6,6 +6,8 @@
 
 package viper.silver.ast.utility.rewriter
 
+import scala.reflect.runtime.{universe => reflection}
+
 /*
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -280,7 +282,7 @@ class Questionmark(m: Match) extends Match {
   * @tparam N Type of the AST
   * @tparam COLL Type of the context
   */
-class TreeRegexBuilder[N <: Rewritable, COLL](val accumulator: (COLL, COLL) => COLL, val combinator: (COLL, COLL) => COLL, val default: COLL) {
+class TreeRegexBuilder[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, COLL](val accumulator: (COLL, COLL) => COLL, val combinator: (COLL, COLL) => COLL, val default: COLL) {
 
   /**
     * Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
@@ -297,21 +299,21 @@ class TreeRegexBuilder[N <: Rewritable, COLL](val accumulator: (COLL, COLL) => C
   * @tparam N Type of the AST
   * @tparam COLL Type of the context
   */
-class TreeRegexBuilderWithMatch[N <: Rewritable, COLL](tbuilder: TreeRegexBuilder[N, COLL], regex: Match) {
+class TreeRegexBuilderWithMatch[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, COLL](tbuilder: TreeRegexBuilder[N, COLL], regex: Match) {
 
   /**
     * Generate the regex strategy by adding the rewriting function into the mix
     * @param p partial function used for rewriting
     * @return complete RegexStrategy
     */
-  def |->(p: PartialFunction[(N, RegexContext[N, COLL]), N]) = new RegexStrategy[N, COLL](regex.createAutomaton(), p, new PartialContextR(tbuilder.default, tbuilder.accumulator, tbuilder.combinator))
+  def |->(p: PartialFunction[(N, RegexContext[N, COLL]), (N, RegexContext[N, COLL])]) = new RegexStrategy[N, COLL](regex.createAutomaton(), p, new PartialContextR(tbuilder.default, tbuilder.accumulator, tbuilder.combinator))
 }
 
 /**
   * Same as TreeRegexBuilder just without context
   * @tparam N Type of all AST nodes
   */
-class SimpleRegexBuilder[N <: Rewritable]() {
+class SimpleRegexBuilder[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag]() {
 
   /**
     * Generates a TreeRegexBuilderWithMatch by adding the matching part to the mix
@@ -326,7 +328,7 @@ class SimpleRegexBuilder[N <: Rewritable]() {
   * @param regex Regular expression used for matching
   * @tparam N Type of all AST nodes
   */
-class SimpleRegexBuilderWithMatch[N <: Rewritable](regex: Match) {
+class SimpleRegexBuilderWithMatch[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag](regex: Match) {
 
   /**
     * Generate the regex strategy by adding the rewriting function into the mix
@@ -350,21 +352,21 @@ object TreeRegexBuilder {
     * @tparam COLL Type of the context
     * @return
     */
-  def context[N <: Rewritable, COLL](accumulator: (COLL, COLL) => COLL, combinator: (COLL, COLL) => COLL, default: COLL) = new TreeRegexBuilder[N, COLL](accumulator, combinator, default)
+  def context[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag, COLL](accumulator: (COLL, COLL) => COLL, combinator: (COLL, COLL) => COLL, default: COLL) = new TreeRegexBuilder[N, COLL](accumulator, combinator, default)
 
   /**
     * Don't care about the custom context but want ancestor/sibling information
     * @tparam N Type of the AST
     * @return TreeRegexBuilder object
     */
-  def ancestor[N <: Rewritable] = new TreeRegexBuilder[N, Any]((x, y) => x, (x, y) => true, null)
+  def ancestor[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag] = new TreeRegexBuilder[N, Any]((x, y) => x, (x, y) => true, null)
 
   /**
     * Don't care about context at all
     * @tparam N Type of the AST
     * @return SimpleRegexBuilder
     */
-  def simple[N <: Rewritable] = new SimpleRegexBuilder[N]
+  def simple[N <: Rewritable : reflection.TypeTag : scala.reflect.ClassTag] = new SimpleRegexBuilder[N]
 }
 
 

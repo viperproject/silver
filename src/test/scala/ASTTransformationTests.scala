@@ -17,40 +17,86 @@ class ASTTransformationTests extends FunSuite {
     def createVerifier(fullCmd: String): Verifier = ???
   }
 
-  test("Rewriting nodes and updating context during parse AST traversal - Example 1") {
+  test("Testing support to arbitrary collection types of children node - Example 1") {
+    import viper.silver.ast._
+    import viper.silver.ast.utility._
+
+    val shared = FalseLit()()
+    val sharedAST = And(Not(shared)(), shared)()
+
+    val strat = ViperStrategy.CustomContext[Int](
+      {
+        case (FalseLit(), c) => if (c == 1) (TrueLit()(), c) else (FalseLit()(), c)
+        case (n: Not, i) => (n, i + 1)
+      }, 0)
+
+    val res = strat.execute[Exp](sharedAST)
+
+    // Check that both true lits are no longer of the same instance
+    res match {
+      case And(Not(t1), t2) =>
+        assert(t1 == TrueLit()())
+        assert(t2 == FalseLit()())
+      case _ => assert(false)
+    }
+  }
+
+  test("Testing support to arbitrary collection types of children node - Example 2") {
     // Transforms this code:
-    // method m()
-    // {
     //   assert 1 == 1
-    // }
     //
     // Into this program:
-    // method m()
-    // {
     //   assert 3 == 3
-    // }
 
     import viper.silver.parser._
 
     val binExp1 = PBinExp(PIntLit(1), "==", PIntLit(1))
-    val method1 = PMethod(PIdnDef("m"), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PAssert(binExp1)))))
-    val original = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method1), Seq())
-
     val binExp2 = PBinExp(PIntLit(3), "==", PIntLit(3))
-    val method2 = PMethod(PIdnDef("m"), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PAssert(binExp2)))))
-    val target = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method2), Seq())
-
 
     case class Context(increment: Int)
 
     val transformed = StrategyBuilder.RewriteNodeAndContext[PNode, Context](
       {
         case (PIntLit(i), ctx: Context) =>
-          (PIntLit(i + ctx.increment), ctx.copy(ctx.increment + 1)) // Notice that this new context won't
-      }, Context(2)).execute[PNode](original)                       // affect its sibling literal node
+          (PIntLit(i + ctx.increment), ctx.copy(ctx.increment + 1))
+      }, Context(2)).execute[PNode](binExp1)
 
-    assert(transformed === target)
+    assert(transformed === binExp2)
   }
+
+  test("Rewriting nodes and updating context during parse AST traversal - Example 1") {
+     // Transforms this code:
+     // method m()
+     // {
+     //   assert 1 == 1
+     // }
+     //
+     // Into this program:
+     // method m()
+     // {
+     //   assert 3 == 3
+     // }
+
+     import viper.silver.parser._
+
+     val binExp1 = PBinExp(PIntLit(1), "==", PIntLit(1))
+     val method1 = PMethod(PIdnDef("m"), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PAssert(binExp1)))))
+     val original = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method1), Seq())
+
+     val binExp2 = PBinExp(PIntLit(3), "==", PIntLit(3))
+     val method2 = PMethod(PIdnDef("m"), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PAssert(binExp2)))))
+     val target = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method2), Seq())
+
+     case class Context(increment: Int)
+
+     val transformed = StrategyBuilder.RewriteNodeAndContext[PNode, Context](
+       {
+         case (PIntLit(i), ctx: Context) =>
+           (PIntLit(i + ctx.increment), ctx.copy(ctx.increment + 1)) // Notice that this new context won't
+       }, Context(2)).execute[PNode](original)                       // affect its sibling literal node
+
+     assert(transformed === target)
+   }
 
   test("Rewriting nodes and updating context during parse AST traversal - Example 2") {
     // Transform this program:
@@ -86,5 +132,26 @@ class ASTTransformationTests extends FunSuite {
     }, Context(1)).execute[PNode](original)
 
     assert(transformed === target)
+  }
+
+  test("Rewriting nodes and updating context during parse AST traversal - Example 3") {
+    // function f(x: Ref): Bool
+    //   requires forall y: Int :: y == y
+
+    import viper.silver.parser._
+
+    val requires = PForall(Seq(PFormalArgDecl(PIdnDef("y"), TypeHelper.Int)), Seq(), PBinExp(PIdnUse("y"), "==", PIdnUse("y")))
+    val function = PFunction(PIdnDef("f"), Seq(PFormalArgDecl(PIdnDef("x"), TypeHelper.Ref)), TypeHelper.Bool, Seq(requires), Seq(), None)
+    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(), Seq())
+
+    case class Context()
+
+    StrategyBuilder.RewriteNodeAndContext[PNode, Context]({
+      case (forall: PForall, c) => {
+        val scope = NameAnalyser().namesInScope(program, Some(forall))
+        assert(scope === Set("f", "x"))
+        (forall, c)
+      }
+    }, Context()).execute[PNode](function)
   }
 }
