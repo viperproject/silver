@@ -115,7 +115,7 @@ case class ProgramDefinitionsReport(definitions: List[Definition]) extends Messa
 }
 
 // TODO: Variable level of detail?
-case class ExecutionTraceReport(memberTraces: List[Any],
+case class ExecutionTraceReport(memberTraces: Seq[Any],
                                 axioms: List[Any],
                                 functionPostAxioms: List[Any]
                                ) extends Message {
