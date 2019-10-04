@@ -11,6 +11,8 @@
  * help overcoming an incompleteness with respect to sequences.
  */
 
+//:: IgnoreFile(/carbon/issue/286/)
+
 field v: Int
 field l: Ref
 field r: Ref
