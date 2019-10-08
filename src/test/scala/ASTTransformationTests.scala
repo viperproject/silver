@@ -142,7 +142,7 @@ class ASTTransformationTests extends FunSuite {
 
     val requires = PForall(Seq(PFormalArgDecl(PIdnDef("y"), TypeHelper.Int)), Seq(), PBinExp(PIdnUse("y"), "==", PIdnUse("y")))
     val function = PFunction(PIdnDef("f"), Seq(PFormalArgDecl(PIdnDef("x"), TypeHelper.Ref)), TypeHelper.Bool, Seq(requires), Seq(), None)
-    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(), Seq())
+    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(), Seq(), Seq())
 
     case class Context()
 
