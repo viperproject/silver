@@ -1,19 +1,22 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/silicon/issue/40/)
+field next: Ref
 
-field f: Ref
-field g: Ref
-
-predicate valid(b: Bool, r1: Ref, r2: Ref) {
-  b ? (acc(r1.f, write) && (r1.f != null ==> acc(valid(true, r1.f, r2), write)))
-    : (acc(r2.f, write) && (r2.f != null ==> acc(valid(false, r1, r2.f), write)))
+predicate valid(this: Ref) {
+  acc(this.next, wildcard) &&
+  (((this.next) != (null)) ==> acc(valid(this.next), wildcard))
 }
 
-method t1(r1: Ref, r2: Ref, b: Bool)
-  requires acc(valid(false, r1, r2), write)
+method testNestingUnfold(this: Ref)
+  requires acc(valid(this), wildcard)
 {
-  unfold acc(valid(false, r1, r2), write)
-  assert (r2 != (r2.f))
+  unfold acc(valid(this), wildcard)
+  assert ((this) != (this.next))
+
+  if (((this.next) != (null))) {
+    unfold acc(valid(this.next), wildcard)
+    assert ((this.next) != (this.next.next))
+    assert ((this) != (this.next.next))
+  }
 }

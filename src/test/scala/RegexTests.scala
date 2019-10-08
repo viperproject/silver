@@ -18,7 +18,7 @@ class RegexTests extends FunSuite with FileComparisonHelper {
     val sharedAST = And(Not(shared)(), shared)()
 
     val t = TreeRegexBuilder.context[Node, Int](_ + _, math.max , 0)
-    val strat = t &> c[Not](_ => 1) > n.r[FalseLit] |-> { case (FalseLit(), c) => if(c.c == 1) TrueLit()() else FalseLit()()}
+    val strat = t &> c[Not](_ => 1) > n.r[FalseLit] |-> { case (FalseLit(), c) => if(c.c == 1) (TrueLit()(), c) else (FalseLit()(), c)}
 
     val res = strat.execute[Exp](sharedAST)
 
@@ -106,9 +106,9 @@ class RegexTests extends FunSuite with FileComparisonHelper {
       val strat = (
         t &> c[QuantifiedExp]( _.variables).** >> n.r[Or]
           |-> { case (o:Or, c) =>
-                  InhaleExhaleExp(
+                  (InhaleExhaleExp(
                     CondExp(
-                      NonDet(c.c), o.left, o.right)(), c.noRec[Or](o))()
+                      NonDet(c.c), o.left, o.right)(), c.noRec[Or](o))(), c)
               })
 
       frontend.translate(ref) match {
@@ -137,7 +137,7 @@ class RegexTests extends FunSuite with FileComparisonHelper {
 
     // Regular expression
     val t = TreeRegexBuilder.context[Node, Int](_ + _, math.max, 0)
-    val strat = t &> iC[Method](_.bodyOrAssumeFalse, _.name == "here") >> (n[Inhale] | n[Exhale]) >> (c[Or]( _ => 1 )  | c[And]( _ => 1)).* >> n.r[LocalVar]((v:LocalVar) => v.typ == Int && v.name.contains("x")) |-> { case (n:LocalVar, c) => IntLit(c.c)(n.pos, n.info, n.errT)}
+    val strat = t &> iC[Method](_.bodyOrAssumeFalse, _.name == "here") >> (n[Inhale] | n[Exhale]) >> (c[Or]( _ => 1 )  | c[And]( _ => 1)).* >> n.r[LocalVar]((v:LocalVar) => v.typ == Int && v.name.contains("x")) |-> { case (n:LocalVar, c) => (IntLit(c.c)(n.pos, n.info, n.errT), c)}
 
     val frontend = new MockSilFrontend
     files foreach { name => executeTest(filePrefix, name, strat, frontend)}
@@ -212,11 +212,11 @@ class RegexTests extends FunSuite with FileComparisonHelper {
         accumulator += a.exp
         c.next match {
           case Some(Assert(_)) =>
-            Seqn(Seq(), Seq())()
+            (Seqn(Seq(), Seq())(), c)
           case _ =>
             val result = Assert(accumulator.reduceRight(And(_, _)()))()
             accumulator.clear()
-            result
+            (result, c)
         }
     }
 
@@ -233,7 +233,7 @@ class RegexTests extends FunSuite with FileComparisonHelper {
     val files = Seq("fourAnd")
 
     val t = TreeRegexBuilder.ancestor[Node]
-    val strat = t &> n.P[FuncApp]( _.funcname == "fourAnd") > n.r[Exp] |-> { case (e:Exp, c) => if(c.siblings.contains(FalseLit()())) FalseLit()() else e }
+    val strat = t &> n.P[FuncApp]( _.funcname == "fourAnd") > n.r[Exp] |-> { case (e:Exp, c) => if(c.siblings.contains(FalseLit()())) (FalseLit()(), c) else (e, c) }
 
     val frontend = new MockSilFrontend
     files foreach { fileName: String => {
@@ -268,7 +268,7 @@ class RegexTests extends FunSuite with FileComparisonHelper {
         replacer = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap
         val inPosts = replacedArgs.map(replaceStrat.execute[Exp](_)).map(x => Inhale(x)(m.pos, m.info))
 
-        Seqn(exPres ++ inPosts, Seq())(m.pos, m.info)
+        (Seqn(exPres ++ inPosts, Seq())(m.pos, m.info), anc)
     }
 
     files foreach { fileName: String => {
@@ -276,7 +276,6 @@ class RegexTests extends FunSuite with FileComparisonHelper {
     }
     }
   }
-
 
   test("CopyPropagation") {
     val filePrefix = "transformations/CopyPropagation/"
