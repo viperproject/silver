@@ -6,18 +6,19 @@
 
 package viper.silver.frontend
 
-import java.nio.file.{Path, Paths}
 
-import fastparse.all
-import fastparse.all.{Parsed, ParserInput}
 import viper.silver.ast.utility.Consistency
-import viper.silver.ast.{SourcePosition, _}
+import viper.silver.{FastMessaging, FastPositions}
+import viper.silver.ast._
 import viper.silver.parser._
-import viper.silver.plugin.{SilverPluginManager}
+import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
-import viper.silver.{FastMessaging, FastPositions}
+import fastparse.all.{Parsed, ParserInput}
+import fastparse.all
+import java.nio.file.{Path, Paths}
+
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -245,7 +246,6 @@ trait SilFrontend extends DefaultFrontend {
   }
 
   override def doTranslation(input: PProgram): Result[Program] = {
-
     _plugins.beforeTranslate(input) match {
       case Some(modifiedInputPlugin) =>
         Translator(modifiedInputPlugin).translate match {

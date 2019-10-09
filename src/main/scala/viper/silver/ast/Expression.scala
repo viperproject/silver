@@ -8,8 +8,8 @@ package viper.silver.ast
 
 import viper.silver.ast.MagicWandStructure.MagicWandStructure
 import viper.silver.ast.pretty._
-import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility._
+import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
 import viper.silver.verifier.{ConsistencyError, VerificationResult}
 

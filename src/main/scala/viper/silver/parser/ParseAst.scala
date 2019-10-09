@@ -16,6 +16,7 @@ import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder}
 import viper.silver.parser.TypeHelper._
 import viper.silver.verifier.ParseReport
 
+
 trait FastPositioned {
 
   /** Do not use these first three interfaces for reporting the positions.

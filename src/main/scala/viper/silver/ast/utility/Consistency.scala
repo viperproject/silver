@@ -135,6 +135,7 @@ object Consistency {
      *       i.e. strategies that executed for their side-effects or results, but that don't
      *       modify the visited AST.
      */
+
     var found = false
 
     val findPermissions = ViperStrategy.Ancestor({

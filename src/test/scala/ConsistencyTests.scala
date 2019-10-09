@@ -107,7 +107,14 @@ class ConsistencyTests extends FunSuite with Matchers {
       )()
 
     val program =
-      Program(domains    = Seq(), fields     = Seq(), functions  = Seq(), predicates = Seq(), methods    = Seq(callee, caller), extensions = Seq())()
+      Program(
+        domains    = Seq(),
+        fields     = Seq(),
+        functions  = Seq(),
+        predicates = Seq(),
+        methods    = Seq(callee, caller),
+        extensions = Seq()
+      )()
 
     program.checkTransitively shouldBe Seq(
       ConsistencyError("Arguments List() are not assignable to formal arguments List(x: Ref) of method callee", NoPosition),
@@ -158,7 +165,14 @@ class ConsistencyTests extends FunSuite with Matchers {
       )()
 
     val program =
-      Program(domains    = Seq(), fields     = Seq(), functions  = Seq(func), predicates = Seq(), methods    = Seq(caller), extensions = Seq())()
+      Program(
+        domains    = Seq(),
+        fields     = Seq(),
+        functions  = Seq(func),
+        predicates = Seq(),
+        methods    = Seq(caller),
+        extensions = Seq()
+      )()
 
     program.checkTransitively shouldBe Seq(
       ConsistencyError("Function f with formal arguments List(x: Int) cannot be applied to provided arguments List().", NoPosition),
@@ -216,7 +230,14 @@ class ConsistencyTests extends FunSuite with Matchers {
       )()
 
     val program =
-      Program(domains    = Seq(domain), fields     = Seq(), functions  = Seq(), predicates = Seq(), methods    = Seq(caller), extensions = Seq())()
+      Program(
+        domains    = Seq(domain),
+        fields     = Seq(),
+        functions  = Seq(),
+        predicates = Seq(),
+        methods    = Seq(caller),
+        extensions = Seq()
+      )()
 
     program.checkTransitively shouldBe Seq(
       ConsistencyError("No domain function named g found in the program.", NoPosition),
