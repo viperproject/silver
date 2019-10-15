@@ -1,8 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/Silver/issue/125/)
-
 /* This example encodes and specifies an iterative computation of the
  * sum of a recursively defined linked-list. Magic wands are used to
  * book-keep permissions in the loop.
