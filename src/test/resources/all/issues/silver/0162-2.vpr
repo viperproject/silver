@@ -1,0 +1,77 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+method testAcc1(x: Ref)
+  requires acc(x.f)
+{
+  assume acc(x.f)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method testAcc2(x: Ref)
+{
+  assume acc(x.f) // Causes unsoundness
+  assert false    // Should not fail due to unsoundness
+}
+
+method testAcc3(x: Ref)
+{
+  inhale acc(x.f)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method testAcc4(x: Ref)
+  requires acc(x.f)
+{
+  inhale acc(x.f) // Causes unsoundness
+  assert false    // Should not fail due to unsoundness
+}
+
+method testAcc5(x: Ref, y: Ref)
+  requires acc(x.f)
+{
+  assume acc(y.f)
+  assert x == y
+}
+
+method testAcc6(x: Ref, y: Ref)
+  requires acc(x.f)
+{
+  inhale acc(y.f)
+  assert x != y
+}
+
+predicate Tree(self: Ref)
+
+method testPred1(x: Ref)
+  requires Tree(x)
+{
+  assume Tree(x)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method testPred2(x: Ref)
+{
+  assume Tree(x)  // Causes unsoundness
+  assert false    // Should not fail due to unsoundness //? Unexpected output here
+}
+
+method testPred3(x: Ref)
+{
+  inhale Tree(x)
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
+
+method testPred4(x: Ref)
+  requires Tree(x)
+{
+  inhale Tree(x)  // Contrary to acc, doesn't cause unsoundness
+  //:: ExpectedOutput(assert.failed:assertion.false)
+  assert false
+}
