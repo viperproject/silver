@@ -58,7 +58,7 @@ method testPred1(x: Ref)
 method testPred2(x: Ref)
 {
   assume Tree(x)  // Causes unsoundness
-  assert false    // Should not fail due to unsoundness //? Unexpected output here
+  assert false    // Should not fail due to unsoundness
 }
 
 method testPred3(x: Ref)
@@ -75,3 +75,4 @@ method testPred4(x: Ref)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert false
 }
+
