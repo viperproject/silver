@@ -54,7 +54,7 @@ object AssumeRewriter {
         val eqs = (pred.loc.args zip dummyVars) map (a => EqCmp(a._1, a._2)())
         val cond = eqs.tail.foldLeft[Exp](eqs.head)((a, e) => And(a,e)())
         val ctx = c.updateContext(c.c + (pred.loc.loc(program) -> (c.c.getOrElse(pred.loc.loc(program), Seq()) :+ ((cond, dummyVars), pred.perm))))
-        if (!insideWand && c.parentOption.isDefined && !c.parent.isInstanceOf[Unfolding]) {
+        if (!insideWand && (if (c.parentOption.isDefined) !c.parent.isInstanceOf[Unfolding] else true)) {
           val cp = CurrentPerm(pred.loc)(pred.pos, pred.info, pred.errT)
           val p = generatePermUsingFunc(c.c.getOrElse(pred.loc.loc(program), Seq()), pred.loc.args, pred.perm, cp, None)
           (p, ctx)
