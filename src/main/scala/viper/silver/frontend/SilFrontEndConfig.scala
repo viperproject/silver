@@ -23,10 +23,16 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
 
   /** True if (after command-line parsing) we should exit. */
   private var _exit: Boolean = false
+  private var _printHelp = false
 
-  def exit: Boolean = parseOnly.toOption match {
-    case Some(need_exit) => need_exit
-    case None => _exit
+  def exit: Boolean = {
+    if (_printHelp)
+      true
+    else
+      parseOnly.toOption match {
+        case Some(need_exit) => need_exit
+        case None => _exit
+      }
   }
 
   val parseOnly = opt[Boolean]("parseOnly",
@@ -116,7 +122,9 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
 
     e match {
       case Version => println(builder.vers.get)
-      case Help(_) => printHelp()
+      case Help(_) =>
+        _printHelp = true
+        printHelp()
       case ScallopException(message) => error = Some(message)
       case unhandled => throw unhandled
     }
