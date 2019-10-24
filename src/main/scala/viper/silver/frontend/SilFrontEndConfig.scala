@@ -25,15 +25,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
   private var _exit: Boolean = false
   private var _printHelp = false
 
-  def exit: Boolean = {
-    if (_printHelp)
-      true
-    else
-      parseOnly.toOption match {
-        case Some(need_exit) => need_exit
-        case None => _exit
-      }
-  }
+  def exit: Boolean = _printHelp || parseOnly.toOption.getOrElse(_exit)
 
   val parseOnly = opt[Boolean]("parseOnly",
     descr = "Exit right after parsing the program",
