@@ -250,10 +250,6 @@ case class TypeChecker(names: NameAnalyser) {
           case Some(i) => check(i, typ)
           case None =>
         }
-      case PConstraining(vars, s) =>
-        val msg = "expected variable in fresh read permission block"
-        acceptAndCheckTypedEntity[PLocalVarDecl, PFormalArgDecl](vars, msg){(v, _) => check(v, Perm)}
-        check(s)
       case _: PDefine =>
         /* Should have been removed right after parsing */
         sys.error(s"Unexpected node $stmt found")
