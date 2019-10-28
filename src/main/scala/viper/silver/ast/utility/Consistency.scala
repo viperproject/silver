@@ -200,9 +200,6 @@ object Consistency {
     for (a@LocalVarAssign(l, _) <- b if argVars.contains(l)) {
       s :+= ConsistencyError(s"$a is a reassignment of formal argument $l.", a.pos)
     }
-    for (f@Fresh(vars) <- b; v <- vars if argVars.contains(v)) {
-      s :+= ConsistencyError(s"$f is a reassignment of formal argument $v.", f.pos)
-    }
     for (c@MethodCall(_, _, targets) <- b; t <- targets if argVars.contains(t)) {
       s :+= ConsistencyError(s"$c is a reassignment of formal argument $t.", c.pos)
     }

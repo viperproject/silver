@@ -216,7 +216,6 @@ object CfgGenerator {
            _: Package |
            _: Apply |
            _: MethodCall |
-           _: Fresh |
            _: NewStmt |
            _: Assert |
            _: LocalVarDeclStmt |
