@@ -708,7 +708,7 @@ object FastParser extends PosParser[Char, String] {
     // control flow
     "while", "if", "elseif", "else", "goto", "label",
     // special fresh block
-    "fresh", "constraining",
+    "constraining",
     // sequences
     "Seq",
     // sets and multisets
@@ -946,11 +946,11 @@ object FastParser extends PosParser[Char, String] {
   }
 
   lazy val stmt: P[PStmt] = P(macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | fresh | constrainingBlock |
+    inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand | macroref | block)
 
   lazy val nodefinestmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | whle | varDecl | newstmt | fresh | constrainingBlock |
+    inhale | assume | ifthnels | whle | varDecl | newstmt | constrainingBlock |
     methodCall | goto | lbl | packageWand | applyWand | macroref | block)
 
   lazy val macroref: P[PMacroRef] = P(idnuse).map(a => PMacroRef(a))
@@ -1013,8 +1013,6 @@ object FastParser extends PosParser[Char, String] {
   lazy val regularNewstmt: P[PRegularNewStmt] = P(idnuse ~ ":=" ~ "new" ~ "(" ~ idnuse.rep(sep = ",") ~ ")").map { case (a, b) => PRegularNewStmt(a, b) }
 
   lazy val starredNewstmt: P[PStarredNewStmt] = P(idnuse ~ ":=" ~ "new" ~ "(" ~ "*" ~ ")").map(PStarredNewStmt)
-
-  lazy val fresh: P[PFresh] = P(keyword("fresh") ~ idnuse.rep(sep = ",")).map(vars => PFresh(vars))
 
   lazy val constrainingBlock: P[PConstraining] = P("constraining" ~ "(" ~ idnuse.rep(sep = ",") ~ ")" ~ block).map { case (vars, s) => PConstraining(vars, s) }
 

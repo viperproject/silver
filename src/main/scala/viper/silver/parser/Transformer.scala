@@ -99,7 +99,6 @@ object Transformer {
         case PFieldAssign(fieldAcc, rhs) => PFieldAssign(go(fieldAcc), go(rhs))
         case PIf(cond, thn, els) => PIf(go(cond), go(thn), go(els))
         case PWhile(cond, invs, body) => PWhile(go(cond), invs map go, go(body))
-        case PFresh(vars) => PFresh(vars map go)
         case PConstraining(vars, stmt) => PConstraining(vars map go, go(stmt))
         case PLocalVarDecl(idndef, typ, init) => PLocalVarDecl(go(idndef), go(typ), init map go)
         case PMethodCall(targets, method, args) => PMethodCall(targets map go, go(method), args map go)

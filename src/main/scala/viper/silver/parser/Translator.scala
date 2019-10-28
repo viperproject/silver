@@ -204,7 +204,6 @@ case class Translator(program: PProgram) {
         Goto(label.name)(pos)
       case PIf(cond, thn, els) =>
         If(exp(cond), stmt(thn).asInstanceOf[Seqn], stmt(els).asInstanceOf[Seqn])(pos)
-      case PFresh(vars) => Fresh(vars map (v => LocalVar(v.name, ttyp(v.typ))(v)))(pos)
       case PConstraining(vars, ss) =>
         Constraining(vars map (v => LocalVar(v.name, ttyp(v.typ))(v)), stmt(ss).asInstanceOf[Seqn])(pos)
       case PWhile(cond, invs, body) =>
