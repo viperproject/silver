@@ -8,10 +8,16 @@
 //   x is a bound variable in e, therefore there isn’t any free variable in e named ‘x’.
 //   So the substitution x -> e’ does not change e.
 //
-// 2) (forall x : e)[y -> e’] = (forall z : e[x -> z][y -> e’]), where:
+// 2a) (forall x : e)[y -> e’] = (forall z : e[x -> z][y -> e’]), where:
 //   x != y
-//   x belongs to vars(e’), where vars(e) is the set of free and bound variables in an expression e.
+//   x belongs to FV(e’), where FV(e) is the set of free variables in an expression e.
 //   z does not belong to vars(e’) U vars(e) U {x, y} U scope, effectively z is said to be “fresh”.
+//
+// 2b) (forall x : e)[y -> e’] = (forall x : e[y -> e’[z/x]]), where:
+//   x != y
+//   x does not belong to FV(e') but does belong to BV(e’), where BV(e) is the set of bound variables in an expression e.
+//   z does not belong to vars(e’) U vars(e) U {x, y} U scope, effectively z is said to be “fresh”.
+//   e[z/x] denotes the replacement *even of bound* occurrences of x in e with z; a different operation to capture-avoiding substition.
 //
 // 3) (forall x : e)[y -> e’] = (forall x : e[y -> e’]), where:
 //   x != y

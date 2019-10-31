@@ -18,36 +18,6 @@ field root : Ref
 		fold acc(headvalid(this),write);
 	}
 
-	method headinsert(this:Ref, k : Int)
-		requires acc(headvalid(this),write);
-		ensures acc(headvalid(this),write);
-	{
-	        var n : Ref
-		unfold acc(headvalid(this),write);
-		if (this.root==null){
-			n := new(*)
-		        init(n,k)
-			this.root := n;
-		}else{
-			n := insert(this.root,k);
-			this.root := n;
-		}
-		fold acc(headvalid(this),write);
-	}
-
-	method headremove(this:Ref, k : Int)
-		requires acc(headvalid(this),write);
-		ensures acc(headvalid(this),write);
-	{
-	        var r : Ref
-		unfold acc(headvalid(this),write);
-		if (this.root==null){
-		}else{
-			r := remove(this.root,k);
-			this.root := r;
-		}
-		fold acc(headvalid(this),write);
-	}
 
 	method headhas(this:Ref, k : Int) returns (b : Bool)
 		requires acc(headvalid(this),write);
@@ -115,235 +85,9 @@ field root : Ref
 
 
 
-	method insert(this:Ref, k : Int) returns ( r : Ref )
-		requires acc(valid(this),write);
-		requires acc(this.height,1/2);
-		requires acc(this.balanceFactor,1/2);
-		ensures r != null;
-		ensures acc(valid(r),write);
-		ensures acc(r.height,1/2);
-		ensures acc(r.balanceFactor,1/2);
-		ensures ( r.height == old(this.height) ) || ( r.height == (old(this.height) + 1) );
-	{
-		var nl : Ref; // reused in different branches
-		var bf : Int; // reused in different branches
-		var nr : Ref; // reused in different branches
-		var rd : Perm;
-		unfold acc(valid(this),write);
-		if (this.key==k){
-			r := this;
-			close(r);
-		}else{ //this.key!=k
-			if (k<(this.key)){ // insert this.left
 
-				if (this.left==null){
-					nl := new(*);
-					init(nl,k);
-				}else{
-					nl := insert(this.left,k);
-				}
-				this.left := nl;
-				fresh rd
-				constraining(rd) {
-          bf := getBalanceFactorI(this,rd);
-				}
 
-				if (bf==2){ //rebalance
-					r:= rebalanceLeft(this);
-				}else{ //no rebalance
-					r := this;
-					close(r);
-				}
-			}else{ // k>this.key -- insert this.right
-				if (this.right==null){
-					nr := new(*);
-					init(nr,k);
-				}else{
-					nr := insert(this.right,k);
-				}
-				this.right := nr;
 
-				fresh rd
-				constraining(rd) {
-				bf := getBalanceFactorI(this,rd);
-				}
-				if (bf==-2){ //rebalance
-					r := rebalanceRight(this);
-				}else{//no rebalance
-					r := this;
-					close(r);
-				}
-			}
-		}
-	}
-
-	method remove(this:Ref, k : Int) returns ( r : Ref )
-		requires acc(valid(this),write);
-		requires acc(this.height,1/2);
-		requires acc(this.balanceFactor,1/2);
-		ensures r != null ==> acc(valid(r),write);
-		ensures r != null ==> acc(r.height,1/2);
-		ensures r != null ==> acc(r.balanceFactor,1/2);
-		ensures old(this.height)>1 ==> r!=null;
-		ensures r != null ==> r.height==old(this.height) || r.height+1==old(this.height);
-	{
-		var bf : Int;
-		var nl : Ref;
-		var nr : Ref;
-		var rd : Perm;
-		unfold acc(valid(this),write);
-		if (this.key==k){
-			if (this.left==null || this.right==null){
-				if (this.left==null){ // replace with this.right
-					r := this.right;
-				}else{ // this.right==null
-					r := this.left;
-				}
-			}else{ // prune max/min of this.left/this.right
-				nl := this.left;
-				nr := this.right;
-
-				fresh rd
-				constraining(rd) {
-					bf := getBalanceFactorI(this,rd);
-				}
-				if (bf > 0 ){ // this.left larger - prune leftmax
-					nl,r := pruneMax(this.left);
-				}else{ // this.right larger equal - prune rightmin
-					nr,r := pruneMin(this.right);
-				}
-				unfold acc(valid(r),write);
-				r.left  := nl;
-				r.right := nr;
-				close(r);
-			}
-		}else{ //this.key!=k
-			if (k<(this.key)){ // remove this.left
-				if (this.left!=null){
-					nl := remove(this.left,k);
-					this.left := nl;
-
-					fresh rd
-					constraining(rd) {
-						bf := getBalanceFactorI(this,rd);
-					}
-
-					if (bf==-2){ // rebalance
-						r:=rebalanceRight(this);
-					}else{ // no rebalance
-						close(this);
-						r := this;
-					}
-				}else{
-					r := this;
-					close(r);
-				}
-			}else{ // k>this.key -- remove this.right
-				if (this.right != null){
-					nr := remove(this.right,k);
-					this.right := nr;
-
-					fresh rd
-					constraining(rd) {
-						bf := getBalanceFactorI(this,rd);
-					}
-					if (bf==2){ // rebalance
-						r := rebalanceLeft(this);
-					}else{ // no rebalance
-						r := this;
-						close(r);
-					}
-				}else{
-					r := this;
-					close(r);
-				}
-			}
-		}
-	}
-
-	method pruneMax(this:Ref) returns ( r : Ref, m : Ref )
-		requires acc(valid(this),write);
-		requires acc(this.height,1/2);
-		requires acc(this.balanceFactor,1/2);
-		ensures r != null ==> acc(valid(r),write);
-		ensures r != null ==> acc(r.height,1/2);
-		ensures r != null ==> acc(r.balanceFactor,1/2);
-		ensures r != null ==> (r.height == old(this.height) || r.height+1 == old(this.height));
-		ensures old(this.height) >1 ==> r != null;
-		ensures old(this.height)==1 ==> r == null;
-		ensures (old(this.height)==(r==null?0:r.height)) || (old(this.height)==((r==null?0:r.height)+1));
-		ensures m != null;
-		ensures	acc(valid(m),write);
-		ensures acc(m.height,1/2);
-		ensures acc(m.balanceFactor,1/2);
-		ensures m.height == 1;
-	{
-		var nr : Ref;
-		var bf : Int;
-		var rd : Perm;
-		unfold acc(valid(this),write);
-		if (this.right==null){
-			r := this.left;
-			this.left := null;
-			close(this);
-			m := this;
-		}else{
-			nr,m := pruneMax(this.right);
-			this.right := nr;
-			fresh rd
-			constraining(rd) {
-				bf := getBalanceFactorI(this,rd);
-			}
-			if (bf == 2){
-				r:=rebalanceLeft(this);
-			}else{
-				close(this);
-				r := this;
-			}
-		}
-	}
-
-	method pruneMin(this:Ref) returns ( r : Ref, m : Ref )
-		requires acc(valid(this),write);
-		requires acc(this.height,1/2);
-		requires acc(this.balanceFactor,1/2);
-		ensures r != null ==> acc(valid(r),write);
-		ensures r != null ==> acc(r.height,1/2);
-		ensures r != null ==> acc(r.balanceFactor,1/2);
-		ensures r != null ==> (r.height == old(this.height) || (r.height == (old(this.height)-1)));
-		ensures old(this.height) >1 ==> r != null;
-		ensures old(this.height)==1 ==> r == null;
-		ensures (old(this.height)==(r==null?0:r.height)) || (old(this.height)==((r==null?0:r.height)+1));
-		ensures m != null;
-		ensures	acc(valid(m),write);
-		ensures acc(m.height,1/2);
-		ensures acc(m.balanceFactor,1/2);
-		ensures m.height == 1;
-	{
-		var nl : Ref;
-		var bf : Int;
-		var rd : Perm;
-		unfold acc(valid(this),write);
-		if (this.left==null){
-			r := this.right;
-			this.right := null;
-			close(this);
-			m := this;
-		}else{
-			nl,m := pruneMin(this.left);
-			this.left := nl;
-			fresh rd
-			constraining(rd) {
-				bf := getBalanceFactorI(this,rd);
-			}
-			if (bf == -2){
-				r:=rebalanceRight(this);
-			}else{
-				close(this);
-				r := this;
-			}
-		}
-	}
 
 	method has(this:Ref, k : Int) returns (b : Bool)
 		requires acc(valid(this),write);
@@ -460,37 +204,6 @@ field root : Ref
 		fold acc(valid(this),write);
 	}
 
-	method rebalanceLeft(this:Ref) returns ( r : Ref )
-		requires acc(this.key   ,write);
-		requires acc(this.height,write);
-		requires acc(this.left  ,write);
-		requires acc(this.right ,write);
-		requires acc(this.balanceFactor,write);
-		requires this.left!=null;
-		requires acc(valid(this.left),write);
-		requires acc(this.left.height       ,1/2);
-		requires acc(this.left.balanceFactor,1/2);
-		requires this.right!=null ==> acc(valid(this.right),write);
-		requires this.right!=null ==> acc(this.right.height       ,1/2)
-		requires this.right!=null ==> acc(this.right.balanceFactor,1/2)
-		requires this.left.height-(this.right==null?0:this.right.height)==2;
-		ensures r != null && acc(valid(r),write);
-		ensures acc(r.height       ,1/2);
-		ensures acc(r.balanceFactor,1/2);
-		ensures r.height == old(this.left.height) || (r.height == (old(this.left.height)+1));
-	{
-		var lbf : Int;
-		var rd : Perm;
-		fresh rd
-		constraining(rd) {
-			lbf := getBalanceFactor(this.left,rd);
-		}
-		if (lbf<0){
-			r := rebalanceRL(this);
-		}else{//lbf>=0
-			r := rebalanceRR(this);
-		}
-	}
 
 	method rebalanceRL(this:Ref) returns ( r : Ref )
 		requires acc(this.key   ,write);
@@ -554,37 +267,6 @@ field root : Ref
 		close(r);
 	}
 
-	method rebalanceRight(this:Ref) returns ( r : Ref )
-		requires acc(this.key   ,write);
-		requires acc(this.height,write);
-		requires acc(this.left  ,write);
-		requires acc(this.right ,write);
-		requires acc(this.balanceFactor,write);
-		requires this.left!=null==>acc(valid(this.left),write);
-		requires this.left!=null==>acc(this.left.height       ,1/2);
-		requires this.left!=null==>acc(this.left.balanceFactor,1/2);
-		requires this.right!=null;
-		requires acc(valid(this.right),write);
-		requires acc(this.right.height       ,1/2)
-		requires acc(this.right.balanceFactor,1/2)
-		requires ((this.left==null?0:this.left.height)-(this.right.height))==-2;
-		ensures r != null && acc(valid(r),write);
-		ensures acc(r.height       ,1/2);
-		ensures acc(r.balanceFactor,1/2);
-		ensures r.height == old(this.right.height) || r.height == (old(this.right.height)+1);
-	{
-		var rbf : Int;
-		var rd : Perm;
-		fresh rd
-		constraining(rd) {
-			rbf := getBalanceFactor(this.right,rd);
-		}
-		if (rbf>0){
-			r := rebalanceLR(this);
-		}else{//rbf<=0
-			r := rebalanceLL(this);
-		}
-	}
 
 	method rebalanceLR(this:Ref) returns ( r : Ref )
 		requires acc(this.key   ,write);
@@ -645,3 +327,4 @@ field root : Ref
 		r.left := this;
 		close(r);
 	}
+

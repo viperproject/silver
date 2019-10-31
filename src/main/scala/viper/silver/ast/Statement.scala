@@ -198,27 +198,6 @@ case class Label(name: String, invs: Seq[Exp])(val pos: Position = NoPosition, v
   */
 case class Goto(target: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt
 
-/** A fresh statement assigns a fresh, dedicated symbolic permission values to
-  * each of the passed variables.
-  */
-case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    vars.flatMap(v=>{ if(!(v isSubtype Perm)) Seq(ConsistencyError(s"Fresh statements can only be used with variables of type Perm, but found ${v.typ}.", v.pos)) else Seq()})
-}
-
-/** A constraining-block takes a sequence of permission-typed variables,
-  * each of which is marked as constrainable while executing the statements
-  * in the body of the block. Potentially constraining statements are, e.g.,
-  * exhale-statements.
-  */
-case class Constraining(vars: Seq[LocalVar], body: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
-  extends Stmt {
-  override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    vars.flatMap(v=>{ if(!(v isSubtype Perm)) Seq(ConsistencyError(s"Constraining statements can only be used with variables of type Perm, but found ${v.typ}.", v.pos)) else Seq()})
-}
-
 /** Local variable declaration statement.
   *
   * [2016-12-22 Malte] Introduced so that local variables can be declared inside loops in the

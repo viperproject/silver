@@ -955,8 +955,6 @@ case class PFieldAssign(fieldAcc: PFieldAccess, rhs: PExp) extends PStmt
 case class PMacroAssign(call: PCall, exp: PExp) extends PStmt
 case class PIf(cond: PExp, thn: PSeqn, els: PSeqn) extends PStmt
 case class PWhile(cond: PExp, invs: Seq[PExp], body: PSeqn) extends PStmt
-case class PFresh(vars: Seq[PIdnUse]) extends PStmt
-case class PConstraining(vars: Seq[PIdnUse], stmt: PSeqn) extends PStmt
 case class PLocalVarDecl(idndef: PIdnDef, typ: PType, init: Option[PExp]) extends PStmt with PTypedDeclaration with PLocalDeclaration
 case class PMethodCall(targets: Seq[PIdnUse], method: PIdnUse, args: Seq[PExp]) extends PStmt
 case class PLabel(idndef: PIdnDef, invs: Seq[PExp]) extends PStmt with PLocalDeclaration
@@ -1170,8 +1168,6 @@ object Nodes {
       case PIf(cond, thn, els) => Seq(cond, thn, els)
       case PWhile(cond, invs, body) => Seq(cond) ++ invs ++ Seq(body)
       case PLocalVarDecl(idndef, typ, init) => Seq(idndef, typ) ++ (if (init.isDefined) Seq(init.get) else Nil)
-      case PFresh(vars) => vars
-      case PConstraining(vars, stmt) => vars ++ Seq(stmt)
       case PProgram(files, macros, domains, fields, functions, predicates, methods, errors) =>
         domains ++ fields ++ functions ++ predicates ++ methods
       case PLocalImport(file) =>

@@ -64,8 +64,6 @@ object Nodes {
           case If(cond, thn, els) => Seq(cond, thn, els)
           case Label(name, invs) => invs
           case Goto(target) => Nil
-          case Fresh(vars) => vars
-          case Constraining(vars, body) => vars ++ Seq(body)
           case LocalVarDeclStmt(decl) => Seq(decl)
           case e: ExtensionStmt => e.extensionSubnodes
         }
