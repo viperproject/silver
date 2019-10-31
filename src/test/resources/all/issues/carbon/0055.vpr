@@ -36,35 +36,3 @@ method Nodeinit$(this: Ref, k$: Perm, v: Int)
   this.Nodevalue$ := v
   fold acc(Nodevalid$(this), write)
 }
-
-method Nodeadd$(this: Ref, k$_1: Perm, x: Int)
-  requires this != null
-  requires k$_1 > none
-  requires write > k$_1
-  requires acc(Nodevalid$(this), write)
-  ensures acc(Nodevalid$(this), write)
-  ensures Nodesize$(this) == old(Nodesize$(this)) + 1
-  ensures (forall y: Int :: true ==> (Nodecontains$(this, y) == old(Nodecontains$(this, y)) || (x == y)))
-{
-  var n$_1: Ref
-  var n: Ref
-  var newK$: Perm
-  var newK$_1: Perm
-  unfold acc(Nodevalid$(this), write)
-  if (this.Nodenext$ == null) {
-    n$_1 := new(Nodenext$, Nodevalue$)
-    n$_1.Nodenext$ := null
-    n := n$_1
-    fresh newK$
-    constraining(newK$) {
-      Nodeinit$(n, newK$, x)
-    }
-    this.Nodenext$ := n
-  } else {
-    fresh newK$_1
-    constraining(newK$_1) {
-      Nodeadd$(this.Nodenext$, newK$_1, x)
-    }
-  }
-  fold acc(Nodevalid$(this), write)
-}

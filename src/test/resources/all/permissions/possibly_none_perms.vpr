@@ -40,26 +40,3 @@ method test03(x: Ref, b: Bool)
 }
 
 method permarg(k: Perm) {}
-
-method test04(x: Ref, b: Bool)
-  requires acc(x.f, b ? write : none)
-{
-  var k: Perm
-  fresh k
-  constraining(k) {
-    permarg(k)
-  }
-}
-
-method test05(x: Ref, b: Bool)
-  requires acc(x.f, b ? write : none)
-{
-  var k: Perm
-  fresh k
-  constraining(k) {
-    //:: ExpectedOutput(exhale.failed:insufficient.permission)
-    exhale acc(x.f, k)
-  }
-
-  assert !b ==> false
-}
