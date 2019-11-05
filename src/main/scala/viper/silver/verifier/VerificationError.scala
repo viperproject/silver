@@ -29,10 +29,10 @@ case class Model(entries: Map[String,ModelEntry]) {
 object Model {
 
   def apply(modelString: String) : Model = {
-    val SinglePattern = "^([a-zA-Z0-9_!@%\\+$\\[\\]#\\.<>]+) -> ([a-zA-Z0-9_!@%\\+$\\.\\(\\)\\- \\/<>]+)".r
-    val MapPatternStart = "^([a-zA-Z0-9_!@%\\+$\\[\\]#\\.<>]+) -> \\{".r
-    val MapPatternEntry = "^[\\s]*(([a-zA-Z0-9_!@%\\+$\\[\\]\\(\\)\\- \\/<>]+ )+)-> ([a-zA-Z0-9_!@%\\+$\\.\\(\\)\\- \\/<>]+)".r
-    val MapPatternSingleEntry = "^[\\s]*([a-zA-Z0-9_!@%\\+$\\.\\(\\)\\- \\/<>]+)".r
+    val SinglePattern = "^([a-zA-Z0-9_!@%+$\\[\\]#.<>~]+) -> ([a-zA-Z0-9_!@%+$.()\\- /<>~]+)".r
+    val MapPatternStart = "^([a-zA-Z0-9_!@%+$\\[\\]#.<>~]+) -> \\{".r
+    val MapPatternEntry = "^[\\s]*(([a-zA-Z0-9_!@%+$\\[\\].()\\- /<>~]+ )+)-> ([a-zA-Z0-9_!@%+$.()\\- /<>~]+)".r
+    val MapPatternSingleEntry = "^[\\s]*([a-zA-Z0-9_!@%+$.()\\- /<>~]+)".r
     val resMap = new mutable.HashMap[String, ModelEntry]()
     var currentKey : Option[String] = None
     var currentMap : mutable.HashMap[Seq[String], String] = null
