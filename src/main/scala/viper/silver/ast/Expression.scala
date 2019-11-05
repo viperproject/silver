@@ -931,9 +931,10 @@ sealed trait PossibleTrigger extends Exp {
 sealed trait ForbiddenInTrigger extends Exp
 
 /** Common ancestor of Domain Function applications and Function applications. */
-sealed trait FuncLikeApp extends Exp with Call {
+sealed trait FuncLikeApp extends Exp {
   def func: Program => FuncLike
   def callee = funcname
+  def args: Seq[Exp]
   def funcname: String
 }
 object FuncLikeApp {

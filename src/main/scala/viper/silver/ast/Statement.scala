@@ -78,15 +78,6 @@ case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPositio
     (if(!Consistency.isAssignable(rhs, lhs)) Seq(ConsistencyError(s"Right-hand side $rhs is not assignable to left-hand side $lhs.", lhs.pos)) else Seq())
 }
 
-/** A method/function/domain function call. - AS: this comment is misleading - the trait is currently not used for method calls below */
-trait Call {
-//  require(Consistency.areAssignable(args, formalArgs), s"$args vs $formalArgs for callee: $callee") <- this check has been moved to the Program AST node
-
-  def callee: String
-
-  def args: Seq[Exp]
-}
-
 /** A method call. */
 case class MethodCall(methodName: String, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position, val info: Info, val errT: ErrorTrafo) extends Stmt {
   override lazy val check : Seq[ConsistencyError] = {
