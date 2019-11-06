@@ -10,6 +10,8 @@ import scala.reflect.ClassTag
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.Triggers.TriggerGeneration
+import viper.silver.utility.Sanitizer
+import viper.silver.parser.FastParser
 
 /** Utility methods for expressions. */
 object Expressions {
@@ -41,13 +43,54 @@ object Expressions {
       => true
   }
 
-  def isHeapDependent(e: Exp, p: Program): Boolean = e existsDefined {
+  def isTopLevelHeapDependent(e: Exp, p:Program) : Boolean = e match {
     case   _: AccessPredicate
-         | _: LocationAccess
-         | _: MagicWand =>
+           | _: LocationAccess
+           | _: MagicWand => true
 
-    case fapp: FuncApp if fapp.func(p).pres.exists(isHeapDependent(_, p)) =>
+    case fapp: FuncApp if couldBeHeapDependent(fapp.func(p),p) => true
+    case _ => false
   }
+
+  def isHeapDependent(e: Exp, p: Program): Boolean = e existsDefined {
+    case ee:Exp if isTopLevelHeapDependent(ee,p) =>
+      // note: type of existsDefined doesn't guarantee we will only see Exp-typed nodes, but these are the transitive subnodes of e
+  }
+
+  def dependsOnCurrentHeap(e:Exp, p:Program, treatMagicWandStatesAsCurrentStates:Boolean = false) : Boolean = {
+    var depends = false;
+
+    def go(root: Exp, p:Program, inCurrentState:Boolean): Unit = {
+      root.visitWithContextManually[Boolean,Unit](inCurrentState)(
+        currentState => //if (depends) PartialFunction.empty // we're done
+          //else
+        {
+          case LabelledOld(ee, FastParser.LHS_OLD_LABEL) =>
+            if (treatMagicWandStatesAsCurrentStates)
+              go(ee,p,true)
+            else
+              () // do nothing; if we're under some kind of old expression, nothing can depend on the current state
+          case o:OldExp => // any other old expression never counts as the current state
+            if (treatMagicWandStatesAsCurrentStates) // we should recurse just in case we hit a nested old[lhs](..)
+              go(o.exp,p,false)
+            else
+              () // do nothing; if we're under some kind of old expression, nothing can depend on the current state
+          case ee:Exp => {
+            if (currentState && Expressions.isTopLevelHeapDependent(root,p)) // this also catches resources
+              depends = true // we're done
+            else
+              ee.subExps.foreach(sub => {
+                if(depends) () else go(sub,p,currentState)
+              })
+          }
+        }
+      )
+    }
+    go(e,p,true)
+    depends
+  }
+
+  def couldBeHeapDependent(f: Function, p:Program) : Boolean = f.pres.exists(isHeapDependent(_, p))
 
   def asBooleanExp(e: Exp): Exp = {
     e.transform({
@@ -132,12 +175,16 @@ object Expressions {
   }
 
   /* See http://stackoverflow.com/a/4982668 for why the implicit is here. */
-  def instantiateVariables[E <: Exp]
-                          (exp: E, variables: Seq[LocalVarDecl], values: Seq[Exp])
-                          (implicit di: DummyImplicit)
-                          : E =
+  // This overload of instanceVariables is meant to replace the former method (above) once the capture-avoidance
+  // substitution for quantifiers is fully validated. At the moment keeping both methods allows for testing and
+  // deploying the new feature in a localized context while preserving the original behavior elsewhere. Once fully
+  // validated, the method bellow will be used in the global context and the method above will be eliminated (#287).
+  def instantiateVariables[E <: Exp](exp: E, variables: Seq[LocalVarDecl], values: Seq[Exp], scope: Set[String])
+                                    (implicit di: DummyImplicit): E = {
+    assert(variables.size == values.size, "The amount of values must match the amount of variables they are replacing")
 
-    instantiateVariables(exp, variables map (_.localVar), values)
+    Sanitizer.replaceFreeVariablesInExpression(exp, variables.map(_.localVar).zip(values).toMap, scope)
+  }
 
   def subExps(e: Exp) = e.subnodes collect {
     case e: Exp => e

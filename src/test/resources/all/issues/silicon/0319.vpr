@@ -1,0 +1,13 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+//:: IgnoreFile(/silicon/issue/183/)
+
+function globalRd(): Perm
+  ensures none < result && result < write
+
+method client(x: Ref, n: Int) {
+  inhale n > 0
+  inhale (-n < 0 ? n : -n) * globalRd() < write
+  assert (-n < 0 ? n : -n) * globalRd() < write // Fails sometimes, but not always
+}

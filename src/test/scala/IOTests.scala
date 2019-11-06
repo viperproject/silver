@@ -18,8 +18,8 @@ class IOTests extends FunSuite with Matchers {
 
   val test_prefix = s"Test standard IO of SilFrontend"
 
-  val verifiableFile = "all/basic/let.sil"
-  val nonExistingFile = "bla/bla/bla.sil"
+  val verifiableFile = "all/basic/let.vpr"
+  val nonExistingFile = "bla/bla/bla.vpr"
 
   test(s"$test_prefix: some output is produces") {
     runOneCombo(verifiableFile, pass = true, Seq(), Seq())
@@ -82,7 +82,7 @@ class IOTests extends FunSuite with Matchers {
       file.toString
     } else {
       // simulate absent file
-      val temp_file = File.createTempFile("io_testing", ".sil")
+      val temp_file = File.createTempFile("io_testing", ".vpr")
       val absent_fname = temp_file.getPath
       temp_file.delete()
       absent_fname

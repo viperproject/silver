@@ -22,7 +22,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
 
     val frontend = new MockSilFrontend
 
-    val fileRes = getClass.getResource(fileName + ".sil")
+    val fileRes = getClass.getResource(fileName + ".vpr")
     assert(fileRes != null, s"File $fileName not found")
     val file = Paths.get(fileRes.toURI)
     var targetNode: Node = null
@@ -39,7 +39,11 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     val shared = FalseLit()()
     val sharedAST = And(Not(shared)(), shared)()
 
-    val strat = ViperStrategy.CustomContext[Int]({ case (FalseLit(), c) => if (c == 1) TrueLit()() else FalseLit()() }, 0, { case (Not(_), i) => i + 1 })
+    val strat = ViperStrategy.CustomContext[Int](
+      {
+        case (FalseLit(), c) => if (c == 1) (TrueLit()(), c) else (FalseLit()(), c)
+        case (n: Not, i) => (n, i + 1)
+      }, 0)
 
     val res = strat.execute[Exp](sharedAST)
 
@@ -58,7 +62,11 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
      val shared = FalseLit()()
      val sharedAST = And(Not(shared)(), shared)()
 
-     val strat = ViperStrategy.Context[Int]({ case (FalseLit(), c) => if (c.c == 1) TrueLit()() else FalseLit()() }, 0, { case (Not(_), i) => i + 1 })
+    val strat = ViperStrategy.CustomContext[Int](
+      {
+        case (FalseLit(), c) => if (c == 1) (TrueLit()(), c) else (FalseLit()(), c)
+        case (n: Not, i) => (n, i + 1)
+      }, 0)
 
      val res = strat.execute[Exp](sharedAST)
 
@@ -77,13 +85,13 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     val files = Seq("simple", "allCases")
 
     val strat = ViperStrategy.Ancestor({
-      case (f@Forall(_, _, Implies(_, r)), _) if r.isPure =>
-        f
+      case (f@Forall(_, _, Implies(_, r)), c) if r.isPure =>
+        (f, c)
       case (f@Forall(decls, triggers, i@Implies(li, And(l, r))), ass) =>
         val forall = Forall(decls, triggers, Implies(li, r)(i.pos, i.info))(f.pos, f.info)
-        And(Forall(decls, triggers, Implies(li, l)(i.pos, i.info))(f.pos, f.info), ass.noRec[Forall](forall))(f.pos, f.info)
-      case (f@Forall(decls, triggers, i@Implies(li, Implies(l, r))), _) if l.isPure =>
-        Forall(decls, triggers, Implies(And(li, l)(i.pos, i.info), r)(i.pos, i.info))(f.pos, f.info)
+        (And(Forall(decls, triggers, Implies(li, l)(i.pos, i.info))(f.pos, f.info), ass.noRec[Forall](forall))(f.pos, f.info), ass)
+      case (f@Forall(decls, triggers, i@Implies(li, Implies(l, r))), c) if l.isPure =>
+        (Forall(decls, triggers, Implies(And(li, l)(i.pos, i.info), r)(i.pos, i.info))(f.pos, f.info), c)
     })
 
     val frontend = new MockSilFrontend
@@ -98,8 +106,8 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     val frontend = new MockSilFrontend
     files foreach {
       fileName: String => {
-        val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
-        val fileRef = getClass.getResource(filePrefix + fileName + "Ref.sil")
+        val fileRes = getClass.getResource(filePrefix + fileName + ".vpr")
+        val fileRef = getClass.getResource(filePrefix + fileName + "Ref.vpr")
         assert(fileRes != null, s"File $filePrefix$fileName not found")
         assert(fileRef != null, s"File $filePrefix$fileName Ref not found")
         val file = Paths.get(fileRes.toURI)
@@ -123,10 +131,9 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
 
         val strat = ViperStrategy.Context[Seq[LocalVarDecl]]({
           case (o@Or(l, r), c) =>
-            InhaleExhaleExp(CondExp(NonDet(c.c), l, r)(), c.noRec[Or](o))()
-        }, Seq.empty, {
-          case (q: QuantifiedExp, c) => c ++ q.variables
-        })
+            (InhaleExhaleExp(CondExp(NonDet(c.c), l, r)(), c.noRec[Or](o))(), c)
+          case (q: QuantifiedExp, c) => (q, c.updateContext(c.c ++ q.variables))
+        }, Seq.empty)
 
         frontend.translate(ref) match {
           case (Some(p), _) => targetRef = p
@@ -202,7 +209,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     val strat = ViperStrategy.Ancestor({
       case (a: Assert, c) =>
         c.previous match {
-          case Some(Assert(_)) => Seqn(Seq(), Seq())() // If previous node is assertion we go to noop
+          case Some(Assert(_)) => (Seqn(Seq(), Seq())(), c) // If previous node is assertion we go to noop
           case _ =>
             // Otherwise we take all following assertions and merge their expressions into one
             c.successors.takeWhile({
@@ -211,11 +218,11 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
               case _ => false
             }).collect({ case i: Assert => i }) match {
               // Collect works as a cast to list of assertion since take while does not do this
-              case Seq() => a
+              case Seq() => (a, c)
               case as =>
                 // Merge in case of multiple assertions
                 val foldedExpr = as collect { case assertion => assertion.exp } reduceRight { (l, r) => And(l, r)() }
-                Assert(And(a.exp, foldedExpr)())(a.pos, a.info)
+                (Assert(And(a.exp, foldedExpr)())(a.pos, a.info), c)
             }
         }
     })
@@ -236,9 +243,9 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
         accumulator ++= List(a.exp)
         c.next match {
           case Some(Assert(_)) =>
-            Seqn(Seq(), Seq())()
+            (Seqn(Seq(), Seq())(), c)
           case _ =>
-            val result = Assert(accumulator.reduceRight(And(_, _)()))()
+            val result = (Assert(accumulator.reduceRight(And(_, _)()))(), c)
             accumulator = List.empty[Exp]
             result
         }
@@ -277,11 +284,11 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     val strat: StrategyInterface[Node] = ViperStrategy.Ancestor({
       case (e: Exp, c) => c.parent match {
         case f: FuncApp => if (f.funcname == "fourAnd" && c.siblings.contains(FalseLit()())) {
-          FalseLit()(e.pos, e.info)
+          (FalseLit()(e.pos, e.info), c)
         } else {
-          e
+          (e, c)
         }
-        case _ => e
+        case _ => (e, c)
       }
     }) traverse Traverse.BottomUp
 
@@ -305,7 +312,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
       val fileName = tuple._1
       val result = tuple._2
 
-      val fileRes = getClass.getResource(filePrefix + fileName + ".sil")
+      val fileRes = getClass.getResource(filePrefix + fileName + ".vpr")
       assert(fileRes != null, s"File $filePrefix$fileName not found")
       val file = Paths.get(fileRes.toURI)
 
@@ -345,7 +352,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
         replacer = mDecl.formalReturns.zip(m.targets).map(x => x._1.localVar -> x._2).toMap
         val inPosts = replacedArgs.map(replaceStrat.execute[Exp](_)).map(x => Inhale(x)(m.pos, m.info))
 
-        Seqn(exPres ++ inPosts, Seq())(m.pos, m.info)
+        (Seqn(exPres ++ inPosts, Seq())(m.pos, m.info), anc)
     }, Traverse.Innermost)
 
     files foreach {
@@ -480,13 +487,13 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     // Program transformer or rewriter
     val programTransformed = StrategyBuilder.Ancestor[Node]({
       case (l@LocalVarAssign(lhs, rhs), ctx) =>
-        Seqn(
+        (Seqn(
           Seq(
             Assert(NeCmp(lhs, rhs)())(),
             ctx.noRec[LocalVarAssign](l)
           ),
           Seq()
-        )()
+        )(), ctx)
     }).execute[Program](programBefore)
 
     // Final program to compare with transformed program

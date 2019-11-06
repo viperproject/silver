@@ -120,12 +120,11 @@ trait Node extends Traversable[Node] with Rewritable {
     * Allows a transformation with a custom context threaded through
     *
     * @see [[viper.silver.ast.utility.ViperStrategy]] */
-  def transformWithContext[C](transformation: PartialFunction[(Node,C), Node] = PartialFunction.empty,
+  def transformWithContext[C](transformation: PartialFunction[(Node,C), (Node, C)] = PartialFunction.empty,
                              initialContext: C,
-                              updateFunc: PartialFunction[(Node, C), C] = PartialFunction.empty, // use this to update the context passed recursively down
                 recurse: Traverse = Traverse.Innermost)
   : this.type =
-    ViperStrategy.CustomContext[C](transformation, initialContext, updateFunc, recurse) execute[this.type] (this)
+    ViperStrategy.CustomContext[C](transformation, initialContext, recurse) execute[this.type] (this)
 
   def transformNodeAndContext[C](transformation: PartialFunction[(Node,C), (Node, C)],
                                  initialContext: C,

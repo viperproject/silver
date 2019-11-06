@@ -150,7 +150,9 @@ abstract class AbstractVerificationError extends VerificationError {
     val errorT = offendingNode.transformError(this)
     val reasonT = errorT.reason.offendingNode.transformReason(errorT.reason)
 
-    errorT.withReason(reasonT)
+    val res = errorT.withReason(reasonT)
+    res.parsedModel = parsedModel
+    res
   }
 
   def withReason(reason: ErrorReason): AbstractVerificationError
