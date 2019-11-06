@@ -66,33 +66,3 @@ method TestjoinTk$(this: Ref, k$_1: Perm)
   this.Testtk$.joinable$ := false
   assert acc(TestV$(this), write)
 }
-
-method Testtest$(this: Ref, k$_2: Perm)
-  requires this != null
-  requires k$_2 > none
-  requires write > k$_2
-  requires acc(this.Testx$, write) && (this.Testx$ == 0)
-  requires acc(this.Testtk$, write)
-{
-  var newK$: Perm
-  var tklocal: Ref
-  var newK$_1: Perm
-  fold acc(TestV$(this), write)
-  fresh newK$
-  constraining(newK$) {
-    tklocal := new(old$methodPermission, joinable$, Testx$, Testtk$, par$Testfoo$this$_2, par$Testfoo$k$, par$TestjoinTk$this$_3, par$TestjoinTk$k$_1, par$Testtest$k$_2)
-    tklocal.Testtk$ := null
-    tklocal.par$Testfoo$this$_2 := null
-    tklocal.par$TestjoinTk$this$_3 := null
-    tklocal.joinable$ := true
-    tklocal.old$methodPermission := newK$
-    tklocal.par$Testfoo$this$_2 := this
-    tklocal.par$Testfoo$k$ := newK$
-    exhale true && (this != null) && (newK$ > none) && (write > newK$) && acc(TestV$(this), write)
-  }
-  this.Testtk$ := tklocal
-  fresh newK$_1
-  constraining(newK$_1) {
-    TestjoinTk$(this, newK$_1)
-  }
-}

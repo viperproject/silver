@@ -78,15 +78,6 @@ case class FieldAssign(lhs: FieldAccess, rhs: Exp)(val pos: Position = NoPositio
     (if(!Consistency.isAssignable(rhs, lhs)) Seq(ConsistencyError(s"Right-hand side $rhs is not assignable to left-hand side $lhs.", lhs.pos)) else Seq())
 }
 
-/** A method/function/domain function call. - AS: this comment is misleading - the trait is currently not used for method calls below */
-trait Call {
-//  require(Consistency.areAssignable(args, formalArgs), s"$args vs $formalArgs for callee: $callee") <- this check has been moved to the Program AST node
-
-  def callee: String
-
-  def args: Seq[Exp]
-}
-
 /** A method call. */
 case class MethodCall(methodName: String, args: Seq[Exp], targets: Seq[LocalVar])(val pos: Position, val info: Info, val errT: ErrorTrafo) extends Stmt {
   override lazy val check : Seq[ConsistencyError] = {
@@ -197,27 +188,6 @@ case class Label(name: String, invs: Seq[Exp])(val pos: Position = NoPosition, v
   * control flow graph are due to while loops.
   */
 case class Goto(target: String)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt
-
-/** A fresh statement assigns a fresh, dedicated symbolic permission values to
-  * each of the passed variables.
-  */
-case class Fresh(vars: Seq[LocalVar])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos) extends Stmt {
-  override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    vars.flatMap(v=>{ if(!(v isSubtype Perm)) Seq(ConsistencyError(s"Fresh statements can only be used with variables of type Perm, but found ${v.typ}.", v.pos)) else Seq()})
-}
-
-/** A constraining-block takes a sequence of permission-typed variables,
-  * each of which is marked as constrainable while executing the statements
-  * in the body of the block. Potentially constraining statements are, e.g.,
-  * exhale-statements.
-  */
-case class Constraining(vars: Seq[LocalVar], body: Seqn)(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
-  extends Stmt {
-  override lazy val check : Seq[ConsistencyError] =
-    (if(!Consistency.noResult(this)) Seq(ConsistencyError("Result variables are only allowed in postconditions of functions.", pos)) else Seq()) ++
-    vars.flatMap(v=>{ if(!(v isSubtype Perm)) Seq(ConsistencyError(s"Constraining statements can only be used with variables of type Perm, but found ${v.typ}.", v.pos)) else Seq()})
-}
 
 /** Local variable declaration statement.
   *
