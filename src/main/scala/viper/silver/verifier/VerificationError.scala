@@ -29,31 +29,32 @@ case class Model(entries: Map[String,ModelEntry]) {
 object Model {
 
   def apply(modelString: String) : Model = {
-    val SinglePattern = "^([a-zA-Z0-9_!@%+$\\[\\]#.<>~]+) -> ([a-zA-Z0-9_!@%+$.()\\- /<>~]+)".r
-    val MapPatternStart = "^([a-zA-Z0-9_!@%+$\\[\\]#.<>~]+) -> \\{".r
-    val MapPatternEntry = "^[\\s]*(([a-zA-Z0-9_!@%+$\\[\\].()\\- /<>~]+ )+)-> ([a-zA-Z0-9_!@%+$.()\\- /<>~]+)".r
-    val MapPatternSingleEntry = "^[\\s]*([a-zA-Z0-9_!@%+$.()\\- /<>~]+)".r
+    val SinglePattern = "^([^\\s{}]+) -> ([^{}]+)".r
+    val MapPatternStart = "^([^\\s{}]+) -> \\{".r
+    val MapPatternEntry = "^[\\s]+(([^\\s{}]+ )+)-> ([^{}]+)".r
+    val MapPatternSingleEntry = "^[\\s]+([^{}]+)".r
     val resMap = new mutable.HashMap[String, ModelEntry]()
     var currentKey : Option[String] = None
     var currentMap : mutable.HashMap[Seq[String], String] = null
     var elseVal : Option[String] = None
-    for (l <- modelString.linesIterator){
+    for (l <- modelString.linesIterator) {
       l match {
         case SinglePattern(lhs, rhs) => resMap.update(lhs.trim, SingleEntry(rhs.trim))
-        case MapPatternStart(lhs) if currentKey.isEmpty => {
+        case MapPatternStart(lhs) if currentKey.isEmpty =>
           currentKey = Some(lhs.trim)
           currentMap = new mutable.HashMap[Seq[String], String]()
           elseVal = None
-        }
-        case MapPatternEntry(keys, _, value) if currentKey.isDefined && keys.trim == "else" => elseVal = Some(value.trim)
-        case MapPatternSingleEntry(value) if currentKey.isDefined => elseVal = Some(value.trim)
         case MapPatternEntry(keys, _, value) if currentKey.isDefined =>
-          currentMap.update(keys.split(" "), value.trim)
-        case "}" => {
+          if (keys.trim == "else") {
+            elseVal = Some(value.trim)
+          } else {
+            currentMap.update(keys.split(" "), value.trim)
+          }
+        case MapPatternSingleEntry(value) if currentKey.isDefined => elseVal = Some(value.trim)
+        case "}" =>
           resMap.update(currentKey.get, MapEntry(currentMap.toMap, elseVal.get))
           currentKey = None
-        }
-        case _ => sys.error("Invalid model: '" + l + "' " + modelString)
+        case _ => sys.error("Invalid line '" + l + "' in model\n" + modelString)
       }
 
     }
