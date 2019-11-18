@@ -1,8 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-//:: IgnoreFile(/carbon/issue/283/)
-
 /* This example encodes and specifies an iterative implementation of inserting
  * a value into a linked list. A magic wand is used to book-keep permissions.
  *
@@ -88,6 +86,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
     package (A) --* B {
         fold List(prev)
         //:: UnexpectedOutput(apply.failed:assertion.false, /silicon/issue/190/)
+        //:: UnexpectedOutput(apply.failed:assertion.false, /carbon/issue/290/)
         apply (acc(List(prev)) && elems(prev) == Seq(x) ++ oElems) --*  (acc(List(xs)) && elems(xs) == old(elems(xs))[0..oi] ++ (Seq(x) ++ oElems))
     }
   }
@@ -129,6 +128,7 @@ method insert(xs: Ref, x: Int) returns (i: Int)
       --*
     acc(List(xs)) && elems(xs) == old(elems(xs))[0..i] ++ (Seq(x) ++ crtElems)
 
+  //:: UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/290/)
   assert acc(List(crt))&& elems(crt) == Seq(x) ++ crtElems
 
   apply
