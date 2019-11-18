@@ -1,6 +1,8 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
+//:: IgnoreFile(/silicon/issue/40/)
+
 field next: Ref
 
 predicate valid(this: Ref) {
@@ -19,4 +21,17 @@ method testNestingUnfold(this: Ref)
     assert ((this.next) != (this.next.next))
     assert ((this) != (this.next.next))
   }
+}
+
+
+predicate valid2(this: Ref) {
+  acc(this.next) &&
+  (((this.next) != (null)) ==> acc(valid2(this.next)))
+}
+
+method testNestingUnfold2(this: Ref)
+  requires acc(valid2(this))
+{
+  unfold acc(valid2(this))
+  assert ((this) != (this.next))
 }
