@@ -182,8 +182,8 @@ object StrategyBuilder {
     * @tparam N Common supertype of every node in the tree
     * @return Visitor object ready to use
     */
-  def SlimVisitor[N <: Rewritable](f: N => Unit) = {
-    new StrategyVisitor[N, SimpleContext[N]]({ (a: N, _: SimpleContext[N]) => f(a) }) defaultContext new NoContext[N]
+  def SlimVisitor[N <: Rewritable](f: PartialFunction[N, Unit]) = {
+    new StrategyVisitor[N, SimpleContext[N]]({ case (a: N @unchecked, _: SimpleContext[N]) => f(a) }) defaultContext new NoContext[N]
   }
 
   /**
@@ -193,7 +193,7 @@ object StrategyBuilder {
     * @tparam N Common supertype of every node in the tree
     * @return Visitor object ready to use
     */
-  def AncestorVisitor[N <: Rewritable](f: (N, ContextA[N]) => Unit) = {
+  def AncestorVisitor[N <: Rewritable](f: PartialFunction[(N, ContextA[N]), Unit]) = {
     new StrategyVisitor[N, ContextA[N]](f) defaultContext new PartialContextA[N]
   }
 
@@ -846,11 +846,11 @@ class PartialContextCC[N <: Rewritable, CUSTOM](val custom: CUSTOM) extends Part
 
   * A visitor that executes a unit-result function on every node
   *
-  * @param visitNode Function used for visiting every node
+  * @param visitNode Partial function used for visiting every node
   * @tparam N Type of the AST nodes
   * @tparam C Type of context
   */
-class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) => Unit) extends StrategyInterface[N] {
+class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: PartialFunction[(N, C), Unit]) extends StrategyInterface[N] {
 
   // Function that defines recursion
   protected var recursionFunc: PartialFunction[N, Seq[AnyRef]] = PartialFunction.empty
@@ -915,7 +915,8 @@ class StrategyVisitor[N <: Rewritable, C <: Context[N]](val visitNode: (N, C) =>
         case node: N @unchecked =>
           val c = context.addAncestor(node).asInstanceOf[C]
 
-          visitNode(node, c)
+          if (visitNode.isDefinedAt(node, c))
+            visitNode(node, c)
 
           val allowedToRecurse = recursionFunc.applyOrElse(node, (_: N) => node.children).toSet
           node.children.filter(allowedToRecurse).foreach(visitTopDown(_, c))
