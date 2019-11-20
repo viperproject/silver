@@ -465,7 +465,7 @@ object FastParser extends PosParser[Char, String] {
     // The position of every node inside the macro is the position where the macro is "called"
     def adaptPositions(body: PNode, f: FastPositioned): Unit = {
       val adapter = StrategyBuilder.SlimVisitor[PNode] {
-        n => {
+        case n => {
           FastPositions.setStart(n, f.start, force = true)
           FastPositions.setFinish(n, f.finish, force = true)
         }
