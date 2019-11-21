@@ -290,11 +290,15 @@ object AssumeRewriter {
       case a: Assume => rewriteInhale(Inhale(rewrite(a.exp, pInvs))(a.pos))
     }).execute(pInvs)
 
-    ViperStrategy.Slim({
-      case p: Program =>
-        val assumeDomain = Domain(domainName, funcs, axioms)(info = Synthesized)
+    if (funcs.isEmpty && domains.isEmpty) {
+      pAssume
+    } else {
+      ViperStrategy.Slim({
+        case p: Program if funcs.nonEmpty =>
+          val assumeDomain = Domain(domainName, funcs, axioms)(info = Synthesized)
 
-        Program(p.domains ++ domains :+ assumeDomain, p.fields, p.functions, p.predicates, p.methods)(p.pos, p.info, p.errT)
-    }).execute(pAssume)
+          Program(p.domains ++ domains :+ assumeDomain, p.fields, p.functions, p.predicates, p.methods, p.extensions)(p.pos, p.info, p.errT)
+      }).execute(pAssume) 
+    }
   }
 }
