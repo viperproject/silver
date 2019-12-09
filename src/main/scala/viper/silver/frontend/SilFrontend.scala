@@ -6,20 +6,18 @@
 
 package viper.silver.frontend
 
-import viper.silver.ast.SourcePosition
+import java.nio.file.{Path, Paths}
+
+import fastparse.all
+import fastparse.all.{Parsed, ParserInput}
 import viper.silver.ast.utility.Consistency
-import viper.silver.FastMessaging
-import viper.silver.ast._
+import viper.silver.ast.{SourcePosition, _}
 import viper.silver.parser._
-import viper.silver.plugin.SilverPluginManager
+import viper.silver.plugin.{SilverPluginManager}
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
-import fastparse.all.{Parsed, ParserInput}
-import fastparse.all
-import java.nio.file.{Path, Paths}
-import viper.silver.FastPositions
-
+import viper.silver.{FastMessaging, FastPositions}
 
 /**
  * Common functionality to implement a command-line verifier for Viper.  This trait
@@ -206,7 +204,7 @@ trait SilFrontend extends DefaultFrontend {
       case Some(inputPlugin) =>
         val result = FastParser.parse(inputPlugin, file, Some(_plugins))
           result match {
-            case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, err_list), _) =>
+            case Parsed.Success(e@ PProgram(_, _, _, _, _, _, _, _, err_list), _) =>
               if (err_list.isEmpty || err_list.forall(p => p.isInstanceOf[ParseWarning])) {
                 reporter report WarningsDuringParsing(err_list)
                 Succ({e.initProperties(); e})
@@ -280,7 +278,7 @@ trait SilFrontend extends DefaultFrontend {
             else inputPlugin.methods map (_.name)
 
           val methods = inputPlugin.methods filter (m => verifyMethods.contains(m.name))
-          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods)(inputPlugin.pos, inputPlugin.info)
+          val program = Program(inputPlugin.domains, inputPlugin.fields, inputPlugin.functions, inputPlugin.predicates, methods, inputPlugin.extensions)(inputPlugin.pos, inputPlugin.info)
 
           _plugins.beforeVerify(program) match {
             case Some(programPlugin) => Succ(programPlugin)

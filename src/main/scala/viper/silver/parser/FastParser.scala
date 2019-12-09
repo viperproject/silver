@@ -65,6 +65,7 @@ object FastParser extends PosParser[Char, String] {
         var functions = p.functions
         var methods = p.methods
         var predicates = p.predicates
+        var extensions = p.extensions
         var errors = p.errors
 
         def appendNewImports(imports: Seq[PImport], current: Path, fromLocal: Boolean) {
@@ -100,6 +101,7 @@ object FastParser extends PosParser[Char, String] {
           functions ++= newProg.functions
           methods ++= newProg.methods
           predicates ++= newProg.predicates
+          extensions ++= newProg.extensions
           errors ++= newProg.errors
         }
 
@@ -130,14 +132,14 @@ object FastParser extends PosParser[Char, String] {
             j += 1
           }
         }
-      PProgram(Seq(), macros, domains, fields, functions, predicates, methods, errors)
+      PProgram(Seq(), macros, domains, fields, functions, predicates, methods, extensions, errors)
     }
 
 
     try {
       val rp = RecParser(f).parses(s)
       rp match {
-        case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, _), e) =>
+        case Parsed.Success(program@PProgram(_, _, _, _, _, _, _, _, _), e) =>
           val importedProgram = resolveImports(program)                             // Import programs
           val expandedProgram = expandDefines(importedProgram)                      // Expand macros
           Parsed.Success(expandedProgram, e)
@@ -153,6 +155,7 @@ object FastParser extends PosParser[Char, String] {
           column = pos.column
         }
         ParseError(msg, SourcePosition(_file, line, column))
+      case _:Throwable =>
     }
   }
 
@@ -428,7 +431,7 @@ object FastParser extends PosParser[Char, String] {
       linearizeMethod(doExpandDefines(localMacros ++ globalMacros, methodWithoutMacros, p))
     })
 
-    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.errors ++ warnings)
+    PProgram(p.imports, p.macros, domains, p.fields, functions, predicates, methods, p.extensions, p.errors ++ warnings)
   }
 
 
@@ -690,7 +693,7 @@ object FastParser extends PosParser[Char, String] {
 
   val LHS_OLD_LABEL = "lhs"
 
-  val keywords = Set("result",
+  lazy val keywords = Set("result",
     // types
     "Int", "Perm", "Bool", "Ref", "Rational",
     // boolean constants
@@ -722,14 +725,14 @@ object FastParser extends PosParser[Char, String] {
     // permission syntax
     "acc", "wildcard", "write", "none", "epsilon", "perm",
     // modifiers
-    "unique")
+    "unique") | ParserExtension.extendedKeywords
 
 
-  lazy val atom: P[PExp] = P(integer | booltrue | boolfalse | nul | old
+  lazy val atom: P[PExp] = P(ParserExtension.newExpAtStart | integer | booltrue | boolfalse | nul | old
     | result | unExp
     | "(" ~ exp ~ ")" | accessPred | inhaleExhale | perm | let | quant | forperm | unfolding | applying
     | setTypedEmpty | explicitSetNonEmpty | multiSetTypedEmpty | explicitMultisetNonEmpty | seqTypedEmpty
-    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse)
+    | seqLength | explicitSeqNonEmpty | seqRange | fapp | typedFapp | idnuse | ParserExtension.newExpAtEnd)
 
 
   lazy val result: P[PResultLit] = P(keyword("result").map { _ => PResultLit() })
@@ -943,13 +946,13 @@ object FastParser extends PosParser[Char, String] {
     case (func, args, typeGiven) => PCall(func, args, Some(typeGiven))
   }
 
-  lazy val stmt: P[PStmt] = P(macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
-    inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt |
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block)
+  lazy val stmt: P[PStmt] = P(ParserExtension.newStmtAtStart | macroassign | fieldassign | localassign | fold | unfold | exhale | assertP |
+    inhale | assume | ifthnels | whle | varDecl | defineDecl | newstmt | 
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd)
 
-  lazy val nodefinestmt: P[PStmt] = P(fieldassign | localassign | fold | unfold | exhale | assertP |
+  lazy val nodefinestmt: P[PStmt] = P(ParserExtension.newStmtAtStart | fieldassign | localassign | fold | unfold | exhale | assertP |
     inhale | assume | ifthnels | whle | varDecl | newstmt |
-    methodCall | goto | lbl | packageWand | applyWand | macroref | block)
+    methodCall | goto | lbl | packageWand | applyWand | macroref | block | ParserExtension.newStmtAtEnd)
 
   lazy val macroref: P[PMacroRef] = P(idnuse).map(a => PMacroRef(a))
 
@@ -995,7 +998,7 @@ object FastParser extends PosParser[Char, String] {
     case (cond, invs, body) => PWhile(cond, invs, body)
   }
 
-  lazy val inv: P[PExp] = P(keyword("invariant") ~ exp ~ ";".?)
+  lazy val inv: P[PExp] = P((keyword("invariant") ~ exp ~ ";".?) | ParserExtension.invSpecification)
 
   lazy val varDecl: P[PLocalVarDecl] = P(keyword("var") ~/ idndef ~ ":" ~ typ ~ (":=" ~ exp).?).map { case (a, b, c) => PLocalVarDecl(a, b, c) }
 
@@ -1030,7 +1033,7 @@ object FastParser extends PosParser[Char, String] {
 
   lazy val applying: P[PExp] = P(keyword("applying") ~/ "(" ~ magicWandExp ~ ")" ~ "in" ~ exp).map { case (a, b) => PApplying(a, b) }
 
-  lazy val programDecl: P[PProgram] = P((preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl).rep).map {
+  lazy val programDecl: P[PProgram] = P((ParserExtension.newDeclAtStart | preambleImport | defineDecl | domainDecl | fieldDecl | functionDecl | predicateDecl | methodDecl | ParserExtension.newDeclAtEnd).rep).map {
     decls => {
       PProgram(
         decls.collect { case i: PImport => i }, // Imports
@@ -1040,6 +1043,7 @@ object FastParser extends PosParser[Char, String] {
         decls.collect { case f: PFunction => f }, // Functions
         decls.collect { case p: PPredicate => p }, // Predicates
         decls.collect { case m: PMethod => m }, // Methods
+        decls.collect { case e: PExtender => e }, // Extensions
         Seq() // Parse Errors
       )
     }
@@ -1085,9 +1089,9 @@ object FastParser extends PosParser[Char, String] {
     post.rep ~ ("{" ~ exp ~ "}").?).map { case (a, b, c, d, e, f) => PFunction(a, b, c, d, e, f) }
 
 
-  lazy val pre: P[PExp] = P("requires" ~/ exp ~ ";".?)
+  lazy val pre: P[PExp] = P(("requires" ~/ exp ~ ";".?) | ParserExtension.preSpecification)
 
-  lazy val post: P[PExp] = P("ensures" ~/ exp ~ ";".?)
+  lazy val post: P[PExp] = P(("ensures" ~/ exp ~ ";".?) | ParserExtension.postSpecification)
 
   lazy val decCl: P[Seq[PExp]] = P(exp.rep(sep = ","))
 

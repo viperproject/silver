@@ -21,7 +21,7 @@ class UtilityTests extends FunSuite with Matchers {
       ), Seq())(NoPosition, NoInfo, NoTrafos))
       )(NoPosition)
 
-    val testProgram : Program = Program(Seq(),Seq(Field("f",Int)(NoPosition)),Seq(),Seq(),Seq(testMethod))(NoPosition)
+    val testProgram : Program = Program(Seq(), Seq(Field("f",Int)(NoPosition)), Seq(), Seq(), Seq(testMethod), Seq())(NoPosition)
 
     val rewritten = AssumeRewriter.rewrite(assumeBody,testProgram)
 

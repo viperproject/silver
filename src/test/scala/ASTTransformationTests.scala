@@ -81,11 +81,11 @@ class ASTTransformationTests extends FunSuite {
 
      val binExp1 = PBinExp(PIntLit(1), "==", PIntLit(1))
      val method1 = PMethod(PIdnDef("m"), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PAssert(binExp1)))))
-     val original = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method1), Seq())
+     val original = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method1), Seq(), Seq())
 
      val binExp2 = PBinExp(PIntLit(3), "==", PIntLit(3))
      val method2 = PMethod(PIdnDef("m"), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(PAssert(binExp2)))))
-     val target = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method2), Seq())
+     val target = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(), Seq(), Seq(method2),  Seq(), Seq())
 
      case class Context(increment: Int)
 
@@ -118,11 +118,11 @@ class ASTTransformationTests extends FunSuite {
     val function = PFunction(PIdnDef("f"), Seq(PFormalArgDecl(PIdnDef("x"), TypeHelper.Int), PFormalArgDecl(PIdnDef("y"), TypeHelper.Int)), TypeHelper.Int, Seq(), Seq(), None)
     val assume1 = PAssume(PBinExp(PCall(PIdnUse("f"), Seq(PIntLit(1), PIntLit(1))), "==", PCall(PIdnUse("f"), Seq(PIntLit(1), PCall(PIdnUse("f"), Seq(PIntLit(1), PCall(PIdnUse("f"), Seq(PIntLit(1), PIntLit(1)))))))))
     val method1 = PMethod(PIdnDef("m"), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(assume1))))
-    val original = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(method1), Seq())
+    val original = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(method1),  Seq(), Seq())
 
     val assume2 = PAssume(PBinExp(PCall(PIdnUse("f"), Seq(PIntLit(2), PIntLit(1))), "==", PCall(PIdnUse("f"), Seq(PIntLit(2), PCall(PIdnUse("f"), Seq(PIntLit(3), PCall(PIdnUse("f"), Seq(PIntLit(4), PIntLit(1)))))))))
     val method2 = PMethod(PIdnDef("m"), Seq(), Seq(), Seq(), Seq(), Some(PSeqn(Seq(assume2))))
-    val target = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(method2), Seq())
+    val target = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(method2),  Seq(), Seq())
 
     case class Context(increment: Int)
 
@@ -142,7 +142,7 @@ class ASTTransformationTests extends FunSuite {
 
     val requires = PForall(Seq(PFormalArgDecl(PIdnDef("y"), TypeHelper.Int)), Seq(), PBinExp(PIdnUse("y"), "==", PIdnUse("y")))
     val function = PFunction(PIdnDef("f"), Seq(PFormalArgDecl(PIdnDef("x"), TypeHelper.Ref)), TypeHelper.Bool, Seq(requires), Seq(), None)
-    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(), Seq())
+    val program = PProgram(Seq(), Seq(), Seq(), Seq(), Seq(function), Seq(), Seq(), Seq(), Seq())
 
     case class Context()
 
