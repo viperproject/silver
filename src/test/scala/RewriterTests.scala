@@ -482,7 +482,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     val assign1 = LocalVarAssign(LocalVar("y", Int)(), IntLit(4)())()
     val assign2 = LocalVarAssign(LocalVar("y", Int)(), IntLit(4)())()
     val methodBefore = Method("m", Seq(), Seq(), Seq(), Seq(), Some(Seqn(Seq(assign1, assign2), Seq(localVarDecl))()))()
-    val programBefore = Program(Seq(), Seq(), Seq(), Seq(), Seq(methodBefore))()
+    val programBefore = Program(Seq(), Seq(), Seq(), Seq(), Seq(methodBefore), Seq())()
 
     // Program transformer or rewriter
     val programTransformed = StrategyBuilder.Ancestor[Node]({
@@ -499,7 +499,7 @@ class RewriterTests extends FunSuite with FileComparisonHelper {
     // Final program to compare with transformed program
     val assert1 = Assert(NeCmp(LocalVar("y", Int)(), IntLit(4)())())()
     val methodAfter = Method("m", Seq(), Seq(), Seq(), Seq(), Some(Seqn(Seq(Seqn(Seq(assert1, assign1), Seq())(), Seqn(Seq(assert1, assign2), Seq())()), Seq(localVarDecl))()))()
-    val programAfter = Program(Seq(), Seq(), Seq(), Seq(), Seq(methodAfter))()
+    val programAfter = Program(Seq(), Seq(), Seq(), Seq(), Seq(methodAfter), Seq())()
 
     // Compare transformed program with expected program
     assert(programAfter === programTransformed)

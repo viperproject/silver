@@ -11,7 +11,7 @@ import viper.silver.ast.pretty._
 import viper.silver.ast.utility._
 import viper.silver.ast.utility.QuantifiedPermissions.QuantifiedPermissionAssertion
 import viper.silver.ast.utility.rewriter.{StrategyBuilder, Traverse}
-import viper.silver.verifier.ConsistencyError
+import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /** Expressions. */
 sealed trait Exp extends Hashable with Typed with Positioned with Infoed with TransformableErrors with PrettyExpression {
@@ -1024,6 +1024,7 @@ trait ExtensionExp extends Exp {
   def extensionIsPure: Boolean
   def extensionSubnodes: Seq[Node]
   def typ: Type
+  def verifyExtExp(): VerificationResult
   /** Pretty printing functionality as defined for other nodes in class FastPrettyPrinter.
     * Sample implementation would be text("old") <> parens(show(e)) for pretty-printing an old-expression.*/
   def prettyPrint: PrettyPrintPrimitives#Cont

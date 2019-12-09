@@ -18,12 +18,11 @@ import scala.collection.immutable
 import scala.reflect.ClassTag
 
 /** A Silver program. */
-case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method])
-                  (val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
+case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Function], predicates: Seq[Predicate], methods: Seq[Method], extensions: Seq[ExtensionMember])(val pos: Position = NoPosition, val info: Info = NoInfo, val errT: ErrorTrafo = NoTrafos)
   extends Node with DependencyAware with Positioned with Infoed with Scope with TransformableErrors {
 
   val scopedDecls: Seq[Declaration] =
-    domains ++ fields ++ functions ++ predicates ++ methods ++
+    domains ++ fields ++ functions ++ predicates ++ methods ++ extensions ++
     domains.flatMap(d => {d.axioms ++ d.functions})
 
   lazy val magicWandStructures: Seq[MagicWandStructure] =
@@ -93,7 +92,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
   /** Checks that the applied domain functions exists, that the arguments of function applications are assignable to
     * formalArgs, that the type of function applications matches with the type of the function definition and that also
     * the name of the domain matches.
-    **/
+    */
   lazy val checkDomainFunctionApplicationsAreValid: Seq[ConsistencyError] = {
     var s = Seq.empty[ConsistencyError]
 
@@ -704,4 +703,11 @@ case object NotOp extends UnOp with BoolDomainFunc {
   lazy val op = "!"
   lazy val priority = 10
   lazy val fixity = Prefix
+}
+
+/**
+  * The Extension Member trait provides the way to expand the Ast to include new Top Level declarations
+  */
+trait ExtensionMember extends Member{
+  def extensionSubnodes: Seq[Node]
 }
