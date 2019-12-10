@@ -7,7 +7,7 @@
 package viper.silver.ast
 
 import scala.reflect.ClassTag
-import pretty.FastPrettyPrinter
+import pretty.{FastPrettyPrinter, PrettyPrintingConfig}
 import utility._
 import viper.silver.ast.utility.rewriter.Traverse.Traverse
 import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder, Traverse}
@@ -339,6 +339,13 @@ case object NoInfo extends Info {
 /** A simple `Info` that contains a list of comments. */
 case class SimpleInfo(comment: Seq[String]) extends Info {
   lazy val isCached = false
+}
+
+/** An `Info` instance for attaching AST nodes to a term. */
+case class AstAttachmentInfo(description: String, nodes: Seq[Node]) extends Info {
+  override def comment: Seq[String] =
+    if (PrettyPrintingConfig.printAstAttachments) nodes.map(description ++ _.toString()) else Nil
+  override lazy val isCached = false
 }
 
 /** An `Info` instance for labelling a quantifier as auto-triggered. */

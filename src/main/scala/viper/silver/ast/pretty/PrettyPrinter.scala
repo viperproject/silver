@@ -455,6 +455,14 @@ trait BracketPrettyPrinter extends FastPrettyPrinterBase {
   }
 }
 
+object PrettyPrintingConfig {
+  /**
+   * Indicates whether AST nodes that are attached to a node should be printed as comments.
+   * @see [[viper.silver.ast.AstAttachmentInfo]]
+   */
+  var printAstAttachments = false
+}
+
 /**
   * Pretty printer for the Silver language
   */
@@ -569,7 +577,7 @@ object FastPrettyPrinter extends FastPrettyPrinterBase with BracketPrettyPrinter
     if (contracts == null)
       line <> name <+> uninitialized
     else
-      lineIfSomeNonEmpty(contracts) <> ssep(contracts map (text(name) <+> show(_)), line)
+      lineIfSomeNonEmpty(contracts) <> ssep(contracts map (e => showComment(e) <@> text(name) <+> show(e)), line)
   }
 
   /** Returns `n` lines if at least one element of `s` is non-empty, and an empty document otherwise. */
