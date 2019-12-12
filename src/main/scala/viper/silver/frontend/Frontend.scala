@@ -246,7 +246,7 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
     }
   }
 
-  override def result: VerificationResult = {          _errors ++= errors
+  override def result: VerificationResult = {
 
     if (_errors.isEmpty) {
       require(state >= DefaultStates.Verification)
