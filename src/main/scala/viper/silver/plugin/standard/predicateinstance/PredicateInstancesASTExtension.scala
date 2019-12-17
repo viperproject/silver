@@ -1,11 +1,15 @@
-package viper.silver.ast
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) 2011-2019 ETH Zurich.
 
-import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, show, space, ssep, text, toParenDoc}
+package viper.silver.plugin.standard.predicateinstance
+
+import viper.silver.ast._
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, space, ssep, text, show}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
 import viper.silver.verifier.{ConsistencyError, VerificationResult}
-
-import scala.None
-
 
 case object PredicateInstanceType extends ExtensionType {
 
@@ -14,10 +18,7 @@ case object PredicateInstanceType extends ExtensionType {
 }
 
 
-case class PredicateInstance(p: String, args: Seq[Exp])
-                            (override val pos: Position = NoPosition,
-                             override val info: Info = NoInfo,
-                             override val errT: ErrorTrafo = NoTrafos) extends ExtensionExp {
+case class PredicateInstance(args: Seq[Exp], p: String)(override val pos: Position = NoPosition, override val info: Info = NoInfo, override val errT: ErrorTrafo = NoTrafos) extends ExtensionExp {
 
   override def extensionIsPure: Boolean = true
 
@@ -28,7 +29,7 @@ case class PredicateInstance(p: String, args: Seq[Exp])
   override def verifyExtExp(): VerificationResult = ???
 
   override def prettyPrint: PrettyPrintPrimitives#Cont =
-    text("PredicateInstance") <> parens(text(p) <> parens(ssep(args map show, char (',') <> space)))
+    text("@") <> text(p) <> parens(ssep(args map show, char (',') <> space))
 
   lazy val predicateAccessPredicate: PredicateAccessPredicate = PredicateAccessPredicate(PredicateAccess(args, p)(), EpsilonPerm()())()
 }
