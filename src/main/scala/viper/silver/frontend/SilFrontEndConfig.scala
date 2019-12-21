@@ -97,6 +97,13 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = false
   )
 
+  val decreases = opt[Boolean]("disableDecreasesChecks",
+    descr = "Deactivate termination checks.",
+    default = Some(false),
+    noshort = true,
+    hidden = true
+  )
+
   validateOpt(file, ignoreFile) {
     case (_, Some(true)) => Right(Unit)
     case (Some(path), _) =>

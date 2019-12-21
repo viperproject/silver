@@ -13,7 +13,7 @@ import fastparse.all.{Parsed, ParserInput}
 import viper.silver.ast.utility.Consistency
 import viper.silver.ast.{SourcePosition, _}
 import viper.silver.parser._
-import viper.silver.plugin.{SilverPluginManager}
+import viper.silver.plugin.SilverPluginManager
 import viper.silver.plugin.SilverPluginManager.PluginException
 import viper.silver.reporter._
 import viper.silver.verifier._
@@ -76,7 +76,9 @@ trait SilFrontend extends DefaultFrontend {
   protected var _config: SilFrontendConfig = _
   def config: SilFrontendConfig = _config
 
-  protected var _plugins: SilverPluginManager = SilverPluginManager()
+  protected var _defaultPlugins: Option[String] = Some("viper.plugin.termination.DecreasesPlugin")
+
+  protected var _plugins: SilverPluginManager = SilverPluginManager(_defaultPlugins)(reporter, logger, _config)
   def plugins: SilverPluginManager = _plugins
 
   protected var _startTime: Long = _
@@ -159,7 +161,8 @@ trait SilFrontend extends DefaultFrontend {
 
     if(_config != null) {
       // reset error messages of plugins
-      _plugins = SilverPluginManager(_config.plugin.toOption)(reporter, logger, _config)
+      val plugins: Option[String] = _config.plugin.toOption ++ _defaultPlugins reduceOption(_ + ":" + _)
+      _plugins = SilverPluginManager(plugins)(reporter, logger, _config)
     }
 
     FastPositions.reset()
