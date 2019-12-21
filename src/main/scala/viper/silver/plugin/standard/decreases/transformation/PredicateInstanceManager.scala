@@ -14,33 +14,27 @@ import viper.silver.verifier.ConsistencyError
 import scala.collection.immutable.ListMap
 
 /**
-  * Utility methods for predicate instances in termination checks.
-  * Also manages the creation of such instances.
+  * Utility functions to create predicate instances and nested relations on them.
   *
-  * The following features are needed in the program:
-  * "nested" domain function
+  * The following features have to be defined in the program (program field of ProgramManager)
+  * otherwise a consistency error is issued.
+  * "nestedPredicates" domain function
   * "PredicateInstance" domain
   */
 trait PredicateInstanceManager extends ProgramManager with ErrorReporter {
 
-  val nestedFunc: Option[DomainFunc] =  program.findDomainFunctionOptionally("nested")
+  val nestedFunc: Option[DomainFunc] =  program.findDomainFunctionOptionally("nestedPredicates")
   val PredicateInstanceDomain: Option[Domain] =  program.domains.find(_.name == "PredicateInstance") // findDomainOptionally()?
 
-  private val createdLocFunctions: collection.mutable.ListMap[String, Function] = collection.mutable.ListMap[String, Function]()
+  // list of all created predicate instance functions
+  private val createdPIFunctions: collection.mutable.ListMap[String, Function] = collection.mutable.ListMap[String, Function]()
 
-  protected def transformPredicateInstances(dc: DecreasesContainer): DecreasesContainer = {
-    dc match {
-      case DecreasesContainer(Some(dt@DecreasesTuple(tupleExpressions, _)), _, _) =>
-        val new_tupleExpressions = tupleExpressions.map(transformPredicateInstances)
-        if (new_tupleExpressions != tupleExpressions) {
-          dc.copy(tuple = Some(dt.copy(tupleExpressions=new_tupleExpressions)(dt.pos, dt.info, dt.errT)))
-        } else {
-          dc
-        }
-      case d => d
-    }
-  }
-
+  /**
+   * If exp is a PredicateAccess or PredicateAccessPredicate
+   * it is replaced with a predicate instance (IP) function call.
+   * @param exp to be replaced.
+   * @return transformed exp.
+   */
   protected def transformPredicateInstances(exp: Exp): Exp = {
     exp match {
       case p: PredicateAccess =>
@@ -54,6 +48,25 @@ trait PredicateInstanceManager extends ProgramManager with ErrorReporter {
         val locFunc = getPredicateInstanceFunction(predicate)
         FuncApp(locFunc, args)(pos = p.pos, info = p.info, errT = p.errT)
       case d => d // exp is not a predicate access therefore is not changed
+    }
+  }
+
+  /**
+   * Transforms the decreases tuple if the tuple contains PredicateAccess or PredicateAccessPredicate.
+   * Predicate instance (PI) function calls placed instead of them.
+   * @param dc: Decreases container to be updated.
+   * @return transformed decreases container.
+   */
+  protected def transformPredicateInstances(dc: DecreasesContainer): DecreasesContainer = {
+    dc match {
+      case DecreasesContainer(Some(dt@DecreasesTuple(tupleExpressions, _)), _, _) =>
+        val new_tupleExpressions = tupleExpressions.map(transformPredicateInstances)
+        if (new_tupleExpressions != tupleExpressions) {
+          dc.copy(tuple = Some(dt.copy(tupleExpressions=new_tupleExpressions)(dt.pos, dt.info, dt.errT)))
+        } else {
+          dc
+        }
+      case d => d
     }
   }
 
@@ -110,7 +123,7 @@ trait PredicateInstanceManager extends ProgramManager with ErrorReporter {
   /**
     * Traverses a predicate body (once) and adds corresponding inhales of the 'nested'-Relation
     * iff a predicate is inside of this body.
-    * locationDomain and nestedFun have to be defined!
+    * PredicateInstanceDomain and nestedPredication function must be defined!
     * @param body the part of the predicate-body which should be transform
     * @param unfoldedPredVar the body of the original predicate which should be analyzed
     * @return statements with the generated inhales: (Inhale(nested(pred1, pred2)))
@@ -201,11 +214,11 @@ trait PredicateInstanceManager extends ProgramManager with ErrorReporter {
   private def getPredicateInstanceFunction(pap: Predicate): Function = {
     assert(PredicateInstanceDomain.isDefined)
 
-    if (createdLocFunctions.contains(pap.name)) {
-      createdLocFunctions(pap.name)
+    if (createdPIFunctions.contains(pap.name)) {
+      createdPIFunctions(pap.name)
     } else {
       val uniquePredFuncName =
-        uniqueName("pred_" + pap.name)
+        uniqueName(pap.name + "_PI")
       val pred = program.findPredicate(pap.name)
       val newLocFunc =
         Function(uniquePredFuncName,
@@ -216,7 +229,7 @@ trait PredicateInstanceManager extends ProgramManager with ErrorReporter {
           None
         )(PredicateInstanceDomain.get.pos, PredicateInstanceDomain.get.info)
 
-      createdLocFunctions(pap.name) = newLocFunc
+      createdPIFunctions(pap.name) = newLocFunc
       functions(uniquePredFuncName) = newLocFunc
       newLocFunc
     }
@@ -237,10 +250,10 @@ trait PredicateInstanceManager extends ProgramManager with ErrorReporter {
   }
 
   def reportNestedNotDefined(pos: Position): Unit = {
-    reportError(ConsistencyError("Nested function is needed but not defined.", pos))
+    reportError(ConsistencyError("nestedPredicates function is needed but not declared.", pos))
   }
 
   def reportPredicateInstanceNotDefined(pos: Position): Unit = {
-    reportError(ConsistencyError("PredicateInstance domain is needed but not defined.", pos))
+    reportError(ConsistencyError("PredicateInstance domain is needed but not declared.", pos))
   }
 }

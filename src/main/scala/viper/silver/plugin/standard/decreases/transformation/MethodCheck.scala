@@ -32,7 +32,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
   def getMethodDecreasesContainer(method: String): DecreasesContainer = {
     transformPredicateInstances(
       program.methods.find(_.name == method) match {
-        case Some(f) => DecreasesContainer(f)
+        case Some(f) => DecreasesContainer.fromNode(f)
         case None => DecreasesContainer()
       }
     )
@@ -40,7 +40,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
 
   def getWhileDecreasesContainer(w: While): DecreasesContainer = {
     transformPredicateInstances(
-      DecreasesContainer(w)
+      DecreasesContainer.fromNode(w)
     )
   }
 
@@ -154,7 +154,10 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
       val context = ctxt.c
       val decWhile = getWhileDecreasesContainer(w)
 
-      // check that loop terminates under the methods tuple condition
+      val whileNumber = whileCounter
+      whileCounter = whileCounter + 1
+
+      // check that loop terminates under the methods tuple condition (if the loop is entered)
       val terminationCheck =
         getMethodDecreasesContainer(context.methodName).tuple match {
           case Some(methodTuple) =>
@@ -169,8 +172,9 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
             val reTrafo = reasonTrafoFactory.generateTerminationConditionFalse(w)
 
             val oldCondition = Old(methodTuple.getCondition)()
+            val requiredTerminationCondition = And(oldCondition, w.cond)()
 
-            val assertion = createConditionCheck(oldCondition, decWhile.terminationCondition, Map(), errTrafo, reTrafo)
+            val assertion = createConditionCheck(requiredTerminationCondition, decWhile.terminationCondition, Map(), errTrafo, reTrafo)
 
             Some(assertion)
           case None => None
@@ -183,9 +187,9 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
 
           val (oldCondition, conditionAssign): (Exp, Option[LocalVarAssign]) = whileTuple.condition match {
             case Some(condition) =>
-              // TODO: choose smarter names for copies (e.g. give each loop a number (info) and use that)
+              // TODO: check var name uniqueness
               val conditionCopy =
-                LocalVar(s"C_${condition.pos.toString.filterNot(c => c == '@')}", Bool)(condition.pos, condition.info, condition.errT)
+                LocalVar(s"W${whileNumber}_C", Bool)(condition.pos, condition.info, condition.errT)
               val assign = LocalVarAssign(conditionCopy, condition)(condition.pos, condition.info, condition.errT)
               (conditionCopy, Some(assign))
             case None => (TrueLit()(), None)
@@ -193,9 +197,9 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
 
           val (oldTupleExps, tupleAssigns): (Seq[Exp], Seq[LocalVarAssign]) = whileTuple.tupleExpressions.zipWithIndex.map(exp_i => {
             val (exp, i) = (exp_i._1, exp_i._2)
-            // TODO: choose smarter names for copies (e.g. give each loop a number (info) and use that)
+            // TODO: check var name uniqueness
             val expCopy =
-              LocalVar(s"T_${i}_${exp.pos.toString.filterNot(c => c == '@')}", exp.typ)(exp.pos, exp.info, exp.errT)
+              LocalVar(s"W${whileNumber}_T$i", exp.typ)(exp.pos, exp.info, exp.errT)
             val assign = LocalVarAssign(expCopy, exp)(expCopy.pos, expCopy.info, expCopy.errT)
             (expCopy, assign)
           }).unzip
@@ -238,13 +242,15 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
       (generateUnfoldNested(unfold.acc), ctxt)
   }
 
+  private var whileCounter: Int = 1
+
   private case class MContext (override val method: Method) extends MethodContext {
     override val methodName: String = method.name
   }
-}
 
-// context used
-trait MethodContext {
-  val method: Method
-  val methodName: String
+  // context used
+  private trait MethodContext {
+    val method: Method
+    val methodName: String
+  }
 }

@@ -6,8 +6,8 @@ import viper.silver.verifier.AbstractError
 import scala.collection.mutable
 
 /**
-  * An interface to transform a program (e.g. a program including check methods).
-  * Contains utility functions to avoid name conflicts (e.g. when adding a new domain)
+  * A simple interface to transform/extend a program.
+  * Contains utility functions to avoid name conflicts (e.g. when adding a new method)
   */
 trait ProgramManager{
 
@@ -23,16 +23,16 @@ trait ProgramManager{
   protected val extensions: mutable.Map[String, ExtensionMember] = collection.mutable.ListMap[String, ExtensionMember](program.extensions.map(e => e.name -> e): _*)
 
   /**
-   * Creates a new program with the all the features in the maps.
+   * Creates a new program containing all the transformed and newly added features.
    * @return new program.
    */
-  final protected def generateCheckProgram(): Program = {
+  final protected def getNewProgram: Program = {
     Program(domains.values.toSeq,
       fields.values.toSeq,
       functions.values.toSeq,
       predicates.values.toSeq,
       methods.values.toSeq,
-      program.extensions)(program.pos, program.info, program.errT)
+      extensions.values.toSeq)(program.pos, program.info, program.errT)
   }
 
 

@@ -33,7 +33,7 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
   /**
    * Parser for decreases clauses with following possibilities.
    *
-   * decreases exp (, exp)* (if exp)?
+   * decreases (exp (, exp)*)? (if exp)?
    * or
    * decreases _ (if exp)?
    * or
@@ -47,12 +47,7 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
   lazy val decreasesStar: noApi.P[PDecreasesStar] = P("*").map(_ => PDecreasesStar())
   lazy val condition: noApi.P[PExp] = P("if" ~/ exp)
 
-  /** Called before any processing happened.
-   *
-   * @param input      Source code as read from file
-   * @param isImported Whether the current input is an imported file or the main file
-   * @return Modified source code
-   */
+
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
     ParserExtension.addNewKeywords(Set[String](DecreasesKeyword))
@@ -63,11 +58,6 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
     input
   }
 
-  /** Called after methods are filtered but before the verification by the backend happens.
-   *
-   * @param input AST
-   * @return Modified AST
-   */
   override def beforeVerify(input: Program): Program = {
     // extract all decreases clauses from the program
     val newProgram = extractDecreasesClauses(input)
@@ -83,13 +73,6 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
     }
   }
 
-
-  /** Called after the verification. Error transformation should happen here.
-   * This will only be called if verification took place.
-   *
-   * @param input Result of verification
-   * @return Modified result
-   */
   override def mapVerificationResult(input: VerificationResult): VerificationResult = {
     if (deactivated) return input // if decreases checks are deactivated no verification result mapping is required.
 
@@ -101,6 +84,11 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
       })))
     }
   }
+
+  override def reportError(error: AbstractError): Unit = {
+    super.reportError(error)
+  }
+
 
   /**
    * Filters duplicates of errors.
@@ -118,17 +106,10 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
     }
   }
 
-  /** Can be called by the plugin to report an error while transforming the input.
-   *
-   * The reported error should correspond to the stage in which it is generated (e.g. no ParseError in beforeVerify)
-   *
-   * @param error The error to report
+  /**
+   * Extracts all the decreases clauses from the program
+   * and appends them to the corresponding AST node as DecreasesContainer (Info).
    */
-  override def reportError(error: AbstractError): Unit = {
-    super.reportError(error)
-  }
-
-
   private def extractDecreasesClauses(program: Program): Program = {
 
     val result: Program = ViperStrategy.Slim({
@@ -169,9 +150,9 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
   }
 
   /**
-   * Extracts decreases clauses from the sequence of expression.
+   * Extracts decreases clauses from the sequence of expressions.
    * Only one of each decreases clause type are extracted.
-   * If more exist, then consistency errors is issued.
+   * If more exist, then a consistency error is issued.
    * @param exps: sequence of expression from which decreases clauses should be extracted.
    * @return exps without decreases clauses and a decreases container containing decreases clauses from exps.
    */

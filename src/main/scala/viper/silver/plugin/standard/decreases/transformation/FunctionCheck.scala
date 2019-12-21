@@ -27,7 +27,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
   def getFunctionDecreasesContainer(functionName: String): DecreasesContainer = {
     transformPredicateInstances(
       program.findFunctionOptionally(functionName) match {
-        case Some(f) => DecreasesContainer(f)
+        case Some(f) => DecreasesContainer.fromNode(f)
         case None => DecreasesContainer()
       }
     )
@@ -36,9 +36,9 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
   /**
    * For each function in the (original) program new methods are added, which contain termination checks.
    */
-  protected def generateProofMethods(): Unit = {
+  protected def transformFunctions(): Unit = {
     program.functions.foreach(f => {
-      DecreasesContainer(f) match {
+      getFunctionDecreasesContainer(f.name) match {
         case DecreasesContainer(Some(_), _, _) => generateProofMethod(f)
         case _ => // if no decreases tuple is defined do nothing
       }
@@ -227,12 +227,12 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
     override val functionName: String = function.name
   }
-}
 
-// context used to create proof method
-trait FunctionContext extends ExpressionContext {
-  val height: Int
-  val function: Function
-  val functionName: String
-  override val unsupportedOperationException: Boolean = true
+  // context used to create proof method
+  private trait FunctionContext extends ExpressionContext {
+    val height: Int
+    val function: Function
+    val functionName: String
+    override val unsupportedOperationException: Boolean = true
+  }
 }

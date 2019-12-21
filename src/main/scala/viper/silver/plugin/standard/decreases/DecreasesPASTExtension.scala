@@ -10,6 +10,9 @@ import viper.silver.ast._
 import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
 
+/**
+ * Any possible decreases clause extends from this trait.
+ */
 sealed trait PDecreasesExp extends PExtender with PExp {
 
   // TODO: Don't know if this is necessary...

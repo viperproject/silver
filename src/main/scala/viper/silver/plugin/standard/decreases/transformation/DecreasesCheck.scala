@@ -10,7 +10,8 @@ import scala.collection.immutable.ListMap
 /**
   * A basic interface to help create termination checks.
   *
-  * Therefore it needs following things in the program:
+  * The following features have to be defined in the program (program field of ProgramManager)
+  * otherwise a consistency error is issued.
   * "decreasing" domain function
   * "bounded" domain function
   */
@@ -25,14 +26,14 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
 
         val mappedGivenCondition = givenCondition.replace(argMap)
 
-        // TODO: reasons for conditions itself
         val implies = Implies(requiredCondition, mappedGivenCondition)(errT = reTrafo)
         Assert(implies)(errT = errTrafo)
   }
 
 
   /**
-    * Creates checks to determine if the tuple decreases.
+    * Creates checks to determine if the tuple decreases,
+    * under the tuple condition of the bigger tuple.
     * If decreasing and bounded functions are not defined a consistency error is reported.
     * @param argMap Substitutions for smallerDec
     * @param errTrafo for termination related assertions
@@ -52,9 +53,8 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
       return EmptyStmt
     }
 
-      // only check decreasing of tuple if the condition is required.
+      // only check decreasing of tuple if the condition is true.
       val callerTupleCondition = biggerTuple.getCondition
-      val calleeTupleCondition = smallerTuple.getCondition.replace(argMap)
 
       val dtSmall = smallerTuple.tupleExpressions.map(_.replace(argMap))
 
@@ -69,17 +69,19 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
   }
 
   /**
-    * If expressions are not empty
-    * creates Expression to check decrease and bounded in lexicographical order.
-    * (decreasing(s,b) && bounded(b)) || (s==b && ( (decr...
-    * decreasingFunc and boundedFunc must be defined in the viper program (i.e. imported).
-    * @param biggerTuple [b,..] (can also be empty)
-    * @param smallerTuple [s,..]
-    * @return expression or false if expression is empty
+    * Creates Expression checking decreasing and boundedness of the two tuples in lexicographical order.
+    * (decreasing(s[0],b[0]) && bounded(b[0])) || (s[0]==b[0] && ( createLexDecreaseCheck(s{1..], b[1..]))
+    * Further, both tuples are considered to be extended with a TOP object,
+    * which is considered bigger than any other object.
+    * If the smallerTuple is empty, false is returned.
+    * decreasingFunc and boundedFunc must be defined.
+    * @param biggerTuple: tuple do be considered bigger
+    * @param smallerTuple: tuple do be considered smaller
+    * @return expression or false if smaller expression is empty
     */
   private def createLexDecreaseCheck(biggerTuple: Seq[Exp], smallerTuple: Seq[Exp], reasonTrafoFactory: ReasonTrafoFactory): Exp = {
 
-    assert(decreasingFunc.isDefined) // TODO: fails if not imported
+    assert(decreasingFunc.isDefined)
     assert(boundedFunc.isDefined)
 
     val simpleReTrafo = reasonTrafoFactory.generateTupleSimpleFalse()
@@ -141,10 +143,10 @@ trait DecreasesCheck extends ProgramManager with ErrorReporter {
   }
 
   def reportDecreasingNotDefined(pos: Position): Unit = {
-    reportError(ConsistencyError("Decreasing function is needed but not defined.", pos))
+    reportError(ConsistencyError("Function \"decreasing\" is required but not declared.", pos))
   }
 
   def reportBoundedNotDefined(pos: Position): Unit = {
-    reportError(ConsistencyError("Bounded function is needed but not defined.", pos))
+    reportError(ConsistencyError("Function \"bounded\" is required but not defined.", pos))
   }
 }

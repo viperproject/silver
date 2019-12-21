@@ -11,7 +11,7 @@ import viper.silver.verifier._
 
 /*
   All Errors and Reasons concerning termination checks
-  Reason Factories
+  and factories for such reasons.
  */
 
 /**

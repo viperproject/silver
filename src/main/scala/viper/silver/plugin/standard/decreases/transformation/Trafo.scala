@@ -18,9 +18,9 @@ final class Trafo(override val program: Program,
 
   def getTransformedProgram: Program = {
     transformedProgram.getOrElse({
-      generateProofMethods()
+      transformFunctions()
       transformMethods()
-      val newProgram = generateCheckProgram()
+      val newProgram = getNewProgram
       transformedProgram = Some(newProgram)
       newProgram
     })

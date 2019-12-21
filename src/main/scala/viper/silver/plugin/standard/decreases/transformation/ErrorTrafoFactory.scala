@@ -15,7 +15,6 @@ trait AbstractReasonTrafoFactory{
   def generateTupleBoundedFalse(offendingNode: ErrorNode): ReTrafo
 }
 
-//### SIMPLE REASONS ###
 case class ReasonTrafoFactory(offendingNode: ErrorNode) extends AbstractReasonTrafoFactory {
 
   override def generateTerminationConditionFalse(offendingNode: ErrorNode = offendingNode): ReTrafo = {
