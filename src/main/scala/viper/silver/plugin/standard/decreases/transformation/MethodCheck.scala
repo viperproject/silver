@@ -1,12 +1,14 @@
 package viper.silver.plugin.standard.decreases.transformation
 
+import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector
+import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{ContextC, Strategy, Traverse}
 import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTuple, LoopTerminationError, MethodTerminationError}
 import viper.silver.verifier.errors.AssertFailed
 
-import scala.collection.immutable.ListMap
+import scala.collection.JavaConverters._
 
 /**
   * Creates termination checks for methods.
@@ -14,22 +16,10 @@ import scala.collection.immutable.ListMap
 trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInstanceManager with ErrorReporter {
 
   /**
-    * Checks if two methods call each other recursively (also indirect) (same cluster)
-    * @param m1 method one
-    * @param m2 method two
-    * @return true iff in same cluster
-    */
-  def sameCluster(m1: String, m2: String): Boolean = {
-    val method1 = program.findMethod(m1)
-    val method2 = program.findMethod(m2)
-    MethodsHelper.getMethodCluster(method1, program).contains(method2)
-  }
-
-  /**
     * @param method name
     * @return DecreasesExp defined by the user if exists, otherwise a DecreasesTuple containing the methods parameter.
     */
-  def getMethodDecreasesContainer(method: String): DecreasesContainer = {
+  private def getMethodDecreasesContainer(method: String): DecreasesContainer = {
     transformPredicateInstances(
       program.methods.find(_.name == method) match {
         case Some(f) => DecreasesContainer.fromNode(f)
@@ -38,7 +28,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
     )
   }
 
-  def getWhileDecreasesContainer(w: While): DecreasesContainer = {
+  private def getWhileDecreasesContainer(w: While): DecreasesContainer = {
     transformPredicateInstances(
       DecreasesContainer.fromNode(w)
     )
@@ -82,14 +72,14 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
   }
 
   private def methodTransformer: PartialFunction[(Node, StrategyContext), (Node, StrategyContext)] = {
-    case (mc: MethodCall, ctxt) if sameCluster(mc.methodName, ctxt.c.methodName) =>
+    case (mc: MethodCall, ctxt) if ctxt.c.mutuallyRecursiveMeths.contains(program.findMethod(mc.methodName)) =>
       // possibly recursive call
       val context = ctxt.c
 
       getMethodDecreasesContainer(context.methodName).tuple match {
         case Some(callerTuple) => // check that called method decreases tuple under the methods tuple condition
           val calledMethod = methods(mc.methodName)
-          val mapFormalArgsToCalledArgs = ListMap(calledMethod.formalArgs.map(_.localVar).zip(mc.args): _*)
+          val mapFormalArgsToCalledArgs = Map(calledMethod.formalArgs.map(_.localVar).zip(mc.args): _*)
           val calleeDec = getMethodDecreasesContainer(mc.methodName)
 
           val errTrafo = ErrTrafo({
@@ -123,13 +113,13 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
         case None => // no tuple is defined, hence no checks are done.
           (mc, ctxt)
       }
-    case (mc: MethodCall, ctxt) if !sameCluster(mc.methodName, ctxt.c.methodName) =>
+    case (mc: MethodCall, ctxt) if ctxt.c.mutuallyRecursiveMeths.contains(program.findMethod(mc.methodName)) =>
       val context = ctxt.c
 
       getMethodDecreasesContainer(context.methodName).tuple match {
         case Some(methodTuple) => // check that called method terminates under the methods tuple condition
           val calledMethod = methods(mc.methodName)
-          val mapFormalArgsToCalledArgs = ListMap(calledMethod.formalArgs.map(_.localVar).zip(mc.args): _*)
+          val mapFormalArgsToCalledArgs = Map(calledMethod.formalArgs.map(_.localVar).zip(mc.args): _*)
           val decDest = getMethodDecreasesContainer(mc.methodName)
 
           val errTrafo = ErrTrafo({
@@ -246,11 +236,39 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
 
   private case class MContext (override val method: Method) extends MethodContext {
     override val methodName: String = method.name
+    override val mutuallyRecursiveMeths: Set[Method] = mutuallyRecursiveMethods.find(_.contains(method)).get
   }
 
   // context used
   private trait MethodContext {
     val method: Method
     val methodName: String
+
+    val mutuallyRecursiveMeths: Set[Method]
+  }
+
+  private lazy val mutuallyRecursiveMethods: Seq[Set[Method]] = {
+    val stronglyConnected = new KosarajuStrongConnectivityInspector(methodCallGraph)
+    val c = stronglyConnected.stronglyConnectedSets()
+    c.asScala.map(_.asScala.toSet)
+  }
+
+  private lazy val methodCallGraph = {
+    val graph = new DefaultDirectedGraph[Method, DefaultEdge](classOf[DefaultEdge])
+
+    program.methods.foreach(graph.addVertex)
+
+    def process(m: Method, n: Node) {
+      n visit {
+        case mc@MethodCall(m2name, _, _) =>
+          graph.addEdge(m, program.findMethod(m2name))
+      }
+    }
+
+    program.methods.foreach(m => {
+      m.body foreach (process(m, _))
+    })
+
+    graph
   }
 }

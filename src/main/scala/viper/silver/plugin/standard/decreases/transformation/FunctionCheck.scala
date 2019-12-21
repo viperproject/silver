@@ -6,18 +6,19 @@
 
 package viper.silver.plugin.standard.decreases.transformation
 
+import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector
+import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.ast.utility.{Functions, ViperStrategy}
-import viper.silver.ast.{Bool, CondExp, ErrTrafo, Exp, FalseLit, FuncApp, Function, Inhale, LocalVarDecl, Method, NodeTrafo, Old, Result, Seqn, Stmt, Unfolding}
+import viper.silver.ast.utility.ViperStrategy
+import viper.silver.ast.{Bool, CondExp, ErrTrafo, Exp, FalseLit, FuncApp, Function, Inhale, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt, Unfolding}
 import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTuple, FunctionTerminationError}
 import viper.silver.verifier.errors.AssertFailed
 
-import scala.collection.immutable.ListMap
+import scala.collection.JavaConverters._
+
 
 trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransformer with PredicateInstanceManager with ErrorReporter {
-
-  private val heights: Map[String, Int] = Functions.heights(program) map {case (f, i) => (f.name, i)}
 
   /**
     * This function should be used to access all the DecreasesContainer
@@ -141,10 +142,10 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
           val calleeArgs = functionCall.getArgs
 
           // map of parameters in the called function to parameters in the current functions (for substitution)
-          val mapFormalArgsToCalledArgs = ListMap(callee.formalArgs.map(_.localVar).zip(calleeArgs): _*)
+          val mapFormalArgsToCalledArgs = Map(callee.formalArgs.map(_.localVar).zip(calleeArgs): _*)
           val calleeDec = getFunctionDecreasesContainer(callee.name)
 
-          if (heights(callee.name) == context.height) {
+          if (context.mutuallyRecursiveFuncs.contains(callee)) {
             // potentially recursive call
 
             // error transformer
@@ -216,23 +217,49 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
   // context creator
   private case class FContext(override val function: Function) extends FunctionContext {
-    override val height: Int = heights.getOrElse(function.name, -1)
     override val conditionInEx: Option[LocalVarDecl]  = Some(LocalVarDecl("$condInEx", Bool)())
     override val functionName: String = function.name
+    override val mutuallyRecursiveFuncs: Set[Function] = mutuallyRecursiveFunctions.find(_.contains(function)).get
   }
   private case class DummyFunctionContext(override val function: Function) extends FunctionContext {
-    override val height: Int = -1
-
     override val conditionInEx: Option[LocalVarDecl] = Some(LocalVarDecl("$condInEx", Bool)())
-
     override val functionName: String = function.name
+
+    override val mutuallyRecursiveFuncs: Set[Function] = Set()
   }
 
   // context used to create proof method
   private trait FunctionContext extends ExpressionContext {
-    val height: Int
     val function: Function
     val functionName: String
     override val unsupportedOperationException: Boolean = true
+
+    val mutuallyRecursiveFuncs: Set[Function]
+  }
+
+
+  private lazy val mutuallyRecursiveFunctions: Seq[Set[Function]] = {
+    val stronglyConnected = new KosarajuStrongConnectivityInspector(functionCallGraph)
+    val c = stronglyConnected.stronglyConnectedSets()
+    c.asScala.map(_.asScala.toSet)
+  }
+
+  private lazy val functionCallGraph: DefaultDirectedGraph[Function, DefaultEdge] = {
+    val graph = new DefaultDirectedGraph[Function, DefaultEdge](classOf[DefaultEdge])
+
+    program.functions.foreach(graph.addVertex)
+
+    def process(f: Function, n: Node) {
+      n visit {
+        case app: FuncApp =>
+          graph.addEdge(f, app.func(program))
+      }
+    }
+
+    program.functions.foreach(f => {
+      f.pres ++ f.posts ++ f.body foreach (process(f, _))
+    })
+
+    graph
   }
 }
