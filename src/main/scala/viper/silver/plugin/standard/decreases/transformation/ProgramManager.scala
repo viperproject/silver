@@ -37,15 +37,8 @@ trait ProgramManager{
 
 
   // all names used in the program
-  private val usedNames: mutable.Set[String] = collection.mutable.HashSet((
-    // TODO: maybe better? program.members.map(m => m.name) (especially if member is extended)
-    program.functions
-      ++ program.methods
-      ++ program.fields
-      ++ program.predicates
-      ++ program.domains
-      ++ program.domains.flatten(_.functions)
-    ).map(_.name): _*)
+  // including arguments and local vars because they could also cause conflicts.
+  private val usedNames: mutable.Set[String] = collection.mutable.Set(program.transitiveScopedDecls.map(_.name): _*)
 
 
   /**

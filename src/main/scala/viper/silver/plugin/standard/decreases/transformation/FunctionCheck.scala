@@ -20,6 +20,12 @@ import scala.collection.JavaConverters._
 
 trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransformer with PredicateInstanceManager with ErrorReporter {
 
+  // Variable name for the result variable used in post condition termination checks
+  lazy val resultVariableName = uniqueName("$result")
+
+  // Variable (name) used to distinguish between inhale and exhale branches (required for InhaleExhale Expression)
+  lazy val condInExVariableName = uniqueName("$condInEx")
+
   /**
     * This function should be used to access all the DecreasesContainer
     * @param functionName for which the decreases clauses are defined
@@ -71,7 +77,6 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
       val proofMethodName = uniqueName(f.name + "_posts_termination_proof")
       val context = FContext(f)
 
-      val resultVariableName = "$result"
       val resultVariable = LocalVarDecl(resultVariableName, f.typ)(f.result.pos, f.result.info, NodeTrafo(f.result))
 
       // replace all Result nodes with the result variable.
@@ -217,12 +222,12 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
   // context creator
   private case class FContext(override val function: Function) extends FunctionContext {
-    override val conditionInEx: Option[LocalVarDecl]  = Some(LocalVarDecl("$condInEx", Bool)())
+    override val conditionInEx: Option[LocalVarDecl]  = Some(LocalVarDecl(condInExVariableName, Bool)())
     override val functionName: String = function.name
     override val mutuallyRecursiveFuncs: Set[Function] = mutuallyRecursiveFunctions.find(_.contains(function)).get
   }
   private case class DummyFunctionContext(override val function: Function) extends FunctionContext {
-    override val conditionInEx: Option[LocalVarDecl] = Some(LocalVarDecl("$condInEx", Bool)())
+    override val conditionInEx: Option[LocalVarDecl] = Some(LocalVarDecl(condInExVariableName, Bool)())
     override val functionName: String = function.name
 
     override val mutuallyRecursiveFuncs: Set[Function] = Set()

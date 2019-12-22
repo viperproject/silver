@@ -47,7 +47,8 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
   private def transformMethod(m: Method): Method = {
     m.body match {
       case Some(body) =>
-        val context = MContext(m)
+        // TODO: check if nested information is required
+        val context = MContext(m, true)
 
         val newBody: Stmt = methodStrategy(context).execute(body)
         val methodBody: Seqn = Seqn(Seq(newBody), Nil)()
@@ -107,7 +108,6 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
               Seq(createConditionCheck(oldCondition, FalseLit()(), Map(), errTrafo, reTrafo))
           }
 
-          // do not traverse method call again
           (Seqn(checks :+ mc, Nil)(mc.pos, NoInfo, NodeTrafo(mc)), ctxt)
 
         case None => // no tuple is defined, hence no checks are done.
@@ -134,7 +134,6 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
           val oldCondition = Old(methodTuple.getCondition)()
           val assertion = createConditionCheck(oldCondition, decDest.terminationCondition, mapFormalArgsToCalledArgs, errTrafo, reTrafo)
 
-          // do not traverse method call again
           (Seqn(Seq(assertion, mc), Nil)(mc.pos, NoInfo, NodeTrafo(mc)), ctxt)
 
         case None => // no tuple is defined, hence no checks are done.
@@ -177,9 +176,8 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
 
           val (oldCondition, conditionAssign): (Exp, Option[LocalVarAssign]) = whileTuple.condition match {
             case Some(condition) =>
-              // TODO: check var name uniqueness
               val conditionCopy =
-                LocalVar(s"W${whileNumber}_C", Bool)(condition.pos, condition.info, condition.errT)
+                LocalVar(uniqueName(s"old_W${whileNumber}_C"), Bool)(condition.pos, condition.info, condition.errT)
               val assign = LocalVarAssign(conditionCopy, condition)(condition.pos, condition.info, condition.errT)
               (conditionCopy, Some(assign))
             case None => (TrueLit()(), None)
@@ -187,9 +185,8 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
 
           val (oldTupleExps, tupleAssigns): (Seq[Exp], Seq[LocalVarAssign]) = whileTuple.tupleExpressions.zipWithIndex.map(exp_i => {
             val (exp, i) = (exp_i._1, exp_i._2)
-            // TODO: check var name uniqueness
             val expCopy =
-              LocalVar(s"W${whileNumber}_T$i", exp.typ)(exp.pos, exp.info, exp.errT)
+              LocalVar(uniqueName(s"old_W${whileNumber}_T$i"), exp.typ)(exp.pos, exp.info, exp.errT)
             val assign = LocalVarAssign(expCopy, exp)(expCopy.pos, expCopy.info, expCopy.errT)
             (expCopy, assign)
           }).unzip
@@ -218,23 +215,25 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
         case None =>
           // no tuple is defined for the while loop, hence, nothing must be checked for the loop
           w.body
-
       }
 
       val newWhile = w.copy(body = newBody)(w.pos, w.info, w.errT)
 
-      // do not traverse while loop call again
       val stmts = Seq() ++ terminationCheck :+ newWhile
 
       (Seqn(stmts, Nil)(), ctxt)
     case (unfold: Unfold, ctxt) =>
-      // do not traverse unfold with nested relations again
-      (generateUnfoldNested(unfold.acc), ctxt)
+      // only add nested information if needed
+      if (ctxt.c.nestedInformationRequired){
+        (generateUnfoldNested(unfold.acc), ctxt)
+      } else {
+        (unfold, ctxt)
+      }
   }
 
   private var whileCounter: Int = 1
 
-  private case class MContext (override val method: Method) extends MethodContext {
+  private case class MContext (override val method: Method, override val nestedInformationRequired: Boolean) extends MethodContext {
     override val methodName: String = method.name
     override val mutuallyRecursiveMeths: Set[Method] = mutuallyRecursiveMethods.find(_.contains(method)).get
   }
@@ -245,6 +244,8 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
     val methodName: String
 
     val mutuallyRecursiveMeths: Set[Method]
+
+    val nestedInformationRequired: Boolean
   }
 
   private lazy val mutuallyRecursiveMethods: Seq[Set[Method]] = {
