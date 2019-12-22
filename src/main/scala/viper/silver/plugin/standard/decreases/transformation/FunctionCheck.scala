@@ -11,7 +11,7 @@ import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.{Bool, CondExp, ErrTrafo, Exp, FalseLit, FuncApp, Function, Inhale, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt, Unfolding}
+import viper.silver.ast.{Bool, CondExp, ErrTrafo, Exp, FalseLit, FuncApp, Function, Inhale, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt}
 import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTuple, FunctionTerminationError}
 import viper.silver.verifier.errors.AssertFailed
 
@@ -57,13 +57,21 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
    * @param f function
    */
   private def generateProofMethod(f: Function): Unit ={
+    val requireNestedInfo = containsPredicateInstances(DecreasesContainer.fromNode(f))
     if (f.body.nonEmpty) {
       // method proving termination of the functions body.
       val proofMethodName = uniqueName(f.name + "_termination_proof")
 
       val context = FContext(f)
 
-      val proofMethodBody = transformExp(f.body.get, context)
+      val proofMethodBody: Stmt = {
+        val stmt: Stmt = transformExp(f.body.get, context)
+        if (requireNestedInfo){
+          addNestedPredicateInformation.execute(stmt)
+        } else {
+          stmt
+        }
+      }
 
       val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
         Option(Seqn(Seq(proofMethodBody), Nil)()))()
@@ -85,14 +93,23 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
       }, Traverse.BottomUp).execute[Exp](p))
 
       // after the termination checks assume the postcondition.
-      val proofMethodBody = posts.map(p => {
-        val postCheck = transformExp(p, context)
-        val inhale = Inhale(p)()
-        Seqn(Seq(postCheck, inhale), Nil)()
-      })
+      val proofMethodBody = {
+        posts.map(p => {
+          val postCheck = {
+            val stmt: Stmt = transformExp(p, context)
+            if (requireNestedInfo){
+              addNestedPredicateInformation.execute(stmt)
+            } else {
+              stmt
+            }
+          }
+          val inhale = Inhale(p)()
+          Seq(postCheck, inhale)
+        })
+      }
 
       val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
-        Option(Seqn(proofMethodBody, Seq(resultVariable))()))()
+        Option(Seqn(proofMethodBody.flatten, Seq(resultVariable))()))()
 
       methods(proofMethodName) = proofMethod
     }
@@ -208,15 +225,6 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
           EmptyStmt
       }
       Seqn(stmts, Nil)()
-    case (unfolding: Unfolding, context: FunctionContext) =>
-      val bodyStmts = transformExp(unfolding.body, context)
-      bodyStmts match {
-        case EmptyStmt => // nothing was created for the body
-          EmptyStmt
-        case stmts =>
-          val unfold = generateUnfoldNested(unfolding.acc)
-          Seqn(Seq(unfold, stmts), Nil)()
-      }
     case default => super.transformExp(default)
   }
 

@@ -47,10 +47,17 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
   private def transformMethod(m: Method): Method = {
     m.body match {
       case Some(body) =>
-        // TODO: check if nested information is required
-        val context = MContext(m, true)
+        val context = MContext(m)
+        context.nestedRequired = containsPredicateInstances(DecreasesContainer.fromNode(m))
 
-        val newBody: Stmt = methodStrategy(context).execute(body)
+        val newBody: Stmt = {
+          val stmt: Stmt = methodStrategy(context).execute(body)
+          if (context.nestedRequired) {
+            addNestedPredicateInformation.execute(stmt)
+          } else {
+            stmt
+          }
+        }
         val methodBody: Seqn = Seqn(Seq(newBody), Nil)()
         val method = m.copy(body = Option(methodBody))(m.pos, m.info, m.errT)
         method
@@ -140,100 +147,110 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
           (mc, ctxt)
       }
     case (w: While, ctxt) =>
-      val context = ctxt.c
-      val decWhile = getWhileDecreasesContainer(w)
+      if (containsPredicateInstances(DecreasesContainer.fromNode(w)))
+        ctxt.c.nestedRequired = true
 
-      val whileNumber = whileCounter
-      whileCounter = whileCounter + 1
+      w.info.getUniqueInfo[Transformed] match {
+        case Some(_) => // already traversed this while loop and already added checks to it
+          (w, ctxt)
+        case None =>
+          val context = ctxt.c
+          val decWhile = getWhileDecreasesContainer(w)
 
-      // check that loop terminates under the methods tuple condition (if the loop is entered)
-      val terminationCheck =
-        getMethodDecreasesContainer(context.methodName).tuple match {
-          case Some(methodTuple) =>
+          val whileNumber = whileCounter
+          whileCounter = whileCounter + 1
 
-            val errTrafo = ErrTrafo({
-              case AssertFailed(_, r, c) => MethodTerminationError(w, r, c)
-              case d => d
-            })
+          // check that loop terminates under the methods tuple condition (if the loop is entered)
+          val terminationCheck =
+            getMethodDecreasesContainer(context.methodName).tuple match {
+              case Some(methodTuple) =>
 
-            val reasonTrafoFactory = ReasonTrafoFactory(methodTuple)
-            // reason would be the loop's definition
-            val reTrafo = reasonTrafoFactory.generateTerminationConditionFalse(w)
+                val errTrafo = ErrTrafo({
+                  case AssertFailed(_, r, c) => MethodTerminationError(w, r, c)
+                  case d => d
+                })
 
-            val oldCondition = Old(methodTuple.getCondition)()
-            val requiredTerminationCondition = And(oldCondition, w.cond)()
+                val reasonTrafoFactory = ReasonTrafoFactory(methodTuple)
+                // reason would be the loop's definition
+                val reTrafo = reasonTrafoFactory.generateTerminationConditionFalse(w)
 
-            val assertion = createConditionCheck(requiredTerminationCondition, decWhile.terminationCondition, Map(), errTrafo, reTrafo)
+                val oldCondition = Old(methodTuple.getCondition)()
+                val requiredTerminationCondition = And(oldCondition, w.cond)()
 
-            Some(assertion)
-          case None => None
-        }
+                val assertion = createConditionCheck(requiredTerminationCondition, decWhile.terminationCondition, Map(), errTrafo, reTrafo)
 
-      val newBody = decWhile.tuple match {
-        case Some(whileTuple) =>
-          // copy all expression in the decreases tuple to be used later
-          // equivalent to labeled old but including variables
+                Some(assertion)
+              case None => None
+            }
 
-          val (oldCondition, conditionAssign): (Exp, Option[LocalVarAssign]) = whileTuple.condition match {
-            case Some(condition) =>
-              val conditionCopy =
-                LocalVar(uniqueName(s"old_W${whileNumber}_C"), Bool)(condition.pos, condition.info, condition.errT)
-              val assign = LocalVarAssign(conditionCopy, condition)(condition.pos, condition.info, condition.errT)
-              (conditionCopy, Some(assign))
-            case None => (TrueLit()(), None)
+          val newBody = decWhile.tuple match {
+            case Some(whileTuple) =>
+              // copy all expression in the decreases tuple to be used later
+              // equivalent to labeled old but including variables
+
+              val (oldCondition, conditionAssign): (Exp, Option[LocalVarAssign]) = whileTuple.condition match {
+                case Some(condition) =>
+                  val conditionCopy =
+                    LocalVar(uniqueName(s"old_W${whileNumber}_C"), Bool)(condition.pos, condition.info, condition.errT)
+                  val assign = LocalVarAssign(conditionCopy, condition)(condition.pos, condition.info, condition.errT)
+                  (conditionCopy, Some(assign))
+                case None => (TrueLit()(), None)
+              }
+
+              val (oldTupleExps, tupleAssigns): (Seq[Exp], Seq[LocalVarAssign]) = whileTuple.tupleExpressions.zipWithIndex.map(exp_i => {
+                val (exp, i) = (exp_i._1, exp_i._2)
+                val expCopy =
+                  LocalVar(uniqueName(s"old_W${whileNumber}_T$i"), exp.typ)(exp.pos, exp.info, exp.errT)
+                val assign = LocalVarAssign(expCopy, exp)(expCopy.pos, expCopy.info, expCopy.errT)
+                (expCopy, assign)
+              }).unzip
+
+              val oldDecreasesTuple = DecreasesTuple(oldTupleExps, Some(oldCondition))()
+              val assignments = tupleAssigns ++ conditionAssign
+              val scopedDeclarations = assignments.map(a => LocalVarDecl(a.lhs.name, a.rhs.typ)())
+
+              val errTrafo = ErrTrafo({
+                case AssertFailed(_, r, c) => LoopTerminationError(whileTuple, r, c)
+                case d => d
+              })
+
+              val reasonTrafoFactory = ReasonTrafoFactory(whileTuple)
+
+              // reason would be the loops's defined tuple
+              val reTrafo = reasonTrafoFactory.generateTupleConditionFalse(whileTuple)
+
+              // check that tuple condition still holds for the following iteration
+              val requiredTerminationCondition = And(oldCondition, w.cond)()
+              val conditionAssertion = createConditionCheck(requiredTerminationCondition, whileTuple.getCondition, Map(), errTrafo, reTrafo)
+              // check that the tuple decreased
+              val tupleCheck = createTupleCheck(oldDecreasesTuple, whileTuple, Map(), errTrafo, reasonTrafoFactory)
+
+              Seqn(assignments :+ w.body :+ conditionAssertion :+ tupleCheck, scopedDeclarations)()
+            case None =>
+              // no tuple is defined for the while loop, hence, nothing must be checked for the loop
+              w.body
           }
 
-          val (oldTupleExps, tupleAssigns): (Seq[Exp], Seq[LocalVarAssign]) = whileTuple.tupleExpressions.zipWithIndex.map(exp_i => {
-            val (exp, i) = (exp_i._1, exp_i._2)
-            val expCopy =
-              LocalVar(uniqueName(s"old_W${whileNumber}_T$i"), exp.typ)(exp.pos, exp.info, exp.errT)
-            val assign = LocalVarAssign(expCopy, exp)(expCopy.pos, expCopy.info, expCopy.errT)
-            (expCopy, assign)
-          }).unzip
+          val newWhile = w.copy(body = newBody)(w.pos, MakeInfoPair(Transformed(), w.info), w.errT)
 
-          val oldDecreasesTuple = DecreasesTuple(oldTupleExps, Some(oldCondition))()
-          val assignments = tupleAssigns ++ conditionAssign
-          val scopedDeclarations = assignments.map(a => LocalVarDecl(a.lhs.name, a.rhs.typ)())
+          val stmts = Seq() ++ terminationCheck :+ newWhile
 
-          val errTrafo = ErrTrafo({
-            case AssertFailed(_, r, c) => LoopTerminationError(whileTuple, r, c)
-            case d => d
-          })
-
-          val reasonTrafoFactory = ReasonTrafoFactory(whileTuple)
-
-          // reason would be the loops's defined tuple
-          val reTrafo = reasonTrafoFactory.generateTupleConditionFalse(whileTuple)
-
-          // check that tuple condition still holds for the following iteration
-          val requiredTerminationCondition = And(oldCondition, w.cond)()
-          val conditionAssertion = createConditionCheck(requiredTerminationCondition, whileTuple.getCondition, Map(), errTrafo, reTrafo)
-          // check that the tuple decreased
-          val tupleCheck = createTupleCheck(oldDecreasesTuple, whileTuple, Map(), errTrafo, reasonTrafoFactory)
-
-          Seqn(assignments :+ w.body :+ conditionAssertion :+ tupleCheck, scopedDeclarations)()
-        case None =>
-          // no tuple is defined for the while loop, hence, nothing must be checked for the loop
-          w.body
+          (Seqn(stmts, Nil)(), ctxt)
       }
+  }
 
-      val newWhile = w.copy(body = newBody)(w.pos, w.info, w.errT)
-
-      val stmts = Seq() ++ terminationCheck :+ newWhile
-
-      (Seqn(stmts, Nil)(), ctxt)
-    case (unfold: Unfold, ctxt) =>
-      // only add nested information if needed
-      if (ctxt.c.nestedInformationRequired){
-        (generateUnfoldNested(unfold.acc), ctxt)
-      } else {
-        (unfold, ctxt)
-      }
+  /**
+   * Mark already traversed and transformed nodes.
+   * Used for while loops because a while node is potentially traversed twice.
+   */
+  private final case class Transformed() extends Info {
+    override def comment: Seq[String] = Nil
+    override def isCached: Boolean = false
   }
 
   private var whileCounter: Int = 1
 
-  private case class MContext (override val method: Method, override val nestedInformationRequired: Boolean) extends MethodContext {
+  private case class MContext (override val method: Method) extends MethodContext {
     override val methodName: String = method.name
     override val mutuallyRecursiveMeths: Set[Method] = mutuallyRecursiveMethods.find(_.contains(method)).get
   }
@@ -245,7 +262,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
 
     val mutuallyRecursiveMeths: Set[Method]
 
-    val nestedInformationRequired: Boolean
+    var nestedRequired = false
   }
 
   private lazy val mutuallyRecursiveMethods: Seq[Set[Method]] = {
