@@ -1,0 +1,20 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field val: Int
+
+function inv(x: Int, k: Int): Bool
+  requires x >= 0
+  requires acc(foo(k).val, 1/2)
+  requires forall i: Int :: {foo(i)} acc(foo(i).val, 1/2)
+{
+  x != 0 ==> inv(x - 1, k)
+}
+
+domain Bar {
+  function foo(i: Int): Ref
+
+  axiom inj {
+    forall i: Int, j: Int :: foo(i) == foo(j) ==> i == j
+  }
+}

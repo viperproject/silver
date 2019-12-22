@@ -1,0 +1,44 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain Array {
+    function loc(a: Array, i: Int): Ref
+    function len(a: Array): Int
+    function first(r: Ref): Array
+    function second(r: Ref): Int
+
+    axiom all_diff {
+        forall a: Array, i: Int :: { loc(a, i) }
+            first(loc(a, i)) == a && second(loc(a, i)) == i
+    }
+
+    axiom length_non_neg {
+        forall a: Array :: { len(a) }
+            len(a) >= 0
+    }
+}
+
+field elements: Array
+
+define valid_index(a, i) 0 <= i && i < len(a)
+
+predicate P(self: Ref) {
+    self != null
+    && acc(self.elements)
+    && (
+        forall x: Int :: { loc(self.elements, x) }
+            valid_index(self.elements, x) ==>
+                loc(self.elements, x) != null
+                && P(loc(self.elements, x))
+    )
+}
+
+function foo(self: Ref): Bool
+    requires acc(P(self), wildcard)
+{
+    unfolding acc(P(self), wildcard) in (
+        forall i: Int :: { loc(self.elements, i) }
+            valid_index(self.elements, i) ==>
+                foo(loc(self.elements, i))
+    )
+}
