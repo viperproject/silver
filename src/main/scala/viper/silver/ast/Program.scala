@@ -36,6 +36,7 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
     checkMethodCallsAreValid ++
     checkFunctionApplicationsAreValid ++
     checkDomainFunctionApplicationsAreValid ++
+    checkAbstractPredicatesUsage ++
     checkIdentifiers
 
   /** checks that formalReturns of method calls are assignable to targets, and arguments are assignable to formalArgs */
@@ -59,6 +60,30 @@ case class Program(domains: Seq[Domain], fields: Seq[Field], functions: Seq[Func
 
     s
   })
+
+  lazy val checkAbstractPredicatesUsage: Seq[ConsistencyError] =
+    (predicates ++ functions ++ methods) flatMap checkAbstractPredicatesUsageIn
+
+  private def checkAbstractPredicatesUsageIn(node: Node): Seq[ConsistencyError] = {
+    var errors = Seq.empty[ConsistencyError]
+
+    def check(loc: PredicateAccess, pos: Position): Unit = {
+      predicates
+        .find(_.name == loc.predicateName)
+        .foreach(predicate => {
+          if (predicate.body.isEmpty)
+            errors :+= ConsistencyError(s"Cannot unfold $loc because ${loc.predicateName}  is abstract.", pos)
+        })
+    }
+
+    node.visit {
+      case fold: Fold => check(fold.acc.loc, fold.pos)
+      case unfold: Unfold => check(unfold.acc.loc, unfold.pos)
+      case unfolding: Unfolding => check(unfolding.acc.loc, unfolding.pos)
+    }
+
+    errors
+  }
 
   /** Checks that the applied functions exists, that the arguments of function applications are assignable to
     * formalArgs, and that the type of function applications matches with the type of the function definition.
