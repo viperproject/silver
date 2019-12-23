@@ -25,19 +25,18 @@ class SilverPluginManager(val plugins: Seq[SilverPlugin]) {
   def errors: Seq[AbstractError] = _errors
 
   def foldWithError[T](start: T)(f: (T, SilverPlugin) => T): Option[T] = {
-    var v: Option[T] = Some(start)
-    if (v.isDefined) {
-      plugins.foreach(plugin => {
-        val vprime = f(v.get, plugin)
-        v = if (plugin.errors.isEmpty){
+    plugins.foldLeft[Option[T]](Some(start)) {
+      case (Some(nv), plugin) => {
+        val vprime = f(nv, plugin)
+        if (plugin.errors.isEmpty) {
           Some(vprime)
         } else {
           _errors ++= plugin.errors
           None
         }
-      })
+      }
+      case (None, _) => None
     }
-    v
   }
 
   def beforeParse(input: String, isImported: Boolean): Option[String] =

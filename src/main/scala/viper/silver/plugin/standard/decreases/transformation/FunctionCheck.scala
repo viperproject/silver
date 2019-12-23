@@ -32,12 +32,10 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
     * @return the defined DecreasesContainer
     */
   def getFunctionDecreasesContainer(functionName: String): DecreasesContainer = {
-    transformPredicateInstances(
-      program.findFunctionOptionally(functionName) match {
-        case Some(f) => DecreasesContainer.fromNode(f)
-        case None => DecreasesContainer()
-      }
-    )
+    program.findFunctionOptionally(functionName) match {
+      case Some(f) => DecreasesContainer.fromNode(f)
+      case None => DecreasesContainer()
+    }
   }
 
   /**

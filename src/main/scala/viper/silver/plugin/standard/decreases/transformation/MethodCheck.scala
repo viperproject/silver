@@ -20,18 +20,14 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
     * @return DecreasesExp defined by the user if exists, otherwise a DecreasesTuple containing the methods parameter.
     */
   private def getMethodDecreasesContainer(method: String): DecreasesContainer = {
-    transformPredicateInstances(
-      program.methods.find(_.name == method) match {
-        case Some(f) => DecreasesContainer.fromNode(f)
-        case None => DecreasesContainer()
-      }
-    )
+    program.methods.find(_.name == method) match {
+      case Some(f) => DecreasesContainer.fromNode(f)
+      case None => DecreasesContainer()
+    }
   }
 
   private def getWhileDecreasesContainer(w: While): DecreasesContainer = {
-    transformPredicateInstances(
       DecreasesContainer.fromNode(w)
-    )
   }
 
   /**

@@ -11,6 +11,7 @@ import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, Traverse}
 import viper.silver.ast.{AccessPredicate, BinExp, CondExp, Domain, DomainFunc, DomainFuncApp, DomainType, Exp, FieldAccessPredicate, FuncApp, Function, If, Implies, Info, Inhale, Int, LocalVar, LocalVarAssign, LocalVarDecl, MagicWand, MakeInfoPair, Node, Position, Predicate, PredicateAccess, PredicateAccessPredicate, Seqn, SimpleInfo, Stmt, Type, TypeVar, UnExp, Unfold, Unfolding, WildcardPerm}
 import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTuple}
+import viper.silver.plugin.standard.predicateinstance.PredicateInstance
 import viper.silver.verifier.ConsistencyError
 
 import scala.collection.immutable.ListMap
@@ -28,58 +29,10 @@ trait PredicateInstanceManager extends ProgramManager with ErrorReporter {
   val nestedFunc: Option[DomainFunc] =  program.findDomainFunctionOptionally("nestedPredicates")
   val PredicateInstanceDomain: Option[Domain] =  program.domains.find(_.name == "PredicateInstance") // findDomainOptionally()?
 
-  // list of all created predicate instance functions
-  private val createdPIFunctions: collection.mutable.ListMap[String, Function] = collection.mutable.ListMap[String, Function]()
-
-  /**
-   * If exp is a PredicateAccess or PredicateAccessPredicate
-   * it is replaced with a predicate instance (IP) function call.
-   * @param exp to be replaced.
-   * @return transformed exp.
-   */
-  protected def transformPredicateInstances(exp: Exp): Exp = {
-    exp match {
-      case p: PredicateAccess =>
-        val predicate = program.findPredicate(p.predicateName)
-        val args = p.args
-        val locFunc = getPredicateInstanceFunction(predicate)
-        FuncApp(locFunc, args)(pos = p.pos, info = MakeInfoPair(PredicateInstance(p.predicateName), p.info), errT = p.errT)
-      case p: PredicateAccessPredicate =>
-        val predicate = program.findPredicate(p.loc.predicateName)
-        val args = p.loc.args
-        val locFunc = getPredicateInstanceFunction(predicate)
-        FuncApp(locFunc, args)(pos = p.pos, info = MakeInfoPair(PredicateInstance(p.loc.predicateName), p.info), errT = p.errT)
-      case d => d // exp is not a predicate access therefore is not changed
-    }
-  }
-
-  /**
-   * Transforms the decreases tuple if the tuple contains PredicateAccess or PredicateAccessPredicate.
-   * Predicate instance (PI) function calls placed instead of them.
-   * @param dc: Decreases container to be updated.
-   * @return transformed decreases container.
-   */
-  protected def transformPredicateInstances(dc: DecreasesContainer): DecreasesContainer = {
-    dc match {
-      case DecreasesContainer(Some(dt@DecreasesTuple(tupleExpressions, _)), _, _) =>
-        val new_tupleExpressions = tupleExpressions.map(transformPredicateInstances)
-        if (new_tupleExpressions != tupleExpressions) {
-          dc.copy(tuple = Some(dt.copy(tupleExpressions=new_tupleExpressions)(dt.pos, dt.info, dt.errT)))
-        } else {
-          dc
-        }
-      case d => d
-    }
-  }
-
   protected def containsPredicateInstances(dc: DecreasesContainer): Boolean = {
     dc match {
       case DecreasesContainer(Some(DecreasesTuple(tupleExpressions, _)), _, _) =>
-        tupleExpressions.exists {
-          case fa: FuncApp => fa.info.getUniqueInfo[PredicateInstance].nonEmpty
-          case PredicateAccess(_,_) | PredicateAccessPredicate(_,_) => true
-          case _ => false
-        }
+        tupleExpressions.exists(t => t.isSubtype(PredicateInstance.getType))
       case _ => false
     }
   }
@@ -202,9 +155,8 @@ trait PredicateInstanceManager extends ProgramManager with ErrorReporter {
     */
   protected def generatePredicateAssign(assLocation: LocalVar, pred: PredicateAccess)
                               : LocalVarAssign = {
-    val locFunc = getPredicateInstanceFunction(pred.loc(program))
-    val assValue = FuncApp(locFunc, pred.args)(info = PredicateInstance(pred.predicateName))
-    LocalVarAssign(assLocation, assValue)(pred.pos)
+    val pi = PredicateInstance(pred.args, pred.predicateName)(pred.pos, pred.info, pred.errT)
+    LocalVarAssign(assLocation, pi)(pred.pos)
   }
 
 
@@ -220,38 +172,8 @@ trait PredicateInstanceManager extends ProgramManager with ErrorReporter {
     val predVarName = uniqueLocalVar(predName)
     val info = SimpleInfo(Seq(p.predicateName + "_" + p.args.mkString(",")))
     val newLocalVar =
-      LocalVarDecl(predVarName, DomainType(PredicateInstanceDomain.get,
-        ListMap()))(info = info)
+      LocalVarDecl(predVarName, PredicateInstance.getType)(info = info)
     newLocalVar
-  }
-
-  /**
-    * Creates a function to create the representation of the predicate
-    * @param pap predicate
-    * @return function
-    */
-  private def getPredicateInstanceFunction(pap: Predicate): Function = {
-    assert(PredicateInstanceDomain.isDefined)
-
-    if (createdPIFunctions.contains(pap.name)) {
-      createdPIFunctions(pap.name)
-    } else {
-      val uniquePredFuncName =
-        uniqueName("PI_" + pap.name)
-      val pred = program.findPredicate(pap.name)
-      val newLocFunc =
-        Function(uniquePredFuncName,
-          pred.formalArgs,
-          DomainType(PredicateInstanceDomain.get, ListMap()),
-          Seq(PredicateAccessPredicate(PredicateAccess(pred.formalArgs.map(_.localVar), pred.name)(), WildcardPerm()())(pap.pos, pap.info, pap.errT)),
-          Seq(),
-          None
-        )(PredicateInstanceDomain.get.pos, PredicateInstanceDomain.get.info)
-
-      createdPIFunctions(pap.name) = newLocFunc
-      functions(uniquePredFuncName) = newLocFunc
-      newLocFunc
-    }
   }
 
   private val usedPredicateInstanceVariables: collection.mutable.Set[String] = collection.mutable.Set[String]()
@@ -274,10 +196,5 @@ trait PredicateInstanceManager extends ProgramManager with ErrorReporter {
 
   def reportPredicateInstanceNotDefined(pos: Position): Unit = {
     reportError(ConsistencyError("PredicateInstance domain is needed but not declared.", pos))
-  }
-
-  case class PredicateInstance(predicateName: String) extends Info {
-    override def comment: Seq[String] = Nil
-    override def isCached: Boolean = false
   }
 }

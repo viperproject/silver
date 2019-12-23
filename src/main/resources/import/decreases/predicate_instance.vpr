@@ -3,6 +3,7 @@
 
 import "declaration.vpr"
 import "predicate_instance_declaration.vpr"
+import <predicateinstance/pi.vpr>
 
 domain PredicateInstancesTerminationOrder {
     axiom predicate_instances_ax_dec{

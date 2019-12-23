@@ -1,7 +1,9 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-domain PredicateInstance{
+import <predicateinstance/pi.vpr>
+
+domain NestedPredicatesDomain{
     function nestedPredicates(l1: PredicateInstance, l2: PredicateInstance) : Bool
 
     //Transitivity of the nested-Function

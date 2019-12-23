@@ -76,7 +76,7 @@ trait SilFrontend extends DefaultFrontend {
   protected var _config: SilFrontendConfig = _
   def config: SilFrontendConfig = _config
 
-  protected var _defaultPlugins: Option[String] = Some("viper.silver.plugin.standard.decreases.DecreasesPlugin")
+  protected var _defaultPlugins: Option[String] = Some("viper.silver.plugin.standard.decreases.DecreasesPlugin:viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin")
 
   protected var _plugins: SilverPluginManager = SilverPluginManager(_defaultPlugins)(reporter, logger, _config)
   def plugins: SilverPluginManager = _plugins

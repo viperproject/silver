@@ -57,11 +57,7 @@ case class DecreasesTuple(tupleExpressions: Seq[Exp] = Nil, override val conditi
   /**
    * Allow only pure expressions in the tuple and condition
    */
-  override lazy val check: Seq[ConsistencyError] = tupleExpressions.flatMap({
-    case _: AccessPredicate => Nil
-    case exp: ExtensionExp => Consistency.checkPure(exp)
-    case _ => Nil
-  }) ++ condition.toSeq.flatMap(Consistency.checkPure)
+  override lazy val check: Seq[ConsistencyError] = (tupleExpressions ++ condition).flatMap(Consistency.checkPure)
 }
 
 /**
