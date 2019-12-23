@@ -7,13 +7,14 @@
 package viper.silver.plugin.standard.predicateinstance
 
 import fastparse.noApi
-import viper.silver.ast.{Domain, DomainType, FuncApp, Function, NodeTrafo, Position, PredicateAccess, PredicateAccessPredicate, Program, WildcardPerm}
+import viper.silver.ast.{Domain, DomainType, ErrTrafo, FuncApp, Function, NodeTrafo, Position, PredicateAccess, PredicateAccessPredicate, Program, WildcardPerm}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
-import viper.silver.verifier.ConsistencyError
+import viper.silver.verifier.{ConsistencyError, Failure, Success, VerificationResult}
+import viper.silver.verifier.errors.PreconditionInAppFalse
 
 
 class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
@@ -46,25 +47,6 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
     input
   }
 
-
-  /** Called after identifiers have been resolved but before the parse AST is translated into the normal AST.
-   *
-   * @param input Parse AST
-   * @return Modified Parse AST
-   */
-  override def beforeTranslate(input: PProgram): PProgram = super.beforeTranslate(input)
-
-
-  /** Called after parse AST has been translated into the normal AST but before methods to verify are filtered.
-   * In [[viper.silver.frontend.SilFrontend]] this step is confusingly called doTranslate.
-   *
-   * @param input AST
-   * @return Modified AST
-   */
-  override def beforeMethodFilter(input: Program): Program = super.beforeMethodFilter(input)
-
-
-
   /** Called after methods are filtered but before the verification by the backend happens.
    *
    * @param input AST
@@ -78,7 +60,7 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
 
     def getPIFunction(predicateInstance: PredicateInstance, program: Program): FuncApp = {
       createdPIFunctions.get(predicateInstance.p) match {
-        case Some(piFunction) => FuncApp(piFunction, predicateInstance.args)(predicateInstance.pos, predicateInstance.info, NodeTrafo(predicateInstance))
+        case Some(piFunction) => FuncApp(piFunction, predicateInstance.args)(predicateInstance.pos, predicateInstance.info, errT)
         case None =>
           val piFunctionName = s"PI_${predicateInstance.p}"
           val pred = program.findPredicate(predicateInstance.p)
@@ -91,7 +73,7 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
               None
             )(PredicateInstanceDomain.get.pos, PredicateInstanceDomain.get.info)
           createdPIFunctions.update(predicateInstance.p, newPIFunction)
-          FuncApp(newPIFunction, predicateInstance.args)(predicateInstance.pos, predicateInstance.info, NodeTrafo(predicateInstance))
+          FuncApp(newPIFunction, predicateInstance.args)(predicateInstance.pos, predicateInstance.info, errT)
       }
     }
 
@@ -112,8 +94,30 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
     newProgram
   }
 
-  def reportPredicateInstanceNotDefined(pos: Position): Unit = {
+  /** Called after the verification. Error transformation should happen here.
+   * This will only be called if verification took place.
+   *
+   * @param input Result of verification
+   * @return Modified result
+   */
+  override def mapVerificationResult(input: VerificationResult): VerificationResult = {
+    input match {
+      case Success => input
+      case Failure(errors) => {
+        Failure(errors.map {
+          case e@PreconditionInAppFalse(_, _, _) => e.transformedError()
+          case e => e
+        })
+      }
+    }
+  }
+
+  private def reportPredicateInstanceNotDefined(pos: Position): Unit = {
     reportError(ConsistencyError("PredicateInstance domain is needed but not declared.", pos))
   }
+
+  private val errT = ErrTrafo({
+    case PreconditionInAppFalse(offendingNode, reason, cached) => PredicateInstanceNoAccess(offendingNode, reason, cached)
+  })
 
 }

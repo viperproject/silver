@@ -7,9 +7,9 @@
 package viper.silver.plugin.standard.predicateinstance
 
 import viper.silver.ast._
-import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, space, ssep, text, show}
+import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, parens, show, space, ssep, text}
 import viper.silver.ast.pretty.PrettyPrintPrimitives
-import viper.silver.verifier.VerificationResult
+import viper.silver.verifier.{ConsistencyError, VerificationResult}
 
 /*
 case object PredicateInstanceTypeTest extends ExtensionType {
@@ -42,7 +42,8 @@ case class PredicateInstance(args: Seq[Exp], p: String)(override val pos: Positi
   override def prettyPrint: PrettyPrintPrimitives#Cont =
     text("@") <> text(p) <> parens(ssep(args map show, char (',') <> space))
 
-  lazy val predicateAccessPredicate: PredicateAccessPredicate = PredicateAccessPredicate(PredicateAccess(args, p)(), EpsilonPerm()())()
+  // TODO:
+  override lazy val check: Seq[ConsistencyError] = Nil
 }
 
 object PredicateInstance {

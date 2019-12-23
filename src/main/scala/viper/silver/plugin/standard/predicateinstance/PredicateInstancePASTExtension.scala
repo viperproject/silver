@@ -18,13 +18,18 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse) extends PExtende
   override def typeSubstitutions: Seq[PTypeSubstitution] = _typeSubstitutions
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 
-  override def getSubnodes(): Seq[PNode] = args
+  override def getSubnodes(): Seq[PNode] = args :+ idnuse
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     // TODO: Don't know if this is correct
-    val predicateAccess = PPredicateAccess(args, idnuse)
-    t.check(predicateAccess, PTypeSubstitution.id)
-    None
+
+    n.definition(null)(idnuse) match {
+      case p: PPredicate =>
+        val predicateAccess = PPredicateAccess(args, idnuse)
+        t.check(predicateAccess, PTypeSubstitution.id)
+        None
+      case _ => Some(Seq("expected predicate"))
+    }
   }
 
   override def translateExp(t: Translator): ExtensionExp = {
