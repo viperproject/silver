@@ -7,7 +7,6 @@
 package viper.silver.plugin.standard.predicateinstance
 
 import viper.silver.ast._
-import viper.silver.parser.TypeHelper.Bool
 import viper.silver.parser._
 
 
@@ -23,8 +22,8 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse) extends PExtende
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     // TODO: Don't know if this is correct
 
-    n.definition(null)(idnuse) match {
-      case p: PPredicate =>
+    n.definition(member = null)(idnuse) match {
+      case _: PPredicate =>
         val predicateAccess = PPredicateAccess(args, idnuse)
         t.check(predicateAccess, PTypeSubstitution.id)
         None
@@ -33,6 +32,6 @@ case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse) extends PExtende
   }
 
   override def translateExp(t: Translator): ExtensionExp = {
-    PredicateInstance(args map t.exp, idnuse.name)(t.liftPos(this))
+    PredicateInstance(args map t.exp, idnuse.name)(t.liftPos(pos = this))
   }
 }

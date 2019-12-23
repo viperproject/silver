@@ -9,7 +9,7 @@ package viper.silver.plugin.standard.decreases.transformation
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, Traverse}
-import viper.silver.ast.{AccessPredicate, BinExp, CondExp, Domain, DomainFunc, DomainFuncApp, DomainType, Exp, FieldAccessPredicate, FuncApp, Function, If, Implies, Info, Inhale, Int, LocalVar, LocalVarAssign, LocalVarDecl, MagicWand, MakeInfoPair, Node, Position, Predicate, PredicateAccess, PredicateAccessPredicate, Seqn, SimpleInfo, Stmt, Type, TypeVar, UnExp, Unfold, Unfolding, WildcardPerm}
+import viper.silver.ast.{AccessPredicate, BinExp, CondExp, Domain, DomainFunc, DomainFuncApp, DomainType, Exp, FieldAccessPredicate, If, Implies, Inhale, Int, LocalVar, LocalVarAssign, LocalVarDecl, MagicWand, Node, Position, PredicateAccess, PredicateAccessPredicate, Seqn, SimpleInfo, Stmt, Type, TypeVar, UnExp, Unfold}
 import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTuple}
 import viper.silver.plugin.standard.predicateinstance.PredicateInstance
 import viper.silver.verifier.ConsistencyError

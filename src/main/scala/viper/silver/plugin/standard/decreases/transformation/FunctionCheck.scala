@@ -21,10 +21,10 @@ import scala.collection.JavaConverters._
 trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransformer with PredicateInstanceManager with ErrorReporter {
 
   // Variable name for the result variable used in post condition termination checks
-  lazy val resultVariableName = uniqueName("$result")
+  private lazy val resultVariableName = uniqueName("$result")
 
   // Variable (name) used to distinguish between inhale and exhale branches (required for InhaleExhale Expression)
-  lazy val condInExVariableName = uniqueName("$condInEx")
+  private lazy val condInExVariableName = uniqueName("$condInEx")
 
   /**
     * This function should be used to access all the DecreasesContainer

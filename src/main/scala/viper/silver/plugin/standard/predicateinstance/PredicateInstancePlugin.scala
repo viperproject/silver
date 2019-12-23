@@ -7,7 +7,7 @@
 package viper.silver.plugin.standard.predicateinstance
 
 import fastparse.noApi
-import viper.silver.ast.{Domain, DomainType, ErrTrafo, FuncApp, Function, NodeTrafo, Position, PredicateAccess, PredicateAccessPredicate, Program, WildcardPerm}
+import viper.silver.ast.{Domain, DomainType, ErrTrafo, FuncApp, Function, Position, PredicateAccess, PredicateAccessPredicate, Program, WildcardPerm}
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.parser.FastParser._
@@ -103,12 +103,11 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
   override def mapVerificationResult(input: VerificationResult): VerificationResult = {
     input match {
       case Success => input
-      case Failure(errors) => {
+      case Failure(errors) =>
         Failure(errors.map {
           case e@PreconditionInAppFalse(_, _, _) => e.transformedError()
           case e => e
         })
-      }
     }
   }
 
