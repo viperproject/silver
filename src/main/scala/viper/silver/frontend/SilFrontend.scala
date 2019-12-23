@@ -76,9 +76,17 @@ trait SilFrontend extends DefaultFrontend {
   protected var _config: SilFrontendConfig = _
   def config: SilFrontendConfig = _config
 
-  protected var _defaultPlugins: Option[String] = Some("viper.silver.plugin.standard.decreases.DecreasesPlugin:viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin")
+  /**
+   * Default plugins are always activated and are run as last plugins.
+   * All default plugins can be excluded from the plugins by providing the --disableDefaultPlugins flag
+   */
+  private var defaultPlugins: Seq[String] = Seq(
+    "viper.silver.plugin.standard.decreases.DecreasesPlugin",
+    "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin"
+  )
 
-  protected var _plugins: SilverPluginManager = SilverPluginManager(_defaultPlugins)(reporter, logger, _config)
+
+  protected var _plugins: SilverPluginManager = SilverPluginManager(Some(defaultPlugins.mkString(":")))(reporter, logger, _config)
   def plugins: SilverPluginManager = _plugins
 
   protected var _startTime: Long = _
@@ -161,7 +169,13 @@ trait SilFrontend extends DefaultFrontend {
 
     if(_config != null) {
       // reset error messages of plugins
-      val plugins: Option[String] = _config.plugin.toOption ++ _defaultPlugins reduceOption(_ + ":" + _)
+
+      // concat defined plugins and default plugins (if no disabled)
+      val plugins: Option[String] = {
+        val list = _config.plugin.toOption ++
+          (if (_config.defaultPlugins.toOption.getOrElse(false)) Nil else defaultPlugins)
+        if (list.isEmpty) { None } else { Some(list.mkString(":")) }
+      }
       _plugins = SilverPluginManager(plugins)(reporter, logger, _config)
     }
 

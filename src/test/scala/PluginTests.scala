@@ -237,7 +237,7 @@ class PluginTests extends FunSuite {
       case p: FakeResult => p.result()
       case _ => Success
     }
-    frontend.execute(Seq("--plugin", plugin, file.toString))
+    frontend.execute(Seq("--plugin", plugin, "--disableDefaultPlugins", file.toString))
     assert(frontend.plugins.plugins.size == 1)
     frontend.plugins.plugins.foreach {
       case p: TestPlugin => assert(p.test(), p.getClass.getName)
