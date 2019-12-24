@@ -6,7 +6,6 @@
 
 package viper.silver.plugin.standard.decreases.transformation
 
-import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.rewriter.Traverse
@@ -14,9 +13,6 @@ import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.{Bool, CondExp, ErrTrafo, Exp, FalseLit, FuncApp, Function, Inhale, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt}
 import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTuple, FunctionTerminationError}
 import viper.silver.verifier.errors.AssertFailed
-
-import scala.collection.JavaConverters._
-
 
 trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransformer with PredicateInstanceManager with ErrorReporter {
 
@@ -34,7 +30,10 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
   def getFunctionDecreasesContainer(functionName: String): DecreasesContainer = {
     program.findFunctionOptionally(functionName) match {
       case Some(f) => DecreasesContainer.fromNode(f)
-      case None => DecreasesContainer()
+      case None => {
+
+        DecreasesContainer()
+      }
     }
   }
 
@@ -249,11 +248,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
   }
 
 
-  private lazy val mutuallyRecursiveFunctions: Seq[Set[Function]] = {
-    val stronglyConnected = new KosarajuStrongConnectivityInspector(functionCallGraph)
-    val c = stronglyConnected.stronglyConnectedSets()
-    c.asScala.map(_.asScala.toSet)
-  }
+  private lazy val mutuallyRecursiveFunctions: Seq[Set[Function]] = CallGraph.mutuallyRecursiveVertices(functionCallGraph)
 
   private lazy val functionCallGraph: DefaultDirectedGraph[Function, DefaultEdge] = {
     val graph = new DefaultDirectedGraph[Function, DefaultEdge](classOf[DefaultEdge])
@@ -270,7 +265,6 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
     program.functions.foreach(f => {
       f.pres ++ f.posts ++ f.body foreach (process(f, _))
     })
-
     graph
   }
 }

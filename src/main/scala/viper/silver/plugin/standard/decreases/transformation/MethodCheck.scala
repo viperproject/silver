@@ -6,15 +6,12 @@
 
 package viper.silver.plugin.standard.decreases.transformation
 
-import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{ContextC, Strategy, Traverse}
 import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTuple, LoopTerminationError, MethodTerminationError}
 import viper.silver.verifier.errors.AssertFailed
-
-import scala.collection.JavaConverters._
 
 /**
   * Creates termination checks for methods.
@@ -267,11 +264,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
     var nestedRequired = false
   }
 
-  private lazy val mutuallyRecursiveMethods: Seq[Set[Method]] = {
-    val stronglyConnected = new KosarajuStrongConnectivityInspector(methodCallGraph)
-    val c = stronglyConnected.stronglyConnectedSets()
-    c.asScala.map(_.asScala.toSet)
-  }
+  private lazy val mutuallyRecursiveMethods: Seq[Set[Method]] = CallGraph.mutuallyRecursiveVertices(methodCallGraph)
 
   private lazy val methodCallGraph = {
     val graph = new DefaultDirectedGraph[Method, DefaultEdge](classOf[DefaultEdge])

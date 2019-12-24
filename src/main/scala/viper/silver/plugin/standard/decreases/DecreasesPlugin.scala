@@ -123,7 +123,10 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
             f
           }
 
-        decreasesContainer.appendToFunction(newFunction)
+        decreasesContainer match {
+          case Some(dc) => dc.appendToFunction(newFunction)
+          case None => newFunction
+        }
       case m: Method =>
         val (pres, decreasesContainer) = extractDecreasesClauses(m.pres)
 
@@ -133,7 +136,10 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
           } else {
             m
           }
-        decreasesContainer.appendToMethod(newMethod)
+        decreasesContainer match {
+          case Some(dc) => dc.appendToMethod(newMethod)
+          case None => newMethod
+        }
       case w: While =>
         val (invs, decreasesContainer) = extractDecreasesClauses(w.invs)
 
@@ -144,7 +150,10 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
             w
           }
 
-        decreasesContainer.appendToWhile(newWhile)
+        decreasesContainer match {
+          case Some(dc) => dc.appendToWhile(newWhile)
+          case None => newWhile
+        }
     }).execute(program)
     result
   }
@@ -156,7 +165,7 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
    * @param exps: sequence of expression from which decreases clauses should be extracted.
    * @return exps without decreases clauses and a decreases container containing decreases clauses from exps.
    */
-  private def extractDecreasesClauses(exps: Seq[Exp]): (Seq[Exp], DecreasesContainer) =
+  private def extractDecreasesClauses(exps: Seq[Exp]): (Seq[Exp], Option[DecreasesContainer]) =
   {
     val (decreases, pres) = exps.partition(p => p.isInstanceOf[DecreasesExp])
 
@@ -172,6 +181,11 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
     if (stars.size > 1){
       reportError(ConsistencyError("Multiple decreases star.", stars.head.pos))
     }
-    (pres, DecreasesContainer(tuples.headOption, wildcards.headOption, stars.headOption))
+
+    if (tuples.nonEmpty || wildcards.nonEmpty || stars.nonEmpty){
+      (pres, Some(DecreasesContainer(tuples.headOption, wildcards.headOption, stars.headOption)))
+    } else {
+      (exps, None)
+    }
   }
 }
