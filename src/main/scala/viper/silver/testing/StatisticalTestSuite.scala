@@ -59,7 +59,7 @@ trait StatisticalTestSuite extends SilSuite {
       //      println(s">>> reps = $reps")
 
       // collect data
-      val data = for (iter <- 1 to reps) yield {
+      val data = for (_ <- 1 to reps) yield {
         val fe = frontend(verifier, input.files)
 
         // collect timings
@@ -67,8 +67,7 @@ trait StatisticalTestSuite extends SilSuite {
           time(p.action)._2
         }
 
-        // it is sufficient to collect errors once
-        val actualErrors: Seq[AbstractError] = if (iter == 1) {
+        val actualErrors: Seq[AbstractError] =
           fe.result match {
             case Success => Nil
             case Failure(es) => es collect {
@@ -77,7 +76,6 @@ trait StatisticalTestSuite extends SilSuite {
               case rest: AbstractError => rest
             }
           }
-        } else Seq()
 
         (actualErrors, perPhaseTimings)
       }
@@ -85,6 +83,12 @@ trait StatisticalTestSuite extends SilSuite {
       //      println(data)
 
       val (verResults: immutable.Seq[Seq[AbstractError]], timeResults: immutable.Seq[Seq[Long]]) = data.unzip
+
+      if (1 < verResults.length) {
+        Predef.assert(
+          verResults.tail.forall(_ == verResults.head),
+          s"Did not get the same errors for all repetitions: ${verResults}")
+      }
 
       val timingsWithTotal: Vector[Seq[Long]] = timeResults.toVector.map(row => row :+ row.sum)
 
