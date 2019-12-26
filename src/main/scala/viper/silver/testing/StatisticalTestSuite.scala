@@ -38,11 +38,15 @@ trait StatisticalTestSuite extends SilSuite {
 
   override def systemsUnderTest:Seq[silver.testing.SystemUnderTest] = Vector(testingInstance)
 
-  protected def name: String = "Viper Statistics"
+  protected def name: String
 
   private val testingInstance: SystemUnderTest with TimingUtils = new SystemUnderTest with TimingUtils {
 
-    val projectInfo = new ProjectInfo(List(name))
+    /** In order to support hierarchical test annotations (an UnexpectedError could be attributed to a verifier, e.g.
+      * Silicon, or generally to Silver), it is important to extend (update) the project info field, not to overwrite
+      * it. See also [[SilSuite.projectInfo]].
+      */
+    lazy val projectInfo = StatisticalTestSuite.this.projectInfo.update(name)
 
     override def run(input: AnnotatedTestInput): Seq[AbstractOutput] = {
 
