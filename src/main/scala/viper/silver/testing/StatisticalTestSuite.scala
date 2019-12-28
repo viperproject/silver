@@ -1,8 +1,9 @@
 package viper.silver.testing
 
-import java.io.File
+import java.io.{BufferedWriter, File, FileWriter}
 import java.nio.file.Path
 
+import org.scalatest.ConfigMap
 import viper.silver
 import viper.silver.utility.{Paths, TimingUtils}
 import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure, Success, Verifier}
@@ -10,17 +11,42 @@ import viper.silver.verifier.{AbstractError, AbstractVerificationError, Failure,
 import scala.collection.immutable
 
 trait StatisticalTestSuite extends SilSuite {
+  protected def repetitionsPropertyName: String = "STATS_REPETITIONS"
+  protected def warmupLocationPropertyName: String = "STATS_WARMUP"
+  protected def targetLocationPropertyName: String = "STATS_TARGET"
+  protected def csvFilePropertyName: String = "STATS_CSV"
 
-  protected def warmupLocationEnvVarName: String
-  protected def targetLocationEnvVarName: String
+  protected def repetitions: Int =
+    Option(System.getProperty(repetitionsPropertyName)) match {
+      case Some(reps) =>
+        val intReps = reps.toInt
 
-  private def warmupDirName: Option[String] = Option(System.getenv(warmupLocationEnvVarName))
-  private def targetDirName: String = Option(System.getenv(targetLocationEnvVarName)).get
+        failIf(
+          s"Repetitions must be >= 1, but got $reps",
+          intReps < 1)
 
-  protected def numOfExecutions: Int = 1
+        intReps
+      case None =>
+        val default = 1
+        info(s"[StatisticalTestSuite] Repetitions defaults to $default")
+
+        default
+    }
+
+  protected def warmupDirName: Option[String] = Option(System.getProperty(warmupLocationPropertyName))
+
+  protected def targetDirName: String =
+    Option(System.getProperty(targetLocationPropertyName)) match {
+      case Some(name) => name
+      case None => fail(s"Property '$targetLocationPropertyName' not set")
+    }
+
+  protected def csvFileName: Option[String] = Option(System.getProperty(csvFilePropertyName))
 
   protected def verifier: Verifier
   override def verifiers = Vector(verifier)
+
+  private var csvFile: BufferedWriter = _
 
   override def testDirectories: Seq[String] = warmupDirName match {
     case Some(w) =>
@@ -30,10 +56,30 @@ trait StatisticalTestSuite extends SilSuite {
   }
 
   override def getTestDirPath(testDir: String): Path = {
-    require(testDir != null, "test directory does not exist")
+    failIf(s"Test directory '$testDir' does not exist", testDir == null)
+
     val targetPath: File = Paths.canonize(testDir)
-    require(targetPath.isDirectory, "invalid test directory")
+    failIf(s"Invalid test directory '$testDir'", !targetPath.isDirectory)
+
     targetPath.toPath
+  }
+
+  override def beforeAll(configMap: ConfigMap): Unit = {
+    super.beforeAll(configMap)
+
+    csvFileName foreach (filename => {
+      csvFile = new BufferedWriter(new FileWriter(filename))
+
+      csvFile.write("File,Outputs,Mean [ms],StdDev [ms],RelStdDev [%],Best [ms],Median [ms],Worst [ms]")
+      csvFile.newLine()
+      csvFile.flush()
+    })
+  }
+
+  override def afterAll(configMap: ConfigMap): Unit = {
+    super.afterAll(configMap)
+
+    if (csvFileName.isDefined) csvFile.close()
   }
 
   override def systemsUnderTest:Seq[silver.testing.SystemUnderTest] = Vector(testingInstance)
@@ -46,14 +92,14 @@ trait StatisticalTestSuite extends SilSuite {
       * Silicon, or generally to Silver), it is important to extend (update) the project info field, not to overwrite
       * it. See also [[SilSuite.projectInfo]].
       */
-    lazy val projectInfo = StatisticalTestSuite.this.projectInfo.update(name)
+    lazy val projectInfo: ProjectInfo = StatisticalTestSuite.this.projectInfo.update(name)
 
     override def run(input: AnnotatedTestInput): Seq[AbstractOutput] = {
 
       val phaseNames: Seq[String] = frontend(verifier, input.files).phases.map(_.name) :+ "Overall"
 
       val isWarmup = warmupDirName.isDefined && Paths.isInSubDirectory(Paths.canonize(warmupDirName.get), input.file.toFile)
-      val reps = if (isWarmup) 1 else numOfExecutions
+      val reps = if (isWarmup) 1 else repetitions
 
       //      println(s">>> isWarmup = $isWarmup")
       //      println(s">>> reps = $reps")
@@ -87,7 +133,7 @@ trait StatisticalTestSuite extends SilSuite {
       if (1 < verResults.length) {
         Predef.assert(
           verResults.tail.forall(_ == verResults.head),
-          s"Did not get the same errors for all repetitions: ${verResults}")
+          s"Did not get the same errors for all repetitions: $verResults")
       }
 
       val timingsWithTotal: Vector[Seq[Long]] = timeResults.toVector.map(row => row :+ row.sum)
@@ -104,7 +150,7 @@ trait StatisticalTestSuite extends SilSuite {
       }
       val meaningfulReps = trimmedTimings.length
 
-      require(trimmedTimings.nonEmpty)
+      Predef.assert(trimmedTimings.nonEmpty)
 
       //      println(s"Should be sorted: $sortedTimings")
 
@@ -112,6 +158,14 @@ trait StatisticalTestSuite extends SilSuite {
       val bestRun: Seq[Long] = trimmedTimings.head
       val medianRun: Seq[Long] = trimmedTimings(meaningfulReps / 2)
       val worstRun: Seq[Long] = trimmedTimings.last
+
+      val stddevTimings = trimmedTimings.transpose.zip(meanTimings).map { case (col, mean) =>
+        math.sqrt(col.map(v => math.pow(v - mean, 2)).sum / col.length).toLong
+      }
+
+      val relStddevTimings = stddevTimings.zip(meanTimings).map { case (stddev, mean) =>
+        (100.0 * stddev / math.abs(mean)).toLong
+      }
 
       //      println(s">>> min = ${bestRun.map(formatTimeForTable)}")
       //      println(s">>> max = ${worstRun.map(formatTimeForTable)}")
@@ -129,9 +183,23 @@ trait StatisticalTestSuite extends SilSuite {
 
         val n = "%2d".format(meaningfulReps)
         info(s"[Benchmark] Mean / $n runs: ${printableTimings(meanTimings, phaseNames)}.")
+        info(s"[Benchmark] Stddevs:        ${printableTimings(stddevTimings, phaseNames)}.")
+        info(s"[Benchmark] Rel. stddev:    ${printablePercentage(relStddevTimings, phaseNames)}.")
         info(s"[Benchmark] Best run:       ${printableTimings(bestRun, phaseNames)}.")
         info(s"[Benchmark] Median run:     ${printableTimings(medianRun, phaseNames)}.")
         info(s"[Benchmark] Worst run:      ${printableTimings(worstRun, phaseNames)}.")
+
+        if (csvFileName.isDefined) {
+          val csvRowData = Seq(
+            Path.of(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath),
+            verResults.head.length,
+            meanTimings.last, stddevTimings.last, relStddevTimings.last,
+            bestRun.last, medianRun.last, worstRun.last)
+
+          csvFile.write(csvRowData.mkString(","))
+          csvFile.newLine()
+          csvFile.flush()
+        }
       }
 
       verResults.flatten.map(SilOutput)
@@ -139,6 +207,17 @@ trait StatisticalTestSuite extends SilSuite {
 
     private def printableTimings(timings: Seq[Long], phaseNames: Seq[String]): String =
       timings.map(formatTimeForTable).zip(phaseNames).map(tup => tup._1 + " (" + tup._2 + ")").mkString(", ")
+
+    private def printablePercentage(percentage: Seq[Long], phaseNames: Seq[String]): String = {
+      percentage
+        .map(p => "%6s %%   ".format(p)) /*** Format in sync with [[formatTimeForTable()]] */
+        .zip(phaseNames)
+        .map(tup => tup._1 + " (" + tup._2 + ")")
+        .mkString(", ")
+    }
   }
+
+  private def failIf(message: => String, condition: Boolean): Unit =
+    if (condition) fail(message)
 }
 
