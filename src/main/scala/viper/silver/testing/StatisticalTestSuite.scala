@@ -1,7 +1,7 @@
 package viper.silver.testing
 
 import java.io.{BufferedWriter, File, FileWriter}
-import java.nio.file.Path
+import java.nio.file.{Path, Paths => JPaths}
 
 import org.scalatest.ConfigMap
 import viper.silver
@@ -191,7 +191,7 @@ trait StatisticalTestSuite extends SilSuite {
 
         if (csvFileName.isDefined) {
           val csvRowData = Seq(
-            Path.of(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath),
+            JPaths.get(targetDirName).toAbsolutePath.relativize(input.file.toAbsolutePath),
             verResults.head.length,
             meanTimings.last, stddevTimings.last, relStddevTimings.last,
             bestRun.last, medianRun.last, worstRun.last)
