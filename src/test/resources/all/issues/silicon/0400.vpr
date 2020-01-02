@@ -1,6 +1,8 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
+//:: IgnoreFile(/carbon/issue/293/)
+
 /*
  * First few tests don't include corner-cases
  */
