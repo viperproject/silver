@@ -33,7 +33,12 @@ trait StatisticalTestSuite extends SilSuite {
         default
     }
 
-  protected def warmupDirName: Option[String] = Option(System.getProperty(warmupLocationPropertyName))
+  protected def warmupDirName: Option[String] = {
+    val dir = System.getProperty(warmupLocationPropertyName, "").trim
+
+    if (dir.isEmpty) None
+    else Option(dir)
+  }
 
   protected def targetDirName: String =
     Option(System.getProperty(targetLocationPropertyName)) match {
