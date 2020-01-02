@@ -6,8 +6,10 @@
 
 package viper.silver.plugin.standard.decreases.transformation
 
-import viper.silver.ast._
+import viper.silver.ast.{Exp, Stmt, _}
 import viper.silver.ast.utility.Statements.EmptyStmt
+import viper.silver.ast.utility.ViperStrategy
+import viper.silver.ast.utility.rewriter.{ContextCustom, Strategy}
 import viper.silver.verifier.ConsistencyError
 
 /**
@@ -32,7 +34,8 @@ trait ExpTransformer extends ErrorReporter {
       val elsStmt = transformExp(els, c)
 
       val ifStmt = if (!(thnStmt == EmptyStmt && elsStmt == EmptyStmt)) {
-        If(cond, Seqn(Seq(thnStmt), Nil)(), Seqn(Seq(elsStmt), Nil)())()
+        val sanCond: Exp = sanitiseExpStrategy(c).execute(cond)
+        If(sanCond, Seqn(Seq(thnStmt), Nil)(), Seqn(Seq(elsStmt), Nil)())()
       } else {
         EmptyStmt
       }
@@ -43,7 +46,8 @@ trait ExpTransformer extends ErrorReporter {
       val unfoldBody = transformExp(unfBody, c)
       // only unfold and fold if body contains something
       val (unfold, fold) = if (unfoldBody != EmptyStmt){
-          (Unfold(acc)(), Fold(acc)())
+          val sanAcc: PredicateAccessPredicate = sanitiseExpStrategy(c).execute(acc)
+          (Unfold(sanAcc)(), Fold(sanAcc)())
         } else {
           (EmptyStmt, EmptyStmt)
         }
@@ -53,8 +57,6 @@ trait ExpTransformer extends ErrorReporter {
     case (inex: InhaleExhaleExp, c) =>
       val inhaleStmt = transformExp(inex.in, c)
       val exhaleStmt = transformExp(inex.ex, c)
-
-
 
       if (!(inhaleStmt == EmptyStmt && exhaleStmt == EmptyStmt)) {
         c.conditionInEx match {
@@ -68,7 +70,9 @@ trait ExpTransformer extends ErrorReporter {
       val expressionStmt = transformExp(letExp.exp, c)
       val localVarDecl = letExp.variable
 
-      val inhaleEq = Inhale(EqCmp(localVarDecl.localVar, letExp.exp)())()
+      val sanExp: Exp = sanitiseExpStrategy(c).execute(letExp.exp)
+
+      val inhaleEq = Inhale(EqCmp(localVarDecl.localVar, sanExp)())()
 
       val bodyStmt = transformExp(letExp.body, c)
 
@@ -81,14 +85,17 @@ trait ExpTransformer extends ErrorReporter {
       // Short circuit evaluation
       val rightSCE = if (right != EmptyStmt) {
         b match {
-          case _: Or =>
-            If(Not(b.left)(), Seqn(Seq(right), Nil)(), EmptyStmt)()
-          case _: And =>
-            If(b.left, Seqn(Seq(right), Nil)(), EmptyStmt)()
-          case _: Implies =>
-            If(b.left, Seqn(Seq(right), Nil)(), EmptyStmt)()
+          case _: Or if b.left.isPure =>
+            val sanLeft: Exp = sanitiseExpStrategy(c).execute(b.left)
+            If(Not(sanLeft)(), Seqn(Seq(right), Nil)(), EmptyStmt)()
+          case _: And if b.left.isPure =>
+            val sanLeft: Exp = sanitiseExpStrategy(c).execute(b.left)
+            If(sanLeft, Seqn(Seq(right), Nil)(), EmptyStmt)()
+          case _: Implies if b.left.isPure  =>
+            val sanLeft: Exp = sanitiseExpStrategy(c).execute(b.left)
+            If(sanLeft, Seqn(Seq(right), Nil)(), EmptyStmt)()
           case _ =>
-            Seqn(Seq(left, right), Nil)(b.pos)
+            Seqn(Seq(right), Nil)()
         }
       } else {
         EmptyStmt
@@ -124,7 +131,7 @@ trait ExpTransformer extends ErrorReporter {
         Seqn(Seq(transformExp(s, c)), Nil)(sq.pos)
       case EmptySeq(e) => EmptyStmt
 
-      case unsupportedExp => reportUnsupportedExp(unsupportedExp)
+      case unsupportedExp => transformExpUnknown(unsupportedExp, c)
         EmptyStmt
     }
     case (st: ExplicitSet, c) =>
@@ -139,32 +146,47 @@ trait ExpTransformer extends ErrorReporter {
     case (la: LocationAccess, c) => EmptyStmt
 
     case (ap: AccessPredicate, c) =>
-      transformExp(ap.perm, c)
+      val check = transformExp(ap.perm, c)
+
+      val sanAp: Exp = sanitiseExpStrategy(c).execute(ap)
+      val inhale = Inhale(sanAp)(ap.pos)
+
+      Seqn(Seq(check, inhale), Nil)()
 
     case (fa: FuncLikeApp, c) =>
       val argStmts = fa.args.map(transformExp(_,c)).filterNot(_ == EmptyStmt)
       Seqn(argStmts, Nil)()
     case (unsupportedExp, c) =>
-      if (c.unsupportedOperationException){
-        reportUnsupportedExp(unsupportedExp)
-        EmptyStmt
-      } else {
-        val sub = unsupportedExp.subExps.map(transformExp(_, c)).filterNot(_ == EmptyStmt)
-        Seqn(sub, Nil)()
-      }
+      transformExpUnknown(unsupportedExp, c)
   }
 
   /**
-    * Issues a consistency error for unsupported expressions.
-    * @param unsupportedExp to be reported.
-    */
-  def reportUnsupportedExp(unsupportedExp: Exp): Unit ={
-    reportError(ConsistencyError("Unsupported expression detected: " + unsupportedExp + ", " + unsupportedExp.getClass, unsupportedExp.pos))
+   * Expression transformer if no default is defined.
+   * Calls transformExp on all subExps of e.
+   * Can be overridden if another operation is required.
+   */
+  def transformExpUnknown(e: Exp, c: ExpressionContext): Stmt = {
+    val sub = e.subExps.map(transformExp(_, c)).filterNot(_ == EmptyStmt)
+    Seqn(sub, Nil)()
   }
 
+  /**
+   * Sanitizes expressions to be used in the statement.
+   */
+  def sanitiseExp: PartialFunction[(Node, ExpressionContext), (Node, ExpressionContext)] = {
+    case (inexExp: InhaleExhaleExp, c) =>
+      val newInexExp = c.conditionInEx match {
+        case Some(conditionInEx) =>
+          CondExp(conditionInEx.localVar, inexExp.in, inexExp.ex)(inexExp.pos)
+        case None =>
+          Or(inexExp.in, inexExp.ex)(inexExp.pos)
+      }
+      (newInexExp, c)
+  }
+
+  final def sanitiseExpStrategy(c: ExpressionContext): Strategy[Node, ContextCustom[Node, ExpressionContext]] = ViperStrategy.CustomContext(sanitiseExp, c)
 }
 
 trait ExpressionContext {
-  val unsupportedOperationException: Boolean
   val conditionInEx: Option[LocalVarDecl]
 }

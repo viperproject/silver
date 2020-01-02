@@ -10,8 +10,9 @@ import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.{Bool, CondExp, ErrTrafo, Exp, FalseLit, FuncApp, Function, Inhale, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt}
+import viper.silver.ast.{And, Bool, CondExp, ErrTrafo, Exp, FalseLit, FuncApp, Function, Inhale, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt}
 import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTuple, FunctionTerminationError}
+import viper.silver.verifier.ConsistencyError
 import viper.silver.verifier.errors.AssertFailed
 
 trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransformer with PredicateInstanceManager with ErrorReporter {
@@ -85,28 +86,27 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
       val resultVariable = LocalVarDecl(resultVariableName, f.typ)(f.result.pos, f.result.info, NodeTrafo(f.result))
 
       // replace all Result nodes with the result variable.
-      val posts = f.posts.map(p => ViperStrategy.Slim({
-        case Result(t) => resultVariable.localVar
-      }, Traverse.BottomUp).execute[Exp](p))
+      // and concatenate all posts
+      val posts: Exp = f.posts
+        .map(p => ViperStrategy.Slim({
+            case Result(t) => resultVariable.localVar
+          }, Traverse.BottomUp).execute[Exp](p))
+        .reduce((e, p) => And(e, p)())
 
-      // after the termination checks assume the postcondition.
       val proofMethodBody = {
-        posts.map(p => {
           val postCheck = {
-            val stmt: Stmt = transformExp(p, context)
+            val stmt: Stmt = transformExp(posts, context)
             if (requireNestedInfo){
               addNestedPredicateInformation.execute(stmt)
             } else {
               stmt
             }
           }
-          val inhale = Inhale(p)()
-          Seq(postCheck, inhale)
-        })
+          Seq(postCheck)
       }
 
       val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
-        Option(Seqn(proofMethodBody.flatten, Seq(resultVariable))()))()
+        Option(Seqn(proofMethodBody, Seq(resultVariable))()))()
 
       methods(proofMethodName) = proofMethod
     }
@@ -115,23 +115,13 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
       val proofMethodName = uniqueName(f.name + "_pres_termination_proof")
       val context = DummyFunctionContext(f)
 
-      val proofMethodBody = f.pres.map(p => {
-        // function preconditions possibly contains inhale exhale expressions
-        val pIn = p.whenInhaling
-        val pEx = p.whenExhaling
+      // concatenate all pres
+      val pres = f.pres.reduce((e, p) => And(e, p)())
 
-        val inhale = if (pIn == pEx) {
-          Inhale(p)()
-        } else {
-          Inhale(CondExp(context.conditionInEx.get.localVar, pIn, pEx)())()
-        }
-
-        val presCheck = transformExp(p, context)
-        Seqn(Seq(inhale, presCheck), Nil)()
-      })
+      val presCheck = transformExp(pres, context)
 
       val proofMethod = Method(proofMethodName, f.formalArgs, Nil, Nil, Nil,
-        Option(Seqn(proofMethodBody, Seq(context.conditionInEx.get))()))()
+        Option(Seqn(Seq(presCheck), Seq(context.conditionInEx.get))()))()
 
       methods(proofMethodName) = proofMethod
     }
@@ -152,7 +142,6 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
       // check the arguments
       val termChecksOfArgs: Seq[Stmt] = functionCall.getArgs map (a => transformExp(a, context))
       stmts.appendAll(termChecksOfArgs)
-
 
       getFunctionDecreasesContainer(context.functionName).tuple match {
         case Some(callerTuple) =>
@@ -225,6 +214,19 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
     case default => super.transformExp(default)
   }
 
+  override def transformExpUnknown(e: Exp, c: ExpressionContext): Stmt = {
+    reportUnsupportedExp(e)
+    EmptyStmt
+  }
+
+  /**
+   * Issues a consistency error for unsupported expressions.
+   * @param unsupportedExp to be reported.
+   */
+  def reportUnsupportedExp(unsupportedExp: Exp): Unit ={
+    reportError(ConsistencyError("Unsupported expression detected: " + unsupportedExp + ", " + unsupportedExp.getClass, unsupportedExp.pos))
+  }
+
   // context creator
   private case class FContext(override val function: Function) extends FunctionContext {
     override val conditionInEx: Option[LocalVarDecl]  = Some(LocalVarDecl(condInExVariableName, Bool)())
@@ -242,7 +244,6 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
   private trait FunctionContext extends ExpressionContext {
     val function: Function
     val functionName: String
-    override val unsupportedOperationException: Boolean = true
 
     val mutuallyRecursiveFuncs: Set[Function]
   }
