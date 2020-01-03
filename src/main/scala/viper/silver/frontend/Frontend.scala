@@ -259,5 +259,6 @@ trait DefaultFrontend extends Frontend with DefaultPhases with SingleFileFronten
 }
 
 object DefaultStates extends Enumeration {
+  type DefaultStates = Value
   val Initial, Initialized, InputSet, Parsing, SemanticAnalysis, Translation, ConsistencyCheck, Verification = Value
 }
