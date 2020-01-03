@@ -88,9 +88,6 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
       case p: Program =>
         p.copy(functions = p.functions ++ createdPIFunctions.values)(p.pos, p.info, p.errT)
     }, Traverse.BottomUp).execute(input)
-
-    println(newProgram)
-
     newProgram
   }
 
