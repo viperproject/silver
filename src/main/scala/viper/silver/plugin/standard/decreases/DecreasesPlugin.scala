@@ -69,7 +69,6 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
       val trafo = new Trafo(newProgram, reportError)
 
       val finalProgram = trafo.getTransformedProgram
-      print(finalProgram)
       finalProgram
     }
   }
