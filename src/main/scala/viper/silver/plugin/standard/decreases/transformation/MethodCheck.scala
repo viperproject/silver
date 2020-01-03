@@ -14,14 +14,14 @@ import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTupl
 import viper.silver.verifier.errors.AssertFailed
 
 /**
-  * Creates termination checks for methods.
-  */
-trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInstanceManager with ErrorReporter {
+ * Creates termination checks for methods.
+ */
+trait MethodCheck extends ProgramManager with DecreasesCheck with NestePredicates with ErrorReporter {
 
   /**
-    * @param method name
-    * @return DecreasesExp defined by the user if exists, otherwise a DecreasesTuple containing the methods parameter.
-    */
+   * @param method name
+   * @return DecreasesExp defined by the user if exists, otherwise a DecreasesTuple containing the methods parameter.
+   */
   private def getMethodDecreasesContainer(method: String): DecreasesContainer = {
     program.methods.find(_.name == method) match {
       case Some(f) => DecreasesContainer.fromNode(f)
@@ -30,12 +30,12 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
   }
 
   private def getWhileDecreasesContainer(w: While): DecreasesContainer = {
-      DecreasesContainer.fromNode(w)
+    DecreasesContainer.fromNode(w)
   }
 
   /**
-    * Transforms all the methods in the (original) program to contain termination checks.
-    */
+   * Transforms all the methods in the (original) program to contain termination checks.
+   */
   protected def transformMethods(): Unit = {
     program.methods.foreach(m => {
       val method = transformMethod(m)
@@ -67,11 +67,11 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
   private type StrategyContext = ContextC[Node, MethodContext]
 
   /**
-    * @return Strategy to be used to transform a methods body.
-    */
+   * @return Strategy to be used to transform a methods body.
+   */
   private def methodStrategy(context: MethodContext): Strategy[Node, StrategyContext] =
-    // BottomUp traversal does not work because the original While node is required
-    // to obtain the associated DecreasesContainer
+  // BottomUp traversal does not work because the original While node is required
+  // to obtain the associated DecreasesContainer
     ViperStrategy.Context(methodTransformer, context, Traverse.BottomUp).recurseFunc(avoidExpressions)
 
   private def avoidExpressions: PartialFunction[Node, Seq[AnyRef]] = {
@@ -244,12 +244,13 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with PredicateInsta
    */
   private final case class Transformed() extends Info {
     override def comment: Seq[String] = Nil
+
     override def isCached: Boolean = false
   }
 
   private var whileCounter: Int = 1
 
-  private case class MContext (override val method: Method) extends MethodContext {
+  private case class MContext(override val method: Method) extends MethodContext {
     override val methodName: String = method.name
     override val mutuallyRecursiveMeths: Set[Method] = mutuallyRecursiveMethods.find(_.contains(method)).get
   }

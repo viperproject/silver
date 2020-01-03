@@ -9,48 +9,35 @@ package viper.silver.plugin.standard.decreases.transformation
 import viper.silver.ast.{Exp, Stmt, _}
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.utility.rewriter.{ContextCustom, Strategy}
-import viper.silver.verifier.ConsistencyError
+import viper.silver.ast.utility.rewriter.{ContextCustom, SimpleContext, Strategy, Traverse}
 
 /**
-  * A basic interface which helps to rewrite an expression (e.g. a function body) into a stmt (e.g. for a method body).
-  * Some basic transformations are already implemented.
-  * If no transformation is defined for an expression a consistency error is reported (to avoid unsound results).
-  */
+ * A basic interface which helps to rewrite an expression (e.g. a function body) into a stmt (e.g. for a method body).
+ * Some default transformations are already implemented.
+ */
 trait ExpTransformer extends ErrorReporter {
 
   /**
-    * Transforms an expression into a statement.
-    * If an unsupported expression is detected, i.e. an expression for which no transformation is defined,
-    * a consistency error is reported (to avoid unsound results).
-    * Parts of the expressions which stay expressions (e.g. the condition in a if clause)
-    * are also transformed into statements and prepended to the other statement.
-    * @return a statement representing the expression
-    */
+   * Transforms an expression into a statement.
+   *
+   * @return a statement representing the expression
+   */
   def transformExp: PartialFunction[(Exp, ExpressionContext), Stmt] = {
     case (CondExp(cond, thn, els), c) =>
       val condStmt = transformExp(cond, c)
       val thnStmt = transformExp(thn, c)
       val elsStmt = transformExp(els, c)
 
-      val ifStmt = if (!(thnStmt == EmptyStmt && elsStmt == EmptyStmt)) {
-        val sanCond: Exp = sanitiseExpStrategy(c).execute(cond)
-        If(sanCond, Seqn(Seq(thnStmt), Nil)(), Seqn(Seq(elsStmt), Nil)())()
-      } else {
-        EmptyStmt
-      }
-      val stmts = Seq(condStmt, ifStmt).filterNot(_ == EmptyStmt)
+      val ifStmt = If(cond, Seqn(Seq(thnStmt), Nil)(), Seqn(Seq(elsStmt), Nil)())()
+
+      val stmts = Seq(condStmt, ifStmt)
       Seqn(stmts, Nil)()
     case (Unfolding(acc, unfBody), c) =>
       val permCheck = transformExp(acc.perm, c)
       val unfoldBody = transformExp(unfBody, c)
       // only unfold and fold if body contains something
-      val (unfold, fold) = if (unfoldBody != EmptyStmt){
-          val sanAcc: PredicateAccessPredicate = sanitiseExpStrategy(c).execute(acc)
-          (Unfold(sanAcc)(), Fold(sanAcc)())
-        } else {
-          (EmptyStmt, EmptyStmt)
-        }
+      val (unfold, fold) = (Unfold(acc)(), Fold(acc)())
+
       val stmts = Seq(permCheck, unfold, unfoldBody, fold).filterNot(_ == EmptyStmt)
       Seqn(stmts, Nil)()
 
@@ -58,21 +45,15 @@ trait ExpTransformer extends ErrorReporter {
       val inhaleStmt = transformExp(inex.in, c)
       val exhaleStmt = transformExp(inex.ex, c)
 
-      if (!(inhaleStmt == EmptyStmt && exhaleStmt == EmptyStmt)) {
-        c.conditionInEx match {
-          case Some(conditionVar) => If(conditionVar.localVar, Seqn(Seq(inhaleStmt), Nil)(), Seqn(Seq(exhaleStmt), Nil)())()
-          case None => Seqn(Seq(inhaleStmt, exhaleStmt), Nil)()
-        }
-      } else {
-        EmptyStmt
+      c.conditionInEx match {
+        case Some(conditionVar) => If(conditionVar.localVar, Seqn(Seq(inhaleStmt), Nil)(), Seqn(Seq(exhaleStmt), Nil)())()
+        case None => Seqn(Seq(inhaleStmt, exhaleStmt), Nil)()
       }
     case (letExp: Let, c) =>
       val expressionStmt = transformExp(letExp.exp, c)
       val localVarDecl = letExp.variable
 
-      val sanExp: Exp = sanitiseExpStrategy(c).execute(letExp.exp)
-
-      val inhaleEq = Inhale(EqCmp(localVarDecl.localVar, sanExp)())()
+      val inhaleEq = Inhale(EqCmp(localVarDecl.localVar, letExp)())()
 
       val bodyStmt = transformExp(letExp.body, c)
 
@@ -83,24 +64,20 @@ trait ExpTransformer extends ErrorReporter {
       val right = transformExp(b.right, c)
 
       // Short circuit evaluation
-      val rightSCE = if (right != EmptyStmt) {
-        b match {
-          case _: Or if b.left.isPure =>
-            val sanLeft: Exp = sanitiseExpStrategy(c).execute(b.left)
-            If(Not(sanLeft)(), Seqn(Seq(right), Nil)(), EmptyStmt)()
-          case _: And if b.left.isPure =>
-            val sanLeft: Exp = sanitiseExpStrategy(c).execute(b.left)
-            If(sanLeft, Seqn(Seq(right), Nil)(), EmptyStmt)()
-          case _: Implies if b.left.isPure  =>
-            val sanLeft: Exp = sanitiseExpStrategy(c).execute(b.left)
-            If(sanLeft, Seqn(Seq(right), Nil)(), EmptyStmt)()
-          case _ =>
-            Seqn(Seq(right), Nil)()
-        }
-      } else {
-        EmptyStmt
+      val rightSCE = b match {
+        case _: Or =>
+          val sanLeft: Exp = sanitiseBooleanExp(c).execute(b.left)
+          If(Not(sanLeft)(), Seqn(Seq(right), Nil)(), EmptyStmt)()
+        case _: And =>
+          val sanLeft: Exp = sanitiseBooleanExp(c).execute(b.left)
+          If(sanLeft, Seqn(Seq(right), Nil)(), EmptyStmt)()
+        case _: Implies =>
+          val sanLeft: Exp = sanitiseBooleanExp(c).execute(b.left)
+          If(sanLeft, Seqn(Seq(right), Nil)(), EmptyStmt)()
+        case _ =>
+          Seqn(Seq(right), Nil)()
       }
-      val stmts = Seq(left, rightSCE).filterNot(_ == EmptyStmt)
+      val stmts = Seq(left, rightSCE)
       Seqn(stmts, Nil)()
     case (sq: SeqExp, c) => sq match {
       case ExplicitSeq(elems) =>
@@ -148,13 +125,12 @@ trait ExpTransformer extends ErrorReporter {
     case (ap: AccessPredicate, c) =>
       val check = transformExp(ap.perm, c)
 
-      val sanAp: Exp = sanitiseExpStrategy(c).execute(ap)
-      val inhale = Inhale(sanAp)(ap.pos)
+      val inhale = Inhale(ap)(ap.pos)
 
       Seqn(Seq(check, inhale), Nil)()
 
     case (fa: FuncLikeApp, c) =>
-      val argStmts = fa.args.map(transformExp(_,c)).filterNot(_ == EmptyStmt)
+      val argStmts = fa.args.map(transformExp(_, c))
       Seqn(argStmts, Nil)()
     case (unsupportedExp, c) =>
       transformExpUnknown(unsupportedExp, c)
@@ -163,7 +139,8 @@ trait ExpTransformer extends ErrorReporter {
   /**
    * Expression transformer if no default is defined.
    * Calls transformExp on all subExps of e.
-   * Can be overridden if another operation is required.
+   * To change or extend the default transformer for unknown expressions
+   * override this method (and possibly combine it with super.transformExpUnknown).
    */
   def transformExpUnknown(e: Exp, c: ExpressionContext): Stmt = {
     val sub = e.subExps.map(transformExp(_, c)).filterNot(_ == EmptyStmt)
@@ -171,9 +148,15 @@ trait ExpTransformer extends ErrorReporter {
   }
 
   /**
-   * Sanitizes expressions to be used in the statement.
+   * AccessPredicate and MagicWands expressions are removed by replacing them with TrueLit.
+   * If a conditionInEx is given in the context the InhaleExhaleExp are conditionally divided,
+   * otherwise they are combined with an Or.
    */
-  def sanitiseExp: PartialFunction[(Node, ExpressionContext), (Node, ExpressionContext)] = {
+  def sanitiseBooleanExp(c: ExpressionContext): Strategy[Node, ContextCustom[Node, ExpressionContext]] =
+    ViperStrategy.CustomContext(sanitiseBooleanExpRewriting, c, Traverse.Innermost)
+      .recurseFunc(sanitiseBooleanExpRecursion)
+
+  val sanitiseBooleanExpRewriting: PartialFunction[(Node, ExpressionContext), (Node, ExpressionContext)] = {
     case (inexExp: InhaleExhaleExp, c) =>
       val newInexExp = c.conditionInEx match {
         case Some(conditionInEx) =>
@@ -182,9 +165,34 @@ trait ExpTransformer extends ErrorReporter {
           Or(inexExp.in, inexExp.ex)(inexExp.pos)
       }
       (newInexExp, c)
+    case (_: AccessPredicate | _: MagicWand, c) => (TrueLit()(), c)
   }
 
-  final def sanitiseExpStrategy(c: ExpressionContext): Strategy[Node, ContextCustom[Node, ExpressionContext]] = ViperStrategy.CustomContext(sanitiseExp, c)
+  val sanitiseBooleanExpRecursion: PartialFunction[Node, Seq[Node]] = {
+    case Unfolding(_, body) => Seq(body)
+  }
+
+
+  /**
+   * The simplifyStmts Strategy can be used to simplify statements
+   * by e.g. removing or combining nested Seqn or If clauses.
+   * This is in particular useful for the expression to statement transformer
+   * because this often creates nested and empty Seqn and If clauses
+   */
+  val simplifyStmts: Strategy[Node, SimpleContext[Node]] = ViperStrategy.Slim({
+    case Seqn(EmptyStmt, _) => // remove empty Seqn (including unnecessary scopedDecls)
+      EmptyStmt
+    case Seqn(Seq(Seqn(ss, scopedDecls2)), scopedDecls1) => // combine nested Seqn
+      Seqn(ss, scopedDecls1 ++ scopedDecls2)()
+    case Seqn(ss, scopedDecls) => // remove empty statements
+      Seqn(ss.filterNot(_ == EmptyStmt), scopedDecls)()
+    case If(_, EmptyStmt, EmptyStmt) => // remove empty If clause
+      EmptyStmt
+    case If(c, EmptyStmt, els) => // change If with only els to If with only thn
+      If(Not(c)(c.pos), els, EmptyStmt)()
+    case If(c1, Seqn(Seq(If(c2, thn, EmptyStmt)), Nil), EmptyStmt) => // combine nested if clauses
+      If(And(c1, c2)(), thn, EmptyStmt)()
+  }, Traverse.BottomUp)
 }
 
 trait ExpressionContext {

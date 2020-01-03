@@ -10,12 +10,12 @@ import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.{And, Bool, CondExp, ErrTrafo, Exp, FalseLit, FuncApp, Function, Inhale, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt}
+import viper.silver.ast.{And, Bool, ErrTrafo, Exp, FalseLit, FuncApp, Function, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt}
 import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTuple, FunctionTerminationError}
 import viper.silver.verifier.ConsistencyError
 import viper.silver.verifier.errors.AssertFailed
 
-trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransformer with PredicateInstanceManager with ErrorReporter {
+trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransformer with NestePredicates with ErrorReporter {
 
   // Variable name for the result variable used in post condition termination checks
   private lazy val resultVariableName = uniqueName("$result")
@@ -24,17 +24,15 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
   private lazy val condInExVariableName = uniqueName("$condInEx")
 
   /**
-    * This function should be used to access all the DecreasesContainer
-    * @param functionName for which the decreases clauses are defined
-    * @return the defined DecreasesContainer
-    */
+   * This function should be used to access all the DecreasesContainer
+   *
+   * @param functionName for which the decreases clauses are defined
+   * @return the defined DecreasesContainer
+   */
   def getFunctionDecreasesContainer(functionName: String): DecreasesContainer = {
     program.findFunctionOptionally(functionName) match {
       case Some(f) => DecreasesContainer.fromNode(f)
-      case None => {
-
-        DecreasesContainer()
-      }
+      case None => DecreasesContainer()
     }
   }
 
@@ -44,7 +42,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
   protected def transformFunctions(): Unit = {
     program.functions.foreach(f => {
       getFunctionDecreasesContainer(f.name) match {
-        case DecreasesContainer(Some(_), _, _) => generateProofMethod(f)
+        case DecreasesContainer(Some(_), _, _) => generateProofMethods(f)
         case _ => // if no decreases tuple is defined do nothing
       }
     })
@@ -52,10 +50,13 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
   /**
    * generates a termination proof methods for a given function and adds it to the program
+   *
    * @param f function
    */
-  private def generateProofMethod(f: Function): Unit ={
+  private def generateProofMethods(f: Function): Unit = {
     val requireNestedInfo = containsPredicateInstances(DecreasesContainer.fromNode(f))
+    DecreasesContainer.fromNode(f).productIterator
+
     if (f.body.nonEmpty) {
       // method proving termination of the functions body.
       val proofMethodName = uniqueName(f.name + "_termination_proof")
@@ -63,19 +64,21 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
       val context = FContext(f)
 
       val proofMethodBody: Stmt = {
-        val stmt: Stmt = transformExp(f.body.get, context)
-        if (requireNestedInfo){
+        val stmt: Stmt = simplifyStmts.execute(transformExp(f.body.get, context))
+        if (requireNestedInfo) {
           addNestedPredicateInformation.execute(stmt)
         } else {
           stmt
         }
       }
 
-      val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
-        Option(Seqn(Seq(proofMethodBody), Nil)()))()
+      if (proofMethodBody != EmptyStmt) {
 
-      // add method to the program
-      methods(proofMethodName) = proofMethod
+        val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
+          Option(Seqn(Seq(proofMethodBody), Nil)()))()
+
+        methods(proofMethodName) = proofMethod
+      }
     }
 
     if (f.posts.nonEmpty) {
@@ -89,26 +92,25 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
       // and concatenate all posts
       val posts: Exp = f.posts
         .map(p => ViperStrategy.Slim({
-            case Result(t) => resultVariable.localVar
-          }, Traverse.BottomUp).execute[Exp](p))
+          case Result(t) => resultVariable.localVar
+        }, Traverse.BottomUp).execute[Exp](p))
         .reduce((e, p) => And(e, p)())
 
-      val proofMethodBody = {
-          val postCheck = {
-            val stmt: Stmt = transformExp(posts, context)
-            if (requireNestedInfo){
-              addNestedPredicateInformation.execute(stmt)
-            } else {
-              stmt
-            }
-          }
-          Seq(postCheck)
+      val proofMethodBody: Stmt = {
+        val stmt: Stmt = simplifyStmts.execute(transformExp(posts, context))
+        if (requireNestedInfo) {
+          addNestedPredicateInformation.execute(stmt)
+        } else {
+          stmt
+        }
       }
 
-      val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
-        Option(Seqn(proofMethodBody, Seq(resultVariable))()))()
+      if (proofMethodBody != EmptyStmt) {
+        val proofMethod = Method(proofMethodName, f.formalArgs, Nil, f.pres, Nil,
+          Option(Seqn(Seq(proofMethodBody), Seq(resultVariable))()))()
 
-      methods(proofMethodName) = proofMethod
+        methods(proofMethodName) = proofMethod
+      }
     }
 
     if (f.pres.nonEmpty) {
@@ -118,23 +120,25 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
       // concatenate all pres
       val pres = f.pres.reduce((e, p) => And(e, p)())
 
-      val presCheck = transformExp(pres, context)
+      val proofMethodBody: Stmt = simplifyStmts.execute(transformExp(pres, context))
 
-      val proofMethod = Method(proofMethodName, f.formalArgs, Nil, Nil, Nil,
-        Option(Seqn(Seq(presCheck), Seq(context.conditionInEx.get))()))()
+      if (proofMethodBody != EmptyStmt) {
+        val proofMethod = Method(proofMethodName, f.formalArgs, Nil, Nil, Nil,
+          Option(Seqn(Seq(proofMethodBody), Seq(context.conditionInEx.get))()))()
 
-      methods(proofMethodName) = proofMethod
+        methods(proofMethodName) = proofMethod
+      }
     }
   }
 
 
   /**
-    * Adds case FuncApp
-    * Checks if the termination measure decreases in every function call (to a possibly
-    * recursive call)
-    *
-    * @return a statement representing the expression
-    */
+   * Adds case FuncApp
+   * Checks if the termination measure decreases in every function call (to a possibly
+   * recursive call)
+   *
+   * @return a statement representing the expression
+   */
   override def transformExp: PartialFunction[(Exp, ExpressionContext), Stmt] = {
     case (functionCall: FuncApp, context: FunctionContext) =>
       val stmts = collection.mutable.ArrayBuffer[Stmt]()
@@ -205,7 +209,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
             stmts.append(assertion)
           }
 
-            case None =>
+        case None =>
           // no tuple is defined, hence, nothing must be checked
           // should not happen
           EmptyStmt
@@ -221,18 +225,20 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
   /**
    * Issues a consistency error for unsupported expressions.
+   *
    * @param unsupportedExp to be reported.
    */
-  def reportUnsupportedExp(unsupportedExp: Exp): Unit ={
+  def reportUnsupportedExp(unsupportedExp: Exp): Unit = {
     reportError(ConsistencyError("Unsupported expression detected: " + unsupportedExp + ", " + unsupportedExp.getClass, unsupportedExp.pos))
   }
 
   // context creator
   private case class FContext(override val function: Function) extends FunctionContext {
-    override val conditionInEx: Option[LocalVarDecl]  = Some(LocalVarDecl(condInExVariableName, Bool)())
+    override val conditionInEx: Option[LocalVarDecl] = Some(LocalVarDecl(condInExVariableName, Bool)())
     override val functionName: String = function.name
     override val mutuallyRecursiveFuncs: Set[Function] = mutuallyRecursiveFunctions.find(_.contains(function)).get
   }
+
   private case class DummyFunctionContext(override val function: Function) extends FunctionContext {
     override val conditionInEx: Option[LocalVarDecl] = Some(LocalVarDecl(condInExVariableName, Bool)())
     override val functionName: String = function.name

@@ -18,9 +18,9 @@ import viper.silver.verifier._
 
 class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
                       logger: ch.qos.logback.classic.Logger,
-                      config: viper.silver.frontend.SilFrontendConfig)  extends SilverPlugin with ParserPluginTemplate {
+                      config: viper.silver.frontend.SilFrontendConfig) extends SilverPlugin with ParserPluginTemplate {
 
-  private val deactivated = if(config != null) config.decreases.toOption.getOrElse(false) else false
+  private val deactivated = if (config != null) config.decreases.toOption.getOrElse(false) else false
 
   /**
    * Keyword used to define decreases clauses
@@ -40,9 +40,9 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
    * decreases *
    */
   lazy val decreases: noApi.P[PDecreasesExp] =
-    P(keyword(DecreasesKeyword) ~/ (decreasesWildcard|decreasesStar|decreasesTuple) ~ ";".?)
+    P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
   lazy val decreasesTuple: noApi.P[PDecreasesTuple] =
-    P(exp.rep(sep=",") ~/ condition.?).map {case (a, c) => PDecreasesTuple(a,c) }
+    P(exp.rep(sep = ",") ~/ condition.?).map { case (a, c) => PDecreasesTuple(a, c) }
   lazy val decreasesWildcard: noApi.P[PDecreasesWildcard] = P("_" ~/ condition.?).map(c => PDecreasesWildcard(c))
   lazy val decreasesStar: noApi.P[PDecreasesStar] = P("*").map(_ => PDecreasesStar())
   lazy val condition: noApi.P[PExp] = P("if" ~/ exp)
@@ -62,13 +62,14 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
     // extract all decreases clauses from the program
     val newProgram = extractDecreasesClauses(input)
 
-    if (deactivated){
+    if (deactivated) {
       // if decreases checks are deactivated, only remove the decreases clauses from the program
       newProgram
     } else {
       val trafo = new Trafo(newProgram, reportError)
 
       val finalProgram = trafo.getTransformedProgram
+      print(finalProgram)
       finalProgram
     }
   }
@@ -162,27 +163,27 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
    * Extracts decreases clauses from the sequence of expressions.
    * Only one of each decreases clause type are extracted.
    * If more exist, then a consistency error is issued.
-   * @param exps: sequence of expression from which decreases clauses should be extracted.
+   *
+   * @param exps : sequence of expression from which decreases clauses should be extracted.
    * @return exps without decreases clauses and a decreases container containing decreases clauses from exps.
    */
-  private def extractDecreasesClauses(exps: Seq[Exp]): (Seq[Exp], Option[DecreasesContainer]) =
-  {
+  private def extractDecreasesClauses(exps: Seq[Exp]): (Seq[Exp], Option[DecreasesContainer]) = {
     val (decreases, pres) = exps.partition(p => p.isInstanceOf[DecreasesExp])
 
-    val tuples = decreases.collect{case p: DecreasesTuple => p}
-    if (tuples.size > 1){
+    val tuples = decreases.collect { case p: DecreasesTuple => p }
+    if (tuples.size > 1) {
       reportError(ConsistencyError("Multiple decreases tuple.", tuples.head.pos))
     }
-    val wildcards = decreases.collect{case p: DecreasesWildcard => p}
-    if (wildcards.size > 1){
+    val wildcards = decreases.collect { case p: DecreasesWildcard => p }
+    if (wildcards.size > 1) {
       reportError(ConsistencyError("Multiple decreases wildcard.", wildcards.head.pos))
     }
-    val stars = decreases.collect{case p: DecreasesStar => p}
-    if (stars.size > 1){
+    val stars = decreases.collect { case p: DecreasesStar => p }
+    if (stars.size > 1) {
       reportError(ConsistencyError("Multiple decreases star.", stars.head.pos))
     }
 
-    if (tuples.nonEmpty || wildcards.nonEmpty || stars.nonEmpty){
+    if (tuples.nonEmpty || wildcards.nonEmpty || stars.nonEmpty) {
       (pres, Some(DecreasesContainer(tuples.headOption, wildcards.headOption, stars.headOption)))
     } else {
       (exps, None)
