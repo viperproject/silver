@@ -115,7 +115,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
     if (f.pres.nonEmpty) {
       val proofMethodName = uniqueName(f.name + "_pres_termination_proof")
-      val context = DummyFunctionContext(f)
+      val context = FContext(f)
 
       // concatenate all pres
       val pres = f.pres.reduce((e, p) => And(e, p)())
@@ -237,13 +237,6 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
     override val conditionInEx: Option[LocalVarDecl] = Some(LocalVarDecl(condInExVariableName, Bool)())
     override val functionName: String = function.name
     override val mutuallyRecursiveFuncs: Set[Function] = mutuallyRecursiveFunctions.find(_.contains(function)).get
-  }
-
-  private case class DummyFunctionContext(override val function: Function) extends FunctionContext {
-    override val conditionInEx: Option[LocalVarDecl] = Some(LocalVarDecl(condInExVariableName, Bool)())
-    override val functionName: String = function.name
-
-    override val mutuallyRecursiveFuncs: Set[Function] = Set()
   }
 
   // context used to create proof method
