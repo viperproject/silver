@@ -78,32 +78,15 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
 
     input match {
       case Success => input
-      case Failure(errors) => Failure(distinctErrors(errors.map({
+      case Failure(errors) => Failure(errors.map({
         case a@AssertFailed(Assert(_), _, _) => a.transformedError()
         case e => e
-      })))
+      }))
     }
   }
 
   override def reportError(error: AbstractError): Unit = {
     super.reportError(error)
-  }
-
-
-  /**
-   * Filters duplicates of errors.
-   * Distinguished by Reason position and Reason
-   * and Error Position and Error
-   */
-  private def distinctErrors(errors: Seq[AbstractError]): Seq[AbstractError] = {
-    errors.groupBy(_.pos).flatMap(e => e._2.groupBy(optionReasonPosition).flatMap(e => e._2.distinct)).toSeq
-  }
-
-  private def optionReasonPosition(error: AbstractError): Option[Position] = {
-    error match {
-      case e: VerificationError => Some(e.reason.pos)
-      case _ => None
-    }
   }
 
   /**
