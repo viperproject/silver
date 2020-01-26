@@ -25,27 +25,29 @@ to define two variables with the same name in different branches:
 termination plugin is available: https://bitbucket.org/viperproject/termination-plugin/
 Feedback is welcome; we plan support for termination checking in the next release.
 * Renamed all example files from .sil to .vpr [(287)](https://bitbucket.org/viperproject/silver/issues/287).
-* Unary plus operator has been removed [(108)](https://bitbucket.org/viperproject/silver/issues/271).
+* The unary plus operator has been removed [(108)](https://bitbucket.org/viperproject/silver/issues/271).
 * Whitespace between unary operations and their operands is no-longer allowed [(272)](https://bitbucket.org/viperproject/silver/issues/272).
-* Macros can take field names as parameters [(170)](https://bitbucket.org/viperproject/silver/issues/170).
-* LHS of field assignment statements can be a macro invocation [(214)](https://bitbucket.org/viperproject/silver/issues/214).
+* The `fresh` statement was removed [(87)](https://bitbucket.org/viperproject/silver/issues/87).
+* Macros can now take field names as parameters [(170)](https://bitbucket.org/viperproject/silver/issues/170).
+* LHS of field assignment statements can now be a macro invocation [(214)](https://bitbucket.org/viperproject/silver/issues/214).
+* Warnings are now generated for unused macro parameters [(267)](https://bitbucket.org/viperproject/silver/issues/267).
+* Macro definitions are disallowed inside magic wand proof scripts [(215)](https://bitbucket.org/viperproject/silver/issues/215).
 
 ### Bug fixes
-* Conditional assertions as part of quantified permissions are supported, e.g. 
+* Conditional assertions as part of quantified permissions are properly supported, e.g. 
   `inhale forall j : Int :: (j == k ? acc(s.f) : true)` [(260)](https://bitbucket.org/viperproject/silver/issues/260).
-* Expression macro with missing body causes spurious parser error (for next construct) [(273)](https://bitbucket.org/viperproject/silver/issues/273).
-* `new(..)` parameterised by identifiers which are present in the program but are not field names causes either strange parse errors or an exception [(247)](https://bitbucket.org/viperproject/silver/issues/247).
-* Type checker crashes on AST with sharing [(191)](https://bitbucket.org/viperproject/silver/issues/191).
-* Quantified permissions containing conditional assertions inside the quantifier are not desugared correctly [(260)](https://bitbucket.org/viperproject/silver/issues/260).
-* Warning on unused macro parameters [(267)](https://bitbucket.org/viperproject/silver/issues/267).
-* Disallow macro definitions inside magic wand proof scripts [(215)](https://bitbucket.org/viperproject/silver/issues/215).
-* Macro names should be checked for clashes [(167)](https://bitbucket.org/viperproject/silver/issues/167).
+* Expression macros with missing bodies no-longer cause spurious parser errors (for next construct) [(273)](https://bitbucket.org/viperproject/silver/issues/273).
+* `new(..)` parameterised by identifiers which are present in the program but are not field names now produces an appropriate error message [(247)](https://bitbucket.org/viperproject/silver/issues/247).
+* Type checker no longer crashes on ASTs with sharing [(191)](https://bitbucket.org/viperproject/silver/issues/191).
+* Macro names are now checked for clashes [(167)](https://bitbucket.org/viperproject/silver/issues/167).
 * The AST utility method `Expressions.instantiateVariables` is now capture-avoiding (an additional parameter can be provided to exclude certain names from being chosen when renaming bound variables) [(286)](https://bitbucket.org/viperproject/silver/issues/286).
+* Eliminated spurious type error involving #E type when using empty Multisets via macros [(282)](https://bitbucket.org/viperproject/silver/issues/282).
+* AST transformation framework's Rewritable is no-longer limited w.r.t. collections of Rewritables [(225)](https://bitbucket.org/viperproject/silver/issues/225).
 
 ### Viper Language API changes: 
 * `LocalVar` AST node no longer has type as an optional field [(281)](https://bitbucket.org/viperproject/silver/issues/281).
 * `Result` AST node no longer has type in its second parameter list [(283)](https://bitbucket.org/viperproject/silver/issues/283).
-* `Call` trait, `FuncApp` and `DomainFuncApp` AST nodes no longer have a formalArgs field; this information can be obtained from the enclosing `Program` [(241)](https://bitbucket.org/viperproject/silver/issues/241).
+* `Call` trait, `FuncApp` and `DomainFuncApp` AST nodes no longer have a `formalArgs` field; this information can be obtained from the enclosing `Program` [(241)](https://bitbucket.org/viperproject/silver/issues/241).
 * Upgraded all dependencies, libraries, plugins and development environment:
     * SBT 1.2.6, rewriting all build files.
 	* Scala 2.12.7
@@ -80,3 +82,8 @@ waiting for all methods to be verified.
     * Quantified permissions with multiple forall-bound variables are now supported [(205)](https://bitbucket.org/viperproject/carbon/issues/205/).
     * Experimental adjustments to the background axioms used for set, sequence and multiset support. These should   mostly add completeness; fewer scenarios should require user assertions to verify. Please report any bugs observed (particularly examples which exhibit poorer performance). In the next release, this will be stabilised, and migrated analogously to Viper's Symbolic Execution back-end. 
     * Old expressions in triggers are now translated correctly [(236)](https://bitbucket.org/viperproject/carbon/issues/236/).
+    * Substitution of actuals for formals in method specifications, predicate unfoldings and function preconditions is now capture-avoiding [(262)](https://bitbucket.org/viperproject/carbon/issues/262), [(282)](https://bitbucket.org/viperproject/carbon/issues/282).
+    * Quantified predicates without arguments no-longer cause a crash [(279)](https://bitbucket.org/viperproject/carbon/issues/279).
+
+### Other Notes
+   * We observed that 'Out of memory' errors can occur for some larger examples if using a 32-bit (rather than 64-bit) version of Z3 [(286)](https://bitbucket.org/viperproject/carbon/issues/286). We recommend always using a 64-bit version.
