@@ -1,7 +1,6 @@
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
-
 method t1(x: Int, xs: Seq[Int]) {
     var n: Seq[Int] := Seq[Int]()
     assert |n| == 0
@@ -54,9 +53,6 @@ method test4(s:Seq[Int], i : Int, j:Int)
 
 method test5(s:Seq[Int], i : Int, j:Int) 
 {
-  // AS: note: take and drop operators should be allowed to be applied outside of their ranges, as (potentially) in this example
-  //:: UnexpectedOutput(assert.failed:assertion.false, /silicon/issue/129/)
-  // CLOSE ISSUE: // UnexpectedOutput(assert.failed:assertion.false, /carbon/issue/36/)
   assert s == s[..i] ++ s[i..]
 }
 

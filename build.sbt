@@ -8,12 +8,17 @@
 // Compilation settings
 ThisBuild / scalaVersion := "2.12.7"
 ThisBuild / scalacOptions ++= Seq(
+  "-encoding", "UTF-8",               // Enforce UTF-8, instead of relying on properly set locales
   "-deprecation",                     // Warn when using deprecated language features
   "-unchecked",                       // Warn on generated code assumptions
   "-feature",                         // Warn on features that requires explicit import
   "-Ywarn-unused-import",             // Warn on unused imports
   "-Ypatmat-exhaust-depth", "40"      // Increase depth of pattern matching analysis
 )
+
+// Enforce UTF-8, instead of relying on properly set locales
+ThisBuild / javacOptions ++= Seq("-encoding", "UTF-8", "-charset", "UTF-8", "-docencoding", "UTF-8")
+ThisBuild / javaOptions  ++= Seq("-Dfile.encoding=UTF-8")
 
 // Publishing settings
 

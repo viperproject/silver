@@ -1,0 +1,176 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+domain GlobalKPermission {
+
+  unique function globalK$(): Perm
+
+  axiom globalKReadOnly {
+    (globalK$() > none) && (write > globalK$())
+  }
+}
+
+field old$methodPermission: Perm
+
+field joinable$: Bool
+
+field Triggersnext$: Ref
+
+field par$Triggerstriggers_one$this$_6: Ref
+
+field par$Triggerstriggers_one$k$: Perm
+
+field par$Triggerstriggers_two$this$_7: Ref
+
+field par$Triggerstriggers_two$k$_1: Perm
+
+field par$Triggerstriggers_three$this$_8: Ref
+
+field par$Triggerstriggers_three$k$_2: Perm
+
+field par$Triggerstriggers_four$this$_9: Ref
+
+field par$Triggerstriggers_four$k$_3: Perm
+
+field par$Triggerstriggers_five$this$_10: Ref
+
+field par$Triggerstriggers_five$k$_4: Perm
+
+field par$Triggerstriggers_five$c: Bool
+
+field par$Triggerstriggers_five$d: Bool
+
+field par$Triggerstriggers_six$this$_11: Ref
+
+field par$Triggerstriggers_six$k$_5: Perm
+
+field par$Triggerstriggers_six$c: Int
+
+field par$Triggerstriggers_six$d: Int
+
+function Triggersf$(this$_2: Ref, x: Int, y: Int, z: Int): Bool
+  requires this$_2 != null
+  requires acc(Triggersvalid$(this$_2), wildcard)
+{
+  (unfolding acc(Triggersvalid$(this$_2), wildcard) in Triggersf$(this$_2.Triggersnext$, x, y, z))
+}
+
+function Triggersh$(this$_3: Ref, x: Int, y: Int, z: Int): Bool
+  requires this$_3 != null
+  requires acc(Triggersvalid$(this$_3), wildcard)
+{
+  (unfolding acc(Triggersvalid$(this$_3), wildcard) in Triggersh$(this$_3.Triggersnext$, x, y, z))
+}
+
+function Triggersg$(this$_4: Ref, x: Int): Bool
+  requires this$_4 != null
+  requires acc(Triggersvalid$(this$_4), wildcard)
+{
+  (unfolding acc(Triggersvalid$(this$_4), wildcard) in Triggersg$(this$_4.Triggersnext$, x))
+}
+
+function Triggersi$(this$_5: Ref, x: Int, y: Bool): Bool
+  requires this$_5 != null
+  requires acc(Triggersvalid$(this$_5), wildcard)
+{
+  (unfolding acc(Triggersvalid$(this$_5), wildcard) in Triggersi$(this$_5.Triggersnext$, x, y))
+}
+
+predicate Triggers$MonitorInvariant(this$: Ref) {
+  true
+}
+
+predicate Triggersvalid$(this$_1: Ref) {
+  acc(this$_1.Triggersnext$, write) && (this$_1.Triggersnext$ != null) && acc(Triggersvalid$(this$_1.Triggersnext$), write)
+}
+
+method Triggerstriggers_one$(this$_6: Ref, k$: Perm)
+  requires this$_6 != null
+  requires k$ > none
+  requires write > k$
+  requires acc(Triggersvalid$(this$_6), write)
+  requires (forall a: Int :: true ==> !(Triggersg$(this$_6, a) ==> false))
+  ensures acc(Triggersvalid$(this$_6), write)
+  ensures (forall b: Int :: true ==> Triggersg$(this$_6, b))
+{
+  var n$: Ref
+
+}
+
+method Triggerstriggers_two$(this$_7: Ref, k$_1: Perm)
+  requires this$_7 != null
+  requires k$_1 > none
+  requires write > k$_1
+  requires acc(Triggersvalid$(this$_7), write)
+  requires (forall a: Int, b: Int, c: Int :: // Admits only trigger f(...), but not g(...)
+    true ==> Triggersg$(this$_7, a) && Triggersf$(this$_7, a, b, c))
+  ensures acc(Triggersvalid$(this$_7), write)
+  ensures (forall x: Int, y: Int, z: Int :: true ==> Triggersf$(this$_7, x, y, z))
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures (forall w: Int :: // Fails because above quantifier isn't triggered, due to insufficient trigger terms
+    true ==> Triggersg$(this$_7, w))
+{
+  var n$_1: Ref
+
+}
+
+method Triggerstriggers_three$(this$_8: Ref, k$_2: Perm)
+  requires this$_8 != null
+  requires k$_2 > none
+  requires write > k$_2
+  requires acc(Triggersvalid$(this$_8), write)
+  requires forall a: Int :: true ==>
+              Triggersg$(this$_8, a) &&
+              (forall b: Int, c: Int :: true ==> Triggersf$(this$_8, a, b, c))
+  ensures acc(Triggersvalid$(this$_8), write)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures (forall x: Int, y: Int, z: Int :: true ==> Triggersf$(this$_8, x, y, z)) // Insufficient trigger terms
+  ensures (forall w: Int :: true ==> Triggersg$(this$_8, w))
+{
+  var n$_2: Ref
+
+}
+
+method Triggerstriggers_four$(this$_9: Ref, k$_3: Perm)
+  requires this$_9 != null
+  requires k$_3 > none
+  requires write > k$_3
+  requires acc(Triggersvalid$(this$_9), write)
+  requires (forall a: Int, b: Int, c: Int, d: Int, e: Int ::
+              true ==> Triggersf$(this$_9, a, b, c) && Triggersh$(this$_9, b, c, d) && Triggersf$(this$_9, c, d, e))
+  ensures acc(Triggersvalid$(this$_9), write)
+  //:: ExpectedOutput(postcondition.violated:assertion.false)
+  ensures (forall x: Int, y: Int, z: Int :: true ==> Triggersf$(this$_9, x, y, z)) // Insufficient trigger terms
+  ensures (forall x: Int, y: Int, z: Int :: true ==> Triggersf$(this$_9, x, y, z) && Triggersf$(this$_9, z, y, x))
+{
+  var n$_3: Ref
+
+}
+
+method Triggerstriggers_five$(this$_10: Ref, k$_4: Perm, c: Bool, d: Bool)
+  requires this$_10 != null
+  requires k$_4 > none
+  requires write > k$_4
+  requires c ==> d
+  requires acc(Triggersvalid$(this$_10), write)
+  requires (forall x: Int :: true ==> Triggersi$(this$_10, x, c ==> d))
+  ensures acc(Triggersvalid$(this$_10), write)
+  ensures Triggersi$(this$_10, 4, true)
+{
+  var n$_4: Ref
+
+}
+
+method Triggerstriggers_six$(this$_11: Ref, k$_5: Perm, c: Int, d: Int)
+  requires this$_11 != null
+  requires k$_5 > none
+  requires write > k$_5
+  requires c > d
+  requires acc(Triggersvalid$(this$_11), write)
+  requires (forall x: Int :: true ==> Triggersi$(this$_11, x, c > d))
+  ensures acc(Triggersvalid$(this$_11), write)
+  ensures Triggersi$(this$_11, 4, true)
+{
+  var n$_5: Ref
+
+}
