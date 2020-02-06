@@ -9,7 +9,7 @@ package viper.silver.ast.utility
 import scala.util.parsing.input.{NoPosition, Position}
 import viper.silver.ast._
 import viper.silver.ast.utility.rewriter.Traverse
-import viper.silver.parser.{FastParser, ParserExtension}
+import viper.silver.parser.FastParser
 import viper.silver.verifier.ConsistencyError
 import viper.silver.{FastMessage, FastMessaging}
 
@@ -44,41 +44,7 @@ object Consistency {
     recordIfNot(suspect, !property, message)
 
   /** Names that are not allowed for use in programs. */
-  def reservedNames: Seq[String] = Seq("result",
-    // types
-    "Int", "Perm", "Bool", "Ref", "Rational",
-    // boolean constants
-    "true", "false",
-    // null
-    "null",
-    // preamble importing
-    "import",
-    // declaration keywords
-    "method", "function", "predicate", "program", "domain", "axiom", "var", "returns", "field", "define", "wand",
-    // specifications
-    "requires", "ensures", "invariant",
-    // statements
-    "fold", "unfold", "inhale", "exhale", "new", "assert", "assume", "package", "apply",
-    // control flow
-    "while", "if", "elseif", "else", "goto", "label",
-    // special fresh block
-    "fresh", "constraining",
-    // sequences
-    "Seq",
-    // sets and multisets
-    "Set", "Multiset", "union", "intersection", "setminus", "subset",
-    // prover hint expressions
-    "unfolding", "in", "applying",
-    // old expression
-    "old", FastParser.LHS_OLD_LABEL,
-    // other expressions
-    "let",
-    // quantification
-    "forall", "exists", "forperm",
-    // permission syntax
-    "acc", "wildcard", "write", "none", "epsilon", "perm",
-    // modifiers
-    "unique") ++ ParserExtension.extendedKeywords
+  def reservedNames: Seq[String] = FastParser.keywords.toSeq
 
   /** Returns true iff the string `name` is a valid identifier. */
   val identFirstLetter = "[a-zA-Z$_]"
