@@ -80,8 +80,8 @@ trait SilFrontend extends DefaultFrontend {
    * Default plugins are always activated and are run as last plugins.
    * All default plugins can be excluded from the plugins by providing the --disableDefaultPlugins flag
    */
-  private var defaultPlugins: Seq[String] = Seq(
-    "viper.silver.plugin.standard.decreases.DecreasesPlugin",
+  private val defaultPlugins: Seq[String] = Seq(
+    "viper.silver.plugin.standard.termination.TerminationPlugin",
     "viper.silver.plugin.standard.predicateinstance.PredicateInstancePlugin"
   )
 
@@ -170,10 +170,9 @@ trait SilFrontend extends DefaultFrontend {
     if(_config != null) {
       // reset error messages of plugins
 
-      // concat defined plugins and default plugins (if no disabled)
+      // concat defined plugins and default plugins
       val plugins: Option[String] = {
-        val list = _config.plugin.toOption ++
-          (if (_config.defaultPlugins.toOption.getOrElse(false)) Nil else defaultPlugins)
+        val list = _config.plugin.toOption ++ defaultPlugins
         if (list.isEmpty) { None } else { Some(list.mkString(":")) }
       }
       _plugins = SilverPluginManager(plugins)(reporter, logger, _config)

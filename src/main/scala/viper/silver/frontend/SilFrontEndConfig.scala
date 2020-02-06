@@ -97,7 +97,7 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = false
   )
 
-  val decreases = opt[Boolean]("disableTerminationPlugin",
+  val terminationPlugin = opt[Boolean]("disableTerminationPlugin",
     descr = "Disable the termination plugin, which adds termination checks to functions, " +
       "methods and loops.",
     default = Some(false),

@@ -8,7 +8,7 @@ package viper.silver.plugin.standard.termination
 
 import fastparse.noApi
 import viper.silver.ast.utility.ViperStrategy
-import viper.silver.ast.{Assert, Exp, Function, Method, Position, Program, While}
+import viper.silver.ast.{Assert, Exp, Function, Method, Program, While}
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
 import viper.silver.plugin.standard.termination.transformation.Trafo
@@ -20,7 +20,7 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
                         logger: ch.qos.logback.classic.Logger,
                         config: viper.silver.frontend.SilFrontendConfig) extends SilverPlugin with ParserPluginTemplate {
 
-  private val deactivated = if (config != null) config.decreases.toOption.getOrElse(false) else false
+  private val deactivated = if (config != null) config.terminationPlugin.toOption.getOrElse(false) else false
 
   /**
    * Keyword used to define decreases clauses
