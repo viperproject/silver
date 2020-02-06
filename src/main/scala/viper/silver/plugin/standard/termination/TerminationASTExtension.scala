@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases
+package viper.silver.plugin.standard.termination
 
 import viper.silver.ast._
 import viper.silver.ast.pretty.FastPrettyPrinter.{ContOps, char, space, ssep, text, toParenDoc}
@@ -16,11 +16,11 @@ import viper.silver.verifier.{ConsistencyError, Failure, VerificationResult}
  * Node used to define all possible decreases clauses.
  * Can be used e.g. to filter for decreases clauses.
  */
-sealed trait DecreasesExp extends ExtensionExp with Node {
+sealed trait DecreasesClause extends ExtensionExp with Node {
 
   override def verifyExtExp(): VerificationResult = {
-    assert(assertion = false, "DecreasesExp: verifyExtExp has not been implemented.")
-    Failure(Seq(ConsistencyError("DecreasesExp: verifyExtExp has not been implemented.", pos)))
+    assert(assertion = false, "DecreasesClause: verifyExtExp has not been implemented.")
+    Failure(Seq(ConsistencyError("DecreasesClause: verifyExtExp has not been implemented.", pos)))
   }
 
 
@@ -44,7 +44,7 @@ sealed trait DecreasesExp extends ExtensionExp with Node {
 case class DecreasesTuple(tupleExpressions: Seq[Exp] = Nil, override val condition: Option[Exp] = None)
                          (override val pos: Position = NoPosition,
                           override val info: Info = NoInfo,
-                          override val errT: ErrorTrafo = NoTrafos) extends DecreasesExp {
+                          override val errT: ErrorTrafo = NoTrafos) extends DecreasesClause {
   override lazy val extensionIsPure: Boolean = true
 
   override val typ: Type = Bool
@@ -67,7 +67,7 @@ case class DecreasesTuple(tupleExpressions: Seq[Exp] = Nil, override val conditi
 case class DecreasesWildcard(override val condition: Option[Exp] = None)
                             (override val pos: Position = NoPosition,
                              override val info: Info = NoInfo,
-                             override val errT: ErrorTrafo = NoTrafos) extends DecreasesExp {
+                             override val errT: ErrorTrafo = NoTrafos) extends DecreasesClause {
   override lazy val extensionIsPure: Boolean = true
 
   override val typ: Type = Bool
@@ -89,7 +89,7 @@ case class DecreasesStar()
                         (override val pos: Position = NoPosition,
                          override val info: Info = NoInfo,
                          override val errT: ErrorTrafo = NoTrafos)
-  extends DecreasesExp {
+  extends DecreasesClause {
   override val condition: Option[Exp] = None
 
   override lazy val extensionIsPure: Boolean = true
@@ -103,16 +103,15 @@ case class DecreasesStar()
 
 
 /**
- * Container for a possible decreases specification.
+ * A decreases specification can contain at most one of each possible decreases clause.
  * Can be appended to an AST node as info (metadata).
- * Can contain at most one of each possible decreases clause.
  * @param tuple: optional decreases tuple
  * @param wildcard: optional decreases wildcard
  * @param star: optional decreases star
  */
-case class DecreasesContainer(tuple: Option[DecreasesTuple],
-                              wildcard: Option[DecreasesWildcard],
-                              star: Option[DecreasesStar]) extends Info {
+case class DecreasesSpecification(tuple: Option[DecreasesTuple],
+                                  wildcard: Option[DecreasesWildcard],
+                                  star: Option[DecreasesStar]) extends Info {
 
   // The comment of this metadata are the provided decreases clauses
   override def comment: Seq[String] = (tuple ++ wildcard ++ star).map(_.toString()).toSeq
@@ -175,20 +174,20 @@ case class DecreasesContainer(tuple: Option[DecreasesTuple],
   }
 }
 
-object DecreasesContainer {
+object DecreasesSpecification {
   /**
-   * @return an empty DecreasesContainer.
+   * @return an empty DecreasesSpecification (without any decreases clause specified).
    */
-  def apply(): DecreasesContainer = DecreasesContainer(None, None, None)
+  def apply(): DecreasesSpecification = DecreasesSpecification(None, None, None)
 
   /**
-   * @param n: Node possibly containing a DecreasesClause in its metadata (Info).
-   * @return DecreasesContainer attached to n (if exists), otherwise, an empty DecreasesContainer.
+   * @param n: Node possibly containing a DecreasesSpecification in its metadata (Info).
+   * @return DecreasesSpecification attached to n (if exists), otherwise, an empty DecreasesSpecification.
    */
-  def fromNode(n: Node): DecreasesContainer = {
+  def fromNode(n: Node): DecreasesSpecification = {
     (n match {
-      case ni: Infoed => ni.info.getUniqueInfo[DecreasesContainer]
+      case ni: Infoed => ni.info.getUniqueInfo[DecreasesSpecification]
       case _ => None
-    }).getOrElse(DecreasesContainer())
+    }).getOrElse(DecreasesSpecification())
   }
 }

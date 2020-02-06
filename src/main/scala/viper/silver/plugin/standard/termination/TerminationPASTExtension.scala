@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases
+package viper.silver.plugin.standard.termination
 
 import viper.silver.ast._
 import viper.silver.parser.TypeHelper.Bool
@@ -13,7 +13,7 @@ import viper.silver.parser._
 /**
  * Any possible decreases clause extends from this trait.
  */
-sealed trait PDecreasesExp extends PExtender with PExp {
+sealed trait PDecreasesClause extends PExtender with PExp {
 
   // TODO: Don't know if this is necessary...
   val _typeSubstitutions: Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
@@ -21,7 +21,7 @@ sealed trait PDecreasesExp extends PExtender with PExp {
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 }
 
-case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None) extends PDecreasesExp{
+case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None) extends PDecreasesClause{
 
   override def getSubnodes(): Seq[PNode] = tuple ++ condition
 
@@ -37,7 +37,7 @@ case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None) ext
   }
 }
 
-case class PDecreasesWildcard(condition: Option[PExp] = None) extends  PDecreasesExp {
+case class PDecreasesWildcard(condition: Option[PExp] = None) extends  PDecreasesClause {
 
   override def getSubnodes(): Seq[PNode] = condition.toSeq
 
@@ -52,7 +52,7 @@ case class PDecreasesWildcard(condition: Option[PExp] = None) extends  PDecrease
   }
 }
 
-case class PDecreasesStar() extends PDecreasesExp {
+case class PDecreasesStar() extends PDecreasesClause {
   override def getSubnodes(): Seq[PNode] = Nil
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {

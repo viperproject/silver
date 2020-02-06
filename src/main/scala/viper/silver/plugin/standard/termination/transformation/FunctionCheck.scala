@@ -4,18 +4,18 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases.transformation
+package viper.silver.plugin.standard.termination.transformation
 
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.rewriter.Traverse
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.{And, Bool, ErrTrafo, Exp, FalseLit, FuncApp, Function, LocalVarDecl, Method, Node, NodeTrafo, Old, Result, Seqn, Stmt}
-import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTuple, FunctionTerminationError}
+import viper.silver.plugin.standard.termination.{DecreasesSpecification, DecreasesTuple, FunctionTerminationError}
 import viper.silver.verifier.ConsistencyError
 import viper.silver.verifier.errors.AssertFailed
 
-trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransformer with NestePredicates with ErrorReporter {
+trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransformer with NestedPredicates with ErrorReporter {
 
   // Variable name for the result variable used in post condition termination checks
   private lazy val resultVariableName = uniqueName("$result")
@@ -23,16 +23,10 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
   // Variable (name) used to distinguish between inhale and exhale branches (required for InhaleExhale Expression)
   private lazy val condInExVariableName = uniqueName("$condInEx")
 
-  /**
-   * This function should be used to access all the DecreasesContainer
-   *
-   * @param functionName for which the decreases clauses are defined
-   * @return the defined DecreasesContainer
-   */
-  def getFunctionDecreasesContainer(functionName: String): DecreasesContainer = {
+  private def getFunctionDecreasesSpecification(functionName: String): DecreasesSpecification = {
     program.findFunctionOptionally(functionName) match {
-      case Some(f) => DecreasesContainer.fromNode(f)
-      case None => DecreasesContainer()
+      case Some(f) => DecreasesSpecification.fromNode(f)
+      case None => DecreasesSpecification()
     }
   }
 
@@ -41,8 +35,8 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
    */
   protected def transformFunctions(): Unit = {
     program.functions.foreach(f => {
-      getFunctionDecreasesContainer(f.name) match {
-        case DecreasesContainer(Some(_), _, _) => generateProofMethods(f)
+      getFunctionDecreasesSpecification(f.name) match {
+        case DecreasesSpecification(Some(_), _, _) => generateProofMethods(f)
         case _ => // if no decreases tuple is defined do nothing
       }
     })
@@ -54,8 +48,8 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
    * @param f function
    */
   private def generateProofMethods(f: Function): Unit = {
-    val requireNestedInfo = containsPredicateInstances(DecreasesContainer.fromNode(f))
-    DecreasesContainer.fromNode(f).productIterator
+    val requireNestedInfo = containsPredicateInstances(DecreasesSpecification.fromNode(f))
+    DecreasesSpecification.fromNode(f).productIterator
 
     if (f.body.nonEmpty) {
       // method proving termination of the functions body.
@@ -139,7 +133,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
    *
    * @return a statement representing the expression
    */
-  override def transformExp: PartialFunction[(Exp, ExpressionContext), Stmt] = {
+  override val transformExp: PartialFunction[(Exp, ExpressionContext), Stmt] = {
     case (functionCall: FuncApp, context: FunctionContext) =>
       val stmts = collection.mutable.ArrayBuffer[Stmt]()
 
@@ -147,7 +141,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
       val termChecksOfArgs: Seq[Stmt] = functionCall.getArgs map (a => transformExp(a, context))
       stmts.appendAll(termChecksOfArgs)
 
-      getFunctionDecreasesContainer(context.functionName).tuple match {
+      getFunctionDecreasesSpecification(context.functionName).tuple match {
         case Some(callerTuple) =>
           val caller = context.function
           val callee = functions(functionCall.funcname)
@@ -155,7 +149,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
 
           // map of parameters in the called function to parameters in the current functions (for substitution)
           val mapFormalArgsToCalledArgs = Map(callee.formalArgs.map(_.localVar).zip(calleeArgs): _*)
-          val calleeDec = getFunctionDecreasesContainer(callee.name)
+          val calleeDec = getFunctionDecreasesSpecification(callee.name)
 
           if (context.mutuallyRecursiveFuncs.contains(callee)) {
             // potentially recursive call
@@ -218,7 +212,7 @@ trait FunctionCheck extends ProgramManager with DecreasesCheck with ExpTransform
     case default => super.transformExp(default)
   }
 
-  override def transformExpUnknown(e: Exp, c: ExpressionContext): Stmt = {
+  override def transformUnknownExp(e: Exp, c: ExpressionContext): Stmt = {
     reportUnsupportedExp(e)
     EmptyStmt
   }

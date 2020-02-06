@@ -4,21 +4,21 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases
+package viper.silver.plugin.standard.termination
 
 import fastparse.noApi
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.{Assert, Exp, Function, Method, Position, Program, While}
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
-import viper.silver.plugin.standard.decreases.transformation.Trafo
+import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
 import viper.silver.verifier._
 
-class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
-                      logger: ch.qos.logback.classic.Logger,
-                      config: viper.silver.frontend.SilFrontendConfig) extends SilverPlugin with ParserPluginTemplate {
+class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
+                        logger: ch.qos.logback.classic.Logger,
+                        config: viper.silver.frontend.SilFrontendConfig) extends SilverPlugin with ParserPluginTemplate {
 
   private val deactivated = if (config != null) config.decreases.toOption.getOrElse(false) else false
 
@@ -39,7 +39,7 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
    * or
    * decreases *
    */
-  lazy val decreases: noApi.P[PDecreasesExp] =
+  lazy val decreases: noApi.P[PDecreasesClause] =
     P(keyword(DecreasesKeyword) ~/ (decreasesWildcard | decreasesStar | decreasesTuple) ~ ";".?)
   lazy val decreasesTuple: noApi.P[PDecreasesTuple] =
     P(exp.rep(sep = ",") ~/ condition.?).map { case (a, c) => PDecreasesTuple(a, c) }
@@ -91,13 +91,13 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
 
   /**
    * Extracts all the decreases clauses from the program
-   * and appends them to the corresponding AST node as DecreasesContainer (Info).
+   * and appends them to the corresponding AST node as DecreasesSpecification (Info).
    */
   private def extractDecreasesClauses(program: Program): Program = {
 
     val result: Program = ViperStrategy.Slim({
       case f: Function =>
-        val (pres, decreasesContainer) = extractDecreasesClauses(f.pres)
+        val (pres, decreasesSpecification) = extractDecreasesClauses(f.pres)
 
         val newFunction =
           if (pres != f.pres) {
@@ -106,12 +106,12 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
             f
           }
 
-        decreasesContainer match {
+        decreasesSpecification match {
           case Some(dc) => dc.appendToFunction(newFunction)
           case None => newFunction
         }
       case m: Method =>
-        val (pres, decreasesContainer) = extractDecreasesClauses(m.pres)
+        val (pres, decreasesSpecification) = extractDecreasesClauses(m.pres)
 
         val newMethod =
           if (pres != m.pres) {
@@ -119,12 +119,12 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
           } else {
             m
           }
-        decreasesContainer match {
+        decreasesSpecification match {
           case Some(dc) => dc.appendToMethod(newMethod)
           case None => newMethod
         }
       case w: While =>
-        val (invs, decreasesContainer) = extractDecreasesClauses(w.invs)
+        val (invs, decreasesSpecification) = extractDecreasesClauses(w.invs)
 
         val newWhile =
           if (invs != w.invs) {
@@ -133,7 +133,7 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
             w
           }
 
-        decreasesContainer match {
+        decreasesSpecification match {
           case Some(dc) => dc.appendToWhile(newWhile)
           case None => newWhile
         }
@@ -147,10 +147,10 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
    * If more exist, then a consistency error is issued.
    *
    * @param exps : sequence of expression from which decreases clauses should be extracted.
-   * @return exps without decreases clauses and a decreases container containing decreases clauses from exps.
+   * @return exps without decreases clauses and a decreases specification containing decreases clauses from exps.
    */
-  private def extractDecreasesClauses(exps: Seq[Exp]): (Seq[Exp], Option[DecreasesContainer]) = {
-    val (decreases, pres) = exps.partition(p => p.isInstanceOf[DecreasesExp])
+  private def extractDecreasesClauses(exps: Seq[Exp]): (Seq[Exp], Option[DecreasesSpecification]) = {
+    val (decreases, pres) = exps.partition(p => p.isInstanceOf[DecreasesClause])
 
     val tuples = decreases.collect { case p: DecreasesTuple => p }
     if (tuples.size > 1) {
@@ -166,7 +166,7 @@ class DecreasesPlugin(reporter: viper.silver.reporter.Reporter,
     }
 
     if (tuples.nonEmpty || wildcards.nonEmpty || stars.nonEmpty) {
-      (pres, Some(DecreasesContainer(tuples.headOption, wildcards.headOption, stars.headOption)))
+      (pres, Some(DecreasesSpecification(tuples.headOption, wildcards.headOption, stars.headOption)))
     } else {
       (exps, None)
     }

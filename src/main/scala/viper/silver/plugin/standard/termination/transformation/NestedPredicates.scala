@@ -4,13 +4,13 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases.transformation
+package viper.silver.plugin.standard.termination.transformation
 
 import viper.silver.ast.utility.Statements.EmptyStmt
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{SimpleContext, Strategy, Traverse}
 import viper.silver.ast.{AccessPredicate, BinExp, CondExp, DomainFunc, DomainFuncApp, Exp, FieldAccessPredicate, If, Implies, Inhale, LocalVar, LocalVarAssign, LocalVarDecl, MagicWand, Node, Position, PredicateAccess, PredicateAccessPredicate, Seqn, SimpleInfo, Stmt, Type, TypeVar, UnExp, Unfold}
-import viper.silver.plugin.standard.decreases.DecreasesContainer
+import viper.silver.plugin.standard.termination.DecreasesSpecification
 import viper.silver.plugin.standard.predicateinstance.PredicateInstance
 import viper.silver.verifier.ConsistencyError
 
@@ -23,11 +23,11 @@ import scala.collection.immutable.ListMap
  * otherwise a consistency error is issued.
  * "nestedPredicates" domain function
  */
-trait NestePredicates extends ProgramManager with ErrorReporter {
+trait NestedPredicates extends ProgramManager with ErrorReporter {
 
   val nestedFunc: Option[DomainFunc] = program.findDomainFunctionOptionally("nestedPredicates")
 
-  protected def containsPredicateInstances(dc: DecreasesContainer): Boolean = {
+  protected def containsPredicateInstances(dc: DecreasesSpecification): Boolean = {
     dc.tuple.exists(_.tupleExpressions.exists(_.isSubtype(PredicateInstance.getType)))
   }
 

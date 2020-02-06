@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases
+package viper.silver.plugin.standard.termination
 
 import viper.silver.verifier.reasons.ErrorNode
 import viper.silver.verifier._

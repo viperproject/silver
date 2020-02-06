@@ -97,15 +97,9 @@ abstract class SilFrontendConfig(args: Seq[String], private var projectName: Str
     hidden = false
   )
 
-  val defaultPlugins = opt[Boolean]("disableDefaultPlugins",
-    descr = "Deactivate all default plugins.",
-    default = Some(false),
-    noshort = true,
-    hidden = true
-  )
-
-  val decreases = opt[Boolean]("disableDecreasesChecks",
-    descr = "Deactivate termination checks.",
+  val decreases = opt[Boolean]("disableTerminationPlugin",
+    descr = "Disable the termination plugin, which adds termination checks to functions, " +
+      "methods and loops.",
     default = Some(false),
     noshort = true,
     hidden = true

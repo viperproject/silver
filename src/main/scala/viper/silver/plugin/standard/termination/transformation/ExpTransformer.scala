@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases.transformation
+package viper.silver.plugin.standard.termination.transformation
 
 import viper.silver.ast.{Exp, Stmt, _}
 import viper.silver.ast.utility.Statements.EmptyStmt
@@ -19,8 +19,7 @@ trait ExpTransformer extends ErrorReporter {
 
   /**
    * Transforms an expression into a statement.
-   *
-   * @return a statement representing the expression
+   * @return a statement representing the expression.
    */
   def transformExp: PartialFunction[(Exp, ExpressionContext), Stmt] = {
     case (CondExp(cond, thn, els), c) =>
@@ -104,7 +103,7 @@ trait ExpTransformer extends ErrorReporter {
         Seqn(Seq(transformExp(s, c)), Nil)(sq.pos)
       case EmptySeq(e) => EmptyStmt
 
-      case unsupportedExp => transformExpUnknown(unsupportedExp, c)
+      case unsupportedExp => transformUnknownExp(unsupportedExp, c)
         EmptyStmt
     }
     case (st: ExplicitSet, c) =>
@@ -126,17 +125,17 @@ trait ExpTransformer extends ErrorReporter {
     case (fa: FuncLikeApp, c) =>
       val argStmts = fa.args.map(transformExp(_, c))
       Seqn(argStmts, Nil)()
-    case (unsupportedExp, c) =>
-      transformExpUnknown(unsupportedExp, c)
+    case (unknownExp, c) =>
+      transformUnknownExp(unknownExp, c)
   }
 
   /**
    * Expression transformer if no default is defined.
    * Calls transformExp on all subExps of e.
    * To change or extend the default transformer for unknown expressions
-   * override this method (and possibly combine it with super.transformExpUnknown).
+   * override this method (and possibly combine it with super.transformUnknownExp).
    */
-  def transformExpUnknown(e: Exp, c: ExpressionContext): Stmt = {
+  def transformUnknownExp(e: Exp, c: ExpressionContext): Stmt = {
     val sub = e.subExps.map(transformExp(_, c))
     Seqn(sub, Nil)()
   }
@@ -146,10 +145,10 @@ trait ExpTransformer extends ErrorReporter {
    * such that they can be used as conditions in if clauses.
    *
    * AccessPredicate and MagicWands expressions are removed by replacing them with TrueLit.
-   * If a conditionInEx is given in the context the InhaleExhaleExp are conditionally divided,
+   * InhaleExhaleExp is conditionally divided if a conditionInEx is given (in the context),
    * otherwise they are combined with an Or.
    */
-  private def toPureBooleanExp(c: ExpressionContext): Strategy[Node, ContextCustom[Node, ExpressionContext]] =
+  protected def toPureBooleanExp(c: ExpressionContext): Strategy[Node, ContextCustom[Node, ExpressionContext]] =
     ViperStrategy.CustomContext(toPureBooleanExpRewriting, c, Traverse.TopDown)
       .recurseFunc(toPureBooleanExpRecursion)
 

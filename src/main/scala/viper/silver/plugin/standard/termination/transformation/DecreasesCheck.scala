@@ -4,11 +4,11 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases.transformation
+package viper.silver.plugin.standard.termination.transformation
 
 import viper.silver.ast._
 import viper.silver.ast.utility.Statements.EmptyStmt
-import viper.silver.plugin.standard.decreases.DecreasesTuple
+import viper.silver.plugin.standard.termination.DecreasesTuple
 import viper.silver.verifier.ConsistencyError
 
 import scala.collection.immutable.ListMap

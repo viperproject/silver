@@ -4,33 +4,29 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases.transformation
+package viper.silver.plugin.standard.termination.transformation
 
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 import viper.silver.ast._
 import viper.silver.ast.utility.ViperStrategy
 import viper.silver.ast.utility.rewriter.{ContextC, Strategy, Traverse}
-import viper.silver.plugin.standard.decreases.{DecreasesContainer, DecreasesTuple, LoopTerminationError, MethodTerminationError}
+import viper.silver.plugin.standard.termination.{DecreasesSpecification, DecreasesTuple, LoopTerminationError, MethodTerminationError}
 import viper.silver.verifier.errors.AssertFailed
 
 /**
  * Creates termination checks for methods.
  */
-trait MethodCheck extends ProgramManager with DecreasesCheck with NestePredicates with ErrorReporter {
+trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicates with ErrorReporter {
 
-  /**
-   * @param method name
-   * @return DecreasesExp defined by the user if exists, otherwise a DecreasesTuple containing the methods parameter.
-   */
-  private def getMethodDecreasesContainer(method: String): DecreasesContainer = {
+  private def getMethodDecreasesSpecification(method: String): DecreasesSpecification = {
     program.methods.find(_.name == method) match {
-      case Some(f) => DecreasesContainer.fromNode(f)
-      case None => DecreasesContainer()
+      case Some(f) => DecreasesSpecification.fromNode(f)
+      case None => DecreasesSpecification()
     }
   }
 
-  private def getWhileDecreasesContainer(w: While): DecreasesContainer = {
-    DecreasesContainer.fromNode(w)
+  private def getWhileDecreasesSpecification(w: While): DecreasesSpecification = {
+    DecreasesSpecification.fromNode(w)
   }
 
   /**
@@ -47,7 +43,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestePredicate
     m.body match {
       case Some(body) =>
         val context = MContext(m)
-        context.nestedRequired = containsPredicateInstances(DecreasesContainer.fromNode(m))
+        context.nestedRequired = containsPredicateInstances(DecreasesSpecification.fromNode(m))
 
         val newBody: Stmt = {
           val stmt: Stmt = methodStrategy(context).execute(body)
@@ -71,7 +67,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestePredicate
    */
   private def methodStrategy(context: MethodContext): Strategy[Node, StrategyContext] =
   // BottomUp traversal does not work because the original While node is required
-  // to obtain the associated DecreasesContainer
+  // to obtain the associated DecreasesSpecification
     ViperStrategy.Context(methodTransformer, context, Traverse.BottomUp).recurseFunc(avoidExpressions)
 
   private def avoidExpressions: PartialFunction[Node, Seq[AnyRef]] = {
@@ -83,11 +79,11 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestePredicate
       // possibly recursive call
       val context = ctxt.c
 
-      getMethodDecreasesContainer(context.methodName).tuple match {
+      getMethodDecreasesSpecification(context.methodName).tuple match {
         case Some(callerTuple) => // check that called method decreases tuple under the methods tuple condition
           val calledMethod = methods(mc.methodName)
           val mapFormalArgsToCalledArgs = Map(calledMethod.formalArgs.map(_.localVar).zip(mc.args): _*)
-          val calleeDec = getMethodDecreasesContainer(mc.methodName)
+          val calleeDec = getMethodDecreasesSpecification(mc.methodName)
 
           val errTrafo = ErrTrafo({
             case AssertFailed(_, r, c) => MethodTerminationError(mc, r, c)
@@ -122,11 +118,11 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestePredicate
     case (mc: MethodCall, ctxt) if ctxt.c.mutuallyRecursiveMeths.contains(program.findMethod(mc.methodName)) =>
       val context = ctxt.c
 
-      getMethodDecreasesContainer(context.methodName).tuple match {
+      getMethodDecreasesSpecification(context.methodName).tuple match {
         case Some(methodTuple) => // check that called method terminates under the methods tuple condition
           val calledMethod = methods(mc.methodName)
           val mapFormalArgsToCalledArgs = Map(calledMethod.formalArgs.map(_.localVar).zip(mc.args): _*)
-          val decDest = getMethodDecreasesContainer(mc.methodName)
+          val decDest = getMethodDecreasesSpecification(mc.methodName)
 
           val errTrafo = ErrTrafo({
             case AssertFailed(_, r, c) => MethodTerminationError(mc, r, c)
@@ -146,7 +142,7 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestePredicate
           (mc, ctxt)
       }
     case (w: While, ctxt) =>
-      if (containsPredicateInstances(DecreasesContainer.fromNode(w)))
+      if (containsPredicateInstances(DecreasesSpecification.fromNode(w)))
         ctxt.c.nestedRequired = true
 
       w.info.getUniqueInfo[Transformed] match {
@@ -154,14 +150,14 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestePredicate
           (w, ctxt)
         case None =>
           val context = ctxt.c
-          val decWhile = getWhileDecreasesContainer(w)
+          val decWhile = getWhileDecreasesSpecification(w)
 
           val whileNumber = whileCounter
           whileCounter = whileCounter + 1
 
           // check that loop terminates under the methods tuple condition (if the loop is entered)
           val terminationCheck =
-            getMethodDecreasesContainer(context.methodName).tuple match {
+            getMethodDecreasesSpecification(context.methodName).tuple match {
               case Some(methodTuple) =>
 
                 val errTrafo = ErrTrafo({

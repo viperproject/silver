@@ -4,7 +4,7 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases.transformation
+package viper.silver.plugin.standard.termination.transformation
 
 import viper.silver.ast.{Domain, ExtensionMember, Field, Function, Method, Predicate, Program}
 import viper.silver.verifier.AbstractError

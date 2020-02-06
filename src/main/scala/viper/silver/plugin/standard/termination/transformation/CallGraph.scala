@@ -4,15 +4,18 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases.transformation
+package viper.silver.plugin.standard.termination.transformation
 
 import org.jgrapht.alg.connectivity.KosarajuStrongConnectivityInspector
 import org.jgrapht.graph.{DefaultDirectedGraph, DefaultEdge}
 
 import scala.collection.JavaConverters._
 
-object CallGraph {
+protected object CallGraph {
 
+  /**
+   * @return sets, each containing recursively dependent vertices.
+   */
   def mutuallyRecursiveVertices[V](graph: DefaultDirectedGraph[V, DefaultEdge]): Seq[Set[V]] = {
     val stronglyConnected = new KosarajuStrongConnectivityInspector(graph)
     val c = stronglyConnected.stronglyConnectedSets()
@@ -20,7 +23,11 @@ object CallGraph {
   }
 
 
+  /**
+   * @return vertices which are clearly non recursive and do not depend on other recursive vertices.
+   */
   def clearlyNonRecursiveVertices[V](graph: DefaultDirectedGraph[V, DefaultEdge]): Set[V] = {
+
     @scala.annotation.tailrec
     def clearlyNonRecursiveVertices[V](graph: DefaultDirectedGraph[V, DefaultEdge], borderVertices: Seq[V], accumulator: Set[V]): Set[V] = {
       borderVertices.headOption match {
@@ -43,7 +50,9 @@ object CallGraph {
       }
     }
 
+    // get all vertices which do not have any out-edge.
     val leaves = graph.vertexSet().asScala.toSeq.filter(key => graph.outDegreeOf(key) == 0)
+
     clearlyNonRecursiveVertices(graph, leaves, Set())
   }
 

@@ -4,14 +4,14 @@
 //
 // Copyright (c) 2011-2019 ETH Zurich.
 
-package viper.silver.plugin.standard.decreases.transformation
+package viper.silver.plugin.standard.termination.transformation
 
 import viper.silver.ast.ReTrafo
-import viper.silver.plugin.standard.decreases.{TerminationConditionFalse, TupleBoundedFalse, TupleConditionFalse, TupleDecreasesFalse, TupleSimpleFalse}
+import viper.silver.plugin.standard.termination.{TerminationConditionFalse, TupleBoundedFalse, TupleConditionFalse, TupleDecreasesFalse, TupleSimpleFalse}
 import viper.silver.verifier.reasons.{AssertionFalse, ErrorNode}
 
 /**
- * Interface for factories creating trafos (plugin/rewrite system) of non-termination reasons.
+ * Interface for factories creating error/reason trafos.
  */
 trait AbstractReasonTrafoFactory{
   def generateTerminationConditionFalse(offendingNode: ErrorNode): ReTrafo
