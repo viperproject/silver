@@ -239,9 +239,9 @@ trait MethodCheck extends ProgramManager with DecreasesCheck with NestedPredicat
    * Used for while loops because a while node is potentially traversed twice.
    */
   private final case class Transformed() extends Info {
-    override def comment: Seq[String] = Nil
+    override val comment: Seq[String] = Nil
 
-    override def isCached: Boolean = false
+    override val isCached: Boolean = false
   }
 
   private var whileCounter: Int = 1
