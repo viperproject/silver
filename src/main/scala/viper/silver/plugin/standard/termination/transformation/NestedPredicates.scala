@@ -25,13 +25,13 @@ import scala.collection.immutable.ListMap
  */
 trait NestedPredicates extends ProgramManager with ErrorReporter {
 
-  val nestedFunc: Option[DomainFunc] = program.findDomainFunctionOptionally("nestedPredicates")
+  lazy val nestedFunc: Option[DomainFunc] = program.findDomainFunctionOptionally("nestedPredicates")
 
   protected def containsPredicateInstances(dc: DecreasesSpecification): Boolean = {
     dc.tuple.exists(_.tupleExpressions.exists(_.isSubtype(PredicateInstance.getType)))
   }
 
-  val addNestedPredicateInformation: Strategy[Node, SimpleContext[Node]] = ViperStrategy.Slim({
+  lazy val addNestedPredicateInformation: Strategy[Node, SimpleContext[Node]] = ViperStrategy.Slim({
     case unfold: Unfold =>
       generateUnfoldNested(unfold.acc)
   }, t = Traverse.BottomUp)
@@ -43,7 +43,7 @@ trait NestedPredicates extends ProgramManager with ErrorReporter {
    * @param pap the predicate access predicate
    * @return Seqn(PredicateInstance p1, Unfold(pap), [PredicateInstance p2, Inhale(Nested(p2, p1))])
    */
-  protected def generateUnfoldNested(pap: PredicateAccessPredicate): Stmt = {
+  private def generateUnfoldNested(pap: PredicateAccessPredicate): Stmt = {
 
     if (nestedFunc.isDefined) {
       // assign variable to "predicate" before unfold
@@ -139,7 +139,7 @@ trait NestedPredicates extends ProgramManager with ErrorReporter {
    * @param assLocation the variable, which should be assigned
    * @return an assignment of the given variable to the representation of a predicate with the corresponding arguments
    */
-  protected def generatePredicateAssign(assLocation: LocalVar, pred: PredicateAccess): LocalVarAssign = {
+  private def generatePredicateAssign(assLocation: LocalVar, pred: PredicateAccess): LocalVarAssign = {
     val pi = PredicateInstance(pred.args, pred.predicateName)(pred.pos, pred.info, pred.errT)
     LocalVarAssign(assLocation, pi)(pred.pos)
   }
@@ -152,7 +152,7 @@ trait NestedPredicates extends ProgramManager with ErrorReporter {
    * @param p predicate which defines the type of the variable
    * @return a local variable with the correct type
    */
-  protected def uniquePredicateInstanceVar(p: PredicateAccess): LocalVarDecl = {
+  private def uniquePredicateInstanceVar(p: PredicateAccess): LocalVarDecl = {
     val predName = p.predicateName + "_" + p.args.hashCode().toString.replaceAll("-", "_")
     val predVarName = uniqueLocalVar(predName)
     val info = SimpleInfo(Seq(p.predicateName + "_" + p.args.mkString(",")))
@@ -175,11 +175,11 @@ trait NestedPredicates extends ProgramManager with ErrorReporter {
     newName
   }
 
-  def reportNestedNotDefined(pos: Position): Unit = {
+  private def reportNestedNotDefined(pos: Position): Unit = {
     reportError(ConsistencyError("nestedPredicates function is needed but not declared.", pos))
   }
 
-  def reportPredicateInstanceNotDefined(pos: Position): Unit = {
+  private def reportPredicateInstanceNotDefined(pos: Position): Unit = {
     reportError(ConsistencyError("PredicateInstance domain is needed but not declared.", pos))
   }
 }

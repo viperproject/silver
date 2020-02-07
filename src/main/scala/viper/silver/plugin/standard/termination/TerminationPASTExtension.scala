@@ -23,7 +23,7 @@ sealed trait PDecreasesClause extends PExtender with PExp {
 
 case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None) extends PDecreasesClause{
 
-  override def getSubnodes(): Seq[PNode] = tuple ++ condition
+  override val getSubnodes: Seq[PNode] = tuple ++ condition
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     // require condition to be of type bool
@@ -39,7 +39,7 @@ case class PDecreasesTuple(tuple: Seq[PExp], condition: Option[PExp] = None) ext
 
 case class PDecreasesWildcard(condition: Option[PExp] = None) extends  PDecreasesClause {
 
-  override def getSubnodes(): Seq[PNode] = condition.toSeq
+  override val getSubnodes: Seq[PNode] = condition.toSeq
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     // require condition to be of type bool
@@ -53,7 +53,7 @@ case class PDecreasesWildcard(condition: Option[PExp] = None) extends  PDecrease
 }
 
 case class PDecreasesStar() extends PDecreasesClause {
-  override def getSubnodes(): Seq[PNode] = Nil
+  override val getSubnodes: Seq[PNode] = Nil
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     None

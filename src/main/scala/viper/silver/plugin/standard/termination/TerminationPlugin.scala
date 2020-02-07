@@ -20,7 +20,7 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
                         logger: ch.qos.logback.classic.Logger,
                         config: viper.silver.frontend.SilFrontendConfig) extends SilverPlugin with ParserPluginTemplate {
 
-  private val deactivated = if (config != null) config.terminationPlugin.toOption.getOrElse(false) else false
+  private def deactivated: Boolean = config != null && config.terminationPlugin.toOption.getOrElse(false)
 
   /**
    * Keyword used to define decreases clauses

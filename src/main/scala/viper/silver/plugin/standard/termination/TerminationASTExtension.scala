@@ -45,14 +45,14 @@ case class DecreasesTuple(tupleExpressions: Seq[Exp] = Nil, override val conditi
                          (override val pos: Position = NoPosition,
                           override val info: Info = NoInfo,
                           override val errT: ErrorTrafo = NoTrafos) extends DecreasesClause {
-  override lazy val extensionIsPure: Boolean = true
+  override val extensionIsPure: Boolean = true
 
   override val typ: Type = Bool
 
   override lazy val prettyPrint: PrettyPrintPrimitives#Cont =
     text("decreases") <> space <> ssep(tupleExpressions map (toParenDoc(_)), char(',') <> space)
 
-  override def extensionSubnodes: Seq[Node] = tupleExpressions ++ condition
+  override val extensionSubnodes: Seq[Node] = tupleExpressions ++ condition
 
   /**
    * Allow only pure expressions in the tuple and condition
@@ -68,13 +68,13 @@ case class DecreasesWildcard(override val condition: Option[Exp] = None)
                             (override val pos: Position = NoPosition,
                              override val info: Info = NoInfo,
                              override val errT: ErrorTrafo = NoTrafos) extends DecreasesClause {
-  override lazy val extensionIsPure: Boolean = true
+  override val extensionIsPure: Boolean = true
 
   override val typ: Type = Bool
 
   override lazy val prettyPrint: PrettyPrintPrimitives#Cont = text("decreases _")
 
-  override def extensionSubnodes: Seq[Node] = condition.toSeq
+  override val extensionSubnodes: Seq[Node] = condition.toSeq
 
   /**
    * Allow only pure expression as condition
@@ -92,7 +92,7 @@ case class DecreasesStar()
   extends DecreasesClause {
   override val condition: Option[Exp] = None
 
-  override lazy val extensionIsPure: Boolean = true
+  override val extensionIsPure: Boolean = true
 
   override val extensionSubnodes: Seq[Node] = Nil
 
@@ -114,8 +114,8 @@ case class DecreasesSpecification(tuple: Option[DecreasesTuple],
                                   star: Option[DecreasesStar]) extends Info {
 
   // The comment of this metadata are the provided decreases clauses
-  override def comment: Seq[String] = (tuple ++ wildcard ++ star).map(_.toString()).toSeq
-  override def isCached: Boolean = false
+  override lazy val comment: Seq[String] = (tuple ++ wildcard ++ star).map(_.toString()).toSeq
+  override val isCached: Boolean = false
 
   /**
    * Condition for which termination is proven or assumed.

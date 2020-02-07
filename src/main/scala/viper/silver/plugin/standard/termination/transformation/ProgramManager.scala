@@ -32,7 +32,7 @@ trait ProgramManager{
    * Creates a new program containing all the transformed and newly added features.
    * @return new program.
    */
-  final protected def getNewProgram: Program = {
+  final def getNewProgram: Program = {
     Program(domains.values.toSeq,
       fields.values.toSeq,
       functions.values.toSeq,
