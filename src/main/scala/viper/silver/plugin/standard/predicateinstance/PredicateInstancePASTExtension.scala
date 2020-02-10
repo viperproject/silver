@@ -9,22 +9,27 @@ package viper.silver.plugin.standard.predicateinstance
 import viper.silver.ast._
 import viper.silver.parser._
 
+import scala.collection.mutable
+
 
 case class PPredicateInstance(args: Seq[PExp], idnuse: PIdnUse) extends PExtender with PExp {
 
-  // TODO: Don't know if this is necessary...
-  val _typeSubstitutions: Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
-  override def typeSubstitutions: Seq[PTypeSubstitution] = _typeSubstitutions
+  typ = PPrimitiv("PredicateInstance")
+
+  // TODO: Don't know if this is correct
+  private val _typeSubstitutions = new scala.collection.mutable.MutableList[PTypeSubstitution]()
+  final override def typeSubstitutions: mutable.MutableList[PTypeSubstitution] = _typeSubstitutions
   override def forceSubstitution(ts: PTypeSubstitution): Unit = {}
 
   override def getSubnodes(): Seq[PNode] = args :+ idnuse
 
   override def typecheck(t: TypeChecker, n: NameAnalyser): Option[Seq[String]] = {
     // TODO: Don't know if this is correct
-
+    // check that idnuse is the id of a predicate
     n.definition(member = null)(idnuse) match {
       case _: PPredicate =>
-        val predicateAccess = PPredicateAccess(args, idnuse)
+        // type checking should be the same as for PPredicateAccess nodes
+        val predicateAccess = PPredicateAccess(args, idnuse).setPos(this)
         t.check(predicateAccess, PTypeSubstitution.id)
         None
       case _ => Some(Seq("expected predicate"))
