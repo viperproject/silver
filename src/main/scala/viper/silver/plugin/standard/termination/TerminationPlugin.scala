@@ -8,9 +8,11 @@ package viper.silver.plugin.standard.termination
 
 import fastparse.noApi
 import viper.silver.ast.utility.ViperStrategy
+import viper.silver.ast.utility.rewriter.StrategyBuilder
 import viper.silver.ast.{Assert, Exp, Function, Method, Program, While}
 import viper.silver.parser.FastParser._
 import viper.silver.parser._
+import viper.silver.plugin.standard.predicateinstance.PPredicateInstance
 import viper.silver.plugin.standard.termination.transformation.Trafo
 import viper.silver.plugin.{ParserPluginTemplate, SilverPlugin}
 import viper.silver.verifier.errors.AssertFailed
@@ -48,6 +50,9 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
   lazy val condition: noApi.P[PExp] = P("if" ~/ exp)
 
 
+  /**
+   * Add extensions to the parser
+   */
   override def beforeParse(input: String, isImported: Boolean): String = {
     // Add new keyword
     ParserExtension.addNewKeywords(Set[String](DecreasesKeyword))
@@ -58,6 +63,36 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
     input
   }
 
+  /**
+   * Transform predicate accesses in decreases clauses to predicate instances.
+   */
+  override def beforeResolve(input: PProgram): PProgram = {
+
+     // Transform predicate accesses which are not used in the unfolding to predicate instances.
+    val transformPredicateInstances = StrategyBuilder.Slim[PNode]({
+      case pa@PPredicateAccess(args, idnuse) => PPredicateInstance(args, idnuse).setPos(pa)
+      case pc@PCall(idnUse, args, None) if input.predicates.exists(_.idndef.name == idnUse.name) =>
+        // PCall represents the predicate access before the translation into the AST
+        PPredicateInstance(args, idnUse).setPos(pc)
+      case d => d
+    }).recurseFunc({
+          // ignore the predicate access when it is used for unfolding
+      case PUnfolding(_, exp) => Seq(exp)
+    })
+
+    // Apply the predicate access to instance transformation only to decreases clauses.
+    val newProgram: PProgram = StrategyBuilder.Slim[PNode]({
+      case dt: PDecreasesTuple => transformPredicateInstances.execute(dt): PDecreasesTuple
+      case d => d
+    }).execute(input)
+
+    newProgram
+  }
+
+
+  /**
+   * Remove decreases clauses from the AST and add them as information to the AST nodes
+   */
   override def beforeVerify(input: Program): Program = {
     // extract all decreases clauses from the program
     val newProgram = extractDecreasesClauses(input)
@@ -73,6 +108,9 @@ class TerminationPlugin(reporter: viper.silver.reporter.Reporter,
     }
   }
 
+  /**
+   * Call the error transformation on possibly termination related errors.
+   */
   override def mapVerificationResult(input: VerificationResult): VerificationResult = {
     if (deactivated) return input // if decreases checks are deactivated no verification result mapping is required.
 
