@@ -20,7 +20,7 @@ import viper.silver.verifier.errors.PreconditionInAppFalse
 class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
 
   /**
-   * Keyword used to define decreases clauses
+   * Syntactic marker for predicate instances
    */
   val PredicateInstanceMarker: String = "@"
 
@@ -47,10 +47,10 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
     input
   }
 
-  /** Called after methods are filtered but before the verification by the backend happens.
-   *
-   * @param input AST
-   * @return Modified AST
+  /**
+   * Generate for predicates the predicate instance function.
+   * Transform predicate instances AST nodes into function calls
+   * (to the respective predicate instance functions)
    */
   override def beforeVerify(input: Program): Program = {
     val PredicateInstanceDomain: Option[Domain] =  input.domains.find(_.name == "PredicateInstance")
@@ -91,11 +91,8 @@ class PredicateInstancePlugin  extends SilverPlugin with ParserPluginTemplate {
     newProgram
   }
 
-  /** Called after the verification. Error transformation should happen here.
-   * This will only be called if verification took place.
-   *
-   * @param input Result of verification
-   * @return Modified result
+  /**
+   * Initiate the error transformer for possibly predicate instances related errors
    */
   override def mapVerificationResult(input: VerificationResult): VerificationResult = {
     input match {
