@@ -15,6 +15,8 @@ import viper.silver.parser._
  */
 sealed trait PDecreasesClause extends PExtender with PExp {
 
+  typ = TypeHelper.Bool
+
   // TODO: Don't know if this is necessary...
   val _typeSubstitutions: Seq[PTypeSubstitution] = Seq(PTypeSubstitution.id)
   override def typeSubstitutions: Seq[PTypeSubstitution] = _typeSubstitutions
