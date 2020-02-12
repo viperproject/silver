@@ -5,7 +5,7 @@ import "declaration.vpr"
 import "predicate_instance_declaration.vpr"
 import <predicateinstance/pi.vpr>
 
-domain PredicateInstancesTerminationOrder {
+domain PredicateInstancesWellFoundedOrder {
     axiom predicate_instances_ax_dec{
         forall l1: PredicateInstance, l2: PredicateInstance :: {nestedPredicates(l1,l2)}
             decreasing(l1, l2) <==> nestedPredicates(l1,l2)

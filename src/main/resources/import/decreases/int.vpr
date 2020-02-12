@@ -3,7 +3,7 @@
 
 import "declaration.vpr"
 
-domain IntTerminationOrder{
+domain IntWellFoundedOrder{
 	//Integers
     axiom integer_ax_dec{
         forall int1: Int, int2: Int :: {decreasing(int1, int2)}

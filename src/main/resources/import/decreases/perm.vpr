@@ -3,7 +3,7 @@
 
 import "declaration.vpr"
 
-domain PermTerminationOrder{
+domain PermWellFoundedOrder{
 	//Perms
     axiom perm_ax_dec{
         forall perm1: Perm, perm2: Perm :: {decreasing(perm1, perm2)}

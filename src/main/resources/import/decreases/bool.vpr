@@ -3,7 +3,7 @@
 
 import "declaration.vpr"
 
-domain BoolTerminationOrder{
+domain BoolWellFoundedOrder{
     //Booleans
     axiom bool_ax_dec{
         decreasing(false, true)

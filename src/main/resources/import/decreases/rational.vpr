@@ -3,7 +3,7 @@
 
 import "declaration.vpr"
 
-domain RationalTerminationOrder{
+domain RationalWellFoundedOrder{
 	//Rationals
     axiom rational_ax_dec{
         forall int1: Rational, int2: Rational :: {decreasing(int1, int2)}

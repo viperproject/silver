@@ -3,7 +3,7 @@
 
 import <predicateinstance/pi.vpr>
 
-domain NestedPredicatesDomain{
+domain PredicateInstancesNestedRelation{
     function nestedPredicates(l1: PredicateInstance, l2: PredicateInstance) : Bool
 
     //Transitivity of the nested-Function

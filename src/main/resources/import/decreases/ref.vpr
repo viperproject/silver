@@ -3,7 +3,7 @@
 
 import "declaration.vpr"
 
-domain RefTerminationOrder{
+domain RefWellFoundedOrder{
     //References
 	axiom ref_ax_dec{
         forall ref1: Ref :: {decreasing(null,ref1)}
