@@ -2,7 +2,7 @@
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 import "declaration.vpr"
-import "predicate_instance_declaration.vpr"
+import "predicate_instance_nested.vpr"
 import <predicateinstance/pi.vpr>
 
 domain PredicateInstancesWellFoundedOrder {
