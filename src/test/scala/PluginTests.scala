@@ -224,6 +224,9 @@ class PluginTests extends FunSuite {
     "TestPluginMapVsFinish"
   )
 
+  // number of plugins running by default
+  val defaultPlugins = 2
+
   var result: VerificationResult = Success
 
   def testOne(plugin: String): Unit ={
@@ -237,8 +240,8 @@ class PluginTests extends FunSuite {
       case p: FakeResult => p.result()
       case _ => Success
     }
-    frontend.execute(Seq("--plugin", plugin, "--disableDefaultPlugins", file.toString))
-    assert(frontend.plugins.plugins.size == 1)
+    frontend.execute(Seq("--plugin", plugin, file.toString))
+    assert(frontend.plugins.plugins.size == 1 + defaultPlugins)
     frontend.plugins.plugins.foreach {
       case p: TestPlugin => assert(p.test(), p.getClass.getName)
       case _ =>
