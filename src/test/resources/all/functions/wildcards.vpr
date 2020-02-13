@@ -7,15 +7,24 @@ predicate P(x: Ref) {
 	acc(x.f)
 }
 
-function f1(x: Ref)
+function f1(x: Ref): Int
 	requires P(x)
 {
 	unfolding acc(P(x), wildcard) in f2(x)
 }
 
-function f2(x: Ref)
+function f2(x: Ref): Int
 	requires acc(P(x), wildcard)
 {
-	unfolding P(x) in P(x)
+	unfolding acc(P(x), wildcard) in x.f
 }
 
+method test(x: Ref) {
+	inhale acc(x.f)
+	x.f := 1
+	fold P(x)
+
+	assert f2(x) == 1
+	assert f1(x) == 1
+
+}
