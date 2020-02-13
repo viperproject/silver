@@ -1,0 +1,23 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate P(x: Ref) {
+  acc(x.f) && true
+}
+
+function fun(v: Int, i: Int): Bool
+
+method test01(x: Ref) {
+  inhale P(x)
+  inhale forall i: Int :: i == 1 ==> fun(unfolding P(x) in x.f, i)
+  assert forall i: Int :: i == 1 ==> fun(unfolding P(x) in x.f, i)
+}
+
+method test02(x: Ref) {
+  inhale P(x)
+  inhale fun(unfolding P(x) in x.f, 1)
+  assert fun(unfolding P(x) in x.f, 1)
+}
+

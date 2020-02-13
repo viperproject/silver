@@ -1,0 +1,21 @@
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
+field f: Int
+
+predicate P(x: Ref) {
+	acc(x.f)
+}
+
+function f1(x: Ref)
+	requires P(x)
+{
+	unfolding acc(P(x), wildcard) in f2(x)
+}
+
+function f2(x: Ref)
+	requires acc(P(x), wildcard)
+{
+	unfolding P(x) in P(x)
+}
+
