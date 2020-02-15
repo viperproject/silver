@@ -8,10 +8,17 @@ predicate pred(x: Ref) {
 
 function fun(v: Int, i: Int): Bool
 
-method test01(x: Ref) {
+method test01a(x: Ref) {
   inhale acc(pred(x))
   inhale forall i: Int :: 0 <= i && i < 10 ==> fun(unfolding acc(pred(x)) in x.f, i)
   assert forall i: Int :: 0 <= i && i < 10 ==> fun(unfolding acc(pred(x)) in x.f, i)
+}
+
+/* A slight reduction: The forall is not necessary for the assertion to fail */
+method test01b(x: Ref) {
+  inhale acc(pred(x))
+  inhale forall i: Int :: 0 <= i && i < 10 ==> fun(unfolding acc(pred(x)) in x.f, i)
+  assert fun(unfolding acc(pred(x)) in x.f, 3)
 }
 
 /* Potential work-arounds: all of the following assertions succeed */
