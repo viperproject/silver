@@ -455,14 +455,6 @@ trait BracketPrettyPrinter extends FastPrettyPrinterBase {
   }
 }
 
-object PrettyPrintingConfig {
-  /**
-   * Indicates whether AST nodes that are attached to a node should be printed as comments.
-   * @see [[viper.silver.ast.AstAttachmentInfo]]
-   */
-  var printAstAttachments = false
-}
-
 /**
   * Pretty printer for the Silver language
   */
