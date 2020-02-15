@@ -45,3 +45,12 @@ method test05(x: Ref) {
   inhale unfolding pred(x) in forall i: Int :: 0 <= i && i < 10 ==> fun(x.f, i)
   assert forall i: Int :: 0 <= i && i < 10 ==> fun(unfolding acc(pred(x)) in x.f, i)
 }
+
+method test06(x: Ref) {
+  inhale acc(pred(x))
+  unfold pred(x)
+  inhale forall i: Int :: 0 <= i && i < 10 ==> fun(x.f, i)
+  fold pred(x)
+  assert forall i: Int :: 0 <= i && i < 10 ==> fun(unfolding acc(pred(x)) in x.f, i)
+}
+
