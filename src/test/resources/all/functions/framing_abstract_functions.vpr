@@ -7,6 +7,15 @@ field g: Int
 function fun01(x: Ref, b: Bool): Int
   requires b ? acc(x.f) : acc(x.g)
 
+
+function fun02(x : Ref) : Int
+	requires acc(x.f)
+{
+	fun03(x)
+}
+
+function fun03(x: Ref) : Int
+
 method test01(x: Ref, b: Bool)
   requires acc(x.f)
   requires acc(x.g)
@@ -19,3 +28,18 @@ method test01(x: Ref, b: Bool)
   //:: ExpectedOutput(assert.failed:assertion.false)
   assert fun01(x, false) == -1
 }
+
+method test02(x: Ref) {
+	inhale acc(x.f)
+	inhale fun03(x) == 1
+	
+	assert fun02(x) == 1
+}
+
+method test03(x: Ref) {
+	inhale acc(x.f)
+	inhale fun02(x) == 1
+	
+	assert fun03(x) == 1
+}
+
